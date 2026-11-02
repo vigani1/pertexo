@@ -3,7 +3,7 @@ import {
   createNoticeMailStore,
   createWorkspaceInboxFoldStore,
 } from '@pertexo/core/inbox';
-import { createIdentityWorkspaceDatabase } from '@pertexo/core/tenant-access';
+import { createIdentityWorkspaceStore } from '@pertexo/core/tenant-access';
 import { openNoticeUnsubscribe } from '@pertexo/integrations/server';
 import { sealNoticeMail } from '../../../src/mail/notice-content.js';
 import { randomUUID } from 'node:crypto';
@@ -30,7 +30,7 @@ export function registerDeliversRealPersonalNoticeMailRefuses(): void {
           'postgresql://pertexo_maintenance:pertexo-local-maintenance@localhost:5432/pertexo',
       ),
     );
-    const identity = createIdentityWorkspaceDatabase(apiConfig);
+    const identity = createIdentityWorkspaceStore(apiConfig);
     const preferences = createNoticePreferencesStore(apiConfig, {
       emailAvailable: true,
     });

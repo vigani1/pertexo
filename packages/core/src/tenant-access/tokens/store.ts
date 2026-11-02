@@ -32,7 +32,7 @@ import {
 } from './authority.queries.js';
 import { authenticateApiToken } from './authenticate.repository.js';
 import { ApiTokenPolicyError } from './errors.js';
-import type { ApiTokenCommand, ApiTokenDatabase } from './contract.js';
+import type { ApiTokenCommand, ApiTokenStore } from './contract.js';
 
 const receipt = z.object({ tokenId: z.uuid() }).strict();
 const commandIdentity = (
@@ -96,12 +96,12 @@ async function recordTokenAudit(
   });
 }
 
-export function createApiTokenDatabase(
+export function createApiTokenStore(
   config: DatabaseConfig,
   runtime?: DatabaseRuntime,
-): ApiTokenDatabase {
+): ApiTokenStore {
   const lease = acquireDatabasePool(config, runtime);
-  const store: ApiTokenDatabase = {
+  const store: ApiTokenStore = {
     close: () => lease.close(),
     authenticate: (input, signal) =>
       authenticateApiToken(lease.pool, input, signal),
@@ -115,8 +115,8 @@ export function createApiTokenDatabase(
 
 function listApiTokens(
   pool: Pool,
-  input: Parameters<ApiTokenDatabase['list']>[0],
-): ReturnType<ApiTokenDatabase['list']> {
+  input: Parameters<ApiTokenStore['list']>[0],
+): ReturnType<ApiTokenStore['list']> {
   return withTenantScopedClient(
     pool,
     { workspaceId: input.workspaceId, actorId: input.ownerUserId },
@@ -153,8 +153,8 @@ function listApiTokens(
 
 function createApiToken(
   pool: Pool,
-  input: Parameters<ApiTokenDatabase['create']>[0],
-): ReturnType<ApiTokenDatabase['create']> {
+  input: Parameters<ApiTokenStore['create']>[0],
+): ReturnType<ApiTokenStore['create']> {
   return withTenantScopedClient(
     pool,
     { workspaceId: input.workspaceId, actorId: input.ownerUserId },
@@ -231,8 +231,8 @@ function createApiToken(
 
 function revokeApiToken(
   pool: Pool,
-  input: Parameters<ApiTokenDatabase['revoke']>[0],
-): ReturnType<ApiTokenDatabase['revoke']> {
+  input: Parameters<ApiTokenStore['revoke']>[0],
+): ReturnType<ApiTokenStore['revoke']> {
   return withTenantScopedClient(
     pool,
     { workspaceId: input.workspaceId, actorId: input.ownerUserId },

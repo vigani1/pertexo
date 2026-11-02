@@ -1,7 +1,7 @@
 import { DirectoryManagementModule } from '../../authentication/federation/provisioning/management/module.js';
 import {
-  createIdentityWorkspaceDatabase,
-  createApiTokenDatabase,
+  createIdentityWorkspaceStore,
+  createApiTokenStore,
 } from '@pertexo/core/tenant-access';
 import {
   createDirectoryStore,
@@ -75,10 +75,10 @@ export async function createApiIdentityRuntime(
   const resources = new IdentityResourceScope();
   try {
     const identityDatabase = resources.own(
-      createIdentityWorkspaceDatabase(databaseConfig, runtime),
+      createIdentityWorkspaceStore(databaseConfig, runtime),
     );
     const tokenDatabase = resources.own(
-      createApiTokenDatabase(databaseConfig, runtime),
+      createApiTokenStore(databaseConfig, runtime),
     );
     const directory = resources.own(
       createDirectoryStore(databaseConfig, runtime),

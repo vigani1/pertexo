@@ -9,8 +9,8 @@ import {
   type WorkspaceDatabase,
 } from '@pertexo/database/testing';
 import {
-  createIdentityWorkspaceDatabase,
-  type IdentityWorkspaceDatabase,
+  createIdentityWorkspaceStore,
+  type IdentityWorkspaceStore,
 } from '@pertexo/core/testing';
 
 import { afterAll, beforeAll, expect } from 'vitest';
@@ -47,7 +47,7 @@ export function createWorkspaceApiFixture() {
 
   let application: Awaited<ReturnType<typeof createTestApiApplication>>;
 
-  let identityDatabase: IdentityWorkspaceDatabase;
+  let identityDatabase: IdentityWorkspaceStore;
 
   let workspaceDatabase: WorkspaceDatabase;
 
@@ -61,7 +61,7 @@ export function createWorkspaceApiFixture() {
     try {
       identityDatabase = owner.acquire(
         'identity database',
-        createIdentityWorkspaceDatabase(databaseConfig),
+        createIdentityWorkspaceStore(databaseConfig),
         (database) => database.close(),
       );
       workspaceDatabase = owner.acquire(

@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import {
-  createIdentityWorkspaceDatabase,
+  createIdentityWorkspaceStore,
   createWorkflowAuthoringDatabase,
 } from '@pertexo/core/testing';
 
@@ -18,7 +18,7 @@ import {
 } from '../fixture.js';
 
 export async function seedScheduleQualification() {
-  const identity = registerResource(createIdentityWorkspaceDatabase(apiConfig));
+  const identity = registerResource(createIdentityWorkspaceStore(apiConfig));
   const authoring = registerResource(
     createWorkflowAuthoringDatabase(
       apiConfig,

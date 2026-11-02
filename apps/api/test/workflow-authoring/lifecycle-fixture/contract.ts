@@ -1,6 +1,6 @@
 import type { Role } from '@pertexo/workflow-model';
 
-import type { IdentityWorkspaceDatabase } from '@pertexo/core/testing';
+import type { IdentityWorkspaceStore } from '@pertexo/core/testing';
 import type { WorkspaceDatabase } from '@pertexo/database/testing';
 
 import type { createApiApplication } from '../../../src/app.js';
@@ -55,7 +55,7 @@ export type WorkflowLifecycleState = Readonly<{
 export type WorkflowLifecycleApiFixture = Readonly<{
   application: Awaited<ReturnType<typeof createApiApplication>>;
   workspaceDatabase: WorkspaceDatabase;
-  identityDatabase: IdentityWorkspaceDatabase;
+  identityDatabase: IdentityWorkspaceStore;
   workspaceId: string;
   ownerUserId: string;
   builderUserId: string;

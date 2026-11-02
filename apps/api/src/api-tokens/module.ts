@@ -1,7 +1,7 @@
 import { ApiTokenAuthentication } from '../authentication/automation/authority.js';
 import { Module } from '@nestjs/common';
 import type { DynamicModule } from '@nestjs/common';
-import type { ApiTokenDatabase } from '@pertexo/core/tenant-access';
+import type { ApiTokenStore } from '@pertexo/core/tenant-access';
 import type { IdentityClock } from '../identity/index.js';
 import { AutomationAuthenticationGuard } from '../authentication/automation/guard.js';
 import { HttpRateLimitAdmission } from '../platform/rate-limit/admission.js';
@@ -9,7 +9,7 @@ import { ApiTokenController } from './controller.js';
 import { ApiTokenManagement } from './use-cases.js';
 
 export type ApiTokenDependencies = Readonly<{
-  database: ApiTokenDatabase;
+  database: ApiTokenStore;
   enabled: boolean;
   clock: IdentityClock;
 }>;

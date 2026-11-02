@@ -1,5 +1,5 @@
 import type {
-  IdentityWorkspaceDatabase,
+  IdentityWorkspaceStore,
   WorkspaceInvitationRecord,
   CreateWorkspaceInvitationInput,
   InvitationAcceptanceIntentRecord,
@@ -38,7 +38,7 @@ export type IdentityWorkspaceConfig = Readonly<{
 
 /** Optional commands keep test fakes narrow; persisted shapes have one owner. */
 export type IdentityWorkspacePersistence = Pick<
-  IdentityWorkspaceDatabase,
+  IdentityWorkspaceStore,
   | 'findUserById'
   | 'listWorkspaceMembers'
   | 'changeWorkspaceMemberRole'
@@ -46,7 +46,7 @@ export type IdentityWorkspacePersistence = Pick<
 > &
   Partial<
     Pick<
-      IdentityWorkspaceDatabase,
+      IdentityWorkspaceStore,
       | 'removeWorkspaceMember'
       | 'leaveWorkspace'
       | 'suspendWorkspaceMember'
@@ -67,15 +67,15 @@ export type IdentityWorkspacePersistence = Pick<
   Readonly<{
     createWorkspaceWithOwner(
       input: Parameters<
-        IdentityWorkspaceDatabase['createWorkspaceWithOwner']
+        IdentityWorkspaceStore['createWorkspaceWithOwner']
       >[0] & { idempotencyKey: string },
     ): Promise<WorkspacePersistenceRecord>;
     renameWorkspace?(
-      input: Parameters<IdentityWorkspaceDatabase['renameWorkspace']>[0],
+      input: Parameters<IdentityWorkspaceStore['renameWorkspace']>[0],
     ): Promise<WorkspaceRenamePersistenceResult>;
     requestWorkspaceLifecycleOperation(
       input: Parameters<
-        IdentityWorkspaceDatabase['requestWorkspaceLifecycleOperation']
+        IdentityWorkspaceStore['requestWorkspaceLifecycleOperation']
       >[0],
     ): Promise<WorkspaceLifecycleOperationRecord>;
   }>;
@@ -103,7 +103,7 @@ export type UserProfilePersistenceRecord = UserRecord;
 export type WorkspaceMemberPersistenceRecord = WorkspaceMemberRecord;
 
 export type WorkspacePersistenceRecord = Pick<
-  Awaited<ReturnType<IdentityWorkspaceDatabase['createWorkspaceWithOwner']>>,
+  Awaited<ReturnType<IdentityWorkspaceStore['createWorkspaceWithOwner']>>,
   'id' | 'name' | 'slug' | 'status' | 'revision' | 'createdAt' | 'updatedAt'
 >;
 export type WorkspaceRenamePersistenceResult = Omit<
@@ -115,7 +115,7 @@ export type WorkspaceRenamePersistenceResult = Omit<
 /** The receipt of a lifecycle request, applied when submitted. */
 export type WorkspaceLifecycleOperationRecord = Pick<
   Awaited<
-    ReturnType<IdentityWorkspaceDatabase['requestWorkspaceLifecycleOperation']>
+    ReturnType<IdentityWorkspaceStore['requestWorkspaceLifecycleOperation']>
   >,
   'id' | 'workspaceId' | 'commandType' | 'submittedAt'
 >;

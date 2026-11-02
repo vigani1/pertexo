@@ -20,7 +20,7 @@ export type VerifiedApiToken = Readonly<{
   tokenId: string;
   scopes: readonly ApiTokenScope[];
 }>;
-export interface ApiTokenDatabase {
+export interface ApiTokenStore {
   create(
     input: ApiTokenCommand & ApiTokenCreateRequest,
   ): Promise<ApiTokenCreateResponse>;

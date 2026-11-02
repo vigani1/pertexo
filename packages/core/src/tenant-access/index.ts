@@ -7,7 +7,7 @@ export {
   rolesForCapability,
 } from '@pertexo/workflow-model';
 export type { AuthorizationCapability } from '@pertexo/workflow-model';
-export { createIdentityWorkspaceDatabase } from './store.js';
+export { createIdentityWorkspaceStore } from './store.js';
 export {
   IdentityConflictError,
   InvitationAcceptanceConflictError,
@@ -27,7 +27,7 @@ export type {
   ChangeWorkspaceMemberRoleInput,
   CompleteInvitationAcceptanceInput,
   CreateWorkspaceInvitationInput,
-  IdentityWorkspaceDatabase,
+  IdentityWorkspaceStore,
   InvitationAcceptanceIntentRecord,
   InvitationAcceptanceResult,
   LeaveWorkspaceInput,
@@ -62,10 +62,10 @@ export type {
   WorkspaceInvitationDeliveryStore,
 } from './invitations/delivery/contract.js';
 
-export { createApiTokenDatabase } from './tokens/store.js';
+export { createApiTokenStore } from './tokens/store.js';
 export { ApiTokenPolicyError } from './tokens/errors.js';
 export type {
-  ApiTokenDatabase,
+  ApiTokenStore,
   VerifiedApiToken,
   ApiTokenOwner,
   ApiTokenCommand,

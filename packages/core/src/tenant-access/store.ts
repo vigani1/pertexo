@@ -17,7 +17,7 @@ import { workspaces } from '@pertexo/database/schema';
 
 import { changeWorkspaceLifecycle } from '../lifecycle/deletion/change.js';
 import type {
-  IdentityWorkspaceDatabase,
+  IdentityWorkspaceStore,
   RequestWorkspaceLifecycleOperationInput,
   WorkspaceLifecycleOperation,
   WorkspaceRecord,
@@ -48,10 +48,10 @@ import {
 } from './workspaces/projection.js';
 import { createIdentityWorkspaceRenameStore } from './workspaces/rename.repository.js';
 
-export function createIdentityWorkspaceDatabase(
+export function createIdentityWorkspaceStore(
   config: DatabaseConfig,
   runtime?: DatabaseRuntime,
-): IdentityWorkspaceDatabase {
+): IdentityWorkspaceStore {
   const lease = acquireDatabasePool(config, runtime);
   const { pool } = lease;
 
@@ -74,7 +74,7 @@ export function createIdentityWorkspaceDatabase(
     ) => requestWorkspaceLifecycleOperation(pool, input),
 
     close: () => lease.close(),
-  } satisfies IdentityWorkspaceDatabase;
+  } satisfies IdentityWorkspaceStore;
 
   return Object.freeze(database);
 }

@@ -8,7 +8,7 @@ import {
   createWorkspaceDatabase,
 } from '@pertexo/database/platform';
 import { acceptWorkflowRun } from '../../src/runs/commands/acceptance.repository.js';
-import { createIdentityWorkspaceDatabase } from '../../src/tenant-access/store.js';
+import { createIdentityWorkspaceStore } from '../../src/tenant-access/store.js';
 import {
   migrateDatabase,
   dropDisconnectedDatabase,
@@ -65,7 +65,7 @@ export function createScheduleTriggerTestEnvironment(
     connectionString: url(workerBaseUrl),
     max: 8,
   });
-  let identity: ReturnType<typeof createIdentityWorkspaceDatabase>;
+  let identity: ReturnType<typeof createIdentityWorkspaceStore>;
   let reconciliation: ReturnType<
     typeof createWorkflowTriggerReconciliationStore
   >;
@@ -158,7 +158,7 @@ export function createScheduleTriggerTestEnvironment(
     await migrateDatabase(migrationConfig);
     owner = new Pool({ connectionString: url(migrationBaseUrl), max: 1 });
     worker = new Pool({ connectionString: url(workerBaseUrl), max: 1 });
-    identity = createIdentityWorkspaceDatabase(apiConfig);
+    identity = createIdentityWorkspaceStore(apiConfig);
     reconciliation = createWorkflowTriggerReconciliationStore(apiConfig);
     schedules = createScheduleTriggerStore(apiConfig);
     scannerOne = createScheduleTriggerScanner(workerConfig, apiConfig);

@@ -1,6 +1,6 @@
 import * as identityStores from '@pertexo/core/identity';
 import * as tenantAccessStores from '@pertexo/core/tenant-access';
-import type { IdentityWorkspaceDatabase } from '@pertexo/core/testing';
+import type { IdentityWorkspaceStore } from '@pertexo/core/testing';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { ApiIdentityConfig } from '../../src/platform/config/identity.js';
@@ -40,21 +40,20 @@ function identityDatabase(
     requestWorkspaceLifecycleOperation: vi.fn(),
     readWorkspaceLifecycleOperation: vi.fn(),
     close,
-  } as unknown as IdentityWorkspaceDatabase;
+  } as unknown as IdentityWorkspaceStore;
 }
 
-function createsIdentityDatabase(database: IdentityWorkspaceDatabase) {
-  vi.spyOn(
-    tenantAccessStores,
-    'createIdentityWorkspaceDatabase',
-  ).mockReturnValue(database);
+function createsIdentityDatabase(database: IdentityWorkspaceStore) {
+  vi.spyOn(tenantAccessStores, 'createIdentityWorkspaceStore').mockReturnValue(
+    database,
+  );
 }
 
 /** Lets the real store be built and records how often its close runs. */
 function ownedClose(
   factory:
-    | 'createIdentityWorkspaceDatabase'
-    | 'createApiTokenDatabase'
+    | 'createIdentityWorkspaceStore'
+    | 'createApiTokenStore'
     | 'createDirectoryStore',
 ) {
   // Each factory sits on one door; the spy only needs to see a method by name.
@@ -122,8 +121,8 @@ describe('identity runtime composition', () => {
 
   it('owns and closes the production database resources when none are injected', async () => {
     const closes = [
-      ownedClose('createIdentityWorkspaceDatabase'),
-      ownedClose('createApiTokenDatabase'),
+      ownedClose('createIdentityWorkspaceStore'),
+      ownedClose('createApiTokenStore'),
       ownedClose('createDirectoryStore'),
     ];
     const runtime = await createApiIdentityRuntime(

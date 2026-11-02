@@ -1,4 +1,4 @@
-import type { IdentityWorkspaceDatabase } from '@pertexo/core/tenant-access';
+import type { IdentityWorkspaceStore } from '@pertexo/core/tenant-access';
 import type { ApiTokenScope } from '@pertexo/contracts';
 import {
   ACTIVE_WORKSPACE_STATUSES,
@@ -54,7 +54,7 @@ export type ApiTokenActorContext = ActorIdentity &
 export type ActorContext = UserActorContext | ApiTokenActorContext;
 
 export type WorkspaceAccess = NonNullable<
-  Awaited<ReturnType<IdentityWorkspaceDatabase['findWorkspaceAccess']>>
+  Awaited<ReturnType<IdentityWorkspaceStore['findWorkspaceAccess']>>
 >;
 
 export type DisclosurePolicy = 'forbidden' | 'not_found';

@@ -3,7 +3,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import {
   acceptWorkflowRun,
   appendRunEvent,
-  createIdentityWorkspaceDatabase,
+  createIdentityWorkspaceStore,
 } from '@pertexo/core/testing';
 import {
   createWorkspaceDatabase,
@@ -91,7 +91,7 @@ describe.runIf(enabled)('real PostgreSQL-authoritative run event SSE', () => {
     try {
       const identityDatabase = owner.acquire(
         'identity database',
-        createIdentityWorkspaceDatabase(databaseConfig(apiUrl ?? '')),
+        createIdentityWorkspaceStore(databaseConfig(apiUrl ?? '')),
         (database) => database.close(),
       );
       const workspaceOwner = await identityDatabase.createUser({

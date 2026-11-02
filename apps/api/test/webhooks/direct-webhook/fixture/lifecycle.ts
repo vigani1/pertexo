@@ -5,7 +5,7 @@ import { RedisRateLimitRuntime } from '@pertexo/rate-limit';
 import { DEFAULT_CODE_SETTINGS } from '@pertexo/node-sdk';
 
 import {
-  createIdentityWorkspaceDatabase,
+  createIdentityWorkspaceStore,
   createWebhookTriggerStore,
   createWorkflowTriggerReconciliationStore,
   type WebhookTriggerStore,
@@ -64,7 +64,7 @@ let apiConfig!: ReturnType<typeof parseDatabaseConfig>;
 
 export const catalog = composeExecutableCatalog(PLATFORM_NODE_CATALOG);
 
-export let identity!: ReturnType<typeof createIdentityWorkspaceDatabase>;
+export let identity!: ReturnType<typeof createIdentityWorkspaceStore>;
 
 export let identityRuntime!: ApiIdentityRuntime;
 
@@ -157,7 +157,7 @@ async function createFixture(): Promise<FixtureResourceOwner> {
     });
     identity = resources.acquire(
       'identity database',
-      createIdentityWorkspaceDatabase(apiConfig),
+      createIdentityWorkspaceStore(apiConfig),
       (database) => database.close(),
     );
     identityRuntime = resources.acquire(

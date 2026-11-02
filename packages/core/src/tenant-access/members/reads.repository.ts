@@ -18,7 +18,7 @@ import {
 import { rolesForCapability } from '@pertexo/workflow-model';
 import type {
   AccessibleWorkspacesPage,
-  IdentityWorkspaceDatabase,
+  IdentityWorkspaceStore,
   WorkspaceAccessRecord,
   WorkspaceMembersPage,
   WorkspaceStatus,
@@ -26,7 +26,7 @@ import type {
 import { lockBrowsableWorkspaceAuthority } from '../../shared/authority.queries.js';
 
 type MemberStore = Pick<
-  IdentityWorkspaceDatabase,
+  IdentityWorkspaceStore,
   'findWorkspaceAccess' | 'listAccessibleWorkspaces' | 'listWorkspaceMembers'
 >;
 

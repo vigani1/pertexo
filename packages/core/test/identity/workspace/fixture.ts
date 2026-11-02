@@ -3,7 +3,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
 import type { DatabaseError } from 'pg';
 
-import { createIdentityWorkspaceDatabase } from '../../../src/testing.js';
+import { createIdentityWorkspaceStore } from '../../../src/testing.js';
 import {
   createWorkspaceDatabase,
   parseDatabaseConfig,
@@ -57,7 +57,7 @@ const migrationConfig = {
   ownerRole: 'pertexo_owner',
 } as const;
 
-export let identityDatabase: ReturnType<typeof createIdentityWorkspaceDatabase>;
+export let identityDatabase: ReturnType<typeof createIdentityWorkspaceStore>;
 
 export let tenantDatabase: ReturnType<typeof createWorkspaceDatabase>;
 
@@ -165,7 +165,7 @@ export async function createInvitationProofSession(
 export async function beforeAllFixture1() {
   await fixture.create();
   await migrateDatabase(migrationConfig);
-  identityDatabase = createIdentityWorkspaceDatabase(
+  identityDatabase = createIdentityWorkspaceStore(
     parseDatabaseConfig({ connectionString: apiUrl, max: 3 }),
   );
   identityResources.push(identityDatabase);

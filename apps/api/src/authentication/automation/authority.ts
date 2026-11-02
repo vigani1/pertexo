@@ -3,7 +3,7 @@ import {
   throwApplicationError,
 } from '../../platform/http/index.js';
 import type {
-  ApiTokenDatabase,
+  ApiTokenStore,
   VerifiedApiToken,
 } from '@pertexo/core/tenant-access';
 import type { RequestHeaders } from '../../platform/http/request-headers.js';
@@ -14,7 +14,7 @@ export class ApiTokenAuthentication {
   private readonly enabled: boolean;
   private readonly admission: HttpRateLimitAdmission;
   public constructor(
-    private readonly database: ApiTokenDatabase,
+    private readonly database: ApiTokenStore,
     {
       enabled,
       admission,

@@ -302,7 +302,7 @@ export type RequestWorkspaceLifecycleOperationInput = Readonly<{
   idempotencyKey: string;
 }>;
 
-export type IdentityWorkspaceDatabase = Readonly<{
+export type IdentityWorkspaceStore = Readonly<{
   createUser(input: CreateUserInput): Promise<UserRecord>;
   findUserById(userId: string): Promise<UserRecord | null>;
   findWorkspaceAccess(

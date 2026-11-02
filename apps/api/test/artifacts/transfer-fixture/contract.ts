@@ -4,7 +4,7 @@ import type {
   ArtifactDownloadCapability,
   ArtifactStore,
 } from '@pertexo/artifact-store';
-import type { IdentityWorkspaceDatabase } from '@pertexo/core/testing';
+import type { IdentityWorkspaceStore } from '@pertexo/core/testing';
 import type { WorkspaceDatabase } from '@pertexo/database/testing';
 import type { StructuredLogger } from '@pertexo/observability';
 import type { PoolClient } from 'pg';
@@ -56,7 +56,7 @@ export type ArtifactStorageCallSnapshot = Readonly<{
 export type ArtifactTransferApiFixture = Readonly<{
   application: Awaited<ReturnType<typeof createApiApplication>>;
   workspaceDatabase: WorkspaceDatabase;
-  identityDatabase: IdentityWorkspaceDatabase;
+  identityDatabase: IdentityWorkspaceStore;
   workspaceId: string;
   otherWorkspaceId: string;
   ownerUserId: string;

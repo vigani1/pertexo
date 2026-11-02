@@ -4,7 +4,7 @@ import { afterAll, beforeAll } from 'vitest';
 
 import { parseDatabaseConfig } from '@pertexo/database/platform';
 
-import { createIdentityWorkspaceDatabase } from '../../../src/tenant-access/store.js';
+import { createIdentityWorkspaceStore } from '../../../src/tenant-access/store.js';
 import {
   migrateDatabase,
   createDisposableDatabaseFixture,
@@ -94,7 +94,7 @@ export const migrationConfig = {
   ownerRole: 'pertexo_owner',
 } as const;
 
-export let identity: ReturnType<typeof createIdentityWorkspaceDatabase>;
+export let identity: ReturnType<typeof createIdentityWorkspaceStore>;
 
 export let ownerPool: Pool;
 
@@ -168,7 +168,7 @@ beforeAll(async () => {
     own(() => workerPool.end());
     dispatcherPool = new Pool({ connectionString: dispatcherUrl, max: 1 });
     own(() => dispatcherPool.end());
-    identity = createIdentityWorkspaceDatabase(
+    identity = createIdentityWorkspaceStore(
       parseDatabaseConfig({ connectionString: apiUrl, max: 4 }),
     );
     own(() => identity.close());

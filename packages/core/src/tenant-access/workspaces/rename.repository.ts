@@ -19,14 +19,14 @@ import {
 import type { CommandIdentity } from '@pertexo/database/primitives';
 import { commandRevisionSchema } from '../command-keys.js';
 import type {
-  IdentityWorkspaceDatabase,
+  IdentityWorkspaceStore,
   RenameWorkspaceInput,
   WorkspaceRenameResult,
 } from '../contract.js';
 import { WorkspaceRenameCommandConflictError } from '../errors.js';
 import { workspaceRecord, workspaceSelection } from './projection.js';
 
-type RenameStore = Pick<IdentityWorkspaceDatabase, 'renameWorkspace'>;
+type RenameStore = Pick<IdentityWorkspaceStore, 'renameWorkspace'>;
 const durableResultSchema = z
   .object({
     workspace: z

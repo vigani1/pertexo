@@ -16,7 +16,7 @@ import {
   hashIdentityCommandKey,
 } from '../command-keys.js';
 import type {
-  IdentityWorkspaceDatabase,
+  IdentityWorkspaceStore,
   UpdateUserProfileInput,
   UserProfileUpdateResult,
   UserRecord,
@@ -24,7 +24,7 @@ import type {
 import { UserProfileCommandConflictError } from '../errors.js';
 import { userRecord, userSelection } from './projection.js';
 
-type ProfileStore = Pick<IdentityWorkspaceDatabase, 'updateUserProfile'>;
+type ProfileStore = Pick<IdentityWorkspaceStore, 'updateUserProfile'>;
 
 const displayNameSchema = z
   .string()

@@ -7,7 +7,7 @@ import { canChangeWorkspaceMemberRole } from '@pertexo/workflow-model';
 import { commandRevisionSchema } from '../command-keys.js';
 import type {
   ChangeWorkspaceMemberRoleInput,
-  IdentityWorkspaceDatabase,
+  IdentityWorkspaceStore,
   WorkspaceMemberRoleChangeResult,
 } from '../contract.js';
 import { WorkspaceMemberRoleCommandConflictError } from '../errors.js';
@@ -19,7 +19,7 @@ import {
 } from './commands.repository.js';
 
 type RoleCommandStore = Pick<
-  IdentityWorkspaceDatabase,
+  IdentityWorkspaceStore,
   'changeWorkspaceMemberRole'
 >;
 

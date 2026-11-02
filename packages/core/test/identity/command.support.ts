@@ -5,7 +5,7 @@ import { randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
 import { afterAll, beforeAll } from 'vitest';
 
-import { createIdentityWorkspaceDatabase } from '../../src/testing.js';
+import { createIdentityWorkspaceStore } from '../../src/testing.js';
 import {
   createWorkspaceDatabase,
   parseDatabaseConfig,
@@ -20,7 +20,7 @@ export type IdentityCommandFixture = Readonly<{
     replica?: 0 | 1,
   ) => ReturnType<typeof createFederationManagementStore>;
   authenticationPool: (replica?: 0 | 1) => Pool;
-  identity: () => ReturnType<typeof createIdentityWorkspaceDatabase>;
+  identity: () => ReturnType<typeof createIdentityWorkspaceStore>;
   /** Runs superuser SQL across tenant policies, for arrangement and inspection only. */
   asAdmin: <Row extends Record<string, unknown>>(
     text: string,
@@ -60,7 +60,7 @@ export function useIdentityCommandDatabase(
     process.env.DATABASE_URL ??
       'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo',
   );
-  let identity: ReturnType<typeof createIdentityWorkspaceDatabase> | undefined;
+  let identity: ReturnType<typeof createIdentityWorkspaceStore> | undefined;
   const federation: (
     ReturnType<typeof createFederationManagementStore> | undefined
   )[] = [];
@@ -77,7 +77,7 @@ export function useIdentityCommandDatabase(
       maintenanceRole: 'pertexo_maintenance',
       ownerRole: 'pertexo_owner',
     });
-    identity = createIdentityWorkspaceDatabase(
+    identity = createIdentityWorkspaceStore(
       parseDatabaseConfig({ connectionString: apiUrl, max: 4 }),
     );
     tenant = createWorkspaceDatabase(

@@ -5,7 +5,7 @@ import { updateMembership } from './records.repository.js';
 import { canRemoveWorkspaceMember } from '@pertexo/workflow-model';
 import { commandRevisionSchema } from '../command-keys.js';
 import type {
-  IdentityWorkspaceDatabase,
+  IdentityWorkspaceStore,
   RemoveWorkspaceMemberInput,
 } from '../contract.js';
 import { WorkspaceMemberRemovalCommandConflictError } from '../errors.js';
@@ -16,7 +16,7 @@ import {
   recordMemberCommandAudit,
 } from './commands.repository.js';
 
-type RemovalStore = Pick<IdentityWorkspaceDatabase, 'removeWorkspaceMember'>;
+type RemovalStore = Pick<IdentityWorkspaceStore, 'removeWorkspaceMember'>;
 
 const durableResult = z
   .object({ userId: z.uuid(), roleRevision: commandRevisionSchema })

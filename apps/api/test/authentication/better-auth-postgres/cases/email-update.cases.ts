@@ -1,6 +1,6 @@
 import { randomBytes, randomUUID } from 'node:crypto';
 
-import { createIdentityWorkspaceDatabase } from '@pertexo/core/tenant-access';
+import { createIdentityWorkspaceStore } from '@pertexo/core/tenant-access';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
 
 import { Pool } from 'pg';
@@ -103,7 +103,7 @@ export function registerRevokesSessionsAtomicallyCanonicalEmailUpdate(): void {
       'Invitation Recipient',
     );
     const recipientId = authenticated?.userId ?? '';
-    const identity = createIdentityWorkspaceDatabase(
+    const identity = createIdentityWorkspaceStore(
       parseDatabaseConfig({
         connectionString: apiUrl,
         connectionTimeoutMillis: 5_000,

@@ -8,7 +8,7 @@ import {
   type ApiTokenListResponse,
 } from '@pertexo/contracts';
 import type {
-  ApiTokenDatabase,
+  ApiTokenStore,
   ApiTokenOwner,
   ApiTokenCommand,
 } from '@pertexo/core/tenant-access';
@@ -22,7 +22,7 @@ export class ApiTokenManagement {
   private readonly enabled: boolean;
   private readonly clock: IdentityClock;
   public constructor(
-    private readonly database: ApiTokenDatabase,
+    private readonly database: ApiTokenStore,
     { enabled, clock }: Readonly<{ enabled: boolean; clock: IdentityClock }>,
   ) {
     this.enabled = enabled;
