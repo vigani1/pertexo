@@ -91,11 +91,11 @@ check on a simulated tree:
 | All rewritten through `<area>/index.js` | 0 | 304 |
 
 15 of the 17 areas are one strongly connected group, so barrels turn its area cycle
-into file cycles and risk startup failures from uninitialized bindings. So the area
-rule is off for areas not yet passed, through an explicit list in the check that can
-only shrink. A passed area's `index.ts` names its public files, and other areas
-import those files directly, so no barrel edges appear. The list and this form of the
-rule arrive with the move; until then `variables` and `shared` meet at `index.ts`.
+into file cycles and risk startup failures from uninitialized bindings. So a passed
+area's `index.ts` names its public files, and other areas import those files directly,
+so no barrel edges appear. During the refactor, the rule was off for areas not yet
+passed, through an explicit list in the check that could only shrink. Every area has
+now had its pass, so the list is gone and the rule covers them all.
 
 ## Consequences
 
