@@ -1,7 +1,3 @@
-import {
-  ADMINISTRATIVE_ROLES,
-  WORKFLOW_EDITOR_ROLES,
-} from '@pertexo/workflow-model';
 import type { PoolClient } from 'pg';
 import type { z } from 'zod';
 
@@ -21,10 +17,6 @@ import type {
 import { tagResult } from '../input.js';
 import { tagRecord, type TagRow } from '../state.queries.js';
 
-export const ADMINISTRATORS = ADMINISTRATIVE_ROLES;
-
-const EDITORS = WORKFLOW_EDITOR_ROLES;
-
 export function tagCommand(
   session: ReturnType<typeof createOrganizationSession>,
   input: Command,
@@ -40,13 +32,12 @@ export function tagCommand(
     apply: (client: PoolClient, workspaceId: string) => Promise<TagRow>;
   }>,
 ): Promise<WorkflowTagCommandResult> {
-  return session.transact(input, async (client, scope) => {
+  return session.command(input, 'governance:manage', async (client, scope) => {
     const { result, replayed } = await runOrganizationCommand(client, scope, {
       operation,
       target,
       idempotencyKey: input.idempotencyKey,
       request,
-      roles: ADMINISTRATORS,
       apply: async () => {
         const row = await apply(client, scope.workspaceId);
         return {
@@ -83,40 +74,43 @@ export function assignmentCommand<T extends object>(
     change.kind === 'replace_tags'
       ? { tagIds: change.tagIds, expectedOrganizationRevision }
       : { tagId: change.tagId, expectedOrganizationRevision };
-  return session.transact(input, async (client, scope) => {
-    const { result, replayed } = await runOrganizationCommand(client, scope, {
-      operation,
-      target: workflowId,
-      idempotencyKey: input.idempotencyKey,
-      request,
-      roles: operation === 'tags.replace' ? EDITORS : ADMINISTRATORS,
-      replay: () =>
-        checkOrganizationReplay(client, scope, {
-          workflowId,
-          kind: change.kind,
-        }),
-      apply: async () => {
-        const organizationRevision = await organizeWorkflow(client, scope, {
-          workflowId,
-          change,
-          expectedOrganizationRevision,
-        });
-        return {
-          result: {
+  return session.command(
+    input,
+    operation === 'tags.replace' ? 'workflow:update' : 'governance:manage',
+    async (client, scope) => {
+      const { result, replayed } = await runOrganizationCommand(client, scope, {
+        operation,
+        target: workflowId,
+        idempotencyKey: input.idempotencyKey,
+        request,
+        replay: () =>
+          checkOrganizationReplay(client, scope, {
             workflowId,
-            organizationRevision,
-            ...(change.kind === 'replace_tags'
-              ? { tagIds: change.tagIds }
-              : {}),
-          },
-          audit: {
-            action: `workflow.${operation}`,
-            targetId: workflowId,
-            metadata: { organizationRevision },
-          },
-        };
-      },
-    });
-    return Object.freeze({ ...schema.parse(result), replayed });
-  });
+            kind: change.kind,
+          }),
+        apply: async () => {
+          const organizationRevision = await organizeWorkflow(client, scope, {
+            workflowId,
+            change,
+            expectedOrganizationRevision,
+          });
+          return {
+            result: {
+              workflowId,
+              organizationRevision,
+              ...(change.kind === 'replace_tags'
+                ? { tagIds: change.tagIds }
+                : {}),
+            },
+            audit: {
+              action: `workflow.${operation}`,
+              targetId: workflowId,
+              metadata: { organizationRevision },
+            },
+          };
+        },
+      });
+      return Object.freeze({ ...schema.parse(result), replayed });
+    },
+  );
 }

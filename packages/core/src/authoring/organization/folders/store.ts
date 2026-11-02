@@ -1,3 +1,4 @@
+import { BROWSABLE_WORKSPACE_STATUSES } from '@pertexo/workflow-model';
 import { readSharingPrincipals } from '../../../tenant-access/resources/principals.queries.js';
 import {
   readFolderSharing,
@@ -35,17 +36,26 @@ export function createWorkflowFolderStore(
 
   const store: WorkflowFolderStore = {
     sharingPrincipals: (input) => {
-      return session.transact(input, (client, scope) =>
-        readSharingPrincipals(client, scope, input.query),
+      return session.member(
+        input,
+        {
+          mode: 'change',
+          capability: 'governance:manage',
+          statuses: BROWSABLE_WORKSPACE_STATUSES,
+        },
+        (client, scope) => readSharingPrincipals(client, scope, input.query),
       );
     },
     readSharing: (input) => {
-      return session.transact(input, (client, scope) =>
-        readFolderSharing(client, scope, input.folderId, { browsing: true }),
+      return session.read(
+        input,
+        'governance:manage',
+        BROWSABLE_WORKSPACE_STATUSES,
+        (client, scope) => readFolderSharing(client, scope, input.folderId),
       );
     },
     replaceSharing: (input) => {
-      return session.transact(input, (client, scope) =>
+      return session.command(input, 'governance:manage', (client, scope) =>
         replaceFolderSharing(client, scope, {
           ...input,
           folderId: input.folderId,

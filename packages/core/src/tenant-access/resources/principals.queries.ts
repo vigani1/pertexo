@@ -12,22 +12,14 @@ import {
   authDirectoryGroups,
 } from '@pertexo/database/schema';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
-import { lockBrowsableWorkspaceAuthority } from '../../shared/authority.queries.js';
-import { RESOURCE_ADMINISTRATORS } from '../../shared/folder-policy.js';
 import type { ResourceActor } from '../../shared/contract.js';
 
-/** Principal discovery is bounded and anchored to this workspace's current identities. */
+/** Principal discovery is bounded and anchored to this workspace's current identities. The caller holds an administrator's authority. */
 export async function readSharingPrincipals(
   client: PoolClient,
   actor: ResourceActor,
   input: SharingPrincipalsQuery,
 ): Promise<SharingPrincipals> {
-  await lockBrowsableWorkspaceAuthority(
-    client,
-    actor.workspaceId,
-    actor.actorId,
-    RESOURCE_ADMINISTRATORS,
-  );
   const db = drizzle(client);
   const search = input.search ?? null;
   const after = input.after ?? null;

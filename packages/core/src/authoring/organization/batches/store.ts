@@ -1,8 +1,8 @@
-import type { AudienceReview } from '@pertexo/contracts';
 import {
-  ADMINISTRATIVE_ROLES,
-  WORKFLOW_EDITOR_ROLES,
+  ACTIVE_WORKSPACE_STATUSES,
+  type AuthorizationCapability,
 } from '@pertexo/workflow-model';
+import type { AudienceReview } from '@pertexo/contracts';
 import { z } from 'zod';
 
 import type {
@@ -10,7 +10,6 @@ import type {
   DatabaseRuntime,
 } from '@pertexo/database/platform';
 import { claimCommand, completeCommand } from '@pertexo/database/primitives';
-import { lockWorkflowAuthoringAuthority } from '../../workflows/authority.js';
 import { runOrganizationCommand } from '../run-command.js';
 import { WorkflowOrganizationValidationError } from '../errors.js';
 import {
@@ -58,9 +57,6 @@ export interface WorkflowOrganizationBatchStore {
   close(): Promise<void>;
 }
 
-const ADMINISTRATORS = ADMINISTRATIVE_ROLES;
-const EDITORS = WORKFLOW_EDITOR_ROLES;
-
 const uuid = z.uuid().overwrite((value) => value.toLowerCase());
 const revision = z.number().int().positive().max(Number.MAX_SAFE_INTEGER);
 const itemResult = z
@@ -73,8 +69,8 @@ const itemResult = z
 
 type BatchRequest = WorkflowOrganizationBatchRequest;
 
-const rolesFor = (body: BatchRequest) =>
-  body.operation === 'tag_cleanup' ? ADMINISTRATORS : EDITORS;
+const capabilityFor = (body: BatchRequest): AuthorizationCapability =>
+  body.operation === 'tag_cleanup' ? 'governance:manage' : 'workflow:update';
 
 function changeOf(body: BatchRequest): OrganizationChange {
   switch (body.operation) {
@@ -97,26 +93,27 @@ export function createWorkflowOrganizationBatchStore(
   return Object.freeze({
     admitBatch: async (input: WorkflowOrganizationBatchInput) => {
       const body = input.request;
-      return session.transact(input, async (client, scope) => {
-        await lockWorkflowAuthoringAuthority(client, scope.workspaceId, {
-          actorId: scope.actorId,
-          roles: rolesFor(body),
-        });
-        const identity = {
-          workspaceId: scope.workspaceId,
-          operation: 'organization.batch',
-          scope: `${scope.actorId}:${scope.workspaceId}`,
-          idempotencyKey: input.idempotencyKey,
-        };
-        const stored = await claimCommand(client, {
-          ...identity,
-          request: body,
-          resourceId: scope.workspaceId,
-        });
-        if (stored === null)
-          await completeCommand(client, identity, { admitted: true });
-        return Object.freeze({ admitted: true as const });
-      });
+      return session.read(
+        input,
+        capabilityFor(body),
+        ACTIVE_WORKSPACE_STATUSES,
+        async (client, scope) => {
+          const identity = {
+            workspaceId: scope.workspaceId,
+            operation: 'organization.batch',
+            scope: `${scope.actorId}:${scope.workspaceId}`,
+            idempotencyKey: input.idempotencyKey,
+          };
+          const stored = await claimCommand(client, {
+            ...identity,
+            request: body,
+            resourceId: scope.workspaceId,
+          });
+          if (stored === null)
+            await completeCommand(client, identity, { admitted: true });
+          return Object.freeze({ admitted: true as const });
+        },
+      );
     },
 
     executeBatchItem: async (
@@ -134,62 +131,65 @@ export function createWorkflowOrganizationBatchStore(
         baseChange.kind === 'move' && selected.audienceReview !== undefined
           ? { ...baseChange, audienceReview: selected.audienceReview }
           : baseChange;
-      return session.transact(input, async (client, scope) => {
-        const { result, replayed } = await runOrganizationCommand(
-          client,
-          scope,
-          {
-            operation: 'organization.batch.item',
-            target: workflowId,
-            idempotencyKey: input.idempotencyKey,
-            request: {
-              change,
-              expectedOrganizationRevision:
-                selected.expectedOrganizationRevision,
-            },
-            roles: rolesFor(body),
-            replay: () =>
-              checkOrganizationReplay(client, scope, {
-                workflowId,
-                kind: change.kind,
-                destinationFolderId:
-                  change.kind === 'move' ? change.folderId : undefined,
-              }),
-            apply: async () => {
-              const organizationRevision = await organizeWorkflow(
-                client,
-                scope,
-                {
+      return session.command(
+        input,
+        capabilityFor(body),
+        async (client, scope) => {
+          const { result, replayed } = await runOrganizationCommand(
+            client,
+            scope,
+            {
+              operation: 'organization.batch.item',
+              target: workflowId,
+              idempotencyKey: input.idempotencyKey,
+              request: {
+                change,
+                expectedOrganizationRevision:
+                  selected.expectedOrganizationRevision,
+              },
+              replay: () =>
+                checkOrganizationReplay(client, scope, {
                   workflowId,
-                  change,
-                  expectedOrganizationRevision:
-                    selected.expectedOrganizationRevision,
-                },
-              );
-              return {
-                result: {
-                  workflowId,
-                  organizationRevision,
-                  ...(change.kind === 'move'
-                    ? { folderId: change.folderId }
-                    : {}),
-                },
-                audit: {
-                  action: `workflow.organization.${body.operation}`,
-                  targetId: workflowId,
-                  metadata: { organizationRevision },
-                },
-              };
+                  kind: change.kind,
+                  destinationFolderId:
+                    change.kind === 'move' ? change.folderId : undefined,
+                }),
+              apply: async () => {
+                const organizationRevision = await organizeWorkflow(
+                  client,
+                  scope,
+                  {
+                    workflowId,
+                    change,
+                    expectedOrganizationRevision:
+                      selected.expectedOrganizationRevision,
+                  },
+                );
+                return {
+                  result: {
+                    workflowId,
+                    organizationRevision,
+                    ...(change.kind === 'move'
+                      ? { folderId: change.folderId }
+                      : {}),
+                  },
+                  audit: {
+                    action: `workflow.organization.${body.operation}`,
+                    targetId: workflowId,
+                    metadata: { organizationRevision },
+                  },
+                };
+              },
             },
-          },
-        );
-        const { folderId, ...parsed } = itemResult.parse(result);
-        return Object.freeze({
-          ...parsed,
-          ...(folderId === undefined ? {} : { folderId }),
-          replayed,
-        });
-      });
+          );
+          const { folderId, ...parsed } = itemResult.parse(result);
+          return Object.freeze({
+            ...parsed,
+            ...(folderId === undefined ? {} : { folderId }),
+            replayed,
+          });
+        },
+      );
     },
 
     close: session.close,

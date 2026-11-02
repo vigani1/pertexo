@@ -24,7 +24,7 @@ import {
   requireRevision,
 } from '../hierarchy.queries.js';
 import { deleteResult, nameKey } from '../input.js';
-import { ADMINISTRATORS, folderCommand } from './receipt.js';
+import { folderCommand } from './receipt.js';
 
 export async function createFolder(
   session: ReturnType<typeof createOrganizationSession>,
@@ -135,12 +135,12 @@ export async function moveFolder(
     operation: 'folder.move',
     target: folderId,
     request,
-    apply: async (client, workspaceId) => {
+    apply: async (client, workspaceId, role) => {
       if (request.parentId !== null)
         await readFolder(client, workspaceId, request.parentId);
       await requireMoveAudienceReview(
         client,
-        { workspaceId, actorId: input.actorId },
+        { workspaceId, actorId: input.actorId, role },
         { kind: 'folder', folderId, destinationFolderId: request.parentId },
         request.audienceReview,
       );
@@ -203,13 +203,12 @@ export async function deleteFolder(
   const request = {
     expectedFolderRevision: input.expectedFolderRevision,
   };
-  return session.transact(input, async (client, scope) => {
+  return session.command(input, 'governance:manage', async (client, scope) => {
     const { result, replayed } = await runOrganizationCommand(client, scope, {
       operation: 'folder.delete',
       target: folderId,
       idempotencyKey: input.idempotencyKey,
       request,
-      roles: ADMINISTRATORS,
       apply: async () => {
         const current = await readFolder(client, scope.workspaceId, folderId);
         requireRevision(current, request.expectedFolderRevision);

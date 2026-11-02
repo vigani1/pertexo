@@ -9,10 +9,8 @@ import {
   workflows,
 } from '@pertexo/database/schema';
 
-import {
-  runOrganizationCommand,
-  type OrganizationScope,
-} from '../../run-command.js';
+import { runOrganizationCommand } from '../../run-command.js';
+import type { OrganizationScope } from '../../session.js';
 import { WorkflowTagConflictError } from '../../errors.js';
 
 import { TAG_DELETE_WORKFLOW_LIMIT, TAG_LIMIT } from '../../limits.js';
@@ -25,7 +23,7 @@ import {
   requireRevision,
   tagProjection,
 } from '../state.queries.js';
-import { ADMINISTRATORS, assignmentCommand, tagCommand } from './receipts.js';
+import { assignmentCommand, tagCommand } from './receipts.js';
 
 /** Detaches a tag from at most 50 workflows, advancing each one's revision. */
 async function deleteTag(
@@ -171,13 +169,12 @@ export async function deleteTagCommand(
   const request = {
     expectedTagRevision: input.expectedTagRevision,
   };
-  return session.transact(input, async (client, scope) => {
+  return session.command(input, 'governance:manage', async (client, scope) => {
     const { result, replayed } = await runOrganizationCommand(client, scope, {
       operation: 'tag.delete',
       target: tagId,
       idempotencyKey: input.idempotencyKey,
       request,
-      roles: ADMINISTRATORS,
       apply: async () => {
         const current = await readTag(client, scope.workspaceId, tagId);
         requireRevision(current, request.expectedTagRevision);

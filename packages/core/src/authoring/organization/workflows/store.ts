@@ -1,4 +1,7 @@
-import { ROLES } from '@pertexo/workflow-model';
+import {
+  BROWSABLE_WORKSPACE_STATUSES,
+  type Role,
+} from '@pertexo/workflow-model';
 import {
   and,
   asc,
@@ -19,10 +22,7 @@ import {
   acquireDatabasePool,
   type DatabaseRuntime,
 } from '@pertexo/database/platform';
-import {
-  rethrowQueryFailure,
-  withTenantScopedClient,
-} from '@pertexo/database/primitives';
+import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import {
   workflowFavorites,
   workflowOrganizationState,
@@ -31,10 +31,11 @@ import {
   workflows,
 } from '@pertexo/database/schema';
 import type { FolderScope } from '../../../shared/contract.js';
-import { readBrowsableFolderScope } from '../../../shared/facts.queries.js';
+import { readFolderScope } from '../../../shared/facts.queries.js';
+import { withWorkspaceAccess } from '../../../shared/workspace-access.js';
+import { readAsNotVisible } from '../../workflows/access.js';
 import { workflowScopeSql } from '../../../shared/scope.queries.js';
 import { workflowActions } from '../../../tenant-access/resources/workflows.queries.js';
-import { lockWorkflowAuthoringAuthority } from '../../workflows/authority.js';
 import { WorkflowNotFoundError } from '../../workflows/errors.js';
 import type { WorkflowRecord } from '../../workflows/representation/contract.js';
 import { workflowProjection } from '../../workflows/representation/records.queries.js';
@@ -44,6 +45,7 @@ type Scope = Readonly<{
   actorId: string;
   signal?: AbortSignal;
 }>;
+type ActingScope = Scope & Readonly<{ role: Role }>;
 type Position = Readonly<{ positionAt: string; id: string }>;
 export type WorkflowOrganizationFilters = Readonly<{
   query?: string;
@@ -97,29 +99,39 @@ export function createWorkflowOrganizationReadStore(
   return Object.freeze(store);
 }
 
+/** Any active member reads organization, rechecked on every page. */
 async function transact<T>(
   pool: Pool,
   input: Scope,
-  operation: (client: PoolClient, scope: Scope) => Promise<T>,
+  operation: (client: PoolClient, scope: ActingScope) => Promise<T>,
 ): Promise<T> {
-  const { signal, ...base } = input;
-  const scope: Scope = signal === undefined ? base : { ...base, signal };
+  const { workspaceId, actorId, signal } = input;
   try {
-    return await withTenantScopedClient(
+    return await withWorkspaceAccess(
       pool,
-      scope,
-      (client) => operation(client, scope),
-      signal === undefined ? {} : { signal },
+      input,
+      {
+        mode: 'change',
+        capability: 'workflow:read',
+        statuses: BROWSABLE_WORKSPACE_STATUSES,
+      },
+      (client, role) =>
+        operation(client, {
+          workspaceId,
+          actorId,
+          role,
+          ...(signal === undefined ? {} : { signal }),
+        }),
     );
   } catch (error: unknown) {
     if (z.object({ code: z.literal('42501') }).safeParse(error).success)
       throw new WorkflowNotFoundError('Workflow is not visible');
-    throw error;
+    return readAsNotVisible(error);
   }
 }
 async function select(
   client: PoolClient,
-  scope: Scope,
+  scope: ActingScope,
   input: Readonly<{
     limit: number;
     order: 'created_asc' | 'updated_desc';
@@ -128,13 +140,7 @@ async function select(
   }> &
     WorkflowOrganizationFilters,
 ) {
-  // Any active member reads organization, rechecked on every page.
-  await lockWorkflowAuthoringAuthority(client, scope.workspaceId, {
-    actorId: scope.actorId,
-    browsing: true,
-    roles: ROLES,
-  });
-  const access = await readBrowsableFolderScope(client, scope);
+  const access = await readFolderScope(client, scope, scope.role);
   const filters = {
     ...input,
     view: input.view ?? 'all',
