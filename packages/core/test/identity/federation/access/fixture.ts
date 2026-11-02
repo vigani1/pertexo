@@ -10,7 +10,7 @@ import {
 } from '../../../../src/identity/index.js';
 import { createDirectoryCredential } from '../../../../src/identity/federation/provisioning/management/credentials.repository.js';
 import { createDirectoryStore } from '../../../../src/identity/federation/provisioning/store.js';
-import { WorkspaceAccessDeniedError } from '../../../../src/tenant-access/errors.js';
+import { WorkspaceAccessDeniedError } from '../../../../src/shared/errors.js';
 import { useIdentityCommandDatabase } from '../../command.support.js';
 
 export const db = useIdentityCommandDatabase('identity_access');
