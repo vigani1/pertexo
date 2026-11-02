@@ -128,18 +128,26 @@ function boundText(value: string): string {
 }
 
 export function redactLogText(value: string): string {
-  return redactUrlUserInfo(boundText(value))
-    .replace(/(\/hooks\/)[^\s/\x22\x27?#]+/gu, `$1${REDACTED}`)
-    .replace(
-      /(authorization\s*[:=]\s*(?:(?:basic|bearer)\s+)?)[^\s,;]+/giu,
-      `$1${REDACTED}`,
-    )
-    .replace(/((?:cookie|set-cookie)\s*[:=]\s*)[^\r\n]+/giu, `$1${REDACTED}`)
-    .replace(/((?:basic|bearer)\s+)[^\s"',;]+/giu, `$1${REDACTED}`)
-    .replace(
-      /((?:access[_-]?token|api[_-]?key|client[_-]?secret|credentials?|password|refresh[_-]?token|secret|token)\s*["']?\s*[:=]\s*["']?)([^&\s,;"'}]+)/giu,
-      `$1${REDACTED}`,
-    );
+  return (
+    redactUrlUserInfo(boundText(value))
+      // A failed query's message ends with its parameters, which hold whatever was being
+      // stored: a webhook sender's body, a form response. A stack repeats the message.
+      .replace(
+        /^(params: )[\s\S]*?(?=\n\s+at\s|(?![\s\S]))/gmu,
+        `$1${REDACTED}`,
+      )
+      .replace(/(\/hooks\/)[^\s/\x22\x27?#]+/gu, `$1${REDACTED}`)
+      .replace(
+        /(authorization\s*[:=]\s*(?:(?:basic|bearer)\s+)?)[^\s,;]+/giu,
+        `$1${REDACTED}`,
+      )
+      .replace(/((?:cookie|set-cookie)\s*[:=]\s*)[^\r\n]+/giu, `$1${REDACTED}`)
+      .replace(/((?:basic|bearer)\s+)[^\s"',;]+/giu, `$1${REDACTED}`)
+      .replace(
+        /((?:access[_-]?token|api[_-]?key|client[_-]?secret|credentials?|password|refresh[_-]?token|secret|token)\s*["']?\s*[:=]\s*["']?)([^&\s,;"'}]+)/giu,
+        `$1${REDACTED}`,
+      )
+  );
 }
 
 function isSecretName(name: string): boolean {
