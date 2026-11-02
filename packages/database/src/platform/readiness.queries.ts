@@ -3,7 +3,8 @@ import { sql } from 'drizzle-orm';
 import { QueryBuilder } from 'drizzle-orm/pg-core';
 import type { Pool } from 'pg';
 
-export const EXPECTED_MIGRATION_HEAD = '0073_attempt_foreign_key_indexes.sql';
+export const EXPECTED_MIGRATION_HEAD =
+  '0074_outbox_retention_and_row_signal.sql';
 const MINIMUM_POSTGRES_MAJOR = 18;
 
 /**
