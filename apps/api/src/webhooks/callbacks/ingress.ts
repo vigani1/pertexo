@@ -133,10 +133,6 @@ async function receive(
       tokenId: hash,
     }),
   );
-  if (admitted.kind === 'unavailable') {
-    await problem(reply, 'request.rate_limit_unavailable', requestId);
-    return;
-  }
   if (admitted.kind === 'limited') {
     reply.header('retry-after', String(admitted.retryAfterSeconds));
     await problem(reply, 'request.rate_limited', requestId);
