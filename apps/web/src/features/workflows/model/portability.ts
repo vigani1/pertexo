@@ -107,6 +107,22 @@ export function optionalConnectionSlots(
   return optional;
 }
 
+/** Every step in the file, in order, with the For each it sits inside. */
+export function portableSteps(
+  manifest: Pick<WorkflowPortableManifest, 'graph'>,
+) {
+  const steps: { node: GraphNode; inside: GraphNode | null }[] = [];
+  const visit = (nodes: readonly GraphNode[], inside: GraphNode | null) => {
+    for (const node of nodes) {
+      steps.push({ node, inside });
+      if (node.structured !== undefined)
+        visit(node.structured.body.nodes, node);
+    }
+  };
+  visit(manifest.graph.nodes, null);
+  return steps;
+}
+
 export function connectionSlotKey(nodeId: string, slot: string): string {
   return JSON.stringify([nodeId, slot]);
 }
