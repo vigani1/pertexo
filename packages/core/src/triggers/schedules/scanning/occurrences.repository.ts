@@ -25,7 +25,6 @@ import { claimedScheduleWorkflowPaused } from '../pause.queries.js';
 import type { RecordedScheduleOccurrence } from '../contract.js';
 import {
   claimCleanupTimeoutMillis,
-  retireInterruptedBatch,
   retireScheduleClaim,
 } from '../retirement.repository.js';
 import {
@@ -34,6 +33,7 @@ import {
 } from '@pertexo/database/primitives';
 import { ScheduleClaimLostError } from '../errors.js';
 import type {
+  ClaimRetirement,
   ScheduleClaim,
   ScanDueInput,
   ClaimOutcome,
@@ -230,21 +230,39 @@ async function persistClaimedOccurrence(
   return disposition;
 }
 
+/** The batch can't go on, and `cause` says why: the scan was cancelled, or a claim couldn't be retired. */
+export class ScanInterruptedError extends Error {
+  public override readonly name = 'ScanInterruptedError';
+  public constructor(public override readonly cause: unknown) {
+    super('Schedule scan interrupted', { cause });
+  }
+}
+
+/** Failing to retire a claim stops the batch, reporting what led here if anything did. */
+async function retireClaim(
+  resources: ScannerResources,
+  claim: ScheduleClaim,
+  retirement: ClaimRetirement,
+  ...failure: [] | [unknown]
+): Promise<void> {
+  try {
+    await retireScheduleClaim(
+      resources.claimPool,
+      claim,
+      retirement,
+      AbortSignal.timeout(claimCleanupTimeoutMillis),
+    );
+  } catch (error: unknown) {
+    throw new ScanInterruptedError(failure.length === 0 ? error : failure[0]);
+  }
+}
+
 export async function processScheduleClaim(
   resources: ScannerResources,
-  remainingClaims: readonly ScheduleClaim[],
+  claim: ScheduleClaim,
   input: ScanDueInput,
   onTimeWindowSeconds: number,
 ): Promise<Readonly<{ kind: ClaimOutcome; lagSeconds: number }>> {
-  const claim = remainingClaims[0];
-  if (claim === undefined) throw new Error('Schedule claim is unavailable');
-  const cancellation = cancellationFailure(input.signal);
-  if (cancellation !== undefined) {
-    await retireInterruptedBatch(resources.claimPool, remainingClaims, {
-      kind: 'release',
-    });
-    throw cancellation;
-  }
   const lagSeconds =
     (claim.observed_at.getTime() - claim.next_fire_at.getTime()) / 1_000;
   let observation: ReturnType<typeof resolveScheduleObservation>;
@@ -255,27 +273,11 @@ export async function processScheduleClaim(
       claim.observed_at,
     );
   } catch (error: unknown) {
-    await retireInterruptedBatch(resources.claimPool, remainingClaims, {
-      kind: 'fail',
-    });
+    await retireClaim(resources, claim, { kind: 'fail' }, error);
     throw error;
   }
   if (observation.greatestDueAt === null) {
-    try {
-      await retireScheduleClaim(
-        resources.claimPool,
-        claim,
-        { kind: 'release' },
-        AbortSignal.timeout(claimCleanupTimeoutMillis),
-      );
-    } catch (error: unknown) {
-      await retireInterruptedBatch(
-        resources.claimPool,
-        remainingClaims.slice(1),
-        { kind: 'release' },
-      );
-      throw error;
-    }
+    await retireClaim(resources, claim, { kind: 'release' });
     return Object.freeze({ kind: 'deferred', lagSeconds });
   }
   const occurrence: ClaimedOccurrence = Object.freeze({
@@ -305,32 +307,22 @@ export async function processScheduleClaim(
   } catch (error: unknown) {
     const aborted = cancellationFailure(input.signal);
     if (aborted !== undefined) {
-      await retireInterruptedBatch(resources.claimPool, remainingClaims, {
-        kind: 'release',
-      });
-      throw aborted;
+      await retireClaim(resources, claim, { kind: 'release' }, aborted);
+      throw new ScanInterruptedError(aborted);
     }
     if (error instanceof WorkspaceRunQuotaExceededError) {
-      try {
-        await retireScheduleClaim(
-          resources.claimPool,
-          claim,
-          { kind: 'defer', retryAfterSeconds: error.retryAfterSeconds },
-          AbortSignal.timeout(claimCleanupTimeoutMillis),
-        );
-      } catch {
-        await retireInterruptedBatch(
-          resources.claimPool,
-          remainingClaims.slice(1),
-          { kind: 'release' },
-        );
-        throw error;
-      }
+      await retireClaim(
+        resources,
+        claim,
+        { kind: 'defer', retryAfterSeconds: error.retryAfterSeconds },
+        error,
+      );
       return Object.freeze({ kind: 'deferred', lagSeconds });
     }
-    await retireInterruptedBatch(resources.claimPool, remainingClaims, {
-      kind: 'fail',
-    });
+    await retireClaim(resources, claim, { kind: 'fail' }, error);
+    // Archived or lost to another worker since the claim: nothing went wrong.
+    if (error instanceof ScheduleClaimLostError)
+      return Object.freeze({ kind: 'deferred', lagSeconds });
     throw error;
   }
 }

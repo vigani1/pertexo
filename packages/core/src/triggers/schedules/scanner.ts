@@ -11,10 +11,20 @@ import type {
   ScannerResources,
 } from './scanning/contract.js';
 import {
+  cancellationFailure,
   claimDueSchedules,
   closeScheduleScannerLeases,
 } from './scanning/leases.repository.js';
-import { processScheduleClaim } from './scanning/occurrences.repository.js';
+import {
+  processScheduleClaim,
+  ScanInterruptedError,
+} from './scanning/occurrences.repository.js';
+import { releaseClaims } from './retirement.repository.js';
+/**
+ * Each claim stands alone: one that can't fire is retired and the rest still fire.
+ * Its failure is thrown once the batch is done. Only a cancelled scan, or a database
+ * too unwell to retire a claim, stops the batch; what's left is then released.
+ */
 async function scanDueSchedules(
   resources: ScannerResources,
   input: ScanDueInput,
@@ -22,17 +32,35 @@ async function scanDueSchedules(
   const onTimeWindowSeconds = input.onTimeWindowSeconds;
   const batch = await claimDueSchedules(resources.claimPool, input);
   const outcomes = { accepted: 0, deferred: 0, paused: 0, skipped: 0 };
+  const failures: unknown[] = [];
   let maxLagSeconds = 0;
-  for (const [index] of batch.claims.entries()) {
-    const outcome = await processScheduleClaim(
-      resources,
-      batch.claims.slice(index),
-      input,
-      onTimeWindowSeconds,
-    );
-    outcomes[outcome.kind] += 1;
-    maxLagSeconds = Math.max(maxLagSeconds, outcome.lagSeconds);
+  for (const [index, claim] of batch.claims.entries()) {
+    const remaining = () => batch.claims.slice(index);
+    const cancellation = cancellationFailure(input.signal);
+    if (cancellation !== undefined) {
+      await releaseClaims(resources.claimPool, remaining());
+      throw cancellation;
+    }
+    try {
+      const outcome = await processScheduleClaim(
+        resources,
+        claim,
+        input,
+        onTimeWindowSeconds,
+      );
+      outcomes[outcome.kind] += 1;
+      maxLagSeconds = Math.max(maxLagSeconds, outcome.lagSeconds);
+    } catch (error: unknown) {
+      if (error instanceof ScanInterruptedError) {
+        await releaseClaims(resources.claimPool, remaining().slice(1));
+        throw error.cause;
+      }
+      failures.push(error);
+    }
   }
+  if (failures.length === 1) throw failures[0];
+  if (failures.length > 1)
+    throw new AggregateError(failures, 'Schedule scan failed');
   return Object.freeze({
     claimed: batch.claimed,
     ...outcomes,

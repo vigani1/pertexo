@@ -138,6 +138,7 @@ it('upgrades populated workflow threads and private read revisions without chang
       '0072_webhook_lookup_reports_standing.sql',
       '0073_attempt_foreign_key_indexes.sql',
       '0074_outbox_retention_and_row_signal.sql',
+      '0075_schedule_failure_rests.sql',
     ]);
     read = createWorkspaceInboxStore(
       parseDatabaseConfig({

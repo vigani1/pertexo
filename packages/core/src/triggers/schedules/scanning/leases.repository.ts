@@ -6,7 +6,7 @@ import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { triggerSchedules } from '@pertexo/database/schema';
 
 import { withPlatformTransaction } from '@pertexo/database/platform';
-import { retireInterruptedBatch } from '../retirement.repository.js';
+import { releaseClaims } from '../retirement.repository.js';
 import type { ScanDueInput, ScheduleClaim } from './contract.js';
 import { claimSchema } from './input.js';
 
@@ -90,7 +90,7 @@ export async function claimDueSchedules(
     else invalidClaim ??= parsed.error;
   }
   if (invalidClaim !== undefined) {
-    await retireInterruptedBatch(claimPool, claims, { kind: 'release' });
+    await releaseClaims(claimPool, claims);
     throw invalidClaim;
   }
   return Object.freeze({
