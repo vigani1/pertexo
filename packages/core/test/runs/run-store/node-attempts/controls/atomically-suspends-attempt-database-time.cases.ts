@@ -25,7 +25,7 @@ export function registerAtomicallySuspendsAttemptDatabaseTime(): void {
     const { admission, claimed } = await admitWaitAttempt(runId, invocationKey);
     const storedInput = () => storedNodeRunInput(admission.nodeRunId);
     await expect(
-      nodeAttemptStore.recordInput?.({
+      nodeAttemptStore.recordInput({
         lease: claimed.lease,
         input: { attempt: 1 },
         signal: new AbortController().signal,
@@ -296,7 +296,7 @@ export function registerAtomicallySuspendsAttemptDatabaseTime(): void {
     };
     await expect(storedInput()).resolves.toEqual(waitInput);
     await expect(
-      nodeAttemptStore.recordInput?.({
+      nodeAttemptStore.recordInput({
         lease: claimed.lease,
         input: { attempt: 1, late: true },
         signal: new AbortController().signal,

@@ -141,7 +141,7 @@ describe('writing to a run after its details were purged', () => {
     await refused(nodeAttemptStore.markDispatched({ lease, signal }));
     await refused(
       Promise.resolve(
-        nodeAttemptStore.recordInput?.({ lease, input: {}, signal }),
+        nodeAttemptStore.recordInput({ lease, input: {}, signal }),
       ),
     );
 
