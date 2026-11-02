@@ -32,6 +32,7 @@ import {
   WorkflowPauseRevisionConflictError,
   WorkspaceAutoPauseSettingsRevisionConflictError,
 } from './errors.js';
+import { workflowSettings, workspaceSettings } from './input.js';
 import {
   lockWorkflow,
   lockWorkspace,
@@ -131,6 +132,7 @@ async function resumePausedWorkflow(
   };
   return command(transact, input, {
     operation: 'workflow.autopause.resume',
+    receipt: workflowSettings,
     resourceId: workflowId,
     workflowId,
     roles: EDITORS,
@@ -228,6 +230,7 @@ async function updateWorkflowPauseSettings(
   };
   return command(transact, input, {
     operation: 'workflow.autopause.settings',
+    receipt: workflowSettings,
     resourceId: workflowId,
     workflowId,
     roles: EDITORS,
@@ -283,6 +286,7 @@ async function updateWorkspacePauseSettings(
   };
   return command(transact, input, {
     operation: 'workspace.autopause.settings',
+    receipt: workspaceSettings,
     resourceId: workspaceId,
     roles: OWNERS,
     request,

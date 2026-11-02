@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import {
@@ -26,6 +27,13 @@ import {
 } from '../errors.js';
 import type { OrganizationActor } from '../session.js';
 import { runOrganizationCommand } from '../run-command.js';
+
+/** What replacing a folder's sharing stored. */
+const sharingReceipt = z.object({
+  revision: z.number(),
+  mode: z.string(),
+  grants: z.array(z.unknown()),
+});
 
 export async function readFolderSharing(
   client: PoolClient,
@@ -105,6 +113,7 @@ export async function replaceFolderSharing(
 ): Promise<FolderSharing & { replayed: boolean }> {
   const request = input.request;
   const outcome = await runOrganizationCommand(client, scope, {
+    receipt: sharingReceipt,
     operation: 'folder.sharing',
     target: input.folderId,
     idempotencyKey: input.idempotencyKey,

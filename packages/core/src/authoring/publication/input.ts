@@ -6,3 +6,9 @@ export const executableSchema = z
     executableJson: z.record(z.string(), z.unknown()),
   })
   .strict();
+
+/** A retry gets back the version its first attempt published. */
+export const publicationReceipt = z.object({
+  versionId: z.uuid(),
+  reused: z.boolean(),
+});

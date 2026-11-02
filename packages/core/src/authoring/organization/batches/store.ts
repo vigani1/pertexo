@@ -131,6 +131,7 @@ export function createWorkflowOrganizationBatchStore(
             client,
             scope,
             {
+              receipt: itemResult,
               operation: 'organization.batch.item',
               target: workflowId,
               idempotencyKey: input.idempotencyKey,

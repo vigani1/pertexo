@@ -34,6 +34,7 @@ export function tagCommand(
 ): Promise<WorkflowTagCommandResult> {
   return session.command(input, 'governance:manage', async (client, scope) => {
     const { result, replayed } = await runOrganizationCommand(client, scope, {
+      receipt: tagResult,
       operation,
       target,
       idempotencyKey: input.idempotencyKey,
@@ -79,6 +80,7 @@ export function assignmentCommand<T extends object>(
     operation === 'tags.replace' ? 'workflow:update' : 'governance:manage',
     async (client, scope) => {
       const { result, replayed } = await runOrganizationCommand(client, scope, {
+        receipt: schema,
         operation,
         target: workflowId,
         idempotencyKey: input.idempotencyKey,
