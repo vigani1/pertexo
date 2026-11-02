@@ -19,7 +19,7 @@ export function registerRecordsAttemptInputUnderLive(): void {
     const storedInput = () => storedNodeRunInput(lease.nodeRunId);
 
     await expect(
-      nodeAttemptStore.recordInput?.({
+      nodeAttemptStore.recordInput({
         lease,
         input: { orderId: 'A-17' },
         signal,
@@ -33,14 +33,14 @@ export function registerRecordsAttemptInputUnderLive(): void {
 
     // Over the inline bound, or once the attempt is aborted, nothing changes.
     await expect(
-      nodeAttemptStore.recordInput?.({
+      nodeAttemptStore.recordInput({
         lease,
         input: 'x'.repeat(300_000),
         signal,
       }),
     ).resolves.toEqual({ recorded: false });
     await expect(
-      nodeAttemptStore.recordInput?.({
+      nodeAttemptStore.recordInput({
         lease,
         input: { orderId: 'A-18' },
         signal: AbortSignal.abort(),
@@ -57,7 +57,7 @@ export function registerRecordsAttemptInputUnderLive(): void {
       ),
     );
     await expect(
-      nodeAttemptStore.recordInput?.({
+      nodeAttemptStore.recordInput({
         lease,
         input: { orderId: 'B-2' },
         signal,
@@ -78,7 +78,7 @@ export function registerRecordsAttemptInputUnderLive(): void {
       { attemptNumber: lease.attemptNumber + 1 },
     ]) {
       await expect(
-        nodeAttemptStore.recordInput?.({
+        nodeAttemptStore.recordInput({
           lease: { ...lease, ...changed },
           input: { unaccepted: true },
           signal,
@@ -87,7 +87,7 @@ export function registerRecordsAttemptInputUnderLive(): void {
     }
     await expect(storedNodeRunInput(lease.nodeRunId)).resolves.toBeNull();
     await expect(
-      nodeAttemptStore.recordInput?.({
+      nodeAttemptStore.recordInput({
         lease,
         input: { accepted: true },
         signal,
