@@ -24,17 +24,17 @@
     "typecheck": "tsc -p tsconfig.test.json --noEmit"
   },
   "dependencies": {
-    "@aws-sdk/client-kms": "3.1152.0",
+    "@aws-sdk/client-kms": "3.1160.0",
     "@pertexo/contracts": "workspace:*",
     "@pertexo/node-sdk": "workspace:*",
-    "@smithy/node-http-handler": "4.12.1",
+    "@smithy/node-http-handler": "4.14.0",
     "form-data": "4.0.6",
-    "nodemailer": "10.1.4",
+    "nodemailer": "10.3.1",
     "zod": "4.6.7",
     "@pertexo/workflow-model": "workspace:*"
   },
   "devDependencies": {
     "@types/nodemailer": "8.0.2",
-    "smtp-server": "3.21.1"
+    "smtp-server": "3.21.3"
   }
 }
