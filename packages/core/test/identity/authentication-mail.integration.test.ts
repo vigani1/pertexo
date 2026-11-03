@@ -105,7 +105,7 @@ describe('durable authentication mail', () => {
           leaseGeneration: claim.leaseGeneration,
           outcome: 'retry',
           // Already due: avoid the host/PG submillisecond clock boundary.
-          retryDelayMillis: 0,
+          retryAt: new Date(Date.now() - 1_000),
           failureCode: 'delivery.outcome_unknown',
         }),
       ).resolves.toBe(true);
