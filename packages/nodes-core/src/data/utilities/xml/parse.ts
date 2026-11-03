@@ -1,6 +1,6 @@
 import { parseXml, XmlError } from '@rgrove/parse-xml';
 import { Parser } from 'htmlparser2';
-import { XML_LIMITS } from './validation.js';
+import { XML_LIMITS } from './xml.schemas.js';
 import { refuseUtility } from '../result.js';
 
 /** Resource preflight protects the strict parser's recursive element reader. */

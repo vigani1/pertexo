@@ -5,7 +5,7 @@ import {
 import type { HttpOutcomeDecision } from '../../http/outcome-policy.js';
 import type { SecureHttpClient } from '../../http/secure.js';
 
-import type { HttpRequestOutput } from '../validation.js';
+import type { HttpRequestOutput } from '../http-request.schemas.js';
 
 export class HttpRequestExecutorError extends NodeExecutorFailure {
   public override readonly name = 'HttpRequestExecutorError';

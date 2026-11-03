@@ -1,2 +1,2 @@
-export * from './definition.js';
-export * from './validation.js';
+export * from './switch.definition.js';
+export * from './switch.schemas.js';

@@ -1,7 +1,7 @@
 import { addDuration } from './add-duration.js';
 import { formatInstant } from './format-instant.js';
 import { NodeInputValidationError } from '@pertexo/node-sdk/server';
-import type { CoreDateConfig, CoreDateInput } from './validation.js';
+import type { CoreDateConfig, CoreDateInput } from './date.schemas.js';
 
 const MIN_INSTANT = -62_167_219_200_000;
 const MAX_INSTANT = 253_402_300_799_999;

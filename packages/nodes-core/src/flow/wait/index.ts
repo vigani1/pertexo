@@ -1,2 +1,2 @@
-export * from './definition.js';
-export * from './validation.js';
+export * from './wait.definition.js';
+export * from './wait.schemas.js';

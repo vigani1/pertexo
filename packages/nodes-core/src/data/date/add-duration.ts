@@ -1,4 +1,4 @@
-import type { CoreDateConfig } from './validation.js';
+import type { CoreDateConfig } from './date.schemas.js';
 type Unit = Extract<CoreDateConfig, { operation: 'add_duration' }>['unit'];
 const MILLIS = {
   minutes: 60_000,

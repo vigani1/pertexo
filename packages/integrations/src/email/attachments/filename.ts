@@ -2,7 +2,7 @@ import {
   utf8ByteLength,
   withoutHiddenCharacters,
 } from '@pertexo/workflow-model';
-import { EMAIL_SEND_NOTIFICATION_LIMITS } from '../validation.js';
+import { EMAIL_SEND_NOTIFICATION_LIMITS } from '../email-send-notification.schemas.js';
 
 // File references carry no name (ADR 075), so an unnamed attachment is named
 // after its stored media type.

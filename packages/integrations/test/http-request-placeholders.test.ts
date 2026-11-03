@@ -4,7 +4,7 @@ import {
   httpPlaceholders,
   httpTemplateProblem,
 } from '../src/http-request/placeholders.js';
-import { httpRequestConfigSchema } from '../src/http-request/validation.js';
+import { httpRequestConfigSchema } from '../src/http-request/http-request.schemas.js';
 
 const base = {
   method: 'GET',

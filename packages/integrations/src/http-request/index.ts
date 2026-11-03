@@ -6,7 +6,7 @@ export {
   HTTP_REQUEST_MANIFEST,
   HTTP_REQUEST_NETWORK_POLICY,
   HTTP_REQUEST_VALUE_POLICY,
-} from './definition.js';
+} from './http-request.definition.js';
 export {
   HTTP_REQUEST_LIMITS,
   httpRequestConfigSchema,
@@ -14,12 +14,12 @@ export {
   httpRequestInputSchema,
   httpRequestOutputSchema,
   resolvedHttpHeadersCredentialSchema,
-} from './validation.js';
+} from './http-request.schemas.js';
 export type {
   HttpRequestConfig,
   HttpRequestInput,
   HttpRequestOutput,
-} from './validation.js';
+} from './http-request.schemas.js';
 
 export {
   HTTP_PLACEHOLDER_LIMIT,
@@ -31,14 +31,14 @@ export {
   HTTP_MULTIPART_MAX_PARTS,
   httpMultipartConfigSchema,
   httpMultipartValueSchema,
-} from './multipart/validation.js';
+} from './multipart/http-multipart.schemas.js';
 export type {
   HttpMultipartConfig,
   HttpMultipartPart,
   HttpMultipartFile,
-} from './multipart/validation.js';
+} from './multipart/http-multipart.schemas.js';
 
 export {
   httpPaginationSchema,
   type HttpPagination,
-} from './pagination/validation.js';
+} from './pagination/http-pagination.schemas.js';

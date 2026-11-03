@@ -5,7 +5,7 @@ import {
   type NodeExecutionRuntime,
 } from '@pertexo/node-sdk/server';
 import { failure } from '../failure.js';
-import type { EmailAttachment } from '../validation.js';
+import type { EmailAttachment } from '../email-send-notification.schemas.js';
 import type { ResendAttachment } from './encode.js';
 import { planAttachments, type PlannedAttachment } from './plan.js';
 

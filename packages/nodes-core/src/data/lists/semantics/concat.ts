@@ -1,9 +1,9 @@
 import type {
   CoreConcatConfig,
   CoreConcatInput,
-} from '../concat/validation.js';
+} from '../concat/concat.schemas.js';
 import { checkCanceled, invalidInput } from './selection.js';
-import { COLLECTION_MAX_ITEMS } from './validation.js';
+import { COLLECTION_MAX_ITEMS } from './semantics.schemas.js';
 export function concatenateItems(
   _config: CoreConcatConfig,
   input: CoreConcatInput,

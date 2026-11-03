@@ -38,7 +38,7 @@ number after that reviewed decision, despite its absence from this main baseline
   owns registered schemas and connection requirements. Neither it nor generic
   graph config/literal records declares arbitrary text secret-safe. HTTP config
   already rejects credential-bearing headers and query names in
-  [validation](../../packages/integrations/src/http-request/validation.ts).
+  [validation](../../packages/integrations/src/http-request/http-request.schemas.ts).
 - [Authoring draft store](../../packages/database/src/authoring/workflows/commands/drafts.ts)
   and the duplication migration (now part of the
   [reset baseline](../../packages/database/migrations/0000_baseline.sql))

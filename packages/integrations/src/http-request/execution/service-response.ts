@@ -4,7 +4,7 @@ import {
 } from '@pertexo/node-sdk/server';
 
 import { redactText } from '../../security/redact-text.js';
-import type { HttpRequestConfig } from '../validation.js';
+import type { HttpRequestConfig } from '../http-request.schemas.js';
 
 type ResponseBody =
   | Readonly<{ kind: 'inline'; encoding: 'utf8' | 'base64'; value: string }>

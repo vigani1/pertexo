@@ -6,7 +6,7 @@ import {
 import type {
   CoreSummarizeConfig,
   CoreSummarizeInput,
-} from '../summarize/validation.js';
+} from '../summarize/summarize.schemas.js';
 import { invalidInput, projectItems } from './selection.js';
 
 interface Group {

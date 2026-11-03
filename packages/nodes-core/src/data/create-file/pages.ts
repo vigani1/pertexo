@@ -12,7 +12,7 @@ import { writeWorkbook, XLSX_MEDIA_TYPE } from './xlsx/workbook.js';
 import type {
   CoreCreateFileConfig,
   CoreCreateFileInput,
-} from './validation.js';
+} from './create-file.schemas.js';
 
 /** Read one authorized ordinary page at a time; no array of all records is built. */
 async function* records(

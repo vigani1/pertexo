@@ -16,7 +16,7 @@ import type {
   SecureHttpRequest,
   SecureHttpStreamingBody,
 } from '../../http/secure.js';
-import type { HttpPagination } from './validation.js';
+import type { HttpPagination } from './http-pagination.schemas.js';
 import { hasNextPage, nextPage, setPaginationParameter } from './navigation.js';
 import { JSON_MEDIA_TYPE } from '../../http/content-type.js';
 

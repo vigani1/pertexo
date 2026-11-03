@@ -5,7 +5,7 @@ import {
   type NodeVerifiedByteSource,
 } from '@pertexo/node-sdk/server';
 import { utf8ByteLength } from '@pertexo/workflow-model';
-import { encodedAttachmentBytes } from '../validation.js';
+import { encodedAttachmentBytes } from '../email-send-notification.schemas.js';
 import { EmailAttachmentFailure } from './plan.js';
 
 export type ResendAttachment = Readonly<{

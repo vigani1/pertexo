@@ -3,7 +3,7 @@ import type { JsonValue } from '@pertexo/node-sdk/server';
 import { refuseUtility } from '../result.js';
 import { buildXml } from './build.js';
 import { parseBoundedXml } from './parse.js';
-import type { XmlConfig } from './validation.js';
+import type { XmlConfig } from './xml.schemas.js';
 
 const reserved = new Set(['__proto__', 'constructor', 'prototype']);
 function convertElement(element: XmlElement, signal: AbortSignal): JsonValue {

@@ -1,4 +1,4 @@
-import type { NumberConfig } from './validation.js';
+import type { NumberConfig } from './number.schemas.js';
 
 export function formatNumber(config: NumberConfig, value: number) {
   return {

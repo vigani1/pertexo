@@ -7,7 +7,7 @@ import {
   encodedAttachmentBytes,
   type EmailAttachment,
   type EmailSentAttachment,
-} from '../validation.js';
+} from '../email-send-notification.schemas.js';
 import {
   defaultAttachmentFilename,
   sanitizeAttachmentFilename,

@@ -9,7 +9,7 @@ import {
   type CoreValidateIssue,
   type CoreValidateOutput,
   type CoreValidateRule,
-} from './validation.js';
+} from './validate.schemas.js';
 
 export class CoreValidateExecutionAbortedError extends Error {
   public override readonly name = 'CoreValidateExecutionAbortedError';

@@ -6,7 +6,7 @@ import {
   canonicalizeBoundedJson,
   type JsonValue,
 } from '@pertexo/node-sdk/server';
-import { COLLECTION_MAX_ITEMS } from '../lists/semantics/validation.js';
+import { COLLECTION_MAX_ITEMS } from '../lists/semantics/semantics.schemas.js';
 
 export function admitFileValue(value: unknown): JsonValue {
   let admitted: JsonValue;

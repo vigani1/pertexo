@@ -5,7 +5,7 @@ export {
   SLACK_SEND_MESSAGE_EXECUTOR,
   SLACK_SEND_MESSAGE_MANIFEST,
   SLACK_SEND_MESSAGE_POLICY,
-} from './definition.js';
+} from './slack-send-message.definition.js';
 export {
   SLACK_SEND_MESSAGE_LIMITS,
   resolvedSlackBotTokenCredentialSchema,
@@ -14,5 +14,5 @@ export {
   slackSendMessageConfigSchema,
   slackSendMessageInputSchema,
   slackSendMessageOutputSchema,
-} from './validation.js';
-export type { SlackSendMessageOutput } from './validation.js';
+} from './slack-send-message.schemas.js';
+export type { SlackSendMessageOutput } from './slack-send-message.schemas.js';

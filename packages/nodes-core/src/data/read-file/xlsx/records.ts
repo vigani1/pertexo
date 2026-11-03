@@ -1,6 +1,6 @@
 import { FileInputFailure, type JsonValue } from '@pertexo/node-sdk/server';
 import { admitHeaders } from '../headers.js';
-import type { CoreReadFileConfig } from '../validation.js';
+import type { CoreReadFileConfig } from '../read-file.schemas.js';
 import { tooLarge } from './archive.js';
 import type { Cell } from './cells.js';
 import { SPREADSHEET_LIMITS } from './limits.js';

@@ -1,2 +1,2 @@
-export * from './definition.js';
-export * from './validation.js';
+export * from './respond-webhook.definition.js';
+export * from './respond-webhook.schemas.js';
