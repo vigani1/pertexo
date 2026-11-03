@@ -50,7 +50,7 @@ describe('atomic attempt connection health forwarding', () => {
     expect(environment.connectionHealthObservation()).toBeUndefined();
   });
 
-  it('honors durable cancellation after an executor ignores abort and returns success, preserving captured evidence', async () => {
+  it('records confirmed success after an executor ignores cancellation, preserving captured evidence', async () => {
     vi.useFakeTimers();
     try {
       const heartbeat = vi
@@ -103,8 +103,8 @@ describe('atomic attempt connection health forwarding', () => {
       expect(complete).toHaveBeenCalledExactlyOnceWith(
         expect.objectContaining({
           outcome: {
-            status: 'canceled',
-            safeErrorCode: 'execution.canceled',
+            status: 'succeeded',
+            output: null,
           },
           connectionHealthObservation: { kind: 'healthy' },
         }),
