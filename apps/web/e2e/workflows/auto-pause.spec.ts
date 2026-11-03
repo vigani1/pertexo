@@ -131,7 +131,10 @@ test('workflow auto-pause settings preserve conflict edits and exact retries; Re
   );
   await page.goto(`${editorUrl}/settings`);
   await expect(
-    page.getByRole('link', { name: 'Run that triggered the pause', exact: true }),
+    page.getByRole('link', {
+      name: 'Run that triggered the pause',
+      exact: true,
+    }),
   ).toHaveAttribute(
     'href',
     `/w/${workspaceId}/runs/${String(paused.pausedLastRunId)}`,

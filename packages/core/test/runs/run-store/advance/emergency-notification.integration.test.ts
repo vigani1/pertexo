@@ -32,7 +32,9 @@ it.each(['safe', 'unsafe'] as const)(
       'select status,completed_at from app.workflow_runs where id=$1',
       [f.runId],
     );
-    expect(run.rows).toEqual([{ status, completed_at: expect.any(Date) }]);
+    expect(run.rows).toEqual([
+      { status, completed_at: expect.any(Date) as unknown },
+    ]);
     const after = await query<{ active_runs: number }>(
       'select active_runs from app.workspace_execution_admission_counters where workspace_id=$1',
       [workspaceA],
@@ -44,7 +46,9 @@ it.each(['safe', 'unsafe'] as const)(
       'select completed_at from app.inbox_receipts where message_id=$1',
       [f.delivery.outboxEventId],
     );
-    expect(receipt.rows).toEqual([{ completed_at: expect.any(Date) }]);
+    expect(receipt.rows).toEqual([
+      { completed_at: expect.any(Date) as unknown },
+    ]);
     const intents = await query<{ context: unknown; outbox_count: number }>(
       "select i.context,(select count(*)::int from app.outbox_events o where o.aggregate_id=i.id and o.job_name='deliver-run-failure-notification') outbox_count from app.run_failure_notification_intents i where workflow_run_id=$1",
       [f.runId],
