@@ -86,7 +86,7 @@ export const portabilityRoutes = {
     } as const,
     rateLimit: 'workflow_compile',
     description:
-      'Unpersisted compatibility and explicit destination binding preview. Raw request ceiling is 2097152 UTF-8 bytes; duplicate keys and excessive depth are rejected before schema parsing.',
+      'Unpersisted compatibility and explicit destination binding preview. Explicit connection bindings additionally require connection:read. Raw request ceiling is 2097152 UTF-8 bytes; duplicate keys and excessive depth are rejected before schema parsing.',
     cacheControl: 'private, no-store',
     requestDocument: jsonRequest('WorkflowImportPreviewRequest'),
     body: projected(
@@ -120,7 +120,7 @@ export const portabilityRoutes = {
     } as const,
     rateLimit: 'workflow_compile',
     description:
-      'Atomically create an unpublished revision-1 draft. Exact authorized retries discover the original identifier, including after writer rollback. Never publishes or runs.',
+      'Atomically create an unpublished revision-1 draft. Exact authorized retries discover the original identifier, including after writer rollback. Never publishes or runs. Explicit connection bindings additionally require connection:read.',
     cacheControl: 'private, no-store',
     requestDocument: jsonRequest('WorkflowImportRequest'),
     body: projected(
