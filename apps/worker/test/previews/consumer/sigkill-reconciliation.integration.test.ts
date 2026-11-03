@@ -84,51 +84,60 @@ describeIntegration('preview SIGKILL reconciliation', () => {
         },
       },
     ] as const;
-    const fixtureResults = await Promise.allSettled(
-      cases.map(async (selected, index) => {
-        const traceparent = validTraceparent;
-        const accepted = await withTenantAccept(
-          acceptanceInput(traceparent, selected.overrides),
-        );
-        const payload = {
-          workspaceId,
+    const setupCase = async (
+      selected: (typeof cases)[number],
+      index: number,
+    ) => {
+      const traceparent = validTraceparent;
+      const accepted = await withTenantAccept(
+        acceptanceInput(traceparent, selected.overrides),
+      );
+      const payload = {
+        workspaceId,
+        outboxEventId: accepted.outboxEventId,
+        previewRunId: accepted.previewRunId,
+        previewAttemptId: accepted.previewAttemptId,
+        traceparent,
+      };
+      const workerId = `preview-sigkill-${String(index)}-${randomUUID().slice(0, 8)}`;
+      const child = spawnPreviewCrashChild({
+        complete: selected.complete,
+        delivery: {
           outboxEventId: accepted.outboxEventId,
-          previewRunId: accepted.previewRunId,
-          previewAttemptId: accepted.previewAttemptId,
-          traceparent,
-        };
-        const workerId = `preview-sigkill-${String(index)}-${randomUUID().slice(0, 8)}`;
-        const child = spawnPreviewCrashChild({
-          complete: selected.complete,
-          delivery: {
-            outboxEventId: accepted.outboxEventId,
-            payloadChecksum: canonicalOutboxPayloadChecksum(payload),
-          },
-          leaseDurationSeconds: 1,
-          markDispatched: selected.markDispatched,
-          previewAttemptId: accepted.previewAttemptId,
-          previewRunId: accepted.previewRunId,
-          redisUrl,
-          workerId,
-          workerUrl: databaseUrl(workerUrl),
-          workspaceId,
+          payloadChecksum: canonicalOutboxPayloadChecksum(payload),
+        },
+        leaseDurationSeconds: 1,
+        markDispatched: selected.markDispatched,
+        previewAttemptId: accepted.previewAttemptId,
+        previewRunId: accepted.previewRunId,
+        redisUrl,
+        workerId,
+        workerUrl: databaseUrl(workerUrl),
+        workspaceId,
+      });
+      try {
+        const evidence = await child.evidence;
+        return { accepted, child, evidence, selected };
+      } catch (evidenceError: unknown) {
+        let cleanupError: unknown;
+        await child.kill().catch((error: unknown) => {
+          cleanupError = error;
         });
-        try {
-          const evidence = await child.evidence;
-          return { accepted, child, evidence, selected };
-        } catch (evidenceError: unknown) {
-          let cleanupError: unknown;
-          await child.kill().catch((error: unknown) => {
-            cleanupError = error;
-          });
-          if (cleanupError === undefined) throw evidenceError;
-          throw new AggregateError(
-            [evidenceError, cleanupError],
-            'Preview SIGKILL child evidence failed',
-          );
-        }
-      }),
-    );
+        if (cleanupError === undefined) throw evidenceError;
+        throw new AggregateError(
+          [evidenceError, cleanupError],
+          'Preview SIGKILL child evidence failed',
+        );
+      }
+    };
+    const fixtureResults: PromiseSettledResult<
+      Awaited<ReturnType<typeof setupCase>>
+    >[] = [];
+    // Each child reaches its durable evidence before the next import starts.
+    for (const [index, selected] of cases.entries())
+      fixtureResults.push(
+        ...(await Promise.allSettled([setupCase(selected, index)])),
+      );
     const setupFailures = fixtureResults.filter(
       (result): result is PromiseRejectedResult => result.status === 'rejected',
     );

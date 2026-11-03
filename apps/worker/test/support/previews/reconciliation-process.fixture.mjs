@@ -9,8 +9,6 @@ import { parseDatabaseConfig } from '@pertexo/database/testing';
 import { createPreviewAttemptRunStore } from '@pertexo/core/previews';
 import { Pool } from 'pg';
 
-import { createNodeAttemptRuntime } from '../../../src/attempts/delivery/node-attempt.runtime.ts';
-
 const rawInput = JSON.parse(
   process.env.PREVIEW_RECONCILIATION_CHILD_INPUT ?? '{}',
 );
@@ -40,7 +38,13 @@ function emit(value) {
   process.stdout.write(`${JSON.stringify(value)}\n`);
 }
 
-const pool = new Pool({ connectionString: input.workerUrl, max: 1 });
+// The lease owner must stay alive until SIGKILL, including while later children
+// reach their evidence; an idle pool timeout must not end its top-level await.
+const pool = new Pool({
+  connectionString: input.workerUrl,
+  idleTimeoutMillis: 0,
+  max: 1,
+});
 
 async function hangAt(injectionPoint, evidence = {}) {
   emit({ injectionPoint, pid: process.pid, ...evidence });
@@ -95,6 +99,8 @@ async function runWithCleanup(operation, cleanup, label) {
 }
 
 async function runComposedConsumer() {
+  const { createNodeAttemptRuntime } =
+    await import('../../../src/attempts/delivery/node-attempt.runtime.ts');
   const databaseStore = createPreviewAttemptRunStore(
     parseDatabaseConfig({ connectionString: input.workerUrl, max: 2 }),
   );
