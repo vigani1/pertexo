@@ -1,0 +1,1 @@
+CREATE INDEX "workflow_trigger_outcomes_success_order_idx" ON "app"."workflow_trigger_outcomes" USING btree ("workspace_id","workflow_id","ended_at" DESC NULLS LAST,"id" DESC NULLS LAST) WHERE NOT counts_as_failure;

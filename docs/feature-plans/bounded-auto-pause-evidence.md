@@ -17,3 +17,12 @@ Fix PR #655's unbounded failure ledger while preserving B1 completion ordering.
   reads after 5,000 disabled failures, late-success splits after compaction,
   re-enable evidence, and populated long-ledger upgrades. Run focused package tests
   and the repository's static checks before one push.
+
+The fold also considers the latest committed success beyond its consumption
+limit. Under the existing workspace/workflow serialization, an indexed partial
+lookup finds the greatest pending success and merges it with the folded success
+watermark and consumed batch. This prevents a recovered workflow pausing merely
+because its success falls just beyond a batch boundary. Migration 0091 adds the
+partial completion-order index. Consumption and its lock order stay unchanged.
+Compare limits 10 and 1000 over the same failure/success pattern, and qualify the
+real lookup with EXPLAIN over a populated pending queue.

@@ -159,10 +159,37 @@ async function foldWorkflow(
       prior.resumedAfter === null || endedAt > prior.resumedAfter,
   );
   if (eligible.length === 0) return null;
+  // Consumption is bounded, but a committed recovery beyond this batch must
+  // prevent a historical pause. The partial completion index bounds this lookup.
+  const [pendingSuccess] = await db
+    .select({
+      id: outcomes.id,
+      runId: outcomes.runId,
+      countsAsFailure: outcomes.countsAsFailure,
+      endedAt: completionTime(outcomes.endedAt),
+    })
+    .from(outcomes)
+    .where(
+      and(
+        eq(outcomes.workspaceId, workspaceId),
+        eq(outcomes.workflowId, workflowId),
+        eq(outcomes.countsAsFailure, false),
+        prior.resumedAfter === null
+          ? undefined
+          : sql`${outcomes.endedAt}>${prior.resumedAfter}::timestamptz`,
+      ),
+    )
+    .orderBy(
+      sql`${outcomes.endedAt} desc nulls last`,
+      sql`${outcomes.id} desc nulls last`,
+    )
+    .limit(1)
+    .catch(rethrowQueryFailure);
   const threshold = workflow.threshold ?? workspace.threshold;
   const evidence = await applyOrderedOutcomes(client, scope, prior, {
     outcomes: eligible,
     threshold,
+    pendingSuccess,
   });
   if (
     evidence === null ||
@@ -216,12 +243,16 @@ async function applyOrderedOutcomes(
   batch: Readonly<{
     outcomes: readonly TriggerOutcome[];
     threshold: number;
+    pendingSuccess: TriggerOutcome | undefined;
   }>,
 ) {
-  const { outcomes: eligible, threshold } = batch;
+  const { outcomes: eligible, threshold, pendingSuccess } = batch;
   const db = drizzle(client);
   const { workspaceId, workflowId } = scope;
-  const success = advanceSuccessWatermark(prior.success, eligible);
+  const success = advanceSuccessWatermark(
+    prior.success,
+    pendingSuccess === undefined ? eligible : [...eligible, pendingSuccess],
+  );
   const legacyFailures = success === null ? prior.legacyFailures : 0;
   await db
     .update(streaks)
@@ -299,7 +330,11 @@ async function applyOrderedOutcomes(
       .catch(rethrowQueryFailure);
   const latestFailure = ordered.at(-1);
   const latestSuccess =
-    success === null ? undefined : eligible.find(({ id }) => id === success.id);
+    success === null
+      ? undefined
+      : pendingSuccess?.id === success.id
+        ? pendingSuccess
+        : eligible.find(({ id }) => id === success.id);
   const last = latestFailure ?? latestSuccess;
   const consecutiveFailures = Math.max(
     legacyFailures,

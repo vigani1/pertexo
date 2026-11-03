@@ -101,6 +101,14 @@ export const workflowTriggerOutcomes = appSchema.table(
       table.workspaceId,
       table.workflowId,
     ),
+    index('workflow_trigger_outcomes_success_order_idx')
+      .on(
+        table.workspaceId,
+        table.workflowId,
+        table.endedAt.desc(),
+        table.id.desc(),
+      )
+      .where(sql`NOT counts_as_failure`),
   ],
 );
 
