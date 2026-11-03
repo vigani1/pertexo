@@ -2820,6 +2820,7 @@
             "required": false,
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "default": 20,
               "type": "integer",
               "minimum": 1,
               "maximum": 20
@@ -2831,6 +2832,7 @@
             "required": false,
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "default": "open",
               "type": "string",
               "enum": [
                 "all",
@@ -2845,6 +2847,7 @@
             "required": false,
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "default": "all",
               "type": "string",
               "enum": [
                 "all",
@@ -3030,17 +3033,6 @@
             }
           },
           {
-            "name": "q",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "$schema": "https://json-schema.org/draft/2020-12/schema",
-              "default": "",
-              "type": "string",
-              "maxLength": 100
-            }
-          },
-          {
             "name": "after",
             "in": "query",
             "required": false,
@@ -3049,6 +3041,17 @@
               "type": "string",
               "format": "uuid",
               "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "default": "",
+              "type": "string",
+              "maxLength": 100
             }
           }
         ],
@@ -3157,6 +3160,7 @@
             "required": false,
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "default": 20,
               "type": "integer",
               "minimum": 1,
               "maximum": 20
@@ -16784,6 +16788,63 @@
         ],
         "additionalProperties": false
       },
+      "WorkspacePeoplePage": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "items": {
+            "maxItems": 50,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "userId": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                },
+                "displayName": {
+                  "type": "string",
+                  "maxLength": 256
+                },
+                "role": {
+                  "type": "string",
+                  "enum": [
+                    "owner",
+                    "admin",
+                    "builder",
+                    "operator",
+                    "viewer"
+                  ]
+                }
+              },
+              "required": [
+                "userId",
+                "displayName",
+                "role"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "nextCursor": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "items",
+          "nextCursor"
+        ],
+        "additionalProperties": false
+      },
       "WorkflowCommentDetail": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "type": "object",
@@ -17043,6 +17104,52 @@
         ],
         "additionalProperties": false
       },
+      "WorkflowCommentCommandResult": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "threadId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "commentId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "revision": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 2147483647
+          },
+          "replayed": {
+            "type": "boolean"
+          },
+          "deleted": {
+            "type": "boolean"
+          },
+          "threadDeleted": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "threadId",
+          "commentId",
+          "revision",
+          "replayed",
+          "deleted",
+          "threadDeleted"
+        ],
+        "additionalProperties": false
+      },
       "WorkflowCommentBody": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "type": "object",
@@ -17134,52 +17241,6 @@
         "required": [
           "expectedRevision",
           "status"
-        ],
-        "additionalProperties": false
-      },
-      "WorkflowCommentCommandResult": {
-        "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "type": "object",
-        "properties": {
-          "threadId": {
-            "type": "string",
-            "format": "uuid",
-            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-          },
-          "commentId": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "uuid",
-                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "revision": {
-            "type": "integer",
-            "exclusiveMinimum": 0,
-            "maximum": 2147483647
-          },
-          "replayed": {
-            "type": "boolean"
-          },
-          "deleted": {
-            "type": "boolean"
-          },
-          "threadDeleted": {
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "threadId",
-          "commentId",
-          "revision",
-          "replayed",
-          "deleted",
-          "threadDeleted"
         ],
         "additionalProperties": false
       },
@@ -17289,63 +17350,6 @@
         },
         "required": [
           "accepted"
-        ],
-        "additionalProperties": false
-      },
-      "WorkspacePeoplePage": {
-        "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "type": "object",
-        "properties": {
-          "items": {
-            "maxItems": 50,
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {
-                "userId": {
-                  "type": "string",
-                  "format": "uuid",
-                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-                },
-                "displayName": {
-                  "type": "string",
-                  "maxLength": 256
-                },
-                "role": {
-                  "type": "string",
-                  "enum": [
-                    "owner",
-                    "admin",
-                    "builder",
-                    "operator",
-                    "viewer"
-                  ]
-                }
-              },
-              "required": [
-                "userId",
-                "displayName",
-                "role"
-              ],
-              "additionalProperties": false
-            }
-          },
-          "nextCursor": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "uuid",
-                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        },
-        "required": [
-          "items",
-          "nextCursor"
         ],
         "additionalProperties": false
       },
