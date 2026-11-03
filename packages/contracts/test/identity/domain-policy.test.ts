@@ -76,7 +76,10 @@ it('keeps the audit retention maximum aligned with the database constraint', () 
   expect(AUDIT_RETENTION_MAX_DAYS).toBe(2555);
   expect(auditRetentionSchema.safeParse(2556).success).toBe(false);
   const schema = readFileSync(
-    new URL('../../../database/src/schema/foundation.ts', import.meta.url),
+    new URL(
+      '../../../database/src/schema/tenant-access/workspaces.ts',
+      import.meta.url,
+    ),
     'utf8',
   );
   expect(schema).toContain(
