@@ -138,20 +138,37 @@ class RouteContractInterceptor implements NestInterceptor {
     const route = declaredRoute(context);
     const request = context.switchToHttp().getRequest<RouteInputSource>();
     parsedInputs.set(request, parseInputs(route, request));
-    const { success } = route;
-    if (!('body' in success)) return next.handle();
-    const { body, status } = success;
-    return next.handle().pipe(
-      map((value: unknown) => {
-        const checked = body.schema.safeParse(value);
-        if (checked.success) return checked.data;
-        throw new RouteResponseContractError(
-          `A ${String(status)} response didn't match ${body.name}`,
-          { cause: checked.error },
-        );
-      }),
-    );
+    const answers = [route.success, ...(route.otherSuccesses ?? [])];
+    if (!answers.some((answer) => 'body' in answer)) return next.handle();
+    const reply = context.switchToHttp().getResponse<{ statusCode: number }>();
+    return next
+      .handle()
+      .pipe(
+        map((value: unknown) =>
+          checkedAnswer(answers, reply.statusCode, value),
+        ),
+      );
   }
+}
+
+/** The answer the handler chose must be one the route declares, in that answer's shape. */
+function checkedAnswer(
+  answers: readonly AnyRoute['success'][],
+  status: number,
+  value: unknown,
+): unknown {
+  const answer = answers.find((candidate) => candidate.status === status);
+  if (answer === undefined)
+    throw new RouteResponseContractError(
+      `A ${String(status)} response isn't declared`,
+    );
+  if (!('body' in answer)) return value;
+  const checked = answer.body.schema.safeParse(value);
+  if (checked.success) return checked.data;
+  throw new RouteResponseContractError(
+    `A ${String(status)} response didn't match ${answer.body.name}`,
+    { cause: checked.error },
+  );
 }
 
 function nestPath(path: string): string {
