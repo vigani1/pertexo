@@ -610,6 +610,13 @@
       "when": 1793718918599,
       "tag": "0086_ordered_trigger_outcomes",
       "breakpoints": true
+    },
+    {
+      "idx": 87,
+      "version": "7",
+      "when": 1793718946252,
+      "tag": "0087_remove_trigger_outcome_fold",
+      "breakpoints": true
     }
   ]
 }
