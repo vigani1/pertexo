@@ -5,7 +5,6 @@ pnpm-lock.yaml
 AGENTS.md
 docs
 packages/contracts/artifacts/*.json
-packages/contracts/artifacts/*.md
 # The license text stays exactly as published.
 LICENSE.md
 

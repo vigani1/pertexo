@@ -30,9 +30,8 @@ On public routes:
 
 ## Errors
 
-Every error is `application/problem+json` with a stable `code` from
-[a closed list](../../packages/contracts/artifacts/problem-codes.md). Branch on `code`,
-never on `detail`, which is written for people. A rejected input also has
+Every error is `application/problem+json` with a stable `code` from a closed list. Branch
+on `code`, never on `detail`, which is written for people. A rejected input also has
 `errors[]`, each with a JSON Pointer `path`, a `code` and a `message`.
 
 ## Sign-in, and what a denial means
