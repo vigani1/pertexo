@@ -156,32 +156,56 @@ describeOAuth2(
       },
     );
 
-    it('settles a network-failed OAuth2 connection test and replays its completed result on the same key', async () => {
-      const owner = await harness.newOwner();
-      const connection = await harness.connected(owner, 'non-rotating');
-      const key = randomUUID();
-      const test = (idempotencyKey: string) =>
-        owner.api.call(
-          'POST',
-          `/v1/workspaces/${owner.workspaceId}/connections/${connection.id}/test`,
-          { url: 'https://api.public.example.test/network-failure' },
-          { 'idempotency-key': idempotencyKey },
-        );
-      const first = await test(key);
-      expect(first.status, JSON.stringify(first.json)).toBe(200);
-      expect(first.json).toMatchObject({
-        outcome: { errorCode: 'connection.test.network_failed', ok: false },
-      });
-      const replay = await test(key);
-      expect(replay.status).toBe(200);
-      expect(replay.json).toEqual(first.json);
-      expect(
-        await harness.stack.sql(
-          "select status from app.idempotency_records where resource_id=$1 and operation='connection.test'",
-          [connection.id],
-        ),
-      ).toEqual([{ status: 'completed' }]);
-      expect((await test(randomUUID())).status).toBe(200);
-    });
+    it.each([
+      [
+        'network',
+        'https://api.public.example.test/network-failure',
+        'connection.test.network_failed',
+      ],
+      [
+        'DNS',
+        'https://unresolvable.invalid/test',
+        'connection.test.dns_failed',
+      ],
+      [
+        'blocked address',
+        'https://private.example.test/never',
+        'connection.test.ssrf_blocked',
+      ],
+      [
+        'timeout',
+        'https://api.public.example.test/connection-timeout',
+        'connection.test.timed_out',
+      ],
+    ])(
+      'settles an OAuth2 connection test after %s failure and replays its completed result on the same key',
+      async (_failure, url, errorCode) => {
+        const owner = await harness.newOwner();
+        const connection = await harness.connected(owner, 'non-rotating');
+        const key = randomUUID();
+        const test = (idempotencyKey: string) =>
+          owner.api.call(
+            'POST',
+            `/v1/workspaces/${owner.workspaceId}/connections/${connection.id}/test`,
+            { url },
+            { 'idempotency-key': idempotencyKey },
+          );
+        const first = await test(key);
+        expect(first.status, JSON.stringify(first.json)).toBe(200);
+        expect(first.json).toMatchObject({
+          outcome: { errorCode, ok: false },
+        });
+        const replay = await test(key);
+        expect(replay.status).toBe(200);
+        expect(replay.json).toEqual(first.json);
+        expect(
+          await harness.stack.sql(
+            "select status from app.idempotency_records where resource_id=$1 and operation='connection.test'",
+            [connection.id],
+          ),
+        ).toEqual([{ status: 'completed' }]);
+        expect((await test(randomUUID())).status).toBe(200);
+      },
+    );
   },
 );

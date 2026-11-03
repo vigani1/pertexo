@@ -53,9 +53,7 @@ it.each([null, '2026-11-03T20:00:00.000Z'])(
         /revoke this app’s access at the service, then connect again/u,
       ),
     ).toBeVisible();
-    expect(
-      lens().getByRole('button', { name: 'Reconnect', exact: true }),
-    ).toBeVisible();
+    expect(lens().getByRole('button', { name: /^Reconnect$/u })).toBeVisible();
     if (expiresAt === null)
       expect(lens().getByText(/The service gave no expiry/u)).toBeVisible();
     else
