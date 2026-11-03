@@ -24,7 +24,7 @@ import {
   valid,
 } from './admission/fixture.js';
 import { authorizedCheckout, CONNECTION } from './admission/checkout.js';
-import { admitWorkflowAuthoring } from '../../../src/authoring/workflows/admission.queries.js';
+import { admitWorkflowAuthoring } from '../../../src/authoring/workflows/admission.repository.js';
 import { authoringIdleBudgetIsSafe } from '../../../src/authoring/workflows/idle-budget.js';
 
 describe('effective authoring idle budget', () => {

@@ -1,4 +1,4 @@
-import { lockWorkspaceRunAdmission } from '../runs/admission-locks.queries.js';
+import { lockWorkspaceRunAdmission } from '../runs/admission-locks.repository.js';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { Pool, PoolClient } from 'pg';
 

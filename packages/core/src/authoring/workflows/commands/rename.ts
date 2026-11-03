@@ -19,7 +19,7 @@ import {
   type WorkflowCommand,
 } from '../receipts.repository.js';
 import type { WorkflowRecord } from '../representation/contract.js';
-import { workflowProjection } from '../representation/records.queries.js';
+import { workflowProjection } from '../representation/workflow-representations.repository.js';
 
 type RenameCommand = Readonly<{
   workspaceId: string;

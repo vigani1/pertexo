@@ -1,5 +1,5 @@
 import { isUniqueConstraintFailure } from '@pertexo/database/primitives';
-import { hasSignInMethodCapacity } from './federation/accounts/limits.queries.js';
+import { hasSignInMethodCapacity } from './federation/accounts/limits.repository.js';
 import { readEligibleAuthenticationSession } from './federation/sessions/authority.repository.js';
 import { issueSession } from './federation/sessions/issue.repository.js';
 import type { AuthenticationSession } from './federation/sessions/contract.js';

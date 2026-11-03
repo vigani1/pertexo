@@ -6,7 +6,7 @@ import {
   canonicalOutboxPayloadChecksum,
 } from '@pertexo/database/primitives';
 import { serializeStoredExecutionJsonValue } from '../../runs/values/stored-execution.js';
-import { appendAttemptEvent } from '../events.queries.js';
+import { appendAttemptEvent } from '../events.repository.js';
 import { canonicalJson } from '@pertexo/workflow-model';
 import { generatePersistedId } from '@pertexo/database/platform';
 import type { PoolClient } from 'pg';
@@ -19,8 +19,8 @@ import type {
   CompleteAttemptInput,
   CompleteNodeAttemptResult,
 } from '../contract.js';
-import { completeReceipt } from './receipts.queries.js';
-import { persistConnectionHealthObservation } from './connection-health.queries.js';
+import { completeReceipt } from './receipts.repository.js';
+import { persistConnectionHealthObservation } from './connection-health.repository.js';
 import type {
   SuspendedOutcome,
   CompletionReceiptRow,

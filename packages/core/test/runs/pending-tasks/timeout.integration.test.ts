@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { pendingTaskDetailSchema } from '@pertexo/contracts';
 import { timedOutTaskOutputSchema } from '@pertexo/workflow-model';
 import { withTenantScopedClient } from '@pertexo/database/primitives';
-import { readPendingTaskFacts } from '../../../src/runs/pending-tasks/lifecycle/facts.queries.js';
+import { readPendingTaskFacts } from '../../../src/runs/pending-tasks/lifecycle/facts.repository.js';
 import { admin, pool, store, taskFixture } from './fixtures.js';
 
 type Fixture = Awaited<ReturnType<typeof taskFixture>>;

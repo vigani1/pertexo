@@ -3,7 +3,7 @@ import {
   lockWorkspaceRow,
   readWorkspaceAuthority,
   readWorkspaceRole,
-} from './authority.queries.js';
+} from './authority.repository.js';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import {
   withTenantScopedClient,

@@ -24,7 +24,7 @@ import {
 import {
   lockWorkspaceAuthority,
   readWorkspaceAuthority,
-} from '../../../../shared/authority.queries.js';
+} from '../../../../shared/authority.repository.js';
 import { withWorkspaceAccess } from '../../../../shared/workspace-access.js';
 import {
   organizationForWorkspace,
@@ -42,7 +42,7 @@ import {
   lockDirectoryParticipants,
 } from '../authority.repository.js';
 import type { DirectoryOrganization } from '../contract.js';
-import { previewDirectoryAdoption } from './adoption.queries.js';
+import { previewDirectoryAdoption } from './adoption.repository.js';
 type ManagedOrganization = Readonly<{
   organization: DirectoryOrganization;
   canManage: boolean;

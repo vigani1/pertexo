@@ -15,7 +15,7 @@ import {
 } from '@pertexo/database/schema';
 import { and, eq, sql } from 'drizzle-orm';
 import type { FolderScope } from '../../../shared/contract.js';
-import { workflowScopeSql } from '../../../shared/scope.queries.js';
+import { workflowScopeSql } from '../../../shared/scope.repository.js';
 import type { PoolClient } from 'pg';
 import {
   approvalOutputSchema,
@@ -23,7 +23,7 @@ import {
   inputRequestConfigSchema,
   parseFormValues,
 } from '@pertexo/workflow-model';
-import { wakeWorkflowRun } from '../../wakeups/advance.queries.js';
+import { wakeWorkflowRun } from '../../wakeups/advance.repository.js';
 import type { Role } from '@pertexo/policy';
 import {
   PendingTaskDecisionError,
@@ -31,7 +31,7 @@ import {
 } from './errors.js';
 import type { PendingTaskDecision, PendingTaskSubmission } from './contract.js';
 import { projectTask, readTaskRow } from './records.repository.js';
-import { resolveFormFiles } from '../../../artifacts/form-uploads/resolve.queries.js';
+import { resolveFormFiles } from '../../../artifacts/form-uploads/resolve.repository.js';
 import { requireReadableReceipt } from '../../../shared/receipts.js';
 import { z } from 'zod';
 

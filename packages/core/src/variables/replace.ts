@@ -8,7 +8,7 @@ import {
   completeCommand,
   rethrowQueryFailure,
 } from '@pertexo/database/primitives';
-import { lockVariableSet } from './head.queries.js';
+import { lockVariableSet } from './head.repository.js';
 import {
   workspaceVariables,
   workspaceVariableSetRevisions,

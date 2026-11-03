@@ -7,7 +7,7 @@ import {
   inboxReceipts,
   outboxEvents,
 } from '@pertexo/database/schema';
-import { lockDeliveryScope } from './authority.queries.js';
+import { lockDeliveryScope } from './authority.repository.js';
 import type {
   ClaimInvitationDeliveryInput,
   CompleteInvitationDeliveryInput,
@@ -16,7 +16,7 @@ import type {
   RetryInvitationDeliveryInput,
   WorkspaceInvitationDeliveryClaim,
 } from './contract.js';
-import { assertInvitationDeliveryIdentity } from './identity.queries.js';
+import { assertInvitationDeliveryIdentity } from './identity.repository.js';
 import { sealedToken } from '../input.js';
 import { DELIVERY_CONSUMER } from '../../../outbox/delivery-consumers.js';
 

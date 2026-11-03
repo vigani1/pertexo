@@ -1,14 +1,14 @@
 import { and, asc, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import { dataTableReferenceIssues } from '../../data-tables/columns/references.queries.js';
+import { dataTableReferenceIssues } from '../../data-tables/columns/references.repository.js';
 import {
   rethrowQueryFailure,
   claimCommand,
   completeCommand,
 } from '@pertexo/database/primitives';
 import { workflowVersions, workspaces } from '@pertexo/database/schema';
-import { requireWorkflowCallTargets } from '../../tenant-access/resources/bindings.queries.js';
-import { lockWorkspaceVariableNames } from '../../variables/head.queries.js';
+import { requireWorkflowCallTargets } from '../../tenant-access/resources/bindings.repository.js';
+import { lockWorkspaceVariableNames } from '../../variables/head.repository.js';
 import { recordPromotedPublication } from '../promotion/provenance.repository.js';
 import { PublicationReviewError } from '../reviews/errors.js';
 
@@ -29,13 +29,13 @@ import {
   credentialCommandScope,
   generatePersistedId,
 } from '@pertexo/database/platform';
-import { admitWorkflowAuthoring } from '../workflows/admission.queries.js';
+import { admitWorkflowAuthoring } from '../workflows/admission.repository.js';
 import {
   lockActiveWorkflow,
   lockDraft,
-} from '../workflows/commands/locks.queries.js';
+} from '../workflows/commands/locks.repository.js';
 import type { AuthoringCatalogs } from '../workflows/catalogs.js';
-import { validateApprovalAudience } from './pending-tasks.queries.js';
+import { validateApprovalAudience } from './pending-tasks.repository.js';
 
 import type {
   PublishWorkflowInput,
@@ -50,11 +50,11 @@ import {
   projectDraft,
   projectVersion,
   versionProjection,
-} from '../workflows/representation/records.queries.js';
+} from '../workflows/representation/workflow-representations.repository.js';
 
 import { stepSettingsIssues } from './step-settings.js';
 import { validatePublicationCalls } from './calls.repository.js';
-import { connectionReferenceIssues } from './connections.queries.js';
+import { connectionReferenceIssues } from './connections.repository.js';
 
 import type {
   CompiledPublication,

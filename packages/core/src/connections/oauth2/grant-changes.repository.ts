@@ -10,7 +10,7 @@ import {
 
 import { CONNECTION_EVENT_TYPE, CONNECTION_STATUS } from '../contract.js';
 import { appendConnectionEvent } from '../events.repository.js';
-import { selectConnection } from '../records.queries.js';
+import { selectConnection } from '../connections.repository.js';
 import { withConnectionTransaction } from '../transaction.js';
 import type {
   CommitOAuth2RefreshInput,

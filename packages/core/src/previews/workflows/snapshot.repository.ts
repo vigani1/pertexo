@@ -15,7 +15,7 @@ import type { WorkflowTestPins } from '@pertexo/workflow-engine';
 import type { AuthoringCatalogs } from '../../authoring/workflows/catalogs.js';
 import type { SampleScope } from '../../authoring/step-samples/contract.js';
 
-import { readDatabaseClock } from '../clock.queries.js';
+import { readDatabaseClock } from '../clock.repository.js';
 import { WorkflowTestError } from './errors.js';
 
 export async function loadTestSnapshot(

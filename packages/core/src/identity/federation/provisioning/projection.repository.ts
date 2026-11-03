@@ -1,7 +1,7 @@
 import {
   loadDirectoryProjection,
   loadWorkspaceProjection,
-} from './projection.queries.js';
+} from './projection-inputs.repository.js';
 import { authDirectoryMemberships } from '@pertexo/database/schema';
 import { sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';

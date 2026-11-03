@@ -10,7 +10,7 @@ import {
   migrateDatabase,
   createDisposableDatabaseFixture,
 } from '@pertexo/database/testing';
-import { createPublishedWorkflowReader } from '../../src/runs/queries/execution/published.queries.js';
+import { createPublishedWorkflowReader } from '../../src/runs/queries/execution/published.repository.js';
 import { createWorkflowAuthoringFixtureDatabase as createWorkflowAuthoringStore } from '../support/workflow-authoring-admission.fixture.js';
 
 const adminUrl =

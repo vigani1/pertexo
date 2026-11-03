@@ -1,10 +1,10 @@
-import { readFolderScope } from '../../../src/shared/facts.queries.js';
+import { readFolderScope } from '../../../src/shared/facts.repository.js';
 import { randomUUID } from 'node:crypto';
 import { expect, it } from 'vitest';
 import { Pool } from 'pg';
 import { apiUrl } from '../../support/workflow-authoring.js';
 import { withTenantScopedClient } from '@pertexo/database/primitives';
-import { readAttentionFact } from '../../../src/inbox/observations/facts.queries.js';
+import { readAttentionFact } from '../../../src/inbox/observations/facts.repository.js';
 import { respondToTask } from '../../../src/runs/pending-tasks/responses/respond.repository.js';
 import { seedApproval, seedNoticeWorkspace } from '../notices.fixture.js';
 

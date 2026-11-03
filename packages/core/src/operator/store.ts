@@ -14,7 +14,7 @@ import { and, eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { z } from 'zod';
 
-import { readStuckWork } from '../runs/stalled/overdue.queries.js';
+import { readStuckWork } from '../runs/stalled/overdue.repository.js';
 import { commandRecord } from './command-record.js';
 import type {
   GetOperatorCommandInput,

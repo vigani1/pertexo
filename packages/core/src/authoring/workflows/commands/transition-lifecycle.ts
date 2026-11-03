@@ -25,7 +25,7 @@ import {
   completeWorkflowCommand,
   type WorkflowCommand,
 } from '../receipts.repository.js';
-import { workflowProjection } from '../representation/records.queries.js';
+import { workflowProjection } from '../representation/workflow-representations.repository.js';
 
 export async function transitionWorkflowLifecycle(
   client: PoolClient,

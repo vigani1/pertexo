@@ -1,4 +1,4 @@
-import { readFolderScope } from '../../shared/facts.queries.js';
+import { readFolderScope } from '../../shared/facts.repository.js';
 import type {
   FolderScope,
   WorkflowResourceCapability,
@@ -9,7 +9,7 @@ import {
   type WorkspaceActor,
 } from '../../shared/workspace-access.js';
 import { WorkspaceAccessDeniedError } from '../../shared/errors.js';
-import { workflowAccessible } from '../../tenant-access/resources/workflows.queries.js';
+import { workflowAccessible } from '../../tenant-access/resources/workflows.repository.js';
 import {
   ACTIVE_WORKSPACE_STATUSES,
   BROWSABLE_WORKSPACE_STATUSES,

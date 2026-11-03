@@ -40,7 +40,7 @@ import { createOutboxDispatcherDatabase } from '../../src/outbox/dispatcher/stor
 import { Pool } from 'pg';
 import { OperatorCommandConflictError } from '../../src/operator/contract.js';
 import { DELIVERY_CONSUMER } from '../../src/outbox/delivery-consumers.js';
-import { settleOverdueDeliveries } from '../../src/outbox/overdue-deliveries.queries.js';
+import { settleOverdueDeliveries } from '../../src/outbox/overdue-deliveries.repository.js';
 
 // A first job only leaves with a capacity reservation for a real run.
 const KINDS_THAT_NEED_NO_RUN = Object.keys(DELIVERY_CONSUMER).filter(

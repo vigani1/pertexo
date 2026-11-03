@@ -38,7 +38,7 @@ import {
   listDestinations,
   setDestinationStatus,
 } from './manage.repository.js';
-import { readFailureNotificationDestination } from './records.queries.js';
+import { readFailureNotificationDestination } from './notification-destinations.repository.js';
 
 export type NotificationDestinationStore = ReturnType<
   typeof createNotificationDestinationStore

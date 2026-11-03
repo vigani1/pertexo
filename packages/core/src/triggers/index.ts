@@ -1,9 +1,9 @@
 // Authoring, artifacts and runs use these directly (ADR 091).
 export type {} from './forms/contract.js';
-export type {} from './forms/discover.queries.js';
+export type {} from './forms/discover.repository.js';
 export type {} from './forms/errors.js';
 export type {} from './forms/publication.repository.js';
-export type {} from './forms/records.queries.js';
+export type {} from './forms/form-versions.repository.js';
 export type {} from './pause/outcomes.repository.js';
 export type {} from './reconciliation/projection.js';
 export type {} from './skips.repository.js';

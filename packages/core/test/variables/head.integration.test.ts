@@ -11,7 +11,7 @@ import {
   captureWorkspaceVariableRevision,
   lockVariableSet,
   lockWorkspaceVariableNames,
-} from '../../src/variables/head.queries.js';
+} from '../../src/variables/head.repository.js';
 import { admin, createFamily } from '../lifecycle/calls/fixtures.js';
 import {
   adminUrl,

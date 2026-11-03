@@ -1,4 +1,4 @@
-import { lockWorkspaceExecutionCounter } from '../../admission-locks.queries.js';
+import { lockWorkspaceExecutionCounter } from '../../admission-locks.repository.js';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { and, eq, isNull, or, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';

@@ -19,7 +19,7 @@ import type {
   ObserveOutboxBacklogInput,
   ReleaseOutboxResult,
 } from './contract.js';
-import { observeOutboxBacklog } from './backlog.queries.js';
+import { observeOutboxBacklog } from './backlog.repository.js';
 import { watchForOutboxRows } from './watch-rows.js';
 
 function currentLease(id: string, leaseToken: string) {

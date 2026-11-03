@@ -37,7 +37,7 @@ import {
   decodeDurableConnectionReplay,
   serializeConnectionSnapshot,
 } from '../receipts.js';
-import { connectionFields, selectConnection } from '../records.queries.js';
+import { connectionFields, selectConnection } from '../connections.repository.js';
 import { insertSecretVersion } from './secret-version.repository.js';
 
 const CREATE_OPERATION = 'connection.create';

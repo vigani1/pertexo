@@ -20,7 +20,7 @@ import {
 import {
   projectVersion,
   versionProjection,
-} from '../workflows/representation/records.queries.js';
+} from '../workflows/representation/workflow-representations.repository.js';
 
 /** Current author authority is fenced by publication; RLS scopes every target read. */
 export async function validatePublicationCalls(

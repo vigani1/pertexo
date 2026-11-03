@@ -1,4 +1,4 @@
-import { lockWorkspaceExecutionCounter } from '../../admission-locks.queries.js';
+import { lockWorkspaceExecutionCounter } from '../../admission-locks.repository.js';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { and, eq, sql } from 'drizzle-orm';
 import {
@@ -11,13 +11,13 @@ import { callbackScopeHash } from './scope-hash.js';
 import {
   readPendingTaskAllowance,
   hasPendingTaskCapacity,
-} from '../lifecycle/allowance.queries.js';
+} from '../lifecycle/allowance.repository.js';
 import { callbackWaitConfigSchema } from '@pertexo/workflow-model';
 import type { PoolClient } from 'pg';
 import {
   lockCapabilityExecution,
   assertCapabilityExecution,
-} from '../../../attempts/dispatch/fence.queries.js';
+} from '../../../attempts/dispatch/fence.repository.js';
 import { generatePersistedId } from '@pertexo/database/platform';
 import { CallbackCapacityError } from './errors.js';
 import type { CallbackPreparation, PreparedCallback } from './contract.js';

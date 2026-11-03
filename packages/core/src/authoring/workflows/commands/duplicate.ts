@@ -21,8 +21,8 @@ import {
   workflows,
   workflowVersions,
 } from '@pertexo/database/schema';
-import { requireWorkflowCallTargets } from '../../../tenant-access/resources/bindings.queries.js';
-import { requireConnectionBindings } from '../../../tenant-access/resources/connections/bindings.queries.js';
+import { requireWorkflowCallTargets } from '../../../tenant-access/resources/bindings.repository.js';
+import { requireConnectionBindings } from '../../../tenant-access/resources/connections/bindings.repository.js';
 
 import {
   decodeStoredValue,
@@ -42,9 +42,9 @@ import {
   WorkflowRevisionConflictError,
 } from '../errors.js';
 import { requirePlaceableDefinitionAdditions } from '../placement.js';
-import { projectDraft } from '../representation/records.queries.js';
+import { projectDraft } from '../representation/workflow-representations.repository.js';
 import { draftRepresentationTag } from '../representation/tag.js';
-import { lockDraft } from './locks.queries.js';
+import { lockDraft } from './locks.repository.js';
 
 async function selectedGraph(
   client: PoolClient,

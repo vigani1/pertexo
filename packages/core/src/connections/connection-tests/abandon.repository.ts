@@ -7,7 +7,7 @@ import { idempotencyRecords as records } from '@pertexo/database/schema';
 
 import type { AbandonConnectionTestInput } from '../contract.js';
 import { withConnectionTransaction } from '../transaction.js';
-import { connectionTestClaimRow } from './claim.queries.js';
+import { connectionTestClaimRow } from './claim.repository.js';
 
 /** Owning the claim is the authority: losing access mid-test must still release it. */
 export async function abandonConnectionTest(

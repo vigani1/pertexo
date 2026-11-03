@@ -13,7 +13,7 @@ import {
   ConnectionUnavailableError,
 } from '../contract.js';
 import { recordMemberAction } from '../events.repository.js';
-import { sealedFields, selectConnection } from '../records.queries.js';
+import { sealedFields, selectConnection } from '../connections.repository.js';
 import type { ResolveConnectionLookupSecretInput } from './contract.js';
 
 /**

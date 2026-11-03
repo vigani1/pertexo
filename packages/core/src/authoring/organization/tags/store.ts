@@ -21,7 +21,7 @@ import {
   replaceWorkflowTags,
   detachTag,
 } from './commands/mutations.repository.js';
-import { listTags, listTagAssignments } from './list.queries.js';
+import { listTags, listTagAssignments } from './list.repository.js';
 
 export type WorkflowTagStore = ReturnType<typeof createWorkflowTagStore>;
 

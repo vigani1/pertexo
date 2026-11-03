@@ -9,13 +9,13 @@ import {
   lockBrowsableWorkspaceAuthority,
   lockWorkspaceAuthority,
   readWorkspaceAuthority,
-} from '../../shared/authority.queries.js';
+} from '../../shared/authority.repository.js';
 import type {
   ResourceActor,
   WorkflowResourceCapability,
 } from '../../shared/contract.js';
-import { readFolderScope } from '../../shared/facts.queries.js';
-import { workflowAccessible } from './workflows.queries.js';
+import { readFolderScope } from '../../shared/facts.repository.js';
+import { workflowAccessible } from './workflows.repository.js';
 
 /** Commands stabilize current grants through the workspace-first authority fence. */
 export async function authorizeWorkflowResource(

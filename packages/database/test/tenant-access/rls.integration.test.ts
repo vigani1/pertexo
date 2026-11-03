@@ -20,7 +20,7 @@ import { parseDatabaseConfig } from '../../src/config.js';
 import { createWorkspaceDatabase } from '../../src/database.js';
 import { migrateDatabase } from '../../src/migrations.js';
 import { rlsProbeRecords } from '../../src/schema.js';
-import { EXPECTED_MIGRATION_HEAD } from '../../src/platform/readiness.queries.js';
+import { EXPECTED_MIGRATION_HEAD } from '../../src/platform/readiness.repository.js';
 
 beforeAll(beforeAllFixture1, 60_000);
 afterAll(afterAllFixture2);

@@ -5,7 +5,7 @@ import type { WorkspaceScopeRunner } from '@pertexo/database/primitives';
 import {
   promotionReceiptSchema,
   readAuthorizedPromotionReceipt,
-} from './receipt.queries.js';
+} from './receipt.repository.js';
 import type {
   WorkflowPromotionPreview,
   WorkflowPromotionResult,
@@ -20,7 +20,7 @@ import { generatePersistedId } from '@pertexo/database/platform';
 import {
   requirePromotionAuthority,
   lockPromotionWorkspaces,
-} from './authority.queries.js';
+} from './authority.repository.js';
 import { WorkflowPromotionError } from './errors.js';
 import type { ApplyPromotionInput, PromotionContext } from './contract.js';
 import { preparePromotion } from './preview.js';

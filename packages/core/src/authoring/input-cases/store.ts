@@ -19,7 +19,7 @@ import {
   deleteInputCase,
   updateInputCase,
 } from './commands/mutations.repository.js';
-import { getInputCase, listInputCases } from './read.queries.js';
+import { getInputCase, listInputCases } from './read.repository.js';
 
 export type WorkflowInputCaseStore = ReturnType<
   typeof createWorkflowInputCaseStore

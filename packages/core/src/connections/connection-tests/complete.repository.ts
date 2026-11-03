@@ -22,13 +22,13 @@ import { appendConnectionEvent } from '../events.repository.js';
 import { applyCurrentConnectionTestHealth } from '../health/transitions.repository.js';
 import { withOneOAuth2Fact } from '../oauth2/clients.repository.js';
 import { serializeConnectionTestResult } from '../receipts.js';
-import { selectConnection } from '../records.queries.js';
+import { selectConnection } from '../connections.repository.js';
 import { withConnectionTransaction } from '../transaction.js';
 import {
   completionNeedsDispatchEvidence,
   connectionTestClaimSchema,
 } from './claim.js';
-import { connectionTestClaimRow } from './claim.queries.js';
+import { connectionTestClaimRow } from './claim.repository.js';
 
 /**
  * Owning the claim is the authority: a test that started under current access

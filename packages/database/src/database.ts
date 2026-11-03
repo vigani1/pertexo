@@ -5,7 +5,7 @@ import type { DatabaseConfig } from './config.js';
 import {
   checkDatabaseReadiness,
   checkDatabaseWrites,
-} from './platform/readiness.queries.js';
+} from './platform/readiness.repository.js';
 import type {
   DatabaseReadiness,
   InstanceCapacity,

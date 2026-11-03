@@ -11,14 +11,14 @@ import {
   workflowRuns,
   pendingRunTasks,
 } from '@pertexo/database/schema';
-import { resolveCallback, callbackKeysInUse } from './records.queries.js';
+import { resolveCallback, callbackKeysInUse } from './callbacks.repository.js';
 import { callbackWaitConfigSchema } from '@pertexo/workflow-model';
 import type { DatabaseConfig } from '@pertexo/database/platform';
 import {
   acquireDatabasePool,
   type DatabaseRuntime,
 } from '@pertexo/database/platform';
-import { wakeWorkflowRun } from '../../wakeups/advance.queries.js';
+import { wakeWorkflowRun } from '../../wakeups/advance.repository.js';
 import { wakeTaskAncestors } from '../responses/respond.repository.js';
 import { prepareCallbacks } from './prepare.repository.js';
 import { CallbackResponseError } from './errors.js';

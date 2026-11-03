@@ -28,15 +28,15 @@ import type { PoolClient } from 'pg';
 import {
   assertCapabilityExecution,
   lockCapabilityExecution,
-} from '../attempts/dispatch/fence.queries.js';
+} from '../attempts/dispatch/fence.repository.js';
 import type {
   DataTableAttempt,
   DataTableDefinition,
   ExecuteTableCommandInput,
 } from './contract.js';
-import { readQuotas, requireTable } from './definitions.queries.js';
+import { readQuotas, requireTable } from './table-lookups.repository.js';
 import { translateWorkerFailure } from './errors.js';
-import { findRows } from './rows/find.queries.js';
+import { findRows } from './rows/find.repository.js';
 import { mutateRows } from './rows/mutate.repository.js';
 
 export type WorkerDataTablesStore = ReturnType<

@@ -28,14 +28,14 @@ import {
   workflows,
 } from '@pertexo/database/schema';
 import type { FolderScope } from '../../../shared/contract.js';
-import { readFolderScope } from '../../../shared/facts.queries.js';
+import { readFolderScope } from '../../../shared/facts.repository.js';
 import { withWorkspaceAccess } from '../../../shared/workspace-access.js';
 import { readAsNotVisible } from '../../workflows/access.js';
-import { workflowScopeSql } from '../../../shared/scope.queries.js';
-import { workflowActions } from '../../../tenant-access/resources/workflows.queries.js';
+import { workflowScopeSql } from '../../../shared/scope.repository.js';
+import { workflowActions } from '../../../tenant-access/resources/workflows.repository.js';
 import { WorkflowNotFoundError } from '../../workflows/errors.js';
 import type { WorkflowRecord } from '../../workflows/representation/contract.js';
-import { workflowProjection } from '../../workflows/representation/records.queries.js';
+import { workflowProjection } from '../../workflows/representation/workflow-representations.repository.js';
 
 type Scope = Readonly<{
   workspaceId: string;

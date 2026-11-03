@@ -7,7 +7,7 @@ import {
 } from '@pertexo/database/schema';
 import { and, asc, count, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import { directoryUserRecords } from './records.queries.js';
+import { directoryUserRecords } from './directory-resources.repository.js';
 import { directoryUsers } from './tables.js';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import type { Pool, PoolClient } from 'pg';

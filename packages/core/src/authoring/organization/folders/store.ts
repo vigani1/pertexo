@@ -1,5 +1,5 @@
 import { BROWSABLE_WORKSPACE_STATUSES } from '@pertexo/policy';
-import { readSharingPrincipals } from '../../../tenant-access/resources/principals.queries.js';
+import { readSharingPrincipals } from '../../../tenant-access/resources/principals.repository.js';
 import {
   readFolderSharing,
   replaceFolderSharing,
@@ -36,7 +36,7 @@ import {
   placeWorkflow,
   reviewFolderMove,
 } from './commands/placement.repository.js';
-import { listFolders } from './list.queries.js';
+import { listFolders } from './list.repository.js';
 
 export type WorkflowFolderStore = ReturnType<typeof createWorkflowFolderStore>;
 

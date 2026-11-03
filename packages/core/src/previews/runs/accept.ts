@@ -4,7 +4,7 @@ import {
   insertOutboxEvent,
 } from '@pertexo/database/primitives';
 import { serializeStoredExecutionValue } from '../../runs/values/stored-execution.js';
-import { requireTransactionConnectionBindings } from '../../tenant-access/resources/connections/bindings.queries.js';
+import { requireTransactionConnectionBindings } from '../../tenant-access/resources/connections/bindings.repository.js';
 import { connectionScope } from '../../tenant-access/resources/connections/scope.js';
 
 import { resolvePreviewSample } from './samples.repository.js';
@@ -13,7 +13,7 @@ import type { Role } from '@pertexo/policy';
 import { and, eq, sql } from 'drizzle-orm';
 import { v7 as uuidv7 } from 'uuid';
 import { lockActorArtifactReferences } from '../../artifacts/references/locks.repository.js';
-import { captureWorkspaceVariableRevision } from '../../variables/head.queries.js';
+import { captureWorkspaceVariableRevision } from '../../variables/head.repository.js';
 
 import {
   idempotencyRecords,
@@ -27,7 +27,7 @@ import { PreviewAcceptanceCorruptError } from '../errors.js';
 import {
   assertAdmission,
   assertPreviewWorkflow,
-} from './acceptance/admission.queries.js';
+} from './acceptance/admission.repository.js';
 import type {
   AcceptPreviewRunInput,
   AcceptedPreviewRun,
@@ -36,7 +36,7 @@ import { assertPreviewDeadlines } from './acceptance/limits.js';
 import {
   readExistingAcceptance,
   resolveInput,
-} from './acceptance/replay.queries.js';
+} from './acceptance/replay.repository.js';
 export async function acceptPreviewRun(
   transaction: WorkspaceTransaction,
   input: AcceptPreviewRunInput,

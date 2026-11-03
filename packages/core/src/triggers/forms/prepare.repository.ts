@@ -13,9 +13,9 @@ import {
   parseFormValues,
   FormValuesInvalidError,
 } from '@pertexo/workflow-model';
-import { authorizeForm, readFormVersion } from './records.queries.js';
+import { authorizeForm, readFormVersion } from './form-versions.repository.js';
 import type { PublicFormGrant, SubmitFormInput } from './contract.js';
-import { resolveFormFiles } from '../../artifacts/form-uploads/resolve.queries.js';
+import { resolveFormFiles } from '../../artifacts/form-uploads/resolve.repository.js';
 
 import type { createEventCoordinationPreparation } from '../coordination/prepare.js';
 /** Read an authorized immutable candidate; expression work holds no admission locks. */

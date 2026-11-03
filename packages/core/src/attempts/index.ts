@@ -18,6 +18,6 @@ export type {
 
 // Other areas import these files directly (ADR 091); the door gains nothing.
 export type {} from './dispatch/contract.js';
-export type {} from './dispatch/fence.queries.js';
-export type {} from './events.queries.js';
+export type {} from './dispatch/fence.repository.js';
+export type {} from './events.repository.js';
 export type {} from './validation/shared.js';

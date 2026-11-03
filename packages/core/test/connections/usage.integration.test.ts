@@ -1,7 +1,7 @@
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { folderScope } from '../../src/shared/folder-policy.js';
 import { describe, expect, it } from 'vitest';
-import { connectionUsagePage } from '../../src/connections/discovery/usage.queries.js';
+import { connectionUsagePage } from '../../src/connections/discovery/usage.repository.js';
 import {
   Pool,
   apiBaseUrl,

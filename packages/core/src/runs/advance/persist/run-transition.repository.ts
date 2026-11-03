@@ -10,19 +10,19 @@ import {
 } from '../../values/stored-execution.js';
 import { isTestRun } from '../../data-policy.js';
 import { wakeErrorWorkflowsForCapacity } from '../../error-workflows/queue-wait.repository.js';
-import { synchronizeHumanWait } from '../../pending-tasks/lifecycle/time-capacity.queries.js';
+import { synchronizeHumanWait } from '../../pending-tasks/lifecycle/time-capacity.repository.js';
 import { persistErrorWorkflowIntent } from '../../error-workflows/produce.repository.js';
 import type { PoolClient } from 'pg';
 
 import { CoordinatorRunStateCorruptError } from '../../state-errors.js';
-import type { CoordinatorCommitRow } from '../load/state.queries.js';
+import type { CoordinatorCommitRow } from '../load/state.repository.js';
 import { canonicalTimestamp } from '../load/fact-admission.js';
 import { scheduleRunInputSchema, type RunTransitionPlan } from '../plan.js';
 import { persistFailureNotificationIntent } from './failure-notification.repository.js';
 import { persistWorkspaceInboxEvent } from '../../../inbox/folding/events.repository.js';
 import { persistWorkflowTriggerOutcome } from '../../../triggers/pause/outcomes.repository.js';
 import { persistCallCompletion } from '../../calls/persist.repository.js';
-import { wakeWorkflowRun } from '../../wakeups/advance.queries.js';
+import { wakeWorkflowRun } from '../../wakeups/advance.repository.js';
 
 async function persistDerivedContinuation(
   client: PoolClient,

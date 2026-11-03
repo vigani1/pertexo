@@ -14,7 +14,7 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import { WorkspaceAccessDeniedError } from '../../shared/errors.js';
 import { authorizeBatch } from './authorize.repository.js';
 import { createPersonBackoff } from './backoff.js';
-import { readMailCandidates } from './candidates.queries.js';
+import { readMailCandidates } from './candidates.repository.js';
 import type {
   NoticeMailPerson,
   NoticeMailPersonFailure,

@@ -9,9 +9,9 @@ import {
 import { and, eq, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { nodeRuns, nodeAttempts } from '@pertexo/database/schema';
-import { readLeasedInputs, readUpstreamOutputs } from './records.queries.js';
+import { readLeasedInputs, readUpstreamOutputs } from './leased-inputs.repository.js';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import { readVariableSetValues } from '../../variables/values.queries.js';
+import { readVariableSetValues } from '../../variables/values.repository.js';
 import { workflowNodeFailureValueSchema } from '@pertexo/workflow-model';
 import type { Pool, PoolClient } from 'pg';
 import { NodeAttemptStateCorruptError } from '../errors.js';

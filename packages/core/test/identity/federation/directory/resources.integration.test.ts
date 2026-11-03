@@ -1,4 +1,4 @@
-import { readFolderScope } from '../../../../src/shared/facts.queries.js';
+import { readFolderScope } from '../../../../src/shared/facts.repository.js';
 import { withTenantScopedReadClient } from '@pertexo/database/primitives';
 import { randomUUID } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
@@ -21,10 +21,10 @@ import {
   bindDirectorySignIn,
   directorySignInCandidate,
 } from '../../../../src/identity/federation/provisioning/sign-in.repository.js';
-import { directorySessionAllowed } from '../../../../src/identity/federation/provisioning/session.queries.js';
+import { directorySessionAllowed } from '../../../../src/identity/federation/provisioning/session.repository.js';
 import { withPlatformTransaction } from '@pertexo/database/platform';
 import type { DirectoryUserValues } from '../../../../src/identity/federation/provisioning/contract.js';
-import type { DirectoryUserRow } from '../../../../src/identity/federation/provisioning/resources/records.queries.js';
+import type { DirectoryUserRow } from '../../../../src/identity/federation/provisioning/resources/directory-resources.repository.js';
 
 const db = useIdentityCommandDatabase('scim_resources');
 const values = (

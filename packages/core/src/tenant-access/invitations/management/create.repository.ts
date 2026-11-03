@@ -26,7 +26,7 @@ import {
   invitationKey,
   recordAudit,
 } from './receipts.repository.js';
-import { invitationSelection, lockAuthorizedActor } from './state.queries.js';
+import { invitationSelection, lockAuthorizedActor } from './state.repository.js';
 
 export async function createWorkspaceInvitation(
   pool: Pool,

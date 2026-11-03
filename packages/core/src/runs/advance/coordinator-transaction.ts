@@ -1,4 +1,4 @@
-import { lockWorkspaceRunAdmission } from '../admission-locks.queries.js';
+import { lockWorkspaceRunAdmission } from '../admission-locks.repository.js';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { sql } from 'drizzle-orm';
 import {

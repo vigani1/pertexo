@@ -1,5 +1,5 @@
-import { readFolderScope } from '../../../shared/facts.queries.js';
-import { readWorkspacePeople } from '../../../tenant-access/members/discovery.queries.js';
+import { readFolderScope } from '../../../shared/facts.repository.js';
+import { readWorkspacePeople } from '../../../tenant-access/members/discovery.repository.js';
 import type { DatabaseConfig } from '@pertexo/database/platform';
 import {
   acquireDatabasePool,
@@ -16,7 +16,7 @@ import {
   BROWSABLE_WORKSPACE_STATUSES,
 } from '@pertexo/policy';
 import { respondToTask } from './respond.repository.js';
-import { inspectAudience } from './inspect-audience.queries.js';
+import { inspectAudience } from './inspect-audience.repository.js';
 import { listTasks, projectTask, readTaskRow } from './records.repository.js';
 import type {
   PendingTaskDecision,

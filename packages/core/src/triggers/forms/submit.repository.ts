@@ -27,8 +27,8 @@ import { readWorkflowRunAcceptanceReplay } from '../../runs/commands/acceptance/
 import type { InitialCheckpointFactory } from '../../runs/commands/initial-checkpoint.js';
 import { FormChangedError, FormUnavailableError } from './errors.js';
 import type { SubmitFormInput } from './contract.js';
-import { markFormUploadsSubmitted } from '../../artifacts/form-uploads/unsent.queries.js';
-import type { readFormVersion } from './records.queries.js';
+import { markFormUploadsSubmitted } from '../../artifacts/form-uploads/unsent.repository.js';
+import type { readFormVersion } from './form-versions.repository.js';
 
 export async function submitForm(
   client: PoolClient,

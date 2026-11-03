@@ -1,5 +1,5 @@
-import { readFolderScope } from '../../shared/facts.queries.js';
-import { workflowAccessible } from '../../tenant-access/resources/workflows.queries.js';
+import { readFolderScope } from '../../shared/facts.repository.js';
+import { workflowAccessible } from '../../tenant-access/resources/workflows.repository.js';
 import type { WorkflowResourceCapability } from '../../shared/contract.js';
 import type { PoolClient } from 'pg';
 import type { Role } from '@pertexo/policy';
@@ -7,7 +7,7 @@ import { WorkspaceAccessDeniedError } from '../../shared/errors.js';
 import {
   lockBrowsableWorkspaceAuthority,
   lockWorkspaceAuthority,
-} from '../../shared/authority.queries.js';
+} from '../../shared/authority.repository.js';
 import { WorkflowNotFoundError } from './errors.js';
 
 /** Preserve authoring's non-disclosure contract at the shared authority fence. */

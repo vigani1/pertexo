@@ -11,7 +11,7 @@ import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { parseStoredExecutionValue } from '../../values/stored-execution.js';
 import { and, eq, desc, inArray, lt, or, sql } from 'drizzle-orm';
 import type { FolderScope } from '../../../shared/contract.js';
-import { workflowScopeSql } from '../../../shared/scope.queries.js';
+import { workflowScopeSql } from '../../../shared/scope.repository.js';
 import type { PoolClient } from 'pg';
 import type {
   PendingTaskDetail,
@@ -35,7 +35,7 @@ import {
   run,
   pendingTaskAudienceSql,
   pendingTaskBlockedSql,
-} from './eligibility.queries.js';
+} from './eligibility.repository.js';
 export type TaskRow = Awaited<ReturnType<typeof taskQuery>>[number];
 export function projectTask(row: TaskRow): PendingTaskDetail {
   const captured =

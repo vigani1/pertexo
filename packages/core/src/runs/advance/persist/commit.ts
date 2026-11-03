@@ -29,7 +29,7 @@ import {
 import type {
   CoordinatorCommitRow,
   PendingCoordinatorFailure,
-} from '../load/state.queries.js';
+} from '../load/state.repository.js';
 
 /** Saves the engine's transition for a run locked by `loadRunForAdvance`. */
 export async function saveRunTransition(

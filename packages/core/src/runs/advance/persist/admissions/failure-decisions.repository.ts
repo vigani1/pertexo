@@ -4,7 +4,7 @@ import { nodeRuns, nodeAttempts } from '@pertexo/database/schema';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import type { PoolClient } from 'pg';
 import { CoordinatorRunStateCorruptError } from '../../../state-errors.js';
-import type { PendingCoordinatorFailure } from '../../load/state.queries.js';
+import type { PendingCoordinatorFailure } from '../../load/state.repository.js';
 
 import type { RunTransitionPlan } from '../../plan.js';
 

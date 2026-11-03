@@ -1,4 +1,4 @@
-import { lockWorkspaceExecutionCounter } from '../admission-locks.queries.js';
+import { lockWorkspaceExecutionCounter } from '../admission-locks.repository.js';
 import {
   runErrorWorkflowIntents,
   workflows,
@@ -29,7 +29,7 @@ import {
   WorkspaceRunAdmissionDeniedError,
   WorkspaceRunQuotaExceededError,
 } from '../commands/acceptance/errors.js';
-import { findPublishedWorkflow } from '../queries/execution/published.queries.js';
+import { findPublishedWorkflow } from '../queries/execution/published.repository.js';
 import type { InitialCheckpointFactory } from '../commands/initial-checkpoint.js';
 import {
   ErrorWorkflowDeliveryMismatchError,

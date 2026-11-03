@@ -16,7 +16,7 @@ import {
   withDatabase,
 } from '../lifecycle/retention.support.js';
 import { DELIVERY_CONSUMER } from '../../src/outbox/delivery-consumers.js';
-import { dateUndatedDeliveries } from '../../src/outbox/overdue-deliveries.queries.js';
+import { dateUndatedDeliveries } from '../../src/outbox/overdue-deliveries.repository.js';
 
 const DAY = 86_400_000;
 const daysAgo = (days: number): Date => new Date(Date.now() - days * DAY);

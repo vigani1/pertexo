@@ -6,7 +6,7 @@ import type { Role } from '@pertexo/policy';
 import { cancelInTransaction } from '../../runs/commands/cancel-run.js';
 import { requireTestStopAuthority } from './access.js';
 import type { WorkflowTestRunInput } from './contract.js';
-import { readTestDetail } from './records.queries.js';
+import { readTestDetail } from './workflow-tests.repository.js';
 import { isActiveTestRun } from './rules.js';
 
 export async function cancelWorkflowTest(

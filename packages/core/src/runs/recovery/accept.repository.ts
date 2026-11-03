@@ -1,11 +1,11 @@
-import { lockWorkspaceRunAdmission } from '../admission-locks.queries.js';
-import { copyRecoveryRunValues } from '../values/rows.queries.js';
+import { lockWorkspaceRunAdmission } from '../admission-locks.repository.js';
+import { copyRecoveryRunValues } from '../values/rows.repository.js';
 import { sql } from 'drizzle-orm';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 import { generatePersistedId } from '@pertexo/database/platform';
 import { prepareStoredExecutionValue } from '../values/stored-execution.js';
 import { nodeRuns, runEvents } from '@pertexo/database/schema';
-import { readRecoveryEvidence } from './evidence.queries.js';
+import { readRecoveryEvidence } from './evidence.repository.js';
 import { WorkflowRecoveryUnavailableError } from './errors.js';
 import {
   acceptWorkflowRun,
@@ -16,7 +16,7 @@ import {
   insertWorkflowRunAudit,
   requireWorkflowRunRecord,
 } from '../commands/records.repository.js';
-import { lockRunAcceptanceCommand } from '../commands/acceptance/lock.queries.js';
+import { lockRunAcceptanceCommand } from '../commands/acceptance/lock.repository.js';
 import type { RecoverPublishedWorkflowRunInput } from '../commands/contract.js';
 
 export type RecoverWorkflowRunInput = RecoverPublishedWorkflowRunInput;

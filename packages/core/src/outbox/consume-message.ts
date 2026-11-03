@@ -1,4 +1,4 @@
-import { lockWorkspaceRunAdmission } from '../runs/admission-locks.queries.js';
+import { lockWorkspaceRunAdmission } from '../runs/admission-locks.repository.js';
 import { generatePersistedId } from '@pertexo/database/platform';
 import { and, eq, sql } from 'drizzle-orm';
 import type { WorkspaceDatabase } from '@pertexo/database/platform';

@@ -13,7 +13,7 @@ import { RUN_DELIVERY_JOB_NAMES } from '../../outbox/dispatcher/store.js';
 import {
   dateUndatedDeliveries,
   settleOverdueDeliveries,
-} from '../../outbox/overdue-deliveries.queries.js';
+} from '../../outbox/overdue-deliveries.repository.js';
 import {
   readLockedAttempt,
   settleExpiredAttempt,

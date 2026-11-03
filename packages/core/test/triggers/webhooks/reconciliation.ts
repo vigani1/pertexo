@@ -5,7 +5,7 @@ import {
   withWorkspaceTransaction,
 } from '@pertexo/database/primitives';
 
-import { claimedScheduleWorkflowPaused } from '../../../src/triggers/schedules/pause.queries.js';
+import { claimedScheduleWorkflowPaused } from '../../../src/triggers/schedules/pause.repository.js';
 import { reconciliation, workerPool, ownerQuery } from './base.js';
 import { workspaceId } from './context.js';
 

@@ -12,7 +12,7 @@ import {
   failureNotificationDestinations as destination,
   runFailureNotificationIntents as intent,
 } from '@pertexo/database/schema';
-import { currentDestinationSql, deliverySources } from './sources.queries.js';
+import { currentDestinationSql, deliverySources } from './sources.repository.js';
 
 import { recordCredentialAccess } from '../../connections/runtime/credential-use.repository.js';
 import type {

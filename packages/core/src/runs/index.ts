@@ -1,4 +1,4 @@
-export { RunRequiresFormError } from './commands/acceptance/forms.queries.js';
+export { RunRequiresFormError } from './commands/acceptance/forms.repository.js';
 export { ExecutionStateConflictError } from './state-errors.js';
 export { readRunEventsAfter } from './queries/history/events.repository.js';
 export {
@@ -22,17 +22,17 @@ export {
 export type {
   WorkspaceUsageCapacityInput,
   WorkspaceUsageCapacityRecord,
-} from './queries/usage/capacity.queries.js';
+} from './queries/usage/capacity.repository.js';
 export type {
   WorkflowRunData,
   WorkflowRunFailedStep,
-} from './queries/history/details.queries.js';
-export type { WorkflowRunListRecord } from './queries/history/list.queries.js';
+} from './queries/history/details.repository.js';
+export type { WorkflowRunListRecord } from './queries/history/list.repository.js';
 export type {
   WorkflowStepHealthPage,
   WorkflowStepHealthRecord,
   WorkflowStepRunRecord,
-} from './queries/history/steps.queries.js';
+} from './queries/history/steps.repository.js';
 export {
   CoordinatorDeliveryMismatchError,
   CoordinatorRunStateCorruptError,
@@ -50,7 +50,7 @@ export {
   createDueNodeWakeupScanner,
 } from './wakeups/scanners.js';
 export type { WakeupScanner } from './wakeups/scanners.js';
-export { createPublishedWorkflowReader } from './queries/execution/published.queries.js';
+export { createPublishedWorkflowReader } from './queries/execution/published.repository.js';
 
 export { createRunFailureStore } from './advance/failure-store.js';
 export type { RunFailureStore } from './advance/failure-store.js';
@@ -94,9 +94,9 @@ export {
 } from './pending-tasks/responses/errors.js';
 export type { PendingTaskStore } from './pending-tasks/responses/store.js';
 
-export { RunVariableSnapshotUnavailableError } from './commands/acceptance/variables.queries.js';
+export { RunVariableSnapshotUnavailableError } from './commands/acceptance/variables.repository.js';
 
-export { createWorkflowExecutionReader } from './queries/execution/source.queries.js';
+export { createWorkflowExecutionReader } from './queries/execution/source.repository.js';
 export type {
   WorkflowExecutionReader,
   WorkflowExecutionProjection,
@@ -149,7 +149,7 @@ export type {
 export { recoveryPreparation } from './recovery/prepare.js';
 
 // Other areas import these files directly (ADR 091); the door gains nothing.
-export type {} from './admission-locks.queries.js';
+export type {} from './admission-locks.repository.js';
 export type {} from './advance/plan.js';
 export type {} from './commands/acceptance/accept.js';
 export type {} from './commands/acceptance/replay.repository.js';
@@ -158,8 +158,8 @@ export type {} from './commands/cancel-run.js';
 export type {} from './commands/request-cancellation.js';
 export type {} from './data-policy.js';
 export type {} from './pending-tasks/callbacks/retention.js';
-export type {} from './pending-tasks/responses/eligibility.queries.js';
+export type {} from './pending-tasks/responses/eligibility.repository.js';
 export type {} from './pending-tasks/responses/records.repository.js';
 export type {} from './queries/entitlement-effect.js';
-export type {} from './stalled/overdue.queries.js';
+export type {} from './stalled/overdue.repository.js';
 export type {} from './values/retention.js';

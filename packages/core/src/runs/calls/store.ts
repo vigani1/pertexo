@@ -1,5 +1,5 @@
 import { TERMINAL_RUN_STATUSES } from '../statuses.js';
-import { readPendingCall } from './admission.queries.js';
+import { readPendingCall } from './admission.repository.js';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { and, eq, sql } from 'drizzle-orm';
 import { workflowCalls, workflowRuns } from '@pertexo/database/schema';
@@ -23,7 +23,7 @@ import { applyIncomingCallCancellation } from './controls.repository.js';
 import {
   wakeWorkflowRun,
   deferWorkflowRun,
-} from '../wakeups/advance.queries.js';
+} from '../wakeups/advance.repository.js';
 
 async function performOutgoingActions(
   client: PoolClient,

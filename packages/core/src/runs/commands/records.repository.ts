@@ -6,16 +6,16 @@ import { appendAuditFact } from '@pertexo/database/primitives';
 import {
   workflowRunRecords,
   type WorkflowRunRow,
-} from '../queries/records.queries.js';
+} from '../queries/workflow-runs.repository.js';
 import type { RunValues } from '@pertexo/node-sdk';
-import { runValuesInTransaction } from '../values/rows.queries.js';
+import { runValuesInTransaction } from '../values/rows.repository.js';
 import { retainedTestRunSql } from '../data-policy.js';
 import type { WorkflowRecoverySummary } from '../recovery/contract.js';
 import { workflowRuns } from '@pertexo/database/schema';
 import {
   workflowRunReadQuery,
   runAdmissionBlockers,
-} from '../queries/admission.queries.js';
+} from '../queries/admission.repository.js';
 import { and, eq } from 'drizzle-orm';
 
 import { acceptWorkflowRun } from './acceptance/accept.js';

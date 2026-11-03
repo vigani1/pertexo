@@ -15,7 +15,7 @@ import {
   webhookTriggerDeliveries as deliveries,
   webhookTriggerEndpoints as endpoints,
 } from '@pertexo/database/schema';
-import { COORDINATED_EVENT_METADATA } from '../coordination/history.queries.js';
+import { COORDINATED_EVENT_METADATA } from '../coordination/history.repository.js';
 import type {
   ListWebhookDeliveriesInput,
   RejectedWebhookDelivery,

@@ -21,7 +21,7 @@ import {
   artifactLinks,
 } from '@pertexo/database/schema';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
-import { artifactReferenceOwnersSql } from '../../artifacts/references/owners.queries.js';
+import { artifactReferenceOwnersSql } from '../../artifacts/references/owners.repository.js';
 import type { PoolClient } from 'pg';
 
 import type {

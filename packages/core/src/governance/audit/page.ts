@@ -7,7 +7,7 @@ import {
   encodeAuditCursor,
   type AuditCursor,
 } from './cursor.js';
-import { readAuditBatch, type AuditRow } from './events.queries.js';
+import { readAuditBatch, type AuditRow } from './events.repository.js';
 
 export async function readAuditPage(
   client: PoolClient,

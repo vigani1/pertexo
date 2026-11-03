@@ -7,12 +7,12 @@ import {
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
-import { providerRecords } from './records.queries.js';
+import { providerRecords } from './identity-organizations.repository.js';
 import type { Pool, PoolClient } from 'pg';
 import type { FederationSettings } from '@pertexo/contracts';
 import { generatePersistedId } from '@pertexo/database/platform';
 import { FederationConflictError } from './errors.js';
-import type { ProviderRow } from './records.queries.js';
+import type { ProviderRow } from './identity-organizations.repository.js';
 import { recordFederationAudit } from './authority.repository.js';
 import {
   advanceOrganization,

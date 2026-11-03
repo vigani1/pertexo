@@ -5,11 +5,11 @@ import { and, eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
 
-import { lockWorkspaceAuthority } from '../../shared/authority.queries.js';
+import { lockWorkspaceAuthority } from '../../shared/authority.repository.js';
 import type { NoticeMailPerson } from './contract.js';
 import { mailCutoff } from './items.js';
 import { recipient, settings } from './recipients.repository.js';
-import { readMailSubjects } from './subjects.queries.js';
+import { readMailSubjects } from './subjects.repository.js';
 
 /** Sends only a mail whose person, schedule and subjects are all still what was prepared. */
 export async function authorizeBatch(

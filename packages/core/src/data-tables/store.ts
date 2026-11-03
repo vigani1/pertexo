@@ -26,14 +26,14 @@ import type {
 } from './contract.js';
 import { editSchema } from './columns/edit.repository.js';
 import { exportTable } from './csv/export.js';
-import { listTables } from './definitions.queries.js';
+import { listTables } from './table-lookups.repository.js';
 import {
   configureTables,
   createTable,
   removeTable,
 } from './definitions.repository.js';
 import { translateTableConstraint } from './errors.js';
-import { findTableRows } from './rows/find.queries.js';
+import { findTableRows } from './rows/find.repository.js';
 import { importTableRows, writeTableRows } from './rows/write.js';
 
 export type DataTablesStore = ReturnType<typeof createDataTablesStore>;

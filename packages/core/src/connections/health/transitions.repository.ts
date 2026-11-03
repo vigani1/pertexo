@@ -12,7 +12,7 @@ import {
   type ConnectionTestOutcome,
 } from '../contract.js';
 import { appendConnectionEvent } from '../events.repository.js';
-import { connectionFields } from '../records.queries.js';
+import { connectionFields } from '../connections.repository.js';
 import { isStaleTestObservation } from './rules.js';
 
 /** Transaction-private revision transitions; callers already own the connection lock. */

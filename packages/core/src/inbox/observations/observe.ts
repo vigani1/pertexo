@@ -6,7 +6,7 @@ import {
   ATTENTION_PAGE_SIZE,
   readAttentionCandidates,
   type Candidate,
-} from './candidates.queries.js';
+} from './candidates.repository.js';
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { alias } from 'drizzle-orm/pg-core';
@@ -18,7 +18,7 @@ import {
 import type { Pool, PoolClient } from 'pg';
 import { generatePersistedId } from '@pertexo/database/platform';
 import type { WorkspaceInboxChange } from '../folding/contract.js';
-import { readAttentionFact, type AttentionFact } from './facts.queries.js';
+import { readAttentionFact, type AttentionFact } from './facts.repository.js';
 
 const STATEMENT_TIMEOUT_MILLIS = 5_000;
 

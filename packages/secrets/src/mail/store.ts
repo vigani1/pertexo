@@ -7,7 +7,7 @@ import {
   claimMail,
   insertSystemMail,
   settleMail,
-} from './deliveries.queries.js';
+} from './deliveries.repository.js';
 import type {
   SystemMailClaimRequest,
   SystemMailInput,

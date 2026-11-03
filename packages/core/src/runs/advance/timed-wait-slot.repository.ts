@@ -1,4 +1,4 @@
-import { lockWorkspaceExecutionCounter } from '../admission-locks.queries.js';
+import { lockWorkspaceExecutionCounter } from '../admission-locks.repository.js';
 import { and, eq, isNull, or, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { WorkflowCheckpoint } from '@pertexo/workflow-engine';
@@ -6,9 +6,9 @@ import type { PoolClient } from 'pg';
 
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { workflowCalls, workflowRuns } from '@pertexo/database/schema';
-import { activeCapacityAvailable } from '../admission-locks.queries.js';
-import { deferWorkflowRun } from '../wakeups/advance.queries.js';
-import { readHumanWaitFacts } from '../pending-tasks/lifecycle/human-wait.queries.js';
+import { activeCapacityAvailable } from '../admission-locks.repository.js';
+import { deferWorkflowRun } from '../wakeups/advance.repository.js';
+import { readHumanWaitFacts } from '../pending-tasks/lifecycle/human-wait.repository.js';
 
 type RunScope = Readonly<{ workspaceId: string; runId: string }>;
 

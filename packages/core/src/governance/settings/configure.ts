@@ -1,4 +1,4 @@
-import { readGovernanceSettings } from './policy.queries.js';
+import { readGovernanceSettings } from './policy.repository.js';
 import {
   rethrowQueryFailure,
   claimCommand,

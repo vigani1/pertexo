@@ -29,9 +29,9 @@ import type {
   DataTableQuotas,
   DataTableWriteCommand,
 } from '../contract.js';
-import { boundedResult, type StoredRow } from './find.queries.js';
+import { boundedResult, type StoredRow } from './find.repository.js';
 import { keyConflictMessage, keyValue } from './key.js';
-import { lockMutationRows, type RowIdentity } from './lock.queries.js';
+import { lockMutationRows, type RowIdentity } from './lock.repository.js';
 
 /** Where a change goes: every step acts on one table in one transaction. */
 type TableTarget = Readonly<{

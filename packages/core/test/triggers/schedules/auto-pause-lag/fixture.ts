@@ -10,7 +10,7 @@ import {
   parseWorkspaceId,
   withWorkspaceTransaction,
 } from '@pertexo/database/primitives';
-import { claimedScheduleWorkflowPaused } from '../../../../src/triggers/schedules/pause.queries.js';
+import { claimedScheduleWorkflowPaused } from '../../../../src/triggers/schedules/pause.repository.js';
 import { createScheduleTriggerTestEnvironment } from '../../../support/schedule-triggers.js';
 import { testExecutableCompiler } from '../../../../src/authoring/test-executable-compiler.js';
 

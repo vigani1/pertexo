@@ -19,7 +19,7 @@ import {
   WorkflowRevisionConflictError,
 } from '../../src/authoring/workflows/errors.js';
 import { createWorkflowAuthoringFixtureDatabase as createWorkflowAuthoringStore } from './workflow-authoring-admission.fixture.js';
-import { createWorkflowIntegrationUsageStore } from '../../src/connections/discovery/integration-usage.queries.js';
+import { createWorkflowIntegrationUsageStore } from '../../src/connections/discovery/integration-usage.repository.js';
 
 export {
   CONNECTION_AUTH_TYPE,

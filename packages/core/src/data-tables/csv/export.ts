@@ -14,8 +14,8 @@ import type { PoolClient } from 'pg';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { workspaceDataTableRows as rows } from '@pertexo/database/schema';
 import type { ExportTableInput } from '../contract.js';
-import { requireTable } from '../definitions.queries.js';
-import { queryClause } from '../rows/find.queries.js';
+import { requireTable } from '../table-lookups.repository.js';
+import { queryClause } from '../rows/find.repository.js';
 
 const BATCH_ROWS = 256;
 const BATCH_BYTES = 4 * 1024 * 1024;

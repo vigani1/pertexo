@@ -27,7 +27,7 @@ import {
   lockPromotionWorkspaces,
   readPromotionLink,
   requirePromotionAuthority,
-} from './authority.queries.js';
+} from './authority.repository.js';
 
 /** What choosing a target stored. */
 const targetReceipt = z.object({

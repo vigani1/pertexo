@@ -10,7 +10,7 @@ import type {
 import { acquireDatabasePool } from '@pertexo/database/platform';
 import { DEFAULT_INSTANCE_LIMITS } from '../../runs/instance-limits.js';
 import type { WebhookResponseScope } from './responses/contract.js';
-import { readWebhookResponse } from './responses/records.queries.js';
+import { readWebhookResponse } from './responses/webhook-responses.repository.js';
 
 import { readHealth } from '../reconciliation/health.repository.js';
 
@@ -39,7 +39,7 @@ import {
 import {
   consumeWebhookIngressLimit,
   resolveWebhookVerification,
-} from './runtime/verification.queries.js';
+} from './runtime/verification.repository.js';
 
 /**
  * Measured on a loaded machine with the default pool of 5: one acceptance at a

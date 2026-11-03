@@ -12,7 +12,7 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import type { Pool, PoolClient } from 'pg';
 import { withPlatformTransaction } from '@pertexo/database/platform';
-import { lockWorkspaceRow } from '../../../shared/authority.queries.js';
+import { lockWorkspaceRow } from '../../../shared/authority.repository.js';
 import { DirectoryError } from './errors.js';
 import type { DirectoryPrincipal } from './contract.js';
 

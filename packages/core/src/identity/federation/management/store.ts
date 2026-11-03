@@ -51,7 +51,7 @@ import {
   readDomainChallenge,
   readDomainVerificationResult,
   readFederationSettings,
-} from './reads.queries.js';
+} from './reads.repository.js';
 
 export type FederationManagementStore = ReturnType<
   typeof createFederationManagementStore

@@ -1,11 +1,11 @@
-import { publicCredential } from './credentials.queries.js';
+import { publicCredential } from './credential-records.repository.js';
 import { authProvisioningCredentials } from '@pertexo/database/schema';
 import { and, count, eq, isNull, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import {
   credentialRecords,
   credentialSelection,
-} from './credentials.queries.js';
+} from './credential-records.repository.js';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { ACTIVE_WORKSPACE_STATUSES } from '@pertexo/policy';
 import { createHash, randomBytes } from 'node:crypto';

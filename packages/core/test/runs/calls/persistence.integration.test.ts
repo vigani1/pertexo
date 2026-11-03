@@ -4,7 +4,7 @@ import { createRunAdvanceStore } from '../../../src/runs/advance/store.js';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
 import { withTenantScopedClient } from '@pertexo/database/primitives';
 import { persistCallCompletion } from '../../../src/runs/calls/persist.repository.js';
-import { readRunCompletionValues } from '../../../src/runs/advance/load/completion.queries.js';
+import { readRunCompletionValues } from '../../../src/runs/advance/load/completion.repository.js';
 import { admin, inline, insertHint } from '../../lifecycle/calls/fixtures.js';
 import { apiUrl, randomUUID } from '../../lifecycle/retention.support.js';
 import { declarationFixture } from './storage-fixtures.js';

@@ -2,13 +2,13 @@ import { authDomains } from '@pertexo/database/schema';
 import { and, eq, gt, isNotNull, isNull, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
-import { domainRecords } from './records.queries.js';
+import { domainRecords } from './identity-organizations.repository.js';
 import { randomBytes } from 'node:crypto';
 import type { Pool, PoolClient } from 'pg';
 import type { FederationSettings } from '@pertexo/contracts';
 import { generatePersistedId } from '@pertexo/database/platform';
 import { FederationConflictError } from './errors.js';
-import type { DomainRow } from './records.queries.js';
+import type { DomainRow } from './identity-organizations.repository.js';
 import { recordFederationAudit } from './authority.repository.js';
 import {
   advanceOrganization,

@@ -7,11 +7,11 @@ import type { PoolClient } from 'pg';
 import type { WorkspaceInboxThread } from '@pertexo/contracts';
 import { databaseSchema } from '@pertexo/database/schema';
 import { parseWorkspaceId } from '@pertexo/database/primitives';
-import { readWorkflowRunFailedSteps } from '../../runs/queries/history/details.queries.js';
+import { readWorkflowRunFailedSteps } from '../../runs/queries/history/details.repository.js';
 import { FAILURE_ALERT_CHANNEL_NAMES } from './alert-channels.js';
-import { readFailureDays } from './failure-days.queries.js';
+import { readFailureDays } from './failure-days.repository.js';
 import type { WorkspaceInboxFailureKind } from './contract.js';
-import type { NoticeRecord } from './records.queries.js';
+import type { NoticeRecord } from './inbox-notices.repository.js';
 type NoticeRow = NoticeRecord &
   (
     | {

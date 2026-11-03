@@ -34,7 +34,7 @@ import type {
   DataTableQuotas,
   EditTableSchemaInput,
 } from '../contract.js';
-import { readQuotas, requireTable } from '../definitions.queries.js';
+import { readQuotas, requireTable } from '../table-lookups.repository.js';
 import { keyValue } from '../rows/key.js';
 
 /** Rows rewrite in batches of this many. */

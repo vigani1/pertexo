@@ -3,13 +3,13 @@ import {
   hasUsableSignInMethod,
 } from './federation/sessions/methods.repository.js';
 import { invalidatePasswordResetProofs } from './password-reset.repository.js';
-import { hasSignInMethodCapacity } from './federation/accounts/limits.queries.js';
+import { hasSignInMethodCapacity } from './federation/accounts/limits.repository.js';
 import {
   prepareSessionChange,
   applySessionChange,
 } from '../tenant-access/users/sessions.repository.js';
 import type { AuthenticationReplacement } from '../tenant-access/users/contract.js';
-import { isProtectedRecoveryOwner } from './federation/sessions/recovery.queries.js';
+import { isProtectedRecoveryOwner } from './federation/sessions/recovery.repository.js';
 import { randomUUID } from 'node:crypto';
 
 import { and, asc, desc, eq, sql } from 'drizzle-orm';

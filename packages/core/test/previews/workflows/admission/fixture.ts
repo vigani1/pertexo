@@ -12,8 +12,8 @@ import {
 } from '@pertexo/workflow-engine';
 import { parseWorkflowGraphDraft } from '@pertexo/workflow-model';
 import { createWorkflowAuthoringStore } from '../../../../src/authoring/workflows/store.js';
-import { createWorkflowExecutionReader } from '../../../../src/runs/queries/execution/source.queries.js';
-import { createPublishedWorkflowReader } from '../../../../src/runs/queries/execution/published.queries.js';
+import { createWorkflowExecutionReader } from '../../../../src/runs/queries/execution/source.repository.js';
+import { createPublishedWorkflowReader } from '../../../../src/runs/queries/execution/published.repository.js';
 
 import {
   apiUrl,

@@ -5,7 +5,7 @@ import {
   readTrendRankings,
   type TrendDay,
   type TrendRanking,
-} from './trends.queries.js';
+} from './trends.repository.js';
 import { RUN_STATUS_VALUES } from '../../commands/acceptance/vocabulary.js';
 import type { Pool } from 'pg';
 import type { UsageTrendPeriod, UsageTrendsResponse } from '@pertexo/contracts';

@@ -42,7 +42,7 @@ export type DirectoryPrincipal = Readonly<{
 import type {
   DirectoryUserRow,
   DirectoryGroupRow,
-} from './resources/records.queries.js';
+} from './resources/directory-resources.repository.js';
 export type DirectoryMapping = Readonly<{
   groupId: string;
   workspaceId: string;

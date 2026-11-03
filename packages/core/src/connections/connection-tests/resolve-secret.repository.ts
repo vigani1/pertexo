@@ -20,12 +20,12 @@ import {
 } from '../contract.js';
 import { appendConnectionEvent } from '../events.repository.js';
 import { withOneOAuth2Fact } from '../oauth2/clients.repository.js';
-import { connectionSecrets } from '../runtime/credentials.queries.js';
+import { connectionSecrets } from '../runtime/credentials.repository.js';
 import { connectionTestClaim } from './claim.js';
 import {
   connectionTestClaimRow,
   CONNECTION_TEST_OPERATION,
-} from './claim.queries.js';
+} from './claim.repository.js';
 
 export async function resolveConnectionTestSecret(
   client: PoolClient,

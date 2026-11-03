@@ -15,7 +15,7 @@ import type {
   ReadPreviewRunInput,
 } from './acceptance/contract.js';
 import type { ResolvePreviewReplayInput } from './contract.js';
-import { readPreviewRun } from './records.queries.js';
+import { readPreviewRun } from './preview-runs.repository.js';
 import { resolvePreviewReplay } from './resolve-replay.js';
 
 type InWorkspace = Readonly<{ workspaceId: string }>;

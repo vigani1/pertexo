@@ -11,10 +11,10 @@ import { WorkflowStepSampleError } from '../../../authoring/step-samples/errors.
 import { inlineSampleOutput } from '../../../authoring/step-samples/records.repository.js';
 import { WorkflowNotFoundError } from '../../../authoring/workflows/errors.js';
 import { WebhookIngressRateLimitExceededError } from '../errors.js';
-import { testEventDraftForCreator } from './authority.queries.js';
+import { testEventDraftForCreator } from './authority.repository.js';
 import type { TestEventReference, TestEventScope } from './contract.js';
 import { WebhookTestEventError } from './errors.js';
-import { listenerSelection, lockListener } from './records.queries.js';
+import { listenerSelection, lockListener } from './webhook-test-listeners.repository.js';
 
 const LISTENER_ATTEMPT_LIMIT = 60;
 

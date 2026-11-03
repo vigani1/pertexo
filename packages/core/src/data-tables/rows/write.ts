@@ -7,7 +7,7 @@ import {
   writtenTableRowsReceipt,
 } from '../receipts.js';
 import type { ImportRowsInput, WriteRowsInput } from '../contract.js';
-import { readQuotas, requireTable } from '../definitions.queries.js';
+import { readQuotas, requireTable } from '../table-lookups.repository.js';
 import { insertTableBatch, mutateRows } from './mutate.repository.js';
 
 export function writeTableRows(client: PoolClient, input: WriteRowsInput) {

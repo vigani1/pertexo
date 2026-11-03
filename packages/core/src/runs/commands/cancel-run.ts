@@ -1,10 +1,10 @@
-import { lockWorkspaceRunAdmission } from '../admission-locks.queries.js';
+import { lockWorkspaceRunAdmission } from '../admission-locks.repository.js';
 import { workflowRuns } from '@pertexo/database/schema';
 import { and, asc, eq, inArray, isNull } from 'drizzle-orm';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 import { requestWorkflowRunCancellation } from './request-cancellation.js';
 import { WorkflowRunNotFoundError } from '../errors.js';
-import { enqueueAdvance } from '../wakeups/advance.queries.js';
+import { enqueueAdvance } from '../wakeups/advance.repository.js';
 import { ACTIVE_RUN_STATUSES } from '../statuses.js';
 import {
   insertWorkflowRunAudit,

@@ -12,7 +12,7 @@ import {
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
 import { requestWorkflowRunCancellation } from '../commands/request-cancellation.js';
-import { wakeWorkflowRun } from '../wakeups/advance.queries.js';
+import { wakeWorkflowRun } from '../wakeups/advance.repository.js';
 
 /** A child consumes its direct parent's intent under its own run lock only. */
 export async function applyIncomingCallCancellation(

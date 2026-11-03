@@ -8,7 +8,7 @@ import {
 } from '@pertexo/database/schema';
 import { and, asc, count, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import { directoryGroupRecords } from './records.queries.js';
+import { directoryGroupRecords } from './directory-resources.repository.js';
 import { directoryGroups } from './tables.js';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { removeDirectoryFolderGrants } from '../../../../tenant-access/resources/revocation.repository.js';

@@ -10,7 +10,7 @@ import {
   completeCommand,
   appendAuditFact,
 } from '@pertexo/database/primitives';
-import { requireConnectionBindings } from '../../tenant-access/resources/connections/bindings.queries.js';
+import { requireConnectionBindings } from '../../tenant-access/resources/connections/bindings.repository.js';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
 import { generatePersistedId } from '@pertexo/database/platform';
@@ -21,8 +21,8 @@ import {
   readReviewSummary,
   readReviewRow,
   projectReview,
-} from './read.queries.js';
-import { reviewSource, review, reviewStateSql } from './eligibility.queries.js';
+} from './read.repository.js';
+import { reviewSource, review, reviewStateSql } from './eligibility.repository.js';
 
 /** How long a request waits for a decision. */
 const REVIEW_LIFETIME = sql`interval '7 days'`;
