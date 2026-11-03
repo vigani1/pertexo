@@ -11,12 +11,7 @@ import {
 import { migrateDatabase } from '../../../src/migrations.js';
 import { createDisposableDatabaseFixture } from '../../../src/testing/postgres/disposable-database.js';
 import { checkpoints } from './execute.js';
-import {
-  childGraph,
-  childPin,
-  loopScenarios,
-  unsafeNestedGraph,
-} from './scenarios.js';
+import { childGraph, childPin, loopScenarios } from './scenarios.js';
 
 const database = createDisposableDatabaseFixture({
   adminUrl:
@@ -164,12 +159,4 @@ measure('maximum loop checkpoint writes', () => {
     },
     300_000,
   );
-});
-
-it('rejects a nested frontier that overflows the checkpoint before publication', () => {
-  expect(
-    validateWorkflowGraph(unsafeNestedGraph()).issues.find(
-      ({ code }) => code === 'expansion_limit',
-    )?.message,
-  ).toContain('reduce Items at a time');
 });

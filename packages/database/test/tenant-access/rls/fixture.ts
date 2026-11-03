@@ -23,10 +23,6 @@ const apiBaseUrl =
   process.env.DATABASE_URL ??
   'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo';
 
-const workerBaseUrl =
-  process.env.DATABASE_URL ??
-  'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo';
-
 const databaseName = `pertexo_test_rls_${randomUUID().replaceAll('-', '')}`;
 
 const inheritedRole = `pertexo_test_inherited_${randomUUID().replaceAll('-', '')}`;
@@ -45,8 +41,6 @@ const fixture = createDisposableDatabaseFixture({
 const migrationUrl = fixture.databaseUrl(migrationBaseUrl);
 
 export const apiUrl = fixture.databaseUrl(apiBaseUrl);
-
-export const workerUrl = fixture.databaseUrl(workerBaseUrl);
 
 const adminPool = new Pool({ connectionString: adminUrl, max: 1 });
 
