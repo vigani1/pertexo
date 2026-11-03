@@ -138,6 +138,7 @@ it('upgrades a populated standalone test without changing its source identity or
       '0078_workflow_update_token_scope.sql',
       '0079_workspace_data_token_scopes.sql',
       '0080_artifact_reference_locations.sql',
+      '0081_serialize_capacity_provisioning.sql',
     ]);
     expect(
       (

@@ -568,6 +568,13 @@
       "when": 1793706357874,
       "tag": "0080_artifact_reference_locations",
       "breakpoints": true
+    },
+    {
+      "idx": 81,
+      "version": "7",
+      "when": 1793706561197,
+      "tag": "0081_serialize_capacity_provisioning",
+      "breakpoints": true
     }
   ]
 }
