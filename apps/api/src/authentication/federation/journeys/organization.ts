@@ -1,4 +1,7 @@
-import { Logger } from '@nestjs/common';
+import {
+  recordAuthenticationFailure,
+  type AuthenticationFailureReason,
+} from '../../journeys/failures.js';
 import type { OrganizationIdentity } from '../protocol/identity.js';
 import { federationFailureReason } from '../protocol/failure.js';
 import { randomUUID } from 'node:crypto';
@@ -31,7 +34,6 @@ import { type BrowserSession, prepareOrganizationStart } from './start.js';
 import { failure } from './reply.js';
 
 const callbackPath = '/v1/auth/federation/oidc/callback';
-const logger = new Logger('OrganizationSignIn');
 
 type FoundAttempt = NonNullable<
   Awaited<ReturnType<OrganizationSignInCommands['find']>>
@@ -129,6 +131,16 @@ export class OrganizationSignIn {
   ): Promise<Response> {
     if (!this.available(protocol)) return failure(503);
     const raw: unknown = await request.json().catch(() => null);
+    let failedAt: AuthenticationFailureReason = 'storage_unavailable';
+    const unavailable = () => {
+      recordAuthenticationFailure(
+        request.headers.get('x-request-id'),
+        `${protocol}_start`,
+        failedAt,
+        'failed',
+      );
+      return failure(503);
+    };
     try {
       const prepared = await prepareOrganizationStart(request, raw, {
         testing,
@@ -141,6 +153,7 @@ export class OrganizationSignIn {
       const id = randomUUID(),
         state = newJourneyToken(),
         browser = newJourneyToken();
+      failedAt = 'provider_unavailable';
       const authorizationUrl =
         material.provider.kind === 'oidc'
           ? await this.input.gateway?.authorize(
@@ -155,7 +168,8 @@ export class OrganizationSignIn {
                 createdAt: new Date(),
               }),
             );
-      if (authorizationUrl === undefined) return failure(503);
+      if (authorizationUrl === undefined) return unavailable();
+      failedAt = 'storage_unavailable';
       await this.commands.start({
         id,
         providerId: material.provider.id,
@@ -185,13 +199,14 @@ export class OrganizationSignIn {
         },
       );
     } catch {
-      return failure(503);
+      return unavailable();
     }
   }
   private async callback(
     request: Request,
     protocol: FederationProtocol,
   ): Promise<Response> {
+    const requestId = request.headers.get('x-request-id');
     const url = new URL(request.url),
       callback = await readOrganizationCallback(request, protocol),
       browser = readCookie(request.headers, this.bindingCookie(protocol));
@@ -201,12 +216,12 @@ export class OrganizationSignIn {
       browser === undefined ||
       !isJourneyToken(browser);
     if (unavailableCallback)
-      return this.failed({ protocol, reason: 'callback_invalid' });
+      return this.failed(requestId, { protocol, reason: 'callback_invalid' });
     const state = callback.state;
     let destination: string | undefined;
     let testing = false;
     const fail = (reason: FederationFailureReason) =>
-      this.failed({ protocol, reason, path: destination, testing });
+      this.failed(requestId, { protocol, reason, path: destination, testing });
     try {
       const attempt = await this.commands.find(
         journeyDigest(state),
@@ -281,15 +296,14 @@ export class OrganizationSignIn {
       url,
     }: Readonly<{ state: string; browser: string; url: URL }>,
   ): Promise<OrganizationIdentity | undefined> {
-    let identity: OrganizationIdentity | undefined;
-    if (attempt.provider.kind === 'oidc') {
-      identity = await this.input.gateway?.verify(
+    if (attempt.provider.kind === 'oidc')
+      return this.input.gateway?.verify(
         attempt.provider,
         this.proof(attempt.id, attempt.provider.id, state, browser),
         url,
       );
-    } else if (callback.samlResponse !== undefined) {
-      identity = await this.input.samlGateway?.verify(
+    if (callback.samlResponse !== undefined)
+      return this.input.samlGateway?.verify(
         attempt.provider,
         this.samlProof(attempt.id, attempt.provider, {
           state: state,
@@ -298,9 +312,7 @@ export class OrganizationSignIn {
         }),
         callback.samlResponse,
       );
-    }
-
-    return identity;
+    return undefined;
   }
 
   private proof(
@@ -356,24 +368,25 @@ export class OrganizationSignIn {
       },
     });
   }
-  /**
-   * The operator's log gets a fixed code for every failure, and the owner who
-   * ran a test gets it on the page. A sign-in stays generic, so it can't be used
-   * to probe what a provider's setup expects.
-   */
-  private failed({
-    protocol,
-    reason,
-    path,
-    testing = false,
-  }: Readonly<{
-    protocol: FederationProtocol;
-    reason: FederationFailureReason;
-    path?: string | undefined;
-    testing?: boolean | undefined;
-  }>): Response {
-    logger.warn(
-      `Organization ${testing ? 'test' : 'sign-in'} failed: ${protocol} ${reason}`,
+  private failed(
+    requestId: string | null,
+    {
+      protocol,
+      reason,
+      path,
+      testing = false,
+    }: Readonly<{
+      protocol: FederationProtocol;
+      reason: FederationFailureReason;
+      path?: string | undefined;
+      testing?: boolean | undefined;
+    }>,
+  ): Response {
+    recordAuthenticationFailure(
+      requestId,
+      `${protocol}_callback`,
+      reason,
+      reason === 'unavailable' ? 'failed' : 'refused',
     );
     if (testing && path !== undefined)
       return this.land(path, { failed: reason });
