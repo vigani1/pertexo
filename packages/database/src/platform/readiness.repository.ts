@@ -3,7 +3,7 @@ import { sql } from 'drizzle-orm';
 import { QueryBuilder } from 'drizzle-orm/pg-core';
 import type { Pool } from 'pg';
 
-export const EXPECTED_MIGRATION_HEAD = '0086_ordered_trigger_outcomes.sql';
+export const EXPECTED_MIGRATION_HEAD = '0087_remove_trigger_outcome_fold.sql';
 const MINIMUM_POSTGRES_MAJOR = 18;
 
 /**
