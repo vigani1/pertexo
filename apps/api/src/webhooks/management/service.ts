@@ -26,6 +26,7 @@ export type WebhookCommandInput = Readonly<{
   actorId: string;
   triggerId: string;
   idempotencyKey: string;
+  commandCredentialId?: string;
   signal?: AbortSignal;
 }>;
 
@@ -261,6 +262,9 @@ function commandBase(
     actorId: input.actorId,
     triggerId: input.triggerId,
     idempotencyKey: input.idempotencyKey,
+    ...(input.commandCredentialId === undefined
+      ? {}
+      : { commandCredentialId: input.commandCredentialId }),
     requestHash: sha256(
       `${operation}\0${input.workspaceId}\0${input.workflowId}\0${input.triggerId}\0${endpointKeyHash}`,
     ),

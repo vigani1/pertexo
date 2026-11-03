@@ -25,6 +25,7 @@ export type SetEnabledInput = Readonly<{
   triggerId: string;
   enabled: boolean;
   idempotencyKey: string;
+  commandCredentialId?: string;
   requestHash: string;
   requestId?: string;
   traceId?: string;

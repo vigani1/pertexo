@@ -186,7 +186,14 @@ describe('webhook public contracts', () => {
     for (const [path, methods] of Object.entries(paths)) {
       if (path.startsWith('/hooks/')) continue;
       for (const [method, operation] of Object.entries(methods)) {
-        expect(operation.security).toEqual([{ cookieSession: [] }]);
+        const token =
+          (method === 'get' && !path.includes('webhook-test-events')) ||
+          path.endsWith('/provision');
+        expect(operation.security).toEqual(
+          token
+            ? [{ cookieSession: [] }, { apiToken: [] }]
+            : [{ cookieSession: [] }],
+        );
         expect(operation.responses).toHaveProperty('403');
         if (method !== 'get')
           expect(operation.parameters).toEqual(
@@ -194,7 +201,7 @@ describe('webhook public contracts', () => {
               expect.objectContaining({
                 in: 'header',
                 name: 'x-csrf-token',
-                required: true,
+                required: !token,
               }),
             ]),
           );

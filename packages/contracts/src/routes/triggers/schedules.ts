@@ -59,13 +59,16 @@ const fireTimes = named(
 );
 
 /** The command takes no fields; an empty object keeps a stray one from looking applied. */
-const command = (operationId: string, path: `/${string}`) =>
+const command = <const Path extends `/${string}`>(
+  operationId: string,
+  path: Path,
+) =>
   defineRoute({
     operationId,
     method: 'post',
     path,
     params: trigger,
-    access: { auth: 'session', capabilities: update },
+    access: { auth: 'session_or_token', capabilities: update },
     rateLimit: 'trigger_mutation',
     idempotent: true,
     body: named(
@@ -90,7 +93,7 @@ export const scheduleRoutes = {
     path: `${WORKFLOW}/schedules`,
     params: workflow,
     access: {
-      auth: 'session',
+      auth: 'session_or_token',
       capabilities: read(BROWSABLE_WORKSPACE_STATUSES),
     },
     rateLimit: 'authenticated_read',
@@ -116,7 +119,7 @@ export const scheduleRoutes = {
     params: trigger,
     query: scheduleOccurrenceListQuerySchema,
     access: {
-      auth: 'session',
+      auth: 'session_or_token',
       capabilities: read(BROWSABLE_WORKSPACE_STATUSES),
     },
     rateLimit: 'authenticated_read',
@@ -137,7 +140,7 @@ export const scheduleRoutes = {
     params: trigger,
     query: scheduleNextRunsQuerySchema,
     access: {
-      auth: 'session',
+      auth: 'session_or_token',
       capabilities: read(BROWSABLE_WORKSPACE_STATUSES),
     },
     rateLimit: 'authenticated_read',
@@ -155,7 +158,10 @@ export const scheduleRoutes = {
     method: 'post',
     path: `${WORKFLOW}/schedules/preview`,
     params: workflow,
-    access: { auth: 'session', capabilities: read(ACTIVE_WORKSPACE_STATUSES) },
+    access: {
+      auth: 'session_or_token',
+      capabilities: read(ACTIVE_WORKSPACE_STATUSES),
+    },
     rateLimit: 'workflow_compile',
     body: named('SchedulePreviewRequest', schedulePreviewRequestSchema),
     success: {

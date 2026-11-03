@@ -33,7 +33,7 @@ const node = workflow.extend({ nodeId: z.string().min(1).max(64) });
 const testEvent = node.extend({ id: z.uuid() });
 
 const reading: RouteAccess = {
-  auth: 'session',
+  auth: 'session_or_token',
   capabilities: [
     {
       name: 'workflow:read',
@@ -69,17 +69,18 @@ const noSettings = named(
   'WebhookNoSettings',
   z.object({}).strict().default({}),
 );
-const command = <Body extends z.ZodType>(
+const command = <Body extends z.ZodType, const Path extends `/${string}`>(
   operationId: string,
-  path: `/${string}`,
+  path: Path,
   body: NamedSchema<Body>,
+  access: RouteAccess = updating,
 ) =>
   defineRoute({
     operationId,
     method: 'post',
     path,
     params: trigger,
-    access: updating,
+    access,
     rateLimit: 'trigger_mutation',
     idempotent: true,
     body,
@@ -146,6 +147,7 @@ export const webhookRoutes = {
     'provisionWebhookEndpoint',
     `${WEBHOOK}/provision`,
     noSettings,
+    { ...updating, auth: 'session_or_token' },
   ),
   configureAuthentication: command(
     'configureWebhookAuthentication',

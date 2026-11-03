@@ -1,9 +1,11 @@
+import { commandCredential } from '../../authorization/credentials.js';
+import { projectAuthenticatedWorkspaceContext } from '../../workspaces/request/authenticated-context.js';
 import { Controller, Req, UseInterceptors } from '@nestjs/common';
 import {
   webhookRoutes as routes,
   type RouteInput,
 } from '@pertexo/contracts/server';
-import { authenticatedSession } from '../../workspaces/index.js';
+
 import { In, Route } from '../../workspaces/http/route.js';
 import type { IdentityWorkspaceRequest } from '../../workspaces/types.js';
 import { withRequestOperationSignal } from '../../platform/http/index.js';
@@ -27,7 +29,8 @@ export class WebhookManagementController {
   ) {
     return this.service.list({
       ...params,
-      actorId: authenticatedSession(request).userId,
+      actorId: projectAuthenticatedWorkspaceContext(request, params.workspaceId)
+        .actor.actorId,
     });
   }
 
@@ -38,7 +41,8 @@ export class WebhookManagementController {
   ) {
     return this.service.listDeliveries({
       ...params,
-      actorId: authenticatedSession(request).userId,
+      actorId: projectAuthenticatedWorkspaceContext(request, params.workspaceId)
+        .actor.actorId,
       ...(query.limit === undefined ? {} : { limit: query.limit }),
       ...(query.after === undefined ? {} : { after: query.after }),
     });
@@ -90,9 +94,14 @@ function command(
   { params, idempotencyKey }: Pick<Command, 'params' | 'idempotencyKey'>,
   signal: AbortSignal,
 ) {
+  const { actor } = projectAuthenticatedWorkspaceContext(
+    request,
+    params.workspaceId,
+  );
   return {
     ...params,
-    actorId: authenticatedSession(request).userId,
+    actorId: actor.actorId,
+    ...commandCredential(actor),
     idempotencyKey,
     signal,
   };

@@ -187,6 +187,7 @@ type CommandInput = Readonly<{
   workflowId: string;
   triggerId: string;
   idempotencyKey: string;
+  commandCredentialId?: string;
   requestId?: string;
   traceId?: string;
 }>;

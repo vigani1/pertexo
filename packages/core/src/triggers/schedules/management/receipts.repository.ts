@@ -1,3 +1,4 @@
+import { credentialCommandScope } from '@pertexo/database/platform';
 import {
   appendAuditFact,
   claimCommand,
@@ -28,7 +29,10 @@ export function scheduleCommandIdentity(
     idempotencyKey: input.idempotencyKey,
     operation: 'schedule.trigger.setenabled',
     requestHash: input.requestHash,
-    scope: `${input.actorId}:${triggerId}`,
+    scope: credentialCommandScope(
+      `${input.actorId}:${triggerId}`,
+      input.commandCredentialId,
+    ),
     triggerId,
     workflowId: input.workflowId,
   });

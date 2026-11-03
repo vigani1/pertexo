@@ -2,7 +2,7 @@ import type { ApiProblemCode } from '../errors/api-problem.js';
 
 type PublicOperation = Readonly<{
   summary: string;
-  tag: 'Tokens' | 'Workflows' | 'Connections' | 'Runs';
+  tag: 'Tokens' | 'Workflows' | 'Connections' | 'Runs' | 'Triggers';
   scopes: readonly string[];
   /** Beyond what every token route can answer. */
   problems?: readonly ApiProblemCode[];
@@ -128,6 +128,58 @@ export const PUBLIC_OPERATIONS: Readonly<Record<string, PublicOperation>> = {
     tag: 'Workflows',
     scopes: ['workflow:publish'],
     problems: ['request.idempotency_conflict', 'workflow.pause_conflict'],
+  },
+  listWebhookTriggers: {
+    summary: 'List webhook triggers',
+    tag: 'Triggers',
+    scopes: ['workflow:read'],
+  },
+  listWebhookDeliveries: {
+    summary: 'List webhook deliveries',
+    tag: 'Triggers',
+    scopes: ['workflow:read'],
+  },
+  provisionWebhookEndpoint: {
+    summary: 'Provision a webhook endpoint',
+    tag: 'Triggers',
+    scopes: ['workflow:update'],
+    problems: [
+      'request.idempotency_conflict',
+      'workspace.conflict',
+      'webhook.setting_up',
+    ],
+  },
+  listScheduleTriggers: {
+    summary: 'List schedule triggers',
+    tag: 'Triggers',
+    scopes: ['workflow:read'],
+  },
+  listScheduleOccurrences: {
+    summary: 'List schedule occurrences',
+    tag: 'Triggers',
+    scopes: ['workflow:read'],
+  },
+  listScheduleNextRuns: {
+    summary: 'List upcoming schedule fire times',
+    tag: 'Triggers',
+    scopes: ['workflow:read'],
+  },
+  previewScheduleRuns: {
+    summary: 'Preview a schedule rule',
+    tag: 'Triggers',
+    scopes: ['workflow:read'],
+  },
+  enableScheduleTrigger: {
+    summary: 'Enable a schedule trigger',
+    tag: 'Triggers',
+    scopes: ['workflow:update'],
+    problems: ['request.idempotency_conflict'],
+  },
+  disableScheduleTrigger: {
+    summary: 'Disable a schedule trigger',
+    tag: 'Triggers',
+    scopes: ['workflow:update'],
+    problems: ['request.idempotency_conflict'],
   },
   listConnections: {
     summary: 'List connections',

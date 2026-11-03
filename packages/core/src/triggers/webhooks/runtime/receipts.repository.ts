@@ -1,3 +1,4 @@
+import { credentialCommandScope } from '@pertexo/database/platform';
 import { and, eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import {
@@ -24,7 +25,10 @@ function webhookCommand(input: Command, operation: string) {
   return {
     workspaceId: input.workspaceId,
     operation,
-    scope: `${input.actorId}:${input.workflowId}:${input.triggerId}`,
+    scope: credentialCommandScope(
+      `${input.actorId}:${input.workflowId}:${input.triggerId}`,
+      input.commandCredentialId,
+    ),
     idempotencyKey: input.idempotencyKey,
     requestHash: input.requestHash,
     conflict: () => new WebhookTriggerIdempotencyConflictError(),
