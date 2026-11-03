@@ -1,48 +1,30 @@
+import { Controller } from '@nestjs/common';
 import {
-  Body,
-  Controller,
-  Get,
-  Header,
-  HttpCode,
-  Post,
-  Query,
-  Redirect,
-  Req,
-} from '@nestjs/common';
-import { z } from 'zod';
-import { noticeOneClickQuerySchema } from '@pertexo/contracts';
-import type { FastifyRequest } from 'fastify';
-import { firstRequestHeader } from '../../platform/http/request-headers.js';
-import { RateLimit } from '../../platform/rate-limit/metadata.js';
+  notificationPreferenceRoutes as routes,
+  type RouteInput,
+} from '@pertexo/contracts/server';
+import { In, Route } from '../../workspaces/http/route.js';
 import { NoticePreferencesService } from './service.js';
-import { parseRequestInput } from '../../platform/http/request-input.js';
-@Controller('v1/notifications/unsubscribe')
-@RateLimit('notice_unsubscribe')
+
+/** A link in an email, which a mail client may follow signed out: the token is the authority. */
+@Controller()
 export class NoticeUnsubscribeController {
   constructor(private readonly preferences: NoticePreferencesService) {}
-  @Post('one-click')
-  @HttpCode(200)
-  oneClick(@Query() query: unknown) {
-    const { token } = parseRequestInput(noticeOneClickQuerySchema, query);
-    return this.preferences.unsubscribe(token);
+
+  @Route(routes.oneClick)
+  oneClick(@In() { query }: RouteInput<typeof routes.oneClick>) {
+    return this.preferences.unsubscribe(query.token);
   }
-  @Get('one-click')
-  @Redirect(undefined, 303)
-  confirm(@Query() query: unknown) {
-    const { token } = parseRequestInput(noticeOneClickQuerySchema, query);
-    return { url: `/notifications/unsubscribe#${encodeURIComponent(token)}` };
+
+  @Route(routes.confirmOneClick)
+  confirm(@In() { query }: RouteInput<typeof routes.confirmOneClick>) {
+    return {
+      url: `/notifications/unsubscribe#${encodeURIComponent(query.token)}`,
+    };
   }
-  @Post()
-  @HttpCode(200)
-  @Header('Cache-Control', 'no-store')
-  @Header('Referrer-Policy', 'no-referrer')
-  unsubscribe(@Req() request: FastifyRequest, @Body() body: unknown) {
-    z.object({}).strict().parse(body);
-    const token = z
-      .string()
-      .min(1)
-      .max(4096)
-      .parse(firstRequestHeader(request.headers, 'x-pertexo-unsubscribe-key'));
-    return this.preferences.unsubscribe(token);
+
+  @Route(routes.unsubscribe)
+  unsubscribe(@In() { headers }: RouteInput<typeof routes.unsubscribe>) {
+    return this.preferences.unsubscribe(headers['x-pertexo-unsubscribe-key']);
   }
 }

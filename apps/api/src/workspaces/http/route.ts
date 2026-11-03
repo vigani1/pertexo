@@ -8,6 +8,7 @@ import {
   Patch,
   Post,
   Put,
+  Redirect,
   SetMetadata,
   UseGuards,
   UseInterceptors,
@@ -23,6 +24,7 @@ import type { z } from 'zod';
 
 import { requestIdempotencyKey } from '../../platform/http/idempotency-key.js';
 import { parseRequestInput } from '../../platform/http/request-input.js';
+import { firstRequestHeader } from '../../platform/http/request-headers.js';
 import { RateLimit } from '../../platform/rate-limit/metadata.js';
 import { AutomationAuthenticationGuard } from '../../authentication/automation/guard.js';
 import { WORKSPACE_AUTHORIZATION } from '../tokens.js';
@@ -59,6 +61,12 @@ export function Route(route: AnyRoute): MethodDecorator {
     ...(route.cacheControl === undefined
       ? []
       : [Header('Cache-Control', route.cacheControl)]),
+    ...Object.entries(route.responseHeaders ?? {}).map(([name, value]) =>
+      Header(name, value),
+    ),
+    ...('redirect' in route.success && route.success.redirect
+      ? [Redirect(undefined, route.success.status)]
+      : []),
   );
 }
 
@@ -75,6 +83,7 @@ type RouteInputValues = Readonly<{
   query: unknown;
   body: unknown;
   idempotencyKey: string | undefined;
+  headers: unknown;
 }>;
 
 type RouteInputSource = IdentityWorkspaceRequest &
@@ -94,7 +103,17 @@ function parseInputs(route: AnyRoute, request: RouteInputSource) {
       route.idempotent === true
         ? requestIdempotencyKey(request.headers ?? {})
         : undefined,
+    headers: parseDeclared(route.headers, declaredHeaders(route, request)),
   };
+}
+
+function declaredHeaders(route: AnyRoute, request: RouteInputSource) {
+  return Object.fromEntries(
+    Object.keys(route.headers?.shape ?? {}).map((name) => [
+      name,
+      firstRequestHeader(request.headers ?? {}, name),
+    ]),
+  );
 }
 
 function parseDeclared(schema: z.ZodType | undefined, value: unknown): unknown {

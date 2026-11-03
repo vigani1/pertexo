@@ -95,6 +95,7 @@ function parameters(route: AnyRoute) {
     ...csrfParameter(route),
     ...(route.idempotent === true ? [idempotencyHeaderParameter()] : []),
     ...queryParameters(route),
+    ...headerParameters(route),
   ];
   return all.length === 0 ? {} : { parameters: all };
 }
@@ -114,7 +115,7 @@ function tokenScopes(access: RouteAccess) {
 }
 
 function security(access: RouteAccess) {
-  if (access.auth === 'public') return {};
+  if (access.auth === 'public') return { security: [] };
   return access.auth === 'session'
     ? { security: [{ cookieSession: [] }] }
     : { security: automationSecurity };
@@ -143,6 +144,16 @@ function queryParameters({ query }: AnyRoute) {
       required: !(schema as z.ZodType).safeParse(undefined).success,
     }),
   );
+}
+
+function headerParameters({ headers }: AnyRoute) {
+  if (headers === undefined) return [];
+  return Object.entries(headers.shape).map(([name, schema]) => ({
+    in: 'header',
+    name,
+    required: !(schema as z.ZodType).safeParse(undefined).success,
+    schema: jsonSchema(schema as z.ZodType, 'input'),
+  }));
 }
 
 function requiredShapeField(

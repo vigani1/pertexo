@@ -3,60 +3,21 @@ import {
   notificationPreferenceSchemas,
 } from './notification-preferences.js';
 import { apiProblemSchema } from '../../errors/api-problem.js';
-import {
-  workspaceInboxCursorSchema,
-  workspaceNoticeKindSchema,
-  workspaceInboxFilterSchema,
-  workspaceInboxLimitSchema,
-  workspaceInboxListResponseSchema,
-  workspaceInboxReadAllRequestSchema,
-  workspaceInboxReadAllResponseSchema,
-  workspaceInboxReadRequestSchema,
-  workspaceInboxReadResponseSchema,
-  workspaceInboxStreamEventSchema,
-  workspaceInboxSummaryResponseSchema,
-} from '../../schemas/identity/inbox.js';
+import { workspaceInboxStreamEventSchema } from '../../schemas/identity/inbox.js';
+import { inboxRoutes } from '../../routes/identity/inbox.js';
+import { routePaths, routeSchemas } from '../../routes/openapi.js';
 import {
   authenticatedComponents,
-  csrfHeaderParameter,
-  jsonRequest,
-  jsonResponse,
   jsonSchema,
   problemResponse,
-  queryParameter,
-  responseReference,
-  simpleUuidPathParameter,
 } from '../primitives.js';
 
-const workspace = simpleUuidPathParameter('workspaceId');
-const security = [{ cookieSession: [] }] as const;
+const routes = Object.values(inboxRoutes);
 const schemas = Object.freeze({
   ...notificationPreferenceSchemas,
   ApiProblem: jsonSchema(apiProblemSchema, 'output'),
-  WorkspaceInboxListResponse: jsonSchema(
-    workspaceInboxListResponseSchema,
-    'output',
-  ),
-  WorkspaceInboxSummaryResponse: jsonSchema(
-    workspaceInboxSummaryResponseSchema,
-    'output',
-  ),
-  WorkspaceInboxReadRequest: jsonSchema(
-    workspaceInboxReadRequestSchema,
-    'input',
-  ),
-  WorkspaceInboxReadResponse: jsonSchema(
-    workspaceInboxReadResponseSchema,
-    'output',
-  ),
-  WorkspaceInboxReadAllRequest: jsonSchema(
-    workspaceInboxReadAllRequestSchema,
-    'input',
-  ),
-  WorkspaceInboxReadAllResponse: jsonSchema(
-    workspaceInboxReadAllResponseSchema,
-    'output',
-  ),
+  ...routeSchemas(routes),
+  // The hint stream's frames, which the stream's document names.
   WorkspaceInboxStreamEvent: jsonSchema(
     workspaceInboxStreamEventSchema,
     'output',
@@ -70,17 +31,6 @@ const responses = Object.freeze({
   RateLimited: problemResponse('Rate limited'),
   Unexpected: problemResponse('Unexpected server error'),
 });
-const readProblems = {
-  '400': responseReference('BadRequest'),
-  '401': responseReference('Unauthenticated'),
-  '404': responseReference('NotFound'),
-  '429': responseReference('RateLimited'),
-  '500': responseReference('Unexpected'),
-} as const;
-const commandProblems = {
-  ...readProblems,
-  '403': responseReference('Forbidden'),
-} as const;
 
 /** ADR 055: failure threads read on demand, with private read state. */
 export const workspaceInboxOpenApiDocument = Object.freeze({
@@ -89,94 +39,6 @@ export const workspaceInboxOpenApiDocument = Object.freeze({
   components: authenticatedComponents(schemas, responses),
   paths: {
     ...notificationPreferencePaths,
-    '/v1/workspaces/{workspaceId}/notifications': {
-      get: {
-        operationId: 'listWorkspaceInbox',
-        security,
-        parameters: [
-          workspace,
-          queryParameter('filter', workspaceInboxFilterSchema),
-          queryParameter('noticeKind', workspaceNoticeKindSchema),
-          queryParameter('limit', workspaceInboxLimitSchema),
-          queryParameter('after', workspaceInboxCursorSchema),
-        ],
-        responses: {
-          '200': jsonResponse(
-            'Failing workflows, newest failure first',
-            'WorkspaceInboxListResponse',
-          ),
-          ...readProblems,
-        },
-      },
-    },
-    '/v1/workspaces/{workspaceId}/notifications/summary': {
-      get: {
-        operationId: 'getWorkspaceInboxSummary',
-        security,
-        parameters: [workspace],
-        responses: {
-          '200': jsonResponse(
-            'Unread thread count',
-            'WorkspaceInboxSummaryResponse',
-          ),
-          ...readProblems,
-        },
-      },
-    },
-    '/v1/workspaces/{workspaceId}/notifications/{threadId}/read': {
-      post: {
-        operationId: 'markWorkspaceInboxThreadRead',
-        security,
-        parameters: [
-          workspace,
-          simpleUuidPathParameter('threadId'),
-          csrfHeaderParameter('X-CSRF-Token'),
-        ],
-        requestBody: jsonRequest('WorkspaceInboxReadRequest'),
-        responses: {
-          '200': jsonResponse(
-            'Monotonic, private read of the seen revision',
-            'WorkspaceInboxReadResponse',
-          ),
-          ...commandProblems,
-        },
-      },
-    },
-    '/v1/workspaces/{workspaceId}/notifications/read-all': {
-      post: {
-        operationId: 'markWorkspaceInboxRead',
-        security,
-        parameters: [workspace, csrfHeaderParameter('X-CSRF-Token')],
-        requestBody: jsonRequest('WorkspaceInboxReadAllRequest'),
-        responses: {
-          '200': jsonResponse(
-            'Threads at or below the seen revision are read',
-            'WorkspaceInboxReadAllResponse',
-          ),
-          ...commandProblems,
-        },
-      },
-    },
-    '/v1/workspaces/{workspaceId}/notifications/events': {
-      get: {
-        operationId: 'streamWorkspaceInboxHints',
-        security,
-        parameters: [workspace],
-        responses: {
-          '200': {
-            description:
-              'Server-sent `inbox.ready` and `inbox.changed` hints whose data is a WorkspaceInboxStreamEvent',
-            content: {
-              'text/event-stream': {
-                schema: {
-                  $ref: '#/components/schemas/WorkspaceInboxStreamEvent',
-                },
-              },
-            },
-          },
-          ...readProblems,
-        },
-      },
-    },
+    ...routePaths(routes),
   },
 });

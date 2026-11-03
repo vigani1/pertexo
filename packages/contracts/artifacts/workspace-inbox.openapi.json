@@ -190,6 +190,29 @@
         ],
         "additionalProperties": false
       },
+      "NoticeCommandResponse": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "revision": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 2147483646
+          },
+          "changed": {
+            "type": "boolean"
+          },
+          "replayed": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "revision",
+          "changed",
+          "replayed"
+        ],
+        "additionalProperties": false
+      },
       "NoticeDefaultsRequest": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "type": "object",
@@ -275,29 +298,6 @@
         ],
         "additionalProperties": false
       },
-      "NoticeCommandResponse": {
-        "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "type": "object",
-        "properties": {
-          "revision": {
-            "type": "integer",
-            "minimum": 0,
-            "maximum": 2147483646
-          },
-          "changed": {
-            "type": "boolean"
-          },
-          "replayed": {
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "revision",
-          "changed",
-          "replayed"
-        ],
-        "additionalProperties": false
-      },
       "NoticeUnsubscribeResponse": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "type": "object",
@@ -310,6 +310,12 @@
         "required": [
           "unsubscribed"
         ],
+        "additionalProperties": false
+      },
+      "NoticeUnsubscribeRequest": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {},
         "additionalProperties": false
       },
       "ApiProblem": {
@@ -1528,10 +1534,11 @@
             }
           },
           {
-            "in": "path",
             "name": "subjectKind",
+            "in": "path",
             "required": true,
             "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
               "enum": [
                 "workflow",
@@ -1654,6 +1661,30 @@
             }
           },
           {
+            "name": "subjectKind",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "enum": [
+                "workflow",
+                "connection"
+              ]
+            }
+          },
+          {
+            "name": "subjectId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
             "name": "x-csrf-token",
             "in": "header",
             "required": true,
@@ -1674,29 +1705,6 @@
               "minLength": 1,
               "maxLength": 128,
               "pattern": "^[\\x21-\\x2b\\x2d-\\x7e]+$"
-            }
-          },
-          {
-            "in": "path",
-            "name": "subjectKind",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "enum": [
-                "workflow",
-                "connection"
-              ]
-            }
-          },
-          {
-            "name": "subjectId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "$schema": "https://json-schema.org/draft/2020-12/schema",
-              "type": "string",
-              "format": "uuid",
-              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
             }
           }
         ],
@@ -1801,8 +1809,8 @@
         "security": [],
         "parameters": [
           {
-            "in": "query",
             "name": "token",
+            "in": "query",
             "required": true,
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -1863,8 +1871,8 @@
         "security": [],
         "parameters": [
           {
-            "in": "query",
             "name": "token",
+            "in": "query",
             "required": true,
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -1969,9 +1977,10 @@
         "parameters": [
           {
             "in": "header",
-            "name": "X-Pertexo-Unsubscribe-Key",
+            "name": "x-pertexo-unsubscribe-key",
             "required": true,
             "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
               "minLength": 1,
               "maxLength": 4096
@@ -1983,8 +1992,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object",
-                "additionalProperties": false
+                "$ref": "#/components/schemas/NoticeUnsubscribeRequest"
               }
             }
           }
@@ -2087,8 +2095,10 @@
             "in": "path",
             "required": true,
             "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
-              "format": "uuid"
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
             }
           },
           {
@@ -2190,8 +2200,10 @@
             "in": "path",
             "required": true,
             "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
-              "format": "uuid"
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
             }
           }
         ],
@@ -2238,8 +2250,10 @@
             "in": "path",
             "required": true,
             "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
-              "format": "uuid"
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
             }
           },
           {
@@ -2247,12 +2261,14 @@
             "in": "path",
             "required": true,
             "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
-              "format": "uuid"
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
             }
           },
           {
-            "name": "X-CSRF-Token",
+            "name": "x-csrf-token",
             "in": "header",
             "required": true,
             "schema": {
@@ -2319,12 +2335,14 @@
             "in": "path",
             "required": true,
             "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
-              "format": "uuid"
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
             }
           },
           {
-            "name": "X-CSRF-Token",
+            "name": "x-csrf-token",
             "in": "header",
             "required": true,
             "schema": {
@@ -2391,8 +2409,10 @@
             "in": "path",
             "required": true,
             "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
-              "format": "uuid"
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
             }
           }
         ],

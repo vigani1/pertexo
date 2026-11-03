@@ -1,33 +1,20 @@
 import {
-  Body,
   Controller,
-  Get,
-  HttpCode,
   Inject,
   Optional,
-  Param,
-  Post,
-  Query,
   Req,
   Res,
-  UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
 import {
-  workspaceInboxListQuerySchema,
-  workspaceInboxReadAllRequestSchema,
-  workspaceInboxReadRequestSchema,
-  workspaceInboxThreadParamsSchema,
-} from '@pertexo/contracts';
+  inboxRoutes as routes,
+  type RouteInput,
+} from '@pertexo/contracts/server';
 import type { FastifyReply } from 'fastify';
-import { z } from 'zod';
 
 import { projectAuthenticatedWorkspaceContext } from '../workspaces/request/authenticated-context.js';
-import {
-  CsrfProtectionGuard,
-  SessionAuthenticationGuard,
-  authenticatedSession,
-} from '../workspaces/index.js';
+import { authenticatedSession } from '../workspaces/index.js';
+import { In, Route } from '../workspaces/http/route.js';
 import type { WorkspaceAuthorizationSource } from '../workspaces/ports.js';
 import type { IdentityWorkspaceRequest } from '../workspaces/types.js';
 import { ApiDrainState } from '../platform/health/drain-state.js';
@@ -36,11 +23,9 @@ import {
   throwApplicationError,
 } from '../platform/http/index.js';
 import { prepareSseResponse } from '../platform/http/sse-response.js';
-import { RateLimit } from '../platform/rate-limit/metadata.js';
 import { BROWSABLE_WORKSPACE_STATUSES } from '../authorization/index.js';
 import { createStreamAuthorizationLifetime } from '../workflow-runs/events/sse-authorization-lifetime.js';
 
-import { NotificationChangeGuard, NotificationReadGuard } from './guards.js';
 import { writeInboxHintStream } from './hint-stream.js';
 import type {
   InboxHintSource,
@@ -50,12 +35,6 @@ import { WorkspaceInboxService } from './service.js';
 import { INBOX_HINT_SOURCE, NOTIFICATION_AUTHORIZATION } from './tokens.js';
 import { domainErrors } from '../platform/http/problems/interceptor.js';
 import { inboxFailure } from '../problems/context/normalize.js';
-import { parseRequestInput } from '../platform/http/request-input.js';
-
-const workspaceRouteSchema = z
-  .object({ workspaceId: z.uuid() })
-  .strict()
-  .readonly();
 
 /** Maximum time an open stream may rely on a previously verified access fact. */
 const STREAM_REAUTHORIZATION_INTERVAL_MS = 5_000;
@@ -70,8 +49,7 @@ type NotificationsRequest = IdentityWorkspaceRequest &
 
 /** ADR 055: a reader's failure threads, private read state and live hints. */
 @UseInterceptors(domainErrors(inboxFailure))
-@Controller('v1/workspaces/:workspaceId/notifications')
-@RateLimit('authenticated_read')
+@Controller()
 export class NotificationsController {
   public constructor(
     private readonly service: WorkspaceInboxService,
@@ -82,17 +60,13 @@ export class NotificationsController {
     private readonly drainState: ApiDrainState = new ApiDrainState(),
   ) {}
 
-  @Get()
-  @UseGuards(SessionAuthenticationGuard, NotificationReadGuard)
+  @Route(routes.list)
   public async list(
     @Req() request: NotificationsRequest,
-    @Param() params: unknown,
-    @Query() query: unknown,
+    @In() { params, query: input }: RouteInput<typeof routes.list>,
   ) {
-    const { workspaceId } = workspaceRouteSchema.parse(params);
-    const input = parseRequestInput(workspaceInboxListQuerySchema, query ?? {});
     return this.service.list({
-      workspaceId,
+      workspaceId: params.workspaceId,
       actorId: authenticatedSession(request).userId,
       ...(input.filter === undefined ? {} : { filter: input.filter }),
       ...(input.noticeKind === undefined
@@ -103,75 +77,46 @@ export class NotificationsController {
     });
   }
 
-  @Get('summary')
-  @UseGuards(SessionAuthenticationGuard, NotificationReadGuard)
+  @Route(routes.summary)
   public async summary(
     @Req() request: NotificationsRequest,
-    @Param() params: unknown,
+    @In() { params }: RouteInput<typeof routes.summary>,
   ) {
-    const { workspaceId } = workspaceRouteSchema.parse(params);
     return this.service.summary({
-      workspaceId,
+      workspaceId: params.workspaceId,
       actorId: authenticatedSession(request).userId,
     });
   }
 
-  @Post('read-all')
-  @HttpCode(200)
-  @RateLimit('ordinary_mutation')
-  @UseGuards(
-    SessionAuthenticationGuard,
-    NotificationChangeGuard,
-    CsrfProtectionGuard,
-  )
+  @Route(routes.readAll)
   public async readAll(
     @Req() request: NotificationsRequest,
-    @Param() params: unknown,
-    @Body() body: unknown,
+    @In() { params, body }: RouteInput<typeof routes.readAll>,
   ) {
-    const { workspaceId } = workspaceRouteSchema.parse(params);
-    const { revision } = parseRequestInput(
-      workspaceInboxReadAllRequestSchema,
-      body,
-    );
     return this.service.markAllRead({
-      workspaceId,
+      workspaceId: params.workspaceId,
       actorId: authenticatedSession(request).userId,
-      revision,
+      revision: body.revision,
     });
   }
 
-  @Post(':threadId/read')
-  @HttpCode(200)
-  @RateLimit('ordinary_mutation')
-  @UseGuards(
-    SessionAuthenticationGuard,
-    NotificationChangeGuard,
-    CsrfProtectionGuard,
-  )
+  @Route(routes.read)
   public async read(
     @Req() request: NotificationsRequest,
-    @Param() params: unknown,
-    @Body() body: unknown,
+    @In() { params, body }: RouteInput<typeof routes.read>,
   ) {
-    const route = workspaceInboxThreadParamsSchema.parse(params);
-    const { revision } = parseRequestInput(
-      workspaceInboxReadRequestSchema,
-      body,
-    );
     return this.service.markRead({
-      workspaceId: route.workspaceId,
+      workspaceId: params.workspaceId,
       actorId: authenticatedSession(request).userId,
-      threadId: route.threadId,
-      revision,
+      threadId: params.threadId,
+      revision: body.revision,
     });
   }
 
-  @Get('events')
-  @UseGuards(SessionAuthenticationGuard, NotificationReadGuard)
+  @Route(routes.events)
   public async events(
     @Req() request: NotificationsRequest,
-    @Param() params: unknown,
+    @In() { params }: RouteInput<typeof routes.events>,
     @Res() reply: FastifyReply,
   ): Promise<void> {
     const controller = new AbortController();
@@ -185,7 +130,7 @@ export class NotificationsController {
     let lifetime:
       ReturnType<typeof createStreamAuthorizationLifetime> | undefined;
     try {
-      const { workspaceId } = workspaceRouteSchema.parse(params);
+      const { workspaceId } = params;
       subscription = await this.hints.subscribe(workspaceId);
       lifetime = createStreamAuthorizationLifetime(
         {

@@ -178,7 +178,7 @@ describe('workspace inbox thread contracts (ADR 055)', () => {
       expect(command.security).toEqual([{ cookieSession: [] }]);
       expect(command.parameters).toContainEqual(
         expect.objectContaining({
-          name: 'X-CSRF-Token',
+          name: 'x-csrf-token',
           in: 'header',
           required: true,
         }),
