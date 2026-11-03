@@ -11,7 +11,7 @@ import {
   asOwner,
   insertReplacement,
 } from './transient-data-retention/fixture.js';
-import { createRetentionStore } from '../../src/lifecycle/retention/store.js';
+import { createRetentionStore } from '../../src/lifecycle/retention/retention.store.js';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
 
 describe('transient data retention', () => {

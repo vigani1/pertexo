@@ -22,8 +22,8 @@ import type {
   WorkspaceRecord,
   WorkspaceWithOwnerInput,
 } from './tenant-access.types.js';
-import { createIdentityWorkspaceInvitationAcceptanceStore } from './invitations/acceptance/store.js';
-import { createIdentityWorkspaceInvitationStore } from './invitations/store.js';
+import { createIdentityWorkspaceInvitationAcceptanceStore } from './invitations/acceptance/identity-workspace-invitation-acceptance.store.js';
+import { createIdentityWorkspaceInvitationStore } from './invitations/identity-workspace-invitation.store.js';
 import { createIdentityWorkspaceMembershipLifecycleStore } from './members/lifecycle.repository.js';
 import { createMemberships } from './members/records.repository.js';
 import { createIdentityWorkspaceMemberRemovalStore } from './members/removal.repository.js';
@@ -34,7 +34,7 @@ import {
   throwWorkspaceLifecycleError,
 } from './conflicts.js';
 import { createIdentityWorkspaceProfileStore } from './users/profile.repository.js';
-import { createUserStore } from './users/store.js';
+import { createUserStore } from './users/user.store.js';
 import {
   claimWorkspaceCreationCommand,
   commandKeyHash,

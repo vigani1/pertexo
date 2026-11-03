@@ -10,7 +10,7 @@ import {
   createCheckpoint,
   type WorkflowTransitionPlan,
 } from '@pertexo/workflow-engine';
-import { createErrorWorkflowStore } from '../../../../src/runs/error-workflows/store.js';
+import { createErrorWorkflowStore } from '../../../../src/runs/error-workflows/error-workflow.store.js';
 import { persistErrorWorkflowIntent } from '../../../../src/runs/error-workflows/produce.repository.js';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
 import { admin, createFamily } from '../../../lifecycle/calls/fixtures.js';

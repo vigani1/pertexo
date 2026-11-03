@@ -20,7 +20,7 @@ import { UnfinishedEditDialog } from './chrome/editor-dialogs';
 import type { EditorChrome } from './editor-workspace';
 import type { useEditorActions } from '../hooks/use-editor-actions';
 
-import type { EditorStore } from '../model/state/store';
+import type { EditorStore } from '../model/state/workflow-editor.store';
 
 type SessionCommandBarProps = Readonly<{
   header: Readonly<{

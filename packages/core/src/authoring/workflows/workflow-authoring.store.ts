@@ -5,19 +5,19 @@ import {
   withTenantScopedClient,
   type WorkspaceScopeRunner,
 } from '@pertexo/database/primitives';
-import { createPreviewRunStore } from '../../previews/runs/store.js';
-import { createWorkflowTestSuiteStore } from '../../previews/suites/store.js';
-import { createWorkflowTestStore } from '../../previews/workflows/store.js';
-import { createWorkflowCollaborationStore } from '../collaboration/store.js';
-import { createWorkflowPortabilityStore } from '../portability/store.js';
+import { createPreviewRunStore } from '../../previews/runs/preview-run.store.js';
+import { createWorkflowTestSuiteStore } from '../../previews/suites/workflow-test-suite.store.js';
+import { createWorkflowTestStore } from '../../previews/workflows/workflow-test.store.js';
+import { createWorkflowCollaborationStore } from '../collaboration/workflow-collaboration.store.js';
+import { createWorkflowPortabilityStore } from '../portability/workflow-portability.store.js';
 import { readWorkflowWithTemplateOrigin } from '../portability/template-origin.repository.js';
-import { createWorkflowPromotionStore } from '../promotion/store.js';
+import { createWorkflowPromotionStore } from '../promotion/workflow-promotion.store.js';
 import { publishWorkflow } from '../publication/publish.js';
-import { createPublicationReviewStore } from '../reviews/store.js';
-import { createWorkflowAutoPauseStore } from '../settings/auto-pause/store.js';
-import { createWorkflowConcurrencyStore } from '../settings/concurrency/store.js';
-import { createWorkflowErrorStore } from '../settings/error-workflow/store.js';
-import { createWorkflowStepSampleStore } from '../step-samples/store.js';
+import { createPublicationReviewStore } from '../reviews/publication-review.store.js';
+import { createWorkflowAutoPauseStore } from '../settings/auto-pause/workflow-auto-pause.store.js';
+import { createWorkflowConcurrencyStore } from '../settings/concurrency/workflow-concurrency.store.js';
+import { createWorkflowErrorStore } from '../settings/error-workflow/workflow-error.store.js';
+import { createWorkflowStepSampleStore } from '../step-samples/workflow-step-sample.store.js';
 import { createAuthoringAccess } from './access.js';
 import { authoringCatalogs } from './catalogs.js';
 import { createWorkflow } from './commands/create.js';

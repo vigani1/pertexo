@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import { createEditorStore } from './store';
+import { createEditorStore } from './workflow-editor.store';
 import { EditorStoreContext, EditorSessionContext } from './context';
 import type { EditorSession } from './session';
 

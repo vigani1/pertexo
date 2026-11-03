@@ -30,7 +30,7 @@ import {
 } from './concurrency-admission.fixtures.js';
 import { readWorkflowRunReadRecord } from '../../../src/runs/commands/records.repository.js';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
-import { createWorkflowRunDatabase } from '../../../src/runs/store.js';
+import { createWorkflowRunDatabase } from '../../../src/runs/workflow-run.store.js';
 import { Pool } from 'pg';
 import { withTenantScopedReadClient } from '@pertexo/database/primitives';
 import { readCapacitySnapshot } from '../../../src/runs/queries/usage/capacity.repository.js';

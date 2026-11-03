@@ -7,7 +7,7 @@ import { createSaveCoordinator } from '@/features/workflow-editor/model/persiste
 import {
   createEditorStore,
   shownConflict,
-} from '@/features/workflow-editor/model/state/store';
+} from '@/features/workflow-editor/model/state/workflow-editor.store';
 import { bareSetDefinition as definition } from '../../../support/fixtures/workflow-editor';
 
 const startEtag = `"draft.${'a'.repeat(43)}"`;

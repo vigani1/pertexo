@@ -10,15 +10,15 @@ import {
   migrateDatabase,
   createDisposableDatabaseFixture,
 } from '@pertexo/database/testing';
-import { createIdentityWorkspaceStore } from '../../../src/tenant-access/store.js';
+import { createIdentityWorkspaceStore } from '../../../src/tenant-access/identity-workspace.store.js';
 import { createWorkflowAuthoringFixtureDatabase } from '../../support/workflow-authoring-admission.fixture.js';
-import { createWorkflowTagStore } from '../../../src/authoring/organization/tags/store.js';
+import { createWorkflowTagStore } from '../../../src/authoring/organization/tags/workflow-tag.store.js';
 import {
   createWorkflowFolderStore,
   createWorkflowOrganizationBatchStore,
 } from '../../../src/authoring/index.js';
-import { createWorkflowOrganizationReadStore } from '../../../src/authoring/organization/workflows/store.js';
-import { createWorkflowFavoriteStore } from '../../../src/authoring/organization/favorites/store.js';
+import { createWorkflowOrganizationReadStore } from '../../../src/authoring/organization/workflows/workflow-organization-read.store.js';
+import { createWorkflowFavoriteStore } from '../../../src/authoring/organization/favorites/workflow-favorite.store.js';
 
 const roles = {
   DATABASE_ADMIN_URL: 'postgres',

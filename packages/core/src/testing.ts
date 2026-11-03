@@ -4,7 +4,7 @@ export { testExecutableCompiler } from './authoring/test-executable-compiler.js'
 export {
   createWorkflowAuthoringStore,
   type WorkflowAuthoringStore,
-} from './authoring/workflows/store.js';
+} from './authoring/workflows/workflow-authoring.store.js';
 export { WorkflowDefinitionPlacementError } from './authoring/workflows/errors.js';
 export { reconcileWorkflowTriggersPayload } from './authoring/publication/trigger-reconciliation.repository.js';
 export {
@@ -34,7 +34,7 @@ export type {
 export {
   createWorkflowAutoPauseStore,
   type WorkflowAutoPauseStore,
-} from './authoring/settings/auto-pause/store.js';
+} from './authoring/settings/auto-pause/workflow-auto-pause.store.js';
 export type {
   WorkflowAutoPauseSettings,
   WorkspaceAutoPauseSettings,
@@ -53,16 +53,16 @@ export {
   UnknownOutcomeReconciliationStateError,
   type UnknownOutcomeReconciliationResult,
 } from './outbox/reconcile-unknown-outcome.js';
-export { createNotificationDestinationStore } from './notifications/destinations/store.js';
+export { createNotificationDestinationStore } from './notifications/destinations/notification-destination.store.js';
 export { FailureNotificationDestinationError } from './notifications/destinations/errors.js';
 export { type FailureNotificationDestinationRecord } from './notifications/destinations/notification-destination.types.js';
-export type { NotificationDestinationStore } from './notifications/destinations/store.js';
+export type { NotificationDestinationStore } from './notifications/destinations/notification-destination.store.js';
 export { createDueNodeWakeupScanner } from './runs/wakeups/scanners.js';
 export type { WakeupScanner } from './runs/wakeups/scanners.js';
 export {
   createFailureNotificationStore,
   type FailureNotificationStore,
-} from './notifications/store.js';
+} from './notifications/failure-notification.store.js';
 export { FailureNotificationStateError } from './notifications/errors.js';
 export type {
   FailureNotificationClaimResult,
@@ -100,7 +100,7 @@ export {
 export {
   createArtifactUploadStore,
   type ArtifactUploadStore,
-} from './artifacts/uploads/store.js';
+} from './artifacts/uploads/artifact-upload.store.js';
 export type {
   ArtifactUploadActor,
   ArtifactUploadAuthorization,
@@ -135,7 +135,7 @@ export {
   WorkspaceRunAdmissionDeniedError,
   WorkspaceRunQuotaExceededError,
 } from './runs/commands/acceptance/errors.js';
-export { createPreviewRunStore } from './previews/runs/store.js';
+export { createPreviewRunStore } from './previews/runs/preview-run.store.js';
 export { claimPreviewDelivery } from './previews/attempts/claim.js';
 export { markPreviewDispatched } from './previews/attempts/mark-dispatched.js';
 export { heartbeatPreviewLease } from './previews/attempts/heartbeat.js';
@@ -200,7 +200,7 @@ export type {
   PublishedWorkflow,
   ReadPublishedWorkflowForExecutionInput,
 } from './runs/queries/execution/workflow-execution.types.js';
-export { createOutboxDispatcherDatabase } from './outbox/dispatcher/store.js';
+export { createOutboxDispatcherDatabase } from './outbox/dispatcher/outbox-dispatcher.store.js';
 export type {
   ClaimOutboxBatchInput,
   ClaimOutboxBatchResult,
@@ -224,7 +224,7 @@ export type {
 export { isValidStoredExecutionOutput } from './previews/output.js';
 export { PREVIEW_RETENTION_MAX_MS } from './previews/runs/acceptance/limits.js';
 export { PREVIEW_STATUS } from './previews/state.js';
-export { createNodeAttemptRunStore } from './attempts/store.js';
+export { createNodeAttemptRunStore } from './attempts/node-attempt-run.store.js';
 export {
   NodeAttemptConnectionFenceError,
   NodeAttemptDeliveryMismatchError,
@@ -252,7 +252,7 @@ export type {
   CancelWorkflowRunInput,
   StartPublishedWorkflowRunInput,
 } from './runs/commands/run-commands.types.js';
-export type { WorkflowRunDatabase } from './runs/store.js';
+export type { WorkflowRunDatabase } from './runs/workflow-run.store.js';
 export type {
   GetWorkflowRunInput,
   WorkflowNodeRunRecord as ApiWorkflowNodeRunRecord,
@@ -271,7 +271,7 @@ export type {
   CoordinatorAdvanceDelivery,
   RunAdvanceResult,
 } from './runs/advance/run-advance.types.js';
-export { createRunAdvanceStore } from './runs/advance/store.js';
-export type { RunAdvanceStore } from './runs/advance/store.js';
+export { createRunAdvanceStore } from './runs/advance/run-advance.store.js';
+export type { RunAdvanceStore } from './runs/advance/run-advance.store.js';
 export { acceptWorkflowRun } from './runs/commands/acceptance/accept.js';
-export { createWorkflowRunDatabase } from './runs/store.js';
+export { createWorkflowRunDatabase } from './runs/workflow-run.store.js';

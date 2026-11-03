@@ -6,7 +6,7 @@ import type { WorkflowNote } from '@pertexo/workflow-model';
 import { CanvasNote } from '@/features/workflow-editor/components/canvas/notes/card';
 import type { NoteFlowNode } from '@/features/workflow-editor/components/canvas/notes/types';
 import { EditorStoreContext } from '@/features/workflow-editor/model/state/context';
-import { createEditorStore } from '@/features/workflow-editor/model/state/store';
+import { createEditorStore } from '@/features/workflow-editor/model/state/workflow-editor.store';
 
 vi.mock('@xyflow/react', () => ({ NodeResizer: () => null }));
 

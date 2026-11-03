@@ -8,7 +8,7 @@ import type {
 import type { CoordinatorAdvanceDelivery } from '../../src/runs/advance/run-advance.types.js';
 import type { RunTransitionPlan } from '../../src/runs/advance/plan.js';
 import { loadRunForAdvance } from '../../src/runs/advance/load/state.repository.js';
-import { createRunAdvanceStore } from '../../src/runs/advance/store.js';
+import { createRunAdvanceStore } from '../../src/runs/advance/run-advance.store.js';
 
 type AdvanceInput = Readonly<{
   delivery: CoordinatorAdvanceDelivery;

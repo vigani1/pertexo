@@ -1,7 +1,7 @@
 export {
   createWorkflowFolderStore,
   type WorkflowFolderStore,
-} from './organization/folders/store.js';
+} from './organization/folders/workflow-folder.store.js';
 export { WorkflowFolderConflictError } from './organization/errors.js';
 export type {
   WorkflowFolderCommandResult,
@@ -10,25 +10,25 @@ export type {
   WorkflowFolderRecord,
 } from './organization/folders/workflow-folder.types.js';
 export type { WorkflowFolderConflictKind } from './organization/errors.js';
-export { createWorkflowOrganizationBatchStore } from './organization/batches/store.js';
+export { createWorkflowOrganizationBatchStore } from './organization/batches/workflow-organization-batch.store.js';
 export type {
   WorkflowOrganizationBatchStore,
   WorkflowOrganizationBatchInput,
   WorkflowOrganizationBatchItem,
   WorkflowOrganizationBatchItemResult,
   WorkflowOrganizationBatchRequest,
-} from './organization/batches/store.js';
-export { createWorkflowOrganizationReadStore } from './organization/workflows/store.js';
+} from './organization/batches/workflow-organization-batch.store.js';
+export { createWorkflowOrganizationReadStore } from './organization/workflows/workflow-organization-read.store.js';
 export type {
   WorkflowOrganizationFilters,
   WorkflowOrganizationMetadata,
   WorkflowOrganizationReadStore,
   WorkflowWithOrganization,
-} from './organization/workflows/store.js';
+} from './organization/workflows/workflow-organization-read.store.js';
 export {
   createWorkflowTagStore,
   type WorkflowTagStore,
-} from './organization/tags/store.js';
+} from './organization/tags/workflow-tag.store.js';
 export { WorkflowTagConflictError } from './organization/errors.js';
 export type {
   WorkflowTagAssignment,
@@ -39,18 +39,18 @@ export type {
   WorkflowTagReplaceResult,
 } from './organization/tags/workflow-tag.types.js';
 export type { WorkflowTagConflictKind } from './organization/errors.js';
-export { createWorkflowFavoriteStore } from './organization/favorites/store.js';
+export { createWorkflowFavoriteStore } from './organization/favorites/workflow-favorite.store.js';
 export type {
   WorkflowFavoriteCommand,
   WorkflowFavoriteStore,
   WorkflowFavoriteState,
-} from './organization/favorites/store.js';
+} from './organization/favorites/workflow-favorite.store.js';
 export { WorkflowOrganizationValidationError } from './organization/errors.js';
 export {
   createWorkflowInputCaseStore,
   type WorkflowInputCaseStore,
-} from './input-cases/store.js';
-export type { WorkflowStepSampleStore } from './step-samples/store.js';
+} from './input-cases/workflow-input-case.store.js';
+export type { WorkflowStepSampleStore } from './step-samples/workflow-step-sample.store.js';
 export {
   WorkflowInputCaseLimitError,
   WorkflowInputCaseRevisionConflictError,
@@ -63,11 +63,11 @@ export {
   WorkflowConcurrencyLimitExceededError,
   WorkflowConcurrencyLimitUnavailableError,
   WorkflowConcurrencyRevisionConflictError,
-} from './settings/concurrency/store.js';
+} from './settings/concurrency/workflow-concurrency.store.js';
 export type {
   WorkflowConcurrencyStore,
   WorkflowConcurrencySettings,
-} from './settings/concurrency/store.js';
+} from './settings/concurrency/workflow-concurrency.store.js';
 export {
   WorkflowAutoPauseSettingsRevisionConflictError,
   WorkflowPauseRevisionConflictError,
@@ -81,8 +81,8 @@ export type {
 export {
   createWorkflowAuthoringStore,
   type WorkflowAuthoringStore,
-} from './workflows/store.js';
-export type { WorkflowAutoPauseStore } from './settings/auto-pause/store.js';
+} from './workflows/workflow-authoring.store.js';
+export type { WorkflowAutoPauseStore } from './settings/auto-pause/workflow-auto-pause.store.js';
 export { WorkflowDefinitionPlacementError } from './workflows/errors.js';
 export {
   WorkflowLifecycleRevisionConflictError,
@@ -118,7 +118,7 @@ export {
   WorkflowErrorSettingsConflictError,
   WorkflowErrorTargetUnavailableError,
   type WorkflowErrorStore,
-} from './settings/error-workflow/store.js';
+} from './settings/error-workflow/workflow-error.store.js';
 
 export { WorkflowStepSampleError } from './step-samples/errors.js';
 export type {
@@ -128,13 +128,13 @@ export type {
 } from './step-samples/step-sample.types.js';
 
 export { PublicationReviewError } from './reviews/errors.js';
-export { type PublicationReviewStore } from './reviews/store.js';
+export { type PublicationReviewStore } from './reviews/publication-review.store.js';
 
 export { WorkflowPromotionError } from './promotion/errors.js';
-export type { WorkflowPromotionStore } from './promotion/store.js';
+export type { WorkflowPromotionStore } from './promotion/workflow-promotion.store.js';
 
 export { WorkflowCollaborationError } from './collaboration/errors.js';
-export type { WorkflowCollaborationStore } from './collaboration/store.js';
+export type { WorkflowCollaborationStore } from './collaboration/workflow-collaboration.store.js';
 
 // Other areas import these files directly (ADR 091); the door gains nothing.
 export type {} from './input-cases/metadata.repository.js';

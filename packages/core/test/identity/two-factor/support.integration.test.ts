@@ -10,7 +10,7 @@ import { createSystemMailDeliveryStore } from '@pertexo/secrets/server';
 import {
   createTwoFactorRecoveryStore,
   type TwoFactorRecoveryStore,
-} from '../../../src/identity/two-factor/store.js';
+} from '../../../src/identity/two-factor/two-factor-recovery.store.js';
 import type {
   SystemMailDeliveryStore,
   SystemMailInput,

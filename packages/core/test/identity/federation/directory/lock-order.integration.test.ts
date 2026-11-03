@@ -10,7 +10,7 @@ import { createDirectoryCredential } from '../../../../src/identity/federation/p
 import { authenticateDirectory } from '../../../../src/identity/federation/provisioning/authority.repository.js';
 import { replaceDirectoryMappings } from '../../../../src/identity/federation/provisioning/management/mappings.repository.js';
 import { createDirectoryUser } from '../../../../src/identity/federation/provisioning/resources/users.repository.js';
-import { createDirectoryStore } from '../../../../src/identity/federation/provisioning/store.js';
+import { createDirectoryStore } from '../../../../src/identity/federation/provisioning/directory.store.js';
 import { useIdentityCommandDatabase } from '../../command.support.js';
 
 const db = useIdentityCommandDatabase('directory_locks');

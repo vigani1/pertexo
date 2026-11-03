@@ -37,7 +37,7 @@ import { PendingTaskDecisionError } from '../../src/runs/pending-tasks/responses
 import { taskFixture, store as tasks } from '../runs/pending-tasks/fixtures.js';
 import { userId, apiUrl } from '../lifecycle/retention.support.js';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
-import { createArtifactUploadStore } from '../../src/artifacts/uploads/store.js';
+import { createArtifactUploadStore } from '../../src/artifacts/uploads/artifact-upload.store.js';
 
 const FILE_BYTES = FORM_FILE_LIMITS.defaultMaxBytes;
 

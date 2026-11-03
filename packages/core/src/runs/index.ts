@@ -12,8 +12,8 @@ export type {
   PublishedWorkflow,
 } from './queries/execution/workflow-execution.types.js';
 export type { InitialCheckpointFactory } from './commands/initial-checkpoint.js';
-export { createWorkflowRunDatabase } from './store.js';
-export type { WorkflowRunDatabase } from './store.js';
+export { createWorkflowRunDatabase } from './workflow-run.store.js';
+export type { WorkflowRunDatabase } from './workflow-run.store.js';
 export {
   WorkflowPublishedVersionConflictError,
   WorkflowRunNotExecutableError,
@@ -43,8 +43,8 @@ export type {
   RunAdvanceResult,
   RunAdvanceState,
 } from './advance/run-advance.types.js';
-export { createRunAdvanceStore } from './advance/store.js';
-export type { RunAdvanceStore } from './advance/store.js';
+export { createRunAdvanceStore } from './advance/run-advance.store.js';
+export type { RunAdvanceStore } from './advance/run-advance.store.js';
 export {
   createDeadlineWakeupScanner,
   createDueNodeWakeupScanner,
@@ -54,7 +54,7 @@ export { createPublishedWorkflowReader } from './queries/execution/published.rep
 
 export { createRunFailureStore } from './advance/failure-store.js';
 export type { RunFailureStore } from './advance/failure-store.js';
-export { createStalledWorkStore } from './stalled/store.js';
+export { createStalledWorkStore } from './stalled/stalled-work.store.js';
 export type {
   FailedOutboxEvent,
   StalledWorkFailure,
@@ -62,11 +62,11 @@ export type {
   StuckRun,
   StuckWork,
 } from './stalled/stalled-work.types.js';
-export type { StalledWorkStore } from './stalled/store.js';
+export type { StalledWorkStore } from './stalled/stalled-work.store.js';
 
-export { createWorkflowCallStore } from './calls/store.js';
+export { createWorkflowCallStore } from './calls/workflow-call.store.js';
 export { WorkflowCallRefusedError } from './calls/errors.js';
-export type { WorkflowCallStore } from './calls/store.js';
+export type { WorkflowCallStore } from './calls/workflow-call.store.js';
 export type {
   WorkflowRecoveryPreview,
   WorkflowRecoveryMetadata,
@@ -80,19 +80,19 @@ export type {
   RecoverPublishedWorkflowRunInput,
 } from './commands/run-commands.types.js';
 
-export { createErrorWorkflowStore } from './error-workflows/store.js';
+export { createErrorWorkflowStore } from './error-workflows/error-workflow.store.js';
 export {
   ErrorWorkflowDeliveryMismatchError,
   ErrorWorkflowVersionUnavailableError,
 } from './error-workflows/errors.js';
-export type { ErrorWorkflowStore } from './error-workflows/store.js';
+export type { ErrorWorkflowStore } from './error-workflows/error-workflow.store.js';
 
-export { createPendingTaskStore } from './pending-tasks/responses/store.js';
+export { createPendingTaskStore } from './pending-tasks/responses/pending-task.store.js';
 export {
   PendingTaskDecisionError,
   PendingTaskNotFoundError,
 } from './pending-tasks/responses/errors.js';
-export type { PendingTaskStore } from './pending-tasks/responses/store.js';
+export type { PendingTaskStore } from './pending-tasks/responses/pending-task.store.js';
 
 export { RunVariableSnapshotUnavailableError } from './commands/acceptance/variables.repository.js';
 
@@ -104,12 +104,12 @@ export type {
 
 export type { UsageTrendsInput } from './queries/usage/trends.js';
 
-export { createRunValuesStore } from './values/store.js';
+export { createRunValuesStore } from './values/run-values.store.js';
 export { RunValuesLimitError } from './values/run-values.js';
-export type { RunValuesStore } from './values/store.js';
+export type { RunValuesStore } from './values/run-values.store.js';
 export { ExecutionCapabilityExpiredError } from '../attempts/errors.js';
 
-export { createCallbackStore } from './pending-tasks/callbacks/store.js';
+export { createCallbackStore } from './pending-tasks/callbacks/callback.store.js';
 export {
   CallbackCapacityError,
   CallbackResponseError,
@@ -118,7 +118,7 @@ export type {
   PreparedCallback,
   CallbackIdentity,
 } from './pending-tasks/callbacks/callback.types.js';
-export type { CallbackStore } from './pending-tasks/callbacks/store.js';
+export type { CallbackStore } from './pending-tasks/callbacks/callback.store.js';
 export { DEFAULT_INSTANCE_LIMITS } from './instance-limits.js';
 export {
   parseStoredExecutionValue,

@@ -22,7 +22,7 @@ import {
   workerDatabase,
 } from './execution/fixture.js';
 import { and, count, eq } from 'drizzle-orm';
-import { createRetentionStore } from '../../src/lifecycle/retention/store.js';
+import { createRetentionStore } from '../../src/lifecycle/retention/retention.store.js';
 import { createPreviewRetentionCoordinator } from '../../src/lifecycle/previews/coordinator.js';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
 import {

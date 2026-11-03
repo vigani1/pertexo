@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
-import { createFormUploadStore } from '../../../src/artifacts/form-uploads/store.js';
+import { createFormUploadStore } from '../../../src/artifacts/form-uploads/form-upload.store.js';
 import type { FormUploadTarget } from '../../../src/artifacts/form-uploads/form-upload.types.js';
 import { admin } from '../../lifecycle/calls/fixtures.js';
 import { apiUrl } from '../../lifecycle/retention.support.js';

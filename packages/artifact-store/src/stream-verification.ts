@@ -7,7 +7,7 @@ import {
   ArtifactInputIntegrityError,
   ArtifactIntegrityError,
 } from './errors.js';
-import type { ArtifactMetadata } from './store.js';
+import type { ArtifactMetadata } from './artifact.store.js';
 
 class VerifyingTransform extends Transform {
   private readonly hash = createHash('sha256');

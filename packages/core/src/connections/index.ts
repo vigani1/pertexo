@@ -24,7 +24,7 @@ export {
   type ConnectionUsageStore,
   type OAuth2ConsentStore,
   type WorkerConnectionResolutionStore,
-} from './store.js';
+} from './connection.store.js';
 export type { OAuth2TokenStore } from './oauth2/tokens.repository.js';
 export type {
   ConnectionPage,

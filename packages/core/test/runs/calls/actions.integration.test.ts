@@ -10,7 +10,7 @@ import {
   runs,
 } from './actions/fixture.js';
 import { Pool } from 'pg';
-import { createWorkflowCallStore } from '../../../src/runs/calls/store.js';
+import { createWorkflowCallStore } from '../../../src/runs/calls/workflow-call.store.js';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
 import { withTenantScopedClient } from '@pertexo/database/primitives';
 import { admin } from '../../lifecycle/calls/fixtures.js';

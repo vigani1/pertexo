@@ -4,7 +4,7 @@ import { parseDatabaseConfig } from '@pertexo/database/platform';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { WorkspaceVariablesConflictError } from '../../src/variables/workspace-variables.js';
-import { createWorkspaceVariablesStore } from '../../src/variables/store.js';
+import { createWorkspaceVariablesStore } from '../../src/variables/workspace-variables.store.js';
 
 import { admin } from '../lifecycle/calls/fixtures.js';
 import { apiUrl, withApplicationName } from '../lifecycle/retention.support.js';

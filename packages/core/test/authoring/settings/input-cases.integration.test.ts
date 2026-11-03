@@ -11,7 +11,7 @@ import {
 } from '../../../src/authoring/input-cases/errors.js';
 import { WorkflowNotFoundError } from '../../../src/authoring/workflows/errors.js';
 import { IdempotencyConflictError } from '@pertexo/database/platform';
-import { createRetentionStore } from '../../../src/lifecycle/retention/store.js';
+import { createRetentionStore } from '../../../src/lifecycle/retention/retention.store.js';
 import {
   workspaceId,
   dispatcherUrl,
@@ -31,7 +31,7 @@ import {
   otherActorId,
   purgeTestWorkspace,
 } from '../../support/workflow-authoring.js';
-import { createWorkflowInputCaseStore } from '../../../src/authoring/input-cases/store.js';
+import { createWorkflowInputCaseStore } from '../../../src/authoring/input-cases/workflow-input-case.store.js';
 
 beforeAll(beforeAllFixture1);
 afterAll(afterAllFixture2);

@@ -6,7 +6,7 @@ import {
   canonicalOutboxPayloadChecksum,
   insertOutboxEvent,
 } from '@pertexo/database/primitives';
-import { createOutboxDispatcherDatabase } from '../../src/outbox/dispatcher/store.js';
+import { createOutboxDispatcherDatabase } from '../../src/outbox/dispatcher/outbox-dispatcher.store.js';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
 
 const checksum = 'a'.repeat(64);

@@ -1,12 +1,12 @@
 export {
   createNotificationDestinationStore,
   type NotificationDestinationStore,
-} from './destinations/store.js';
+} from './destinations/notification-destination.store.js';
 export { FailureNotificationDestinationError } from './destinations/errors.js';
 export {
   createFailureNotificationStore,
   type FailureNotificationStore,
-} from './store.js';
+} from './failure-notification.store.js';
 export { FailureNotificationStateError } from './errors.js';
 export type { FailureNotificationResolvedDestination } from './failure-notification.types.js';
 

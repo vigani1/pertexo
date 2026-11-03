@@ -2,7 +2,7 @@ export type { Role } from '@pertexo/policy';
 export {
   createIdentityWorkspaceStore,
   type IdentityWorkspaceStore,
-} from './store.js';
+} from './identity-workspace.store.js';
 export { WorkspaceAccessDeniedError } from '../shared/errors.js';
 export {
   IdentityConflictError,

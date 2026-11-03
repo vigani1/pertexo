@@ -1,7 +1,7 @@
 import { afterAll, beforeAll } from 'vitest';
 
-import { createWorkspaceInboxFoldStore } from '../../../src/inbox/folding/store.js';
-import { createWorkspaceInboxStore } from '../../../src/inbox/threads/store.js';
+import { createWorkspaceInboxFoldStore } from '../../../src/inbox/folding/workspace-inbox-fold.store.js';
+import { createWorkspaceInboxStore } from '../../../src/inbox/threads/workspace-inbox.store.js';
 import {
   claim,
   complete,

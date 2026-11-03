@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { expect, it, vi } from 'vitest';
 import { SaveState } from '@/features/workflow-editor/components/chrome/save-state';
 import { EditorStoreContext } from '@/features/workflow-editor/model/state/context';
-import { createEditorStore } from '@/features/workflow-editor/model/state/store';
+import { createEditorStore } from '@/features/workflow-editor/model/state/workflow-editor.store';
 
 it('announces save outcomes and keeps recovery actions with their owner', async () => {
   const graph = { nodes: [], edges: [], settings: {} };

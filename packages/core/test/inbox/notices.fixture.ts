@@ -10,11 +10,11 @@ import {
   queryAsOwner,
 } from '../support/workflow-authoring.js';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
-import { createWorkspaceInboxFoldStore } from '../../src/inbox/folding/store.js';
-import { createWorkspaceInboxStore } from '../../src/inbox/threads/store.js';
-import { createNoticePreferencesStore } from '../../src/inbox/preferences/store.js';
-import { createNoticeMailStore } from '../../src/inbox/mail/store.js';
-import { createConnectionStore } from '../../src/connections/store.js';
+import { createWorkspaceInboxFoldStore } from '../../src/inbox/folding/workspace-inbox-fold.store.js';
+import { createWorkspaceInboxStore } from '../../src/inbox/threads/workspace-inbox.store.js';
+import { createNoticePreferencesStore } from '../../src/inbox/preferences/notice-preferences.store.js';
+import { createNoticeMailStore } from '../../src/inbox/mail/notice-mail.store.js';
+import { createConnectionStore } from '../../src/connections/connection.store.js';
 import type { NoticeMailToSeal } from '../../src/inbox/mail/notice-mail.types.js';
 const resources: { close(): Promise<void> }[] = [];
 export const own = <T extends { close(): Promise<void> }>(resource: T): T => {

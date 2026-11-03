@@ -1,4 +1,4 @@
-import { createWorkflowRunDatabase } from '../../../../src/runs/store.js';
+import { createWorkflowRunDatabase } from '../../../../src/runs/workflow-run.store.js';
 import {
   createWorkspaceDatabase,
   parseDatabaseConfig,
@@ -11,7 +11,7 @@ import {
   composeExecutableCatalog,
 } from '@pertexo/workflow-engine';
 import { parseWorkflowGraphDraft } from '@pertexo/workflow-model';
-import { createWorkflowAuthoringStore } from '../../../../src/authoring/workflows/store.js';
+import { createWorkflowAuthoringStore } from '../../../../src/authoring/workflows/workflow-authoring.store.js';
 import { createWorkflowExecutionReader } from '../../../../src/runs/queries/execution/source.repository.js';
 import { createPublishedWorkflowReader } from '../../../../src/runs/queries/execution/published.repository.js';
 

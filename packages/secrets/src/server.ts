@@ -6,7 +6,7 @@ export {
   createSystemMailEnqueueStore,
   type SystemMailDeliveryStore,
   type SystemMailEnqueueStore,
-} from './mail/store.js';
+} from './mail/system-mail.store.js';
 export type {
   SealedSystemMailPayload,
   SystemMailDeliveryClaim,

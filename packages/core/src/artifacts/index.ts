@@ -1,7 +1,7 @@
 export {
   createArtifactUploadStore,
   type ArtifactUploadStore,
-} from './uploads/store.js';
+} from './uploads/artifact-upload.store.js';
 export {
   ArtifactQuotaExceededError,
   ArtifactUploadConflictError,
@@ -21,7 +21,7 @@ export { ARTIFACT_UPLOAD_PURPOSE } from './artifact.js';
 export {
   createFormUploadStore,
   type FormUploadStore,
-} from './form-uploads/store.js';
+} from './form-uploads/form-upload.store.js';
 export { FormUploadLimitError } from './form-uploads/errors.js';
 export type {
   FormUpload,

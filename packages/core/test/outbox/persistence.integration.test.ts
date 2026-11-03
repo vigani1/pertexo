@@ -36,7 +36,7 @@ import {
 } from '@pertexo/database/platform';
 import { consumeInboxMessage } from '../../src/testing.js';
 import { createPostgresCommitAckProxy } from '@pertexo/database/testing';
-import { createOutboxDispatcherDatabase } from '../../src/outbox/dispatcher/store.js';
+import { createOutboxDispatcherDatabase } from '../../src/outbox/dispatcher/outbox-dispatcher.store.js';
 import { Pool } from 'pg';
 import { OperatorCommandConflictError } from '../../src/operator/operator-command.js';
 import { DELIVERY_CONSUMER } from '../../src/outbox/delivery-consumers.js';

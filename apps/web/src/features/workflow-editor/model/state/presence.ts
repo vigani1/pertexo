@@ -1,4 +1,4 @@
-import type { EditorState, EditorStore } from './store';
+import type { EditorState, EditorStore } from './workflow-editor.store';
 export type EditorPresenceSource = Readonly<{
   subscribe: (
     listener: (

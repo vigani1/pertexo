@@ -1,4 +1,4 @@
-export { createNodeAttemptRunStore } from './store.js';
+export { createNodeAttemptRunStore } from './node-attempt-run.store.js';
 export {
   NodeAttemptConnectionFenceError,
   NodeAttemptDeliveryMismatchError,

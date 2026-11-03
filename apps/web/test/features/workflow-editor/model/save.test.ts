@@ -5,7 +5,7 @@ import { addDefinitionNode } from '@/features/workflow-editor/model/graph/comman
 import {
   createEditorStore,
   shownConflict,
-} from '@/features/workflow-editor/model/state/store';
+} from '@/features/workflow-editor/model/state/workflow-editor.store';
 import { createSaveCoordinator } from '@/features/workflow-editor/model/persistence/save-coordinator';
 
 import type { WorkflowDraftSnapshot } from '@/features/workflow-editor/data/workflow-editor.api';

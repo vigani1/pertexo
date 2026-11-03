@@ -31,10 +31,10 @@ import {
   buildWorkflowTestExecutable,
   composeExecutableCatalog,
 } from '@pertexo/workflow-engine';
-import { createWorkflowAuthoringStore } from '../../../src/authoring/workflows/store.js';
+import { createWorkflowAuthoringStore } from '../../../src/authoring/workflows/workflow-authoring.store.js';
 import { WorkflowNotFoundError } from '../../../src/authoring/workflows/errors.js';
 import { setVariableSet } from '../../support/variable-sets.js';
-import { createRetentionStore } from '../../../src/lifecycle/retention/store.js';
+import { createRetentionStore } from '../../../src/lifecycle/retention/retention.store.js';
 import { serializeStoredExecutionValue } from '../../../src/runs/values/stored-execution.js';
 
 beforeAll(beforeAllFixture1);

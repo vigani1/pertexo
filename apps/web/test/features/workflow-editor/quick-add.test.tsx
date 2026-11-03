@@ -10,7 +10,7 @@ import {
   portDropSource,
 } from '@/features/workflow-editor/model/quick-add';
 
-import { createEditorStore } from '@/features/workflow-editor/model/state/store';
+import { createEditorStore } from '@/features/workflow-editor/model/state/workflow-editor.store';
 
 import type { WorkflowGraphContract } from '@pertexo/contracts';
 

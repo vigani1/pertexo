@@ -14,7 +14,7 @@ import {
 import { linkWorkflowNodes } from '@/features/workflow-editor/model/graph/commands';
 import { duplicateWorkflowNodes } from '@/features/workflow-editor/model/graph/copies';
 import { projectWorkflowGraph } from '@/features/workflow-editor/model/graph/adapter';
-import { createEditorStore } from '@/features/workflow-editor/model/state/store';
+import { createEditorStore } from '@/features/workflow-editor/model/state/workflow-editor.store';
 import {
   directPredecessorOptions,
   inputMappingRowsFor,

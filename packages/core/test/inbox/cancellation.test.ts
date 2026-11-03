@@ -14,7 +14,7 @@ vi.mock('../../../database/dist/database.js', () => ({
 
 import type { WorkspaceDatabase } from '@pertexo/database/platform';
 import { reconcileUnknownOutcomeEvidence } from '../../src/outbox/reconcile-unknown-outcome.js';
-import { createOperatorRunReplayStore } from '../../src/operator/replay/store.js';
+import { createOperatorRunReplayStore } from '../../src/operator/replay/operator-run-replay.store.js';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 
 const checksum = 'a'.repeat(64);

@@ -13,9 +13,9 @@ import {
   workflowId,
 } from '../../../support/workflow-authoring.js';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
-import { createWorkflowFolderStore } from '../../../../src/authoring/organization/folders/store.js';
-import { createWorkflowOrganizationReadStore } from '../../../../src/authoring/organization/workflows/store.js';
-import { createWorkflowRunDatabase } from '../../../../src/runs/store.js';
+import { createWorkflowFolderStore } from '../../../../src/authoring/organization/folders/workflow-folder.store.js';
+import { createWorkflowOrganizationReadStore } from '../../../../src/authoring/organization/workflows/workflow-organization-read.store.js';
+import { createWorkflowRunDatabase } from '../../../../src/runs/workflow-run.store.js';
 
 export const builder = randomUUID(),
   viewer = randomUUID();

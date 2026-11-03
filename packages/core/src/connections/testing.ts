@@ -19,7 +19,7 @@ export {
   type ConnectionStore,
   type ConnectionTestStore,
   type WorkerConnectionResolutionStore,
-} from './store.js';
+} from './connection.store.js';
 export type {
   ConnectionAuthType,
   ConnectionRecord,

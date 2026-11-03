@@ -9,7 +9,7 @@ import type {
   DatabaseConfig,
   DatabaseRuntime,
 } from '@pertexo/database/platform';
-import { RUN_DELIVERY_JOB_NAMES } from '../../outbox/dispatcher/store.js';
+import { RUN_DELIVERY_JOB_NAMES } from '../../outbox/dispatcher/outbox-dispatcher.store.js';
 import {
   dateUndatedDeliveries,
   settleOverdueDeliveries,

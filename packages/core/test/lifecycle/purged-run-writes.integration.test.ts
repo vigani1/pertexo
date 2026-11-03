@@ -10,10 +10,10 @@ import {
   type WorkspaceTransaction,
 } from '@pertexo/database/primitives';
 import { databaseSchema } from '@pertexo/database/schema';
-import { createRetentionStore } from '../../src/lifecycle/retention/store.js';
+import { createRetentionStore } from '../../src/lifecycle/retention/retention.store.js';
 import { failUnadvanceableRun } from '../../src/runs/advance/fail-unadvanceable.repository.js';
 import { requestWorkflowRunCancellation } from '../../src/runs/commands/request-cancellation.js';
-import { createNodeAttemptRunStore } from '../../src/attempts/store.js';
+import { createNodeAttemptRunStore } from '../../src/attempts/node-attempt-run.store.js';
 import { settleExpiredAttempt } from '../../src/operator/handlers/attempts.repository.js';
 import { readRecoveryEvidence } from '../../src/runs/recovery/evidence.repository.js';
 import {

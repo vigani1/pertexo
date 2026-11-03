@@ -3,7 +3,7 @@ import type {
   PreviewDelivery,
   PreviewSideEffectClass,
 } from '../preview.types.js';
-import type { createPreviewReconciliationStore } from './store.js';
+import type { createPreviewReconciliationStore } from './preview-reconciliation.store.js';
 
 export type PreviewDeliveryReconciliationResult =
   | Readonly<{ kind: 'duplicate' }>

@@ -1,6 +1,6 @@
 import { Pool } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { createRunAdvanceStore } from '../../../src/runs/advance/store.js';
+import { createRunAdvanceStore } from '../../../src/runs/advance/run-advance.store.js';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
 import { withTenantScopedClient } from '@pertexo/database/primitives';
 import { persistCallCompletion } from '../../../src/runs/calls/persist.repository.js';

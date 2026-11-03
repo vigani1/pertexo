@@ -5,13 +5,13 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { withWorkspaceAccess } from '../../../src/shared/workspace-access.js';
 import { UNPURGED_WORKSPACE_STATUSES } from '@pertexo/policy';
-import { createGovernanceStore } from '../../../src/governance/store.js';
+import { createGovernanceStore } from '../../../src/governance/governance.store.js';
 import { WorkflowRunNotFoundError } from '../../../src/runs/errors.js';
 import {
   WorkspaceAccessDeniedError,
   WorkspaceInvitationCommandConflictError,
 } from '../../../src/tenant-access/index.js';
-import { createWorkspaceVariablesStore } from '../../../src/variables/store.js';
+import { createWorkspaceVariablesStore } from '../../../src/variables/workspace-variables.store.js';
 import {
   admin,
   appDatabaseUrl,

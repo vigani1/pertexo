@@ -7,7 +7,7 @@ import {
   WorkflowPresenceWarning,
   WorkflowEditingPresence,
 } from '@/features/workflow-collaboration/presence.public';
-import { createEditorStore } from '@/features/workflow-editor/model/state/store';
+import { createEditorStore } from '@/features/workflow-editor/model/state/workflow-editor.store';
 import { editorPresenceSource } from '@/features/workflow-editor/model/state/presence';
 import { createApiClient } from '@/lib/api/client';
 import { renderInRouter } from '../../support/render-in-router';

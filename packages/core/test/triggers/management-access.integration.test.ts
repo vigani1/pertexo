@@ -5,7 +5,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { parseDatabaseConfig } from '@pertexo/database/platform';
 import { ScheduleTriggerError } from '../../src/triggers/schedules/errors.js';
-import { createScheduleTriggerStore } from '../../src/triggers/schedules/store.js';
+import { createScheduleTriggerStore } from '../../src/triggers/schedules/schedule-trigger.store.js';
 import {
   scopedConnectionUrl,
   waitForApplicationLock,

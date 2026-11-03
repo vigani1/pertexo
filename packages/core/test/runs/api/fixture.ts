@@ -7,7 +7,7 @@ import {
   migrateDatabase,
   createDisposableDatabaseFixture,
 } from '@pertexo/database/testing';
-import { createWorkflowRunDatabase } from '../../../src/runs/store.js';
+import { createWorkflowRunDatabase } from '../../../src/runs/workflow-run.store.js';
 
 export const adminUrl =
   process.env.DATABASE_ADMIN_URL ??

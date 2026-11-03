@@ -4,7 +4,7 @@ import { expect, it } from 'vitest';
 import { DialogTrigger } from '@/components/ui/dialog';
 import { DeclarationDialog } from '@/features/workflow-editor/components/callable/declaration-dialog';
 import { EditorStoreContext } from '@/features/workflow-editor/model/state/context';
-import { createEditorStore } from '@/features/workflow-editor/model/state/store';
+import { createEditorStore } from '@/features/workflow-editor/model/state/workflow-editor.store';
 
 it('leaves an unfinished inspector edit alone: no prompt, and it still holds publishing', async () => {
   const user = userEvent.setup();

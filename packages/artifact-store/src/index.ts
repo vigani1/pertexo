@@ -5,7 +5,7 @@ export {
   ArtifactNotFoundError,
   ArtifactStoreClosedError,
   createArtifactStore,
-} from './store.js';
+} from './artifact.store.js';
 export {
   createOpenTelemetryObjectStoreObserver,
   createProductionObjectStoreObserver,
@@ -35,7 +35,7 @@ export type {
   ValidateDirectUploadRequest,
   WorkspaceObjectPurgePage,
   WorkspaceObjectPurgeStore,
-} from './store.js';
+} from './artifact.store.js';
 export type {
   ArtifactDownloadCapability,
   BeginDirectDownloadRequest,

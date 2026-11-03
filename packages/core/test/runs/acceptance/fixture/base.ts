@@ -6,7 +6,7 @@ import {
   parseDatabaseConfig,
   createWorkspaceDatabase,
 } from '@pertexo/database/platform';
-import { createOutboxDispatcherDatabase } from '../../../../src/outbox/dispatcher/store.js';
+import { createOutboxDispatcherDatabase } from '../../../../src/outbox/dispatcher/outbox-dispatcher.store.js';
 import {
   migrateDatabase,
   createDisposableDatabaseFixture,

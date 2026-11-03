@@ -1,7 +1,7 @@
 export {
   createWorkspaceVariablesStore,
   type WorkspaceVariablesStore,
-} from './store.js';
+} from './workspace-variables.store.js';
 export {
   WorkspaceVariablesConflictError,
   WorkspaceVariableUsageChangedError,

@@ -20,7 +20,7 @@ import {
 import { canOwnFailureLink } from '../../model/failure-routing/eligibility';
 import { stepTitle } from '../../model/graph/adapter';
 import { linkWorkflowNodes } from '../../model/graph/commands';
-import type { EditorStore } from '../../model/state/store';
+import type { EditorStore } from '../../model/state/workflow-editor.store';
 
 type Node = WorkflowGraphContract['nodes'][number];
 export function FailureSetup({

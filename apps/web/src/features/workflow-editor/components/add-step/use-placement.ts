@@ -8,7 +8,7 @@ import {
   shownLevel,
   STEP_CARD,
 } from '../../model/graph/for-each-body-layout';
-import type { EditorStore } from '../../model/state/store';
+import type { EditorStore } from '../../model/state/workflow-editor.store';
 import {
   addBodyStep,
   addDefinitionNode,

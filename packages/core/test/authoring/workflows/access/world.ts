@@ -2,8 +2,8 @@ import { randomUUID } from 'node:crypto';
 
 import { parseDatabaseConfig } from '@pertexo/database/platform';
 
-import { createWorkflowFolderStore } from '../../../../src/authoring/organization/folders/store.js';
-import { createWorkflowInputCaseStore } from '../../../../src/authoring/input-cases/store.js';
+import { createWorkflowFolderStore } from '../../../../src/authoring/organization/folders/workflow-folder.store.js';
+import { createWorkflowInputCaseStore } from '../../../../src/authoring/input-cases/workflow-input-case.store.js';
 import {
   actorId,
   apiUrl,

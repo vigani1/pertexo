@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { vi } from 'vitest';
 import { canonicalOutboxPayloadChecksum } from '@pertexo/database/primitives';
-import { createOperatorRunReplayStore } from '../../../src/operator/replay/store.js';
+import { createOperatorRunReplayStore } from '../../../src/operator/replay/operator-run-replay.store.js';
 
 const mocks = vi.hoisted(() => ({
   acceptWorkflowRun: vi.fn(),

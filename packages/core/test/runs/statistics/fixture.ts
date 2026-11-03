@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { Pool, type PoolClient } from 'pg';
 
 import { parseDatabaseConfig } from '@pertexo/database/platform';
-import { createWorkflowRunDatabase } from '../../../src/runs/store.js';
+import { createWorkflowRunDatabase } from '../../../src/runs/workflow-run.store.js';
 import {
   createWorkspaceDatabase,
   migrateDatabase,

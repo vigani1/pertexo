@@ -17,7 +17,7 @@ import {
   EditorStoreContext,
   useEditorStore,
 } from '@/features/workflow-editor/model/state/context';
-import { createEditorStore } from '@/features/workflow-editor/model/state/store';
+import { createEditorStore } from '@/features/workflow-editor/model/state/workflow-editor.store';
 
 const schema = {
   oneOf: [
