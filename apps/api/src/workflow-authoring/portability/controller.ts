@@ -9,20 +9,12 @@ import { withRequestOperationSignal } from '../../platform/http/request-operatio
 import { authoringFailure } from '../../problems/context/normalize.js';
 import { In, Route } from '../../workspaces/http/route.js';
 import { projectAuthenticatedWorkspaceContext } from '../../workspaces/request/authenticated-context.js';
-import {
-  workflowIdParamSchema,
-  type WorkflowAuthoringRequest,
-  type WorkflowResponse,
-} from '../types.js';
+import type { WorkflowAuthoringRequest, WorkflowResponse } from '../types.js';
 import {
   ExportWorkflowUseCase,
   ImportWorkflowUseCase,
   PreviewWorkflowImportUseCase,
 } from './use-cases.js';
-
-const workspaceParams = workflowIdParamSchema
-  .pick({ workspaceId: true })
-  .strict();
 
 @UseInterceptors(domainErrors(authoringFailure))
 @Controller()
@@ -71,7 +63,6 @@ export class WorkflowPortabilityController {
     @Req() request: WorkflowAuthoringRequest,
     @In() { params }: RouteInput<typeof routes.preview>,
     @Body() body: unknown,
-    @Res({ passthrough: true }) response: WorkflowResponse,
   ) {
     const { workspaceId } = params;
     return withRequestOperationSignal(request, (signal) =>

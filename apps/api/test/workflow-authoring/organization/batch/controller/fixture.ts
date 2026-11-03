@@ -1,45 +1,41 @@
-import { WORKSPACE_AUTHORIZATION } from '../../../../../src/workspaces/tokens.js';
+import type { ExecutionContext } from '@nestjs/common';
+import 'reflect-metadata';
 import { APPLICATION_ERROR_MAPPERS } from '../../../../../src/application-errors.js';
 import { AutomationAuthenticationGuard } from '../../../../../src/authentication/automation/guard.js';
-import 'reflect-metadata';
-import type { ExecutionContext } from '@nestjs/common';
+import { WORKSPACE_AUTHORIZATION } from '../../../../../src/workspaces/tokens.js';
 
 import {
   FastifyAdapter,
   type NestFastifyApplication,
 } from '@nestjs/platform-fastify';
 import { Test } from '@nestjs/testing';
-import { vi } from 'vitest';
 import type {
   WorkflowFolderStore,
   WorkflowOrganizationBatchStore,
 } from '@pertexo/core/authoring';
-import { WorkflowFoldersController } from '../../../../../src/workflow-authoring/organization/folders/controller.js';
-import { WorkflowOrganizationBatchesController } from '../../../../../src/workflow-authoring/organization/batch/controller.js';
-import { WorkflowOrganizationController } from '../../../../../src/workflow-authoring/organization/controller.js';
-import { WorkflowOrganizationCommandsUseCase } from '../../../../../src/workflow-authoring/organization/commands.js';
-import { WorkflowOrganizationReadsUseCase } from '../../../../../src/workflow-authoring/organization/reads.js';
+import { vi } from 'vitest';
 import { WorkflowAuthoringController } from '../../../../../src/workflow-authoring/http/controllers.js';
-import { WorkflowFoldersUseCase } from '../../../../../src/workflow-authoring/organization/folders/use-case.js';
+import { WorkflowOrganizationBatchesController } from '../../../../../src/workflow-authoring/organization/batch/controller.js';
 import { WorkflowOrganizationBatchesUseCase } from '../../../../../src/workflow-authoring/organization/batch/use-case.js';
-import {
-  WorkflowReadGuard,
-  WorkflowUpdateGuard,
-} from '../../../../../src/workflow-authoring/http/guards.js';
-import {
-  SessionAuthenticationGuard,
-  CsrfProtectionGuard,
-} from '../../../../../src/workspaces/index.js';
+import { WorkflowOrganizationCommandsUseCase } from '../../../../../src/workflow-authoring/organization/commands.js';
+import { WorkflowOrganizationController } from '../../../../../src/workflow-authoring/organization/controller.js';
+import { WorkflowFoldersController } from '../../../../../src/workflow-authoring/organization/folders/controller.js';
+import { WorkflowFoldersUseCase } from '../../../../../src/workflow-authoring/organization/folders/use-case.js';
+import { WorkflowOrganizationReadsUseCase } from '../../../../../src/workflow-authoring/organization/reads.js';
+
 import { DoubleSubmitCsrfPolicy } from '../../../../../src/identity/index.js';
 import {
   applicationError,
-  throwApplicationError,
-  RequestContextStore,
-  RequestContextMiddleware,
   ProblemDetailsFilter,
+  RequestContextMiddleware,
+  RequestContextStore,
+  throwApplicationError,
 } from '../../../../../src/platform/http/index.js';
+import {
+  CsrfProtectionGuard,
+  SessionAuthenticationGuard,
+} from '../../../../../src/workspaces/index.js';
 
-import { WORKFLOW_AUTHORING_AUTHORIZATION } from '../../../../../src/workflow-authoring/tokens.js';
 import type { WorkflowAuthoringRequest } from '../../../../../src/workflow-authoring/types.js';
 
 export const workspaceId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
@@ -221,7 +217,7 @@ export async function setup() {
     ],
     providers: [
       ...siblingProviders,
-      { provide: WORKFLOW_AUTHORING_AUTHORIZATION, useValue: authorization },
+
       { provide: WORKSPACE_AUTHORIZATION, useValue: authorization },
       { provide: RequestContextStore, useValue: contexts },
       { provide: WorkflowFoldersUseCase, useValue: folderUseCase },
@@ -258,12 +254,7 @@ export async function setup() {
   builder
     .overrideGuard(CsrfProtectionGuard)
     .useValue(new CsrfProtectionGuard(new DoubleSubmitCsrfPolicy()));
-  builder
-    .overrideGuard(WorkflowReadGuard)
-    .useValue(new WorkflowReadGuard(authorization, contexts));
-  builder
-    .overrideGuard(WorkflowUpdateGuard)
-    .useValue(new WorkflowUpdateGuard(authorization, contexts));
+
   const module = await builder.compile();
   // The source transform does not retain constructor design:paramtypes.
   {

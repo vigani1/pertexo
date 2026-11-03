@@ -7,7 +7,7 @@ import {
   WorkflowAuthoringModule,
   type WorkflowAuthoringDependencies,
 } from '../../src/workflow-authoring/index.js';
-import { WORKFLOW_AUTHORING_AUTHORIZATION } from '../../src/workflow-authoring/tokens.js';
+import { WORKSPACE_AUTHORIZATION } from '../../src/workspaces/tokens.js';
 import { WorkflowConcurrencyController } from '../../src/workflow-authoring/settings/concurrency-controller.js';
 import { WorkflowConcurrencyUseCase } from '../../src/workflow-authoring/settings/concurrency.js';
 import { WorkflowInputCasesController } from '../../src/workflow-authoring/input-cases/controller.js';
@@ -104,7 +104,7 @@ describe('workflow authoring Nest module', () => {
     expect(dynamic.controllers).toContain(WorkflowAuthoringController);
     expect(providers).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ provide: WORKFLOW_AUTHORING_AUTHORIZATION }),
+        expect.objectContaining({ provide: WORKSPACE_AUTHORIZATION }),
       ]),
     );
   });

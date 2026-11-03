@@ -1,68 +1,61 @@
-import { WorkflowLifecycleController } from './http/lifecycle-controller.js';
-import { WorkflowVersionsController } from './http/versions-controller.js';
-import { WorkflowCollaborationUseCase } from './collaboration/use-case.js';
+import type { DynamicModule, Provider } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { WorkflowCommentsController } from './collaboration/comments-controller.js';
 import { WorkflowPresenceController } from './collaboration/presence-controller.js';
-import { workflowPromotionProviders } from './promotion/providers.js';
+import { WorkflowCollaborationUseCase } from './collaboration/use-case.js';
+import { WorkflowLifecycleController } from './http/lifecycle-controller.js';
+import { WorkflowVersionsController } from './http/versions-controller.js';
 import { WorkflowPromotionController } from './promotion/controller.js';
-import { PublicationReviewUseCase } from './reviews/use-case.js';
+import { workflowPromotionProviders } from './promotion/providers.js';
 import {
-  WorkflowPublicationReviewController,
   PublicationReviewController,
+  WorkflowPublicationReviewController,
 } from './reviews/controller.js';
-import { WorkflowErrorUseCase } from './settings/error-workflow.js';
+import { PublicationReviewUseCase } from './reviews/use-case.js';
 import { WorkflowErrorController } from './settings/error-workflow-controller.js';
-import { Module } from '@nestjs/common';
-import type { DynamicModule, Provider } from '@nestjs/common';
+import { WorkflowErrorUseCase } from './settings/error-workflow.js';
 
 import {
   CreateWorkflowUseCase,
-  GetWorkflowUseCase,
   GetWorkflowDraftUseCase,
+  GetWorkflowUseCase,
   ListWorkflowVersionsUseCase,
   ListWorkflowsUseCase,
   PublishWorkflowUseCase,
   SaveWorkflowDraftUseCase,
   ValidateWorkflowDraftUseCase,
 } from './use-cases.js';
-import {
-  WorkflowCreateGuard,
-  WorkflowPublishGuard,
-  WorkflowReadGuard,
-  WorkflowUpdateGuard,
-  WorkflowPauseDefaultGuard,
-} from './http/guards.js';
-import { WorkflowAuthoringController } from './http/controllers.js';
-import {
-  workflowOrganizationProviders,
-  workflowOrganizationControllers,
-} from './organization/providers.js';
+
+import { WORKSPACE_AUTHORIZATION } from '../workspaces/tokens.js';
+import { DuplicateWorkflowUseCase } from './commands/duplicate.js';
 import { TransitionWorkflowLifecycleUseCase } from './commands/lifecycle.js';
 import { RenameWorkflowUseCase } from './commands/rename.js';
-import { DuplicateWorkflowUseCase } from './commands/duplicate.js';
+import { RestoreWorkflowVersionUseCase } from './commands/restore-version.js';
+import { WorkflowAuthoringController } from './http/controllers.js';
+import { WorkflowInputCasesController } from './input-cases/controller.js';
+import { WorkflowInputCasesUseCase } from './input-cases/use-case.js';
+import {
+  workflowOrganizationControllers,
+  workflowOrganizationProviders,
+} from './organization/providers.js';
 import { WorkflowPortabilityController } from './portability/controller.js';
 import {
   ExportWorkflowUseCase,
   ImportWorkflowUseCase,
   PreviewWorkflowImportUseCase,
 } from './portability/use-cases.js';
-import { RestoreWorkflowVersionUseCase } from './commands/restore-version.js';
 import type { WorkflowAuthoringDependencies } from './ports.js';
-import {
-  NOOP_WORKFLOW_AUTHORING_TELEMETRY,
-  type WorkflowAuthoringTelemetry,
-} from './telemetry.js';
-import { WORKFLOW_AUTHORING_AUTHORIZATION } from './tokens.js';
-import { WORKSPACE_AUTHORIZATION } from '../workspaces/tokens.js';
-import { WorkflowAutoPauseUseCase } from './settings/auto-pause.js';
-import { WorkflowConcurrencyUseCase } from './settings/concurrency.js';
-import { WorkflowConcurrencyController } from './settings/concurrency-controller.js';
-import { WorkflowInputCasesController } from './input-cases/controller.js';
-import { WorkflowInputCasesUseCase } from './input-cases/use-case.js';
 import {
   WorkflowAutoPauseController,
   WorkspaceAutoPauseController,
 } from './settings/auto-pause-controllers.js';
+import { WorkflowAutoPauseUseCase } from './settings/auto-pause.js';
+import { WorkflowConcurrencyController } from './settings/concurrency-controller.js';
+import { WorkflowConcurrencyUseCase } from './settings/concurrency.js';
+import {
+  NOOP_WORKFLOW_AUTHORING_TELEMETRY,
+  type WorkflowAuthoringTelemetry,
+} from './telemetry.js';
 
 @Module({})
 // Nest dynamic modules require a class container.
@@ -82,19 +75,13 @@ export class WorkflowAuthoringModule {
         portabilityPersistence,
       ),
       ...workflowLifecycleProviders(dependencies, telemetry),
-      {
-        provide: WORKFLOW_AUTHORING_AUTHORIZATION,
-        useValue: dependencies.authorization,
-      },
+
       // Declared routes build their guards on this token.
       {
         provide: WORKSPACE_AUTHORIZATION,
         useValue: dependencies.authorization,
       },
-      WorkflowReadGuard,
-      WorkflowCreateGuard,
-      WorkflowUpdateGuard,
-      WorkflowPublishGuard,
+
       {
         provide: ListWorkflowsUseCase,
         useValue: new ListWorkflowsUseCase(
@@ -307,7 +294,6 @@ function workflowFeatureProviders(
               dependencies.authorization,
             ),
           },
-          WorkflowPauseDefaultGuard,
         ]),
   ];
 }
