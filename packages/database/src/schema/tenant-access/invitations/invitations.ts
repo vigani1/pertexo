@@ -31,7 +31,7 @@ export const workspaceInvitations = appSchema.table(
     revision: integer('revision').notNull().default(1),
     tokenDigest: char('token_digest', { length: 64 }).notNull(),
     deliveryStatus: varchar('delivery_status', { length: 32 })
-      .$type<'queued' | 'submitted' | 'failed' | 'canceled'>()
+      .$type<'queued' | 'submitted' | 'failed' | 'canceled' | 'unknown'>()
       .notNull()
       .default('queued'),
     createdBy: uuid('created_by').notNull(),
@@ -52,7 +52,7 @@ export const workspaceInvitations = appSchema.table(
   (table): PgTableExtraConfigValue[] => [
     check(
       'workspace_invitations_delivery_status_valid',
-      sql`((delivery_status)::text = ANY (ARRAY[('queued'::character varying)::text, ('submitted'::character varying)::text, ('failed'::character varying)::text, ('canceled'::character varying)::text]))`,
+      sql`((delivery_status)::text = ANY (ARRAY[('queued'::character varying)::text, ('submitted'::character varying)::text, ('failed'::character varying)::text, ('canceled'::character varying)::text, ('unknown'::character varying)::text]))`,
     ),
     check(
       'workspace_invitations_normalized_email_valid',

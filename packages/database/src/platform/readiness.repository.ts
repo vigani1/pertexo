@@ -4,7 +4,7 @@ import { QueryBuilder } from 'drizzle-orm/pg-core';
 import type { Pool } from 'pg';
 
 export const EXPECTED_MIGRATION_HEAD =
-  '0088_repair_existing_workspace_capacity.sql';
+  '0089_expose_unconfirmed_invitation_delivery.sql';
 const MINIMUM_POSTGRES_MAJOR = 18;
 
 /**

@@ -344,11 +344,16 @@ describe('SMTP invitation recovery', () => {
     });
     return { ...fixture, handler };
   }
-  it('acknowledges an unknown result without completing or retrying the attempt', async () => {
+  it('acknowledges an unknown result as unconfirmed without retrying the attempt', async () => {
     const fixture = smtp({ kind: 'unknown' });
     await fixture.handler.handle(delivery, context);
     expect(fixture.store.retry).not.toHaveBeenCalled();
-    expect(fixture.store.complete).not.toHaveBeenCalled();
+    expect(fixture.store.complete).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: 'unknown',
+        failureCode: 'delivery.outcome_unknown',
+      }),
+    );
   });
   it('does not repeat an attempt recovered after a crash', async () => {
     const fixture = smtp({ kind: 'submitted', reference: 'unexpected' });

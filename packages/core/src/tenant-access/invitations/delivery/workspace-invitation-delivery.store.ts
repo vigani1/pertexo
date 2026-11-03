@@ -103,6 +103,7 @@ async function claimInvitationDelivery(
         tag: attempts.tokenTag,
         key_version: attempts.tokenKeyVersion,
         invitation_status: invitations.status,
+        invitation_delivery_status: invitations.deliveryStatus,
         current_revision: invitations.revision,
         recipient_email: invitations.recipientEmail,
         role: invitations.role,
@@ -133,6 +134,7 @@ async function claimInvitationDelivery(
       throw new Error('Workspace invitation delivery is unavailable');
     const invitationUnavailable =
       row.workspace_status !== 'active' ||
+      row.invitation_delivery_status === 'unknown' ||
       row.invitation_status !== 'pending' ||
       row.invitation_revision !== row.current_revision ||
       row.expired ||

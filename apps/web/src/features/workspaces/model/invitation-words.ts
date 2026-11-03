@@ -18,13 +18,20 @@ export function describeInvitationStatus(
   }
 }
 
-/** The latest delivery attempt in words: Sending, Sent, Couldn’t send. */
+/** Report uncertainty as a finished delivery with an explicit recovery action. */
 export function describeInvitationDelivery(
   delivery: WorkspaceInvitation['deliveryStatus'],
-): Readonly<{ label: string; problem: boolean }> {
+): Readonly<{ label: string; problem: boolean; guidance?: string }> {
   switch (delivery) {
     case 'queued':
       return { label: 'Sending', problem: false };
+    case 'unknown':
+      return {
+        label: 'Delivery unconfirmed',
+        problem: true,
+        guidance:
+          'Email delivery could not be confirmed. Revoke this invitation and create a new one to send another link.',
+      };
     case 'submitted':
       return { label: 'Sent', problem: false };
     case 'failed':

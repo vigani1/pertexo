@@ -79,7 +79,10 @@ function commandError(error: unknown, attempt: Attempt): string {
     isApiError(error) &&
     error.problem?.code === 'workspace.invitation_delivery_unavailable'
   )
-    return 'The last email for this invitation is still being delivered. Wait a minute before sending a new link.';
+    return (
+      error.problem.detail ??
+      'Email delivery could not be confirmed. Revoke this invitation and create a new one to send another link.'
+    );
   if (isApiError(error) && error.status === 409)
     return attempt.kind === 'create'
       ? `${attempt.email} already has a pending invitation or is a member.`

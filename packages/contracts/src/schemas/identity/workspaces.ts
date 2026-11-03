@@ -150,6 +150,7 @@ const workspaceInvitationDeliveryStatusSchema = z.enum([
   'submitted',
   'failed',
   'canceled',
+  'unknown',
 ]);
 export const workspaceInvitationSchema = z
   .object({

@@ -624,6 +624,13 @@
       "when": 1793718955909,
       "tag": "0088_repair_existing_workspace_capacity",
       "breakpoints": true
+    },
+    {
+      "idx": 89,
+      "version": "7",
+      "when": 1793718963302,
+      "tag": "0089_expose_unconfirmed_invitation_delivery",
+      "breakpoints": true
     }
   ]
 }
