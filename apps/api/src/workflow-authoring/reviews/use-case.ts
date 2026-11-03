@@ -12,7 +12,7 @@ import {
   BROWSABLE_WORKSPACE_STATUSES,
 } from '../../authorization/index.js';
 import type { WorkflowApplicationInput } from '../ports.js';
-import { parseRequestBody } from '../../platform/http/index.js';
+import { parseRequestInput } from '../../platform/http/index.js';
 
 type Scope = WorkflowApplicationInput & {
   signal?: AbortSignal;
@@ -48,7 +48,7 @@ export class PublicationReviewUseCase {
     },
   ) {
     await this.authorize(input, 'workflow:publish');
-    const body = parseRequestBody(
+    const body = parseRequestInput(
       publicationReviewRequestSchema,
       input.request,
     );
@@ -66,7 +66,7 @@ export class PublicationReviewUseCase {
     input: RequestInput & { request: unknown; idempotencyKey: string },
   ) {
     await this.authorize(input, 'governance:manage');
-    const body = parseRequestBody(
+    const body = parseRequestInput(
       publicationReviewDecisionSchema,
       input.request,
     );

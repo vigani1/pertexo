@@ -12,7 +12,7 @@ import {
   BROWSABLE_WORKSPACE_STATUSES,
 } from '../../authorization/index.js';
 import type { WorkflowApplicationInput } from '../ports.js';
-import { parseRequestBody } from '../../platform/http/index.js';
+import { parseRequestInput } from '../../platform/http/index.js';
 
 type ReadInput = WorkflowApplicationInput &
   Readonly<{ workflowId: string; signal?: AbortSignal }>;
@@ -47,7 +47,7 @@ export class WorkflowErrorUseCase {
     input.signal?.throwIfAborted();
     await this.authorize(input, 'workflow:update');
     input.signal?.throwIfAborted();
-    const request = parseRequestBody(
+    const request = parseRequestInput(
       workflowErrorSettingsRequestSchema,
       input.request,
     );

@@ -15,7 +15,7 @@ import type {
   WorkflowFavoriteStore,
 } from '@pertexo/core/authoring';
 import type { WorkspaceAuthorizationSource } from '../../authorization/index.js';
-import { parseRequestBody } from '../../platform/http/index.js';
+import { parseRequestInput } from '../../platform/http/index.js';
 import {
   authorizeWorkflowOrganization,
   workflowOrganizationContext,
@@ -37,7 +37,7 @@ export class WorkflowOrganizationCommandsUseCase {
 
   public async createTag(input: CommandInput) {
     await authorizeWorkflowOrganization(input, this.authorization, 'admin');
-    const request = parseRequestBody(
+    const request = parseRequestInput(
       workflowTagCreateRequestSchema,
       input.request,
     );
@@ -51,7 +51,7 @@ export class WorkflowOrganizationCommandsUseCase {
 
   public async renameTag(input: TagInput) {
     await authorizeWorkflowOrganization(input, this.authorization, 'admin');
-    const request = parseRequestBody(
+    const request = parseRequestInput(
       workflowTagRenameRequestSchema,
       input.request,
     );
@@ -66,7 +66,7 @@ export class WorkflowOrganizationCommandsUseCase {
 
   public async deleteTag(input: TagInput) {
     await authorizeWorkflowOrganization(input, this.authorization, 'admin');
-    const request = parseRequestBody(
+    const request = parseRequestInput(
       workflowTagDeleteRequestSchema,
       input.request,
     );
@@ -81,7 +81,7 @@ export class WorkflowOrganizationCommandsUseCase {
 
   public async replaceTags(input: WorkflowInput) {
     await authorizeWorkflowOrganization(input, this.authorization, 'editor');
-    const request = parseRequestBody(
+    const request = parseRequestInput(
       workflowTagReplaceRequestSchema,
       input.request,
     );
@@ -99,7 +99,7 @@ export class WorkflowOrganizationCommandsUseCase {
       Readonly<{ request: unknown; workflowId: string }>,
   ) {
     await authorizeWorkflowOrganization(input, this.authorization, 'read');
-    const request = parseRequestBody(
+    const request = parseRequestInput(
       workflowFavoriteRequestSchema,
       input.request,
     );

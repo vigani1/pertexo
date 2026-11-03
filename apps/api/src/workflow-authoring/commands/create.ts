@@ -14,7 +14,7 @@ import {
   type WorkflowCreateResult,
 } from '../http/serializers.js';
 
-import { parseRequestBody } from '../../platform/http/index.js';
+import { parseRequestInput } from '../../platform/http/index.js';
 import { type AuthoringPersistence, authorize } from './authorization.js';
 
 export type CreateWorkflowInput = WorkflowApplicationInput &
@@ -37,7 +37,7 @@ export class CreateWorkflowUseCase {
       WORKFLOW_AUTHORING_OPERATION.create,
       async () => {
         await authorize(input, 'workflow:create', this.authorization);
-        const request = parseRequestBody(
+        const request = parseRequestInput(
           workflowCreateRequestSchema,
           input.request,
         );

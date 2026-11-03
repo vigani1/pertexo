@@ -24,7 +24,7 @@ import { AuthoringValidationUnavailableError } from '@pertexo/workflow-model/ser
 import { apiProblemIssueSchema } from '@pertexo/contracts';
 import {
   applicationError,
-  requestBodyCause,
+  requestInputCause,
   type ApplicationError,
 } from '../../platform/http/index.js';
 
@@ -214,7 +214,7 @@ export const workflowProblems = [
   errorRegistration(WorkflowGraphContractError, (error) => {
     return applicationError('request.invalid', {
       safeDetail: 'The workflow graph is invalid.',
-      ...requestBodyCause(error),
+      ...requestInputCause(error),
     });
   }),
 ];

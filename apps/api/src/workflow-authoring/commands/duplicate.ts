@@ -17,7 +17,7 @@ import {
   WORKFLOW_AUTHORING_OPERATION,
   type WorkflowAuthoringTelemetry,
 } from '../telemetry.js';
-import { parseRequestBody } from '../../platform/http/index.js';
+import { parseRequestInput } from '../../platform/http/index.js';
 
 export type DuplicateWorkflowInput = WorkflowApplicationInput &
   Readonly<{
@@ -68,7 +68,7 @@ export class DuplicateWorkflowUseCase {
             ? { authorizedWorkspace: input.authorizedWorkspace }
             : {}),
         });
-        const { name, source } = parseRequestBody(
+        const { name, source } = parseRequestInput(
           workflowDuplicateRequestSchema,
           input.request,
         );

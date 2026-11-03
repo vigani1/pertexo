@@ -22,7 +22,7 @@ import { map, type Observable } from 'rxjs';
 import type { z } from 'zod';
 
 import { requestIdempotencyKey } from '../../platform/http/idempotency-key.js';
-import { parseRequestBody } from '../../platform/http/request-body.js';
+import { parseRequestInput } from '../../platform/http/request-input.js';
 import { RateLimit } from '../../platform/rate-limit/metadata.js';
 import { AutomationAuthenticationGuard } from '../../authentication/automation/guard.js';
 import { WORKSPACE_AUTHORIZATION } from '../tokens.js';
@@ -88,7 +88,7 @@ type RouteInputSource = Readonly<{
 }>;
 
 function parseDeclared(schema: z.ZodType | undefined, value: unknown): unknown {
-  return schema === undefined ? undefined : parseRequestBody(schema, value);
+  return schema === undefined ? undefined : parseRequestInput(schema, value);
 }
 
 function declaredRoute(context: ExecutionContext): AnyRoute {

@@ -16,4 +16,4 @@ export {
 } from './request-context.js';
 export * from './idempotency-key.js';
 export { withRequestOperationSignal } from './request-operation-signal.js';
-export { parseRequestBody, requestBodyCause } from './request-body.js';
+export { parseRequestInput, requestInputCause } from './request-input.js';

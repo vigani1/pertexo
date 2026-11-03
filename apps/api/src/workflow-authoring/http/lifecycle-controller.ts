@@ -18,7 +18,7 @@ import {
 } from '../../workspaces/index.js';
 
 import {
-  parseRequestBody,
+  parseRequestInput,
   requestIdempotencyKey,
 } from '../../platform/http/index.js';
 import { requestHeaderValue } from '../../platform/http/request-headers.js';
@@ -116,7 +116,7 @@ export class WorkflowLifecycleController {
     @Res({ passthrough: true }) response: WorkflowResponse,
   ) {
     const route = workflowParams(params);
-    const input = parseRequestBody(workflowDuplicateRequestSchema, body);
+    const input = parseRequestInput(workflowDuplicateRequestSchema, body);
     const representationTag =
       input.source.kind === 'draft'
         ? parseStrongIfMatch(requestHeaderValue(request.headers, 'if-match'))
