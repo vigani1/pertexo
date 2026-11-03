@@ -62,11 +62,17 @@ export async function claimScheduleCommand(
     resourceId: identity.triggerId,
   });
   if (claimed === null) return null;
-  const stored = z.looseObject({ trigger: z.unknown() }).parse(claimed);
-  return Object.freeze({
-    trigger: parseStoredScheduleTrigger(stored.trigger),
-    replayed: true,
-  });
+  try {
+    const stored = z.looseObject({ trigger: z.unknown() }).parse(claimed);
+    return Object.freeze({
+      trigger: parseStoredScheduleTrigger(stored.trigger),
+      replayed: true,
+    });
+  } catch (error: unknown) {
+    if (error instanceof z.ZodError)
+      throw new ScheduleTriggerError('idempotency_conflict');
+    throw error;
+  }
 }
 
 export async function applyScheduleHealthTransition(

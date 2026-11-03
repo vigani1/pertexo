@@ -1,5 +1,7 @@
 import { credentialCommandScope } from '@pertexo/database/platform';
 import type { WorkspaceVariablesCommandResponse } from '@pertexo/contracts';
+import { z } from 'zod';
+import { requireReadableReceipt } from '../shared/receipts.js';
 import {
   appendAuditFact,
   claimCommand,
@@ -25,7 +27,10 @@ import {
 } from './contract.js';
 import { planWorkspaceVariableReplacement } from './replacement.js';
 
-type AcceptedReplacement = Readonly<{ revision: number; changed: boolean }>;
+const acceptedReplacement = z
+  .object({ revision: z.number().int().nonnegative(), changed: z.boolean() })
+  .strict();
+type AcceptedReplacement = z.output<typeof acceptedReplacement>;
 
 /** A replacement that changes nothing keeps the revision and writes no audit. */
 export async function replaceWorkspaceVariables(
@@ -49,7 +54,10 @@ export async function replaceWorkspaceVariables(
         : { descriptions: input.descriptions }),
     },
   });
-  if (replay !== null) return { ...replay, replayed: true };
+  if (replay !== null) {
+    requireReadableReceipt(acceptedReplacement, replay);
+    return { ...replay, replayed: true };
+  }
   const current = (await lockVariableSet(
     client,
     input.workspaceId,
