@@ -326,5 +326,71 @@ describe.runIf(betterAuthIntegrationEnabled)(
           (await api.finish(await api.start(f, f.proof))).headers.location,
         ).not.toContain('ssoError');
     });
+
+    it.each(['policy', 'directory'] as const)(
+      'observes a committed %s change after the organization lock wait',
+      async (change) => {
+        const f = await person();
+        if (change === 'directory')
+          await api
+            .database()
+            .query(
+              `insert into app.auth_directory_users(id,organization_id,user_name,normalized_user_name,login_email,profile,user_id,active) values($1,$2,$3,$3,$3,'{}',$4,true)`,
+              [randomUUID(), f.settings.organization?.id, f.email, f.userId],
+            );
+        const organization = f.methods.find(
+          (method) => method.provider_id === f.providerId,
+        );
+        if (organization === undefined)
+          throw new Error('Organization method missing');
+        const observer = new Pool({ ...api.database().options, max: 1 });
+        const lock = await api.database().connect();
+        let pending: ReturnType<typeof unlink> | undefined;
+        try {
+          await lock.query('begin');
+          const {
+            rows: [backend],
+          } = await lock.query<{ pid: number }>('select pg_backend_pid() pid');
+          if (backend === undefined) throw new Error('Lock backend missing');
+          await lock.query(
+            'select id from app.auth_organizations where id=$1 for update',
+            [f.settings.organization?.id],
+          );
+          if (change === 'policy')
+            await lock.query(
+              'update app.auth_domains set require_sso=true where id=$1',
+              [f.domainId],
+            );
+          else
+            await lock.query(
+              'update app.auth_directory_users set active=false where user_id=$1',
+              [f.userId],
+            );
+          pending =
+            change === 'policy'
+              ? unlink(f.organizationBrowser, organization.id)
+              : unlink(f.browser, f.password.id);
+          await waitForBlocked(observer, backend.pid, 1);
+          await lock.query('commit');
+        } finally {
+          await lock.query('rollback');
+          lock.release();
+          await observer.end();
+        }
+        const refused = await pending;
+        expect(refused.statusCode, refused.payload).toBe(400);
+        expect(refused.json()).toMatchObject({ code: 'auth.last_method' });
+        expect(
+          (
+            await api
+              .database()
+              .query(
+                'select id,provider_id from app.auth_accounts where user_id=$1 order by id',
+                [f.userId],
+              )
+          ).rows,
+        ).toEqual(f.methods);
+      },
+    );
   },
 );

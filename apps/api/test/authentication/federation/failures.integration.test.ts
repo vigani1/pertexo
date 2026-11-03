@@ -15,6 +15,7 @@ const CANARY = 'private-proof-bearer-SQL-exception-canary';
 describe.runIf(betterAuthIntegrationEnabled)(
   'owned authentication failure diagnostics',
   () => {
+    const privateValues = new Set([CANARY]);
     const authorizations = new Map<
       string,
       Parameters<SocialProviderGateway['authorize']>[0]
@@ -26,6 +27,9 @@ describe.runIf(betterAuthIntegrationEnabled)(
       available: ['google', 'github'],
       authorize: (input) => {
         if (failure === 'authorize') return Promise.reject(new Error(CANARY));
+        privateValues.add(input.state);
+        privateValues.add(input.codeVerifier);
+        privateValues.add(input.nonce);
         authorizations.set(input.state, input);
         return Promise.resolve(
           `https://provider.test/authorize?state=${input.state}`,
@@ -76,11 +80,11 @@ describe.runIf(betterAuthIntegrationEnabled)(
         ]);
         const appropriate = kind === 'failed' ? errors : warnings;
         expect(appropriate.mock.calls.flat()).toContain(owned[0]);
-        expect(
+        const written =
           JSON.stringify([...errors.mock.calls, ...warnings.mock.calls]) +
-            reply.payload +
-            JSON.stringify(reply.headers),
-        ).not.toContain(CANARY);
+          reply.payload +
+          JSON.stringify(reply.headers);
+        for (const value of privateValues) expect(written).not.toContain(value);
         return reply;
       } finally {
         errors.mockRestore();
@@ -184,6 +188,7 @@ describe.runIf(betterAuthIntegrationEnabled)(
         const address = `link-log-${randomUUID()}@example.test`;
         await api.signUp(address, '/workspaces');
         const browser = await api.signIn(address);
+        privateValues.add(browser.session);
         const start = () =>
           api.send('POST', '/v1/auth/account-security/methods/link/start', {
             browser,
@@ -294,6 +299,7 @@ describe.runIf(betterAuthIntegrationEnabled)(
       );
       expect(created.statusCode, created.payload).toBe(201);
       const credential = created.json<{ secret: string }>();
+      privateValues.add(credential.secret);
       await api
         .database()
         .query(
@@ -379,6 +385,76 @@ describe.runIf(betterAuthIntegrationEnabled)(
           .database()
           .query('drop trigger fail_session_delivery on app.auth_sessions');
         await api.database().query('drop function app.fail_session_delivery()');
+      }
+    });
+
+    it('keeps committed linking and logs one reauthentication instruction when session delivery fails', async () => {
+      email = `delivery-link-${randomUUID()}@example.test`;
+      subject = randomUUID();
+      await api.signUp(email, '/workspaces');
+      const browser = await api.signIn(email);
+      const begun = await api.send(
+        'POST',
+        '/v1/auth/account-security/methods/link/start',
+        {
+          browser,
+          payload: {
+            provider: 'google',
+            existingMethod: {
+              kind: 'password',
+              password: 'a long enough integration password',
+            },
+          },
+        },
+      );
+      expect(begun.statusCode, begun.payload).toBe(200);
+      const state = new URL(
+        begun.json<{ authorizationUrl: string }>().authorizationUrl,
+      ).searchParams.get('state');
+      await api
+        .database()
+        .query(
+          `create function app.fail_link_delivery() returns trigger language plpgsql as $$ begin new.token='delivery-failed:'||new.token; return new; end $$`,
+        );
+      await api
+        .database()
+        .query(
+          'create trigger fail_link_delivery before insert on app.auth_sessions for each row execute function app.fail_link_delivery()',
+        );
+      try {
+        const reply = await observe(
+          () =>
+            api.send(
+              'GET',
+              `/v1/auth/account-security/methods/link/callback/google?state=${String(state)}&code=${CANARY}`,
+              {
+                headers: {
+                  cookie: `${browser.cookie}; pertexo_link=${setCookie(begun, 'pertexo_link')}`,
+                },
+              },
+            ),
+          'link_callback',
+          'session_delivery_failed',
+        );
+        expect(reply.headers.location).toContain('link_reauthenticate');
+        expect(
+          (
+            await api
+              .database()
+              .query(
+                'select provider_id from app.auth_accounts where account_id=$1',
+                [subject],
+              )
+          ).rows,
+        ).toEqual([{ provider_id: 'google' }]);
+        expect(
+          (await api.send('GET', '/v1/users/me', { browser })).statusCode,
+        ).toBe(401);
+      } finally {
+        await api
+          .database()
+          .query('drop trigger fail_link_delivery on app.auth_sessions');
+        await api.database().query('drop function app.fail_link_delivery()');
       }
     });
   },
