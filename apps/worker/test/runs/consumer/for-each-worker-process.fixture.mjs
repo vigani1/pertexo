@@ -1,8 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
-import { createPlatformNodeRegistry } from '../../../src/providers/node-registry.js';
-import { createCoordinatorRuntime } from '../../../src/runs/coordinator.runtime.js';
-import { testNodeAttemptRuntime } from '../../support/runtime-factories.js';
+import { createPlatformNodeRegistry } from '../../../dist/providers/node-registry.js';
+import { createCoordinatorRuntime } from '../../../dist/runs/coordinator.runtime.js';
+import { createNodeAttemptRuntime } from '../../../dist/attempts/delivery/node-attempt.runtime.js';
 const databaseUrl = process.env.FOR_EACH_DATABASE_URL;
 const maintenanceDatabaseUrl = process.env.FOR_EACH_MAINTENANCE_DATABASE_URL;
 const redisUrl = process.env.FOR_EACH_REDIS_URL;
@@ -70,7 +70,7 @@ try {
     maximumAdmissions: 10,
     redisUrl,
   });
-  attempts = await testNodeAttemptRuntime(
+  attempts = await createNodeAttemptRuntime(
     {
       database,
       heartbeatIntervalMillis: 1_000,
@@ -79,15 +79,21 @@ try {
       workerId: `for-each-process-${randomUUID()}`,
     },
     {
-      registry: createPlatformNodeRegistry(),
-      runtimeCapabilities: {
-        connections: () => ({
-          resolve: () => Promise.reject(new Error('not used')),
+      registry: () => createPlatformNodeRegistry(),
+      capabilities: () =>
+        Promise.resolve({
+          factories: {
+            connections: () => ({
+              resolve: () => Promise.reject(new Error('not used')),
+            }),
+            artifacts: () => ({
+              write: () => Promise.reject(new Error('not used')),
+            }),
+          },
+          checkReadiness: () => Promise.resolve(),
+          checkObjectStore: () => Promise.resolve(),
+          close: () => Promise.resolve(),
         }),
-        artifacts: () => ({
-          write: () => Promise.reject(new Error('not used')),
-        }),
-      },
     },
   );
   await Promise.all([

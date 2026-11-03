@@ -22,9 +22,15 @@ import { fileURLToPath } from 'node:url';
 import { createQueueProducer, QUEUE_NAME } from '@pertexo/queue';
 import { Queue } from 'bullmq';
 import { createForEachScenario } from './foreach-cancellation/scenario/execute.js';
+import { requireCurrentWorkerBuild } from '../../support/infrastructure/worker-build.js';
 
 describeIntegration('For Each cancellation recovery', () => {
-  beforeAll(setup, 60_000);
+  beforeAll(async () => {
+    requireCurrentWorkerBuild(
+      fileURLToPath(new URL('../../../tsconfig.json', import.meta.url)),
+    );
+    await setup();
+  }, 60_000);
   afterAll(restoreServicesAndClose);
   it('recovers bounded For Each batches and cancellation from PostgreSQL on fresh workers', async () => {
     let producer: ReturnType<typeof createQueueProducer> | undefined;
@@ -78,8 +84,6 @@ describeIntegration('For Each cancellation recovery', () => {
         const child = spawn(
           process.execPath,
           [
-            '--import',
-            'tsx',
             fileURLToPath(
               new URL('./for-each-worker-process.fixture.mjs', import.meta.url),
             ),
