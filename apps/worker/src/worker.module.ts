@@ -1,3 +1,4 @@
+import { createSystemMailClient } from './mail/system-mail-client.js';
 import { sealNoticeMail } from './mail/notice-content.js';
 import 'reflect-metadata';
 
@@ -12,10 +13,7 @@ import {
   createNoticeMailStore,
   createWorkspaceInboxFoldStore,
 } from '@pertexo/core/inbox';
-import {
-  createApplicationSecretEnvelope,
-  createSystemMailClient,
-} from '@pertexo/integrations/server';
+import { createApplicationSecretEnvelope } from '@pertexo/integrations/server';
 import { RedisWorkspaceInboxHintPublisher } from '@pertexo/queue';
 import type {
   StructuredLogger,

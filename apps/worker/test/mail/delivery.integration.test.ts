@@ -1,3 +1,4 @@
+import { createSystemMailClient } from '../../src/mail/system-mail-client.js';
 import { afterAll, beforeAll, expect, it, vi } from 'vitest';
 import {
   prepareDeliveryIntegrationTestTsFixture,
@@ -16,7 +17,6 @@ import {
 } from '@pertexo/secrets/server';
 import {
   createApplicationSecretEnvelope,
-  createSystemMailClient,
   openNoticeUnsubscribe,
   StoredKeyVerificationError,
   verifyStoredEncryptionKeys,

@@ -1,22 +1,38 @@
-import { createResendClient, type ResendApiResult } from './client.js';
-import { createNodeSecureHttpClient } from '../http/transport/node.js';
+import {
+  createResendClient,
+  type ResendApiResult,
+  type ResendClient,
+} from './client.js';
 import type { SecureHttpClient } from '../http/secure.js';
-import type {
-  SystemMailClient,
-  SystemMailConfig,
-  SystemMailFailure,
-} from '../system-mail/system-mail.js';
-import { createSmtpClient } from '../system-mail/smtp.js';
+type ResendMailMessage = Omit<
+  Parameters<ResendClient['sendNotification']>[0],
+  'apiKey'
+>;
+type ResendMailFailure = Readonly<{
+  category:
+    | 'network'
+    | 'rate_limited'
+    | 'invalid_response'
+    | 'provider_unavailable'
+    | 'provider_rejected'
+    | 'authentication'
+    | 'sender_rejected';
+  status?: number;
+}>;
+type ResendMailResult =
+  | Readonly<{ kind: 'submitted'; reference: string }>
+  | Readonly<{ kind: 'failed' | 'retryable'; failure: ResendMailFailure }>;
 
-export function createSystemMailClient(
-  config: SystemMailConfig,
-  http?: Pick<SecureHttpClient, 'execute'>,
-): SystemMailClient {
-  if (config.mode === 'smtp') return createSmtpClient(config);
-  const resend = createResendClient(http ?? createNodeSecureHttpClient());
+export function createResendSystemMailClient(
+  config: Readonly<{ apiKey: string }>,
+  http: Pick<SecureHttpClient, 'execute'>,
+) {
+  const resend = createResendClient(http);
   return Object.freeze({
     deduplicates: true,
-    sendNotification: async (message) => {
+    sendNotification: async (
+      message: ResendMailMessage,
+    ): Promise<ResendMailResult> => {
       try {
         const result = await resend.sendNotification({
           ...message,
@@ -44,13 +60,13 @@ export function createSystemMailClient(
 
 function resendFailure(
   result: Exclude<ResendApiResult, { kind: 'succeeded' }>,
-): SystemMailFailure {
+): ResendMailFailure {
   if (result.kind === 'rate_limited')
     return { category: 'rate_limited', status: 429 };
   if (result.kind === 'invalid_response')
     return { category: 'invalid_response' };
   const { status } = result;
-  let category: SystemMailFailure['category'] =
+  let category: ResendMailFailure['category'] =
     status >= 500 ? 'provider_unavailable' : 'provider_rejected';
   if (status === 401) category = 'authentication';
   if (result.kind === 'rejected') {

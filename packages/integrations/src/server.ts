@@ -176,7 +176,7 @@ export {
   systemMailFailureCode,
   systemMailFailureInstruction,
 } from './system-mail/system-mail.js';
-export { createSystemMailClient } from './email/system-mail.js';
+export { createResendSystemMailClient } from './email/system-mail.js';
 export { parseSystemMailConfig } from './system-mail/config.js';
 export type {
   SystemMailFailure,
@@ -206,3 +206,5 @@ export {
 } from './callbacks/keys.js';
 
 export { verifyCallbackTokenKeys } from './callbacks/verify.js';
+
+export { createSmtpClient } from './system-mail/smtp.js';
