@@ -182,8 +182,18 @@ export function createOAuth2TokenService(
     );
     if (outcome.kind === 'renewed') return outcome.token;
     if (outcome.kind === 'changed') return undefined;
-    // A token that still works is the answer; the outage only matters once it doesn't.
-    if (!isExpired(token)) return useToken(scope, grant, signal);
+    // Reread by database time: the request may have crossed expiry or a grant change.
+    const current = await store.openOAuth2Grant({
+      workspaceId: scope.workspaceId,
+      connectionId: scope.connectionId,
+      signal,
+    });
+    if (
+      current?.secretVersionId !== grant.secretVersionId ||
+      current.token.id !== token.id
+    )
+      return undefined;
+    if (!isExpired(current.token)) return useToken(scope, current, signal);
     throw outcome.failure;
   };
 
