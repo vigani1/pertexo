@@ -112,13 +112,9 @@ export function publicationRefusalDiagnostics(
         code: issue.code,
       })),
     };
-  return {
-    reason:
-      error instanceof OutboxPayloadChecksumError
-        ? 'checksum_mismatch'
-        : error instanceof OutboxContractError &&
-            error.cause instanceof TypeError
-          ? 'payload_not_object'
-          : 'unsupported_queue_job',
-  };
+  if (error instanceof OutboxPayloadChecksumError)
+    return { reason: 'checksum_mismatch' };
+  if (error instanceof OutboxContractError && error.cause instanceof TypeError)
+    return { reason: 'payload_not_object' };
+  return { reason: 'unsupported_queue_job' };
 }

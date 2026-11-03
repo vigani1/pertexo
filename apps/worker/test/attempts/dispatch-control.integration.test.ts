@@ -4,7 +4,6 @@ import {
   cancelProviderScenarioRun,
   expireProviderScenarioRun,
   workerQuery,
-  workspaceId,
 } from '../support/attempts/http-node-attempt.js';
 import {
   describeIntegration,

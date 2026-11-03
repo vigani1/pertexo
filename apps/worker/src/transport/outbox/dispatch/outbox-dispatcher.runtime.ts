@@ -41,9 +41,6 @@ import {
 import { releaseFailedPublication } from './release.js';
 import {
   transportJobName,
-  canNeverPublish,
-  errorCode,
-  publicationRefusalDiagnostics,
   transportErrorClass,
   toQueueJob,
 } from './delivery.js';
@@ -296,19 +293,11 @@ export class OutboxDispatcher {
         });
       }
       await releaseFailedPublication(
-        { database: this.database, metrics: this.metrics },
+        { database: this.database, metrics: this.metrics, logger: this.logger },
         event,
         error,
         this.options,
       );
-      if (canNeverPublish(error))
-        this.logger?.error('outbox.publication_refused', {
-          eventId: event.id,
-          workspaceId: event.workspaceId,
-          jobName: event.jobName,
-          errorCode: errorCode(error),
-          ...publicationRefusalDiagnostics(error),
-        });
       return 'failed';
     }
   }
