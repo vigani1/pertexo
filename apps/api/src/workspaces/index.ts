@@ -36,9 +36,7 @@ export * from './tokens.js';
 export * from './types.js';
 export { requestIdentifier, traceIdentifier } from './request/identifiers.js';
 export { encodeWorkspaceMemberCursor } from './cursor.js';
-export {
-  identityWorkspaceOpenApiDocument,
-} from './contracts.js';
+export { identityWorkspaceOpenApiDocument } from './contracts.js';
 export {
   createIdentityWorkspaceTelemetry,
   IDENTITY_WORKSPACE_METRIC_NAME,

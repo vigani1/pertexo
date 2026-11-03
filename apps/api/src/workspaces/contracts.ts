@@ -1,3 +1,1 @@
-export {
-  identityWorkspaceOpenApiDocument,
-} from '@pertexo/contracts/server';
+export { identityWorkspaceOpenApiDocument } from '@pertexo/contracts/server';
