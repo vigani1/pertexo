@@ -32,7 +32,6 @@ import {
   WorkflowReviewGuard,
   WorkflowUpdateGuard,
   WorkflowPauseDefaultGuard,
-  WorkspaceAutoPauseReadGuard,
 } from './http/guards.js';
 import { WorkflowAuthoringController } from './http/controllers.js';
 import {
@@ -55,6 +54,7 @@ import {
   type WorkflowAuthoringTelemetry,
 } from './telemetry.js';
 import { WORKFLOW_AUTHORING_AUTHORIZATION } from './tokens.js';
+import { WORKSPACE_AUTHORIZATION } from '../workspaces/tokens.js';
 import { WorkflowAutoPauseUseCase } from './settings/auto-pause.js';
 import { WorkflowConcurrencyUseCase } from './settings/concurrency.js';
 import { WorkflowConcurrencyController } from './settings/concurrency-controller.js';
@@ -85,6 +85,11 @@ export class WorkflowAuthoringModule {
       ...workflowLifecycleProviders(dependencies, telemetry),
       {
         provide: WORKFLOW_AUTHORING_AUTHORIZATION,
+        useValue: dependencies.authorization,
+      },
+      // Declared routes build their guards on this token.
+      {
+        provide: WORKSPACE_AUTHORIZATION,
         useValue: dependencies.authorization,
       },
       WorkflowReadGuard,
@@ -305,7 +310,6 @@ function workflowFeatureProviders(
             ),
           },
           WorkflowPauseDefaultGuard,
-          WorkspaceAutoPauseReadGuard,
         ]),
   ];
 }

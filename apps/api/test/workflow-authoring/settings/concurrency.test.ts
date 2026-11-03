@@ -2,9 +2,7 @@ import type { Role } from '@pertexo/policy';
 import { problemResult } from '../../support/problem.js';
 import { toProblem } from '../../../src/problems/registry.js';
 import { authoringFailure } from '../../../src/problems/context/normalize.js';
-import 'reflect-metadata';
 import { describe, expect, it, vi } from 'vitest';
-import { GUARDS_METADATA, HEADERS_METADATA } from '@nestjs/common/constants.js';
 import type { WorkflowConcurrencyStore } from '@pertexo/core/authoring';
 import {
   WorkflowConcurrencyRevisionConflictError,
@@ -12,15 +10,6 @@ import {
   WorkflowConcurrencyLimitUnavailableError,
 } from '@pertexo/core/authoring';
 import { WorkflowConcurrencyUseCase } from '../../../src/workflow-authoring/settings/concurrency.js';
-import { WorkflowConcurrencyController } from '../../../src/workflow-authoring/settings/concurrency-controller.js';
-import {
-  WorkflowReadGuard,
-  WorkflowUpdateGuard,
-} from '../../../src/workflow-authoring/http/guards.js';
-import {
-  SessionAuthenticationGuard,
-  CsrfProtectionGuard,
-} from '../../../src/workspaces/index.js';
 
 import { createActorContext } from '../../../src/authorization/index.js';
 
@@ -165,20 +154,6 @@ describe('workflow concurrency application boundary', () => {
     expect(persistence.readSettings).not.toHaveBeenCalled();
     expect(persistence.updateSettings).not.toHaveBeenCalled();
   });
-  it('rejects speculative controls and invalid independent revisions before writes', async () => {
-    const { controls, persistence } = fixture();
-    for (const request of [
-      { limit: 0, expectedRevision: 1 },
-      { limit: 10_001, expectedRevision: 1 },
-      { limit: 1, expectedRevision: 2_147_483_648 },
-      { limit: null, expectedRevision: 0 },
-      { limit: 1, expectedRevision: 1, overflow: 'drop' },
-    ])
-      await expect(
-        controls.update({ ...commandInput, request }),
-      ).rejects.toMatchObject({ name: 'ZodError' });
-    expect(persistence.updateSettings).not.toHaveBeenCalled();
-  });
   it('cancels before authorization and does not issue reads or writes', async () => {
     const { controls, authorization, persistence } = fixture();
     const aborted = AbortSignal.abort();
@@ -212,67 +187,5 @@ describe('workflow concurrency application boundary', () => {
         authoringFailure(new WorkflowConcurrencyLimitUnavailableError()),
       ),
     ).toMatchObject({ code: 'workflow.concurrency_limit_unavailable' });
-  });
-});
-describe('workflow concurrency HTTP boundary', () => {
-  it('declares existing capability, session and CSRF guards and no-store responses', () => {
-    // Metadata inspection does not invoke these unbound methods.
-    // eslint-disable-next-line @typescript-eslint/unbound-method
-    const read = WorkflowConcurrencyController.prototype.read;
-    // eslint-disable-next-line @typescript-eslint/unbound-method
-    const update = WorkflowConcurrencyController.prototype.update;
-    expect(Reflect.getMetadata(GUARDS_METADATA, read)).toEqual([
-      SessionAuthenticationGuard,
-      WorkflowReadGuard,
-    ]);
-    expect(Reflect.getMetadata(GUARDS_METADATA, update)).toEqual([
-      SessionAuthenticationGuard,
-      WorkflowUpdateGuard,
-      CsrfProtectionGuard,
-    ]);
-    for (const operation of [read, update])
-      expect(Reflect.getMetadata(HEADERS_METADATA, operation)).toContainEqual({
-        name: 'Cache-Control',
-        value: 'private, no-store',
-      });
-  });
-  it('validates exact command header and route identifiers', async () => {
-    const { controls, persistence } = fixture();
-    const controller = new WorkflowConcurrencyController(controls);
-    const request = {
-      headers: { 'idempotency-key': 'one,two' },
-      identitySession: {
-        userId: actorId,
-        sessionId,
-        expiresAt: new Date('2027-01-01'),
-        clientMetadata: {},
-      },
-      requestId: 'concurrency-test',
-    };
-    await expect(
-      problemResult(
-        controller.update(
-          request,
-          { workspaceId, workflowId },
-          commandInput.request,
-        ),
-        authoringFailure,
-      ),
-    ).rejects.toMatchObject({ code: 'request.invalid' });
-    await expect(
-      problemResult(
-        controller.read(request, { workspaceId, workflowId: 'bad' }),
-        authoringFailure,
-      ),
-    ).rejects.toMatchObject({ code: 'request.invalid' });
-    expect(persistence.updateSettings).not.toHaveBeenCalled();
-    expect(persistence.readSettings).not.toHaveBeenCalled();
-    expect(
-      await controller.update(
-        { ...request, headers: { 'idempotency-key': 'single' } },
-        { workspaceId, workflowId },
-        commandInput.request,
-      ),
-    ).toEqual({ settings, replayed: true });
   });
 });

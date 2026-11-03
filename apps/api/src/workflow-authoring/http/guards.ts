@@ -9,15 +9,6 @@ export const WorkflowPauseDefaultGuard = capabilityGuard(
   { disclosure: 'not_found', allowedWorkspaceStatuses: ['active'] },
 );
 
-export const WorkspaceAutoPauseReadGuard = capabilityGuard(
-  WORKFLOW_AUTHORING_AUTHORIZATION,
-  'workspace:read',
-  {
-    disclosure: 'not_found',
-    allowedWorkspaceStatuses: BROWSABLE_WORKSPACE_STATUSES,
-  },
-);
-
 export const WorkflowReadGuard = capabilityGuard(
   WORKFLOW_AUTHORING_AUTHORIZATION,
   'workflow:read',

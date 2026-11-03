@@ -78,27 +78,4 @@ describe('error workflow Settings boundary', () => {
       expect(f.persistence.listTargets).not.toHaveBeenCalled();
     },
   );
-  it.each([
-    { targetWorkflowId: workflowId, expectedRevision: 0 },
-    { targetWorkflowId: 'foreign-id', expectedRevision: 1 },
-    {
-      targetWorkflowId: null,
-      expectedRevision: 1,
-      input: { password: 'secret' },
-    },
-    {
-      targetWorkflowId: null,
-      expectedRevision: 1,
-      targetWorkflowName: 'forged',
-    },
-  ])(
-    'rejects malformed or speculative settings at the HTTP boundary',
-    async (request) => {
-      const f = fixture();
-      await expect(
-        f.controls.update({ ...input, request, idempotencyKey: 'invalid' }),
-      ).rejects.toMatchObject({ name: 'ZodError' });
-      expect(f.persistence.updateSettings).not.toHaveBeenCalled();
-    },
-  );
 });

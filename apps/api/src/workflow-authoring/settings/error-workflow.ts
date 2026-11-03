@@ -1,8 +1,11 @@
+import type { z } from 'zod';
+import type {
+  workflowErrorTargetsQuerySchema,
+  workflowErrorSettingsRequestSchema,
+} from '@pertexo/contracts';
 import {
   workflowErrorSettingsSchema,
-  workflowErrorTargetsQuerySchema,
   workflowErrorTargetsPageSchema,
-  workflowErrorSettingsRequestSchema,
   workflowErrorSettingsResponseSchema,
 } from '@pertexo/contracts';
 import type { WorkflowErrorStore } from '@pertexo/core/authoring';
@@ -12,12 +15,11 @@ import {
   BROWSABLE_WORKSPACE_STATUSES,
 } from '../../authorization/index.js';
 import type { WorkflowApplicationInput } from '../ports.js';
-import { parseRequestInput } from '../../platform/http/index.js';
 
 type ReadInput = WorkflowApplicationInput &
   Readonly<{ workflowId: string; signal?: AbortSignal }>;
-type CommandInput = ReadInput &
-  Readonly<{ request: unknown; idempotencyKey: string }>;
+type CommandInput<Request> = ReadInput &
+  Readonly<{ request: Request; idempotencyKey: string }>;
 
 /** Operational policy never mutates drafts, publication or trigger state. */
 export class WorkflowErrorUseCase {
@@ -25,12 +27,12 @@ export class WorkflowErrorUseCase {
     private readonly persistence: WorkflowErrorStore,
     private readonly authorization: WorkspaceAuthorizationSource,
   ) {}
-  public async targets(input: ReadInput & Readonly<{ request: unknown }>) {
+  public async targets(
+    input: ReadInput &
+      Readonly<{ request: z.output<typeof workflowErrorTargetsQuerySchema> }>,
+  ) {
     await this.authorize(input, 'workflow:update');
-    const request = parseRequestInput(
-      workflowErrorTargetsQuerySchema,
-      input.request,
-    );
+    const { request } = input;
     return workflowErrorTargetsPageSchema.parse(
       await this.persistence.listTargets({
         ...this.context(input),
@@ -46,14 +48,13 @@ export class WorkflowErrorUseCase {
       await this.persistence.readSettings(this.context(input)),
     );
   }
-  public async update(input: CommandInput) {
+  public async update(
+    input: CommandInput<z.output<typeof workflowErrorSettingsRequestSchema>>,
+  ) {
     input.signal?.throwIfAborted();
     await this.authorize(input, 'workflow:update');
     input.signal?.throwIfAborted();
-    const request = parseRequestInput(
-      workflowErrorSettingsRequestSchema,
-      input.request,
-    );
+    const { request } = input;
     return workflowErrorSettingsResponseSchema.parse(
       await this.persistence.updateSettings({
         ...this.context(input),

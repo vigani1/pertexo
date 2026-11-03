@@ -4,10 +4,6 @@ import { problemResult } from '../../support/problem.js';
 import { describe, expect, it, vi } from 'vitest';
 import type { WorkflowAutoPauseStore } from '@pertexo/core/authoring';
 import { WorkflowAutoPauseUseCase } from '../../../src/workflow-authoring/settings/auto-pause.js';
-import {
-  WorkflowAutoPauseController,
-  WorkspaceAutoPauseController,
-} from '../../../src/workflow-authoring/settings/auto-pause-controllers.js';
 import { createActorContext } from '../../../src/authorization/index.js';
 
 const workspaceId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
@@ -140,40 +136,6 @@ describe('workflow automatic pause application boundary', () => {
     },
   );
 
-  it('validates strict request bounds before calling persistence', async () => {
-    const { persistence, controls } = fixture();
-    for (const request of [
-      { enabled: true, thresholdOverride: 2, expectedSettingsRevision: 1 },
-      { enabled: true, thresholdOverride: 101, expectedSettingsRevision: 1 },
-      {
-        enabled: true,
-        thresholdOverride: null,
-        expectedSettingsRevision: 1,
-        warning: true,
-      },
-    ])
-      await expect(
-        controls.updateWorkflow({
-          actor,
-          routeWorkspaceId: workspaceId,
-          workflowId,
-          idempotencyKey: 'invalid',
-          request,
-        }),
-      ).rejects.toMatchObject({ name: 'ZodError' });
-    await expect(
-      controls.resume({
-        actor,
-        routeWorkspaceId: workspaceId,
-        workflowId,
-        idempotencyKey: 'invalid',
-        request: { expectedPauseRevision: 9007199254740992 },
-      }),
-    ).rejects.toMatchObject({ name: 'ZodError' });
-    expect(persistence.updateWorkflowSettings).not.toHaveBeenCalled();
-    expect(persistence.resumeWorkflow).not.toHaveBeenCalled();
-  });
-
   it('requires current active workspace access even for a previously authorized actor', async () => {
     const { controls, authorization, persistence } = fixture();
     authorization.findAccess.mockResolvedValue(undefined);
@@ -188,48 +150,5 @@ describe('workflow automatic pause application boundary', () => {
       ),
     ).rejects.toMatchObject({ code: 'resource.not_found' });
     expect(persistence.readWorkflowSettings).not.toHaveBeenCalled();
-  });
-});
-
-describe('automatic pause controller commands', () => {
-  it('requires exactly one valid key and does not accept historical numeric pause revisions', async () => {
-    const { controls, persistence } = fixture();
-    const controller = new WorkflowAutoPauseController(controls);
-    const request = {
-      headers: { 'idempotency-key': 'one,two' },
-      identitySession: {
-        userId: actorId,
-        sessionId,
-        expiresAt: new Date('2027-01-01'),
-        clientMetadata: {},
-      },
-      requestId: 'pause-test',
-    };
-    await expect(
-      problemResult(
-        controller.resume(
-          request,
-          { workspaceId, workflowId },
-          { expectedPauseRevision: '1' },
-        ),
-        authoringFailure,
-      ),
-    ).rejects.toMatchObject({ code: 'request.invalid' });
-    await expect(
-      problemResult(
-        controller.resume(
-          { ...request, headers: { 'idempotency-key': 'single' } },
-          { workspaceId, workflowId },
-          { expectedPauseRevision: 1 },
-        ),
-        authoringFailure,
-      ),
-    ).rejects.toMatchObject({ code: 'request.invalid' });
-    expect(persistence.resumeWorkflow).not.toHaveBeenCalled();
-    const workspace = new WorkspaceAutoPauseController(controls);
-    expect(await workspace.read(request, { workspaceId })).toEqual({
-      threshold: 10,
-      revision: 1,
-    });
   });
 });

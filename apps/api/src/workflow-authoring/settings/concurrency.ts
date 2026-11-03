@@ -1,6 +1,7 @@
+import type { z } from 'zod';
+import type { workflowConcurrencySettingsRequestSchema } from '@pertexo/contracts';
 import {
   workflowConcurrencySettingsSchema,
-  workflowConcurrencySettingsRequestSchema,
   workflowConcurrencyCommandResponseSchema,
 } from '@pertexo/contracts';
 import type { WorkflowConcurrencyStore } from '@pertexo/core/authoring';
@@ -10,12 +11,11 @@ import {
   BROWSABLE_WORKSPACE_STATUSES,
 } from '../../authorization/index.js';
 import type { WorkflowApplicationInput } from '../ports.js';
-import { parseRequestInput } from '../../platform/http/index.js';
 
 type ReadInput = WorkflowApplicationInput &
   Readonly<{ workflowId: string; signal?: AbortSignal }>;
-type CommandInput = ReadInput &
-  Readonly<{ request: unknown; idempotencyKey: string }>;
+type CommandInput<Request> = ReadInput &
+  Readonly<{ request: Request; idempotencyKey: string }>;
 
 /** Operational policy never mutates drafts, publication or trigger state. */
 export class WorkflowConcurrencyUseCase {
@@ -31,14 +31,15 @@ export class WorkflowConcurrencyUseCase {
       await this.persistence.readSettings(this.context(input)),
     );
   }
-  public async update(input: CommandInput) {
+  public async update(
+    input: CommandInput<
+      z.output<typeof workflowConcurrencySettingsRequestSchema>
+    >,
+  ) {
     input.signal?.throwIfAborted();
     await this.authorize(input, 'workflow:update');
     input.signal?.throwIfAborted();
-    const request = parseRequestInput(
-      workflowConcurrencySettingsRequestSchema,
-      input.request,
-    );
+    const { request } = input;
     return workflowConcurrencyCommandResponseSchema.parse(
       await this.persistence.updateSettings({
         ...this.context(input),

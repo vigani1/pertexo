@@ -1,10 +1,13 @@
+import type { z } from 'zod';
+import type {
+  workflowAutoPauseSettingsRequestSchema,
+  workflowResumeRequestSchema,
+  workspaceAutoPauseSettingsRequestSchema,
+} from '@pertexo/contracts';
 import {
   workflowAutoPauseSettingsSchema,
-  workflowAutoPauseSettingsRequestSchema,
   workflowAutoPauseCommandResponseSchema,
-  workflowResumeRequestSchema,
   workspaceAutoPauseSettingsSchema,
-  workspaceAutoPauseSettingsRequestSchema,
   workspaceAutoPauseCommandResponseSchema,
 } from '@pertexo/contracts';
 import type { WorkflowAutoPauseStore } from '@pertexo/core/authoring';
@@ -14,12 +17,11 @@ import {
   BROWSABLE_WORKSPACE_STATUSES,
 } from '../../authorization/index.js';
 import type { WorkflowApplicationInput } from '../ports.js';
-import { parseRequestInput } from '../../platform/http/index.js';
 
 type WorkflowReadInput = WorkflowApplicationInput &
   Readonly<{ workflowId: string }>;
-type CommandInput = WorkflowApplicationInput &
-  Readonly<{ request: unknown; idempotencyKey: string }>;
+type CommandInput<Request> = WorkflowApplicationInput &
+  Readonly<{ request: Request; idempotencyKey: string }>;
 
 /** Operational controls never modify a draft, a published version or trigger enablement. */
 export class WorkflowAutoPauseUseCase {
@@ -40,13 +42,13 @@ export class WorkflowAutoPauseUseCase {
   }
 
   public async updateWorkflow(
-    input: CommandInput & Readonly<{ workflowId: string }>,
+    input: CommandInput<
+      z.output<typeof workflowAutoPauseSettingsRequestSchema>
+    > &
+      Readonly<{ workflowId: string }>,
   ) {
     await this.authorize(input, 'workflow:update');
-    const request = parseRequestInput(
-      workflowAutoPauseSettingsRequestSchema,
-      input.request,
-    );
+    const { request } = input;
     return workflowAutoPauseCommandResponseSchema.parse(
       await this.persistence.updateWorkflowSettings({
         ...this.commandContext(input),
@@ -56,12 +58,12 @@ export class WorkflowAutoPauseUseCase {
     );
   }
 
-  public async resume(input: CommandInput & Readonly<{ workflowId: string }>) {
+  public async resume(
+    input: CommandInput<z.output<typeof workflowResumeRequestSchema>> &
+      Readonly<{ workflowId: string }>,
+  ) {
     await this.authorize(input, 'workflow:publish');
-    const request = parseRequestInput(
-      workflowResumeRequestSchema,
-      input.request,
-    );
+    const { request } = input;
     return workflowAutoPauseCommandResponseSchema.parse(
       await this.persistence.resumeWorkflow({
         ...this.commandContext(input),
@@ -81,12 +83,13 @@ export class WorkflowAutoPauseUseCase {
     );
   }
 
-  public async updateWorkspace(input: CommandInput) {
+  public async updateWorkspace(
+    input: CommandInput<
+      z.output<typeof workspaceAutoPauseSettingsRequestSchema>
+    >,
+  ) {
     await this.authorize(input, 'workspace:manage');
-    const request = parseRequestInput(
-      workspaceAutoPauseSettingsRequestSchema,
-      input.request,
-    );
+    const { request } = input;
     return workspaceAutoPauseCommandResponseSchema.parse(
       await this.persistence.updateWorkspaceSettings({
         ...this.commandContext(input),
@@ -120,7 +123,7 @@ export class WorkflowAutoPauseUseCase {
     });
   }
 
-  private commandContext(input: CommandInput) {
+  private commandContext(input: CommandInput<unknown>) {
     return {
       workspaceId: input.routeWorkspaceId,
       actorId: input.actor.actorId,
