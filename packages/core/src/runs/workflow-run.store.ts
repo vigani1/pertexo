@@ -129,6 +129,11 @@ export function createWorkflowRunDatabase(
     replay: async (input: ReplayPublishedWorkflowRunInput) => {
       return withRunCommand(pool, input, 'run:replay', async (transaction) => {
         await requireRunAccess(transaction, input.sourceRunId, 'run:replay');
+        await lockActorArtifactReferences(
+          transaction,
+          input.actorId,
+          input.input,
+        );
         return replayWorkflowRunInTransaction(transaction, input);
       });
     },
