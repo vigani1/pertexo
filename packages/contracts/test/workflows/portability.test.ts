@@ -9,7 +9,10 @@ import {
   workflowTemplateOriginProjectionQuerySchema,
   workflowTemplateOriginProjectionResponseSchema,
 } from '../../src/schemas/workflows/authoring.js';
-import { workflowPortabilityOpenApiDocument } from '../../src/server.js';
+import {
+  publicOpenApiDocument,
+  workflowPortabilityOpenApiDocument,
+} from '../../src/server.js';
 
 describe('portable workflow public HTTP contract', () => {
   const manifest = {
@@ -122,6 +125,27 @@ describe('portable workflow public HTTP contract', () => {
         },
       }).templateOrigin?.derivation,
     ).toBe('inherited');
+  });
+  it('documents the extra connection scope only for imports with explicit bindings', () => {
+    for (const document of [
+      workflowPortabilityOpenApiDocument,
+      publicOpenApiDocument,
+    ]) {
+      for (const suffix of ['/import/preview', '/import']) {
+        const operation =
+          document.paths[`/v1/workspaces/{workspaceId}/workflows${suffix}`]
+            ?.post;
+        expect(operation).toHaveProperty('x-pertexo-api-token-scopes', [
+          'workflow:create',
+        ]);
+        expect(operation).toHaveProperty(
+          'description',
+          expect.stringContaining(
+            'Explicit connection bindings additionally require connection:read.',
+          ),
+        );
+      }
+    }
   });
   it('documents cookie CSRF and scoped bearer portability with idempotent creation', () => {
     const paths = workflowPortabilityOpenApiDocument.paths;

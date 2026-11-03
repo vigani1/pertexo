@@ -47,7 +47,7 @@ function publicOperation(operation: Operation): Operation {
   const facts = id === undefined ? undefined : PUBLIC_OPERATIONS[id];
   if (facts === undefined)
     throw new Error(
-      `Token route ${String(id)} isn't in PUBLIC_OPERATIONS: give it a summary, a tag and its scopes`,
+      `Token route ${String(id)} isn't in PUBLIC_OPERATIONS: give it a summary and a tag`,
     );
   return {
     ...operation,
@@ -57,7 +57,7 @@ function publicOperation(operation: Operation): Operation {
     parameters: (operation.parameters ?? []).filter(
       ({ name }) => String(name).toLowerCase() !== 'x-csrf-token',
     ),
-    'x-pertexo-api-token-scopes': facts.scopes,
+    'x-pertexo-api-token-scopes': operation['x-pertexo-api-token-scopes'] ?? [],
     'x-pertexo-problem-codes': [
       ...EVERY_TOKEN_ROUTE,
       ...(facts.problems ?? []),
