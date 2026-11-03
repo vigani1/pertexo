@@ -29,6 +29,11 @@ services:
       # Test suites run four files at once, each with its own pools.
       - -c
       - max_connections=300
+      # On unless a throwaway database asks otherwise: CI turns these off.
+      - -c
+      - fsync=${POSTGRES_DURABILITY:-on}
+      - -c
+      - full_page_writes=${POSTGRES_DURABILITY:-on}
     ports:
       - '127.0.0.1:${POSTGRES_PORT:-5432}:5432'
     volumes:

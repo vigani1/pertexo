@@ -32,6 +32,7 @@ import { WorkflowRunReplayGuard } from '../http/guards.js';
 import { GetRunRecoveryUseCase, RecoverRunUseCase } from './use-cases.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
 import { runFailure } from '../../problems/context/normalize.js';
+import { parseRequestInput } from '../../platform/http/request-input.js';
 
 @UseInterceptors(domainErrors(runFailure))
 @Controller('v1/workspaces/:workspaceId/runs/:runId')
@@ -65,7 +66,7 @@ export class RunRecoveryController {
     @Body() body: unknown,
   ) {
     const route = workflowRunParamsSchema.parse(params);
-    const input = workflowRecoveryRequestSchema.parse(body);
+    const input = parseRequestInput(workflowRecoveryRequestSchema, body);
     const traceparent = singleRequestHeader(request.headers, 'traceparent');
     return this.recover.execute({
       actor: actorFrom(request, route.workspaceId),

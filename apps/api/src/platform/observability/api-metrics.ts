@@ -17,6 +17,7 @@ const excludedClientProblems = new Set<string>([
   'request.aborted',
   'request.invalid',
   'request.precondition_required',
+  'request.method_not_allowed',
   'request.too_large',
   'request.unsupported_media_type',
   'webhook.authentication_failed',

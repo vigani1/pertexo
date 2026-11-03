@@ -154,7 +154,7 @@ describe.runIf(enabled)('the real web app in a real browser', () => {
         '--env',
         'NGINX_ENVSUBST_FILTER=^(PERTEXO_API_UPSTREAM|NGINX_LOCAL_RESOLVERS)$',
         '--mount',
-        `type=bind,src=${join(webDirectory, 'dist')},dst=/usr/share/nginx/html,readonly`,
+        `type=bind,src=${join(webDirectory, process.env.PERTEXO_WEB_OUT_DIR ?? 'dist')},dst=/usr/share/nginx/html,readonly`,
         '--mount',
         `type=bind,src=${join(webDirectory, 'deployment/nginx.conf.template')},dst=/etc/nginx/templates/default.conf.template,readonly`,
         webImage,

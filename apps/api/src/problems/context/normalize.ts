@@ -13,7 +13,7 @@ import {
 } from '@pertexo/workflow-model';
 import { WorkflowEngineError } from '@pertexo/workflow-engine';
 import { z } from 'zod';
-import { requestBodyCause } from '../../platform/http/request-body.js';
+import { requestInputCause } from '../../platform/http/request-input.js';
 import {
   FormAdmissionError,
   HiddenResourceError,
@@ -32,7 +32,7 @@ export function requestFailure(
   message = 'The request is invalid.',
 ): unknown {
   return error instanceof z.ZodError
-    ? new InvalidRequestError(message, requestBodyCause(error))
+    ? new InvalidRequestError(message, requestInputCause(error))
     : error;
 }
 
@@ -59,7 +59,7 @@ export function authoringFailure(error: unknown): unknown {
       graphInvalid
         ? 'The workflow graph is invalid.'
         : 'The workflow request is invalid.',
-      requestBodyCause(error),
+      requestInputCause(error),
     );
   }
   return resourceFailure(commandFailure(error));
@@ -102,7 +102,10 @@ export function runFailure(error: unknown): unknown {
   if (error instanceof WorkflowEngineError)
     return new WorkflowRunNotExecutableError();
   if (error instanceof z.ZodError || error instanceof TypeError)
-    return new InvalidRequestError('The workflow run request is invalid.');
+    return new InvalidRequestError(
+      'The workflow run request is invalid.',
+      requestInputCause(error),
+    );
   return hiddenResourceFailure(error);
 }
 
@@ -124,6 +127,7 @@ export function dataTableFailure(error: unknown): unknown {
   if (error instanceof z.ZodError)
     return new InvalidRequestError(
       error.issues[0]?.message ?? 'The data table request is invalid.',
+      requestInputCause(error),
     );
   return resourceFailure(error);
 }

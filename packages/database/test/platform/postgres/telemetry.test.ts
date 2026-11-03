@@ -1,18 +1,739 @@
-import { beforeEachFixture1 } from './telemetry/fixture.js';
+import {
+  beforeEachFixture1,
+  pg,
+  fakeMeter,
+  observableMeasurements,
+  poolAt,
+  telemetryClient,
+} from './telemetry/fixture.js';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  createDatabasePool,
+  DATABASE_METRIC_NAME,
+} from '../../../src/platform/pool/telemetry/create-pool.js';
 
-import { beforeEach, describe } from 'vitest';
-
-import { registerDoesNotMistakeUndefinedPool } from './telemetry/does-not-mistake-undefined-pool.cases.js';
-import { registerPreservesCallbackQueryReceiverResult } from './telemetry/preserves-callback-query-receiver-result.cases.js';
-import { registerPreservesCallbackCheckoutReceiverValues } from './telemetry/preserves-callback-checkout-receiver-values.cases.js';
-import { registerSamplesLockWaitsOnDedicated } from './telemetry/samples-lock-waits-on-dedicated.cases.js';
 describe('PostgreSQL telemetry pool', () => {
   beforeEach(beforeEachFixture1);
-  registerDoesNotMistakeUndefinedPool();
+  it('does not mistake an undefined pool-end rejection for success', async () => {
+    pg.FakePool.endFailures.push({ error: undefined });
+    const pool = createDatabasePool(
+      {},
+      { monitorLockWaits: false, role: 'maintenance' },
+    );
 
-  registerPreservesCallbackQueryReceiverResult();
+    await expect(pool.end()).rejects.toMatchObject({
+      message: 'Cleanup failed',
+    });
+  });
 
-  registerPreservesCallbackCheckoutReceiverValues();
+  it('applies bounded role deadlines and preserves narrower explicit values', async () => {
+    const first = createDatabasePool(
+      { lock_timeout: 750, max: 1 },
+      { monitorLockWaits: false, role: 'api' },
+    );
+    const second = createDatabasePool(
+      { max: 1 },
+      { monitorLockWaits: false, role: 'maintenance' },
+    );
 
-  registerSamplesLockWaitsOnDedicated();
+    expect(poolAt(0).options).toMatchObject({
+      idle_in_transaction_session_timeout: 35_000,
+      lock_timeout: 750,
+      query_timeout: 35_000,
+      statement_timeout: 30_000,
+    });
+    expect(poolAt(1).options).toMatchObject({
+      idle_in_transaction_session_timeout: 305_000,
+      lock_timeout: 15_000,
+      query_timeout: 305_000,
+      statement_timeout: 300_000,
+    });
+
+    await first.end();
+    await second.end();
+  });
+
+  it('rejects disabled or invalid caller deadline overrides', () => {
+    expect(() =>
+      createDatabasePool(
+        { lock_timeout: -1 },
+        { monitorLockWaits: false, role: 'worker' },
+      ),
+    ).toThrow('lock_timeout must be a positive safe integer');
+  });
+
+  it('reports pool state by workload', async () => {
+    const telemetry = fakeMeter();
+    const first = createDatabasePool(
+      { max: 4, user: 'pertexo_app' },
+      { meter: telemetry.meter, monitorLockWaits: false, role: 'api' },
+    );
+    const second = createDatabasePool(
+      { max: 6, user: 'pertexo_app' },
+      { meter: telemetry.meter, monitorLockWaits: false, role: 'worker' },
+    );
+    Object.assign(poolAt(0), {
+      idleCount: 1,
+      totalCount: 3,
+      waitingCount: 2,
+    });
+    Object.assign(poolAt(1), {
+      idleCount: 2,
+      totalCount: 4,
+      waitingCount: 1,
+    });
+
+    expect(
+      observableMeasurements(
+        telemetry.callbacks,
+        DATABASE_METRIC_NAME.poolConnections,
+      ),
+    ).toEqual([
+      { attributes: { pool_role: 'api' }, value: 3 },
+      { attributes: { pool_role: 'worker' }, value: 4 },
+    ]);
+    expect(
+      observableMeasurements(
+        telemetry.callbacks,
+        DATABASE_METRIC_NAME.poolSaturation,
+      ),
+    ).toEqual([
+      { attributes: { pool_role: 'api' }, value: 0.5 },
+      { attributes: { pool_role: 'worker' }, value: 1 / 3 },
+    ]);
+    expect(
+      observableMeasurements(
+        telemetry.callbacks,
+        DATABASE_METRIC_NAME.poolWaiters,
+      ),
+    ).toEqual([
+      { attributes: { pool_role: 'api' }, value: 2 },
+      { attributes: { pool_role: 'worker' }, value: 1 },
+    ]);
+
+    await first.end();
+    await second.end();
+  });
+
+  it('uses an explicit role and aggregates saturation across its process budget', async () => {
+    const telemetry = fakeMeter();
+    const first = createDatabasePool(
+      { max: 4, user: 'custom_runtime' },
+      { meter: telemetry.meter, monitorLockWaits: false, role: 'api' },
+    );
+    const second = createDatabasePool(
+      { max: 6, user: 'another_custom_runtime' },
+      { meter: telemetry.meter, monitorLockWaits: false, role: 'api' },
+    );
+    Object.assign(poolAt(0), { idleCount: 0, totalCount: 4 });
+    Object.assign(poolAt(1), { idleCount: 5, totalCount: 6 });
+
+    expect(
+      observableMeasurements(
+        telemetry.callbacks,
+        DATABASE_METRIC_NAME.poolSaturation,
+      ),
+    ).toEqual([{ attributes: { pool_role: 'api' }, value: 0.5 }]);
+
+    await first.end();
+    await second.end();
+  });
+
+  it('records bounded query and transaction outcomes without SQL', async () => {
+    const telemetry = fakeMeter();
+    const pool = createDatabasePool(
+      {},
+      { meter: telemetry.meter, monitorLockWaits: false },
+    );
+    const client = {
+      on: vi.fn(),
+      once: vi.fn(),
+      release: vi.fn(),
+      query(query: string): Promise<{ rows: unknown[] }> {
+        return query === 'delete from secret_table'
+          ? Promise.reject(new Error('database rejected query'))
+          : Promise.resolve({ rows: [] });
+      },
+    };
+    poolAt(0).emit('connect', client);
+    Object.assign(client, { release: vi.fn() });
+
+    await client.query('begin');
+    await client.query('select * from secret_table where identity = 42');
+    await client.query('commit');
+    await expect(client.query('delete from secret_table')).rejects.toThrow(
+      'database rejected query',
+    );
+
+    const queries = telemetry.measurements.get(
+      DATABASE_METRIC_NAME.queryDuration,
+    );
+    expect(queries?.map((value) => value.attributes)).toEqual([
+      { operation: 'begin', outcome: 'success' },
+      { operation: 'select', outcome: 'success' },
+      { operation: 'commit', outcome: 'success' },
+      { operation: 'delete', outcome: 'error' },
+    ]);
+    expect(
+      telemetry.measurements.get(DATABASE_METRIC_NAME.transactionDuration)?.[0]
+        ?.attributes,
+    ).toEqual({ outcome: 'committed' });
+    expect(JSON.stringify(queries)).not.toContain('secret_table');
+    expect(JSON.stringify(queries)).not.toContain('identity');
+
+    await pool.end();
+  });
+
+  it('preserves callback query receiver, result, error and synchronous return', async () => {
+    const telemetry = fakeMeter();
+    const callbackReceiver = {};
+    const selectedResult = { rows: [{ value: 1 }] };
+    const queryFailure = new Error('query failed');
+    const fixture = telemetryClient([
+      {
+        kind: 'callback',
+        receiver: callbackReceiver,
+        result: selectedResult,
+        returned: 'callback-started',
+      },
+      {
+        kind: 'callback',
+        error: queryFailure,
+        receiver: callbackReceiver,
+        returned: 'failed-callback-started',
+      },
+    ]);
+    const pool = createDatabasePool(
+      {},
+      { meter: telemetry.meter, monitorLockWaits: false },
+    );
+    poolAt(0).emit('connect', fixture.client);
+    const successCallback = vi.fn(function (
+      this: unknown,
+      error: Error | undefined,
+      result: unknown,
+    ) {
+      expect(this).toBe(callbackReceiver);
+      expect(error).toBeUndefined();
+      expect(result).toBe(selectedResult);
+    });
+    const failureCallback = vi.fn(function (
+      this: unknown,
+      error: Error | undefined,
+      result: unknown,
+    ) {
+      expect(this).toBe(callbackReceiver);
+      expect(error).toBe(queryFailure);
+      expect(result).toBeUndefined();
+    });
+
+    expect(fixture.client.query('select 1', successCallback)).toBe(
+      'callback-started',
+    );
+    expect(fixture.client.query('update secret', failureCallback)).toBe(
+      'failed-callback-started',
+    );
+    expect(successCallback).toHaveBeenCalledOnce();
+    expect(failureCallback).toHaveBeenCalledOnce();
+    expect(
+      telemetry.measurements
+        .get(DATABASE_METRIC_NAME.queryDuration)
+        ?.map(({ attributes }) => attributes),
+    ).toEqual([
+      { operation: 'select', outcome: 'success' },
+      { operation: 'update', outcome: 'error' },
+    ]);
+
+    await pool.end();
+  });
+
+  it('records synchronous query failure without replacing its value', async () => {
+    const telemetry = fakeMeter();
+    const failure = { code: 'synchronous-query-failure' };
+    const fixture = telemetryClient([{ kind: 'throw', error: failure }]);
+    const pool = createDatabasePool(
+      {},
+      { meter: telemetry.meter, monitorLockWaits: false },
+    );
+    poolAt(0).emit('connect', fixture.client);
+
+    expect(() => fixture.client.query('copy secret')).toThrow(failure);
+    expect(
+      telemetry.measurements.get(DATABASE_METRIC_NAME.queryDuration)?.[0]
+        ?.attributes,
+    ).toEqual({ operation: 'copy', outcome: 'error' });
+
+    await pool.end();
+  });
+
+  it('records rollback, abandoned, destroyed and connection-ended transactions once', async () => {
+    const telemetry = fakeMeter();
+    const pool = createDatabasePool(
+      {},
+      { meter: telemetry.meter, monitorLockWaits: false },
+    );
+    const rolledBack = telemetryClient([
+      { kind: 'resolve', result: { rows: [] } },
+      { kind: 'resolve', result: { rows: [] } },
+    ]);
+    const abandoned = telemetryClient([
+      { kind: 'resolve', result: { rows: [] } },
+    ]);
+    const destroyed = telemetryClient([
+      { kind: 'resolve', result: { rows: [] } },
+    ]);
+    const connectionEnded = telemetryClient([
+      { kind: 'resolve', result: { rows: [] } },
+    ]);
+    for (const fixture of [rolledBack, abandoned, destroyed, connectionEnded]) {
+      poolAt(0).emit('connect', fixture.client);
+      pg.FakePool.connectOutcomes.push({
+        kind: 'resolve',
+        client: fixture.client,
+      });
+      await pool.connect();
+    }
+
+    await rolledBack.client.query('begin');
+    await rolledBack.client.query('rollback');
+    await abandoned.client.query('begin');
+    abandoned.client.release();
+    await destroyed.client.query('begin');
+    destroyed.client.release(new Error('destroyed checkout'));
+    await connectionEnded.client.query('begin');
+    connectionEnded.client.emit('error', new Error('socket failed'));
+    connectionEnded.client.emit('end');
+
+    expect(
+      telemetry.measurements
+        .get(DATABASE_METRIC_NAME.transactionDuration)
+        ?.map(({ attributes }) => attributes),
+    ).toEqual([
+      { outcome: 'rolled_back' },
+      { outcome: 'abandoned' },
+      { outcome: 'connection_error' },
+      { outcome: 'connection_error' },
+    ]);
+
+    await pool.end();
+  });
+
+  it('records failed pool checkout duration without connection details', async () => {
+    const telemetry = fakeMeter();
+    const pool = createDatabasePool(
+      { connectionString: 'postgresql://secret@db/app' },
+      { meter: telemetry.meter, monitorLockWaits: false, role: 'api' },
+    );
+
+    await expect(pool.connect()).rejects.toThrow('not implemented');
+    const checkout = telemetry.measurements.get(
+      DATABASE_METRIC_NAME.poolCheckoutDuration,
+    );
+    expect(checkout).toHaveLength(1);
+    expect(checkout?.[0]?.attributes).toEqual({
+      outcome: 'error',
+      pool_role: 'api',
+    });
+    expect(JSON.stringify(checkout)).not.toContain('secret');
+    await pool.end();
+  });
+
+  it('preserves promise checkout clients and records successful release', async () => {
+    const telemetry = fakeMeter();
+    const originalRelease = vi.fn();
+    const client = { release: originalRelease };
+    pg.FakePool.connectOutcomes.push({ kind: 'resolve', client });
+    const pool = createDatabasePool(
+      {},
+      { meter: telemetry.meter, monitorLockWaits: false, role: 'maintenance' },
+    );
+
+    await expect(pool.connect()).resolves.toBe(client);
+    client.release(true);
+    expect(originalRelease).toHaveBeenCalledWith(true);
+    expect(
+      telemetry.measurements.get(DATABASE_METRIC_NAME.poolCheckoutDuration),
+    ).toEqual([
+      expect.objectContaining({
+        attributes: { outcome: 'success', pool_role: 'maintenance' },
+      }),
+    ]);
+
+    await pool.end();
+  });
+
+  it('preserves callback checkout receiver, values and release behavior', async () => {
+    const telemetry = fakeMeter();
+    const originalRelease = vi.fn();
+    const poolRelease = vi.fn();
+    const client = { release: originalRelease };
+    pg.FakePool.connectOutcomes.push({
+      kind: 'resolve',
+      client,
+      release: poolRelease,
+    });
+    const pool = createDatabasePool(
+      {},
+      { meter: telemetry.meter, monitorLockWaits: false, role: 'api' },
+    );
+
+    await new Promise<void>((resolve, reject) => {
+      pool.connect(function (this: undefined, error, selectedClient, release) {
+        try {
+          expect(this).toBeUndefined();
+          expect(error).toBeUndefined();
+          expect(selectedClient).toBe(client);
+          release(new Error('destroy checkout'));
+          resolve();
+        } catch (failure: unknown) {
+          reject(
+            failure instanceof Error ? failure : new Error('assertion failed'),
+          );
+        }
+      });
+    });
+    expect(originalRelease).toHaveBeenCalledWith(expect.any(Error));
+    expect(poolRelease).not.toHaveBeenCalled();
+    expect(
+      telemetry.measurements.get(DATABASE_METRIC_NAME.poolCheckoutDuration)?.[0]
+        ?.attributes,
+    ).toEqual({ outcome: 'success', pool_role: 'api' });
+
+    await pool.end();
+  });
+
+  it('preserves callback checkout errors and the pool release callback', async () => {
+    const telemetry = fakeMeter();
+    const checkoutFailure = new Error('checkout failed');
+    const poolRelease = vi.fn();
+    pg.FakePool.connectOutcomes.push({
+      kind: 'reject',
+      error: checkoutFailure,
+      release: poolRelease,
+    });
+    const pool = createDatabasePool(
+      {},
+      { meter: telemetry.meter, monitorLockWaits: false, role: 'worker' },
+    );
+
+    await new Promise<void>((resolve, reject) => {
+      pool.connect((error, client, release) => {
+        try {
+          expect(error).toBe(checkoutFailure);
+          expect(client).toBeUndefined();
+          release(true);
+          resolve();
+        } catch (failure: unknown) {
+          reject(
+            failure instanceof Error ? failure : new Error('assertion failed'),
+          );
+        }
+      });
+    });
+    expect(poolRelease).toHaveBeenCalledWith(true);
+    expect(
+      telemetry.measurements.get(DATABASE_METRIC_NAME.poolCheckoutDuration)?.[0]
+        ?.attributes,
+    ).toEqual({ outcome: 'error', pool_role: 'worker' });
+
+    await pool.end();
+  });
+
+  it('instruments a client release freshly on every checkout', async () => {
+    const telemetry = fakeMeter();
+    const originalRelease = vi.fn();
+    const client = { release: originalRelease };
+    pg.FakePool.connectOutcomes.push(
+      { kind: 'resolve', client },
+      { kind: 'resolve', client },
+    );
+    const pool = createDatabasePool(
+      {},
+      { meter: telemetry.meter, monitorLockWaits: false, role: 'maintenance' },
+    );
+
+    const first = await pool.connect();
+    first.release();
+    client.release = originalRelease;
+    const second = await pool.connect();
+    second.release(new Error('destroy second checkout'));
+
+    expect(originalRelease).toHaveBeenCalledTimes(2);
+    expect(originalRelease).toHaveBeenNthCalledWith(1, undefined);
+    expect(originalRelease).toHaveBeenNthCalledWith(2, expect.any(Error));
+    expect(
+      telemetry.measurements.get(DATABASE_METRIC_NAME.poolCheckoutDuration),
+    ).toHaveLength(2);
+
+    await pool.end();
+  });
+
+  it('reports sanitized idle-client and monitor failures without changing pool behavior', async () => {
+    const telemetry = fakeMeter();
+    const record = vi.fn();
+    pg.FakePool.queryErrors.push(new Error('secret monitor detail'));
+    const pool = createDatabasePool(
+      { connectionString: 'postgresql://secret@db/app' },
+      {
+        diagnostics: { record },
+        lockWaitSampleIntervalMs: 100,
+        meter: telemetry.meter,
+        role: 'worker',
+      },
+    );
+    poolAt(0).emit('error', new TypeError('secret idle detail'));
+
+    await vi.waitFor(() => {
+      expect(record).toHaveBeenCalledWith({
+        errorType: 'Error',
+        operation: 'lock_wait_sample',
+        poolRole: 'worker',
+      });
+    });
+    expect(record).toHaveBeenCalledWith({
+      errorType: 'Error',
+      operation: 'idle_pool_error',
+      poolRole: 'worker',
+    });
+    expect(JSON.stringify(record.mock.calls)).not.toContain('secret');
+
+    await pool.end();
+  });
+
+  it.each([
+    [
+      'renamed error',
+      Object.assign(new Error('secret'), { name: 'SecretDbError' }),
+      'Error',
+    ],
+    ['undefined', undefined, 'NonError'],
+    ['primitive', 'secret primitive', 'NonError'],
+  ] as const)(
+    'bounds %s diagnostic classification without exposing adapter detail',
+    async (_label, failure, errorType) => {
+      const record = vi.fn();
+      pg.FakePool.queryOutcomes.push({ kind: 'reject', error: failure });
+      const pool = createDatabasePool(
+        { connectionString: 'postgresql://secret@db/app' },
+        {
+          diagnostics: { record },
+          lockWaitSampleIntervalMs: 100,
+          role: 'worker',
+        },
+      );
+
+      poolAt(0).emit('error', failure);
+      await vi.waitFor(() => {
+        expect(record).toHaveBeenCalledWith({
+          errorType,
+          operation: 'lock_wait_sample',
+          poolRole: 'worker',
+        });
+      });
+      expect(record).toHaveBeenCalledWith({
+        errorType,
+        operation: 'idle_pool_error',
+        poolRole: 'worker',
+      });
+      expect(JSON.stringify(record.mock.calls)).not.toContain('secret');
+
+      await pool.end();
+    },
+  );
+
+  it('contains diagnostics failures for idle and sampled pool errors', async () => {
+    const diagnosticsFailure = new Error('diagnostics unavailable');
+    const record = vi.fn(() => {
+      throw diagnosticsFailure;
+    });
+    pg.FakePool.queryOutcomes.push({
+      kind: 'reject',
+      error: new Error('sample failed'),
+    });
+    const pool = createDatabasePool(
+      {},
+      {
+        diagnostics: { record },
+        lockWaitSampleIntervalMs: 100,
+      },
+    );
+
+    expect(() => {
+      poolAt(0).emit('error', new Error('idle failed'));
+    }).not.toThrow();
+    await vi.waitFor(() => {
+      expect(record).toHaveBeenCalledTimes(2);
+    });
+
+    await pool.end();
+  });
+
+  it('samples lock waits on a dedicated uninstrumented pool', async () => {
+    const telemetry = fakeMeter();
+    pg.FakePool.queryResults.push({ rows: [{ pid: 17 }] }, { rows: [] });
+    const pool = createDatabasePool(
+      {},
+      {
+        lockWaitSampleIntervalMs: 100,
+        meter: telemetry.meter,
+      },
+    );
+    poolAt(0).emit('connect', {
+      on: vi.fn(),
+      once: vi.fn(),
+      processID: 17,
+      query: () => Promise.resolve({ rows: [] }),
+      release: vi.fn(),
+    });
+
+    await vi.waitFor(() => {
+      expect(
+        observableMeasurements(
+          telemetry.callbacks,
+          DATABASE_METRIC_NAME.lockWaitActive,
+        )[0]?.value,
+      ).toBe(1);
+    });
+    expect(pg.FakePool.instances).toHaveLength(2);
+    expect(poolAt(1).queries[0]).toContain('pg_stat_activity');
+    expect(poolAt(1).queries[0]).toContain('pid = any($1::integer[])');
+    expect(poolAt(1).queryValues).toContainEqual([[17]]);
+
+    await vi.waitFor(() => {
+      expect(
+        telemetry.measurements.get(DATABASE_METRIC_NAME.lockWaitDuration),
+      ).toHaveLength(1);
+    });
+    expect(
+      telemetry.measurements.get(DATABASE_METRIC_NAME.lockWaitDuration)?.[0]
+        ?.attributes,
+    ).toEqual({ outcome: 'completed' });
+
+    await pool.end();
+  });
+
+  it('shares one lock sampler across pools with the same connection authority', async () => {
+    const telemetry = fakeMeter();
+    const config = { connectionString: 'postgresql://runtime:test@db/app' };
+    const first = createDatabasePool(config, {
+      lockWaitSampleIntervalMs: 100,
+      meter: telemetry.meter,
+    });
+    const second = createDatabasePool(config, {
+      lockWaitSampleIntervalMs: 100,
+      meter: telemetry.meter,
+    });
+
+    expect(pg.FakePool.instances).toHaveLength(3);
+    const firstClose = first.end();
+    expect(first.end()).toBe(firstClose);
+    await firstClose;
+    expect(poolAt(0).endCalls).toBe(1);
+    expect(poolAt(1).endCalls).toBe(0);
+    expect(pg.FakePool.instances[1]?.queries.length).toBeGreaterThan(0);
+    await second.end();
+    expect(poolAt(1).endCalls).toBe(1);
+    expect(poolAt(2).endCalls).toBe(1);
+  });
+
+  it('does not consume another pool sampler reference after a cached close rejection', async () => {
+    const telemetry = fakeMeter();
+    const config = { connectionString: 'postgresql://runtime:test@db/app' };
+    const first = createDatabasePool(config, {
+      lockWaitSampleIntervalMs: 100,
+      meter: telemetry.meter,
+    });
+    const second = createDatabasePool(config, {
+      lockWaitSampleIntervalMs: 100,
+      meter: telemetry.meter,
+    });
+    poolAt(0).endOutcome = { kind: 'reject', error: undefined };
+
+    const firstClose = first.end();
+    await expect(firstClose).rejects.toMatchObject({
+      message: 'Cleanup failed',
+    });
+    expect(first.end()).toBe(firstClose);
+    await expect(first.end()).rejects.toMatchObject({
+      message: 'Cleanup failed',
+    });
+    expect(poolAt(0).endCalls).toBe(1);
+    expect(poolAt(1).endCalls).toBe(0);
+
+    await second.end();
+    expect(poolAt(1).endCalls).toBe(1);
+    expect(poolAt(2).endCalls).toBe(1);
+  });
+
+  it('aggregates business and final sampler cleanup failures once', async () => {
+    const telemetry = fakeMeter();
+    const pool = createDatabasePool(
+      {},
+      { lockWaitSampleIntervalMs: 100, meter: telemetry.meter },
+    );
+    const poolFailure = new Error('business pool close failed');
+    const monitorFailure = new Error('monitor pool close failed');
+    poolAt(0).endOutcome = { kind: 'reject', error: poolFailure };
+    poolAt(1).endOutcome = { kind: 'reject', error: monitorFailure };
+
+    const close = pool.end();
+    await expect(close).rejects.toMatchObject({
+      errors: [poolFailure, monitorFailure],
+    });
+    expect(pool.end()).toBe(close);
+    expect(poolAt(0).endCalls).toBe(1);
+    expect(poolAt(1).endCalls).toBe(1);
+  });
+
+  it('settles an active sample before final close and starts no replacement', async () => {
+    vi.useFakeTimers();
+    try {
+      const sample = Promise.withResolvers<{ rows: { pid: number }[] }>();
+      pg.FakePool.queryOutcomes.push({
+        kind: 'return',
+        promise: sample.promise,
+      });
+      const pool = createDatabasePool(
+        {},
+        { lockWaitSampleIntervalMs: 100, meter: fakeMeter().meter },
+      );
+      expect(poolAt(1).queries).toHaveLength(1);
+
+      await vi.advanceTimersByTimeAsync(500);
+      expect(poolAt(1).queries).toHaveLength(1);
+      const close = pool.end();
+      let closed = false;
+      void close.then(() => {
+        closed = true;
+      });
+      await Promise.resolve();
+      expect(closed).toBe(false);
+      expect(poolAt(1).endCalls).toBe(0);
+
+      sample.resolve({ rows: [] });
+      await close;
+      expect(poolAt(1).endCalls).toBe(1);
+      await vi.advanceTimersByTimeAsync(500);
+      expect(poolAt(1).queries).toHaveLength(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('does not silently share a lock sampler with a different cadence', async () => {
+    const telemetry = fakeMeter();
+    const config = { connectionString: 'postgresql://runtime:test@db/app' };
+    const first = createDatabasePool(config, {
+      lockWaitSampleIntervalMs: 100,
+      meter: telemetry.meter,
+    });
+    const second = createDatabasePool(config, {
+      lockWaitSampleIntervalMs: 200,
+      meter: telemetry.meter,
+    });
+
+    expect(pg.FakePool.instances).toHaveLength(4);
+    await first.end();
+    await second.end();
+  });
 });

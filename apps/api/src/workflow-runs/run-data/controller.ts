@@ -39,6 +39,7 @@ import {
 } from './use-cases.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
 import { runFailure } from '../../problems/context/normalize.js';
+import { parseRequestInput } from '../../platform/http/request-input.js';
 
 /**
  * A run's input and each step's output (ADR 050), and each step across its
@@ -169,7 +170,7 @@ export class WorkflowRunDataController {
     @Query() query: unknown,
   ) {
     const route = workflowStepRunsParamsSchema.parse(params);
-    const { limit } = workflowStepRunsQuerySchema.parse(query);
+    const { limit } = parseRequestInput(workflowStepRunsQuerySchema, query);
     return this.listStepRuns.execute({
       actor: actorFrom(request, route.workspaceId),
       routeWorkspaceId: route.workspaceId,

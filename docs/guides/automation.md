@@ -35,8 +35,7 @@ pnpm cli --help
 The CLI lives in `apps/cli`; `apps/ops` holds privileged operator commands only.
 The private package includes the `pertexo` executable shape, but is not published
 to npm. In this checkout use `pnpm cli`, or the compiled Node entry below for
-JSON redirection. Command flags and JSON/help/problem output stay unchanged.
-Help/error text retains the existing “automation” name for these HTTP commands.
+JSON redirection.
 
 Supply `PERTEXO_API_URL` and `PERTEXO_API_TOKEN` through your process environment
 or CI secret manager. Do not put a token in command arguments, a tracked file,
@@ -52,17 +51,29 @@ export WORKSPACE_ID=aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa
 export WORKFLOW_ID=bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb
 ```
 
-Use your real workspace and resource IDs. The explicit workspace must match the
-token. Remote origins require HTTPS; plain HTTP is accepted only for
+Use your real workspace and resource IDs. `--workspace` is optional, since the token
+names its workspace; a value that differs is refused. `pertexo whoami` shows what the
+token can do. Remote origins require HTTPS; plain HTTP is accepted only for
 `localhost`, `127.0.0.1` or `::1`. The origin cannot include credentials, a path,
 query or fragment. Redirects are refused. The dedicated CLI needs no database,
 maintenance or telemetry environment; privileged operator commands keep their
 existing independent configuration.
 
-Successful commands write validated JSON to stdout. Failures exit with status 1
-and one sanitized JSON problem on stderr (`code`, `detail`, optional `requestId`).
-A write whose result is uncertain also includes `outcome: "unknown"` and retry
-advice. Input files/requests are capped at 2 MiB, streamed responses at 16 MiB,
+Successful commands write the server's JSON to stdout, so a newer server's extra
+fields come through. Failures write one sanitized JSON problem to stderr (`code`,
+`detail`, optional `requestId`) and exit with a status a script can branch on:
+
+| Exit | Meaning |
+|---|---|
+| 1 | Anything else, such as the server or network failing |
+| 2 | Bad arguments, settings or a bad file |
+| 3 | The token or permission was refused |
+| 4 | Not found |
+| 5 | A conflict or an unmet precondition |
+| 6 | Busy, retry later |
+| 7 | A write's outcome is unknown; also includes `outcome: "unknown"` and retry advice |
+
+ Input files/requests are capped at 2 MiB, streamed responses at 16 MiB,
 and requests at 30 seconds. Files must be regular UTF-8 JSON. There is no automatic
 retry or arbitrary endpoint passthrough.
 
@@ -84,9 +95,11 @@ the browser. Request bodies use [the current contracts](../../packages/contracts
 | `workflows import --workspace "$WORKSPACE_ID" --body import.json --key deploy-import-1` | `POST /workflows/import`, `Idempotency-Key: deploy-import-1` | same as preview |
 | `workflows publish --workspace "$WORKSPACE_ID" --workflow "$WORKFLOW_ID" --etag "$DRAFT_ETAG" --key deploy-publish-1` | `POST /workflows/$WORKFLOW_ID/publish`, both headers | `workflow:publish` |
 | `runs start --workspace "$WORKSPACE_ID" --workflow "$WORKFLOW_ID" --body run.json --key deploy-run-1` | `POST /workflows/$WORKFLOW_ID/runs`, `Idempotency-Key: deploy-run-1` | `run:start` |
-| `runs list --workspace "$WORKSPACE_ID" [--workflow UUID --limit 25 --after CURSOR]` | `GET /runs` with the corresponding query | `run:read`; also `workflow:read` for workflow names |
+| `runs list --workspace "$WORKSPACE_ID" [--workflow UUID --status failed --limit 25 --after CURSOR]` | `GET /runs` with the corresponding query | `run:read`; also `workflow:read` for workflow names |
 | `runs get --workspace "$WORKSPACE_ID" --run "$RUN_ID"` | `GET /runs/$RUN_ID` | `run:read`; also `workflow:read` for workflow names |
+| `runs wait --workspace "$WORKSPACE_ID" --run "$RUN_ID" [--timeout 300]` | Polls `GET /runs/$RUN_ID` until the run ends; a failed run still exits 0, so read `run.status` | `run:read` |
 | `runs cancel --workspace "$WORKSPACE_ID" --run "$RUN_ID" [--body cancel.json]` | `POST /runs/$RUN_ID/cancel` | `run:cancel` |
+| `whoami` | `GET /v1/token` | Any |
 
 List results contain `items` and an opaque `nextCursor`. Pass that cursor unchanged
 as `--after`, retaining the same filters and page size. Limits are 1–100. An exact
@@ -282,6 +295,21 @@ review and a deliberately new intent. Authentication errors say what to fix:
 
 `GET /v1/token` returns the calling token's workspace, scopes and expiry. Rate limits remain tied to the owner and
 workspace as well as the token. Cancellation retries reuse state, not a new run.
+
+## Rate limits
+
+Successful responses carry `RateLimit-Limit`, `RateLimit-Remaining` and `RateLimit-Reset`
+(seconds) for the tightest budget the request counted against. A 429 has `Retry-After`.
+Limits are per minute, for the person and for the whole workspace:
+
+| Routes | Person | Workspace |
+| --- | --- | --- |
+| Reads | 600 | 1200 |
+| Starting a run | 60 | 120 |
+| Publishing, import and export | 30 | 60 |
+| Other changes | 120 | 300 |
+
+Every token request also counts against 600 per minute for its address.
 
 Keep the command keys and reviewed files in your deployment records, protect any
 sensitive workflow inputs there, and use the JSON code/request ID when asking the

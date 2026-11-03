@@ -1,4 +1,4 @@
-import { apiProblemSchema, type ApiProblem } from '@pertexo/contracts';
+import { z } from 'zod';
 import type { AutomationHttpConfig } from './config.js';
 import { AutomationCommandError } from './errors.js';
 import { MAX_COMMAND_BYTES } from './files.js';
@@ -61,25 +61,14 @@ async function boundedResponse(response: Response): Promise<unknown> {
     );
   }
 }
-function commonProblem(body: unknown): ApiProblem | undefined {
-  if (typeof body !== 'object' || body === null) return undefined;
-  const fields = Object.fromEntries(
-    [
-      'type',
-      'title',
-      'status',
-      'detail',
-      'instance',
-      'code',
-      'requestId',
-      'errors',
-    ].flatMap((name) =>
-      name in body ? [[name, Reflect.get(body, name)] as const] : [],
-    ),
-  );
-  const parsed = apiProblemSchema.safeParse(fields);
-  return parsed.success ? parsed.data : undefined;
-}
+// A newer server may add fields and codes, so read only what's used here.
+const problemSchema = z.object({
+  status: z.number().int(),
+  title: z.string(),
+  code: z.string(),
+  detail: z.string().optional(),
+  requestId: z.string().optional(),
+});
 
 export function createAutomationHttpClient(
   config: AutomationHttpConfig,
@@ -185,7 +174,7 @@ async function readAutomationResponse(
       { uncertain: mutating },
     );
   if (!response.ok) {
-    const problem = commonProblem(value);
+    const problem = problemSchema.safeParse(value).data;
     if (problem?.status !== response.status)
       throw new AutomationCommandError(
         'cli.invalid_response',
@@ -197,7 +186,10 @@ async function readAutomationResponse(
       problem.code,
       problem.detail ?? problem.title,
       problem.requestId,
-      { uncertain: mutating && response.status >= 500 },
+      {
+        uncertain: mutating && response.status >= 500,
+        status: response.status,
+      },
     );
   }
   return { body: value, etag };

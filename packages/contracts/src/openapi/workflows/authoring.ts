@@ -349,6 +349,7 @@ export const workflowAuthoringOpenApiDocument = Object.freeze({
           ...workflowOrganizationListReadContract.parameters,
         ],
         responses: {
+          '429': problemResponse('Rate limited; see Retry-After'),
           '200': workflowOrganizationListReadContract.response,
           '400': responseReference('BadRequest'),
           '401': responseReference('Unauthenticated'),
@@ -390,6 +391,7 @@ export const workflowAuthoringOpenApiDocument = Object.freeze({
           workflowOrganizationGetReadContract.parameter,
         ],
         responses: {
+          '429': problemResponse('Rate limited; see Retry-After'),
           '200': workflowOrganizationGetReadContract.response,
           '400': responseReference('BadRequest'),
           '401': responseReference('Unauthenticated'),
@@ -407,8 +409,17 @@ export const workflowAuthoringOpenApiDocument = Object.freeze({
         operationId: 'getWorkflowDraft',
         'x-pertexo-api-token-scopes': ['workflow:read'],
         security: automationSecurity,
-        parameters: workflowParameters,
+        parameters: [
+          ...workflowParameters,
+          {
+            name: 'If-None-Match',
+            in: 'header',
+            required: false,
+            schema: jsonSchema(strongEtagSchema, 'input'),
+          },
+        ],
         responses: {
+          '429': problemResponse('Rate limited; see Retry-After'),
           '503': problemResponse(
             'Automation token authentication, limiter or operation dependencies unavailable',
           ),
@@ -417,6 +428,7 @@ export const workflowAuthoringOpenApiDocument = Object.freeze({
             'WorkflowDraftResponse',
             etagResponseHeader,
           ),
+          '304': { description: 'The draft still has this ETag' },
           '401': responseReference('Unauthenticated'),
           '403': responseReference('Forbidden'),
           '404': responseReference('NotFound'),
@@ -475,6 +487,7 @@ export const workflowAuthoringOpenApiDocument = Object.freeze({
           idempotencyParameter,
         ],
         responses: {
+          '429': problemResponse('Rate limited; see Retry-After'),
           '200': jsonResponse('Workflow published', 'WorkflowPublishResponse'),
           '400': responseReference('BadRequest'),
           '401': responseReference('Unauthenticated'),
@@ -504,6 +517,7 @@ export const workflowAuthoringOpenApiDocument = Object.freeze({
           ),
         ],
         responses: {
+          '429': problemResponse('Rate limited; see Retry-After'),
           '503': problemResponse(
             'Automation token authentication, limiter or operation dependencies unavailable',
           ),

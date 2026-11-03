@@ -19,7 +19,7 @@ import {
 } from '../../authorization/index.js';
 import {
   applicationError,
-  parseRequestBody,
+  parseRequestInput,
 } from '../../platform/http/index.js';
 import type { WorkflowApplicationInput } from '../ports.js';
 import { WorkflowHeaderError } from '../http/preconditions.js';
@@ -41,7 +41,7 @@ export class WorkflowInputCasesUseCase {
   ) {}
   public async list(input: ReadInput & Readonly<{ query: unknown }>) {
     await this.authorize(input, 'workflow:read');
-    const query = workflowInputCaseQuerySchema.parse(input.query);
+    const query = parseRequestInput(workflowInputCaseQuerySchema, input.query);
     const context = this.context(input);
     const result = await this.persistence.listCases({
       ...context,
@@ -73,7 +73,7 @@ export class WorkflowInputCasesUseCase {
   }
   public async create(input: CommandInput) {
     await this.authorize(input, 'workflow:update');
-    const { expectations, ...request } = parseRequestBody(
+    const { expectations, ...request } = parseRequestInput(
       workflowInputCaseCreateRequestSchema,
       input.request,
     );
@@ -93,7 +93,7 @@ export class WorkflowInputCasesUseCase {
       input.representationTag,
       input.caseId,
     );
-    const { expectations, ...request } = parseRequestBody(
+    const { expectations, ...request } = parseRequestInput(
       workflowInputCaseUpdateRequestSchema,
       input.request,
     );

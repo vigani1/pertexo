@@ -167,7 +167,8 @@ test('ordinary verified viewer can inspect the real editor at four widths but ca
         .items.map((run) => run.id),
     ).toEqual([runId]);
 
-    // Presence heartbeats are allowed; definition and execution writes are not.
+    // Presence heartbeats are allowed; definition and execution writes are not. Neither
+    // is /validate, which only reads, and which a viewer's guard allows.
     const uiWrites: string[] = [];
     const presenceWrites: string[] = [];
     viewer.on('request', (outgoing) => {
@@ -181,6 +182,7 @@ test('ordinary verified viewer can inspect the real editor at four widths but ca
       }
       if (
         new URL(outgoing.url()).pathname.startsWith(workflowPath) &&
+        new URL(outgoing.url()).pathname !== `${workflowPath}/validate` &&
         !['GET', 'HEAD'].includes(outgoing.method())
       )
         uiWrites.push(

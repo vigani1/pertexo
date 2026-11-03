@@ -136,7 +136,7 @@ const sharingPrincipalSchema = z.discriminatedUnion('kind', [
 export const sharingPrincipalsResponseSchema = z
   .object({
     items: z.array(sharingPrincipalSchema).max(100),
-    next: id.nullable(),
+    nextCursor: id.nullable(),
   })
   .strict();
 export type SharingPrincipalsQuery = z.output<

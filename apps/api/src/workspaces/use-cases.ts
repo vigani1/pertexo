@@ -39,6 +39,7 @@ import {
   type IdentityWorkspaceTelemetry,
 } from './telemetry.js';
 import { projectUserProfile } from './commands/user-profile.js';
+import { parseRequestInput } from '../platform/http/request-input.js';
 
 type CurrentUserPersistence = Pick<
   IdentityWorkspacePersistence,
@@ -211,7 +212,10 @@ export class CreateWorkspaceUseCase {
     return this.telemetry.measure(
       IDENTITY_WORKSPACE_OPERATION.workspaceCreate,
       async () => {
-        const request = workspaceCreateRequestSchema.parse(input.request);
+        const request = parseRequestInput(
+          workspaceCreateRequestSchema,
+          input.request,
+        );
         const workspace = await this.persistence.createWorkspaceWithOwner({
           ownerUserId: input.actorId,
           idempotencyKey: input.idempotencyKey,

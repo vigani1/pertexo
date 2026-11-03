@@ -65,9 +65,14 @@ export async function addSingleStep(
 
 export async function publishSingleStep(page: Page, workflowPath: string) {
   await page.getByRole('button', { name: 'Publish v1', exact: true }).click();
-  const confirm = page
-    .getByRole('dialog', { name: 'Publish v1', exact: true })
-    .getByRole('button', { name: 'Publish v1', exact: true });
+  const publishDialog = page.getByRole('dialog', {
+    name: 'Publish v1',
+    exact: true,
+  });
+  // After a failed try the same button asks to retry the original publish.
+  const confirm = publishDialog.getByRole('button', {
+    name: /^(?:Publish v1|Retry original publish)$/u,
+  });
   const published = async () => {
     const response = await page.request.get(`${workflowPath}/versions`);
     expect(response.status()).toBe(200);
@@ -77,7 +82,11 @@ export async function publishSingleStep(page: Page, workflowPath: string) {
   await expect(async () => {
     if (await confirm.isEnabled({ timeout: 1_000 }).catch(() => false))
       await confirm.click();
-    expect(await published()).toHaveLength(1);
+    // If it never lands, the failure says what the dialog told the person.
+    const dialog = await publishDialog
+      .innerText({ timeout: 1_000 })
+      .catch(() => 'dialog closed');
+    expect(await published(), dialog).toHaveLength(1);
   }).toPass({ intervals: [2_000], timeout: 60_000 });
   const version = (await published())[0];
   if (version === undefined) throw new Error('Published version is missing');

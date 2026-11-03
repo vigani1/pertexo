@@ -106,6 +106,9 @@ test('authors, previews, publishes and runs the collection chain and its portabl
   page,
   request,
 }) => {
+  // It authors, publishes and runs two workflows, which outlasts the usual 60 seconds
+  // when journeys run side by side.
+  test.setTimeout(120_000);
   const { origin, workspaceId } = await session(
     page,
     request,

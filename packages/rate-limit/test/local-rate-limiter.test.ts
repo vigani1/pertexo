@@ -34,9 +34,9 @@ describe('LocalRateLimiter', () => {
     const { limiter } = atClock();
 
     expect(consumeTimes(limiter, 3)).toEqual([
-      { allowed: true },
-      { allowed: true },
-      { allowed: true },
+      { allowed: true, quota: { limit: 3, remaining: 2, resetSeconds: 60 } },
+      { allowed: true, quota: { limit: 3, remaining: 1, resetSeconds: 60 } },
+      { allowed: true, quota: { limit: 3, remaining: 0, resetSeconds: 60 } },
     ]);
     expect(limiter.consume(decision())).toEqual({
       allowed: false,
@@ -56,7 +56,7 @@ describe('LocalRateLimiter', () => {
     });
 
     move(999);
-    expect(limiter.consume(decision())).toEqual({ allowed: true });
+    expect(limiter.consume(decision())).toMatchObject({ allowed: true });
   });
 
   // Refusals don't extend a window, or a client could never get back in.
@@ -68,7 +68,7 @@ describe('LocalRateLimiter', () => {
 
     move(30_000);
 
-    expect(limiter.consume(decision())).toEqual({ allowed: true });
+    expect(limiter.consume(decision())).toMatchObject({ allowed: true });
   });
 
   // Allowed requests don't either, or a steady client would never see the window end.
@@ -87,7 +87,7 @@ describe('LocalRateLimiter', () => {
 
     move(30_000);
 
-    expect(limiter.consume(limitOfTwo)).toEqual({ allowed: true });
+    expect(limiter.consume(limitOfTwo)).toMatchObject({ allowed: true });
   });
 
   it('starts a fresh count after the window', () => {
@@ -110,10 +110,10 @@ describe('LocalRateLimiter', () => {
           dimensions: [{ kind: 'client_address', identifier: 'b', limit: 3 }],
         }),
       ),
-    ).toEqual({ allowed: true });
+    ).toMatchObject({ allowed: true });
     expect(
       limiter.consume(decision({ endpointClass: 'run_admission' })),
-    ).toEqual({ allowed: true });
+    ).toMatchObject({ allowed: true });
     expect(limiter.consume(decision())).toMatchObject({ allowed: false });
   });
 
@@ -144,7 +144,7 @@ describe('LocalRateLimiter', () => {
       consumeTimes(limiter, 20, both);
 
       const clientAlone = decision({ dimensions: [{ ...client, limit: 3 }] });
-      expect(limiter.consume(clientAlone)).toEqual({ allowed: true });
+      expect(limiter.consume(clientAlone)).toMatchObject({ allowed: true });
       expect(limiter.consume(clientAlone)).toMatchObject({ allowed: false });
     });
 

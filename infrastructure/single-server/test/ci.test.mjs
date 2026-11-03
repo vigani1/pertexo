@@ -46,19 +46,41 @@ test('main tests one commit at a time and never cancels the run under way', () =
   );
 });
 
+// Faults kill Postgres and check what survives, which an fsync-off database can't show.
+test('turns off Postgres durability only where nothing tests it', () => {
+  assert.equal(ci.env.POSTGRES_DURABILITY, 'off');
+  assert.equal(ci.jobs.faults.env.POSTGRES_DURABILITY, 'on');
+  const compose = parse(readFileSync('compose.yaml', 'utf8'));
+  // Not synchronous_commit: until a commit is flushed, VACUUM can't mark its pages
+  // all-visible, which the query-plan tests read. With fsync off it saves almost nothing.
+  for (const setting of ['fsync', 'full_page_writes'])
+    assert.ok(
+      compose.services.postgres.command.includes(
+        `${setting}=\${POSTGRES_DURABILITY:-on}`,
+      ),
+      setting,
+    );
+});
+
 // A leg dropped from a matrix takes its tests with it while every other leg stays green.
 test('the gate requires a split suite, and every one of its shards exists', () => {
-  for (const name of ['integration', 'browser']) {
-    const shards = ci.jobs[name].strategy.matrix.include.flatMap(
-      ({ shard }) => shard ?? [],
-    );
-    assert.ok(shards.length > 1, name);
-    assert.deepEqual(
-      shards,
-      shards.map((_, index) => `${index + 1}/${shards.length}`),
-    );
+  const shards = ci.jobs.browser.strategy.matrix.include.flatMap(
+    ({ shard }) => shard ?? [],
+  );
+  assert.ok(shards.length > 1);
+  assert.deepEqual(
+    shards,
+    shards.map((_, index) => `${index + 1}/${shards.length}`),
+  );
+  for (const name of ['integration', 'browser'])
     assert.ok(neededBy('ci-passed').has(name), name);
-  }
+  // The worker suite's shards run inside one job: see run-worker-suite.mjs.
+  assert.ok(
+    ci.jobs.integration.strategy.matrix.include.some(
+      ({ group }) => group === 'worker',
+    ),
+  );
+  assert.match(jobText(ci.jobs.integration), /run-worker-suite\.mjs/u);
 });
 
 // ops-09: 7 of 75 main pushes failed, one on a docs commit that can't have caused it.

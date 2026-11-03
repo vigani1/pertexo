@@ -24,7 +24,7 @@ import {
   type WorkspaceAuthorizationSource,
 } from '../../authorization/index.js';
 import type { WorkflowApplicationInput } from '../ports.js';
-import { parseRequestBody } from '../../platform/http/index.js';
+import { parseRequestInput } from '../../platform/http/index.js';
 type Scope = WorkflowApplicationInput & {
   workflowId: string;
   signal?: AbortSignal;
@@ -43,7 +43,7 @@ export class WorkflowCollaborationUseCase {
     return workflowCommentListSchema.parse(
       await this.store.list({
         ...(await this.scope(input, BROWSABLE_WORKSPACE_STATUSES)),
-        ...workflowCommentListQuerySchema.parse(input.query),
+        ...parseRequestInput(workflowCommentListQuerySchema, input.query),
       }),
     );
   }
@@ -52,7 +52,7 @@ export class WorkflowCollaborationUseCase {
       await this.store.read({
         ...(await this.scope(input, BROWSABLE_WORKSPACE_STATUSES)),
         threadId: input.threadId,
-        ...workflowCommentDetailQuerySchema.parse(input.query),
+        ...parseRequestInput(workflowCommentDetailQuerySchema, input.query),
       }),
     );
   }
@@ -60,7 +60,7 @@ export class WorkflowCollaborationUseCase {
     return workspacePeoplePageSchema.parse(
       await this.store.people({
         ...(await this.scope(input, BROWSABLE_WORKSPACE_STATUSES)),
-        ...workspacePeopleQuerySchema.parse(input.query),
+        ...parseRequestInput(workspacePeopleQuerySchema, input.query),
       }),
     );
   }
@@ -68,7 +68,7 @@ export class WorkflowCollaborationUseCase {
     return workflowCommentCommandResultSchema.parse(
       await this.store.create({
         ...(await this.scope(input)),
-        ...parseRequestBody(workflowCommentCreateSchema, input.request),
+        ...parseRequestInput(workflowCommentCreateSchema, input.request),
         idempotencyKey: input.idempotencyKey,
       }),
     );
@@ -78,7 +78,7 @@ export class WorkflowCollaborationUseCase {
       await this.store.reply({
         ...(await this.scope(input)),
         threadId: input.threadId,
-        ...parseRequestBody(workflowCommentBodySchema, input.request),
+        ...parseRequestInput(workflowCommentBodySchema, input.request),
         idempotencyKey: input.idempotencyKey,
       }),
     );
@@ -89,7 +89,7 @@ export class WorkflowCollaborationUseCase {
         ...(await this.scope(input)),
         threadId: input.threadId,
         commentId: input.commentId,
-        ...parseRequestBody(workflowCommentEditSchema, input.request),
+        ...parseRequestInput(workflowCommentEditSchema, input.request),
         idempotencyKey: input.idempotencyKey,
       }),
     );
@@ -100,7 +100,7 @@ export class WorkflowCollaborationUseCase {
         ...(await this.scope(input)),
         threadId: input.threadId,
         commentId: input.commentId,
-        ...parseRequestBody(workflowCommentDeleteSchema, input.request),
+        ...parseRequestInput(workflowCommentDeleteSchema, input.request),
         idempotencyKey: input.idempotencyKey,
       }),
     );
@@ -110,7 +110,7 @@ export class WorkflowCollaborationUseCase {
       await this.store.setStatus({
         ...(await this.scope(input)),
         threadId: input.threadId,
-        ...parseRequestBody(workflowCommentStatusSchema, input.request),
+        ...parseRequestInput(workflowCommentStatusSchema, input.request),
         idempotencyKey: input.idempotencyKey,
       }),
     );
@@ -119,7 +119,7 @@ export class WorkflowCollaborationUseCase {
     return workflowPresenceSchema.parse(
       await this.store.presence({
         ...(await this.scope(input, BROWSABLE_WORKSPACE_STATUSES)),
-        ...workflowPresenceQuerySchema.parse(input.query),
+        ...parseRequestInput(workflowPresenceQuerySchema, input.query),
       }),
     );
   }
@@ -128,7 +128,7 @@ export class WorkflowCollaborationUseCase {
       await this.store.heartbeat({
         ...(await this.scope(input)),
         tabId: input.tabId,
-        ...parseRequestBody(workflowPresenceHeartbeatSchema, input.request),
+        ...parseRequestInput(workflowPresenceHeartbeatSchema, input.request),
       }),
     );
   }

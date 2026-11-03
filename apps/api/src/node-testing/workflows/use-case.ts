@@ -12,6 +12,7 @@ import {
   workflowTestScope,
   type WorkflowTestUseCaseInput,
 } from './authorization.js';
+import { parseRequestInput } from '../../platform/http/request-input.js';
 
 type Input = WorkflowTestUseCaseInput;
 export class WorkflowTestsUseCase {
@@ -43,7 +44,10 @@ export class WorkflowTestsUseCase {
       await this.store.start({
         ...this.scope(input),
         idempotencyKey: input.idempotencyKey,
-        request: workflowTestStartRequestSchema.parse(input.request),
+        request: parseRequestInput(
+          workflowTestStartRequestSchema,
+          input.request,
+        ),
       }),
     );
   }

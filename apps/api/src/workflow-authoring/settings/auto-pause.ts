@@ -14,7 +14,7 @@ import {
   BROWSABLE_WORKSPACE_STATUSES,
 } from '../../authorization/index.js';
 import type { WorkflowApplicationInput } from '../ports.js';
-import { parseRequestBody } from '../../platform/http/index.js';
+import { parseRequestInput } from '../../platform/http/index.js';
 
 type WorkflowReadInput = WorkflowApplicationInput &
   Readonly<{ workflowId: string }>;
@@ -43,7 +43,7 @@ export class WorkflowAutoPauseUseCase {
     input: CommandInput & Readonly<{ workflowId: string }>,
   ) {
     await this.authorize(input, 'workflow:update');
-    const request = parseRequestBody(
+    const request = parseRequestInput(
       workflowAutoPauseSettingsRequestSchema,
       input.request,
     );
@@ -58,7 +58,7 @@ export class WorkflowAutoPauseUseCase {
 
   public async resume(input: CommandInput & Readonly<{ workflowId: string }>) {
     await this.authorize(input, 'workflow:publish');
-    const request = parseRequestBody(
+    const request = parseRequestInput(
       workflowResumeRequestSchema,
       input.request,
     );
@@ -83,7 +83,7 @@ export class WorkflowAutoPauseUseCase {
 
   public async updateWorkspace(input: CommandInput) {
     await this.authorize(input, 'workspace:manage');
-    const request = parseRequestBody(
+    const request = parseRequestInput(
       workspaceAutoPauseSettingsRequestSchema,
       input.request,
     );

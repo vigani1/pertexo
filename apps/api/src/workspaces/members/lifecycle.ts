@@ -22,6 +22,7 @@ import {
   type WorkspaceMemberStatusResponse,
   type WorkspaceOwnershipTransferResponse,
 } from '../types.js';
+import { parseRequestInput } from '../../platform/http/request-input.js';
 
 type MembershipLifecyclePersistence = Required<
   Pick<
@@ -51,7 +52,7 @@ export class WorkspaceMembershipLifecycleUseCase {
     return this.telemetry.measure(
       IDENTITY_WORKSPACE_OPERATION.workspaceMemberLeave,
       async () => {
-        workspaceLeaveRequestSchema.parse(input.request);
+        parseRequestInput(workspaceLeaveRequestSchema, input.request);
         const fields = memberCommandFields(input);
         const result = await this.persistence.leaveWorkspace({
           workspaceId: fields.workspaceId,
@@ -94,7 +95,8 @@ export class WorkspaceMembershipLifecycleUseCase {
     return this.telemetry.measure(
       IDENTITY_WORKSPACE_OPERATION.workspaceOwnershipTransfer,
       async () => {
-        const request = workspaceOwnershipTransferRequestSchema.parse(
+        const request = parseRequestInput(
+          workspaceOwnershipTransferRequestSchema,
           input.request,
         );
         assertRecentSignIn(input.signedInAt, this.clock.now());
@@ -114,7 +116,10 @@ export class WorkspaceMembershipLifecycleUseCase {
     send: MembershipLifecyclePersistence['suspendWorkspaceMember'],
   ): Promise<WorkspaceMemberStatusResponse> {
     return this.telemetry.measure(operation, async () => {
-      const request = workspaceMemberStatusRequestSchema.parse(input.request);
+      const request = parseRequestInput(
+        workspaceMemberStatusRequestSchema,
+        input.request,
+      );
       const result = await send({
         ...memberCommandFields(input),
         expectedRoleRevision: request.expectedRoleRevision,

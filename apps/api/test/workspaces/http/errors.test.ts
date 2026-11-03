@@ -16,7 +16,7 @@ import { z } from 'zod';
 import { IdentityError } from '../../../src/identity/index.js';
 import {
   APPLICATION_ERROR_CATALOG,
-  parseRequestBody,
+  parseRequestInput,
 } from '../../../src/platform/http/index.js';
 
 describe('identity/workspace conflict mapping', () => {
@@ -136,7 +136,7 @@ describe('identity/workspace conflict mapping', () => {
   it('keeps a request body failure as the cause, so its issues go back', () => {
     let failure: unknown;
     try {
-      parseRequestBody(z.object({ comment: z.string().max(3) }).strict(), {
+      parseRequestInput(z.object({ comment: z.string().max(3) }).strict(), {
         comment: 'too long',
       });
     } catch (error: unknown) {

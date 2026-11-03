@@ -51,7 +51,7 @@ function setup() {
             role: 'viewer',
           },
         ],
-        next: null,
+        nextCursor: null,
       }),
     ),
   );

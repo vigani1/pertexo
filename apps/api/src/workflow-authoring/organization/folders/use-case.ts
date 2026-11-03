@@ -25,7 +25,7 @@ import {
   workflowOrganizationContext,
   type WorkflowOrganizationInput,
 } from '../authority.js';
-import { parseRequestBody } from '../../../platform/http/index.js';
+import { parseRequestInput } from '../../../platform/http/index.js';
 
 type Command = WorkflowOrganizationInput &
   Readonly<{ request: unknown; idempotencyKey: string }>;
@@ -41,7 +41,7 @@ export class WorkflowFoldersUseCase {
   public async sharingPrincipals(
     input: WorkflowOrganizationInput & { query: unknown },
   ) {
-    const query = sharingPrincipalsQuerySchema.parse(input.query);
+    const query = parseRequestInput(sharingPrincipalsQuerySchema, input.query);
     await authorizeWorkflowOrganization(input, this.authorization, 'admin', {
       reading: true,
     });
@@ -68,7 +68,10 @@ export class WorkflowFoldersUseCase {
   }
 
   public async replaceSharing(input: FolderCommand) {
-    const request = parseRequestBody(folderSharingRequestSchema, input.request);
+    const request = parseRequestInput(
+      folderSharingRequestSchema,
+      input.request,
+    );
     const context = await this.command(input, 'admin');
     const { replayed, ...sharing } = await this.folders.replaceSharing({
       ...context,
@@ -81,7 +84,7 @@ export class WorkflowFoldersUseCase {
   public async reviewMove(
     input: WorkflowOrganizationInput & { request: unknown },
   ) {
-    const request = parseRequestBody(
+    const request = parseRequestInput(
       workflowMoveReviewRequestSchema,
       input.request,
     );
@@ -99,7 +102,7 @@ export class WorkflowFoldersUseCase {
   public async list(
     input: WorkflowOrganizationInput & Readonly<{ query: unknown }>,
   ) {
-    workflowFolderListQuerySchema.parse(input.query);
+    parseRequestInput(workflowFolderListQuerySchema, input.query);
     await authorizeWorkflowOrganization(input, this.authorization, 'read', {
       reading: true,
     });
@@ -111,7 +114,7 @@ export class WorkflowFoldersUseCase {
   }
 
   public async create(input: Command) {
-    const request = parseRequestBody(
+    const request = parseRequestInput(
       workflowFolderCreateRequestSchema,
       input.request,
     );
@@ -122,7 +125,7 @@ export class WorkflowFoldersUseCase {
   }
 
   public async rename(input: FolderCommand) {
-    const request = parseRequestBody(
+    const request = parseRequestInput(
       workflowFolderRenameRequestSchema,
       input.request,
     );
@@ -137,7 +140,7 @@ export class WorkflowFoldersUseCase {
   }
 
   public async move(input: FolderCommand) {
-    const request = parseRequestBody(
+    const request = parseRequestInput(
       workflowFolderMoveRequestSchema,
       input.request,
     );
@@ -152,7 +155,7 @@ export class WorkflowFoldersUseCase {
   }
 
   public async delete(input: FolderCommand) {
-    const request = parseRequestBody(
+    const request = parseRequestInput(
       workflowFolderDeleteRequestSchema,
       input.request,
     );
@@ -167,7 +170,7 @@ export class WorkflowFoldersUseCase {
   }
 
   public async place(input: Command & Readonly<{ workflowId: string }>) {
-    const request = parseRequestBody(
+    const request = parseRequestInput(
       workflowFolderPlacementRequestSchema,
       input.request,
     );

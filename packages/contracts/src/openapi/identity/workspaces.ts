@@ -14,7 +14,8 @@ import {
   dataTableContractSchemas,
   dataTableContractPaths,
 } from './data-tables.js';
-import { variableContractSchemas, variableContractPaths } from './variables.js';
+import { variableRoutes } from '../../routes/identity/variables.js';
+import { routePaths, routeSchemas } from '../../routes/openapi.js';
 import {
   apiTokenContractPaths,
   apiTokenContractSchemas,
@@ -68,7 +69,7 @@ import {
 
 const schemas = Object.freeze({
   ...apiTokenContractSchemas,
-  ...variableContractSchemas,
+  ...routeSchemas(Object.values(variableRoutes)),
   ApiProblem: jsonSchema(apiProblemSchema, 'output'),
   WorkspaceCreateRequest: jsonSchema(workspaceCreateRequestSchema, 'input'),
   WorkspaceRenameRequest: jsonSchema(workspaceRenameRequestSchema, 'input'),
@@ -168,7 +169,7 @@ export const identityWorkspaceOpenApiDocument = Object.freeze({
   },
   paths: {
     ...apiTokenContractPaths,
-    ...variableContractPaths,
+    ...routePaths(Object.values(variableRoutes)),
     ...dataTableContractPaths,
     ...governanceContractPaths,
     ...authenticationContractPaths,

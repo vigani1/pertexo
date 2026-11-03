@@ -56,7 +56,7 @@ describeIntegration('distributed abuse rate limit integration', () => {
     const selectedLimiter = requireLimiter(limiter);
     const selectedProxy = requireProxy(proxy);
     const selectedSentinel = requireRedis(sentinel, 'sentinel');
-    await expect(selectedLimiter.consume(beforeDrop)).resolves.toEqual({
+    await expect(selectedLimiter.consume(beforeDrop)).resolves.toMatchObject({
       allowed: true,
     });
     await expect.poll(() => selectedProxy.connectionCount).toBe(1);
@@ -71,7 +71,7 @@ describeIntegration('distributed abuse rate limit integration', () => {
     };
     await expect
       .poll(async () => selectedLimiter.consume(afterDrop), { timeout: 5_000 })
-      .toEqual({ allowed: true });
+      .toMatchObject({ allowed: true });
     await expect(selectedSentinel.ping()).resolves.toBe('PONG');
   });
 
@@ -90,7 +90,7 @@ describeIntegration('distributed abuse rate limit integration', () => {
     expect(results.filter(({ allowed }) => !allowed)).toHaveLength(15);
 
     await new Promise((resolve) => setTimeout(resolve, 1_100));
-    await expect(selectedLimiter.consume(decision)).resolves.toEqual({
+    await expect(selectedLimiter.consume(decision)).resolves.toMatchObject({
       allowed: true,
     });
   });

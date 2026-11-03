@@ -1,4 +1,7 @@
-import type { DistributedRateLimitResult } from './distributed-rate-limiter.js';
+import type {
+  DistributedRateLimitResult,
+  RateLimitQuota,
+} from './distributed-rate-limiter.js';
 import type { RateLimitDecision } from './policy.js';
 
 /** Enough for an outage's clients. Past it the oldest counters go first. */
@@ -42,17 +45,26 @@ export class LocalRateLimiter {
         retryAfterSeconds: Math.ceil(limited.retryMillis / 1_000),
         limitedDimension: limited.dimension.kind,
       };
-    for (const { key } of keyed) {
-      const counter = this.live(key, now);
+    let quota: RateLimitQuota | undefined;
+    for (const { dimension, key } of keyed) {
+      let counter = this.live(key, now);
       if (counter === undefined) {
         this.makeRoom(now);
-        this.counters.set(key, {
-          count: 1,
-          expiresAt: now + decision.windowSeconds * 1_000,
-        });
+        counter = { count: 1, expiresAt: now + decision.windowSeconds * 1_000 };
+        this.counters.set(key, counter);
       } else counter.count += 1;
+      const remaining = dimension.limit - counter.count;
+      if (quota === undefined || remaining < quota.remaining)
+        quota = {
+          limit: dimension.limit,
+          remaining,
+          resetSeconds: Math.max(
+            1,
+            Math.ceil((counter.expiresAt - now) / 1_000),
+          ),
+        };
     }
-    return { allowed: true };
+    return quota === undefined ? { allowed: true } : { allowed: true, quota };
   }
 
   private live(key: string, now: number): Counter | undefined {

@@ -24,6 +24,7 @@ import {
 } from '../types.js';
 import { journey } from './acceptance/view.js';
 import { parseToken, parseBinding } from './acceptance/proof.js';
+import { parseRequestInput } from '../../platform/http/request-input.js';
 
 const INTENT_TTL_MILLIS = 15 * 60_000;
 
@@ -200,7 +201,8 @@ export class InvitationAcceptanceUseCase {
       input.binding,
       input.csrfToken,
     );
-    const request = invitationAcceptanceCompleteRequestSchema.parse(
+    const request = parseRequestInput(
+      invitationAcceptanceCompleteRequestSchema,
       input.request,
     );
     if (request.intentId !== selected.intentId)

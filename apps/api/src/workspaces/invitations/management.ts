@@ -29,6 +29,7 @@ import {
   type WorkspaceInvitationCommandResponse,
   type WorkspaceInvitationsResponse,
 } from '../types.js';
+import { parseRequestInput } from '../../platform/http/request-input.js';
 
 const INVITATION_TTL_MILLIS = 7 * 24 * 60 * 60 * 1_000;
 
@@ -81,7 +82,10 @@ export class WorkspaceInvitationManagementUseCase {
   public async create(
     input: InvitationCommandContext & Readonly<{ request: unknown }>,
   ): Promise<WorkspaceInvitationCommandResponse> {
-    const request = workspaceInvitationCreateRequestSchema.parse(input.request);
+    const request = parseRequestInput(
+      workspaceInvitationCreateRequestSchema,
+      input.request,
+    );
     const protector = this.requireTokenProtection();
     const invitationId = randomUUID();
     const deliveryAttemptId = randomUUID();
@@ -125,7 +129,8 @@ export class WorkspaceInvitationManagementUseCase {
     input: InvitationChangeContext,
     operation: 'resend' | 'revoke',
   ): Promise<WorkspaceInvitationCommandResponse> {
-    const request = workspaceInvitationCommandRequestSchema.parse(
+    const request = parseRequestInput(
+      workspaceInvitationCommandRequestSchema,
       input.request,
     );
     const common = {

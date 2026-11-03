@@ -167,6 +167,8 @@ export function capabilityGuard(
   }> = {},
 ): Type<CanActivate> {
   class BoundCapabilityGuard extends WorkspaceCapabilityGuard {
+    // Read by the route table, which shows what each route requires.
+    public static readonly capability = capability;
     public constructor(
       @Inject(token) authorization: WorkspaceAuthorizationSource,
       @Inject(RequestContextStore) contexts: RequestContextStore,

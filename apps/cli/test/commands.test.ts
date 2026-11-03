@@ -120,10 +120,11 @@ describe('automation command behavior', () => {
           workspace,
           ...(body === undefined ? [] : ['--body', file]),
         ]);
-        if (command === 'help') throw new Error('unexpected help');
+        if (command === 'help' || command === 'version')
+          throw new Error('unexpected help');
         const request = vi
           .fn<AutomationHttpClient['request']>()
-          .mockResolvedValue({ body: { invalid: true }, etag: null });
+          .mockResolvedValue({ body: 'not an object', etag: null });
         await expect(
           executeAutomationCommand(
             { request },
@@ -165,7 +166,8 @@ describe('automation command behavior', () => {
       '--workflow',
       target,
     ]);
-    if (command === 'help') throw new Error('unexpected help');
+    if (command === 'help' || command === 'version')
+      throw new Error('unexpected help');
     const request = vi
       .fn<AutomationHttpClient['request']>()
       .mockResolvedValue({ body: response, etag });
@@ -205,7 +207,8 @@ describe('automation command behavior', () => {
           file,
           ...args,
         ]);
-        if (command === 'help') throw new Error('unexpected help');
+        if (command === 'help' || command === 'version')
+          throw new Error('unexpected help');
         await expect(
           executeAutomationCommand(
             { request },

@@ -59,7 +59,7 @@ export async function readSharingPrincipals(
         email: row.email,
         role: row.role,
       })),
-      next: rows.length > input.limit ? (page.at(-1)?.id ?? null) : null,
+      nextCursor: rows.length > input.limit ? (page.at(-1)?.id ?? null) : null,
     };
   }
   const rows = await db
@@ -94,6 +94,6 @@ export async function readSharingPrincipals(
       groupId: row.id,
       label: row.label,
     })),
-    next: rows.length > input.limit ? (page.at(-1)?.id ?? null) : null,
+    nextCursor: rows.length > input.limit ? (page.at(-1)?.id ?? null) : null,
   };
 }

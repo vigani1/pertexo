@@ -125,6 +125,16 @@
           "428": {
             "$ref": "#/components/responses/PreconditionRequired"
           },
+          "429": {
+            "description": "Rate limited; see Retry-After",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
           "500": {
             "$ref": "#/components/responses/Unexpected"
           },
@@ -222,6 +232,16 @@
           },
           "422": {
             "$ref": "#/components/responses/UnprocessableEntity"
+          },
+          "429": {
+            "description": "Rate limited; see Retry-After",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
           },
           "500": {
             "$ref": "#/components/responses/Unexpected"
@@ -339,6 +359,16 @@
           "422": {
             "$ref": "#/components/responses/UnprocessableEntity"
           },
+          "429": {
+            "description": "Rate limited; see Retry-After",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
           "500": {
             "$ref": "#/components/responses/Unexpected"
           },
@@ -410,6 +440,7 @@
               "request.idempotency_conflict",
               "request.rate_limited",
               "request.rate_limit_unavailable",
+              "request.method_not_allowed",
               "request.too_large",
               "request.unsupported_media_type",
               "workspace.quota_exceeded",

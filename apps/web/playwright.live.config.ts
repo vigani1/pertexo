@@ -31,6 +31,8 @@ if (liveWebOrigin === undefined)
 
 export default defineConfig({
   testDir: './e2e-live',
+  // Playwright empties this when it starts, and journeys run side by side.
+  outputDir: `test-results/live-${new URL(liveWebOrigin).port}`,
   testMatch: testMatch(),
   forbidOnly: true,
   retries: 0,

@@ -55,9 +55,11 @@ describeIntegration('atomic multidimensional distributed admission', () => {
       }));
       const limited = dimensions.find(({ kind }) => kind === limitedKind);
       if (limited === undefined) throw new Error('Missing limiting dimension');
-      await expect(limiter.consume(decision([limited]))).resolves.toEqual({
-        allowed: true,
-      });
+      await expect(limiter.consume(decision([limited]))).resolves.toMatchObject(
+        {
+          allowed: true,
+        },
+      );
       const rejected = await Promise.all(
         Array.from({ length: 40 }, () => limiter.consume(decision(dimensions))),
       );

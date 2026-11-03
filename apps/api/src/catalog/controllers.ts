@@ -7,6 +7,7 @@ import {
   ListIntegrationsUseCase,
   ListNodeDefinitionsUseCase,
 } from './use-cases.js';
+import { parseRequestInput } from '../platform/http/request-input.js';
 
 @Controller('v1')
 export class CatalogController {
@@ -19,7 +20,7 @@ export class CatalogController {
   @RateLimit('authenticated_read')
   @UseGuards(SessionAuthenticationGuard)
   public listNodeDefinitions(@Query() query: unknown = {}) {
-    catalogQuerySchema.parse(query ?? {});
+    parseRequestInput(catalogQuerySchema, query ?? {});
     return this.listNodeDefinitionsUseCase.execute();
   }
 
@@ -27,7 +28,7 @@ export class CatalogController {
   @RateLimit('authenticated_read')
   @UseGuards(SessionAuthenticationGuard)
   public listIntegrations(@Query() query: unknown = {}) {
-    catalogQuerySchema.parse(query ?? {});
+    parseRequestInput(catalogQuerySchema, query ?? {});
     return this.listIntegrationsUseCase.execute();
   }
 }

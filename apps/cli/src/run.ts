@@ -2,23 +2,28 @@ import { parseAutomationArguments } from './arguments.js';
 import { parseAutomationHttpConfig } from './config.js';
 import { createAutomationHttpClient } from './http.js';
 import { executeAutomationCommand } from './commands.js';
-import { AutomationCommandError } from './errors.js';
+import { AutomationCommandError, exitCodeFor } from './errors.js';
+import { readFileSync } from 'node:fs';
 
-const HELP = `Pertexo automation (HTTP; no operator/database configuration)
-Set PERTEXO_API_URL and PERTEXO_API_TOKEN in your environment.
-  workflows list --workspace UUID [--limit N --after CURSOR]
-  workflows get|draft --workspace UUID --workflow UUID
-  workflows versions --workspace UUID --workflow UUID [--version UUID --limit N --after CURSOR]
-  workflows export --workspace UUID --workflow UUID --body FILE [--etag QUOTED_ETAG]
-  workflows import-preview --workspace UUID --body FILE
-  workflows import --workspace UUID --body FILE --key STABLE_KEY
-  workflows publish --workspace UUID --workflow UUID --etag QUOTED_ETAG --key STABLE_KEY
-  runs start --workspace UUID --workflow UUID --key STABLE_KEY [--body FILE]
-  runs list --workspace UUID [--workflow UUID --limit N --after CURSOR]
-  runs get --workspace UUID --run UUID
-  runs cancel --workspace UUID --run UUID [--body FILE]
+const HELP = `Pertexo CLI, over the HTTP API
+Set PERTEXO_API_URL and PERTEXO_API_TOKEN in your environment. --workspace defaults to the token's.
+  whoami
+  workflows list [--limit N --after CURSOR]
+  workflows get|draft --workflow UUID
+  workflows versions --workflow UUID [--version UUID --limit N --after CURSOR]
+  workflows export --workflow UUID --body FILE [--etag QUOTED_ETAG]
+  workflows import-preview --body FILE
+  workflows import --body FILE --key STABLE_KEY
+  workflows publish --workflow UUID --etag QUOTED_ETAG --key STABLE_KEY
+  runs start --workflow UUID --key STABLE_KEY [--body FILE]
+  runs list [--workflow UUID --status STATUS --limit N --after CURSOR]
+  runs get --run UUID
+  runs wait --run UUID [--timeout SECONDS]
+  runs cancel --run UUID [--body FILE]
 Bodies use the documented HTTP request schemas. Draft JSON also includes its opaque etag.
 Secrets are accepted only through the environment. Never retry a write with a new key.
+Exit codes: 0 done, 1 other failure, 2 bad usage or settings, 3 token or permission refused,
+4 not found, 5 conflict or precondition, 6 busy, retry later, 7 a write's outcome is unknown.
 `;
 
 export async function runAutomationCli(
@@ -32,9 +37,16 @@ export async function runAutomationCli(
   process.once('SIGINT', stop);
   process.once('SIGTERM', stop);
   try {
-    const command = parseAutomationArguments(args);
+    const command = parseAutomationArguments(
+      args,
+      environment.PERTEXO_API_TOKEN?.split('.')[1],
+    );
     if (command === 'help') {
       process.stdout.write(HELP);
+      return;
+    }
+    if (command === 'version') {
+      process.stdout.write(`pertexo ${packageVersion()}\n`);
       return;
     }
     const config = parseAutomationHttpConfig(environment);
@@ -60,9 +72,16 @@ export async function runAutomationCli(
     process.stderr.write(
       `${JSON.stringify({ code: error.code, detail: error.message, ...(error.requestId === undefined ? {} : { requestId: error.requestId }), ...(error.uncertain ? { outcome: 'unknown', next: 'Check the result. Retry only with the same token and exact command, including its key, body and preconditions where required.' } : {}) })}\n`,
     );
-    process.exitCode = 1;
+    process.exitCode = exitCodeFor(error);
   } finally {
     process.removeListener('SIGINT', stop);
     process.removeListener('SIGTERM', stop);
   }
+}
+
+function packageVersion(): string {
+  const manifest = JSON.parse(
+    readFileSync(new URL('../package.json', import.meta.url), 'utf8'),
+  ) as Readonly<{ version: string }>;
+  return manifest.version;
 }

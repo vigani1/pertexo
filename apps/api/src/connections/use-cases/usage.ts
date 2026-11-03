@@ -40,6 +40,7 @@ import {
 } from '../telemetry.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
 import { connectionFailure } from '../../problems/context/normalize.js';
+import { parseRequestInput } from '../../platform/http/request-input.js';
 
 const cursorSchema = opaqueCursor('connection_usage', {
   workspaceId: z.uuid(),
@@ -145,7 +146,7 @@ export class ConnectionUsageController {
     @Query() query: unknown,
   ) {
     const route = connectionIdParamSchema.parse(params);
-    const input = connectionListQuerySchema.parse(query ?? {});
+    const input = parseRequestInput(connectionListQuerySchema, query ?? {});
     return this.usage.execute({
       ...projectAuthenticatedWorkspaceContext(request, route.workspaceId),
       routeWorkspaceId: route.workspaceId,

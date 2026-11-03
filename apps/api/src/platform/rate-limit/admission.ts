@@ -1,6 +1,7 @@
 import { AbuseRateLimitPolicy, LocalRateLimiter } from '@pertexo/rate-limit';
 import type {
   DistributedRateLimitResult,
+  RateLimitQuota,
   RateLimitEndpointClass,
   RateLimitFailureMode,
   RateLimitDimensionKind,
@@ -41,7 +42,7 @@ function recordMetric(
 const duringRedisOutage = new LocalRateLimiter();
 
 export type RateLimitOutcome =
-  | Readonly<{ kind: 'admitted' }>
+  | Readonly<{ kind: 'admitted'; quota?: RateLimitQuota }>
   | Readonly<{ kind: 'limited'; retryAfterSeconds: number }>;
 
 /**
@@ -78,7 +79,9 @@ export async function admitRateLimit(
     return { kind: 'limited', retryAfterSeconds: result.retryAfterSeconds };
   }
   recordMetric(metrics, { endpointClass, failureMode, outcome: 'allowed' });
-  return { kind: 'admitted' };
+  return result.quota === undefined
+    ? { kind: 'admitted' }
+    : { kind: 'admitted', quota: result.quota };
 }
 
 export class HttpRateLimitAdmission {
@@ -90,7 +93,7 @@ export class HttpRateLimitAdmission {
   public async admit(
     endpointClass: RateLimitEndpointClass,
     subject: RateLimitSubject,
-  ): Promise<void> {
+  ): Promise<RateLimitQuota | undefined> {
     const outcome = await admitRateLimit(
       this.consumer,
       this.metrics,
@@ -102,5 +105,6 @@ export class HttpRateLimitAdmission {
           details: { retryAfterSeconds: outcome.retryAfterSeconds },
         }),
       );
+    return outcome.quota;
   }
 }

@@ -27,7 +27,7 @@ import {
 } from '../workspaces/index.js';
 import type { IdentityWorkspaceRequest } from '../workspaces/types.js';
 import {
-  parseRequestBody,
+  parseRequestInput,
   requestIdempotencyKey,
   withRequestOperationSignal,
 } from '../platform/http/index.js';
@@ -62,7 +62,7 @@ export class PendingTasksController {
     @Query() query: unknown,
   ) {
     const { workspaceId } = workspaceParams.parse(params);
-    const input = pendingTaskListQuerySchema.parse(query ?? {});
+    const input = parseRequestInput(pendingTaskListQuerySchema, query ?? {});
     return withRequestOperationSignal(request, (signal) =>
       this.tasks.list({
         workspaceId,
@@ -81,7 +81,7 @@ export class PendingTasksController {
     @Query() query: unknown,
   ) {
     const { workspaceId } = workspaceParams.parse(params);
-    const input = approvalAudienceQuerySchema.parse(query ?? {});
+    const input = parseRequestInput(approvalAudienceQuerySchema, query ?? {});
     return withRequestOperationSignal(request, (signal) =>
       this.tasks.audience({
         workspaceId,
@@ -101,7 +101,7 @@ export class PendingTasksController {
     @Body() body: unknown,
   ) {
     const { workspaceId } = workspaceParams.parse(params);
-    const input = parseRequestBody(
+    const input = parseRequestInput(
       approvalAudienceInspectionRequestSchema,
       body,
     );
@@ -138,7 +138,7 @@ export class PendingTasksController {
     @Body() body: unknown,
   ) {
     const route = pendingTaskParamsSchema.parse(params);
-    const input = parseRequestBody(pendingTaskDecisionRequestSchema, body);
+    const input = parseRequestInput(pendingTaskDecisionRequestSchema, body);
     const idempotencyKey = requestIdempotencyKey(request.headers);
     return withRequestOperationSignal(request, (signal) =>
       this.tasks.decide({
@@ -162,7 +162,7 @@ export class PendingTasksController {
     @Body() body: unknown,
   ) {
     const route = pendingTaskParamsSchema.parse(params);
-    const input = parseRequestBody(pendingTaskSubmitRequestSchema, body);
+    const input = parseRequestInput(pendingTaskSubmitRequestSchema, body);
     const idempotencyKey = requestIdempotencyKey(request.headers);
     return withRequestOperationSignal(request, (signal) =>
       this.tasks.submit({

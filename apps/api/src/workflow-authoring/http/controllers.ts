@@ -20,7 +20,7 @@ import {
 } from '../../workspaces/index.js';
 
 import {
-  parseRequestBody,
+  parseRequestInput,
   requestIdempotencyKey,
 } from '../../platform/http/index.js';
 import { requestHeaderValue } from '../../platform/http/request-headers.js';
@@ -52,8 +52,10 @@ import {
 import {
   workflowDraftSaveRequestSchema,
   type WorkflowAuthoringRequest,
+  type ConditionalWorkflowResponse,
   type WorkflowResponse,
 } from '../types.js';
+import { singleRequestHeader } from '../../platform/http/request-headers.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
 import { authoringFailure } from '../../problems/context/normalize.js';
 import {
@@ -88,7 +90,10 @@ export class WorkflowAuthoringController {
     @Res({ passthrough: true }) response?: WorkflowResponse,
   ) {
     const { workspaceId } = workspaceParams(params);
-    const input = workflowOrganizationListQuerySchema.parse(query ?? {});
+    const input = parseRequestInput(
+      workflowOrganizationListQuerySchema,
+      query ?? {},
+    );
     const hasOrganizationFilters =
       input.query !== undefined ||
       input.view !== undefined ||
@@ -151,7 +156,7 @@ export class WorkflowAuthoringController {
     @Res({ passthrough: true }) response?: WorkflowResponse,
   ) {
     const route = workflowParams(params);
-    const projection = workflowGetQuerySchema.parse(query ?? {});
+    const projection = parseRequestInput(workflowGetQuerySchema, query ?? {});
     if (projection.include !== undefined)
       response?.header('Cache-Control', 'private, no-store');
     if (
@@ -182,7 +187,7 @@ export class WorkflowAuthoringController {
   public async draft(
     @Req() request: WorkflowAuthoringRequest,
     @Param() params: unknown,
-    @Res({ passthrough: true }) response: WorkflowResponse,
+    @Res({ passthrough: true }) response: ConditionalWorkflowResponse,
   ) {
     const route = workflowParams(params);
     const context = requestContext(request, route.workspaceId);
@@ -192,6 +197,13 @@ export class WorkflowAuthoringController {
       workflowId: route.workflowId,
     });
     response.header('ETag', result.representationTag);
+    if (
+      singleRequestHeader(request.headers, 'if-none-match') ===
+      result.representationTag
+    ) {
+      response.status(304);
+      return undefined;
+    }
     return result.body;
   }
   @Put(':workflowId/draft')
@@ -208,7 +220,7 @@ export class WorkflowAuthoringController {
     @Res({ passthrough: true }) response: WorkflowResponse,
   ) {
     const route = workflowParams(params);
-    const input = parseRequestBody(workflowDraftSaveRequestSchema, body);
+    const input = parseRequestInput(workflowDraftSaveRequestSchema, body);
     const context = requestContext(request, route.workspaceId);
     const result = await this.saveDraft.execute({
       ...context,

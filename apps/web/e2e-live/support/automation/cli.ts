@@ -14,7 +14,7 @@ export async function verifyAutomationCliBuild() {
       timeout: 5_000,
       maxBuffer: 64 * 1024,
     });
-    if (!result.stdout.startsWith('Pertexo automation') || result.stderr !== '')
+    if (!result.stdout.startsWith('Pertexo CLI') || result.stderr !== '')
       throw new Error('Invalid CLI build');
   } catch {
     throw new Error(
@@ -43,13 +43,13 @@ export async function automationCli(
       typeof cause === 'object' &&
       cause !== null &&
       'code' in cause &&
-      cause.code === 1 &&
+      typeof cause.code === 'number' &&
       'stdout' in cause &&
       cause.stdout === '' &&
       'stderr' in cause &&
       typeof cause.stderr === 'string'
     ) {
-      return { code: 1, body: JSON.parse(cause.stderr) as unknown };
+      return { code: cause.code, body: JSON.parse(cause.stderr) as unknown };
     }
     throw new Error(
       'Owned automation process failed; sensitive details omitted.',

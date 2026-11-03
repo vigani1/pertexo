@@ -34,10 +34,13 @@ class FakeExecutor implements RateLimitScriptExecutor {
 
 describe('distributed abuse rate limiter', () => {
   it('uses one atomic script and never sends raw subject identifiers as keys', async () => {
-    const executor = new FakeExecutor([1, 0, 0]);
+    const executor = new FakeExecutor([1, 0, 0, 4, 5, 60_000]);
     const limiter = new DistributedRateLimiter(executor);
 
-    await expect(limiter.consume(decision)).resolves.toEqual({ allowed: true });
+    await expect(limiter.consume(decision)).resolves.toEqual({
+      allowed: true,
+      quota: { limit: 5, remaining: 4, resetSeconds: 60 },
+    });
 
     expect(executor.calls).toHaveLength(1);
     const [script, keyCount, ...arguments_] = executor.calls[0] ?? [];
@@ -140,7 +143,7 @@ describe('distributed abuse rate limiter', () => {
       },
     ],
   ])('rejects invalid decision input: %s', async (_name, invalid) => {
-    const executor = new FakeExecutor([1, 0, 0]);
+    const executor = new FakeExecutor([1, 0, 0, 4, 5, 60_000]);
     await expect(
       new DistributedRateLimiter(executor).consume(invalid),
     ).rejects.toThrow(/rate-limit decision/iu);

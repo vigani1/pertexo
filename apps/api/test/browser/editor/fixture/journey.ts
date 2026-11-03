@@ -59,9 +59,10 @@ export function registerEditorBrowserJourney(
 
 function journeyTimeoutMillis() {
   // These journeys are several specs, each with its own sign-up. Collaboration
-  // also waits out a presence lease.
+  // also waits out a presence lease. CI runs journeys side by side, which makes the
+  // longest take up to about 1.4 times what they take alone.
   if (scenario === 'product') return 720_000;
-  return scenario === 'collaboration' ? 360_000 : 180_000;
+  return scenario === 'collaboration' ? 360_000 : 300_000;
 }
 
 async function prepareEditorPrerequisites(api: EditorBrowserApi) {

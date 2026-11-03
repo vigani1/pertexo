@@ -32,6 +32,7 @@ import {
   serializeWorkflowList,
   serializeWorkflowSummary,
 } from '../http/serializers.js';
+import { parseRequestInput } from '../../platform/http/request-input.js';
 
 type QueryInput = WorkflowOrganizationInput & Readonly<{ query: unknown }>;
 
@@ -57,7 +58,10 @@ export class WorkflowOrganizationReadsUseCase {
     await authorizeWorkflowOrganization(input, this.authorization, 'read', {
       reading: true,
     });
-    const query = workflowOrganizationListQuerySchema.parse(input.query);
+    const query = parseRequestInput(
+      workflowOrganizationListQuerySchema,
+      input.query,
+    );
     const context = workflowOrganizationContext(input);
     const filters = {
       ...(query.query === undefined ? {} : { query: query.query }),
@@ -117,7 +121,7 @@ export class WorkflowOrganizationReadsUseCase {
     await authorizeWorkflowOrganization(input, this.authorization, 'read', {
       reading: true,
     });
-    const query = workflowGetQuerySchema.parse(input.query);
+    const query = parseRequestInput(workflowGetQuerySchema, input.query);
     if (
       query.include !== 'organization' &&
       query.include !== 'templateOrigin,organization'
@@ -138,7 +142,10 @@ export class WorkflowOrganizationReadsUseCase {
       organization: projection.organization,
     };
     if (query.include === 'organization')
-      return workflowOrganizationProjectionResponseSchema.parse(body);
+      return parseRequestInput(
+        workflowOrganizationProjectionResponseSchema,
+        body,
+      );
     // The origin reader owns visibility and validates the requested projection.
     if (this.origin.getWorkflowWithTemplateOrigin === undefined)
       throw new WorkflowTemplateOriginUnavailableError();
@@ -161,7 +168,7 @@ export class WorkflowOrganizationReadsUseCase {
     await authorizeWorkflowOrganization(input, this.authorization, 'read', {
       reading: true,
     });
-    const query = workflowTagListQuerySchema.parse(input.query);
+    const query = parseRequestInput(workflowTagListQuerySchema, input.query);
     const context = workflowOrganizationContext(input);
     const cursorContext = {
       purpose: 'tags' as const,
@@ -194,7 +201,7 @@ export class WorkflowOrganizationReadsUseCase {
     await authorizeWorkflowOrganization(input, this.authorization, 'admin', {
       reading: true,
     });
-    const query = workflowTagListQuerySchema.parse(input.query);
+    const query = parseRequestInput(workflowTagListQuerySchema, input.query);
     const context = workflowOrganizationContext(input);
     const cursorContext = {
       purpose: 'tag-assignments' as const,
