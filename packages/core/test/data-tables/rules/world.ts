@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 import { dataTableNewColumnsSchema } from '@pertexo/node-sdk';
-import type { Role } from '@pertexo/workflow-model';
+import type { Role } from '@pertexo/policy';
 
 import {
   actorId,

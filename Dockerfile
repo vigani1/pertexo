@@ -89,6 +89,7 @@ COPY --from=build --chown=10001:10001 /workspace/packages/database/dist ./packag
 COPY --from=build --chown=10001:10001 /workspace/packages/integrations/dist ./packages/integrations/dist
 COPY --from=build --chown=10001:10001 /workspace/packages/node-catalog/dist ./packages/node-catalog/dist
 COPY --from=build --chown=10001:10001 /workspace/packages/node-sdk/dist ./packages/node-sdk/dist
+COPY --from=build --chown=10001:10001 /workspace/packages/policy/dist ./packages/policy/dist
 COPY --from=build --chown=10001:10001 /workspace/packages/nodes-core/dist ./packages/nodes-core/dist
 COPY --from=build --chown=10001:10001 /workspace/packages/observability/dist ./packages/observability/dist
 COPY --from=build --chown=10001:10001 /workspace/packages/queue/dist ./packages/queue/dist

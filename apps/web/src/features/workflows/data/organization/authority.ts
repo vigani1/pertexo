@@ -12,7 +12,7 @@ import {
   hasCapability,
   isAdministrativeRole,
   type Role,
-} from '@pertexo/workflow-model';
+} from '@pertexo/policy';
 import {
   assertSessionIdentity,
   isSessionIdentityChangedError,

@@ -24,7 +24,7 @@ import {
   canSuspendWorkspaceMember,
   canTransferWorkspaceOwnership,
   ROLES,
-} from '@pertexo/workflow-model';
+} from '@pertexo/policy';
 
 function member(
   role: WorkspaceMember['role'],

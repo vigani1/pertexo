@@ -1,10 +1,10 @@
+import { type Role } from '@pertexo/policy';
 import {
   parseWorkflowGraphDraft,
   type PortableConnectionBinding,
   type WorkflowGraph,
   type WorkflowPortableManifest,
   connectionFitsSlot,
-  type Role,
 } from '@pertexo/workflow-model';
 import { and, asc, eq, inArray } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';

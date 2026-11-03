@@ -3,7 +3,7 @@ import type {
   ResolvePreviewReplayInput,
 } from './contract.js';
 
-import type { Role } from '@pertexo/workflow-model';
+import type { Role } from '@pertexo/policy';
 import { and, eq, gt } from 'drizzle-orm';
 import { parseStoredExecutionValue } from '../../runs/values/stored-execution.js';
 

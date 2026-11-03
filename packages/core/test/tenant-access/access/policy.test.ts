@@ -1,8 +1,5 @@
-import {
-  API_TOKEN_SCOPES,
-  ROLES,
-  hasCapability,
-} from '@pertexo/workflow-model';
+import { ROLES, hasCapability } from '@pertexo/policy';
+import { API_TOKEN_SCOPES } from '@pertexo/workflow-model';
 import { describe, expect, it } from 'vitest';
 
 import { isActiveMemberManager } from '../../../src/tenant-access/members/manager.js';

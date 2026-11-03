@@ -2,7 +2,7 @@ import type { DirectoryAdopt, DirectoryMappings } from '@pertexo/contracts';
 import type { Filter } from 'scim2-parse-filter';
 import type { FederationCommand } from '../management/contract.js';
 
-import type { Role } from '@pertexo/workflow-model';
+import type { Role } from '@pertexo/policy';
 
 export type DirectoryRole = Exclude<Role, 'owner'>;
 export type DirectoryEmail = Readonly<{

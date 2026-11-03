@@ -1,4 +1,4 @@
-import { BROWSABLE_WORKSPACE_STATUSES } from '@pertexo/workflow-model';
+import { BROWSABLE_WORKSPACE_STATUSES } from '@pertexo/policy';
 import type {
   WorkflowPromotionCandidates,
   WorkflowPromotionHistory,

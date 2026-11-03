@@ -1,5 +1,5 @@
 import { accessibleWorkspaceSchema } from '@pertexo/contracts';
-import type { Role } from '@pertexo/workflow-model';
+import type { Role } from '@pertexo/policy';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render } from '@testing-library/react';
 import { HttpResponse, http } from 'msw';

@@ -6,7 +6,7 @@ import {
 import {
   ACTIVE_WORKSPACE_STATUSES,
   UNPURGED_WORKSPACE_STATUSES,
-} from '@pertexo/workflow-model';
+} from '@pertexo/policy';
 import type { PoolClient } from 'pg';
 
 import {

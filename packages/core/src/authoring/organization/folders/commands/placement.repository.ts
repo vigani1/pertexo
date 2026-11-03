@@ -1,5 +1,5 @@
 import type { WorkflowMoveReview } from '@pertexo/contracts';
-import { ACTIVE_WORKSPACE_STATUSES } from '@pertexo/workflow-model';
+import { ACTIVE_WORKSPACE_STATUSES } from '@pertexo/policy';
 import { reviewMoveAudience } from '../../sharing/audience.queries.js';
 
 import { runOrganizationCommand } from '../../run-command.js';

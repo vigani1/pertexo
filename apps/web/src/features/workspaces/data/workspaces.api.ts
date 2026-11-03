@@ -1,4 +1,4 @@
-import type { DelegatedRole } from '@pertexo/workflow-model';
+import type { DelegatedRole } from '@pertexo/policy';
 import {
   accessibleWorkspacesResponseSchema,
   type AccessibleWorkspacesResponse,

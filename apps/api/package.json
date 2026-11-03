@@ -27,6 +27,7 @@
     "@pertexo/node-sdk": "workspace:*",
     "@pertexo/nodes-core": "workspace:*",
     "@pertexo/observability": "workspace:*",
+    "@pertexo/policy": "workspace:*",
     "@pertexo/queue": "workspace:*",
     "@pertexo/rate-limit": "workspace:*",
     "@pertexo/secrets": "workspace:*",

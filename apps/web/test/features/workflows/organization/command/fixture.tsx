@@ -8,7 +8,7 @@ import {
   accessibleWorkspaceSchema,
   type AccessibleWorkspace,
 } from '@pertexo/contracts';
-import { capabilitiesForRole } from '@pertexo/workflow-model';
+import { capabilitiesForRole } from '@pertexo/policy';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { renderHook } from '@testing-library/react';
 import { HttpResponse, http, type JsonBodyType } from 'msw';

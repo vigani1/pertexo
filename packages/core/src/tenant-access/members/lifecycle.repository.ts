@@ -6,7 +6,7 @@ import {
   canLeaveWorkspace,
   canSuspendWorkspaceMember,
   canTransferWorkspaceOwnership,
-} from '@pertexo/workflow-model';
+} from '@pertexo/policy';
 import type {
   LeaveWorkspaceInput,
   TransferWorkspaceOwnershipInput,

@@ -10,7 +10,7 @@ import {
   workspaceInvitations as invitations,
 } from '@pertexo/database/schema';
 
-import { canInviteWorkspaceRole } from '@pertexo/workflow-model';
+import { canInviteWorkspaceRole } from '@pertexo/policy';
 import { generatePersistedId } from '@pertexo/database/platform';
 import type {
   ResendWorkspaceInvitationInput,

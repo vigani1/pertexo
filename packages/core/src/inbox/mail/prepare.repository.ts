@@ -3,11 +3,11 @@ import {
   noticeMailBatches,
   systemMailDeliveries,
 } from '@pertexo/database/schema';
+import { rolesForCapability } from '@pertexo/policy';
 import {
   nextNoticeDue,
   nextPersonNoticeDue,
   noticeWindow,
-  rolesForCapability,
 } from '@pertexo/workflow-model';
 import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';

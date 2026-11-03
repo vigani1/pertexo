@@ -1,4 +1,4 @@
-import { ROLES, ADMINISTRATIVE_ROLES } from '../../workspaces/policy.js';
+import { ROLES, ADMINISTRATIVE_ROLES } from '@pertexo/policy';
 import { z } from 'zod';
 
 export const PENDING_TASK_LIMITS = Object.freeze({

@@ -1,12 +1,12 @@
-export type { Role, DelegatedRole } from '@pertexo/workflow-model';
+export type { Role, DelegatedRole } from '@pertexo/policy';
 export {
   AUTHORIZATION_CAPABILITIES,
   capabilitiesForRole,
   hasCapability,
   ROLES,
   rolesForCapability,
-} from '@pertexo/workflow-model';
-export type { AuthorizationCapability } from '@pertexo/workflow-model';
+} from '@pertexo/policy';
+export type { AuthorizationCapability } from '@pertexo/policy';
 export {
   createIdentityWorkspaceStore,
   type IdentityWorkspaceStore,

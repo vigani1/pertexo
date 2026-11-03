@@ -1,5 +1,5 @@
-import { ROLES } from '@pertexo/workflow-model';
-export { isAdministrativeRole } from '@pertexo/workflow-model';
+import { ROLES } from '@pertexo/policy';
+export { isAdministrativeRole } from '@pertexo/policy';
 import { z } from 'zod';
 
 export const workspaceRoleSchema = z.enum(ROLES);

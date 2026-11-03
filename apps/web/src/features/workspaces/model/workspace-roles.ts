@@ -10,9 +10,9 @@ import {
   type Role,
   type DelegatedRole,
   type AuthorizationCapability,
-} from '@pertexo/workflow-model';
+} from '@pertexo/policy';
 export { rolesAllowedTo, ROLES as WORKSPACE_ROLES };
-export { canLeaveWorkspace } from '@pertexo/workflow-model';
+export { canLeaveWorkspace } from '@pertexo/policy';
 import type { WorkspaceMember } from '@pertexo/contracts';
 
 export type WorkspaceRole = Role;

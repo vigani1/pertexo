@@ -9,7 +9,7 @@ import { connectionScope } from '../../tenant-access/resources/connections/scope
 
 import { resolvePreviewSample } from './samples.repository.js';
 
-import type { Role } from '@pertexo/workflow-model';
+import type { Role } from '@pertexo/policy';
 import { and, eq, sql } from 'drizzle-orm';
 import { v7 as uuidv7 } from 'uuid';
 import { lockActorArtifactReferences } from '../../artifacts/references/locks.repository.js';

@@ -4,13 +4,13 @@ import {
   type DatabaseRuntime,
 } from '@pertexo/database/platform';
 import type { NoticeCommandResponse } from '@pertexo/contracts';
-import { hasCapability } from '@pertexo/workflow-model';
+import { hasCapability } from '@pertexo/policy';
 import {
   ACTIVE_WORKSPACE_STATUSES,
   BROWSABLE_WORKSPACE_STATUSES,
   type AuthorizationCapability,
   type Role,
-} from '@pertexo/workflow-model';
+} from '@pertexo/policy';
 import type { PoolClient } from 'pg';
 
 import {

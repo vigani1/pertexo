@@ -12,10 +12,10 @@ import {
   rethrowQueryFailure,
 } from '@pertexo/database/primitives';
 import type { WorkflowTestSuitePreparation } from '@pertexo/contracts';
+import { type Role } from '@pertexo/policy';
 import {
   canonicalJson,
   DEFAULT_TEST_EXPECTATIONS,
-  type Role,
 } from '@pertexo/workflow-model';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';

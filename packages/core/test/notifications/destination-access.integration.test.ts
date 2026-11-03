@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 import { parseDatabaseConfig } from '@pertexo/database/platform';
-import type { Role } from '@pertexo/workflow-model';
+import type { Role } from '@pertexo/policy';
 import { describe, expect, it } from 'vitest';
 
 import {

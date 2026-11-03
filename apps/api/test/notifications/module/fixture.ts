@@ -1,4 +1,4 @@
-import type { Role } from '@pertexo/workflow-model';
+import type { Role } from '@pertexo/policy';
 import { registerWorkflowPortabilityJsonParser } from '../../../src/workflow-authoring/portability/json-parser.js';
 import { registerNoticeUnsubscribeTransport } from '../../../src/notifications/preferences/transport.js';
 import type { NoticePreferencesService } from '../../../src/notifications/preferences/service.js';

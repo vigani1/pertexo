@@ -1,5 +1,5 @@
 import { QueryView } from '@/components/patterns/states/query-view';
-import type { DelegatedRole } from '@pertexo/workflow-model';
+import type { DelegatedRole } from '@pertexo/policy';
 import { useId, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {

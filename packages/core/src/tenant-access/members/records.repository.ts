@@ -9,7 +9,7 @@ import {
   rethrowQueryFailure,
   appendAuditFacts,
 } from '@pertexo/database/primitives';
-import type { Role } from '@pertexo/workflow-model';
+import type { Role } from '@pertexo/policy';
 import { removeMemberResourceGrants } from '../resources/revocation.repository.js';
 import type { PoolClient } from 'pg';
 

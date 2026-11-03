@@ -28,6 +28,7 @@
     "typecheck": "tsc -p tsconfig.test.json --noEmit"
   },
   "dependencies": {
+    "@pertexo/policy": "workspace:*",
     "jsonata": "2.2.2",
     "zod": "4.6.7"
   },

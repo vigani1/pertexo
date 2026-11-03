@@ -46,7 +46,7 @@ checks authority inside the transaction, honours the signal and hands the flow t
 role it found.
 
 **Named status lists.** The workspace statuses an action accepts are a constant from
-`workflow-model` (`ACTIVE_`, `BROWSABLE_` or `UNPURGED_WORKSPACE_STATUSES`), and a
+`policy` (`ACTIVE_`, `BROWSABLE_` or `UNPURGED_WORKSPACE_STATUSES`), and a
 flow names its list once, at the helper, so two reads can't disagree.
 
 **Entry points (this replaces §7's rule for these two packages):**

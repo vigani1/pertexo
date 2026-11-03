@@ -1,7 +1,7 @@
 import type {
   AuthorizationCapability,
   WorkspaceStatusList,
-} from '@pertexo/workflow-model';
+} from '@pertexo/policy';
 import type { z } from 'zod';
 
 export type RouteMethod = 'get' | 'post' | 'put' | 'patch' | 'delete';

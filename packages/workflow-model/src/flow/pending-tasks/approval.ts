@@ -1,4 +1,4 @@
-import { ADMINISTRATIVE_ROLES } from '../../workspaces/policy.js';
+import { ADMINISTRATIVE_ROLES } from '@pertexo/policy';
 import { z } from 'zod';
 import { storageTextSchema } from '../../values/json/text.js';
 import { PENDING_TASK_LIMITS, taskAudienceSchema } from './audience.js';

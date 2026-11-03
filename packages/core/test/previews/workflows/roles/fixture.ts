@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import type { Role } from '@pertexo/workflow-model';
+import type { Role } from '@pertexo/policy';
 
 import {
   queryAsOwner,

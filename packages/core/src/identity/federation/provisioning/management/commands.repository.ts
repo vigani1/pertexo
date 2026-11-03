@@ -11,7 +11,7 @@ import {
   BROWSABLE_WORKSPACE_STATUSES,
   rolesForCapability,
   type Role,
-} from '@pertexo/workflow-model';
+} from '@pertexo/policy';
 import type {
   DirectoryAdoptionPreview,
   DirectoryAdoptionQuery,

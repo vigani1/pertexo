@@ -23,7 +23,7 @@ import {
   generatePersistedId,
 } from '@pertexo/database/platform';
 import type { CommandIdentity } from '@pertexo/database/primitives';
-import { hasCapability } from '@pertexo/workflow-model';
+import { hasCapability } from '@pertexo/policy';
 import { issueApiTokenCredential } from './credential.js';
 import { apiTokenMetadata, type ApiTokenRow } from './metadata.js';
 import { requireReadableReceipt, tokenReceipt } from '../../shared/receipts.js';

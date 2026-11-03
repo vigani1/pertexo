@@ -3,7 +3,7 @@ import type {
   OidcConfiguration,
   SamlConfiguration,
 } from '@pertexo/contracts';
-import type { DelegatedRole } from '@pertexo/workflow-model';
+import type { DelegatedRole } from '@pertexo/policy';
 
 export type FederationScope = Readonly<{
   workspaceId: string;

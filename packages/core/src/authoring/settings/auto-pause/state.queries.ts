@@ -2,7 +2,7 @@ import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { workflows, workspaces } from '@pertexo/database/schema';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
-import { ACTIVE_WORKSPACE_STATUSES } from '@pertexo/workflow-model';
+import { ACTIVE_WORKSPACE_STATUSES } from '@pertexo/policy';
 import type { PoolClient } from 'pg';
 
 import { WorkflowNotFoundError } from '../../workflows/errors.js';
