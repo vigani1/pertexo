@@ -198,5 +198,85 @@ describe.runIf(betterAuthIntegrationEnabled)(
         expect((await send(first)).statusCode).toBe(401);
       },
     );
+
+    it('keeps paused-workflow resume receipts private and never resumes a newer pause on replay', async () => {
+      const w = await setup(),
+        path = `${w.base}/workflows/${w.workflowId}/resume`,
+        key = randomUUID();
+      const first = await w.credential(['workflow:publish']);
+      const issued = await api.send('POST', `${w.base}/api-tokens`, {
+        browser: w.browser,
+        headers: { 'idempotency-key': randomUUID() },
+        payload: { name: 'Another pause caller', scopes: ['workflow:publish'] },
+      });
+      expect(issued.statusCode, issued.payload).toBe(201);
+      const second = apiTokenCreateResponseSchema.parse(issued.json());
+      if (second.replayed) throw new Error('Fresh token replayed');
+      const pause = (revision: string) =>
+        api
+          .database()
+          .query(
+            `update app.workflows set trigger_pause_state='paused',trigger_paused_at=clock_timestamp(),trigger_pause_reason='consecutive_failures',trigger_pause_failures=10,trigger_pause_last_run_id=$2,trigger_pause_revision=$3 where id=$1`,
+            [w.workflowId, randomUUID(), revision],
+          );
+      await pause('9007199254740993');
+      const send = (
+        headers: Record<string, string>,
+        revision = '9007199254740993',
+        browser?: typeof w.browser,
+        commandKey = key,
+      ) =>
+        api.send('POST', path, {
+          headers: { ...headers, 'idempotency-key': commandKey },
+          ...(browser === undefined ? {} : { browser }),
+          payload: { expectedPauseRevision: revision },
+        });
+      const accepted = await send(first);
+      expect(accepted.statusCode, accepted.payload).toBe(200);
+      expect(accepted.json()).toMatchObject({
+        settings: { pauseState: 'none', pauseRevision: '9007199254740994' },
+        replayed: false,
+      });
+      await pause('9007199254740995');
+      const replay = await send(first);
+      expect(replay.statusCode, replay.payload).toBe(200);
+      expect(replay.json()).toMatchObject({ replayed: true });
+      expect(publicResult(replay.json<Record<string, unknown>>())).toEqual(
+        publicResult(accepted.json<Record<string, unknown>>()),
+      );
+      for (const caller of [
+        () => send({ authorization: `Bearer ${second.secret}` }),
+        () => send({}, '9007199254740993', w.browser),
+        () => send(first, '9007199254740995'),
+      ]) {
+        const refused = await caller();
+        expect(refused.statusCode, refused.payload).toBe(409);
+      }
+      expect(
+        (
+          await api
+            .database()
+            .query(
+              'select trigger_pause_state,trigger_pause_revision::text from app.workflows where id=$1',
+              [w.workflowId],
+            )
+        ).rows,
+      ).toEqual([
+        {
+          trigger_pause_state: 'paused',
+          trigger_pause_revision: '9007199254740995',
+        },
+      ]);
+      const resumed = await send(
+        first,
+        '9007199254740995',
+        undefined,
+        randomUUID(),
+      );
+      expect(resumed.statusCode, resumed.payload).toBe(200);
+      expect(resumed.json()).toMatchObject({
+        settings: { pauseState: 'none', pauseRevision: '9007199254740996' },
+      });
+    });
   },
 );
