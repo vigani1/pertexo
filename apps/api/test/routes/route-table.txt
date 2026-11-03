@@ -18,6 +18,7 @@ GET /v1/node-definitions 200 session - - authenticated_read
 POST /v1/notifications/unsubscribe 200 none - - notice_unsubscribe
 GET /v1/notifications/unsubscribe/one-click 303 none - - notice_unsubscribe
 POST /v1/notifications/unsubscribe/one-click 200 none - - notice_unsubscribe
+GET /v1/token 200 session_or_token - - authenticated_read
 GET /v1/users/me 200 session - - authenticated_read
 PATCH /v1/users/me 200 session - csrf actor_mutation
 GET /v1/workspaces 200 session - - authenticated_read
