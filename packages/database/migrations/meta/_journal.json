@@ -561,6 +561,13 @@
       "when": 1793688140975,
       "tag": "0079_workspace_data_token_scopes",
       "breakpoints": true
+    },
+    {
+      "idx": 80,
+      "version": "7",
+      "when": 1793706357874,
+      "tag": "0080_artifact_reference_locations",
+      "breakpoints": true
     }
   ]
 }

@@ -148,10 +148,17 @@ const OWNERS: readonly ReferenceOwner[] = [
     workspace: run.workspaceId,
     workflow: run.workflowId,
     accessibleValues: [
-      sql`case when ${run.inputRefExpiresAt}>clock_timestamp() then ${run.inputRef}::jsonb end`,
-      sql`case when ${liveRunValues} then ${run.outputRef}::jsonb end`,
+      executionReferences(
+        sql`case when ${run.inputRefExpiresAt}>clock_timestamp() then ${run.inputRef}::jsonb end`,
+      ),
+      executionReferences(
+        sql`case when ${liveRunValues} then ${run.outputRef}::jsonb end`,
+      ),
     ],
-    values: [sql`${run.inputRef}::jsonb`, sql`${run.outputRef}::jsonb`],
+    values: [
+      executionReferences(sql`${run.inputRef}::jsonb`),
+      executionReferences(sql`${run.outputRef}::jsonb`),
+    ],
   },
   {
     build: (where) =>
@@ -169,7 +176,10 @@ const OWNERS: readonly ReferenceOwner[] = [
     workspace: node.workspaceId,
     workflow: run.workflowId,
     accessibleWhen: liveRunValues,
-    values: [sql`${node.inputRef}::jsonb`, sql`${node.outputRef}::jsonb`],
+    values: [
+      executionReferences(sql`${node.inputRef}::jsonb`),
+      executionReferences(sql`${node.outputRef}::jsonb`),
+    ],
   },
   {
     build: (where) =>
@@ -195,8 +205,8 @@ const OWNERS: readonly ReferenceOwner[] = [
     workflow: run.workflowId,
     accessibleWhen: liveRunValues,
     values: [
-      sql`${attempt.outputRef}::jsonb`,
-      sql`${attempt.reconciliationRef}`,
+      executionReferences(sql`${attempt.outputRef}::jsonb`),
+      executionReferences(sql`${attempt.reconciliationRef}`),
     ],
   },
   {
@@ -215,7 +225,7 @@ const OWNERS: readonly ReferenceOwner[] = [
     workspace: event.workspaceId,
     workflow: run.workflowId,
     accessibleWhen: liveRunValues,
-    values: [sql`${event.payload}`],
+    values: [executionReferences(sql`${event.payload}`, 'event')],
   },
   {
     build: (where) =>
@@ -233,7 +243,9 @@ const OWNERS: readonly ReferenceOwner[] = [
     workspace: checkpoint.workspaceId,
     workflow: run.workflowId,
     accessibleWhen: liveRunValues,
-    values: [sql`${checkpoint.schedulerState}`],
+    values: [
+      executionReferences(sql`${checkpoint.schedulerState}`, 'checkpoint'),
+    ],
   },
   {
     // A response's files are its own until the resumed step outputs them.
@@ -249,7 +261,7 @@ const OWNERS: readonly ReferenceOwner[] = [
     workspace: task.workspaceId,
     workflow: run.workflowId,
     accessibleWhen: liveRunValues,
-    values: [sql`${task.outputRef}::jsonb`],
+    values: [executionReferences(sql`${task.outputRef}::jsonb`)],
   },
 ];
 function referencesArtifact(value: SQL, artifact: SQL): SQL {
@@ -287,4 +299,9 @@ export function artifactReferenceOwnersSql(
     );
   });
   return sql`(${sql.join(owners, sql` or `)})`;
+}
+
+function executionReferences(value: SQL, format = 'value'): SQL {
+  return sql`(select coalesce(jsonb_agg(jsonb_build_object('artifactId',id)), '[]'::jsonb)
+    from app.execution_artifact_ids(${value},${format}) id)`;
 }
