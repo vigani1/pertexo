@@ -13,7 +13,7 @@ import { domainErrors } from '../../platform/http/problems/interceptor.js';
 import { authoringFailure } from '../../problems/context/normalize.js';
 import { RestoreWorkflowVersionUseCase } from '../commands/restore-version.js';
 import type { WorkflowAuthoringRequest, WorkflowResponse } from '../types.js';
-import { ListWorkflowVersionsUseCase } from '../use-cases.js';
+import { ListWorkflowVersionsUseCase } from '../workflow-authoring.service.js';
 import { parseStrongIfMatch } from './preconditions.js';
 @UseInterceptors(domainErrors(authoringFailure))
 @Controller()

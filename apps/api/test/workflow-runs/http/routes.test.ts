@@ -18,7 +18,7 @@ import {
   ReplayWorkflowRunUseCase,
   StartWorkflowRunUseCase,
   StreamRunEventsUseCase,
-} from '../../../src/workflow-runs/use-cases.js';
+} from '../../../src/workflow-runs/workflow-runs.service.js';
 import { WORKSPACE_AUTHORIZATION } from '../../../src/workspaces/tokens.js';
 import { FakeIdentityModule } from '../../support/identity-module.js';
 import { ownerAccess, routeHarness } from '../../support/route-harness.js';

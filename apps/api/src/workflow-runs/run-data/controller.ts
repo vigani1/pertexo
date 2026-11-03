@@ -14,7 +14,7 @@ import {
   GetWorkflowRunVariablesUseCase,
   GetWorkflowStepHealthUseCase,
   ListWorkflowStepRunsUseCase,
-} from './use-cases.js';
+} from './run-data.service.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
 import { runFailure } from '../../problems/context/normalize.js';
 

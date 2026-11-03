@@ -13,7 +13,7 @@ import {
 import {
   ListIntegrationsUseCase,
   createCatalogUseCases,
-} from '../../src/catalog/use-cases.js';
+} from '../../src/catalog/catalog.service.js';
 import {
   integrationListResponseSchema,
   nodeDefinitionListResponseSchema,

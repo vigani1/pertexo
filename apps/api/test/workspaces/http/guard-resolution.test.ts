@@ -21,9 +21,9 @@ import type {
 } from '../../../src/workspaces/ports.js';
 import { HttpPlatformModule } from '../../../src/platform/http/module.js';
 import { ScheduleModule } from '../../../src/schedules/module.js';
-import { ScheduleManagementService } from '../../../src/schedules/service.js';
+import { ScheduleManagementService } from '../../../src/schedules/schedule-management.service.js';
 import { WebhookModule } from '../../../src/webhooks/module.js';
-import { WebhookManagementService } from '../../../src/webhooks/management/service.js';
+import { WebhookManagementService } from '../../../src/webhooks/management/webhook-management.service.js';
 import type {
   WorkspaceAccess,
   WorkspaceAccessQuery,

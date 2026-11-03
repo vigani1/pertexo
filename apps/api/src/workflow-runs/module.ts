@@ -3,7 +3,7 @@ import { UsageTrendsController } from './usage/trends-controller.js';
 import {
   GetRunRecoveryUseCase,
   RecoverRunUseCase,
-} from './recovery/use-cases.js';
+} from './recovery/run-recovery.service.js';
 import { RunRecoveryController } from './recovery/controller.js';
 import { Module } from '@nestjs/common';
 import type { DynamicModule, Provider } from '@nestjs/common';
@@ -29,7 +29,7 @@ import {
   GetWorkflowRunVariablesUseCase,
   GetWorkflowStepHealthUseCase,
   ListWorkflowStepRunsUseCase,
-} from './run-data/use-cases.js';
+} from './run-data/run-data.service.js';
 import { GetWorkflowRunStatisticsUseCase } from './statistics.js';
 import { GetUsageCapacityUseCase } from './usage/capacity.js';
 import { UsageCapacityController } from './usage/capacity-controller.js';
@@ -41,7 +41,7 @@ import {
   ReplayWorkflowRunUseCase,
   StartWorkflowRunUseCase,
   StreamRunEventsUseCase,
-} from './use-cases.js';
+} from './workflow-runs.service.js';
 
 export type WorkflowRunsDependencies = Readonly<{
   persistence: WorkflowRunPersistence;

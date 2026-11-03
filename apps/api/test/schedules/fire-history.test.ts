@@ -13,7 +13,7 @@ import {
   decodeScheduleOccurrenceCursor,
   encodeScheduleOccurrenceCursor,
 } from '../../src/schedules/cursor.js';
-import { ScheduleManagementService } from '../../src/schedules/service.js';
+import { ScheduleManagementService } from '../../src/schedules/schedule-management.service.js';
 import type { ScheduleOperation } from '../../src/schedules/telemetry.js';
 
 const read = {

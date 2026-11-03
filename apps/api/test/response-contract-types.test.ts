@@ -11,11 +11,11 @@ import type { z } from 'zod';
 import type {
   ListWorkflowVersionsUseCase,
   ValidateWorkflowDraftUseCase,
-} from '../src/workflow-authoring/use-cases.js';
+} from '../src/workflow-authoring/workflow-authoring.service.js';
 import type {
   GetPreviewRunUseCase,
   TestWorkflowNodeUseCase,
-} from '../src/node-testing/use-case.js';
+} from '../src/node-testing/node-testing.service.js';
 import type {
   AuthenticatedRequestSession,
   IdentityWorkspaceRequest,

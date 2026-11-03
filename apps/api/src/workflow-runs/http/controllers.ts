@@ -38,7 +38,7 @@ import {
   ReplayWorkflowRunUseCase,
   StartWorkflowRunUseCase,
   StreamRunEventsUseCase,
-} from '../use-cases.js';
+} from '../workflow-runs.service.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
 import { runFailure } from '../../problems/context/normalize.js';
 

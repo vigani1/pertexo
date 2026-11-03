@@ -10,7 +10,7 @@ import {
   draftContext as context,
   type DraftRequest as Request,
 } from '../draft-context.js';
-import { StepSamplesUseCase } from './use-case.js';
+import { StepSamplesUseCase } from './step-samples.service.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
 import { nodeTestingFailure } from '../../problems/context/normalize.js';
 

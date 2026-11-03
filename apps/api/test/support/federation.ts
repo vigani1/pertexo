@@ -1,5 +1,5 @@
 import type { DirectoryStore } from '@pertexo/core/identity';
-import { FederationManagementService } from '../../src/authentication/federation/management/service.js';
+import { FederationManagementService } from '../../src/authentication/federation/management/federation-management.service.js';
 /** Unrelated API tests still construct the real module; federation storage is deliberately unavailable. */
 export function stubFederationService(): FederationManagementService {
   const unused = () =>

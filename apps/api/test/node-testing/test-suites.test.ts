@@ -2,7 +2,7 @@ import type { Role } from '@pertexo/policy';
 import { describe, expect, it, vi } from 'vitest';
 import { randomUUID } from 'node:crypto';
 import { createActorContext } from '../../src/authorization/index.js';
-import { WorkflowTestSuitesUseCase } from '../../src/node-testing/suites/use-case.js';
+import { WorkflowTestSuitesUseCase } from '../../src/node-testing/suites/workflow-test-suites.service.js';
 const workspaceId = randomUUID(),
   actorId = randomUUID(),
   workflowId = randomUUID(),

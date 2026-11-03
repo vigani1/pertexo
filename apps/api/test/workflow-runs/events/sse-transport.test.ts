@@ -21,7 +21,7 @@ import {
 import { ZodError } from 'zod';
 import { createWorkflowRunEventStreamer } from '../../../src/workflow-runs/events/streamer.js';
 import { ApiDrainState } from '../../../src/platform/health/drain-state.js';
-import { StreamRunEventsUseCase } from '../../../src/workflow-runs/use-cases.js';
+import { StreamRunEventsUseCase } from '../../../src/workflow-runs/workflow-runs.service.js';
 
 describe('workflow run SSE transport', () => {
   it.each([

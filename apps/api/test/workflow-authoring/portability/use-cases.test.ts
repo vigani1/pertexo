@@ -4,7 +4,7 @@ import {
   ExportWorkflowUseCase,
   ImportWorkflowUseCase,
   PreviewWorkflowImportUseCase,
-} from '../../../src/workflow-authoring/portability/use-cases.js';
+} from '../../../src/workflow-authoring/portability/workflow-portability.service.js';
 import {
   authorizeWorkspace,
   createActorContext,

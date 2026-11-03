@@ -13,7 +13,7 @@ import {
   BROWSABLE_WORKSPACE_STATUSES,
 } from '../../authorization/index.js';
 import type { WorkspaceAuthorizationSource } from '../../workspaces/ports.js';
-import type { NodeTestUseCaseInput } from '../use-case.js';
+import type { NodeTestUseCaseInput } from '../node-testing.service.js';
 import type {
   StepSampleDeleteRequest,
   StepSampleWriteRequest,

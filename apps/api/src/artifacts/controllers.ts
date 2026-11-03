@@ -16,7 +16,7 @@ import {
 } from '../platform/http/index.js';
 import type { AbortableRequest } from '../platform/http/request-operation-signal.js';
 import type { IdentityWorkspaceRequest } from '../workspaces/types.js';
-import { ArtifactService } from './service.js';
+import { ArtifactService } from './artifact.service.js';
 import { domainErrors } from '../platform/http/problems/interceptor.js';
 import { artifactFailure } from '../problems/context/normalize.js';
 

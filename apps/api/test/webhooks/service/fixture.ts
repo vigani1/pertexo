@@ -2,7 +2,7 @@ import type { WebhookTriggerStore } from '@pertexo/core/testing';
 
 import type { WebhookTriggerEnvelopeEncryption } from '@pertexo/integrations/server';
 import { expect, vi } from 'vitest';
-import { WebhookManagementService } from '../../../src/webhooks/management/service.js';
+import { WebhookManagementService } from '../../../src/webhooks/management/webhook-management.service.js';
 
 export const health = {
   id: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',

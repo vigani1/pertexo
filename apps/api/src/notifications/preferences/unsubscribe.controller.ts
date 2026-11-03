@@ -4,7 +4,7 @@ import {
   type RouteInput,
 } from '@pertexo/contracts/server';
 import { In, Route } from '../../workspaces/http/route.js';
-import { NoticePreferencesService } from './service.js';
+import { NoticePreferencesService } from './notice-preferences.service.js';
 
 /** A link in an email, which a mail client may follow signed out: the token is the authority. */
 @Controller()

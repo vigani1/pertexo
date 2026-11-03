@@ -6,13 +6,13 @@ import {
   ArtifactsController,
   UnconfiguredArtifactsController,
 } from './controllers.js';
-import { FormUploadService } from './form-uploads/service.js';
+import { FormUploadService } from './form-uploads/form-upload.service.js';
 import { PublicFormUploadsController } from './form-uploads/public.controller.js';
 import { MemberFormUploadsController } from './form-uploads/members.controller.js';
 import { InputRequestUploadsController } from './form-uploads/tasks.controller.js';
 import { UnconfiguredFormUploadsController } from './form-uploads/unavailable.controller.js';
 import type { ArtifactDependencies } from './ports.js';
-import { ArtifactService } from './service.js';
+import { ArtifactService } from './artifact.service.js';
 
 @Module({})
 // Nest dynamic modules require a class container.

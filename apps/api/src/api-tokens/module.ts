@@ -6,7 +6,7 @@ import type { IdentityClock } from '../identity/index.js';
 import { AutomationAuthenticationGuard } from '../authentication/automation/guard.js';
 import { HttpRateLimitAdmission } from '../platform/rate-limit/admission.js';
 import { ApiTokenController, CurrentApiTokenController } from './controller.js';
-import { ApiTokenManagement } from './use-cases.js';
+import { ApiTokenManagement } from './api-token.service.js';
 
 export type ApiTokenDependencies = Readonly<{
   database: ApiTokenStore;

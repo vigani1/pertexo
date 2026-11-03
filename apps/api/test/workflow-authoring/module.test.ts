@@ -11,7 +11,7 @@ import { WORKSPACE_AUTHORIZATION } from '../../src/workspaces/tokens.js';
 import { WorkflowConcurrencyController } from '../../src/workflow-authoring/settings/concurrency-controller.js';
 import { WorkflowConcurrencyUseCase } from '../../src/workflow-authoring/settings/concurrency.js';
 import { WorkflowInputCasesController } from '../../src/workflow-authoring/input-cases/controller.js';
-import { WorkflowInputCasesUseCase } from '../../src/workflow-authoring/input-cases/use-case.js';
+import { WorkflowInputCasesUseCase } from '../../src/workflow-authoring/input-cases/workflow-input-cases.service.js';
 import { unusedWorkflowOrganization } from '../support/api-platform.fixture.js';
 
 const dependencies = {

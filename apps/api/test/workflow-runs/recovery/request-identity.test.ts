@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { recoveryRequestHash } from '../../../src/workflow-runs/recovery/use-cases.js';
+import { recoveryRequestHash } from '../../../src/workflow-runs/recovery/run-recovery.service.js';
 import { createActorContext } from '../../../src/authorization/index.js';
 const input = {
   actor: createActorContext({

@@ -10,7 +10,7 @@ import {
   type ArtifactStore,
   type FormUploadStore,
 } from '../../../src/artifacts/index.js';
-import { FormUploadService } from '../../../src/artifacts/form-uploads/service.js';
+import { FormUploadService } from '../../../src/artifacts/form-uploads/form-upload.service.js';
 import { record } from '../service/fixture.js';
 
 const now = new Date('2026-09-06T00:00:00.000Z');

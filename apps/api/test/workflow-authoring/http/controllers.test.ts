@@ -11,7 +11,7 @@ import {
   SaveWorkflowDraftUseCase,
   ValidateWorkflowDraftUseCase,
   ListWorkflowVersionsUseCase,
-} from '../../../src/workflow-authoring/use-cases.js';
+} from '../../../src/workflow-authoring/workflow-authoring.service.js';
 import { TransitionWorkflowLifecycleUseCase } from '../../../src/workflow-authoring/commands/lifecycle.js';
 import { RenameWorkflowUseCase } from '../../../src/workflow-authoring/commands/rename.js';
 import { DuplicateWorkflowUseCase } from '../../../src/workflow-authoring/commands/duplicate.js';

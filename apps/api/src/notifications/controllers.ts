@@ -31,7 +31,7 @@ import type {
   InboxHintSource,
   InboxHintSubscription,
 } from './inbox-hint-hub.js';
-import { WorkspaceInboxService } from './service.js';
+import { WorkspaceInboxService } from './workspace-inbox.service.js';
 import { INBOX_HINT_SOURCE, NOTIFICATION_AUTHORIZATION } from './tokens.js';
 import { domainErrors } from '../platform/http/problems/interceptor.js';
 import { inboxFailure } from '../problems/context/normalize.js';

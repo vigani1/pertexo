@@ -16,7 +16,7 @@ import {
   type ApplicationError,
   applicationError,
 } from '../../platform/http/index.js';
-import { WorkflowRunNotFoundError } from '../../workflow-runs/use-cases.js';
+import { WorkflowRunNotFoundError } from '../../workflow-runs/workflow-runs.service.js';
 
 export const runProblems = [
   errorRegistration(WorkspaceRunQuotaExceededError, (error) => {

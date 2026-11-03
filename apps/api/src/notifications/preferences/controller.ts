@@ -8,7 +8,7 @@ import { In, Route } from '../../workspaces/http/route.js';
 import type { IdentityWorkspaceRequest } from '../../workspaces/types.js';
 import { withRequestOperationSignal } from '../../platform/http/index.js';
 import type { AbortableRequest } from '../../platform/http/request-operation-signal.js';
-import { NoticePreferencesService } from './service.js';
+import { NoticePreferencesService } from './notice-preferences.service.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
 import { inboxFailure } from '../../problems/context/normalize.js';
 

@@ -1,6 +1,6 @@
 import { DEFAULT_INSTANCE_LIMITS } from '@pertexo/core/runs';
 import { createWebhookTestEventStore } from '@pertexo/core/triggers';
-import { WebhookTestEventService } from '../../../../src/webhooks/test-events/service.js';
+import { WebhookTestEventService } from '../../../../src/webhooks/test-events/webhook-test-event.service.js';
 import { RedisRateLimitRuntime } from '@pertexo/rate-limit';
 import { DEFAULT_CODE_SETTINGS } from '@pertexo/node-sdk';
 
@@ -30,7 +30,7 @@ import {
   type ApiIdentityRuntime,
 } from '../../../../src/platform/identity/runtime.module.js';
 import { createCoreWorkflowAuthoringDatabase } from '../../../../src/platform/workflow/runtime.module.js';
-import { WebhookManagementService } from '../../../../src/webhooks/management/service.js';
+import { WebhookManagementService } from '../../../../src/webhooks/management/webhook-management.service.js';
 import { dropDisconnectedDatabase } from '../../../support/disposable-database.js';
 import {
   FixtureResourceOwner,

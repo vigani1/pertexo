@@ -9,7 +9,10 @@ import type { IdentityWorkspaceRequest } from '../workspaces/types.js';
 import { In, Route } from '../workspaces/http/route.js';
 import { requestIdempotencyKey } from '../platform/http/index.js';
 import { singleRequestHeader } from '../platform/http/request-headers.js';
-import { GetPreviewRunUseCase, TestWorkflowNodeUseCase } from './use-case.js';
+import {
+  GetPreviewRunUseCase,
+  TestWorkflowNodeUseCase,
+} from './node-testing.service.js';
 import { domainErrors } from '../platform/http/problems/interceptor.js';
 import { nodeTestingFailure } from '../problems/context/normalize.js';
 

@@ -9,7 +9,7 @@ import {
 } from '@pertexo/contracts';
 import { describe, expect, it, vi } from 'vitest';
 
-import { ScheduleManagementService } from '../../src/schedules/service.js';
+import { ScheduleManagementService } from '../../src/schedules/schedule-management.service.js';
 
 const trigger = {
   id: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',

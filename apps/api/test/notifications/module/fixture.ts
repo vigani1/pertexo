@@ -1,7 +1,7 @@
 import type { Role } from '@pertexo/policy';
 import { registerWorkflowPortabilityJsonParser } from '../../../src/workflow-authoring/portability/json-parser.js';
 import { registerNoticeUnsubscribeTransport } from '../../../src/notifications/preferences/transport.js';
-import type { NoticePreferencesService } from '../../../src/notifications/preferences/service.js';
+import type { NoticePreferencesService } from '../../../src/notifications/preferences/notice-preferences.service.js';
 import type {
   NoticePreferencesStore,
   WorkspaceInboxStore,
@@ -13,7 +13,7 @@ import { vi } from 'vitest';
 
 import { NotificationsModule } from '../../../src/notifications/module.js';
 import type { InboxHintSource } from '../../../src/notifications/inbox-hint-hub.js';
-import { WorkspaceInboxService } from '../../../src/notifications/service.js';
+import { WorkspaceInboxService } from '../../../src/notifications/workspace-inbox.service.js';
 
 import { APPLICATION_ERROR_MAPPERS } from '../../../src/application-errors.js';
 import { HttpPlatformModule } from '../../../src/platform/http/module.js';

@@ -9,7 +9,7 @@ import {
 } from 'vitest';
 
 import type { WebhookIngressDependencies } from '../../src/webhooks/ingress/register.js';
-import type { WebhookManagementService } from '../../src/webhooks/management/service.js';
+import type { WebhookManagementService } from '../../src/webhooks/management/webhook-management.service.js';
 import { WebhookModule } from '../../src/webhooks/module.js';
 import { FakeIdentityModule } from '../support/identity-module.js';
 import {

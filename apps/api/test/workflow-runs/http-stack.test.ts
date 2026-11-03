@@ -19,7 +19,7 @@ import {
   ExecutionStateConflictError,
   WorkflowRunNotExecutableError,
 } from '@pertexo/core/runs';
-import { WorkflowRunNotFoundError } from '../../src/workflow-runs/use-cases.js';
+import { WorkflowRunNotFoundError } from '../../src/workflow-runs/workflow-runs.service.js';
 import { usageCapacitySnapshot } from './usage/capacity.fixture.js';
 
 describe('workflow runs real Nest HTTP stack', () => {

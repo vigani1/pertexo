@@ -14,7 +14,7 @@ import { In, Route } from '../workspaces/http/route.js';
 import type { IdentityWorkspaceRequest } from '../workspaces/types.js';
 import { withRequestOperationSignal } from '../platform/http/index.js';
 import type { AbortableRequest } from '../platform/http/request-operation-signal.js';
-import { DataTablesService } from './service.js';
+import { DataTablesService } from './data-tables.service.js';
 import { domainErrors } from '../platform/http/problems/interceptor.js';
 import { dataTableFailure } from '../problems/context/normalize.js';
 

@@ -4,7 +4,7 @@ import {
 } from '@pertexo/core/inbox';
 import { createApplicationSecretEnvelope } from '@pertexo/integrations/server';
 import type { ApiIdentityConfig } from '../config/identity.js';
-import { NoticePreferencesService } from '../../notifications/preferences/service.js';
+import { NoticePreferencesService } from '../../notifications/preferences/notice-preferences.service.js';
 import type {
   DatabaseConfig,
   DatabaseRuntime,
@@ -14,7 +14,7 @@ import {
   RedisInboxHintHub,
   type InboxHintSource,
 } from '../../notifications/inbox-hint-hub.js';
-import { WorkspaceInboxService } from '../../notifications/service.js';
+import { WorkspaceInboxService } from '../../notifications/workspace-inbox.service.js';
 
 /** ADR 055: the inbox's store and its per-process hint hub. */
 export type ApiNotificationRuntime = Readonly<{

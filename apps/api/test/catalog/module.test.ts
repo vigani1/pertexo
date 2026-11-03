@@ -7,7 +7,7 @@ import { CatalogModule } from '../../src/catalog/module.js';
 import {
   ListIntegrationsUseCase,
   ListNodeDefinitionsUseCase,
-} from '../../src/catalog/use-cases.js';
+} from '../../src/catalog/catalog.service.js';
 import { SESSION_AUTHORITY } from '../../src/workspaces/index.js';
 import { RequestContextStore } from '../../src/platform/http/index.js';
 

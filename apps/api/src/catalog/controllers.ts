@@ -5,7 +5,7 @@ import { Route } from '../workspaces/http/route.js';
 import {
   ListIntegrationsUseCase,
   ListNodeDefinitionsUseCase,
-} from './use-cases.js';
+} from './catalog.service.js';
 
 @Controller()
 export class CatalogController {

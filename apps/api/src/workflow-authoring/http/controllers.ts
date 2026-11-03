@@ -27,7 +27,7 @@ import {
   PublishWorkflowUseCase,
   SaveWorkflowDraftUseCase,
   ValidateWorkflowDraftUseCase,
-} from '../use-cases.js';
+} from '../workflow-authoring.service.js';
 import { requestContext, traceparent } from './context.js';
 import { parseStrongIfMatch } from './preconditions.js';
 

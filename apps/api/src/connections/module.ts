@@ -1,5 +1,5 @@
 import { ConnectionSharingController } from './sharing/controller.js';
-import { ConnectionSharingUseCases } from './sharing/use-case.js';
+import { ConnectionSharingUseCases } from './sharing/connection-sharing.service.js';
 import { UnconfiguredConnectionsController } from './http/unavailable.js';
 import type { WorkspaceAuthorizationSource } from '../workspaces/ports.js';
 import { Module } from '@nestjs/common';

@@ -24,7 +24,7 @@ import {
   ListAccessibleWorkspacesUseCase,
   ListWorkspaceMembersUseCase,
   WorkspaceLifecycleUseCase,
-} from '../use-cases.js';
+} from '../workspaces.service.js';
 import { authenticatedSession } from './guards.js';
 import { In, Route } from './route.js';
 

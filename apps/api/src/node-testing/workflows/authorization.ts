@@ -2,7 +2,7 @@ import {
   authorizeWorkspaceCapabilities,
   type WorkspaceAuthorizationSource,
 } from '../../authorization/index.js';
-import type { NodeTestUseCaseInput } from '../use-case.js';
+import type { NodeTestUseCaseInput } from '../node-testing.service.js';
 export type WorkflowTestUseCaseInput = Pick<
   NodeTestUseCaseInput,
   'actor' | 'routeWorkspaceId' | 'authorizedWorkspace' | 'workflowId'
