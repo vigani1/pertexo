@@ -1,12 +1,12 @@
 import {
-  apiTokenCreateRequestSchema,
   apiTokenCreateResponseSchema,
-  apiTokenListQuerySchema,
   apiTokenListResponseSchema,
-  apiTokenRevokeRequestSchema,
   apiTokenRevokeResponseSchema,
+  type ApiTokenCreateRequest,
   type ApiTokenListResponse,
 } from '@pertexo/contracts';
+import type { z } from 'zod';
+import type { apiTokenListQuerySchema } from '@pertexo/contracts';
 import type {
   ApiTokenStore,
   ApiTokenOwner,
@@ -17,7 +17,6 @@ import {
   applicationError,
   throwApplicationError,
 } from '../platform/http/index.js';
-import { parseRequestInput } from '../platform/http/request-input.js';
 
 export class ApiTokenManagement {
   private readonly enabled: boolean;
@@ -30,9 +29,9 @@ export class ApiTokenManagement {
     this.clock = clock;
   }
   public async list(
-    input: ApiTokenOwner & { query: unknown },
+    input: ApiTokenOwner & { query: z.output<typeof apiTokenListQuerySchema> },
   ): Promise<ApiTokenListResponse> {
-    const query = parseRequestInput(apiTokenListQuerySchema, input.query);
+    const { query } = input;
     return apiTokenListResponseSchema.parse({
       ...(await this.database.list({
         ...input,
@@ -43,7 +42,10 @@ export class ApiTokenManagement {
     });
   }
   public async create(
-    input: ApiTokenCommand & { request: unknown; signedInAt: Date },
+    input: ApiTokenCommand & {
+      request: ApiTokenCreateRequest;
+      signedInAt: Date;
+    },
   ) {
     if (!this.enabled)
       return throwApplicationError(
@@ -51,19 +53,12 @@ export class ApiTokenManagement {
           safeDetail: 'Automation tokens are disabled on this server.',
         }),
       );
-    const request = parseRequestInput(
-      apiTokenCreateRequestSchema,
-      input.request,
-    );
     assertRecentSignIn(input.signedInAt, this.clock.now());
     return apiTokenCreateResponseSchema.parse(
-      await this.database.create({ ...input, ...request }),
+      await this.database.create({ ...input, ...input.request }),
     );
   }
-  public async revoke(
-    input: ApiTokenCommand & { tokenId: string; request: unknown },
-  ) {
-    parseRequestInput(apiTokenRevokeRequestSchema, input.request);
+  public async revoke(input: ApiTokenCommand & { tokenId: string }) {
     return apiTokenRevokeResponseSchema.parse(
       await this.database.revoke(input),
     );

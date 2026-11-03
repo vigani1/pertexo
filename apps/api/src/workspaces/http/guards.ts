@@ -210,16 +210,6 @@ export const WorkspaceMembershipGuard = capabilityGuard(
   { disclosure: 'forbidden', allowedWorkspaceStatuses: ['active'] },
 );
 
-/** Any active member reading their own tokens; creating and revoking need the guard above. */
-export const WorkspaceMemberBrowseGuard = capabilityGuard(
-  WORKSPACE_AUTHORIZATION,
-  'workspace:read',
-  {
-    disclosure: 'forbidden',
-    allowedWorkspaceStatuses: BROWSABLE_WORKSPACE_STATUSES,
-  },
-);
-
 /** Pending invitations are read by those who may manage them. */
 export const WorkspaceInvitationReadGuard = capabilityGuard(
   WORKSPACE_AUTHORIZATION,

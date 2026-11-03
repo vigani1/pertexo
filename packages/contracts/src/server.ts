@@ -43,3 +43,4 @@ export { inboxRoutes } from './routes/identity/inbox.js';
 export { webhookRoutes } from './routes/triggers/webhooks.js';
 export { dataTableRoutes } from './routes/identity/data-tables.js';
 export { variableRoutes } from './routes/identity/variables.js';
+export { apiTokenRoutes } from './routes/identity/api-tokens.js';
