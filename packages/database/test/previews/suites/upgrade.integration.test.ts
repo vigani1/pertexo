@@ -148,6 +148,7 @@ it('upgrades a populated standalone test without changing its source identity or
       '0088_repair_existing_workspace_capacity.sql',
       '0089_expose_unconfirmed_invitation_delivery.sql',
       '0090_bound_trigger_failure_evidence.sql',
+      '0091_pending_trigger_success_order.sql',
     ]);
     expect(
       (

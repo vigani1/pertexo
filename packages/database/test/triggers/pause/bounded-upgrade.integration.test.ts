@@ -51,7 +51,7 @@ it('compacts a long 0089 failure ledger without changing pauses, carry or orderi
         [enabled.workflowId],
       )
     ).rows;
-    expect(await upgrade()).toEqual([
+    expect(await upgrade(90)).toEqual([
       '0090_bound_trigger_failure_evidence.sql',
     ]);
     expect(await snapshot()).toEqual(before);
@@ -102,6 +102,6 @@ it('compacts a long 0089 failure ledger without changing pauses, carry or orderi
         )
       ).rows,
     ).toEqual([{ legacy_failures: 0, consecutive_failures: 50 }]);
-    expect(await upgrade()).toEqual([]);
+    expect(await upgrade(90)).toEqual([]);
   });
 });
