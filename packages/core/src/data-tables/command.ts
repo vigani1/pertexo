@@ -21,7 +21,7 @@ type TableCommand<T extends object> = Readonly<{
       }>)
     | null;
   request: unknown;
-  receipt: z.ZodType<T>;
+  receipt: z.ZodType;
   work: () => Promise<T>;
 }>;
 
