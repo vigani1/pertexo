@@ -43,18 +43,16 @@ export function useRecoveryApi() {
     });
   async function state(userId: string) {
     return (
-      await api
-        .database()
-        .query<{
-          password: string;
-          sessions: string[] | null;
-          proofs: string[] | null;
-        }>(
-          `select (select password from app.auth_accounts where user_id=$1 and provider_id='credential') password,
+      await api.database().query<{
+        password: string;
+        sessions: string[] | null;
+        proofs: string[] | null;
+      }>(
+        `select (select password from app.auth_accounts where user_id=$1 and provider_id='credential') password,
        (select jsonb_agg(id order by id) from app.auth_sessions where user_id=$1) sessions,
        (select jsonb_agg(id order by id) from app.auth_verifications where value=$1::text) proofs`,
-          [userId],
-        )
+        [userId],
+      )
     ).rows;
   }
   async function unrelatedProof(userId: string) {
