@@ -9,6 +9,7 @@ import {
 } from '@pertexo/database/testing';
 import { createIdentityWorkspaceStore } from '../../src/testing.js';
 import { createWorkflowTriggerPauseFoldStore } from '../../src/triggers/pause/fold.store.js';
+import { createRetentionStore } from '../../src/lifecycle/retention/retention.store.js';
 import { persistWorkflowTriggerOutcome } from '../../src/triggers/pause/outcomes.repository.js';
 
 type Status =
@@ -337,7 +338,7 @@ describe('workflow trigger pause (ADR 056)', () => {
     await drain();
     for (let hour = 1; hour <= 3; hour += 1) {
       await end(workspaceId, workflowId, 'failed', {
-        endedAt: `2026-10-01T0${hour}:00:00.000Z`,
+        endedAt: `2026-10-01T0${String(hour)}:00:00.000Z`,
       });
       expect(await drain()).toEqual([]);
     }
@@ -399,6 +400,110 @@ describe('workflow trigger pause (ADR 056)', () => {
     await drain();
     expect(await streak(workspaceId, workflowId)).toBe(1);
     expect((await pauseState(workspaceId, workflowId))?.state).toBe('none');
+  });
+
+  it('preserves microseconds and uses the outcome UUID only to break equal completion times', async () => {
+    for (const equalTime of [false, true]) {
+      const { workspaceId, workflowId } = await seed();
+      const earlier = await end(workspaceId, workflowId, 'failed', {
+        endedAt: '2026-10-01T04:00:00.123455Z',
+      });
+      const success = await end(workspaceId, workflowId, 'succeeded', {
+        endedAt: '2026-10-01T04:00:00.123455Z',
+      });
+      const later = await end(workspaceId, workflowId, 'failed', {
+        endedAt: equalTime
+          ? '2026-10-01T04:00:00.123455Z'
+          : '2026-10-01T04:00:00.123456Z',
+      });
+      const positions = [randomUUID(), randomUUID(), randomUUID()].sort();
+      // If microseconds are lost, this later failure sorts before the success.
+      for (const [runId, id] of [
+        [earlier, positions[0]],
+        [success, positions[equalTime ? 1 : 2]],
+        [later, positions[equalTime ? 2 : 1]],
+      ])
+        await asAdmin(
+          'update app.workflow_trigger_outcomes set id=$2 where run_id=$1',
+          [runId, id],
+        );
+      await drain();
+      expect(await streak(workspaceId, workflowId)).toBe(1);
+      expect(await pauseAudits(workspaceId)).toEqual([]);
+    }
+  });
+
+  it('retains the relevant failure suffix after maintenance and deletion of its run summary', async () => {
+    const { workspaceId, workflowId } = await seed();
+    const oldRun = await end(workspaceId, workflowId, 'failed', {
+      endedAt: '2026-10-01T01:00:00.000Z',
+    });
+    const retainedRun = await end(workspaceId, workflowId, 'failed', {
+      endedAt: '2026-10-01T03:00:00.000Z',
+    });
+    await drain();
+    await end(workspaceId, workflowId, 'succeeded', {
+      endedAt: '2026-10-01T02:00:00.000Z',
+    });
+    await drain();
+    const retention = createRetentionStore(
+      parseDatabaseConfig({ connectionString: maintenanceUrl, max: 2 }),
+    );
+    try {
+      await retention.enforce();
+    } finally {
+      await retention.close();
+    }
+    expect(
+      await asAdmin(
+        'select run_id from app.workflow_trigger_failures where workflow_id=$1',
+        [workflowId],
+      ),
+    ).toEqual([{ run_id: retainedRun }]);
+    await asAdmin('delete from app.workflow_runs where id=any($1::uuid[])', [
+      [oldRun, retainedRun],
+    ]);
+    expect(
+      await asAdmin(
+        'select run_id from app.workflow_trigger_failures where workflow_id=$1',
+        [workflowId],
+      ),
+    ).toEqual([{ run_id: retainedRun }]);
+    await end(workspaceId, workflowId, 'failed', {
+      endedAt: '2026-10-01T04:00:00.000Z',
+    });
+    await drain();
+    expect(await streak(workspaceId, workflowId)).toBe(2);
+  });
+
+  it('rolls back queue consumption, streak, pause and audit together, then retries once', async () => {
+    const { workspaceId, workflowId } = await seed();
+    await endMany(workspaceId, workflowId, 'failed', 10);
+    await asAdmin(`create function public.reject_pause_audit() returns trigger language plpgsql as $$
+      begin if NEW.action='workflow.triggers_paused' then raise exception 'Pause audit unavailable'; end if; return NEW; end $$;
+      create trigger reject_pause_audit before insert on app.audit_events for each row execute function public.reject_pause_audit()`);
+    try {
+      await expect(fold.foldPending(1000)).rejects.toThrow();
+      expect(await pending(workspaceId)).toBe(10);
+      expect(await streak(workspaceId, workflowId)).toBeUndefined();
+      expect((await pauseState(workspaceId, workflowId))?.state).toBe('none');
+      expect(await pauseAudits(workspaceId)).toEqual([]);
+      expect(
+        await asAdmin(
+          'select * from app.workflow_trigger_failures where workflow_id=$1',
+          [workflowId],
+        ),
+      ).toEqual([]);
+    } finally {
+      await asAdmin(
+        'drop trigger reject_pause_audit on app.audit_events; drop function public.reject_pause_audit()',
+      );
+    }
+    expect(await drain()).toHaveLength(1);
+    expect(await pending(workspaceId)).toBe(0);
+    expect(await streak(workspaceId, workflowId)).toBe(10);
+    expect(await pauseAudits(workspaceId)).toHaveLength(1);
+    expect(await drain()).toEqual([]);
   });
 
   it('never pauses twice across concurrent folds of a burst', async () => {
