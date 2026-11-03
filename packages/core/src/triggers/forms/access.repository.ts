@@ -11,7 +11,7 @@ import { createHash } from 'node:crypto';
 import type { PoolClient } from 'pg';
 import type { FormAccess } from '@pertexo/contracts';
 import { generatePersistedId } from '@pertexo/database/platform';
-import { FormAccessConflictError } from './errors.js';
+import { FormAccessConflictError } from './form.errors.js';
 import type { SetFormAccessInput } from './form-admission.types.js';
 export const capabilityHash = (value: string) =>
   createHash('sha256').update(value).digest('hex');

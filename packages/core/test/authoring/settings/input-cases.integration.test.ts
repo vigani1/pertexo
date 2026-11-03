@@ -8,8 +8,8 @@ import {
 import {
   WorkflowInputCaseLimitError,
   WorkflowInputCaseRevisionConflictError,
-} from '../../../src/authoring/input-cases/errors.js';
-import { WorkflowNotFoundError } from '../../../src/authoring/workflows/errors.js';
+} from '../../../src/authoring/input-cases/workflow-input-case.errors.js';
+import { WorkflowNotFoundError } from '../../../src/authoring/workflows/workflow-authoring.errors.js';
 import { IdempotencyConflictError } from '@pertexo/database/platform';
 import { createRetentionStore } from '../../../src/lifecycle/retention/retention.store.js';
 import {

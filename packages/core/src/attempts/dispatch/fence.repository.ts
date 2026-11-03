@@ -1,5 +1,5 @@
 import type { ExecutionCapabilityScope } from './execution-capability.types.js';
-import { ExecutionCapabilityExpiredError } from '../errors.js';
+import { ExecutionCapabilityExpiredError } from '../node-attempt.errors.js';
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import {

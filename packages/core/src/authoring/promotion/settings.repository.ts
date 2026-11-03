@@ -16,8 +16,8 @@ import {
 import type { WorkflowPromotionTargetResult } from '@pertexo/contracts';
 import { hasCapability } from '@pertexo/policy';
 import type { WorkflowPromotionSettings } from '@pertexo/contracts';
-import { WorkflowNotFoundError } from '../workflows/errors.js';
-import { WorkflowPromotionError } from './errors.js';
+import { WorkflowNotFoundError } from '../workflows/workflow-authoring.errors.js';
+import { WorkflowPromotionError } from './workflow-promotion.errors.js';
 import type {
   PromotionContext,
   PromotionScope,

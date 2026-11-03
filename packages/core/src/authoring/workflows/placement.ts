@@ -3,7 +3,7 @@ import {
   type WorkflowGraph,
 } from '@pertexo/workflow-model';
 import type { WorkflowDefinitionCatalog } from '@pertexo/workflow-model/server';
-import { WorkflowDefinitionPlacementError } from './errors.js';
+import { WorkflowDefinitionPlacementError } from './workflow-authoring.errors.js';
 
 /** A new node must come from the catalog; without one, any node may be placed. */
 export function requirePlaceableDefinitionAdditions(

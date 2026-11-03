@@ -31,7 +31,7 @@ import {
   WorkflowAutoPauseSettingsRevisionConflictError,
   WorkflowPauseRevisionConflictError,
   WorkspaceAutoPauseSettingsRevisionConflictError,
-} from './errors.js';
+} from './auto-pause.errors.js';
 import { workflowSettings, workspaceSettings } from './input.js';
 import {
   lockWorkflow,

@@ -8,7 +8,7 @@ import {
   workflows,
 } from '@pertexo/database/schema';
 
-import { WorkflowNotFoundError } from '../workflows/errors.js';
+import { WorkflowNotFoundError } from '../workflows/workflow-authoring.errors.js';
 import type {
   Scope,
   WorkflowInputCaseMetadata,
@@ -16,7 +16,7 @@ import type {
 import {
   WorkflowInputCaseLimitError,
   WorkflowInputCaseRevisionConflictError,
-} from './errors.js';
+} from './workflow-input-case.errors.js';
 
 export const metadataProjection = {
   id: workflowInputCases.id,

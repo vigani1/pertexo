@@ -28,7 +28,7 @@ import type { ExportWorkflowInput } from '../workflows/workflow-commands.types.j
 import {
   WorkflowNotFoundError,
   WorkflowRevisionConflictError,
-} from '../workflows/errors.js';
+} from '../workflows/workflow-authoring.errors.js';
 import {
   draftProjection,
   projectDraft,

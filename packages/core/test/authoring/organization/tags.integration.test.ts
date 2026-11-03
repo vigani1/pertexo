@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import type { WorkflowTagConflictError } from '../../../src/authoring/organization/errors.js';
-import { WorkflowNotFoundError } from '../../../src/authoring/workflows/errors.js';
+import type { WorkflowTagConflictError } from '../../../src/authoring/organization/workflow-organization.errors.js';
+import { WorkflowNotFoundError } from '../../../src/authoring/workflows/workflow-authoring.errors.js';
 import { IdempotencyConflictError } from '@pertexo/database/platform';
 import {
   createOrganizationOwnedFixture,

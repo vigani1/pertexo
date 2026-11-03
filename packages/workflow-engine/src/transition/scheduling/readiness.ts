@@ -1,5 +1,5 @@
 import { invocationKey } from './loops.js';
-import { WorkflowEngineError } from '../../errors.js';
+import { WorkflowEngineError } from '../../workflow-engine.errors.js';
 import {
   descendants,
   indexSchedulerGraph,

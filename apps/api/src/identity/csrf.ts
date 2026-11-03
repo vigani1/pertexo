@@ -5,7 +5,7 @@ import {
   encodeBase64Url,
   nodeIdentityCrypto,
 } from './crypto.js';
-import { IdentityError } from './errors.js';
+import { IdentityError } from './identity.errors.js';
 import type { IdentityCrypto } from './crypto.js';
 
 const mutationMethods = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);

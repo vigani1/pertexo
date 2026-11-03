@@ -33,7 +33,7 @@ import {
   requireNoActiveTest,
 } from '../workflows/admit.js';
 import { requireTestCapability } from '../workflows/access.js';
-import { WorkflowTestError } from '../workflows/errors.js';
+import { WorkflowTestError } from '../workflows/workflow-test.errors.js';
 import { testRunDurationMs } from '../workflows/rules.js';
 import {
   loadTestSnapshot,

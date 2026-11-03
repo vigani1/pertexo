@@ -9,7 +9,10 @@ import { appendAttemptEvent } from '../events.repository.js';
 import { lockClaimCandidate } from './candidates.repository.js';
 import type { Pool } from 'pg';
 import type { z } from 'zod';
-import { DeliveryMismatch, NodeAttemptStateCorruptError } from '../errors.js';
+import {
+  DeliveryMismatch,
+  NodeAttemptStateCorruptError,
+} from '../node-attempt.errors.js';
 import { branchContextSchema } from '../validation/shared.js';
 import {
   SETTLED_ATTEMPT_STATUSES,

@@ -19,7 +19,7 @@ import {
   apiPool,
   workflowId,
 } from '../support/workflow-authoring.js';
-import { WorkspaceAccessDeniedError } from '../../src/shared/errors.js';
+import { WorkspaceAccessDeniedError } from '../../src/shared/workspace-access.errors.js';
 import {
   withWorkspaceTransaction,
   withTenantScopedClient,

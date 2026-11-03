@@ -3,7 +3,7 @@ import { z } from 'zod';
 import {
   NodeConfigValidationError,
   NodeInputValidationError,
-} from './errors.js';
+} from './node-execution.errors.js';
 
 const REASON_MAX_LENGTH = 512;
 

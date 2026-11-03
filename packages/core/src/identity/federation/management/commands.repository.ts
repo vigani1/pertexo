@@ -15,7 +15,7 @@ import {
   withPlatformTransaction,
 } from '@pertexo/database/platform';
 import { lockWorkspaceRow } from '../../../shared/authority.repository.js';
-import { FederationConflictError } from './errors.js';
+import { FederationConflictError } from './federation-management.errors.js';
 import type { FederationScope } from './federation-management.types.js';
 import type { OrganizationRow } from './identity-organizations.repository.js';
 import {

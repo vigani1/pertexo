@@ -35,7 +35,7 @@ import type {
   ExecuteTableCommandInput,
 } from './data-table-commands.types.js';
 import { readQuotas, requireTable } from './table-lookups.repository.js';
-import { translateWorkerFailure } from './errors.js';
+import { translateWorkerFailure } from './data-table.errors.js';
 import { findRows } from './rows/find.repository.js';
 import { mutateRows } from './rows/mutate.repository.js';
 

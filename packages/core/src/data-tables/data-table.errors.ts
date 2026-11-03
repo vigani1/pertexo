@@ -2,7 +2,7 @@ import { isTransientDatabaseFailure } from '@pertexo/database/platform';
 import { postgresFailure, queryFailure } from '@pertexo/database/primitives';
 import { DataTableError } from '@pertexo/node-sdk';
 
-import { ExecutionCapabilityExpiredError } from '../attempts/errors.js';
+import { ExecutionCapabilityExpiredError } from '../attempts/node-attempt.errors.js';
 
 export function translateTableConstraint(caught: unknown): never {
   const { code, constraint } = postgresFailure(caught);

@@ -25,7 +25,7 @@ import {
 import {
   WorkflowNotFoundError,
   WorkflowRevisionConflictError,
-} from '../workflows/errors.js';
+} from '../workflows/workflow-authoring.errors.js';
 import { draftRepresentationTag } from '../workflows/representation/tag.js';
 import type {
   ReviewDependencies,

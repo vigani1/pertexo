@@ -15,7 +15,7 @@ import {
   resolveScheduleObservation,
   type ScheduleRecurrence,
 } from '../schedules/recurrence.js';
-import { WorkflowTriggerReconciliationMismatchError } from './errors.js';
+import { WorkflowTriggerReconciliationMismatchError } from './trigger-reconciliation.errors.js';
 
 function desiredScheduleConfig(value: unknown): Readonly<{
   recurrence: ScheduleRecurrence;

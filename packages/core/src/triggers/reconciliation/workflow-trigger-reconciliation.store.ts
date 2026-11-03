@@ -33,7 +33,7 @@ import { deactivateArchivedWorkflowTriggers } from './activation.repository.js';
 import {
   WorkflowTriggerReconciliationMismatchError,
   WorkflowTriggerStalePublicationError,
-} from './errors.js';
+} from './trigger-reconciliation.errors.js';
 import { readHealth, refreshWorkflowActivation } from './health.repository.js';
 import { reconcileActiveWorkflowTriggers } from './materialization.repository.js';
 import { DELIVERY_CONSUMER } from '../../outbox/delivery-consumers.js';

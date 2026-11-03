@@ -4,7 +4,7 @@ import {
   withWorkspaceScope,
 } from '@pertexo/database/primitives';
 import type { PoolClient } from 'pg';
-import { DirectoryError } from '../errors.js';
+import { DirectoryError } from '../directory.errors.js';
 import type { DirectoryPrincipal } from '../directory-provisioning.types.js';
 
 export function assertDirectoryRevision(

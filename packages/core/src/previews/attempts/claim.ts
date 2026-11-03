@@ -13,7 +13,7 @@ import type {
 
 import type { PreviewDelivery } from '../preview.types.js';
 import { previewConsumerName } from '../delivery.js';
-import { PreviewAttemptStateError } from '../errors.js';
+import { PreviewAttemptStateError } from '../preview.errors.js';
 import { optionsFor } from '../input.js';
 import {
   mayHaveDispatchedUnsafely,

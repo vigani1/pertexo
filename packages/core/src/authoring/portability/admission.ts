@@ -13,7 +13,7 @@ import type { PortableCatalog } from '../workflows/authoring-dependencies.types.
 import {
   WorkflowPortabilityUnavailableError,
   WorkflowPortabilityValidationError,
-} from '../workflows/errors.js';
+} from '../workflows/workflow-authoring.errors.js';
 import { admitWorkflowAuthoring } from '../workflows/admission.repository.js';
 import { inspectPortableConnections } from './source-authority.repository.js';
 import type { AuthoringCatalogs } from '../workflows/catalogs.js';

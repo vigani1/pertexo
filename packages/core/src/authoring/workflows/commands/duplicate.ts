@@ -40,7 +40,7 @@ import type {
 import {
   WorkflowNotFoundError,
   WorkflowRevisionConflictError,
-} from '../errors.js';
+} from '../workflow-authoring.errors.js';
 import { requirePlaceableDefinitionAdditions } from '../placement.js';
 import { projectDraft } from '../representation/workflow-representations.repository.js';
 import { draftRepresentationTag } from '../representation/tag.js';

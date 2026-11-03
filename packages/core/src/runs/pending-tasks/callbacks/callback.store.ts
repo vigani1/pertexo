@@ -21,7 +21,7 @@ import {
 import { wakeWorkflowRun } from '../../wakeups/advance.repository.js';
 import { wakeTaskAncestors } from '../responses/respond.repository.js';
 import { prepareCallbacks } from './prepare.repository.js';
-import { CallbackResponseError } from './errors.js';
+import { CallbackResponseError } from './callback.errors.js';
 import type {
   CallbackPreparation,
   CallbackResponse,

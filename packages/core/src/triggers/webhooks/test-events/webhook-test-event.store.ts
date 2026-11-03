@@ -14,7 +14,7 @@ import {
   acquireDatabasePool,
   type DatabaseRuntime,
 } from '@pertexo/database/platform';
-import { WorkflowNotFoundError } from '../../../authoring/workflows/errors.js';
+import { WorkflowNotFoundError } from '../../../authoring/workflows/workflow-authoring.errors.js';
 import { withWorkflowAccess } from '../../workflow-access.js';
 import { readTestEventDraft } from './authority.repository.js';
 import {
@@ -23,7 +23,7 @@ import {
   resolveTestEventListener,
 } from './ingress.repository.js';
 import { lockListener } from './webhook-test-listeners.repository.js';
-import { WebhookTestEventError } from './errors.js';
+import { WebhookTestEventError } from './webhook-test-event.errors.js';
 import type {
   StartTestEventInput,
   TestEventListenerInput,

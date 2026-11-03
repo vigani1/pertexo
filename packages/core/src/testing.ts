@@ -5,12 +5,12 @@ export {
   createWorkflowAuthoringStore,
   type WorkflowAuthoringStore,
 } from './authoring/workflows/workflow-authoring.store.js';
-export { WorkflowDefinitionPlacementError } from './authoring/workflows/errors.js';
+export { WorkflowDefinitionPlacementError } from './authoring/workflows/workflow-authoring.errors.js';
 export { reconcileWorkflowTriggersPayload } from './authoring/publication/trigger-reconciliation.repository.js';
 export {
   WorkflowNotFoundError,
   WorkflowRevisionConflictError,
-} from './authoring/workflows/errors.js';
+} from './authoring/workflows/workflow-authoring.errors.js';
 export type {
   CreateWorkflowInput,
   CreateWorkflowResult,
@@ -44,7 +44,7 @@ export {
   WorkflowPauseRevisionConflictError,
   WorkflowAutoPauseSettingsRevisionConflictError,
   WorkspaceAutoPauseSettingsRevisionConflictError,
-} from './authoring/settings/auto-pause/errors.js';
+} from './authoring/settings/auto-pause/auto-pause.errors.js';
 export * from './connections/testing.js';
 export { lockRunAcceptanceCommand } from './runs/commands/acceptance/lock.repository.js';
 export {
@@ -54,7 +54,7 @@ export {
   type UnknownOutcomeReconciliationResult,
 } from './outbox/reconcile-unknown-outcome.js';
 export { createNotificationDestinationStore } from './notifications/destinations/notification-destination.store.js';
-export { FailureNotificationDestinationError } from './notifications/destinations/errors.js';
+export { FailureNotificationDestinationError } from './notifications/destinations/notification-destination.errors.js';
 export { type FailureNotificationDestinationRecord } from './notifications/destinations/notification-destination.types.js';
 export type { NotificationDestinationStore } from './notifications/destinations/notification-destination.store.js';
 export { createDueNodeWakeupScanner } from './runs/wakeups/scanners.js';
@@ -63,7 +63,7 @@ export {
   createFailureNotificationStore,
   type FailureNotificationStore,
 } from './notifications/failure-notification.store.js';
-export { FailureNotificationStateError } from './notifications/errors.js';
+export { FailureNotificationStateError } from './notifications/failure-notification.errors.js';
 export type {
   FailureNotificationClaimResult,
   FailureNotificationDelivery,
@@ -75,7 +75,7 @@ export {
   ArtifactFinalizeConflictError,
   ArtifactLifecycleConflictError,
   ArtifactMetadataNotFoundError,
-} from './artifacts/errors.js';
+} from './artifacts/artifact.errors.js';
 export {
   artifactStorageKey,
   claimDueUnfinalizedArtifact,
@@ -96,7 +96,7 @@ export {
   ArtifactUploadConflictError,
   ArtifactUploadIdempotencyConflictError,
   ArtifactUploadNotFoundError,
-} from './artifacts/uploads/errors.js';
+} from './artifacts/uploads/artifact-upload.errors.js';
 export {
   createArtifactUploadStore,
   type ArtifactUploadStore,
@@ -134,7 +134,7 @@ export {
   IdempotencyRequestConflictError,
   WorkspaceRunAdmissionDeniedError,
   WorkspaceRunQuotaExceededError,
-} from './runs/commands/acceptance/errors.js';
+} from './runs/commands/acceptance/run-admission.errors.js';
 export { createPreviewRunStore } from './previews/runs/preview-run.store.js';
 export { claimPreviewDelivery } from './previews/attempts/claim.js';
 export { markPreviewDispatched } from './previews/attempts/mark-dispatched.js';
@@ -148,7 +148,7 @@ export {
   PreviewDeliveryMismatchError,
   PreviewIdempotencyConflictError,
   PriorPreviewInputUnavailableError,
-} from './previews/errors.js';
+} from './previews/preview.errors.js';
 export type {
   AcceptedPreviewRun,
   AcceptPreviewRunInput,
@@ -232,7 +232,7 @@ export {
   NodeAttemptOutputInvalidError,
   NodeAttemptReconciliationRequiredError,
   NodeAttemptStateCorruptError,
-} from './attempts/errors.js';
+} from './attempts/node-attempt.errors.js';
 export type {
   CompleteNodeAttemptResult,
   NodeAttemptCompletion,
@@ -246,7 +246,7 @@ export {
   WorkflowRunNotExecutableError,
   WorkflowRunNotFoundError,
   WorkflowRunReadCapacityError,
-} from './runs/errors.js';
+} from './runs/workflow-run.errors.js';
 export type { InitialCheckpointFactory } from './runs/commands/initial-checkpoint.js';
 export type {
   CancelWorkflowRunInput,

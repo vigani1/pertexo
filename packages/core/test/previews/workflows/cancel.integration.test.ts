@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { WorkflowNotFoundError } from '../../../src/authoring/workflows/errors.js';
-import { WorkflowRunNotFoundError } from '../../../src/runs/errors.js';
+import { WorkflowNotFoundError } from '../../../src/authoring/workflows/workflow-authoring.errors.js';
+import { WorkflowRunNotFoundError } from '../../../src/runs/workflow-run.errors.js';
 import { createWorkflowRunDatabase } from '../../../src/runs/workflow-run.store.js';
 import {
   actorId,

@@ -3,12 +3,12 @@ import { workflowAccessible } from '../../tenant-access/resources/workflows.repo
 import type { WorkflowResourceCapability } from '../../shared/folder-access.types.js';
 import type { PoolClient } from 'pg';
 import type { Role } from '@pertexo/policy';
-import { WorkspaceAccessDeniedError } from '../../shared/errors.js';
+import { WorkspaceAccessDeniedError } from '../../shared/workspace-access.errors.js';
 import {
   lockBrowsableWorkspaceAuthority,
   lockWorkspaceAuthority,
 } from '../../shared/authority.repository.js';
-import { WorkflowNotFoundError } from './errors.js';
+import { WorkflowNotFoundError } from './workflow-authoring.errors.js';
 
 /** Preserve authoring's non-disclosure contract at the shared authority fence. */
 export async function lockWorkflowAuthoringAuthority(

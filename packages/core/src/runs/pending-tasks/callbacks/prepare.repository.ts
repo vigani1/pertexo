@@ -19,7 +19,7 @@ import {
   assertCapabilityExecution,
 } from '../../../attempts/dispatch/fence.repository.js';
 import { generatePersistedId } from '@pertexo/database/platform';
-import { CallbackCapacityError } from './errors.js';
+import { CallbackCapacityError } from './callback.errors.js';
 import type {
   CallbackPreparation,
   PreparedCallback,

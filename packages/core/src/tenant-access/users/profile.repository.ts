@@ -20,7 +20,7 @@ import type {
   UserProfileUpdateResult,
   UserRecord,
 } from '../tenant-access.types.js';
-import { UserProfileCommandConflictError } from '../errors.js';
+import { UserProfileCommandConflictError } from '../tenant-access.errors.js';
 import { userRecord, userSelection } from './projection.js';
 
 const displayNameSchema = z

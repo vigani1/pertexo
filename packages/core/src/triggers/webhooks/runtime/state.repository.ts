@@ -19,7 +19,7 @@ import {
   WebhookDeliveryIneligibleError,
   WebhookTriggerNotFoundError,
   WebhookWorkflowPausedError,
-} from '../errors.js';
+} from '../webhook-trigger.errors.js';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 import type {
   WebhookConfig,

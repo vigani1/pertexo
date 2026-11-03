@@ -19,7 +19,7 @@ import {
   ArtifactUploadConflictError,
   ArtifactUploadIdempotencyConflictError,
   ArtifactUploadNotFoundError,
-} from './errors.js';
+} from './artifact-upload.errors.js';
 import {
   ARTIFACT_UPLOAD_PENDING_MS,
   type ArtifactUploadResult,

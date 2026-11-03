@@ -4,9 +4,9 @@ import type { PoolClient } from 'pg';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { workflowTags } from '@pertexo/database/schema';
 
-import { WorkflowNotFoundError } from '../../workflows/errors.js';
+import { WorkflowNotFoundError } from '../../workflows/workflow-authoring.errors.js';
 
-import { WorkflowTagConflictError } from '../errors.js';
+import { WorkflowTagConflictError } from '../workflow-organization.errors.js';
 
 import type {
   Page,

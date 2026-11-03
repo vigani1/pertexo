@@ -10,7 +10,7 @@ import {
 import {
   WorkspaceRunAdmissionDeniedError,
   WorkspaceRunQuotaExceededError,
-} from '../../../src/runs/commands/acceptance/errors.js';
+} from '../../../src/runs/commands/acceptance/run-admission.errors.js';
 import { throwWorkflowRunAdmissionError } from '../../../src/runs/commands/acceptance/admission.repository.js';
 
 function databaseError(code: string, cause?: unknown): Error {

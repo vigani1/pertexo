@@ -11,7 +11,10 @@ import { z } from 'zod';
 import type { AutomationArguments } from './arguments.js';
 import type { AutomationHttpClient, AutomationHttpResponse } from './http.js';
 import { readCommandJson } from './files.js';
-import { AutomationCommandError, invalidArgument } from './errors.js';
+import {
+  AutomationCommandError,
+  invalidArgument,
+} from './automation-command.errors.js';
 
 function requestValue<Value>(schema: z.ZodType<Value>, input: unknown): Value {
   const parsed = schema.safeParse(input);

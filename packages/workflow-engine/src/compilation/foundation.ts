@@ -18,7 +18,7 @@ import {
   type WorkflowEdge,
   type WorkflowGraph,
 } from '@pertexo/workflow-model';
-import { WorkflowEngineError } from '../errors.js';
+import { WorkflowEngineError } from '../workflow-engine.errors.js';
 import type { SideEffectClass } from '../workflow-execution.js';
 export { compareOrdinal } from '@pertexo/workflow-model';
 

@@ -21,7 +21,7 @@ import {
   NodeOutputValidationError,
   NodeRegistryCompatibilityError,
   type NodeSdkError,
-} from './errors.js';
+} from './node-execution.errors.js';
 import { canonicalizeBoundedJson, isJsonObject } from '../values/boundary.js';
 
 import {

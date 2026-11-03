@@ -20,11 +20,11 @@ import type {
   FolderSharingRequest,
   FolderPrincipal,
 } from '@pertexo/contracts';
-import { WorkflowNotFoundError } from '../../workflows/errors.js';
+import { WorkflowNotFoundError } from '../../workflows/workflow-authoring.errors.js';
 import {
   FolderSharingCorruptError,
   WorkflowFolderConflictError,
-} from '../errors.js';
+} from '../workflow-organization.errors.js';
 import type { OrganizationActor } from '../session.js';
 import { runOrganizationCommand } from '../run-command.js';
 

@@ -9,7 +9,7 @@ import type {
   QueueConsumerOptions,
   ParsedConsumerOptions,
 } from './queue-consumer.types.js';
-import { QueueConsumerConfigurationError } from './errors.js';
+import { QueueConsumerConfigurationError } from './queue-consumer.errors.js';
 
 const DEFAULT_READY_TIMEOUT_MS = 5_000;
 

@@ -32,7 +32,7 @@ import {
   composeExecutableCatalog,
 } from '@pertexo/workflow-engine';
 import { createWorkflowAuthoringStore } from '../../../src/authoring/workflows/workflow-authoring.store.js';
-import { WorkflowNotFoundError } from '../../../src/authoring/workflows/errors.js';
+import { WorkflowNotFoundError } from '../../../src/authoring/workflows/workflow-authoring.errors.js';
 import { setVariableSet } from '../../support/variable-sets.js';
 import { createRetentionStore } from '../../../src/lifecycle/retention/retention.store.js';
 import { serializeStoredExecutionValue } from '../../../src/runs/values/stored-execution.js';

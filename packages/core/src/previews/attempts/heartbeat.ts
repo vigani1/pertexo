@@ -11,7 +11,7 @@ import type {
   PreviewHeartbeatResult,
 } from './preview-attempt.types.js';
 
-import { PreviewAttemptStateError } from '../errors.js';
+import { PreviewAttemptStateError } from '../preview.errors.js';
 import { optionsFor } from '../input.js';
 
 export async function heartbeatPreviewLease(

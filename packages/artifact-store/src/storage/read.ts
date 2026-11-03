@@ -5,7 +5,10 @@ import { Readable } from 'node:stream';
 import { verifiedBody } from '../stream-verification.js';
 import { artifactMetadataMatches } from '../metadata.js';
 import { artifactStorageKey, type ArtifactIdentity } from '../identity.js';
-import { ArtifactIntegrityError, ArtifactNotFoundError } from '../errors.js';
+import {
+  ArtifactIntegrityError,
+  ArtifactNotFoundError,
+} from '../artifact-store.errors.js';
 import type { ArtifactStoreConfig } from '../config/index.js';
 
 import { sendS3 } from '../s3/s3-client.js';

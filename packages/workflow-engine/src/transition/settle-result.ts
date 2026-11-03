@@ -1,5 +1,5 @@
 import type { JsonValue } from '@pertexo/workflow-model';
-import { WorkflowEngineError } from '../errors.js';
+import { WorkflowEngineError } from '../workflow-engine.errors.js';
 import type { WorkflowTransitionPlan } from '../workflow-execution.js';
 
 export type CallableResultDecision =

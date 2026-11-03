@@ -28,7 +28,7 @@ import type { Role } from '@pertexo/policy';
 import {
   PendingTaskDecisionError,
   PendingTaskNotFoundError,
-} from './errors.js';
+} from './pending-task.errors.js';
 import type {
   PendingTaskDecision,
   PendingTaskSubmission,

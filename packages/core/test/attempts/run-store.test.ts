@@ -6,7 +6,7 @@ import {
   type NodeAttemptLease,
 } from '../../src/testing.js';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
-import { NodeAttemptOutputInvalidError } from '../../src/attempts/errors.js';
+import { NodeAttemptOutputInvalidError } from '../../src/attempts/node-attempt.errors.js';
 import { StoredExecutionValueInvalidError } from '@pertexo/node-sdk';
 import { createDatabaseRuntime } from '@pertexo/database/platform';
 

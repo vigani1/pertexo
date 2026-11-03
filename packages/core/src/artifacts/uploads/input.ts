@@ -6,7 +6,7 @@ import type {
   NormalizedBeginArtifactUploadInput,
   NormalizedFinalizeArtifactUploadInput,
 } from './artifact-upload.js';
-import { ArtifactUploadNotFoundError } from './errors.js';
+import { ArtifactUploadNotFoundError } from './artifact-upload.errors.js';
 
 export function normalizeBeginInput(
   input: BeginArtifactUploadInput,

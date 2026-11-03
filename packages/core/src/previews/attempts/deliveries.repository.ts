@@ -22,7 +22,7 @@ import {
 import {
   PreviewAttemptStateError,
   PreviewDeliveryMismatchError,
-} from '../errors.js';
+} from '../preview.errors.js';
 
 export async function insertPreviewOutboxDelivery(
   client: PoolClient,

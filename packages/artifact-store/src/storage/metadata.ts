@@ -8,7 +8,7 @@ import type { Readable } from 'node:stream';
 import { z } from 'zod';
 
 import { artifactIdentitySchema, type ArtifactIdentity } from '../identity.js';
-import { ArtifactIntegrityError } from '../errors.js';
+import { ArtifactIntegrityError } from '../artifact-store.errors.js';
 
 import type {
   ArtifactMetadata,

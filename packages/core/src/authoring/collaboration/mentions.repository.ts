@@ -10,7 +10,7 @@ import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import type { PoolClient } from 'pg';
 import { hasCapability } from '@pertexo/policy';
 import { generatePersistedId } from '@pertexo/database/platform';
-import { WorkflowCollaborationError } from './errors.js';
+import { WorkflowCollaborationError } from './workflow-collaboration.errors.js';
 import type { CollaborationScope } from './workflow-collaboration.types.js';
 export async function syncCommentMentions(
   client: PoolClient,

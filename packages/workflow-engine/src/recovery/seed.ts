@@ -4,7 +4,7 @@ import {
   createCheckpoint,
   parseCheckpoint,
 } from '../checkpoint/create-and-parse.js';
-import { WorkflowEngineError } from '../errors.js';
+import { WorkflowEngineError } from '../workflow-engine.errors.js';
 import type {
   BranchScopePart,
   InvocationState,

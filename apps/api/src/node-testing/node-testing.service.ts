@@ -29,7 +29,7 @@ import type {
   AuthorizedWorkspaceContext,
 } from '../authorization/index.js';
 import type { WorkspaceAuthorizationSource } from '../workspaces/ports.js';
-import { NodeTestInvalidError } from './errors.js';
+import { NodeTestInvalidError } from './node-test.errors.js';
 import type { NodeTestingPersistence } from './ports.js';
 import {
   prepareNodeValidation,

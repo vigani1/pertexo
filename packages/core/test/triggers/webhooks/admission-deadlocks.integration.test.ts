@@ -6,7 +6,7 @@ import { changeWorkspaceLifecycle } from '../../../src/lifecycle/deletion/change
 import {
   WebhookDeliveryIneligibleError,
   WebhookWorkflowPausedError,
-} from '../../../src/triggers/webhooks/errors.js';
+} from '../../../src/triggers/webhooks/webhook-trigger.errors.js';
 import {
   actorId,
   afterAllFixture2,

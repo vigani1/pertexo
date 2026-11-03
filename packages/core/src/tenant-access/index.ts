@@ -11,7 +11,7 @@ export {
   createIdentityWorkspaceStore,
   type IdentityWorkspaceStore,
 } from './identity-workspace.store.js';
-export { WorkspaceAccessDeniedError } from '../shared/errors.js';
+export { WorkspaceAccessDeniedError } from '../shared/workspace-access.errors.js';
 export {
   IdentityConflictError,
   InvitationAcceptanceConflictError,
@@ -22,7 +22,7 @@ export {
   WorkspaceMemberRoleCommandConflictError,
   WorkspaceMembershipCommandConflictError,
   WorkspaceRenameCommandConflictError,
-} from './errors.js';
+} from './tenant-access.errors.js';
 export type {
   AccessibleWorkspaceRecord,
   AccessibleWorkspacesPage,
@@ -58,7 +58,7 @@ export type {
   WorkspaceMemberRemovalCommandConflictReason,
   WorkspaceMemberRoleCommandConflictReason,
   WorkspaceMembershipCommandConflictReason,
-} from './errors.js';
+} from './tenant-access.errors.js';
 export {
   createWorkspaceInvitationDeliveryStore,
   type WorkspaceInvitationDeliveryStore,
@@ -69,7 +69,7 @@ export {
   createApiTokenStore,
   type ApiTokenStore,
 } from './tokens/api-token.store.js';
-export { ApiTokenPolicyError } from './tokens/errors.js';
+export { ApiTokenPolicyError } from './tokens/api-token.errors.js';
 export type {
   VerifiedApiToken,
   ApiTokenOwner,
@@ -78,10 +78,10 @@ export type {
 export { parseApiTokenCredential } from './tokens/credential.js';
 export type { ParsedApiTokenCredential } from './tokens/credential.js';
 
-export { DirectoryManagedMembershipError } from './errors.js';
+export { DirectoryManagedMembershipError } from './tenant-access.errors.js';
 
 // Other areas import these files directly (ADR 091); the door gains nothing.
-export type {} from './errors.js';
+export type {} from './tenant-access.errors.js';
 export type {} from './members/membership.types.js';
 export type {} from './members/discovery.repository.js';
 export type {} from './members/records.repository.js';

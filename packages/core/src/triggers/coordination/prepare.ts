@@ -10,7 +10,7 @@ import {
 import { createHash } from 'node:crypto';
 import { serializeWrittenJsonValue } from '../../runs/values/stored-execution.js';
 import type { PreparedEventCoordination } from './event-coordination.types.js';
-import { EventCoordinationUnavailableError } from './errors.js';
+import { EventCoordinationUnavailableError } from './event-coordination.errors.js';
 /** Each ingress store owns a bounded, lazy expression pool and releases it on close. */
 export function createEventCoordinationPreparation() {
   const evaluator = new JsonataEvaluator();

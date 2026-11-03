@@ -19,7 +19,7 @@ import type {
   FederationCommand,
   FederationScope,
 } from './federation-management.types.js';
-import { FederationConflictError } from './errors.js';
+import { FederationConflictError } from './federation-management.errors.js';
 import { projectOrganization } from './settings.repository.js';
 
 const STORED_SECRET_PAGE = 100;

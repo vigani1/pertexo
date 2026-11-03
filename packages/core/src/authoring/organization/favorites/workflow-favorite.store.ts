@@ -10,7 +10,7 @@ import type {
   DatabaseConfig,
   DatabaseRuntime,
 } from '@pertexo/database/platform';
-import { WorkflowNotFoundError } from '../../workflows/errors.js';
+import { WorkflowNotFoundError } from '../../workflows/workflow-authoring.errors.js';
 import {
   createOrganizationSession,
   type OrganizationRequestScope,

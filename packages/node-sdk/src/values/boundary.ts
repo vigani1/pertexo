@@ -1,5 +1,5 @@
 import type { JsonValue } from '../execution/node-execution.types.js';
-import { InvalidBoundedJsonError } from '../execution/errors.js';
+import { InvalidBoundedJsonError } from '../execution/node-execution.errors.js';
 import {
   inspectBoundedJson,
   NODE_JSON_LIMITS,

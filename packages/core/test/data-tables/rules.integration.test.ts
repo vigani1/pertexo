@@ -23,7 +23,7 @@ import {
   queryAsOwner,
 } from '../support/workflow-authoring.js';
 import type { Role } from '@pertexo/policy';
-import { WorkspaceAccessDeniedError } from '../../src/shared/errors.js';
+import { WorkspaceAccessDeniedError } from '../../src/shared/workspace-access.errors.js';
 import { dataTableNewColumnsSchema } from '@pertexo/node-sdk';
 
 const onKey = (value: string) => ({

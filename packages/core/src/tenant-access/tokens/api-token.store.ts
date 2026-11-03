@@ -30,7 +30,7 @@ import { requireReadableReceipt, tokenReceipt } from '../../shared/receipts.js';
 import { tokenOwnerAuthority } from './authority.repository.js';
 import { availableApiTokenScopes } from './policy.js';
 import { authenticateApiToken } from './authenticate.repository.js';
-import { ApiTokenPolicyError } from './errors.js';
+import { ApiTokenPolicyError } from './api-token.errors.js';
 import type {
   ApiTokenCommand,
   ApiTokensPage,

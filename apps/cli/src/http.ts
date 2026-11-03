@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import type { AutomationHttpConfig } from './config.js';
-import { AutomationCommandError } from './errors.js';
+import { AutomationCommandError } from './automation-command.errors.js';
 import { MAX_COMMAND_BYTES } from './files.js';
 
 const MAX_RESPONSE_BYTES = 16 * 1_024 * 1_024;

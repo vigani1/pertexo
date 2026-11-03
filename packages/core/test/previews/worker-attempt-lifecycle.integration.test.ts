@@ -9,7 +9,7 @@ import { completePreviewAttempt } from '../../src/previews/attempts/complete.js'
 import {
   PreviewAttemptStateError,
   PreviewDeliveryMismatchError,
-} from '../../src/previews/errors.js';
+} from '../../src/previews/preview.errors.js';
 import {
   acceptFixture,
   actorUserId,

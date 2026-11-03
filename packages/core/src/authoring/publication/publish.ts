@@ -10,7 +10,7 @@ import { workflowVersions, workspaces } from '@pertexo/database/schema';
 import { requireWorkflowCallTargets } from '../../tenant-access/resources/bindings.repository.js';
 import { lockWorkspaceVariableNames } from '../../variables/head.repository.js';
 import { recordPromotedPublication } from '../promotion/provenance.repository.js';
-import { PublicationReviewError } from '../reviews/errors.js';
+import { PublicationReviewError } from '../reviews/publication-review.errors.js';
 
 import {
   InvalidWorkflowGraphError,
@@ -44,7 +44,7 @@ import type {
 import {
   WorkflowNotFoundError,
   WorkflowRevisionConflictError,
-} from '../workflows/errors.js';
+} from '../workflows/workflow-authoring.errors.js';
 import type { WorkflowVersionRecord } from '../workflows/representation/workflow-record.types.js';
 import {
   projectDraft,

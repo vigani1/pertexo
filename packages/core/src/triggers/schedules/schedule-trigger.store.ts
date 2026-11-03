@@ -8,7 +8,7 @@ import { acquireDatabasePool } from '@pertexo/database/platform';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { triggerSchedules } from '@pertexo/database/schema';
 
-import { ScheduleTriggerError } from './errors.js';
+import { ScheduleTriggerError } from './schedule-trigger.errors.js';
 
 import { withTriggerManagement } from '../management.js';
 import { refreshWorkflowActivation } from '../reconciliation/health.repository.js';

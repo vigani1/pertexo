@@ -23,7 +23,7 @@ import type {
   WorkflowErrorTargetsPage,
 } from '@pertexo/contracts';
 import type { AuthoringAccess, WorkflowActor } from '../../workflows/access.js';
-import { WorkflowNotFoundError } from '../../workflows/errors.js';
+import { WorkflowNotFoundError } from '../../workflows/workflow-authoring.errors.js';
 import { BROWSABLE_WORKSPACE_STATUSES } from '@pertexo/policy';
 
 const TARGETS_PAGE = 50;

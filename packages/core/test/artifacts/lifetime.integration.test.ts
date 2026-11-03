@@ -10,7 +10,7 @@ import {
   lockArtifactReferences,
   requireNodeArtifactReference,
 } from '../../src/artifacts/references/locks.repository.js';
-import { ArtifactMetadataNotFoundError } from '../../src/artifacts/errors.js';
+import { ArtifactMetadataNotFoundError } from '../../src/artifacts/artifact.errors.js';
 import {
   withTenantScopedClient,
   withWorkspaceTransaction,

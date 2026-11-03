@@ -51,7 +51,7 @@ import {
 import {
   WorkflowTriggerReconciliationMismatchError,
   WorkflowTriggerStalePublicationError,
-} from '../../src/triggers/reconciliation/errors.js';
+} from '../../src/triggers/reconciliation/trigger-reconciliation.errors.js';
 import {
   WebhookTriggerNotFoundError,
   WebhookDeliveryIneligibleError,
@@ -59,10 +59,10 @@ import {
   WebhookWorkflowPausedError,
   WebhookIngressRateLimitExceededError,
   WebhookIntakeBusyError,
-} from '../../src/triggers/webhooks/errors.js';
+} from '../../src/triggers/webhooks/webhook-trigger.errors.js';
 import { webhookRunInput } from '@pertexo/nodes-core';
 import { EXPECTED_MIGRATION_HEAD } from '@pertexo/database/testing';
-import { ScheduleTriggerError } from '../../src/triggers/schedules/errors.js';
+import { ScheduleTriggerError } from '../../src/triggers/schedules/schedule-trigger.errors.js';
 import { isScheduleClaimEligible } from '../../src/triggers/schedules/scanning/occurrences.repository.js';
 import { waitForBlockedBy } from '../support/postgres/lock-coordination.js';
 import type { WebhookDeliveryPosition } from '../../src/triggers/webhooks/webhook-delivery.types.js';

@@ -25,7 +25,7 @@ import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 import {
   WorkflowRunNotExecutableError,
   WorkflowRunNotFoundError,
-} from '../errors.js';
+} from '../workflow-run.errors.js';
 import { readWorkflowRunRecord } from '../commands/records.repository.js';
 import { lockReplaySource, lockReplayVersion } from '../commands/replay-run.js';
 import type {

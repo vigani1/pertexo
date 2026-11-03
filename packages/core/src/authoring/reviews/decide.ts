@@ -20,7 +20,7 @@ import type {
   DecideReviewInput,
   ReviewDependencies,
 } from './publication-review.types.js';
-import { PublicationReviewError } from './errors.js';
+import { PublicationReviewError } from './publication-review.errors.js';
 import {
   projectReview,
   readReviewDraft,

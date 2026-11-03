@@ -32,7 +32,7 @@ import {
   createTable,
   removeTable,
 } from './definitions.repository.js';
-import { translateTableConstraint } from './errors.js';
+import { translateTableConstraint } from './data-table.errors.js';
 import { findTableRows } from './rows/find.repository.js';
 import { importTableRows, writeTableRows } from './rows/write.js';
 

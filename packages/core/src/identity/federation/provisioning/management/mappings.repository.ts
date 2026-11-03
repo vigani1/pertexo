@@ -14,7 +14,7 @@ import {
 import { readDirectoryRole } from '../roles.repository.js';
 import { readAdoptableDirectoryUser } from './adoption.repository.js';
 import type { Pool } from 'pg';
-import { DirectoryError } from '../errors.js';
+import { DirectoryError } from '../directory.errors.js';
 import { projectDirectoryMemberships } from '../projection.repository.js';
 import {
   auditDirectoryManagement,

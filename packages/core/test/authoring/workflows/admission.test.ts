@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Pool, type PoolClient } from 'pg';
 import { InvalidWorkflowGraphError } from '@pertexo/workflow-model';
 import { AuthoringValidationUnavailableError } from '@pertexo/workflow-model/server';
-import { WorkflowRevisionConflictError } from '../../../src/authoring/workflows/errors.js';
+import { WorkflowRevisionConflictError } from '../../../src/authoring/workflows/workflow-authoring.errors.js';
 import {
   IdempotencyConflictError,
   createDatabaseRuntime,

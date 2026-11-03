@@ -24,7 +24,7 @@ import type {
   LoadDestinationInput,
 } from '../failure-notification.types.js';
 import { auditFailureNotification } from './evidence.repository.js';
-import { FailureNotificationStateError } from '../errors.js';
+import { FailureNotificationStateError } from '../failure-notification.errors.js';
 
 export function loadDestination(
   pool: Pool,

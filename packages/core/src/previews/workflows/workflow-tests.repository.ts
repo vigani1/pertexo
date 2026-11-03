@@ -11,7 +11,7 @@ import {
 import type { PoolClient } from 'pg';
 
 import type { SampleScope } from '../../authoring/step-samples/step-sample.types.js';
-import { WorkflowTestError } from './errors.js';
+import { WorkflowTestError } from './workflow-test.errors.js';
 import { ACTIVE_TEST_RUN_STATUSES } from './rules.js';
 import type {
   WorkflowTestDetail,

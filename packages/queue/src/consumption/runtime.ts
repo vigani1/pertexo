@@ -30,7 +30,7 @@ import {
   QueueConsumerNotReadyError,
   QueueJobTimeoutError,
   QueueConsumerDrainError,
-} from './errors.js';
+} from './queue-consumer.errors.js';
 import { TIMED_OUT, abortReason, bounded } from './deadline.js';
 
 export class BullMqQueueConsumer implements QueueConsumer {

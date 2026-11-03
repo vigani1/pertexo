@@ -9,7 +9,7 @@ import {
   workflows,
 } from '@pertexo/database/schema';
 
-import { WorkflowNotFoundError } from '../../workflows/errors.js';
+import { WorkflowNotFoundError } from '../../workflows/workflow-authoring.errors.js';
 
 import type { createOrganizationSession } from '../session.js';
 import type {

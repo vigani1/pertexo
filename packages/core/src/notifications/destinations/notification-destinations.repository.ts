@@ -9,7 +9,7 @@ import {
 } from '@pertexo/database/schema';
 import type { FailureNotificationDestinationRecord } from './notification-destination.types.js';
 
-import { FailureNotificationDestinationError } from './errors.js';
+import { FailureNotificationDestinationError } from './notification-destination.errors.js';
 
 function destinationNotFound(): FailureNotificationDestinationError {
   return new FailureNotificationDestinationError(

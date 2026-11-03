@@ -9,13 +9,13 @@ import {
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import type { PoolClient } from 'pg';
 import { canonicalJson } from '@pertexo/workflow-model';
-import { WorkflowNotFoundError } from '../../authoring/workflows/errors.js';
+import { WorkflowNotFoundError } from '../../authoring/workflows/workflow-authoring.errors.js';
 import { lockWorkflowAuthoringAuthority } from '../../authoring/workflows/authority.js';
 import { rolesForCapability } from '@pertexo/policy';
 import {
   WorkspaceRunQuotaExceededError,
   WorkspaceRunAdmissionDeniedError,
-} from '../../runs/commands/acceptance/errors.js';
+} from '../../runs/commands/acceptance/run-admission.errors.js';
 import { readDatabaseClock } from '../clock.repository.js';
 import { lockTestAuthority } from '../workflows/access.js';
 import { isActiveTestRun } from '../workflows/rules.js';

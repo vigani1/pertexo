@@ -25,7 +25,7 @@ import {
   organizationForWorkspace,
   requireFederationOwner,
 } from '../management/authority.repository.js';
-import { FederationConflictError } from '../management/errors.js';
+import { FederationConflictError } from '../management/federation-management.errors.js';
 import type { FederationScope } from '../management/federation-management.types.js';
 import { readEligibleAuthenticationSession } from '../sessions/authority.repository.js';
 import { SignInProofRejectedError } from '../accounts/rejection.js';

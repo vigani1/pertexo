@@ -1,5 +1,5 @@
 import { apiTokenCredentialSchema } from '@pertexo/contracts';
-import { AutomationCommandError } from './errors.js';
+import { AutomationCommandError } from './automation-command.errors.js';
 
 export type AutomationHttpConfig = Readonly<{
   origin: string;

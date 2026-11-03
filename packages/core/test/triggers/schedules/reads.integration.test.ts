@@ -4,7 +4,7 @@ import { Pool } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import type { ScheduleOccurrencePosition } from '../../../src/triggers/schedules/schedule-occurrence.types.js';
-import { ScheduleTriggerError } from '../../../src/triggers/schedules/errors.js';
+import { ScheduleTriggerError } from '../../../src/triggers/schedules/schedule-trigger.errors.js';
 import { createScheduleTriggerTestEnvironment } from '../../support/schedule-triggers.js';
 
 const schedule = createScheduleTriggerTestEnvironment();

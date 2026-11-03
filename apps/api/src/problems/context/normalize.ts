@@ -22,7 +22,7 @@ import {
   HiddenResourceError,
   InvalidRequestError,
   WorkflowTestPreparationError,
-} from './errors.js';
+} from './request-context.errors.js';
 
 function hiddenResourceFailure(error: unknown): unknown {
   return error instanceof WorkspaceAccessDeniedError

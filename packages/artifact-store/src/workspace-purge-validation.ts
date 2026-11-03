@@ -4,7 +4,7 @@ import type {
   ObjectIdentifier,
 } from '@aws-sdk/client-s3';
 
-import { ArtifactIntegrityError } from './errors.js';
+import { ArtifactIntegrityError } from './artifact-store.errors.js';
 
 export type WorkspaceVersionEntry =
   | NonNullable<ListObjectVersionsCommandOutput['Versions']>[number]

@@ -23,9 +23,9 @@ import {
 import { isDataTableDefinition, type DataTableConfig } from '@pertexo/node-sdk';
 import { readTablesByNames } from '../../../data-tables/table-lookups.repository.js';
 import type { DataTableDefinition } from '../../../data-tables/data-table-commands.types.js';
-import { WorkflowNotFoundError } from '../../workflows/errors.js';
+import { WorkflowNotFoundError } from '../../workflows/workflow-authoring.errors.js';
 import { promotionNodes, type PromotionGraphBudget } from './graph.js';
-import { WorkflowPromotionError } from '../errors.js';
+import { WorkflowPromotionError } from '../workflow-promotion.errors.js';
 
 export const promotionConnection = alias(storedConnections, 'connection');
 export const promotionConnectionProjection = {

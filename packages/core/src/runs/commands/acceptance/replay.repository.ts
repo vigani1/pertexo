@@ -8,7 +8,7 @@ import type { AcceptedWorkflowRun } from './run-acceptance.types.js';
 import {
   IdempotencyRequestConflictError,
   IdempotencyRecordCorruptError,
-} from './errors.js';
+} from './run-admission.errors.js';
 
 type ReplayValidation =
   | Readonly<{ kind: 'request_only' }>

@@ -4,7 +4,7 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
 import { previewRuns, previewAttempts } from '@pertexo/database/schema';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
-import { PreviewAttemptStateError } from '../errors.js';
+import { PreviewAttemptStateError } from '../preview.errors.js';
 import { previewPairConsistent } from '../state.js';
 import type { PreviewAttemptLease } from '../preview.types.js';
 

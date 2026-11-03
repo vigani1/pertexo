@@ -13,7 +13,7 @@ import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import type { Pool, PoolClient } from 'pg';
 import { withPlatformTransaction } from '@pertexo/database/platform';
 import { lockWorkspaceRow } from '../../../shared/authority.repository.js';
-import { DirectoryError } from './errors.js';
+import { DirectoryError } from './directory.errors.js';
 import type { DirectoryPrincipal } from './directory-provisioning.types.js';
 
 /** Workspace locks precede organization and member locks in every identity writer. */

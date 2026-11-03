@@ -16,7 +16,7 @@ import {
   type WorkspaceActor,
 } from '../../shared/workspace-access.js';
 import type { FolderScope } from '../../shared/folder-access.types.js';
-import { WorkspaceAccessDeniedError } from '../../shared/errors.js';
+import { WorkspaceAccessDeniedError } from '../../shared/workspace-access.errors.js';
 import type {
   ListThreadsInput,
   MarkAllReadInput,

@@ -1,10 +1,10 @@
 import { postgresFailure } from '@pertexo/database/primitives';
-import { IdempotencyRequestConflictError } from '../runs/commands/acceptance/errors.js';
+import { IdempotencyRequestConflictError } from '../runs/commands/acceptance/run-admission.errors.js';
 import {
   IdentityConflictError,
   WorkspaceLifecycleConflictError,
   type IdentityConflictReason,
-} from './errors.js';
+} from './tenant-access.errors.js';
 
 export function throwIdentityDatabaseConflict(
   error: unknown,

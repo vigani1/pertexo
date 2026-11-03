@@ -6,7 +6,7 @@ import {
   HiddenResourceError,
   InvalidRequestError,
   WorkflowTestPreparationError,
-} from './errors.js';
+} from './request-context.errors.js';
 
 export const contextualProblems = [
   errorRegistration(HiddenResourceError, () =>

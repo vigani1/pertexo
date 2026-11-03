@@ -9,7 +9,7 @@ export {
   PreviewDeliveryMismatchError,
   PreviewIdempotencyConflictError,
   PriorPreviewInputUnavailableError,
-} from './errors.js';
+} from './preview.errors.js';
 export { createPreviewAttemptRunStore } from './attempts/preview-attempt-run.store.js';
 export type { PreviewAttemptRunStore } from './attempts/preview-attempt.types.js';
 export { createPreviewReconciliationStore } from './reconciliation/preview-reconciliation.store.js';
@@ -26,7 +26,7 @@ export type {
   PreviewHeartbeatResult,
 } from './attempts/preview-attempt.types.js';
 export type { PreviewDeliveryReconciliationResult } from './reconciliation/preview-reconciliation.types.js';
-export { WorkflowTestError } from './workflows/errors.js';
+export { WorkflowTestError } from './workflows/workflow-test.errors.js';
 export type { WorkflowTestStore } from './workflows/workflow-test.store.js';
 export type { WorkflowTestSuiteStore } from './suites/workflow-test-suite.store.js';
 export { createWorkflowTestSuiteScanner } from './suites/scanner.js';

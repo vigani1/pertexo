@@ -6,7 +6,7 @@ import { generatePersistedId } from '@pertexo/database/platform';
 import { prepareStoredExecutionValue } from '../values/stored-execution.js';
 import { nodeRuns, runEvents } from '@pertexo/database/schema';
 import { readRecoveryEvidence } from './evidence.repository.js';
-import { WorkflowRecoveryUnavailableError } from './errors.js';
+import { WorkflowRecoveryUnavailableError } from './workflow-recovery.errors.js';
 import {
   acceptWorkflowRun,
   prepareWorkflowRunAcceptance,

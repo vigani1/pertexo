@@ -17,7 +17,7 @@ import type { PoolClient } from 'pg';
 import {
   WebhookTriggerIdempotencyConflictError,
   WebhookTriggerNotFoundError,
-} from '../errors.js';
+} from '../webhook-trigger.errors.js';
 
 import type {
   Command,

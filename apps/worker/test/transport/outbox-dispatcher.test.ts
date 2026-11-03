@@ -20,7 +20,7 @@ import type {
   ReleaseOutboxResult,
 } from '@pertexo/core/testing';
 import { TransportOperationTimeoutError } from '../../src/transport/outbox/operation-deadline.js';
-import { OutboxPayloadChecksumError } from '../../src/transport/outbox/dispatch/errors.js';
+import { OutboxPayloadChecksumError } from '../../src/transport/outbox/dispatch/outbox-dispatch.errors.js';
 
 describe('outbox dispatcher', () => {
   afterEach(

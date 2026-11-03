@@ -9,7 +9,7 @@ import {
 import { RUN_STATUS_VALUES } from '../../commands/acceptance/vocabulary.js';
 import type { Pool } from 'pg';
 import type { UsageTrendPeriod, UsageTrendsResponse } from '@pertexo/contracts';
-import { WorkspaceAccessDeniedError } from '../../../shared/errors.js';
+import { WorkspaceAccessDeniedError } from '../../../shared/workspace-access.errors.js';
 import { withRetainedRunRead } from '../../access.js';
 
 export type UsageTrendsInput = Readonly<{

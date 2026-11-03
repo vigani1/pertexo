@@ -16,7 +16,7 @@ import {
   acceptWorkflowRun,
   prepareWorkflowRunAcceptance,
 } from '../../runs/commands/acceptance/accept.js';
-import { WorkflowTestError } from './errors.js';
+import { WorkflowTestError } from './workflow-test.errors.js';
 import { ACTIVE_TEST_RUN_STATUSES } from './rules.js';
 import { testRunSql } from '../../runs/data-policy.js';
 import type { SampleScope } from '../../authoring/step-samples/step-sample.types.js';

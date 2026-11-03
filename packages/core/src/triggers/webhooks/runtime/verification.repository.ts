@@ -12,7 +12,7 @@ import {
 import { sql } from 'drizzle-orm';
 import type { Pool } from 'pg';
 
-import { WebhookIngressRateLimitExceededError } from '../errors.js';
+import { WebhookIngressRateLimitExceededError } from '../webhook-trigger.errors.js';
 import { endpointTakesDeliveries } from './endpoint-rules.js';
 import { readTriggerConfig } from './state.repository.js';
 import type {

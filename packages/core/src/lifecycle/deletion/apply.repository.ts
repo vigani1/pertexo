@@ -28,8 +28,8 @@ import type { PoolClient } from 'pg';
 import { and, eq, inArray, isNull, ne, sql } from 'drizzle-orm';
 
 import { requestActiveRunCancellations } from '../../runs/commands/cancel-run.js';
-import { IdempotencyRequestConflictError } from '../../runs/commands/acceptance/errors.js';
-import { WorkspaceLifecycleConflictError } from '../../tenant-access/errors.js';
+import { IdempotencyRequestConflictError } from '../../runs/commands/acceptance/run-admission.errors.js';
+import { WorkspaceLifecycleConflictError } from '../../tenant-access/tenant-access.errors.js';
 import type { WorkspaceId } from '@pertexo/database/primitives';
 import {
   LIFECYCLE_TRANSITIONS,

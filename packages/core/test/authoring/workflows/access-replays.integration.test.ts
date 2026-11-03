@@ -4,7 +4,7 @@ import { parseDatabaseConfig } from '@pertexo/database/platform';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { createWorkflowInputCaseStore } from '../../../src/authoring/input-cases/workflow-input-case.store.js';
-import { WorkflowNotFoundError } from '../../../src/authoring/workflows/errors.js';
+import { WorkflowNotFoundError } from '../../../src/authoring/workflows/workflow-authoring.errors.js';
 import {
   actorId,
   apiUrl,

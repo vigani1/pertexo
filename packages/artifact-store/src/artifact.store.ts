@@ -29,7 +29,7 @@ export {
   ArtifactIntegrityError,
   ArtifactNotFoundError,
   ArtifactStoreClosedError,
-} from './errors.js';
+} from './artifact-store.errors.js';
 export type { ArtifactIdentity } from './identity.js';
 export {
   type S3ClientLike,

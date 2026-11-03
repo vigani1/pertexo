@@ -1,4 +1,4 @@
-import { WorkflowEngineError } from '../errors.js';
+import { WorkflowEngineError } from '../workflow-engine.errors.js';
 import type {
   InvocationIdentity,
   InvocationState,

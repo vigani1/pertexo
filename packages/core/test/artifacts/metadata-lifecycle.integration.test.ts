@@ -19,7 +19,7 @@ import {
   ArtifactFinalizeConflictError,
   ArtifactLifecycleConflictError,
   ArtifactMetadataNotFoundError,
-} from '../../src/artifacts/errors.js';
+} from '../../src/artifacts/artifact.errors.js';
 import {
   createPendingArtifact,
   finalizeArtifactUpload,

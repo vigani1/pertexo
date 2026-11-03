@@ -1,6 +1,6 @@
 import { jsonStringByteLength } from '@pertexo/workflow-model';
 
-import { WorkflowEngineError } from '../errors.js';
+import { WorkflowEngineError } from '../workflow-engine.errors.js';
 import { hasExactFields } from '../exact-fields.js';
 
 export const isInteger = (value: unknown): value is number =>

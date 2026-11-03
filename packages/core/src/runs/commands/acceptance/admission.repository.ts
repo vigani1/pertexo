@@ -5,7 +5,7 @@ import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 import {
   WorkspaceRunAdmissionDeniedError,
   WorkspaceRunQuotaExceededError,
-} from './errors.js';
+} from './run-admission.errors.js';
 
 /** Operation-local SQLSTATE mapping for queued workflow-run admission. */
 export function throwWorkflowRunAdmissionError(error: unknown): never {

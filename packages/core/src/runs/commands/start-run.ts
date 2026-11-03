@@ -13,7 +13,7 @@ import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 import {
   WorkflowRunNotExecutableError,
   WorkflowRunNotFoundError,
-} from '../errors.js';
+} from '../workflow-run.errors.js';
 import {
   acceptWorkflowRunWithAudit,
   readWorkflowRunRecord,

@@ -11,7 +11,7 @@ import type { PromotionScope } from './workflow-promotion.types.js';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
 
-import { WorkflowPromotionError } from './errors.js';
+import { WorkflowPromotionError } from './workflow-promotion.errors.js';
 
 /** Audit facts outlive the command's 24-hour retry window (minimum retention: 30 days). */
 export const promotionReceiptSchema = z

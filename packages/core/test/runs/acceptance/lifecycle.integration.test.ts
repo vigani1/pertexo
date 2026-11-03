@@ -4,7 +4,7 @@ import { eq } from 'drizzle-orm';
 import { Pool } from 'pg';
 import { describe, expect, it } from 'vitest';
 import { acceptWorkflowRun } from '../../../src/runs/commands/acceptance/accept.js';
-import { WorkspaceRunAdmissionDeniedError } from '../../../src/runs/commands/acceptance/errors.js';
+import { WorkspaceRunAdmissionDeniedError } from '../../../src/runs/commands/acceptance/run-admission.errors.js';
 import { changeWorkspaceLifecycle } from '../../../src/lifecycle/deletion/change.js';
 import { runEvents } from '@pertexo/database/schema';
 import {

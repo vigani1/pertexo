@@ -23,7 +23,7 @@ import {
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 import { PREVIEW_STATUS } from '../state.js';
 
-import { PreviewAcceptanceCorruptError } from '../errors.js';
+import { PreviewAcceptanceCorruptError } from '../preview.errors.js';
 import {
   assertAdmission,
   assertPreviewWorkflow,

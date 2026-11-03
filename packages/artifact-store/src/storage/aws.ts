@@ -19,7 +19,7 @@ import {
   ArtifactIntegrityError,
   ArtifactNotFoundError,
   ArtifactStoreClosedError,
-} from '../errors.js';
+} from '../artifact-store.errors.js';
 import type { ArtifactStoreConfig } from '../config/index.js';
 
 import { sendS3 } from '../s3/s3-client.js';

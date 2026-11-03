@@ -3,7 +3,7 @@ export {
   createIdentityWorkspaceStore,
   type IdentityWorkspaceStore,
 } from './identity-workspace.store.js';
-export { WorkspaceAccessDeniedError } from '../shared/errors.js';
+export { WorkspaceAccessDeniedError } from '../shared/workspace-access.errors.js';
 export {
   IdentityConflictError,
   IdentityNotFoundError,
@@ -13,7 +13,7 @@ export {
   WorkspaceMembershipCommandConflictError,
   WorkspaceRenameCommandConflictError,
   UserProfileCommandConflictError,
-} from './errors.js';
+} from './tenant-access.errors.js';
 export { USER_STATUS, WORKSPACE_STATUS } from './state.js';
 export type {
   CreateUserInput,
@@ -33,7 +33,7 @@ export type {
   WorkspaceLifecycleConflictReason,
   WorkspaceMemberRoleCommandConflictReason,
   WorkspaceRenameCommandConflictReason,
-} from './errors.js';
+} from './tenant-access.errors.js';
 export {
   parseWorkspaceId,
   withActorScopedClient,

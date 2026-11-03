@@ -9,7 +9,7 @@ import { workflowDrafts, workflows } from '@pertexo/database/schema';
 
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 
-import { PreviewAdmissionDeniedError } from '../../errors.js';
+import { PreviewAdmissionDeniedError } from '../../preview.errors.js';
 
 export async function assertAdmission(
   transaction: WorkspaceTransaction,

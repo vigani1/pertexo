@@ -2,7 +2,7 @@ import { errorRegistration } from '../../platform/http/problems/registry.js';
 import {
   NodeTestRequestError,
   NodeTestInvalidError,
-} from '../../node-testing/errors.js';
+} from '../../node-testing/node-test.errors.js';
 import { StoredExecutionValueInvalidError } from '@pertexo/node-sdk';
 
 import { WorkflowStepSampleError } from '@pertexo/core/authoring';

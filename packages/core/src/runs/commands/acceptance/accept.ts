@@ -24,7 +24,7 @@ import type {
   AcceptedWorkflowRun,
   PreparedWorkflowRunAcceptance,
 } from './run-acceptance.types.js';
-import { IdempotencyRecordCorruptError } from './errors.js';
+import { IdempotencyRecordCorruptError } from './run-admission.errors.js';
 import { readExistingAcceptance } from './replay.repository.js';
 import {
   throwWorkflowRunAdmissionError,

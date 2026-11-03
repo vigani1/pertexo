@@ -2,7 +2,7 @@ import { canonicalJson } from '@pertexo/workflow-model';
 
 import type { PoolClient } from 'pg';
 
-import { NodeAttemptStateCorruptError } from '../errors.js';
+import { NodeAttemptStateCorruptError } from '../node-attempt.errors.js';
 import {
   SETTLED_ATTEMPT_STATUSES,
   type CompleteAttemptInput,

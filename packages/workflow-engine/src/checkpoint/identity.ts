@@ -1,5 +1,5 @@
 import { UUID_PATTERN } from '@pertexo/workflow-model';
-import { WorkflowEngineError } from '../errors.js';
+import { WorkflowEngineError } from '../workflow-engine.errors.js';
 
 const canonicalTimestampPattern =
   /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/u;

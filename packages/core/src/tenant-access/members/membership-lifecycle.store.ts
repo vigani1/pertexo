@@ -18,7 +18,7 @@ import type {
 import {
   WorkspaceMembershipCommandConflictError,
   type WorkspaceMembershipCommandConflictReason,
-} from '../errors.js';
+} from '../tenant-access.errors.js';
 import { revokeUserSessions } from '../users/sessions.repository.js';
 import {
   executeMemberCommand,

@@ -18,7 +18,7 @@ import {
   workflowTestSuites,
   workflowTestSnapshots,
 } from '@pertexo/database/schema';
-import { WorkflowTestError } from '../workflows/errors.js';
+import { WorkflowTestError } from '../workflows/workflow-test.errors.js';
 
 const suite = alias(workflowTestSuites, 'suite');
 const historyFields = {

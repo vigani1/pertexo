@@ -1,4 +1,4 @@
-import { IdentityError } from './errors.js';
+import { IdentityError } from './identity.errors.js';
 
 /** The five-minute proof lifetime shared by sensitive account-owned commands. */
 export function assertRecentSignIn(signedInAt: Date, now: Date): void {

@@ -1,4 +1,4 @@
-import { WorkflowEngineError } from '../errors.js';
+import { WorkflowEngineError } from '../workflow-engine.errors.js';
 import type { SchedulerState } from './scheduling/readiness.js';
 import type {
   WorkflowCheckpoint,

@@ -16,7 +16,7 @@ import {
   type WorkspaceAccess,
   type WorkspaceActor,
 } from '../shared/workspace-access.js';
-import { WorkspaceAccessDeniedError } from '../shared/errors.js';
+import { WorkspaceAccessDeniedError } from '../shared/workspace-access.errors.js';
 import type {
   ReadConnectionSharingInput,
   ReplaceConnectionSharingInput,

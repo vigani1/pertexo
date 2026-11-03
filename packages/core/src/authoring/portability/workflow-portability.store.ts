@@ -46,7 +46,7 @@ import {
   WorkflowPortabilityCompatibilityConflictError,
   WorkflowPortabilityReviewConflictError,
   WorkflowPortabilityValidationError,
-} from '../workflows/errors.js';
+} from '../workflows/workflow-authoring.errors.js';
 import {
   lockPortableSource,
   reviewedSourceGraph,

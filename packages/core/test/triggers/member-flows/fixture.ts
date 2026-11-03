@@ -4,8 +4,8 @@ import { Pool } from 'pg';
 import { afterAll, beforeAll, expect } from 'vitest';
 
 import { createWorkflowFolderStore } from '../../../src/authoring/organization/folders/workflow-folder.store.js';
-import { ScheduleTriggerError } from '../../../src/triggers/schedules/errors.js';
-import { WebhookTriggerNotFoundError } from '../../../src/triggers/webhooks/errors.js';
+import { ScheduleTriggerError } from '../../../src/triggers/schedules/schedule-trigger.errors.js';
+import { WebhookTriggerNotFoundError } from '../../../src/triggers/webhooks/webhook-trigger.errors.js';
 import { createWebhookTestEventStore } from '../../../src/triggers/webhooks/test-events/webhook-test-event.store.js';
 import { adminUrl, url } from '../webhooks/context.js';
 import type { createWebhookScenario } from '../webhooks/fixture.js';

@@ -20,7 +20,7 @@ import {
   type ConnectionStore,
 } from '../../src/connections/connection.store.js';
 import { createNotificationDestinationStore } from '../../src/notifications/destinations/notification-destination.store.js';
-import { FailureNotificationDestinationError } from '../../src/notifications/destinations/errors.js';
+import { FailureNotificationDestinationError } from '../../src/notifications/destinations/notification-destination.errors.js';
 import type { NotificationDestinationStore } from '../../src/notifications/destinations/notification-destination.store.js';
 import { createFailureNotificationStore } from '../../src/notifications/failure-notification.store.js';
 import {

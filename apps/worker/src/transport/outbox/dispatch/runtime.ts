@@ -44,7 +44,7 @@ import {
   transportErrorClass,
   toQueueJob,
 } from './delivery.js';
-import { OutboxDispatcherClosedError } from './errors.js';
+import { OutboxDispatcherClosedError } from './outbox-dispatch.errors.js';
 import type {
   OutboxDispatcherOptions,
   OutboxDispatcherRuntimeHooks,

@@ -6,7 +6,7 @@ export {
   WorkspaceRunAdmissionDeniedError,
   WorkspaceRunQuotaExceededError,
   WorkflowAlreadyRunningError,
-} from './commands/acceptance/errors.js';
+} from './commands/acceptance/run-admission.errors.js';
 export type {
   PublishedWorkflowReader,
   PublishedWorkflow,
@@ -18,7 +18,7 @@ export {
   WorkflowPublishedVersionConflictError,
   WorkflowRunNotExecutableError,
   WorkflowRunNotFoundError,
-} from './errors.js';
+} from './workflow-run.errors.js';
 export type {
   WorkspaceUsageCapacityInput,
   WorkspaceUsageCapacityRecord,
@@ -65,7 +65,7 @@ export type {
 export type { StalledWorkStore } from './stalled/stalled-work.store.js';
 
 export { createWorkflowCallStore } from './calls/workflow-call.store.js';
-export { WorkflowCallRefusedError } from './calls/errors.js';
+export { WorkflowCallRefusedError } from './calls/workflow-call.errors.js';
 export type { WorkflowCallStore } from './calls/workflow-call.store.js';
 export type {
   WorkflowRecoveryPreview,
@@ -73,7 +73,7 @@ export type {
   WorkflowRecoveryPreparation,
   PreparedWorkflowRecovery,
 } from './recovery/workflow-recovery.types.js';
-export { WorkflowRecoveryUnavailableError } from './recovery/errors.js';
+export { WorkflowRecoveryUnavailableError } from './recovery/workflow-recovery.errors.js';
 export type { WorkflowRecoverySummary } from './recovery/workflow-recovery.types.js';
 export type {
   WorkflowRecoveryPreviewInput,
@@ -84,14 +84,14 @@ export { createErrorWorkflowStore } from './error-workflows/error-workflow.store
 export {
   ErrorWorkflowDeliveryMismatchError,
   ErrorWorkflowVersionUnavailableError,
-} from './error-workflows/errors.js';
+} from './error-workflows/error-workflow.errors.js';
 export type { ErrorWorkflowStore } from './error-workflows/error-workflow.store.js';
 
 export { createPendingTaskStore } from './pending-tasks/responses/pending-task.store.js';
 export {
   PendingTaskDecisionError,
   PendingTaskNotFoundError,
-} from './pending-tasks/responses/errors.js';
+} from './pending-tasks/responses/pending-task.errors.js';
 export type { PendingTaskStore } from './pending-tasks/responses/pending-task.store.js';
 
 export { RunVariableSnapshotUnavailableError } from './commands/acceptance/variables.repository.js';
@@ -107,13 +107,13 @@ export type { UsageTrendsInput } from './queries/usage/trends.js';
 export { createRunValuesStore } from './values/run-values.store.js';
 export { RunValuesLimitError } from './values/run-values.js';
 export type { RunValuesStore } from './values/run-values.store.js';
-export { ExecutionCapabilityExpiredError } from '../attempts/errors.js';
+export { ExecutionCapabilityExpiredError } from '../attempts/node-attempt.errors.js';
 
 export { createCallbackStore } from './pending-tasks/callbacks/callback.store.js';
 export {
   CallbackCapacityError,
   CallbackResponseError,
-} from './pending-tasks/callbacks/errors.js';
+} from './pending-tasks/callbacks/callback.errors.js';
 export type {
   PreparedCallback,
   CallbackIdentity,

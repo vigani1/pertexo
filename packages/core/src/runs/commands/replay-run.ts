@@ -9,7 +9,7 @@ import { generatePersistedId } from '@pertexo/database/platform';
 import {
   WorkflowRunNotExecutableError,
   WorkflowRunNotFoundError,
-} from '../errors.js';
+} from '../workflow-run.errors.js';
 import {
   acceptWorkflowRunWithAudit,
   requireWorkflowRunRecord,

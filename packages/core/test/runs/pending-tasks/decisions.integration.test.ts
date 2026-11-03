@@ -10,12 +10,12 @@ import { withTenantScopedClient } from '@pertexo/database/primitives';
 import { readPendingTaskFacts } from '../../../src/runs/pending-tasks/lifecycle/facts.repository.js';
 import { describe, it, expect } from 'vitest';
 import { pendingTaskDetailSchema } from '@pertexo/contracts';
-import { WorkspaceAccessDeniedError } from '../../../src/shared/errors.js';
+import { WorkspaceAccessDeniedError } from '../../../src/shared/workspace-access.errors.js';
 import { createPendingTaskStore } from '../../../src/runs/pending-tasks/responses/pending-task.store.js';
 import {
   PendingTaskDecisionError,
   PendingTaskNotFoundError,
-} from '../../../src/runs/pending-tasks/responses/errors.js';
+} from '../../../src/runs/pending-tasks/responses/pending-task.errors.js';
 import { admin, store, taskFixture, userId, pool } from './fixtures.js';
 
 describe('current authority and atomic human decisions', () => {

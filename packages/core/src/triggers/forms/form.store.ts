@@ -24,7 +24,7 @@ import {
 import type { PoolClient } from 'pg';
 import type { InitialCheckpointFactory } from '../../runs/commands/initial-checkpoint.js';
 import { withWorkflowAccess } from '../workflow-access.js';
-import { FormUnavailableError } from './errors.js';
+import { FormUnavailableError } from './form.errors.js';
 import type {
   CoordinatedEventHistory,
   FormAccess,

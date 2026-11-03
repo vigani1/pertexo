@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { QueueConfigurationError } from '../publication/errors.js';
+import { QueueConfigurationError } from '../publication/queue-producer.errors.js';
 
 /**
  * The BullMQ job ID of one delivery of an outbox event; a UUID keeps it nonnumeric

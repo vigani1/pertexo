@@ -21,13 +21,13 @@ import {
 } from '@pertexo/database/primitives';
 import { artifacts, formUploads } from '@pertexo/database/schema';
 import { discoverPublicForm } from '../../triggers/forms/discover.repository.js';
-import { FormChangedError } from '../../triggers/forms/errors.js';
-import { ArtifactUploadNotFoundError } from '../uploads/errors.js';
+import { FormChangedError } from '../../triggers/forms/form.errors.js';
+import { ArtifactUploadNotFoundError } from '../uploads/artifact-upload.errors.js';
 import {
   completeArtifactUpload,
   reserveArtifactUpload,
 } from '../uploads/reservation.repository.js';
-import { FormUploadLimitError } from './errors.js';
+import { FormUploadLimitError } from './form-upload.errors.js';
 import { assertUnsentPublicRoom } from './unsent.repository.js';
 import { FORM_UPLOAD_PURPOSE } from '../artifact.js';
 import type {

@@ -17,7 +17,7 @@ import { checkDatabaseReadiness } from '@pertexo/database/primitives';
 import {
   WorkflowNotFoundError,
   WorkflowRevisionConflictError,
-} from '../../src/authoring/workflows/errors.js';
+} from '../../src/authoring/workflows/workflow-authoring.errors.js';
 import { createWorkflowAuthoringFixtureDatabase as createWorkflowAuthoringStore } from './workflow-authoring-admission.fixture.js';
 import { createWorkflowIntegrationUsageStore } from '../../src/connections/discovery/integration-usage.repository.js';
 

@@ -36,7 +36,7 @@ import {
   OAuth2EndpointRefusedError,
   OAuth2ProviderUnavailableError,
   OAuth2TokenRefusedError,
-} from './errors.js';
+} from './oauth2-endpoint.errors.js';
 
 const CONSENT_LIFETIME_SECONDS = 600;
 const ADDRESS_CHECK_TIMEOUT_MILLIS = 5_000;

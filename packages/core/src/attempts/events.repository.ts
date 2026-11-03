@@ -4,7 +4,7 @@ import type { PoolClient } from 'pg';
 import { runEvents } from '@pertexo/database/schema';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { serializeStoredExecutionJsonValue } from '../runs/values/stored-execution.js';
-import { NodeAttemptStateCorruptError } from './errors.js';
+import { NodeAttemptStateCorruptError } from './node-attempt.errors.js';
 
 /** The caller holds the run lock, so its next event sequence cannot race. */
 export async function appendAttemptEvent(

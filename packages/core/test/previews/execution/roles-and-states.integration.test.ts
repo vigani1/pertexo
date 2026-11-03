@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { Client } from 'pg';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
-import { PreviewAdmissionDeniedError } from '../../../src/previews/errors.js';
+import { PreviewAdmissionDeniedError } from '../../../src/previews/preview.errors.js';
 import {
   actorId,
   afterAllFixture2,

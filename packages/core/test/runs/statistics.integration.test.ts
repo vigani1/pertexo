@@ -31,7 +31,7 @@ import {
 } from './statistics/fixture.js';
 import { checkDatabaseReadiness } from '@pertexo/database/primitives';
 import { EXPECTED_MIGRATION_HEAD } from '@pertexo/database/testing';
-import { WorkspaceAccessDeniedError } from '../../src/shared/errors.js';
+import { WorkspaceAccessDeniedError } from '../../src/shared/workspace-access.errors.js';
 import {
   readArtifactCapacity,
   readExecutionStorageCapacity,

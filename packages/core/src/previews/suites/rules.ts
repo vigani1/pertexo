@@ -1,6 +1,6 @@
 import { canonicalJson } from '@pertexo/workflow-model';
 import type { WorkflowTestSuiteCurrent } from '@pertexo/contracts';
-import { WorkflowTestError } from '../workflows/errors.js';
+import { WorkflowTestError } from '../workflows/workflow-test.errors.js';
 import type { WorkflowTestPreparation } from '../workflows/workflow-test.types.js';
 import {
   assertEffectsAcknowledged,

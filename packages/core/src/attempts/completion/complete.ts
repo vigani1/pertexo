@@ -12,7 +12,7 @@ import {
   DeliveryMismatch,
   NodeAttemptOutputInvalidError,
   NodeAttemptStateCorruptError,
-} from '../errors.js';
+} from '../node-attempt.errors.js';
 import type {
   CompleteNodeAttemptResult,
   CompleteAttemptInput,

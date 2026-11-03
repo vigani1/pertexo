@@ -1,5 +1,5 @@
 export * from './artifacts.controller.js';
-export * from './errors.js';
+export * from './artifact-api.errors.js';
 export * from './artifacts.module.js';
 export * from './ports.js';
 export * from './artifact.service.js';

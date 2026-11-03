@@ -19,7 +19,7 @@ import { InvalidAuthenticatedWorkspaceContextError } from '../../src/workspaces/
 import {
   NodeTestInvalidError,
   NodeTestRequestError,
-} from '../../src/node-testing/errors.js';
+} from '../../src/node-testing/node-test.errors.js';
 import {
   applicationError,
   ProblemDetailsFilter,

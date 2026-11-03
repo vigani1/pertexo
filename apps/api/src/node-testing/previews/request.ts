@@ -10,7 +10,7 @@ import {
 
 import { z } from 'zod';
 
-import { NodeTestRequestError } from '../errors.js';
+import { NodeTestRequestError } from '../node-test.errors.js';
 
 import type { NodeTestUseCaseInput } from '../node-testing.service.js';
 

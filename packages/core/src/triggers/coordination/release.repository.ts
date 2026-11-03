@@ -22,8 +22,8 @@ import { acceptWorkflowRun } from '../../runs/commands/acceptance/accept.js';
 import {
   WorkspaceRunQuotaExceededError,
   WorkspaceRunAdmissionDeniedError,
-} from '../../runs/commands/acceptance/errors.js';
-import { WorkflowAlreadyRunningError } from '../../runs/commands/acceptance/errors.js';
+} from '../../runs/commands/acceptance/run-admission.errors.js';
+import { WorkflowAlreadyRunningError } from '../../runs/commands/acceptance/run-admission.errors.js';
 import type { InitialCheckpointFactory } from '../../runs/commands/initial-checkpoint.js';
 import { parseStoredExecutionValue } from '../../runs/values/stored-execution.js';
 import { recordWorkflowTriggerSkip } from '../skips.repository.js';

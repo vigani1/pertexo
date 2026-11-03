@@ -5,7 +5,7 @@ import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import type { PoolClient } from 'pg';
 import { BROWSABLE_WORKSPACE_STATUSES } from '@pertexo/policy';
 import type { AuthoringAccess } from '../workflows/access.js';
-import { WorkflowNotFoundError } from '../workflows/errors.js';
+import { WorkflowNotFoundError } from '../workflows/workflow-authoring.errors.js';
 import type { CollaborationScope } from './workflow-collaboration.types.js';
 
 export type CollaborationEntry = Readonly<{

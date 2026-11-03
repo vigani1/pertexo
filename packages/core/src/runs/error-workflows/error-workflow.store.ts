@@ -13,7 +13,7 @@ import {
   type DatabaseRuntime,
 } from '@pertexo/database/platform';
 import type { InitialCheckpointFactory } from '../commands/initial-checkpoint.js';
-import { ErrorWorkflowDeliveryMismatchError } from './errors.js';
+import { ErrorWorkflowDeliveryMismatchError } from './error-workflow.errors.js';
 import type { ErrorWorkflowDeliveryInput } from './error-workflow-delivery.types.js';
 import { acceptErrorWorkflow } from './accept.repository.js';
 import { DELIVERY_CONSUMER } from '../../outbox/delivery-consumers.js';

@@ -11,7 +11,7 @@ import { rolesForCapability } from '@pertexo/policy';
 import type { WorkflowPresence } from '@pertexo/contracts';
 import type { PoolClient } from 'pg';
 import type { EnterCollaboration } from './authority.repository.js';
-import { WorkflowCollaborationError } from './errors.js';
+import { WorkflowCollaborationError } from './workflow-collaboration.errors.js';
 import type {
   HeartbeatInput,
   PresenceInput,

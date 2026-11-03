@@ -4,7 +4,7 @@ import type {
   InvocationState,
   WorkflowCheckpoint,
 } from '../workflow-execution.js';
-import { WorkflowEngineError } from '../errors.js';
+import { WorkflowEngineError } from '../workflow-engine.errors.js';
 import { compareOrdinal } from '@pertexo/workflow-model';
 import {
   assertCheckpoint,

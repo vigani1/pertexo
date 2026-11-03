@@ -5,14 +5,14 @@ import {
   UNPURGED_WORKSPACE_STATUSES,
 } from '@pertexo/policy';
 import type { Pool } from 'pg';
-import { WorkspaceAccessDeniedError } from '../shared/errors.js';
+import { WorkspaceAccessDeniedError } from '../shared/workspace-access.errors.js';
 import { readResourceTransaction } from '../shared/facts.repository.js';
 import {
   withWorkspaceAccess,
   type WorkspaceActor,
 } from '../shared/workspace-access.js';
 import { and, eq, sql } from 'drizzle-orm';
-import { WorkflowRunNotFoundError } from './errors.js';
+import { WorkflowRunNotFoundError } from './workflow-run.errors.js';
 import type { ResourceTransaction } from '../shared/folder-access.types.js';
 import { workflowScopeSql } from '../shared/scope.repository.js';
 import type { WorkflowResourceCapability } from '../shared/folder-access.types.js';

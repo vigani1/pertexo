@@ -20,7 +20,7 @@ import {
   OAuth2EndpointRefusedError,
   OAuth2ProviderUnavailableError,
   OAuth2TokenRefusedError,
-} from '../../connections/oauth2/errors.js';
+} from '../../connections/oauth2/oauth2-endpoint.errors.js';
 
 export const connectionProblems = [
   errorRegistration(InvalidConnectionCursorError, () => {

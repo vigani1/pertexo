@@ -11,7 +11,7 @@ import { providerRecords } from './identity-organizations.repository.js';
 import type { Pool, PoolClient } from 'pg';
 import type { FederationSettings } from '@pertexo/contracts';
 import { generatePersistedId } from '@pertexo/database/platform';
-import { FederationConflictError } from './errors.js';
+import { FederationConflictError } from './federation-management.errors.js';
 import type { ProviderRow } from './identity-organizations.repository.js';
 import { recordFederationAudit } from './authority.repository.js';
 import {

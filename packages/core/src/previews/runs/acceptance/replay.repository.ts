@@ -12,7 +12,7 @@ import {
   PreviewAcceptanceCorruptError,
   PreviewIdempotencyConflictError,
   PriorPreviewInputUnavailableError,
-} from '../../errors.js';
+} from '../../preview.errors.js';
 import type {
   AcceptedPreviewRun,
   AcceptPreviewRunInput,

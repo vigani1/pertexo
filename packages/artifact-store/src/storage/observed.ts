@@ -1,7 +1,7 @@
 import {
   ArtifactInputIntegrityError,
   ArtifactIntegrityError,
-} from '../errors.js';
+} from '../artifact-store.errors.js';
 
 import { safelyObserveSafetyViolation } from '../s3/telemetry.js';
 import type { ObjectStoreObserver } from '../s3/telemetry.js';

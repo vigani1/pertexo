@@ -1,6 +1,6 @@
 import { APIError } from 'better-auth/api';
 
-import { IdentityError } from '../../identity/errors.js';
+import { IdentityError } from '../../identity/identity.errors.js';
 import type {
   AuthenticatedSession,
   SessionCookieBoundary,

@@ -12,7 +12,7 @@ import {
 import { runFailureNotificationIntents as intents } from '@pertexo/database/schema';
 
 import type { CompleteDeliveryInput } from '../failure-notification.types.js';
-import { FailureNotificationStateError } from '../errors.js';
+import { FailureNotificationStateError } from '../failure-notification.errors.js';
 import {
   auditFailureNotification,
   insertFailureNotificationDeliveryOutbox,

@@ -6,7 +6,7 @@ import type {
   NoticeMailToSeal,
 } from '../../../src/inbox/mail/notice-mail.types.js';
 import { createNoticeMailStore } from '../../../src/inbox/mail/notice-mail.store.js';
-import { WorkspaceAccessDeniedError } from '../../../src/shared/errors.js';
+import { WorkspaceAccessDeniedError } from '../../../src/shared/workspace-access.errors.js';
 import { identity } from '../../support/workflow-authoring.js';
 import {
   config,

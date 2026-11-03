@@ -8,7 +8,7 @@ import {
   workflowVersionsQuerySchema,
   workflowRunListQuerySchema,
 } from '@pertexo/contracts';
-import { invalidArgument } from './errors.js';
+import { invalidArgument } from './automation-command.errors.js';
 
 const options = {
   workspace: { type: 'string' },

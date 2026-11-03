@@ -11,7 +11,7 @@ import {
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { Pool, PoolClient } from 'pg';
-import { WorkspaceAccessDeniedError } from '../../../shared/errors.js';
+import { WorkspaceAccessDeniedError } from '../../../shared/workspace-access.errors.js';
 import {
   withWorkspaceAccess,
   type WorkspaceActor,
