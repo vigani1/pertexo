@@ -18,15 +18,15 @@ export async function recoverOwnedHttp(
       name: 'Replay this run',
       exact: true,
     });
-    await dialog.getByLabel('Replay input (JSON)', { exact: true }).fill(
-      JSON.stringify({
-        execute: true,
-        body: { encoding: 'utf8', value: JSON.stringify({ marker }) },
-      }),
-    );
-    // This wait has hung a few times. Separate limits, under the test's own, show which
-    // side hung: a stuck click says what blocked it, and a timeout on the response means
-    // the request went out and the server never answered.
+    const input = JSON.stringify({
+      execute: true,
+      body: { encoding: 'utf8', value: JSON.stringify({ marker }) },
+    });
+    const editor = dialog.getByLabel('Replay input (JSON)', { exact: true });
+    await editor.fill(input);
+    await expect(editor).toHaveValue(input);
+    // Separate limits identify a blocked click or a missing response. A response
+    // timeout alone does not prove dispatch: validation can prevent the request.
     const acceptance = page.waitForResponse(
       (response) =>
         response.request().method() === 'POST' &&

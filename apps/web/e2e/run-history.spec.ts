@@ -69,9 +69,8 @@ test('filters and paginates workspace history, then opens the exact run', async 
   );
 });
 
-// CI saw a replay's POST never answer at phone width, in a live journey. In a real
-// browser, at that width and with the input's read still out, the click sends it.
-test('sends a typed replay at phone width while the run’s input is still loading', async ({
+// Loading must finish before selection and insertion can begin in the editor.
+test('waits for saved input before editing a replay at phone width', async ({
   context,
   page,
 }) => {
@@ -93,7 +92,14 @@ test('sends a typed replay at phone width while the run’s input is still loadi
   await page.getByRole('button', { name: 'Replay' }).click();
   const dialog = page.getByRole('dialog', { name: 'Replay this run' });
   const typed = '{"incident":"INC-42"}';
-  await dialog.getByLabel('Replay input (JSON)').fill(typed);
+  const editor = dialog.getByLabel('Replay input (JSON)');
+  await expect(editor).toBeDisabled();
+  await expect(
+    dialog.getByRole('button', { name: 'Replay run' }),
+  ).toBeDisabled();
+  answerInput();
+  await editor.fill(typed);
+  await expect(editor).toHaveValue(typed);
   const replay = page.waitForRequest(
     (request) =>
       request.method() === 'POST' &&
@@ -103,7 +109,6 @@ test('sends a typed replay at phone width while the run’s input is still loadi
 
   const sent = (await replay).postDataJSON() as { input: unknown };
   expect(sent.input).toEqual({ incident: 'INC-42' });
-  answerInput();
   await expect(page).toHaveURL(`/w/${workspaceId}/runs/${replayRunId}`);
 });
 

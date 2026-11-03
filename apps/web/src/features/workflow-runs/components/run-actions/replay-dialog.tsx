@@ -189,14 +189,6 @@ function useReplayInput({
   return runInput;
 }
 
-/**
- * Until the read answers, an untouched field's {} isn't the run's input, and steps
- * that call other services would run again on it. Typing goes ahead.
- */
-function stillAwaitingInput(reading: boolean, input: string) {
-  return reading && input === '{}';
-}
-
 /** Copy follows whether the original input is still available, not query timing. */
 function replayDescription(
   data: WorkflowRunData | undefined,
@@ -294,8 +286,7 @@ export function ReplayRunDialog({
   }
 
   const inputMissing =
-    (formReplay && originalText === undefined) ||
-    stillAwaitingInput(original.isPending, runInput.input);
+    (formReplay && originalText === undefined) || original.isPending;
   const cannotStart = replay.expired || version.pending || inputMissing;
   return (
     <ConfirmDialog
@@ -334,7 +325,7 @@ export function ReplayRunDialog({
       >
         <ReplayVersionChoice
           version={version}
-          disabled={replay.pending || replay.unconfirmed}
+          disabled={replay.pending || replay.unconfirmed || original.isPending}
         />
         <p className="text-sm text-muted-foreground">
           Replay keeps the source run’s workspace variables. Start a new run to
@@ -344,7 +335,7 @@ export function ReplayRunDialog({
           idPrefix="replay-run"
           inputLabel="Replay input (JSON)"
           runInput={runInput}
-          disabled={replay.pending || replay.unconfirmed}
+          disabled={replay.pending || replay.unconfirmed || original.isPending}
           inputReadOnly={formReplay}
         />
         {formReplay ? (
