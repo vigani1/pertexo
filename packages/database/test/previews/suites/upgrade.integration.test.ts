@@ -145,6 +145,7 @@ it('upgrades a populated standalone test without changing its source identity or
       '0085_execution_artifact_reference_coverage.sql',
       '0086_ordered_trigger_outcomes.sql',
       '0087_remove_trigger_outcome_fold.sql',
+      '0088_repair_existing_workspace_capacity.sql',
     ]);
     expect(
       (
