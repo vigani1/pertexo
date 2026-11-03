@@ -3,6 +3,8 @@ import {
   withTenantScopedClient,
 } from '@pertexo/database/primitives';
 import { appendAuditFact } from '../governance/audit/facts.js';
+import { eq } from 'drizzle-orm';
+import { WorkspaceAccessDeniedError } from '../shared/workspace-access.errors.js';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { Pool } from 'pg';
 import {
@@ -13,7 +15,7 @@ import type {
   DatabaseRuntime,
   DatabaseConfig,
 } from '@pertexo/database/platform';
-import { workspaces } from '@pertexo/database/schema';
+import { workspaces, users } from '@pertexo/database/schema';
 
 import { changeWorkspaceLifecycle } from '../lifecycle/deletion/change.js';
 import type {
@@ -103,6 +105,17 @@ async function createWorkspaceWithOwner(
       pool,
       { workspaceId: id, actorId: ownerUserId },
       async (client) => {
+        const db = drizzle(client);
+        const [owner] = await db
+          .select({ status: users.status })
+          .from(users)
+          .where(eq(users.id, ownerUserId))
+          .for('update')
+          .catch(rethrowQueryFailure);
+        if (owner?.status !== 'active')
+          throw new WorkspaceAccessDeniedError(
+            'Only an active user can create a workspace',
+          );
         const claim = await claimWorkspaceCreationCommand(
           client,
           ownerUserId,
@@ -111,7 +124,6 @@ async function createWorkspaceWithOwner(
         );
         if (!claim.claimed) return claim.result.workspace;
 
-        const db = drizzle(client);
         const workspaceResult = await db
           .insert(workspaces)
           .values({ id, name, slug, status: 'active', createdBy: ownerUserId })
