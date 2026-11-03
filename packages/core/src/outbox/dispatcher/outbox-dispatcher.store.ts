@@ -95,7 +95,9 @@ async function releaseOrFail(
           // A run must not wait on a row that can never publish.
           deliveryDueAt: sql`case when ${runDeliveryJob} then clock_timestamp() end`,
         }
-      : { availableAt: sql`${input.retryAt}::timestamptz` };
+      : {
+          availableAt: sql`clock_timestamp() + ${input.retryDelayMillis}::double precision * interval '1 millisecond'`,
+        };
   const updated = db.$with('updated').as(
     db
       .update(outboxEvents)

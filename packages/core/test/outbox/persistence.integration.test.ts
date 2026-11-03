@@ -606,7 +606,7 @@ describe('transactional outbox persistence', () => {
       id,
       leaseToken: event.leaseToken,
       disposition: 'retry' as const,
-      retryAt: new Date(Date.now() + 60_000),
+      retryDelayMillis: 60_000,
       errorCode: 'queue.unavailable',
     };
     await expect(
@@ -862,7 +862,7 @@ describe('transactional outbox persistence', () => {
         leaseToken: event.leaseToken,
         errorCode: 'redis.unavailable',
         disposition: 'retry',
-        retryAt: new Date(0),
+        retryDelayMillis: 0,
       }),
     ).resolves.toBe('retry_scheduled');
   });
