@@ -2116,6 +2116,9 @@
     "/v1/workspaces/{workspaceId}/workflows/{workflowId}/export": {
       "post": {
         "operationId": "exportWorkflow",
+        "x-pertexo-api-token-scopes": [
+          "workflow:read"
+        ],
         "description": "Export only the explicitly reviewed saved source. Draft source additionally requires a strong If-Match. No credential bytes or automatic redaction.",
         "security": [
           {
@@ -2127,7 +2130,6 @@
             "name": "workspaceId",
             "in": "path",
             "required": true,
-            "description": "Workspace identifier",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
@@ -2139,7 +2141,6 @@
             "name": "workflowId",
             "in": "path",
             "required": true,
-            "description": "Workflow identifier",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
@@ -2153,6 +2154,7 @@
             "required": false,
             "description": "Required for a saved draft source.",
             "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string"
             }
           }
@@ -2239,9 +2241,6 @@
         "tags": [
           "Workflows"
         ],
-        "x-pertexo-api-token-scopes": [
-          "workflow:read"
-        ],
         "x-pertexo-problem-codes": [
           "request.invalid",
           "auth.unauthenticated",
@@ -2260,6 +2259,10 @@
     "/v1/workspaces/{workspaceId}/workflows/import/preview": {
       "post": {
         "operationId": "previewWorkflowImport",
+        "x-pertexo-api-token-scopes": [
+          "workflow:create",
+          "connection:read"
+        ],
         "description": "Unpersisted compatibility and explicit destination binding preview. Raw request ceiling is 2097152 UTF-8 bytes; duplicate keys and excessive depth are rejected before schema parsing.",
         "security": [
           {
@@ -2271,7 +2274,6 @@
             "name": "workspaceId",
             "in": "path",
             "required": true,
-            "description": "Workspace identifier",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
@@ -2352,10 +2354,6 @@
         "tags": [
           "Workflows"
         ],
-        "x-pertexo-api-token-scopes": [
-          "workflow:create",
-          "connection:read"
-        ],
         "x-pertexo-problem-codes": [
           "request.invalid",
           "auth.unauthenticated",
@@ -2373,6 +2371,10 @@
     "/v1/workspaces/{workspaceId}/workflows/import": {
       "post": {
         "operationId": "importWorkflow",
+        "x-pertexo-api-token-scopes": [
+          "workflow:create",
+          "connection:read"
+        ],
         "description": "Atomically create an unpublished revision-1 draft. Exact authorized retries discover the original identifier, including after writer rollback. Never publishes or runs.",
         "security": [
           {
@@ -2384,7 +2386,6 @@
             "name": "workspaceId",
             "in": "path",
             "required": true,
-            "description": "Workspace identifier",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
@@ -2482,10 +2483,6 @@
         "summary": "Import a workflow",
         "tags": [
           "Workflows"
-        ],
-        "x-pertexo-api-token-scopes": [
-          "workflow:create",
-          "connection:read"
         ],
         "x-pertexo-problem-codes": [
           "request.invalid",

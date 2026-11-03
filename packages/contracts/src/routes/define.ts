@@ -181,7 +181,11 @@ export type RouteInput<Route> =
     ? Readonly<{
         params: z.output<Params>;
         query: z.output<Query>;
-        body: z.output<Body>;
+        body: Route extends {
+          requestDocument: Readonly<Record<string, unknown>>;
+        }
+          ? undefined
+          : z.output<Body>;
         idempotencyKey: Idempotent extends true ? string : undefined;
         headers: Route extends Readonly<{ headers: infer Headers }>
           ? Headers extends z.ZodType

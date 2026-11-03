@@ -8,6 +8,9 @@
     "/v1/workspaces/{workspaceId}/workflows/{workflowId}/export": {
       "post": {
         "operationId": "exportWorkflow",
+        "x-pertexo-api-token-scopes": [
+          "workflow:read"
+        ],
         "description": "Export only the explicitly reviewed saved source. Draft source additionally requires a strong If-Match. No credential bytes or automatic redaction.",
         "security": [
           {
@@ -22,7 +25,6 @@
             "name": "workspaceId",
             "in": "path",
             "required": true,
-            "description": "Workspace identifier",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
@@ -34,7 +36,6 @@
             "name": "workflowId",
             "in": "path",
             "required": true,
-            "description": "Workflow identifier",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
@@ -60,6 +61,7 @@
             "required": false,
             "description": "Required for a saved draft source.",
             "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string"
             }
           }
@@ -147,6 +149,9 @@
     "/v1/workspaces/{workspaceId}/workflows/import/preview": {
       "post": {
         "operationId": "previewWorkflowImport",
+        "x-pertexo-api-token-scopes": [
+          "workflow:create"
+        ],
         "description": "Unpersisted compatibility and explicit destination binding preview. Raw request ceiling is 2097152 UTF-8 bytes; duplicate keys and excessive depth are rejected before schema parsing.",
         "security": [
           {
@@ -161,7 +166,6 @@
             "name": "workspaceId",
             "in": "path",
             "required": true,
-            "description": "Workspace identifier",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
@@ -255,6 +259,9 @@
     "/v1/workspaces/{workspaceId}/workflows/import": {
       "post": {
         "operationId": "importWorkflow",
+        "x-pertexo-api-token-scopes": [
+          "workflow:create"
+        ],
         "description": "Atomically create an unpublished revision-1 draft. Exact authorized retries discover the original identifier, including after writer rollback. Never publishes or runs.",
         "security": [
           {
@@ -269,7 +276,6 @@
             "name": "workspaceId",
             "in": "path",
             "required": true,
-            "description": "Workspace identifier",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
@@ -381,224 +387,54 @@
   },
   "components": {
     "schemas": {
-      "ApiProblem": {
+      "WorkflowExportRequest": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "readOnly": true,
         "type": "object",
         "properties": {
-          "type": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 256
-          },
-          "title": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 256
-          },
-          "status": {
-            "type": "integer",
-            "minimum": 400,
-            "maximum": 599
-          },
-          "detail": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 2000
-          },
-          "instance": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 2048
-          },
-          "code": {
-            "type": "string",
-            "enum": [
-              "callback.already_received",
-              "callback.expired",
-              "callback.unavailable",
-              "api_token.unavailable",
-              "api_token.limit",
-              "auth.unauthenticated",
-              "auth.forbidden",
-              "auth.token_scope_required",
-              "auth.token_not_supported",
-              "auth.email_not_verified",
-              "auth.sso_required",
-              "auth.two_factor_locked",
-              "auth.method_limit",
-              "auth.recovery_required",
-              "auth.organization_email_managed",
-              "auth.alternative_required",
-              "auth.reset_link_invalid",
-              "auth.sign_up_closed",
-              "auth.conflict",
-              "auth.session_not_fresh",
-              "resource.not_found",
-              "request.invalid",
-              "request.precondition_required",
-              "request.idempotency_conflict",
-              "request.rate_limited",
-              "request.rate_limit_unavailable",
-              "request.method_not_allowed",
-              "request.too_large",
-              "request.unsupported_media_type",
-              "workspace.quota_exceeded",
-              "artifact.too_large",
-              "artifact.conflict",
-              "artifact.unavailable",
-              "workspace.conflict",
-              "data_table.conflict",
-              "data_table.key_conflict",
-              "data_table.quota_exceeded",
-              "export.already_running",
-              "webhook.setting_up",
-              "workspace.revision_conflict",
-              "workspace.member_role_revision_conflict",
-              "workspace.member_role_transition_conflict",
-              "workspace.member_removal_conflict",
-              "workspace.member_directory_managed",
-              "workspace.member_status_conflict",
-              "workspace.invitation_conflict",
-              "workspace.invitation_proof_expired",
-              "workspace.invitation_revision_conflict",
-              "workspace.invitation_recipient_mismatch",
-              "workspace.invitation_unavailable",
-              "workspace.invitation_delivery_unavailable",
-              "workspace.invitation_not_configured",
-              "user.profile_revision_conflict",
-              "workflow.revision_conflict",
-              "workflow.lifecycle_conflict",
-              "workflow.name_conflict",
-              "workflow.pause_conflict",
-              "workflow.auto_pause_settings_conflict",
-              "workflow.already_running",
-              "workflow.concurrency_revision_conflict",
-              "workflow.concurrency_limit_exceeded",
-              "workflow.concurrency_limit_unavailable",
-              "workflow.publish_approval_required",
-              "workflow.publication_review_conflict",
-              "workflow.promotion_conflict",
-              "workflow.promotion_unavailable",
-              "workflow.collaboration_conflict",
-              "workflow.error_policy_conflict",
-              "workflow.error_target_unavailable",
-              "pending_task.already_resolved",
-              "pending_task.expired",
-              "pending_task.run_closed",
-              "pending_task.self_decision",
-              "pending_task.not_eligible",
-              "notifications.changed",
-              "notifications.unavailable",
-              "notifications.unsubscribe_unavailable",
-              "variables.changed",
-              "variables.usage_changed",
-              "workflow.variable_snapshot_unavailable",
-              "trigger.coordination_unavailable",
-              "form.unavailable",
-              "form.changed",
-              "form.access_conflict",
-              "form.invalid",
-              "form.file_type_not_allowed",
-              "form.file_too_large",
-              "form.upload_limit",
-              "form.upload_busy",
-              "form.required",
-              "workflow.sample_conflict",
-              "workflow.sample_invalid",
-              "workflow.sample_limit",
-              "workflow.input_case_revision_conflict",
-              "workflow.input_case_limit_exceeded",
-              "workflow.tag_key_conflict",
-              "workflow.tag_limit_exceeded",
-              "workflow.tag_revision_conflict",
-              "workflow.tag_delete_overflow",
-              "workflow.organization_revision_conflict",
-              "workflow.folder_name_conflict",
-              "workflow.folder_limit_exceeded",
-              "workflow.folder_revision_conflict",
-              "workflow.folder_hierarchy_conflict",
-              "workflow.folder_not_empty",
-              "workflow.folder_not_visible",
-              "workflow.folder_audience_review_required",
-              "workspace.auto_pause_settings_conflict",
-              "workflow.invalid",
-              "workflow.portability_unavailable",
-              "workflow.portability_compatibility_conflict",
-              "workflow.portability_review_conflict",
-              "workflow.portability_invalid",
-              "workflow.template_origin_unavailable",
-              "workflow.validation_unavailable",
-              "workflow.published_version_conflict",
-              "workflow.not_published",
-              "workflow.activation_failed",
-              "run.not_cancelable",
-              "run.outcome_unknown",
-              "run.recovery_unavailable",
-              "connection.not_configured",
-              "webhook.not_configured",
-              "connection.conflict",
-              "connection.revoked",
-              "connection.oauth2_endpoint_refused",
-              "connection.oauth2_token_refused",
-              "provider.unavailable",
-              "webhook.authentication_failed",
-              "webhook.payload_too_large",
-              "webhook.unsupported_media_type",
-              "webhook.invalid_json",
-              "webhook.method_not_allowed",
-              "webhook.idempotency_conflict",
-              "webhook.rate_limited",
-              "webhook.workflow_paused",
-              "webhook.unavailable",
-              "request.aborted",
-              "internal.unexpected"
+          "source": {
+            "oneOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "const": "draft"
+                  }
+                },
+                "required": [
+                  "kind"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "const": "version"
+                  },
+                  "versionId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  }
+                },
+                "required": [
+                  "kind",
+                  "versionId"
+                ],
+                "additionalProperties": false
+              }
             ]
           },
-          "requestId": {
+          "reviewedGraphDigest": {
             "type": "string",
-            "minLength": 1,
-            "maxLength": 128,
-            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
-          },
-          "errors": {
-            "readOnly": true,
-            "maxItems": 100,
-            "type": "array",
-            "items": {
-              "readOnly": true,
-              "type": "object",
-              "properties": {
-                "path": {
-                  "type": "string",
-                  "maxLength": 1024
-                },
-                "code": {
-                  "type": "string",
-                  "minLength": 1,
-                  "maxLength": 128
-                },
-                "message": {
-                  "type": "string",
-                  "minLength": 1,
-                  "maxLength": 500
-                }
-              },
-              "required": [
-                "path",
-                "code",
-                "message"
-              ],
-              "additionalProperties": false
-            }
+            "pattern": "^[a-f0-9]{64}$"
           }
         },
         "required": [
-          "type",
-          "title",
-          "status",
-          "code",
-          "requestId"
+          "source",
+          "reviewedGraphDigest"
         ],
         "additionalProperties": false
       },
@@ -1598,57 +1434,6 @@
           }
         },
         "x-pertexo-runtime-bounds": true
-      },
-      "WorkflowExportRequest": {
-        "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "type": "object",
-        "properties": {
-          "source": {
-            "oneOf": [
-              {
-                "type": "object",
-                "properties": {
-                  "kind": {
-                    "type": "string",
-                    "const": "draft"
-                  }
-                },
-                "required": [
-                  "kind"
-                ],
-                "additionalProperties": false
-              },
-              {
-                "type": "object",
-                "properties": {
-                  "kind": {
-                    "type": "string",
-                    "const": "version"
-                  },
-                  "versionId": {
-                    "type": "string",
-                    "format": "uuid",
-                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-                  }
-                },
-                "required": [
-                  "kind",
-                  "versionId"
-                ],
-                "additionalProperties": false
-              }
-            ]
-          },
-          "reviewedGraphDigest": {
-            "type": "string",
-            "pattern": "^[a-f0-9]{64}$"
-          }
-        },
-        "required": [
-          "source",
-          "reviewedGraphDigest"
-        ],
-        "additionalProperties": false
       },
       "WorkflowImportPreviewRequest": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -2710,6 +2495,99 @@
         "required": [
           "manifest",
           "bindings"
+        ],
+        "additionalProperties": false
+      },
+      "WorkflowImportPreviewResponse": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "manifestDigest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "compatibilityFingerprint": {
+            "type": "string",
+            "pattern": "^wf-compat:sha256:[a-f0-9]{64}$"
+          },
+          "compatible": {
+            "type": "boolean"
+          },
+          "issues": {
+            "maxItems": 100,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "code": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128
+                },
+                "path": {
+                  "type": "string",
+                  "maxLength": 2048
+                },
+                "message": {
+                  "type": "string",
+                  "maxLength": 512
+                }
+              },
+              "required": [
+                "code",
+                "path",
+                "message"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "truncated": {
+            "type": "boolean"
+          },
+          "connectionSlots": {
+            "maxItems": 1000,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "nodeId": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 1048576
+                },
+                "slot": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128
+                },
+                "providerKey": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128
+                },
+                "authType": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128
+                }
+              },
+              "required": [
+                "nodeId",
+                "slot",
+                "providerKey",
+                "authType"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "manifestDigest",
+          "compatibilityFingerprint",
+          "compatible",
+          "issues",
+          "truncated",
+          "connectionSlots"
         ],
         "additionalProperties": false
       },
@@ -3787,99 +3665,6 @@
         ],
         "additionalProperties": false
       },
-      "WorkflowImportPreviewResponse": {
-        "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "type": "object",
-        "properties": {
-          "manifestDigest": {
-            "type": "string",
-            "pattern": "^[a-f0-9]{64}$"
-          },
-          "compatibilityFingerprint": {
-            "type": "string",
-            "pattern": "^wf-compat:sha256:[a-f0-9]{64}$"
-          },
-          "compatible": {
-            "type": "boolean"
-          },
-          "issues": {
-            "maxItems": 100,
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {
-                "code": {
-                  "type": "string",
-                  "minLength": 1,
-                  "maxLength": 128
-                },
-                "path": {
-                  "type": "string",
-                  "maxLength": 2048
-                },
-                "message": {
-                  "type": "string",
-                  "maxLength": 512
-                }
-              },
-              "required": [
-                "code",
-                "path",
-                "message"
-              ],
-              "additionalProperties": false
-            }
-          },
-          "truncated": {
-            "type": "boolean"
-          },
-          "connectionSlots": {
-            "maxItems": 1000,
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {
-                "nodeId": {
-                  "type": "string",
-                  "minLength": 1,
-                  "maxLength": 1048576
-                },
-                "slot": {
-                  "type": "string",
-                  "minLength": 1,
-                  "maxLength": 128
-                },
-                "providerKey": {
-                  "type": "string",
-                  "minLength": 1,
-                  "maxLength": 128
-                },
-                "authType": {
-                  "type": "string",
-                  "minLength": 1,
-                  "maxLength": 128
-                }
-              },
-              "required": [
-                "nodeId",
-                "slot",
-                "providerKey",
-                "authType"
-              ],
-              "additionalProperties": false
-            }
-          }
-        },
-        "required": [
-          "manifestDigest",
-          "compatibilityFingerprint",
-          "compatible",
-          "issues",
-          "truncated",
-          "connectionSlots"
-        ],
-        "additionalProperties": false
-      },
       "WorkflowImportResponse": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "type": "object",
@@ -3892,6 +3677,227 @@
         },
         "required": [
           "workflowId"
+        ],
+        "additionalProperties": false
+      },
+      "ApiProblem": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "readOnly": true,
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          },
+          "status": {
+            "type": "integer",
+            "minimum": 400,
+            "maximum": 599
+          },
+          "detail": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000
+          },
+          "instance": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2048
+          },
+          "code": {
+            "type": "string",
+            "enum": [
+              "callback.already_received",
+              "callback.expired",
+              "callback.unavailable",
+              "api_token.unavailable",
+              "api_token.limit",
+              "auth.unauthenticated",
+              "auth.forbidden",
+              "auth.token_scope_required",
+              "auth.token_not_supported",
+              "auth.email_not_verified",
+              "auth.sso_required",
+              "auth.two_factor_locked",
+              "auth.method_limit",
+              "auth.recovery_required",
+              "auth.organization_email_managed",
+              "auth.alternative_required",
+              "auth.reset_link_invalid",
+              "auth.sign_up_closed",
+              "auth.conflict",
+              "auth.session_not_fresh",
+              "resource.not_found",
+              "request.invalid",
+              "request.precondition_required",
+              "request.idempotency_conflict",
+              "request.rate_limited",
+              "request.rate_limit_unavailable",
+              "request.method_not_allowed",
+              "request.too_large",
+              "request.unsupported_media_type",
+              "workspace.quota_exceeded",
+              "artifact.too_large",
+              "artifact.conflict",
+              "artifact.unavailable",
+              "workspace.conflict",
+              "data_table.conflict",
+              "data_table.key_conflict",
+              "data_table.quota_exceeded",
+              "export.already_running",
+              "webhook.setting_up",
+              "workspace.revision_conflict",
+              "workspace.member_role_revision_conflict",
+              "workspace.member_role_transition_conflict",
+              "workspace.member_removal_conflict",
+              "workspace.member_directory_managed",
+              "workspace.member_status_conflict",
+              "workspace.invitation_conflict",
+              "workspace.invitation_proof_expired",
+              "workspace.invitation_revision_conflict",
+              "workspace.invitation_recipient_mismatch",
+              "workspace.invitation_unavailable",
+              "workspace.invitation_delivery_unavailable",
+              "workspace.invitation_not_configured",
+              "user.profile_revision_conflict",
+              "workflow.revision_conflict",
+              "workflow.lifecycle_conflict",
+              "workflow.name_conflict",
+              "workflow.pause_conflict",
+              "workflow.auto_pause_settings_conflict",
+              "workflow.already_running",
+              "workflow.concurrency_revision_conflict",
+              "workflow.concurrency_limit_exceeded",
+              "workflow.concurrency_limit_unavailable",
+              "workflow.publish_approval_required",
+              "workflow.publication_review_conflict",
+              "workflow.promotion_conflict",
+              "workflow.promotion_unavailable",
+              "workflow.collaboration_conflict",
+              "workflow.error_policy_conflict",
+              "workflow.error_target_unavailable",
+              "pending_task.already_resolved",
+              "pending_task.expired",
+              "pending_task.run_closed",
+              "pending_task.self_decision",
+              "pending_task.not_eligible",
+              "notifications.changed",
+              "notifications.unavailable",
+              "notifications.unsubscribe_unavailable",
+              "variables.changed",
+              "variables.usage_changed",
+              "workflow.variable_snapshot_unavailable",
+              "trigger.coordination_unavailable",
+              "form.unavailable",
+              "form.changed",
+              "form.access_conflict",
+              "form.invalid",
+              "form.file_type_not_allowed",
+              "form.file_too_large",
+              "form.upload_limit",
+              "form.upload_busy",
+              "form.required",
+              "workflow.sample_conflict",
+              "workflow.sample_invalid",
+              "workflow.sample_limit",
+              "workflow.input_case_revision_conflict",
+              "workflow.input_case_limit_exceeded",
+              "workflow.tag_key_conflict",
+              "workflow.tag_limit_exceeded",
+              "workflow.tag_revision_conflict",
+              "workflow.tag_delete_overflow",
+              "workflow.organization_revision_conflict",
+              "workflow.folder_name_conflict",
+              "workflow.folder_limit_exceeded",
+              "workflow.folder_revision_conflict",
+              "workflow.folder_hierarchy_conflict",
+              "workflow.folder_not_empty",
+              "workflow.folder_not_visible",
+              "workflow.folder_audience_review_required",
+              "workspace.auto_pause_settings_conflict",
+              "workflow.invalid",
+              "workflow.portability_unavailable",
+              "workflow.portability_compatibility_conflict",
+              "workflow.portability_review_conflict",
+              "workflow.portability_invalid",
+              "workflow.template_origin_unavailable",
+              "workflow.validation_unavailable",
+              "workflow.published_version_conflict",
+              "workflow.not_published",
+              "workflow.activation_failed",
+              "run.not_cancelable",
+              "run.outcome_unknown",
+              "run.recovery_unavailable",
+              "connection.not_configured",
+              "webhook.not_configured",
+              "connection.conflict",
+              "connection.revoked",
+              "connection.oauth2_endpoint_refused",
+              "connection.oauth2_token_refused",
+              "provider.unavailable",
+              "webhook.authentication_failed",
+              "webhook.payload_too_large",
+              "webhook.unsupported_media_type",
+              "webhook.invalid_json",
+              "webhook.method_not_allowed",
+              "webhook.idempotency_conflict",
+              "webhook.rate_limited",
+              "webhook.workflow_paused",
+              "webhook.unavailable",
+              "request.aborted",
+              "internal.unexpected"
+            ]
+          },
+          "requestId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+          },
+          "errors": {
+            "readOnly": true,
+            "maxItems": 100,
+            "type": "array",
+            "items": {
+              "readOnly": true,
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string",
+                  "maxLength": 1024
+                },
+                "code": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128
+                },
+                "message": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 500
+                }
+              },
+              "required": [
+                "path",
+                "code",
+                "message"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "type",
+          "title",
+          "status",
+          "code",
+          "requestId"
         ],
         "additionalProperties": false
       }
