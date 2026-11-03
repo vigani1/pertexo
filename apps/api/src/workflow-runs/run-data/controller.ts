@@ -1,33 +1,11 @@
+import { Controller, Req, UseInterceptors } from '@nestjs/common';
 import {
-  Controller,
-  Get,
-  Header,
-  Param,
-  Query,
-  Req,
-  UseGuards,
-  UseInterceptors,
-} from '@nestjs/common';
-import {
-  workflowNodeRunParamsSchema,
-  workflowRunParamsSchema,
-  workflowStepHealthParamsSchema,
-  workflowStepRunsParamsSchema,
-  workflowStepRunsQuerySchema,
-} from '@pertexo/contracts';
+  workflowRunDataRoutes as routes,
+  type RouteInput,
+} from '@pertexo/contracts/server';
 
-import { AutomationAuthenticationGuard } from '../../authentication/automation/guard.js';
-import { SessionAuthenticationGuard } from '../../workspaces/index.js';
-import { optionalAuthorizedWorkspace } from '../../workspaces/request/authenticated-context.js';
-import { RateLimit } from '../../platform/rate-limit/metadata.js';
-import {
-  actorFrom,
-  type WorkflowRunsRequest,
-} from '../http/request-context.js';
-import {
-  WorkflowRunDataReadGuard,
-  WorkflowRunReadGuard,
-} from '../http/guards.js';
+import { In, Route } from '../../workspaces/http/route.js';
+import { caller, type WorkflowRunsRequest } from '../http/request-context.js';
 import {
   GetWorkflowNodeRunInputUseCase,
   GetWorkflowNodeRunDiagnosticsUseCase,
@@ -39,16 +17,14 @@ import {
 } from './use-cases.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
 import { runFailure } from '../../problems/context/normalize.js';
-import { parseRequestInput } from '../../platform/http/request-input.js';
 
 /**
  * A run's input and each step's output (ADR 050), and each step across its
- * workflow's recent runs (ADR 051). All of it can hold sensitive data, so no
- * browser or proxy keeps a copy.
+ * workflow's recent runs (ADR 051). All of it can hold sensitive data, so the
+ * routes tell browsers and proxies to keep no copy.
  */
 @UseInterceptors(domainErrors(runFailure))
-@Controller('v1/workspaces/:workspaceId')
-@RateLimit('authenticated_read')
+@Controller()
 export class WorkflowRunDataController {
   // Nest resolves these dependencies positionally; grouping them would change DI.
   // eslint-disable-next-line max-params
@@ -62,122 +38,85 @@ export class WorkflowRunDataController {
     private readonly listStepRuns: ListWorkflowStepRunsUseCase,
   ) {}
 
-  @Get('runs/:runId/variables')
-  @Header('Cache-Control', 'private, no-store')
-  @UseGuards(SessionAuthenticationGuard, WorkflowRunReadGuard)
-  public async getVariables(
+  @Route(routes.variables)
+  public getVariables(
     @Req() request: WorkflowRunsRequest,
-    @Param() params: unknown,
+    @In() { params }: RouteInput<typeof routes.variables>,
   ) {
-    const route = workflowRunParamsSchema.parse(params);
     return this.getRunVariables.execute({
-      actor: actorFrom(request, route.workspaceId),
-      routeWorkspaceId: route.workspaceId,
-      ...optionalAuthorizedWorkspace(request),
-      runId: route.runId,
+      ...caller(request, params),
+      runId: params.runId,
     });
   }
 
-  @Get('runs/:runId/input')
-  @Header('Cache-Control', 'private, no-store')
-  @UseGuards(AutomationAuthenticationGuard, WorkflowRunDataReadGuard)
-  public async getInput(
+  @Route(routes.input)
+  public getInput(
     @Req() request: WorkflowRunsRequest,
-    @Param() params: unknown,
+    @In() { params }: RouteInput<typeof routes.input>,
   ) {
-    const route = workflowRunParamsSchema.parse(params);
     return this.getRunInput.execute({
-      actor: actorFrom(request, route.workspaceId),
-      routeWorkspaceId: route.workspaceId,
-      ...optionalAuthorizedWorkspace(request),
-      runId: route.runId,
+      ...caller(request, params),
+      runId: params.runId,
     });
   }
 
-  @Get('runs/:runId/node-runs/:nodeRunId/output')
-  @Header('Cache-Control', 'private, no-store')
-  @UseGuards(AutomationAuthenticationGuard, WorkflowRunDataReadGuard)
-  public async getOutput(
+  @Route(routes.nodeOutput)
+  public getOutput(
     @Req() request: WorkflowRunsRequest,
-    @Param() params: unknown,
+    @In() { params }: RouteInput<typeof routes.nodeOutput>,
   ) {
-    const route = workflowNodeRunParamsSchema.parse(params);
     return this.getNodeRunOutput.execute({
-      actor: actorFrom(request, route.workspaceId),
-      routeWorkspaceId: route.workspaceId,
-      ...optionalAuthorizedWorkspace(request),
-      runId: route.runId,
-      nodeRunId: route.nodeRunId,
+      ...caller(request, params),
+      runId: params.runId,
+      nodeRunId: params.nodeRunId,
     });
   }
 
-  @Get('runs/:runId/node-runs/:nodeRunId/input')
-  @Header('Cache-Control', 'private, no-store')
-  @UseGuards(AutomationAuthenticationGuard, WorkflowRunDataReadGuard)
-  public async getNodeInput(
+  @Route(routes.nodeInput)
+  public getNodeInput(
     @Req() request: WorkflowRunsRequest,
-    @Param() params: unknown,
+    @In() { params }: RouteInput<typeof routes.nodeInput>,
   ) {
-    const route = workflowNodeRunParamsSchema.parse(params);
     return this.getNodeRunInput.execute({
-      actor: actorFrom(request, route.workspaceId),
-      routeWorkspaceId: route.workspaceId,
-      ...optionalAuthorizedWorkspace(request),
-      runId: route.runId,
-      nodeRunId: route.nodeRunId,
+      ...caller(request, params),
+      runId: params.runId,
+      nodeRunId: params.nodeRunId,
     });
   }
 
-  @Get('runs/:runId/node-runs/:nodeRunId/diagnostics')
-  @Header('Cache-Control', 'private, no-store')
-  @UseGuards(SessionAuthenticationGuard, WorkflowRunReadGuard)
-  public async getDiagnostics(
+  @Route(routes.diagnostics)
+  public getDiagnostics(
     @Req() request: WorkflowRunsRequest,
-    @Param() params: unknown,
+    @In() { params }: RouteInput<typeof routes.diagnostics>,
   ) {
-    const route = workflowNodeRunParamsSchema.parse(params);
     return this.getNodeRunDiagnostics.execute({
-      actor: actorFrom(request, route.workspaceId),
-      routeWorkspaceId: route.workspaceId,
-      ...optionalAuthorizedWorkspace(request),
-      runId: route.runId,
-      nodeRunId: route.nodeRunId,
+      ...caller(request, params),
+      runId: params.runId,
+      nodeRunId: params.nodeRunId,
     });
   }
 
-  @Get('workflows/:workflowId/step-health')
-  @Header('Cache-Control', 'private, no-store')
-  @UseGuards(SessionAuthenticationGuard, WorkflowRunReadGuard)
-  public async getWorkflowStepHealth(
+  @Route(routes.stepHealth)
+  public getWorkflowStepHealth(
     @Req() request: WorkflowRunsRequest,
-    @Param() params: unknown,
+    @In() { params }: RouteInput<typeof routes.stepHealth>,
   ) {
-    const route = workflowStepHealthParamsSchema.parse(params);
     return this.getStepHealth.execute({
-      actor: actorFrom(request, route.workspaceId),
-      routeWorkspaceId: route.workspaceId,
-      ...optionalAuthorizedWorkspace(request),
-      workflowId: route.workflowId,
+      ...caller(request, params),
+      workflowId: params.workflowId,
     });
   }
 
-  @Get('workflows/:workflowId/steps/:nodeId/runs')
-  @Header('Cache-Control', 'private, no-store')
-  @UseGuards(SessionAuthenticationGuard, WorkflowRunReadGuard)
-  public async listWorkflowStepRuns(
+  @Route(routes.stepRuns)
+  public listWorkflowStepRuns(
     @Req() request: WorkflowRunsRequest,
-    @Param() params: unknown,
-    @Query() query: unknown,
+    @In() { params, query }: RouteInput<typeof routes.stepRuns>,
   ) {
-    const route = workflowStepRunsParamsSchema.parse(params);
-    const { limit } = parseRequestInput(workflowStepRunsQuerySchema, query);
     return this.listStepRuns.execute({
-      actor: actorFrom(request, route.workspaceId),
-      routeWorkspaceId: route.workspaceId,
-      ...optionalAuthorizedWorkspace(request),
-      workflowId: route.workflowId,
-      nodeId: route.nodeId,
-      ...(limit === undefined ? {} : { limit }),
+      ...caller(request, params),
+      workflowId: params.workflowId,
+      nodeId: params.nodeId,
+      ...(query.limit === undefined ? {} : { limit: query.limit }),
     });
   }
 }

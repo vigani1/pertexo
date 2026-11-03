@@ -1,90 +1,54 @@
+import { Controller, Req, UseInterceptors } from '@nestjs/common';
 import {
-  Body,
-  Controller,
-  Get,
-  HttpCode,
-  Param,
-  Post,
-  Req,
-  UseGuards,
-  UseInterceptors,
-} from '@nestjs/common';
-import {
-  workflowRecoveryRequestSchema,
-  workflowRunParamsSchema,
-} from '@pertexo/contracts';
-import { requestIdempotencyKey } from '../../platform/http/index.js';
+  workflowRunRoutes as routes,
+  type RouteInput,
+} from '@pertexo/contracts/server';
 import { singleRequestHeader } from '../../platform/http/request-headers.js';
-import { RateLimit } from '../../platform/rate-limit/metadata.js';
-import {
-  CsrfProtectionGuard,
-  SessionAuthenticationGuard,
-} from '../../workspaces/index.js';
-import {
-  authenticatedRequestIdentifiers,
-  optionalAuthorizedWorkspace,
-} from '../../workspaces/request/authenticated-context.js';
-import {
-  actorFrom,
-  type WorkflowRunsRequest,
-} from '../http/request-context.js';
-import { WorkflowRunReplayGuard } from '../http/guards.js';
+import { In, Route } from '../../workspaces/http/route.js';
+import { authenticatedRequestIdentifiers } from '../../workspaces/request/authenticated-context.js';
+import { caller, type WorkflowRunsRequest } from '../http/request-context.js';
 import { GetRunRecoveryUseCase, RecoverRunUseCase } from './use-cases.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
 import { runFailure } from '../../problems/context/normalize.js';
-import { parseRequestInput } from '../../platform/http/request-input.js';
 
 @UseInterceptors(domainErrors(runFailure))
-@Controller('v1/workspaces/:workspaceId/runs/:runId')
-@UseGuards(SessionAuthenticationGuard, WorkflowRunReplayGuard)
+@Controller()
 export class RunRecoveryController {
   public constructor(
     private readonly preview: GetRunRecoveryUseCase,
     private readonly recover: RecoverRunUseCase,
   ) {}
-  @Get('recovery')
-  @RateLimit('authenticated_read')
-  public async get(
+
+  @Route(routes.recovery)
+  public get(
     @Req() request: WorkflowRunsRequest,
-    @Param() params: unknown,
+    @In() { params }: RouteInput<typeof routes.recovery>,
   ) {
-    const route = workflowRunParamsSchema.parse(params);
     return this.preview.execute({
-      actor: actorFrom(request, route.workspaceId),
-      routeWorkspaceId: route.workspaceId,
-      ...optionalAuthorizedWorkspace(request),
-      runId: route.runId,
+      ...caller(request, params),
+      runId: params.runId,
     });
   }
-  @Post('recover')
-  @HttpCode(202)
-  @RateLimit('run_admission')
-  @UseGuards(CsrfProtectionGuard)
-  public async start(
+
+  @Route(routes.recover)
+  public start(
     @Req() request: WorkflowRunsRequest,
-    @Param() params: unknown,
-    @Body() body: unknown,
+    @In() { params, body, idempotencyKey }: RouteInput<typeof routes.recover>,
   ) {
-    const route = workflowRunParamsSchema.parse(params);
-    const input = parseRequestInput(workflowRecoveryRequestSchema, body);
     const traceparent = singleRequestHeader(request.headers, 'traceparent');
     return this.recover.execute({
-      actor: actorFrom(request, route.workspaceId),
-      routeWorkspaceId: route.workspaceId,
-      ...optionalAuthorizedWorkspace(request),
-      runId: route.runId,
-      workflowVersionId: input.workflowVersionId,
-      nodeRunId: input.nodeRunId,
-      ...(input.deadlineAt === undefined
+      ...caller(request, params),
+      runId: params.runId,
+      workflowVersionId: body.workflowVersionId,
+      nodeRunId: body.nodeRunId,
+      ...(body.deadlineAt === undefined ? {} : { deadlineAt: body.deadlineAt }),
+      ...(body.acknowledgePossibleEffects === undefined
         ? {}
-        : { deadlineAt: input.deadlineAt }),
-      ...(input.acknowledgePossibleEffects === undefined
+        : { acknowledgePossibleEffects: body.acknowledgePossibleEffects }),
+      ...(body.acknowledgeUnknownOutcome === undefined
         ? {}
-        : { acknowledgePossibleEffects: input.acknowledgePossibleEffects }),
-      ...(input.acknowledgeUnknownOutcome === undefined
-        ? {}
-        : { acknowledgeUnknownOutcome: input.acknowledgeUnknownOutcome }),
-      idempotencyKey: requestIdempotencyKey(request.headers),
+        : { acknowledgeUnknownOutcome: body.acknowledgeUnknownOutcome }),
+      idempotencyKey,
       ...authenticatedRequestIdentifiers(request),
       ...(traceparent === undefined ? {} : { traceparent }),
     });

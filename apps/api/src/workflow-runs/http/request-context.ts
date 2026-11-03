@@ -1,5 +1,8 @@
 import type { IdentityWorkspaceRequest } from '../../workspaces/types.js';
-import { projectAuthenticatedWorkspaceContext } from '../../workspaces/request/authenticated-context.js';
+import {
+  optionalAuthorizedWorkspace,
+  projectAuthenticatedWorkspaceContext,
+} from '../../workspaces/request/authenticated-context.js';
 
 export type WorkflowRunsRequest = Readonly<
   Pick<
@@ -20,6 +23,18 @@ export type WorkflowRunsRequest = Readonly<
   }
 >;
 
-export function actorFrom(request: WorkflowRunsRequest, workspaceId: string) {
+function actorFrom(request: WorkflowRunsRequest, workspaceId: string) {
   return projectAuthenticatedWorkspaceContext(request, workspaceId).actor;
+}
+
+/** Who is asking, in which workspace, with what the guard already proved. */
+export function caller(
+  request: WorkflowRunsRequest,
+  { workspaceId }: Readonly<{ workspaceId: string }>,
+) {
+  return {
+    actor: actorFrom(request, workspaceId),
+    routeWorkspaceId: workspaceId,
+    ...optionalAuthorizedWorkspace(request),
+  };
 }

@@ -1,54 +1,32 @@
+import { Controller, Req, UseInterceptors } from '@nestjs/common';
 import {
-  Controller,
-  Get,
-  Header,
-  Param,
-  Query,
-  Req,
-  UseGuards,
-  UseInterceptors,
-} from '@nestjs/common';
-import {
-  usageTrendsQuerySchema,
-  workflowRunListParamsSchema,
-} from '@pertexo/contracts';
-import { SessionAuthenticationGuard } from '../../workspaces/index.js';
-import { optionalAuthorizedWorkspace } from '../../workspaces/request/authenticated-context.js';
+  usageRoutes as routes,
+  type RouteInput,
+} from '@pertexo/contracts/server';
+
+import { In, Route } from '../../workspaces/http/route.js';
 import { withRequestOperationSignal } from '../../platform/http/index.js';
 import type { AbortableRequest } from '../../platform/http/request-operation-signal.js';
-import { RateLimit } from '../../platform/rate-limit/metadata.js';
-import { WorkflowRunReadGuard } from '../http/guards.js';
-import {
-  actorFrom,
-  type WorkflowRunsRequest,
-} from '../http/request-context.js';
+import { caller, type WorkflowRunsRequest } from '../http/request-context.js';
 import { GetUsageTrendsUseCase } from './trends.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
 import { runFailure } from '../../problems/context/normalize.js';
-import { parseRequestInput } from '../../platform/http/request-input.js';
 
 @UseInterceptors(domainErrors(runFailure))
-@Controller('v1/workspaces/:workspaceId')
-@RateLimit('authenticated_read')
+@Controller()
 export class UsageTrendsController {
   constructor(private readonly trends: GetUsageTrendsUseCase) {}
-  @Get('usage-trends')
-  @Header('Cache-Control', 'private, no-store')
-  @UseGuards(SessionAuthenticationGuard, WorkflowRunReadGuard)
-  async get(
+
+  @Route(routes.trends)
+  get(
     @Req() request: WorkflowRunsRequest & AbortableRequest,
-    @Param() params: unknown,
-    @Query() query: unknown,
+    @In() { params, query }: RouteInput<typeof routes.trends>,
   ) {
-    const route = workflowRunListParamsSchema.parse(params);
-    const { period = '30d' } = parseRequestInput(usageTrendsQuerySchema, query);
     return withRequestOperationSignal(request, (signal) =>
       this.trends.execute({
-        actor: actorFrom(request, route.workspaceId),
-        routeWorkspaceId: route.workspaceId,
-        period,
+        ...caller(request, params),
+        period: query.period ?? '30d',
         signal,
-        ...optionalAuthorizedWorkspace(request),
       }),
     );
   }

@@ -1256,7 +1256,6 @@
             "name": "workspaceId",
             "in": "path",
             "required": true,
-            "description": "Workspace identifier",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
@@ -1295,6 +1294,28 @@
               "type": "string",
               "format": "uuid",
               "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "runValueKey",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 50,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]*$"
+            }
+          },
+          {
+            "name": "runValue",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "maxLength": 255
             }
           },
           {
@@ -1496,7 +1517,6 @@
             "name": "workspaceId",
             "in": "path",
             "required": true,
-            "description": "Workspace identifier",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
@@ -1508,7 +1528,6 @@
             "name": "workflowId",
             "in": "path",
             "required": true,
-            "description": "Workflow identifier",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
@@ -1630,7 +1649,6 @@
             "name": "workspaceId",
             "in": "path",
             "required": true,
-            "description": "Workspace identifier",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
@@ -1642,7 +1660,6 @@
             "name": "runId",
             "in": "path",
             "required": true,
-            "description": "Workflow run identifier",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
@@ -1729,7 +1746,6 @@
             "name": "workspaceId",
             "in": "path",
             "required": true,
-            "description": "Workspace identifier",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
@@ -1741,7 +1757,6 @@
             "name": "runId",
             "in": "path",
             "required": true,
-            "description": "Workflow run identifier",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
@@ -1818,7 +1833,6 @@
             "name": "workspaceId",
             "in": "path",
             "required": true,
-            "description": "Workspace identifier",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
@@ -1830,7 +1844,6 @@
             "name": "runId",
             "in": "path",
             "required": true,
-            "description": "Workflow run identifier",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
@@ -1842,7 +1855,6 @@
             "name": "nodeRunId",
             "in": "path",
             "required": true,
-            "description": "Node run identifier",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
@@ -1919,7 +1931,6 @@
             "name": "workspaceId",
             "in": "path",
             "required": true,
-            "description": "Workspace identifier",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
@@ -1931,7 +1942,6 @@
             "name": "runId",
             "in": "path",
             "required": true,
-            "description": "Workflow run identifier",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
@@ -1943,7 +1953,6 @@
             "name": "nodeRunId",
             "in": "path",
             "required": true,
-            "description": "Node run identifier",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
@@ -2020,7 +2029,6 @@
             "name": "workspaceId",
             "in": "path",
             "required": true,
-            "description": "Workspace identifier",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
@@ -2032,7 +2040,6 @@
             "name": "runId",
             "in": "path",
             "required": true,
-            "description": "Workflow run identifier",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
@@ -11209,6 +11216,7 @@
       },
       "WorkflowRunStartRequest": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "default": {},
         "type": "object",
         "properties": {
           "input": {},
@@ -12466,6 +12474,7 @@
       },
       "WorkflowRunCancelRequest": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "default": {},
         "type": "object",
         "properties": {
           "reason": {

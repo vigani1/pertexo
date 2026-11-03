@@ -1,58 +1,31 @@
+import { Controller, Req, UseInterceptors } from '@nestjs/common';
 import {
-  Controller,
-  Get,
-  Header,
-  Param,
-  Req,
-  UseGuards,
-  UseInterceptors,
-} from '@nestjs/common';
-import { workflowRunListParamsSchema } from '@pertexo/contracts';
+  usageRoutes as routes,
+  type RouteInput,
+} from '@pertexo/contracts/server';
 
-import { SessionAuthenticationGuard } from '../../workspaces/index.js';
-import { optionalAuthorizedWorkspace } from '../../workspaces/request/authenticated-context.js';
+import { In, Route } from '../../workspaces/http/route.js';
 import { withRequestOperationSignal } from '../../platform/http/index.js';
 import type { AbortableRequest } from '../../platform/http/request-operation-signal.js';
-import { RateLimit } from '../../platform/rate-limit/metadata.js';
-import {
-  UsageCapacityArtifactReadGuard,
-  WorkflowRunReadGuard,
-} from '../http/guards.js';
-import {
-  actorFrom,
-  type WorkflowRunsRequest,
-} from '../http/request-context.js';
+import { caller, type WorkflowRunsRequest } from '../http/request-context.js';
 import { GetUsageCapacityUseCase } from './capacity.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
 import { runFailure } from '../../problems/context/normalize.js';
 
 @UseInterceptors(domainErrors(runFailure))
-@Controller('v1/workspaces/:workspaceId')
-@RateLimit('authenticated_read')
+@Controller()
 export class UsageCapacityController {
   public constructor(
     private readonly getUsageCapacity: GetUsageCapacityUseCase,
   ) {}
 
-  @Get('usage-capacity')
-  @Header('Cache-Control', 'private, no-store')
-  @UseGuards(
-    SessionAuthenticationGuard,
-    WorkflowRunReadGuard,
-    UsageCapacityArtifactReadGuard,
-  )
-  public async getCapacity(
+  @Route(routes.capacity)
+  public getCapacity(
     @Req() request: WorkflowRunsRequest & AbortableRequest,
-    @Param() params: unknown,
+    @In() { params }: RouteInput<typeof routes.capacity>,
   ) {
-    const route = workflowRunListParamsSchema.parse(params);
     return withRequestOperationSignal(request, (signal) =>
-      this.getUsageCapacity.execute({
-        actor: actorFrom(request, route.workspaceId),
-        routeWorkspaceId: route.workspaceId,
-        ...optionalAuthorizedWorkspace(request),
-        signal,
-      }),
+      this.getUsageCapacity.execute({ ...caller(request, params), signal }),
     );
   }
 }

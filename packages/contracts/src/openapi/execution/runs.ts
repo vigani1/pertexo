@@ -1,136 +1,63 @@
-import {
-  usageTrendPeriodSchema,
-  usageTrendsResponseSchema,
-} from '../../schemas/execution/usage-trends.js';
-import { workflowRunVariablesResponseSchema } from '../../schemas/identity/variables.js';
 import { formSchemas, formPaths } from './forms.js';
 import { formUploadPaths, formUploadSchemas } from './form-uploads.js';
 import { pendingTaskPaths, pendingTaskSchemas } from './pending-tasks.js';
 import {
   authenticatedComponents,
-  automationSecurity,
-  automationCsrfHeaderParameter,
-  csrfHeaderParameter,
-  idempotencyHeaderParameter,
-  jsonRequest,
-  jsonResponse,
   jsonSchema,
   problemResponse,
-  responseReference,
-  uuidPathParameter as pathParameter,
 } from '../primitives.js';
-
 import { apiProblemSchema } from '../../errors/api-problem.js';
-import { projectContractSchema } from '../schema-projection.js';
+import { routePaths, routeSchemas } from '../../routes/openapi.js';
+import { workflowRunRoutes } from '../../routes/execution/runs.js';
+import { workflowRunDataRoutes } from '../../routes/execution/run-data.js';
+import { usageRoutes } from '../../routes/execution/usage.js';
 import {
-  lastRunEventIdHeaderSchema,
-  workflowRunCreatedAtSchema,
-  workflowRunCursorSchema,
-  workflowRunListResponseSchema,
-  workflowRunListQuerySchema,
-  workflowRunPageLimitSchema,
-  workflowRunStatusSchema,
   workflowNodeRunSummarySchema,
-  workflowRunCancelRequestSchema,
-  workflowRunCancelResponseSchema,
-  workflowRunEventSchema,
-  workflowRunResponseSchema,
-  workflowRunReplayRequestSchema,
-  workflowRecoveryRequestSchema,
-  workflowRecoveryPreviewSchema,
   workflowRecoveryUnavailableProblemSchema,
-  workflowRunStartRequestSchema,
-  workflowRunStartParamsSchema,
-  workflowRunStartResponseSchema,
-  workflowRunStatisticsBreakdownSchema,
-  workflowRunStatisticsResponseSchema,
-  usageCapacityResponseSchema,
-  workflowRunStatisticsWindowSchema,
-  workflowRunSummarySchema,
-  workflowRunReadSummarySchema,
+  workflowRunEventSchema,
   workflowRunListItemSchema,
-  workflowRunInputResponseSchema,
-  workflowNodeRunOutputResponseSchema,
-  workflowNodeRunInputResponseSchema,
-  workflowNodeRunDiagnosticsResponseSchema,
-  workflowStepHealthResponseSchema,
-  workflowStepRunsResponseSchema,
-  workflowStepRunsQuerySchema,
+  workflowRunReadSummarySchema,
+  workflowRunSummarySchema,
 } from '../../schemas/execution/runs.js';
+
+const routes = [
+  workflowRunDataRoutes.variables,
+  usageRoutes.trends,
+  usageRoutes.capacity,
+  workflowRunRoutes.list,
+  workflowRunRoutes.statistics,
+  workflowRunRoutes.start,
+  workflowRunRoutes.get,
+  workflowRunDataRoutes.input,
+  workflowRunDataRoutes.nodeOutput,
+  workflowRunDataRoutes.diagnostics,
+  workflowRunDataRoutes.nodeInput,
+  workflowRunDataRoutes.stepHealth,
+  workflowRunDataRoutes.stepRuns,
+  workflowRunRoutes.events,
+  workflowRunRoutes.cancel,
+  workflowRunRoutes.recovery,
+  workflowRunRoutes.recover,
+  workflowRunRoutes.replay,
+];
 
 const schemas = Object.freeze({
   ...pendingTaskSchemas,
   ...formSchemas,
   ...formUploadSchemas,
-  WorkflowRunVariablesResponse: jsonSchema(
-    workflowRunVariablesResponseSchema,
-    'output',
-  ),
-  WorkflowRecoveryRequest: jsonSchema(workflowRecoveryRequestSchema, 'input'),
-  WorkflowRecoveryPreview: jsonSchema(workflowRecoveryPreviewSchema, 'output'),
+  ApiProblem: jsonSchema(apiProblemSchema, 'output'),
+  ...routeSchemas(routes),
+  // Shapes inside the answers, and the recovery refusal, named for clients.
   WorkflowRecoveryUnavailableProblem: jsonSchema(
     workflowRecoveryUnavailableProblemSchema,
-    'output',
-  ),
-  UsageTrendsResponse: jsonSchema(usageTrendsResponseSchema, 'output'),
-  UsageCapacityResponse: jsonSchema(usageCapacityResponseSchema, 'output'),
-  ApiProblem: jsonSchema(apiProblemSchema, 'output'),
-  WorkflowRunStartRequest: jsonSchema(workflowRunStartRequestSchema, 'input'),
-  WorkflowRunReplayRequest: jsonSchema(workflowRunReplayRequestSchema, 'input'),
-  WorkflowRunStartResponse: jsonSchema(
-    workflowRunStartResponseSchema,
     'output',
   ),
   WorkflowRunSummary: jsonSchema(workflowRunSummarySchema, 'output'),
   WorkflowRunReadSummary: jsonSchema(workflowRunReadSummarySchema, 'output'),
   WorkflowRunListItem: jsonSchema(workflowRunListItemSchema, 'output'),
-  WorkflowRunListResponse: jsonSchema(workflowRunListResponseSchema, 'output'),
-  WorkflowRunStatisticsResponse: jsonSchema(
-    workflowRunStatisticsResponseSchema,
-    'output',
-  ),
-  WorkflowNodeRunDiagnosticsResponse: jsonSchema(
-    workflowNodeRunDiagnosticsResponseSchema,
-    'output',
-  ),
   WorkflowNodeRunSummary: jsonSchema(workflowNodeRunSummarySchema, 'output'),
-  WorkflowRunResponse: jsonSchema(workflowRunResponseSchema, 'output'),
-  WorkflowRunCancelRequest: jsonSchema(workflowRunCancelRequestSchema, 'input'),
-  WorkflowRunCancelResponse: jsonSchema(
-    workflowRunCancelResponseSchema,
-    'output',
-  ),
   WorkflowRunEvent: jsonSchema(workflowRunEventSchema, 'output'),
-  WorkflowStepHealthResponse: jsonSchema(
-    workflowStepHealthResponseSchema,
-    'output',
-  ),
-  WorkflowStepRunsResponse: jsonSchema(
-    workflowStepRunsResponseSchema,
-    'output',
-  ),
 });
-
-/** Stored run data is recursive JSON, which needs the shared projection. */
-function runDataSchemas() {
-  return Object.freeze({
-    WorkflowRunInputResponse: projectContractSchema(
-      'WorkflowRunInputResponse',
-      workflowRunInputResponseSchema,
-      'output',
-    ),
-    WorkflowNodeRunOutputResponse: projectContractSchema(
-      'WorkflowNodeRunOutputResponse',
-      workflowNodeRunOutputResponseSchema,
-      'output',
-    ),
-    WorkflowNodeRunInputResponse: projectContractSchema(
-      'WorkflowNodeRunInputResponse',
-      workflowNodeRunInputResponseSchema,
-      'output',
-    ),
-  });
-}
 
 const problemResponses = Object.freeze({
   BadRequest: problemResponse('Invalid request'),
@@ -142,36 +69,6 @@ const problemResponses = Object.freeze({
   Unexpected: problemResponse('Unexpected server error'),
 });
 
-const workspaceParameter = pathParameter('workspaceId', 'Workspace identifier');
-const workflowParameter = pathParameter('workflowId', 'Workflow identifier');
-const runParameter = pathParameter('runId', 'Workflow run identifier');
-const nodeRunParameter = pathParameter('nodeRunId', 'Node run identifier');
-const stepParameter = {
-  name: 'nodeId',
-  in: 'path',
-  required: true,
-  description: 'Step (node) identifier in the workflow graph',
-  schema: { type: 'string', minLength: 1, maxLength: 256 },
-} as const;
-const csrfParameter = csrfHeaderParameter();
-const idempotencyParameter = idempotencyHeaderParameter();
-const lastEventIdParameter = {
-  name: 'Last-Event-ID',
-  in: 'header',
-  required: false,
-  schema: jsonSchema(lastRunEventIdHeaderSchema, 'input'),
-} as const;
-const queryParameter = (
-  name: string,
-  schema: Parameters<typeof jsonSchema>[0],
-) =>
-  ({
-    name,
-    in: 'query',
-    required: false,
-    schema: jsonSchema(schema, 'input'),
-  }) as const;
-
 export const workflowRunsOpenApiDocument = Object.freeze({
   openapi: '3.1.0',
   info: { title: 'Pertexo Workflow Runs API', version: '1.0.0' },
@@ -179,442 +76,9 @@ export const workflowRunsOpenApiDocument = Object.freeze({
     ...pendingTaskPaths,
     ...formPaths,
     ...formUploadPaths,
-    '/v1/workspaces/{workspaceId}/runs/{runId}/variables': {
-      get: {
-        operationId: 'getWorkflowRunVariables',
-        security: [{ cookieSession: [] }],
-        parameters: [pathParameter('workspaceId'), pathParameter('runId')],
-        responses: {
-          '200': jsonResponse(
-            'Retained run variable snapshot; null after logical detail expiry',
-            'WorkflowRunVariablesResponse',
-          ),
-          '401': responseReference('Unauthenticated'),
-          '404': responseReference('NotFound'),
-          '429': problemResponse('Rate limited'),
-          '500': responseReference('Unexpected'),
-        },
-      },
-    },
-    '/v1/workspaces/{workspaceId}/usage-trends': {
-      get: {
-        operationId: 'getWorkspaceUsageTrends',
-        security: [{ cookieSession: [] }],
-        parameters: [
-          workspaceParameter,
-          queryParameter('period', usageTrendPeriodSchema),
-        ],
-        responses: {
-          '200': jsonResponse(
-            'Retained ordinary-run trends over UTC days; not billing',
-            'UsageTrendsResponse',
-          ),
-          '400': responseReference('BadRequest'),
-          '401': responseReference('Unauthenticated'),
-          '403': responseReference('Forbidden'),
-          '404': responseReference('NotFound'),
-          '429': problemResponse('Rate limited'),
-          '500': responseReference('Unexpected'),
-        },
-      },
-    },
-    '/v1/workspaces/{workspaceId}/usage-capacity': {
-      get: {
-        operationId: 'getWorkspaceUsageCapacity',
-        security: [{ cookieSession: [] }],
-        parameters: [workspaceParameter],
-        responses: {
-          '200': jsonResponse(
-            'Current operational capacity; not billing',
-            'UsageCapacityResponse',
-          ),
-          '400': responseReference('BadRequest'),
-          '401': responseReference('Unauthenticated'),
-          '403': responseReference('Forbidden'),
-          '404': responseReference('NotFound'),
-          '500': responseReference('Unexpected'),
-        },
-      },
-    },
-    '/v1/workspaces/{workspaceId}/runs': {
-      get: {
-        operationId: 'listWorkflowRuns',
-        'x-pertexo-api-token-scopes': ['run:read'],
-        security: automationSecurity,
-        parameters: [
-          workspaceParameter,
-          queryParameter('limit', workflowRunPageLimitSchema),
-          queryParameter('after', workflowRunCursorSchema),
-          queryParameter(
-            'workflowId',
-            workflowRunStartParamsSchema.shape.workflowId,
-          ),
-          queryParameter(
-            'workflowNamePrefix',
-            workflowRunListQuerySchema.shape.workflowNamePrefix,
-          ),
-          queryParameter('status', workflowRunStatusSchema),
-          queryParameter('createdAtFrom', workflowRunCreatedAtSchema),
-          queryParameter('createdAtBefore', workflowRunCreatedAtSchema),
-        ],
-        responses: {
-          '429': problemResponse('Rate limited; see Retry-After'),
-          '503': problemResponse(
-            'Automation token authentication, limiter or operation dependencies unavailable',
-          ),
-          '200': jsonResponse('Workflow runs', 'WorkflowRunListResponse'),
-          '400': responseReference('BadRequest'),
-          '401': responseReference('Unauthenticated'),
-          '403': responseReference('Forbidden'),
-          '404': responseReference('NotFound'),
-          '500': responseReference('Unexpected'),
-        },
-      },
-    },
-    '/v1/workspaces/{workspaceId}/run-statistics': {
-      get: {
-        operationId: 'getWorkflowRunStatistics',
-        security: [{ cookieSession: [] }],
-        parameters: [
-          workspaceParameter,
-          queryParameter('window', workflowRunStatisticsWindowSchema),
-          queryParameter('breakdown', workflowRunStatisticsBreakdownSchema),
-        ],
-        responses: {
-          '200': jsonResponse(
-            'Exact run counts for one snapshot',
-            'WorkflowRunStatisticsResponse',
-          ),
-          '400': responseReference('BadRequest'),
-          '401': responseReference('Unauthenticated'),
-          '403': responseReference('Forbidden'),
-          '404': responseReference('NotFound'),
-          '500': responseReference('Unexpected'),
-        },
-      },
-    },
-    '/v1/workspaces/{workspaceId}/workflows/{workflowId}/runs': {
-      post: {
-        operationId: 'startWorkflowRun',
-        'x-pertexo-api-token-scopes': ['run:start'],
-        security: automationSecurity,
-        parameters: [
-          workspaceParameter,
-          workflowParameter,
-          automationCsrfHeaderParameter(),
-          idempotencyParameter,
-        ],
-        requestBody: {
-          ...jsonRequest('WorkflowRunStartRequest'),
-          required: false,
-        },
-        responses: {
-          '429': problemResponse('Rate limited; see Retry-After'),
-          '503': problemResponse(
-            'Automation token authentication, limiter or operation dependencies unavailable',
-          ),
-          '202': jsonResponse(
-            'Workflow run accepted',
-            'WorkflowRunStartResponse',
-          ),
-          '400': responseReference('BadRequest'),
-          '401': responseReference('Unauthenticated'),
-          '403': responseReference('Forbidden'),
-          '404': responseReference('NotFound'),
-          '409': responseReference('Conflict'),
-          '422': responseReference('UnprocessableEntity'),
-          '500': responseReference('Unexpected'),
-        },
-      },
-    },
-    '/v1/workspaces/{workspaceId}/runs/{runId}': {
-      get: {
-        operationId: 'getWorkflowRun',
-        'x-pertexo-api-token-scopes': ['run:read'],
-        security: automationSecurity,
-        parameters: [workspaceParameter, runParameter],
-        responses: {
-          '429': problemResponse('Rate limited; see Retry-After'),
-          '503': problemResponse(
-            'Automation token authentication, limiter or operation dependencies unavailable',
-          ),
-          '200': jsonResponse('Workflow run', 'WorkflowRunResponse'),
-          '400': responseReference('BadRequest'),
-          '401': responseReference('Unauthenticated'),
-          '403': responseReference('Forbidden'),
-          '404': responseReference('NotFound'),
-          '500': responseReference('Unexpected'),
-        },
-      },
-    },
-    '/v1/workspaces/{workspaceId}/runs/{runId}/input': {
-      get: {
-        operationId: 'getWorkflowRunInput',
-        'x-pertexo-api-token-scopes': ['run:read-data'],
-        security: automationSecurity,
-        parameters: [workspaceParameter, runParameter],
-        responses: {
-          '429': problemResponse('Rate limited; see Retry-After'),
-          '200': jsonResponse(
-            'The input the run started with',
-            'WorkflowRunInputResponse',
-          ),
-          '400': responseReference('BadRequest'),
-          '401': responseReference('Unauthenticated'),
-          '403': responseReference('Forbidden'),
-          '404': responseReference('NotFound'),
-          '500': responseReference('Unexpected'),
-        },
-      },
-    },
-    '/v1/workspaces/{workspaceId}/runs/{runId}/node-runs/{nodeRunId}/output': {
-      get: {
-        operationId: 'getWorkflowNodeRunOutput',
-        'x-pertexo-api-token-scopes': ['run:read-data'],
-        security: automationSecurity,
-        parameters: [workspaceParameter, runParameter, nodeRunParameter],
-        responses: {
-          '429': problemResponse('Rate limited; see Retry-After'),
-          '200': jsonResponse(
-            'The output one step run produced',
-            'WorkflowNodeRunOutputResponse',
-          ),
-          '400': responseReference('BadRequest'),
-          '401': responseReference('Unauthenticated'),
-          '403': responseReference('Forbidden'),
-          '404': responseReference('NotFound'),
-          '500': responseReference('Unexpected'),
-        },
-      },
-    },
-    '/v1/workspaces/{workspaceId}/runs/{runId}/node-runs/{nodeRunId}/diagnostics':
-      {
-        get: {
-          operationId: 'getWorkflowNodeRunDiagnostics',
-          security: [{ cookieSession: [] }],
-          parameters: [workspaceParameter, runParameter, nodeRunParameter],
-          responses: {
-            '200': jsonResponse(
-              'Private Code diagnostics for the current step attempt',
-              'WorkflowNodeRunDiagnosticsResponse',
-            ),
-            '400': responseReference('BadRequest'),
-            '401': responseReference('Unauthenticated'),
-            '403': responseReference('Forbidden'),
-            '404': responseReference('NotFound'),
-            '500': responseReference('Unexpected'),
-          },
-        },
-      },
-    '/v1/workspaces/{workspaceId}/runs/{runId}/node-runs/{nodeRunId}/input': {
-      get: {
-        operationId: 'getWorkflowNodeRunInput',
-        'x-pertexo-api-token-scopes': ['run:read-data'],
-        security: automationSecurity,
-        parameters: [workspaceParameter, runParameter, nodeRunParameter],
-        responses: {
-          '429': problemResponse('Rate limited; see Retry-After'),
-          '200': jsonResponse(
-            'The input one step run received, when it was recorded',
-            'WorkflowNodeRunInputResponse',
-          ),
-          '400': responseReference('BadRequest'),
-          '401': responseReference('Unauthenticated'),
-          '403': responseReference('Forbidden'),
-          '404': responseReference('NotFound'),
-          '500': responseReference('Unexpected'),
-        },
-      },
-    },
-    '/v1/workspaces/{workspaceId}/workflows/{workflowId}/step-health': {
-      get: {
-        operationId: 'getWorkflowStepHealth',
-        security: [{ cookieSession: [] }],
-        parameters: [workspaceParameter, workflowParameter],
-        responses: {
-          '200': jsonResponse(
-            'Each step across the workflow’s last 100 runs',
-            'WorkflowStepHealthResponse',
-          ),
-          '400': responseReference('BadRequest'),
-          '401': responseReference('Unauthenticated'),
-          '403': responseReference('Forbidden'),
-          '404': responseReference('NotFound'),
-          '500': responseReference('Unexpected'),
-        },
-      },
-    },
-    '/v1/workspaces/{workspaceId}/workflows/{workflowId}/steps/{nodeId}/runs': {
-      get: {
-        operationId: 'listWorkflowStepRuns',
-        security: [{ cookieSession: [] }],
-        parameters: [
-          workspaceParameter,
-          workflowParameter,
-          stepParameter,
-          queryParameter('limit', workflowStepRunsQuerySchema.shape.limit),
-        ],
-        responses: {
-          '200': jsonResponse(
-            'One step’s runs in the workflow’s last 100 runs',
-            'WorkflowStepRunsResponse',
-          ),
-          '400': responseReference('BadRequest'),
-          '401': responseReference('Unauthenticated'),
-          '403': responseReference('Forbidden'),
-          '404': responseReference('NotFound'),
-          '500': responseReference('Unexpected'),
-        },
-      },
-    },
-    '/v1/workspaces/{workspaceId}/runs/{runId}/events': {
-      get: {
-        operationId: 'streamRunEvents',
-        security: [{ cookieSession: [] }],
-        parameters: [workspaceParameter, runParameter, lastEventIdParameter],
-        responses: {
-          '200': {
-            description: 'Ordered workflow run event stream',
-            content: {
-              'text/event-stream': {
-                schema: {
-                  type: 'string',
-                  description: 'SSE frames containing WorkflowRunEvent data',
-                },
-              },
-            },
-          },
-          '400': responseReference('BadRequest'),
-          '401': responseReference('Unauthenticated'),
-          '403': responseReference('Forbidden'),
-          '404': responseReference('NotFound'),
-          '500': responseReference('Unexpected'),
-        },
-      },
-    },
-    '/v1/workspaces/{workspaceId}/runs/{runId}/cancel': {
-      post: {
-        operationId: 'cancelWorkflowRun',
-        'x-pertexo-api-token-scopes': ['run:cancel'],
-        security: automationSecurity,
-        parameters: [
-          workspaceParameter,
-          runParameter,
-          automationCsrfHeaderParameter(),
-        ],
-        requestBody: {
-          ...jsonRequest('WorkflowRunCancelRequest'),
-          required: false,
-        },
-        responses: {
-          '429': problemResponse('Rate limited; see Retry-After'),
-          '503': problemResponse(
-            'Automation token authentication, limiter or operation dependencies unavailable',
-          ),
-          '200': jsonResponse(
-            'Workflow run cancellation requested',
-            'WorkflowRunCancelResponse',
-          ),
-          '400': responseReference('BadRequest'),
-          '401': responseReference('Unauthenticated'),
-          '403': responseReference('Forbidden'),
-          '404': responseReference('NotFound'),
-          '409': responseReference('Conflict'),
-          '500': responseReference('Unexpected'),
-        },
-      },
-    },
-    '/v1/workspaces/{workspaceId}/runs/{runId}/recovery': {
-      get: {
-        operationId: 'getWorkflowRunRecovery',
-        security: [{ cookieSession: [] }],
-        description:
-          'Requires run:replay in an active workspace. Bounded metadata preview; acceptance rechecks eligibility. No stored values are disclosed.',
-        parameters: [workspaceParameter, runParameter],
-        responses: {
-          '200': jsonResponse(
-            'Current recovery eligibility',
-            'WorkflowRecoveryPreview',
-          ),
-          '401': responseReference('Unauthenticated'),
-          '404': responseReference('NotFound'),
-          '409': responseReference('Conflict'),
-          '500': responseReference('Unexpected'),
-        },
-      },
-    },
-    '/v1/workspaces/{workspaceId}/runs/{runId}/recover': {
-      post: {
-        operationId: 'recoverWorkflowRun',
-        security: [{ cookieSession: [] }],
-        description:
-          'New run of the exact source version and input; completed steps are owned copies with no attempts. Possible effects require explicit acknowledgement. An unknown target requires separate acknowledgeUnknownOutcome; possible-effects acknowledgement alone is refused. Unknown outcomes outside the target remain refused. Exact retries use the retained 24-hour command key and current authority.',
-        parameters: [
-          workspaceParameter,
-          runParameter,
-          csrfParameter,
-          idempotencyParameter,
-        ],
-        requestBody: jsonRequest('WorkflowRecoveryRequest'),
-        responses: {
-          '202': jsonResponse(
-            'Recovery run accepted',
-            'WorkflowRunStartResponse',
-          ),
-          '400': responseReference('BadRequest'),
-          '401': responseReference('Unauthenticated'),
-          '403': responseReference('Forbidden'),
-          '404': responseReference('NotFound'),
-          '409': {
-            description: 'Recovery unavailable or command conflict',
-            content: {
-              'application/problem+json': {
-                schema: {
-                  oneOf: [
-                    {
-                      $ref: '#/components/schemas/WorkflowRecoveryUnavailableProblem',
-                    },
-                    { $ref: '#/components/schemas/ApiProblem' },
-                  ],
-                },
-              },
-            },
-          },
-          '429': problemResponse('Rate or queued-run limit reached'),
-          '500': responseReference('Unexpected'),
-        },
-      },
-    },
-    '/v1/workspaces/{workspaceId}/runs/{runId}/replay': {
-      post: {
-        operationId: 'replayWorkflowRun',
-        security: [{ cookieSession: [] }],
-        parameters: [
-          workspaceParameter,
-          runParameter,
-          csrfParameter,
-          idempotencyParameter,
-        ],
-        requestBody: jsonRequest('WorkflowRunReplayRequest'),
-        responses: {
-          '202': jsonResponse(
-            'Workflow run replay accepted',
-            'WorkflowRunStartResponse',
-          ),
-          '400': responseReference('BadRequest'),
-          '401': responseReference('Unauthenticated'),
-          '403': responseReference('Forbidden'),
-          '404': responseReference('NotFound'),
-          '409': responseReference('Conflict'),
-          '422': responseReference('UnprocessableEntity'),
-          '500': responseReference('Unexpected'),
-        },
-      },
-    },
+    ...routePaths(routes),
   },
-  components: authenticatedComponents(
-    { ...schemas, ...runDataSchemas() },
-    problemResponses,
-    { automation: true },
-  ),
+  components: authenticatedComponents(schemas, problemResponses, {
+    automation: true,
+  }),
 });
