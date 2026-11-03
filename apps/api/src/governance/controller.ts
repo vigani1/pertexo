@@ -16,6 +16,7 @@ import { withRequestOperationSignal } from '../platform/http/index.js';
 import type { AbortableRequest } from '../platform/http/request-operation-signal.js';
 import { CsvExportAdmission } from '../platform/http/csv/admission.js';
 import { decodeCsvDownloadRequest } from '../platform/http/csv/request.js';
+import { parseRequestInput } from '../platform/http/request-input.js';
 import { sendCsvDownload } from '../platform/http/csv/response.js';
 import { GOVERNANCE_STORE } from './tokens.js';
 import { domainErrors } from '../platform/http/problems/interceptor.js';
@@ -77,7 +78,7 @@ export class GovernanceController {
     const { query, csrfToken } = decodeCsvDownloadRequest(
       request.body,
       request.headers['content-type'],
-      (value) => auditFilterSchema.parse(value),
+      (value) => parseRequestInput(auditFilterSchema, value),
     );
     this.csrf.assertRequestAllowed(request, csrfToken);
     const owner = scope(request, params);

@@ -9,7 +9,7 @@ import {
 } from '@pertexo/contracts';
 import { Catch, HttpException } from '@nestjs/common';
 import type { ArgumentsHost, ExceptionFilter } from '@nestjs/common';
-import { ZodError } from 'zod';
+import { isRequestInputError } from './request-input.js';
 import {
   APPLICATION_ERROR_CATALOG,
   isApplicationError,
@@ -81,7 +81,7 @@ function normalize(
     if (mapped !== undefined) return fromApplicationError(mapped);
   }
 
-  if (exception instanceof ZodError) {
+  if (isRequestInputError(exception)) {
     const entry = APPLICATION_ERROR_CATALOG['request.invalid'];
     return {
       code: 'request.invalid',

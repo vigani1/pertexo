@@ -12,8 +12,11 @@ import {
   InvalidWorkflowGraphError,
 } from '@pertexo/workflow-model';
 import { WorkflowEngineError } from '@pertexo/workflow-engine';
-import { z } from 'zod';
-import { requestInputCause } from '../../platform/http/request-input.js';
+import {
+  isRequestInputError,
+  requestInputCause,
+} from '../../platform/http/request-input.js';
+import { InvalidWorkflowRunCursorError } from '../../workflow-runs/cursor.js';
 import {
   FormAdmissionError,
   HiddenResourceError,
@@ -31,7 +34,7 @@ export function requestFailure(
   error: unknown,
   message = 'The request is invalid.',
 ): unknown {
-  return error instanceof z.ZodError
+  return isRequestInputError(error)
     ? new InvalidRequestError(message, requestInputCause(error))
     : error;
 }
@@ -51,7 +54,7 @@ export function workspaceFailure(error: unknown): unknown {
 }
 
 export function authoringFailure(error: unknown): unknown {
-  if (error instanceof z.ZodError) {
+  if (isRequestInputError(error)) {
     const graphInvalid = error.issues.some(
       (issue) => issue.path[0] === 'graph',
     );
@@ -101,7 +104,10 @@ export function runFailure(error: unknown): unknown {
   if (error instanceof CallableInputInvalidError) return error;
   if (error instanceof WorkflowEngineError)
     return new WorkflowRunNotExecutableError();
-  if (error instanceof z.ZodError || error instanceof TypeError)
+  if (
+    isRequestInputError(error) ||
+    error instanceof InvalidWorkflowRunCursorError
+  )
     return new InvalidRequestError(
       'The workflow run request is invalid.',
       requestInputCause(error),
@@ -124,7 +130,7 @@ export function inboxFailure(error: unknown): unknown {
 }
 
 export function dataTableFailure(error: unknown): unknown {
-  if (error instanceof z.ZodError)
+  if (isRequestInputError(error))
     return new InvalidRequestError(
       error.issues[0]?.message ?? 'The data table request is invalid.',
       requestInputCause(error),

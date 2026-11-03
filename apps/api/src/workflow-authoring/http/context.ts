@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { singleRequestHeader } from '../../platform/http/request-headers.js';
+import { parseRequestInput } from '../../platform/http/request-input.js';
 import { projectAuthenticatedWorkspaceContext } from '../../workspaces/request/authenticated-context.js';
 
 import type { WorkflowAuthoringRequest } from '../types.js';
@@ -23,5 +24,5 @@ export function traceparent(
   const value = singleRequestHeader(request.headers, 'traceparent');
   return value === undefined
     ? {}
-    : { traceparent: traceparentSchema.parse(value) };
+    : { traceparent: parseRequestInput(traceparentSchema, value) };
 }
