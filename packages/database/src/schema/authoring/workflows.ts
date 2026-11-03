@@ -4,7 +4,8 @@ import type {
   WorkflowTriggerStatus,
 } from '@pertexo/workflow-model';
 import type { WorkflowTriggerHealth } from '../stored-shapes.js';
-import { users, workspaces } from '../foundation.js';
+import { users } from '../identity/users.js';
+import { workspaces } from '../tenant-access/workspaces.js';
 import {
   bigint,
   boolean,

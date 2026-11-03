@@ -19,7 +19,8 @@ import { sql } from 'drizzle-orm';
 
 import { appSchema } from './namespace.js';
 import { workflows } from './authoring/workflows.js';
-import { users, workspaces } from './foundation.js';
+import { users } from './identity/users.js';
+import { workspaces } from './tenant-access/workspaces.js';
 
 export const failureNotificationDestinations = appSchema.table(
   'failure_notification_destinations',

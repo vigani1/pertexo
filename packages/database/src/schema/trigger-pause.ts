@@ -15,7 +15,7 @@ import {
 
 import { appSchema } from './namespace.js';
 import { workflows } from './authoring/workflows.js';
-import { workflowRuns } from './runs/execution.js';
+import { workflowRuns } from './runs/workflow-runs.js';
 
 // ADR 056. String-mode timestamps preserve PostgreSQL precision.
 /** Closed pauses remain until workflow/tenant deletion, including disabled schedule lag. */

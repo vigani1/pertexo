@@ -1,5 +1,5 @@
 import type { WebhookAuthentication } from '@pertexo/contracts';
-import { users } from '../foundation.js';
+import { users } from '../identity/users.js';
 import { workflows, workflowTriggers } from '../authoring/workflows.js';
 import {
   type PgTableExtraConfigValue,

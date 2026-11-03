@@ -11,7 +11,7 @@ import {
   varchar,
 } from 'drizzle-orm/pg-core';
 import { appSchema } from '../../namespace.js';
-import { workflowRuns } from '../execution.js';
+import { workflowRuns } from '../workflow-runs.js';
 import { workflowVersions } from '../../authoring/workflows.js';
 
 export const runErrorWorkflowIntents = appSchema.table(

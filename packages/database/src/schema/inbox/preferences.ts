@@ -11,7 +11,8 @@ import {
   boolean,
 } from 'drizzle-orm/pg-core';
 import { appSchema } from '../namespace.js';
-import { workspaces, workspaceMemberships } from '../foundation.js';
+import { workspaces } from '../tenant-access/workspaces.js';
+import { workspaceMemberships } from '../tenant-access/memberships.js';
 import { workflows } from '../authoring/workflows.js';
 import { connections } from '../connections.js';
 

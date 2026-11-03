@@ -13,9 +13,9 @@ import {
 import { sql } from 'drizzle-orm';
 
 import { appSchema } from '../../namespace.js';
-import { workflowRuns } from '../execution.js';
-import { workspaces } from '../../foundation.js';
-import { outboxEvents } from '../../transport.js';
+import { workflowRuns } from '../workflow-runs.js';
+import { workspaces } from '../../tenant-access/workspaces.js';
+import { outboxEvents } from '../../outbox/events.js';
 import { workflowCalls } from '../calls.js';
 
 export const workspaceExecutionAdmissionCounters = appSchema.table(

@@ -15,8 +15,9 @@ import {
   index,
 } from 'drizzle-orm/pg-core';
 import { appSchema } from './namespace.js';
-import { workspaces } from './foundation.js';
-import { workflowRuns, previewRuns } from './runs/execution.js';
+import { workspaces } from './tenant-access/workspaces.js';
+import { workflowRuns } from './runs/workflow-runs.js';
+import { previewRuns } from './previews/runs.js';
 
 export const workspaceDataTableQuotas = appSchema.table(
   'workspace_data_table_quotas',

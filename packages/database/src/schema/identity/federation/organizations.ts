@@ -11,7 +11,7 @@ import {
   uuid,
 } from 'drizzle-orm/pg-core';
 import { appSchema } from '../../namespace.js';
-import { workspaces } from '../../foundation.js';
+import { workspaces } from '../../tenant-access/workspaces.js';
 
 export const authOrganizations = appSchema.table(
   'auth_organizations',

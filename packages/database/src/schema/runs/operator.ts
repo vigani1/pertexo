@@ -19,8 +19,9 @@ import { sql } from 'drizzle-orm';
 
 import { appSchema } from '../namespace.js';
 import { workflowVersions } from '../authoring/workflows.js';
-import { nodeAttempts, workflowRuns } from './execution.js';
-import { workspaces } from '../foundation.js';
+import { nodeAttempts } from './node-executions.js';
+import { workflowRuns } from './workflow-runs.js';
+import { workspaces } from '../tenant-access/workspaces.js';
 
 export const operatorCommands = appSchema.table(
   'operator_commands',

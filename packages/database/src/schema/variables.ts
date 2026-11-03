@@ -10,7 +10,7 @@ import {
   uuid,
 } from 'drizzle-orm/pg-core';
 import { appSchema } from './namespace.js';
-import { workspaces } from './foundation.js';
+import { workspaces } from './tenant-access/workspaces.js';
 
 export const workspaceVariableSetRevisions = appSchema.table(
   'workspace_variable_set_revisions',

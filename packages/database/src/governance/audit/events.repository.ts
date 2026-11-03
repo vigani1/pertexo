@@ -1,7 +1,7 @@
 import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import type { PoolClient } from 'pg';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import { auditEvents } from '../../schema/foundation.js';
+import { auditEvents } from '../../schema/governance/audit-events.js';
 import { generatePersistedId } from '../../platform/persisted-id.js';
 import type { WorkspaceTransaction } from '../../tenant-access/transactions.js';
 

@@ -12,9 +12,9 @@ import {
   bigint,
 } from 'drizzle-orm/pg-core';
 import { appSchema } from '../namespace.js';
-import { workspaceMemberships } from '../foundation.js';
+import { workspaceMemberships } from '../tenant-access/memberships.js';
 import { systemMailDeliveries } from '../mail/deliveries.js';
-import { workspaceInboxThreads } from './core.js';
+import { workspaceInboxThreads } from './threads.js';
 export const noticeMailBatches = appSchema.table(
   'notice_mail_batches',
   {

@@ -7,9 +7,10 @@ import {
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 import { appSchema } from '../../../namespace.js';
-import { workspaceMemberships } from '../../../foundation.js';
+import { workspaceMemberships } from '../../../tenant-access/memberships.js';
 import { authOrganizationWorkspaces } from '../organizations.js';
 import { authDirectoryUsers } from './users.js';
+
 export const authDirectoryMemberships = appSchema.table(
   'auth_directory_memberships',
   {

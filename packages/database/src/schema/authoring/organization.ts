@@ -14,7 +14,7 @@ import { sql } from 'drizzle-orm';
 import { appSchema, textC } from '../namespace.js';
 import type { FolderFact } from '../stored-shapes.js';
 import { workflows } from './workflows.js';
-import { workspaces } from '../foundation.js';
+import { workspaces } from '../tenant-access/workspaces.js';
 
 export const workflowFolders = appSchema.table(
   'workflow_folders',

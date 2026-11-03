@@ -10,7 +10,7 @@ import {
   varchar,
 } from 'drizzle-orm/pg-core';
 import { appSchema } from '../../namespace.js';
-import { users } from '../../foundation.js';
+import { users } from '../../identity/users.js';
 import { workflows } from '../workflows.js';
 export const workflowCommentThreads = appSchema.table(
   'workflow_comment_threads',
