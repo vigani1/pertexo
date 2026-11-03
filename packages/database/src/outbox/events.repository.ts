@@ -3,9 +3,7 @@ import { createHash } from 'node:crypto';
 import { sql } from 'drizzle-orm';
 import { outboxEvents } from '../schema.js';
 import type { WorkspaceTransaction } from '../tenant-access/transactions.js';
-import { sha256HexSchema } from '../platform/persisted-primitives.js';
 
-const checksumSchema = sha256HexSchema;
 export interface OutboxEventInput {
   id: string;
   jobName: string;
@@ -74,5 +72,3 @@ export async function insertOutboxEvent(
   }
   return Object.freeze(row);
 }
-
-export { checksumSchema as outboxChecksumSchema };

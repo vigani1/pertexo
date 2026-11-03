@@ -15,10 +15,7 @@ export {
   completeCommand,
   findCommandResult,
 } from './platform/idempotency/repository.js';
-export {
-  isIntegerInRange,
-  sha256HexSchema,
-} from './platform/persisted-primitives.js';
+export { sha256HexSchema } from './platform/persisted-primitives.js';
 export { acquireAbortablePoolClient } from './platform/pool/abortable-checkout.js';
 export { createDedicatedClient } from './platform/pool/dedicated-client.js';
 export { destroyCanceledPoolClient } from './platform/pool/client-disposal.js';
