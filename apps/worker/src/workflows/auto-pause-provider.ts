@@ -1,5 +1,4 @@
 import { createWorkflowTriggerPauseFoldStore } from '@pertexo/core/triggers';
-import type { DatabaseRuntime } from '@pertexo/database/platform';
 import type { StructuredLogger } from '@pertexo/observability';
 
 import type { WorkerConfig } from '../config/worker.js';
@@ -11,16 +10,15 @@ import {
 
 /** ADR 056: an injected runtime, else the fold loop. */
 export function configuredWorkflowAutoPauseRuntime(
-  { workflowAutoPause: config, database }: WorkerConfig,
+  { workflowAutoPause: config, retention }: WorkerConfig,
   dependencies: Readonly<{
     workflowAutoPauseRuntime?: WorkflowAutoPauseRuntime;
-    databaseRuntime?: DatabaseRuntime;
     logger: StructuredLogger;
   }>,
 ): WorkflowAutoPauseRuntime {
   const { logger } = dependencies;
   return createWorkflowAutoPauseRuntime(
-    createWorkflowTriggerPauseFoldStore(database, dependencies.databaseRuntime),
+    createWorkflowTriggerPauseFoldStore(retention.maintenanceDatabase),
     {
       foldBatchSize: config.foldBatchSize,
       foldPollMillis: config.foldPollMillis,

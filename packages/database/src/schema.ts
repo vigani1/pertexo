@@ -133,6 +133,7 @@ import { workspaceInboxThreads } from './schema/inbox/threads.js';
 import {
   workflowFailureStreaks,
   workflowTriggerOutcomes,
+  workflowTriggerFailures,
   workflowTriggerPausePeriods,
 } from './schema/trigger-pause.js';
 import {
@@ -346,6 +347,7 @@ export const databaseSchema = {
   workspaceInboxThreads,
   workflowFailureStreaks,
   workflowTriggerOutcomes,
+  workflowTriggerFailures,
   workflowTriggerPausePeriods,
   workspaceInvitations,
   workspaceInvitationDeliveryAttempts,
@@ -496,6 +498,7 @@ export { outboxFairDispatchCursor } from './schema/outbox/fair-dispatch-cursor.j
 export {
   workflowFailureStreaks,
   workflowTriggerOutcomes,
+  workflowTriggerFailures,
   workflowTriggerPausePeriods,
 } from './schema/trigger-pause.js';
 export { webhookEndpointIngressLimits } from './schema/triggers/deliveries.js';

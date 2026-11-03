@@ -1,3 +1,4 @@
+import { TRIGGER_FAILURE_RETENTION_RULE } from '../../triggers/pause/retention.repository.js';
 import { INBOX_RETENTION_RULE } from '../../inbox/retention.repository.js';
 import {
   failedOutboxEvents,
@@ -81,6 +82,7 @@ import {
  */
 export const RETENTION_RULES = Object.freeze([
   API_TOKEN_RETENTION_RULE,
+  TRIGGER_FAILURE_RETENTION_RULE,
   RUN_VALUES_RETENTION_RULE,
   presence,
 

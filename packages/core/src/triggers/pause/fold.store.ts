@@ -1,10 +1,5 @@
-import { sql } from 'drizzle-orm';
-import { drizzle } from 'drizzle-orm/node-postgres';
-import {
-  rethrowQueryFailure,
-  checkDatabaseReadiness,
-} from '@pertexo/database/primitives';
-import type { WorkflowTriggerPauseDecision } from './trigger-pause.types.js';
+import { checkDatabaseReadiness } from '@pertexo/database/primitives';
+import { foldTriggerOutcomes } from './fold.repository.js';
 
 import type { DatabaseConfig } from '@pertexo/database/platform';
 import {
@@ -18,12 +13,15 @@ export type WorkflowTriggerPauseFoldStore = ReturnType<
   typeof createWorkflowTriggerPauseFoldStore
 >;
 
-/** ADR 056: the worker's streak fold, run across workspaces. No member is acting. */
+/**
+ * Cross-workspace maintenance with no acting member stays off
+ * `withWorkspaceAccess`. The workspace advisory key must precede its row lock.
+ */
 export function createWorkflowTriggerPauseFoldStore(
   config: DatabaseConfig,
   runtime?: DatabaseRuntime,
 ) {
-  const lease = acquireDatabasePool(config, runtime);
+  const lease = acquireDatabasePool(config, runtime, { role: 'maintenance' });
   const { pool } = lease;
   return Object.freeze({
     checkReadiness: async (signal?: AbortSignal) => {
@@ -31,24 +29,20 @@ export function createWorkflowTriggerPauseFoldStore(
       await checkDatabaseReadiness(pool);
     },
     /** Folds up to `limit` outcomes into streaks, pausing workflows that reach their threshold. */
-    foldPending: (limit: number, signal?: AbortSignal) =>
-      withPlatformTransaction(
+    foldPending: (limit: number, signal?: AbortSignal) => {
+      if (!Number.isInteger(limit) || limit < 1 || limit > 1_000)
+        throw new RangeError(
+          'Trigger outcome fold limit must be between 1 and 1000',
+        );
+      return withPlatformTransaction(
         pool,
-        async (client) => {
-          const result = await drizzle(client)
-            .execute<WorkflowTriggerPauseDecision>(
-              sql`
-            select workspace_id "workspaceId",workflow_id "workflowId",consecutive_failures "consecutiveFailures"
-            from app.fold_workflow_trigger_outcomes(${limit})`,
-            )
-            .catch(rethrowQueryFailure);
-          return Object.freeze(result.rows.map((row) => Object.freeze(row)));
-        },
+        (client) => foldTriggerOutcomes(client, limit),
         {
           ...(signal === undefined ? {} : { signal }),
           statementTimeoutMillis: STATEMENT_TIMEOUT_MILLIS,
         },
-      ),
+      );
+    },
     close: () => lease.close(),
   });
 }

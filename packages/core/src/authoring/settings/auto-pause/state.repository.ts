@@ -1,3 +1,7 @@
+import {
+  lockAutoPauseWorkspace,
+  lockAutoPauseWorkflow,
+} from '../../../triggers/pause/locks.repository.js';
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { workflows, workspaces } from '@pertexo/database/schema';
@@ -42,14 +46,7 @@ export async function lockWorkspace(
   }: Readonly<{ exclusive: boolean; statuses?: readonly string[] }>,
 ) {
   const db = drizzle(client);
-  const key = `auto-pause-workspace:${workspaceId}`;
-  await db
-    .execute(
-      exclusive
-        ? sql`select pg_advisory_xact_lock(hashtextextended(${key},0))`
-        : sql`select pg_advisory_xact_lock_shared(hashtextextended(${key},0))`,
-    )
-    .catch(rethrowQueryFailure);
+  await lockAutoPauseWorkspace(client, workspaceId, exclusive);
   const [row] = await db
     .select(workspaceProjection)
     .from(workspaces)
@@ -72,11 +69,7 @@ export async function lockWorkflow(
   workflowId: string,
 ) {
   const db = drizzle(client);
-  await db
-    .execute(
-      sql`select pg_advisory_xact_lock(hashtextextended(${`auto-pause-workflow:${workspaceId}:${workflowId}`},0))`,
-    )
-    .catch(rethrowQueryFailure);
+  await lockAutoPauseWorkflow(client, workspaceId, workflowId);
   const [row] = await db
     .select(workflowProjection)
     .from(workflows)
