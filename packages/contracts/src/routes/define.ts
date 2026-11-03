@@ -56,18 +56,21 @@ export type RouteAccess =
     }>;
 
 /** A schema with the name its OpenAPI component takes. */
-export type NamedSchema<Schema extends z.ZodType = z.ZodType> = Readonly<{
-  name: string;
+export type NamedSchema<
+  Schema extends z.ZodType = z.ZodType,
+  Name extends string = string,
+> = Readonly<{
+  name: Name;
   schema: Schema;
   /** Recursive JSON values need the shared projection to stay readable. */
   projected?: true;
 }>;
 
-export function named<Schema extends z.ZodType>(
-  name: string,
+export function named<Schema extends z.ZodType, const Name extends string>(
+  name: Name,
   schema: Schema,
   options: Readonly<{ projected?: true }> = {},
-): NamedSchema<Schema> {
+): NamedSchema<Schema, Name> {
   return { name, schema, ...options };
 }
 

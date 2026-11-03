@@ -20,28 +20,87 @@ import {
   type RouteMethod,
 } from './define.js';
 
-type OperationsByMethod = Partial<
-  Record<RouteMethod, ReturnType<typeof operation>>
->;
+type Successes<Route extends AnyRoute> =
+  | Route['success']
+  | (Route extends { otherSuccesses: readonly (infer Success)[] }
+      ? Success
+      : never);
+type SuccessResponse<Success> = Success extends { body: NamedSchema }
+  ? ReturnType<typeof jsonResponse> &
+      (Success extends { headers: infer Headers } ? { headers: Headers } : {})
+  : Success extends { response: infer Response }
+    ? Response
+    : never;
+type RouteOperation<Route extends AnyRoute> = Omit<
+  ReturnType<typeof operation>,
+  'parameters' | 'responses' | 'requestBody'
+> & {
+  parameters: Readonly<{
+    in: 'path' | 'query' | 'header';
+    name: string;
+    required: boolean;
+    schema: ReturnType<typeof jsonSchema>;
+  }>[];
+  responses: {
+    [
+      Success in Successes<Route> as Success extends {
+        status: infer Status extends number;
+      }
+        ? `${Status}`
+        : never
+    ]: SuccessResponse<Success>;
+  } & Route['problems'];
+} & (Route extends { requestDocument: infer Document }
+    ? { requestBody: Document }
+    : Route extends { body: NamedSchema }
+      ? { requestBody: ReturnType<typeof jsonRequest> }
+      : { requestBody?: never });
+type RoutePaths<Routes extends readonly AnyRoute[]> = {
+  [Path in Routes[number]['path']]: {
+    [
+      Method in Extract<Routes[number], { path: Path }>['method']
+    ]: RouteOperation<Extract<Routes[number], { path: Path; method: Method }>>;
+  };
+};
 
-/** The `paths` object for routes, in declaration order. */
-export function routePaths(
-  routes: readonly AnyRoute[],
-): Record<string, OperationsByMethod> {
-  const paths: Record<string, OperationsByMethod> = {};
+/** The paths and methods retain the declaration's literal keys. */
+export function routePaths<const Routes extends readonly AnyRoute[]>(
+  routes: Routes,
+): RoutePaths<Routes> {
+  const paths: Record<
+    string,
+    Partial<Record<RouteMethod, ReturnType<typeof operation>>>
+  > = {};
   for (const route of routes)
     paths[route.path] = {
       ...paths[route.path],
       [route.method]: operation(route),
     };
-  return paths;
+  // The loop adds exactly the paths and methods named by Routes.
+  return paths as RoutePaths<Routes>;
 }
 
 /** The component schemas routes name, each projected for the way it's used. */
-export function routeSchemas(
-  routes: readonly AnyRoute[],
-): Record<string, unknown> {
-  const schemas: Record<string, unknown> = {};
+type RouteSchema<Route extends AnyRoute> =
+  | (Route extends { body: infer Body } ? Body : never)
+  | (Successes<Route> extends infer Success
+      ? Success extends { body: infer Body }
+        ? Body
+        : never
+      : never);
+type RouteSchemas<Routes extends readonly AnyRoute[]> = {
+  [
+    Schema in RouteSchema<Routes[number]> as Schema extends {
+      name: infer Name extends string;
+    }
+      ? Name
+      : never
+  ]: ReturnType<typeof projected>;
+};
+export function routeSchemas<const Routes extends readonly AnyRoute[]>(
+  routes: Routes,
+): RouteSchemas<Routes> {
+  const schemas: Record<string, ReturnType<typeof projected>> = {};
   for (const route of routes) {
     if (route.body !== undefined)
       schemas[route.body.name] = projected(route.body, 'input');
@@ -49,7 +108,8 @@ export function routeSchemas(
       if ('body' in success)
         schemas[success.body.name] = projected(success.body, 'output');
   }
-  return schemas;
+  // Each named schema above is projected for its declared use.
+  return schemas as RouteSchemas<Routes>;
 }
 
 function projected(named: NamedSchema, io: 'input' | 'output') {
