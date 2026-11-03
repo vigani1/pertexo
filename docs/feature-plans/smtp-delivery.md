@@ -110,14 +110,16 @@ There are no long-lived SMTP connections to close on worker shutdown.
 4. Extend existing database claim results to expose whether a command is being
    recovered from unknown dispatch. Use existing stored statuses, not a new
    format. SMTP recovery of an unknown account claim settles existing
-   `reconciliation_required` without sending; invitation recovery leaves its
-   existing `unknown` attempt untouched and acknowledges queue delivery.
+   `reconciliation_required` without sending; invitation recovery records the
+   existing `unknown` outcome on its parent, scrubs the sealed delivery token and
+   acknowledges queue delivery.
    Resend recovery continues repeating the same provider-idempotent command.
 5. For an invitation's known safe SMTP retry, return its existing attempt from
    `unknown` to `queued` in the store's existing locked transaction, only if it
    is still current, pending, unexpired and retains its token; then request
    queue redelivery. Never create a new token/attempt for an automatic retry.
-   Unknown invitation results keep their sealed attempt and existing UI reason.
+   Unknown SMTP invitation results show “Delivery unconfirmed” with guidance to
+   revoke the invitation and create a replacement. They cannot be resent.
    Account safe retries keep the existing bounded exponential retry schedule.
 6. Switching transports with unresolved unknown commands is unsafe unless the
    operator establishes their prior outcome. Document stopping workers and
@@ -127,8 +129,8 @@ There are no long-lived SMTP connections to close on worker shutdown.
 The conservative crash fence can leave mail unsent if a worker dies between
 claim/dispatch marking and actual network transmission. This is intentional:
 SMTP cannot prove whether that command was accepted. Account users can request
-another link; unresolved invitation attempts require operator reconciliation
-using the existing workflow, rather than a hidden duplicate send.
+another link; owners revoke an unconfirmed invitation and create a replacement
+through the existing commands. The original attempt is never automatically repeated.
 
 ## Implementation and verification sequence
 
