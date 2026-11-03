@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.7
-FROM node:24.22.0-bookworm-slim@sha256:a5f4366e834695d5f363b920c104953a535d3a9864d1bdf74566a0ebe01daee5 AS build
+FROM node:24.22.2-bookworm-slim@sha256:c86ecead9e55a5210ac1727de38a4ca840bf03dcaf34dc9749addbf383b1920c AS build
 WORKDIR /workspace
 RUN corepack enable && corepack prepare pnpm@11.22.0 --activate
 RUN apt-get update && apt-get install --yes --no-install-recommends gcc libc6-dev linux-libc-dev \
@@ -10,7 +10,7 @@ RUN pnpm install --frozen-lockfile && pnpm build \
     -D_FORTIFY_SOURCE=3 -Wl,-z,relro,-z,now \
     -o apps/code-runner/dist/launch apps/code-runner/native/launch.c
 
-FROM node:24.22.0-bookworm-slim@sha256:a5f4366e834695d5f363b920c104953a535d3a9864d1bdf74566a0ebe01daee5 AS python-build
+FROM node:24.22.2-bookworm-slim@sha256:c86ecead9e55a5210ac1727de38a4ca840bf03dcaf34dc9749addbf383b1920c AS python-build
 RUN apt-get update && apt-get install --yes --no-install-recommends \
     gcc make xz-utils libc6-dev libssl-dev zlib1g-dev libffi-dev libbz2-dev liblzma-dev \
   && rm -rf /var/lib/apt/lists/*
@@ -28,7 +28,7 @@ RUN mkdir /tmp/python && tar -xf /tmp/python.tar.xz -C /tmp/python --strip-compo
     /opt/pertexo-python/lib/python3.15/lib-dynload/*.so \
   && /opt/pertexo-python/bin/python3.15 -I -c 'import sys; assert sys.version_info[:3] == (3, 15, 1)'
 
-FROM nginxinc/nginx-unprivileged:1.31.7-alpine@sha256:378d0c32f6562f7fd9629170797f57d2b953aa09be983b3daaf4809bb039ca00 AS web
+FROM nginxinc/nginx-unprivileged:1.31.7-alpine@sha256:b5047b9b76845eac124358373c6852377c52e4b05834a47647e955dd91cb8f1e AS web
 ARG SOURCE_COMMIT=unknown
 LABEL org.opencontainers.image.source="https://github.com/vigani1/pertexo" \
   org.opencontainers.image.revision=$SOURCE_COMMIT
@@ -39,7 +39,7 @@ COPY --from=build --chown=101:101 /workspace/apps/web/dist /usr/share/nginx/html
 COPY --chown=101:101 apps/web/deployment/nginx.conf.template /etc/nginx/templates/default.conf.template
 EXPOSE 8080
 
-FROM node:24.22.0-bookworm-slim@sha256:a5f4366e834695d5f363b920c104953a535d3a9864d1bdf74566a0ebe01daee5 AS production-dependencies
+FROM node:24.22.2-bookworm-slim@sha256:c86ecead9e55a5210ac1727de38a4ca840bf03dcaf34dc9749addbf383b1920c AS production-dependencies
 WORKDIR /workspace
 RUN corepack enable && corepack prepare pnpm@11.22.0 --activate
 COPY . .
@@ -54,7 +54,7 @@ ADD --checksum=sha256:8498d2c0bd6747dfc2fc6eec62774a86967079555f7043d5a7b78ee4ef
 ADD --checksum=sha256:d7d1943aec9597629bf73075efcc5ef6dc9bda96d78e80d843156ecd448478b8 https://deb.debian.org/debian-security/pool/updates/main/p/perl/perl-base_5.36.0-7+deb12u4_amd64.deb /perl-amd64.deb
 ADD --checksum=sha256:03d979b849a1a0a8955eee28b988dbc25a407fd3a0581df5c94e6ae7bcc01ddf https://deb.debian.org/debian-security/pool/updates/main/p/perl/perl-base_5.36.0-7+deb12u4_arm64.deb /perl-arm64.deb
 
-FROM node:24.22.0-bookworm-slim@sha256:a5f4366e834695d5f363b920c104953a535d3a9864d1bdf74566a0ebe01daee5 AS runtime
+FROM node:24.22.2-bookworm-slim@sha256:c86ecead9e55a5210ac1727de38a4ca840bf03dcaf34dc9749addbf383b1920c AS runtime
 ARG SOURCE_COMMIT=unknown
 LABEL org.opencontainers.image.source="https://github.com/vigani1/pertexo" \
   org.opencontainers.image.revision=$SOURCE_COMMIT
