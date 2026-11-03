@@ -1,3 +1,4 @@
+import { decodeStoredValue } from '../../../shared/stored-values.js';
 import { decideScheduleHealthTransition } from '@pertexo/workflow-model';
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
@@ -62,25 +63,31 @@ function scheduleRecord({
 }: Awaited<ReturnType<typeof scheduleQuery>>[number]): ScheduleTriggerRecord {
   return {
     ...row,
-    recurrence: parsePersistedScheduleRecurrence(recurrenceFields),
+    recurrence: decodeStoredValue(() =>
+      parsePersistedScheduleRecurrence(recurrenceFields),
+    ),
   };
 }
 export function parseStoredScheduleTrigger(
   value: unknown,
 ): ScheduleTriggerRecord {
-  const stored = z.record(z.string(), z.unknown()).parse(value);
-  return scheduleTriggerSchema.parse({
-    ...stored,
-    reconciledAt:
-      stored.reconciledAt === null
-        ? null
-        : new Date(z.string().parse(stored.reconciledAt)),
-    nextFireAt: new Date(z.string().parse(stored.nextFireAt)),
-    lastFireAt:
-      stored.lastFireAt === null
-        ? null
-        : new Date(z.string().parse(stored.lastFireAt)),
-  });
+  const stored = decodeStoredValue(() =>
+    z.record(z.string(), z.unknown()).parse(value),
+  );
+  return decodeStoredValue(() =>
+    scheduleTriggerSchema.parse({
+      ...stored,
+      reconciledAt:
+        stored.reconciledAt === null
+          ? null
+          : new Date(z.string().parse(stored.reconciledAt)),
+      nextFireAt: new Date(z.string().parse(stored.nextFireAt)),
+      lastFireAt:
+        stored.lastFireAt === null
+          ? null
+          : new Date(z.string().parse(stored.lastFireAt)),
+    }),
+  );
 }
 
 export async function readSchedules(
@@ -179,7 +186,7 @@ export function scheduleHealthTransition(
     target,
     () =>
       resolveScheduleObservation(
-        parsePersistedScheduleRecurrence(target),
+        decodeStoredValue(() => parsePersistedScheduleRecurrence(target)),
         target.anchor_at,
         target.observed_at,
       ).nextAt,

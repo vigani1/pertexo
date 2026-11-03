@@ -1,3 +1,4 @@
+import { decodeStoredValue } from '../../shared/stored-values.js';
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
@@ -16,7 +17,9 @@ export async function admitSuiteCase(
   entry: SuiteCaseRow,
   now: Date,
 ): Promise<void> {
-  const input: unknown = JSON.parse(entry.input);
+  const input: unknown = decodeStoredValue((): unknown =>
+    JSON.parse(entry.input),
+  );
   const accepted = await admitTestRun(client, {
     workspaceId: suite.workspaceId,
     workflowId: suite.workflowId,

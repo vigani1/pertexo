@@ -1,3 +1,4 @@
+import { decodeStoredValue } from '../../shared/stored-values.js';
 import { createHash } from 'node:crypto';
 
 import {
@@ -207,7 +208,9 @@ async function assertNotificationDelivery(
     throw new FailureNotificationStateError('Delivery identity mismatch');
 }
 function prepareNotificationClaim(row: FailureIntentRow) {
-  const context = FailureNotificationContextSchema.parse(row.context);
+  const context = decodeStoredValue(() =>
+    FailureNotificationContextSchema.parse(row.context),
+  );
   const checksum = createHash('sha256')
     .update(serializeStoredExecutionJsonValue(context))
     .digest('hex');

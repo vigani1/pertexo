@@ -1,3 +1,4 @@
+import { decodeStoredValue } from '../../shared/stored-values.js';
 import {
   rethrowQueryFailure,
   claimCommand,
@@ -54,7 +55,10 @@ export async function mutateStepSample(
         },
       });
       if (stored !== null)
-        return { ...resultSchema.parse(stored), replayed: true };
+        return {
+          ...decodeStoredValue(() => resultSchema.parse(stored)),
+          replayed: true,
+        };
       const draft = await sampleDraft(client, input, { write: true });
       if (draft.revision !== input.expectedDraftRevision)
         throw new WorkflowStepSampleError('draft_changed');

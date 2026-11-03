@@ -1,3 +1,4 @@
+import { decodeStoredValue } from '../../../shared/stored-values.js';
 import { CORE_WEBHOOK_CONFIG_SCHEMA } from '@pertexo/workflow-model';
 import type { PoolClient } from 'pg';
 import { rolesForCapability } from '@pertexo/policy';
@@ -36,6 +37,8 @@ export async function readTestEventDraft(
   return {
     revision: draft.revision,
     binding,
-    config: CORE_WEBHOOK_CONFIG_SCHEMA.parse(node.config),
+    config: decodeStoredValue(() =>
+      CORE_WEBHOOK_CONFIG_SCHEMA.parse(node.config),
+    ),
   };
 }

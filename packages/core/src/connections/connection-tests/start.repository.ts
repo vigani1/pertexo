@@ -1,3 +1,4 @@
+import { decodeStoredValue } from '../../shared/stored-values.js';
 import { sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
@@ -87,7 +88,9 @@ export async function startConnectionTest(
   if (inserted.length !== 1) {
     if (
       current.status === 'in_progress' &&
-      connectionTestClaimSchema.parse(current.resultRef).state === 'dispatched'
+      decodeStoredValue(() =>
+        connectionTestClaimSchema.parse(current.resultRef),
+      ).state === 'dispatched'
     )
       throw new ConnectionTestInProgressError(
         'Connection test has durable dispatch evidence',

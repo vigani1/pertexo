@@ -1,3 +1,4 @@
+import { decodeStoredValue } from '../../shared/stored-values.js';
 import {
   withTenantScopedClient,
   rethrowQueryFailure,
@@ -53,7 +54,9 @@ export async function validateDelivery(
   let payload: z.output<typeof attemptJobPayloadSchema> | undefined;
   let checksum: string | undefined;
   try {
-    payload = attemptJobPayloadSchema.parse(row?.payload);
+    payload = decodeStoredValue(() =>
+      attemptJobPayloadSchema.parse(row?.payload),
+    );
     checksum = createHash('sha256')
       .update(serializeStoredExecutionJsonValue(payload))
       .digest('hex');

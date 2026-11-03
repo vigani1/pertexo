@@ -1,3 +1,4 @@
+import { decodeStoredValue } from '../../../shared/stored-values.js';
 import { lockWorkspaceExecutionCounter } from '../../admission-locks.repository.js';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { and, eq, sql } from 'drizzle-orm';
@@ -95,7 +96,9 @@ export async function prepareCallbacks(
         id: found.id,
         keyVersion: found.callback_key_version,
         tokenHash: found.callback_token_hash,
-        config: callbackWaitConfigSchema.parse(found.config),
+        config: decodeStoredValue(() =>
+          callbackWaitConfigSchema.parse(found.config),
+        ),
       });
       continue;
     }

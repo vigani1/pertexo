@@ -1,3 +1,4 @@
+import { decodeStoredValue } from '../../../shared/stored-values.js';
 import {
   installTransactionScope,
   rethrowQueryFailure,
@@ -52,7 +53,9 @@ export async function selectIntent(
   return Object.freeze({
     ...row,
     receipt:
-      row.receipt === null ? null : acceptanceReceiptSchema.parse(row.receipt),
+      row.receipt === null
+        ? null
+        : decodeStoredValue(() => acceptanceReceiptSchema.parse(row.receipt)),
   });
 }
 

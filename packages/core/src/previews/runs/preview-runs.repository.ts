@@ -1,3 +1,4 @@
+import { decodeStoredValue } from '../../shared/stored-values.js';
 import type { Role } from '@pertexo/policy';
 import { sql } from 'drizzle-orm';
 import { readTransactionFolderScope } from '../../shared/facts.repository.js';
@@ -83,7 +84,9 @@ export async function readPreviewRun(
     mayCauseExternalSideEffect: row.mayCauseExternalSideEffect,
     dryRun: row.dryRun,
     output:
-      row.outputRef === null ? null : parseStoredExecutionValue(row.outputRef),
+      row.outputRef === null
+        ? null
+        : decodeStoredValue(() => parseStoredExecutionValue(row.outputRef)),
     pinnedSampleId: row.pinnedSampleId,
     safeErrorCode: row.safeErrorCode,
     createdAt: row.createdAt,

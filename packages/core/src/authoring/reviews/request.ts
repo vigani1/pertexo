@@ -1,3 +1,4 @@
+import { decodeStoredValue } from '../../shared/stored-values.js';
 import { and, eq, inArray, ne, or, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import {
@@ -51,10 +52,9 @@ export async function requestPublicationReview(
     request: { representationTag: input.representationTag, note: input.note },
   });
   if (replay !== null) {
-    const { reviewId } = z
-      .object({ reviewId: z.uuid() })
-      .strict()
-      .parse(replay);
+    const { reviewId } = decodeStoredValue(() =>
+      z.object({ reviewId: z.uuid() }).strict().parse(replay),
+    );
     return readReviewSummary(client, dependencies, { ...input, reviewId });
   }
   const db = drizzle(client);

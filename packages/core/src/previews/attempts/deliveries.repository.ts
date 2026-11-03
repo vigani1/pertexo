@@ -1,3 +1,4 @@
+import { decodeStoredValue } from '../../shared/stored-values.js';
 import { and, eq, isNull, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { Pool, PoolClient } from 'pg';
@@ -133,7 +134,9 @@ export async function validatePreviewDelivery(
   let payload: z.output<typeof previewDeliveryPayloadSchema> | undefined;
   let checksum: string | undefined;
   try {
-    payload = previewDeliveryPayloadSchema.parse(row.payload);
+    payload = decodeStoredValue(() =>
+      previewDeliveryPayloadSchema.parse(row.payload),
+    );
     checksum = canonicalOutboxPayloadChecksum(payload);
   } catch {
     throw new PreviewDeliveryMismatchError();
@@ -171,7 +174,9 @@ export async function validatePreviewReconciliationDelivery(
   let payload: z.output<typeof previewReconciliationPayloadSchema>;
   let checksum: string;
   try {
-    payload = previewReconciliationPayloadSchema.parse(row.payload);
+    payload = decodeStoredValue(() =>
+      previewReconciliationPayloadSchema.parse(row.payload),
+    );
     checksum = canonicalOutboxPayloadChecksum(payload);
   } catch {
     throw new PreviewDeliveryMismatchError();

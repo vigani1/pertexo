@@ -1,3 +1,4 @@
+import { decodeStoredValue } from '../../shared/stored-values.js';
 import {
   DEFAULT_TEST_EXPECTATIONS,
   workflowTestExpectationsSchema,
@@ -95,16 +96,19 @@ export function getInputCase(
         .catch(rethrowQueryFailure);
       if (!row)
         throw new WorkflowNotFoundError('Run-input case is not visible');
+      const expectations = row.expectations;
       return {
         case: {
           ...Object.freeze(row.metadata),
           expectations:
-            row.expectations === null
+            expectations === null
               ? DEFAULT_TEST_EXPECTATIONS
-              : workflowTestExpectationsSchema.parse(
-                  JSON.parse(row.expectations),
+              : decodeStoredValue(() =>
+                  workflowTestExpectationsSchema.parse(
+                    JSON.parse(expectations),
+                  ),
                 ),
-          input: z.json().parse(JSON.parse(row.input)),
+          input: decodeStoredValue(() => z.json().parse(JSON.parse(row.input))),
         },
       };
     },

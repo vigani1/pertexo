@@ -1,3 +1,4 @@
+import { decodeStoredValue } from '../../../../shared/stored-values.js';
 import { and, eq, ne } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { workflows } from '@pertexo/database/schema';
@@ -65,7 +66,9 @@ export async function prepareTargetWorkflow(
           })
         )[0];
   const targetGraph =
-    target === undefined ? null : parseWorkflowGraphDraft(target.graph_json);
+    target === undefined
+      ? null
+      : decodeStoredValue(() => parseWorkflowGraphDraft(target.graph_json));
   if (targetGraph !== null) budget.add(targetGraph);
   if (origin !== null && target?.lifecycle_status !== 'active')
     report({

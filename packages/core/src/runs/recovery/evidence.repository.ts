@@ -1,3 +1,4 @@
+import { decodeStoredValue } from '../../shared/stored-values.js';
 import {
   readRecoveryCheckpoint,
   readRecoveryNodes,
@@ -108,7 +109,9 @@ async function readRecoveryMetadata(
       return { kind: 'refused', reason: 'unsupported_graph' };
     const parsed = rows.map((row) => ({
       ...row,
-      branch_context: branchContextSchema.parse(row.branch_context),
+      branch_context: decodeStoredValue(() =>
+        branchContextSchema.parse(row.branch_context),
+      ),
     }));
     const attempts = await readRecoveryAttempts(
       transaction,
@@ -255,11 +258,15 @@ async function readRecoveryValues(
         node:
           row.node_output === null
             ? undefined
-            : parseStoredExecutionValue(row.node_output),
+            : decodeStoredValue(() =>
+                parseStoredExecutionValue(row.node_output),
+              ),
         attempt:
           row.attempt_output === null
             ? undefined
-            : parseStoredExecutionValue(row.attempt_output),
+            : decodeStoredValue(() =>
+                parseStoredExecutionValue(row.attempt_output),
+              ),
       });
     return { input, outputs };
   } catch (error) {

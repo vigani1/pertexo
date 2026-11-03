@@ -1,3 +1,4 @@
+import { decodeStoredValue } from '../../shared/stored-values.js';
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import {
@@ -160,7 +161,9 @@ function createCommentThread(
         if (draft === undefined)
           throw new WorkflowNotFoundError('Draft is not visible');
         const matches = [
-          ...workflowNodes(parseWorkflowGraphDraft(draft.graphJson)),
+          ...workflowNodes(
+            decodeStoredValue(() => parseWorkflowGraphDraft(draft.graphJson)),
+          ),
         ].filter((node) => node.id === input.stepId);
         if (matches.length !== 1)
           throw new WorkflowCollaborationError(

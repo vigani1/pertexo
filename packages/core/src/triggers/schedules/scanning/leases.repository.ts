@@ -1,3 +1,4 @@
+import { decodeStoredValue } from '../../../shared/stored-values.js';
 import { sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { Pool } from 'pg';
@@ -91,7 +92,9 @@ export async function claimDueSchedules(
   }
   if (invalidClaim !== undefined) {
     await releaseClaims(claimPool, claims);
-    throw invalidClaim;
+    decodeStoredValue(() => {
+      throw invalidClaim;
+    });
   }
   return Object.freeze({
     claimed: result.length,

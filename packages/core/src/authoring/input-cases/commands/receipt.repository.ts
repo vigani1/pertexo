@@ -1,3 +1,4 @@
+import { decodeStoredValue } from '../../../shared/stored-values.js';
 import { claimCommand, completeCommand } from '@pertexo/database/primitives';
 import { appendAuditFact } from '../../../governance/audit/facts.js';
 import type { PoolClient } from 'pg';
@@ -40,7 +41,10 @@ export async function mutate(
         resourceId: caseId,
       });
       if (stored !== null)
-        return Object.freeze({ ...resultSchema.parse(stored), replayed: true });
+        return Object.freeze({
+          ...decodeStoredValue(() => resultSchema.parse(stored)),
+          replayed: true,
+        });
       await workflow(client, input, { write: true });
       await lockInputCaseQuota(client, input.workspaceId);
       const result = await work(client);

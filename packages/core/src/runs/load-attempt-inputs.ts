@@ -1,3 +1,4 @@
+import { decodeStoredValue } from '../shared/stored-values.js';
 import type {
   LoadInputsInput,
   NodeAttemptRunStore,
@@ -240,7 +241,7 @@ export async function loadAttemptInputs(
     ...loaded,
     completedNodeOutputs: resolved.map(({ output }) => output),
   };
-  const checkpoint = parseCheckpoint(stored);
+  const checkpoint = decodeStoredValue(() => parseCheckpoint(stored));
   if (inputs.sourceFailure !== undefined) {
     const source = checkpoint.invocations.find(
       ({ invocationKey }) =>

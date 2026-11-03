@@ -1,3 +1,4 @@
+import { decodeStoredValue } from '../../../shared/stored-values.js';
 import { and, eq, exists, inArray, isNotNull, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import {
@@ -192,12 +193,14 @@ async function claimInvitationDelivery(
       workspaceName: row.workspace_name,
       role: row.role,
       expiresAt: row.expires_at,
-      sealedToken: sealedToken.parse({
-        ciphertext: row.ciphertext,
-        nonce: row.nonce,
-        tag: row.tag,
-        keyVersion: row.key_version,
-      }),
+      sealedToken: decodeStoredValue(() =>
+        sealedToken.parse({
+          ciphertext: row.ciphertext,
+          nonce: row.nonce,
+          tag: row.tag,
+          keyVersion: row.key_version,
+        }),
+      ),
     });
   });
 }

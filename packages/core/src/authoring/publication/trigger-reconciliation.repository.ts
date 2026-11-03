@@ -1,3 +1,4 @@
+import { decodeStoredValue } from '../../shared/stored-values.js';
 import { and, eq, notInArray, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
@@ -37,7 +38,9 @@ export async function persistPublishedWorkflowTriggers(
   }>,
 ): Promise<void> {
   const { workflowId, version } = input;
-  const triggers = workflowTriggerProjection(version.graphJson);
+  const triggers = decodeStoredValue(() =>
+    workflowTriggerProjection(version.graphJson),
+  );
   const db = drizzle(client);
   const nodeIds = triggers.map(({ nodeId }) => nodeId);
   await db

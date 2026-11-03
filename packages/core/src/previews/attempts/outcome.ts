@@ -1,3 +1,4 @@
+import { decodeStoredValue } from '../../shared/stored-values.js';
 import type { CodeDiagnostics } from '@pertexo/node-sdk';
 import {
   parseStoredExecutionValue,
@@ -75,10 +76,12 @@ function sameStoredValues(
   try {
     return (
       serializeStoredExecutionValue(
-        parseStoredExecutionValue(row.attemptOutputRef),
+        decodeStoredValue(() =>
+          parseStoredExecutionValue(row.attemptOutputRef),
+        ),
       ) === outcome.outputRef &&
       serializeStoredExecutionValue(
-        parseStoredExecutionValue(row.runOutputRef),
+        decodeStoredValue(() => parseStoredExecutionValue(row.runOutputRef)),
       ) === outcome.outputRef &&
       row.attemptSafeErrorCode === null &&
       row.runSafeErrorCode === null

@@ -1,3 +1,4 @@
+import { decodeStoredValue } from '../shared/stored-values.js';
 import {
   withTenantScopedReadClient,
   rethrowQueryFailure,
@@ -61,7 +62,9 @@ export async function readNodeAttemptLoopDeclaration(
       if (row === undefined) return undefined;
       if (!storedExecutionValuesEqual(row.nodeOutput, row.attemptOutput))
         throw new NodeAttemptStateCorruptError();
-      const stored = parseStoredExecutionValue(row.attemptOutput);
+      const stored = decodeStoredValue(() =>
+        parseStoredExecutionValue(row.attemptOutput),
+      );
       if (stored.kind !== 'inline') throw new NodeAttemptStateCorruptError();
       return Object.freeze({
         nodeId: row.nodeId,
@@ -106,7 +109,9 @@ export async function readNodeAttemptOutputs(
         throw new NodeAttemptStateCorruptError();
       return Object.freeze(
         rows.map((row) => {
-          const stored = parseStoredExecutionValue(row.output);
+          const stored = decodeStoredValue(() =>
+            parseStoredExecutionValue(row.output),
+          );
           if (stored.kind !== 'inline')
             throw new NodeAttemptStateCorruptError();
           return Object.freeze({
@@ -187,7 +192,9 @@ export async function readNodeRunOutputs(
       if (rows.length !== keys.length) throw new NodeAttemptStateCorruptError();
       return Object.freeze(
         rows.map((row) => {
-          const stored = parseStoredExecutionValue(row.output);
+          const stored = decodeStoredValue(() =>
+            parseStoredExecutionValue(row.output),
+          );
           if (stored.kind !== 'inline')
             throw new NodeAttemptStateCorruptError();
           return Object.freeze({

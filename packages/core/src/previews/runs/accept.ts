@@ -1,3 +1,4 @@
+import { decodeStoredValue } from '../../shared/stored-values.js';
 import {
   canonicalOutboxPayloadChecksum,
   insertOutboxEvent,
@@ -205,7 +206,7 @@ async function assertPreviewInputAuthority(
     await lockActorArtifactReferences(
       transaction,
       input.actorUserId,
-      JSON.parse(resolvedInput.stored),
+      decodeStoredValue((): unknown => JSON.parse(resolvedInput.stored)),
       resolvedInput.priorPreviewRunId ?? undefined,
     );
     await lockActorArtifactReferences(

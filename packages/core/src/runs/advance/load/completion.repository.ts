@@ -1,3 +1,4 @@
+import { decodeStoredValue } from '../../../shared/stored-values.js';
 import { and, eq, inArray, isNull, isNotNull, or, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import {
@@ -27,7 +28,7 @@ export async function readRunCompletionValues(
   const storedInput =
     input.inputRef === null
       ? undefined
-      : parseStoredExecutionValue(input.inputRef);
+      : decodeStoredValue(() => parseStoredExecutionValue(input.inputRef));
   const rows =
     input.nodeIds?.length === 0
       ? []
@@ -43,7 +44,7 @@ export async function readRunCompletionValues(
       const stored =
         row.output_ref === null
           ? undefined
-          : parseStoredExecutionValue(row.output_ref);
+          : decodeStoredValue(() => parseStoredExecutionValue(row.output_ref));
       return {
         nodeId: row.node_id,
         invocationKey: row.invocation_key,

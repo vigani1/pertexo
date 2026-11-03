@@ -1,3 +1,4 @@
+import { decodeStoredValue } from '../../shared/stored-values.js';
 import { rolesForCapability } from '@pertexo/policy';
 import { publicationReviewDecision } from '@pertexo/workflow-model';
 import { and, eq, sql } from 'drizzle-orm';
@@ -44,9 +45,12 @@ export async function decidePublicationReview(
     request: { decision: input.decision, comment: input.comment ?? null },
   });
   if (replay !== null) {
-    z.object({ reviewId: z.literal(input.reviewId) })
-      .strict()
-      .parse(replay);
+    decodeStoredValue(() =>
+      z
+        .object({ reviewId: z.literal(input.reviewId) })
+        .strict()
+        .parse(replay),
+    );
     return projectReview(await readReviewRow(client, input));
   }
   const initial = await readReviewRow(client, input);

@@ -1,3 +1,4 @@
+import { decodeStoredValue } from '../../shared/stored-values.js';
 import type {
   WorkflowTestSuiteDetail,
   WorkflowTestSuiteReport,
@@ -236,10 +237,13 @@ export async function readCaseReport(
     .catch(rethrowQueryFailure);
   const row = found[0];
   if (row === undefined) throw new WorkflowTestError('not_found');
+  const storedReport = row.report;
   const report =
-    row.report === null
+    storedReport === null
       ? null
-      : workflowTestSuiteReportSchema.parse(JSON.parse(row.report));
+      : decodeStoredValue(() =>
+          workflowTestSuiteReportSchema.parse(JSON.parse(storedReport)),
+        );
   const nodeIds = [
     ...new Set(
       report?.assertions.flatMap(({ assertion }) =>

@@ -1,3 +1,4 @@
+import { decodeStoredValue } from '../../shared/stored-values.js';
 import type { Role } from '@pertexo/policy';
 import {
   parseWorkflowGraphDraft,
@@ -103,7 +104,9 @@ export function reviewedSourceGraph(
   selection: AuthoringCatalogs,
 ): WorkflowGraph {
   if (source.kind === 'version')
-    return parseWorkflowGraphDraft(source.row.graphJson);
+    return decodeStoredValue(() =>
+      parseWorkflowGraphDraft(source.row.graphJson),
+    );
   const draft = projectDraft(source.row, selection.definitionCatalog);
   const tag = draftRepresentationTag(input.workflowId, draft);
   if (tag !== input.representationTag)

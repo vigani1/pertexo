@@ -1,3 +1,4 @@
+import { decodeStoredValue } from '../../../shared/stored-values.js';
 import { workflowVersions, workflowRuns } from '@pertexo/database/schema';
 import { and, eq, or, isNull, gt, sql } from 'drizzle-orm';
 import { z } from 'zod';
@@ -37,9 +38,11 @@ export async function requireFormAdmission(
         eq(workflowVersions.id, input.workflowVersionId),
       ),
     );
-  const entries = z
-    .array(z.object({ key: z.string(), version: z.number().int() }).strict())
-    .parse(definitions.map((row) => row.definition));
+  const entries = decodeStoredValue(() =>
+    z
+      .array(z.object({ key: z.string(), version: z.number().int() }).strict())
+      .parse(definitions.map((row) => row.definition)),
+  );
   const requirement = formAdmissionRequirement(entries, input.triggerType);
   if (requirement === 'allow') return;
   if (requirement === 'refuse') throw new RunRequiresFormError();

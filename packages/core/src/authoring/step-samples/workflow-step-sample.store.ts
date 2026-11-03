@@ -1,3 +1,4 @@
+import { decodeStoredValue } from '../../shared/stored-values.js';
 import { and, asc, eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { workflowStepSamples } from '@pertexo/database/schema';
@@ -101,7 +102,9 @@ export function createWorkflowStepSampleStore(access: AuthoringAccess) {
             output:
               row === undefined || sample?.state === 'expired'
                 ? null
-                : parseStoredExecutionValue(row.outputRef),
+                : decodeStoredValue(() =>
+                    parseStoredExecutionValue(row.outputRef),
+                  ),
             draftRevision: draft.revision,
           };
         },

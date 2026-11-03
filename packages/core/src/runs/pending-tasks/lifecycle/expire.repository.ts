@@ -1,3 +1,4 @@
+import { decodeStoredValue } from '../../../shared/stored-values.js';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
 import type { PoolClient } from 'pg';
@@ -58,7 +59,7 @@ export async function expireDueTasks(
       openedAt: row.created_at,
       expiredAt: row.expires_at,
       audience: setup.audience,
-      context: taskContextSchema.parse(row.context),
+      context: decodeStoredValue(() => taskContextSchema.parse(row.context)),
     });
     await db
       .update(task)
@@ -73,8 +74,9 @@ export async function expireDueTasks(
 
 /** Callbacks have no Timed out path; they always fail their Wait on expiry. */
 function timeoutSetup(row: Readonly<{ kind: string; config: unknown }>) {
-  if (row.kind === 'approval') return approvalConfigSchema.parse(row.config);
+  if (row.kind === 'approval')
+    return decodeStoredValue(() => approvalConfigSchema.parse(row.config));
   if (row.kind === 'input_request')
-    return inputRequestConfigSchema.parse(row.config);
+    return decodeStoredValue(() => inputRequestConfigSchema.parse(row.config));
   return undefined;
 }

@@ -1,3 +1,4 @@
+import { decodeStoredValue } from '../../shared/stored-values.js';
 import type { WorkflowTestSuiteReport } from '@pertexo/contracts';
 import {
   evaluateSuiteExpectations,
@@ -35,15 +36,15 @@ export async function evaluateSuiteCase(
   status: 'passed' | 'failed' | 'error';
   report: WorkflowTestSuiteReport;
 }> {
-  const expectations = workflowTestExpectationsSchema.parse(
-    JSON.parse(entry.expectations),
+  const expectations = decodeStoredValue(() =>
+    workflowTestExpectationsSchema.parse(JSON.parse(entry.expectations)),
   );
   const outputs = new Map<string, SuiteOutput>();
   const inline = (
     stored: unknown,
   ): { state: 'value'; value: JsonValue } | { state: 'unavailable' } => {
     if (stored === null) return { state: 'unavailable' };
-    const value = parseStoredExecutionValue(stored);
+    const value = decodeStoredValue(() => parseStoredExecutionValue(stored));
     return value.kind === 'inline'
       ? { state: 'value', value: value.value }
       : { state: 'unavailable' };

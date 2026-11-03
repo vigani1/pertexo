@@ -1,3 +1,4 @@
+import { decodeStoredValue } from '../../shared/stored-values.js';
 import { triggerCoordinatedEvents as events } from '@pertexo/database/schema';
 import {
   findPendingEvent,
@@ -164,7 +165,9 @@ async function startPendingCoordinatedRun(
     return refuseCoordinatedEvent(transaction, id, 'publication_changed');
   const projection = Object.freeze(version);
   const initial = checkpointFactory(projection);
-  const stored = parseStoredExecutionValue(event.input_ref);
+  const stored = decodeStoredValue(() =>
+    parseStoredExecutionValue(event.input_ref),
+  );
   if (stored.kind !== 'inline')
     throw new Error('Pending event input is unavailable');
   const digest = (value: string) =>

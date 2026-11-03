@@ -1,3 +1,4 @@
+import { decodeStoredValue } from '../../shared/stored-values.js';
 import { requireReadableReceipt } from '../../shared/receipts.js';
 import {
   rethrowQueryFailure,
@@ -189,7 +190,7 @@ function importPortableWorkflow(
     });
     if (stored !== null) {
       requireReadableReceipt(importResultSchema, stored);
-      const replay = importResultSchema.parse(stored);
+      const replay = decodeStoredValue(() => importResultSchema.parse(stored));
       const destination = await drizzle(client)
         .select({ id: workflows.id })
         .from(workflows)

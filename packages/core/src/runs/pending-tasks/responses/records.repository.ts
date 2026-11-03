@@ -1,3 +1,4 @@
+import { decodeStoredValue } from '../../../shared/stored-values.js';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { alias } from 'drizzle-orm/pg-core';
 import {
@@ -42,19 +43,23 @@ export function projectTask(row: TaskRow): PendingTaskDetail {
     row.kind === 'approval'
       ? {
           kind: 'approval' as const,
-          config: approvalConfigSchema.parse(row.config),
+          config: decodeStoredValue(() =>
+            approvalConfigSchema.parse(row.config),
+          ),
         }
       : {
           kind: 'input_request' as const,
-          config: inputRequestConfigSchema.parse(row.config),
+          config: decodeStoredValue(() =>
+            inputRequestConfigSchema.parse(row.config),
+          ),
         };
   const config = captured.config;
-  const context = taskContextSchema.parse(row.context);
+  const context = decodeStoredValue(() => taskContextSchema.parse(row.context));
   // A timed-out task's output is for later steps; the request has no answer.
   const stored =
     row.output_ref === null || row.status === 'expired'
       ? null
-      : parseStoredExecutionValue(row.output_ref);
+      : decodeStoredValue(() => parseStoredExecutionValue(row.output_ref));
   if (stored !== null && stored.kind !== 'inline')
     throw new Error('Task result is not inline');
   const common = {
@@ -90,11 +95,13 @@ export function projectTask(row: TaskRow): PendingTaskDetail {
       prefill: context.prefill ?? {},
       output:
         stored?.kind === 'inline'
-          ? formSubmissionSchema.parse(stored.value)
+          ? decodeStoredValue(() => formSubmissionSchema.parse(stored.value))
           : null,
     };
   const output =
-    stored?.kind === 'inline' ? approvalOutputSchema.parse(stored.value) : null;
+    stored?.kind === 'inline'
+      ? decodeStoredValue(() => approvalOutputSchema.parse(stored.value))
+      : null;
   return {
     ...common,
     kind: 'approval',

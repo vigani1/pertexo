@@ -1,3 +1,4 @@
+import { decodeStoredValue } from '../../shared/stored-values.js';
 import { and, eq } from 'drizzle-orm';
 import {
   parseWorkflowGraphDraft,
@@ -40,10 +41,15 @@ export async function resolvePreviewSample(
   // Read time after the row lock: a waiter may have crossed expiry without a row change.
   if (sample.expiresAt <= (await readDatabaseClock(transaction.db)))
     throw new WorkflowStepSampleError('expired');
-  const binding = stepSampleBindings(parseWorkflowGraphDraft(graph)).get(
-    input.nodeId,
-  );
+  const binding = stepSampleBindings(
+    decodeStoredValue(() => parseWorkflowGraphDraft(graph)),
+  ).get(input.nodeId);
   if (binding === undefined || binding !== sample.binding)
     throw new WorkflowStepSampleError('stale');
-  return { id: sample.id, output: parseStoredExecutionValue(sample.outputRef) };
+  return {
+    id: sample.id,
+    output: decodeStoredValue(() =>
+      parseStoredExecutionValue(sample.outputRef),
+    ),
+  };
 }

@@ -1,3 +1,4 @@
+import { decodeStoredValue } from '../../../shared/stored-values.js';
 import { and, eq, gt } from 'drizzle-orm';
 
 import {
@@ -90,7 +91,9 @@ export async function readExistingAcceptance(
     ...('pinnedSampleId' in resultRef.data
       ? {
           pinnedSampleId: resultRef.data.pinnedSampleId,
-          pinnedOutput: parseStoredExecutionValue(row.outputRef),
+          pinnedOutput: decodeStoredValue(() =>
+            parseStoredExecutionValue(row.outputRef),
+          ),
         }
       : {}),
     previewRunId: row.resourceId,
@@ -131,6 +134,8 @@ export async function resolveInput(
     throw new PriorPreviewInputUnavailableError();
   return Object.freeze({
     priorPreviewRunId: input.previewRunId,
-    stored: serializeStoredExecutionValue(parseStoredExecutionValue(outputRef)),
+    stored: serializeStoredExecutionValue(
+      decodeStoredValue(() => parseStoredExecutionValue(outputRef)),
+    ),
   });
 }

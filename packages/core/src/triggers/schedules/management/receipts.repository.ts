@@ -1,3 +1,4 @@
+import { decodeStoredValue } from '../../../shared/stored-values.js';
 import { credentialCommandScope } from '@pertexo/database/platform';
 import {
   claimCommand,
@@ -66,7 +67,9 @@ export async function claimScheduleCommand(
   });
   if (claimed === null) return null;
   try {
-    const stored = z.looseObject({ trigger: z.unknown() }).parse(claimed);
+    const stored = decodeStoredValue(() =>
+      z.looseObject({ trigger: z.unknown() }).parse(claimed),
+    );
     return Object.freeze({
       trigger: parseStoredScheduleTrigger(stored.trigger),
       replayed: true,
