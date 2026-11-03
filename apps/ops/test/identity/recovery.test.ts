@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { createApplicationSecretEnvelope } from '@pertexo/integrations/server';
+import { createApplicationSecretEnvelope } from '@pertexo/secrets/server';
 import {
   authenticationMailAssociatedData,
   type SystemMailInput,

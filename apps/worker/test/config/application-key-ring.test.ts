@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { parseApplicationPreviousKeys } from '@pertexo/integrations/server';
+import { parseApplicationPreviousKeys } from '@pertexo/secrets/server';
 
 describe('parseApplicationPreviousKeys', () => {
   it('returns an empty frozen ring when no previous keys are configured', () => {

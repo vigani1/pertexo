@@ -6,12 +6,12 @@ import {
   type ConnectionResolutionStore,
   type ResolvedConnectionSecretRecord,
 } from '@pertexo/core/connections';
+import { OAuth2TokenFailure } from '@pertexo/integrations/server';
+import { type ConnectionEnvelopeEncryption } from '@pertexo/secrets/server';
 import {
-  OAuth2TokenFailure,
-  type ConnectionEnvelopeEncryption,
   type OAuth2TokenScope,
   type OAuth2TokenService,
-} from '@pertexo/integrations/server';
+} from '@pertexo/core/connections';
 import {
   ProviderCredentialInvalidError,
   ProviderExecutionRateLimitError,

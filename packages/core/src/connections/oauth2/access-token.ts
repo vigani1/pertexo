@@ -1,11 +1,10 @@
 import timers from 'node:timers/promises';
 
 import type {
-  OAuth2AccessToken,
-  OAuth2Grant,
-  OAuth2Token,
-} from './oauth2-token.js';
-import { OAuth2TokenFailure } from './oauth2-token.js';
+  OAuth2GrantRecord as OAuth2Grant,
+  OAuth2TokenRecord as OAuth2Token,
+} from './oauth2-grant.types.js';
+import type { OAuth2AccessToken } from './token-renewal.js';
 import {
   loseOAuth2Grant,
   openOAuth2Grant,
@@ -17,7 +16,6 @@ import {
   type OAuth2TokenServiceDependencies,
   type RefreshOutcome,
 } from './refresh.js';
-import { decodeClientSettings } from './stored.js';
 
 const RENEW_WITHIN_MILLIS = 60_000;
 const WAIT_LIMIT_MILLIS = 20_000;
@@ -79,7 +77,7 @@ function raceSignal<Result>(
 export function createOAuth2TokenService(
   dependencies: OAuth2TokenServiceDependencies,
 ): OAuth2TokenService {
-  const { store } = dependencies;
+  const { store, decodeClientSettings } = dependencies;
   const inFlight = new Set<Promise<unknown>>();
 
   const useToken = async (
@@ -125,7 +123,7 @@ export function createOAuth2TokenService(
   ): Promise<void> => {
     for (;;) {
       if (performance.now() >= deadline)
-        throw new OAuth2TokenFailure('http.oauth2_refresh_busy');
+        throw new dependencies.TokenFailure('http.oauth2_refresh_busy');
       await timers.setTimeout(WAIT_STEP_MILLIS, undefined, { signal });
       const current = await store.readOAuth2Token({
         workspaceId: scope.workspaceId,
@@ -160,7 +158,7 @@ export function createOAuth2TokenService(
           'connection.oauth2_token_expired',
         )
       )
-        throw new OAuth2TokenFailure('http.oauth2_token_expired');
+        throw new dependencies.TokenFailure('http.oauth2_token_expired');
       return undefined;
     }
     const opened = await openOAuth2Grant(dependencies, scope, grant, signal);
@@ -207,11 +205,11 @@ export function createOAuth2TokenService(
           signal,
         });
         if (grant === null)
-          throw new OAuth2TokenFailure('http.oauth2_not_connected');
+          throw new dependencies.TokenFailure('http.oauth2_not_connected');
         const token = await pass(scope, grant, deadline, signal);
         if (token !== undefined) return token;
       }
-      throw new OAuth2TokenFailure('http.oauth2_refresh_busy');
+      throw new dependencies.TokenFailure('http.oauth2_refresh_busy');
     },
     rejectToken: (scope, tokenVersionId, signal) =>
       store.rejectOAuth2Token({

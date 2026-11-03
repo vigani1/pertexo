@@ -2,7 +2,7 @@ import {
   createEncryptionKeyRepository,
   verifySystemMailKeys,
 } from '@pertexo/secrets/server';
-import { verifyStoredEncryptionKeys } from '@pertexo/integrations/server';
+import { verifyStoredEncryptionKeys } from '@pertexo/secrets/server';
 import type { WorkerConfig } from '../../config/worker.js';
 
 export async function verifyWorkerEncryption(

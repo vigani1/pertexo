@@ -4,7 +4,7 @@ import { parseDatabaseConfig } from '@pertexo/database/platform';
 import {
   parseApplicationPreviousKeys,
   validateApplicationKeyRing,
-} from '@pertexo/integrations/server';
+} from '@pertexo/secrets/server';
 
 const environmentSchema = z.object({
   DATABASE_URL: z.string(),

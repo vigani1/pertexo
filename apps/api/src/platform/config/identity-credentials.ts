@@ -1,7 +1,7 @@
 import {
   parseApplicationPreviousKeys,
   validateApplicationKeyRing,
-} from '@pertexo/integrations/server';
+} from '@pertexo/secrets/server';
 
 import type { ApiIdentityConfig, IdentityEnvironment } from './identity.js';
 

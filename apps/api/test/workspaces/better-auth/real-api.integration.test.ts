@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import { createApplicationSecretEnvelope } from '@pertexo/integrations/server';
+import { createApplicationSecretEnvelope } from '@pertexo/secrets/server';
 import { describe, expect, it } from 'vitest';
 
 import {

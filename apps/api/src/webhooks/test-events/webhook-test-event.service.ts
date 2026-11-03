@@ -10,7 +10,7 @@ import {
   webhookTestEventSnapshotSchema,
   type WebhookAuthentication,
 } from '@pertexo/contracts';
-import type { WebhookTriggerEnvelopeEncryption } from '@pertexo/integrations/server';
+import type { WebhookTriggerEnvelopeEncryption } from '@pertexo/secrets/server';
 
 export class WebhookTestEventService {
   constructor(

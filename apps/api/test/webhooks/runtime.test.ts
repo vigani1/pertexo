@@ -2,7 +2,7 @@ import type {
   DatabaseConfig,
   DatabaseRuntime,
 } from '@pertexo/database/platform';
-import type * as Integrations from '@pertexo/integrations/server';
+import type * as Secrets from '@pertexo/secrets/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createApiWebhookRuntime } from '../../src/platform/webhooks/runtime.module.js';
@@ -19,7 +19,7 @@ vi.mock('@pertexo/core/triggers', async (original) => ({
   createWebhookTriggerStore: outside.database,
   createWebhookTestEventStore: outside.testEvents,
 }));
-vi.mock('@pertexo/integrations/server', async (original) => ({
+vi.mock('@pertexo/secrets/server', async (original) => ({
   ...(await original<object>()),
   createWebhookTriggerEnvelopeEncryption: outside.envelope,
 }));
@@ -43,8 +43,8 @@ describe('API webhook runtime ownership', () => {
   });
 
   it('composes the real local envelope without creating an AWS client', async () => {
-    const actual = await vi.importActual<typeof Integrations>(
-      '@pertexo/integrations/server',
+    const actual = await vi.importActual<typeof Secrets>(
+      '@pertexo/secrets/server',
     );
     outside.envelope.mockImplementation(
       actual.createWebhookTriggerEnvelopeEncryption,

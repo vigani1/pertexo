@@ -3,8 +3,8 @@ import {
   ConnectionNotFoundError,
   ConnectionUnavailableError,
 } from '@pertexo/core/testing';
+import { ConnectionSecretEncryptionError } from '@pertexo/secrets/server';
 import {
-  ConnectionSecretEncryptionError,
   SECURE_HTTP_ERROR_CODE,
   SecureHttpError,
   type SlackChannelLookupResult,

@@ -13,7 +13,7 @@ import {
   type WorkerConnectionResolutionStore,
 } from '@pertexo/core/connections';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
-import type { ConnectionEnvelopeEncryption } from '@pertexo/integrations/server';
+import type { ConnectionEnvelopeEncryption } from '@pertexo/secrets/server';
 
 import { createQueueProducer, QUEUE_NAME } from '@pertexo/queue';
 

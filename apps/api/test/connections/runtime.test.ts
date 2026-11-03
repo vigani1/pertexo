@@ -25,9 +25,12 @@ vi.mock('@pertexo/core/notifications', async (original) => ({
   ...(await original<object>()),
   createNotificationDestinationStore: outside.destination,
 }));
-vi.mock('@pertexo/integrations/server', async (original) => ({
+vi.mock('@pertexo/secrets/server', async (original) => ({
   ...(await original<object>()),
   createConnectionEnvelopeEncryption: outside.encryption,
+}));
+vi.mock('@pertexo/integrations/server', async (original) => ({
+  ...(await original<object>()),
   createNodeSecureHttpClient: outside.http,
   createSlackClient: outside.slack,
   createResendClient: outside.email,

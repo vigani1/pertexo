@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   ConnectionEnvelopeEncryption,
   type ConnectionSecretContext,
-} from '@pertexo/integrations/server';
+} from '@pertexo/secrets/server';
 import { createEditorBrowserEnvelopeKeys } from '../../../../infrastructure/testing/editor-browser-envelope-keys.mjs';
 import {
   betterAuthIntegrationEnabled,

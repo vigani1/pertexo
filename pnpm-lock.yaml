@@ -213,9 +213,6 @@ importers:
       '@pertexo/database':
         specifier: workspace:*
         version: link:../../packages/database
-      '@pertexo/integrations':
-        specifier: workspace:*
-        version: link:../../packages/integrations
       '@pertexo/observability':
         specifier: workspace:*
         version: link:../../packages/observability
@@ -596,9 +593,6 @@ importers:
 
   packages/integrations:
     dependencies:
-      '@aws-sdk/client-kms':
-        specifier: 3.1152.0
-        version: 3.1152.0
       '@pertexo/contracts':
         specifier: workspace:*
         version: link:../contracts
@@ -608,9 +602,6 @@ importers:
       '@pertexo/workflow-model':
         specifier: workspace:*
         version: link:../workflow-model
-      '@smithy/node-http-handler':
-        specifier: 4.12.1
-        version: 4.12.1
       form-data:
         specifier: 4.0.6
         version: 4.0.6
@@ -771,9 +762,18 @@ importers:
 
   packages/secrets:
     dependencies:
+      '@aws-sdk/client-kms':
+        specifier: 3.1152.0
+        version: 3.1152.0
       '@pertexo/database':
         specifier: workspace:*
         version: link:../database
+      '@pertexo/workflow-model':
+        specifier: workspace:*
+        version: link:../workflow-model
+      '@smithy/node-http-handler':
+        specifier: 4.12.1
+        version: 4.12.1
       drizzle-orm:
         specifier: 0.45.4
         version: 0.45.4(@opentelemetry/api@1.9.1)(@types/pg@8.23.1)(kysely@0.29.6)(pg@8.23.1)
@@ -6530,7 +6530,7 @@ snapshots:
 
   '@smithy/credential-provider-imds@4.5.2':
     dependencies:
-      '@smithy/core': 3.35.0
+      '@smithy/core': 3.36.0
       '@smithy/types': 4.19.0
       tslib: 2.8.1
 
@@ -6542,13 +6542,13 @@ snapshots:
 
   '@smithy/node-http-handler@4.12.1':
     dependencies:
-      '@smithy/core': 3.35.0
+      '@smithy/core': 3.36.0
       '@smithy/types': 4.19.0
       tslib: 2.8.1
 
   '@smithy/signature-v4@5.7.4':
     dependencies:
-      '@smithy/core': 3.35.0
+      '@smithy/core': 3.36.0
       '@smithy/types': 4.19.0
       tslib: 2.8.1
 

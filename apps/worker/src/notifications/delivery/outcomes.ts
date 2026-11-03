@@ -2,8 +2,8 @@ import type {
   ResendApiResult,
   SlackApiResult,
 } from '@pertexo/integrations/server';
+import { ConnectionSecretEncryptionError } from '@pertexo/secrets/server';
 import {
-  ConnectionSecretEncryptionError,
   SECURE_HTTP_ERROR_CODE,
   SecureHttpError,
 } from '@pertexo/integrations/server';

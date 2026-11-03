@@ -7,7 +7,7 @@ import {
   parseCallbackKeyConfig,
   createCallbackTokenKeys,
   callbackTokenHash,
-} from '../../../packages/integrations/dist/server.js';
+} from '../../../packages/secrets/dist/server.js';
 
 const quoted = (value) => "'" + value.replaceAll("'", "''") + "'";
 const insert = (table, fields) =>

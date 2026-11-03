@@ -2,8 +2,8 @@ import { randomUUID } from 'node:crypto';
 
 import { describe, expect, it } from 'vitest';
 
+import { encodeStoredClientSecret } from '@pertexo/core/connections';
 import {
-  encodeStoredClientSecret,
   newOAuth2State,
   type SecureHttpResponse,
 } from '@pertexo/integrations/server';

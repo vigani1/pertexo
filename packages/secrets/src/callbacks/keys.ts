@@ -6,7 +6,7 @@ import {
   validateApplicationKeyRing,
   parseApplicationPreviousKeys,
   type ApplicationKeyRing,
-} from '../security/key-ring.js';
+} from '../encryption/key-ring.js';
 
 export type CallbackTokenIdentity = Readonly<{ id: string }>;
 export type CallbackKeyConfig = Readonly<{

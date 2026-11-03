@@ -1,15 +1,15 @@
 import { describe, expect, it } from 'vitest';
 
-import type { SecureHttpResponse } from '../../src/http/secure.js';
-import { ConnectionSecretEncryptionError } from '../../src/credentials/envelope-encryption.js';
+import type { SecureHttpResponse } from '@pertexo/integrations/server';
+import { ConnectionSecretEncryptionError } from '@pertexo/secrets/server';
 import {
   decodeStoredClientSecret,
   decodeStoredTokens,
   encodeStoredClientSecret,
   encodeStoredTokens,
   isRenewable,
-} from '../../src/oauth2/stored.js';
-import { requestOAuth2Token } from '../../src/oauth2/token-endpoint.js';
+} from '@pertexo/core/connections';
+import { requestOAuth2Token } from '@pertexo/integrations/server';
 
 const settings = {
   grantType: 'authorization_code',

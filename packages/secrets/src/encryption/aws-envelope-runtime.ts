@@ -5,7 +5,7 @@ import {
   ConnectionEnvelopeEncryption,
 } from './envelope-encryption.js';
 import { createBoundedKmsClient } from './kms-client.js';
-import { isValidEnvelopeKeyReference } from '../crypto/envelope-cipher.js';
+import { isValidEnvelopeKeyReference } from './envelope-cipher.js';
 
 const configSchema = z
   .object({

@@ -1,15 +1,16 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import type { SealedConnectionSecret } from '../../src/credentials/envelope-encryption.js';
-import { createOAuth2TokenService } from '../../src/oauth2/access-token.js';
+import type { SealedConnectionSecret } from '@pertexo/secrets/server';
+
+import { createOAuth2TokenService } from '../../src/providers/oauth2-token-service.js';
 import {
   encodeStoredClientSecret,
   encodeStoredTokens,
-} from '../../src/oauth2/stored.js';
+} from '@pertexo/core/connections';
 import type {
-  OAuth2IssuedRow,
-  OAuth2Token,
-} from '../../src/oauth2/oauth2-token.js';
+  IssuedOAuth2Tokens as OAuth2IssuedRow,
+  OAuth2TokenRecord as OAuth2Token,
+} from '@pertexo/core/connections';
 
 const SCOPE = {
   workspaceId: '00000000-0000-4000-8000-000000000001',

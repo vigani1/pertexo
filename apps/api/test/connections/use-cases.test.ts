@@ -2,9 +2,9 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   SECURE_HTTP_ERROR_CODE,
   SecureHttpError,
-  ConnectionSecretEncryptionError,
   type SecureHttpRequest,
 } from '@pertexo/integrations/server';
+import { ConnectionSecretEncryptionError } from '@pertexo/secrets/server';
 import type {
   ConnectionHttpClient,
   ConnectionSlackClient,

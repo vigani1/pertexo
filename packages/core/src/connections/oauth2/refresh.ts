@@ -6,31 +6,26 @@ import type {
   ConnectionEnvelopeEncryption,
   ConnectionSecretContext,
   SealedConnectionSecret,
-} from '../credentials/envelope-encryption.js';
-import type { SecureHttpClient } from '../http/secure.js';
-
+} from '@pertexo/secrets/server';
+import type {
+  OAuth2GrantRecord as OAuth2Grant,
+  OAuth2TokenRecord as OAuth2Token,
+  OAuth2GrantLossActor,
+} from './oauth2-grant.types.js';
+import type { OAuth2TokenStore } from './tokens.repository.js';
 import type {
   OAuth2AccessToken,
-  OAuth2Grant,
-  OAuth2GrantLossActor,
-  OAuth2Token,
-  OAuth2TokenStore,
-} from './oauth2-token.js';
-import { OAuth2TokenFailure } from './oauth2-token.js';
+  OAuth2TokenFailure,
+  OAuth2TokenAnswer,
+  OAuth2RenewalProtocol,
+} from './token-renewal.js';
 import {
-  decodeClientSettings,
   decodeStoredClientSecret,
   decodeStoredTokens,
   encodeStoredTokens,
   isRenewable,
   type OAuth2StoredTokens,
 } from './stored.js';
-import {
-  requestOAuth2Token,
-  UNUSABLE_TOKEN_ANSWER,
-  type OAuth2TokenAnswer,
-} from './token-endpoint.js';
-
 const COMMIT_ATTEMPTS = 3;
 const COMMIT_DELAY_MILLIS = 1_000;
 /** Sealing must not hold a refresh that has already been answered for long. */
@@ -44,12 +39,12 @@ export type OAuth2TokenScope = Readonly<{
   loss: OAuth2GrantLossActor;
 }>;
 
-export type OAuth2TokenServiceDependencies = Readonly<{
-  store: OAuth2TokenStore;
-  encryption: Pick<ConnectionEnvelopeEncryption, 'open' | 'seal'>;
-  httpClient: Pick<SecureHttpClient, 'execute'>;
-  newId: () => string;
-}>;
+export type OAuth2TokenServiceDependencies = OAuth2RenewalProtocol &
+  Readonly<{
+    store: OAuth2TokenStore;
+    encryption: Pick<ConnectionEnvelopeEncryption, 'open' | 'seal'>;
+    newId: () => string;
+  }>;
 
 export type RefreshOutcome =
   | Readonly<{ kind: 'renewed'; token: OAuth2AccessToken }>
@@ -167,7 +162,7 @@ export async function openOAuth2Grant(
   signal: AbortSignal,
 ): Promise<OpenedOAuth2Grant> {
   return Object.freeze({
-    settings: decodeClientSettings(grant.settings),
+    settings: dependencies.decodeClientSettings(grant.settings),
     stored: await openStoredTokens(dependencies, scope, grant.token, signal),
     clientSecret: await openClientSecret(dependencies, scope, grant, signal),
   });
@@ -258,7 +253,7 @@ async function actOnAnswer(
           'connection.oauth2_grant_revoked',
         )
       )
-        throw new OAuth2TokenFailure('http.oauth2_grant_revoked');
+        throw new dependencies.TokenFailure('http.oauth2_grant_revoked');
       return CHANGED;
     case 'client_refused':
       if (
@@ -269,16 +264,16 @@ async function actOnAnswer(
           'connection.oauth2_client_rejected',
         )
       )
-        throw new OAuth2TokenFailure('http.oauth2_client_rejected');
+        throw new dependencies.TokenFailure('http.oauth2_client_rejected');
       return CHANGED;
     case 'address_blocked':
       await blockFor(refreshing, 0);
-      throw new OAuth2TokenFailure('http.oauth2_token_address_blocked');
+      throw new dependencies.TokenFailure('http.oauth2_token_address_blocked');
     case 'rate_limited':
       await blockFor(refreshing, answer.retryAfterSeconds);
       return Object.freeze({
         kind: 'temporary',
-        failure: new OAuth2TokenFailure(
+        failure: new dependencies.TokenFailure(
           'http.oauth2_token_rate_limited',
           answer.retryAfterSeconds,
         ),
@@ -287,7 +282,7 @@ async function actOnAnswer(
       await blockFor(refreshing, answer.retryAfterSeconds);
       return Object.freeze({
         kind: 'temporary',
-        failure: new OAuth2TokenFailure(
+        failure: new dependencies.TokenFailure(
           'http.oauth2_token_endpoint_unavailable',
         ),
       });
@@ -295,7 +290,7 @@ async function actOnAnswer(
       await blockFor(refreshing, answer.retryAfterSeconds);
       return Object.freeze({
         kind: 'temporary',
-        failure: new OAuth2TokenFailure(
+        failure: new dependencies.TokenFailure(
           'http.oauth2_token_response_invalid',
           undefined,
           answer.serviceError,
@@ -315,18 +310,15 @@ export async function refreshOAuth2Grant(
   if (settings.grantType === 'client_credentials')
     return actOnAnswer(
       refreshing,
-      await requestOAuth2Token(
-        dependencies.httpClient,
-        settings,
-        clientSecret,
-        { grantType: 'client_credentials' },
-      ),
+      await dependencies.requestToken(settings, clientSecret, {
+        grantType: 'client_credentials',
+      }),
     );
   if (stored.refreshToken === undefined)
-    return actOnAnswer(refreshing, UNUSABLE_TOKEN_ANSWER);
+    return actOnAnswer(refreshing, { kind: 'invalid', retryAfterSeconds: 15 });
   return actOnAnswer(
     refreshing,
-    await requestOAuth2Token(dependencies.httpClient, settings, clientSecret, {
+    await dependencies.requestToken(settings, clientSecret, {
       grantType: 'refresh_token',
       refreshToken: stored.refreshToken,
     }),

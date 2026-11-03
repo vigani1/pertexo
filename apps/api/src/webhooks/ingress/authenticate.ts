@@ -15,10 +15,8 @@ import type {
   WebhookVerificationReference,
 } from '@pertexo/core/triggers';
 
-import {
-  verifyWebhookSignature,
-  type WebhookTriggerEnvelopeEncryption,
-} from '@pertexo/integrations/server';
+import { verifyWebhookSignature } from '@pertexo/integrations/server';
+import { type WebhookTriggerEnvelopeEncryption } from '@pertexo/secrets/server';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { REJECTED_ATTEMPT } from '../management/delivery-log.js';
 import { authenticationFailed, problem, record } from './reply.js';

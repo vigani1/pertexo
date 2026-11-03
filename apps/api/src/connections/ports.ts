@@ -10,13 +10,15 @@ import type {
 import type { NotificationDestinationStore } from '@pertexo/core/notifications';
 import type {
   ConnectionSecretContext,
-  OAuth2EndpointPolicy,
-  OAuth2TokenService,
   SealedConnectionSecret,
+} from '@pertexo/secrets/server';
+import type {
+  OAuth2EndpointPolicy,
   SecureHttpClient,
   SlackClient,
   ResendClient,
 } from '@pertexo/integrations/server';
+import type { OAuth2TokenService } from '@pertexo/core/connections';
 
 import type { WorkspaceAuthorizationSource } from '../workspaces/ports.js';
 import type { ConnectionTelemetry } from './telemetry.js';

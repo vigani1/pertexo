@@ -13,14 +13,17 @@ import {
 } from '@pertexo/database/platform';
 import {
   createConnectionEnvelopeEncryption,
+  type ConnectionEnvelopeEncryptionRuntime,
+} from '@pertexo/secrets/server';
+import {
   createNodeSecureHttpClient,
-  createOAuth2TokenService,
   createSlackClient,
   createResendClient,
   type AllowedPrivateNetwork,
-  type ConnectionEnvelopeEncryptionRuntime,
   type SecureHttpClient,
 } from '@pertexo/integrations/server';
+
+import { createOAuth2TokenService } from './oauth2-token-service.js';
 
 import {
   ConnectionsModule,

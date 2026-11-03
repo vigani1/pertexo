@@ -10,7 +10,7 @@ import type {
 import {
   WebhookTriggerEnvelopeEncryption,
   type WebhookEnvelopeKeyProvider,
-} from '@pertexo/integrations/server';
+} from '@pertexo/secrets/server';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { APPLICATION_ERROR_MAPPERS } from '../../../src/application-errors.js';

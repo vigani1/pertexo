@@ -17,7 +17,7 @@ import { parseDatabaseConfig } from '@pertexo/database/testing';
 import {
   createConnectionEnvelopeEncryption,
   parseConnectionEncryptionConfig,
-} from '@pertexo/integrations/server';
+} from '@pertexo/secrets/server';
 import { HTTP_REQUEST_CONNECTION_SLOT } from '@pertexo/integrations';
 import {
   createPlatformNodeRegistry,

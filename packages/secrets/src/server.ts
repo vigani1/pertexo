@@ -30,3 +30,85 @@ export type {
   SystemMailMessage,
   SystemMailResult,
 } from './mail/system-mail.js';
+
+export {
+  AwsKmsEnvelopeKeyProvider,
+  ConnectionEnvelopeEncryption,
+  ConnectionSecretEncryptionError,
+  connectionSecretAssociatedData,
+} from './encryption/envelope-encryption.js';
+
+export { createAwsConnectionEnvelopeEncryption } from './encryption/aws-envelope-runtime.js';
+
+export type {
+  AwsConnectionEnvelopeEncryptionConfig,
+  AwsConnectionEnvelopeEncryptionRuntime,
+} from './encryption/aws-envelope-runtime.js';
+
+export type {
+  ConnectionSecretContext,
+  EnvelopeKeyProvider,
+  GeneratedEnvelopeKey,
+  KmsClientLike,
+  KmsCommand,
+  SealedConnectionSecret,
+} from './encryption/envelope-encryption.js';
+
+export {
+  AwsKmsWebhookEnvelopeKeyProvider,
+  createAwsWebhookTriggerEnvelopeEncryption,
+  createWebhookTriggerEnvelopeEncryption,
+  WebhookTriggerEnvelopeEncryption,
+  WebhookTriggerSecretEncryptionError,
+  webhookTriggerSecretAssociatedData,
+} from './encryption/webhook-envelope.js';
+
+export type {
+  GeneratedWebhookEnvelopeKey,
+  SealedWebhookTriggerSecretEnvelope,
+  WebhookEnvelopeKeyProvider,
+  WebhookTriggerSecretContext,
+} from './encryption/webhook-envelope.js';
+
+export {
+  createApplicationSecretEnvelope,
+  ApplicationSecretKeyUnavailableError,
+  type ApplicationSealedSecret,
+  type ApplicationSecretEnvelope,
+} from './encryption/application-secret-envelope.js';
+
+export {
+  createConnectionEnvelopeEncryption,
+  parseConnectionEncryptionConfig,
+} from './encryption/connection-encryption.runtime.js';
+
+export type {
+  ConnectionEnvelopeEncryptionConfig,
+  ConnectionEnvelopeEncryptionRuntime,
+  SelfManagedConnectionEncryptionConfig,
+} from './encryption/connection-encryption.runtime.js';
+
+export {
+  applicationKeyVersionSchema,
+  validateApplicationKeyRing,
+  parseApplicationPreviousKeys,
+} from './encryption/key-ring.js';
+
+export type { ApplicationKeyRing } from './encryption/key-ring.js';
+
+export {
+  verifyStoredEncryptionKeys,
+  StoredKeyVerificationError,
+} from './encryption/verify-stored-keys.js';
+
+export {
+  createCallbackTokenKeys,
+  parseCallbackKeyConfig,
+  callbackTokenHash,
+  CALLBACK_DEVELOPMENT_KEY,
+  type CallbackTokenKeys,
+  type CallbackKeyConfig,
+  type CallbackTokenIdentity,
+} from './callbacks/keys.js';
+
+export { verifyCallbackTokenKeys } from './callbacks/verify.js';

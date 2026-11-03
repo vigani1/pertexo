@@ -1,10 +1,10 @@
 import { randomBytes } from 'node:crypto';
-import type { ApplicationKeyRing } from '../security/key-ring.js';
-import { createApplicationSecretEnvelope } from '../security/application-secret-envelope.js';
+import type { ApplicationKeyRing } from './key-ring.js';
+import { createApplicationSecretEnvelope } from './application-secret-envelope.js';
 import type {
   EnvelopeKeyProviderCore,
   EnvelopeKeyMaterial,
-} from '../crypto/envelope-cipher.js';
+} from './envelope-cipher.js';
 
 const KEY_REFERENCE = 'self-managed';
 const LEGACY_REFERENCE = 'local:development';

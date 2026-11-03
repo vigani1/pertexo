@@ -1,10 +1,7 @@
-import {
-  oauth2ClientSettingsSchema,
-  type OAuth2ClientSettings,
-} from '@pertexo/contracts';
+import type { OAuth2ClientSettings } from '@pertexo/contracts';
 import { z } from 'zod';
 
-import { ConnectionSecretEncryptionError } from '../credentials/envelope-encryption.js';
+import { ConnectionSecretEncryptionError } from '@pertexo/secrets/server';
 
 const storedTokensSchema = z
   .object({
@@ -54,10 +51,6 @@ export function encodeStoredClientSecret(clientSecret: string): Uint8Array {
 
 export function decodeStoredClientSecret(bytes: Uint8Array): string {
   return decode(storedCredentialSchema, bytes).clientSecret;
-}
-
-export function decodeClientSettings(value: unknown): OAuth2ClientSettings {
-  return oauth2ClientSettingsSchema.parse(value);
 }
 
 /** Client credentials renews with a new request, so it needs no refresh token. */

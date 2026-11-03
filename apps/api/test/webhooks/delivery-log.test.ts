@@ -5,7 +5,7 @@ import {
   type WebhookTriggerStore,
 } from '@pertexo/core/testing';
 import { webhookDeliveryListResponseSchema } from '@pertexo/contracts';
-import type { WebhookTriggerEnvelopeEncryption } from '@pertexo/integrations/server';
+import type { WebhookTriggerEnvelopeEncryption } from '@pertexo/secrets/server';
 import { describe, expect, it, vi } from 'vitest';
 
 import {

@@ -28,7 +28,7 @@ import {
   authenticationMailAssociatedData,
   createSystemMailEnqueueStore,
 } from '@pertexo/secrets/server';
-import { createApplicationSecretEnvelope } from '@pertexo/integrations/server';
+import { createApplicationSecretEnvelope } from '@pertexo/secrets/server';
 import { DurableAuthenticationMail } from '../../src/authentication/mail/delivery.js';
 import { createBetterAuthRuntime } from '../../src/authentication/better-auth/better-auth.runtime.js';
 import { createIdentityWorkspaceStore } from '@pertexo/core/tenant-access';

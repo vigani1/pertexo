@@ -1,8 +1,8 @@
 import { Readable } from 'node:stream';
 import { generateKeyPairSync, sign, createHash } from 'node:crypto';
 import { describe, expect, it, vi } from 'vitest';
+import { createApplicationSecretEnvelope } from '@pertexo/secrets/server';
 import {
-  createApplicationSecretEnvelope,
   SecureHttpClient,
   type SecureHttpTransportRequest,
 } from '@pertexo/integrations/server';

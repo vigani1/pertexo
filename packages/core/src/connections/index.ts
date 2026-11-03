@@ -48,3 +48,31 @@ export type { ConnectionHealthApplicationResult } from './health/connection-heal
 // Attempts, authoring, lifecycle, notifications and previews use these directly (ADR 091).
 export type {} from './oauth2/clients.repository.js';
 export type {} from './runtime/credential-use.repository.js';
+
+export { createOAuth2TokenService } from './oauth2/access-token.js';
+
+export { withCommitAttempts } from './oauth2/refresh.js';
+
+export type {
+  OAuth2TokenScope,
+  OAuth2TokenService,
+} from './oauth2/access-token.js';
+
+export {
+  decodeStoredClientSecret,
+  decodeStoredTokens,
+  encodeStoredClientSecret,
+  encodeStoredTokens,
+  isRenewable,
+} from './oauth2/stored.js';
+
+export type { OAuth2StoredTokens } from './oauth2/stored.js';
+
+export type { OAuth2TokenServiceDependencies } from './oauth2/refresh.js';
+export type { OAuth2AccessToken } from './oauth2/token-renewal.js';
+export type { OAuth2GrantLossActor } from './oauth2/oauth2-grant.types.js';
+
+export type {
+  IssuedOAuth2Tokens,
+  OAuth2TokenRecord,
+} from './oauth2/oauth2-grant.types.js';

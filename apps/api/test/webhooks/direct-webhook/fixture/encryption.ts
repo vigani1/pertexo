@@ -1,6 +1,6 @@
 import { createHash, createHmac } from 'node:crypto';
 
-import type { WebhookEnvelopeKeyProvider } from '@pertexo/integrations/server';
+import type { WebhookEnvelopeKeyProvider } from '@pertexo/secrets/server';
 
 export class DeterministicEnvelopeKeys implements WebhookEnvelopeKeyProvider {
   readonly #master = new Uint8Array(32).fill(0x6d);

@@ -4,8 +4,8 @@ import { createHmac } from 'node:crypto';
 import { once } from 'node:events';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createPlatformNodeRegistry } from '@pertexo/node-catalog/server';
+import { callbackTokenHash } from '@pertexo/secrets/server';
 import {
-  callbackTokenHash,
   createNodeSecureHttpClient,
   parseAllowedPrivateNetworks,
 } from '@pertexo/integrations/server';

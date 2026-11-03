@@ -7,9 +7,9 @@ import { z } from 'zod';
 import { connectionResponseSchema } from '@pertexo/contracts';
 import {
   ConnectionEnvelopeEncryption,
-  createSlackClient,
   type ConnectionSecretContext,
-} from '@pertexo/integrations/server';
+} from '@pertexo/secrets/server';
+import { createSlackClient } from '@pertexo/integrations/server';
 import { createEditorBrowserEnvelopeKeys } from '../../../../../infrastructure/testing/editor-browser-envelope-keys.mjs';
 import { createConnectionHealthSlackTransport } from '../../../../../infrastructure/testing/connection-health-slack-transport.mjs';
 import { FixtureResourceOwner } from '../../browser/harness/resource-owner.js';

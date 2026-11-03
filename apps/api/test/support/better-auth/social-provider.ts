@@ -1,4 +1,4 @@
-import { createApplicationSecretEnvelope } from '@pertexo/integrations/server';
+import { createApplicationSecretEnvelope } from '@pertexo/secrets/server';
 import { beforeAll, afterAll, vi } from 'vitest';
 import * as composition from '../../../src/platform/identity/better-auth-composition.js';
 import { createBetterAuthRuntime } from '../../../src/authentication/better-auth/better-auth.runtime.js';

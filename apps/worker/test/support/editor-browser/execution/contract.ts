@@ -1,4 +1,4 @@
-import type { CallbackKeyConfig } from '@pertexo/integrations/server';
+import type { CallbackKeyConfig } from '@pertexo/secrets/server';
 
 import type { createArtifactDestination } from '../../../attempts/artifacts/http-destination.js';
 

@@ -1,11 +1,10 @@
 import { createWorkerConnectionResolutionStore } from '@pertexo/core/connections';
 import { generatePersistedId } from '@pertexo/database/platform';
 
-import {
-  createConnectionEnvelopeEncryption,
-  createNodeSecureHttpClient,
-  createOAuth2TokenService,
-} from '@pertexo/integrations/server';
+import { createConnectionEnvelopeEncryption } from '@pertexo/secrets/server';
+import { createNodeSecureHttpClient } from '@pertexo/integrations/server';
+
+import { createOAuth2TokenService } from '../../../providers/oauth2-token-service.js';
 import { RedisRateLimitRuntime } from '@pertexo/rate-limit';
 
 import { createProviderConnectionRuntimeFactory } from '../../../providers/connections.js';

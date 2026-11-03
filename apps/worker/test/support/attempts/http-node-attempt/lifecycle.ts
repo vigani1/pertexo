@@ -9,7 +9,7 @@ import {
   parseDatabaseConfig,
 } from '@pertexo/database/testing';
 
-import { ConnectionEnvelopeEncryption } from '@pertexo/integrations/server';
+import { ConnectionEnvelopeEncryption } from '@pertexo/secrets/server';
 
 import { buildWorkflowExecutable } from '@pertexo/workflow-engine';
 import { Pool, type PoolClient } from 'pg';

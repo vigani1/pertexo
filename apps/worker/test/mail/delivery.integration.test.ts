@@ -17,10 +17,10 @@ import {
 } from '@pertexo/secrets/server';
 import {
   createApplicationSecretEnvelope,
-  openNoticeUnsubscribe,
   StoredKeyVerificationError,
   verifyStoredEncryptionKeys,
-} from '@pertexo/integrations/server';
+} from '@pertexo/secrets/server';
+import { openNoticeUnsubscribe } from '@pertexo/core/inbox';
 import { Pool } from 'pg';
 import { SMTPServer } from 'smtp-server';
 import { createSystemMailDeliveryHandler } from '../../src/mail/delivery.js';

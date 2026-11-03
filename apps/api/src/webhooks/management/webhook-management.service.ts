@@ -13,7 +13,7 @@ import type {
   WorkflowTriggerHealth,
 } from '@pertexo/core/triggers';
 import { generatePersistedId } from '@pertexo/database/platform';
-import type { WebhookTriggerEnvelopeEncryption } from '@pertexo/integrations/server';
+import type { WebhookTriggerEnvelopeEncryption } from '@pertexo/secrets/server';
 
 import {
   decodeWebhookDeliveryCursor,

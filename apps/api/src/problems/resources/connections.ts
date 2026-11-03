@@ -10,10 +10,8 @@ import {
   ConnectionUnavailableError,
 } from '@pertexo/core/connections';
 import { FailureNotificationDestinationError } from '@pertexo/core/notifications';
-import {
-  ConnectionSecretEncryptionError,
-  SecureHttpError,
-} from '@pertexo/integrations/server';
+import { ConnectionSecretEncryptionError } from '@pertexo/secrets/server';
+import { SecureHttpError } from '@pertexo/integrations/server';
 import { applicationError } from '../../platform/http/index.js';
 import { InvalidConnectionCursorError } from '../../connections/cursor.js';
 import {

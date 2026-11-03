@@ -4,7 +4,7 @@ import {
   authenticationMailAssociatedData,
   type SystemMailInput,
 } from '@pertexo/secrets/server';
-import { createApplicationSecretEnvelope } from '@pertexo/integrations/server';
+import { createApplicationSecretEnvelope } from '@pertexo/secrets/server';
 import type { TwoFactorRecoveryConfig } from './config.js';
 
 export async function disableTwoFactor(

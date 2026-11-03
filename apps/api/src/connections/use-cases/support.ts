@@ -1,6 +1,6 @@
 import { createHash, createHmac } from 'node:crypto';
 
-import { encodeStoredClientSecret } from '@pertexo/integrations/server';
+import { encodeStoredClientSecret } from '@pertexo/core/connections';
 import { canonicalJson } from '@pertexo/workflow-model';
 import type { z } from 'zod';
 

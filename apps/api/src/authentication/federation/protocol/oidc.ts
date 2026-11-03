@@ -2,10 +2,8 @@ import * as oidc from 'openid-client';
 import type { OidcConfiguration } from '@pertexo/contracts';
 import { FederationProofError, refuseAs } from './failure.js';
 import { organizationIdentity, type OrganizationIdentity } from './identity.js';
-import type {
-  ApplicationSecretEnvelope,
-  SecureHttpClient,
-} from '@pertexo/integrations/server';
+import type { ApplicationSecretEnvelope } from '@pertexo/secrets/server';
+import type { SecureHttpClient } from '@pertexo/integrations/server';
 
 export type OidcProviderMaterial = Readonly<{
   id: string;

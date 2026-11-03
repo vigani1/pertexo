@@ -9,7 +9,7 @@ import type { RateLimitConsumer } from '../../../src/platform/rate-limit/admissi
 import type { WebhookTriggerStore } from '@pertexo/core/testing';
 import type { StructuredLogger } from '@pertexo/observability';
 
-import type { WebhookTriggerEnvelopeEncryption } from '@pertexo/integrations/server';
+import type { WebhookTriggerEnvelopeEncryption } from '@pertexo/secrets/server';
 import Fastify from 'fastify';
 import type { FastifyInstance } from 'fastify';
 import { afterEach, beforeEach, vi } from 'vitest';

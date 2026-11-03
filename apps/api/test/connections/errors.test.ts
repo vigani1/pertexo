@@ -9,10 +9,8 @@ import {
   ConnectionUnavailableError,
   FailureNotificationDestinationError,
 } from '@pertexo/core/testing';
-import {
-  ConnectionSecretEncryptionError,
-  SecureHttpError,
-} from '@pertexo/integrations/server';
+import { ConnectionSecretEncryptionError } from '@pertexo/secrets/server';
+import { SecureHttpError } from '@pertexo/integrations/server';
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 

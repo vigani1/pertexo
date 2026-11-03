@@ -16,7 +16,7 @@ import { Queue } from 'bullmq';
 import { QUEUE_NAME } from '@pertexo/queue';
 import { createPlatformNodeRegistry } from '@pertexo/node-catalog/server';
 import { Readable } from 'node:stream';
-import { callbackTokenHash } from '@pertexo/integrations/server';
+import { callbackTokenHash } from '@pertexo/secrets/server';
 
 describe.runIf(fixture.enabled)(
   'Callback waits in structured work and shared Call slots',
