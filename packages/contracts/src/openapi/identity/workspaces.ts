@@ -10,10 +10,7 @@ import {
   governanceContractSchemas,
   governanceContractPaths,
 } from './governance.js';
-import {
-  dataTableContractSchemas,
-  dataTableContractPaths,
-} from './data-tables.js';
+import { dataTableRoutes } from '../../routes/identity/data-tables.js';
 import { variableRoutes } from '../../routes/identity/variables.js';
 import { routePaths, routeSchemas } from '../../routes/openapi.js';
 import {
@@ -134,7 +131,7 @@ const schemas = Object.freeze({
 
 const openApiSchemas = {
   ...schemas,
-  ...dataTableContractSchemas(),
+  ...routeSchemas(Object.values(dataTableRoutes)),
   ...governanceContractSchemas(),
   ...federationContractSchemas(),
   ...directoryContractSchemas(),
@@ -160,7 +157,7 @@ export const identityWorkspaceOpenApiDocument = Object.freeze({
   paths: {
     ...apiTokenContractPaths,
     ...routePaths(Object.values(variableRoutes)),
-    ...dataTableContractPaths,
+    ...routePaths(Object.values(dataTableRoutes)),
     ...governanceContractPaths,
     ...authenticationContractPaths,
     ...federationContractPaths,

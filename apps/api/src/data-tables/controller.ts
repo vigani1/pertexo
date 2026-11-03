@@ -2,255 +2,185 @@ import { CsvExportAdmission } from '../platform/http/csv/admission.js';
 import type { FastifyRequest, FastifyReply } from 'fastify';
 import { decodeTableExportRequest } from './export/request.js';
 import { sendTableExport } from './export/response.js';
+import { Controller, Req, Res, UseInterceptors } from '@nestjs/common';
 import {
-  Body,
-  Controller,
-  Get,
-  Post,
-  Put,
-  Delete,
-  Param,
-  Req,
-  Res,
-  UseGuards,
-  Header,
-  HttpCode,
-  UseInterceptors,
-} from '@nestjs/common';
+  dataTableRoutes as routes,
+  type RouteInput,
+} from '@pertexo/contracts/server';
 import {
-  workspaceIdentifierSchema,
-  dataTableCreateSchema,
-  dataTableSchemaEditSchema,
-  dataTableLimitsSchema,
-  dataTableRemoveSchema,
-  dataTableQuerySchema,
-  dataTableWriteSchema,
-  dataTableCsvImportSchema,
-} from '@pertexo/contracts';
-import {
-  SessionAuthenticationGuard,
   CsrfProtectionGuard,
   authenticatedSession,
 } from '../workspaces/index.js';
+import { In, Route } from '../workspaces/http/route.js';
 import type { IdentityWorkspaceRequest } from '../workspaces/types.js';
-import {
-  requestIdempotencyKey,
-  withRequestOperationSignal,
-} from '../platform/http/index.js';
+import { withRequestOperationSignal } from '../platform/http/index.js';
 import type { AbortableRequest } from '../platform/http/request-operation-signal.js';
-import { RateLimit } from '../platform/rate-limit/metadata.js';
-import { DataTablesReadGuard, DataTablesManageGuard } from './guards.js';
 import { DataTablesService } from './service.js';
 import { domainErrors } from '../platform/http/problems/interceptor.js';
 import { dataTableFailure } from '../problems/context/normalize.js';
-import { parseRequestInput } from '../platform/http/request-input.js';
 
 type Request = IdentityWorkspaceRequest & AbortableRequest;
+
 @UseInterceptors(domainErrors(dataTableFailure))
-@Controller('v1/workspaces/:workspaceId/data-tables')
-@UseGuards(SessionAuthenticationGuard)
-@RateLimit('authenticated_read')
+@Controller()
 export class DataTablesController {
   constructor(
     private readonly tables: DataTablesService,
     private readonly csrf: CsrfProtectionGuard,
     private readonly exports: CsvExportAdmission,
   ) {}
-  private scope(request: Request, workspace: unknown) {
-    return {
-      workspaceId: workspaceIdentifierSchema.parse(workspace),
-      actorId: authenticatedSession(request).userId,
-    };
-  }
-  @Get()
-  @Header('Cache-Control', 'private, no-store')
-  @UseGuards(DataTablesReadGuard)
-  list(@Req() request: Request, @Param('workspaceId') workspace: unknown) {
+
+  @Route(routes.list)
+  list(
+    @Req() request: Request,
+    @In() { params }: RouteInput<typeof routes.list>,
+  ) {
     return withRequestOperationSignal(request, (signal) =>
-      this.tables.store.list({ ...this.scope(request, workspace), signal }),
+      this.tables.store.list({ ...scope(request, params), signal }),
     );
   }
-  @Post()
-  @Header('Cache-Control', 'private, no-store')
-  @HttpCode(200)
-  @UseGuards(DataTablesManageGuard, CsrfProtectionGuard)
-  @RateLimit('ordinary_mutation')
+
+  @Route(routes.create)
   create(
     @Req() request: Request,
-    @Param('workspaceId') workspace: unknown,
-    @Body() body: unknown,
+    @In() { params, body, idempotencyKey }: RouteInput<typeof routes.create>,
   ) {
-    const input = parseRequestInput(dataTableCreateSchema, body);
     return withRequestOperationSignal(request, (signal) =>
       this.tables.store.create({
-        ...this.scope(request, workspace),
-        ...input,
-        keyColumn: input.keyColumn ?? null,
-        idempotencyKey: requestIdempotencyKey(request.headers),
+        ...scope(request, params),
+        ...body,
+        keyColumn: body.keyColumn ?? null,
+        idempotencyKey,
         signal,
       }),
     );
   }
-  @Put('limits')
-  @Header('Cache-Control', 'private, no-store')
-  @UseGuards(DataTablesManageGuard, CsrfProtectionGuard)
-  @RateLimit('ordinary_mutation')
+
+  @Route(routes.limits)
   limits(
     @Req() request: Request,
-    @Param('workspaceId') workspace: unknown,
-    @Body() body: unknown,
+    @In() { params, body, idempotencyKey }: RouteInput<typeof routes.limits>,
   ) {
-    const input = parseRequestInput(dataTableLimitsSchema, body);
     return withRequestOperationSignal(request, (signal) =>
       this.tables.store.configure({
-        ...this.scope(request, workspace),
-        ...input,
-        idempotencyKey: requestIdempotencyKey(request.headers),
+        ...scope(request, params),
+        ...body,
+        idempotencyKey,
         signal,
       }),
     );
   }
-  @Delete(':tableId')
-  @Header('Cache-Control', 'private, no-store')
-  @UseGuards(DataTablesManageGuard, CsrfProtectionGuard)
-  @RateLimit('ordinary_mutation')
+
+  @Route(routes.remove)
   remove(
     @Req() request: Request,
-    @Param('workspaceId') workspace: unknown,
-    @Param('tableId') table: unknown,
-    @Body() body: unknown,
+    @In() { params, body, idempotencyKey }: RouteInput<typeof routes.remove>,
   ) {
-    const input = parseRequestInput(dataTableRemoveSchema, body);
-    const tableId = workspaceIdentifierSchema.parse(table);
     return withRequestOperationSignal(request, (signal) =>
       this.tables.store.remove({
-        ...this.scope(request, workspace),
-        ...input,
-        tableId,
-        idempotencyKey: requestIdempotencyKey(request.headers),
+        ...scope(request, params),
+        ...body,
+        tableId: params.tableId,
+        idempotencyKey,
         signal,
       }),
     );
   }
-  @Put(':tableId/schema')
-  @Header('Cache-Control', 'private, no-store')
-  @UseGuards(DataTablesManageGuard, CsrfProtectionGuard)
-  @RateLimit('ordinary_mutation')
+
+  @Route(routes.editSchema)
   editSchema(
     @Req() request: Request,
-    @Param('workspaceId') workspace: unknown,
-    @Param('tableId') table: unknown,
-    @Body() body: unknown,
+    @In()
+    { params, body, idempotencyKey }: RouteInput<typeof routes.editSchema>,
   ) {
-    const input = parseRequestInput(dataTableSchemaEditSchema, body);
-    const tableId = workspaceIdentifierSchema.parse(table);
     return withRequestOperationSignal(request, (signal) =>
       this.tables.store.editSchema({
-        ...this.scope(request, workspace),
-        ...input,
-        tableId,
-        idempotencyKey: requestIdempotencyKey(request.headers),
+        ...scope(request, params),
+        ...body,
+        tableId: params.tableId,
+        idempotencyKey,
         signal,
       }),
     );
   }
-  // Nest binds these five route arguments independently; retain validation order.
-  // eslint-disable-next-line max-params
-  @Post(':tableId/export')
-  @HttpCode(200)
-  @UseGuards(DataTablesReadGuard)
-  @RateLimit('data_table_export')
+
+  /** A native form can post this, so the body is read here, CSRF token included. */
+  @Route(routes.export)
   async exportCsv(
     @Req() request: Request & FastifyRequest,
     @Res() reply: FastifyReply,
-    @Param('workspaceId') workspace: unknown,
-    @Param('tableId') table: unknown,
-    @Body() body: unknown,
+    @In() { params }: RouteInput<typeof routes.export>,
   ) {
     const { query, csrfToken } = decodeTableExportRequest(
-      body,
+      request.body,
       request.headers['content-type'],
     );
     this.csrf.assertRequestAllowed(request, csrfToken);
-    const scope = this.scope(request, workspace);
-    const tableId = workspaceIdentifierSchema.parse(table);
-    await this.exports.run(scope.workspaceId, () =>
+    const tableScope = scope(request, params);
+    await this.exports.run(tableScope.workspaceId, () =>
       sendTableExport(
         this.tables.store,
-        { ...scope, tableId, query },
+        { ...tableScope, tableId: params.tableId, query },
         request,
         reply,
       ),
     );
   }
-  @Post(':tableId/rows/query')
-  @Header('Cache-Control', 'private, no-store')
-  @HttpCode(200)
-  @UseGuards(DataTablesReadGuard, CsrfProtectionGuard)
+
+  @Route(routes.find)
   find(
     @Req() request: Request,
-    @Param('workspaceId') workspace: unknown,
-    @Param('tableId') table: unknown,
-    @Body() body: unknown,
+    @In() { params, body }: RouteInput<typeof routes.find>,
   ) {
-    const query = parseRequestInput(dataTableQuerySchema, body);
-    const tableId = workspaceIdentifierSchema.parse(table);
     return withRequestOperationSignal(request, (signal) =>
       this.tables.store.find({
-        ...this.scope(request, workspace),
-        query,
-        tableId,
+        ...scope(request, params),
+        query: body,
+        tableId: params.tableId,
         signal,
       }),
     );
   }
-  @Post(':tableId/rows')
-  @Header('Cache-Control', 'private, no-store')
-  @HttpCode(200)
-  @UseGuards(DataTablesManageGuard, CsrfProtectionGuard)
-  @RateLimit('ordinary_mutation')
+
+  @Route(routes.write)
   write(
     @Req() request: Request,
-    @Param('workspaceId') workspace: unknown,
-    @Param('tableId') table: unknown,
-    @Body() body: unknown,
+    @In() { params, body, idempotencyKey }: RouteInput<typeof routes.write>,
   ) {
-    const input = parseRequestInput(dataTableWriteSchema, body);
-    const tableId = workspaceIdentifierSchema.parse(table);
     return withRequestOperationSignal(request, (signal) =>
       this.tables.store.write({
-        ...this.scope(request, workspace),
-        command: input.command,
-        ...('rowId' in input
-          ? { rowId: input.rowId, expectedRevision: input.expectedRevision }
+        ...scope(request, params),
+        command: body.command,
+        ...('rowId' in body
+          ? { rowId: body.rowId, expectedRevision: body.expectedRevision }
           : {}),
-        tableId,
-        idempotencyKey: requestIdempotencyKey(request.headers),
+        tableId: params.tableId,
+        idempotencyKey,
         signal,
       }),
     );
   }
-  @Post(':tableId/import')
-  @Header('Cache-Control', 'private, no-store')
-  @HttpCode(200)
-  @UseGuards(DataTablesManageGuard, CsrfProtectionGuard)
-  @RateLimit('ordinary_mutation')
+
+  @Route(routes.importCsv)
   importCsv(
     @Req() request: Request,
-    @Param('workspaceId') workspace: unknown,
-    @Param('tableId') table: unknown,
-    @Body() body: unknown,
+    @In() { params, body, idempotencyKey }: RouteInput<typeof routes.importCsv>,
   ) {
-    const input = parseRequestInput(dataTableCsvImportSchema, body);
-    const tableId = workspaceIdentifierSchema.parse(table);
     return withRequestOperationSignal(request, (signal) =>
       this.tables.importCsv({
-        ...this.scope(request, workspace),
-        ...input,
-        tableId,
-        idempotencyKey: requestIdempotencyKey(request.headers),
+        ...scope(request, params),
+        ...body,
+        tableId: params.tableId,
+        idempotencyKey,
         signal,
       }),
     );
   }
+}
+
+function scope(request: Request, params: Readonly<{ workspaceId: string }>) {
+  return {
+    workspaceId: params.workspaceId,
+    actorId: authenticatedSession(request).userId,
+  };
 }

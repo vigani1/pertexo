@@ -46,21 +46,42 @@ export type RouteAccess =
   | Readonly<{ auth: 'public' }>
   | Readonly<{
       auth: 'session' | 'session_or_token';
-      capability?: RouteCapability;
+      /** Each is checked in order; most routes have one. */
+      capabilities?: readonly RouteCapability[];
+      /**
+       * A native form POST can't set a header, so its token comes in the body and the
+       * handler checks it. Anything else takes CSRF in the header, from the guard.
+       */
+      csrf?: 'header_or_body';
     }>;
 
 /** A schema with the name its OpenAPI component takes. */
 export type NamedSchema<Schema extends z.ZodType = z.ZodType> = Readonly<{
   name: string;
   schema: Schema;
+  /** Recursive JSON values need the shared projection to stay readable. */
+  projected?: true;
 }>;
 
 export function named<Schema extends z.ZodType>(
   name: string,
   schema: Schema,
+  options: Readonly<{ projected?: true }> = {},
 ): NamedSchema<Schema> {
-  return { name, schema };
+  return { name, schema, ...options };
 }
+
+/** A JSON answer, checked against its schema before it leaves. */
+type JsonSuccess<Response extends z.ZodType> = Readonly<{
+  status: number;
+  description: string;
+  body: NamedSchema<Response>;
+}>;
+/** Anything else, such as a CSV stream, which the handler writes itself. */
+type DocumentedSuccess = Readonly<{
+  status: number;
+  response: Readonly<Record<string, unknown>>;
+}>;
 
 type RouteShape = z.ZodObject;
 
@@ -82,11 +103,13 @@ export type RouteDeclaration<
   body?: NamedSchema<Body>;
   idempotent?: Idempotent;
   cacheControl?: string;
-  success: Readonly<{
-    status: number;
-    description: string;
-    body: NamedSchema<Response>;
-  }>;
+  description?: string;
+  /**
+   * Replaces the JSON request body in the document, for a route that takes more than
+   * JSON. Its handler parses the body, so `@In` leaves it alone.
+   */
+  requestDocument?: Readonly<Record<string, unknown>>;
+  success: JsonSuccess<Response> | DocumentedSuccess;
   /** OpenAPI responses by status, from `problemResponse` or `responseReference`. */
   problems: Readonly<Record<string, unknown>>;
 }>;
@@ -102,15 +125,7 @@ export function routePathParameters(path: string): readonly string[] {
 }
 
 /** A path and its parameter schema must name the same things, or the route can't parse. */
-export function defineRoute<
-  Params extends RouteShape,
-  Query extends RouteShape,
-  Body extends z.ZodType,
-  Response extends z.ZodType,
-  Idempotent extends boolean = false,
->(
-  route: RouteDeclaration<Params, Query, Body, Response, Idempotent>,
-): RouteDeclaration<Params, Query, Body, Response, Idempotent> {
+export function defineRoute<const Route extends AnyRoute>(route: Route): Route {
   const inPath = routePathParameters(route.path).toSorted();
   const declared = Object.keys(route.params?.shape ?? {}).toSorted();
   if (inPath.join() !== declared.join())

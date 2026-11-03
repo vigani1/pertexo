@@ -48,7 +48,7 @@ test('table writes require test consent, execute as real previews and are skippe
       keyColumn: 'key',
     },
   });
-  expect(created.status(), await created.text()).toBe(200);
+  expect(created.status(), await created.text()).toBe(201);
   const tableId = ((await created.json()) as { id: string }).id;
   const path = await createEditorWorkflow(
     page,
