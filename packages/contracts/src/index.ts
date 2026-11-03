@@ -251,7 +251,6 @@ export {
   directoryMappingsSchema,
   directoryAdoptSchema,
   directorySettingsSchema,
-  directoryPeopleQuerySchema,
   directoryPeoplePageSchema,
 } from './schemas/identity/federation/directory.js';
 export type {
@@ -267,10 +266,7 @@ export type { DirectoryMembershipSource } from './schemas/identity/federation/di
 
 export { directoryChangedSchema } from './schemas/identity/federation/directory.js';
 
-export {
-  directoryAdoptionQuerySchema,
-  directoryAdoptionPreviewSchema,
-} from './schemas/identity/federation/directory.js';
+export { directoryAdoptionPreviewSchema } from './schemas/identity/federation/directory.js';
 export type {
   DirectoryAdoptionQuery,
   DirectoryAdoptionPreview,

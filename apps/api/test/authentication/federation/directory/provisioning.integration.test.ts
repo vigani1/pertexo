@@ -369,8 +369,8 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
           `/v1/workspaces/${f.workspaceId}/sso/directory/credentials`,
           input,
         );
-      expect(first.statusCode, first.payload).toBe(200);
-      expect(replay.statusCode, replay.payload).toBe(200);
+      expect(first.statusCode, first.payload).toBe(201);
+      expect(replay.statusCode, replay.payload).toBe(201);
       const issued = directoryCredentialResultSchema.parse(first.json());
       if (issued.replayed) throw new Error('Fresh credential replayed');
       expect(replay.json()).toMatchObject({

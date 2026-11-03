@@ -123,7 +123,7 @@ GET /v1/workspaces/{workspaceId}/sso 200 session member:read - authenticated_rea
 GET /v1/workspaces/{workspaceId}/sso/directory 200 session member:read - authenticated_read
 POST /v1/workspaces/{workspaceId}/sso/directory/adopt 200 session workspace:manage csrf ordinary_mutation
 GET /v1/workspaces/{workspaceId}/sso/directory/adoption 200 session workspace:manage - authenticated_read
-POST /v1/workspaces/{workspaceId}/sso/directory/credentials 200 session workspace:manage csrf ordinary_mutation
+POST /v1/workspaces/{workspaceId}/sso/directory/credentials 201 session workspace:manage csrf ordinary_mutation
 POST /v1/workspaces/{workspaceId}/sso/directory/credentials/{credentialId}/revoke 200 session workspace:manage csrf ordinary_mutation
 PUT /v1/workspaces/{workspaceId}/sso/directory/mappings 200 session workspace:manage csrf ordinary_mutation
 GET /v1/workspaces/{workspaceId}/sso/directory/people 200 session member:read - authenticated_read

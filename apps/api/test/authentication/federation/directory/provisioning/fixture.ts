@@ -33,7 +33,7 @@ export function createDirectoryFixture() {
         },
       },
     );
-    expect(response.statusCode, response.payload).toBe(200);
+    expect(response.statusCode, response.payload).toBe(201);
     const credential = directoryCredentialResultSchema.parse(response.json());
     if (credential.replayed) throw new Error('Fresh credential replayed');
     const headers = {
