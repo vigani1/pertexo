@@ -1,3 +1,4 @@
+import type { z } from 'zod';
 import { canonicalEmail } from '@pertexo/workflow-model';
 import { randomUUID } from 'node:crypto';
 import {
@@ -21,15 +22,16 @@ import type {
   InvitationTokenProtector,
   WorkspaceInvitationPersistenceRecord,
 } from '../ports.js';
-import {
+import type {
   workspaceInvitationCommandRequestSchema,
-  workspaceInvitationCommandResponseSchema,
   workspaceInvitationCreateRequestSchema,
+} from '../types.js';
+import {
+  workspaceInvitationCommandResponseSchema,
   workspaceInvitationsResponseSchema,
   type WorkspaceInvitationCommandResponse,
   type WorkspaceInvitationsResponse,
 } from '../types.js';
-import { parseRequestInput } from '../../platform/http/request-input.js';
 
 const INVITATION_TTL_MILLIS = 7 * 24 * 60 * 60 * 1_000;
 
@@ -80,12 +82,12 @@ export class WorkspaceInvitationManagementUseCase {
   }
 
   public async create(
-    input: InvitationCommandContext & Readonly<{ request: unknown }>,
+    input: InvitationCommandContext &
+      Readonly<{
+        request: z.output<typeof workspaceInvitationCreateRequestSchema>;
+      }>,
   ): Promise<WorkspaceInvitationCommandResponse> {
-    const request = parseRequestInput(
-      workspaceInvitationCreateRequestSchema,
-      input.request,
-    );
+    const { request } = input;
     const protector = this.requireTokenProtection();
     const invitationId = randomUUID();
     const deliveryAttemptId = randomUUID();
@@ -129,10 +131,7 @@ export class WorkspaceInvitationManagementUseCase {
     input: InvitationChangeContext,
     operation: 'resend' | 'revoke',
   ): Promise<WorkspaceInvitationCommandResponse> {
-    const request = parseRequestInput(
-      workspaceInvitationCommandRequestSchema,
-      input.request,
-    );
+    const { request } = input;
     const common = {
       workspaceId: input.routeWorkspaceId,
       actorUserId: input.actor.actorId,
@@ -195,7 +194,10 @@ type InvitationCommandContext = Readonly<{
   traceId?: string;
 }>;
 type InvitationChangeContext = InvitationCommandContext &
-  Readonly<{ invitationId: string; request: unknown }>;
+  Readonly<{
+    invitationId: string;
+    request: z.output<typeof workspaceInvitationCommandRequestSchema>;
+  }>;
 
 function associatedData(
   workspaceId: string,

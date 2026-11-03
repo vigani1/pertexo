@@ -1,146 +1,87 @@
+import { Controller, Req, UseInterceptors } from '@nestjs/common';
 import {
-  Body,
-  Controller,
-  Get,
-  HttpCode,
-  Param,
-  Post,
-  Query,
-  Req,
-  Res,
-  UseGuards,
-  UseInterceptors,
-} from '@nestjs/common';
+  invitationRoutes as routes,
+  type RouteInput,
+} from '@pertexo/contracts/server';
 
-import { RateLimit } from '../../platform/rate-limit/metadata.js';
 import { projectAuthenticatedWorkspaceContext } from '../request/authenticated-context.js';
-import { requestIdempotencyKey } from '../../platform/http/index.js';
-import {
-  CsrfProtectionGuard,
-  SessionAuthenticationGuard,
-  WorkspaceInvitationReadGuard,
-  WorkspaceMemberManageGuard,
-} from '../http/guards.js';
+import { In, Route } from '../http/route.js';
 import { WorkspaceInvitationManagementUseCase } from './management.js';
 import { requestIdentifier, traceIdentifier } from '../request/identifiers.js';
-import {
-  workspaceIdParamSchema,
-  workspaceInvitationParamsSchema,
-  workspaceInvitationsQuerySchema,
-  type CookieResponse,
-  type IdentityWorkspaceRequest,
-} from '../types.js';
+import type { IdentityWorkspaceRequest } from '../types.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
 import { workspaceFailure } from '../../problems/context/normalize.js';
-import { parseRequestInput } from '../../platform/http/request-input.js';
 
 @UseInterceptors(domainErrors(workspaceFailure))
-@Controller('v1/workspaces')
+@Controller()
 export class WorkspaceInvitationsController {
   public constructor(
     private readonly invitations: WorkspaceInvitationManagementUseCase,
   ) {}
 
-  @Get(':workspaceId/invitations')
-  @RateLimit('authenticated_read')
-  @UseGuards(SessionAuthenticationGuard, WorkspaceInvitationReadGuard)
+  @Route(routes.list)
   public async list(
     @Req() request: IdentityWorkspaceRequest,
-    @Param() params: unknown,
-    @Query() query: unknown,
-    @Res({ passthrough: true }) response: CookieResponse,
+    @In() { params, query }: RouteInput<typeof routes.list>,
   ) {
-    const { workspaceId } = workspaceIdParamSchema.parse(params);
-    const parsed = parseRequestInput(
-      workspaceInvitationsQuerySchema,
-      query ?? {},
-    );
-    response.header('Cache-Control', 'private, no-store');
     return this.invitations.list({
-      actor: projectAuthenticatedWorkspaceContext(request, workspaceId).actor,
-      routeWorkspaceId: workspaceId,
-      ...(parsed.limit === undefined ? {} : { limit: parsed.limit }),
-      ...(parsed.after === undefined ? {} : { after: parsed.after }),
+      actor: projectAuthenticatedWorkspaceContext(request, params.workspaceId)
+        .actor,
+      routeWorkspaceId: params.workspaceId,
+      ...(query.limit === undefined ? {} : { limit: query.limit }),
+      ...(query.after === undefined ? {} : { after: query.after }),
     });
   }
 
-  @Post(':workspaceId/invitations')
-  @HttpCode(202)
-  @RateLimit('ordinary_mutation')
-  @UseGuards(
-    SessionAuthenticationGuard,
-    CsrfProtectionGuard,
-    WorkspaceMemberManageGuard,
-  )
+  @Route(routes.create)
   public create(
     @Req() request: IdentityWorkspaceRequest,
-    @Param() params: unknown,
-    @Body() body: unknown,
+    @In() { params, body, idempotencyKey }: RouteInput<typeof routes.create>,
   ) {
-    const { workspaceId } = workspaceIdParamSchema.parse(params);
     return this.invitations.create({
-      actor: projectAuthenticatedWorkspaceContext(request, workspaceId).actor,
-      routeWorkspaceId: workspaceId,
+      ...command(request, params.workspaceId, idempotencyKey),
       request: body,
-      idempotencyKey: requestIdempotencyKey(request.headers),
-      requestId: requestIdentifier(request),
-      ...optionalTrace(request),
     });
   }
 
-  @Post(':workspaceId/invitations/:invitationId/resend')
-  @HttpCode(202)
-  @RateLimit('ordinary_mutation')
-  @UseGuards(
-    SessionAuthenticationGuard,
-    CsrfProtectionGuard,
-    WorkspaceMemberManageGuard,
-  )
+  @Route(routes.resend)
   public resend(
     @Req() request: IdentityWorkspaceRequest,
-    @Param() params: unknown,
-    @Body() body: unknown,
+    @In() { params, body, idempotencyKey }: RouteInput<typeof routes.resend>,
   ) {
-    return this.change(request, params, body, 'resend');
+    return this.invitations.resend({
+      ...command(request, params.workspaceId, idempotencyKey),
+      invitationId: params.invitationId,
+      request: body,
+    });
   }
 
-  @Post(':workspaceId/invitations/:invitationId/revoke')
-  @HttpCode(202)
-  @RateLimit('ordinary_mutation')
-  @UseGuards(
-    SessionAuthenticationGuard,
-    CsrfProtectionGuard,
-    WorkspaceMemberManageGuard,
-  )
+  @Route(routes.revoke)
   public revoke(
     @Req() request: IdentityWorkspaceRequest,
-    @Param() params: unknown,
-    @Body() body: unknown,
+    @In() { params, body, idempotencyKey }: RouteInput<typeof routes.revoke>,
   ) {
-    return this.change(request, params, body, 'revoke');
-  }
-
-  private change(
-    request: IdentityWorkspaceRequest,
-    params: unknown,
-    body: unknown,
-    operation: 'resend' | 'revoke',
-  ) {
-    const { workspaceId, invitationId } =
-      workspaceInvitationParamsSchema.parse(params);
-    const input = {
-      actor: projectAuthenticatedWorkspaceContext(request, workspaceId).actor,
-      routeWorkspaceId: workspaceId,
-      invitationId,
+    return this.invitations.revoke({
+      ...command(request, params.workspaceId, idempotencyKey),
+      invitationId: params.invitationId,
       request: body,
-      idempotencyKey: requestIdempotencyKey(request.headers),
-      requestId: requestIdentifier(request),
-      ...optionalTrace(request),
-    };
-    return operation === 'resend'
-      ? this.invitations.resend(input)
-      : this.invitations.revoke(input);
+    });
   }
+}
+
+/** Who asks, in which workspace, under which key. */
+function command(
+  request: IdentityWorkspaceRequest,
+  workspaceId: string,
+  idempotencyKey: string,
+) {
+  return {
+    actor: projectAuthenticatedWorkspaceContext(request, workspaceId).actor,
+    routeWorkspaceId: workspaceId,
+    idempotencyKey,
+    requestId: requestIdentifier(request),
+    ...optionalTrace(request),
+  };
 }
 
 function optionalTrace(request: IdentityWorkspaceRequest) {

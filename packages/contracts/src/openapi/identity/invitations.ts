@@ -1,12 +1,12 @@
+import { invitationRoutes } from '../../routes/identity/invitations.js';
+import { routePaths, routeSchemas } from '../../routes/openapi.js';
 import {
   csrfHeaderParameter,
   idempotencyHeaderParameter,
   jsonRequest,
   jsonResponse,
   jsonSchema,
-  pathParameter,
   problemResponse,
-  queryParameter,
   responseReference,
 } from '../primitives.js';
 import {
@@ -15,13 +15,6 @@ import {
   invitationAcceptanceReceiptSchema,
   invitationAcceptanceResolveRequestSchema,
   invitationAcceptanceSessionRequestSchema,
-  workspaceIdentifierSchema,
-  workspaceInvitationCommandRequestSchema,
-  workspaceInvitationCommandResponseSchema,
-  workspaceInvitationCreateRequestSchema,
-  workspaceInvitationIdentifierSchema,
-  workspaceInvitationsQuerySchema,
-  workspaceInvitationsResponseSchema,
 } from '../../schemas/identity/workspaces.js';
 
 /**
@@ -29,22 +22,7 @@ import {
  * of the identity-workspace contract.
  */
 export const workspaceInvitationContractSchemas = Object.freeze({
-  WorkspaceInvitationCreateRequest: jsonSchema(
-    workspaceInvitationCreateRequestSchema,
-    'input',
-  ),
-  WorkspaceInvitationCommandRequest: jsonSchema(
-    workspaceInvitationCommandRequestSchema,
-    'input',
-  ),
-  WorkspaceInvitationCommandResponse: jsonSchema(
-    workspaceInvitationCommandResponseSchema,
-    'output',
-  ),
-  WorkspaceInvitationsResponse: jsonSchema(
-    workspaceInvitationsResponseSchema,
-    'output',
-  ),
+  ...routeSchemas(Object.values(invitationRoutes)),
   InvitationAcceptanceResolveRequest: jsonSchema(
     invitationAcceptanceResolveRequestSchema,
     'input',
@@ -68,57 +46,9 @@ export const workspaceInvitationContractSchemas = Object.freeze({
 });
 
 export const workspaceInvitationContractPaths = Object.freeze({
-  '/v1/workspaces/{workspaceId}/invitations': {
-    get: {
-      operationId: 'listWorkspaceInvitations',
-      security: [{ cookieSession: [] }],
-      parameters: [
-        workspacePathParameter(),
-        queryParameter('limit', workspaceInvitationsQuerySchema.shape.limit),
-        queryParameter('after', workspaceInvitationsQuerySchema.shape.after),
-      ],
-      responses: {
-        '200': jsonResponse(
-          'Workspace invitations',
-          'WorkspaceInvitationsResponse',
-        ),
-        '400': responseReference('BadRequest'),
-        '401': responseReference('Unauthenticated'),
-        '403': responseReference('Forbidden'),
-        '429': responseReference('RateLimited'),
-        '500': responseReference('Unexpected'),
-      },
-    },
-    post: {
-      operationId: 'createWorkspaceInvitation',
-      security: [{ cookieSession: [] }],
-      parameters: [
-        workspacePathParameter(),
-        csrfHeaderParameter(),
-        idempotencyHeaderParameter(),
-      ],
-      requestBody: jsonRequest('WorkspaceInvitationCreateRequest'),
-      responses: invitationCommandResponses('Invitation accepted'),
-    },
-  },
-  '/v1/workspaces/{workspaceId}/invitations/{invitationId}/resend': {
-    post: {
-      operationId: 'resendWorkspaceInvitation',
-      security: [{ cookieSession: [] }],
-      parameters: invitationCommandParameters(),
-      requestBody: jsonRequest('WorkspaceInvitationCommandRequest'),
-      responses: invitationCommandResponses('Invitation resend accepted'),
-    },
-  },
-  '/v1/workspaces/{workspaceId}/invitations/{invitationId}/revoke': {
-    post: {
-      operationId: 'revokeWorkspaceInvitation',
-      security: [{ cookieSession: [] }],
-      parameters: invitationCommandParameters(),
-      requestBody: jsonRequest('WorkspaceInvitationCommandRequest'),
-      responses: invitationCommandResponses('Invitation revoked'),
-    },
-  },
+  ...routePaths(Object.values(invitationRoutes)),
+  // Acceptance binds a browser with its own cookie and CSRF header, which no
+  // declared access describes, so its operations stay written out.
   '/v1/invitation-acceptance/resolve': {
     post: {
       operationId: 'resolveInvitationAcceptance',
@@ -207,22 +137,6 @@ export const workspaceInvitationContractPaths = Object.freeze({
   },
 });
 
-function workspacePathParameter() {
-  return pathParameter(
-    'workspaceId',
-    jsonSchema(workspaceIdentifierSchema, 'input'),
-  );
-}
-
-function invitationPathParameter() {
-  return {
-    name: 'invitationId',
-    in: 'path',
-    required: true,
-    schema: jsonSchema(workspaceInvitationIdentifierSchema, 'input'),
-  } as const;
-}
-
 function invitationRequestHeaderParameter() {
   return {
     name: 'X-Pertexo-Invitation-Request',
@@ -238,28 +152,5 @@ function invitationCsrfHeaderParameter() {
     in: 'header',
     required: true,
     schema: { type: 'string', minLength: 1, maxLength: 512 },
-  } as const;
-}
-
-function invitationCommandParameters() {
-  return [
-    workspacePathParameter(),
-    invitationPathParameter(),
-    csrfHeaderParameter(),
-    idempotencyHeaderParameter(),
-  ] as const;
-}
-
-function invitationCommandResponses(description: string) {
-  return {
-    '202': jsonResponse(description, 'WorkspaceInvitationCommandResponse'),
-    '400': responseReference('BadRequest'),
-    '401': responseReference('Unauthenticated'),
-    '403': responseReference('Forbidden'),
-    '404': problemResponse('Invitation unavailable'),
-    '409': responseReference('Conflict'),
-    '429': responseReference('RateLimited'),
-    '503': responseReference('ServiceUnavailable'),
-    '500': responseReference('Unexpected'),
   } as const;
 }

@@ -43,7 +43,7 @@ export const workspaceMemberRoleParamsSchema = z
     userId: z.uuid(),
   })
   .strict();
-export const workspaceInvitationIdentifierSchema = z.uuid();
+const workspaceInvitationIdentifierSchema = z.uuid();
 export const workspaceInvitationParamsSchema = z
   .object({
     workspaceId: workspaceIdentifierSchema,
