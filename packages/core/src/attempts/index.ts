@@ -1,6 +1,7 @@
 export { createNodeAttemptRunStore } from './node-attempt-run.store.js';
 export {
   NodeAttemptConnectionFenceError,
+  NodeAttemptRunAbortedError,
   NodeAttemptDeliveryMismatchError,
   NodeAttemptDispatchBindingMismatchError,
   NodeAttemptOutputInvalidError,

@@ -116,6 +116,15 @@ async function executePreparedNodeAttempt(
         ),
     });
   } catch (error: unknown) {
+    const dispatchAbortReason = environment.dispatchAbortReason();
+    if (dispatchAbortReason !== undefined)
+      return completeControlOutcome(dependencies, lease, {
+        reason: dispatchAbortReason,
+        delivery,
+        signal: contextSignal,
+        dispatched: false,
+        environment,
+      });
     const interruption = await resolveHeartbeatInterruption(
       dependencies,
       lease,

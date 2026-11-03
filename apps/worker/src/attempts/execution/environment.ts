@@ -1,6 +1,7 @@
 import type { CodeDiagnostics, JsonValue } from '@pertexo/node-sdk/server';
 import {
   NodeAttemptConnectionFenceError,
+  NodeAttemptRunAbortedError,
   NodeAttemptDispatchBindingMismatchError,
   type NodeAttemptLease,
   type NodeAttemptRunStore,
@@ -23,6 +24,7 @@ export type NodeExecutionEnvironment = Readonly<{
   registry: NodeExecutionRegistry;
   runtime: NodeExecutionRuntime;
   wasDispatched(): boolean;
+  dispatchAbortReason(): 'canceled' | 'timed_out' | undefined;
   connectionHealthObservation(): NodeConnectionHealthObservation | undefined;
   codeDiagnostics(): CodeDiagnostics | undefined;
 }>;
@@ -31,6 +33,7 @@ export function createNodeExecutionEnvironment(
   input: NodeExecutionEnvironmentInput,
 ): NodeExecutionEnvironment {
   const { executionSignal, lease, registry: sourceRegistry, runStore } = input;
+  let dispatchAbortReason: 'canceled' | 'timed_out' | undefined;
   let dispatchState: 'not_started' | 'marking' | 'marked' = 'not_started';
   const healthCapture = createConnectionHealthCapture(
     () => dispatchState === 'marked',
@@ -103,6 +106,8 @@ export function createNodeExecutionEnvironment(
           signal: executionSignal,
         });
       } catch (error: unknown) {
+        if (error instanceof NodeAttemptRunAbortedError)
+          dispatchAbortReason = error.reason;
         if (error instanceof NodeAttemptConnectionFenceError)
           throw new NodeDispatchEvidenceError(
             'provider_connection_fence_failed',
@@ -135,6 +140,7 @@ export function createNodeExecutionEnvironment(
     registry,
     runtime,
     wasDispatched: () => dispatchState === 'marked',
+    dispatchAbortReason: () => dispatchAbortReason,
     connectionHealthObservation: input.test
       ? () => undefined
       : healthCapture.read,

@@ -1,3 +1,5 @@
+import { lockCapabilityExecution } from './fence.repository.js';
+import { runAbortReason } from '../control.js';
 import {
   withTenantScopedClient,
   rethrowQueryFailure,
@@ -17,6 +19,7 @@ import { EXECUTION_SOURCE_SQL } from '../../runs/queries/execution/source.reposi
 import type { Pool, PoolClient } from 'pg';
 import {
   NodeAttemptConnectionFenceError,
+  NodeAttemptRunAbortedError,
   NodeAttemptDispatchBindingMismatchError,
   NodeAttemptReconciliationRequiredError,
 } from '../node-attempt.errors.js';
@@ -31,6 +34,25 @@ export async function markNodeAttemptDispatched(
     pool,
     { workspaceId: input.lease.workspaceId },
     async (client) => {
+      await lockCapabilityExecution(client, input.lease);
+      const [control] = await drizzle(client)
+        .select({ status: workflowRuns.status, reason: runAbortReason })
+        .from(workflowRuns)
+        .where(
+          and(
+            eq(workflowRuns.workspaceId, input.lease.workspaceId),
+            eq(workflowRuns.id, input.lease.runId),
+          ),
+        )
+        .catch(rethrowQueryFailure);
+      if (
+        control === undefined ||
+        !['running', 'waiting'].includes(control.status)
+      )
+        throw new NodeAttemptReconciliationRequiredError();
+      if (control.reason !== null)
+        throw new NodeAttemptRunAbortedError(control.reason);
+
       if (input.connectionFence !== undefined) {
         const current = await isConnectionFenceCurrent(
           client,
