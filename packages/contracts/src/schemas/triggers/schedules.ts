@@ -95,11 +95,7 @@ export const scheduleOccurrenceListResponseSchema = z
 
 /** ADR 048: upcoming fire times are bounded; three unless asked otherwise. */
 export const SCHEDULE_FIRE_TIME_DEFAULT_COUNT = 3;
-const scheduleFireTimeCountSchema = z.coerce
-  .number()
-  .int()
-  .min(1)
-  .max(10);
+const scheduleFireTimeCountSchema = z.coerce.number().int().min(1).max(10);
 export const scheduleNextRunsQuerySchema = z
   .object({ count: scheduleFireTimeCountSchema.optional() })
   .strict();

@@ -19,10 +19,8 @@ import { APPLICATION_ERROR_MAPPERS } from '../../src/application-errors.js';
 import { HttpPlatformModule } from '../../src/platform/http/index.js';
 import { ArtifactsController } from '../../src/artifacts/controllers.js';
 import { ArtifactService } from '../../src/artifacts/service.js';
-import {
-  ArtifactReadGuard,
-  ArtifactUploadGuard,
-} from '../../src/artifacts/guards.js';
+import { WORKSPACE_AUTHORIZATION } from '../../src/workspaces/tokens.js';
+import { ownerAccess } from '../support/route-harness.js';
 import {
   CsrfProtectionGuard,
   SessionAuthenticationGuard,
@@ -46,14 +44,12 @@ async function application() {
       ),
     ],
     controllers: [ArtifactsController],
-    providers: [{ provide: ArtifactService, useValue: service(deps) }],
+    providers: [
+      { provide: ArtifactService, useValue: service(deps) },
+      { provide: WORKSPACE_AUTHORIZATION, useValue: ownerAccess },
+    ],
   });
-  for (const guard of [
-    SessionAuthenticationGuard,
-    CsrfProtectionGuard,
-    ArtifactReadGuard,
-    ArtifactUploadGuard,
-  ]) {
+  for (const guard of [SessionAuthenticationGuard, CsrfProtectionGuard]) {
     builder.overrideGuard(guard).useValue({ canActivate: () => true });
   }
   const module = await builder.compile();

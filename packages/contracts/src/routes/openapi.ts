@@ -69,7 +69,15 @@ function operation(route: AnyRoute) {
     responses: {
       [String(route.success.status)]:
         'body' in route.success
-          ? jsonResponse(route.success.description, route.success.body.name)
+          ? {
+              ...jsonResponse(
+                route.success.description,
+                route.success.body.name,
+              ),
+              ...(route.success.headers === undefined
+                ? {}
+                : { headers: route.success.headers }),
+            }
           : route.success.response,
       ...route.problems,
     },

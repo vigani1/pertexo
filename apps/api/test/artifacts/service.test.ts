@@ -201,7 +201,6 @@ describe('ArtifactService', () => {
         await service(deps).finalizeUpload({
           ...context(),
           artifactId,
-          request: {},
         });
       } catch (error: unknown) {
         thrown = error;
@@ -227,7 +226,6 @@ describe('ArtifactService', () => {
     const response = await service.finalizeUpload({
       ...context(),
       artifactId,
-      request: {},
     });
     expect(response.status).toBe('available');
     expect(deps.store.validateDirectUpload).not.toHaveBeenCalled();
@@ -261,7 +259,7 @@ describe('ArtifactService', () => {
       now: () => new Date('2026-09-06T00:00:00.000Z'),
     });
     await expect(
-      service.finalizeUpload({ ...context(), artifactId, request: {} }),
+      service.finalizeUpload({ ...context(), artifactId }),
     ).rejects.toBeInstanceOf(ArtifactApiConflictError);
   });
 
@@ -279,7 +277,7 @@ describe('ArtifactService', () => {
       now: () => new Date('2026-09-06T00:00:00.000Z'),
     });
     await expect(
-      service.finalizeUpload({ ...context(), artifactId, request: {} }),
+      service.finalizeUpload({ ...context(), artifactId }),
     ).rejects.toBeInstanceOf(ArtifactApiUnavailableError);
   });
 
@@ -389,7 +387,6 @@ describe('ArtifactService', () => {
         service(deps).finalizeUpload({
           ...context(),
           artifactId,
-          request: {},
         }),
       ).rejects.toBeInstanceOf(PublicError);
       expect(deps.store.validateDirectUpload).not.toHaveBeenCalled();
@@ -410,7 +407,6 @@ describe('ArtifactService', () => {
       service(deps).finalizeUpload({
         ...context(),
         artifactId,
-        request: {},
       }),
     ).rejects.toBeInstanceOf(ArtifactUploadDeadlineError);
     expect(deps.store.validateDirectUpload).not.toHaveBeenCalled();
@@ -480,7 +476,7 @@ describe('ArtifactService', () => {
     );
 
     await expect(
-      service(deps).finalizeUpload({ ...context(), artifactId, request: {} }),
+      service(deps).finalizeUpload({ ...context(), artifactId }),
     ).rejects.toBeInstanceOf(ArtifactApiConflictError);
   });
 
@@ -489,7 +485,7 @@ describe('ArtifactService', () => {
     await expect(
       finalizing({
         validateDirectUpload: vi.fn().mockRejectedValue(failure),
-      }).finalizeUpload({ ...context(), artifactId, request: {} }),
+      }).finalizeUpload({ ...context(), artifactId }),
     ).rejects.toSatisfy(
       (error) =>
         error instanceof ArtifactApiUnavailableError && error.cause === failure,
@@ -522,7 +518,6 @@ describe('ArtifactService', () => {
       }).finalizeUpload({
         ...context(),
         artifactId,
-        request: {},
         signal: disconnect.signal,
       }),
     ).rejects.toBe(reason);

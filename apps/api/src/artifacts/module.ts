@@ -1,3 +1,4 @@
+import { WORKSPACE_AUTHORIZATION } from '../workspaces/tokens.js';
 import { Module } from '@nestjs/common';
 import type { DynamicModule, Provider } from '@nestjs/common';
 
@@ -5,12 +6,7 @@ import {
   ArtifactsController,
   UnconfiguredArtifactsController,
 } from './controllers.js';
-import {
-  ArtifactReadGuard,
-  ArtifactUploadGuard,
-  FormResponderGuard,
-  InputRequestResponderGuard,
-} from './guards.js';
+import { FormResponderGuard, InputRequestResponderGuard } from './guards.js';
 import { FormUploadService } from './form-uploads/service.js';
 import { PublicFormUploadsController } from './form-uploads/public.controller.js';
 import { MemberFormUploadsController } from './form-uploads/members.controller.js';
@@ -41,8 +37,7 @@ export class ArtifactsModule {
       ],
       providers: [
         { provide: ARTIFACT_AUTHORIZATION, useValue: authorization },
-        ArtifactUploadGuard,
-        ArtifactReadGuard,
+        { provide: WORKSPACE_AUTHORIZATION, useValue: authorization },
       ],
     };
   }
@@ -72,8 +67,10 @@ export class ArtifactsModule {
           options,
         ),
       },
-      ArtifactUploadGuard,
-      ArtifactReadGuard,
+      {
+        provide: WORKSPACE_AUTHORIZATION,
+        useValue: dependencies.authorization,
+      },
       FormResponderGuard,
       InputRequestResponderGuard,
     ];

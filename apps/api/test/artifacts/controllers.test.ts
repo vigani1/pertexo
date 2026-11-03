@@ -35,6 +35,12 @@ const uploadResponse = Object.freeze({
   replayed: false,
 });
 
+const uploadBody = {
+  byteLength: 4,
+  mediaType: 'text/plain',
+  sha256: 'a'.repeat(64),
+};
+
 const downloadResponse = Object.freeze({
   method: 'GET' as const,
   url: 'https://objects.example.test/download',
@@ -102,17 +108,27 @@ function controller() {
   };
 }
 
+/** What the route hands a handler once its declared input has parsed. */
+function input(
+  params: object,
+  body?: unknown,
+  idempotencyKey?: string,
+) {
+  return {
+    params,
+    query: undefined as never,
+    body: body as never,
+    idempotencyKey,
+  } as never;
+}
+
 describe('artifacts controller public seam', () => {
   it('projects absent and guarded workspace context through the owning controller', async () => {
     const fixture = controller();
     fixture.beginUpload.mockResolvedValue(uploadResponse);
     await fixture.instance.beginUpload(
-      request(
-        { 'idempotency-key': 'session-context' },
-        { traceId: 'session-trace' },
-      ),
-      { workspaceId },
-      {},
+      request({}, { traceId: 'session-trace' }),
+      input({ workspaceId }, uploadBody, 'session-context'),
     );
     expect(fixture.beginUpload).toHaveBeenLastCalledWith(
       expect.objectContaining({
@@ -144,8 +160,7 @@ describe('artifacts controller public seam', () => {
     };
     await fixture.instance.beginUpload(
       { ...base, authorizedWorkspace },
-      { workspaceId },
-      {},
+      input({ workspaceId }, uploadBody, 'guard-context'),
     );
     expect(fixture.beginUpload).toHaveBeenLastCalledWith(
       expect.objectContaining({
@@ -155,55 +170,19 @@ describe('artifacts controller public seam', () => {
     );
   });
 
-  it.each([
-    ['duplicate header values', { 'Idempotency-Key': ['first', 'second'] }],
-    ['comma-joined values', { 'idempotency-key': 'first,second' }],
-  ] as const)(
-    'rejects %s before delegating the upload',
-    async (_case, headers) => {
-      const fixture = controller();
-
-      await expect(
-        fixture.instance.beginUpload(request(headers), { workspaceId }, {}),
-      ).rejects.toMatchObject({ code: 'request.invalid' });
-      expect(fixture.beginUpload).not.toHaveBeenCalled();
-    },
-  );
-
-  it('accepts a case-insensitive singleton header and forwards its value once', async () => {
-    const fixture = controller();
-    fixture.beginUpload.mockResolvedValue(uploadResponse);
-
-    await fixture.instance.beginUpload(
-      request({ 'IDEMPOTENCY-KEY': ['single'] }),
-      { workspaceId },
-      {},
-    );
-
-    expect(fixture.beginUpload).toHaveBeenCalledExactlyOnceWith(
-      expect.objectContaining({ idempotencyKey: 'single' }),
-    );
-  });
-
-  it('forwards finalize route identity, body and operation signal', async () => {
+  it('forwards finalize route identity and operation signal', async () => {
     const fixture = controller();
     fixture.finalizeUpload.mockResolvedValue(metadataResponse);
-    const body = Object.freeze({});
 
     await expect(
       fixture.instance.finalizeUpload(
         request(),
-        { workspaceId, artifactId },
-        body,
+        input({ workspaceId, artifactId }, {}),
       ),
     ).resolves.toBe(metadataResponse);
 
     expect(fixture.finalizeUpload).toHaveBeenCalledExactlyOnceWith(
-      expect.objectContaining({
-        artifactId,
-        request: body,
-        routeWorkspaceId: workspaceId,
-      }),
+      expect.objectContaining({ artifactId, routeWorkspaceId: workspaceId }),
     );
     expect(fixture.finalizeUpload.mock.calls[0]?.[0].signal).toBeInstanceOf(
       AbortSignal,
@@ -215,7 +194,10 @@ describe('artifacts controller public seam', () => {
     fixture.getMetadata.mockResolvedValue(metadataResponse);
 
     await expect(
-      fixture.instance.getMetadata(request(), { workspaceId, artifactId }),
+      fixture.instance.getMetadata(
+        request(),
+        input({ workspaceId, artifactId }),
+      ),
     ).resolves.toBe(metadataResponse);
 
     expect(fixture.getMetadata).toHaveBeenCalledExactlyOnceWith(
@@ -229,7 +211,10 @@ describe('artifacts controller public seam', () => {
     fixture.beginDownload.mockResolvedValue(downloadResponse);
 
     await expect(
-      fixture.instance.beginDownload(request(), { workspaceId, artifactId }),
+      fixture.instance.beginDownload(
+        request(),
+        input({ workspaceId, artifactId }),
+      ),
     ).resolves.toBe(downloadResponse);
 
     expect(fixture.beginDownload).toHaveBeenCalledExactlyOnceWith(

@@ -21,5 +21,6 @@ export type {
 } from './routes/define.js';
 export { catalogRoutes } from './routes/catalog.js';
 export { scheduleRoutes } from './routes/triggers/schedules.js';
+export { artifactRoutes } from './routes/execution/artifacts.js';
 export { dataTableRoutes } from './routes/identity/data-tables.js';
 export { variableRoutes } from './routes/identity/variables.js';
