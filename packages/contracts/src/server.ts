@@ -45,3 +45,4 @@ export { dataTableRoutes } from './routes/identity/data-tables.js';
 export { variableRoutes } from './routes/identity/variables.js';
 export { apiTokenRoutes } from './routes/identity/api-tokens.js';
 export { governanceRoutes } from './routes/identity/governance.js';
+export { workspaceRoutes } from './routes/identity/workspaces.js';

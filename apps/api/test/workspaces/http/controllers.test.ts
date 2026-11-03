@@ -1,378 +1,353 @@
-import { describe, expect, it, vi } from 'vitest';
+import {
+  afterAll,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vitest';
 
 import {
-  CreateWorkspaceUseCase,
   ChangeWorkspaceMemberRoleUseCase,
+  CreateWorkspaceUseCase,
   GetCurrentUserUseCase,
   ListAccessibleWorkspacesUseCase,
   ListWorkspaceMembersUseCase,
   RenameWorkspaceUseCase,
+  UpdateUserProfileUseCase,
   UserController,
-  WorkspaceDiscoveryController,
-  WorkspaceMembersController,
   WorkspaceController,
-  type CookieResponse,
-  type IdentityWorkspaceRequest,
-  type WorkspaceLifecycleUseCase,
+  WorkspaceDiscoveryController,
+  WorkspaceLifecycleUseCase,
+  WorkspaceMembersController,
+  WorkspaceMembershipController,
+  WorkspaceMembershipLifecycleUseCase,
 } from '../../../src/workspaces/index.js';
+import { RemoveWorkspaceMemberUseCase } from '../../../src/workspaces/members/removal.js';
+import { WORKSPACE_AUTHORIZATION } from '../../../src/workspaces/tokens.js';
+import { FakeIdentityModule } from '../../support/identity-module.js';
+import {
+  HARNESS_ACTOR_ID as actorId,
+  ownerAccess,
+  routeHarness,
+} from '../../support/route-harness.js';
 
-const actorId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
-const guardActorId = '99999999-9999-4999-8999-999999999999';
-const sessionId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 const workspaceId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
+const targetUserId = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
+const at = new Date('2026-08-20T12:00:00.000Z');
+const one = `/v1/workspaces/${workspaceId}`;
+const workspace = {
+  id: workspaceId,
+  name: 'Operations',
+  slug: 'operations',
+  status: 'active',
+  revision: 2,
+  createdBy: actorId,
+  deletionRequestedAt: null,
+  deletionRequestedBy: null,
+  deletionReason: null,
+  purgeAfter: null,
+  createdAt: at,
+  updatedAt: at,
+};
+const deletionRequested = {
+  workspaceId,
+  change: 'deletion_requested',
+  occurredAt: '2026-08-20T12:00:00.000Z',
+};
 
-function workspaceRequest() {
-  return {
-    requestId: 'request-identity',
-    traceId: 'trace-identity',
-    headers: { 'idempotency-key': 'workspace-lifecycle' },
-    identitySession: {
-      userId: actorId,
-      sessionId,
-      expiresAt: new Date('2026-08-23T00:00:00.000Z'),
-      clientMetadata: {},
-    },
-  } as const;
-}
+const store = {
+  findUserById: vi.fn(),
+  listWorkspaceMembers: vi.fn(),
+  changeWorkspaceMemberRole: vi.fn(),
+  removeWorkspaceMember: vi.fn(),
+  listAccessibleWorkspaces: vi.fn(),
+  createWorkspaceWithOwner: vi.fn(),
+  renameWorkspace: vi.fn(),
+};
+const lifecycle = { requestDeletion: vi.fn() };
+const membership = {
+  suspend: vi.fn(),
+  reactivate: vi.fn(),
+  transferOwnership: vi.fn(),
+  leave: vi.fn(),
+};
+// Nest dynamic modules require a class token.
+// eslint-disable-next-line @typescript-eslint/no-extraneous-class
+class WorkspaceRoutesUnderTest {}
+let harness: Awaited<ReturnType<typeof routeHarness>>;
 
-function lifecycleController(lifecycle: object): WorkspaceController {
-  return new WorkspaceController(
-    { execute: vi.fn() } as unknown as CreateWorkspaceUseCase,
-    lifecycle as unknown as WorkspaceLifecycleUseCase,
-    { execute: vi.fn() } as never,
-  );
-}
+/** Real routes, guards and use cases over a store this test controls. */
+beforeAll(async () => {
+  harness = await routeHarness({
+    module: WorkspaceRoutesUnderTest,
+    imports: [{ module: FakeIdentityModule }],
+    controllers: [
+      UserController,
+      WorkspaceDiscoveryController,
+      WorkspaceMembersController,
+      WorkspaceController,
+      WorkspaceMembershipController,
+    ],
+    providers: [
+      { provide: WORKSPACE_AUTHORIZATION, useValue: ownerAccess },
+      {
+        provide: GetCurrentUserUseCase,
+        useValue: new GetCurrentUserUseCase(store),
+      },
+      { provide: UpdateUserProfileUseCase, useValue: { execute: vi.fn() } },
+      {
+        provide: ListAccessibleWorkspacesUseCase,
+        useValue: new ListAccessibleWorkspacesUseCase(store),
+      },
+      {
+        provide: ListWorkspaceMembersUseCase,
+        useValue: new ListWorkspaceMembersUseCase(store, ownerAccess),
+      },
+      {
+        provide: ChangeWorkspaceMemberRoleUseCase,
+        useValue: new ChangeWorkspaceMemberRoleUseCase(store),
+      },
+      {
+        provide: RemoveWorkspaceMemberUseCase,
+        useValue: new RemoveWorkspaceMemberUseCase(store),
+      },
+      {
+        provide: CreateWorkspaceUseCase,
+        useValue: new CreateWorkspaceUseCase(store),
+      },
+      { provide: WorkspaceLifecycleUseCase, useValue: lifecycle },
+      { provide: WorkspaceMembershipLifecycleUseCase, useValue: membership },
+      {
+        provide: RenameWorkspaceUseCase,
+        useValue: new RenameWorkspaceUseCase(store),
+      },
+    ],
+  });
+});
+afterAll(() => harness.close());
+beforeEach(() => {
+  vi.clearAllMocks();
+  store.listWorkspaceMembers.mockResolvedValue({ items: [] });
+  store.listAccessibleWorkspaces.mockResolvedValue({ items: [] });
+  lifecycle.requestDeletion.mockResolvedValue(deletionRequested);
+});
 
-describe('identity workspace-route controllers', () => {
-  it('projects absent and guard-established context through lifecycle commands', async () => {
-    const lifecycle = {
-      requestDeletion: vi.fn().mockResolvedValue({
-        id: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
-        workspaceId,
-        commandType: 'deletion_requested',
-        status: 'pending',
-        submittedAt: '2026-08-20T12:00:00.000Z',
-        updatedAt: '2026-08-20T12:00:00.000Z',
-        completedAt: null,
-        errorCode: null,
-        result: null,
-      }),
-      restore: vi.fn(),
-      readOperation: vi.fn(),
-    };
-    const controller = lifecycleController(lifecycle);
+const command = (
+  method: 'POST' | 'PUT',
+  url: string,
+  body: unknown,
+  key = 'workspace-command',
+) => harness.send(method, url, { body, headers: { 'idempotency-key': key } });
 
-    await controller.requestDeletion(
-      workspaceRequest(),
-      { workspaceId },
-      { reason: 'operator request' },
-    );
-    expect(lifecycle.requestDeletion).toHaveBeenLastCalledWith(
+describe('workspace routes', () => {
+  it('requests deletion as the signed-in actor, with what the guard proved', async () => {
+    const reply = await command('POST', `${one}/deletion`, {
+      reason: 'operator request',
+    });
+    expect(reply.statusCode, reply.payload).toBe(200);
+    expect(lifecycle.requestDeletion).toHaveBeenCalledExactlyOnceWith(
       expect.objectContaining({
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- Vitest asymmetric matcher verifies the nested actor projection.
-        actor: expect.objectContaining({
-          actorId,
-          requestId: 'request-identity',
-          traceId: 'trace-identity',
-        }),
-        requestId: 'request-identity',
-        traceId: 'trace-identity',
-      }),
-    );
-    expect(lifecycle.requestDeletion.mock.calls.at(-1)?.[0]).not.toHaveProperty(
-      'authorizedWorkspace',
-    );
-
-    const authorizedWorkspace = {
-      actor: Object.freeze({
-        actorId: guardActorId,
-        kind: 'user' as const,
-        workspaceId,
-        sessionId,
-        requestId: 'guard-request',
-        traceId: 'guard-trace',
-      }),
-      workspaceId,
-      role: 'owner' as const,
-      capability: 'workspace:manage' as const,
-    };
-    await controller.requestDeletion(
-      { ...workspaceRequest(), authorizedWorkspace },
-      { workspaceId },
-      { reason: 'operator request' },
-    );
-    expect(lifecycle.requestDeletion).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        actor: authorizedWorkspace.actor,
-        authorizedWorkspace,
-        requestId: 'guard-request',
-        traceId: 'guard-trace',
+        actor: expect.objectContaining({ actorId, workspaceId }) as unknown,
+        authorizedWorkspace: expect.objectContaining({
+          workspaceId,
+          capability: 'workspace:manage',
+        }) as unknown,
+        routeWorkspaceId: workspaceId,
+        reason: 'operator request',
+        idempotencyKey: 'workspace-command',
       }),
     );
   });
 
-  it('returns a complete current profile with private cache policy', async () => {
-    const response: CookieResponse = { header: vi.fn() };
-    const profile = {
+  it('refuses a workspace that is not an identifier before any lifecycle work', async () => {
+    const reply = await command('POST', '/v1/workspaces/not-a-uuid/deletion', {
+      reason: 'retire it',
+    });
+    expect(reply.statusCode).toBe(400);
+    expect(lifecycle.requestDeletion).not.toHaveBeenCalled();
+  });
+
+  it('answers the current profile and keeps it out of caches', async () => {
+    store.findUserById.mockResolvedValue({
       id: actorId,
       email: 'person@example.test',
       displayName: 'Person',
-      status: 'active' as const,
+      status: 'active',
       profileRevision: 4,
-      createdAt: new Date('2026-08-20T12:00:00.000Z'),
-      updatedAt: new Date('2026-08-20T12:00:00.000Z'),
-    };
-    const controller = new UserController(
-      new GetCurrentUserUseCase({
-        findUserById: vi.fn().mockResolvedValue(profile),
-      }),
-      { execute: vi.fn() } as never,
-    );
-    const request = workspaceRequest() satisfies IdentityWorkspaceRequest;
-
-    const { profileRevision, ...projected } = profile;
-    await expect(controller.me(request, response)).resolves.toEqual({
-      ...projected,
-      revision: profileRevision,
+      createdAt: at,
+      updatedAt: at,
+    });
+    const reply = await harness.send('GET', '/v1/users/me');
+    expect(reply.statusCode, reply.payload).toBe(200);
+    expect(reply.json()).toEqual({
+      id: actorId,
+      email: 'person@example.test',
+      displayName: 'Person',
+      status: 'active',
+      revision: 4,
       createdAt: '2026-08-20T12:00:00.000Z',
       updatedAt: '2026-08-20T12:00:00.000Z',
     });
-    // eslint-disable-next-line @typescript-eslint/unbound-method
-    expect(vi.mocked(response.header)).toHaveBeenCalledWith(
-      'Cache-Control',
-      'private, no-store',
-    );
+    expect(reply.headers['cache-control']).toBe('private, no-store');
   });
 
-  it('parses bounded member pagination and applies private cache policy', async () => {
-    const response: CookieResponse = { header: vi.fn() };
-    const listWorkspaceMembers = vi.fn().mockResolvedValue({ items: [] });
-    const controller = new WorkspaceMembersController(
-      new ListWorkspaceMembersUseCase(
-        { listWorkspaceMembers },
-        {
-          findAccess: vi.fn().mockResolvedValue({
-            actorId,
-            workspaceId,
-            role: 'owner',
-            membershipStatus: 'active',
-            workspaceStatus: 'active',
-          }),
-        },
-      ),
-      new ChangeWorkspaceMemberRoleUseCase({
-        changeWorkspaceMemberRole: vi.fn(),
-      }),
-      { execute: vi.fn() } as never,
-    );
-
-    await controller.list(
-      workspaceRequest(),
-      { workspaceId },
-      { limit: '2' },
-      response,
-    );
-    expect(listWorkspaceMembers).toHaveBeenCalledWith(workspaceId, actorId, {
-      limit: 2,
+  it('pages members within bounds and keeps them out of caches', async () => {
+    const reply = await harness.send('GET', `${one}/members`, {
+      query: { limit: '2' },
     });
-    // eslint-disable-next-line @typescript-eslint/unbound-method
-    expect(vi.mocked(response.header)).toHaveBeenCalledWith(
-      'Cache-Control',
-      'private, no-store',
+    expect(reply.statusCode, reply.payload).toBe(200);
+    expect(reply.headers['cache-control']).toBe('private, no-store');
+    expect(store.listWorkspaceMembers).toHaveBeenCalledWith(
+      workspaceId,
+      actorId,
+      { limit: 2 },
     );
-    await expect(
-      controller.list(
-        workspaceRequest(),
-        { workspaceId },
-        { limit: '101' },
-        response,
-      ),
-    ).rejects.toMatchObject({ name: 'ZodError' });
+    const outside = await harness.send('GET', `${one}/members`, {
+      query: { limit: '101' },
+    });
+    expect(outside.statusCode).toBe(400);
   });
 
-  it('parses and forwards a strict member role command', async () => {
-    const targetUserId = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
-    const changeWorkspaceMemberRole = vi.fn().mockResolvedValue({
+  it('forwards a member role change and refuses unknown fields', async () => {
+    store.changeWorkspaceMemberRole.mockResolvedValue({
       userId: targetUserId,
       role: 'operator',
       roleRevision: 2,
       changed: true,
       replayed: false,
     });
-    const controller = new WorkspaceMembersController(
-      new ListWorkspaceMembersUseCase(
-        { listWorkspaceMembers: vi.fn() },
-        { findAccess: vi.fn() },
-      ),
-      new ChangeWorkspaceMemberRoleUseCase({ changeWorkspaceMemberRole }),
-      { execute: vi.fn() } as never,
-    );
-    await controller.changeRole(
-      workspaceRequest(),
-      { workspaceId, userId: targetUserId },
-      { role: 'operator', expectedRoleRevision: 1 },
-    );
-    expect(changeWorkspaceMemberRole).toHaveBeenCalledWith(
+    const url = `${one}/members/${targetUserId}/role`;
+    const reply = await command('POST', url, {
+      role: 'operator',
+      expectedRoleRevision: 1,
+    });
+    expect(reply.statusCode, reply.payload).toBe(200);
+    expect(store.changeWorkspaceMemberRole).toHaveBeenCalledWith(
       expect.objectContaining({
         workspaceId,
         actorUserId: actorId,
         targetUserId,
         role: 'operator',
         expectedRoleRevision: 1,
-        idempotencyKey: 'workspace-lifecycle',
+        idempotencyKey: 'workspace-command',
       }),
     );
-    await expect(
-      controller.changeRole(
-        workspaceRequest(),
-        { workspaceId, userId: targetUserId },
-        { role: 'operator', expectedRoleRevision: 1, extra: true },
-      ),
-    ).rejects.toMatchObject({ name: 'ZodError' });
+    const extra = await command('POST', url, {
+      role: 'operator',
+      expectedRoleRevision: 1,
+      extra: true,
+    });
+    expect(extra.statusCode).toBe(400);
+    expect(store.changeWorkspaceMemberRole).toHaveBeenCalledOnce();
   });
 
-  it('lists only the authenticated user workspaces with bounded input and private caching', async () => {
-    const response: CookieResponse = { header: vi.fn() };
-    const listAccessibleWorkspaces = vi.fn().mockResolvedValue({ items: [] });
-    const controller = new WorkspaceDiscoveryController(
-      new ListAccessibleWorkspacesUseCase({ listAccessibleWorkspaces }),
+  it.each([
+    ['remove', { expectedRoleRevision: 0 }],
+    ['remove', { role: 'viewer' }],
+    ['suspend', {}],
+    ['suspend', { expectedRoleRevision: 1, status: 'active' }],
+    ['transfer-ownership', { expectedRoleRevision: 2 }],
+  ])('refuses a %s command with body %j', async (path, body) => {
+    const reply = await command(
+      'POST',
+      `${one}/members/${targetUserId}/${path}`,
+      body,
     );
+    expect(reply.statusCode).toBe(400);
+    expect(store.removeWorkspaceMember).not.toHaveBeenCalled();
+    for (const command of Object.values(membership))
+      expect(command).not.toHaveBeenCalled();
+  });
 
-    await controller.list(
-      workspaceRequest(),
-      { limit: '2', after: workspaceId },
-      response,
-    );
-
-    expect(listAccessibleWorkspaces).toHaveBeenCalledWith(actorId, {
+  it('lists only the signed-in person’s workspaces, out of caches', async () => {
+    const reply = await harness.send('GET', '/v1/workspaces', {
+      query: { limit: '2', after: workspaceId },
+    });
+    expect(reply.statusCode, reply.payload).toBe(200);
+    expect(reply.headers['cache-control']).toBe('private, no-store');
+    expect(store.listAccessibleWorkspaces).toHaveBeenCalledWith(actorId, {
       limit: 2,
       after: workspaceId,
     });
-    // eslint-disable-next-line @typescript-eslint/unbound-method
-    expect(vi.mocked(response.header)).toHaveBeenCalledWith(
-      'Cache-Control',
-      'private, no-store',
-    );
-    await expect(
-      controller.list(workspaceRequest(), { limit: '101' }, response),
-    ).rejects.toMatchObject({ name: 'ZodError' });
+    const outside = await harness.send('GET', '/v1/workspaces', {
+      query: { limit: '101' },
+    });
+    expect(outside.statusCode).toBe(400);
   });
 
-  it('validates workspace creation body with a valid idempotency key', async () => {
-    const createWorkspaceWithOwner = vi.fn();
-    const controller = new WorkspaceController(
-      new CreateWorkspaceUseCase({ createWorkspaceWithOwner }),
-      {
-        requestDeletion: vi.fn(),
-        restore: vi.fn(),
-        readOperation: vi.fn(),
-      } as unknown as WorkspaceLifecycleUseCase,
-      { execute: vi.fn() } as never,
+  it('creates a workspace with its name trimmed', async () => {
+    store.createWorkspaceWithOwner.mockResolvedValue(workspace);
+    const reply = await command('POST', '/v1/workspaces', {
+      name: ' Operations ',
+      slug: 'operations',
+    });
+    expect(reply.statusCode, reply.payload).toBe(201);
+    expect(store.createWorkspaceWithOwner).toHaveBeenCalledWith(
+      expect.objectContaining({ ownerUserId: actorId, name: 'Operations' }),
     );
-
-    await expect(
-      controller.create(workspaceRequest(), {
-        name: '',
-        slug: 'not valid',
-      }),
-    ).rejects.toMatchObject({ name: 'ZodError' });
-    expect(createWorkspaceWithOwner).not.toHaveBeenCalled();
   });
 
-  it('forwards a strict conditional rename command with actor and command identity', async () => {
-    const renameWorkspace = vi.fn().mockResolvedValue({
-      workspace: {
-        id: workspaceId,
-        name: 'Renamed workspace',
-        slug: 'workspace',
-        status: 'active',
-        revision: 2,
-        createdBy: actorId,
-        deletionRequestedAt: null,
-        deletionRequestedBy: null,
-        deletionReason: null,
-        purgeAfter: null,
-        createdAt: new Date('2026-08-20T12:00:00.000Z'),
-        updatedAt: new Date('2026-08-20T12:05:00.000Z'),
-      },
+  it('refuses an invalid workspace before creating it', async () => {
+    const reply = await command('POST', '/v1/workspaces', {
+      name: '',
+      slug: 'not valid',
+    });
+    expect(reply.statusCode).toBe(400);
+    expect(store.createWorkspaceWithOwner).not.toHaveBeenCalled();
+  });
+
+  it.each([[''], ['one,two']])(
+    'refuses a workspace create with idempotency key %j',
+    async (key) => {
+      const reply = await command(
+        'POST',
+        '/v1/workspaces',
+        { name: 'Operations', slug: 'operations' },
+        key,
+      );
+      expect(reply.statusCode).toBe(400);
+      expect(reply.json()).toMatchObject({ code: 'request.invalid' });
+      expect(store.createWorkspaceWithOwner).not.toHaveBeenCalled();
+    },
+  );
+
+  it('forwards a conditional rename and refuses a forged slug', async () => {
+    store.renameWorkspace.mockResolvedValue({
+      workspace: { ...workspace, name: 'Renamed workspace' },
       changed: true,
       replayed: false,
     });
-    const controller = new WorkspaceController(
-      { execute: vi.fn() } as unknown as CreateWorkspaceUseCase,
-      {} as WorkspaceLifecycleUseCase,
-      new RenameWorkspaceUseCase({ renameWorkspace }),
-    );
-
-    await expect(
-      controller.rename(
-        workspaceRequest(),
-        { workspaceId },
-        { name: 'Renamed workspace', expectedRevision: 1 },
-      ),
-    ).resolves.toMatchObject({
+    const rename = (body: unknown) =>
+      harness.send('PATCH', one, {
+        body,
+        headers: { 'idempotency-key': 'workspace-command' },
+      });
+    const reply = await rename({
+      name: 'Renamed workspace',
+      expectedRevision: 1,
+    });
+    expect(reply.statusCode, reply.payload).toBe(200);
+    expect(reply.json()).toMatchObject({
       workspace: { name: 'Renamed workspace', revision: 2 },
       changed: true,
-      replayed: false,
     });
-    expect(renameWorkspace).toHaveBeenCalledWith(
+    expect(store.renameWorkspace).toHaveBeenCalledWith(
       expect.objectContaining({
         workspaceId,
         actorUserId: actorId,
         name: 'Renamed workspace',
         expectedRevision: 1,
-        idempotencyKey: 'workspace-lifecycle',
-        requestId: 'request-identity',
-        traceId: 'trace-identity',
+        idempotencyKey: 'workspace-command',
       }),
     );
-    await expect(
-      controller.rename(
-        workspaceRequest(),
-        { workspaceId },
-        { name: 'Changed', expectedRevision: 1, slug: 'forged' },
-      ),
-    ).rejects.toMatchObject({ name: 'ZodError' });
-    expect(renameWorkspace).toHaveBeenCalledTimes(1);
-  });
-
-  it.each([
-    ['missing idempotency key', { ...workspaceRequest(), headers: {} }],
-    [
-      'repeated idempotency key',
-      {
-        ...workspaceRequest(),
-        headers: { 'idempotency-key': ['one', 'two'] },
-      },
-    ],
-  ])('rejects a workspace create with %s', async (_case, request) => {
-    const execute = vi.fn();
-    const controller = new WorkspaceController(
-      { execute } as unknown as CreateWorkspaceUseCase,
-      {} as WorkspaceLifecycleUseCase,
-      { execute: vi.fn() } as never,
-    );
-
-    await expect(
-      controller.create(request as IdentityWorkspaceRequest, {
-        name: 'Operations',
-        slug: 'operations',
-      }),
-    ).rejects.toMatchObject({ code: 'request.invalid' });
-    expect(execute).not.toHaveBeenCalled();
-  });
-
-  it('rejects an invalid workspace route before invoking lifecycle behavior', async () => {
-    const requestDeletion = vi.fn();
-    const controller = lifecycleController({ requestDeletion });
-
-    await expect(
-      controller.requestDeletion(
-        workspaceRequest(),
-        { workspaceId: 'not-a-uuid' },
-        { reason: 'retire it' },
-      ),
-    ).rejects.toMatchObject({ name: 'ZodError' });
-    expect(requestDeletion).not.toHaveBeenCalled();
+    const forged = await rename({
+      name: 'Changed',
+      expectedRevision: 1,
+      slug: 'forged',
+    });
+    expect(forged.statusCode).toBe(400);
+    expect(store.renameWorkspace).toHaveBeenCalledOnce();
   });
 });

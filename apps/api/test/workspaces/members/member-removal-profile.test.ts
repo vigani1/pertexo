@@ -18,6 +18,8 @@ import {
   type ChangeWorkspaceMemberRoleUseCase,
   type CookieResponse,
 } from '../../../src/workspaces/index.js';
+import { routeInput } from '../../support/route-input.js';
+import type { workspaceRoutes as routes } from '@pertexo/contracts/server';
 
 const actorId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const targetId = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
@@ -52,7 +54,7 @@ function profile(overrides: Readonly<Record<string, unknown>> = {}) {
 }
 
 describe('member removal and self profile commands', () => {
-  it('forwards one strict member removal at the revision the actor saw', async () => {
+  it('forwards one member removal at the revision the actor saw', async () => {
     const removeWorkspaceMember = vi.fn().mockResolvedValue({
       userId: targetId,
       roleRevision: 4,
@@ -70,8 +72,11 @@ describe('member removal and self profile commands', () => {
     await expect(
       controller.remove(
         request(),
-        { workspaceId, userId: targetId },
-        { expectedRoleRevision: 3 },
+        routeInput<typeof routes.remove>({
+          params: { workspaceId, userId: targetId },
+          body: { expectedRoleRevision: 3 },
+          idempotencyKey: 'member-command-1',
+        }),
       ),
     ).resolves.toEqual({ userId: targetId, roleRevision: 4, replayed: false });
     expect(removeWorkspaceMember).toHaveBeenCalledWith({
@@ -83,10 +88,6 @@ describe('member removal and self profile commands', () => {
       requestId: 'request-removal',
       traceId: 'trace-removal',
     });
-    for (const body of [{ expectedRoleRevision: 0 }, { role: 'viewer' }])
-      await expect(
-        controller.remove(request(), { workspaceId, userId: targetId }, body),
-      ).rejects.toMatchObject({ name: 'ZodError' });
     expect(removeWorkspaceMember).toHaveBeenCalledOnce();
   });
 

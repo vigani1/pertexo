@@ -13,6 +13,8 @@ import {
   WorkspaceMembershipLifecycleUseCase,
   type IdentitySessionAuthority,
 } from '../../../src/workspaces/index.js';
+import { routeInput } from '../../support/route-input.js';
+import type { workspaceRoutes as routes } from '@pertexo/contracts/server';
 
 const actorId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const targetId = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
@@ -87,6 +89,15 @@ function controller(
   );
 }
 
+/** A member command as its route hands it over, already parsed. */
+function command<Params, Body>(params: Params, body: Body) {
+  return {
+    params,
+    body,
+    idempotencyKey: 'membership-command-1',
+  };
+}
+
 const delivery = {
   workspaceId,
   actorUserId: actorId,
@@ -96,18 +107,17 @@ const delivery = {
 };
 
 describe('membership lifecycle commands (ADR 047)', () => {
-  it('leaves the route workspace as the signed-in actor with a strict empty body', async () => {
+  it('leaves the route workspace as the signed-in actor', async () => {
     const store = persistence();
     const membership = controller(store);
 
     await expect(
-      membership.leave(request(), { workspaceId }, {}),
+      membership.leave(
+        request(),
+        routeInput<typeof routes.leave>(command({ workspaceId }, {})),
+      ),
     ).resolves.toEqual({ userId: actorId, roleRevision: 2, replayed: false });
-    expect(store.leaveWorkspace).toHaveBeenCalledWith(delivery);
-    await expect(
-      membership.leave(request(), { workspaceId }, { expectedRoleRevision: 1 }),
-    ).rejects.toMatchObject({ name: 'ZodError' });
-    expect(store.leaveWorkspace).toHaveBeenCalledOnce();
+    expect(store.leaveWorkspace).toHaveBeenCalledExactlyOnceWith(delivery);
   });
 
   it('suspends and reactivates at the revision the manager saw', async () => {
@@ -116,10 +126,20 @@ describe('membership lifecycle commands (ADR 047)', () => {
     const params = { workspaceId, userId: targetId };
 
     await expect(
-      membership.suspend(request(), params, { expectedRoleRevision: 3 }),
+      membership.suspend(
+        request(),
+        routeInput<typeof routes.suspend>(
+          command(params, { expectedRoleRevision: 3 }),
+        ),
+      ),
     ).resolves.toMatchObject({ membershipStatus: 'suspended' });
     await expect(
-      membership.reactivate(request(), params, { expectedRoleRevision: 4 }),
+      membership.reactivate(
+        request(),
+        routeInput<typeof routes.reactivateMember>(
+          command(params, { expectedRoleRevision: 4 }),
+        ),
+      ),
     ).resolves.toMatchObject({ membershipStatus: 'active', replayed: true });
     expect(store.suspendWorkspaceMember).toHaveBeenCalledWith({
       ...delivery,
@@ -131,19 +151,20 @@ describe('membership lifecycle commands (ADR 047)', () => {
       targetUserId: targetId,
       expectedRoleRevision: 4,
     });
-    for (const body of [{}, { expectedRoleRevision: 1, status: 'active' }])
-      await expect(
-        membership.suspend(request(), params, body),
-      ).rejects.toMatchObject({ name: 'ZodError' });
   });
 
   it('transfers ownership only from a sign-in in the last five minutes', async () => {
     const store = persistence();
     const params = { workspaceId, userId: targetId };
-    const body = { expectedRoleRevision: 2, expectedOwnerRoleRevision: 1 };
+    const body = routeInput<typeof routes.transferOwnership>(
+      command(params, {
+        expectedRoleRevision: 2,
+        expectedOwnerRoleRevision: 1,
+      }),
+    );
 
     await expect(
-      controller(store).transferOwnership(request(), params, body),
+      controller(store).transferOwnership(request(), body),
     ).resolves.toMatchObject({ ownerUserId: targetId, replayed: false });
     expect(store.transferWorkspaceOwnership).toHaveBeenCalledWith({
       ...delivery,
@@ -155,30 +176,17 @@ describe('membership lifecycle commands (ADR 047)', () => {
     const stale = controller(
       store,
       new Date(now.getTime() - 5 * 60_000 - 1),
-    ).transferOwnership(request(), params, body);
+    ).transferOwnership(request(), body);
     await expect(stale).rejects.toBeInstanceOf(IdentityError);
     await expect(stale).rejects.toMatchObject({
       code: 'identity.session_not_fresh',
     });
     await expect(
-      controller(store, 'no evidence').transferOwnership(
-        request(),
-        params,
-        body,
-      ),
+      controller(store, 'no evidence').transferOwnership(request(), body),
     ).rejects.toMatchObject({ code: 'identity.session_invalid' });
     await expect(
-      controller(store, now, targetId).transferOwnership(
-        request(),
-        params,
-        body,
-      ),
+      controller(store, now, targetId).transferOwnership(request(), body),
     ).rejects.toMatchObject({ code: 'auth.unauthenticated' });
-    await expect(
-      controller(store).transferOwnership(request(), params, {
-        expectedRoleRevision: 2,
-      }),
-    ).rejects.toMatchObject({ name: 'ZodError' });
     expect(store.transferWorkspaceOwnership).toHaveBeenCalledOnce();
   });
 

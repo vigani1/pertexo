@@ -1,48 +1,31 @@
 import type { WorkspaceMemberCommandInput } from '../members/role.js';
 import { projectAuthenticatedWorkspaceContext } from './authenticated-context.js';
-import { requestIdempotencyKey } from '../../platform/http/index.js';
-import {
-  workspaceIdParamSchema,
-  workspaceMemberRoleParamsSchema,
-  type IdentityWorkspaceRequest,
-} from '../types.js';
+import type { IdentityWorkspaceRequest } from '../types.js';
 
-/** The authorized actor, target and exact delivery of a member command. */
-export function memberCommand(
-  request: IdentityWorkspaceRequest,
-  params: unknown,
-  body: unknown,
-): WorkspaceMemberCommandInput {
-  const { workspaceId, userId } = workspaceMemberRoleParamsSchema.parse(params);
-  return memberCommandFor(request, workspaceId, userId, body);
-}
+type MemberRouteInput<Request> = Readonly<{
+  params: Readonly<{ workspaceId: string; userId?: string }>;
+  body: Request;
+  idempotencyKey: string;
+}>;
 
-/** A member command the actor issues about themselves, e.g. leaving. */
-export function selfCommand(
+/**
+ * The authorized actor, target and exact delivery of a member command. Without a
+ * member in the path, the actor is the target, as when leaving.
+ */
+export function memberCommand<Request>(
   request: IdentityWorkspaceRequest,
-  params: unknown,
-  body: unknown,
-): WorkspaceMemberCommandInput {
-  const { workspaceId } = workspaceIdParamSchema.parse(params);
-  return memberCommandFor(request, workspaceId, undefined, body);
-}
-
-function memberCommandFor(
-  request: IdentityWorkspaceRequest,
-  workspaceId: string,
-  targetUserId: string | undefined,
-  body: unknown,
-): WorkspaceMemberCommandInput {
-  const actor = projectAuthenticatedWorkspaceContext(
+  { params, body, idempotencyKey }: MemberRouteInput<Request>,
+): WorkspaceMemberCommandInput<Request> {
+  const { actor } = projectAuthenticatedWorkspaceContext(
     request,
-    workspaceId,
-  ).actor;
+    params.workspaceId,
+  );
   return {
     actor,
-    routeWorkspaceId: workspaceId,
-    targetUserId: targetUserId ?? actor.actorId,
+    routeWorkspaceId: params.workspaceId,
+    targetUserId: params.userId ?? actor.actorId,
     request: body,
-    idempotencyKey: requestIdempotencyKey(request.headers),
+    idempotencyKey,
     requestId: actor.requestId,
     ...(actor.traceId === undefined ? {} : { traceId: actor.traceId }),
   };

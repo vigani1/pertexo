@@ -1,13 +1,9 @@
 import {
   Body,
   Controller,
-  Delete,
   Get,
   HttpCode,
-  Param,
   Patch,
-  Post,
-  Query,
   Req,
   Res,
   UseGuards,
@@ -20,9 +16,6 @@ import {
   authenticatedSession,
   CsrfProtectionGuard,
   SessionAuthenticationGuard,
-  WorkspaceManageGuard,
-  WorkspaceMemberReadGuard,
-  WorkspaceMemberManageGuard,
 } from './guards.js';
 import {
   CreateWorkspaceUseCase,
@@ -35,15 +28,13 @@ import {
 import { RenameWorkspaceUseCase } from '../commands/rename.js';
 import { RemoveWorkspaceMemberUseCase } from '../members/removal.js';
 import { memberCommand } from '../request/member-commands.js';
-import { UpdateUserProfileUseCase } from '../commands/user-profile.js';
+import { In, Route } from './route.js';
 import {
-  accessibleWorkspacesQuerySchema,
-  workspaceDeletionRequestSchema,
-  workspaceIdParamSchema,
-  workspaceMembersQuerySchema,
-  type CookieResponse,
-  type IdentityWorkspaceRequest,
-} from '../types.js';
+  workspaceRoutes as routes,
+  type RouteInput,
+} from '@pertexo/contracts/server';
+import { UpdateUserProfileUseCase } from '../commands/user-profile.js';
+import type { CookieResponse, IdentityWorkspaceRequest } from '../types.js';
 import { requestIdentifier, traceIdentifier } from '../request/identifiers.js';
 import {
   optionalAuthorizedWorkspace,
@@ -51,7 +42,6 @@ import {
 } from '../request/authenticated-context.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
 import { workspaceFailure } from '../../problems/context/normalize.js';
-import { parseRequestInput } from '../../platform/http/request-input.js';
 
 @UseInterceptors(domainErrors(workspaceFailure))
 @Controller('v1/users')
@@ -91,34 +81,26 @@ export class UserController {
 }
 
 @UseInterceptors(domainErrors(workspaceFailure))
-@Controller('v1/workspaces')
+@Controller()
 export class WorkspaceDiscoveryController {
   public constructor(
     private readonly workspaces: ListAccessibleWorkspacesUseCase,
   ) {}
 
-  @Get()
-  @RateLimit('authenticated_read')
-  @UseGuards(SessionAuthenticationGuard)
+  @Route(routes.list)
   public async list(
     @Req() request: IdentityWorkspaceRequest,
-    @Query() query: unknown,
-    @Res({ passthrough: true }) response: CookieResponse,
+    @In() { query }: RouteInput<typeof routes.list>,
   ) {
-    const input = parseRequestInput(
-      accessibleWorkspacesQuerySchema,
-      query ?? {},
-    );
-    response.header('Cache-Control', 'private, no-store');
     return this.workspaces.execute(authenticatedSession(request).userId, {
-      ...(input.limit === undefined ? {} : { limit: input.limit }),
-      ...(input.after === undefined ? {} : { after: input.after }),
+      ...(query.limit === undefined ? {} : { limit: query.limit }),
+      ...(query.after === undefined ? {} : { after: query.after }),
     });
   }
 }
 
 @UseInterceptors(domainErrors(workspaceFailure))
-@Controller('v1/workspaces')
+@Controller()
 export class WorkspaceMembersController {
   public constructor(
     private readonly members: ListWorkspaceMembersUseCase,
@@ -126,63 +108,39 @@ export class WorkspaceMembersController {
     private readonly removal: RemoveWorkspaceMemberUseCase,
   ) {}
 
-  @Get(':workspaceId/members')
-  @RateLimit('authenticated_read')
-  @UseGuards(SessionAuthenticationGuard, WorkspaceMemberReadGuard)
+  @Route(routes.members)
   public async list(
     @Req() request: IdentityWorkspaceRequest,
-    @Param() params: unknown,
-    @Query() query: unknown,
-    @Res({ passthrough: true }) response: CookieResponse,
+    @In() { params, query }: RouteInput<typeof routes.members>,
   ) {
-    const { workspaceId } = workspaceIdParamSchema.parse(params);
-    const input = parseRequestInput(workspaceMembersQuerySchema, query ?? {});
-    const actor = lifecycleActorFrom(request, workspaceId);
-    response.header('Cache-Control', 'private, no-store');
     return this.members.execute({
-      actor,
-      ...guardAuthorization(request),
-      routeWorkspaceId: workspaceId,
-      ...(input.limit === undefined ? {} : { limit: input.limit }),
-      ...(input.after === undefined ? {} : { after: input.after }),
+      actor: actorFrom(request, params.workspaceId),
+      ...optionalAuthorizedWorkspace(request),
+      routeWorkspaceId: params.workspaceId,
+      ...(query.limit === undefined ? {} : { limit: query.limit }),
+      ...(query.after === undefined ? {} : { after: query.after }),
     });
   }
 
-  @Post(':workspaceId/members/:userId/role')
-  @HttpCode(200)
-  @RateLimit('ordinary_mutation')
-  @UseGuards(
-    SessionAuthenticationGuard,
-    CsrfProtectionGuard,
-    WorkspaceMemberManageGuard,
-  )
+  @Route(routes.changeRole)
   public async changeRole(
     @Req() request: IdentityWorkspaceRequest,
-    @Param() params: unknown,
-    @Body() body: unknown,
+    @In() input: RouteInput<typeof routes.changeRole>,
   ) {
-    return this.roleChange.execute(memberCommand(request, params, body));
+    return this.roleChange.execute(memberCommand(request, input));
   }
 
-  @Post(':workspaceId/members/:userId/remove')
-  @HttpCode(200)
-  @RateLimit('ordinary_mutation')
-  @UseGuards(
-    SessionAuthenticationGuard,
-    CsrfProtectionGuard,
-    WorkspaceMemberManageGuard,
-  )
+  @Route(routes.remove)
   public async remove(
     @Req() request: IdentityWorkspaceRequest,
-    @Param() params: unknown,
-    @Body() body: unknown,
+    @In() input: RouteInput<typeof routes.remove>,
   ) {
-    return this.removal.execute(memberCommand(request, params, body));
+    return this.removal.execute(memberCommand(request, input));
   }
 }
 
 @UseInterceptors(domainErrors(workspaceFailure))
-@Controller('v1/workspaces')
+@Controller()
 export class WorkspaceController {
   public constructor(
     private readonly createWorkspace: CreateWorkspaceUseCase,
@@ -190,140 +148,87 @@ export class WorkspaceController {
     private readonly renameWorkspace: RenameWorkspaceUseCase,
   ) {}
 
-  @Post()
-  @RateLimit('actor_mutation')
-  @UseGuards(SessionAuthenticationGuard, CsrfProtectionGuard)
+  @Route(routes.create)
   public async create(
     @Req() request: IdentityWorkspaceRequest,
-    @Body() body: unknown,
+    @In() { body, idempotencyKey }: RouteInput<typeof routes.create>,
   ) {
-    const session = authenticatedSession(request);
     return this.createWorkspace.execute({
-      actorId: session.userId,
-      idempotencyKey: requestIdempotencyKey(request.headers),
+      actorId: authenticatedSession(request).userId,
+      idempotencyKey,
       request: body,
       requestId: requestIdentifier(request),
       ...traceFields(traceIdentifier(request)),
     });
   }
 
-  @Patch(':workspaceId')
-  @HttpCode(200)
-  @RateLimit('ordinary_mutation')
-  @UseGuards(
-    SessionAuthenticationGuard,
-    CsrfProtectionGuard,
-    WorkspaceManageGuard,
-  )
+  @Route(routes.rename)
   public async rename(
     @Req() request: IdentityWorkspaceRequest,
-    @Param() params: unknown,
-    @Body() body: unknown,
+    @In() { params, body, idempotencyKey }: RouteInput<typeof routes.rename>,
   ) {
-    const { workspaceId } = workspaceIdParamSchema.parse(params);
-    const actor = lifecycleActorFrom(request, workspaceId);
+    const actor = actorFrom(request, params.workspaceId);
     return this.renameWorkspace.execute({
       actor,
-      routeWorkspaceId: workspaceId,
+      routeWorkspaceId: params.workspaceId,
       request: body,
-      idempotencyKey: requestIdempotencyKey(request.headers),
+      idempotencyKey,
       requestId: actor.requestId,
       ...traceFields(actor.traceId),
     });
   }
 
-  @Post(':workspaceId/deletion')
-  @RateLimit('ordinary_mutation')
-  @HttpCode(200)
-  @UseGuards(
-    SessionAuthenticationGuard,
-    CsrfProtectionGuard,
-    WorkspaceManageGuard,
-  )
+  @Route(routes.requestDeletion)
   public async requestDeletion(
     @Req() request: IdentityWorkspaceRequest,
-    @Param() params: unknown,
-    @Body() body: unknown,
+    @In()
+    { params, body, idempotencyKey }: RouteInput<typeof routes.requestDeletion>,
   ) {
-    const { workspaceId } = workspaceIdParamSchema.parse(params);
-    const deletion = parseRequestInput(
-      workspaceDeletionRequestSchema,
-      body ?? {},
-    );
-    const actor = lifecycleActorFrom(request, workspaceId);
-    const requestId = actor.requestId;
-    const traceId = actor.traceId;
     return this.lifecycle.requestDeletion({
-      actor,
-      ...guardAuthorization(request),
-      idempotencyKey: requestIdempotencyKey(request.headers),
-      routeWorkspaceId: workspaceId,
-      reason: deletion.reason,
-      requestId,
-      ...traceFields(traceId),
+      ...lifecycleCommand(request, params.workspaceId, idempotencyKey),
+      reason: body.reason,
     });
   }
 
-  @Delete(':workspaceId/deletion')
-  @RateLimit('ordinary_mutation')
-  @UseGuards(
-    SessionAuthenticationGuard,
-    CsrfProtectionGuard,
-    WorkspaceManageGuard,
-  )
+  @Route(routes.restore)
   public async restore(
     @Req() request: IdentityWorkspaceRequest,
-    @Param() params: unknown,
+    @In() { params, idempotencyKey }: RouteInput<typeof routes.restore>,
   ) {
-    const { workspaceId } = workspaceIdParamSchema.parse(params);
-    const actor = lifecycleActorFrom(request, workspaceId);
-    const requestId = actor.requestId;
-    const traceId = actor.traceId;
-    return this.lifecycle.restore({
-      actor,
-      ...guardAuthorization(request),
-      idempotencyKey: requestIdempotencyKey(request.headers),
-      routeWorkspaceId: workspaceId,
-      requestId,
-      ...traceFields(traceId),
-    });
+    return this.lifecycle.restore(
+      lifecycleCommand(request, params.workspaceId, idempotencyKey),
+    );
   }
 
-  @Post(':workspaceId/reactivate')
-  @RateLimit('ordinary_mutation')
-  @HttpCode(200)
-  @UseGuards(
-    SessionAuthenticationGuard,
-    CsrfProtectionGuard,
-    WorkspaceManageGuard,
-  )
+  @Route(routes.reactivate)
   public async reactivate(
     @Req() request: IdentityWorkspaceRequest,
-    @Param() params: unknown,
+    @In() { params, idempotencyKey }: RouteInput<typeof routes.reactivate>,
   ) {
-    const { workspaceId } = workspaceIdParamSchema.parse(params);
-    const actor = lifecycleActorFrom(request, workspaceId);
-    return this.lifecycle.reactivate({
-      actor,
-      ...guardAuthorization(request),
-      idempotencyKey: requestIdempotencyKey(request.headers),
-      routeWorkspaceId: workspaceId,
-      requestId: actor.requestId,
-      ...traceFields(actor.traceId),
-    });
+    return this.lifecycle.reactivate(
+      lifecycleCommand(request, params.workspaceId, idempotencyKey),
+    );
   }
 }
 
-function guardAuthorization(
-  request: IdentityWorkspaceRequest,
-): Pick<IdentityWorkspaceRequest, 'authorizedWorkspace'> {
-  return optionalAuthorizedWorkspace(request);
-}
-
-function lifecycleActorFrom(
+/** Who changes the workspace's lifecycle, with what the guard proved. */
+function lifecycleCommand(
   request: IdentityWorkspaceRequest,
   workspaceId: string,
+  idempotencyKey: string,
 ) {
+  const actor = actorFrom(request, workspaceId);
+  return {
+    actor,
+    ...optionalAuthorizedWorkspace(request),
+    idempotencyKey,
+    routeWorkspaceId: workspaceId,
+    requestId: actor.requestId,
+    ...traceFields(actor.traceId),
+  };
+}
+
+function actorFrom(request: IdentityWorkspaceRequest, workspaceId: string) {
   return projectAuthenticatedWorkspaceContext(request, workspaceId).actor;
 }
 

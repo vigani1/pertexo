@@ -90,6 +90,25 @@ import {
 } from '../../src/workspaces/index.js';
 import { generated } from './contracts/fixture.js';
 
+type DocumentedOperation = Readonly<{
+  requestBody: Readonly<{
+    content: Readonly<{ 'application/json': Readonly<{ schema: unknown }> }>;
+  }>;
+  responses: Readonly<Record<string, unknown>>;
+  parameters: readonly unknown[];
+}>;
+
+/** One operation of the document, which builds most of its paths from declarations. */
+function operation(path: string, method: string): DocumentedOperation {
+  const paths = identityWorkspaceOpenApiDocument.paths as Readonly<
+    Record<string, Readonly<Record<string, unknown>> | undefined>
+  >;
+  const found = paths[path]?.[method];
+  if (found === undefined)
+    throw new Error(`${method} ${path} isn't documented`);
+  return found as DocumentedOperation;
+}
+
 describe('identity/workspace generated contracts', () => {
   it('keeps identity client schemas mechanically aligned with their owning Zod contracts', () => {
     const identitySchemas = Object.fromEntries(
@@ -359,16 +378,17 @@ describe('identity/workspace generated contracts', () => {
   it('documents identity requests, responses and headers', () => {
     expect(identityWorkspaceOpenApiDocument.openapi).toBe('3.1.0');
     expect(
-      identityWorkspaceOpenApiDocument.paths['/v1/workspaces'].post.requestBody
-        .content['application/json'].schema,
+      operation('/v1/workspaces', 'post').requestBody.content[
+        'application/json'
+      ].schema,
     ).toEqual({ $ref: '#/components/schemas/WorkspaceCreateRequest' });
     expect(
-      identityWorkspaceOpenApiDocument.paths['/v1/workspaces/{workspaceId}']
-        .patch.requestBody.content['application/json'].schema,
+      operation('/v1/workspaces/{workspaceId}', 'patch').requestBody.content[
+        'application/json'
+      ].schema,
     ).toEqual({ $ref: '#/components/schemas/WorkspaceRenameRequest' });
     expect(
-      identityWorkspaceOpenApiDocument.paths['/v1/workspaces/{workspaceId}']
-        .patch.responses['412'],
+      operation('/v1/workspaces/{workspaceId}', 'patch').responses['412'],
     ).toMatchObject({
       description: 'Workspace revision changed',
       content: {
@@ -378,14 +398,13 @@ describe('identity/workspace generated contracts', () => {
       },
     });
     expect(
-      identityWorkspaceOpenApiDocument.paths[
-        '/v1/workspaces/{workspaceId}/deletion'
-      ].post.requestBody.content['application/json'].schema,
+      operation('/v1/workspaces/{workspaceId}/deletion', 'post').requestBody
+        .content['application/json'].schema,
     ).toEqual({ $ref: '#/components/schemas/WorkspaceDeletionRequest' });
     expect(
-      identityWorkspaceOpenApiDocument.paths[
-        '/v1/workspaces/{workspaceId}/deletion'
-      ].post.responses['200'],
+      operation('/v1/workspaces/{workspaceId}/deletion', 'post').responses[
+        '200'
+      ],
     ).toMatchObject({
       content: {
         'application/json': {
@@ -402,30 +421,22 @@ describe('identity/workspace generated contracts', () => {
       in: 'cookie',
       name: 'pertexo_session',
     });
-    expect(
-      identityWorkspaceOpenApiDocument.paths['/v1/workspaces'].post.parameters,
-    ).toContainEqual(
+    expect(operation('/v1/workspaces', 'post').parameters).toContainEqual(
       expect.objectContaining({ in: 'header', name: 'x-csrf-token' }),
     );
-    expect(
-      identityWorkspaceOpenApiDocument.paths['/v1/workspaces'].post.parameters,
-    ).toContainEqual(
+    expect(operation('/v1/workspaces', 'post').parameters).toContainEqual(
       expect.objectContaining({ in: 'header', name: 'Idempotency-Key' }),
     );
-    expect(
-      identityWorkspaceOpenApiDocument.paths['/v1/auth/logout'].post.parameters,
-    ).not.toContainEqual(
+    expect(operation('/v1/auth/logout', 'post').parameters).not.toContainEqual(
       expect.objectContaining({ in: 'header', name: 'Idempotency-Key' }),
     );
   });
 
   it('preserves strict writes', () => {
-    const create =
-      identityWorkspaceOpenApiDocument.components.schemas
-        .WorkspaceCreateRequest;
-    const deletion =
-      identityWorkspaceOpenApiDocument.components.schemas
-        .WorkspaceDeletionRequest;
+    const schemas = identityWorkspaceOpenApiDocument.components
+      .schemas as Readonly<Record<string, unknown>>;
+    const create = schemas.WorkspaceCreateRequest;
+    const deletion = schemas.WorkspaceDeletionRequest;
 
     expect(create).toMatchObject({
       additionalProperties: false,

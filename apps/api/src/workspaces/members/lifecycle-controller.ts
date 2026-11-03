@@ -1,25 +1,12 @@
+import { Controller, Inject, Req, UseInterceptors } from '@nestjs/common';
 import {
-  Body,
-  Controller,
-  HttpCode,
-  Inject,
-  Param,
-  Post,
-  Req,
-  UseGuards,
-  UseInterceptors,
-} from '@nestjs/common';
+  workspaceRoutes as routes,
+  type RouteInput,
+} from '@pertexo/contracts/server';
 
-import { RateLimit } from '../../platform/rate-limit/metadata.js';
-import { memberCommand, selfCommand } from '../request/member-commands.js';
-import {
-  CsrfProtectionGuard,
-  SessionAuthenticationGuard,
-  WorkspaceManageGuard,
-  WorkspaceMemberManageGuard,
-  WorkspaceMembershipGuard,
-  requireSignInEvidence,
-} from '../http/guards.js';
+import { memberCommand } from '../request/member-commands.js';
+import { requireSignInEvidence } from '../http/guards.js';
+import { In, Route } from '../http/route.js';
 import { WorkspaceMembershipLifecycleUseCase } from './lifecycle.js';
 import type { IdentitySessionAuthority } from '../ports.js';
 import { SESSION_AUTHORITY } from '../tokens.js';
@@ -33,7 +20,7 @@ import { workspaceFailure } from '../../problems/context/normalize.js';
  * rechecks the actor, target and revisions under lock.
  */
 @UseInterceptors(domainErrors(workspaceFailure))
-@Controller('v1/workspaces')
+@Controller()
 export class WorkspaceMembershipController {
   public constructor(
     private readonly lifecycle: WorkspaceMembershipLifecycleUseCase,
@@ -41,69 +28,37 @@ export class WorkspaceMembershipController {
     private readonly sessions: IdentitySessionAuthority,
   ) {}
 
-  @Post(':workspaceId/leave')
-  @HttpCode(200)
-  @RateLimit('ordinary_mutation')
-  @UseGuards(
-    SessionAuthenticationGuard,
-    CsrfProtectionGuard,
-    WorkspaceMembershipGuard,
-  )
+  @Route(routes.leave)
   public async leave(
     @Req() request: IdentityWorkspaceRequest,
-    @Param() params: unknown,
-    @Body() body: unknown,
+    @In() input: RouteInput<typeof routes.leave>,
   ) {
-    return this.lifecycle.leave(selfCommand(request, params, body));
+    return this.lifecycle.leave(memberCommand(request, input));
   }
 
-  @Post(':workspaceId/members/:userId/suspend')
-  @HttpCode(200)
-  @RateLimit('ordinary_mutation')
-  @UseGuards(
-    SessionAuthenticationGuard,
-    CsrfProtectionGuard,
-    WorkspaceMemberManageGuard,
-  )
+  @Route(routes.suspend)
   public async suspend(
     @Req() request: IdentityWorkspaceRequest,
-    @Param() params: unknown,
-    @Body() body: unknown,
+    @In() input: RouteInput<typeof routes.suspend>,
   ) {
-    return this.lifecycle.suspend(memberCommand(request, params, body));
+    return this.lifecycle.suspend(memberCommand(request, input));
   }
 
-  @Post(':workspaceId/members/:userId/reactivate')
-  @HttpCode(200)
-  @RateLimit('ordinary_mutation')
-  @UseGuards(
-    SessionAuthenticationGuard,
-    CsrfProtectionGuard,
-    WorkspaceMemberManageGuard,
-  )
+  @Route(routes.reactivateMember)
   public async reactivate(
     @Req() request: IdentityWorkspaceRequest,
-    @Param() params: unknown,
-    @Body() body: unknown,
+    @In() input: RouteInput<typeof routes.reactivateMember>,
   ) {
-    return this.lifecycle.reactivate(memberCommand(request, params, body));
+    return this.lifecycle.reactivate(memberCommand(request, input));
   }
 
   /** Owner only, from a sign-in in the last five minutes. */
-  @Post(':workspaceId/members/:userId/transfer-ownership')
-  @HttpCode(200)
-  @RateLimit('ordinary_mutation')
-  @UseGuards(
-    SessionAuthenticationGuard,
-    CsrfProtectionGuard,
-    WorkspaceManageGuard,
-  )
+  @Route(routes.transferOwnership)
   public async transferOwnership(
     @Req() request: IdentityWorkspaceRequest,
-    @Param() params: unknown,
-    @Body() body: unknown,
+    @In() input: RouteInput<typeof routes.transferOwnership>,
   ) {
-    const command = memberCommand(request, params, body);
+    const command = memberCommand(request, input);
     const evidence = await requireSignInEvidence(request, this.sessions);
     return this.lifecycle.transferOwnership({
       ...command,
