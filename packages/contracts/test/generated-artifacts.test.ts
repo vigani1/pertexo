@@ -45,7 +45,6 @@ describe('public contract artifact manifest', () => {
 
   it('publishes only resolvable local references in every artifact', () => {
     for (const artifact of CONTRACT_ARTIFACTS) {
-      if (!artifact.fileName.endsWith('.json')) continue;
       const document = JSON.parse(artifact.content) as unknown;
       for (const reference of collectReferences(document))
         expect(
