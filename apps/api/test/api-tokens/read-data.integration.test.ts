@@ -217,6 +217,34 @@ describe.runIf(betterAuthIntegrationEnabled)(
       }
     });
 
+    it('tells a token about itself, and tells nobody else', async () => {
+      const issued = await api.send('POST', `${world.base}/api-tokens`, {
+        browser: world.browser,
+        headers: { 'idempotency-key': randomUUID() },
+        payload: { name: 'Who am I', scopes: ['run:read'] },
+      });
+      const created = apiTokenCreateResponseSchema.parse(issued.json());
+      if (created.replayed) throw new Error('First creation replayed');
+
+      const own = await api.send('GET', '/v1/token', {
+        headers: bearer(created.secret),
+      });
+      expect(own.statusCode, own.payload).toBe(200);
+      expect(own.json()).toEqual({
+        id: created.token.id,
+        workspaceId: world.workspaceId,
+        name: 'Who am I',
+        scopes: ['run:read'],
+        expiresAt: created.token.expiresAt,
+      });
+      expect(own.payload).not.toContain(created.secret);
+
+      const session = await api.send('GET', '/v1/token', {
+        browser: world.browser,
+      });
+      expect(session.statusCode).toBe(401);
+    });
+
     it('asks for credentials with none, or with a revoked or made-up token', async () => {
       for (const path of dataPaths())
         expect((await api.send('GET', path, {})).statusCode, path).toBe(401);
