@@ -107,7 +107,7 @@ export default tseslint.config(
             },
             {
               regex:
-                '^@pertexo/(?!(?:contracts|workflow-model|templates|integrations|node-sdk)$).+',
+                '^@pertexo/(?!(?:contracts|workflow-model|policy|templates|integrations|node-sdk)$).+',
               message:
                 'Import only an explicitly reviewed browser-safe contract schema subpath.',
             },

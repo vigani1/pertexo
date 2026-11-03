@@ -77,6 +77,7 @@ const workspaceTypeProjects = ['apps', 'packages'].flatMap((area) =>
 const readablePackages = [
   'workflow-engine',
   'workflow-model',
+  'policy',
   'node-sdk',
   'nodes-core',
   'integrations',
