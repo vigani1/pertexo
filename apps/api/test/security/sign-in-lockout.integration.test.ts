@@ -1,3 +1,7 @@
+import {
+  leaseRedisDatabase,
+  redisStackLeaseKey,
+} from '../support/real-stack/lease.js';
 import { Redis } from 'ioredis';
 import { randomUUID } from 'node:crypto';
 import { createRealStack } from '../support/real-stack/stack.js';
@@ -23,6 +27,10 @@ describe.runIf(betterAuthIntegrationEnabled)(
   'sign-in rate limits on the real API and Redis',
   () => {
     let stack: Stack;
+    const reservations = new Map<
+      keyof typeof SUITE_REDIS_DATABASES,
+      Awaited<ReturnType<typeof leaseRedisDatabase>>
+    >();
 
     const failedSignIn = (from: string, email = ATTACKED) =>
       stack.send('POST', '/v1/auth/sign-in/email', {
@@ -44,7 +52,7 @@ describe.runIf(betterAuthIntegrationEnabled)(
         reserved: string[] = [];
       try {
         for (const database of [5, 6, 7, 8]) {
-          const key = `pertexo:test:security-stack:${String(database)}`;
+          const key = redisStackLeaseKey(database);
           if ((await coordinator.set(key, owner, 'EX', 120, 'NX')) === 'OK')
             reserved.push(key);
         }
@@ -56,7 +64,7 @@ describe.runIf(betterAuthIntegrationEnabled)(
         } = await stack.query<{ name: string }>(
           'select current_database() name',
         );
-        expect(await coordinator.get('pertexo:test:security-stack:9')).toBe(
+        expect(await coordinator.get(redisStackLeaseKey(9))).toBe(
           database?.name,
         );
       } finally {
@@ -71,9 +79,22 @@ describe.runIf(betterAuthIntegrationEnabled)(
       }
       await registerAccount(stack, VICTIM);
       await registerAccount(stack, ATTACKED);
+      // Wait for parallel helpers before starting the original attack window.
+      for (const suite of Object.keys(
+        SUITE_REDIS_DATABASES,
+      ) as (keyof typeof SUITE_REDIS_DATABASES)[]) {
+        reservations.set(
+          suite,
+          await leaseRedisDatabase(process.env.REDIS_URL ?? '', randomUUID(), [
+            SUITE_REDIS_DATABASES[suite],
+          ]),
+        );
+      }
     }, 120_000);
     afterAll(async () => {
       await stack.close();
+      for (const reservation of reservations.values())
+        await reservation.release();
     }, 60_000);
     beforeEach(async () => {
       await stack.flushRedis();
@@ -154,7 +175,11 @@ describe.runIf(betterAuthIntegrationEnabled)(
           'webhook-endpoints',
           'failure-alerts',
         ] as const) {
-          const competing = createRealStack(name);
+          const reservation = reservations.get(name);
+          if (reservation === undefined)
+            throw new Error('Competing stack reservation missing');
+          const competing = createRealStack(name, reservation);
+          reservations.delete(name);
           try {
             await competing.create();
             expect((await failedSignIn(address(21))).status).toBe(429);
