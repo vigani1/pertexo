@@ -1,4 +1,4 @@
-import { ACTIVE_WORKSPACE_STATUSES } from '@pertexo/workflow-model';
+import { ACTIVE_WORKSPACE_STATUSES } from '@pertexo/policy';
 import type { Pool, PoolClient } from 'pg';
 
 import { lockActiveTriggerWorkflow } from './reconciliation/activation.repository.js';

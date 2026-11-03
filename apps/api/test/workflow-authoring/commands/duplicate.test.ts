@@ -1,4 +1,4 @@
-import type { Role } from '@pertexo/workflow-model';
+import type { Role } from '@pertexo/policy';
 import { describe, expect, it, vi } from 'vitest';
 import { DuplicateWorkflowUseCase } from '../../../src/workflow-authoring/commands/duplicate.js';
 import {

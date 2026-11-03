@@ -19,12 +19,12 @@ import {
 import { requireWorkflowCallTargets } from '../../tenant-access/resources/bindings.queries.js';
 import { requireConnectionBindings } from '../../tenant-access/resources/connections/bindings.queries.js';
 
+import { ACTIVE_WORKSPACE_STATUSES } from '@pertexo/policy';
 import {
   canonicalWorkflowPortableJson,
   portableGraphDigest,
   portableManifestDigest,
   projectWorkflowPortableManifest,
-  ACTIVE_WORKSPACE_STATUSES,
   WORKFLOW_PORTABILITY_LIMITS,
 } from '@pertexo/workflow-model';
 import { workflowDefinitionCatalogFingerprint } from '@pertexo/workflow-model/server';

@@ -1,7 +1,7 @@
 import {
   ACTIVE_WORKSPACE_STATUSES,
   type AuthorizationCapability,
-} from '@pertexo/workflow-model';
+} from '@pertexo/policy';
 import type { AudienceReview } from '@pertexo/contracts';
 import { z } from 'zod';
 

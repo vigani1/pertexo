@@ -1,7 +1,7 @@
 import type { Pool } from 'pg';
 import { updateMembership } from './records.repository.js';
 
-import { canChangeWorkspaceMemberRole } from '@pertexo/workflow-model';
+import { canChangeWorkspaceMemberRole } from '@pertexo/policy';
 import type {
   ChangeWorkspaceMemberRoleInput,
   WorkspaceMemberRoleChangeResult,

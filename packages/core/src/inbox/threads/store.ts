@@ -7,7 +7,7 @@ import {
   ACTIVE_WORKSPACE_STATUSES,
   BROWSABLE_WORKSPACE_STATUSES,
   type WorkspaceStatusList,
-} from '@pertexo/workflow-model';
+} from '@pertexo/policy';
 import type { PoolClient } from 'pg';
 
 import { readFolderScope } from '../../shared/facts.queries.js';

@@ -14,7 +14,7 @@ import type {
 import {
   ACTIVE_WORKSPACE_STATUSES,
   BROWSABLE_WORKSPACE_STATUSES,
-} from '@pertexo/workflow-model';
+} from '@pertexo/policy';
 import { respondToTask } from './respond.repository.js';
 import { inspectAudience } from './inspect-audience.queries.js';
 import { listTasks, projectTask, readTaskRow } from './records.repository.js';

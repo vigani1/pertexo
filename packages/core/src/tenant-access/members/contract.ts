@@ -1,4 +1,4 @@
-import type { Role } from '@pertexo/workflow-model';
+import type { Role } from '@pertexo/policy';
 
 export type MembershipAddition = Readonly<
   { userId: string; role: Role } & (

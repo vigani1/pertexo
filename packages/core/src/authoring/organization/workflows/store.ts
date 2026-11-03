@@ -1,7 +1,4 @@
-import {
-  BROWSABLE_WORKSPACE_STATUSES,
-  type Role,
-} from '@pertexo/workflow-model';
+import { BROWSABLE_WORKSPACE_STATUSES, type Role } from '@pertexo/policy';
 import {
   and,
   asc,

@@ -10,6 +10,7 @@ const webAllowedWorkspaceImports = new Set([
   '@pertexo/node-sdk',
   '@pertexo/contracts',
   '@pertexo/workflow-model',
+  '@pertexo/policy',
   '@pertexo/templates',
   '@pertexo/integrations',
 ]);

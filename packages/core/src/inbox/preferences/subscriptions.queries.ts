@@ -5,7 +5,7 @@ import {
   workflows,
 } from '@pertexo/database/schema';
 import type { NoticeSubscription } from '@pertexo/contracts';
-import type { Role } from '@pertexo/workflow-model';
+import type { Role } from '@pertexo/policy';
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';

@@ -104,6 +104,9 @@ importers:
       '@pertexo/observability':
         specifier: workspace:*
         version: link:../../packages/observability
+      '@pertexo/policy':
+        specifier: workspace:*
+        version: link:../../packages/policy
       '@pertexo/queue':
         specifier: workspace:*
         version: link:../../packages/queue
@@ -273,6 +276,9 @@ importers:
       '@pertexo/node-sdk':
         specifier: workspace:*
         version: link:../../packages/node-sdk
+      '@pertexo/policy':
+        specifier: workspace:*
+        version: link:../../packages/policy
       '@pertexo/templates':
         specifier: workspace:*
         version: link:../../packages/templates
@@ -476,6 +482,9 @@ importers:
       '@pertexo/node-sdk':
         specifier: workspace:*
         version: link:../node-sdk
+      '@pertexo/policy':
+        specifier: workspace:*
+        version: link:../policy
       '@pertexo/workflow-model':
         specifier: workspace:*
         version: link:../workflow-model
@@ -504,6 +513,9 @@ importers:
       '@pertexo/nodes-core':
         specifier: workspace:*
         version: link:../nodes-core
+      '@pertexo/policy':
+        specifier: workspace:*
+        version: link:../policy
       '@pertexo/secrets':
         specifier: workspace:*
         version: link:../secrets
@@ -553,6 +565,9 @@ importers:
       '@pertexo/node-sdk':
         specifier: workspace:*
         version: link:../node-sdk
+      '@pertexo/policy':
+        specifier: workspace:*
+        version: link:../policy
       '@pertexo/workflow-engine':
         specifier: workspace:*
         version: link:../workflow-engine
@@ -744,6 +759,8 @@ importers:
         specifier: 2.12.0
         version: 2.12.0(@opentelemetry/api@1.9.1)
 
+  packages/policy: {}
+
   packages/queue:
     dependencies:
       '@opentelemetry/api':
@@ -802,6 +819,9 @@ importers:
 
   packages/workflow-model:
     dependencies:
+      '@pertexo/policy':
+        specifier: workspace:*
+        version: link:../policy
       jsonata:
         specifier: 2.2.2
         version: 2.2.2

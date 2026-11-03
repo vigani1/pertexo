@@ -8,13 +8,13 @@ import {
   workflowTagAssignments,
 } from '@pertexo/database/schema';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
-import { isAdministrativeRole } from '@pertexo/workflow-model';
+import { isAdministrativeRole } from '@pertexo/policy';
 import type { AudienceReview } from '@pertexo/contracts';
 import { requireMoveAudienceReview } from './sharing/audience.queries.js';
 import { readFolderScope } from '../../shared/facts.queries.js';
 import { workflowAccessible } from '../../tenant-access/resources/workflows.queries.js';
 import type { PoolClient } from 'pg';
-import type { Role } from '@pertexo/workflow-model';
+import type { Role } from '@pertexo/policy';
 
 import { WorkflowNotFoundError } from '../workflows/errors.js';
 import type { OrganizationActor } from './session.js';

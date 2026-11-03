@@ -5,7 +5,7 @@ import {
   rethrowQueryFailure,
   appendAuditFact,
 } from '@pertexo/database/primitives';
-import { ACTIVE_WORKSPACE_STATUSES } from '@pertexo/workflow-model';
+import { ACTIVE_WORKSPACE_STATUSES } from '@pertexo/policy';
 import { parseStoredExecutionValue } from '../../../runs/values/stored-execution.js';
 import type { Pool, PoolClient } from 'pg';
 

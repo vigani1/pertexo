@@ -1,7 +1,4 @@
-import {
-  BROWSABLE_WORKSPACE_STATUSES,
-  hasCapability,
-} from '@pertexo/workflow-model';
+import { BROWSABLE_WORKSPACE_STATUSES, hasCapability } from '@pertexo/policy';
 import { entitlementPolicyState } from '../entitlement-effect.js';
 import {
   DEFAULT_ARTIFACT_BYTE_LIMIT,

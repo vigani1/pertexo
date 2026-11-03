@@ -1,7 +1,7 @@
 import { readTransactionFolderScope } from '../../../shared/facts.queries.js';
 import { workflowScopeSql } from '../../../shared/scope.queries.js';
 
-import type { Role } from '@pertexo/workflow-model';
+import type { Role } from '@pertexo/policy';
 
 import { and, eq, sql } from 'drizzle-orm';
 

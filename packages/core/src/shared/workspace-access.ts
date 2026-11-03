@@ -14,7 +14,7 @@ import {
   type AuthorizationCapability,
   type Role,
   type WorkspaceStatusList,
-} from '@pertexo/workflow-model';
+} from '@pertexo/policy';
 import type { Pool, PoolClient } from 'pg';
 
 /** Who is acting, where, and what can call the work off. */

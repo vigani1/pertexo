@@ -10,7 +10,7 @@ import {
   rethrowQueryFailure,
 } from '@pertexo/database/primitives';
 import type { FederationSettings } from '@pertexo/contracts';
-import type { Role } from '@pertexo/workflow-model';
+import type { Role } from '@pertexo/policy';
 import type { Pool, PoolClient } from 'pg';
 
 import { organizationForWorkspace } from './authority.repository.js';

@@ -5,7 +5,7 @@ import { expect, it, vi } from 'vitest';
 import { FederationSettingsPage } from '@/features/federation/pages/settings';
 import { AuditPage } from '@/features/governance/pages/audit';
 import { createApiClient } from '@/lib/api/client';
-import { capabilitiesForRole } from '@pertexo/workflow-model';
+import { capabilitiesForRole } from '@pertexo/policy';
 import { createWorkspaceFixture } from '../../support/fixtures/identity';
 
 const builder = createWorkspaceFixture({

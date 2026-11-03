@@ -1,4 +1,4 @@
-import { ROLES } from '@pertexo/workflow-model';
+import { ROLES } from '@pertexo/policy';
 import { useState } from 'react';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import type { TaskAudience } from '@pertexo/workflow-model';

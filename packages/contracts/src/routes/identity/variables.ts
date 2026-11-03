@@ -1,7 +1,7 @@
 import {
   ACTIVE_WORKSPACE_STATUSES,
   UNPURGED_WORKSPACE_STATUSES,
-} from '@pertexo/workflow-model';
+} from '@pertexo/policy';
 import { z } from 'zod';
 
 import { problemResponse } from '../../openapi/primitives.js';

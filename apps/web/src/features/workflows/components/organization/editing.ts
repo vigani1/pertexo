@@ -1,5 +1,5 @@
-import { isAdministrativeRole } from '@pertexo/workflow-model';
-import { hasCapability } from '@pertexo/workflow-model';
+import { isAdministrativeRole } from '@pertexo/policy';
+import { hasCapability } from '@pertexo/policy';
 import type {
   AccessibleWorkspace,
   WorkflowOrganizationProjectionResponse,

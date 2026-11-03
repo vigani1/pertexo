@@ -16,10 +16,8 @@ import {
   workflowPublicationRequests,
 } from '@pertexo/database/schema';
 import type { GovernanceSettings } from '@pertexo/contracts';
-import {
-  requiresPublicationReviewer,
-  rolesForCapability,
-} from '@pertexo/workflow-model';
+import { rolesForCapability } from '@pertexo/policy';
+import { requiresPublicationReviewer } from '@pertexo/workflow-model';
 import { GovernanceError, type ConfigureGovernanceInput } from '../contract.js';
 export async function configureGovernance(
   client: PoolClient,

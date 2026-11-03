@@ -14,7 +14,7 @@ import {
   appendAuditFact,
 } from '@pertexo/database/primitives';
 import type { WorkflowPromotionTargetResult } from '@pertexo/contracts';
-import { hasCapability } from '@pertexo/workflow-model';
+import { hasCapability } from '@pertexo/policy';
 import type { WorkflowPromotionSettings } from '@pertexo/contracts';
 import { WorkflowNotFoundError } from '../workflows/errors.js';
 import { WorkflowPromotionError } from './errors.js';

@@ -16,7 +16,7 @@ import {
   type AuthorizationCapability,
   type Role,
   type WorkspaceStatusList,
-} from '@pertexo/workflow-model';
+} from '@pertexo/policy';
 import type { Pool, PoolClient } from 'pg';
 import { WorkflowNotFoundError } from './errors.js';
 

@@ -5,7 +5,7 @@ import { alias } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 import type { Pool, PoolClient } from 'pg';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
-import { UNPURGED_WORKSPACE_STATUSES } from '@pertexo/workflow-model';
+import { UNPURGED_WORKSPACE_STATUSES } from '@pertexo/policy';
 import {
   workspaces,
   authDomains,

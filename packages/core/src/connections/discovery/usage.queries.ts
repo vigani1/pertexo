@@ -7,7 +7,7 @@ import {
   workflowVersions as version,
   workflows as workflow,
 } from '@pertexo/database/schema';
-import type { Role } from '@pertexo/workflow-model';
+import type { Role } from '@pertexo/policy';
 import type { FolderScope } from '../../shared/contract.js';
 import { readFolderScope } from '../../shared/facts.queries.js';
 import { workflowScopeSql } from '../../shared/scope.queries.js';

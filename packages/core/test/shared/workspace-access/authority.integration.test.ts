@@ -6,7 +6,7 @@ import {
   BROWSABLE_WORKSPACE_STATUSES,
   UNPURGED_WORKSPACE_STATUSES,
   type WorkspaceStatusList,
-} from '@pertexo/workflow-model';
+} from '@pertexo/policy';
 import { Client, Pool } from 'pg';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 

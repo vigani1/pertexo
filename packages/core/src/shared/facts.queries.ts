@@ -19,7 +19,7 @@ import {
   ACTIVE_WORKSPACE_STATUSES,
   BROWSABLE_WORKSPACE_STATUSES,
   type Role,
-} from '@pertexo/workflow-model';
+} from '@pertexo/policy';
 import { readWorkspaceRole } from './authority.queries.js';
 import type { ResourceActor, ResourceTransaction } from './contract.js';
 import { folderScope, RESOURCE_ADMINISTRATORS } from './folder-policy.js';

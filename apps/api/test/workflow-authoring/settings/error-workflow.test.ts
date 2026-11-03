@@ -1,4 +1,4 @@
-import type { Role } from '@pertexo/workflow-model';
+import type { Role } from '@pertexo/policy';
 import { describe, expect, it, vi } from 'vitest';
 import type { WorkflowErrorStore } from '@pertexo/core/authoring';
 import { WorkflowErrorUseCase } from '../../../src/workflow-authoring/settings/error-workflow.js';

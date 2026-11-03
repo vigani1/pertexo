@@ -10,7 +10,7 @@ import {
   appendAuditFact,
 } from '@pertexo/database/primitives';
 import { organizationRecords } from './records.queries.js';
-import { ADMINISTRATIVE_ROLES, type Role } from '@pertexo/workflow-model';
+import { ADMINISTRATIVE_ROLES, type Role } from '@pertexo/policy';
 import type { PoolClient } from 'pg';
 import {
   lockWorkspaceAuthority,

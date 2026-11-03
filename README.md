@@ -59,6 +59,7 @@ packages/
   core/             product areas: flows, queries and decisions
   database/         PostgreSQL persistence, roles, and migrations
   workflow-model/   graph, JSON, portability and expression policy
+  policy/           workspace roles, capabilities and status lists
   workflow-engine/  pure execution state machine
   execution/        run orchestration and attempt input projection
   node-sdk/          node definition and executor contracts

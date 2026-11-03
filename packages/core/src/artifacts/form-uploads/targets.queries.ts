@@ -1,9 +1,9 @@
 import { createHash } from 'node:crypto';
 import { and, eq, isNull, type SQL } from 'drizzle-orm';
 import type { PoolClient } from 'pg';
+import { rolesForCapability } from '@pertexo/policy';
 import {
   inputRequestConfigSchema,
-  rolesForCapability,
   type FormField,
 } from '@pertexo/workflow-model';
 import { formUploads } from '@pertexo/database/schema';
