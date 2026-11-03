@@ -5,7 +5,7 @@ import { canonicalOutboxPayloadChecksum } from '@pertexo/database/testing';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { cancelInTransaction } from '../../../src/runs/commands/cancel-run.js';
-import { enqueueAdvance } from '../../../src/runs/wakeups/advance.queries.js';
+import { enqueueAdvance } from '../../../src/runs/wakeups/advance.repository.js';
 import {
   createTestRunStore,
   type TestRunStore,

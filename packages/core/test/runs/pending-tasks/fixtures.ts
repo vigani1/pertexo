@@ -4,7 +4,7 @@ import { approvalConfigSchema } from '@pertexo/workflow-model';
 import { createPendingTaskStore } from '../../../src/runs/pending-tasks/responses/store.js';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
 import { withTenantScopedClient } from '@pertexo/database/primitives';
-import { synchronizeHumanWait } from '../../../src/runs/pending-tasks/lifecycle/time-capacity.queries.js';
+import { synchronizeHumanWait } from '../../../src/runs/pending-tasks/lifecycle/time-capacity.repository.js';
 import { admin, createFamily } from '../../lifecycle/calls/fixtures.js';
 import { apiUrl, userId } from '../../lifecycle/retention.support.js';
 export { admin, userId };

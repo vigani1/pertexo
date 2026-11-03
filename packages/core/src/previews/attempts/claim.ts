@@ -32,7 +32,7 @@ import { appendPreviewTerminalFacts } from './facts.repository.js';
 import {
   loadPreviewLease,
   lockPreviewClaimState,
-} from './claim/state.queries.js';
+} from './claim/state.repository.js';
 
 async function terminalizeExpiredPreview(
   client: PoolClient,

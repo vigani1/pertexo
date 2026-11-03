@@ -8,7 +8,7 @@ import {
   readPendingEventVersion,
   readPendingEndpoint,
   type PendingEvent,
-} from './pending.queries.js';
+} from './pending.repository.js';
 import { openWebhookResponse } from '../webhooks/responses/admission.repository.js';
 import { createHash } from 'node:crypto';
 import { and, eq, sql } from 'drizzle-orm';

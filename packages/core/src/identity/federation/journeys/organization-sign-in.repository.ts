@@ -32,7 +32,7 @@ import { SignInProofRejectedError } from '../accounts/rejection.js';
 import {
   readFederationProvider,
   findFederationAttempt,
-} from './records.queries.js';
+} from './federation-journeys.repository.js';
 import { completeFederationJourney } from './complete.repository.js';
 import type { CompleteFederationJourney } from './contract.js';
 import type {

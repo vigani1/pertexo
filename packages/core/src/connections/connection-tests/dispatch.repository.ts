@@ -17,9 +17,9 @@ import {
   ConnectionTestInProgressError,
   ConnectionUnavailableError,
 } from '../contract.js';
-import { selectConnection } from '../records.queries.js';
+import { selectConnection } from '../connections.repository.js';
 import { connectionTestClaim, connectionTestClaimSchema } from './claim.js';
-import { connectionTestClaimRow } from './claim.queries.js';
+import { connectionTestClaimRow } from './claim.repository.js';
 
 export async function markConnectionTestDispatched(
   client: PoolClient,

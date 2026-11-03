@@ -137,8 +137,8 @@ export { WorkflowCollaborationError } from './collaboration/errors.js';
 export type { WorkflowCollaborationStore } from './collaboration/store.js';
 
 // Other areas import these files directly (ADR 091); the door gains nothing.
-export type {} from './input-cases/metadata.queries.js';
-export type {} from './reviews/eligibility.queries.js';
+export type {} from './input-cases/metadata.repository.js';
+export type {} from './reviews/eligibility.repository.js';
 export type {} from './step-samples/records.repository.js';
 export type {} from './workflows/authority.js';
 export type {} from './workflows/catalogs.js';

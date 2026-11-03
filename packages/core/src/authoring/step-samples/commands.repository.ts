@@ -12,7 +12,7 @@ import { utf8ByteLength } from '@pertexo/workflow-model';
 import { z } from 'zod';
 import { generatePersistedId } from '@pertexo/database/platform';
 import { sampleProjection, sampleDraft } from './records.repository.js';
-import { captureSampleSource } from './source.queries.js';
+import { captureSampleSource } from './source.repository.js';
 import { WorkflowStepSampleError } from './errors.js';
 import type {
   SampleCommand,

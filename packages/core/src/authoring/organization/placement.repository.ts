@@ -10,9 +10,9 @@ import {
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { isAdministrativeRole } from '@pertexo/policy';
 import type { AudienceReview } from '@pertexo/contracts';
-import { requireMoveAudienceReview } from './sharing/audience.queries.js';
-import { readFolderScope } from '../../shared/facts.queries.js';
-import { workflowAccessible } from '../../tenant-access/resources/workflows.queries.js';
+import { requireMoveAudienceReview } from './sharing/audience.repository.js';
+import { readFolderScope } from '../../shared/facts.repository.js';
+import { workflowAccessible } from '../../tenant-access/resources/workflows.repository.js';
 import type { PoolClient } from 'pg';
 import type { Role } from '@pertexo/policy';
 

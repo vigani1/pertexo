@@ -4,7 +4,7 @@ import {
   claimCommand,
   completeCommand,
 } from '@pertexo/database/primitives';
-import { readPolicy } from './policy.queries.js';
+import { readPolicy } from './policy.repository.js';
 import { and, asc, eq, gt, inArray, ne, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import {
@@ -13,8 +13,8 @@ import {
   workflowErrorPolicies,
 } from '@pertexo/database/schema';
 import type { FolderScope } from '../../../shared/contract.js';
-import { workflowAccessible } from '../../../tenant-access/resources/workflows.queries.js';
-import { workflowScopeSql } from '../../../shared/scope.queries.js';
+import { workflowAccessible } from '../../../tenant-access/resources/workflows.repository.js';
+import { workflowScopeSql } from '../../../shared/scope.repository.js';
 import type { PoolClient } from 'pg';
 import { isWorkflowErrorTarget } from '@pertexo/workflow-model';
 import type {

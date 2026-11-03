@@ -15,7 +15,7 @@ import {
 import {
   lockCapabilityExecution,
   assertCapabilityExecution,
-} from '../../attempts/dispatch/fence.queries.js';
+} from '../../attempts/dispatch/fence.repository.js';
 import { RunValuesLimitError, type RunValuesSaveInput } from './contract.js';
 
 export type RunValuesStore = ReturnType<typeof createRunValuesStore>;

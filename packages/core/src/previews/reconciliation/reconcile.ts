@@ -4,7 +4,7 @@ import type {
   PreviewReconciliationScope,
   ReconcilePreviewDeliveryInput,
 } from './contract.js';
-import { lockPreviewReconciliationState } from './state.queries.js';
+import { lockPreviewReconciliationState } from './state.repository.js';
 
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { Pool, PoolClient } from 'pg';

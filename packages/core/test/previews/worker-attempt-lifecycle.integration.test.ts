@@ -3,7 +3,7 @@ import {
   withWorkspaceTransaction,
   withTenantScopedClient,
 } from '@pertexo/database/primitives';
-import { readPreviewRun } from '../../src/previews/runs/records.queries.js';
+import { readPreviewRun } from '../../src/previews/runs/preview-runs.repository.js';
 import { createPreviewRunStore } from '../../src/previews/runs/store.js';
 import { completePreviewAttempt } from '../../src/previews/attempts/complete.js';
 import {

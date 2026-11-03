@@ -33,7 +33,7 @@ import {
   decodeDurableConnectionReplay,
   serializeConnectionSnapshot,
 } from '../receipts.js';
-import { selectConnection } from '../records.queries.js';
+import { selectConnection } from '../connections.repository.js';
 import { insertSecretVersion } from './secret-version.repository.js';
 
 const ROTATE_OPERATION = 'connection.secret.rotate';

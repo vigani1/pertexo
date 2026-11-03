@@ -14,8 +14,8 @@ import {
   WorkflowPortabilityUnavailableError,
   WorkflowPortabilityValidationError,
 } from '../workflows/errors.js';
-import { admitWorkflowAuthoring } from '../workflows/admission.queries.js';
-import { inspectPortableConnections } from './source-authority.queries.js';
+import { admitWorkflowAuthoring } from '../workflows/admission.repository.js';
+import { inspectPortableConnections } from './source-authority.repository.js';
 import type { AuthoringCatalogs } from '../workflows/catalogs.js';
 
 export function selectedPolicy(selection: AuthoringCatalogs) {

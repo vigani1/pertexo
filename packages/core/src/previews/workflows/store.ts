@@ -10,7 +10,7 @@ import type {
 import { loadTestSnapshot } from './snapshot.repository.js';
 import { startWorkflowTest } from './start.js';
 import { withTestChange, withTestRead } from './access.js';
-import { readTestDetail, listTests } from './records.queries.js';
+import { readTestDetail, listTests } from './workflow-tests.repository.js';
 
 export type WorkflowTestStore = ReturnType<typeof createWorkflowTestStore>;
 

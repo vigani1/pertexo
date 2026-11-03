@@ -3,11 +3,11 @@ import { createCheckpoint } from '@pertexo/workflow-engine';
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { Pool, PoolClient } from 'pg';
-import { appendAttemptEvent } from '../../attempts/events.queries.js';
+import { appendAttemptEvent } from '../../attempts/events.repository.js';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { nodeAttempts, nodeRuns } from '@pertexo/database/schema';
 import type { CoordinatorAdvanceDelivery } from './contract.js';
-import { lockRunForAdvance } from './load/locks.queries.js';
+import { lockRunForAdvance } from './load/locks.repository.js';
 import { persistCoordinatorRunTransition } from './persist/run-transition.repository.js';
 import type { RunTransitionPlan } from './plan.js';
 import {

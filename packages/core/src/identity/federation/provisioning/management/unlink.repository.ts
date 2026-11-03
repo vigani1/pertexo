@@ -16,7 +16,7 @@ import {
 import {
   lockWorkspaceAuthority,
   lockWorkspaceRow,
-} from '../../../../shared/authority.queries.js';
+} from '../../../../shared/authority.repository.js';
 import {
   organizationForWorkspace,
   recordFederationAudit,

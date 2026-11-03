@@ -1,5 +1,5 @@
 import type { connectionScope } from '../../../../tenant-access/resources/connections/scope.js';
-import type { readFolderScope } from '../../../../shared/facts.queries.js';
+import type { readFolderScope } from '../../../../shared/facts.repository.js';
 
 import type {
   WorkflowPromotionPreview,
@@ -10,7 +10,7 @@ import type { DataTableDefinition } from '../../../../data-tables/contract.js';
 
 import type { PromotionScope } from '../../contract.js';
 import type { PromotionGraphBudget } from '../graph.js';
-import type { PromotionSourceSet } from '../source.queries.js';
+import type { PromotionSourceSet } from '../source.repository.js';
 
 export type ReviewedWorkflow = WorkflowPromotionPreview['workflows'][number];
 

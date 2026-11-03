@@ -57,8 +57,8 @@ import type {
 } from './contract.js';
 import { ConnectionNotFoundError } from './contract.js';
 import type { ListConnectionUsageInput } from './discovery/contract.js';
-import { listConnections, readConnection } from './discovery/reads.queries.js';
-import { listConnectionUsage } from './discovery/usage.queries.js';
+import { listConnections, readConnection } from './discovery/reads.repository.js';
+import { listConnectionUsage } from './discovery/usage.repository.js';
 import {
   authorizeOAuth2Connection,
   consumeOAuth2Authorization,
@@ -79,7 +79,7 @@ import {
 import {
   requireVisibleConnection,
   selectConnection,
-} from './records.queries.js';
+} from './connections.repository.js';
 import type { ResolveConnectionLookupSecretInput } from './runtime/contract.js';
 import { resolveConnectionLookupSecret } from './runtime/lookup.repository.js';
 import {

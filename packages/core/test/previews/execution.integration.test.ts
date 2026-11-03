@@ -39,7 +39,7 @@ import {
   idempotencyRecords,
 } from '@pertexo/database/schema';
 import { acceptPreviewRun } from '../../src/previews/runs/accept.js';
-import { readPreviewRun } from '../../src/previews/runs/records.queries.js';
+import { readPreviewRun } from '../../src/previews/runs/preview-runs.repository.js';
 
 // Previews are kept at most seven days and execute for at most five minutes.
 const minute = 60 * 1_000;

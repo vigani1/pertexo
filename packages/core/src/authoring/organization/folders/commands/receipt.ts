@@ -7,7 +7,7 @@ import { runOrganizationCommand } from '../../run-command.js';
 import type { createOrganizationSession } from '../../session.js';
 import type { Command, WorkflowFolderCommandResult } from '../contract.js';
 import { folderResult } from '../input.js';
-import { type FolderRow, folderRecord } from '../hierarchy.queries.js';
+import { type FolderRow, folderRecord } from '../hierarchy.repository.js';
 
 export function folderCommand(
   session: ReturnType<typeof createOrganizationSession>,

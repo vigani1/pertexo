@@ -17,7 +17,7 @@ import {
   ConnectionUnavailableError,
 } from '../contract.js';
 import { parseConnectionTestResult } from '../receipts.js';
-import { selectConnection } from '../records.queries.js';
+import { selectConnection } from '../connections.repository.js';
 import {
   CONNECTION_TEST_CLAIM_STALE_SECONDS,
   connectionTestClaim,
@@ -26,7 +26,7 @@ import {
 import {
   connectionTestClaimRow,
   CONNECTION_TEST_OPERATION,
-} from './claim.queries.js';
+} from './claim.repository.js';
 
 export async function startConnectionTest(
   client: PoolClient,

@@ -1,5 +1,5 @@
-import { readFolderScope } from '../../shared/facts.queries.js';
-import { workflowScopeSql } from '../../shared/scope.queries.js';
+import { readFolderScope } from '../../shared/facts.repository.js';
+import { workflowScopeSql } from '../../shared/scope.repository.js';
 import { and, desc, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import {
@@ -29,7 +29,7 @@ import type {
   ReviewOverviewInput,
   ReviewScope,
 } from './contract.js';
-import { readReviewDetail, readReviewSummary } from './read.queries.js';
+import { readReviewDetail, readReviewSummary } from './read.repository.js';
 import { requestPublicationReview } from './request.js';
 import { decidePublicationReview } from './decide.js';
 

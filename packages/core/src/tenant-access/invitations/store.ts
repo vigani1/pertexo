@@ -9,7 +9,7 @@ import {
   resendInvitation,
   revokeInvitation,
 } from './management/commands.repository.js';
-import { listWorkspaceInvitations } from './management/list.queries.js';
+import { listWorkspaceInvitations } from './management/list.repository.js';
 import { createWorkspaceInvitation } from './management/create.repository.js';
 
 export function createIdentityWorkspaceInvitationStore(pool: Pool) {

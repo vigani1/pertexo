@@ -1,4 +1,4 @@
-import { lockWorkspaceRunAdmission } from '../../runs/admission-locks.queries.js';
+import { lockWorkspaceRunAdmission } from '../../runs/admission-locks.repository.js';
 import { withTenantScopedClient } from '@pertexo/database/primitives';
 import { serializeStoredExecutionValue } from '../../runs/values/stored-execution.js';
 import { drizzle } from 'drizzle-orm/node-postgres';
@@ -6,7 +6,7 @@ import {
   lockCompletionReceipt,
   lockCompletionRun,
   lockCompletionAttempt,
-} from './records.queries.js';
+} from './attempt-completion.repository.js';
 import type { Pool } from 'pg';
 import {
   DeliveryMismatch,
@@ -17,7 +17,7 @@ import type {
   CompleteNodeAttemptResult,
   CompleteAttemptInput,
 } from '../contract.js';
-import { auditMismatch, validateDelivery } from './receipts.queries.js';
+import { auditMismatch, validateDelivery } from './receipts.repository.js';
 import { applyNodeAttemptCompletion } from './outcomes.js';
 import { StoredExecutionValueInvalidError } from '@pertexo/node-sdk';
 

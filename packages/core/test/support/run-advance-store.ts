@@ -7,7 +7,7 @@ import type {
 } from '@pertexo/database/platform';
 import type { CoordinatorAdvanceDelivery } from '../../src/runs/advance/contract.js';
 import type { RunTransitionPlan } from '../../src/runs/advance/plan.js';
-import { loadRunForAdvance } from '../../src/runs/advance/load/state.queries.js';
+import { loadRunForAdvance } from '../../src/runs/advance/load/state.repository.js';
 import { createRunAdvanceStore } from '../../src/runs/advance/store.js';
 
 type AdvanceInput = Readonly<{

@@ -19,7 +19,7 @@ import {
   errorWorkflowInput,
   errorWorkflowFailure,
 } from '@pertexo/workflow-engine';
-import { readErrorWorkflowStep } from './step.queries.js';
+import { readErrorWorkflowStep } from './step.repository.js';
 
 /** The terminal transition and its unique intent/outbox either all commit or none do. */
 export async function persistErrorWorkflowIntent(

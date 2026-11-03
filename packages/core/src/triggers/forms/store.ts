@@ -1,4 +1,4 @@
-import { lockWorkspaceRunAdmission } from '../../runs/admission-locks.queries.js';
+import { lockWorkspaceRunAdmission } from '../../runs/admission-locks.repository.js';
 import {
   withTenantScopedClient,
   withTenantScopedReadClient,
@@ -6,7 +6,7 @@ import {
 import type { Pool } from 'pg';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { lockEventCoordination } from '../coordination/keys.repository.js';
-import { readCoordinatedEventHistory } from '../coordination/history.queries.js';
+import { readCoordinatedEventHistory } from '../coordination/history.repository.js';
 import { prepareFormEvent } from './prepare.repository.js';
 import {
   createEventCoordinationPreparation,
@@ -40,8 +40,8 @@ import type {
   SetFormAccessInput,
   SubmitFormInput,
 } from './contract.js';
-import { authorizeForm, readFormVersion } from './records.queries.js';
-import { discoverPublicForm } from './discover.queries.js';
+import { authorizeForm, readFormVersion } from './form-versions.repository.js';
+import { discoverPublicForm } from './discover.repository.js';
 import { readFormAccess, changeFormAccess } from './access.repository.js';
 import { submitForm } from './submit.repository.js';
 export type FormStore = ReturnType<typeof createFormStore>;

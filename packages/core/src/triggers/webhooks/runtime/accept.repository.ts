@@ -1,4 +1,4 @@
-import { lockWorkspaceRunAdmission } from '../../../runs/admission-locks.queries.js';
+import { lockWorkspaceRunAdmission } from '../../../runs/admission-locks.repository.js';
 import { WorkflowAlreadyRunningError } from '../../../runs/commands/acceptance/errors.js';
 import { webhookTriggerReplayRecords as replays } from '@pertexo/database/schema';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
@@ -47,7 +47,7 @@ import {
   executableProjection,
   lockEligibleEndpoint,
   readTriggerConfig,
-} from './state.queries.js';
+} from './state.repository.js';
 import type { WorkspaceTurns } from './workspace-turns.js';
 
 export async function acceptVerifiedWebhookDelivery(

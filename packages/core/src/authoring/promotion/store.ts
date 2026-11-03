@@ -5,7 +5,7 @@ import type {
   PromotionContext,
 } from './contract.js';
 import { preparePromotion } from './preview.js';
-import { promotionReads } from './reads.queries.js';
+import { promotionReads } from './reads.repository.js';
 import { promotionSettings } from './settings.repository.js';
 
 export type WorkflowPromotionStore = ReturnType<

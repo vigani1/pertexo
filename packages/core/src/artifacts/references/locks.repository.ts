@@ -2,7 +2,7 @@ import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import {
   visibleArtifactIds,
   visibleTransactionArtifactIds,
-} from './access.queries.js';
+} from './access.repository.js';
 import type { PoolClient } from 'pg';
 import {
   and,

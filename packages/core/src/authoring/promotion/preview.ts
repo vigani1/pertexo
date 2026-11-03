@@ -5,12 +5,12 @@ import type {
   WorkflowPromotionPreviewRequest,
 } from '@pertexo/contracts';
 import type { WorkspaceScopeRunner } from '@pertexo/database/primitives';
-import { linkedPromotionTarget } from './authority.queries.js';
+import { linkedPromotionTarget } from './authority.repository.js';
 import { WorkflowPromotionError } from './errors.js';
 import type { PromotionContext, PromotionScope } from './contract.js';
 import { PromotionGraphBudget, promotionDigest } from './preparation/graph.js';
-import { readPromotionSources } from './preparation/source.queries.js';
-import { preparePromotionTarget } from './preparation/target.queries.js';
+import { readPromotionSources } from './preparation/source.repository.js';
+import { preparePromotionTarget } from './preparation/target.repository.js';
 
 export async function preparePromotion(
   context: PromotionContext,

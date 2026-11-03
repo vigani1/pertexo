@@ -13,12 +13,12 @@ import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
 
-import { lockWorkspaceAuthority } from '../../shared/authority.queries.js';
+import { lockWorkspaceAuthority } from '../../shared/authority.repository.js';
 import { createNoticeMailBatch } from './batches.repository.js';
 import type { NoticeMailPerson, NoticeMailSealer } from './contract.js';
 import { mailCutoff } from './items.js';
 import { recipient, setNextDue, settings } from './recipients.repository.js';
-import { readMailSubjects } from './subjects.queries.js';
+import { readMailSubjects } from './subjects.repository.js';
 
 /** One person's turn: release, wait, reschedule, or write their next mail. */
 export async function preparePerson(

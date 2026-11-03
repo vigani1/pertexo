@@ -34,14 +34,14 @@ export {
   readArtifactCapacity,
   readExecutionStorageCapacity,
   type ArtifactCapacityObservation,
-} from './capacity.queries.js';
+} from './capacity.repository.js';
 export { requireNodeArtifactReference } from './references/locks.repository.js';
 export { ArtifactMetadataNotFoundError } from './errors.js';
 
 // Authoring, previews, runs and triggers use these directly (ADR 091).
-export type {} from './references/access.queries.js';
-export type {} from './references/owners.queries.js';
-export type {} from './form-uploads/resolve.queries.js';
-export type {} from './form-uploads/unsent.queries.js';
-export type {} from './form-uploads/targets.queries.js';
+export type {} from './references/access.repository.js';
+export type {} from './references/owners.repository.js';
+export type {} from './form-uploads/resolve.repository.js';
+export type {} from './form-uploads/unsent.repository.js';
+export type {} from './form-uploads/targets.repository.js';
 export type {} from './uploads/reservation.repository.js';

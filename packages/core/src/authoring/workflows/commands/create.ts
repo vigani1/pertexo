@@ -17,9 +17,9 @@ import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
 import { lockArtifactReferences } from '../../../artifacts/references/locks.repository.js';
-import { readFolderScope } from '../../../shared/facts.queries.js';
-import { requireWorkflowCallTargets } from '../../../tenant-access/resources/bindings.queries.js';
-import { requireConnectionBindings } from '../../../tenant-access/resources/connections/bindings.queries.js';
+import { readFolderScope } from '../../../shared/facts.repository.js';
+import { requireWorkflowCallTargets } from '../../../tenant-access/resources/bindings.repository.js';
+import { requireConnectionBindings } from '../../../tenant-access/resources/connections/bindings.repository.js';
 import { requireReadableReceipt } from '../../../shared/receipts.js';
 import { requireWorkflowInScope } from '../access.js';
 import { createdWorkflowReceipt } from '../receipts.repository.js';
@@ -31,7 +31,7 @@ import {
   draftProjection,
   projectDraft,
   workflowProjection,
-} from '../representation/records.queries.js';
+} from '../representation/workflow-representations.repository.js';
 
 type CreatedReceipt = Readonly<{ workflowId: string }>;
 

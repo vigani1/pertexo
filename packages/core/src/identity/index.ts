@@ -15,7 +15,7 @@ export {
   authorizeCredentialSignIn,
   identityEmailChangeEligibility,
 } from './federation/sessions/authority.repository.js';
-export { isAuthenticationSessionAllowed } from './federation/sessions/lookup.queries.js';
+export { isAuthenticationSessionAllowed } from './federation/sessions/lookup.repository.js';
 export {
   createFederationManagementStore,
   type FederationManagementStore,
@@ -45,4 +45,4 @@ export type { TwoFactorRecoveryResult } from './two-factor/contract.js';
 // Other areas reach these directly (ADR 091).
 export type {} from './federation/provisioning/management/detach.repository.js';
 export type {} from './federation/sessions/policy.js';
-export type {} from './federation/sessions/recovery.queries.js';
+export type {} from './federation/sessions/recovery.repository.js';

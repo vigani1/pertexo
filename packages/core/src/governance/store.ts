@@ -22,7 +22,7 @@ import type {
   ListAuditInput,
 } from './contract.js';
 import { configureGovernance } from './settings/configure.js';
-import { readGovernanceSettings } from './settings/policy.queries.js';
+import { readGovernanceSettings } from './settings/policy.repository.js';
 
 export type GovernanceStore = ReturnType<typeof createGovernanceStore>;
 

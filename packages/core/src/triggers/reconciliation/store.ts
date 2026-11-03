@@ -27,7 +27,7 @@ import type {
 import {
   assertDeliveryIdentity,
   readReconciliationEvent,
-} from './identity.queries.js';
+} from './identity.repository.js';
 
 import { deactivateArchivedWorkflowTriggers } from './activation.repository.js';
 import {

@@ -24,7 +24,7 @@ import {
   selectReplacementClaim,
   selectReplacementIntent,
   type ReplacementClaimRow,
-} from './state.queries.js';
+} from './state.repository.js';
 
 export async function resolveInvitationAcceptance(
   pool: Pool,

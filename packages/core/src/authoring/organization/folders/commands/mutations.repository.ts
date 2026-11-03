@@ -6,7 +6,7 @@ import {
   workflowFolders,
   workflowOrganizationState,
 } from '@pertexo/database/schema';
-import { requireMoveAudienceReview } from '../../sharing/audience.queries.js';
+import { requireMoveAudienceReview } from '../../sharing/audience.repository.js';
 
 import { FOLDER_DEPTH_LIMIT } from '../../limits.js';
 import { FOLDER_LIMIT } from '../../../../shared/folder-policy.js';
@@ -29,7 +29,7 @@ import {
   readFolder,
   requireFreeName,
   requireRevision,
-} from '../hierarchy.queries.js';
+} from '../hierarchy.repository.js';
 import { deleteResult, nameKey } from '../input.js';
 import { folderCommand } from './receipt.js';
 

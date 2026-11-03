@@ -11,8 +11,8 @@ import {
   rethrowQueryFailure,
   withWorkspaceScope,
 } from '@pertexo/database/primitives';
-import { readDirectoryRole } from '../roles.queries.js';
-import { readAdoptableDirectoryUser } from './adoption.queries.js';
+import { readDirectoryRole } from '../roles.repository.js';
+import { readAdoptableDirectoryUser } from './adoption.repository.js';
 import type { Pool } from 'pg';
 import { DirectoryError } from '../errors.js';
 import { projectDirectoryMemberships } from '../projection.repository.js';

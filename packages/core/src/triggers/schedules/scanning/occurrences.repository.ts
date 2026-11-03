@@ -21,7 +21,7 @@ import {
   parsePersistedScheduleRecurrence,
   resolveScheduleObservation,
 } from '../recurrence.js';
-import { claimedScheduleWorkflowPaused } from '../pause.queries.js';
+import { claimedScheduleWorkflowPaused } from '../pause.repository.js';
 import type { RecordedScheduleOccurrence } from '../contract.js';
 import {
   claimCleanupTimeoutMillis,

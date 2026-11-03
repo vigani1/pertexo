@@ -16,7 +16,7 @@ import {
 } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { alias } from 'drizzle-orm/pg-core';
-import { directoryUserRecords } from './resources/records.queries.js';
+import { directoryUserRecords } from './resources/directory-resources.repository.js';
 import { directoryUsers } from './resources/tables.js';
 import {
   rethrowQueryFailure,
@@ -24,7 +24,7 @@ import {
 } from '@pertexo/database/primitives';
 import type { PoolClient } from 'pg';
 import { SignInProofRejectedError } from '../accounts/rejection.js';
-import type { DirectoryUserRow } from './resources/records.queries.js';
+import type { DirectoryUserRow } from './resources/directory-resources.repository.js';
 import type { DirectoryOrganization } from './contract.js';
 import { projectDirectoryMemberships } from './projection.repository.js';
 

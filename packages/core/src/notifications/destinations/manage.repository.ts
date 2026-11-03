@@ -9,7 +9,7 @@ import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
 
-import { notificationProviderRequirements } from '../policies/admission.queries.js';
+import { notificationProviderRequirements } from '../policies/admission.repository.js';
 import {
   audit,
   claimNotificationCommand,
@@ -26,7 +26,7 @@ import type {
 import {
   destinationRecords,
   readFailureNotificationDestination,
-} from './records.queries.js';
+} from './notification-destinations.repository.js';
 import {
   decodeFailureNotificationDestinationReplay,
   serializeFailureNotificationDestinationRecord,

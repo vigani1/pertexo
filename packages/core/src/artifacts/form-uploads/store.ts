@@ -20,7 +20,7 @@ import {
   canonicalOutboxPayloadChecksum,
 } from '@pertexo/database/primitives';
 import { artifacts, formUploads } from '@pertexo/database/schema';
-import { discoverPublicForm } from '../../triggers/forms/discover.queries.js';
+import { discoverPublicForm } from '../../triggers/forms/discover.repository.js';
 import { FormChangedError } from '../../triggers/forms/errors.js';
 import { ArtifactUploadNotFoundError } from '../uploads/errors.js';
 import {
@@ -28,7 +28,7 @@ import {
   reserveArtifactUpload,
 } from '../uploads/reservation.repository.js';
 import { FormUploadLimitError } from './errors.js';
-import { assertUnsentPublicRoom } from './unsent.queries.js';
+import { assertUnsentPublicRoom } from './unsent.repository.js';
 import { FORM_UPLOAD_PURPOSE } from '../contract.js';
 import type {
   BeginFormUploadInput,
@@ -44,7 +44,7 @@ import {
   loadUploadTarget,
   uploadTargetScope,
   type LoadedUploadTarget,
-} from './targets.queries.js';
+} from './targets.repository.js';
 
 function inTarget<T>(
   pool: Pool,

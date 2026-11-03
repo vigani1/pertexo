@@ -1,4 +1,4 @@
-import { lockWorkspaceRunAdmission } from '../../admission-locks.queries.js';
+import { lockWorkspaceRunAdmission } from '../../admission-locks.repository.js';
 import { postgresFailure } from '@pertexo/database/primitives';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 

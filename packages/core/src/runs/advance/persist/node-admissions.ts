@@ -1,6 +1,6 @@
 import type { PoolClient } from 'pg';
 
-import type { PendingCoordinatorFailure } from '../load/state.queries.js';
+import type { PendingCoordinatorFailure } from '../load/state.repository.js';
 
 import type { RunTransitionPlan } from '../plan.js';
 

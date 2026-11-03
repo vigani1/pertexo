@@ -16,13 +16,13 @@ import {
 } from '@pertexo/database/platform';
 import { WorkflowNotFoundError } from '../../../authoring/workflows/errors.js';
 import { withWorkflowAccess } from '../../workflow-access.js';
-import { readTestEventDraft } from './authority.queries.js';
+import { readTestEventDraft } from './authority.repository.js';
 import {
   captureTestEvent,
   consumeTestEventLimit,
   resolveTestEventListener,
 } from './ingress.repository.js';
-import { lockListener } from './records.queries.js';
+import { lockListener } from './webhook-test-listeners.repository.js';
 import { WebhookTestEventError } from './errors.js';
 import type {
   StartTestEventInput,

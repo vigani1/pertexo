@@ -7,7 +7,7 @@ import {
   withTenantScopedClient,
   withWorkspaceReadTransaction,
 } from '@pertexo/database/primitives';
-import { runValuesInTransaction } from '../../../src/runs/values/rows.queries.js';
+import { runValuesInTransaction } from '../../../src/runs/values/rows.repository.js';
 import {
   apiUrl,
   apiPool,

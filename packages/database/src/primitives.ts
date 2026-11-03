@@ -30,7 +30,7 @@ export {
   queryFailure,
   rethrowQueryFailure,
 } from './platform/query-errors.js';
-export { checkDatabaseReadiness } from './platform/readiness.queries.js';
+export { checkDatabaseReadiness } from './platform/readiness.repository.js';
 export {
   withActorDiscoveryScope,
   withActorScopedClient,

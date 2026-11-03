@@ -31,12 +31,12 @@ import { createArtifactUploadStore } from '../../../src/artifacts/uploads/store.
 import { ArtifactMetadataNotFoundError } from '../../../src/artifacts/errors.js';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
 import { connectionScope } from '../../../src/tenant-access/resources/connections/scope.js';
-import { inspectPromotionCallDependencies } from '../../../src/authoring/promotion/preparation/calls.queries.js';
+import { inspectPromotionCallDependencies } from '../../../src/authoring/promotion/preparation/calls.repository.js';
 import { PromotionGraphBudget } from '../../../src/authoring/promotion/preparation/graph.js';
-import { readFolderScope } from '../../../src/shared/facts.queries.js';
+import { readFolderScope } from '../../../src/shared/facts.repository.js';
 import type { WorkflowPromotionRequirement } from '@pertexo/contracts';
 import { InvalidWorkflowGraphError } from '@pertexo/workflow-model';
-import { requireWorkflowCallTargets } from '../../../src/tenant-access/resources/bindings.queries.js';
+import { requireWorkflowCallTargets } from '../../../src/tenant-access/resources/bindings.repository.js';
 import { withTenantScopedClient } from '@pertexo/database/primitives';
 
 beforeAll(beforeAllFixture1, 30_000);

@@ -18,7 +18,7 @@ import {
   CONNECTION_STATUS,
   type SealedConnectionSecretRecord,
 } from '../contract.js';
-import { sealedFields } from '../records.queries.js';
+import { sealedFields } from '../connections.repository.js';
 import type {
   BlockOAuth2RefreshInput,
   ClaimOAuth2RefreshInput,

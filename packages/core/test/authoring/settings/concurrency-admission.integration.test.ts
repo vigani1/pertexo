@@ -33,7 +33,7 @@ import { parseDatabaseConfig } from '@pertexo/database/platform';
 import { createWorkflowRunDatabase } from '../../../src/runs/store.js';
 import { Pool } from 'pg';
 import { withTenantScopedReadClient } from '@pertexo/database/primitives';
-import { readCapacitySnapshot } from '../../../src/runs/queries/usage/capacity.queries.js';
+import { readCapacitySnapshot } from '../../../src/runs/queries/usage/capacity.repository.js';
 import { WorkspaceRunAdmissionDeniedError } from '../../../src/runs/commands/acceptance/errors.js';
 
 const blockersOf = (runId: string) =>

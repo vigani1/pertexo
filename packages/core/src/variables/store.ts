@@ -17,8 +17,8 @@ import type {
   VariableUsageInput,
 } from './contract.js';
 import { replaceWorkspaceVariables } from './replace.js';
-import { readWorkspaceVariables } from './set.queries.js';
-import { readVariableUsage } from './usage.queries.js';
+import { readWorkspaceVariables } from './set.repository.js';
+import { readVariableUsage } from './usage.repository.js';
 
 export type WorkspaceVariablesStore = ReturnType<
   typeof createWorkspaceVariablesStore

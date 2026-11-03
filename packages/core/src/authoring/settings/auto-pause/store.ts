@@ -39,7 +39,7 @@ import {
   workflowProjection,
   workflowSettingsOf,
   workspaceProjection,
-} from './state.queries.js';
+} from './state.repository.js';
 
 const EDITORS: readonly Role[] = WORKFLOW_EDITOR_ROLES;
 

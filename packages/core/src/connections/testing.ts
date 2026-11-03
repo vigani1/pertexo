@@ -48,7 +48,7 @@ export type {
 export {
   createWorkflowIntegrationUsageStore,
   type WorkflowIntegrationUsageStore,
-} from './discovery/integration-usage.queries.js';
+} from './discovery/integration-usage.repository.js';
 export type {
   FindConnectionImpactInput,
   FindProviderOperationImpactInput,

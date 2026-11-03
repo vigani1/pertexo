@@ -10,7 +10,7 @@ import { COLLABORATION_LIMITS } from '@pertexo/workflow-model';
 import { rolesForCapability } from '@pertexo/policy';
 import type { WorkflowPresence } from '@pertexo/contracts';
 import type { PoolClient } from 'pg';
-import type { EnterCollaboration } from './authority.queries.js';
+import type { EnterCollaboration } from './authority.repository.js';
 import { WorkflowCollaborationError } from './errors.js';
 import type { HeartbeatInput, PresenceInput } from './contract.js';
 async function readPresence(

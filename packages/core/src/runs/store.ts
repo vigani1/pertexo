@@ -18,7 +18,7 @@ import {
   recoverWorkflowRunInTransaction,
   allocateRecoveryIdentity,
 } from './recovery/accept.repository.js';
-import { readRecoveryEvidence } from './recovery/evidence.queries.js';
+import { readRecoveryEvidence } from './recovery/evidence.repository.js';
 import {
   WorkflowRunNotFoundError,
   WorkflowPublishedVersionConflictError,
@@ -27,17 +27,17 @@ import { replayWorkflowRunInTransaction } from './commands/replay-run.js';
 import {
   readWorkflowRunListPage,
   type ListWorkflowRunsDatabaseInput,
-} from './queries/history/list.queries.js';
+} from './queries/history/list.repository.js';
 import {
   readWorkflowStepHealth,
   readWorkflowStepRuns,
   type ReadWorkflowStepHealthInput,
   type ReadWorkflowStepRunsInput,
-} from './queries/history/steps.queries.js';
+} from './queries/history/steps.repository.js';
 import {
   readWorkflowRun,
   type GetWorkflowRunInput,
-} from './queries/run.queries.js';
+} from './queries/run.repository.js';
 import {
   readWorkflowNodeRunInput,
   readWorkflowNodeRunDiagnostics,
@@ -46,15 +46,15 @@ import {
   readWorkflowRunVariables,
   type ReadWorkflowNodeRunOutputInput,
   type ReadWorkflowRunInputInput,
-} from './queries/history/details.queries.js';
+} from './queries/history/details.repository.js';
 import {
   readWorkflowRunStatistics,
   type WorkflowRunStatisticsDatabaseInput,
-} from './queries/history/statistics.queries.js';
+} from './queries/history/statistics.repository.js';
 import {
   readWorkspaceUsageCapacity,
   type WorkspaceUsageCapacityInput,
-} from './queries/usage/capacity.queries.js';
+} from './queries/usage/capacity.repository.js';
 import type {
   WorkflowRecoveryPreviewInput,
   RecoverPublishedWorkflowRunInput,

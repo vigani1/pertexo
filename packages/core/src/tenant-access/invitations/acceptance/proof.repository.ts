@@ -20,7 +20,7 @@ import type {
   RecordInvitationAcceptanceProofInput,
 } from '../../contract.js';
 import { OPEN_INTENT_STATUSES } from '../open-intents.repository.js';
-import { selectIntent } from './state.queries.js';
+import { selectIntent } from './state.repository.js';
 
 export async function readInvitationAcceptance(
   pool: Pool,

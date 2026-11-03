@@ -17,9 +17,9 @@ import {
   ConnectionOAuth2RevokedError,
   ConnectionUnavailableError,
 } from '../contract.js';
-import { selectConnection } from '../records.queries.js';
+import { selectConnection } from '../connections.repository.js';
 import { withConnectionTransaction } from '../transaction.js';
-import { connectionSecrets } from './credentials.queries.js';
+import { connectionSecrets } from './credentials.repository.js';
 import {
   isConnectionFenceCurrent,
   recordCredentialAccess,

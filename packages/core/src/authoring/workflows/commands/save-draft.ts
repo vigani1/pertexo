@@ -7,8 +7,8 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
 import { lockArtifactReferences } from '../../../artifacts/references/locks.repository.js';
 import { workflowDrafts, workflows } from '@pertexo/database/schema';
-import { requireWorkflowCallTargets } from '../../../tenant-access/resources/bindings.queries.js';
-import { requireConnectionBindings } from '../../../tenant-access/resources/connections/bindings.queries.js';
+import { requireWorkflowCallTargets } from '../../../tenant-access/resources/bindings.repository.js';
+import { requireConnectionBindings } from '../../../tenant-access/resources/connections/bindings.repository.js';
 import { pruneStepSamples } from '../../step-samples/records.repository.js';
 
 import type { AuthoringCatalogs } from '../catalogs.js';
@@ -23,7 +23,7 @@ import { requirePlaceableDefinitionAdditions } from '../placement.js';
 import {
   draftProjection,
   projectDraft,
-} from '../representation/records.queries.js';
+} from '../representation/workflow-representations.repository.js';
 
 export async function saveDraft(
   client: PoolClient,

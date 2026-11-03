@@ -15,7 +15,7 @@ import {
   readNodeAttemptOutputs,
   listNodeRunOutcomes,
   readNodeRunOutputs,
-} from './outputs.queries.js';
+} from './outputs.repository.js';
 import type {
   ClaimDeliveryInput,
   CompleteAttemptInput,

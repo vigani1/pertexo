@@ -10,7 +10,7 @@ import {
 } from '@pertexo/policy';
 import type { PoolClient } from 'pg';
 
-import { readFolderScope } from '../../shared/facts.queries.js';
+import { readFolderScope } from '../../shared/facts.repository.js';
 import {
   withWorkspaceAccess,
   type WorkspaceActor,
@@ -22,7 +22,7 @@ import type {
   MarkAllReadInput,
   MarkThreadReadInput,
 } from './contract.js';
-import { listThreads, readSummary } from './list.queries.js';
+import { listThreads, readSummary } from './list.repository.js';
 import { markAllRead, markThreadRead } from './mark-read.repository.js';
 
 const STATEMENT_TIMEOUT_MILLIS = 2_000;

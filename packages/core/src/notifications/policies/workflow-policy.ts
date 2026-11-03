@@ -22,7 +22,7 @@ import type {
   SetWorkflowPolicyInput,
   WorkflowPolicyInput,
 } from '../destinations/contract.js';
-import { readFailureNotificationDestination } from '../destinations/records.queries.js';
+import { readFailureNotificationDestination } from '../destinations/notification-destinations.repository.js';
 
 /**
  * The workflow's failure-notification policy (ADR 025): at most one

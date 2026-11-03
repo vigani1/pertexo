@@ -27,7 +27,7 @@ import { hasCapability } from '@pertexo/policy';
 import { issueApiTokenCredential } from './credential.js';
 import { apiTokenMetadata, type ApiTokenRow } from './metadata.js';
 import { requireReadableReceipt, tokenReceipt } from '../../shared/receipts.js';
-import { tokenOwnerAuthority } from './authority.queries.js';
+import { tokenOwnerAuthority } from './authority.repository.js';
 import { availableApiTokenScopes } from './policy.js';
 import { authenticateApiToken } from './authenticate.repository.js';
 import { ApiTokenPolicyError } from './errors.js';

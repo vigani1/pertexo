@@ -17,7 +17,7 @@ import {
 } from '../provisioning/sign-in.repository.js';
 import { bindVerifiedAccount } from '../accounts/link.repository.js';
 import type { PoolClient } from 'pg';
-import { lockWorkspaceAuthority } from '../../../shared/authority.queries.js';
+import { lockWorkspaceAuthority } from '../../../shared/authority.repository.js';
 import { recordIdentitySecurityFact } from '../../facts.repository.js';
 import { resolveVerifiedSignInUser } from '../accounts/resolve.repository.js';
 import { SignInProofRejectedError } from '../accounts/rejection.js';
@@ -26,7 +26,7 @@ import {
   readEligibleAuthenticationSession,
 } from '../sessions/authority.repository.js';
 import { issueSession } from '../sessions/issue.repository.js';
-import { findFederationAttempt } from './records.queries.js';
+import { findFederationAttempt } from './federation-journeys.repository.js';
 import { grantJustInTimeMemberships } from './membership.repository.js';
 import type { FederationCompletion } from './contract.js';
 export async function completeFederationJourney(

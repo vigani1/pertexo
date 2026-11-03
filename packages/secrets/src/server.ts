@@ -1,6 +1,6 @@
 export { createEncryptionKeyRepository } from './encryption/keys.repository.js';
 export type { EncryptionKeyRepository } from './encryption/keys.repository.js';
-export { insertSystemMail } from './mail/deliveries.queries.js';
+export { insertSystemMail } from './mail/deliveries.repository.js';
 export {
   createSystemMailDeliveryStore,
   createSystemMailEnqueueStore,

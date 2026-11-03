@@ -1,5 +1,5 @@
 import type { Pool } from 'pg';
-import { canTransferRecoveryOwnership } from '../../identity/federation/sessions/recovery.queries.js';
+import { canTransferRecoveryOwnership } from '../../identity/federation/sessions/recovery.repository.js';
 import { updateMembership } from './records.repository.js';
 
 import {

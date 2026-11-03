@@ -8,7 +8,7 @@ import type { PoolClient } from 'pg';
 
 import { revokeUserSessions } from '../../../tenant-access/users/sessions.repository.js';
 import { recordIdentitySecurityFact } from '../../facts.repository.js';
-import { hasSignInMethodCapacity } from './limits.queries.js';
+import { hasSignInMethodCapacity } from './limits.repository.js';
 
 /**
  * Ties a provider's verified subject to the user a sign-in resolved, once, and

@@ -37,7 +37,7 @@ import {
 import {
   listDirectoryUsers,
   listDirectoryGroups,
-} from './resources/records.queries.js';
+} from './resources/directory-resources.repository.js';
 import {
   readDirectoryAdoption,
   readDirectoryManagement,
@@ -54,7 +54,7 @@ import { unlinkDirectoryWorkspace } from './management/unlink.repository.js';
 import {
   projectDirectorySettings,
   listDirectoryPeople,
-} from './management/settings.queries.js';
+} from './management/settings.repository.js';
 import type { DirectoryPeopleQuery } from '@pertexo/contracts';
 
 export type DirectoryStore = ReturnType<typeof createDirectoryStore>;

@@ -8,7 +8,7 @@ import type { PreferenceRow } from '../preferences/effective.js';
 import type { NoticeMailPerson, NoticeMailSealer } from './contract.js';
 import { mailItem } from './items.js';
 import type { recipient, settings } from './recipients.repository.js';
-import type { MailSubjectRow } from './subjects.queries.js';
+import type { MailSubjectRow } from './subjects.repository.js';
 
 /** A mail not sent within a day is stale news; the next one says what's current. */
 const MAIL_LIFETIME_MILLIS = 24 * 3_600_000;

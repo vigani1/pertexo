@@ -32,7 +32,7 @@ import {
   requireFreeKey,
   requireRevision,
   tagProjection,
-} from '../state.queries.js';
+} from '../state.repository.js';
 import { assignmentCommand, tagCommand } from './receipts.js';
 
 /** Detaches a tag from at most 50 workflows, advancing each one's revision. */

@@ -16,7 +16,7 @@ import {
   workspaces,
 } from '@pertexo/database/schema';
 import { WorkspaceAccessDeniedError } from '../../shared/errors.js';
-import { lockWorkspaceAuthority } from '../../shared/authority.queries.js';
+import { lockWorkspaceAuthority } from '../../shared/authority.repository.js';
 import {
   CONNECTION_AUTH_TYPE,
   CONNECTION_EVENT_TYPE,
@@ -31,7 +31,7 @@ import {
   connectionFields,
   sealedFields,
   selectConnection,
-} from '../records.queries.js';
+} from '../connections.repository.js';
 import { withConnectionTransaction } from '../transaction.js';
 import { withOneOAuth2Fact } from './clients.repository.js';
 import type {

@@ -1,6 +1,6 @@
 import type { Pool, PoolClient } from 'pg';
 
-import { readFolderScope } from '../shared/facts.queries.js';
+import { readFolderScope } from '../shared/facts.repository.js';
 import {
   withWorkspaceAccess,
   type WorkspaceAccess,
@@ -8,7 +8,7 @@ import {
 } from '../shared/workspace-access.js';
 import { WorkspaceAccessDeniedError } from '../shared/errors.js';
 import type { WorkflowResourceCapability } from '../shared/contract.js';
-import { workflowAccessible } from '../tenant-access/resources/workflows.queries.js';
+import { workflowAccessible } from '../tenant-access/resources/workflows.repository.js';
 
 /**
  * A member reaching one workflow. The role comes from `capability`, the folder from

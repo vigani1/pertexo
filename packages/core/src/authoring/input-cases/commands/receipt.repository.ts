@@ -11,7 +11,7 @@ import type {
   CaseTransaction,
 } from '../contract.js';
 import { resultSchema } from '../input.js';
-import { workflow, lockInputCaseQuota } from '../metadata.queries.js';
+import { workflow, lockInputCaseQuota } from '../metadata.repository.js';
 
 export async function mutate(
   transact: CaseTransaction,

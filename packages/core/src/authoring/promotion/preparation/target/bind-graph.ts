@@ -9,20 +9,20 @@ import {
 
 import { collectArtifactReferences } from '../../../../artifacts/references/locks.repository.js';
 
-import { admitWorkflowAuthoring } from '../../../workflows/admission.queries.js';
-import { lockWorkspaceVariableNames } from '../../../../variables/head.queries.js';
+import { admitWorkflowAuthoring } from '../../../workflows/admission.repository.js';
+import { lockWorkspaceVariableNames } from '../../../../variables/head.repository.js';
 import { requirePlaceableDefinitionAdditions } from '../../../workflows/placement.js';
 import type { PromotionContext } from '../../contract.js';
 import { mapPromotionNodes } from '../graph.js';
-import type { PromotionSource } from '../source.queries.js';
+import type { PromotionSource } from '../source.repository.js';
 import { rebindPromotionTable } from '../tables.js';
-import { rebindPromotionConnections } from '../connections.queries.js';
+import { rebindPromotionConnections } from '../connections.repository.js';
 import {
   rebindPromotionCalls,
   inspectPromotionCallDependencies,
-} from '../calls.queries.js';
-import { inspectPromotionRequirements } from '../requirements.queries.js';
-import type { Origin } from './records.queries.js';
+} from '../calls.repository.js';
+import { inspectPromotionRequirements } from '../requirements.repository.js';
+import type { Origin } from './target-workflows.repository.js';
 import type { TargetReviewState } from './contract.js';
 
 export async function prepareTargetGraph(

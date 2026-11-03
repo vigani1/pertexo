@@ -22,7 +22,7 @@ import type {
   WorkflowInputCaseResult,
 } from '../contract.js';
 import { payload } from '../input.js';
-import { lockedCase, quota } from '../metadata.queries.js';
+import { lockedCase, quota } from '../metadata.repository.js';
 import { mutate } from './receipt.repository.js';
 
 export async function createInputCase(

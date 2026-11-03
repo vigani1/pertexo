@@ -8,8 +8,8 @@ import { and, eq, gt } from 'drizzle-orm';
 import { parseStoredExecutionValue } from '../../runs/values/stored-execution.js';
 
 import { PreviewAcceptanceCorruptError } from '../errors.js';
-import { previewWorkflowVisible } from './acceptance/admission.queries.js';
-import { readExistingAcceptance } from './acceptance/replay.queries.js';
+import { previewWorkflowVisible } from './acceptance/admission.repository.js';
+import { readExistingAcceptance } from './acceptance/replay.repository.js';
 
 import { previewAttempts, previewRuns } from '@pertexo/database/schema';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';

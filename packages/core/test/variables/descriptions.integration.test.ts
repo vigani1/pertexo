@@ -9,7 +9,7 @@ import {
   queryAsOwner,
 } from '../support/workflow-authoring.js';
 import { createWorkspaceVariablesStore } from '../../src/variables/index.js';
-import { readVariableSetValues } from '../../src/variables/values.queries.js';
+import { readVariableSetValues } from '../../src/variables/values.repository.js';
 import { withTenantScopedClient } from '@pertexo/database/primitives';
 import { Pool } from 'pg';
 import { workspaceVariablesRequestSchema } from '@pertexo/contracts';

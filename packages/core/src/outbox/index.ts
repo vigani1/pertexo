@@ -20,6 +20,6 @@ export type { UnknownOutcomeReconciliationResult } from './reconcile-unknown-out
 export type {} from './consume-message.js';
 export type {} from './dispatcher/contract.js';
 export type {} from './dispatcher/store.js';
-export type {} from './overdue-deliveries.queries.js';
+export type {} from './overdue-deliveries.repository.js';
 export type {} from './reconcile-unknown-outcome.js';
 export type {} from './retention.js';

@@ -28,7 +28,7 @@ export type { WorkspaceDatabase } from './database.js';
 export {
   EXPECTED_MIGRATION_HEAD,
   checkDatabaseReadiness,
-} from './platform/readiness.queries.js';
+} from './platform/readiness.repository.js';
 export type { DatabaseReadiness } from './platform/contract.js';
 export {
   artifacts,

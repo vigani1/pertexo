@@ -15,7 +15,7 @@ import type {
   CreateTableInput,
   RemoveTableInput,
 } from './contract.js';
-import { readQuotas, requireTable } from './definitions.queries.js';
+import { readQuotas, requireTable } from './table-lookups.repository.js';
 import {
   configuredTablesReceipt,
   createdTableReceipt,

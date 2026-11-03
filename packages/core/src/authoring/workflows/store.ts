@@ -10,7 +10,7 @@ import { createWorkflowTestSuiteStore } from '../../previews/suites/store.js';
 import { createWorkflowTestStore } from '../../previews/workflows/store.js';
 import { createWorkflowCollaborationStore } from '../collaboration/store.js';
 import { createWorkflowPortabilityStore } from '../portability/store.js';
-import { readWorkflowWithTemplateOrigin } from '../portability/template-origin.queries.js';
+import { readWorkflowWithTemplateOrigin } from '../portability/template-origin.repository.js';
 import { createWorkflowPromotionStore } from '../promotion/store.js';
 import { publishWorkflow } from '../publication/publish.js';
 import { createPublicationReviewStore } from '../reviews/store.js';
@@ -37,9 +37,9 @@ import type {
   SaveWorkflowDraftInput,
   TransitionWorkflowLifecycleInput,
 } from './contract.js';
-import { readDraft, validateDraft } from './reads/drafts.queries.js';
-import { listVersions, readVersion } from './reads/versions.queries.js';
-import { listWorkflows, readWorkflow } from './reads/workflows.queries.js';
+import { readDraft, validateDraft } from './reads/drafts.repository.js';
+import { listVersions, readVersion } from './reads/versions.repository.js';
+import { listWorkflows, readWorkflow } from './reads/workflows.repository.js';
 import type { WorkflowAuthoringStoreOptions } from './types.js';
 
 export type WorkflowAuthoringStore = ReturnType<

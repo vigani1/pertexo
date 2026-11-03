@@ -1,6 +1,6 @@
 import type { z } from 'zod';
 import type { scheduleTriggerSchema } from './receipt.js';
-import type { readScheduleCommandTarget } from './state.queries.js';
+import type { readScheduleCommandTarget } from './state.repository.js';
 
 // Projection joins workflow triggers with schedule state and decoded recurrence.
 export type ScheduleTriggerRecord = Readonly<

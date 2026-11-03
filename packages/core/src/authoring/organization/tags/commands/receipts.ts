@@ -15,7 +15,7 @@ import type {
   WorkflowTagCommandResult,
 } from '../contract.js';
 import { tagResult } from '../input.js';
-import { tagRecord, type TagRow } from '../state.queries.js';
+import { tagRecord, type TagRow } from '../state.repository.js';
 
 export function tagCommand(
   session: ReturnType<typeof createOrganizationSession>,

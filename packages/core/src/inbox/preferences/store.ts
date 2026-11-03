@@ -29,8 +29,8 @@ import {
   replacePreference,
   replaceSubscription,
 } from './replace.repository.js';
-import { readNoticePreferences } from './settings.queries.js';
-import { readSubscription, requireSubject } from './subscriptions.queries.js';
+import { readNoticePreferences } from './settings.repository.js';
+import { readSubscription, requireSubject } from './subscriptions.repository.js';
 import { unsubscribeMail } from './unsubscribe.repository.js';
 
 export type NoticePreferencesStore = ReturnType<

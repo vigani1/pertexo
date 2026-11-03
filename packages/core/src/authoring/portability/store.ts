@@ -16,8 +16,8 @@ import {
   workflowDrafts,
   workflows,
 } from '@pertexo/database/schema';
-import { requireWorkflowCallTargets } from '../../tenant-access/resources/bindings.queries.js';
-import { requireConnectionBindings } from '../../tenant-access/resources/connections/bindings.queries.js';
+import { requireWorkflowCallTargets } from '../../tenant-access/resources/bindings.repository.js';
+import { requireConnectionBindings } from '../../tenant-access/resources/connections/bindings.repository.js';
 
 import { ACTIVE_WORKSPACE_STATUSES } from '@pertexo/policy';
 import {
@@ -40,7 +40,7 @@ import type {
   PreviewWorkflowImportInput,
 } from '../workflows/contract.js';
 
-import { admitWorkflowAuthoring } from '../workflows/admission.queries.js';
+import { admitWorkflowAuthoring } from '../workflows/admission.repository.js';
 import {
   WorkflowNotFoundError,
   WorkflowPortabilityCompatibilityConflictError,
@@ -50,7 +50,7 @@ import {
 import {
   lockPortableSource,
   reviewedSourceGraph,
-} from './source-authority.queries.js';
+} from './source-authority.repository.js';
 
 import { inspectImport, portableFailure, selectedPolicy } from './admission.js';
 import { importResultSchema } from './input.js';

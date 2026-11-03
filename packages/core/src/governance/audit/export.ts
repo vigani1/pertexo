@@ -8,7 +8,7 @@ import {
   countAuditEvents,
   readAuditBatch,
   type AuditRow,
-} from './events.queries.js';
+} from './events.repository.js';
 import { projectAuditEvent } from './page.js';
 
 const MAX_EXPORTED_EVENTS = 100_000;

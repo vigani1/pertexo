@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { readArtifactCapacity } from '../../src/artifacts/capacity.queries.js';
+import { readArtifactCapacity } from '../../src/artifacts/capacity.repository.js';
 
 const workspaceId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 

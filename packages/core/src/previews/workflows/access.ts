@@ -9,11 +9,11 @@ import {
 import type { SampleScope } from '../../authoring/step-samples/contract.js';
 import { lockWorkflowAuthoringAuthority } from '../../authoring/workflows/authority.js';
 import { WorkflowNotFoundError } from '../../authoring/workflows/errors.js';
-import { readFolderScope } from '../../shared/facts.queries.js';
+import { readFolderScope } from '../../shared/facts.repository.js';
 import { withWorkspaceAccess } from '../../shared/workspace-access.js';
 import { WorkspaceAccessDeniedError } from '../../shared/errors.js';
 import type { WorkflowResourceCapability } from '../../shared/contract.js';
-import { workflowAccessible } from '../../tenant-access/resources/workflows.queries.js';
+import { workflowAccessible } from '../../tenant-access/resources/workflows.repository.js';
 
 const capabilities = ['workflow:update', 'run:read', 'run:start'] as const;
 const testRoles = rolesForCapability('workflow:update').filter((role) =>

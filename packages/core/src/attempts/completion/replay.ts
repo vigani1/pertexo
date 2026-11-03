@@ -8,10 +8,10 @@ import {
   type CompleteAttemptInput,
   type CompleteNodeAttemptResult,
 } from '../contract.js';
-import { completeReceipt } from './receipts.queries.js';
+import { completeReceipt } from './receipts.repository.js';
 
 import { serializeStoredExecutionValue } from '../../runs/values/stored-execution.js';
-import { assertConnectionHealthReplay } from './connection-health.queries.js';
+import { assertConnectionHealthReplay } from './connection-health.repository.js';
 import type {
   CompletionReceiptRow,
   LockedAttemptRow,

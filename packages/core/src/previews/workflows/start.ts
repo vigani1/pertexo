@@ -5,8 +5,8 @@ import { generatePersistedId } from '@pertexo/database/platform';
 import { lockArtifactReferences } from '../../artifacts/references/locks.repository.js';
 import type { AuthoringCatalogs } from '../../authoring/workflows/catalogs.js';
 import { TEST_RUN_RETENTION_MILLIS } from '../../runs/data-policy.js';
-import { requireWorkflowCallTargets } from '../../tenant-access/resources/bindings.queries.js';
-import { requireConnectionBindings } from '../../tenant-access/resources/connections/bindings.queries.js';
+import { requireWorkflowCallTargets } from '../../tenant-access/resources/bindings.repository.js';
+import { requireConnectionBindings } from '../../tenant-access/resources/connections/bindings.repository.js';
 import {
   admitTestRun,
   requireNoActiveSuite,

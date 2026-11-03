@@ -13,7 +13,7 @@ import {
   connections,
   nodeAttemptConnectionDispatches,
 } from '@pertexo/database/schema';
-import { EXECUTION_SOURCE_SQL } from '../../runs/queries/execution/source.queries.js';
+import { EXECUTION_SOURCE_SQL } from '../../runs/queries/execution/source.repository.js';
 import type { Pool, PoolClient } from 'pg';
 import {
   NodeAttemptConnectionFenceError,

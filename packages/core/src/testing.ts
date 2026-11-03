@@ -46,7 +46,7 @@ export {
   WorkspaceAutoPauseSettingsRevisionConflictError,
 } from './authoring/settings/auto-pause/errors.js';
 export * from './connections/testing.js';
-export { lockRunAcceptanceCommand } from './runs/commands/acceptance/lock.queries.js';
+export { lockRunAcceptanceCommand } from './runs/commands/acceptance/lock.repository.js';
 export {
   reconcileUnknownOutcomeEvidence,
   UnknownOutcomeReconciliationMismatchError,
@@ -88,7 +88,7 @@ export {
 export {
   readArtifactCapacity,
   readExecutionStorageCapacity,
-} from './artifacts/capacity.queries.js';
+} from './artifacts/capacity.repository.js';
 export { ARTIFACT_UPLOAD_PURPOSE } from './artifacts/contract.js';
 export { ARTIFACT_UPLOAD_PENDING_MS } from './artifacts/uploads/contract.js';
 export {
@@ -112,7 +112,7 @@ export type {
 export type {
   ArtifactCapacityObservation,
   ExecutionStorageObservation,
-} from './artifacts/capacity.queries.js';
+} from './artifacts/capacity.repository.js';
 export type {
   ArtifactRecord,
   ArtifactStatus,
@@ -194,7 +194,7 @@ export {
   RunEventGapError,
 } from './runs/state-errors.js';
 export { requestWorkflowRunCancellation } from './runs/commands/request-cancellation.js';
-export { createPublishedWorkflowReader } from './runs/queries/execution/published.queries.js';
+export { createPublishedWorkflowReader } from './runs/queries/execution/published.repository.js';
 export type {
   PublishedWorkflowReader,
   PublishedWorkflow,
@@ -257,7 +257,7 @@ export type {
   GetWorkflowRunInput,
   WorkflowNodeRunRecord as ApiWorkflowNodeRunRecord,
   WorkflowRunReadModel as ApiWorkflowRunReadModel,
-} from './runs/queries/run.queries.js';
+} from './runs/queries/run.repository.js';
 export type { WorkflowRunRecord as ApiWorkflowRunRecord } from './runs/commands/records.repository.js';
 export * from './lifecycle/testing.js';
 export * from './operator/testing.js';

@@ -1,21 +1,21 @@
 import { utf8ByteLength } from '@pertexo/workflow-model';
-import { requireRunTableReferences } from '../../../data-tables/columns/references.queries.js';
-import { requireWorkflowConcurrency } from './concurrency.queries.js';
+import { requireRunTableReferences } from '../../../data-tables/columns/references.repository.js';
+import { requireWorkflowConcurrency } from './concurrency.repository.js';
 import { runInputRetentionSql } from '../../data-policy.js';
-import { variableRevisionForAcceptance } from './variables.queries.js';
-import { requireFormAdmission } from './forms.queries.js';
+import { variableRevisionForAcceptance } from './variables.repository.js';
+import { requireFormAdmission } from './forms.repository.js';
 import { and, eq, sql } from 'drizzle-orm';
 import { lockExecutionArtifactReferences } from '../../../artifacts/references/locks.repository.js';
 import { generatePersistedId } from '@pertexo/database/platform';
 import { prepareStoredExecutionValue } from '../../values/stored-execution.js';
-import { enqueueAdvance } from '../../wakeups/advance.queries.js';
+import { enqueueAdvance } from '../../wakeups/advance.repository.js';
 import {
   idempotencyRecords,
   runCheckpoints,
   runEvents,
   workflowRuns,
 } from '@pertexo/database/schema';
-import { resolveWorkflowFailureNotificationPolicy } from '../../../notifications/policies/admission.queries.js';
+import { resolveWorkflowFailureNotificationPolicy } from '../../../notifications/policies/admission.repository.js';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 import { prepareWorkflowRunAcceptanceInput } from './checkpoint.js';
 import { RUN_STATUS, IDEMPOTENCY_STATUS } from './vocabulary.js';

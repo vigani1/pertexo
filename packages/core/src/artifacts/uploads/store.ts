@@ -18,7 +18,7 @@ import { withWorkspaceAccess } from '../../shared/workspace-access.js';
 import { WorkspaceAccessDeniedError } from '../../shared/errors.js';
 import { ARTIFACT_UPLOAD_PURPOSE, type ArtifactRecord } from '../contract.js';
 import { artifactMetadataMatches } from '../metadata.js';
-import { visibleArtifactIds } from '../references/access.queries.js';
+import { visibleArtifactIds } from '../references/access.repository.js';
 import type {
   ArtifactUploadAuthorization,
   ArtifactUploadResult,

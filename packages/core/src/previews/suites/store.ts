@@ -9,8 +9,8 @@ import type {
   WorkflowTestSuiteInput,
   WorkflowTestSuiteStartInput,
 } from './contract.js';
-import { readSuiteCurrent } from './current.queries.js';
-import { listSuites, readCaseReport, readSuite } from './records.queries.js';
+import { readSuiteCurrent } from './current.repository.js';
+import { listSuites, readCaseReport, readSuite } from './test-suites.repository.js';
 import { prepareTestSuite, startTestSuite } from './start.js';
 
 export type WorkflowTestSuiteStore = ReturnType<

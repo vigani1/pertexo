@@ -9,16 +9,16 @@ import {
   withWorkspaceScope,
   appendAuditFact,
 } from '@pertexo/database/primitives';
-import { organizationRecords } from './records.queries.js';
+import { organizationRecords } from './identity-organizations.repository.js';
 import { ADMINISTRATIVE_ROLES, type Role } from '@pertexo/policy';
 import type { PoolClient } from 'pg';
 import {
   lockWorkspaceAuthority,
   lockWorkspaceRow,
-} from '../../../shared/authority.queries.js';
+} from '../../../shared/authority.repository.js';
 import { FederationConflictError } from './errors.js';
 import type { FederationScope } from './contract.js';
-import type { OrganizationRow } from './records.queries.js';
+import type { OrganizationRow } from './identity-organizations.repository.js';
 
 export function requireFederationOwner(
   role: Role,

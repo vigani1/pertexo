@@ -1,13 +1,13 @@
 import { workflows } from '@pertexo/database/schema';
 import { and, eq } from 'drizzle-orm';
 import { readWorkflowRunAcceptanceReplay } from './acceptance/replay.repository.js';
-import { lockRunAcceptanceCommand } from './acceptance/lock.queries.js';
+import { lockRunAcceptanceCommand } from './acceptance/lock.repository.js';
 import {
   readManualStartRejection,
   recordManualStartRejection,
   type ManualStartRejection,
 } from './start-rejections.repository.js';
-import { findPublishedWorkflow } from '../queries/execution/published.queries.js';
+import { findPublishedWorkflow } from '../queries/execution/published.repository.js';
 import type { PublishedWorkflow } from '../queries/execution/contract.js';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 import {

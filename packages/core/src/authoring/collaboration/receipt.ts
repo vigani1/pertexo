@@ -5,7 +5,7 @@ import {
   completeCommand,
   appendAuditFact,
 } from '@pertexo/database/primitives';
-import type { EnterCollaboration } from './authority.queries.js';
+import type { EnterCollaboration } from './authority.repository.js';
 import type { CollaborationCommand } from './contract.js';
 export function runCommentCommand(
   enter: EnterCollaboration,

@@ -1,6 +1,6 @@
 import type { CompleteAttemptInput } from '../contract.js';
 import type { inboxReceipts } from '@pertexo/database/schema';
-import type { lockCompletionAttempt } from './records.queries.js';
+import type { lockCompletionAttempt } from './attempt-completion.repository.js';
 
 type ExecutorOutcome = Extract<
   CompleteAttemptInput['outcome'],

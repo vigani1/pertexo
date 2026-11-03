@@ -16,14 +16,14 @@ import {
   WorkspaceRunQuotaExceededError,
   WorkspaceRunAdmissionDeniedError,
 } from '../../runs/commands/acceptance/errors.js';
-import { readDatabaseClock } from '../clock.queries.js';
+import { readDatabaseClock } from '../clock.repository.js';
 import { lockTestAuthority } from '../workflows/access.js';
 import { isActiveTestRun } from '../workflows/rules.js';
 import type { SuiteRow, SuiteCaseRow } from './contract.js';
 import { admitSuiteCase } from './admit.js';
 import { suiteOutcome } from './rules.js';
-import { skipPendingCases } from './cases.queries.js';
-import { evaluateSuiteCase, readSuiteRunOutcome } from './evaluate.queries.js';
+import { skipPendingCases } from './cases.repository.js';
+import { evaluateSuiteCase, readSuiteRunOutcome } from './evaluate.repository.js';
 
 async function stop(
   client: PoolClient,

@@ -27,7 +27,7 @@ import {
   claimDueUnfinalizedArtifacts,
   completeArtifactRemoval,
 } from '../../src/artifacts/records.repository.js';
-import { readArtifactCapacity } from '../../src/artifacts/capacity.queries.js';
+import { readArtifactCapacity } from '../../src/artifacts/capacity.repository.js';
 import { artifacts } from '@pertexo/database/schema';
 
 beforeAll(beforeAllFixture1);

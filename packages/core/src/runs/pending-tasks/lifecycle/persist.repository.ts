@@ -1,5 +1,5 @@
 import { TERMINAL_RUN_STATUSES } from '../../statuses.js';
-import { lockWorkspaceExecutionCounter } from '../../admission-locks.queries.js';
+import { lockWorkspaceExecutionCounter } from '../../admission-locks.repository.js';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import {
   and,
@@ -19,14 +19,14 @@ import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import {
   readPendingTaskAllowance,
   hasPendingTaskCapacity,
-} from './allowance.queries.js';
+} from './allowance.repository.js';
 import { bindCallbackTask } from '../callbacks/bind.repository.js';
 import { callbackScopeHash } from '../callbacks/scope-hash.js';
 import type { PoolClient } from 'pg';
 import type { RunTransitionPlan } from '../../advance/plan.js';
 import { CoordinatorRunStateCorruptError } from '../../state-errors.js';
 import { generatePersistedId } from '@pertexo/database/platform';
-import { wakeWorkflowRun } from '../../wakeups/advance.queries.js';
+import { wakeWorkflowRun } from '../../wakeups/advance.repository.js';
 
 /** The validated declaration, logical wait and checkpoint share this transaction. */
 export async function persistTaskIntents(

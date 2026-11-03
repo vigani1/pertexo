@@ -19,7 +19,7 @@ import type {
   ScheduleTriggerCommandResult,
   SetEnabledInput,
 } from './contract.js';
-import { parseStoredScheduleTrigger, readSchedule } from './state.queries.js';
+import { parseStoredScheduleTrigger, readSchedule } from './state.repository.js';
 
 export function scheduleCommandIdentity(
   input: SetEnabledInput,

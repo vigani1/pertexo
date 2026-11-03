@@ -1,7 +1,7 @@
 import type { PoolClient } from 'pg';
 import { describe, expect, it } from 'vitest';
 
-import { createWorkflowIntegrationUsageStore } from '../../src/connections/discovery/integration-usage.queries.js';
+import { createWorkflowIntegrationUsageStore } from '../../src/connections/discovery/integration-usage.repository.js';
 import {
   Pool,
   apiBaseUrl,

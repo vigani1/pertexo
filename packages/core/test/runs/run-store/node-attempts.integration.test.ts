@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { Pool } from 'pg';
-import { readWorkflowNodeRunDiagnostics } from '../../../src/runs/queries/history/details.queries.js';
+import { readWorkflowNodeRunDiagnostics } from '../../../src/runs/queries/history/details.repository.js';
 import {
   NodeAttemptStateCorruptError,
   actorId,

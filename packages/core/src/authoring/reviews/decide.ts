@@ -22,7 +22,7 @@ import {
   projectReview,
   readReviewDraft,
   readReviewRow,
-} from './read.queries.js';
+} from './read.repository.js';
 
 export async function decidePublicationReview(
   client: PoolClient,

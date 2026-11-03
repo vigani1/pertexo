@@ -6,7 +6,7 @@ import {
 import { workflowStepSamples } from '@pertexo/database/schema';
 import { parseStoredExecutionValue } from '../../runs/values/stored-execution.js';
 import { WorkflowStepSampleError } from '../../authoring/step-samples/errors.js';
-import { readDatabaseClock } from '../clock.queries.js';
+import { readDatabaseClock } from '../clock.repository.js';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 
 export async function resolvePreviewSample(

@@ -15,7 +15,7 @@ import { generatePersistedId } from '@pertexo/database/platform';
 import { WorkflowNotFoundError } from '../workflows/errors.js';
 import { WorkflowCollaborationError } from './errors.js';
 import type { WorkflowCommentCommandResult } from '@pertexo/contracts';
-import type { EnterCollaboration } from './authority.queries.js';
+import type { EnterCollaboration } from './authority.repository.js';
 import type {
   CollaborationCommand,
   CreateCommentInput,
@@ -24,7 +24,7 @@ import type {
   ReplyInput,
   SetThreadStatusInput,
 } from './contract.js';
-import { lockCommentThread } from './records.queries.js';
+import { lockCommentThread } from './comment-threads.repository.js';
 import { syncCommentMentions } from './mentions.repository.js';
 import { runCommentCommand } from './receipt.js';
 async function insertComment(

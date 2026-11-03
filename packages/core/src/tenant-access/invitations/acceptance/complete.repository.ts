@@ -34,7 +34,7 @@ import {
 } from '../../members/records.repository.js';
 import { withPlatformTransaction } from '@pertexo/database/platform';
 import { replaceUserSessions } from '../../users/sessions.repository.js';
-import { selectIntent } from './state.queries.js';
+import { selectIntent } from './state.repository.js';
 
 export async function completeAcceptance(
   pool: Pool,
