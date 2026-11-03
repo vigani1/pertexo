@@ -42,7 +42,6 @@ export {
   nodeAttempts,
   nodeRuns,
   outboxEvents,
-  rlsProbeRecords,
   runCheckpoints,
   runEvents,
   transportSecurityAuditFacts,

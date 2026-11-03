@@ -19,7 +19,7 @@ import { eq, sql } from 'drizzle-orm';
 import { parseDatabaseConfig } from '../../src/config.js';
 import { createWorkspaceDatabase } from '../../src/database.js';
 import { migrateDatabase } from '../../src/migrations.js';
-import { rlsProbeRecords } from '../../src/schema.js';
+import { idempotencyRecords, workflowTags } from '../../src/schema.js';
 import { EXPECTED_MIGRATION_HEAD } from '../../src/platform/readiness.repository.js';
 
 beforeAll(beforeAllFixture1, 60_000);
@@ -31,7 +31,7 @@ describe('workspace transaction boundary', () => {
 
   it('returns only rows from the active workspace even for an unfiltered query', async () => {
     const rows = await database.withWorkspace(workspaceA, async ({ db }) =>
-      db.select().from(rlsProbeRecords),
+      db.select().from(idempotencyRecords),
     );
 
     expect(rows.some((row) => row.id === recordA)).toBe(true);
@@ -42,16 +42,16 @@ describe('workspace transaction boundary', () => {
     await database.withWorkspace(workspaceA, async ({ db }) => {
       const read = await db
         .select()
-        .from(rlsProbeRecords)
-        .where(eq(rlsProbeRecords.id, recordB));
+        .from(workflowTags)
+        .where(eq(workflowTags.id, recordB));
       const updated = await db
-        .update(rlsProbeRecords)
-        .set({ label: 'tampered' })
-        .where(eq(rlsProbeRecords.id, recordB))
+        .update(workflowTags)
+        .set({ key: 'tampered' })
+        .where(eq(workflowTags.id, recordB))
         .returning();
       const deleted = await db
-        .delete(rlsProbeRecords)
-        .where(eq(rlsProbeRecords.id, recordB))
+        .delete(workflowTags)
+        .where(eq(workflowTags.id, recordB))
         .returning();
 
       expect(read).toEqual([]);
@@ -63,10 +63,16 @@ describe('workspace transaction boundary', () => {
   it('rejects a write carrying another workspace ID', async () => {
     await expect(
       database.withWorkspace(workspaceA, async ({ db }) => {
-        await db.insert(rlsProbeRecords).values({
+        await db.insert(idempotencyRecords).values({
           id: randomUUID(),
           workspaceId: workspaceB,
-          label: 'cross-tenant-write',
+          scope: 'cross-tenant-write',
+          operation: 'rls.test',
+          keyHash: 'a'.repeat(64),
+          requestHash: 'b'.repeat(64),
+          status: 'completed',
+          resourceId: randomUUID(),
+          resultRef: {},
         });
       }),
     ).rejects.toSatisfy(expectPgCode('42501'));
@@ -76,10 +82,16 @@ describe('workspace transaction boundary', () => {
     const rolledBackId = randomUUID();
     await expect(
       database.withWorkspace(workspaceA, async ({ db, workspaceId }) => {
-        await db.insert(rlsProbeRecords).values({
+        await db.insert(idempotencyRecords).values({
           id: rolledBackId,
           workspaceId,
-          label: 'must-roll-back',
+          scope: 'must-roll-back',
+          operation: 'rls.test',
+          keyHash: 'a'.repeat(64),
+          requestHash: 'b'.repeat(64),
+          status: 'completed',
+          resourceId: randomUUID(),
+          resultRef: {},
         });
         throw new Error('force rollback');
       }),
@@ -88,18 +100,18 @@ describe('workspace transaction boundary', () => {
     const rows = await database.withWorkspace(workspaceA, async ({ db }) =>
       db
         .select()
-        .from(rlsProbeRecords)
-        .where(eq(rlsProbeRecords.id, rolledBackId)),
+        .from(idempotencyRecords)
+        .where(eq(idempotencyRecords.id, rolledBackId)),
     );
     expect(rows).toEqual([]);
   });
 
   it('does not leak context when one pooled connection changes workspaces', async () => {
     const aRows = await database.withWorkspace(workspaceA, async ({ db }) =>
-      db.select().from(rlsProbeRecords),
+      db.select().from(idempotencyRecords),
     );
     const bRows = await database.withWorkspace(workspaceB, async ({ db }) =>
-      db.select().from(rlsProbeRecords),
+      db.select().from(idempotencyRecords),
     );
 
     expect(aRows.some((row) => row.id === recordB)).toBe(false);
@@ -161,7 +173,7 @@ describe('workspace transaction boundary', () => {
           releaseBarrier?.();
         }
         await barrier;
-        const rows = await db.select().from(rlsProbeRecords);
+        const rows = await db.select().from(idempotencyRecords);
         return rows.map((row) => row.id);
       });
 
@@ -222,7 +234,7 @@ describe('workspace transaction boundary', () => {
         workspaceA,
       ]);
       const scoped = await client.query<{ id: string }>(
-        'select id from app.rls_probe_records',
+        'select id from app.idempotency_records',
       );
       expect(scoped.rows.some((row) => row.id === recordA)).toBe(true);
       await client.query('commit');
@@ -232,7 +244,7 @@ describe('workspace transaction boundary', () => {
         "select current_setting('app.workspace_id', true) as workspace_id",
       );
       const unscoped = await client.query(
-        'select id from app.rls_probe_records',
+        'select id from app.idempotency_records',
       );
       await client.query('commit');
 
@@ -249,7 +261,7 @@ describe('workspace transaction boundary', () => {
         "select current_setting('app.workspace_id', true) as workspace_id",
       );
       const rollbackUnscoped = await client.query(
-        'select id from app.rls_probe_records',
+        'select id from app.idempotency_records',
       );
       await client.query('commit');
 
@@ -268,11 +280,11 @@ describe.each([
   it('fails closed without workspace context', async () => {
     const pool = new Pool({ connectionString, max: 1 });
     try {
-      const read = await pool.query('select id from app.rls_probe_records');
+      const read = await pool.query('select id from app.idempotency_records');
       expect(read.rows).toEqual([]);
       await expect(
         pool.query(
-          'insert into app.rls_probe_records (id, workspace_id, label) values ($1, $2, $3)',
+          "insert into app.idempotency_records(id,workspace_id,operation,scope,key_hash,request_hash,status,resource_id,result_ref) values($1,$2,'rls.test',$3,repeat('a',64),repeat('b',64),'completed',$1,'{}')",
           [randomUUID(), workspaceA, 'unscoped'],
         ),
       ).rejects.toSatisfy(expectPgCode('42501'));
@@ -319,7 +331,7 @@ describe.each([
       await client.query('begin');
       await client.query('set local row_security = off');
       await expect(
-        client.query('select id from app.rls_probe_records'),
+        client.query('select id from app.idempotency_records'),
       ).rejects.toSatisfy(expectPgCode('42501'));
       await client.query('rollback');
     } finally {
@@ -329,10 +341,10 @@ describe.each([
   });
 
   it.each([
-    ['truncate table app.rls_probe_records', '42501'],
-    ['alter table app.rls_probe_records disable row level security', '42501'],
+    ['truncate table app.idempotency_records', '42501'],
+    ['alter table app.idempotency_records disable row level security', '42501'],
     [
-      'drop policy rls_probe_records_workspace_scope on app.rls_probe_records',
+      'drop policy idempotency_records_workspace_scope on app.idempotency_records',
       '42501',
     ],
     ['set role pertexo_owner', '42501'],

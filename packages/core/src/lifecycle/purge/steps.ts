@@ -120,7 +120,6 @@ import {
   workspaceInvitationDeliveryAttempts,
   workspaceInvitations,
   workspaceMemberships,
-  rlsProbeRecords,
   workflowVersionDependencies,
   workflowTemplateOrigins,
 } from '@pertexo/database/schema';
@@ -300,7 +299,6 @@ export const PURGE_STEPS: readonly PurgeStep[] = Object.freeze([
     workspaceInvitationDeliveryAttempts,
     workspaceInvitations,
     workspaceMemberships,
-    rlsProbeRecords,
   ].map(deleteRows),
   {
     // Previews chain to their prior preview; leaves go first.

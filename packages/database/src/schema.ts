@@ -92,7 +92,6 @@ import {
   usageEvents,
   workspaceLifecycleOperations,
 } from './schema/foundation.js';
-import { rlsProbeRecords } from './schema/rls-probe.js';
 import { workflowConcurrencyPolicies } from './schema/authoring/concurrency.js';
 import {
   connectionShares,
@@ -206,7 +205,6 @@ export {
   workspaceVariables,
   workspaceVariableSetRevisions,
 } from './schema/variables.js';
-export { rlsProbeRecords } from './schema/rls-probe.js';
 export {
   artifacts,
   outboxEvents,
@@ -353,7 +351,6 @@ export const databaseSchema = {
   outboxEvents,
   previewAttempts,
   previewRuns,
-  rlsProbeRecords,
   runCheckpoints,
   runEvents,
   transportSecurityAuditFacts,
