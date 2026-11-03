@@ -8,12 +8,6 @@ describe.runIf(betterAuthIntegrationEnabled)('reset database deadlines', () => {
   it('refuses a proof that expires during the actual user lock wait without changing security state', async () => {
     const person = await api.account(),
       token = await api.link(person.email);
-    await api
-      .database()
-      .query(
-        "update app.auth_verifications set expires_at=clock_timestamp()+interval '2 seconds' where identifier=$1",
-        [`reset-password:${token}`],
-      );
     const before = await api.state(person.userId);
     const observer = new Pool({ ...api.database().options, max: 1 });
     const lock = await api.database().connect();
@@ -29,6 +23,20 @@ describe.runIf(betterAuthIntegrationEnabled)('reset database deadlines', () => {
       ]);
       pending = api.reset(token);
       await waitForBlocked(observer, row.pid, 1);
+      expect(
+        (
+          await observer.query<{ fresh: boolean }>(
+            'select expires_at>clock_timestamp() fresh from app.auth_verifications where identifier=$1',
+            [`reset-password:${token}`],
+          )
+        ).rows,
+      ).toEqual([{ fresh: true }]);
+      // Establish the short deadline only once the request is actually queued, so password hashing cannot consume the proof's test lifetime.
+      await observer.query(
+        "update app.auth_verifications set expires_at=clock_timestamp()+interval '100 milliseconds' where identifier=$1",
+        [`reset-password:${token}`],
+      );
+
       await expect
         .poll(
           async () =>
