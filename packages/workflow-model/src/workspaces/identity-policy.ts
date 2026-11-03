@@ -27,6 +27,7 @@ export const ACCOUNT_SIGN_IN_METHOD_LIMIT = 16;
 export const API_TOKEN_SCOPES = [
   'workflow:read',
   'workflow:create',
+  'workflow:update',
   'workflow:publish',
   'run:read',
   'run:read-data',
