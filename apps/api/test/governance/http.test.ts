@@ -2,10 +2,6 @@ import type { NestFastifyApplication } from '@nestjs/platform-fastify';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { GovernanceController } from '../../src/governance/controller.js';
-import {
-  GOVERNANCE_AUTHORIZATION,
-  GovernanceGuard,
-} from '../../src/governance/guard.js';
 import { GOVERNANCE_STORE } from '../../src/governance/tokens.js';
 import { CsvExportAdmission } from '../../src/platform/http/csv/admission.js';
 import {
@@ -51,7 +47,6 @@ async function governanceApp() {
   };
   const fixture = await sessionHttpApp({
     controller: GovernanceController,
-    guards: [{ guard: GovernanceGuard, token: GOVERNANCE_AUTHORIZATION }],
     providers: [
       { provide: GOVERNANCE_STORE, useValue: governance },
       { provide: CsvExportAdmission, useValue: exports },

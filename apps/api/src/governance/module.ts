@@ -3,11 +3,7 @@ import type { GovernanceStore } from '@pertexo/core/governance';
 import type { WorkspaceAuthorizationSource } from '../workspaces/ports.js';
 import { GovernanceController } from './controller.js';
 import { GOVERNANCE_STORE } from './tokens.js';
-import {
-  GOVERNANCE_AUTHORIZATION,
-  GovernanceGuard,
-  GovernanceManageGuard,
-} from './guard.js';
+import { WORKSPACE_AUTHORIZATION } from '../workspaces/tokens.js';
 @Module({})
 // Nest dynamic modules require a class container.
 // eslint-disable-next-line @typescript-eslint/no-extraneous-class
@@ -24,9 +20,7 @@ export class GovernanceModule {
       controllers: [GovernanceController],
       providers: [
         { provide: GOVERNANCE_STORE, useValue: store },
-        { provide: GOVERNANCE_AUTHORIZATION, useValue: authorization },
-        GovernanceGuard,
-        GovernanceManageGuard,
+        { provide: WORKSPACE_AUTHORIZATION, useValue: authorization },
       ],
     };
   }

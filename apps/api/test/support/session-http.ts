@@ -1,9 +1,9 @@
-import { WORKSPACE_AUTHORIZATION } from '../../src/workspaces/tokens.js';
 import 'reflect-metadata';
+
+import { WORKSPACE_AUTHORIZATION } from '../../src/workspaces/tokens.js';
 
 import type {
   CallHandler,
-  CanActivate,
   ExecutionContext,
   NestInterceptor,
   Provider,
@@ -55,8 +55,6 @@ export function browserHeaders(
   };
 }
 
-type CapabilityGuard = Type<CanActivate>;
-
 /**
  * Real Nest/Fastify routing, session admission, CSRF and workspace capability
  * guards over fake sessions, membership and stores. Records the capability
@@ -65,8 +63,6 @@ type CapabilityGuard = Type<CanActivate>;
 export async function sessionHttpApp(
   input: Readonly<{
     controller: Type;
-    /** A controller not yet declared: its own capability guards and their token. */
-    guards?: readonly Readonly<{ guard: CapabilityGuard; token: symbol }>[];
     providers: readonly Provider[];
     /** Fields the controller keeps; Vitest drops constructor parameter types. */
     fields: Readonly<Record<string, unknown>>;
@@ -102,17 +98,13 @@ export async function sessionHttpApp(
     ),
   } satisfies WorkspaceAuthorizationSource;
   const csrf = new CsrfProtectionGuard(new DoubleSubmitCsrfPolicy());
-  let builder = Test.createTestingModule({
+  const builder = Test.createTestingModule({
     controllers: [input.controller],
     providers: [
       { provide: RequestContextStore, useValue: contexts },
       { provide: CsrfProtectionGuard, useValue: csrf },
       // Declared routes build their capability guards on this token.
       { provide: WORKSPACE_AUTHORIZATION, useValue: membership },
-      ...(input.guards ?? []).map(({ token }) => ({
-        provide: token,
-        useValue: membership,
-      })),
       ...input.providers,
     ],
   })
@@ -120,10 +112,6 @@ export async function sessionHttpApp(
     .useValue(new SessionAuthenticationGuard(sessions as never, contexts))
     .overrideGuard(CsrfProtectionGuard)
     .useValue(csrf);
-  for (const { guard } of input.guards ?? [])
-    builder = builder
-      .overrideGuard(guard)
-      .useValue(new guard(membership, contexts));
   const module = await builder.compile();
   Object.assign(module.get(input.controller), input.fields);
   const app = module.createNestApplication<NestFastifyApplication>(
