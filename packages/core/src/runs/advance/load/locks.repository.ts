@@ -36,12 +36,6 @@ export function lockRunForAdvance(
         revision: checkpoint.revision,
         scheduler_state: checkpoint.schedulerState,
         workflow_version_id: checkpoint.workflowVersionId,
-        next_event_sequence: sql<
-          number | null
-        >`(${checkpoint.schedulerState}->>'nextEventSequence')::int`,
-        checkpoint_deadline_expired: sql<
-          boolean | null
-        >`(${checkpoint.schedulerState}->>'deadlineExpired')::boolean`,
         status: run.status,
         cancel_requested_at: run.cancelRequestedAt,
         workflow_id: run.workflowId,
