@@ -4,17 +4,14 @@ import {
   workflowConcurrencySettingsSchema,
   workflowConcurrencySettingsRequestSchema,
 } from '../../src/index.js';
-import {
-  workflowAuthoringClientContract,
-  workflowAuthoringOpenApiDocument,
-} from '../../src/server.js';
+import { workflowAuthoringOpenApiDocument } from '../../src/server.js';
 import { workflowRunAdmissionBlockersSchema } from '../../src/schemas/execution/runs.js';
 import { API_PROBLEM_MANIFEST } from '../../src/errors/api-problem.js';
 
 describe('workflow Queue/Skip concurrency contracts', () => {
   it('bounds strict requests identically in runtime and generated clients', () => {
     const validate = new Ajv2020({ strict: false }).compile(
-      workflowAuthoringClientContract.schemas
+      workflowAuthoringOpenApiDocument.components.schemas
         .WorkflowConcurrencySettingsRequest,
     );
     for (const limit of [null, 1, 10_000]) {

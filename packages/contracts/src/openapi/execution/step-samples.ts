@@ -17,7 +17,7 @@ import {
 import { projectContractSchema } from '../schema-projection.js';
 import { z } from 'zod';
 
-export function stepSampleContractSchemas(target: 'client' | 'openapi') {
+export function stepSampleContractSchemas() {
   const schemas = {
     StepSampleListResponse: stepSampleListResponseSchema,
     StepSampleResponse: stepSampleResponseSchema,
@@ -32,7 +32,6 @@ export function stepSampleContractSchemas(target: 'client' | 'openapi') {
         name,
         schema,
         name.endsWith('Request') ? 'input' : 'output',
-        target,
       ),
     ]),
   );

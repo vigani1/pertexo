@@ -112,32 +112,25 @@ const schemas = Object.freeze({
 });
 
 /** Stored run data is recursive JSON, which needs the shared projection. */
-function runDataSchemas(target: 'client' | 'openapi') {
+function runDataSchemas() {
   return Object.freeze({
     WorkflowRunInputResponse: projectContractSchema(
       'WorkflowRunInputResponse',
       workflowRunInputResponseSchema,
       'output',
-      target,
     ),
     WorkflowNodeRunOutputResponse: projectContractSchema(
       'WorkflowNodeRunOutputResponse',
       workflowNodeRunOutputResponseSchema,
       'output',
-      target,
     ),
     WorkflowNodeRunInputResponse: projectContractSchema(
       'WorkflowNodeRunInputResponse',
       workflowNodeRunInputResponseSchema,
       'output',
-      target,
     ),
   });
 }
-
-export const workflowRunsClientContract = Object.freeze({
-  schemas: Object.freeze({ ...schemas, ...runDataSchemas('client') }),
-});
 
 const problemResponses = Object.freeze({
   BadRequest: problemResponse('Invalid request'),
@@ -620,7 +613,7 @@ export const workflowRunsOpenApiDocument = Object.freeze({
     },
   },
   components: authenticatedComponents(
-    { ...schemas, ...runDataSchemas('openapi') },
+    { ...schemas, ...runDataSchemas() },
     problemResponses,
     { automation: true },
   ),

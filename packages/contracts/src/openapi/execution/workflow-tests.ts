@@ -17,7 +17,7 @@ import {
 } from '../primitives.js';
 import { projectContractSchema } from '../schema-projection.js';
 
-export function workflowTestContractSchemas(target: 'client' | 'openapi') {
+export function workflowTestContractSchemas() {
   const schemas = {
     WorkflowTestPreparation: workflowTestPreparationSchema,
     WorkflowTestStartRequest: workflowTestStartRequestSchema,
@@ -34,7 +34,6 @@ export function workflowTestContractSchemas(target: 'client' | 'openapi') {
         name,
         schema,
         name.endsWith('Request') ? 'input' : 'output',
-        target,
       ),
     ]),
   );

@@ -1,11 +1,4 @@
 import { pathParameter, problemResponse } from '../primitives.js';
-export const callbackRoutes = ['POST', 'OPTIONS', 'GET', 'HEAD'].map(
-  (method) => ({
-    method,
-    path: '/hooks/:endpointKey/resume',
-    ...(method === 'POST' ? { maximumBodyBytes: 262144 } : {}),
-  }),
-);
 const parameters = [
   pathParameter('endpointKey', {
     type: 'string',

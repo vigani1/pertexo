@@ -21,9 +21,9 @@ import {
 import { projectContractSchema } from '../schema-projection.js';
 import type { z } from 'zod';
 
-function contractSchemas(target: 'client' | 'openapi') {
+function contractSchemas() {
   const project = (name: string, schema: z.ZodType, io: 'input' | 'output') =>
-    projectContractSchema(name, schema, io, target);
+    projectContractSchema(name, schema, io);
   return {
     ApiProblem: project('ApiProblem', apiProblemSchema, 'output'),
     WorkflowPortableManifest: project(
@@ -58,9 +58,6 @@ function contractSchemas(target: 'client' | 'openapi') {
     ),
   };
 }
-export const workflowPortabilityClientContract = Object.freeze({
-  schemas: contractSchemas('client'),
-});
 const workspace = uuidPathParameter('workspaceId', 'Workspace identifier');
 const csrf = automationCsrfHeaderParameter();
 const noStore = {
@@ -172,7 +169,7 @@ export const workflowPortabilityOpenApiDocument = Object.freeze({
     },
   },
   components: authenticatedComponents(
-    contractSchemas('openapi'),
+    contractSchemas(),
     {
       BadRequest: problemResponse('Invalid request'),
       Unauthenticated: problemResponse('Authentication required'),

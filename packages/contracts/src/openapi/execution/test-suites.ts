@@ -20,7 +20,7 @@ import {
   uuidPathParameter,
 } from '../primitives.js';
 import { projectContractSchema } from '../schema-projection.js';
-export function workflowTestSuiteContractSchemas(target: 'client' | 'openapi') {
+export function workflowTestSuiteContractSchemas() {
   const schemas = {
     WorkflowTestSuitePreparation: workflowTestSuitePreparationSchema,
     WorkflowTestSuiteStartRequest: workflowTestSuiteStartRequestSchema,
@@ -38,7 +38,6 @@ export function workflowTestSuiteContractSchemas(target: 'client' | 'openapi') {
         name,
         schema,
         name.endsWith('Request') ? 'input' : 'output',
-        target,
       ),
     ]),
   );

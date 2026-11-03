@@ -1,8 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  workflowAuthoringClientContract,
-  workflowAuthoringOpenApiDocument,
-} from '../../src/server.js';
+import { workflowAuthoringOpenApiDocument } from '../../src/server.js';
 import {
   workflowLifecycleRevisionSchema,
   workflowNameConflictProblemSchema,
@@ -119,7 +116,7 @@ describe('workflow rename public contract', () => {
     expect(JSON.stringify(operation.responses['409'])).toContain(
       '#/components/schemas/WorkflowNameConflictProblem',
     );
-    expect(workflowAuthoringClientContract.schemas).toHaveProperty(
+    expect(workflowAuthoringOpenApiDocument.components.schemas).toHaveProperty(
       'WorkflowRenameRequest',
     );
   });

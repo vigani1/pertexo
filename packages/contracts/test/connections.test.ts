@@ -1,9 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  connectionsClientContract,
-  connectionsOpenApiDocument,
-} from '../src/server.js';
+import { connectionsOpenApiDocument } from '../src/server.js';
 import {
   connectionCreateRequestSchema,
   connectionResponseSchema,
@@ -223,7 +220,7 @@ describe('connection public contracts', () => {
       expect(
         slackChannelLookupResponseSchema.safeParse({ items: [item] }).success,
       ).toBe(false);
-    expect(connectionsClientContract.schemas).toHaveProperty(
+    expect(connectionsOpenApiDocument.components.schemas).toHaveProperty(
       'SlackChannelLookupResponse',
     );
   });
@@ -288,7 +285,7 @@ describe('connection public contracts', () => {
         outcome: { ok: true, httpStatus: 204, errorCode: null },
       }).success,
     ).toBe(true);
-    expect(connectionsClientContract.schemas).toHaveProperty(
+    expect(connectionsOpenApiDocument.components.schemas).toHaveProperty(
       'ConnectionCreateRequest',
     );
     expect(Object.keys(connectionsOpenApiDocument.paths)).toEqual([

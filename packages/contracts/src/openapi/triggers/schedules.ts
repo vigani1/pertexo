@@ -71,38 +71,6 @@ const responses = Object.freeze({
   Unexpected: problemResponse('Unexpected server error'),
 });
 
-export const schedulesClientContract = Object.freeze({
-  routes: Object.freeze([
-    {
-      method: 'GET',
-      path: '/v1/workspaces/:workspaceId/workflows/:workflowId/triggers/schedules',
-    },
-    {
-      method: 'GET',
-      path: '/v1/workspaces/:workspaceId/workflows/:workflowId/triggers/:triggerId/schedule/occurrences',
-    },
-    {
-      method: 'GET',
-      path: '/v1/workspaces/:workspaceId/workflows/:workflowId/triggers/:triggerId/schedule/next-runs',
-    },
-    {
-      method: 'POST',
-      path: '/v1/workspaces/:workspaceId/workflows/:workflowId/triggers/schedules/preview',
-      requiredHeaders: ['X-CSRF-Token'],
-    },
-    {
-      method: 'POST',
-      path: '/v1/workspaces/:workspaceId/workflows/:workflowId/triggers/:triggerId/schedule/enable',
-      requiredHeaders: ['Idempotency-Key', 'X-CSRF-Token'],
-    },
-    {
-      method: 'POST',
-      path: '/v1/workspaces/:workspaceId/workflows/:workflowId/triggers/:triggerId/schedule/disable',
-      requiredHeaders: ['Idempotency-Key', 'X-CSRF-Token'],
-    },
-  ]),
-});
-
 const command = {
   post: {
     security,

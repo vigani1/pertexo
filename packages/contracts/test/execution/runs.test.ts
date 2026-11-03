@@ -12,10 +12,7 @@ import {
   workflowRunStatisticsResponseSchema,
   WORKFLOW_RUN_STATISTICS_WORKFLOW_LIMIT,
 } from '../../src/schemas/execution/runs.js';
-import {
-  workflowRunsClientContract,
-  workflowRunsOpenApiDocument,
-} from '../../src/server.js';
+import { workflowRunsOpenApiDocument } from '../../src/server.js';
 
 describe('workflow-run public contracts', () => {
   it('accepts explicit public commands without exposing engine state', () => {
@@ -107,7 +104,7 @@ describe('workflow-run public contracts', () => {
       'Last-Event-ID',
     );
     expect(stream.responses['200'].content).toHaveProperty('text/event-stream');
-    expect(workflowRunsClientContract.schemas).not.toHaveProperty(
+    expect(workflowRunsOpenApiDocument.components.schemas).not.toHaveProperty(
       'WorkflowCheckpoint',
     );
   });
@@ -202,7 +199,7 @@ describe('workflow-run public contracts', () => {
       'window',
       'breakdown',
     ]);
-    expect(workflowRunsClientContract.schemas).toHaveProperty(
+    expect(workflowRunsOpenApiDocument.components.schemas).toHaveProperty(
       'WorkflowRunStatisticsResponse',
     );
   });

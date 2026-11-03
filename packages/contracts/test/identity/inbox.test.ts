@@ -11,10 +11,7 @@ import {
   workspaceInboxThreadSchema,
   workspaceInboxFailureThreadSchema,
 } from '../../src/schemas/identity/inbox.js';
-import {
-  workspaceInboxClientContract,
-  workspaceInboxOpenApiDocument,
-} from '../../src/server.js';
+import { workspaceInboxOpenApiDocument } from '../../src/server.js';
 import { CONTRACT_ARTIFACTS } from '../../src/server.js';
 
 const thread = {
@@ -202,16 +199,17 @@ describe('workspace inbox thread contracts (ADR 055)', () => {
     expect(oneClick.post.requestBody.content).toHaveProperty(
       'multipart/form-data',
     );
-    expect(workspaceInboxClientContract.routes).toEqual(
-      expect.arrayContaining([
-        { method: 'GET', path: '/v1/notifications/unsubscribe/one-click' },
-        { method: 'POST', path: '/v1/notifications/unsubscribe/one-click' },
-      ]),
-    );
+    expect(
+      Object.keys(
+        workspaceInboxOpenApiDocument.paths[
+          '/v1/notifications/unsubscribe/one-click'
+        ],
+      ),
+    ).toEqual(['get', 'post']);
     expect(
       CONTRACT_ARTIFACTS.filter((artifact) =>
         artifact.fileName.startsWith('workspace-inbox.'),
       ),
-    ).toHaveLength(2);
+    ).toHaveLength(1);
   });
 });

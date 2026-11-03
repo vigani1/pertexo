@@ -12,10 +12,7 @@ import {
   webhookIngressResponseSchema,
   webhookManagementCommandResponseSchema,
 } from '../../src/schemas/triggers/webhooks.js';
-import {
-  webhooksClientContract,
-  webhooksOpenApiDocument,
-} from '../../src/server.js';
+import { webhooksOpenApiDocument } from '../../src/server.js';
 
 type OpenApiOperation = Readonly<{
   parameters?: readonly Readonly<Record<string, unknown>>[];
@@ -183,28 +180,24 @@ describe('webhook public contracts', () => {
     expect(
       webhooksOpenApiDocument.components.securitySchemes.cookieSession,
     ).toBeDefined();
-    for (const route of webhooksClientContract.routes) {
-      const path = route.path.replaceAll(/:([A-Za-z]+)/gu, '{$1}');
-      const paths = webhooksOpenApiDocument.paths as unknown as Readonly<
-        Record<string, Readonly<Record<string, OpenApiOperation>>>
-      >;
-      const operation = paths[path]?.[route.method.toLowerCase()];
-      expect(operation?.responses).toHaveProperty(expectedStatus(route));
-      for (const header of 'requiredHeaders' in route
-        ? route.requiredHeaders
-        : [])
-        expect(operation?.parameters).toEqual(
-          expect.arrayContaining([
-            expect.objectContaining({
-              in: 'header',
-              name: header,
-              required: true,
-            }),
-          ]),
-        );
-      if (!route.path.startsWith('/hooks/')) {
-        expect(operation?.security).toEqual([{ cookieSession: [] }]);
-        expect(operation?.responses).toHaveProperty('403');
+    const paths = webhooksOpenApiDocument.paths as unknown as Readonly<
+      Record<string, Readonly<Record<string, OpenApiOperation>>>
+    >;
+    for (const [path, methods] of Object.entries(paths)) {
+      if (path.startsWith('/hooks/')) continue;
+      for (const [method, operation] of Object.entries(methods)) {
+        expect(operation.security).toEqual([{ cookieSession: [] }]);
+        expect(operation.responses).toHaveProperty('403');
+        if (method !== 'get')
+          expect(operation.parameters).toEqual(
+            expect.arrayContaining([
+              expect.objectContaining({
+                in: 'header',
+                name: 'X-CSRF-Token',
+                required: true,
+              }),
+            ]),
+          );
       }
     }
   });
@@ -270,13 +263,3 @@ it('bounds temporary webhook contracts and never rediscloses a credential in sna
     }).success,
   ).toBe(false);
 });
-
-function expectedStatus(
-  route: Readonly<{ path: string; method: string }>,
-): string {
-  if (route.path.endsWith('/resume') && ['GET', 'HEAD'].includes(route.method))
-    return '405';
-  if (route.method === 'OPTIONS' || route.method === 'DELETE') return '204';
-  if (route.path.startsWith('/hooks/')) return '202';
-  return '200';
-}

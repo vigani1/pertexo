@@ -57,7 +57,6 @@ import {
   accountSecuritySessionRevokeResponseSchema,
   accountSecuritySessionsResponseSchema,
   authenticationCapabilitiesResponseSchema,
-  identityWorkspaceClientContract,
   workspaceCreateRequestSchema,
   workspaceDeletionRequestSchema,
   workspaceLifecycleChangeResponseSchema,
@@ -94,9 +93,9 @@ import { generated } from './contracts/fixture.js';
 describe('identity/workspace generated contracts', () => {
   it('keeps identity client schemas mechanically aligned with their owning Zod contracts', () => {
     const identitySchemas = Object.fromEntries(
-      Object.entries(identityWorkspaceClientContract.schemas).filter(
-        ([name]) => !name.startsWith('DataTable'),
-      ),
+      Object.entries(
+        identityWorkspaceOpenApiDocument.components.schemas,
+      ).filter(([name]) => !name.startsWith('DataTable')),
     );
     expect({ schemas: identitySchemas }).toEqual({
       schemas: {
@@ -437,13 +436,6 @@ describe('identity/workspace generated contracts', () => {
       '/v1/invitation-acceptance/complete',
     ]);
     expect(
-      JSON.parse(
-        JSON.stringify(
-          identityWorkspaceOpenApiDocument.components.schemas,
-        ).replaceAll('#/components/schemas/', '#/schemas/'),
-      ),
-    ).toEqual(identityWorkspaceClientContract.schemas);
-    expect(
       identityWorkspaceOpenApiDocument.paths['/v1/workspaces'].post.requestBody
         .content['application/json'].schema,
     ).toEqual({ $ref: '#/components/schemas/WorkspaceCreateRequest' });
@@ -506,9 +498,11 @@ describe('identity/workspace generated contracts', () => {
 
   it('preserves strict writes', () => {
     const create =
-      identityWorkspaceClientContract.schemas.WorkspaceCreateRequest;
+      identityWorkspaceOpenApiDocument.components.schemas
+        .WorkspaceCreateRequest;
     const deletion =
-      identityWorkspaceClientContract.schemas.WorkspaceDeletionRequest;
+      identityWorkspaceOpenApiDocument.components.schemas
+        .WorkspaceDeletionRequest;
 
     expect(create).toMatchObject({
       additionalProperties: false,

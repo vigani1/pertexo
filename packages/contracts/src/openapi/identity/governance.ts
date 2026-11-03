@@ -9,7 +9,7 @@ import {
   problemResponse,
   queryParameter,
 } from '../primitives.js';
-export function governanceContractSchemas(target: 'client' | 'openapi') {
+export function governanceContractSchemas() {
   return Object.fromEntries(
     (
       [
@@ -21,7 +21,7 @@ export function governanceContractSchemas(target: 'client' | 'openapi') {
       ] as const
     ).map(([name, schema, io]) => [
       name,
-      projectContractSchema(name, schema, io, target),
+      projectContractSchema(name, schema, io),
     ]),
   );
 }

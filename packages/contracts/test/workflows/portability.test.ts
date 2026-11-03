@@ -9,10 +9,7 @@ import {
   workflowTemplateOriginProjectionQuerySchema,
   workflowTemplateOriginProjectionResponseSchema,
 } from '../../src/schemas/workflows/authoring.js';
-import {
-  workflowPortabilityClientContract,
-  workflowPortabilityOpenApiDocument,
-} from '../../src/server.js';
+import { workflowPortabilityOpenApiDocument } from '../../src/server.js';
 
 describe('portable workflow public HTTP contract', () => {
   const manifest = {
@@ -159,8 +156,8 @@ describe('portable workflow public HTTP contract', () => {
     expect(exported.parameters).toContainEqual(
       expect.objectContaining({ name: 'If-Match', required: false }),
     );
-    expect(workflowPortabilityClientContract.schemas).toHaveProperty(
-      'WorkflowPortableManifest',
-    );
+    expect(
+      workflowPortabilityOpenApiDocument.components.schemas,
+    ).toHaveProperty('WorkflowPortableManifest');
   });
 });

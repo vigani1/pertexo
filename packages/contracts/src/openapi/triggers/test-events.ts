@@ -15,15 +15,6 @@ import {
 } from '../primitives.js';
 const root =
   '/v1/workspaces/:workspaceId/workflows/:workflowId/draft/nodes/:nodeId/webhook-test-events';
-export const testEventRoutes = [
-  { method: 'POST', path: root, requiredHeaders: ['X-CSRF-Token'] },
-  { method: 'GET', path: `${root}/:id` },
-  { method: 'DELETE', path: `${root}/:id`, requiredHeaders: ['X-CSRF-Token'] },
-  ...['GET', 'POST', 'OPTIONS'].map((method) => ({
-    method,
-    path: '/hooks/:endpointKey/test',
-  })),
-] as const;
 export const testEventSchemas = {
   WebhookTestEventStart: jsonSchema(webhookTestEventStartSchema, 'input'),
   WebhookTestEventStarted: jsonSchema(webhookTestEventStartedSchema, 'output'),
@@ -31,7 +22,6 @@ export const testEventSchemas = {
     'WebhookTestEventSnapshot',
     webhookTestEventSnapshotSchema,
     'output',
-    'openapi',
   ),
 };
 const security = [{ cookieSession: [] }] as const;

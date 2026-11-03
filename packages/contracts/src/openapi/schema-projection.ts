@@ -112,7 +112,6 @@ export function projectContractSchema(
   name: string,
   schema: z.ZodType,
   io: 'input' | 'output',
-  target: 'client' | 'openapi',
 ): JsonSchema {
   const projected = z.toJSONSchema(schema, {
     io,
@@ -154,9 +153,7 @@ export function projectContractSchema(
   }) as JsonSchema;
   rewriteLocalReferences(
     projected,
-    target === 'openapi'
-      ? `#/components/schemas/${pointerSegment(name)}`
-      : `#/schemas/${pointerSegment(name)}`,
+    `#/components/schemas/${pointerSegment(name)}`,
   );
   return projected;
 }

@@ -6,10 +6,7 @@ import {
   apiProblemSchema,
 } from '../../../src/errors/api-problem.js';
 import { workflowOrganizationContractPaths } from '../../../src/openapi/workflows/organization.js';
-import {
-  workflowAuthoringClientContract,
-  workflowAuthoringOpenApiDocument,
-} from '../../../src/server.js';
+import { workflowAuthoringOpenApiDocument } from '../../../src/server.js';
 import { a, b, items } from '../../support/organization-folders.js';
 
 describe('accepted folder and general-bulk public contracts', () => {
@@ -135,7 +132,7 @@ describe('accepted folder and general-bulk public contracts', () => {
       ).toBe(false);
     }
     const document = workflowAuthoringOpenApiDocument;
-    const client = workflowAuthoringClientContract.schemas;
+    const client = workflowAuthoringOpenApiDocument.components.schemas;
     const ajv = new Ajv2020({ strict: false, validateFormats: false });
     for (const [name, valid, invalid] of [
       [

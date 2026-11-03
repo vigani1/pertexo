@@ -37,7 +37,6 @@ export * from './types.js';
 export { requestIdentifier, traceIdentifier } from './request/identifiers.js';
 export { encodeWorkspaceMemberCursor } from './cursor.js';
 export {
-  identityWorkspaceClientContract,
   identityWorkspaceOpenApiDocument,
 } from './contracts.js';
 export {

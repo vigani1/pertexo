@@ -11,7 +11,7 @@ import {
 import * as settings from '../../schemas/identity/federation/settings.js';
 import * as signIn from '../../schemas/identity/federation/sign-in.js';
 import { authorizationStartedSchema } from '../../schemas/identity/federation/authorization.js';
-export function federationContractSchemas(target: 'client' | 'openapi') {
+export function federationContractSchemas() {
   return Object.fromEntries(
     (
       [
@@ -59,7 +59,7 @@ export function federationContractSchemas(target: 'client' | 'openapi') {
       ] as const
     ).map(([name, schema, io]) => [
       name,
-      projectContractSchema(name, schema, io, target),
+      projectContractSchema(name, schema, io),
     ]),
   );
 }

@@ -74,9 +74,9 @@ import {
 } from '../primitives.js';
 import type { z } from 'zod';
 
-function contractSchemas(target: 'client' | 'openapi') {
+function contractSchemas() {
   const project = (name: string, schema: z.ZodType, io: 'input' | 'output') =>
-    projectContractSchema(name, schema, io, target);
+    projectContractSchema(name, schema, io);
   return Object.freeze({
     ApiProblem: project('ApiProblem', apiProblemSchema, 'output'),
     WorkflowDuplicateRequest: project(
@@ -175,12 +175,7 @@ function contractSchemas(target: 'client' | 'openapi') {
     ),
   });
 }
-const clientSchemas = contractSchemas('client');
-const openApiSchemas = contractSchemas('openapi');
-
-export const workflowAuthoringClientContract = Object.freeze({
-  schemas: clientSchemas,
-});
+const openApiSchemas = contractSchemas();
 
 const etagResponseHeader = {
   ETag: {

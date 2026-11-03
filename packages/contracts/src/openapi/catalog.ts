@@ -12,41 +12,28 @@ import {
 } from '../schemas/catalog.js';
 import { projectContractSchema } from './schema-projection.js';
 
-function contractSchemas(target: 'client' | 'openapi') {
+function contractSchemas() {
   return Object.freeze({
     CatalogQuery: projectContractSchema(
       'CatalogQuery',
       catalogQuerySchema,
       'input',
-      target,
     ),
-    ApiProblem: projectContractSchema(
-      'ApiProblem',
-      apiProblemSchema,
-      'output',
-      target,
-    ),
+    ApiProblem: projectContractSchema('ApiProblem', apiProblemSchema, 'output'),
     NodeDefinitionListResponse: projectContractSchema(
       'NodeDefinitionListResponse',
       nodeDefinitionListResponseSchema,
       'output',
-      target,
     ),
     IntegrationListResponse: projectContractSchema(
       'IntegrationListResponse',
       integrationListResponseSchema,
       'output',
-      target,
     ),
   });
 }
 
-const clientSchemas = contractSchemas('client');
-const openApiSchemas = contractSchemas('openapi');
-
-export const catalogClientContract = Object.freeze({
-  schemas: clientSchemas,
-});
+const openApiSchemas = contractSchemas();
 
 const problemResponses = Object.freeze({
   BadRequest: problemResponse('Invalid discovery query'),
