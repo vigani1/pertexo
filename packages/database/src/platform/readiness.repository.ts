@@ -3,7 +3,7 @@ import { sql } from 'drizzle-orm';
 import { QueryBuilder } from 'drizzle-orm/pg-core';
 import type { Pool } from 'pg';
 
-export const EXPECTED_MIGRATION_HEAD = '0083_remove_test_probe.sql';
+export const EXPECTED_MIGRATION_HEAD = '0084_remove_redundant_rls_policies.sql';
 const MINIMUM_POSTGRES_MAJOR = 18;
 
 /**
