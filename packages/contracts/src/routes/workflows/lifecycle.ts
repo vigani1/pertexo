@@ -10,7 +10,7 @@ export const lifecycleRoutes = {
     method: 'post',
     path: '/v1/workspaces/{workspaceId}/workflows/{workflowId}/archive',
     params: schemas.workflowIdParamSchema,
-    access: publishing,
+    access: { ...publishing, auth: 'session_or_token' },
     rateLimit: 'ordinary_mutation',
     description:
       'Change desired lifecycle without changing drafts, published versions, or existing runs. Exact idempotent retries return the original accepted summary.',
@@ -55,7 +55,7 @@ export const lifecycleRoutes = {
     method: 'post',
     path: '/v1/workspaces/{workspaceId}/workflows/{workflowId}/restore',
     params: schemas.workflowIdParamSchema,
-    access: publishing,
+    access: { ...publishing, auth: 'session_or_token' },
     rateLimit: 'ordinary_mutation',
     description:
       'Change desired lifecycle without changing drafts, published versions, or existing runs. Exact idempotent retries return the original accepted summary.',

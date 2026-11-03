@@ -155,6 +155,7 @@ export type PublishWorkflowResult = Readonly<{
 export type WorkflowLifecycleCommand = 'archive' | 'restore';
 export type TransitionWorkflowLifecycleInput = Readonly<{
   command: WorkflowLifecycleCommand;
+  commandCredentialId?: string;
   workspaceId: string;
   workflowId: string;
   actorId: string;

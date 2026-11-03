@@ -1,3 +1,4 @@
+import { commandCredential } from '../../authorization/credentials.js';
 import type { z } from 'zod';
 import type {
   workflowAutoPauseSettingsRequestSchema,
@@ -127,6 +128,7 @@ export class WorkflowAutoPauseUseCase {
     return {
       workspaceId: input.routeWorkspaceId,
       actorId: input.actor.actorId,
+      ...commandCredential(input.actor),
       idempotencyKey: input.idempotencyKey,
       requestId: input.actor.requestId,
       ...(input.actor.traceId === undefined

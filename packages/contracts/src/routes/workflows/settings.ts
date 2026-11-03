@@ -154,7 +154,7 @@ export const workflowSettingsRoutes = {
     method: 'get',
     path: `${WORKFLOW}/auto-pause`,
     params: workflowIdParamSchema,
-    access: reading,
+    access: { ...reading, auth: 'session_or_token' },
     rateLimit: 'authenticated_read',
     description:
       'Read automatic-trigger pause state and effective settings. Requires workflow:read.',
@@ -174,7 +174,7 @@ export const workflowSettingsRoutes = {
     method: 'put',
     path: `${WORKFLOW}/auto-pause`,
     params: workflowIdParamSchema,
-    access: updating,
+    access: { ...updating, auth: 'session_or_token' },
     rateLimit: 'ordinary_mutation',
     idempotent: true,
     description:
@@ -197,7 +197,7 @@ export const workflowSettingsRoutes = {
     method: 'post',
     path: `${WORKFLOW}/resume`,
     params: workflowIdParamSchema,
-    access: publishing,
+    access: { ...publishing, auth: 'session_or_token' },
     rateLimit: 'ordinary_mutation',
     idempotent: true,
     description:

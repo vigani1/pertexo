@@ -1,3 +1,4 @@
+import { credentialCommandScope } from '@pertexo/database/platform';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
 import {
@@ -45,6 +46,7 @@ export type WorkflowCommand = Readonly<{
   workflowId: string;
   actorId: string;
   operation: `workflow.${string}`;
+  commandCredentialId?: string;
   idempotencyKey: string;
   request: unknown;
 }>;
@@ -53,7 +55,10 @@ function identity(command: WorkflowCommand): CommandIdentity {
   return {
     workspaceId: command.workspaceId,
     operation: command.operation,
-    scope: `${command.actorId}:${command.workflowId}`,
+    scope: credentialCommandScope(
+      `${command.actorId}:${command.workflowId}`,
+      command.commandCredentialId,
+    ),
     idempotencyKey: command.idempotencyKey,
   };
 }

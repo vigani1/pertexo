@@ -45,6 +45,9 @@ export async function transitionWorkflowLifecycle(
     actorId,
     operation: `workflow.${command}`,
     idempotencyKey: input.idempotencyKey,
+    ...(input.commandCredentialId === undefined
+      ? {}
+      : { commandCredentialId: input.commandCredentialId }),
     request: { expectedLifecycleRevision },
   };
   const replay = await claimWorkflowCommand(client, claim);

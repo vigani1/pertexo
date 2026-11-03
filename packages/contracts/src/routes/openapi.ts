@@ -8,6 +8,7 @@ import {
   jsonRequest,
   jsonResponse,
   jsonSchema,
+  problemResponse,
   pathParameter,
   queryParameter,
 } from '../openapi/primitives.js';
@@ -137,6 +138,14 @@ function operation(route: AnyRoute) {
           successResponse(success),
         ]),
       ),
+      ...(route.access.auth === 'session_or_token'
+        ? {
+            '429': problemResponse('Request rate limit reached'),
+            '503': problemResponse(
+              'Token authentication or request admission unavailable',
+            ),
+          }
+        : {}),
       ...route.problems,
     },
   };

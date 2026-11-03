@@ -1,3 +1,4 @@
+import { credentialCommandScope } from '@pertexo/database/platform';
 import {
   appendAuditFact,
   claimCommand,
@@ -58,7 +59,10 @@ export function command<T>(
     const identity = {
       workspaceId,
       operation: options.operation,
-      scope: `${actorId}:${options.resourceId}`,
+      scope: credentialCommandScope(
+        `${actorId}:${options.resourceId}`,
+        input.commandCredentialId,
+      ),
       idempotencyKey: input.idempotencyKey,
     };
     const stored = await claimCommand<T>(client, {

@@ -145,7 +145,11 @@ describe('automatic workflow pause contracts', () => {
       paths['/v1/workspaces/{workspaceId}/auto-pause'].put,
     ];
     for (const operation of operations) {
-      expect(operation.security).toEqual([{ cookieSession: [] }]);
+      expect(operation.security).toEqual(
+        operation === operations[2]
+          ? [{ cookieSession: [] }]
+          : [{ cookieSession: [] }, { apiToken: [] }],
+      );
       const names = operation.parameters.map(({ name }) => name);
       expect(names).toContain('x-csrf-token');
       expect(names).toContain('Idempotency-Key');
