@@ -17,9 +17,9 @@ import { and, eq, gt, inArray, isNotNull, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import {
   rethrowQueryFailure,
-  appendAuditFact,
   withWorkspaceScope,
 } from '@pertexo/database/primitives';
+import { appendAuditFact } from '../../../governance/audit/facts.js';
 import { directorySessionAllowed } from '../provisioning/session.repository.js';
 import { UNPURGED_WORKSPACE_STATUSES } from '@pertexo/policy';
 import { AUTHENTICATION_PROVIDERS } from '@pertexo/workflow-model';

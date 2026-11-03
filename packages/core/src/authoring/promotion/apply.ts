@@ -14,8 +14,8 @@ import {
   claimCommand,
   completeCommand,
   findCommandResult,
-  appendAuditFact,
 } from '@pertexo/database/primitives';
+import { appendAuditFact } from '../../governance/audit/facts.js';
 import { generatePersistedId } from '@pertexo/database/platform';
 import {
   requirePromotionAuthority,

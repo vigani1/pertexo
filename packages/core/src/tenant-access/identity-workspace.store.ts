@@ -1,8 +1,8 @@
 import {
-  appendAuditFact,
   rethrowQueryFailure,
   withTenantScopedClient,
 } from '@pertexo/database/primitives';
+import { appendAuditFact } from '../governance/audit/facts.js';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { Pool } from 'pg';
 import {

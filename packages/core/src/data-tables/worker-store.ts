@@ -7,10 +7,10 @@ import {
   type DatabaseRuntime,
 } from '@pertexo/database/platform';
 import {
-  appendAuditFact,
   rethrowQueryFailure,
   withTenantScopedClient,
 } from '@pertexo/database/primitives';
+import { appendAuditFact } from '../governance/audit/facts.js';
 import { dataTableWriteReceipts as receipts } from '@pertexo/database/schema';
 import {
   bindDataTableCommand,

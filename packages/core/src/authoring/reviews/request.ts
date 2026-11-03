@@ -8,8 +8,8 @@ import {
   rethrowQueryFailure,
   claimCommand,
   completeCommand,
-  appendAuditFact,
 } from '@pertexo/database/primitives';
+import { appendAuditFact } from '../../governance/audit/facts.js';
 import { requireConnectionBindings } from '../../tenant-access/resources/connections/bindings.repository.js';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';

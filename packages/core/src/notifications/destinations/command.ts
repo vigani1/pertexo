@@ -1,9 +1,6 @@
 import type { AuditMetadata } from '@pertexo/database/primitives';
-import {
-  appendAuditFact,
-  claimCommand,
-  completeCommand,
-} from '@pertexo/database/primitives';
+import { claimCommand, completeCommand } from '@pertexo/database/primitives';
+import { appendAuditFact } from '../../governance/audit/facts.js';
 import type {
   CommandMetadata,
   DestinationAuditTarget,

@@ -3,11 +3,11 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
 import {
   rethrowQueryFailure,
-  appendAuditFact,
   canonicalOutboxPayloadChecksum,
   claimCommand,
   completeCommand,
 } from '@pertexo/database/primitives';
+import { appendAuditFact } from '../../governance/audit/facts.js';
 import {
   connections,
   connectionShares,

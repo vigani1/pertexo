@@ -5,11 +5,11 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
 import {
-  appendAuditFact,
   claimCommand,
   completeCommand,
   rethrowQueryFailure,
 } from '@pertexo/database/primitives';
+import { appendAuditFact } from '../../governance/audit/facts.js';
 import {
   workflowPublicationRequests,
   workflowDrafts,

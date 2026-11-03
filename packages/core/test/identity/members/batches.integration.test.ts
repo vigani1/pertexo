@@ -1,11 +1,9 @@
 import { randomUUID } from 'node:crypto';
 import { writeFile } from 'node:fs/promises';
 import { describe, expect, it } from 'vitest';
-import {
-  withTenantScopedClient,
-  appendAuditFacts,
-  type AuditFact,
-} from '@pertexo/database/primitives';
+import { withTenantScopedClient } from '@pertexo/database/primitives';
+import { appendAuditFacts } from '../../../src/governance/audit/facts.js';
+import type { AuditFact } from '../../../src/governance/audit/facts.js';
 import { updateMemberships } from '../../../src/tenant-access/members/records.repository.js';
 import type { MembershipChange } from '../../../src/tenant-access/members/membership.types.js';
 import { revokeSessionsForUsers } from '../../../src/tenant-access/users/sessions.repository.js';

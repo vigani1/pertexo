@@ -8,3 +8,9 @@ export {
   type ExportAuditInput,
   type ListAuditInput,
 } from './governance.js';
+export {
+  appendAuditFact,
+  appendAuditFacts,
+  type AuditFact,
+  type AuditMetadata,
+} from './audit/facts.js';

@@ -8,8 +8,8 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import {
   rethrowQueryFailure,
   withWorkspaceScope,
-  appendAuditFact,
 } from '@pertexo/database/primitives';
+import { appendAuditFact } from '../../../governance/audit/facts.js';
 import { lockDirectoryOrganization } from '../provisioning/authority.repository.js';
 import {
   bindDirectorySignIn,

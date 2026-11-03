@@ -5,7 +5,6 @@ export {
   type AuditFact,
   type AuditMetadata,
 } from './governance/audit/events.repository.js';
-export { projectAuditMetadata } from './governance/audit/projection.js';
 export {
   canonicalOutboxPayloadChecksum,
   insertOutboxEvent,

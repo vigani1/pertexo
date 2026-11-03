@@ -3,8 +3,8 @@ import {
   rethrowQueryFailure,
   claimCommand,
   completeCommand,
-  appendAuditFact,
 } from '@pertexo/database/primitives';
+import { appendAuditFact } from '../audit/facts.js';
 import { createHash } from 'node:crypto';
 import type { PoolClient } from 'pg';
 import { and, eq, ne, inArray, sql } from 'drizzle-orm';

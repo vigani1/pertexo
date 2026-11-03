@@ -8,10 +8,10 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 
 import {
   rethrowQueryFailure,
-  appendAuditFacts,
-  type AuditFact,
   withWorkspaceScope,
 } from '@pertexo/database/primitives';
+import { appendAuditFacts } from '../../../governance/audit/facts.js';
+import type { AuditFact } from '../../../governance/audit/facts.js';
 
 import type { PoolClient } from 'pg';
 import {

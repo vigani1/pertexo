@@ -1,8 +1,6 @@
 import type { ConnectionFence } from './connection-resolution.types.js';
-import {
-  rethrowQueryFailure,
-  appendAuditFact,
-} from '@pertexo/database/primitives';
+import { rethrowQueryFailure } from '@pertexo/database/primitives';
+import { appendAuditFact } from '../../governance/audit/facts.js';
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { workspaces, connections } from '@pertexo/database/schema';

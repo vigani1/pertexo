@@ -3,11 +3,11 @@ import type { WorkspaceVariablesCommandResponse } from '@pertexo/contracts';
 import { z } from 'zod';
 import { requireReadableReceipt } from '../shared/receipts.js';
 import {
-  appendAuditFact,
   claimCommand,
   completeCommand,
   rethrowQueryFailure,
 } from '@pertexo/database/primitives';
+import { appendAuditFact } from '../governance/audit/facts.js';
 import { lockVariableSet } from './head.repository.js';
 import {
   workspaceVariables,
