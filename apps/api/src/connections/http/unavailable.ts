@@ -1,23 +1,23 @@
-import { Controller, Get, UseGuards } from '@nestjs/common';
-import { SessionAuthenticationGuard } from '../../workspaces/index.js';
+import { Controller } from '@nestjs/common';
+import {
+  connectionRoutes,
+  failureNotificationRoutes,
+} from '@pertexo/contracts/server';
+import { UnconfiguredRoute } from '../../workspaces/http/route.js';
 import {
   applicationError,
   throwApplicationError,
 } from '../../platform/http/application-error.js';
-import { RateLimit } from '../../platform/rate-limit/metadata.js';
-import { ConnectionReadGuard, FailureNotificationReadGuard } from './guards.js';
 
-@Controller('v1/workspaces/:workspaceId')
-@RateLimit('authenticated_read')
+/** The two lists the web app opens with, when connections aren't configured: each says so. */
+@Controller()
 export class UnconfiguredConnectionsController {
-  @Get('connections')
-  @UseGuards(SessionAuthenticationGuard, ConnectionReadGuard)
+  @UnconfiguredRoute(connectionRoutes.list)
   public connections(): never {
     return throwApplicationError(applicationError('connection.not_configured'));
   }
 
-  @Get('failure-notification-destinations')
-  @UseGuards(SessionAuthenticationGuard, FailureNotificationReadGuard)
+  @UnconfiguredRoute(failureNotificationRoutes.list)
   public destinations(): never {
     return throwApplicationError(applicationError('connection.not_configured'));
   }

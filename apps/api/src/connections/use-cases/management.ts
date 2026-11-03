@@ -1,3 +1,4 @@
+import type { z } from 'zod';
 import { ConnectionNotFoundError } from '@pertexo/core/connections';
 import { generatePersistedId } from '@pertexo/database/platform';
 import type { OAuth2Credential } from '@pertexo/contracts';
@@ -27,12 +28,11 @@ import {
   NOOP_CONNECTION_TELEMETRY,
   type ConnectionTelemetry,
 } from '../telemetry.js';
-import {
+import type {
   connectionCreateRequestSchema,
   connectionRotateSecretRequestSchema,
-  type ConnectionResponse,
 } from '../types.js';
-import { parseRequestInput } from '../../platform/http/request-input.js';
+import type { ConnectionResponse } from '../types.js';
 
 export { TestConnectionUseCase } from './test-connection.js';
 export type { TestConnectionCommand } from './test-connection.js';
@@ -40,14 +40,14 @@ export { LookupSlackChannelsUseCase } from '../failure-notifications/slack-chann
 
 export type CreateConnectionCommand = ConnectionCommandInput &
   Readonly<{
-    request: unknown;
+    request: z.output<typeof connectionCreateRequestSchema>;
     idempotencyKey: string;
   }>;
 
 export type RotateConnectionSecretCommand = ConnectionCommandInput &
   Readonly<{
     connectionId: string;
-    request: unknown;
+    request: z.output<typeof connectionRotateSecretRequestSchema>;
     idempotencyKey: string;
   }>;
 
@@ -171,10 +171,7 @@ export class CreateConnectionUseCase {
   public execute(input: CreateConnectionCommand): Promise<ConnectionResponse> {
     return this.telemetry.measure(CONNECTION_OPERATION.create, async () => {
       await authorizeConnectionOperation(input, this.authorization);
-      const request = parseRequestInput(
-        connectionCreateRequestSchema,
-        input.request,
-      );
+      const { request } = input;
       if (request.credential.type === 'oauth2')
         assertOAuth2Endpoints(request.credential, this.oauth2);
       const requestHash = hashRequest(
@@ -267,10 +264,7 @@ export class RotateConnectionSecretUseCase {
   ): Promise<ConnectionResponse> {
     return this.telemetry.measure(CONNECTION_OPERATION.rotate, async () => {
       await authorizeConnectionOperation(input, this.authorization);
-      const request = parseRequestInput(
-        connectionRotateSecretRequestSchema,
-        input.request,
-      );
+      const { request } = input;
       if (request.credential.type === 'oauth2')
         assertOAuth2Endpoints(request.credential, this.oauth2);
       const secretVersionId = generatePersistedId();

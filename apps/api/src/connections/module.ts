@@ -9,24 +9,16 @@ import { ConnectionsController } from './http/controllers.js';
 import { ConnectionOAuth2Controller } from './oauth2/controller.js';
 import { FinishOAuth2AuthorizationUseCase } from './oauth2/finish-authorization.js';
 import { StartOAuth2AuthorizationUseCase } from './oauth2/start-authorization.js';
-import {
-  ConnectionUsageController,
-  ListConnectionUsageUseCase,
-} from './use-cases/usage.js';
+import { ConnectionUsageController } from './http/usage.js';
+import { ListConnectionUsageUseCase } from './use-cases/usage.js';
 import { FailureNotificationDestinationsController } from './failure-notifications/controller.js';
 import { FailureNotificationDestinationUseCases } from './failure-notifications/destinations.js';
-import {
-  ConnectionManageGuard,
-  ConnectionReadGuard,
-  ConnectionUseGuard,
-  FailureNotificationWorkflowEditGuard,
-} from './http/guards.js';
 import type { ConnectionDependencies } from './ports.js';
 import {
   NOOP_CONNECTION_TELEMETRY,
   type ConnectionTelemetry,
 } from './telemetry.js';
-import { CONNECTION_AUTHORIZATION } from './tokens.js';
+import { WORKSPACE_AUTHORIZATION } from '../workspaces/tokens.js';
 import {
   CreateConnectionUseCase,
   GetConnectionUseCase,
@@ -90,9 +82,7 @@ export class ConnectionsModule {
       imports: [identityModule],
       controllers: [UnconfiguredConnectionsController],
       providers: [
-        { provide: CONNECTION_AUTHORIZATION, useValue: authorization },
-        ConnectionReadGuard,
-        FailureNotificationWorkflowEditGuard,
+        { provide: WORKSPACE_AUTHORIZATION, useValue: authorization },
       ],
     };
   }
@@ -104,13 +94,9 @@ export class ConnectionsModule {
     const telemetry = dependencies.telemetry ?? NOOP_CONNECTION_TELEMETRY;
     const providers: Provider[] = [
       {
-        provide: CONNECTION_AUTHORIZATION,
+        provide: WORKSPACE_AUTHORIZATION,
         useValue: dependencies.authorization,
       },
-      ConnectionManageGuard,
-      ConnectionReadGuard,
-      ConnectionUseGuard,
-      FailureNotificationWorkflowEditGuard,
       {
         provide: ListConnectionsUseCase,
         useValue: new ListConnectionsUseCase(

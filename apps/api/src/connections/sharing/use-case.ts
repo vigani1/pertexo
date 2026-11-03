@@ -1,4 +1,4 @@
-import { connectionSharingRequestSchema } from '@pertexo/contracts';
+import type { ConnectionSharingRequest } from '@pertexo/contracts';
 import type { ConnectionSharingStore } from '@pertexo/core/connections';
 import type { WorkspaceAuthorizationSource } from '../../workspaces/ports.js';
 import { authorizeConnectionOperation } from '../authorization.js';
@@ -8,7 +8,6 @@ import {
   NOOP_CONNECTION_TELEMETRY,
   type ConnectionTelemetry,
 } from '../telemetry.js';
-import { parseRequestInput } from '../../platform/http/request-input.js';
 
 type SharingInput = ConnectionCommandInput & Readonly<{ connectionId: string }>;
 export class ConnectionSharingUseCases {
@@ -32,21 +31,17 @@ export class ConnectionSharingUseCases {
   }
   replace(
     input: SharingInput &
-      Readonly<{ request: unknown; idempotencyKey: string }>,
+      Readonly<{ request: ConnectionSharingRequest; idempotencyKey: string }>,
   ) {
     return this.telemetry.measure(
       CONNECTION_OPERATION.sharingUpdate,
       async () => {
         await authorizeConnectionOperation(input, this.authorization);
-        const request = parseRequestInput(
-          connectionSharingRequestSchema,
-          input.request,
-        );
         return this.persistence.replaceConnectionSharing({
           workspaceId: input.routeWorkspaceId,
           actorId: input.actor.actorId,
           connectionId: input.connectionId,
-          request,
+          request: input.request,
           idempotencyKey: input.idempotencyKey,
           ...(input.requestId === undefined
             ? {}

@@ -1,28 +1,12 @@
-import {
-  Controller,
-  Get,
-  Param,
-  Query,
-  Req,
-  UseGuards,
-  UseInterceptors,
-} from '@nestjs/common';
-import {
-  connectionListQuerySchema,
-  connectionIdParamSchema,
-  connectionUsageResponseSchema,
-} from '@pertexo/contracts';
+import { connectionUsageResponseSchema } from '@pertexo/contracts';
 import type { ConnectionUsageStore } from '@pertexo/core/connections';
 import { z } from 'zod';
 
-import { SessionAuthenticationGuard } from '../../workspaces/index.js';
 import {
   opaqueCursor,
   decodeOpaqueCursor,
   encodeOpaqueCursor,
 } from '../../platform/http/opaque-cursor.js';
-import { projectAuthenticatedWorkspaceContext } from '../../workspaces/request/authenticated-context.js';
-import { RateLimit } from '../../platform/rate-limit/metadata.js';
 import type { WorkspaceAuthorizationSource } from '../../authorization/index.js';
 import {
   authorizeWorkspaceOperation,
@@ -30,17 +14,12 @@ import {
 } from '../../authorization/index.js';
 import { authorizeConnectionOperation } from '../authorization.js';
 import { InvalidConnectionCursorError } from '../cursor.js';
-import { ConnectionReadGuard } from '../http/guards.js';
-import type { ConnectionRequest } from '../types.js';
 import type { ConnectionCommandInput } from './support.js';
 import {
   CONNECTION_OPERATION,
   NOOP_CONNECTION_TELEMETRY,
   type ConnectionTelemetry,
 } from '../telemetry.js';
-import { domainErrors } from '../../platform/http/problems/interceptor.js';
-import { connectionFailure } from '../../problems/context/normalize.js';
-import { parseRequestInput } from '../../platform/http/request-input.js';
 
 const cursorSchema = opaqueCursor('connection_usage', {
   workspaceId: z.uuid(),
@@ -128,31 +107,6 @@ export class ListConnectionUsageUseCase {
               connectionId: input.connectionId,
               workflowVersionId: page.nextCursor.workflowVersionId,
             }),
-    });
-  }
-}
-
-@UseInterceptors(domainErrors(connectionFailure))
-@Controller('v1/workspaces/:workspaceId/connections/:connectionId/usage')
-export class ConnectionUsageController {
-  public constructor(private readonly usage: ListConnectionUsageUseCase) {}
-
-  @Get()
-  @RateLimit('authenticated_read')
-  @UseGuards(SessionAuthenticationGuard, ConnectionReadGuard)
-  public list(
-    @Req() request: ConnectionRequest,
-    @Param() params: unknown,
-    @Query() query: unknown,
-  ) {
-    const route = connectionIdParamSchema.parse(params);
-    const input = parseRequestInput(connectionListQuerySchema, query ?? {});
-    return this.usage.execute({
-      ...projectAuthenticatedWorkspaceContext(request, route.workspaceId),
-      routeWorkspaceId: route.workspaceId,
-      connectionId: route.connectionId,
-      ...(input.limit === undefined ? {} : { limit: input.limit }),
-      ...(input.after === undefined ? {} : { after: input.after }),
     });
   }
 }

@@ -22,30 +22,6 @@ import {
 } from './support/use-case-fixture.js';
 
 describe('connection management use cases', () => {
-  it('rejects an invalid create body before encryption', async () => {
-    const store = commandPersistence();
-    const encryption = { seal: vi.fn() };
-    await expect(
-      new CreateConnectionUseCase(store, authorization(), {
-        encryption: encryption,
-        applicationSecret: 'fixture-application-secret',
-      }).execute({
-        actor,
-        routeWorkspaceId: workspaceId,
-        idempotencyKey: 'create-invalid',
-        request: {
-          providerKey: 'http',
-          name: 'Operations API',
-          credential: {
-            type: 'http_headers',
-            headers: { Host: 'metadata.internal' },
-          },
-        },
-      }),
-    ).rejects.toMatchObject({ name: 'ZodError' });
-    expect(encryption.seal).not.toHaveBeenCalled();
-  });
-
   it('reuses guard authorization without repeating a command access lookup', async () => {
     const access = authorization();
     const authorizedWorkspace = await authorizeWorkspace({

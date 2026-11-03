@@ -23,32 +23,6 @@ import {
 } from '@pertexo/integrations/server';
 
 describe('connection testing security and cleanup regressions', () => {
-  it('rejects an over-byte Unicode URL before reservation or credential work', async () => {
-    const store = persistence();
-    const open = vi.fn();
-    const execute = vi.fn();
-    const authorization = {
-      findAccess: vi.fn().mockResolvedValue(activeAccess()),
-    };
-
-    await expect(
-      new TestConnectionUseCase(store, authorization, {
-        encryption: { seal: vi.fn(), open },
-        httpClient: { execute },
-        applicationSecret: 'fixture-application-secret',
-      }).execute(
-        command({
-          url: `https://provider.example.test/${'😀'.repeat(700)}`,
-        }),
-      ),
-    ).rejects.toMatchObject({ name: 'ZodError' });
-    expect(authorization.findAccess).toHaveBeenCalledOnce();
-    expect(store.startConnectionTest).not.toHaveBeenCalled();
-    expect(store.resolveConnectionTestSecret).not.toHaveBeenCalled();
-    expect(open).not.toHaveBeenCalled();
-    expect(execute).not.toHaveBeenCalled();
-  });
-
   it.each([
     ['missing membership', undefined],
     [
@@ -176,19 +150,19 @@ describe('connection testing security and cleanup regressions', () => {
   it.each([
     {
       name: 'invalid UTF-8',
-      request: { url: 'https://provider.example.test/health' },
+      request: { url: 'https://provider.example.test/health' } as const,
       bytes: () => Uint8Array.from([0xff]),
       clients: 'http' as const,
     },
     {
       name: 'malformed JSON',
-      request: { url: 'https://provider.example.test/health' },
+      request: { url: 'https://provider.example.test/health' } as const,
       bytes: () => new TextEncoder().encode('{'),
       clients: 'http' as const,
     },
     {
       name: 'invalid credential fields',
-      request: { providerKey: 'slack' },
+      request: { providerKey: 'slack' } as const,
       bytes: () =>
         new TextEncoder().encode(
           JSON.stringify({
@@ -203,7 +177,7 @@ describe('connection testing security and cleanup regressions', () => {
       request: {
         providerKey: 'email',
         sideEffectDisclosureAccepted: true,
-      },
+      } as const,
       bytes: () =>
         new TextEncoder().encode(
           JSON.stringify({
@@ -218,7 +192,7 @@ describe('connection testing security and cleanup regressions', () => {
       request: {
         providerKey: 'email',
         sideEffectDisclosureAccepted: true,
-      },
+      } as const,
       bytes: () =>
         new TextEncoder().encode(
           JSON.stringify({
@@ -231,7 +205,7 @@ describe('connection testing security and cleanup regressions', () => {
     },
     {
       name: 'HTTP credential on Slack route',
-      request: { providerKey: 'slack' },
+      request: { providerKey: 'slack' } as const,
       bytes: () =>
         new TextEncoder().encode(
           JSON.stringify({
@@ -243,7 +217,7 @@ describe('connection testing security and cleanup regressions', () => {
     },
     {
       name: 'Slack credential without Slack client',
-      request: { providerKey: 'slack' },
+      request: { providerKey: 'slack' } as const,
       bytes: () =>
         new TextEncoder().encode(
           JSON.stringify({
@@ -255,7 +229,7 @@ describe('connection testing security and cleanup regressions', () => {
     },
     {
       name: 'Slack credential on HTTP route',
-      request: { url: 'https://provider.example.test/health' },
+      request: { url: 'https://provider.example.test/health' } as const,
       bytes: () =>
         new TextEncoder().encode(
           JSON.stringify({

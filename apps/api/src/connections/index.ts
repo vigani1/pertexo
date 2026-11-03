@@ -4,10 +4,8 @@ export * from './cursor.js';
 
 export * from './failure-notifications/controller.js';
 export * from './failure-notifications/destinations.js';
-export * from './http/guards.js';
 export * from './module.js';
 export * from './ports.js';
 export * from './telemetry.js';
-export * from './tokens.js';
 export * from './types.js';
 export * from './use-cases/management.js';
