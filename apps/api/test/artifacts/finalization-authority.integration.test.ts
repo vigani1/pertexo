@@ -208,6 +208,47 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
       expect(refusedDownload.json()).toMatchObject({
         code: 'resource.not_found',
       });
+      const masked = await api.send('PUT', publicDraft, {
+        browser: builder,
+        headers: {
+          'Idempotency-Key': randomUUID(),
+          'if-match': String(saved.headers.etag),
+        },
+        payload: {
+          graph: {
+            edges: [],
+            settings: {},
+            nodes: [
+              {
+                id: 'business',
+                definition: { key: 'core.set', version: 1 },
+                position: { x: 0, y: 0 },
+                configVersion: 1,
+                config: {},
+                connectionRefs: {},
+                inputMappings: {
+                  payload: {
+                    kind: 'literal',
+                    value: {
+                      kind: ['artifact'],
+                      artifactId,
+                      byteLength: null,
+                      mediaType: null,
+                      sha256: null,
+                    },
+                  },
+                },
+              },
+            ],
+          },
+        },
+      });
+      expect(masked.statusCode, masked.payload).toBe(200);
+      for (const target of [path, `${path}/download`]) {
+        const hiddenFile = await api.send('GET', target, { browser: builder });
+        expect(hiddenFile.statusCode, hiddenFile.payload).toBe(404);
+        expect(hiddenFile.json()).toMatchObject({ code: 'resource.not_found' });
+      }
       const hidden = await api.send('POST', `${path}/finalize`, {
         browser: builder,
         payload: {},
