@@ -2,11 +2,11 @@ import { credentialCommandScope } from '@pertexo/database/platform';
 import { and, eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import {
-  appendAuditFact,
   rethrowQueryFailure,
   claimCommand,
   completeCommand,
 } from '@pertexo/database/primitives';
+import { appendAuditFact } from '../../../governance/audit/facts.js';
 import {
   workflowTriggers,
   webhookTriggerSecretVersions as secrets,

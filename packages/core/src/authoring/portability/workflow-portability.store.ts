@@ -1,10 +1,10 @@
 import { requireReadableReceipt } from '../../shared/receipts.js';
 import {
-  appendAuditFact,
   rethrowQueryFailure,
   claimCommand,
   completeCommand,
 } from '@pertexo/database/primitives';
+import { appendAuditFact } from '../../governance/audit/facts.js';
 import type { WorkflowGraph } from '@pertexo/workflow-model';
 import { and, eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';

@@ -1,9 +1,9 @@
 import {
-  appendAuditFact,
   rethrowQueryFailure,
   claimCommand,
   completeCommand,
 } from '@pertexo/database/primitives';
+import { appendAuditFact } from '../../../governance/audit/facts.js';
 import {
   EMPTY_WORKFLOW_GRAPH,
   InvalidWorkflowGraphError,

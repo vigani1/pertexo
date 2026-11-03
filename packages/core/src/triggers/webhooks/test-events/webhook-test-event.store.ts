@@ -1,10 +1,8 @@
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { webhookTestEvents as listeners } from '@pertexo/database/schema';
-import {
-  rethrowQueryFailure,
-  appendAuditFact,
-} from '@pertexo/database/primitives';
+import { rethrowQueryFailure } from '@pertexo/database/primitives';
+import { appendAuditFact } from '../../../governance/audit/facts.js';
 import { ACTIVE_WORKSPACE_STATUSES } from '@pertexo/policy';
 import { parseStoredExecutionValue } from '../../../runs/values/stored-execution.js';
 import type { Pool, PoolClient } from 'pg';

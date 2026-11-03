@@ -1,8 +1,8 @@
 import {
   isUniqueConstraintFailure,
-  appendAuditFact,
   withWorkspaceScope,
 } from '@pertexo/database/primitives';
+import { appendAuditFact } from '../../../../governance/audit/facts.js';
 import type { PoolClient } from 'pg';
 import { DirectoryError } from '../directory.errors.js';
 import type { DirectoryPrincipal } from '../directory-provisioning.types.js';

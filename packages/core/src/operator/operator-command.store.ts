@@ -1,8 +1,8 @@
 import {
-  appendAuditFact,
   checkDatabaseReadiness,
   serializeBoundedPlainJson,
 } from '@pertexo/database/primitives';
+import { appendAuditFact } from '../governance/audit/facts.js';
 import {
   acquireDatabasePool,
   generatePersistedId,

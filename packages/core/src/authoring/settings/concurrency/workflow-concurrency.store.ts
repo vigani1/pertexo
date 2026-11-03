@@ -1,9 +1,9 @@
 import {
-  appendAuditFact,
   rethrowQueryFailure,
   claimCommand,
   completeCommand,
 } from '@pertexo/database/primitives';
+import { appendAuditFact } from '../../../governance/audit/facts.js';
 import type { WorkflowConcurrencySettings as ConcurrencySettings } from '@pertexo/contracts';
 import { BROWSABLE_WORKSPACE_STATUSES } from '@pertexo/policy';
 import { and, asc, eq, gt, sql } from 'drizzle-orm';

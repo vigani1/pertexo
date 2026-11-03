@@ -8,10 +8,8 @@ import {
   workspaceMemberships,
   workflowFavorites,
 } from '@pertexo/database/schema';
-import {
-  rethrowQueryFailure,
-  appendAuditFacts,
-} from '@pertexo/database/primitives';
+import { rethrowQueryFailure } from '@pertexo/database/primitives';
+import { appendAuditFacts } from '../../governance/audit/facts.js';
 import type { Role } from '@pertexo/policy';
 import { removeMemberResourceGrants } from '../resources/revocation.repository.js';
 import type { PoolClient } from 'pg';

@@ -1,9 +1,9 @@
 import {
-  appendAuditFact,
   rethrowQueryFailure,
   claimCommand,
   completeCommand,
 } from '@pertexo/database/primitives';
+import { appendAuditFact } from '../../../governance/audit/facts.js';
 import { serializeStoredExecutionValue } from '../../values/stored-execution.js';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { alias } from 'drizzle-orm/pg-core';

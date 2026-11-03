@@ -1,9 +1,9 @@
 import type { AuditMetadata } from '@pertexo/database/primitives';
 import {
-  appendAuditFact,
   withWorkspaceTransaction,
   type WorkspaceTransaction,
 } from '@pertexo/database/primitives';
+import { appendAuditFact } from '../governance/audit/facts.js';
 import { operatorCommands } from '@pertexo/database/schema';
 import { eq, sql } from 'drizzle-orm';
 import type { Pool } from 'pg';

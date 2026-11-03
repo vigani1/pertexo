@@ -6,9 +6,9 @@ import { and, asc, eq, inArray } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import {
   rethrowQueryFailure,
-  appendAuditFacts,
   withWorkspaceScope,
 } from '@pertexo/database/primitives';
+import { appendAuditFacts } from '../../../../governance/audit/facts.js';
 import type { PoolClient } from 'pg';
 import { updateMemberships } from '../../../../tenant-access/members/records.repository.js';
 import type { MembershipChange } from '../../../../tenant-access/members/membership.types.js';

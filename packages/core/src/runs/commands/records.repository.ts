@@ -2,7 +2,7 @@ import type {
   AuditMetadata,
   WorkspaceTransaction,
 } from '@pertexo/database/primitives';
-import { appendAuditFact } from '@pertexo/database/primitives';
+import { appendAuditFact } from '../../governance/audit/facts.js';
 import {
   workflowRunRecords,
   type WorkflowRunRow,

@@ -11,8 +11,8 @@ import {
   rethrowQueryFailure,
   claimCommand,
   completeCommand,
-  appendAuditFact,
 } from '@pertexo/database/primitives';
+import { appendAuditFact } from '../../governance/audit/facts.js';
 import type { WorkflowPromotionTargetResult } from '@pertexo/contracts';
 import { hasCapability } from '@pertexo/policy';
 import type { WorkflowPromotionSettings } from '@pertexo/contracts';

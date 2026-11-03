@@ -1,10 +1,7 @@
 import type { PoolClient } from 'pg';
 import type { WorkflowCommentCommandResult } from '@pertexo/contracts';
-import {
-  claimCommand,
-  completeCommand,
-  appendAuditFact,
-} from '@pertexo/database/primitives';
+import { claimCommand, completeCommand } from '@pertexo/database/primitives';
+import { appendAuditFact } from '../../governance/audit/facts.js';
 import type { EnterCollaboration } from './authority.repository.js';
 import type { CollaborationCommand } from './workflow-collaboration.types.js';
 export function runCommentCommand(

@@ -1,10 +1,10 @@
 import { credentialCommandScope } from '@pertexo/database/platform';
 import {
-  appendAuditFact,
   rethrowQueryFailure,
   claimCommand,
   completeCommand,
 } from '@pertexo/database/primitives';
+import { appendAuditFact } from '../../../governance/audit/facts.js';
 import { generatePersistedId } from '@pertexo/database/platform';
 import {
   workflowOrganizationState,

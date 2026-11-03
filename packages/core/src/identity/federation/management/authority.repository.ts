@@ -7,8 +7,8 @@ import { alias } from 'drizzle-orm/pg-core';
 import {
   rethrowQueryFailure,
   withWorkspaceScope,
-  appendAuditFact,
 } from '@pertexo/database/primitives';
+import { appendAuditFact } from '../../../governance/audit/facts.js';
 import { organizationRecords } from './identity-organizations.repository.js';
 import { ADMINISTRATIVE_ROLES, type Role } from '@pertexo/policy';
 import type { PoolClient } from 'pg';

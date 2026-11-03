@@ -1,5 +1,5 @@
 import type { AuditEvent, AuditPage, AuditQuery } from '@pertexo/contracts';
-import { projectAuditMetadata } from '@pertexo/database/primitives';
+import { projectAuditMetadata } from './projection.js';
 import type { PoolClient } from 'pg';
 
 import {

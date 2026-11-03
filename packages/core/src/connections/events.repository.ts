@@ -2,10 +2,8 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
 
 import { generatePersistedId } from '@pertexo/database/platform';
-import {
-  appendAuditFact,
-  rethrowQueryFailure,
-} from '@pertexo/database/primitives';
+import { rethrowQueryFailure } from '@pertexo/database/primitives';
+import { appendAuditFact } from '../governance/audit/facts.js';
 import { connectionEvents } from '@pertexo/database/schema';
 
 type ConnectionEvent = Readonly<{
