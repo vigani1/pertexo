@@ -120,7 +120,7 @@ describe('independent durable health command worker', () => {
       {
         connectionHealthStore: { apply, checkReadiness, close },
         reconciliationStore: { close: vi.fn(), reconcile: vi.fn() },
-        unknownOutcomeStore: { close: vi.fn(), reconcile: vi.fn() },
+
         runReplayStore: { close: vi.fn(), fail: vi.fn(), replay: vi.fn() },
         consumerFactory: (options) => {
           consumerOptions = options;

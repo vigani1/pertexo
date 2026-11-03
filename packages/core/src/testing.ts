@@ -47,12 +47,6 @@ export {
 } from './authoring/settings/auto-pause/auto-pause.errors.js';
 export * from './connections/testing.js';
 export { lockRunAcceptanceCommand } from './runs/commands/acceptance/lock.repository.js';
-export {
-  reconcileUnknownOutcomeEvidence,
-  UnknownOutcomeReconciliationMismatchError,
-  UnknownOutcomeReconciliationStateError,
-  type UnknownOutcomeReconciliationResult,
-} from './outbox/reconcile-unknown-outcome.js';
 export { createNotificationDestinationStore } from './notifications/destinations/notification-destination.store.js';
 export { FailureNotificationDestinationError } from './notifications/destinations/notification-destination.errors.js';
 export { type FailureNotificationDestinationRecord } from './notifications/destinations/notification-destination.types.js';

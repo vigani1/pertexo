@@ -50,21 +50,6 @@ export const payload = Object.freeze({
 
 const payloadChecksum = canonicalOutboxPayloadChecksum(payload);
 
-export const attemptId = randomUUID();
-
-export const evidenceCommandId = randomUUID();
-
-const evidenceOutboxEventId = randomUUID();
-
-export const evidencePayload = Object.freeze({
-  attemptId,
-  evidenceCommandId,
-  outboxEventId: evidenceOutboxEventId,
-  workspaceId,
-});
-
-const evidencePayloadChecksum = canonicalOutboxPayloadChecksum(evidencePayload);
-
 export const publishedVersion = {
   id: workflowVersionId,
   workspaceId,
@@ -159,69 +144,10 @@ export const replayInput = () => ({
   workspaceId,
 });
 
-export function reconciliationWith(
-  outboxOverride?: Record<string, unknown> | null,
-  evidence: Record<string, unknown> | null = {
-    status: 'outcome_unknown',
-  },
-) {
-  const outbox = {
-    aggregateId: attemptId,
-    aggregateType: 'node-attempt',
-    jobName: 'reconcile-unknown-outcome',
-    payload: evidencePayload,
-    payloadChecksum: evidencePayloadChecksum,
-    ...(outboxOverride ?? {}),
-  };
-  const read = vi
-    .fn()
-    .mockResolvedValueOnce(outboxOverride === null ? [] : [outbox])
-    .mockResolvedValueOnce(evidence === null ? [] : [evidence]);
-  const select = vi.fn(() => ({
-    from: () => ({ where: read, innerJoin: () => ({ where: read }) }),
-  }));
-  const transaction = { db: { select }, workspaceId };
-  const database = {
-    checkReadiness: vi.fn(),
-    applyInstanceCapacity: vi.fn(),
-    close: mocks.close,
-    withWorkspace: vi.fn(),
-  };
-  mocks.consumeInboxMessage.mockImplementation(
-    async (
-      _database: unknown,
-      _workspaceId: string,
-      {
-        operation,
-      }: Readonly<{
-        operation: (value: typeof transaction) => Promise<unknown>;
-      }>,
-    ) => ({ status: 'processed', value: await operation(transaction) }),
-  );
-  return {
-    database,
-    read,
-    input: {
-      attemptId,
-      delivery: {
-        outboxEventId: evidenceOutboxEventId,
-        payloadChecksum: evidencePayloadChecksum,
-      },
-      evidenceCommandId,
-      workspaceId,
-    },
-  };
-}
-
 export function beforeEachFixture1() {
   vi.clearAllMocks();
   mocks.close.mockResolvedValue(undefined);
   mocks.acceptWorkflowRun.mockResolvedValue({ runId: randomUUID() });
-}
-
-export function beforeEachFixture2() {
-  vi.clearAllMocks();
-  mocks.close.mockResolvedValue(undefined);
 }
 
 export { mocks };

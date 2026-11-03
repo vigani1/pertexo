@@ -7,7 +7,6 @@ import {
   type NodeAttemptRuntimeFactories,
   type NodeAttemptRuntimeOptions,
 } from '../../src/attempts/delivery/node-attempt.runtime.js';
-import { unknownOutcomeReconciliationFactories } from '../../src/attempts/delivery/unknown-outcome-reconciliation.js';
 import type { NodeExecutionCapabilityFactories } from '../../src/attempts/execution/capabilities.js';
 import { connectionHealthObservationFactories } from '../../src/connections/health-runtime.js';
 import {
@@ -141,9 +140,6 @@ export type TestMaintenanceServices = Readonly<{
   failureNotificationStore?: FactoryValue<
     MaintenanceRuntimeFactories['notifications']['store']
   >;
-  unknownOutcomeStore?: FactoryValue<
-    MaintenanceRuntimeFactories['unknownOutcome']['store']
-  >;
   runReplayStore?: FactoryValue<MaintenanceRuntimeFactories['replay']['store']>;
 }>;
 
@@ -175,10 +171,6 @@ export function testMaintenanceRuntime(
     notifications: {
       ...(factories.notifications ?? failureNotificationFactories),
       ...supplied({ store: returning(services.failureNotificationStore) }),
-    },
-    unknownOutcome: {
-      ...(factories.unknownOutcome ?? unknownOutcomeReconciliationFactories),
-      ...supplied({ store: returning(services.unknownOutcomeStore) }),
     },
     replay: {
       ...(factories.replay ?? operatorRunReplayFactories),

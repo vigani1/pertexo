@@ -29,7 +29,7 @@ function everyHandler() {
     errorWorkflow: { handle: handle() },
     reconciliation: { handle: handle() },
     replay: { handle: handle() },
-    unknownOutcome: { handle: handle() },
+
     workspaceInvitation: { handle: handle() },
     connectionHealth: { handle: handle() },
   };

@@ -11,7 +11,6 @@ export const DELIVERY_CONSUMER = Object.freeze({
   'execute-node-attempt': 'node-attempt-worker',
   'execute-preview-attempt': 'preview-attempt-worker',
   'reconcile-preview-attempt': 'preview-attempt-reconciler',
-  'reconcile-unknown-outcome': 'unknown-outcome-reconciler',
   'reconcile-workflow-triggers': 'trigger-runtime.reconciliation',
   'replay-workflow-run': 'operator-run-replay',
   'start-error-workflow': 'error-workflow',
