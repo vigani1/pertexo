@@ -200,7 +200,7 @@ try {
         "import assert from 'node:assert/strict';",
         "import {Readable} from 'node:stream';",
         "import {parseConnectionEncryptionConfig,verifyStoredEncryptionKeys,createConnectionEnvelopeEncryption,createWebhookTriggerEnvelopeEncryption} from './packages/integrations/dist/server.js';",
-        'const config=parseConnectionEncryptionConfig(process.env,true);',
+        'const config=parseConnectionEncryptionConfig(process.env,{deployed:true});',
         'assert.deepEqual(await verifyStoredEncryptionKeys(config,Readable.from([]),AbortSignal.timeout(1000)),{connectionKeys:0,webhookKeys:0});',
         "if('mode' in config){",
         ' const old={...config,encryption:{current:config.encryption.previous[0],previous:[]}};',

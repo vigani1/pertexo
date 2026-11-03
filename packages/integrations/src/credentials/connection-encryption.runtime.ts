@@ -59,8 +59,12 @@ const environmentSchema = z.object({
 
 export function parseConnectionEncryptionConfig(
   environment: Readonly<Record<string, string | undefined>>,
-  { deployed }: Readonly<{ deployed: boolean }>,
+  options: Readonly<{ deployed: boolean }>,
 ): ConnectionEnvelopeEncryptionConfig | undefined {
+  const { deployed } = z
+    .object({ deployed: z.boolean() })
+    .strict()
+    .parse(options);
   const parsed = environmentSchema.safeParse(environment);
   if (!parsed.success)
     throw new Error('Connection encryption configuration is invalid');

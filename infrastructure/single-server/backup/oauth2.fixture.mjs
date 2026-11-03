@@ -30,7 +30,7 @@ export async function seedOAuth2RecoveryFixture(sql, database, environment) {
     secretVersionId,
   });
   const runtime = createConnectionEnvelopeEncryption(
-    parseConnectionEncryptionConfig(environment, true),
+    parseConnectionEncryptionConfig(environment, { deployed: true }),
   );
   const sealedColumns = async (plaintext, secretVersionId) => {
     const sealed = await runtime.encryption.seal(
@@ -89,7 +89,7 @@ export async function seedOAuth2RecoveryFixture(sql, database, environment) {
       assert.equal(foreign.at(-2), '0');
 
       const restored = createConnectionEnvelopeEncryption(
-        parseConnectionEncryptionConfig(environment, true),
+        parseConnectionEncryptionConfig(environment, { deployed: true }),
       );
       const opened = async (table, secretVersionId) => {
         const row = JSON.parse(

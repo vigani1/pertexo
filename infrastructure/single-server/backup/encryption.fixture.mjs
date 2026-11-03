@@ -50,9 +50,11 @@ export async function seedEncryptedRecoveryFixture(sql, database) {
       CONNECTION_SELF_MANAGED_KEY_VERSION: '1',
       CONNECTION_SELF_MANAGED_PREVIOUS_KEYS: undefined,
     },
-    true,
+    { deployed: true },
   );
-  const current = parseConnectionEncryptionConfig(environment, true);
+  const current = parseConnectionEncryptionConfig(environment, {
+    deployed: true,
+  });
   const actor = randomUUID(),
     connectionWorkspace = randomUUID(),
     webhookWorkspace = randomUUID();
@@ -100,7 +102,9 @@ export async function seedEncryptedRecoveryFixture(sql, database) {
       }
     }
   }
-  const callbackConfig = parseCallbackKeyConfig(environment, true);
+  const callbackConfig = parseCallbackKeyConfig(environment, {
+    deployed: true,
+  });
   const tokenKeys = createCallbackTokenKeys(callbackConfig);
   const callbackRun = randomUUID();
   const callbacks = ['1', '2'].map((keyVersion) => {
@@ -248,7 +252,7 @@ export async function seedEncryptedRecoveryFixture(sql, database) {
         ),
       );
       const restoredKeys = createCallbackTokenKeys(
-        parseCallbackKeyConfig(environment, true),
+        parseCallbackKeyConfig(environment, { deployed: true }),
       );
       try {
         for (const callback of restoredCallbacks)
@@ -262,7 +266,9 @@ export async function seedEncryptedRecoveryFixture(sql, database) {
         restoredKeys.close();
       }
 
-      const config = parseConnectionEncryptionConfig(environment, true);
+      const config = parseConnectionEncryptionConfig(environment, {
+        deployed: true,
+      });
       for (const record of records) {
         const table =
           record.kind === 'connection'
