@@ -1,4 +1,3 @@
-import { decodeStoredValue } from '../../../shared/stored-values.js';
 import {
   installTransactionScope,
   rethrowQueryFailure,
@@ -14,7 +13,7 @@ import {
   workspaces,
   workspaceInvitationBindingReplacementClaims as claims,
 } from '@pertexo/database/schema';
-import { acceptanceReceiptSchema } from '../receipts.repository.js';
+import { decodeAcceptanceReceipt } from '../receipts.repository.js';
 
 export async function selectIntent(
   client: PoolClient,
@@ -53,9 +52,9 @@ export async function selectIntent(
   return Object.freeze({
     ...row,
     receipt:
-      row.receipt === null
+      row.receipt === null && row.status !== 'completed'
         ? null
-        : decodeStoredValue(() => acceptanceReceiptSchema.parse(row.receipt)),
+        : decodeAcceptanceReceipt(row.receipt),
   });
 }
 

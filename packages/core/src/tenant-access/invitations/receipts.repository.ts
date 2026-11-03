@@ -1,3 +1,5 @@
+import { decodeStoredValue } from '../../shared/stored-values.js';
+import { InvitationAcceptanceConflictError } from '../tenant-access.errors.js';
 import {
   rethrowQueryFailure,
   completeCommand,
@@ -18,7 +20,7 @@ import type { CommandIdentity } from '@pertexo/database/primitives';
 import type { InvitationAcceptanceResult } from '../tenant-access.types.js';
 
 /** Durable acceptance receipt stored on the intent and as the command's result. */
-export const acceptanceReceiptSchema = z
+const acceptanceReceiptSchema = z
   .object({
     intentId: z.uuid(),
     workspaceId: z.uuid(),
@@ -28,6 +30,19 @@ export const acceptanceReceiptSchema = z
   .strict();
 
 type AcceptanceReceipt = z.output<typeof acceptanceReceiptSchema>;
+
+/** A committed acceptance must be reconciled from its receipt, never repeated. */
+export function decodeAcceptanceReceipt(value: unknown): AcceptanceReceipt {
+  try {
+    return decodeStoredValue(() => acceptanceReceiptSchema.parse(value));
+  } catch (cause) {
+    throw new InvitationAcceptanceConflictError(
+      'receipt_unreadable',
+      'The saved invitation confirmation could not be read. Reload your workspaces and contact the operator if access is missing.',
+      { cause },
+    );
+  }
+}
 
 export function replayedAcceptance(
   receipt: AcceptanceReceipt,

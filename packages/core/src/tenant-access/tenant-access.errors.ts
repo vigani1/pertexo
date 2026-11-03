@@ -144,6 +144,7 @@ export class WorkspaceInvitationCommandConflictError extends Error {
 }
 
 export type InvitationAcceptanceConflictReason =
+  | 'receipt_unreadable'
   | 'unavailable'
   | 'binding_mismatch'
   | 'expired'

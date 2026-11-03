@@ -1,5 +1,4 @@
 import { readInvitationTime } from '../deadlines.js';
-import { decodeStoredValue } from '../../../shared/stored-values.js';
 import { decideInvitationAcceptance } from '@pertexo/workflow-model';
 import { and, eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
@@ -25,7 +24,7 @@ import type {
 } from '../../tenant-access.types.js';
 import { InvitationAcceptanceConflictError } from '../../tenant-access.errors.js';
 import {
-  acceptanceReceiptSchema,
+  decodeAcceptanceReceipt,
   recordAcceptedInvitation,
   replayedAcceptance,
 } from '../receipts.repository.js';
@@ -90,9 +89,7 @@ export async function completeAcceptance(
           resourceId: intentId,
         });
         if (stored !== null)
-          return replayedAcceptance(
-            decodeStoredValue(() => acceptanceReceiptSchema.parse(stored)),
-          );
+          return replayedAcceptance(decodeAcceptanceReceipt(stored));
         if (intent.status === 'completed') {
           if (intent.acceptedUserId !== actorUserId || intent.receipt === null)
             throw new InvitationAcceptanceConflictError(
