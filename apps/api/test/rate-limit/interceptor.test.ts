@@ -66,6 +66,7 @@ function context(
     getClass: () => TestController,
     switchToHttp: () => ({
       getRequest: () => request,
+      getResponse: () => ({}),
     }),
   } as unknown as ExecutionContext;
 }

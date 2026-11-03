@@ -10,6 +10,10 @@ import type {
   RateLimitEndpointClass,
   RateLimitSubject,
 } from '@pertexo/rate-limit';
+import {
+  setResponseHeader,
+  type HttpResponseLike,
+} from '../http/request-context.js';
 import { HttpRateLimitAdmission } from './admission.js';
 
 import { RATE_LIMIT_EXEMPT, RATE_LIMIT_METADATA } from './metadata.js';
@@ -73,10 +77,25 @@ export class RateLimitInterceptor implements NestInterceptor {
     if (metadata === undefined) {
       throw new Error('HTTP route is missing rate-limit classification');
     }
-    await this.admission.admit(
+    const http = context.switchToHttp();
+    const quota = await this.admission.admit(
       metadata,
-      subject(context.switchToHttp().getRequest<RateLimitRequest>()),
+      subject(http.getRequest<RateLimitRequest>()),
     );
+    if (quota !== undefined) {
+      const response = http.getResponse<HttpResponseLike>();
+      setResponseHeader(response, 'RateLimit-Limit', String(quota.limit));
+      setResponseHeader(
+        response,
+        'RateLimit-Remaining',
+        String(quota.remaining),
+      );
+      setResponseHeader(
+        response,
+        'RateLimit-Reset',
+        String(quota.resetSeconds),
+      );
+    }
     return next.handle();
   }
 }

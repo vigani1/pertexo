@@ -63,7 +63,8 @@ async function startProtocolFixture(): Promise<ProtocolFixture> {
         if (parsed === undefined) return;
         pending = pending.subarray(parsed.consumed);
         if (parsed.command === 'quit') continue;
-        if (parsed.command === 'eval') socket.write('*3\r\n:1\r\n:0\r\n:0\r\n');
+        if (parsed.command === 'eval')
+          socket.write('*6\r\n:1\r\n:0\r\n:0\r\n:4\r\n:5\r\n:60000\r\n');
         else if (parsed.command === 'info') socket.write('$0\r\n\r\n');
         else socket.write('+OK\r\n');
       }
@@ -110,7 +111,9 @@ describe('Redis rate-limit runtime protocol ownership', () => {
       operationTimeoutMs: 1_000,
     });
 
-    await expect(runtime.consume(decision)).resolves.toEqual({ allowed: true });
+    await expect(runtime.consume(decision)).resolves.toMatchObject({
+      allowed: true,
+    });
     await expect(runtime.close()).rejects.toThrow(
       'Redis rate-limit close timed out',
     );

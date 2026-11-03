@@ -14,8 +14,15 @@ export type RateLimitScriptExecutor = Readonly<{
   ): Promise<unknown>;
 }>;
 
+/** What's left of the tightest budget a request counts against. */
+export type RateLimitQuota = Readonly<{
+  limit: number;
+  remaining: number;
+  resetSeconds: number;
+}>;
+
 export type DistributedRateLimitResult =
-  | Readonly<{ allowed: true }>
+  | Readonly<{ allowed: true; quota?: RateLimitQuota }>
   | Readonly<{
       allowed: false;
       retryAfterSeconds: number;
@@ -42,12 +49,21 @@ if rejected_index > 0 then
   return {0, retry_ms, rejected_index}
 end
 
+local remaining
+local tightest = 0
+local reset_ms = 0
 for index, key in ipairs(KEYS) do
   local count = redis.call('INCR', key)
   if count == 1 then redis.call('PEXPIRE', key, window_ms) end
+  local limit = tonumber(ARGV[index + 1])
+  if remaining == nil or limit - count < remaining then
+    remaining = limit - count
+    tightest = limit
+    reset_ms = redis.call('PTTL', key)
+  end
 end
 
-return {1, 0, 0}
+return {1, 0, 0, remaining, tightest, reset_ms}
 `;
 
 const MAX_WINDOW_SECONDS = Math.floor(Number.MAX_SAFE_INTEGER / 1_000);
@@ -98,15 +114,15 @@ function assertDecision(decision: RateLimitDecision): void {
   }
 }
 
-function parseScriptResult(value: unknown): readonly [number, number, number] {
+function parseScriptResult(value: unknown): readonly number[] {
   if (
     !Array.isArray(value) ||
-    value.length !== 3 ||
+    (value.length !== 3 && value.length !== 6) ||
     !value.every((item) => typeof item === 'number' && Number.isInteger(item))
   ) {
     throw new Error('Invalid rate-limit script result');
   }
-  return value as [number, number, number];
+  return value as number[];
 }
 
 export class DistributedRateLimiter {
@@ -119,17 +135,38 @@ export class DistributedRateLimiter {
     const keys = decision.dimensions.map((_, index) =>
       counterKey(decision, index),
     );
-    const [allowed, retryMilliseconds, limitedIndex] = parseScriptResult(
+    const [
+      allowed = -1,
+      retryMilliseconds = -1,
+      limitedIndex = 0,
+      remaining,
+      limit,
+      resetMilliseconds,
+    ] = parseScriptResult(
       await this.executor.eval(
         CONSUME_SCRIPT,
         keys.length,
         ...keys,
         String(decision.windowSeconds * 1_000),
-        ...decision.dimensions.map(({ limit }) => String(limit)),
+        ...decision.dimensions.map(({ limit: budget }) => String(budget)),
       ),
     );
-    if (allowed === 1 && retryMilliseconds === 0 && limitedIndex === 0) {
-      return { allowed: true };
+    if (
+      allowed === 1 &&
+      retryMilliseconds === 0 &&
+      limitedIndex === 0 &&
+      remaining !== undefined &&
+      limit !== undefined &&
+      resetMilliseconds !== undefined
+    ) {
+      return {
+        allowed: true,
+        quota: {
+          limit,
+          remaining: Math.max(0, remaining),
+          resetSeconds: Math.max(1, Math.ceil(resetMilliseconds / 1_000)),
+        },
+      };
     }
     const limitedDimension = decision.dimensions[limitedIndex - 1];
     if (

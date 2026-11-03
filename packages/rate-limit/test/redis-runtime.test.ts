@@ -110,14 +110,17 @@ describe('Redis rate-limit runtime', () => {
       redisMock.status = 'ready';
       return Promise.resolve();
     });
-    redisMock.eval.mockResolvedValue([1, 0, 0]);
+    redisMock.eval.mockResolvedValue([1, 0, 0, 4, 5, 60_000]);
     const runtime = new RedisRateLimitRuntime('redis://example.test');
 
     await Promise.all([runtime.consume(decision), runtime.consume(decision)]);
     expect(redisMock.connect).toHaveBeenCalledOnce();
 
     redisMock.status = 'end';
-    await expect(runtime.consume(decision)).resolves.toEqual({ allowed: true });
+    await expect(runtime.consume(decision)).resolves.toEqual({
+      allowed: true,
+      quota: { limit: 5, remaining: 4, resetSeconds: 60 },
+    });
     expect(redisMock.connect).toHaveBeenCalledTimes(2);
   });
 
@@ -128,7 +131,7 @@ describe('Redis rate-limit runtime', () => {
         redisMock.status = 'ready';
         return Promise.resolve();
       });
-    redisMock.eval.mockResolvedValue([1, 0, 0]);
+    redisMock.eval.mockResolvedValue([1, 0, 0, 4, 5, 60_000]);
     redisMock.quit.mockImplementation(() => {
       redisMock.status = 'end';
       return Promise.resolve('OK');
@@ -138,7 +141,10 @@ describe('Redis rate-limit runtime', () => {
     await expect(runtime.consume(decision)).rejects.toThrow(
       'redis unavailable',
     );
-    await expect(runtime.consume(decision)).resolves.toEqual({ allowed: true });
+    await expect(runtime.consume(decision)).resolves.toEqual({
+      allowed: true,
+      quota: { limit: 5, remaining: 4, resetSeconds: 60 },
+    });
     await runtime.close();
     await expect(runtime.consume(decision)).rejects.toThrow(/closed/iu);
     expect(redisMock.connect).toHaveBeenCalledTimes(2);
