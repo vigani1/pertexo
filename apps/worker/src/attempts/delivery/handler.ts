@@ -165,13 +165,7 @@ async function executePreparedNodeAttempt(
     }
     throw error;
   }
-  const interruption = await resolveHeartbeatInterruption(dependencies, lease, {
-    delivery: delivery,
-    contextSignal: contextSignal,
-    heartbeat: heartbeat,
-    environment: environment,
-  });
-  if (interruption !== undefined) return interruption;
+  // A returned success is evidence of what happened; completion still fences the lease.
   return persistPreparedOutcome(dependencies, lease, {
     prepared: prepared,
     outcome: outcome,

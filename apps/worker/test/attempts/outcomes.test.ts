@@ -155,7 +155,7 @@ describe('NodeAttemptHandler', () => {
   });
 
   it.each(['succeeds', 'rejects'] as const)(
-    'gives a heartbeat authority failure precedence when execution ignores abort and %s',
+    'lets completion fence confirmed success, and preserves heartbeat failure when execution %s',
     async (executionSettlement) => {
       vi.useFakeTimers();
       try {
@@ -169,7 +169,9 @@ describe('NodeAttemptHandler', () => {
           kind: 'succeeded';
           output: null;
         }>();
-        const complete = vi.fn<NodeAttemptRunStore['complete']>();
+        const complete = vi
+          .fn<NodeAttemptRunStore['complete']>()
+          .mockResolvedValue({ kind: 'committed', outboxEventId: WORKFLOW_ID });
         const runStore = executionStore({
           complete,
           heartbeat: vi.fn().mockRejectedValue(heartbeatError),
@@ -211,8 +213,17 @@ describe('NodeAttemptHandler', () => {
             output: null,
           });
         else execution.reject(new Error('executor also failed'));
-        await expect(outcome).resolves.toBe(heartbeatError);
-        expect(complete).not.toHaveBeenCalled();
+        if (executionSettlement === 'succeeds') {
+          await expect(outcome).resolves.toBeUndefined();
+          expect(complete).toHaveBeenCalledWith(
+            expect.objectContaining({
+              outcome: { status: 'succeeded', output: null },
+            }),
+          );
+        } else {
+          await expect(outcome).resolves.toBe(heartbeatError);
+          expect(complete).not.toHaveBeenCalled();
+        }
       } finally {
         vi.useRealTimers();
       }
