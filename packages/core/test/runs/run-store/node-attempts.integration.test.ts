@@ -986,7 +986,10 @@ describe('Coordinator node-attempt persistence invariants', () => {
           providerDispatchBinding,
           signal: new AbortController().signal,
         }),
-      ).rejects.toBeInstanceOf(NodeAttemptConnectionFenceError);
+      ).rejects.toMatchObject({
+        name: 'ExecutionCapabilityExpiredError',
+        message: 'The workspace is not active.',
+      });
     } finally {
       await asAdmin((client) =>
         client.query(`update app.workspaces set status='active' where id=$1`, [
