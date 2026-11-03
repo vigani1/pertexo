@@ -10,8 +10,27 @@ current role; membership changes permanently invalidate it, even if your old
 role is restored. Logging out or changing your password does not revoke it.
 Replace it by creating another, updating your script, then revoking the old one.
 Already accepted runs continue after revocation. Last use is approximate, updated
-at most once per minute. A token cannot administer credentials, accounts, teams,
-triggers or other tokens, edit drafts, replay/recover runs or use operator commands.
+at most once per minute.
+
+Choose scopes by the authority they grant:
+
+| Scope | Allows |
+| --- | --- |
+| `workflow:read` | List, read and export workflows and drafts; read versions, tags, automatic-pause settings, published triggers, deliveries and schedule occurrences; preview schedule rules and upcoming runs. |
+| `workflow:create` | Create blank workflows and preview/import unpublished copies. Explicit connection bindings additionally require `connection:read`. |
+| `workflow:update` | Save drafts, change workflow automatic-pause settings, assign existing tags, enable/disable published schedules, provision published webhook endpoints, and create/delete tables, change columns, write rows and import CSV. |
+| `workflow:publish` | Publish a reviewed draft, archive/restore workflows and resume automatic triggers. |
+| `run:read` | List runs and read status; `workflow:read` additionally reveals workflow names. |
+| `run:read-data` | Read run input and step input/output, which may contain sensitive data. |
+| `run:start` | Start published workflows with real effects. |
+| `run:cancel` | Request run cancellation. |
+| `workspace:read` | Read table definitions/rows and non-secret workspace variables; finding variable references additionally requires `workflow:read`. |
+| `variable:manage` | Replace non-secret workspace variables at the reviewed revision. |
+| `connection:read` | List/read connection metadata and resolve explicit import bindings; never reveal connection secrets. |
+
+Tokens cannot manage connection credentials, accounts, teams or other tokens,
+change webhook authentication or rotate its secrets, replay/recover runs, or use
+operator commands. Those actions remain session-only (or operator-only).
 
 Creation requires signing in within the previous five minutes. If automation is
 disabled, Settings explains that; metadata and revocation remain available. The
@@ -102,6 +121,21 @@ the browser. Request and response bodies are in the server's own spec, `GET /v1/
 | `runs get --workspace "$WORKSPACE_ID" --run "$RUN_ID"` | `GET /runs/$RUN_ID` | `run:read`; also `workflow:read` for workflow names |
 | `runs wait --workspace "$WORKSPACE_ID" --run "$RUN_ID" [--timeout 300]` | Polls `GET /runs/$RUN_ID` until the run ends; a failed run still exits 0, so read `run.status` | `run:read` |
 | `runs cancel --workspace "$WORKSPACE_ID" --run "$RUN_ID" [--body cancel.json]` | `POST /runs/$RUN_ID/cancel` | `run:cancel` |
+| (HTTP only) | `POST /workflows/$WORKFLOW_ID/archive`, `POST /workflows/$WORKFLOW_ID/restore`, `POST /workflows/$WORKFLOW_ID/resume` | `workflow:publish` |
+| (HTTP only) | `GET /workflows/$WORKFLOW_ID/auto-pause` | `workflow:read` |
+| (HTTP only) | `PUT /workflows/$WORKFLOW_ID/auto-pause` | `workflow:update` |
+| (HTTP only) | `GET /workflow-tags`, `GET /workflow-tags/$TAG_ID/workflows` | `workflow:read` |
+| (HTTP only) | `POST /workflows/$WORKFLOW_ID/tags` | `workflow:update` |
+| (HTTP only) | `GET /workflows/$WORKFLOW_ID/triggers`, `GET /workflows/$WORKFLOW_ID/triggers/$TRIGGER_ID/webhook/deliveries` | `workflow:read` |
+| (HTTP only) | `POST /workflows/$WORKFLOW_ID/triggers/$TRIGGER_ID/webhook/provision` | `workflow:update` |
+| (HTTP only) | `GET /workflows/$WORKFLOW_ID/triggers/schedules`, `GET /workflows/$WORKFLOW_ID/triggers/$TRIGGER_ID/schedule/occurrences`, `GET /workflows/$WORKFLOW_ID/triggers/$TRIGGER_ID/schedule/next-runs`, `POST /workflows/$WORKFLOW_ID/triggers/schedules/preview` | `workflow:read` |
+| (HTTP only) | `POST /workflows/$WORKFLOW_ID/triggers/$TRIGGER_ID/schedule/enable`, `POST /workflows/$WORKFLOW_ID/triggers/$TRIGGER_ID/schedule/disable` | `workflow:update` |
+| (HTTP only) | `GET /data-tables`, `POST /data-tables/$TABLE_ID/rows/query` | `workspace:read` |
+| (HTTP only) | `POST /data-tables`, `DELETE /data-tables/$TABLE_ID`, `PUT /data-tables/$TABLE_ID/schema`, `POST /data-tables/$TABLE_ID/rows`, `POST /data-tables/$TABLE_ID/import` | `workflow:update` |
+| (HTTP only) | `GET /variables` | `workspace:read` |
+| (HTTP only) | `GET /variables/usage` | `workspace:read` and `workflow:read` |
+| (HTTP only) | `PUT /variables` | `variable:manage` |
+| (HTTP only) | `GET /runs/$RUN_ID/input`, `GET /runs/$RUN_ID/node-runs/$NODE_RUN_ID/input`, `GET /runs/$RUN_ID/node-runs/$NODE_RUN_ID/output` | `run:read-data` |
 | `whoami` | `GET /v1/token` | Any |
 
 List results contain `items` and an opaque `nextCursor`. Pass that cursor unchanged
