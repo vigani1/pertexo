@@ -1,20 +1,18 @@
-import { authenticationMailAssociatedData } from '@pertexo/secrets/server';
+import { authenticationMailAssociatedData } from './mail-associated-data.js';
 import { z } from 'zod';
-import type {
-  SystemMailDeliveryClaim,
-  SystemMailDeliveryStore,
-} from '@pertexo/secrets/server';
-import { ApplicationSecretKeyUnavailableError } from '@pertexo/secrets/server';
+import type { SystemMailDeliveryClaim } from './system-mail.types.js';
+import type { SystemMailDeliveryStore } from './system-mail.store.js';
+import { ApplicationSecretKeyUnavailableError } from '../encryption/application-secret-envelope.js';
 import {
   systemMailFailureInstruction,
   systemMailFailureCode,
-} from '@pertexo/secrets/server';
-import type { ApplicationSecretEnvelope } from '@pertexo/secrets/server';
+} from './system-mail.js';
+import type { ApplicationSecretEnvelope } from '../encryption/application-secret-envelope.js';
 import type {
   SystemMailFailure,
   SystemMailResult,
   SystemMailClient,
-} from '@pertexo/secrets/server';
+} from './system-mail.js';
 
 const payload = z
   .object({

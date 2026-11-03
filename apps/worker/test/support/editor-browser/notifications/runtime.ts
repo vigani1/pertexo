@@ -11,7 +11,7 @@ import { createApplicationSecretEnvelope } from '@pertexo/secrets/server';
 import { RedisWorkspaceInboxHintPublisher } from '@pertexo/queue';
 import { createWorkspaceInboxRuntime } from '../../../../src/notifications/inbox-runtime.js';
 import { createSystemMailRuntime } from '../../../../src/mail/system-mail.runtime.js';
-import { createSystemMailDeliveryHandler } from '../../../../src/mail/delivery.js';
+import { createSystemMailDeliveryHandler } from '@pertexo/secrets/server';
 import { sealNoticeMail } from '../../../../src/mail/notice-content.js';
 import type { PollingRuntime } from '../../../../src/runtime/polling.js';
 function textBody(raw: string) {

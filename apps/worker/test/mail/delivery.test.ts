@@ -3,7 +3,7 @@ import type { SystemMailDeliveryStore } from '@pertexo/secrets/server';
 import { createApplicationSecretEnvelope } from '@pertexo/secrets/server';
 import { describe, expect, it, vi } from 'vitest';
 
-import { createSystemMailDeliveryHandler } from '../../src/mail/delivery.js';
+import { createSystemMailDeliveryHandler } from '@pertexo/secrets/server';
 
 const claim = {
   id: '11111111-1111-4111-8111-111111111111',
