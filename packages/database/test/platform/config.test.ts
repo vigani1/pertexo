@@ -6,7 +6,6 @@ import {
   parseMaintenanceDatabaseConfig,
   parseMigrationConfig,
   parseOperatorDatabaseConfig,
-  parseOutboxDispatcherConfig,
 } from '../../src/config.js';
 import { parseWorkspaceId } from '../../src/tenant-access/transactions.js';
 
@@ -139,29 +138,7 @@ describe('database configuration', () => {
     });
   });
 
-  it('parses a conservative dispatcher pool on the maintenance login', () => {
-    expect(
-      parseOutboxDispatcherConfig({
-        DATABASE_MAINTENANCE_URL:
-          'postgresql://pertexo_maintenance:secret@localhost:5432/pertexo',
-      }),
-    ).toEqual({
-      connectionString:
-        'postgresql://pertexo_maintenance:secret@localhost:5432/pertexo',
-      connectionTimeoutMillis: 5_000,
-      idleTimeoutMillis: 30_000,
-      max: 2,
-      ownerRole: 'pertexo_owner',
-    });
-  });
-
   it.each([
-    [
-      'dispatcher',
-      parseOutboxDispatcherConfig,
-      'DATABASE_MAINTENANCE_URL',
-      'DATABASE_DISPATCHER_POOL_MAX',
-    ],
     [
       'maintenance',
       parseMaintenanceDatabaseConfig,

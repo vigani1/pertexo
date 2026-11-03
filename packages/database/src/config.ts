@@ -98,14 +98,6 @@ export function parseMigrationConfig(
   });
 }
 
-const dispatcherEnvironmentSchema = z.object({
-  ...runtimeEnvironmentFields,
-  DATABASE_MAINTENANCE_URL: postgresUrl(
-    'DATABASE_MAINTENANCE_URL must be a postgresql:// URL',
-  ),
-  DATABASE_DISPATCHER_POOL_MAX: conservativePoolMax,
-});
-
 const maintenanceEnvironmentSchema = z.object({
   ...runtimeEnvironmentFields,
   DATABASE_MAINTENANCE_URL: postgresUrl(
@@ -134,18 +126,5 @@ export function parseOperatorDatabaseConfig(
   return parseDatabaseConfig({
     ...parseMaintenanceDatabaseConfig(environment),
     max: 1,
-  });
-}
-
-export function parseOutboxDispatcherConfig(
-  environment: Readonly<Record<string, string | undefined>> = process.env,
-): DatabaseConfig {
-  const parsed = dispatcherEnvironmentSchema.parse(environment);
-  return parseDatabaseConfig({
-    connectionString: parsed.DATABASE_MAINTENANCE_URL,
-    connectionTimeoutMillis: parsed.DATABASE_CONNECTION_TIMEOUT_MILLIS,
-    idleTimeoutMillis: parsed.DATABASE_IDLE_TIMEOUT_MILLIS,
-    max: parsed.DATABASE_DISPATCHER_POOL_MAX,
-    ownerRole: parsed.POSTGRES_OWNER_USER,
   });
 }

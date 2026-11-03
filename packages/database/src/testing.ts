@@ -1,9 +1,7 @@
 // Broad test and migration-fixture surface; production code must use role-owned package subpaths instead.
-export type { WorkflowDefinitionPlacementIssue } from '@pertexo/workflow-model';
 export {
   canonicalOutboxPayloadChecksum,
   insertOutboxEvent,
-  outboxChecksumSchema,
 } from './outbox/events.repository.js';
 export type {
   InsertedOutboxEvent,
@@ -14,7 +12,6 @@ export {
   parseMaintenanceDatabaseConfig,
   parseMigrationConfig,
   parseOperatorDatabaseConfig,
-  parseOutboxDispatcherConfig,
 } from './config.js';
 export type { DatabaseConfig, MigrationConfig } from './config.js';
 export {
