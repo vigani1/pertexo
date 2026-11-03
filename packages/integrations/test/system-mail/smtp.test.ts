@@ -8,7 +8,7 @@ import {
   type SMTPServerAuthenticationResponse,
 } from 'smtp-server';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createSystemMailClient } from '../../src/email/system-mail.js';
+import { createSmtpClient } from '../../src/system-mail/smtp.js';
 import { parseSystemMailConfig } from '../../src/system-mail/config.js';
 import type {
   SystemMailConfig,
@@ -96,7 +96,7 @@ describe('real SMTP system mail sessions', () => {
   it('submits a single-recipient MIME message with a stable correlation reference', async () => {
     const fixture = await server();
     const input = message();
-    const client = createSystemMailClient(fixture.config);
+    const client = createSmtpClient(fixture.config);
     const result = await client.sendNotification(input);
     expect(result.kind).toBe('submitted');
     expect(client.deduplicates).toBe(false);
@@ -117,7 +117,7 @@ describe('real SMTP system mail sessions', () => {
       'a'.repeat(877);
     expect(
       (
-        await createSystemMailClient(fixture.config).sendNotification(
+        await createSmtpClient(fixture.config).sendNotification(
           message({ unsubscribeUrl }),
         )
       ).kind,
@@ -139,7 +139,7 @@ describe('real SMTP system mail sessions', () => {
         authOptional: false,
       });
       const input = message();
-      const result = await createSystemMailClient({
+      const result = await createSmtpClient({
         ...fixture.config,
         tls: mode,
         auth: { user: 'smtp-user', pass: 'smtp-password' },
@@ -154,7 +154,7 @@ describe('real SMTP system mail sessions', () => {
     const input = message();
     expect(
       (
-        await createSystemMailClient({
+        await createSmtpClient({
           ...fixture.config,
           tls: 'starttls',
         }).sendNotification(input)
@@ -168,7 +168,7 @@ describe('real SMTP system mail sessions', () => {
     const input = message();
     expect(
       (
-        await createSystemMailClient({
+        await createSmtpClient({
           ...fixture.config,
           tls: 'implicit',
         }).sendNotification(input)
@@ -186,7 +186,7 @@ describe('real SMTP system mail sessions', () => {
     const input = message();
     expect(
       (
-        await createSystemMailClient({
+        await createSmtpClient({
           ...fixture.config,
           auth: { user: 'bad', pass: 'bad' },
         }).sendNotification(input)
@@ -208,11 +208,8 @@ describe('real SMTP system mail sessions', () => {
         },
       });
       expect(
-        (
-          await createSystemMailClient(fixture.config).sendNotification(
-            message(),
-          )
-        ).kind,
+        (await createSmtpClient(fixture.config).sendNotification(message()))
+          .kind,
       ).toBe(kind);
       expect(fixture.messages).toHaveLength(0);
     },
@@ -223,8 +220,7 @@ describe('real SMTP system mail sessions', () => {
       beforeDispatch: vi.fn().mockRejectedValue(new Error('Revoked')),
     });
     expect(
-      (await createSystemMailClient(fixture.config).sendNotification(input))
-        .kind,
+      (await createSmtpClient(fixture.config).sendNotification(input)).kind,
     ).toBe('retryable');
     expect(fixture.messages).toHaveLength(0);
   });
@@ -240,7 +236,7 @@ describe('real SMTP system mail sessions', () => {
     });
     expect(
       (
-        await createSystemMailClient(fixture.config).sendNotification(
+        await createSmtpClient(fixture.config).sendNotification(
           message({ timeoutMillis: 300 }),
         )
       ).kind,
@@ -259,7 +255,7 @@ describe('real SMTP system mail sessions', () => {
     });
     expect(
       (
-        await createSystemMailClient(fixture.config).sendNotification(
+        await createSmtpClient(fixture.config).sendNotification(
           message({ signal: controller.signal }),
         )
       ).kind,
@@ -269,7 +265,7 @@ describe('real SMTP system mail sessions', () => {
     const input = message({ signal: AbortSignal.abort() });
     expect(
       (
-        await createSystemMailClient({
+        await createSmtpClient({
           mode: 'smtp',
           host: '127.0.0.1',
           port: 1,

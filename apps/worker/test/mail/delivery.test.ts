@@ -1,8 +1,6 @@
+import { createSystemMailClient } from '../../src/mail/system-mail-client.js';
 import type { SystemMailDeliveryStore } from '@pertexo/secrets/server';
-import {
-  createApplicationSecretEnvelope,
-  createSystemMailClient,
-} from '@pertexo/integrations/server';
+import { createApplicationSecretEnvelope } from '@pertexo/integrations/server';
 import { describe, expect, it, vi } from 'vitest';
 
 import { createSystemMailDeliveryHandler } from '../../src/mail/delivery.js';
