@@ -1,3 +1,4 @@
+import { SUITE_REDIS_DATABASES } from './redis-databases.js';
 import { spawn, type ChildProcess } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
@@ -11,17 +12,6 @@ import { Pool } from 'pg';
 import { dropDisconnectedDatabase } from '../disposable-database.js';
 
 const repository = new URL('../../../../../', import.meta.url);
-
-/**
- * Each suite's own Redis database, since vitest runs files side by side and the stack flushes on
- * start and close. 1 to 9 are free of the worker's and browser suites, which use 10 to 15.
- */
-const SUITE_REDIS_DATABASES = {
-  capacity: 9,
-  'timed-waits': 8,
-  'webhook-endpoints': 7,
-  'failure-alerts': 6,
-} as const;
 
 /** Enough to read what went wrong, without growing without bound on a broken stack. */
 const MAX_KEPT_ERROR_LINES = 200;
