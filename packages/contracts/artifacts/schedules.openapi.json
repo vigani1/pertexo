@@ -227,187 +227,6 @@
         ],
         "additionalProperties": false
       },
-      "ScheduleManagementCommandRequest": {
-        "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "type": "object",
-        "properties": {},
-        "additionalProperties": false
-      },
-      "ScheduleManagementCommandResponse": {
-        "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "type": "object",
-        "properties": {
-          "trigger": {
-            "type": "object",
-            "properties": {
-              "id": {
-                "type": "string",
-                "format": "uuid",
-                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-              },
-              "workflowId": {
-                "type": "string",
-                "format": "uuid",
-                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-              },
-              "workflowVersionId": {
-                "type": "string",
-                "format": "uuid",
-                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-              },
-              "nodeId": {
-                "type": "string",
-                "minLength": 1,
-                "maxLength": 256
-              },
-              "kind": {
-                "type": "string",
-                "const": "schedule"
-              },
-              "status": {
-                "type": "string",
-                "enum": [
-                  "desired",
-                  "configuration_required",
-                  "pending",
-                  "active",
-                  "degraded",
-                  "disabled",
-                  "error"
-                ]
-              },
-              "healthStatus": {
-                "type": "string",
-                "enum": [
-                  "healthy",
-                  "degraded",
-                  "unhealthy",
-                  "disabled"
-                ]
-              },
-              "lastErrorCode": {
-                "anyOf": [
-                  {
-                    "type": "string",
-                    "maxLength": 128
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
-              },
-              "reconciledAt": {
-                "anyOf": [
-                  {
-                    "type": "string",
-                    "format": "date-time",
-                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
-              },
-              "recurrence": {
-                "oneOf": [
-                  {
-                    "type": "object",
-                    "properties": {
-                      "kind": {
-                        "type": "string",
-                        "const": "cron"
-                      },
-                      "expression": {
-                        "type": "string",
-                        "minLength": 1,
-                        "maxLength": 256
-                      },
-                      "timezone": {
-                        "type": "string",
-                        "minLength": 1,
-                        "maxLength": 128
-                      }
-                    },
-                    "required": [
-                      "kind",
-                      "expression",
-                      "timezone"
-                    ],
-                    "additionalProperties": false
-                  },
-                  {
-                    "type": "object",
-                    "properties": {
-                      "kind": {
-                        "type": "string",
-                        "const": "interval"
-                      },
-                      "intervalMinutes": {
-                        "type": "integer",
-                        "minimum": 1,
-                        "maximum": 43200
-                      }
-                    },
-                    "required": [
-                      "kind",
-                      "intervalMinutes"
-                    ],
-                    "additionalProperties": false
-                  }
-                ]
-              },
-              "misfirePolicy": {
-                "type": "string",
-                "enum": [
-                  "catch_up_once",
-                  "skip"
-                ]
-              },
-              "nextFireAt": {
-                "type": "string",
-                "format": "date-time",
-                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
-              },
-              "lastFireAt": {
-                "anyOf": [
-                  {
-                    "type": "string",
-                    "format": "date-time",
-                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
-              }
-            },
-            "required": [
-              "id",
-              "workflowId",
-              "workflowVersionId",
-              "nodeId",
-              "kind",
-              "status",
-              "healthStatus",
-              "lastErrorCode",
-              "reconciledAt",
-              "recurrence",
-              "misfirePolicy",
-              "nextFireAt",
-              "lastFireAt"
-            ],
-            "additionalProperties": false
-          },
-          "replayed": {
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "trigger",
-          "replayed"
-        ],
-        "additionalProperties": false
-      },
       "ScheduleTriggerListResponse": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "type": "object",
@@ -773,6 +592,187 @@
           "config"
         ],
         "additionalProperties": false
+      },
+      "ScheduleManagementCommandRequest": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      },
+      "ScheduleManagementCommandResponse": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "trigger": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "workflowId": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "workflowVersionId": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "nodeId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              },
+              "kind": {
+                "type": "string",
+                "const": "schedule"
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "desired",
+                  "configuration_required",
+                  "pending",
+                  "active",
+                  "degraded",
+                  "disabled",
+                  "error"
+                ]
+              },
+              "healthStatus": {
+                "type": "string",
+                "enum": [
+                  "healthy",
+                  "degraded",
+                  "unhealthy",
+                  "disabled"
+                ]
+              },
+              "lastErrorCode": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "maxLength": 128
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "reconciledAt": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "format": "date-time",
+                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "recurrence": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "const": "cron"
+                      },
+                      "expression": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 256
+                      },
+                      "timezone": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 128
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "expression",
+                      "timezone"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "const": "interval"
+                      },
+                      "intervalMinutes": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 43200
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "intervalMinutes"
+                    ],
+                    "additionalProperties": false
+                  }
+                ]
+              },
+              "misfirePolicy": {
+                "type": "string",
+                "enum": [
+                  "catch_up_once",
+                  "skip"
+                ]
+              },
+              "nextFireAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              "lastFireAt": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "format": "date-time",
+                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "workflowId",
+              "workflowVersionId",
+              "nodeId",
+              "kind",
+              "status",
+              "healthStatus",
+              "lastErrorCode",
+              "reconciledAt",
+              "recurrence",
+              "misfirePolicy",
+              "nextFireAt",
+              "lastFireAt"
+            ],
+            "additionalProperties": false
+          },
+          "replayed": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "trigger",
+          "replayed"
+        ],
+        "additionalProperties": false
       }
     },
     "responses": {
@@ -870,8 +870,10 @@
             "in": "path",
             "required": true,
             "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
-              "format": "uuid"
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
             }
           },
           {
@@ -879,8 +881,10 @@
             "in": "path",
             "required": true,
             "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
-              "format": "uuid"
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
             }
           }
         ],
@@ -924,8 +928,10 @@
             "in": "path",
             "required": true,
             "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
-              "format": "uuid"
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
             }
           },
           {
@@ -933,8 +939,10 @@
             "in": "path",
             "required": true,
             "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
-              "format": "uuid"
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
             }
           },
           {
@@ -942,8 +950,10 @@
             "in": "path",
             "required": true,
             "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
-              "format": "uuid"
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
             }
           },
           {
@@ -1015,8 +1025,10 @@
             "in": "path",
             "required": true,
             "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
-              "format": "uuid"
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
             }
           },
           {
@@ -1024,8 +1036,10 @@
             "in": "path",
             "required": true,
             "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
-              "format": "uuid"
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
             }
           },
           {
@@ -1033,8 +1047,10 @@
             "in": "path",
             "required": true,
             "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
-              "format": "uuid"
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
             }
           },
           {
@@ -1095,8 +1111,10 @@
             "in": "path",
             "required": true,
             "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
-              "format": "uuid"
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
             }
           },
           {
@@ -1104,12 +1122,14 @@
             "in": "path",
             "required": true,
             "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
-              "format": "uuid"
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
             }
           },
           {
-            "name": "X-CSRF-Token",
+            "name": "x-csrf-token",
             "in": "header",
             "required": true,
             "schema": {
@@ -1164,6 +1184,7 @@
     },
     "/v1/workspaces/{workspaceId}/workflows/{workflowId}/triggers/{triggerId}/schedule/enable": {
       "post": {
+        "operationId": "enableScheduleTrigger",
         "security": [
           {
             "cookieSession": []
@@ -1175,8 +1196,10 @@
             "in": "path",
             "required": true,
             "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
-              "format": "uuid"
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
             }
           },
           {
@@ -1184,8 +1207,10 @@
             "in": "path",
             "required": true,
             "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
-              "format": "uuid"
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
             }
           },
           {
@@ -1193,8 +1218,21 @@
             "in": "path",
             "required": true,
             "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
-              "format": "uuid"
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "x-csrf-token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "minLength": 16,
+              "maxLength": 256
             }
           },
           {
@@ -1207,17 +1245,6 @@
               "minLength": 1,
               "maxLength": 128,
               "pattern": "^[\\x21-\\x2b\\x2d-\\x7e]+$"
-            }
-          },
-          {
-            "name": "X-CSRF-Token",
-            "in": "header",
-            "required": true,
-            "schema": {
-              "$schema": "https://json-schema.org/draft/2020-12/schema",
-              "type": "string",
-              "minLength": 16,
-              "maxLength": 256
             }
           }
         ],
@@ -1265,6 +1292,7 @@
     },
     "/v1/workspaces/{workspaceId}/workflows/{workflowId}/triggers/{triggerId}/schedule/disable": {
       "post": {
+        "operationId": "disableScheduleTrigger",
         "security": [
           {
             "cookieSession": []
@@ -1276,8 +1304,10 @@
             "in": "path",
             "required": true,
             "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
-              "format": "uuid"
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
             }
           },
           {
@@ -1285,8 +1315,10 @@
             "in": "path",
             "required": true,
             "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
-              "format": "uuid"
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
             }
           },
           {
@@ -1294,8 +1326,21 @@
             "in": "path",
             "required": true,
             "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
-              "format": "uuid"
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "x-csrf-token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "minLength": 16,
+              "maxLength": 256
             }
           },
           {
@@ -1308,17 +1353,6 @@
               "minLength": 1,
               "maxLength": 128,
               "pattern": "^[\\x21-\\x2b\\x2d-\\x7e]+$"
-            }
-          },
-          {
-            "name": "X-CSRF-Token",
-            "in": "header",
-            "required": true,
-            "schema": {
-              "$schema": "https://json-schema.org/draft/2020-12/schema",
-              "type": "string",
-              "minLength": 16,
-              "maxLength": 256
             }
           }
         ],

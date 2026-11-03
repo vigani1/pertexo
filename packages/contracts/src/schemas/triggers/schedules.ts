@@ -64,8 +64,8 @@ const scheduleOccurrenceOutcomeSchema = z.enum([
   'skipped',
   'paused',
 ]);
-export const scheduleOccurrenceCursorSchema = z.string().min(1).max(512);
-export const scheduleOccurrencePageLimitSchema = z.coerce
+const scheduleOccurrenceCursorSchema = z.string().min(1).max(512);
+const scheduleOccurrencePageLimitSchema = z.coerce
   .number()
   .int()
   .min(1)
@@ -95,7 +95,7 @@ export const scheduleOccurrenceListResponseSchema = z
 
 /** ADR 048: upcoming fire times are bounded; three unless asked otherwise. */
 export const SCHEDULE_FIRE_TIME_DEFAULT_COUNT = 3;
-export const scheduleFireTimeCountSchema = z.coerce
+const scheduleFireTimeCountSchema = z.coerce
   .number()
   .int()
   .min(1)

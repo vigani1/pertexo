@@ -3,14 +3,8 @@ import { FastifyAdapter } from '@nestjs/platform-fastify';
 import { Test } from '@nestjs/testing';
 import { describe, expect, it, vi } from 'vitest';
 
-import { ScheduleManagementController } from '../../src/schedules/controllers.js';
-import {
-  ScheduleReadGuard,
-  ScheduleUpdateGuard,
-} from '../../src/schedules/guards.js';
 import { ScheduleModule } from '../../src/schedules/module.js';
 import { ScheduleManagementService } from '../../src/schedules/service.js';
-import { SCHEDULE_AUTHORIZATION } from '../../src/schedules/tokens.js';
 
 const scheduleOperations = {
   list: vi.fn(),
@@ -23,42 +17,6 @@ const service = scheduleOperations as unknown as ScheduleManagementService;
 const authorization = { findAccess: vi.fn().mockResolvedValue(undefined) };
 
 describe('schedule Nest module', () => {
-  it('registers one supplied service, authorization source, and guard pair', () => {
-    const dynamic = ScheduleModule.register(service, authorization, {
-      module: FakeIdentityModule,
-    });
-
-    expect(dynamic.controllers).toEqual([ScheduleManagementController]);
-    expect(dynamic.imports).toEqual([{ module: FakeIdentityModule }]);
-    expect(dynamic.providers).toEqual([
-      { provide: ScheduleManagementService, useValue: service },
-      { provide: SCHEDULE_AUTHORIZATION, useValue: authorization },
-      ScheduleReadGuard,
-      ScheduleUpdateGuard,
-    ]);
-  });
-
-  it('resolves the controller and both guards through Nest injection', async () => {
-    const testing = await Test.createTestingModule({
-      imports: [
-        ScheduleModule.register(service, authorization, {
-          module: FakeIdentityModule,
-        }),
-      ],
-    }).compile();
-    try {
-      expect(testing.get(ScheduleManagementController)).toBeInstanceOf(
-        ScheduleManagementController,
-      );
-      expect(testing.get(ScheduleReadGuard)).toBeInstanceOf(ScheduleReadGuard);
-      expect(testing.get(ScheduleUpdateGuard)).toBeInstanceOf(
-        ScheduleUpdateGuard,
-      );
-    } finally {
-      await testing.close();
-    }
-  });
-
   it('does not invoke a mutation after workspace authorization denies it', async () => {
     authorization.findAccess.mockClear();
     scheduleOperations.setEnabled.mockClear();

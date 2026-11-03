@@ -20,5 +20,6 @@ export type {
   RouteInput,
 } from './routes/define.js';
 export { catalogRoutes } from './routes/catalog.js';
+export { scheduleRoutes } from './routes/triggers/schedules.js';
 export { dataTableRoutes } from './routes/identity/data-tables.js';
 export { variableRoutes } from './routes/identity/variables.js';

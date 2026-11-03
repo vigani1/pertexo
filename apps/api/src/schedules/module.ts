@@ -2,8 +2,7 @@ import { Module, type DynamicModule } from '@nestjs/common';
 
 import type { WorkspaceAuthorizationSource } from '../workspaces/ports.js';
 import { ScheduleManagementController } from './controllers.js';
-import { ScheduleReadGuard, ScheduleUpdateGuard } from './guards.js';
-import { SCHEDULE_AUTHORIZATION } from './tokens.js';
+import { WORKSPACE_AUTHORIZATION } from '../workspaces/tokens.js';
 import { ScheduleManagementService } from './service.js';
 
 @Module({})
@@ -21,9 +20,7 @@ export class ScheduleModule {
       controllers: [ScheduleManagementController],
       providers: [
         { provide: ScheduleManagementService, useValue: service },
-        { provide: SCHEDULE_AUTHORIZATION, useValue: authorization },
-        ScheduleReadGuard,
-        ScheduleUpdateGuard,
+        { provide: WORKSPACE_AUTHORIZATION, useValue: authorization },
       ],
     };
   }
