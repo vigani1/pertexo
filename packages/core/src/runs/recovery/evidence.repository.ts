@@ -1,4 +1,7 @@
-import { decodeStoredValue } from '../../shared/stored-values.js';
+import {
+  decodeStoredValue,
+  isStoredDataError,
+} from '../../shared/stored-values.js';
 import {
   readRecoveryCheckpoint,
   readRecoveryNodes,
@@ -191,7 +194,7 @@ async function readRecoveryMetadata(
   } catch (error) {
     if (error instanceof WorkflowRunNotExecutableError)
       return { kind: 'refused', reason: 'version_unavailable' };
-    if (error instanceof z.ZodError)
+    if (error instanceof z.ZodError && !isStoredDataError(error))
       return { kind: 'refused', reason: 'evidence_unavailable' };
     throw error;
   }
