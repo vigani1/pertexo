@@ -87,6 +87,14 @@ type DocumentedSuccess = Readonly<{
   redirect?: true;
 }>;
 
+type RouteSuccess = JsonSuccess<z.ZodType> | DocumentedSuccess;
+
+/**
+ * `true` makes the key required and parsed before the handler. `when` is for a key
+ * only some requests need: it's documented as optional, and the handler reads it.
+ */
+export type RouteIdempotency = boolean | Readonly<{ when: string }>;
+
 type RouteShape = z.ZodObject;
 
 export type RouteDeclaration<
@@ -94,7 +102,7 @@ export type RouteDeclaration<
   Query extends RouteShape = RouteShape,
   Body extends z.ZodType = z.ZodType,
   Response extends z.ZodType = z.ZodType,
-  Idempotent extends boolean = boolean,
+  Idempotent extends RouteIdempotency = RouteIdempotency,
 > = Readonly<{
   operationId: string;
   method: RouteMethod;
@@ -118,6 +126,11 @@ export type RouteDeclaration<
    */
   requestDocument?: Readonly<Record<string, unknown>>;
   success: JsonSuccess<Response> | DocumentedSuccess;
+  /**
+   * Answers the handler may choose instead, by setting the status, such as 202 when
+   * it queued the work. The answer is checked against whichever status it sent.
+   */
+  otherSuccesses?: readonly RouteSuccess[];
   /** OpenAPI responses by status, from `problemResponse` or `responseReference`. */
   problems: Readonly<Record<string, unknown>>;
 }>;

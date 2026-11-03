@@ -42,10 +42,12 @@ export function routeSchemas(
   routes: readonly AnyRoute[],
 ): Record<string, unknown> {
   const schemas: Record<string, unknown> = {};
-  for (const { body, success } of routes) {
-    if (body !== undefined) schemas[body.name] = projected(body, 'input');
-    if ('body' in success)
-      schemas[success.body.name] = projected(success.body, 'output');
+  for (const route of routes) {
+    if (route.body !== undefined)
+      schemas[route.body.name] = projected(route.body, 'input');
+    for (const success of successes(route))
+      if ('body' in success)
+        schemas[success.body.name] = projected(success.body, 'output');
   }
   return schemas;
 }
@@ -67,20 +69,26 @@ function operation(route: AnyRoute) {
     ...parameters(route),
     ...requestBody(route),
     responses: {
-      [String(route.success.status)]:
-        'body' in route.success
-          ? {
-              ...jsonResponse(
-                route.success.description,
-                route.success.body.name,
-              ),
-              ...(route.success.headers === undefined
-                ? {}
-                : { headers: route.success.headers }),
-            }
-          : route.success.response,
+      ...Object.fromEntries(
+        successes(route).map((success) => [
+          String(success.status),
+          successResponse(success),
+        ]),
+      ),
       ...route.problems,
     },
+  };
+}
+
+function successes(route: AnyRoute) {
+  return [route.success, ...(route.otherSuccesses ?? [])];
+}
+
+function successResponse(success: AnyRoute['success']) {
+  if (!('body' in success)) return success.response;
+  return {
+    ...jsonResponse(success.description, success.body.name),
+    ...(success.headers === undefined ? {} : { headers: success.headers }),
   };
 }
 
@@ -93,11 +101,22 @@ function parameters(route: AnyRoute) {
       ),
     ),
     ...csrfParameter(route),
-    ...(route.idempotent === true ? [idempotencyHeaderParameter()] : []),
+    ...idempotencyParameter(route),
     ...queryParameters(route),
     ...headerParameters(route),
   ];
   return all.length === 0 ? {} : { parameters: all };
+}
+
+function idempotencyParameter({ idempotent }: AnyRoute) {
+  if (idempotent === undefined || idempotent === false) return [];
+  if (idempotent === true) return [idempotencyHeaderParameter()];
+  return [
+    {
+      ...idempotencyHeaderParameter({ required: false }),
+      description: `Required when ${idempotent.when}`,
+    },
+  ];
 }
 
 function requestBody({ body, requestDocument }: AnyRoute) {
