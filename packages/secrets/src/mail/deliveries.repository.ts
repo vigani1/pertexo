@@ -138,11 +138,13 @@ export async function settleMail(
   const db = drizzle(pool);
   const delivery = systemMailDeliveries;
   // Preserve the retry decision's statement snapshot while the target row waits for a lock.
+  // Unreadable payloads wait for key repair; expiry cleanup, not the retry delay,
+  // ends their existing recovery window.
   const retry = db
     .select({
       id: delivery.id,
       allowed:
-        sql<boolean>`${outcome}='retry' and (${payloadUnavailable} or ${delivery.attemptCount}<${MAX_ATTEMPTS}) and ${retryAt}::timestamptz<${delivery.expiresAt} and ${retryAt}::timestamptz<${delivery.createdAt}+${DELIVERY_WINDOW}`.as(
+        sql<boolean>`${payloadUnavailable} or (${outcome}='retry' and ${delivery.attemptCount}<${MAX_ATTEMPTS} and ${retryAt}::timestamptz<${delivery.expiresAt} and ${retryAt}::timestamptz<${delivery.createdAt}+${DELIVERY_WINDOW})`.as(
           'allowed',
         ),
     })
