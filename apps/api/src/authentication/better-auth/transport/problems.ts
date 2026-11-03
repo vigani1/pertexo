@@ -37,6 +37,15 @@ type NativeProblem = Readonly<{
 
 const NATIVE_PROBLEMS = new Map<string, NativeProblem>([
   [
+    '400:LAST_AUTHENTICATION_METHOD',
+    {
+      status: 400,
+      code: 'auth.last_method',
+      title:
+        'Add another working sign-in method allowed by your organization before removing this one.',
+    },
+  ],
+  [
     '403:SIGN_UP_CLOSED',
     {
       status: 403,

@@ -13,6 +13,7 @@ Generated from the problem manifest; run `pnpm contracts:generate`. Branch on th
 | `auth.conflict` | 409 | Authentication change conflict |
 | `auth.email_not_verified` | 403 | Email verification required |
 | `auth.forbidden` | 403 | Forbidden |
+| `auth.last_method` | 400 | Another working sign-in method required |
 | `auth.method_limit` | 400 | Sign-in method limit reached |
 | `auth.organization_email_managed` | 403 | Organization email address is managed |
 | `auth.recovery_required` | 403 | Recovery password required |

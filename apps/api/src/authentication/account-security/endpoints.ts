@@ -30,6 +30,7 @@ type EndpointContext = Parameters<typeof setSessionCookie>[0];
 export function accountSecurityEndpoints(
   pool: Pool,
   availableLinkProviders: SocialProviderGateway['available'],
+  organizationProtocols: readonly ('oidc' | 'saml')[],
 ) {
   return {
     getPertexoAccountSecurity: createGetPertexoAccountSecurityEndpoint(
@@ -39,7 +40,11 @@ export function accountSecurityEndpoints(
     changePertexoPassword: createChangePertexoPasswordEndpoint(pool),
     setPertexoPassword: createSetPertexoPasswordEndpoint(pool),
     resetPertexoPassword: createResetPertexoPasswordEndpoint(pool),
-    unlinkPertexoAccount: createUnlinkPertexoAccountEndpoint(pool),
+    unlinkPertexoAccount: createUnlinkPertexoAccountEndpoint(
+      pool,
+      availableLinkProviders,
+      organizationProtocols,
+    ),
   };
 }
 
@@ -214,7 +219,11 @@ function createResetPertexoPasswordEndpoint(pool: Pool) {
   );
 }
 
-function createUnlinkPertexoAccountEndpoint(pool: Pool) {
+function createUnlinkPertexoAccountEndpoint(
+  pool: Pool,
+  socialProviders: SocialProviderGateway['available'],
+  organizationProtocols: readonly ('oidc' | 'saml')[],
+) {
   return createAuthEndpoint(
     '/account-security/methods/unlink',
     {
@@ -230,6 +239,8 @@ function createUnlinkPertexoAccountEndpoint(pool: Pool) {
       const result = await unlinkMethodAndRevokeSessions(pool, {
         userId: current.user.id,
         methodId: context.body.methodId,
+        socialProviders,
+        organizationProtocols,
         replacement,
       });
       if (result === 'inactive') throw new APIError('UNAUTHORIZED');
@@ -242,7 +253,8 @@ function createUnlinkPertexoAccountEndpoint(pool: Pool) {
       if (result === 'last_method')
         throw new APIError('BAD_REQUEST', {
           code: 'LAST_AUTHENTICATION_METHOD',
-          message: 'The last authentication method cannot be removed.',
+          message:
+            'Add another working sign-in method allowed by your organization before removing this one.',
         });
       if (result === 'not_found')
         throw new APIError('NOT_FOUND', {

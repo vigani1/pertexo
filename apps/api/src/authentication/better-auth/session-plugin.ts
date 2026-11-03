@@ -51,12 +51,17 @@ export function createTrustedSessionPlugin(
     >;
     transactions: AuthenticationTransactions | undefined;
     accountUrl: string;
+    organizationProtocols: readonly ('oidc' | 'saml')[];
   }>,
 ) {
   return {
     id: 'pertexo-trusted-session-boundary',
     endpoints: {
-      ...accountSecurityEndpoints(pool, availableLinkProviders),
+      ...accountSecurityEndpoints(
+        pool,
+        availableLinkProviders,
+        securityNotices.organizationProtocols,
+      ),
       ...sessionManagementEndpoints(),
       ...internalSessionEndpoints(pool),
     },

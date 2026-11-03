@@ -33,6 +33,7 @@ type PertexoBetterAuthInput = Readonly<{
   emailProofs: OwnedEmailProofs;
   socialProviders?: BetterAuthOptions['socialProviders'];
   availableLinkProviders: SocialProviderGateway['available'];
+  availableOrganizationProtocols?: readonly ('oidc' | 'saml')[];
 }>;
 
 /**
@@ -133,6 +134,7 @@ export function createPertexoBetterAuth(input: PertexoBetterAuthInput) {
     plugins: [
       createTwoFactorPlugin(),
       createTrustedSessionPlugin(pool, input.availableLinkProviders, {
+        organizationProtocols: input.availableOrganizationProtocols ?? [],
         mail: input.mail,
         transactions: input.transactions,
         accountUrl: new URL('/account/security', input.baseUrl).toString(),

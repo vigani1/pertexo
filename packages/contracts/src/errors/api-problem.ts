@@ -34,6 +34,7 @@ export const API_PROBLEM_CODES = [
   'auth.email_not_verified',
   'auth.sso_required',
   'auth.two_factor_locked',
+  'auth.last_method',
   'auth.method_limit',
   'auth.recovery_required',
   'auth.organization_email_managed',
@@ -243,6 +244,12 @@ const apiProblemDetails = {
   'auth.two_factor_locked': {
     status: 429,
     title: 'Two-factor sign-in temporarily locked',
+    severity: 'info',
+    exposeDetail: false,
+  },
+  'auth.last_method': {
+    status: 400,
+    title: 'Another working sign-in method required',
     severity: 'info',
     exposeDetail: false,
   },

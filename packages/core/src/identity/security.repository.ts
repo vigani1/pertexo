@@ -1,3 +1,7 @@
+import {
+  lockSignInMethodAuthority,
+  hasUsableSignInMethod,
+} from './federation/sessions/methods.repository.js';
 import { invalidatePasswordResetProofs } from './password-reset.repository.js';
 import { hasSignInMethodCapacity } from './federation/accounts/limits.queries.js';
 import {
@@ -212,6 +216,8 @@ export async function unlinkMethodAndRevokeSessions(
   input: Readonly<{
     userId: string;
     methodId: string;
+    socialProviders: readonly string[];
+    organizationProtocols: readonly ('oidc' | 'saml')[];
     replacement?: AuthenticationReplacement;
   }>,
 ): Promise<
@@ -219,18 +225,16 @@ export async function unlinkMethodAndRevokeSessions(
 > {
   return withPlatformTransaction(pool, async (client) => {
     const db = drizzle(client, { schema: databaseSchema });
-    await db
-      .select()
-      .from(users)
-      .where(eq(users.id, input.userId))
-      .for('update');
+    if (!(await lockSignInMethodAuthority(client, input.userId)))
+      return 'inactive';
     const accounts = await db
       .select()
       .from(authAccounts)
       .where(eq(authAccounts.userId, input.userId))
       .orderBy(asc(authAccounts.id))
       .for('update');
-    if (accounts.length <= 1) return 'last_method';
+    if (!accounts.some((account) => account.id === input.methodId))
+      return 'not_found';
     const sessionChange = await prepareSessionChange(
       client,
       input.userId,
@@ -245,6 +249,15 @@ export async function unlinkMethodAndRevokeSessions(
       (await isProtectedRecoveryOwner(client, input.userId))
     )
       return 'protected_recovery';
+    if (
+      !(await hasUsableSignInMethod(
+        client,
+        input.userId,
+        accounts.filter((account) => account.id !== input.methodId),
+        input,
+      ))
+    )
+      return 'last_method';
     const removed = await db
       .delete(authAccounts)
       .where(
