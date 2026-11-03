@@ -77,11 +77,17 @@
 
   `/testing` is for tests and never loads from a `src`. Do not add consumer-named
   barrels or expose database or core entry points to the browser.
-- Group files by directory: sub-area first, then role. A folder holds at most
-  ~10 files; no long flat lists.
-- The folder names the area and the file names what it is. File names never
-  repeat their folder. Actions are verbs (`start-run.ts`); storage is noun plus
-  role (`runs.repository.ts`).
+- Follow `docs/naming.md`. Group files by area, then sub-area, then role;
+  keep the web app's documented role directories. About ten direct files
+  prompts a review, not a forced split. Split by a real responsibility, never
+  just to meet a count. Single-file folders need an area, interface or consistent
+  role to name. Prefer at most four directories below `src`; review five or more.
+- Name files for a specific subject and, where useful, their role
+  (`workspace-variables.store.ts`, `connections.repository.ts`). Repeat a
+  directory's subject when it makes the file easier to identify; do not repeat
+  the whole path. Operations use a complete verb and object (`start-run.ts`).
+  Backend database access uses `.repository.ts` for reads and writes; browser
+  query definitions use `.queries.ts`. Keep established entry-point filenames.
 - Validate unknown input once, at the boundary that owns it, and pass typed
   values inward. Don't repeat `typeof` or property-existence checks, and don't
   re-check what a schema, constructor or type already guarantees.
