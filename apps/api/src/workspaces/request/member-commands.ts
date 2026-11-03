@@ -1,6 +1,6 @@
 import type { WorkspaceMemberCommandInput } from '../members/role.js';
 import { projectAuthenticatedWorkspaceContext } from './authenticated-context.js';
-import type { IdentityWorkspaceRequest } from '../types.js';
+import type { IdentityWorkspaceRequest } from '../workspace-transport.js';
 
 type MemberRouteInput<Request> = Readonly<{
   params: Readonly<{ workspaceId: string; userId?: string }>;

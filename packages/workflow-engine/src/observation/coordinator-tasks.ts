@@ -36,7 +36,7 @@ import type {
   PendingTaskOutcome,
   WorkflowCheckpoint,
   WorkflowObservation,
-} from '../types.js';
+} from '../workflow-execution.js';
 
 /** A successful declaration opens a task; it cannot choose a decision path. */
 export function taskDeclarationObservations(

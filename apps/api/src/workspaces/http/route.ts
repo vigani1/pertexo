@@ -28,7 +28,7 @@ import { firstRequestHeader } from '../../platform/http/request-headers.js';
 import { RateLimit } from '../../platform/rate-limit/metadata.js';
 import { AutomationAuthenticationGuard } from '../../authentication/automation/guard.js';
 import { WORKSPACE_AUTHORIZATION } from '../tokens.js';
-import type { IdentityWorkspaceRequest } from '../types.js';
+import type { IdentityWorkspaceRequest } from '../workspace-transport.js';
 import {
   capabilityGuard,
   CsrfProtectionGuard,

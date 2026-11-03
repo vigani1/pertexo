@@ -20,7 +20,7 @@ import type {
   RunStatus,
   SideEffectClass,
   WorkflowCheckpoint,
-} from '../types.js';
+} from '../workflow-execution.js';
 
 export interface RecoveryAttempt {
   readonly id: string;

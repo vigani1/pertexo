@@ -25,13 +25,13 @@ import type {
 import type {
   workspaceInvitationCommandRequestSchema,
   workspaceInvitationCreateRequestSchema,
-} from '../types.js';
+} from '../workspace-transport.js';
 import {
   workspaceInvitationCommandResponseSchema,
   workspaceInvitationsResponseSchema,
   type WorkspaceInvitationCommandResponse,
   type WorkspaceInvitationsResponse,
-} from '../types.js';
+} from '../workspace-transport.js';
 
 const INVITATION_TTL_MILLIS = 7 * 24 * 60 * 60 * 1_000;
 

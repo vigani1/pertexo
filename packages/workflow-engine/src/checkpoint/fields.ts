@@ -12,7 +12,7 @@ import {
   type OutputReference,
   type BranchScopePart,
   type IterationScopePart,
-} from '../types.js';
+} from '../workflow-execution.js';
 
 import { invocationKey } from '../transition/scheduling/loops.js';
 import { compareOrdinal } from '@pertexo/workflow-model';

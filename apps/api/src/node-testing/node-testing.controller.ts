@@ -5,7 +5,7 @@ import {
 } from '@pertexo/contracts/server';
 
 import { projectAuthenticatedWorkspaceContext } from '../workspaces/request/authenticated-context.js';
-import type { IdentityWorkspaceRequest } from '../workspaces/types.js';
+import type { IdentityWorkspaceRequest } from '../workspaces/workspace-transport.js';
 import { In, Route } from '../workspaces/http/route.js';
 import { requestIdempotencyKey } from '../platform/http/index.js';
 import { singleRequestHeader } from '../platform/http/request-headers.js';

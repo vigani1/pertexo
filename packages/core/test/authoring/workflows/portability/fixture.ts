@@ -8,7 +8,7 @@ import { verifyCuratedTemplateManifest } from '@pertexo/templates';
 
 import type { ImportWorkflowInput } from '../../../../src/authoring/workflows/workflow-commands.types.js';
 
-import type { WorkflowAuthoringStoreOptions } from '../../../../src/authoring/workflows/types.js';
+import type { WorkflowAuthoringStoreOptions } from '../../../../src/authoring/workflows/authoring-dependencies.types.js';
 import {
   actorId,
   workspaceId,

@@ -8,7 +8,7 @@ import type {
   WorkflowAuthoringStoreOptions,
   WorkflowExecutableCompiler,
   WorkflowAuthoringGraphValidator,
-} from './types.js';
+} from './authoring-dependencies.types.js';
 
 /** The catalogs and compiler an authoring database works against. */
 export type AuthoringCatalogs = Readonly<{

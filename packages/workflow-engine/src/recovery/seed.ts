@@ -10,7 +10,7 @@ import type {
   InvocationState,
   SideEffectClass,
   WorkflowCheckpoint,
-} from '../types.js';
+} from '../workflow-execution.js';
 import type {
   RecoveryPlan,
   RecoveryRefused,

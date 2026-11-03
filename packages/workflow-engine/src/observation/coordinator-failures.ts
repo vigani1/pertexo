@@ -8,7 +8,7 @@ import type { WorkflowExecutableNode } from '../compilation/foundation.js';
 import { operationError } from '../operation-values.js';
 import type { AttemptFailureObservation } from './persisted.js';
 import { decideRetry, resolveRetryPolicy } from '../attempt/retries.js';
-import type { WorkflowObservation } from '../types.js';
+import type { WorkflowObservation } from '../workflow-execution.js';
 
 interface FailureInvocation {
   readonly attemptNumber: number;

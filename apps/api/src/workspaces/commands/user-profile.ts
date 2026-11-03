@@ -8,13 +8,13 @@ import {
   NOOP_IDENTITY_WORKSPACE_TELEMETRY,
   type IdentityWorkspaceTelemetry,
 } from '../telemetry.js';
-import type { userProfileUpdateRequestSchema } from '../types.js';
+import type { userProfileUpdateRequestSchema } from '../workspace-transport.js';
 import {
   userProfileResponseSchema,
   userProfileUpdateResponseSchema,
   type UserProfileResponse,
   type UserProfileUpdateResponse,
-} from '../types.js';
+} from '../workspace-transport.js';
 
 type ProfilePersistence = Required<
   Pick<IdentityWorkspacePersistence, 'updateUserProfile'>

@@ -7,7 +7,7 @@ import {
   settleJoin,
 } from './scheduling/loops.js';
 import { assertNodeTransition, invocationIdentity } from './status.js';
-import type { InvocationState } from '../types.js';
+import type { InvocationState } from '../workflow-execution.js';
 import {
   assertLoopInvocations,
   schedulerNodeDisabled,

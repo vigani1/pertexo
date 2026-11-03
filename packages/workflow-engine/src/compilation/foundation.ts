@@ -19,7 +19,7 @@ import {
   type WorkflowGraph,
 } from '@pertexo/workflow-model';
 import { WorkflowEngineError } from '../errors.js';
-import type { SideEffectClass } from '../types.js';
+import type { SideEffectClass } from '../workflow-execution.js';
 export { compareOrdinal } from '@pertexo/workflow-model';
 
 export const BASELINE_RUNTIME_POLICIES = Object.freeze({

@@ -21,7 +21,7 @@ import {
   invitationAcceptanceResolveRequestSchema,
   type InvitationAcceptanceJourney,
   type InvitationAcceptanceReceipt,
-} from '../types.js';
+} from '../workspace-transport.js';
 import { journey } from './acceptance/view.js';
 import { parseToken, parseBinding } from './acceptance/proof.js';
 import { parseRequestInput } from '../../platform/http/request-input.js';

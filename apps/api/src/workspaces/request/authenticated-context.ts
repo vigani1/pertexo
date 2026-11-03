@@ -5,7 +5,7 @@ import {
 } from '../../authorization/index.js';
 import { authenticatedSession } from '../http/guards.js';
 import { requestIdentifier, traceIdentifier } from './identifiers.js';
-import type { IdentityWorkspaceRequest } from '../types.js';
+import type { IdentityWorkspaceRequest } from '../workspace-transport.js';
 import { InvalidAuthenticatedWorkspaceContextError } from './authenticated-context-error.js';
 
 export function authenticatedRequestIdentifiers(

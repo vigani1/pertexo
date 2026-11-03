@@ -22,7 +22,10 @@ import {
   SESSION_AUTHORITY,
   SESSION_COOKIE_POLICY,
 } from '../tokens.js';
-import type { CookieResponse, IdentityWorkspaceRequest } from '../types.js';
+import type {
+  CookieResponse,
+  IdentityWorkspaceRequest,
+} from '../workspace-transport.js';
 import { CSRF_COOKIE_NAME, readCookie, SESSION_COOKIE_NAME } from './guards.js';
 
 @UseInterceptors(domainErrors(workspaceFailure))

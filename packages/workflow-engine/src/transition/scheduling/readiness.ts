@@ -12,7 +12,7 @@ import type {
   BranchSelection,
   InvocationState,
   IterationScopePart,
-} from '../../types.js';
+} from '../../workflow-execution.js';
 
 import {
   type SchedulerState,

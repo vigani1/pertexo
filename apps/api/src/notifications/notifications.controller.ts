@@ -16,7 +16,7 @@ import { projectAuthenticatedWorkspaceContext } from '../workspaces/request/auth
 import { authenticatedSession } from '../workspaces/index.js';
 import { In, Route } from '../workspaces/http/route.js';
 import type { WorkspaceAuthorizationSource } from '../workspaces/ports.js';
-import type { IdentityWorkspaceRequest } from '../workspaces/types.js';
+import type { IdentityWorkspaceRequest } from '../workspaces/workspace-transport.js';
 import { ApiDrainState } from '../platform/health/drain-state.js';
 import {
   applicationError,

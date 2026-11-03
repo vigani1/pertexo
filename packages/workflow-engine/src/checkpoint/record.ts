@@ -3,7 +3,7 @@ import type {
   BranchSelection,
   InvocationState,
   WorkflowCheckpoint,
-} from '../types.js';
+} from '../workflow-execution.js';
 import { WorkflowEngineError } from '../errors.js';
 import { compareOrdinal } from '@pertexo/workflow-model';
 import {

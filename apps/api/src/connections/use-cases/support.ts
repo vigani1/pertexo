@@ -20,7 +20,7 @@ import {
   connectionTestResponseSchema,
   type ConnectionResponse,
   type ConnectionTestResponse,
-} from '../types.js';
+} from '../connection-request.js';
 
 export type ConnectionCommandInput = Readonly<{
   actor: ActorContext;

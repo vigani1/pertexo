@@ -26,7 +26,7 @@ import type {
   RunStatus,
   WorkflowCheckpoint,
   WorkflowObservation,
-} from '../types.js';
+} from '../workflow-execution.js';
 
 export interface MutableWorkflowTransition {
   readonly current: WorkflowCheckpoint;

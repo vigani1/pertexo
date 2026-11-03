@@ -3,7 +3,7 @@ import { variableRoutes, type RouteInput } from '@pertexo/contracts/server';
 import { commandCredential } from '../authorization/credentials.js';
 import { projectAuthenticatedWorkspaceContext } from '../workspaces/request/authenticated-context.js';
 import { In, Route } from '../workspaces/http/route.js';
-import type { IdentityWorkspaceRequest } from '../workspaces/types.js';
+import type { IdentityWorkspaceRequest } from '../workspaces/workspace-transport.js';
 import { authenticatedRequestIdentifiers } from '../workspaces/request/authenticated-context.js';
 import { withRequestOperationSignal } from '../platform/http/index.js';
 import type { AbortableRequest } from '../platform/http/request-operation-signal.js';

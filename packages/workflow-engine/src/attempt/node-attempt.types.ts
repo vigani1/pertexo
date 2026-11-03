@@ -11,7 +11,10 @@ import type {
 import type { ExpressionEvaluator } from '@pertexo/workflow-model/server';
 
 import type { CompiledWorkflowExecutable } from '../compilation/foundation.js';
-import type { BranchScopePart, IterationScopePart } from '../types.js';
+import type {
+  BranchScopePart,
+  IterationScopePart,
+} from '../workflow-execution.js';
 
 // What one node attempt takes and gives back, shared by the engine's
 // operations and the input preparation it delegates to.

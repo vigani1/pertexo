@@ -9,6 +9,8 @@ import {
 import {
   assertAuthenticExecutableIdentity,
   executionNodes,
+  type CompiledWorkflowExecutable,
+  type WorkflowExecutableNode,
 } from '../compilation/foundation.js';
 import { assertCheckpointMatchesExecutable } from '../checkpoint/matches-executable.js';
 import {
@@ -17,7 +19,10 @@ import {
   type RetryPolicy,
 } from '../attempt/retries.js';
 import { invocationKey } from '../transition/scheduling/loops.js';
-import type { BranchScopePart, InvocationState } from '../types.js';
+import type {
+  BranchScopePart,
+  InvocationState,
+} from '../workflow-execution.js';
 import type {
   RecoveryAttempt,
   RecoveryCandidate,
@@ -26,11 +31,6 @@ import type {
   RecoveryRefused,
   RecoverySource,
 } from './workflow-recovery.types.js';
-import type {
-  CompiledWorkflowExecutable,
-  WorkflowExecutableNode,
-} from '../compilation/foundation.js';
-
 function completeFailure(
   attempt: RecoveryAttempt,
 ): attempt is RecoveryAttempt & {

@@ -32,7 +32,7 @@ export { RenameWorkspaceUseCase } from './commands/rename.js';
 
 export * from './ports.js';
 export * from './tokens.js';
-export * from './types.js';
+export * from './workspace-transport.js';
 export { requestIdentifier, traceIdentifier } from './request/identifiers.js';
 export { encodeWorkspaceMemberCursor } from './cursor.js';
 export { identityWorkspaceOpenApiDocument } from './contracts.js';

@@ -9,7 +9,10 @@ import {
   type WorkflowObservation,
   type SchedulerGraph,
 } from '../../support/engine.js';
-import type { InvocationState, LoopState } from '../../../src/types.js';
+import type {
+  InvocationState,
+  LoopState,
+} from '../../../src/workflow-execution.js';
 
 const workflowVersionId = '00000000-0000-4000-8000-000000000001';
 const occurredAt = '2026-10-10T12:00:00.000Z';

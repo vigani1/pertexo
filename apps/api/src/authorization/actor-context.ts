@@ -3,7 +3,7 @@ import type {
   ApiTokenActorContext,
   UserActorContext,
   WorkspaceId,
-} from './types.js';
+} from './workspace-authorization.js';
 
 const uuidPattern = new RegExp(UUID_PATTERN.source, 'iu');
 

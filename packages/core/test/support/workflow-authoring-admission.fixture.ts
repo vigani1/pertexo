@@ -15,7 +15,7 @@ import { testExecutableCompiler } from '../../src/authoring/test-executable-comp
 import type {
   WorkflowAuthoringStoreOptions,
   WorkflowAuthoringGraphValidator,
-} from '../../src/authoring/workflows/types.js';
+} from '../../src/authoring/workflows/authoring-dependencies.types.js';
 
 /** Synthetic authoring fixtures explicitly pin the canonical restricted policy.
  * Production derives these references from actual registry manifests instead.

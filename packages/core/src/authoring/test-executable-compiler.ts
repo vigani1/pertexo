@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 
 import { canonicalJson, type WorkflowGraph } from '@pertexo/workflow-model';
 
-import type { WorkflowExecutableCompiler } from './workflows/types.js';
+import type { WorkflowExecutableCompiler } from './workflows/authoring-dependencies.types.js';
 
 const byId = (left: { id: string }, right: { id: string }): number => {
   if (left.id < right.id) {

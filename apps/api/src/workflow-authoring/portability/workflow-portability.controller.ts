@@ -9,7 +9,10 @@ import { withRequestOperationSignal } from '../../platform/http/request-operatio
 import { authoringFailure } from '../../problems/context/normalize.js';
 import { In, Route } from '../../workspaces/http/route.js';
 import { projectAuthenticatedWorkspaceContext } from '../../workspaces/request/authenticated-context.js';
-import type { WorkflowAuthoringRequest, WorkflowResponse } from '../types.js';
+import type {
+  WorkflowAuthoringRequest,
+  WorkflowResponse,
+} from '../workflow-transport.js';
 import {
   ExportWorkflowUseCase,
   ImportWorkflowUseCase,

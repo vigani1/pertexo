@@ -9,7 +9,10 @@ import {
   invocationIdentity,
   resumedInvocation,
 } from './status.js';
-import type { InvocationState, WorkflowObservation } from '../types.js';
+import type {
+  InvocationState,
+  WorkflowObservation,
+} from '../workflow-execution.js';
 import { applyLoopCompletion, applyLoopStart } from './loops.js';
 import {
   declaredJoin,

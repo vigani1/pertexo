@@ -1,5 +1,5 @@
 import { projectAuthenticatedWorkspaceContext } from '../../workspaces/request/authenticated-context.js';
-import type { WorkflowAuthoringRequest } from '../types.js';
+import type { WorkflowAuthoringRequest } from '../workflow-transport.js';
 
 /** Who asks, in which workspace: what every settings use case starts from. */
 export function asker(

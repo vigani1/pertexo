@@ -1,4 +1,4 @@
-import type { IdentityWorkspaceRequest } from '../../workspaces/types.js';
+import type { IdentityWorkspaceRequest } from '../../workspaces/workspace-transport.js';
 import {
   optionalAuthorizedWorkspace,
   projectAuthenticatedWorkspaceContext,

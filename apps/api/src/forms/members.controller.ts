@@ -5,7 +5,7 @@ import {
 } from '@pertexo/contracts/server';
 import { authenticatedSession } from '../workspaces/index.js';
 import { In, Route } from '../workspaces/http/route.js';
-import type { IdentityWorkspaceRequest } from '../workspaces/types.js';
+import type { IdentityWorkspaceRequest } from '../workspaces/workspace-transport.js';
 import { withRequestOperationSignal } from '../platform/http/index.js';
 import type { AbortableRequest } from '../platform/http/request-operation-signal.js';
 import { authenticatedRequestIdentifiers } from '../workspaces/request/authenticated-context.js';

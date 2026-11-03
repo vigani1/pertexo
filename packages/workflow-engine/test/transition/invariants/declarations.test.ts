@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { advanceWorkflow } from '../../support/engine.js';
 import { scopedLoopSinkInvocation } from '../../../src/transition/state.js';
-import type { InvocationState, LoopState } from '../../../src/types.js';
+import type {
+  InvocationState,
+  LoopState,
+} from '../../../src/workflow-execution.js';
 import {
   occurredAt,
   ATTEMPT_ID,

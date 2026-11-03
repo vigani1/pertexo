@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { hasCapability } from '../../src/authorization/policy.js';
-import { ROLES } from '../../src/authorization/types.js';
+import { ROLES } from '../../src/authorization/workspace-authorization.js';
 
 describe('artifact workspace capability policy', () => {
   it.each(ROLES)(

@@ -18,7 +18,7 @@ import {
   type WorkflowValidateResponse,
   type WorkflowVersionResponse,
   type WorkflowVersionsResponse,
-} from '../types.js';
+} from '../workflow-transport.js';
 import { parseWorkflowGraphDraft } from '../graph.js';
 import type { validateWorkflowGraph } from '../graph.js';
 import { AuthoringValidationUnavailableError } from '@pertexo/workflow-model/server';

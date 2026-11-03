@@ -12,7 +12,10 @@ import {
   NOOP_WORKFLOW_AUTHORING_TELEMETRY,
   type WorkflowAuthoringTelemetry,
 } from './telemetry.js';
-import type { WorkflowSummary, WorkflowVersionsResponse } from './types.js';
+import type {
+  WorkflowSummary,
+  WorkflowVersionsResponse,
+} from './workflow-transport.js';
 import type { WorkflowApplicationInput } from './ports.js';
 import type { WorkflowDraftRecord } from '@pertexo/core/authoring';
 import { WorkflowNotFoundError } from '@pertexo/core/authoring';

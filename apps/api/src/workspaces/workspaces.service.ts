@@ -20,7 +20,7 @@ import {
   type WorkspaceMembersResponse,
   type WorkspaceLifecycleChangeResponse,
   type WorkspaceResponse,
-} from './types.js';
+} from './workspace-transport.js';
 import {
   decodeWorkspaceMemberCursor,
   encodeWorkspaceMemberCursor,

@@ -9,7 +9,7 @@ import type {
   DisclosurePolicy,
   WorkspaceAccess,
   WorkspaceStatus,
-} from './types.js';
+} from './workspace-authorization.js';
 import { hasCapability } from './policy.js';
 
 export type AuthorizationErrorCode =

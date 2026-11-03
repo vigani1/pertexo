@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import { parseRequestId } from '../../platform/http/index.js';
 import { firstRequestHeader } from '../../platform/http/request-headers.js';
-import type { IdentityWorkspaceRequest } from '../types.js';
+import type { IdentityWorkspaceRequest } from '../workspace-transport.js';
 
 const traceparentPattern = /^00-([0-9a-f]{32})-([0-9a-f]{16})-[0-9a-f]{2}$/iu;
 

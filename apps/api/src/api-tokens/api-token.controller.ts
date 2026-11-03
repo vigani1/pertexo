@@ -19,7 +19,7 @@ import type { IdentitySessionAuthority } from '../workspaces/ports.js';
 import type {
   IdentityWorkspaceRequest,
   CookieResponse,
-} from '../workspaces/types.js';
+} from '../workspaces/workspace-transport.js';
 import {
   authenticatedSession,
   requireSignInEvidence,

@@ -4,7 +4,7 @@ import type {
   InvocationState,
   NodeStatus,
   RunStatus,
-} from '../types.js';
+} from '../workflow-execution.js';
 
 const RUN_TRANSITIONS: Readonly<Record<RunStatus, readonly RunStatus[]>> = {
   queued: ['running', 'canceled', 'timed_out'],

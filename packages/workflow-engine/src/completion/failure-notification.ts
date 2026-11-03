@@ -1,4 +1,4 @@
-import type { WorkflowCheckpoint } from '../types.js';
+import type { WorkflowCheckpoint } from '../workflow-execution.js';
 
 /** A failure its handler took care of didn't fail the run, so it explains nothing. */
 export function wasHandled(

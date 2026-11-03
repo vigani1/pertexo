@@ -1,5 +1,5 @@
 import { projectAuthenticatedWorkspaceContext } from '../workspaces/request/authenticated-context.js';
-import type { IdentityWorkspaceRequest } from '../workspaces/types.js';
+import type { IdentityWorkspaceRequest } from '../workspaces/workspace-transport.js';
 import type { AbortableRequest } from '../platform/http/request-operation-signal.js';
 
 export type DraftRequest = IdentityWorkspaceRequest & AbortableRequest;

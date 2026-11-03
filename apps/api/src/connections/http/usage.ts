@@ -6,7 +6,7 @@ import {
 
 import { In, Route } from '../../workspaces/http/route.js';
 import { ListConnectionUsageUseCase } from '../use-cases/usage.js';
-import type { ConnectionRequest } from '../types.js';
+import type { ConnectionRequest } from '../connection-request.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
 import { connectionFailure } from '../../problems/context/normalize.js';
 import { context } from './connections.controller.js';

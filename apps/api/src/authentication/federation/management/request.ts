@@ -3,7 +3,7 @@ import {
   type AbortableRequest,
 } from '../../../platform/http/request-operation-signal.js';
 import { authenticatedSession } from '../../../workspaces/index.js';
-import type { IdentityWorkspaceRequest } from '../../../workspaces/types.js';
+import type { IdentityWorkspaceRequest } from '../../../workspaces/workspace-transport.js';
 
 export type FederationManagementRequest = IdentityWorkspaceRequest &
   AbortableRequest;

@@ -6,7 +6,7 @@ import {
   WorkspaceManageGuard,
   type IdentitySessionAuthority,
 } from '../../../src/workspaces/index.js';
-import type { IdentityWorkspaceRequest } from '../../../src/workspaces/types.js';
+import type { IdentityWorkspaceRequest } from '../../../src/workspaces/workspace-transport.js';
 
 import {
   ProblemDetailsFilter,

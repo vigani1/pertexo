@@ -14,7 +14,7 @@ import { boundedNotePosition } from '../../../model/notes/commands';
 import { NoteForm } from './form';
 import { noteKeyDown } from './keyboard';
 import { useNoteActions } from './use-actions';
-import { noteElementId, type NoteFlowNode } from './types';
+import { noteElementId, type NoteFlowNode } from './canvas-note-identity';
 
 const NoteMarkdown = lazyPiece(() =>
   import('./markdown').then((module) => module.NoteMarkdown),

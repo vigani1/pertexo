@@ -4,7 +4,7 @@ import {
   type WorkflowGraph,
   type WorkflowNode,
 } from '@pertexo/workflow-model';
-import type { PortableCatalog } from '../workflows/types.js';
+import type { PortableCatalog } from '../workflows/authoring-dependencies.types.js';
 
 /**
  * Settings a run could only refuse. Without this they publish cleanly and every

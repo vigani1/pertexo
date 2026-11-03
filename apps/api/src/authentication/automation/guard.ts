@@ -17,7 +17,7 @@ import {
   requestIdentifier,
   traceIdentifier,
 } from '../../workspaces/request/identifiers.js';
-import type { IdentityWorkspaceRequest } from '../../workspaces/types.js';
+import type { IdentityWorkspaceRequest } from '../../workspaces/workspace-transport.js';
 import { hasAuthorizationHeader } from './headers.js';
 import type { AuthorizationHeaderSource } from './headers.js';
 import { ApiTokenAuthentication } from './authority.js';

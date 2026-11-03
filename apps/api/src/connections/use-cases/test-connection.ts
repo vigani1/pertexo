@@ -32,8 +32,8 @@ import {
   NOOP_CONNECTION_TELEMETRY,
   type ConnectionTelemetry,
 } from '../telemetry.js';
-import type { connectionTestRequestSchema as requestSchema } from '../types.js';
-import type { ConnectionTestResponse } from '../types.js';
+import type { connectionTestRequestSchema as requestSchema } from '../connection-request.js';
+import type { ConnectionTestResponse } from '../connection-request.js';
 import { decodeCredential } from './testing/credentials.js';
 import {
   slackTestOutcome,

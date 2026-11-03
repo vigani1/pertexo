@@ -1,5 +1,5 @@
 import type { VerifiedApiToken } from '@pertexo/core/tenant-access';
-import type { ApiTokenActorContext } from '../authorization/types.js';
+import type { ApiTokenActorContext } from '../authorization/workspace-authorization.js';
 export {
   accessibleWorkspacesResponseSchema,
   accountSecurityLinkStartRequestSchema,

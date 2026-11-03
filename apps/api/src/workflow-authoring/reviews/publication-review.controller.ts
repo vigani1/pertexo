@@ -11,7 +11,7 @@ import {
   singleRequestHeader,
 } from '../../platform/http/request-headers.js';
 import { projectAuthenticatedWorkspaceContext } from '../../workspaces/request/authenticated-context.js';
-import type { WorkflowAuthoringRequest } from '../types.js';
+import type { WorkflowAuthoringRequest } from '../workflow-transport.js';
 import { PublicationReviewUseCase } from './publication-review.service.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
 import { authoringFailure } from '../../problems/context/normalize.js';

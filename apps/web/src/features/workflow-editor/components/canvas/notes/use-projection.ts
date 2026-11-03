@@ -10,7 +10,7 @@ import {
   noteFlowId,
   type CanvasFlowNode,
   type NoteFlowNode,
-} from './types';
+} from './canvas-note-identity';
 
 type Point = Readonly<{ x: number; y: number }>;
 type Size = Readonly<{ width: number; height: number }>;

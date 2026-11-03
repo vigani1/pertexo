@@ -4,7 +4,7 @@ import type {
   WorkflowCheckpoint,
   WorkflowObservation,
   WorkflowTransitionPlan,
-} from '../types.js';
+} from '../workflow-execution.js';
 import { deriveWorkflowTransitions } from './derived.js';
 import { applyWorkflowObservations } from './observations.js';
 import { buildWorkflowTransitionPlan } from './plan.js';

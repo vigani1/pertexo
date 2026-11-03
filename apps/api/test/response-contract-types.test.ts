@@ -19,8 +19,8 @@ import type {
 import type {
   AuthenticatedRequestSession,
   IdentityWorkspaceRequest,
-} from '../src/workspaces/types.js';
-import type { WorkflowAuthoringRequest } from '../src/workflow-authoring/types.js';
+} from '../src/workspaces/workspace-transport.js';
+import type { WorkflowAuthoringRequest } from '../src/workflow-authoring/workflow-transport.js';
 import type { WorkflowRunsRequest } from '../src/workflow-runs/http/request-context.js';
 import type { AbortableRequest } from '../src/platform/http/request-operation-signal.js';
 
