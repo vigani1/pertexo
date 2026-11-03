@@ -13,7 +13,7 @@ import {
   formatMonthYear,
   weekdayNames,
 } from '@/lib/format/time';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/class-names';
 import { Button } from './button';
 import {
   dateOf,

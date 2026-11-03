@@ -8,7 +8,7 @@ import { ChoiceCards } from '@/components/patterns/choice-cards';
 import { StatusGlyph } from '@/components/ui/status';
 import { TimedOutGlyph } from '@/features/catalog/presentation.public';
 import { formatTimeSpan } from '@/lib/format/time';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/class-names';
 import type { GraphLevel, WorkflowNode } from '../../../model/graph/scopes';
 import type { NodeFormApi } from '../../../model/inspector/node-form';
 import { DurationField } from '../fields/duration';

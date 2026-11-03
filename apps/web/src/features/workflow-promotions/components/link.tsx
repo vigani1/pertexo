@@ -1,7 +1,7 @@
 import type { WorkflowPromotionSettings } from '@pertexo/contracts';
 import { ArrowRightIcon } from 'lucide-react';
 import { formatInitials } from '@/lib/format/initials';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/class-names';
 
 /**
  * The promotion link as a picture: this workspace, a thread, and the one it

@@ -3,7 +3,7 @@ import { Notice } from '@/components/ui/notice';
 import { Button } from '@/components/ui/button';
 import { StatusGlyph } from '@/components/ui/status';
 import { statusToneText } from '@/components/ui/status-tone';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/class-names';
 import { describeRunEvent } from '../../model/timeline/event-copy';
 
 /**

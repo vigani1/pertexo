@@ -1,4 +1,4 @@
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/class-names';
 
 /** The notice's own link: its whole row opens it; bold while unread. */
 export function noticeLinkClass({

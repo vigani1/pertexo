@@ -1,5 +1,5 @@
 import { useId, type ReactNode } from 'react';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/class-names';
 
 /**
  * A titled band of a settings page: the heading and a sentence on the left,

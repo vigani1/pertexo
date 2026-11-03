@@ -4,7 +4,7 @@ import {
   WORKSPACE_VARIABLE_LIMITS,
 } from '@pertexo/workflow-model';
 import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/class-names';
 import { VariableSaveFeedback } from './feedback';
 import { VariableColumns } from './columns';
 import { VariableRow } from './row';

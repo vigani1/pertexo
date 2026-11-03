@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import { formatByteLength } from '@/lib/format/bytes';
 import { SlotWheel, StorageArc } from './capacity-loom';
 import { FORMAT_LOCALE } from '@/lib/format/locale';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/class-names';
 
 const policyLabels: Readonly<
   Record<UsageCapacityResponse['execution']['policy']['state'], string>

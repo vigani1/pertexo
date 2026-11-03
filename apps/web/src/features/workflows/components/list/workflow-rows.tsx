@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import { LoadMore } from '@/components/patterns/lists/load-more';
 import { Skeleton, SkeletonThread } from '@/components/ui/skeleton';
 import type { ApiClient } from '@/lib/api/client';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/class-names';
 import { PatternGlyphPlaceholder } from '../pattern-glyph';
 import { WORKFLOW_ROW_COLUMNS, WorkflowRow } from './workflow-row';
 import type { WorkflowRowActions } from './workflow-row-actions';

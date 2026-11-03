@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/class-names';
 
 /** What the meter says: the rule, how far there is to go, or that it's met. */
 function meterText(length: number, minimumLength: number): string {

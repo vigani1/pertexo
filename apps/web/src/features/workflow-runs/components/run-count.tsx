@@ -1,4 +1,4 @@
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/class-names';
 import { Status, type StatusTone } from '@/components/ui/status';
 import type { RunStatistics } from '../data/statistics.queries';
 import { FORMAT_LOCALE } from '@/lib/format/locale';

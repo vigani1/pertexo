@@ -1,4 +1,4 @@
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/class-names';
 
 /** "Pertexo." with the lavender dot. */
 export function Wordmark({ className }: Readonly<{ className?: string }>) {

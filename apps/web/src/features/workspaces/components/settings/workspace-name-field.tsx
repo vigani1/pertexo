@@ -4,7 +4,7 @@ import { InlineRename } from '@/components/patterns/actions/rename/inline';
 import { useNotifications } from '@/components/ui/use-notifications';
 import type { ApiClient } from '@/lib/api/client';
 import { newCommandKey } from '@/lib/api/commands/command-retry';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/class-names';
 import { useWorkspaceRename } from '../../data/mutations/use-workspace-rename';
 
 function nameError(name: string): string | undefined {

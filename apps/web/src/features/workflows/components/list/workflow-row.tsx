@@ -20,7 +20,7 @@ import { SkeletonThread } from '@/components/ui/skeleton';
 import { Status } from '@/components/ui/status';
 import type { ApiClient } from '@/lib/api/client';
 import { formatDateTime, formatRelativeTime } from '@/lib/format/time';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/class-names';
 import { canRunWorkflow, describeWorkflowState } from '../../model/state';
 import {
   describeWorkflowPath,

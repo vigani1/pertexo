@@ -1,5 +1,5 @@
 import { CURATED_WORKFLOW_TEMPLATES } from '@pertexo/templates';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/class-names';
 import { PatternGlyph } from '../pattern-glyph';
 
 const CARD =

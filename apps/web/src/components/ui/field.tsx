@@ -1,5 +1,5 @@
 import type { ComponentProps, ReactNode } from 'react';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/class-names';
 
 // The small, presentational subset of the shadcn Field composition. The
 // caller owns validation and explicit control/description/error IDs, or uses

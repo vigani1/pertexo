@@ -5,7 +5,7 @@ import { CURATED_WORKFLOW_TEMPLATES } from '@pertexo/templates';
 import { Button } from '@/components/ui/button';
 import { authoringCatalogQueryOptions } from '@/features/catalog/queries.public';
 import type { ApiClient } from '@/lib/api/client';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/class-names';
 import {
   templateUnavailableReasons,
   type CuratedTemplate,

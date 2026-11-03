@@ -10,7 +10,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from '@/components/ui/sheet';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/class-names';
 import {
   settingsGroups,
   type SettingsDestination,

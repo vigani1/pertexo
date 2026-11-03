@@ -12,7 +12,7 @@ import {
   type WorkflowGraph,
   type ValueSource,
 } from '../../graph/workflow-graph.schemas.js';
-import { validateWorkflowGraph } from '../../graph/validation/index.js';
+import { validateWorkflowGraph } from '../../graph/validation/validate-workflow-graph.js';
 import type {
   GraphValidationIssue,
   GraphValidationResult,

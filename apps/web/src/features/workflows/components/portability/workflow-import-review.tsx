@@ -1,6 +1,6 @@
 import { connectionFitsSlot } from '@pertexo/workflow-model';
 import { connectionSlotKey, portableSteps } from '../../model/portability';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/class-names';
 import { useQuery } from '@tanstack/react-query';
 import type {
   AccessibleWorkspace,

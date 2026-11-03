@@ -1,7 +1,7 @@
 import { GetObjectCommand, type S3Client } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { z } from 'zod';
-import type { ArtifactStoreConfig } from './config/index.js';
+import type { ArtifactStoreConfig } from './config/artifact-store.config.js';
 import {
   artifactIdentitySchema,
   artifactStorageKey,

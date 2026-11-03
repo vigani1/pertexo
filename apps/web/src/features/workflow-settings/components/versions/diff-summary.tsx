@@ -1,5 +1,5 @@
 import type { WorkflowVersionResponse } from '@pertexo/contracts';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/class-names';
 import {
   diffWorkflowGraphs,
   isEmptyDiff,

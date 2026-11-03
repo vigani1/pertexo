@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/class-names';
 
 export type FileFormat = 'json' | 'csv' | 'xlsx' | 'text';
 

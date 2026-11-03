@@ -7,7 +7,7 @@ import {
   type StepOutputSample,
 } from '@/features/workflow-publish/step-samples.public';
 import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/class-names';
 import { StepTestOutputsContext } from '../../../../hooks/use-last-test';
 import { findDefinition, stepTitle } from '../../../../model/graph/adapter';
 import type { WorkflowNode } from '../../../../model/graph/scopes';

@@ -6,7 +6,7 @@ import {
   localUtcOffset,
 } from '@/lib/format/time';
 import { useNow } from '@/lib/hooks/use-now';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/class-names';
 import { Button } from './button';
 import { Calendar } from './calendar';
 import {

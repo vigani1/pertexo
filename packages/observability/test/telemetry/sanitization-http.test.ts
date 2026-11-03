@@ -25,7 +25,7 @@ import {
 } from '@opentelemetry/api';
 import { HttpInstrumentation } from '@opentelemetry/instrumentation-http';
 import { UndiciInstrumentation } from '@opentelemetry/instrumentation-undici';
-import { createNodeInstrumentations } from '../../src/telemetry/index.js';
+import { createNodeInstrumentations } from '../../src/telemetry/telemetry.runtime.js';
 
 describe('HTTP telemetry URL privacy', () => {
   it('sanitizes exceptions and status messages through the configured HTTP hook', () => {

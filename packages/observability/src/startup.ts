@@ -16,7 +16,7 @@ export {
   type TelemetryLifecycle,
   type TelemetrySdk,
   type TelemetrySdkFactory,
-} from './telemetry/index.js';
+} from './telemetry/telemetry.runtime.js';
 export {
   databaseClientEnvironmentSchema,
   clientDatabaseConfig,

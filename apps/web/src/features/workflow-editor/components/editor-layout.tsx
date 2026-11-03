@@ -1,7 +1,7 @@
 import { LayersIcon, PlusIcon, SlidersHorizontalIcon } from 'lucide-react';
 import type { CSSProperties, ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/class-names';
 import { CANVAS_COVER_ATTRIBUTE } from '../model/canvas/framing';
 import type { MobilePanel } from '../hooks/use-inspector-navigation';
 

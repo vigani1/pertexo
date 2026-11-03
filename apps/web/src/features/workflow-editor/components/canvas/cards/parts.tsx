@@ -17,7 +17,7 @@ import {
 import { TIMED_OUT_PORT } from '@pertexo/workflow-model';
 import { sampleStateLabel } from '@/features/workflow-publish/step-samples.public';
 import { formatByteLength } from '@/lib/format/bytes';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/class-names';
 import type { WorkflowFlowNode } from '../../../model/graph/adapter';
 import { portName } from '@/features/catalog/presentation.public';
 import { portLinkLabel } from '../../../model/step-card';

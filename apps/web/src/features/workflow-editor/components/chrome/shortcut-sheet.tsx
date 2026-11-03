@@ -9,7 +9,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { shortcutKeys } from '@/lib/shortcut-keys';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/class-names';
 
 const shortcuts: readonly Readonly<{
   keys: readonly string[];

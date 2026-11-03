@@ -2,7 +2,7 @@ import { RotateCcwIcon, XIcon } from 'lucide-react';
 import type { Ref } from 'react';
 import { Button } from '@/components/ui/button';
 import { formatByteLength } from '@/lib/format/bytes';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/class-names';
 import { fileGroupOf } from '../../model/files';
 import { phaseLabel, type UploadRow } from '../../model/uploads';
 import { FileGroupGlyph } from './glyph';

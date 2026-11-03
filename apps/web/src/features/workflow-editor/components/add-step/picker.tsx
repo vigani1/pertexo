@@ -1,7 +1,7 @@
 import type { NodeDefinitionCatalogItem } from '@pertexo/contracts';
 import { SearchIcon } from 'lucide-react';
 import { useId, type ReactNode, type Ref } from 'react';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/class-names';
 import { groupStepChoices, type StepChoice } from '../../model/step-catalog';
 import { AddStepBundle } from './bundle';
 import { AddStepItem } from './item';

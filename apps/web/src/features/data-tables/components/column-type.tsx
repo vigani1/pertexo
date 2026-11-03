@@ -1,6 +1,6 @@
 import type { DataTableColumn } from '@pertexo/node-sdk';
 import { KeyRoundIcon } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/class-names';
 import { COLUMN_TYPES } from '../model/column-types';
 
 /** A column as a chip: its type's mark, its name, a key if it is one. */

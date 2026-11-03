@@ -10,7 +10,7 @@ import {
 } from '../../model/list/runs';
 import { isActiveRunStatus } from '../../model/presentation/run-status';
 import { useNow } from '@/lib/hooks/use-now';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/class-names';
 import { admissionBlockerWords } from '../../model/presentation/admission';
 import { RunRow } from './row';
 import { RUN_ROW_LAYOUT, type RunListVariant } from './row-layout';

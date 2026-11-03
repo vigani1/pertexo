@@ -1,6 +1,6 @@
 import { formatShortTime } from '@/lib/format/time';
 import { useOnlineStatus } from '@/lib/hooks/use-online-status';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/class-names';
 import type { EditorState } from '../../model/state/workflow-editor.store';
 import { useEditorStore } from '../../model/state/context';
 

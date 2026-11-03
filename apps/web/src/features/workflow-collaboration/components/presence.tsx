@@ -11,7 +11,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { COLLABORATION_LIMITS } from '@pertexo/contracts';
 import { Notice } from '@/components/ui/notice';
 import { formatInitials } from '@/lib/format/initials';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/class-names';
 import { Status } from '@/components/ui/status';
 import {
   heartbeatPresence,

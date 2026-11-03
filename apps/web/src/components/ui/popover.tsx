@@ -1,5 +1,5 @@
 import { Popover as PopoverPrimitive } from '@base-ui/react/popover';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/class-names';
 import { popupSurface } from './popup-surface';
 
 export const Popover = PopoverPrimitive.Root;

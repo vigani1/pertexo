@@ -7,7 +7,7 @@ import { QuickAddLens } from './add-step/quick-lens';
 import { SelectionToolbar } from './canvas/selection-toolbar';
 import { StartPicker } from './canvas/start-picker';
 import { ValidationSweep } from './canvas/validation-sweep';
-import { WorkflowCanvas } from './canvas/index';
+import { WorkflowCanvas } from './canvas/workflow-canvas';
 import type { useCanvasEditing } from './workspace-canvas';
 
 type CanvasEditing = ReturnType<typeof useCanvasEditing>;

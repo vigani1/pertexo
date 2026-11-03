@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { statusToneText } from '@/components/ui/status-tone';
 import { formatDateTime, formatRelativeTime } from '@/lib/format/time';
 import { useNow } from '@/lib/hooks/use-now';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/class-names';
 import { SCOPE_COPY, TOKEN_STATUS } from '../model/copy';
 
 /**

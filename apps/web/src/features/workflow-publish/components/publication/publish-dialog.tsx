@@ -21,7 +21,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Status, type StatusTone } from '@/components/ui/status';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/class-names';
 import type { PublishSummary } from '../../model/publication/summary';
 import type { WorkflowIssueGroup } from '../../model/validation/issues';
 import type { WorkflowValidationTarget } from '../../model/validation/target';

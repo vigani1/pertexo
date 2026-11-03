@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import { buttonVariants } from '@/components/ui/button-variants';
 import { LoadingOrb } from '@/components/ui/loading-orb';
 import { StatusGlyph } from '@/components/ui/status';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/class-names';
 import type { IssuesState } from '../../model/validation/issues-state';
 import type { EmptyDraftHint } from '../../model/publication/readiness';
 import { countIssues } from '../../model/validation/issues';

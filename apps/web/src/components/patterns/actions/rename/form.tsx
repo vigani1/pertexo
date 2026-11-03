@@ -1,7 +1,7 @@
 import { useId } from 'react';
 import { LabelledField } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/class-names';
 import type { RenameFormProps } from './inline-rename.types';
 import { useRenameDraft } from './use-draft';
 import { RenameOutcome, SaveActions } from './outcome';

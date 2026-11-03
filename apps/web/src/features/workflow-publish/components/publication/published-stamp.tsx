@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { buttonVariants } from '@/components/ui/button-variants';
 import { Status } from '@/components/ui/status';
 import { usePrefersReducedMotion } from '@/lib/hooks/use-prefers-reduced-motion';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/class-names';
 
 /** How long the canvas weave-in takes before the stamp presses in. */
 const WEAVE_IN_MS = 1_450;

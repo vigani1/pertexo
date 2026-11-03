@@ -14,7 +14,7 @@ import { Status, StatusGlyph } from '@/components/ui/status';
 import { ArtifactDownload, FilePages } from '@/features/artifacts/public';
 import { shortStepError } from '@/features/workflow-runs/failure.public';
 import type { ApiClient } from '@/lib/api/client';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/class-names';
 import {
   describePreviewStatus,
   canOfferStepTest,

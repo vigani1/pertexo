@@ -1,5 +1,5 @@
 import type { ComponentProps, CSSProperties } from 'react';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/class-names';
 
 /**
  * A resting placeholder block. Pages compose these into their own shape.

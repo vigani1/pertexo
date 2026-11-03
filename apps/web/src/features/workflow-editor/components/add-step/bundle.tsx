@@ -1,7 +1,7 @@
 import { ChevronDownIcon } from 'lucide-react';
 import { useId, useState } from 'react';
 import { StepTile } from '@/features/catalog/presentation.public';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/class-names';
 import type { StepChoice, StepChoiceBundle } from '../../model/step-catalog';
 import { AddStepItem, StepRowText, stepRowClass } from './item';
 

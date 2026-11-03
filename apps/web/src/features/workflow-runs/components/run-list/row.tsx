@@ -4,7 +4,7 @@ import type {
 } from '@pertexo/contracts';
 import { Link } from '@tanstack/react-router';
 import { Status } from '@/components/ui/status';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/class-names';
 import type { ApiClient } from '@/lib/api/client';
 import {
   formatDateTime,

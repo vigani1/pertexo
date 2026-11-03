@@ -9,7 +9,7 @@ import { SkeletonRows } from '@/components/ui/skeleton';
 import { StatusGlyph } from '@/components/ui/status';
 import type { ApiClient } from '@/lib/api/client';
 import { formatDurationMs, formatRelativeTime } from '@/lib/format/time';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/class-names';
 import { describeNodeStatus } from '../../model/presentation/run-status';
 import { stepHealthQueryOptions } from '../../data/detail.queries';
 

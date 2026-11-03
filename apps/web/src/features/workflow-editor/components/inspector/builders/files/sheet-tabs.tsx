@@ -1,7 +1,7 @@
 import { sheetNameSchema } from '@pertexo/node-sdk';
 import { PlusIcon } from 'lucide-react';
 import { FieldError } from '@/components/ui/field';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/class-names';
 import type { FieldParseResult } from '../../../../model/inspector/draft';
 import type { NodeFormApi } from '../../../../model/inspector/node-form';
 import { useInspectorDraftField } from '../../use-draft-field';

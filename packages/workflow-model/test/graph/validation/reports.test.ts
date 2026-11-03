@@ -5,7 +5,7 @@ import {
 } from '../../../src/authoring/validation/contracts.js';
 
 import { parseWorkflowGraphDraft } from '../../../src/graph/validation/preflight.js';
-import { validateWorkflowGraph } from '../../../src/graph/validation/index.js';
+import { validateWorkflowGraph } from '../../../src/graph/validation/validate-workflow-graph.js';
 import * as policy from '../../../src/values/expressions/policy.js';
 import { validateAuthoringBatch } from '../../../src/authoring/validation/graph.js';
 import {

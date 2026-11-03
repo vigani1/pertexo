@@ -6,7 +6,7 @@ import { useState } from 'react';
 import { Link } from '@tanstack/react-router';
 import { Button } from '@/components/ui/button';
 import { statusToneText } from '@/components/ui/status-tone';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/class-names';
 import { Status } from '@/components/ui/status';
 import {
   describeRunStatus,

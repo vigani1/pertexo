@@ -9,7 +9,7 @@ import {
   METRIC_EXPORT_TIMEOUT_MILLISECONDS,
   type TelemetrySdk,
   type TelemetrySdkFactory,
-} from '../../src/telemetry/index.js';
+} from '../../src/telemetry/telemetry.runtime.js';
 
 function disabledConfig() {
   return parseObservabilityConfig({

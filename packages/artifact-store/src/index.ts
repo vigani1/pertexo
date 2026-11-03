@@ -1,5 +1,5 @@
-export { parseArtifactStoreConfig } from './config/index.js';
-export type { ArtifactStoreConfig } from './config/index.js';
+export { parseArtifactStoreConfig } from './config/artifact-store.config.js';
+export type { ArtifactStoreConfig } from './config/artifact-store.config.js';
 export {
   ArtifactIntegrityError,
   ArtifactNotFoundError,

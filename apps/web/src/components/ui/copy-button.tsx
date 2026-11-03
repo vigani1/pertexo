@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { CheckIcon, CopyIcon, CopyXIcon } from 'lucide-react';
 import { copyText } from '@/lib/clipboard';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/class-names';
 import { useNotifications } from './use-notifications';
 import { Button } from './button';
 

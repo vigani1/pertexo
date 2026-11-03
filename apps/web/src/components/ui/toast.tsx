@@ -1,7 +1,7 @@
 import type { CSSProperties, ReactNode } from 'react';
 import { Toast } from '@base-ui/react/toast';
 import { XIcon } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/class-names';
 import { buttonVariants } from './button-variants';
 import { StatusGlyph, type StatusTone } from './status';
 import { LoadingOrb } from './loading-orb';

@@ -1,5 +1,5 @@
 import { useId, type ReactNode } from 'react';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/class-names';
 
 export type CardChoice<Value extends string> = Readonly<{
   value: Value;

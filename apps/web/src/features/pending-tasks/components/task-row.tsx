@@ -9,7 +9,7 @@ import {
   formatRelativeTime,
 } from '@/lib/format/time';
 import { TimedOutGlyph } from '@/features/catalog/presentation.public';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/class-names';
 import type { TaskScope } from '../data/tasks.api';
 import {
   blockedLabel,

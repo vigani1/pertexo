@@ -3,7 +3,7 @@ import type { ComponentProps } from 'react';
 import { Dialog as SheetPrimitive } from '@base-ui/react/dialog';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { XIcon } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/class-names';
 import { buttonVariants } from './button-variants';
 
 export const Sheet = SheetPrimitive.Root;

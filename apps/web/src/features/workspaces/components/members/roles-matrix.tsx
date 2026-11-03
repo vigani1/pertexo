@@ -1,6 +1,6 @@
 import { Fragment } from 'react';
 import { SettingsSection } from '@/components/patterns/settings/section';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/class-names';
 import {
   ROLE_MATRIX,
   ROLE_NAMES,
