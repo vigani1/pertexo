@@ -1,140 +1,100 @@
-import {
-  Body,
-  Inject,
-  Controller,
-  Get,
-  Header,
-  HttpCode,
-  Param,
-  Post,
-  Put,
-  Query,
-  Req,
-  Res,
-  UseGuards,
-  UseInterceptors,
-} from '@nestjs/common';
+import { Inject, Controller, Req, Res, UseInterceptors } from '@nestjs/common';
 import type { FastifyRequest, FastifyReply } from 'fastify';
+import { auditFilterSchema } from '@pertexo/contracts';
 import {
-  auditFilterSchema,
-  auditQuerySchema,
-  governanceUpdateSchema,
-  workspaceIdentifierSchema,
-} from '@pertexo/contracts';
+  governanceRoutes as routes,
+  type RouteInput,
+} from '@pertexo/contracts/server';
+import type { GovernanceStore } from '@pertexo/core/governance';
 import {
-  SessionAuthenticationGuard,
   CsrfProtectionGuard,
   authenticatedSession,
 } from '../workspaces/index.js';
+import { In, Route } from '../workspaces/http/route.js';
 import type { IdentityWorkspaceRequest } from '../workspaces/types.js';
-import {
-  requestIdempotencyKey,
-  withRequestOperationSignal,
-} from '../platform/http/index.js';
+import { withRequestOperationSignal } from '../platform/http/index.js';
 import type { AbortableRequest } from '../platform/http/request-operation-signal.js';
 import { CsvExportAdmission } from '../platform/http/csv/admission.js';
 import { decodeCsvDownloadRequest } from '../platform/http/csv/request.js';
 import { sendCsvDownload } from '../platform/http/csv/response.js';
-import { RateLimit } from '../platform/rate-limit/metadata.js';
-import { GovernanceManageGuard, GovernanceGuard } from './guard.js';
-import type { GovernanceStore } from '@pertexo/core/governance';
 import { GOVERNANCE_STORE } from './tokens.js';
 import { domainErrors } from '../platform/http/problems/interceptor.js';
 import { resourceFailure } from '../problems/context/normalize.js';
 
 type Request = IdentityWorkspaceRequest & AbortableRequest;
+
 @UseInterceptors(domainErrors(resourceFailure))
-@Controller('v1/workspaces/:workspaceId/governance')
-@UseGuards(SessionAuthenticationGuard)
-@RateLimit('authenticated_read')
+@Controller()
 export class GovernanceController {
   constructor(
     @Inject(GOVERNANCE_STORE) private readonly governance: GovernanceStore,
     private readonly exports: CsvExportAdmission,
     private readonly csrf: CsrfProtectionGuard,
   ) {}
-  private scope(request: Request, workspace: unknown) {
-    return {
-      workspaceId: workspaceIdentifierSchema.parse(workspace),
-      actorId: authenticatedSession(request).userId,
-    };
-  }
-  @Get('audit')
-  @UseGuards(GovernanceGuard)
-  @Header('Cache-Control', 'private, no-store')
+
+  @Route(routes.audit)
   list(
     @Req() request: Request,
-    @Param('workspaceId') workspace: unknown,
-    @Query() raw: unknown,
+    @In() { params, query }: RouteInput<typeof routes.audit>,
   ) {
-    const query = auditQuerySchema.parse(raw);
     return withRequestOperationSignal(request, (signal) =>
-      this.governance.list({
-        ...this.scope(request, workspace),
-        query,
-        signal,
-      }),
+      this.governance.list({ ...scope(request, params), query, signal }),
     );
   }
-  @Get('settings')
-  @UseGuards(GovernanceGuard)
-  @Header('Cache-Control', 'private, no-store')
-  settings(@Req() request: Request, @Param('workspaceId') workspace: unknown) {
+
+  @Route(routes.settings)
+  settings(
+    @Req() request: Request,
+    @In() { params }: RouteInput<typeof routes.settings>,
+  ) {
     return withRequestOperationSignal(request, (signal) =>
-      this.governance.settings({
-        ...this.scope(request, workspace),
-        signal,
-      }),
+      this.governance.settings({ ...scope(request, params), signal }),
     );
   }
-  @Put('settings')
-  @UseGuards(GovernanceManageGuard, CsrfProtectionGuard)
-  @RateLimit('ordinary_mutation')
-  @Header('Cache-Control', 'private, no-store')
+
+  @Route(routes.configure)
   configure(
     @Req() request: Request,
-    @Param('workspaceId') workspace: unknown,
-    @Body() raw: unknown,
+    @In() { params, body, idempotencyKey }: RouteInput<typeof routes.configure>,
   ) {
-    const input = governanceUpdateSchema.parse(raw);
     return withRequestOperationSignal(request, (signal) =>
       this.governance.configure({
-        ...this.scope(request, workspace),
-        ...input,
-        idempotencyKey: requestIdempotencyKey(request.headers),
+        ...scope(request, params),
+        ...body,
+        idempotencyKey,
         signal,
       }),
     );
   }
-  @Post('audit/export')
-  @UseGuards(GovernanceGuard)
-  @HttpCode(200)
-  @RateLimit('data_table_export')
+
+  /** A native form can't set a header, so its CSRF token comes in the body. */
+  @Route(routes.export)
   async exportCsv(
     @Req() request: Request & FastifyRequest,
     @Res() reply: FastifyReply,
-    @Param('workspaceId') workspace: unknown,
-    @Body() raw: unknown,
+    @In() { params }: RouteInput<typeof routes.export>,
   ) {
     const { query, csrfToken } = decodeCsvDownloadRequest(
-      raw,
+      request.body,
       request.headers['content-type'],
       (value) => auditFilterSchema.parse(value),
     );
     this.csrf.assertRequestAllowed(request, csrfToken);
-    const scope = this.scope(request, workspace);
-    await this.exports.run(scope.workspaceId, () =>
+    const owner = scope(request, params);
+    await this.exports.run(owner.workspaceId, () =>
       sendCsvDownload(
         (signal, consume) =>
-          this.governance.exportCsv({
-            ...scope,
-            query,
-            signal,
-            consume,
-          }),
+          this.governance.exportCsv({ ...owner, query, signal, consume }),
         request,
         reply,
       ),
     );
   }
+}
+
+function scope(
+  request: Request,
+  { workspaceId }: Readonly<{ workspaceId: string }>,
+) {
+  return { workspaceId, actorId: authenticatedSession(request).userId };
 }
