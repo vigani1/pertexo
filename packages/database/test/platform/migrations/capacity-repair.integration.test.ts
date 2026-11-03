@@ -35,7 +35,10 @@ it.each([
         );
         const rows = async () =>
           (
-            await admin.query<{ versions: Record<string, unknown>[]; capacity: Record<string, unknown> }>(
+            await admin.query<{
+              versions: Record<string, unknown>[];
+              capacity: Record<string, unknown>;
+            }>(
               `select
         (select jsonb_agg(to_jsonb(v) order by version) from app.workspace_execution_entitlement_versions v where workspace_id=$1) versions,
         (select to_jsonb(c) - 'updated_at' from app.workspace_artifact_capacity c where workspace_id=$1) capacity`,
