@@ -40,6 +40,11 @@ const validBusinessConflicts = new Set<string>([
   'workflow.name_conflict',
   'artifact.conflict',
   'workspace.conflict',
+  'data_table.conflict',
+  'data_table.key_conflict',
+  'data_table.quota_exceeded',
+  'export.already_running',
+  'webhook.setting_up',
 ]);
 const correctnessFailures = new Set<string>([
   'run.outcome_unknown',

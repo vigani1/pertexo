@@ -14,7 +14,7 @@ export const dataTableProblems = [
 
 const TABLE_PROBLEMS = new Map<DataTableError['code'], ApiProblemCode>([
   ['not_found', 'resource.not_found'],
-  ['conflict', 'workspace.conflict'],
-  ['key_conflict', 'workspace.conflict'],
-  ['quota_exceeded', 'workspace.conflict'],
+  ['conflict', 'data_table.conflict'],
+  ['key_conflict', 'data_table.key_conflict'],
+  ['quota_exceeded', 'data_table.quota_exceeded'],
 ]);

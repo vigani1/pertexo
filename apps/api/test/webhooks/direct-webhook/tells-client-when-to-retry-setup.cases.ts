@@ -41,7 +41,7 @@ export function registerTellsClientWhenToRetrySetup(): void {
     const settingUp = await provision();
     expect(settingUp.statusCode, settingUp.body).toBe(409);
     expect(settingUp.headers['retry-after']).toBe('5');
-    expect(settingUp.json()).toMatchObject({ code: 'workspace.conflict' });
+    expect(settingUp.json()).toMatchObject({ code: 'webhook.setting_up' });
     expect(apiProblemSchema.safeParse(settingUp.json()).success).toBe(true);
   });
 }
