@@ -28,6 +28,9 @@ describeIntegration('For Each cancellation recovery', () => {
   beforeAll(async () => {
     requireCurrentWorkerBuild(
       fileURLToPath(new URL('../../../tsconfig.json', import.meta.url)),
+      fileURLToPath(
+        new URL('./for-each-worker-process.fixture.mjs', import.meta.url),
+      ),
     );
     await setup();
   }, 60_000);
