@@ -1,8 +1,8 @@
 import { useQueries } from '@tanstack/react-query';
 import type { ApiClient } from '@/lib/api/client';
 import { ApiError } from '@/lib/api/error';
-import { getWorkflowOrganizationProjection } from '../../data/organization/api';
-import { workflowOrganizationKeys } from '../../data/organization/queries';
+import { getWorkflowOrganizationProjection } from '../../data/organization/workflow-organization.api';
+import { workflowOrganizationKeys } from '../../data/organization/workflow-organization.queries';
 
 /** Presentation-only labels for explicit assignments, never projection authority. */
 export function useOrganizationWorkflowNames({

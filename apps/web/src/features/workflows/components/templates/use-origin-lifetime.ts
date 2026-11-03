@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { subscribeSessionChanges } from '@/features/auth/session/sync.public';
 import { watchWorkspaceReadDenial } from '@/lib/api/read-denial';
-import { workflowTemplateOriginKey } from '../../data/origin/queries';
+import { workflowTemplateOriginKey } from '../../data/origin/workflow-template-origin.queries';
 import { workflowKeys } from '../../data/workflows.queries';
 
 /** One historical projection belongs to one identity/workspace/workflow lifetime.

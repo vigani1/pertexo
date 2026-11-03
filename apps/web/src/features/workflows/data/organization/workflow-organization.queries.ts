@@ -19,7 +19,7 @@ import {
   getWorkflowTagsPage,
   getWorkflowTagAssignmentsPage,
   getWorkflowFolders,
-} from './api';
+} from './workflow-organization.api';
 
 export const workflowOrganizationKeys = {
   scope: (userId: string, workspaceId: string) =>

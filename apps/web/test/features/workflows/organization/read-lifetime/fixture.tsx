@@ -1,4 +1,4 @@
-import { workflowOrganizationKeys } from '@/features/workflows/data/organization/queries';
+import { workflowOrganizationKeys } from '@/features/workflows/data/organization/workflow-organization.queries';
 import { ApiError } from '@/lib/api/error';
 import { workflowSummarySchema } from '@pertexo/contracts';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';

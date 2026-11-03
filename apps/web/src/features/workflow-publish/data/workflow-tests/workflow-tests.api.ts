@@ -6,7 +6,7 @@ import {
   workflowTestListSchema,
   type WorkflowTestStartRequest,
 } from '@pertexo/contracts';
-import type { SampleScope } from '../samples/api';
+import type { SampleScope } from '../samples/step-samples.api';
 export type WorkflowTestScope = SampleScope;
 function path(scope: WorkflowTestScope): `/v1${string}` {
   return `/v1/workspaces/${encodeURIComponent(scope.workspaceId)}/workflows/${encodeURIComponent(scope.workflowId)}/draft/tests`;

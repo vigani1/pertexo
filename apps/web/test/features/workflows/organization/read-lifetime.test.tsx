@@ -7,9 +7,9 @@ import {
   getWorkflowOrganizationPage,
   getWorkflowTagsPage,
   sendWorkflowOrganizationCommand,
-} from '@/features/workflows/data/organization/api';
+} from '@/features/workflows/data/organization/workflow-organization.api';
 
-import { workflowOrganizationKeys } from '@/features/workflows/data/organization/queries';
+import { workflowOrganizationKeys } from '@/features/workflows/data/organization/workflow-organization.queries';
 
 import { useOrganizationList } from '@/features/workflows/hooks/use-organization-list';
 
@@ -49,13 +49,16 @@ import {
 } from './read-lifetime/fixture';
 import { apiClient, folderId, tagId, workspace } from './read-lifetime/records';
 
-vi.mock('@/features/workflows/data/organization/api', async (original) => ({
-  ...(await original<object>()),
-  getWorkflowOrganizationPage: vi.fn(),
-  getWorkflowFolders: vi.fn(),
-  getWorkflowTagsPage: vi.fn(),
-  sendWorkflowOrganizationCommand: vi.fn(),
-}));
+vi.mock(
+  '@/features/workflows/data/organization/workflow-organization.api',
+  async (original) => ({
+    ...(await original<object>()),
+    getWorkflowOrganizationPage: vi.fn(),
+    getWorkflowFolders: vi.fn(),
+    getWorkflowTagsPage: vi.fn(),
+    sendWorkflowOrganizationCommand: vi.fn(),
+  }),
+);
 
 vi.mock('@/features/auth/session/identity.public', async (original) => ({
   ...(await original<object>()),

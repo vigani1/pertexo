@@ -7,7 +7,7 @@ import {
   workflowTestCancelResponseSchema,
   type WorkflowTestSuiteStartRequest,
 } from '@pertexo/contracts';
-import type { WorkflowTestScope } from '../workflow-tests/api';
+import type { WorkflowTestScope } from '../workflow-tests/workflow-tests.api';
 function path(scope: WorkflowTestScope): `/v1${string}` {
   return `/v1/workspaces/${encodeURIComponent(scope.workspaceId)}/workflows/${encodeURIComponent(scope.workflowId)}/draft/test-suites`;
 }

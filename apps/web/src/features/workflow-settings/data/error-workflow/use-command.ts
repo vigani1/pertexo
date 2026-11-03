@@ -11,8 +11,8 @@ import type { WorkflowErrorSettingsRequest } from '@pertexo/contracts';
 import type { ApiClient } from '@/lib/api/client';
 import { isApiError } from '@/lib/api/error';
 import { describeCommandError } from '@/lib/api/error-copy';
-import { putErrorWorkflow } from './api';
-import { errorWorkflowKey } from './queries';
+import { putErrorWorkflow } from './error-workflow.api';
+import { errorWorkflowKey } from './error-workflow.queries';
 
 export function useErrorWorkflowCommand(
   apiClient: ApiClient,

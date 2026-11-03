@@ -11,9 +11,9 @@ import { useQueryClient } from '@tanstack/react-query';
 import { describeCommandError } from '@/lib/api/error-copy';
 import type { ApiClient } from '@/lib/api/client';
 import { isApiError } from '@/lib/api/error';
-import { importWorkflow } from './api';
+import { importWorkflow } from './workflow-portability.api';
 import { workflowKeys } from '../workflows.queries';
-import { workflowOrganizationKeys } from '../organization/queries';
+import { workflowOrganizationKeys } from '../organization/workflow-organization.queries';
 import type { usePortabilityLifetime } from '../../components/portability/use-lifetime';
 
 type Attempt = CommandKey & {

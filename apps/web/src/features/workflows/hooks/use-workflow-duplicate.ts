@@ -23,7 +23,7 @@ import {
   type WorkflowDuplicateAttempt,
 } from '../data/workflows.api';
 import { workflowKeys } from '../data/workflows.queries';
-import { workflowOrganizationKeys } from '../data/organization/queries';
+import { workflowOrganizationKeys } from '../data/organization/workflow-organization.queries';
 import {
   duplicateFailureState,
   type DuplicatePhase,

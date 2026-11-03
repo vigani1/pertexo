@@ -5,7 +5,7 @@ import type { ApiClient } from '@/lib/api/client';
 import { useNotifications } from '@/components/ui/use-notifications';
 import { useWorkflowOrganizationCommand } from '../../../hooks/use-workflow-organization-command';
 import { useAudienceMove } from '../../../hooks/use-audience-move';
-import { workflowOrganizationKeys } from '../../../data/organization/queries';
+import { workflowOrganizationKeys } from '../../../data/organization/workflow-organization.queries';
 import type { FolderAction } from './shelf';
 import {
   FolderDeleteDialog,

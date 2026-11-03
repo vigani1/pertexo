@@ -1,9 +1,9 @@
 import { QueryView } from '@/components/patterns/states/query-view';
 import { useQuery } from '@tanstack/react-query';
 import { Notice } from '@/components/ui/notice';
-import type { WorkflowTestScope } from '../../data/workflow-tests/api';
-import type { listSuites } from '../../data/test-suites/api';
-import { suitesQueryOptions } from '../../data/test-suites/queries';
+import type { WorkflowTestScope } from '../../data/workflow-tests/workflow-tests.api';
+import type { listSuites } from '../../data/test-suites/workflow-test-suites.api';
+import { suitesQueryOptions } from '../../data/test-suites/workflow-test-suites.queries';
 
 type SuiteList = Awaited<ReturnType<typeof listSuites>>;
 export function SuitePublishNotice({

@@ -5,7 +5,7 @@ import type {
   StepSampleMetadata,
   StepSampleListResponse,
 } from '@pertexo/contracts';
-import type { SampleScope } from '../../data/samples/api';
+import type { SampleScope } from '../../data/samples/step-samples.api';
 import { SampleControls } from './controls';
 export function SampleAvailability({
   query,

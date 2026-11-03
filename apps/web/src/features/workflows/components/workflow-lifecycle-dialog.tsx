@@ -5,7 +5,7 @@ import { QueryView } from '@/components/patterns/states/query-view';
 import type { WorkflowSummary } from '@pertexo/contracts';
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 import { Notice } from '@/components/ui/notice';
-import { pinnedParentsQueryOptions } from '../data/pins/queries';
+import { pinnedParentsQueryOptions } from '../data/pins/pinned-parents.queries';
 import {
   ConfirmDialog,
   ConfirmationFooter,

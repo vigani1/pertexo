@@ -4,7 +4,7 @@ import {
   getWorkflowOrganizationPage,
   getWorkflowTagsPage,
   sendWorkflowOrganizationCommand,
-} from '@/features/workflows/data/organization/api';
+} from '@/features/workflows/data/organization/workflow-organization.api';
 import { getAllAccessibleWorkspaces } from '@/features/workspaces/queries.public';
 import { vi } from 'vitest';
 import { user } from '../../list/fixtures';

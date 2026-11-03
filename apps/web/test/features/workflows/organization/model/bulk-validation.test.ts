@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { sendWorkflowOrganizationCommand } from '../../../../../src/features/workflows/data/organization/api';
+import { sendWorkflowOrganizationCommand } from '../../../../../src/features/workflows/data/organization/workflow-organization.api';
 
 import {
   freezeWorkflowOrganizationAttempt,

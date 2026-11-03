@@ -1,7 +1,7 @@
 import { infiniteQueryOptions, queryOptions } from '@tanstack/react-query';
 import type { ApiClient } from '@/lib/api/client';
 import { isApiError } from '@/lib/api/error';
-import { getErrorWorkflow, getErrorTargets } from './api';
+import { getErrorWorkflow, getErrorTargets } from './error-workflow.api';
 
 export const errorWorkflowKey = (
   userId: string,

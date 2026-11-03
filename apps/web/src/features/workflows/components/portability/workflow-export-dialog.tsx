@@ -24,7 +24,7 @@ import type { ApiClient } from '@/lib/api/client';
 import {
   exportWorkflow,
   readWorkflowExportSource,
-} from '../../data/portability/api';
+} from '../../data/portability/workflow-portability.api';
 import { downloadPortableWorkflow } from '../../model/portability';
 import { usePortabilityLifetime } from './use-lifetime';
 import { PortableGraphReview } from './portable-graph-review';

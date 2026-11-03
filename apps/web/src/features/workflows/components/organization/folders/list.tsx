@@ -5,7 +5,7 @@ import type { AccessibleWorkspace } from '@pertexo/contracts';
 import type { ApiClient } from '@/lib/api/client';
 import { FolderShelf, type FolderAction } from './shelf';
 import { FolderActionDialog } from './actions';
-import { workflowFoldersQueryOptions } from '../../../data/organization/queries';
+import { workflowFoldersQueryOptions } from '../../../data/organization/workflow-organization.queries';
 import {
   isOrganizationReadDenied,
   useOrganizationReadLifetime,

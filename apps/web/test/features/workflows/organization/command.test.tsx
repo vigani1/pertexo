@@ -1,5 +1,5 @@
 import { currentUserQueryKey } from '@/features/auth/data/auth.queries';
-import { workflowOrganizationKeys } from '@/features/workflows/data/organization/queries';
+import { workflowOrganizationKeys } from '@/features/workflows/data/organization/workflow-organization.queries';
 import { workflowKeys } from '@/features/workflows/data/workflows.queries';
 import { ApiError } from '@/lib/api/error';
 import { act, waitFor } from '@testing-library/react';

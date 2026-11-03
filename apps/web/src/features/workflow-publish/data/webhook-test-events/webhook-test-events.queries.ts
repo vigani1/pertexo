@@ -1,6 +1,6 @@
 import { queryOptions } from '@tanstack/react-query';
-import type { SampleScope } from '../samples/api';
-import { readWebhookTest } from './api';
+import type { SampleScope } from '../samples/step-samples.api';
+import { readWebhookTest } from './webhook-test-events.api';
 export function webhookTestQuery(
   scope: SampleScope,
   nodeId: string,

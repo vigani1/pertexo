@@ -20,8 +20,8 @@ import {
   freezeWorkflowOrganizationAttempt,
   type WorkflowOrganizationAttempt,
 } from '../model/organization/requests';
-import { sendWorkflowOrganizationCommand } from '../data/organization/api';
-import { workflowOrganizationKeys } from '../data/organization/queries';
+import { sendWorkflowOrganizationCommand } from '../data/organization/workflow-organization.api';
+import { workflowOrganizationKeys } from '../data/organization/workflow-organization.queries';
 import { workflowKeys } from '../data/workflows.queries';
 import type { RequiredRole } from '../data/organization/authority';
 import { allowed } from '../data/organization/authority';

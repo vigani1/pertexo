@@ -11,10 +11,14 @@ import { useRetainedCommand } from '@/lib/api/commands/use-retained';
 import { describeCommandError } from '@/lib/api/error-copy';
 import { isApiError, UserFacingError } from '@/lib/api/error';
 import { commandErrorMessage } from '../data/mutations/command-utils';
-import type { WorkflowTestScope } from '../data/workflow-tests/api';
-import { workflowTestsKey } from '../data/workflow-tests/queries';
-import { prepareSuite, startSuite, cancelSuite } from '../data/test-suites/api';
-import { suitesKey } from '../data/test-suites/queries';
+import type { WorkflowTestScope } from '../data/workflow-tests/workflow-tests.api';
+import { workflowTestsKey } from '../data/workflow-tests/workflow-tests.queries';
+import {
+  prepareSuite,
+  startSuite,
+  cancelSuite,
+} from '../data/test-suites/workflow-test-suites.api';
+import { suitesKey } from '../data/test-suites/workflow-test-suites.queries';
 export function useTestSuites({
   scope,
   enabled,

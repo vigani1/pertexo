@@ -1,6 +1,6 @@
 import { infiniteQueryOptions } from '@tanstack/react-query';
 import type { ApiClient } from '@/lib/api/client';
-import { listInputCases } from './api';
+import { listInputCases } from './workflow-input-cases.api';
 import { workflowKeys } from '../workflows.queries';
 
 export const inputCasesKey = (

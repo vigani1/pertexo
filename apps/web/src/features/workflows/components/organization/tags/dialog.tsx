@@ -8,7 +8,7 @@ import { LoadMore } from '@/components/patterns/lists/load-more';
 import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/ui/notice';
 import { QueryView } from '@/components/patterns/states/query-view';
-import { workflowTagsInfiniteQueryOptions } from '../../../data/organization/queries';
+import { workflowTagsInfiniteQueryOptions } from '../../../data/organization/workflow-organization.queries';
 import {
   freezeWorkflowOrganizationAttempt,
   type WorkflowOrganizationAttempt,

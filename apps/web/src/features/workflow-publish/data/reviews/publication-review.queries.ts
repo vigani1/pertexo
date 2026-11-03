@@ -3,7 +3,7 @@ import {
   readPublicationReview,
   readReviewOverview,
   type ReviewScope,
-} from './api';
+} from './publication-review.api';
 export const publicationReviewKeys = {
   scope: (scope: ReviewScope) =>
     [

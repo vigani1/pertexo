@@ -25,7 +25,7 @@ import {
 } from './workflows.api';
 import type { LifecycleAction } from '../model/lifecycle';
 import { workflowKeys } from './workflows.queries';
-import { workflowOrganizationKeys } from './organization/queries';
+import { workflowOrganizationKeys } from './organization/workflow-organization.queries';
 
 export function useCreateWorkflow(
   apiClient: ApiClient,

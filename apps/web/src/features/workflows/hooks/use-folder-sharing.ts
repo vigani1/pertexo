@@ -5,7 +5,7 @@ import {
   readFolderSharing,
   replaceFolderSharing,
 } from '../data/organization/sharing.api';
-import { workflowOrganizationKeys } from '../data/organization/queries';
+import { workflowOrganizationKeys } from '../data/organization/workflow-organization.queries';
 export function useFolderSharingEditor(
   scope: WorkspaceApiScope,
   folderId: string | undefined,

@@ -6,12 +6,12 @@ import {
   getWorkflowFolders,
   getWorkflowOrganizationPage,
   sendWorkflowOrganizationCommand,
-} from '../../../../src/features/workflows/data/organization/api';
+} from '../../../../src/features/workflows/data/organization/workflow-organization.api';
 
 import {
   workflowFoldersQueryOptions,
   workflowOrganizationKeys,
-} from '../../../../src/features/workflows/data/organization/queries';
+} from '../../../../src/features/workflows/data/organization/workflow-organization.queries';
 
 import {
   freezeWorkflowOrganizationAttempt,
