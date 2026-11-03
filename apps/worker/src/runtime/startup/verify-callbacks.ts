@@ -3,7 +3,7 @@ import {
   createCallbackTokenKeys,
   verifyCallbackTokenKeys,
   type CallbackTokenKeys,
-} from '@pertexo/integrations/server';
+} from '@pertexo/secrets/server';
 import type { WorkerConfig } from '../../config/worker.js';
 export async function verifyWorkerCallbacks(
   config: Pick<WorkerConfig, 'database' | 'callbacks'>,

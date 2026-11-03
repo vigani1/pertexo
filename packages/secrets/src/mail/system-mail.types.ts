@@ -2,12 +2,8 @@ import type { SystemMailPurpose } from '@pertexo/database/schema';
 
 export type { SystemMailPurpose };
 
-export type SealedSystemMailPayload = Readonly<{
-  ciphertext: string;
-  nonce: string;
-  tag: string;
-  keyVersion: string;
-}>;
+import type { ApplicationSealedSecret } from '../encryption/application-secret-envelope.js';
+export type SealedSystemMailPayload = ApplicationSealedSecret;
 
 export type SystemMailInput = Readonly<{
   id: string;

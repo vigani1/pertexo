@@ -13,7 +13,7 @@ import {
   createNoticeMailStore,
   createWorkspaceInboxFoldStore,
 } from '@pertexo/core/inbox';
-import { createApplicationSecretEnvelope } from '@pertexo/integrations/server';
+import { createApplicationSecretEnvelope } from '@pertexo/secrets/server';
 import { RedisWorkspaceInboxHintPublisher } from '@pertexo/queue';
 import type {
   StructuredLogger,

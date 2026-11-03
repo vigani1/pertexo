@@ -2,7 +2,7 @@ import { beforeEach, expect, it, vi } from 'vitest';
 import {
   createCallbackTokenKeys,
   callbackTokenHash,
-} from '@pertexo/integrations/server';
+} from '@pertexo/secrets/server';
 import type { CallbackStore } from '@pertexo/core/runs';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
 import { createApiCallbackRuntime } from '../../../src/platform/webhooks/callback-runtime.module.js';

@@ -3,7 +3,7 @@ import type {
   DatabaseConfig,
   DatabaseRuntime,
 } from '@pertexo/database/platform';
-import { createApplicationSecretEnvelope } from '@pertexo/integrations/server';
+import { createApplicationSecretEnvelope } from '@pertexo/secrets/server';
 
 import {
   DurableAuthenticationMail,

@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { createApplicationSecretEnvelope } from '../../src/security/application-secret-envelope.js';
+import { createApplicationSecretEnvelope } from '@pertexo/secrets/server';
 import {
   sealNoticeUnsubscribe,
   openNoticeUnsubscribe,
-} from '../../src/system-mail/unsubscribe.js';
+} from '../../src/inbox/notice-unsubscribe.js';
 const envelope = createApplicationSecretEnvelope({
   current: { version: 'v1', key: Buffer.alloc(32, 1).toString('base64') },
 });

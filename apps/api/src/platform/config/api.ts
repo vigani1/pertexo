@@ -6,17 +6,19 @@ import {
 import {
   parseCallbackKeyConfig,
   type CallbackKeyConfig,
-} from '@pertexo/integrations/server';
+} from '@pertexo/secrets/server';
 import { parseCodeSettings, type CodeSettings } from '@pertexo/node-sdk';
 import { DEFAULT_INSTANCE_LIMITS } from '@pertexo/core/runs';
 import type { InstanceCapacity } from '@pertexo/database/platform';
 import { isIP } from 'node:net';
 import {
   parseAllowedPrivateNetworks,
-  parseConnectionEncryptionConfig,
   type AllowedPrivateNetwork,
-  type SelfManagedConnectionEncryptionConfig,
 } from '@pertexo/integrations/server';
+import {
+  parseConnectionEncryptionConfig,
+  type SelfManagedConnectionEncryptionConfig,
+} from '@pertexo/secrets/server';
 
 import { z } from 'zod';
 import {

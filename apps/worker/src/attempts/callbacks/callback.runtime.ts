@@ -3,7 +3,7 @@ import { CallbackCapacityError, type CallbackStore } from '@pertexo/core/runs';
 import {
   callbackTokenHash,
   type CallbackTokenKeys,
-} from '@pertexo/integrations/server';
+} from '@pertexo/secrets/server';
 import {
   NodeExecutorFailure,
   type NodeCallbackRuntime,

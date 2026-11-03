@@ -14,7 +14,7 @@ import { Pool } from 'pg';
 import {
   ConnectionEnvelopeEncryption,
   type ConnectionSecretContext,
-} from '@pertexo/integrations/server';
+} from '@pertexo/secrets/server';
 import { createEditorBrowserEnvelopeKeys } from '../../../../../../infrastructure/testing/editor-browser-envelope-keys.mjs';
 import { createCuratedTemplateEnvelopeContext } from '../../../../../../infrastructure/testing/curated-template-envelope-context.mjs';
 import { createEditorWebhookRuntime } from '../webhook-runtime.js';

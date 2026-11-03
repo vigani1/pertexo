@@ -25,7 +25,7 @@ import type {
 import {
   createApplicationSecretEnvelope,
   type ApplicationSecretEnvelope,
-} from '@pertexo/integrations/server';
+} from '@pertexo/secrets/server';
 
 import {
   BetterAuthSessionService,

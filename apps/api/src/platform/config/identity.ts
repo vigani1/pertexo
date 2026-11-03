@@ -1,4 +1,4 @@
-import { parseApplicationPreviousKeys } from '@pertexo/integrations/server';
+import { parseApplicationPreviousKeys } from '@pertexo/secrets/server';
 import { z } from 'zod';
 
 import {

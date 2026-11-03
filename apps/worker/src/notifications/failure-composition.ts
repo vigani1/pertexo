@@ -1,6 +1,6 @@
 import { createFailureNotificationStore } from '@pertexo/core/notifications';
+import { createConnectionEnvelopeEncryption } from '@pertexo/secrets/server';
 import {
-  createConnectionEnvelopeEncryption,
   createNodeSecureHttpClient,
   createResendClient,
   createSlackClient,

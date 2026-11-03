@@ -8,7 +8,7 @@ import type {
   SealedSystemMailPayload,
   SystemMailPurpose,
 } from '@pertexo/secrets/server';
-import type { ApplicationSecretEnvelope } from '@pertexo/integrations/server';
+import type { ApplicationSecretEnvelope } from '@pertexo/secrets/server';
 
 export type PreparedAuthenticationProofMail = Readonly<{
   id: string;

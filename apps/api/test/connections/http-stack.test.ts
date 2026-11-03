@@ -28,8 +28,8 @@ import {
 import { createTestApiApplication } from '../support/api-application.js';
 import { connectionResponseSchema } from '@pertexo/contracts';
 import { FailureNotificationDestinationError } from '@pertexo/core/notifications';
+import { ConnectionSecretEncryptionError } from '@pertexo/secrets/server';
 import {
-  ConnectionSecretEncryptionError,
   SECURE_HTTP_ERROR_CODE,
   SecureHttpError,
 } from '@pertexo/integrations/server';

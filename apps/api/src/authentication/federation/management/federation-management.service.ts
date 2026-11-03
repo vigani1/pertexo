@@ -1,6 +1,6 @@
 import { createHmac } from 'node:crypto';
 import { Resolver } from 'node:dns/promises';
-import type { ApplicationSecretEnvelope } from '@pertexo/integrations/server';
+import type { ApplicationSecretEnvelope } from '@pertexo/secrets/server';
 import {
   FederationConflictError,
   type FederationManagementStore,

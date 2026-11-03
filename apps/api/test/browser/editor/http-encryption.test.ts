@@ -5,7 +5,7 @@ import {
   WebhookTriggerEnvelopeEncryption,
   type ConnectionSecretContext,
   type WebhookTriggerSecretContext,
-} from '@pertexo/integrations/server';
+} from '@pertexo/secrets/server';
 import { createEditorBrowserEnvelopeKeys } from '../../../../../infrastructure/testing/editor-browser-envelope-keys.mjs';
 
 describe('actual owned connection and webhook envelope interfaces', () => {

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
+import { ConnectionSecretEncryptionError } from '@pertexo/secrets/server';
 import {
-  ConnectionSecretEncryptionError,
   SECURE_HTTP_ERROR_CODE,
   SecureHttpError,
   type ResendClient,

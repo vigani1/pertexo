@@ -13,10 +13,8 @@ import type {
 } from '@pertexo/core/inbox';
 import { WorkspaceAccessDeniedError } from '@pertexo/core/tenant-access';
 
-import {
-  openNoticeUnsubscribe,
-  type ApplicationSecretEnvelope,
-} from '@pertexo/integrations/server';
+import { openNoticeUnsubscribe } from '@pertexo/core/inbox';
+import { type ApplicationSecretEnvelope } from '@pertexo/secrets/server';
 import {
   applicationError,
   throwApplicationError,

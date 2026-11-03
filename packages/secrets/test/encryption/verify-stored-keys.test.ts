@@ -1,14 +1,12 @@
+import type { StoredEncryptionKey } from '../../src/encryption/stored-encryption-key.types.js';
 import { Readable } from 'node:stream';
 import { finished } from 'node:stream/promises';
 import { randomUUID } from 'node:crypto';
 import { describe, expect, it, vi } from 'vitest';
-import { createConnectionEnvelopeEncryption } from '../../src/credentials/connection-encryption.runtime.js';
-import { createWebhookTriggerEnvelopeEncryption } from '../../src/webhooks/crypto.js';
-import { SelfManagedEnvelopeKeyProvider } from '../../src/credentials/self-managed-key-provider.js';
-import {
-  verifyStoredEncryptionKeys,
-  type StoredEncryptionKey,
-} from '../../src/credentials/verify-stored-keys.js';
+import { createConnectionEnvelopeEncryption } from '../../src/encryption/connection-encryption.runtime.js';
+import { createWebhookTriggerEnvelopeEncryption } from '../../src/encryption/webhook-envelope.js';
+import { SelfManagedEnvelopeKeyProvider } from '../../src/encryption/self-managed-key-provider.js';
+import { verifyStoredEncryptionKeys } from '../../src/encryption/verify-stored-keys.js';
 
 const key = Buffer.alloc(32, 7).toString('base64');
 const nextKey = Buffer.alloc(32, 8).toString('base64');

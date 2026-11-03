@@ -89,9 +89,6 @@ const INVALID = Object.freeze({
   retryAfterSeconds: DEFAULT_BLOCK_SECONDS,
 });
 
-/** A renewal with nothing to send: the same row as an answer Pertexo can't use. */
-export const UNUSABLE_TOKEN_ANSWER: OAuth2TokenAnswer = INVALID;
-
 /** RFC 6749 §2.3.1: both parts are form-encoded before Base64, so `+` and `/` survive. */
 function basicCredentials(clientId: string, clientSecret: string): string {
   const encode = (value: string): string =>

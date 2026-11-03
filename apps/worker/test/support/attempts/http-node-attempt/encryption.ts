@@ -1,10 +1,10 @@
 import { randomBytes } from 'node:crypto';
 
-import type { ConnectionEnvelopeEncryption } from '@pertexo/integrations/server';
+import type { ConnectionEnvelopeEncryption } from '@pertexo/secrets/server';
 import type {
   ConnectionSecretContext,
   EnvelopeKeyProvider,
-} from '@pertexo/integrations/server';
+} from '@pertexo/secrets/server';
 
 export class ContextKeyProvider implements EnvelopeKeyProvider {
   private readonly key = randomBytes(32);

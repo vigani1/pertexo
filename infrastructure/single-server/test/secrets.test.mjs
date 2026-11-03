@@ -9,7 +9,7 @@ import {
   parseMigrationConfig,
   parseOperatorDatabaseConfig,
 } from '../../../packages/database/dist/config.js';
-import { createApplicationSecretEnvelope } from '../../../packages/integrations/dist/server.js';
+import { createApplicationSecretEnvelope } from '../../../packages/secrets/dist/server.js';
 
 function generated(mode = 'kms') {
   return parseEnv(

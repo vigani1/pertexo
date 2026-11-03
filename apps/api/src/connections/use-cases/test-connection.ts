@@ -2,8 +2,8 @@ import type { FailureNotificationDestinationResponse } from '@pertexo/contracts'
 import { randomUUID } from 'node:crypto';
 import { CONNECTION_AUTH_TYPE } from '@pertexo/core/connections';
 import type { ConnectionTestOutcome } from '@pertexo/core/connections';
+import { ConnectionSecretEncryptionError } from '@pertexo/secrets/server';
 import {
-  ConnectionSecretEncryptionError,
   SECURE_HTTP_ERROR_CODE,
   SecureHttpError,
 } from '@pertexo/integrations/server';

@@ -1,4 +1,4 @@
-import { createCallbackTokenKeys } from '@pertexo/integrations/server';
+import { createCallbackTokenKeys } from '@pertexo/secrets/server';
 
 import { randomUUID } from 'node:crypto';
 

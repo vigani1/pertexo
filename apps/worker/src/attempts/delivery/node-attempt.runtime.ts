@@ -1,4 +1,4 @@
-import type { CallbackKeyConfig } from '@pertexo/integrations/server';
+import type { CallbackKeyConfig } from '@pertexo/secrets/server';
 import type { WorkerCodeRunnerConfig } from '../code/client.js';
 import { createNodeAttemptRunStore } from '@pertexo/core/attempts';
 import {
@@ -28,9 +28,9 @@ import {
 } from '@pertexo/workflow-engine';
 import {
   createNodeSecureHttpClient,
-  type ConnectionEnvelopeEncryptionConfig,
   type SecureHttpAddressPolicy,
 } from '@pertexo/integrations/server';
+import { type ConnectionEnvelopeEncryptionConfig } from '@pertexo/secrets/server';
 import { JsonataEvaluator } from '@pertexo/workflow-model/server';
 import {
   createNodeAttemptExecutionEngine,

@@ -2,10 +2,8 @@ import {
   ConnectionUnavailableError,
   type ResolvedConnectionSecretRecord,
 } from '@pertexo/core/connections';
-import {
-  ConnectionSecretEncryptionError,
-  SecureHttpError,
-} from '@pertexo/integrations/server';
+import { ConnectionSecretEncryptionError } from '@pertexo/secrets/server';
+import { SecureHttpError } from '@pertexo/integrations/server';
 
 import type { WorkspaceAuthorizationSource } from '../../authorization/index.js';
 import {

@@ -3,7 +3,7 @@ import { randomBytes, randomUUID } from 'node:crypto';
 import {
   createConnectionEnvelopeEncryption,
   parseConnectionEncryptionConfig,
-} from '../../../packages/integrations/dist/server.js';
+} from '../../../packages/secrets/dist/server.js';
 
 const CLIENT_SECRET = 'restored-client-secret';
 const TOKENS = JSON.stringify({ accessToken: 'restored-access-token' });

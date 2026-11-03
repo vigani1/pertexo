@@ -24,9 +24,6 @@
       "path": "../../packages/workflow-model/tsconfig.json"
     },
     {
-      "path": "../../packages/integrations/tsconfig.json"
-    },
-    {
       "path": "../../packages/core/tsconfig.json"
     }
   ]

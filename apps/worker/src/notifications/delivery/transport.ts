@@ -8,11 +8,8 @@ import {
   type FailureNotificationResolvedDestination,
   type FailureNotificationStore,
 } from '@pertexo/core/notifications';
-import type {
-  ConnectionEnvelopeEncryption,
-  ResendClient,
-  SlackClient,
-} from '@pertexo/integrations/server';
+import type { ConnectionEnvelopeEncryption } from '@pertexo/secrets/server';
+import type { ResendClient, SlackClient } from '@pertexo/integrations/server';
 
 import type { FailureNotificationDeliveryResult } from '@pertexo/workflow-model';
 import type { FailureNotificationDeliveryCapability } from '../failure-handler.js';

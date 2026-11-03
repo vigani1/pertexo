@@ -7,9 +7,6 @@ import {
 } from '@pertexo/contracts';
 import {
   decodeClientSettings,
-  decodeStoredClientSecret,
-  encodeStoredTokens,
-  isRenewable,
   newOAuth2Secret,
   newOAuth2State,
   oauth2AuthorizationAddress,
@@ -17,8 +14,13 @@ import {
   oauth2VerifierPurpose,
   refusedEndpoint,
   requestOAuth2Token,
-  withCommitAttempts,
 } from '@pertexo/integrations/server';
+import {
+  decodeStoredClientSecret,
+  encodeStoredTokens,
+  isRenewable,
+  withCommitAttempts,
+} from '@pertexo/core/connections';
 
 import { deriveJourneySecret } from '../../authentication/journeys/browser-proof.js';
 import type { WorkspaceAuthorizationSource } from '../../authorization/index.js';

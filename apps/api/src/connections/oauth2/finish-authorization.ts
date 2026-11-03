@@ -8,16 +8,18 @@ import {
 } from '@pertexo/contracts';
 import {
   decodeClientSettings,
-  decodeStoredClientSecret,
-  encodeStoredTokens,
-  isRenewable,
   isTemporaryOAuth2Error,
   oauth2Digest,
   oauth2StateWorkspace,
   requestOAuth2Token,
-  withCommitAttempts,
   type OAuth2TokenAnswer,
 } from '@pertexo/integrations/server';
+import {
+  decodeStoredClientSecret,
+  encodeStoredTokens,
+  isRenewable,
+  withCommitAttempts,
+} from '@pertexo/core/connections';
 
 import type {
   ConnectionOAuth2Dependencies,

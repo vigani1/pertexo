@@ -9,7 +9,7 @@ import type {
   WebhookVerificationReference,
 } from '@pertexo/core/triggers';
 import type { InitialCheckpointFactory } from '@pertexo/core/runs';
-import type { WebhookTriggerEnvelopeEncryption } from '@pertexo/integrations/server';
+import type { WebhookTriggerEnvelopeEncryption } from '@pertexo/secrets/server';
 import type { StructuredLogger } from '@pertexo/observability';
 
 import type { RejectedAttempt } from '../management/delivery-log.js';

@@ -8,7 +8,7 @@ import {
   type EnvelopeKeyProviderCore,
   type KmsCommandLike,
   type KmsSendLike,
-} from '../crypto/envelope-cipher.js';
+} from './envelope-cipher.js';
 
 const MAX_PLAINTEXT_BYTES = 65_536;
 

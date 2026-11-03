@@ -1,12 +1,12 @@
 import { createSystemMailClient } from '../mail/system-mail-client.js';
 import type { WorkspaceInvitationDeliveryStore } from '@pertexo/core/tenant-access';
 import { createWorkspaceInvitationDeliveryStore } from '@pertexo/core/tenant-access';
-import { createApplicationSecretEnvelope } from '@pertexo/integrations/server';
+import { createApplicationSecretEnvelope } from '@pertexo/secrets/server';
 import {
   systemMailFailureCode,
   SYSTEM_MAIL_FAILURE_GUIDANCE,
 } from '@pertexo/secrets/server';
-import type { ApplicationSecretEnvelope } from '@pertexo/integrations/server';
+import type { ApplicationSecretEnvelope } from '@pertexo/secrets/server';
 import type {
   SystemMailResult,
   SystemMailClient,

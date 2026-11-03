@@ -12,7 +12,7 @@ import { startCallbackReceiver } from './receiver.js';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createDueNodeWakeupScanner } from '@pertexo/core/runs';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
-import { callbackTokenHash } from '@pertexo/integrations/server';
+import { callbackTokenHash } from '@pertexo/secrets/server';
 import {
   callbackWaitConfigSchema,
   type WorkflowGraph,

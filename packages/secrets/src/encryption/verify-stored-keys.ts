@@ -1,19 +1,12 @@
 import { connectionSecretAssociatedData } from './envelope-encryption.js';
-import { webhookTriggerSecretAssociatedData } from '../webhooks/crypto.js';
+import { webhookTriggerSecretAssociatedData } from './webhook-envelope.js';
 import {
   SelfManagedEnvelopeKeyProvider,
   isSelfManagedKeyReference,
 } from './self-managed-key-provider.js';
 import type { ConnectionEnvelopeEncryptionConfig } from './connection-encryption.runtime.js';
 
-export type StoredEncryptionKey = Readonly<{
-  kind: 'connection' | 'webhook';
-  workspaceId: string;
-  resourceId: string;
-  secretVersionId: string;
-  keyReference: string;
-  encryptedDataKey: string;
-}>;
+import type { StoredEncryptionKey } from './stored-encryption-key.types.js';
 type VerificationFailure =
   | 'incompatible_provider'
   | 'unavailable_key_material'

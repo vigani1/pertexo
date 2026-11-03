@@ -7,9 +7,9 @@ import { createTransportMetrics } from '@pertexo/observability';
 import { createPlatformNodeRegistry } from '@pertexo/node-catalog/server';
 import {
   ConnectionEnvelopeEncryption,
-  createSlackClient,
   type ConnectionSecretContext,
-} from '@pertexo/integrations/server';
+} from '@pertexo/secrets/server';
+import { createSlackClient } from '@pertexo/integrations/server';
 import { createEditorBrowserEnvelopeKeys } from '../../../../infrastructure/testing/editor-browser-envelope-keys.mjs';
 import { createConnectionHealthSlackTransport } from '../../../../infrastructure/testing/connection-health-slack-transport.mjs';
 import { createCoordinatorRuntime } from '../../src/runs/coordinator.runtime.js';

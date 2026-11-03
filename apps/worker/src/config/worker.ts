@@ -1,7 +1,7 @@
 import {
   parseCallbackKeyConfig,
   type CallbackKeyConfig,
-} from '@pertexo/integrations/server';
+} from '@pertexo/secrets/server';
 import path from 'node:path';
 import { parseCodeSettings, codeRunnerSocketPath } from '@pertexo/node-sdk';
 import type { WorkerCodeRunnerConfig } from '../attempts/code/client.js';
@@ -17,6 +17,8 @@ import {
 import {
   parseConnectionEncryptionConfig,
   type ConnectionEnvelopeEncryptionConfig,
+} from '@pertexo/secrets/server';
+import {
   parseAllowedPrivateNetworks,
   type SecureHttpAddressPolicy,
 } from '@pertexo/integrations/server';

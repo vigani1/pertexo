@@ -2,7 +2,7 @@ import type { CallbackStore, RunValuesStore } from '@pertexo/core/runs';
 import type {
   CallbackKeyConfig,
   CallbackTokenKeys,
-} from '@pertexo/integrations/server';
+} from '@pertexo/secrets/server';
 
 import type { WorkerDataTablesStore } from '@pertexo/core/data-tables';
 
@@ -25,9 +25,9 @@ import type {
   ConnectionEnvelopeEncryptionConfig,
   ConnectionEnvelopeEncryptionRuntime,
   ConnectionEnvelopeEncryption,
-  AllowedPrivateNetwork,
-  OAuth2TokenService,
-} from '@pertexo/integrations/server';
+} from '@pertexo/secrets/server';
+import type { AllowedPrivateNetwork } from '@pertexo/integrations/server';
+import type { OAuth2TokenService } from '@pertexo/core/connections';
 import type { RedisRateLimitRuntime } from '@pertexo/rate-limit';
 import type { NodeExecutionCapabilityFactories } from '../capabilities.js';
 import type { createProviderConnectionRuntimeFactory } from '../../../providers/connections.js';

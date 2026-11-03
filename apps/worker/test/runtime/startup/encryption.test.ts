@@ -2,7 +2,7 @@ import { emptyCallbackStore } from '../../support/callback-store.js';
 import { Readable } from 'node:stream';
 import { randomUUID } from 'node:crypto';
 import { describe, expect, it, vi } from 'vitest';
-import { createConnectionEnvelopeEncryption } from '@pertexo/integrations/server';
+import { createConnectionEnvelopeEncryption } from '@pertexo/secrets/server';
 import { createWorkerApplication } from '../../../src/app.js';
 import { parseWorkerConfig } from '../../../src/config/worker.js';
 import { workerEnvironment } from '../../support/worker-environment.js';

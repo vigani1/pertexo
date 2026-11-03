@@ -24,10 +24,8 @@ import type {
 } from '../../src/notifications/inbox-hint-hub.js';
 import { NoticePreferencesService } from '../../src/notifications/preferences/notice-preferences.service.js';
 import { NoticeConflictError } from '@pertexo/core/inbox';
-import {
-  createApplicationSecretEnvelope,
-  sealNoticeUnsubscribe,
-} from '@pertexo/integrations/server';
+import { createApplicationSecretEnvelope } from '@pertexo/secrets/server';
+import { sealNoticeUnsubscribe } from '@pertexo/core/inbox';
 import { randomUUID } from 'node:crypto';
 
 Module({

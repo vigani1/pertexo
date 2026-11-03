@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { ApplicationSecretEnvelope } from '../security/application-secret-envelope.js';
+import type { ApplicationSecretEnvelope } from '@pertexo/secrets/server';
 const claimsSchema = z
   .object({
     workspaceId: z.uuid(),

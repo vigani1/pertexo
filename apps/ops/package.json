@@ -13,7 +13,6 @@
   "dependencies": {
     "@pertexo/core": "workspace:*",
     "@pertexo/database": "workspace:*",
-    "@pertexo/integrations": "workspace:*",
     "@pertexo/observability": "workspace:*",
     "@pertexo/secrets": "workspace:*",
     "@pertexo/workflow-model": "workspace:*",

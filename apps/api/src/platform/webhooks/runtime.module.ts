@@ -5,7 +5,7 @@ import {
   type WebhookTriggerStore,
 } from '@pertexo/core/triggers';
 import type { DatabaseRuntime } from '@pertexo/database/platform';
-import { createWebhookTriggerEnvelopeEncryption } from '@pertexo/integrations/server';
+import { createWebhookTriggerEnvelopeEncryption } from '@pertexo/secrets/server';
 import type { StructuredLogger } from '@pertexo/observability';
 import { PLATFORM_NODE_CATALOG } from '@pertexo/node-catalog';
 import { composeExecutableCatalog } from '@pertexo/workflow-engine';

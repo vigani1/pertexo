@@ -9,7 +9,7 @@ import {
 import {
   callbackTokenHash,
   createCallbackTokenKeys,
-} from '@pertexo/integrations/server';
+} from '@pertexo/secrets/server';
 import { CallbackResponseError, type CallbackStore } from '@pertexo/core/runs';
 import { registerCallbackIngress } from '../../../src/webhooks/callbacks/ingress.js';
 import { silentLogger } from '../../support/silent-logger.js';

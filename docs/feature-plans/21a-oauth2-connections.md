@@ -249,7 +249,7 @@ The contract checks shape (S14). One function in the API process decides the res
 
 ### Getting a token
 
-`accessToken(scope, signal)` in `packages/integrations/src/oauth2/access-token.ts`.
+`accessToken(scope, signal)` in `packages/core/src/connections/oauth2/access-token.ts`.
 Expiry is read through database time and judged in TypeScript. Worker and API
 connection tests share it.
 
@@ -462,12 +462,12 @@ connection_oauth2_authorizations          -- at most one pending per connection
 | `packages/database/src/connections/oauth2/` | `contract.ts`, `clients.repository.ts`, `authorizations.repository.ts`, `tokens.repository.ts`; implements the store below |
 | `packages/database/src/platform/encryption/keys.repository.ts` | D10 |
 | `packages/integrations/src/oauth2/oauth2-token.ts` | The store port: database implements it, since integrations may not import database |
-| `packages/integrations/src/oauth2/stored.ts` | D1 |
+| `packages/core/src/connections/oauth2/stored.ts` | D1 |
 | `packages/integrations/src/oauth2/endpoints.ts` | S15 |
 | `packages/integrations/src/oauth2/token-endpoint.ts` | The three token requests, S17–S18, S25–S27, and the answer table |
 | `packages/integrations/src/oauth2/consent.ts` | Authorization URL, state format, the verifier's purpose (S21) |
-| `packages/integrations/src/oauth2/access-token.ts` | `accessToken`, `rejectToken`: the lifecycle above |
-| `packages/integrations/src/oauth2/refresh.ts` | One renewal: claim, ask, commit with its three attempts, and what each answer does to the grant |
+| `packages/core/src/connections/oauth2/access-token.ts` | `accessToken`, `rejectToken`: the lifecycle above |
+| `packages/core/src/connections/oauth2/refresh.ts` | One renewal: claim, ask, commit with its three attempts, and what each answer does to the grant |
 | `packages/integrations/src/http-request/execution/oauth2-renewal.ts` | Wraps the HTTP client for L11–L14, single and paged, and S24 |
 | `packages/integrations/src/http-request/execution/oauth2-failure.ts` | The step failure class and text, like `HttpPaginationFailure` |
 | `packages/node-sdk/src/execution/node-execution.types.ts` | Adds optional `resolveHttpCredential` and `rejectAccessToken` to `NodeConnectionRuntime`, as `assertCurrent` is; only an HTTP step needs them. The first returns a union on `authType` (`http_headers` with `secret`, `oauth2` with `accessToken`, `tokenVersionId`, `requestHosts`) |

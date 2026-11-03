@@ -1,9 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import type { NoticeMailToSeal } from '@pertexo/core/inbox';
-import {
-  createApplicationSecretEnvelope,
-  openNoticeUnsubscribe,
-} from '@pertexo/integrations/server';
+import { createApplicationSecretEnvelope } from '@pertexo/secrets/server';
+import { openNoticeUnsubscribe } from '@pertexo/core/inbox';
 import { expect, it } from 'vitest';
 import { sealNoticeMail } from '../../src/mail/notice-content.js';
 

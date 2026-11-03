@@ -1,5 +1,5 @@
 import { createCallbackStore } from '@pertexo/core/runs';
-import { createCallbackTokenKeys } from '@pertexo/integrations/server';
+import { createCallbackTokenKeys } from '@pertexo/secrets/server';
 import { createCallbackRuntime } from '../../callbacks/callback.runtime.js';
 
 import type { CapabilityAssembly } from './node-runtime-capabilities.types.js';

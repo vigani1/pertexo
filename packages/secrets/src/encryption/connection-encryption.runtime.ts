@@ -15,7 +15,7 @@ import {
   parseApplicationPreviousKeys,
   validateApplicationKeyRing,
   type ApplicationKeyRing,
-} from '../security/key-ring.js';
+} from './key-ring.js';
 
 export type SelfManagedConnectionEncryptionConfig = Readonly<{
   mode: 'self-managed';

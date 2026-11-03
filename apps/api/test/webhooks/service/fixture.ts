@@ -1,6 +1,6 @@
 import type { WebhookTriggerStore } from '@pertexo/core/testing';
 
-import type { WebhookTriggerEnvelopeEncryption } from '@pertexo/integrations/server';
+import type { WebhookTriggerEnvelopeEncryption } from '@pertexo/secrets/server';
 import { expect, vi } from 'vitest';
 import { WebhookManagementService } from '../../../src/webhooks/management/webhook-management.service.js';
 

@@ -1,4 +1,4 @@
-import { ConnectionSecretEncryptionError } from '@pertexo/integrations/server';
+import { ConnectionSecretEncryptionError } from '@pertexo/secrets/server';
 
 import {
   signingKeyCredentialSchema,

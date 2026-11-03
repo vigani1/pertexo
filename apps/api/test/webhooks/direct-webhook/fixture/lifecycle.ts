@@ -15,7 +15,7 @@ import {
   migrateDatabase,
   parseDatabaseConfig,
 } from '@pertexo/database/testing';
-import { WebhookTriggerEnvelopeEncryption } from '@pertexo/integrations/server';
+import { WebhookTriggerEnvelopeEncryption } from '@pertexo/secrets/server';
 import { PLATFORM_NODE_CATALOG } from '@pertexo/node-catalog';
 
 import { composeExecutableCatalog } from '@pertexo/workflow-engine';

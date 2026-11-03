@@ -3,10 +3,7 @@ import type {
   ConnectionStatus,
   ConnectionTestOutcome,
 } from '@pertexo/workflow-model';
-import type {
-  connections,
-  connectionSecretVersions,
-} from '@pertexo/database/schema';
+import type { connections } from '@pertexo/database/schema';
 
 export {
   CONNECTION_AUTH_TYPE,
@@ -19,12 +16,8 @@ export type {
   ConnectionTestOutcome,
 } from '@pertexo/workflow-model';
 
-export type SealedConnectionSecretRecord = Readonly<
-  Pick<
-    typeof connectionSecretVersions.$inferSelect,
-    'kmsKeyReference' | 'encryptedDataKey' | 'ciphertext' | 'nonce'
-  > & { tag: (typeof connectionSecretVersions.$inferSelect)['authTag'] }
->;
+export type { SealedConnectionSecret as SealedConnectionSecretRecord } from '@pertexo/secrets/server';
+import type { SealedConnectionSecret as SealedConnectionSecretRecord } from '@pertexo/secrets/server';
 
 export type ConnectionRecord = Readonly<
   Omit<

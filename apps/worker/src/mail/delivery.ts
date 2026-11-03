@@ -4,12 +4,12 @@ import type {
   SystemMailDeliveryClaim,
   SystemMailDeliveryStore,
 } from '@pertexo/secrets/server';
-import { ApplicationSecretKeyUnavailableError } from '@pertexo/integrations/server';
+import { ApplicationSecretKeyUnavailableError } from '@pertexo/secrets/server';
 import {
   systemMailFailureInstruction,
   systemMailFailureCode,
 } from '@pertexo/secrets/server';
-import type { ApplicationSecretEnvelope } from '@pertexo/integrations/server';
+import type { ApplicationSecretEnvelope } from '@pertexo/secrets/server';
 import type {
   SystemMailFailure,
   SystemMailResult,

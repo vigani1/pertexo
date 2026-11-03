@@ -6,7 +6,7 @@ import { initialCheckpointFactory } from '@pertexo/core/runs';
 import {
   WebhookTriggerEnvelopeEncryption,
   type WebhookTriggerSecretContext,
-} from '@pertexo/integrations/server';
+} from '@pertexo/secrets/server';
 import { PLATFORM_NODE_CATALOG } from '@pertexo/node-catalog';
 import { composeExecutableCatalog } from '@pertexo/workflow-engine';
 import type { ApiConfig } from '../../../src/platform/config/api.js';

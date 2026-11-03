@@ -2,8 +2,10 @@ import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { describe, expect, it, vi } from 'vitest';
 import {
   ConnectionEnvelopeEncryption,
-  classifySecureHttpResponse,
   type ConnectionSecretContext,
+} from '@pertexo/secrets/server';
+import {
+  classifySecureHttpResponse,
   type SecureHttpRequest,
 } from '@pertexo/integrations/server';
 import {

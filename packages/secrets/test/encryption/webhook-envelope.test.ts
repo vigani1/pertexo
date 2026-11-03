@@ -1,4 +1,5 @@
-import { createHmac, randomBytes } from 'node:crypto';
+import type { WebhookKmsClientLike } from '../../src/encryption/webhook-envelope.js';
+import { randomBytes } from 'node:crypto';
 
 import {
   GenerateDataKeyCommand,
@@ -12,10 +13,8 @@ import {
   WebhookTriggerEnvelopeEncryption,
   WebhookTriggerSecretEncryptionError,
   webhookTriggerSecretAssociatedData,
-  verifyWebhookSignature,
   type WebhookEnvelopeKeyProvider,
-  type WebhookKmsClientLike,
-} from '../src/webhooks/crypto.js';
+} from '../../src/server.js';
 
 const context = {
   workspaceId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
@@ -142,37 +141,6 @@ describe('webhook trigger crypto', () => {
       encryption.seal(secret, { ...context, triggerId: 'invalid' }),
     ).rejects.toBeInstanceOf(WebhookTriggerSecretEncryptionError);
     expect([...secret]).toEqual(new Array<number>(32).fill(0));
-  });
-
-  it('verifies lowercase v1 HMAC over timestamp dot exact raw bytes', () => {
-    const secret = new Uint8Array(32).fill(3);
-    const rawBody = new TextEncoder().encode('{"value": 1}\n');
-    const timestamp = '1787659200';
-    const signature = `v1=${createHmac('sha256', secret)
-      .update(timestamp, 'ascii')
-      .update('.')
-      .update(rawBody)
-      .digest('hex')}`;
-
-    expect(
-      verifyWebhookSignature({ secret, timestamp, signature, rawBody }),
-    ).toBe(true);
-    expect(
-      verifyWebhookSignature({
-        secret,
-        timestamp,
-        signature: signature.toUpperCase(),
-        rawBody,
-      }),
-    ).toBe(false);
-    expect(
-      verifyWebhookSignature({
-        secret,
-        timestamp,
-        signature,
-        rawBody: new TextEncoder().encode('{"value":1}\n'),
-      }),
-    ).toBe(false);
   });
 });
 

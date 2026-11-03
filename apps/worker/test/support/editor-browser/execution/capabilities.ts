@@ -9,7 +9,7 @@ import { createWorkerNodeRuntimeCapabilities } from '../../../../src/attempts/ex
 import {
   ConnectionEnvelopeEncryption,
   type ConnectionSecretContext,
-} from '@pertexo/integrations/server';
+} from '@pertexo/secrets/server';
 import { createEditorBrowserEnvelopeKeys } from '../../../../../../infrastructure/testing/editor-browser-envelope-keys.mjs';
 import { createCuratedTemplateEnvelopeContext } from '../../../../../../infrastructure/testing/curated-template-envelope-context.mjs';
 import { createCuratedTemplateQualificationTransports } from '../../curated-templates/controlled-transports.js';

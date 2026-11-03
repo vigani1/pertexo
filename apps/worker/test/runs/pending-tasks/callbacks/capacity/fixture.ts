@@ -2,7 +2,7 @@ import {
   callbackWaitConfigSchema,
   type WorkflowNode,
 } from '@pertexo/workflow-model';
-import { callbackTokenHash } from '@pertexo/integrations/server';
+import { callbackTokenHash } from '@pertexo/secrets/server';
 import { node } from '../../../calls/fixtures.js';
 import type { callbackResources } from '../fixtures.js';
 

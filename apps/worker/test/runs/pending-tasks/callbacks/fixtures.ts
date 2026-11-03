@@ -1,6 +1,6 @@
 import { createCallbackStore } from '@pertexo/core/runs';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
-import { createCallbackTokenKeys } from '@pertexo/integrations/server';
+import { createCallbackTokenKeys } from '@pertexo/secrets/server';
 import { createCallbackRuntime } from '../../../../src/attempts/callbacks/callback.runtime.js';
 import { fixture } from '../../calls/fixtures.js';
 

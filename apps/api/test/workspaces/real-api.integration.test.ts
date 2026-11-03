@@ -27,7 +27,7 @@ import {
 import { withTimeout, openHttpEventStream } from './real-api/streams.js';
 import { expectProblem } from './real-api/assertions.js';
 import type { SessionCookies } from './real-api/contract.js';
-import { createApplicationSecretEnvelope } from '@pertexo/integrations/server';
+import { createApplicationSecretEnvelope } from '@pertexo/secrets/server';
 
 describe.runIf(enabled)('Phase 1 real PostgreSQL API identity slice', () => {
   const caseFixture = createWorkspaceApiFixture();

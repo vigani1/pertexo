@@ -4,7 +4,7 @@ import {
   applicationKeyVersionSchema,
   parseApplicationPreviousKeys,
   type ApplicationKeyRing,
-} from '@pertexo/integrations/server';
+} from '@pertexo/secrets/server';
 import {
   parseSystemMailConfig,
   type SystemMailConfig,

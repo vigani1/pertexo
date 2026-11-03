@@ -5,7 +5,10 @@ import {
   type WorkspaceInvitationDeliveryStore,
 } from '@pertexo/core/tenant-access';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
-import { createApplicationSecretEnvelope, type ApplicationSecretEnvelope } from '@pertexo/integrations/server';
+import {
+  createApplicationSecretEnvelope,
+  type ApplicationSecretEnvelope,
+} from '@pertexo/secrets/server';
 import { type SystemMailClient } from '@pertexo/secrets/server';
 import {
   parseQueueJob,

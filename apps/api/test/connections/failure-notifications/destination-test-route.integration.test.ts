@@ -2,9 +2,9 @@ import { randomBytes, randomUUID } from 'node:crypto';
 
 import {
   ConnectionEnvelopeEncryption,
-  createSlackClient,
   type ConnectionSecretContext,
-} from '@pertexo/integrations/server';
+} from '@pertexo/secrets/server';
+import { createSlackClient } from '@pertexo/integrations/server';
 import { connectionResponseSchema } from '@pertexo/contracts';
 import { afterAll, describe, expect, it } from 'vitest';
 
