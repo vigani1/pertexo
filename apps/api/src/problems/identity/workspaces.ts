@@ -200,6 +200,11 @@ function mapMembershipConflict(
       return applicationError('workspace.member_status_conflict', {
         safeDetail: 'The member is not in a state that allows this.',
       });
+    case 'recovery_owner_ineligible':
+      return applicationError('workspace.recovery_owner_ineligible', {
+        safeDetail:
+          'The new owner must verify their email and set up a password. Ask them to finish both in Account security, then retry the transfer.',
+      });
     case 'owner_departure':
       return applicationError('auth.forbidden', {
         safeDetail: 'The owner must transfer ownership before leaving.',

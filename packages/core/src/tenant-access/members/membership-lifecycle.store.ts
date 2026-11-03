@@ -270,7 +270,7 @@ function transferWorkspaceOwnership(
         ))
       )
         throw conflict(
-          'command_forbidden',
+          'recovery_owner_ineligible',
           'The new recovery owner needs a verified account with a password while SSO is required.',
         );
       const ownerRevision = actor.role_revision + 1;

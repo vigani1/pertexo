@@ -262,6 +262,22 @@ async function settleMemberFailure<Attempt extends MemberCommandAttempt>(
     input.onConflict();
     return;
   }
+  if (
+    isApiError(cause) &&
+    cause.problem?.code === 'workspace.recovery_owner_ineligible'
+  ) {
+    transition({
+      kind: 'idle',
+      feedback: {
+        targetUserId: attempt.targetUserId,
+        message:
+          cause.problem.detail ??
+          'Ask the new owner to prepare a recovery account, then retry.',
+      },
+    });
+    input.onConflict();
+    return;
+  }
   if (isApiError(cause) && cause.status === 403) {
     transition({ kind: 'idle' });
     input.onPermissionLost();
