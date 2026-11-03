@@ -1,10 +1,8 @@
 import { createWorkspaceFixture } from '../../test/support/fixtures/identity';
 import { expect, test } from '../support/fixtures';
 import {
-  userId,
   workspaceId,
   firstMemberId,
-  secondMemberId,
   timestamp,
   member,
   installRoutes,

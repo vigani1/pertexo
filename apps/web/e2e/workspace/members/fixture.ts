@@ -7,7 +7,7 @@ import type { Page } from '../../support/fixtures';
 export const userId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 export const workspaceId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 export const firstMemberId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
-export const secondMemberId = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
+const secondMemberId = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
 export const timestamp = '2026-09-15T10:00:00.000Z';
 
 export function member(userIdValue: string, displayName: string, role: string) {
@@ -24,6 +24,13 @@ export function member(userIdValue: string, displayName: string, role: string) {
 }
 
 export async function installRoutes(page: Page) {
+  await page.route(
+    `**/v1/workspaces/${workspaceId}/workflow-folders**`,
+    (route) => route.fulfill({ json: { items: [], nextCursor: null } }),
+  );
+  await page.route(`**/v1/workspaces/${workspaceId}/workflow-tags**`, (route) =>
+    route.fulfill({ json: { items: [], nextCursor: null } }),
+  );
   await page.route('**/v1/users/me', (route) =>
     route.fulfill({
       json: createUserFixture({
