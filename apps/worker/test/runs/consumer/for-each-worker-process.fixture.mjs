@@ -1,13 +1,8 @@
 import { randomUUID } from 'node:crypto';
-
 import { parseDatabaseConfig } from '@pertexo/database/testing';
-
 import { createPlatformNodeRegistry } from '../../../src/providers/node-registry.js';
-
 import { createCoordinatorRuntime } from '../../../src/runs/coordinator.runtime.js';
-import type { createNodeAttemptRuntime } from '../../../src/attempts/delivery/node-attempt.runtime.js';
 import { testNodeAttemptRuntime } from '../../support/runtime-factories.js';
-
 const databaseUrl = process.env.FOR_EACH_DATABASE_URL;
 const maintenanceDatabaseUrl = process.env.FOR_EACH_MAINTENANCE_DATABASE_URL;
 const redisUrl = process.env.FOR_EACH_REDIS_URL;
@@ -17,18 +12,15 @@ if (
   redisUrl === undefined
 )
   throw new Error('For Each process fixture configuration is incomplete');
-
 const database = parseDatabaseConfig({ connectionString: databaseUrl, max: 6 });
-let coordinator:
-  Awaited<ReturnType<typeof createCoordinatorRuntime>> | undefined;
-let attempts: Awaited<ReturnType<typeof createNodeAttemptRuntime>> | undefined;
-let closePromise: Promise<void> | undefined;
-
-const close = (): Promise<void> => {
+let coordinator;
+let attempts;
+let closePromise;
+const close = () => {
   closePromise ??= (async () => {
-    const errors: unknown[] = [];
-    await attempts?.close().catch((error: unknown) => errors.push(error));
-    await coordinator?.close().catch((error: unknown) => errors.push(error));
+    const errors = [];
+    await attempts?.close().catch((error) => errors.push(error));
+    await coordinator?.close().catch((error) => errors.push(error));
     if (errors.length > 0)
       throw new AggregateError(
         errors,
@@ -37,13 +29,12 @@ const close = (): Promise<void> => {
   })();
   return closePromise;
 };
-
-const handleSignal = (): void => {
+const handleSignal = () => {
   void close().then(
     () => {
       process.exitCode = 0;
     },
-    (error: unknown) => {
+    (error) => {
       process.stderr.write(
         `${error instanceof Error ? error.message : 'For Each process fixture shutdown failed'}\n`,
       );
@@ -53,14 +44,13 @@ const handleSignal = (): void => {
 };
 process.once('SIGTERM', handleSignal);
 process.once('SIGINT', handleSignal);
-
 // The test keeps loaded spares so each restart costs only connection setup.
 // A spare has opened no Redis or PostgreSQL connection until it is started.
 process.stdout.write(`${JSON.stringify({ loaded: true, pid: process.pid })}\n`);
-const started = await new Promise<boolean>((resolve) => {
+const started = await new Promise((resolve) => {
   let input = '';
   process.stdin.setEncoding('utf8');
-  process.stdin.on('data', (chunk: string) => {
+  process.stdin.on('data', (chunk) => {
     input += chunk;
     if (input.includes('\n')) resolve(input.startsWith('start\n'));
   });
@@ -70,7 +60,6 @@ const started = await new Promise<boolean>((resolve) => {
 });
 process.stdin.destroy();
 if (!started) process.exit(0);
-
 try {
   coordinator = await createCoordinatorRuntime({
     maintenanceDatabase: parseDatabaseConfig({
@@ -101,7 +90,6 @@ try {
       },
     },
   );
-
   await Promise.all([
     coordinator.consumer.waitUntilReady(5_000),
     attempts.consumer.waitUntilReady(5_000),
@@ -109,11 +97,11 @@ try {
   process.stdout.write(
     `${JSON.stringify({ ready: true, pid: process.pid })}\n`,
   );
-} catch (startupError: unknown) {
+} catch (startupError) {
   process.removeListener('SIGTERM', handleSignal);
   process.removeListener('SIGINT', handleSignal);
-  let cleanupError: unknown;
-  await close().catch((error: unknown) => {
+  let cleanupError;
+  await close().catch((error) => {
     cleanupError = error;
   });
   if (cleanupError === undefined) throw startupError;
