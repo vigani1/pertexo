@@ -131,6 +131,7 @@ async function end(
     cancellationRequested?: boolean;
     contextWorkspaceId?: string;
     hadWaitingStep?: boolean;
+    endedAt?: string;
   }> = {},
 ) {
   const runId = randomUUID();
@@ -169,7 +170,7 @@ async function end(
           {
             name: `run.${status}`,
             sequence: 7,
-            occurredAt: new Date(clock).toISOString(),
+            occurredAt: options.endedAt ?? new Date(clock).toISOString(),
           },
         ],
       } as never,
@@ -326,6 +327,78 @@ describe('workflow trigger pause (ADR 056)', () => {
     await end(workspaceId, workflowId, 'failed');
     expect(await drain()).toHaveLength(1);
     expect((await pauseState(workspaceId, workflowId))?.state).toBe('paused');
+  });
+
+  it('ignores failures that arrive in later batches but ended before the latest success', async () => {
+    const { workspaceId, workflowId } = await seed();
+    await end(workspaceId, workflowId, 'succeeded', {
+      endedAt: '2026-10-01T04:00:00.000Z',
+    });
+    await drain();
+    for (let hour = 1; hour <= 3; hour += 1) {
+      await end(workspaceId, workflowId, 'failed', {
+        endedAt: `2026-10-01T0${hour}:00:00.000Z`,
+      });
+      expect(await drain()).toEqual([]);
+    }
+    expect(await streak(workspaceId, workflowId)).toBe(0);
+    expect((await pauseState(workspaceId, workflowId))?.state).toBe('none');
+    expect(await pauseAudits(workspaceId)).toEqual([]);
+  });
+
+  it('retains later failures when an earlier success arrives in a subsequent batch', async () => {
+    const { workspaceId, workflowId } = await seed();
+    await end(workspaceId, workflowId, 'failed', {
+      endedAt: '2026-10-01T03:00:00.000Z',
+    });
+    await end(workspaceId, workflowId, 'failed', {
+      endedAt: '2026-10-01T05:00:00.000Z',
+    });
+    await drain();
+    await end(workspaceId, workflowId, 'succeeded', {
+      endedAt: '2026-10-01T02:00:00.000Z',
+    });
+    expect(await drain()).toEqual([]);
+    expect(await streak(workspaceId, workflowId)).toBe(2);
+    await end(workspaceId, workflowId, 'succeeded', {
+      endedAt: '2026-10-01T04:00:00.000Z',
+    });
+    await drain();
+    expect(await streak(workspaceId, workflowId)).toBe(1);
+    await end(workspaceId, workflowId, 'failed', {
+      endedAt: '2026-10-01T04:30:00.000Z',
+    });
+    await drain();
+    expect(await streak(workspaceId, workflowId)).toBe(2);
+    expect((await pauseState(workspaceId, workflowId))?.state).toBe('none');
+  });
+
+  it('does not pause for a threshold crossed before a later success in the same batch', async () => {
+    const { workspaceId, workflowId } = await seed();
+    await endMany(workspaceId, workflowId, 'failed', 10);
+    await end(workspaceId, workflowId, 'succeeded');
+    expect(await drain()).toEqual([]);
+    expect(await streak(workspaceId, workflowId)).toBe(0);
+    expect(await pauseAudits(workspaceId)).toEqual([]);
+  });
+
+  it('extends an upgrade carry until the first success, retaining failures that ended after that success', async () => {
+    const { workspaceId, workflowId } = await seed();
+    await asAdmin(
+      'insert into app.workflow_failure_streaks(workspace_id,workflow_id,consecutive_failures,legacy_failures) values($1,$2,7,7)',
+      [workspaceId, workflowId],
+    );
+    await end(workspaceId, workflowId, 'failed', {
+      endedAt: '2026-10-01T03:00:00.000Z',
+    });
+    await drain();
+    expect(await streak(workspaceId, workflowId)).toBe(8);
+    await end(workspaceId, workflowId, 'succeeded', {
+      endedAt: '2026-10-01T02:00:00.000Z',
+    });
+    await drain();
+    expect(await streak(workspaceId, workflowId)).toBe(1);
+    expect((await pauseState(workspaceId, workflowId))?.state).toBe('none');
   });
 
   it('never pauses twice across concurrent folds of a burst', async () => {
