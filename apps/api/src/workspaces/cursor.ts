@@ -52,7 +52,7 @@ export function decodeWorkspaceMemberCursor(
   });
 }
 
-class InvalidWorkspaceInvitationCursorError extends TypeError {
+export class InvalidWorkspaceInvitationCursorError extends TypeError {
   public override readonly name = 'InvalidWorkspaceInvitationCursorError';
 
   public constructor() {

@@ -1,4 +1,7 @@
-import { InvalidWorkspaceMemberCursorError } from '../../workspaces/cursor.js';
+import {
+  InvalidWorkspaceMemberCursorError,
+  InvalidWorkspaceInvitationCursorError,
+} from '../../workspaces/cursor.js';
 import { AuthorizationError } from '../../authorization/index.js';
 import { IdempotencyConflictError } from '@pertexo/database/platform';
 import { errorRegistration } from '../../platform/http/problems/registry.js';
@@ -26,6 +29,12 @@ import { InvalidAuthenticatedWorkspaceContextError } from '../../workspaces/requ
 import { IdentityError } from '../../identity/identity.errors.js';
 
 export const identityProblems = [
+  errorRegistration(InvalidWorkspaceInvitationCursorError, () =>
+    applicationError('request.invalid', {
+      safeDetail:
+        'The invitation cursor is invalid. Reload invitations from the first page.',
+    }),
+  ),
   errorRegistration(InvalidWorkspaceMemberCursorError, () =>
     applicationError('request.invalid', {
       safeDetail: 'workspace member cursor is invalid',
