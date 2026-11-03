@@ -57,7 +57,7 @@ export const workflowAutoPauseSettingsSchema = z
       .uuid()
       .nullable()
       .describe(
-        'Latest failed triggered run counted when the workflow was paused.',
+        'Run that triggered the pause: the last counted failed triggered run; older rows hold the run that reached the failure threshold.',
       ),
   })
   .strict();

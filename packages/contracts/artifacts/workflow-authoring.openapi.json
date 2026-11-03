@@ -13369,7 +13369,7 @@
                 "type": "null"
               }
             ],
-            "description": "Latest failed triggered run counted when the workflow was paused."
+            "description": "Run that triggered the pause: the last counted failed triggered run; older rows hold the run that reached the failure threshold."
           }
         },
         "required": [
@@ -13513,7 +13513,7 @@
                     "type": "null"
                   }
                 ],
-                "description": "Latest failed triggered run counted when the workflow was paused."
+                "description": "Run that triggered the pause: the last counted failed triggered run; older rows hold the run that reached the failure threshold."
               }
             },
             "required": [
