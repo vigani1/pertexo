@@ -210,16 +210,6 @@ export const WorkspaceMembershipGuard = capabilityGuard(
   { disclosure: 'forbidden', allowedWorkspaceStatuses: ['active'] },
 );
 
-/** Pending invitations are read by those who may manage them. */
-export const WorkspaceInvitationReadGuard = capabilityGuard(
-  WORKSPACE_AUTHORIZATION,
-  'member:manage',
-  {
-    disclosure: 'forbidden',
-    allowedWorkspaceStatuses: BROWSABLE_WORKSPACE_STATUSES,
-  },
-);
-
 /** Coarse route guard; persistence rechecks current roles and the transition. */
 export const WorkspaceMemberManageGuard = capabilityGuard(
   WORKSPACE_AUTHORIZATION,
