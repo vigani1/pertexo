@@ -7,7 +7,7 @@ import {
   type ApplicationErrorCode,
 } from '../../application-error.js';
 
-import { isRequestBodyError } from '../../request-body.js';
+import { isRequestInputError } from '../../request-input.js';
 
 import type { ProblemIssue, NormalizedProblem } from './contract.js';
 
@@ -129,7 +129,7 @@ export function applicationProblemIssues(
     return safeApplicationIssues(error.details?.issues);
   if (error.code === 'workflow.invalid' || error.code === 'form.invalid')
     return safeApplicationIssues(error.details?.issues);
-  if (error.code === 'request.invalid' && isRequestBodyError(error.cause))
+  if (error.code === 'request.invalid' && isRequestInputError(error.cause))
     return zodIssues(error.cause);
   return undefined;
 }

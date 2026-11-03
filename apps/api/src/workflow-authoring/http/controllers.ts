@@ -20,7 +20,7 @@ import {
 } from '../../workspaces/index.js';
 
 import {
-  parseRequestBody,
+  parseRequestInput,
   requestIdempotencyKey,
 } from '../../platform/http/index.js';
 import { requestHeaderValue } from '../../platform/http/request-headers.js';
@@ -217,7 +217,7 @@ export class WorkflowAuthoringController {
     @Res({ passthrough: true }) response: WorkflowResponse,
   ) {
     const route = workflowParams(params);
-    const input = parseRequestBody(workflowDraftSaveRequestSchema, body);
+    const input = parseRequestInput(workflowDraftSaveRequestSchema, body);
     const context = requestContext(request, route.workspaceId);
     const result = await this.saveDraft.execute({
       ...context,

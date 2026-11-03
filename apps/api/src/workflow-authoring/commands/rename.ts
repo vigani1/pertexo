@@ -17,7 +17,7 @@ import {
   WORKFLOW_AUTHORING_OPERATION,
   type WorkflowAuthoringTelemetry,
 } from '../telemetry.js';
-import { parseRequestBody } from '../../platform/http/index.js';
+import { parseRequestInput } from '../../platform/http/index.js';
 
 export type RenameWorkflowInput = WorkflowApplicationInput &
   Readonly<{
@@ -55,7 +55,7 @@ export class RenameWorkflowUseCase {
             ? {}
             : { authorizedWorkspace: input.authorizedWorkspace }),
         });
-        const { name, expectedNameRevision } = parseRequestBody(
+        const { name, expectedNameRevision } = parseRequestInput(
           workflowRenameRequestSchema,
           input.request,
         );

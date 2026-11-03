@@ -19,7 +19,7 @@ import {
   type WorkspaceStatus,
 } from '../../authorization/index.js';
 import type { WorkflowApplicationInput } from '../ports.js';
-import { parseRequestBody } from '../../platform/http/index.js';
+import { parseRequestInput } from '../../platform/http/index.js';
 
 type Scope = WorkflowApplicationInput & {
   signal?: AbortSignal;
@@ -40,7 +40,7 @@ export class WorkflowPromotionUseCase {
   }
   async setTarget(input: Command) {
     await this.authorize(input, 'workspace:manage');
-    const body = parseRequestBody(workflowPromotionTargetSchema, input.request);
+    const body = parseRequestInput(workflowPromotionTargetSchema, input.request);
     return workflowPromotionTargetResultSchema.parse(
       await this.store.setTarget({
         ...this.scope(input),
@@ -65,7 +65,7 @@ export class WorkflowPromotionUseCase {
   }
   async preview(input: Read) {
     await this.authorize(input, 'workflow:update');
-    const body = parseRequestBody(
+    const body = parseRequestInput(
       workflowPromotionPreviewRequestSchema,
       input.request,
     );
@@ -74,7 +74,7 @@ export class WorkflowPromotionUseCase {
     );
   }
   async apply(input: Command) {
-    const body = parseRequestBody(workflowPromotionApplySchema, input.request);
+    const body = parseRequestInput(workflowPromotionApplySchema, input.request);
     await this.authorize(
       input,
       body.mode === 'draft' ? 'workflow:update' : 'workflow:publish',

@@ -1,6 +1,6 @@
 import { applicationError } from '../../platform/http/application-error.js';
 import { errorRegistration } from '../../platform/http/problems/registry.js';
-import { requestBodyCause } from '../../platform/http/request-body.js';
+import { requestInputCause } from '../../platform/http/request-input.js';
 import {
   FormAdmissionError,
   HiddenResourceError,
@@ -15,7 +15,7 @@ export const contextualProblems = [
   errorRegistration(InvalidRequestError, (error) =>
     applicationError('request.invalid', {
       safeDetail: error.message,
-      ...requestBodyCause(error.cause),
+      ...requestInputCause(error.cause),
     }),
   ),
   errorRegistration(WorkflowTestPreparationError, (error) =>
