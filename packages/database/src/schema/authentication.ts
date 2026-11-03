@@ -18,7 +18,7 @@ import { sql } from 'drizzle-orm';
 import { authProviders } from './identity/federation/providers.js';
 
 import { appSchema, bytea } from './namespace.js';
-import { users } from './foundation.js';
+import { users } from './identity/users.js';
 
 export const authAccounts = appSchema.table(
   'auth_accounts',

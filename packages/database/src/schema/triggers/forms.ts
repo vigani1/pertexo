@@ -14,7 +14,7 @@ import {
 } from 'drizzle-orm/pg-core';
 import { appSchema } from '../namespace.js';
 import { workflows } from '../authoring/workflows.js';
-import { artifacts } from '../transport.js';
+import { artifacts } from '../artifacts/artifacts.js';
 
 export const workflowForms = appSchema.table(
   'workflow_forms',

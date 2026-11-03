@@ -10,7 +10,7 @@ import {
   uuid,
 } from 'drizzle-orm/pg-core';
 import { appSchema } from '../../../namespace.js';
-import { users } from '../../../foundation.js';
+import { users } from '../../users.js';
 import { authOrganizations } from '../organizations.js';
 export const authProvisioningCredentials = appSchema.table(
   'auth_provisioning_credentials',

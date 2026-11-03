@@ -13,7 +13,7 @@ import {
   uuid,
 } from 'drizzle-orm/pg-core';
 import { appSchema } from '../../../namespace.js';
-import { users } from '../../../foundation.js';
+import { users } from '../../users.js';
 import { authOrganizations } from '../organizations.js';
 import type { DirectoryUserProfile } from '../../../stored-shapes.js';
 

@@ -13,7 +13,7 @@ import {
   type PgTableExtraConfigValue,
 } from 'drizzle-orm/pg-core';
 
-import { workspaceMemberships } from './foundation.js';
+import { workspaceMemberships } from './tenant-access/memberships.js';
 import { connectionSecretVersions } from './connections.js';
 import { appSchema, bytea } from './namespace.js';
 

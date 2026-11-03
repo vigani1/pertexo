@@ -1,7 +1,7 @@
 import type { CommandIdentity } from './command-identity.types.js';
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import { idempotencyRecords } from '../../schema/runs/support.js';
+import { idempotencyRecords } from '../../schema/idempotency/records.js';
 import { rethrowQueryFailure } from '../query-errors.js';
 import { canonicalJson } from '@pertexo/workflow-model';
 import { createHash } from 'node:crypto';

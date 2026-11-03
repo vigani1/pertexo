@@ -11,7 +11,7 @@ import {
   uuid,
 } from 'drizzle-orm/pg-core';
 import { appSchema } from '../../namespace.js';
-import { workspaceMemberships } from '../../foundation.js';
+import { workspaceMemberships } from '../../tenant-access/memberships.js';
 import { workflows } from '../workflows.js';
 export const workflowPresenceLeases = appSchema.table(
   'workflow_presence_leases',

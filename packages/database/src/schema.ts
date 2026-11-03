@@ -12,7 +12,7 @@ import { authDirectoryUsers } from './schema/identity/federation/directory/users
 import { authDirectoryGroups } from './schema/identity/federation/directory/groups.js';
 import { authDirectoryGroupMembers } from './schema/identity/federation/directory/members.js';
 import { authDirectoryGroupMappings } from './schema/identity/federation/directory/mappings.js';
-import { authDirectoryMemberships } from './schema/identity/federation/directory/sources.js';
+import { authDirectoryMemberships } from './schema/identity/federation/directory/memberships.js';
 import { authProvisioningCredentials } from './schema/identity/federation/directory/credentials.js';
 import {
   authOrganizations,
@@ -23,7 +23,7 @@ import {
   authProviders,
   authProviderChecks,
 } from './schema/identity/federation/providers.js';
-import { authFederationAttempts } from './schema/identity/federation/journeys.js';
+import { authFederationAttempts } from './schema/identity/federation/attempts.js';
 import { workflowPublicationRequests } from './schema/authoring/publication-requests.js';
 import { authSignInAttempts } from './schema/identity/sign-in.js';
 import {
@@ -80,18 +80,16 @@ import {
   workflowInputCases,
   workflowInputCasePayloads,
 } from './schema/authoring/input-cases.js';
-import {
-  users,
-  workspaces,
-  workspaceMemberships,
-  workspaceInvitations,
-  workspaceInvitationDeliveryAttempts,
-  workspaceInvitationAcceptanceIntents,
-  workspaceInvitationBindingReplacementClaims,
-  auditEvents,
-  usageEvents,
-  workspaceLifecycleOperations,
-} from './schema/foundation.js';
+import { users } from './schema/identity/users.js';
+import { workspaces } from './schema/tenant-access/workspaces.js';
+import { workspaceMemberships } from './schema/tenant-access/memberships.js';
+import { workspaceInvitations } from './schema/tenant-access/invitations/invitations.js';
+import { workspaceInvitationDeliveryAttempts } from './schema/tenant-access/invitations/delivery-attempts.js';
+import { workspaceInvitationAcceptanceIntents } from './schema/tenant-access/invitations/acceptance-intents.js';
+import { workspaceInvitationBindingReplacementClaims } from './schema/tenant-access/invitations/binding-replacement-claims.js';
+import { auditEvents } from './schema/governance/audit-events.js';
+import { usageEvents } from './schema/runs/usage-events.js';
+import { workspaceLifecycleOperations } from './schema/lifecycle/workspace-operations.js';
 import { workflowConcurrencyPolicies } from './schema/authoring/concurrency.js';
 import {
   connectionShares,
@@ -106,28 +104,22 @@ import {
   connectionOAuth2Clients,
   connectionOAuth2Tokens,
 } from './schema/oauth2-connections.js';
-import {
-  artifacts,
-  workspaceArtifactCapacity,
-  outboxEvents,
-  inboxReceipts,
-  transportSecurityAuditFacts,
-  outboxFairDispatchCursor,
-} from './schema/transport.js';
-import {
-  workflowRuns,
-  runEvents,
-  runCheckpoints,
-  nodeRuns,
-  nodeAttempts,
-  previewRuns,
-  previewAttempts,
-} from './schema/runs/execution.js';
-import {
-  artifactLinks,
-  idempotencyRecords,
-  workspaceCreationIdempotencyRecords,
-} from './schema/runs/support.js';
+import { artifacts } from './schema/artifacts/artifacts.js';
+import { workspaceArtifactCapacity } from './schema/artifacts/capacity.js';
+import { outboxEvents } from './schema/outbox/events.js';
+import { inboxReceipts } from './schema/outbox/receipts.js';
+import { transportSecurityAuditFacts } from './schema/transport/security-audit-facts.js';
+import { outboxFairDispatchCursor } from './schema/outbox/fair-dispatch-cursor.js';
+import { workflowRuns } from './schema/runs/workflow-runs.js';
+import { runEvents } from './schema/runs/events.js';
+import { runCheckpoints } from './schema/runs/checkpoints.js';
+import { nodeRuns } from './schema/runs/node-executions.js';
+import { nodeAttempts } from './schema/runs/node-executions.js';
+import { previewRuns } from './schema/previews/runs.js';
+import { previewAttempts } from './schema/previews/attempts.js';
+import { artifactLinks } from './schema/artifacts/links.js';
+import { idempotencyRecords } from './schema/idempotency/records.js';
+import { workspaceCreationIdempotencyRecords } from './schema/tenant-access/workspace-creation-receipts.js';
 import {
   workflows,
   workflowDrafts,
@@ -135,11 +127,9 @@ import {
   workflowTriggers,
 } from './schema/authoring/workflows.js';
 import { workflowIntegrationUsage } from './schema/authoring/integrations.js';
-import {
-  workspaceInboxEvents,
-  workspaceInboxReads,
-  workspaceInboxThreads,
-} from './schema/inbox/core.js';
+import { workspaceInboxEvents } from './schema/inbox/events.js';
+import { workspaceInboxReads } from './schema/inbox/reads.js';
+import { workspaceInboxThreads } from './schema/inbox/threads.js';
 import {
   workflowFailureStreaks,
   workflowTriggerOutcomes,
@@ -194,37 +184,29 @@ export {
   authSessions,
   authVerifications,
 } from './schema/authentication.js';
-export {
-  users,
-  workspaces,
-  workspaceMemberships,
-  auditEvents,
-  usageEvents,
-} from './schema/foundation.js';
+export { users } from './schema/identity/users.js';
+export { workspaces } from './schema/tenant-access/workspaces.js';
+export { workspaceMemberships } from './schema/tenant-access/memberships.js';
+export { auditEvents } from './schema/governance/audit-events.js';
+export { usageEvents } from './schema/runs/usage-events.js';
 export {
   workspaceVariables,
   workspaceVariableSetRevisions,
 } from './schema/variables.js';
-export {
-  artifacts,
-  outboxEvents,
-  inboxReceipts,
-  transportSecurityAuditFacts,
-} from './schema/transport.js';
-export {
-  workflowRuns,
-  runEvents,
-  runCheckpoints,
-  nodeRuns,
-  nodeAttempts,
-  previewRuns,
-  previewAttempts,
-} from './schema/runs/execution.js';
-export {
-  artifactLinks,
-  idempotencyRecords,
-  workspaceCreationIdempotencyRecords,
-} from './schema/runs/support.js';
+export { artifacts } from './schema/artifacts/artifacts.js';
+export { outboxEvents } from './schema/outbox/events.js';
+export { inboxReceipts } from './schema/outbox/receipts.js';
+export { transportSecurityAuditFacts } from './schema/transport/security-audit-facts.js';
+export { workflowRuns } from './schema/runs/workflow-runs.js';
+export { runEvents } from './schema/runs/events.js';
+export { runCheckpoints } from './schema/runs/checkpoints.js';
+export { nodeRuns } from './schema/runs/node-executions.js';
+export { nodeAttempts } from './schema/runs/node-executions.js';
+export { previewRuns } from './schema/previews/runs.js';
+export { previewAttempts } from './schema/previews/attempts.js';
+export { artifactLinks } from './schema/artifacts/links.js';
+export { idempotencyRecords } from './schema/idempotency/records.js';
+export { workspaceCreationIdempotencyRecords } from './schema/tenant-access/workspace-creation-receipts.js';
 export {
   workflows,
   workflowDrafts,
@@ -432,23 +414,21 @@ export {
   triggerCoordinatedEvents,
   triggerEventWindows,
 } from './schema/event-coordination/records.js';
-export {
-  workspaceInboxRevisionSequence,
-  workspaceInvitationAcceptanceIntents,
-  workspaceInvitationBindingReplacementClaims,
-  workspaceInvitationDeliveryAttempts,
-  workspaceInvitations,
-  workspaceLifecycleOperations,
-} from './schema/foundation.js';
+export { workspaceInboxRevisionSequence } from './schema/inbox/revision-sequence.js';
+export { workspaceInvitationAcceptanceIntents } from './schema/tenant-access/invitations/acceptance-intents.js';
+export { workspaceInvitationBindingReplacementClaims } from './schema/tenant-access/invitations/binding-replacement-claims.js';
+export { workspaceInvitationDeliveryAttempts } from './schema/tenant-access/invitations/delivery-attempts.js';
+export { workspaceInvitations } from './schema/tenant-access/invitations/invitations.js';
+export { workspaceLifecycleOperations } from './schema/lifecycle/workspace-operations.js';
 export { apiTokens } from './schema/identity/api-tokens.js';
 export { authProvisioningCredentials } from './schema/identity/federation/directory/credentials.js';
 export { authDirectoryGroups } from './schema/identity/federation/directory/groups.js';
 export { authDirectoryGroupMappings } from './schema/identity/federation/directory/mappings.js';
 export { authDirectoryGroupMembers } from './schema/identity/federation/directory/members.js';
-export { authDirectoryMemberships } from './schema/identity/federation/directory/sources.js';
+export { authDirectoryMemberships } from './schema/identity/federation/directory/memberships.js';
 export { authDirectoryUsers } from './schema/identity/federation/directory/users.js';
 export { authDomains } from './schema/identity/federation/domains.js';
-export { authFederationAttempts } from './schema/identity/federation/journeys.js';
+export { authFederationAttempts } from './schema/identity/federation/attempts.js';
 export {
   authOrganizations,
   authOrganizationWorkspaces,
@@ -458,11 +438,9 @@ export {
   authProviders,
 } from './schema/identity/federation/providers.js';
 export { authSignInAttempts } from './schema/identity/sign-in.js';
-export {
-  workspaceInboxEvents,
-  workspaceInboxReads,
-  workspaceInboxThreads,
-} from './schema/inbox/core.js';
+export { workspaceInboxEvents } from './schema/inbox/events.js';
+export { workspaceInboxReads } from './schema/inbox/reads.js';
+export { workspaceInboxThreads } from './schema/inbox/threads.js';
 export { noticeMailBatches, noticeMailItems } from './schema/inbox/mail.js';
 export {
   noticePreferences,
@@ -512,9 +490,9 @@ export {
 } from './schema/runs/tests.js';
 export {
   DEFAULT_ARTIFACT_BYTE_LIMIT,
-  outboxFairDispatchCursor,
   workspaceArtifactCapacity,
-} from './schema/transport.js';
+} from './schema/artifacts/capacity.js';
+export { outboxFairDispatchCursor } from './schema/outbox/fair-dispatch-cursor.js';
 export {
   workflowFailureStreaks,
   workflowTriggerOutcomes,

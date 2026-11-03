@@ -12,7 +12,7 @@ import {
   varchar,
 } from 'drizzle-orm/pg-core';
 import { appSchema } from '../namespace.js';
-import { users } from '../foundation.js';
+import { users } from '../identity/users.js';
 import { workflows, workflowVersions } from './workflows.js';
 
 export const workflowPublicationRequests = appSchema.table(

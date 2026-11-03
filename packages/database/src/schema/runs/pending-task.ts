@@ -12,8 +12,9 @@ import {
   varchar,
 } from 'drizzle-orm/pg-core';
 import { appSchema } from '../namespace.js';
-import { users } from '../foundation.js';
-import { nodeRuns, workflowRuns } from './execution.js';
+import { users } from '../identity/users.js';
+import { nodeRuns } from './node-executions.js';
+import { workflowRuns } from './workflow-runs.js';
 
 export const pendingRunTasks = appSchema.table(
   'pending_run_tasks',

@@ -16,7 +16,7 @@ import {
 } from 'drizzle-orm/pg-core';
 import { appSchema } from '../namespace.js';
 import { workflowVersions } from '../authoring/workflows.js';
-import { workflowRuns } from './execution.js';
+import { workflowRuns } from './workflow-runs.js';
 
 /** Parent-owned identity survives child detail and summary retirement. */
 export const workflowCalls = appSchema.table(

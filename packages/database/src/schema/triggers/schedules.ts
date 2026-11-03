@@ -1,7 +1,7 @@
 import type { RecordedScheduleOccurrence } from '../stored-shapes.js';
 import type { ScheduleTriggerRecord } from '../stored-shapes.js';
 import { workflowTriggers } from '../authoring/workflows.js';
-import { workflowRuns } from '../runs/execution.js';
+import { workflowRuns } from '../runs/workflow-runs.js';
 import {
   type PgTableExtraConfigValue,
   check,

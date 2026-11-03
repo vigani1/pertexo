@@ -15,9 +15,9 @@ import {
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 import { appSchema } from '../namespace.js';
-import { workspaces } from '../foundation.js';
+import { workspaces } from '../tenant-access/workspaces.js';
 import { workflows, workflowVersions } from '../authoring/workflows.js';
-import { workflowRuns } from '../runs/execution.js';
+import { workflowRuns } from '../runs/workflow-runs.js';
 import { webhookTriggerEndpoints } from '../triggers/endpoints.js';
 import type { EventCoordinationPolicy } from '@pertexo/workflow-model';
 

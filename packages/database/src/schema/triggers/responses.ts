@@ -11,7 +11,7 @@ import {
 } from 'drizzle-orm/pg-core';
 import type { NodeWebhookResponse } from '@pertexo/node-sdk';
 import { appSchema } from '../namespace.js';
-import { workflowRuns } from '../runs/execution.js';
+import { workflowRuns } from '../runs/workflow-runs.js';
 
 export const webhookRunResponses = appSchema.table(
   'webhook_run_responses',

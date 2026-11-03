@@ -4,7 +4,7 @@ import type {
   WebhookReplayCheck,
 } from '../stored-shapes.js';
 import { triggerCoordinatedEvents } from '../event-coordination/records.js';
-import { workflowRuns } from '../runs/execution.js';
+import { workflowRuns } from '../runs/workflow-runs.js';
 import {
   type PgTableExtraConfigValue,
   char,

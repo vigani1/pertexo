@@ -8,7 +8,7 @@ import {
   uuid,
 } from 'drizzle-orm/pg-core';
 import { appSchema } from '../../namespace.js';
-import { workspaceMemberships } from '../../foundation.js';
+import { workspaceMemberships } from '../../tenant-access/memberships.js';
 import { workflowComments } from './comments.js';
 export const workflowCommentMentions = appSchema.table(
   'workflow_comment_mentions',

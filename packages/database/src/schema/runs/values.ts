@@ -10,7 +10,8 @@ import {
 } from 'drizzle-orm/pg-core';
 import { RUN_VALUE_LIMITS } from '@pertexo/node-sdk';
 import { appSchema } from '../namespace.js';
-import { workflowRuns, previewRuns } from './execution.js';
+import { workflowRuns } from './workflow-runs.js';
+import { previewRuns } from '../previews/runs.js';
 
 export const workflowRunValues = appSchema.table(
   'workflow_run_values',

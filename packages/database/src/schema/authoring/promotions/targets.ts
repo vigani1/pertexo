@@ -7,7 +7,8 @@ import {
   uuid,
 } from 'drizzle-orm/pg-core';
 import { appSchema } from '../../namespace.js';
-import { users, workspaces } from '../../foundation.js';
+import { users } from '../../identity/users.js';
+import { workspaces } from '../../tenant-access/workspaces.js';
 
 export const workspacePromotionTargets = appSchema.table(
   'workspace_promotion_targets',

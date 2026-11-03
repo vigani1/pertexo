@@ -10,7 +10,7 @@ import {
   uuid,
 } from 'drizzle-orm/pg-core';
 import { appSchema } from '../../namespace.js';
-import { users } from '../../foundation.js';
+import { users } from '../../identity/users.js';
 import { workflowCommentThreads } from './threads.js';
 export const workflowComments = appSchema.table(
   'workflow_comments',

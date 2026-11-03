@@ -15,10 +15,12 @@ import {
   varchar,
 } from 'drizzle-orm/pg-core';
 import type { ConnectionAuthType, ConnectionStatus } from './stored-shapes.js';
-import { users, workspaceMemberships, workspaces } from './foundation.js';
+import { users } from './identity/users.js';
+import { workspaceMemberships } from './tenant-access/memberships.js';
+import { workspaces } from './tenant-access/workspaces.js';
 
 import { appSchema } from './namespace.js';
-import { nodeAttempts } from './runs/execution.js';
+import { nodeAttempts } from './runs/node-executions.js';
 
 export const connections = appSchema.table(
   'connections',

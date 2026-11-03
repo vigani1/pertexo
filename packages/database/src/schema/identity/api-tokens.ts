@@ -14,7 +14,7 @@ import {
 } from 'drizzle-orm/pg-core';
 import type { ApiTokenScope } from '@pertexo/contracts';
 
-import { workspaceMemberships } from '../foundation.js';
+import { workspaceMemberships } from '../tenant-access/memberships.js';
 import { appSchema } from '../namespace.js';
 
 export const apiTokens = appSchema.table(

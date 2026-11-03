@@ -12,7 +12,7 @@ import {
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 import { appSchema } from '../../namespace.js';
-import { workspaces } from '../../foundation.js';
+import { workspaces } from '../../tenant-access/workspaces.js';
 
 // One row: an instance has one set of limits, which the API writes at startup.
 export const instanceCapacity = appSchema.table(
