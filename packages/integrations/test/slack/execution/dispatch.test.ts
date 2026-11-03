@@ -2,9 +2,9 @@ import { describe, expect, it } from 'vitest';
 
 import {
   createSlackSendMessageExecutorRegistration,
-  SECURE_HTTP_ERROR_CODE,
+  PROVIDER_HTTP_ERROR_CODE,
   SlackSendMessageExecutorError,
-  SecureHttpError,
+  ProviderHttpError,
 } from '../../../src/server.js';
 
 import { runtime, invocation } from '../../support/slack-execution.js';
@@ -80,8 +80,8 @@ describe('slack.send_message@1', () => {
   );
   it('retries definite pre-dispatch transport failure but never replays post-dispatch ambiguity', async () => {
     const definite = runtime(
-      new SecureHttpError(
-        SECURE_HTTP_ERROR_CODE.dnsFailed,
+      new ProviderHttpError(
+        PROVIDER_HTTP_ERROR_CODE.dnsFailed,
         'definite_failure',
         { possiblyDispatched: false },
       ),
@@ -96,7 +96,7 @@ describe('slack.send_message@1', () => {
       possiblyDispatched: false,
     });
     const ambiguous = runtime(
-      new SecureHttpError(SECURE_HTTP_ERROR_CODE.timedOut, 'ambiguous', {
+      new ProviderHttpError(PROVIDER_HTTP_ERROR_CODE.timedOut, 'ambiguous', {
         possiblyDispatched: true,
       }),
     );
@@ -114,7 +114,7 @@ describe('slack.send_message@1', () => {
   });
   it.each([
     [
-      SECURE_HTTP_ERROR_CODE.connectionFenceFailed,
+      PROVIDER_HTTP_ERROR_CODE.connectionFenceFailed,
       false,
       {
         kind: 'failed',
@@ -123,17 +123,17 @@ describe('slack.send_message@1', () => {
       },
     ],
     [
-      SECURE_HTTP_ERROR_CODE.dispatchBindingMismatch,
+      PROVIDER_HTTP_ERROR_CODE.dispatchBindingMismatch,
       false,
       { kind: 'failed', errorKind: 'configuration', possiblyDispatched: false },
     ],
     [
-      SECURE_HTTP_ERROR_CODE.canceled,
+      PROVIDER_HTTP_ERROR_CODE.canceled,
       false,
       { kind: 'canceled', errorKind: 'canceled', possiblyDispatched: false },
     ],
     [
-      SECURE_HTTP_ERROR_CODE.canceled,
+      PROVIDER_HTTP_ERROR_CODE.canceled,
       true,
       {
         kind: 'outcome_unknown',
@@ -142,12 +142,12 @@ describe('slack.send_message@1', () => {
       },
     ],
     [
-      SECURE_HTTP_ERROR_CODE.timedOut,
+      PROVIDER_HTTP_ERROR_CODE.timedOut,
       false,
       { kind: 'retry', errorKind: 'timeout', possiblyDispatched: false },
     ],
     [
-      SECURE_HTTP_ERROR_CODE.networkFailed,
+      PROVIDER_HTTP_ERROR_CODE.networkFailed,
       true,
       {
         kind: 'outcome_unknown',
@@ -159,7 +159,7 @@ describe('slack.send_message@1', () => {
     'maps secure HTTP %s with dispatched=%s at the executor boundary',
     async (code, possiblyDispatched, expected) => {
       const state = runtime(
-        new SecureHttpError(
+        new ProviderHttpError(
           code,
           possiblyDispatched ? 'ambiguous' : 'definite_failure',
           { possiblyDispatched },

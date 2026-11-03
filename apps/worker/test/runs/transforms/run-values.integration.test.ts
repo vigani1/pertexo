@@ -5,7 +5,8 @@ import { createOutboxDispatcherDatabase } from '@pertexo/core/testing';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
 import { initialCheckpointFactory } from '@pertexo/core/runs';
 import { PLATFORM_NODE_CATALOG } from '@pertexo/node-catalog';
-import { createPlatformNodeRegistry } from '@pertexo/node-catalog/server';
+
+import { createPlatformNodeRegistry } from '../../../src/providers/node-registry.js';
 import { createQueueProducer, JOB_NAME } from '@pertexo/queue';
 import { composeExecutableCatalog } from '@pertexo/workflow-engine';
 import {

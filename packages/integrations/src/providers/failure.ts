@@ -12,7 +12,7 @@ import {
   errorNameIs,
   safeInstanceOf,
   safeNumberProperty,
-} from '../http/unknown-error.js';
+} from '@pertexo/node-sdk/server';
 
 export type ProviderFailure<Failure extends NodeExecutorFailure> = (
   kind: NodeExecutorFailureKind,

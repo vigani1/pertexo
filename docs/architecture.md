@@ -21,11 +21,11 @@ remain in `docs/adr/`, with supersession noted where their decisions changed.
 | `workflow-engine` | Pure execution decisions and the checkpoint shape                                                                  |
 | `core`            | Whole product areas, each with its flows, queries and decisions; its `execution` area advances runs               |
 | `database`        | Drizzle tables, migrations, transactions, row security, and the shared outbox, audit and idempotency helpers       |
-| `secrets`         | System mail storage and the encryption key inventory, above `database` and below `core`                            |
+| `secrets`         | Cryptography, key custody and verification, safe outbound HTTP, and durable system mail, below `core`                            |
 | `contracts`       | Zod HTTP request/response/problem schemas and server-side OpenAPI generation                                       |
 | `node-sdk`        | Node definitions, config/port contracts and executor interfaces                                                    |
 | `nodes-core`      | Built-in deterministic and control nodes                                                                           |
-| `integrations`    | HTTP, Slack and email nodes, credential boundaries and safe outbound HTTP                                          |
+| `integrations`    | Provider protocol clients and HTTP, Slack and email step execution; apps inject security and network implementations                                          |
 | `node-catalog`    | The registry combining built-in and provider nodes                                                                 |
 | `templates`       | Curated workflow content and origin identities                                                                     |
 | `queue`           | Redis/BullMQ job transport and pub/sub hints                                                                       |
@@ -41,7 +41,7 @@ instrumented runtime libraries. Artifact storage, queue and rate limiting are
 server-side packages despite having a single root door.
 
 Applications depend on `core`, and `core` on `secrets`, `database`, the engine and
-the model; `secrets` builds on `database` alone. A check refuses the reverse
+the model; `secrets` builds on `database` and the shared contracts, workflow model and node SDK. Applications compose its implementations into the provider ports in `integrations`. A check refuses the reverse
 ([ADR 091](adr/091-core-layer.md)). Each core
 area has an `index.ts` behind its `@pertexo/core/<area>` entry point; from the
 one-shot move on, other areas import the files it names directly, so no barrel edges

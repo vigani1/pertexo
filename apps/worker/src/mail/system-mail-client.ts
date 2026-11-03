@@ -1,8 +1,6 @@
-import {
-  createNodeSecureHttpClient,
-  createResendSystemMailClient,
-  type SecureHttpClient,
-} from '@pertexo/integrations/server';
+import type { SecureHttpClient } from '@pertexo/secrets/server';
+import { createNodeProviderHttpClient } from '../providers/http-client.js';
+import { createResendSystemMailClient } from '@pertexo/integrations/server';
 import {
   createSmtpClient,
   type SystemMailClient,
@@ -18,6 +16,6 @@ export function createSystemMailClient(
     ? createSmtpClient(config)
     : createResendSystemMailClient(
         config,
-        http ?? createNodeSecureHttpClient(),
+        http ?? createNodeProviderHttpClient(),
       );
 }

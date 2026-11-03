@@ -1,4 +1,4 @@
-import { httpConnections } from './http-execution.js';
+import { httpConnections } from '../../../../../packages/integrations/test/support/http-execution.js';
 import {
   createServer,
   type IncomingMessage,
@@ -16,12 +16,10 @@ import {
 import {
   HTTP_REQUEST_MANIFEST,
   HTTP_REQUEST_DEFINITION_REGISTRATION,
-} from '../../src/index.js';
-import {
-  createHttpRequestExecutorRegistration,
-  createNodeSecureHttpClient,
-  parseAllowedPrivateNetworks,
-} from '../../src/server.js';
+} from '../../../../../packages/integrations/src/index.js';
+import { createHttpRequestExecutorRegistration } from '@pertexo/integrations/server';
+import { parseAllowedPrivateNetworks } from '@pertexo/secrets/server';
+import { createNodeProviderHttpClient } from '../../../src/providers/http-client.js';
 
 const closers: (() => Promise<void>)[] = [];
 afterEach(async () => {
@@ -153,10 +151,11 @@ export function setup(
         httpClient:
           options.unexpectedTransportFailure === true
             ? {
+                redactText: (value: string) => value,
                 executeStreaming: () =>
                   Promise.reject(new Error('private transport error')),
               }
-            : createNodeSecureHttpClient({
+            : createNodeProviderHttpClient({
                 allowedPrivateNetworks:
                   parseAllowedPrivateNetworks('127.0.0.1/32'),
               }),

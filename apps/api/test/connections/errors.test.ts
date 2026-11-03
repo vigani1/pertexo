@@ -10,7 +10,7 @@ import {
   FailureNotificationDestinationError,
 } from '@pertexo/core/testing';
 import { ConnectionSecretEncryptionError } from '@pertexo/secrets/server';
-import { SecureHttpError } from '@pertexo/integrations/server';
+import { SecureHttpError } from '@pertexo/secrets/server';
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 

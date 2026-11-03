@@ -1,4 +1,4 @@
-import type { createPlatformNodeRegistry } from '@pertexo/node-catalog/server';
+import type { createPlatformNodeRegistry } from '../../../../../src/providers/node-registry.js';
 import { NodeExecutorFailure } from '@pertexo/node-sdk/server';
 
 export function createScriptedRecoveryRegistry(

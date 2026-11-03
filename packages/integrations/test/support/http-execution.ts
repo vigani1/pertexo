@@ -10,9 +10,9 @@ import { vi } from 'vitest';
 import { HTTP_REQUEST_CONNECTION_SLOT } from '../../src/index.js';
 import type {
   HttpRequestExecutorDependencies,
-  SecureHttpBodyConsumer,
-  SecureHttpResponse,
-  SecureHttpRequest,
+  ProviderHttpBodyConsumer,
+  ProviderHttpResponse,
+  ProviderHttpRequest,
 } from '../../src/server.js';
 const workspaceId = '11111111-1111-4111-8111-111111111111';
 export const connectionId = '22222222-2222-4222-8222-222222222222';
@@ -123,7 +123,7 @@ export function invocation(
     ...overrides,
   };
 }
-export function response(body: Uint8Array, status = 201): SecureHttpResponse {
+export function response(body: Uint8Array, status = 201): ProviderHttpResponse {
   return {
     status,
     headers: { 'content-type': 'application/json' },
@@ -134,12 +134,12 @@ export function response(body: Uint8Array, status = 201): SecureHttpResponse {
   };
 }
 export function streamingHttpClient(
-  execute: (request: SecureHttpRequest) => Promise<SecureHttpResponse>,
+  execute: (request: ProviderHttpRequest) => Promise<ProviderHttpResponse>,
 ): HttpRequestExecutorDependencies['httpClient'] {
   const executeStreaming = async <Body>(
-    request: SecureHttpRequest,
-    consume: SecureHttpBodyConsumer<Body>,
-  ): Promise<SecureHttpResponse<Body>> => {
+    request: ProviderHttpRequest,
+    consume: ProviderHttpBodyConsumer<Body>,
+  ): Promise<ProviderHttpResponse<Body>> => {
     const buffered = await execute(request);
     const signal = request.signal ?? new AbortController().signal;
     const body = await consume({
@@ -152,5 +152,5 @@ export function streamingHttpClient(
     });
     return { ...buffered, body };
   };
-  return { executeStreaming };
+  return { executeStreaming, redactText: vi.fn((value: string) => value) };
 }

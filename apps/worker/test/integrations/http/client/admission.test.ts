@@ -1,4 +1,4 @@
-import { inlineBytes } from '../../support/artifact-runtime.js';
+import { inlineBytes } from '../../../../../../packages/integrations/test/support/artifact-runtime.js';
 import { validateHeaderValue } from 'node:http';
 
 import { describe, expect, it, vi } from 'vitest';
@@ -6,7 +6,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   SECURE_HTTP_ERROR_CODE,
   SecureHttpClient,
-} from '../../../src/server.js';
+} from '@pertexo/secrets/server';
 import {
   encoder,
   FakeResolver,
@@ -14,7 +14,7 @@ import {
   transportResponse,
   request,
   expectSecureFailure,
-} from '../../support/http-client.js';
+} from '../../../../../../packages/secrets/test/support/http-client.js';
 describe('secure HTTP client', () => {
   it.each([
     { url: 'file:///etc/passwd' },

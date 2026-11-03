@@ -12,7 +12,8 @@ import type {
 } from '@pertexo/database/platform';
 import type { ArtifactStoreConfig } from '@pertexo/artifact-store';
 import { PLATFORM_NODE_CATALOG } from '@pertexo/node-catalog';
-import { createPlatformNodeRegistry } from '@pertexo/node-catalog/server';
+
+import { createPlatformNodeRegistry } from '../../providers/node-registry.js';
 import { createQueueTraceRunner } from '@pertexo/observability';
 import {
   createQueueConsumer,
@@ -26,10 +27,8 @@ import {
   composeExecutableCatalog,
   type NodeExecutionRegistry,
 } from '@pertexo/workflow-engine';
-import {
-  createNodeSecureHttpClient,
-  type SecureHttpAddressPolicy,
-} from '@pertexo/integrations/server';
+import type { SecureHttpAddressPolicy } from '@pertexo/secrets/server';
+import { createNodeProviderHttpClient } from '../../providers/http-client.js';
 import type { ConnectionEnvelopeEncryptionConfig } from '@pertexo/secrets/server';
 import { JsonataEvaluator } from '@pertexo/workflow-model/server';
 import {
@@ -133,7 +132,7 @@ const productionFactories: NodeAttemptRuntimeFactories = {
   reader: createWorkflowExecutionReader,
   registry: (httpRequest) =>
     createPlatformNodeRegistry({
-      httpRequest: { httpClient: createNodeSecureHttpClient(httpRequest) },
+      httpRequest: { httpClient: createNodeProviderHttpClient(httpRequest) },
       httpRequestTelemetry: createHttpProviderTelemetry(),
       slackSendMessageTelemetry: createSlackProviderTelemetry(),
       emailSendNotificationTelemetry: createEmailProviderTelemetry(),

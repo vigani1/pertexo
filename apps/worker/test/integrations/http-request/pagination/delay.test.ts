@@ -5,8 +5,8 @@ import type {
   SecureHttpBodyConsumer,
   SecureHttpRequest,
   SecureHttpResponse,
-} from '../../../src/server.js';
-import { executePagination } from '../../../src/http-request/pagination/execute.js';
+} from '@pertexo/secrets/server';
+import { executePagination } from '../../../../../../packages/integrations/src/http-request/pagination/execute.js';
 
 afterEach(() => {
   mock.timers.reset();
@@ -15,6 +15,7 @@ it('waits exactly the configured delay before fetching the next page', async () 
   mock.timers.enable({ apis: ['setTimeout'] });
   const requested: string[] = [];
   const client = {
+    redactText: (value: string) => value,
     executeStreaming: async <Body>(
       request: SecureHttpRequest,
       consume: SecureHttpBodyConsumer<Body>,

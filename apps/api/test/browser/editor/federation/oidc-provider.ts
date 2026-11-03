@@ -1,3 +1,4 @@
+import { provideHttpClient } from '../../../../src/platform/connections/http-client.js';
 import { execFile } from 'node:child_process';
 import { createHash, generateKeyPairSync, randomUUID, sign } from 'node:crypto';
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
@@ -8,7 +9,7 @@ import { promisify } from 'node:util';
 import {
   SecureHttpClient,
   type SecureHttpTransport,
-} from '@pertexo/integrations/server';
+} from '@pertexo/secrets/server';
 
 import { liveWebOrigin } from '../../web-origin.js';
 
@@ -283,12 +284,14 @@ export async function createBrowserOidcProvider() {
   };
   return {
     origin,
-    http: new SecureHttpClient(
-      {
-        resolve: () =>
-          Promise.resolve([{ address: '93.184.216.34', family: 4 }]),
-      },
-      transport,
+    http: provideHttpClient(
+      new SecureHttpClient(
+        {
+          resolve: () =>
+            Promise.resolve([{ address: '93.184.216.34', family: 4 }]),
+        },
+        transport,
+      ),
     ),
     close: async () => {
       server.closeAllConnections();

@@ -112,3 +112,44 @@ export {
 } from './callbacks/keys.js';
 
 export { verifyCallbackTokenKeys } from './callbacks/verify.js';
+
+export {
+  SECURE_HTTP_ERROR_CODE,
+  SecureHttpClient,
+  SecureHttpError,
+} from './outbound-http/secure.js';
+
+export type {
+  SecureHttpAddressPolicy,
+  SecureHttpErrorCode,
+  SecureHttpFailureObservation,
+  SecureHttpFailureStage,
+  SecureHttpObserver,
+  SecureHttpBodyConsumer,
+  SecureHttpRequest,
+  SecureHttpResolver,
+  SecureHttpResponse,
+  SecureHttpStreamingBody,
+  SecureHttpTransport,
+  SecureHttpTransportRequest,
+  SecureHttpTransportResponse,
+} from './outbound-http/secure.js';
+
+export {
+  createNodeSecureHttpClient,
+  NodeDnsResolver,
+  NodeHttpTransport,
+} from './outbound-http/transport/node.js';
+
+export {
+  parseAllowedPrivateNetworks,
+  type AllowedPrivateNetwork,
+} from './outbound-http/transport/address-policy.js';
+
+export { redactText } from './outbound-http/redact-text.js';
+
+export { inspectSecureHttpError } from './outbound-http/secure-error.js';
+export {
+  isAllowedPrivateAddress,
+  normalizeUrlHostname,
+} from './outbound-http/transport/address-policy.js';

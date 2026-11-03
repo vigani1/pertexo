@@ -1,7 +1,9 @@
 import type { Provider } from '@nestjs/common';
 import { createPreviewAttemptRunStore } from '@pertexo/core/previews';
-import { createNodeSecureHttpClient } from '@pertexo/integrations/server';
-import { createPlatformNodeRegistry } from '@pertexo/node-catalog/server';
+
+import { createNodeProviderHttpClient } from '../../providers/http-client.js';
+
+import { createPlatformNodeRegistry } from '../../providers/node-registry.js';
 import type { QueueConsumerObserver } from '@pertexo/queue';
 
 import type { WorkerConfig } from '../../config/worker.js';
@@ -63,7 +65,7 @@ export function nodeAttemptRuntimeProvider(
         previewInvoker = factories.createPreviewInvoker({
           registry: createPlatformNodeRegistry({
             httpRequest: {
-              httpClient: createNodeSecureHttpClient(config.httpRequest),
+              httpClient: createNodeProviderHttpClient(config.httpRequest),
             },
           }),
         });

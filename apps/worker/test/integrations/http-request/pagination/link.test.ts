@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { nextLink } from '../../../src/http-request/pagination/link.js';
+import { nextLink } from '../../../../../../packages/integrations/src/http-request/pagination/link.js';
 
 describe('bounded Link next relation', () => {
   it('respects quoted commas, escapes and relative URI commas', () => {

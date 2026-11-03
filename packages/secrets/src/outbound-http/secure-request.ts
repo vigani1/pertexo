@@ -2,14 +2,14 @@ import { utf8ByteLength } from '@pertexo/workflow-model';
 import { FILE_PAGE_LIMITS } from '@pertexo/node-sdk';
 import type { NodeVerifiedByteSource } from '@pertexo/node-sdk/server';
 import { z } from 'zod';
-import { isSerializableHttpHeaderValue } from './header-value.js';
+import { isSupportedHttpFieldValue as isSerializableHttpHeaderValue } from '@pertexo/contracts';
 import {
   SECURE_HTTP_ERROR_CODE,
   failure,
   inspectSecureHttpError,
 } from './secure-error.js';
 import type { SecureHttpRequest } from './secure.js';
-import { safeInstanceOf } from './unknown-error.js';
+import { safeInstanceOf } from '@pertexo/node-sdk/server';
 
 const MAX_REQUEST_BODY_BYTES = 1_048_576;
 const MAX_RESPONSE_BYTES = 10_485_760;

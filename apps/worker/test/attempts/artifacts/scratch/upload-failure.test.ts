@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { Readable } from 'node:stream';
 import { finished } from 'node:stream/promises';
-import { NodeHttpTransport } from '@pertexo/integrations/server';
+import { NodeHttpTransport } from '@pertexo/secrets/server';
 import { afterEach, expect, it } from 'vitest';
 import { withByteProgress } from '../../../../src/attempts/artifacts/scratch/progress.js';
 import { ArtifactScratchSpace } from '../../../../src/attempts/artifacts/scratch/space.js';

@@ -13,7 +13,8 @@ import {
   SLACK_SEND_MESSAGE_DEFINITION,
   SLACK_SEND_MESSAGE_EXECUTOR,
 } from '@pertexo/integrations';
-import { createPlatformNodeRegistry } from '@pertexo/node-catalog/server';
+
+import { createPlatformNodeRegistry } from '../../src/providers/node-registry.js';
 import { HttpRequestExecutorError } from '@pertexo/integrations/server';
 import {
   NodeExecutorFailure,

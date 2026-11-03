@@ -1,6 +1,6 @@
 import type { OAuth2StepFailureCode } from '@pertexo/contracts';
 import type { ConnectionTestOutcome } from '@pertexo/core/connections';
-import type { SecureHttpError } from '@pertexo/integrations/server';
+import type { SecureHttpError } from '@pertexo/secrets/server';
 import { classifySlackConnectionHealth } from '@pertexo/integrations/server';
 
 import type {
@@ -152,7 +152,7 @@ export function oauth2ApiResponseOutcome(
 }
 
 export function secureErrorOutcome(
-  error: SecureHttpError,
+  error: Pick<SecureHttpError, 'code'>,
 ): ConnectionTestOutcome {
   return Object.freeze({
     ok: false,

@@ -3,7 +3,7 @@
   "compilerOptions": {
     "composite": false,
     "noEmit": true,
-    "rootDir": ".",
+    "rootDir": "../..",
     "tsBuildInfoFile": "dist/test-types/tsconfig.tsbuildinfo",
     "declaration": false,
     "declarationMap": false

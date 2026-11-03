@@ -1,9 +1,9 @@
 import type {
-  SecureHttpBodyConsumer,
-  SecureHttpClient,
-  SecureHttpRequest,
-  SecureHttpResponse,
-} from '../../http/secure.js';
+  ProviderHttpBodyConsumer,
+  ProviderHttpClient,
+  ProviderHttpRequest,
+  ProviderHttpResponse,
+} from '../../providers/http-client.js';
 import { OAuth2TokenFailure } from '../../oauth2/oauth2-token.js';
 
 export type OAuth2RenewalCredential = Readonly<{
@@ -15,7 +15,7 @@ export type OAuth2RenewalCredential = Readonly<{
 }>;
 
 type Dependencies = Readonly<{
-  client: Pick<SecureHttpClient, 'executeStreaming'>;
+  client: Pick<ProviderHttpClient, 'executeStreaming'>;
   credential: OAuth2RenewalCredential;
   reject(tokenVersionId: string): Promise<boolean>;
   renew(): Promise<OAuth2RenewalCredential>;
@@ -26,7 +26,7 @@ const REPEAT = Symbol('repeat');
 const isRepeat = (body: unknown): body is typeof REPEAT => body === REPEAT;
 
 /** RFC 9110: only these can't have caused a side effect, so only these may repeat. */
-const mayRepeat = (method: SecureHttpRequest['method']): boolean =>
+const mayRepeat = (method: ProviderHttpRequest['method']): boolean =>
   method === 'GET' || method === 'HEAD';
 
 /** `*.example.com` covers its subdomains, not example.com itself. */
@@ -59,15 +59,15 @@ export function createOAuth2RenewalClient({
   credential,
   reject,
   renew,
-}: Dependencies): Pick<SecureHttpClient, 'executeStreaming'> {
+}: Dependencies): Pick<ProviderHttpClient, 'executeStreaming'> {
   let current = credential;
   // One renewal per 2xx, so an endpoint that always answers 401 can't drive refreshes.
   let mayRenew = true;
 
   const send = <Body>(
-    request: SecureHttpRequest,
-    consume: SecureHttpBodyConsumer<Body>,
-  ): Promise<SecureHttpResponse<Body | typeof REPEAT>> => {
+    request: ProviderHttpRequest,
+    consume: ProviderHttpBodyConsumer<Body>,
+  ): Promise<ProviderHttpResponse<Body | typeof REPEAT>> => {
     const token = current;
     return client.executeStreaming<Body | typeof REPEAT>(
       {
@@ -96,9 +96,9 @@ export function createOAuth2RenewalClient({
 
   return Object.freeze({
     executeStreaming: async <Body>(
-      request: SecureHttpRequest,
-      consume: SecureHttpBodyConsumer<Body>,
-    ): Promise<SecureHttpResponse<Body>> => {
+      request: ProviderHttpRequest,
+      consume: ProviderHttpBodyConsumer<Body>,
+    ): Promise<ProviderHttpResponse<Body>> => {
       assertHostAllowed(current, request.url);
       const first = await send(request, consume);
       if (!isRepeat(first.body)) return { ...first, body: first.body };

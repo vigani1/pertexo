@@ -1,7 +1,8 @@
 import { randomUUID } from 'node:crypto';
 
 import { parseDatabaseConfig } from '@pertexo/database/testing';
-import { createPlatformNodeRegistry } from '@pertexo/node-catalog/server';
+
+import { createPlatformNodeRegistry } from '../../../src/providers/node-registry.js';
 import { createQueueProducer, JOB_NAME, QUEUE_NAME } from '@pertexo/queue';
 import { invocationKey } from '@pertexo/workflow-engine';
 import { Queue } from 'bullmq';
@@ -72,7 +73,12 @@ describeIntegration('Linear node execution resilience', () => {
       },
       {
         registry: createPlatformNodeRegistry({
-          httpRequest: { httpClient: { executeStreaming: httpRequest } },
+          httpRequest: {
+            httpClient: {
+              redactText: (value: string) => value,
+              executeStreaming: httpRequest,
+            },
+          },
         }),
         runtimeCapabilities: {
           connections: () => ({ resolve: connectionResolve }),

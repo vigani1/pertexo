@@ -14,10 +14,10 @@ import type {
 } from '@pertexo/secrets/server';
 import type {
   OAuth2EndpointPolicy,
-  SecureHttpClient,
   SlackClient,
   ResendClient,
 } from '@pertexo/integrations/server';
+import type { SecureHttpClient } from '@pertexo/secrets/server';
 import type { OAuth2TokenService } from '@pertexo/core/connections';
 
 import type { WorkspaceAuthorizationSource } from '../workspaces/ports.js';

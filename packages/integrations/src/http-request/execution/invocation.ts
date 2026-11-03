@@ -9,7 +9,7 @@ import {
 import { HTTP_SIDE_EFFECT_CLASS } from '../../http/outcome-policy.js';
 import { OAuth2TokenFailure } from '../../oauth2/oauth2-token.js';
 
-import { errorNameIs, safeInstanceOf } from '../../http/unknown-error.js';
+import { errorNameIs, safeInstanceOf } from '@pertexo/node-sdk/server';
 import { HTTP_REQUEST_CONNECTION_SLOT } from '../http-request.definition.js';
 import type {
   HttpRequestConfig,

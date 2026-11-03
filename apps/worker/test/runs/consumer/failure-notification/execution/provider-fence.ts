@@ -3,7 +3,7 @@ import { performance } from 'node:perf_hooks';
 import {
   SECURE_HTTP_ERROR_CODE,
   SecureHttpError,
-} from '@pertexo/integrations/server';
+} from '@pertexo/secrets/server';
 
 import { expect } from 'vitest';
 import { createProviderFailureNotificationDelivery } from '../../../../../src/notifications/failure-delivery.js';

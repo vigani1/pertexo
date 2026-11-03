@@ -3,10 +3,10 @@ import { HTTP_REQUEST_CONNECTION_SLOT } from '../../../src/index.js';
 import {
   createHttpRequestExecutorRegistration,
   HttpRequestExecutorError,
-  SECURE_HTTP_ERROR_CODE,
-  SecureHttpError,
-  type SecureHttpResponse,
-  type SecureHttpRequest,
+  PROVIDER_HTTP_ERROR_CODE,
+  ProviderHttpError,
+  type ProviderHttpResponse,
+  type ProviderHttpRequest,
 } from '../../../src/server.js';
 import {
   connectionId,
@@ -42,8 +42,8 @@ describe('http.request@1 server executor', () => {
       createHttpRequestExecutorRegistration({
         httpClient: streamingHttpClient(async (request) => {
           await request.beforeDispatch();
-          throw new SecureHttpError(
-            SECURE_HTTP_ERROR_CODE.timedOut,
+          throw new ProviderHttpError(
+            PROVIDER_HTTP_ERROR_CODE.timedOut,
             'ambiguous',
             { possiblyDispatched: true },
           );
@@ -61,8 +61,8 @@ describe('http.request@1 server executor', () => {
       createHttpRequestExecutorRegistration({
         httpClient: streamingHttpClient(() =>
           Promise.reject(
-            new SecureHttpError(
-              SECURE_HTTP_ERROR_CODE.timedOut,
+            new ProviderHttpError(
+              PROVIDER_HTTP_ERROR_CODE.timedOut,
               'definite_failure',
               { possiblyDispatched: false },
             ),
@@ -84,8 +84,8 @@ describe('http.request@1 server executor', () => {
       createHttpRequestExecutorRegistration({
         httpClient: streamingHttpClient(async (request) => {
           await request.beforeDispatch();
-          throw new SecureHttpError(
-            SECURE_HTTP_ERROR_CODE.canceled,
+          throw new ProviderHttpError(
+            PROVIDER_HTTP_ERROR_CODE.canceled,
             'ambiguous',
             { possiblyDispatched: true },
           );
@@ -210,7 +210,9 @@ describe('http.request@1 server executor', () => {
     'rejects %s before HTTP provider dispatch',
     async (_name, createCandidate) => {
       const dispatch =
-        vi.fn<(request: SecureHttpRequest) => Promise<SecureHttpResponse>>();
+        vi.fn<
+          (request: ProviderHttpRequest) => Promise<ProviderHttpResponse>
+        >();
       const registration = createHttpRequestExecutorRegistration({
         httpClient: streamingHttpClient(dispatch),
       });
@@ -258,7 +260,7 @@ describe('http.request@1 server executor', () => {
 
     await expect(
       createHttpRequestExecutorRegistration({
-        httpClient: { executeStreaming },
+        httpClient: { redactText: (value: string) => value, executeStreaming },
       }).execute(invocation(state.value)),
     ).rejects.toMatchObject({
       decision: { kind: 'failed', errorKind: 'authentication' },

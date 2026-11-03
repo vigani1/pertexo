@@ -10,9 +10,10 @@ import {
   classifySecureHttpError,
   classifySecureHttpResponse,
 } from '../http/outcome-policy.js';
-import { SECURE_HTTP_ERROR_CODE } from '../http/secure.js';
-import { inspectSecureHttpError } from '../http/secure-error.js';
-import { errorNameIs, safeInstanceOf } from '../http/unknown-error.js';
+
+import { PROVIDER_HTTP_ERROR_CODE } from '../providers/http-errors.js';
+import { inspectProviderHttpError } from '../providers/http-errors.js';
+import { errorNameIs, safeInstanceOf } from '@pertexo/node-sdk/server';
 import { HTTP_REQUEST_EXECUTOR } from './http-request.definition.js';
 import {
   httpRequestOutputSchema,
@@ -163,6 +164,7 @@ async function executeWithMaterial(
               throw new HttpRequestExecutorError(decision, {
                 possiblyDispatched: false,
                 serviceResponse: serviceResponseFacts(
+                  dependencies.httpClient.redactText,
                   config,
                   { status },
                   request.sensitiveValues,
@@ -195,7 +197,12 @@ async function executeWithMaterial(
   )
     throw new HttpRequestExecutorError(decision, {
       possiblyDispatched: !repeatable,
-      serviceResponse: serviceResponseFacts(config, response, sensitiveValues),
+      serviceResponse: serviceResponseFacts(
+        dependencies.httpClient.redactText,
+        config,
+        response,
+        sensitiveValues,
+      ),
     });
   return httpRequestOutputSchema.parse({
     status: response.status,
@@ -299,7 +306,7 @@ function rethrowHttpError(error: unknown, context: RequestContext): never {
       { kind: 'canceled', errorKind: 'canceled' },
       { possiblyDispatched: false },
     );
-  const secureError = inspectSecureHttpError(error);
+  const secureError = inspectProviderHttpError(error);
   if (secureError === undefined)
     throw new HttpRequestExecutorError(
       repeatable
@@ -312,12 +319,12 @@ function rethrowHttpError(error: unknown, context: RequestContext): never {
       Object.freeze({ kind: 'outcome_unknown', errorKind: 'provider' }),
       { possiblyDispatched: true },
     );
-  if (secureError.code === SECURE_HTTP_ERROR_CODE.connectionFenceFailed)
+  if (secureError.code === PROVIDER_HTTP_ERROR_CODE.connectionFenceFailed)
     throw new HttpRequestExecutorError(
       Object.freeze({ kind: 'failed', errorKind: 'authentication' }),
       { possiblyDispatched: false },
     );
-  if (secureError.code === SECURE_HTTP_ERROR_CODE.dispatchBindingMismatch)
+  if (secureError.code === PROVIDER_HTTP_ERROR_CODE.dispatchBindingMismatch)
     throw failedConfiguration();
   throw new HttpRequestExecutorError(
     classifySecureHttpError(secureError.error, sideEffect, {

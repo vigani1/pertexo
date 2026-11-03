@@ -974,7 +974,10 @@ describe('NodeAttemptHandler', () => {
     });
     const providerIo = vi.fn();
     const registration = createHttpRequestExecutorRegistration({
-      httpClient: { executeStreaming: providerIo },
+      httpClient: {
+        redactText: (value: string) => value,
+        executeStreaming: providerIo,
+      },
     });
     const resolveFailure = new Error('temporary connection-store outage');
     const resolve = vi.fn().mockRejectedValue(resolveFailure);

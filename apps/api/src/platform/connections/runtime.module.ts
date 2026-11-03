@@ -1,3 +1,7 @@
+import {
+  isAllowedPrivateAddress,
+  normalizeUrlHostname,
+} from '@pertexo/secrets/server';
 import type { DynamicModule } from '@nestjs/common';
 import { Module } from '@nestjs/common';
 import { metrics, trace } from '@opentelemetry/api';
@@ -15,12 +19,14 @@ import {
   createConnectionEnvelopeEncryption,
   type ConnectionEnvelopeEncryptionRuntime,
 } from '@pertexo/secrets/server';
+import type {
+  AllowedPrivateNetwork,
+  SecureHttpClient,
+} from '@pertexo/secrets/server';
+import { createNodeProviderHttpClient } from './http-client.js';
 import {
-  createNodeSecureHttpClient,
   createSlackClient,
   createResendClient,
-  type AllowedPrivateNetwork,
-  type SecureHttpClient,
 } from '@pertexo/integrations/server';
 
 import { createOAuth2TokenService } from './oauth2-token-service.js';
@@ -79,7 +85,7 @@ export async function createApiConnectionRuntime(
           },
     );
     const telemetry = productionTelemetry();
-    const httpClient = createNodeSecureHttpClient();
+    const httpClient = createNodeProviderHttpClient();
     const slackClient = createSlackClient(httpClient);
     const emailClient = createResendClient(httpClient);
     const oauth2Runtime =
@@ -151,13 +157,13 @@ function createOAuth2Runtime(
   }: Readonly<{
     database: ApiConnectionStore;
     encryption: ConnectionEnvelopeEncryptionRuntime['encryption'];
-    apiClient: SecureHttpClient;
+    apiClient: Pick<SecureHttpClient, 'executeStreaming'>;
   }>,
 ) {
   // S17: an address policy is always passed, because the transport only refuses
   // plain http to a public address when one exists. Token requests only: every
   // other request from the API keeps the public-only rule.
-  const tokenClient = createNodeSecureHttpClient({
+  const tokenClient = createNodeProviderHttpClient({
     allowedPrivateNetworks: oauth2.allowedPrivateNetworks,
   });
   const tokens = createOAuth2TokenService({
@@ -170,7 +176,13 @@ function createOAuth2Runtime(
     tokens,
     dependencies: Object.freeze({
       persistence: database,
-      endpointPolicy: Object.freeze(oauth2),
+      endpointPolicy: Object.freeze({
+        publicWebOrigin: oauth2.publicWebOrigin,
+        privateNetworksAllowed: oauth2.allowedPrivateNetworks.length > 0,
+        isAllowedPrivateAddress: (address: string) =>
+          isAllowedPrivateAddress(address, oauth2.allowedPrivateNetworks),
+        normalizeHostname: normalizeUrlHostname,
+      }),
       tokenClient,
       apiClient,
       tokens,

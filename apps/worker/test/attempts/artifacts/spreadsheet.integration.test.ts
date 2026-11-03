@@ -5,7 +5,8 @@ import {
   createArtifactStore,
   parseArtifactStoreConfig,
 } from '@pertexo/artifact-store';
-import { createPlatformNodeRegistry } from '@pertexo/node-catalog/server';
+
+import { createPlatformNodeRegistry } from '../../../src/providers/node-registry.js';
 import { filePageBundleSchema } from '@pertexo/node-sdk';
 import type {
   NodeArtifactReference,

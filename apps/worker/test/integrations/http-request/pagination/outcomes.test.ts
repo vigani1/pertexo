@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { httpRequestConfigSchema } from '../../../src/index.js';
+import { httpRequestConfigSchema } from '../../../../../../packages/integrations/src/index.js';
 
 import { server, json, setup } from '../../support/pagination.js';
 describe('HTTP pagination through the real secure transport and registry', () => {

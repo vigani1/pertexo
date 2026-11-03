@@ -1,35 +1,6 @@
 export { verifyWebhookSignature } from './webhooks/verify-signature.js';
 
 export {
-  SECURE_HTTP_ERROR_CODE,
-  SecureHttpClient,
-  SecureHttpError,
-} from './http/secure.js';
-export type {
-  SecureHttpAddressPolicy,
-  SecureHttpErrorCode,
-  SecureHttpFailureObservation,
-  SecureHttpFailureStage,
-  SecureHttpObserver,
-  SecureHttpBodyConsumer,
-  SecureHttpRequest,
-  SecureHttpResolver,
-  SecureHttpResponse,
-  SecureHttpStreamingBody,
-  SecureHttpTransport,
-  SecureHttpTransportRequest,
-  SecureHttpTransportResponse,
-} from './http/secure.js';
-export {
-  createNodeSecureHttpClient,
-  NodeDnsResolver,
-  NodeHttpTransport,
-} from './http/transport/node.js';
-export {
-  parseAllowedPrivateNetworks,
-  type AllowedPrivateNetwork,
-} from './http/transport/address-policy.js';
-export {
   classifySecureHttpError,
   classifySecureHttpResponse,
   HTTP_SIDE_EFFECT_CLASS,
@@ -101,4 +72,16 @@ export { createResendSystemMailClient } from './email/system-mail.js';
 
 export { HttpPaginationFailure } from './http-request/pagination/failure.js';
 
-export { redactText } from './security/redact-text.js';
+export { createProviderHttpClient } from './providers/http-client.js';
+export type {
+  ProviderHttpClient,
+  ProviderHttpRequest,
+  ProviderHttpResponse,
+  ProviderHttpBodyConsumer,
+  ProviderHttpStreamingBody,
+} from './providers/http-client.js';
+export {
+  ProviderHttpError,
+  PROVIDER_HTTP_ERROR_CODE,
+} from './providers/http-errors.js';
+export type { ProviderHttpErrorCode } from './providers/http-errors.js';

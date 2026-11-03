@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   isAllowedPrivateAddress,
   parseAllowedPrivateNetworks,
-} from '../../src/http/transport/address-policy.js';
+} from '../../src/outbound-http/transport/address-policy.js';
 import {
   SecureHttpClient,
   type SecureHttpRequest,

@@ -1,12 +1,11 @@
 import type { NodeAttemptRunStore } from '@pertexo/core/attempts';
 import type { WorkerConnectionResolutionStore } from '@pertexo/core/connections';
 
+import type { ResendClient, SlackClient } from '@pertexo/integrations/server';
 import type {
-  ResendClient,
   SecureHttpTransportRequest,
   SecureHttpTransportResponse,
-  SlackClient,
-} from '@pertexo/integrations/server';
+} from '@pertexo/secrets/server';
 
 import type { NodeConnectionRuntime } from '@pertexo/node-sdk/server';
 

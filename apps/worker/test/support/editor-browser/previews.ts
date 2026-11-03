@@ -1,6 +1,7 @@
 import { createPreviewAttemptRunStore } from '@pertexo/core/previews';
 import type { DatabaseConfig } from '@pertexo/database/testing';
-import { createPlatformNodeRegistry } from '@pertexo/node-catalog/server';
+
+import { createPlatformNodeRegistry } from '../../../src/providers/node-registry.js';
 import type { NodeAttemptRuntimeOptions } from '../../../src/attempts/delivery/node-attempt.runtime.js';
 import { createPlatformPreviewNodeInvoker } from '../../../src/previews/preview-invoker.runtime.js';
 

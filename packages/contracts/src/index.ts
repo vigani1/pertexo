@@ -347,3 +347,5 @@ export {
   type WorkspacePeopleQuery,
   type WorkspacePeoplePage,
 } from './schemas/identity/people.js';
+
+export { isSupportedHttpFieldValue } from './schemas/shared/http-field-value.js';

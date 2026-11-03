@@ -3,7 +3,7 @@ import {
   SECURE_HTTP_ERROR_CODE,
   SecureHttpError,
   type SecureHttpRequest,
-} from '@pertexo/integrations/server';
+} from '@pertexo/secrets/server';
 import { ConnectionSecretEncryptionError } from '@pertexo/secrets/server';
 import type {
   ConnectionHttpClient,

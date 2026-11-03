@@ -6,8 +6,8 @@ import {
   decodeClientSettings,
   OAuth2TokenFailure,
   requestOAuth2Token,
-  type SecureHttpClient,
 } from '@pertexo/integrations/server';
+import type { SecureHttpClient } from '@pertexo/secrets/server';
 
 type Dependencies = Omit<
   OAuth2TokenServiceDependencies,

@@ -9,21 +9,26 @@ import {
   SLACK_SEND_MESSAGE_DEFINITION,
   SLACK_SEND_MESSAGE_EXECUTOR,
 } from '@pertexo/integrations';
+import type { HttpRequestExecutorDependencies } from '@pertexo/integrations/server';
 import type {
-  HttpRequestExecutorDependencies,
-  SecureHttpBodyConsumer,
-  SecureHttpRequest,
-  SecureHttpResponse,
+  ProviderHttpBodyConsumer,
+  ProviderHttpRequest,
+  ProviderHttpResponse,
 } from '@pertexo/integrations/server';
 import type { NodeExecutionRuntime } from '@pertexo/node-sdk/server';
 import { CORE_SET_DEFINITION, CORE_SET_EXECUTOR } from '@pertexo/nodes-core';
 
-import { createPlatformNodeRegistry } from '../src/server.js';
+import { createPlatformNodeRegistry } from './registry.js';
 
 describe('platform server registry composition', () => {
   it('builds one registry with dispatch-aware HTTP', async () => {
     const registry = createPlatformNodeRegistry({
-      httpRequest: { httpClient: { executeStreaming: vi.fn() } as never },
+      httpRequest: {
+        httpClient: {
+          redactText: (value: string) => value,
+          executeStreaming: vi.fn(),
+        } as never,
+      },
     });
     expect(
       registry.dispatchMode({
@@ -184,9 +189,9 @@ describe('platform server registry composition', () => {
       }),
     );
     const executeStreaming = async <Body>(
-      request: SecureHttpRequest,
-      consume: SecureHttpBodyConsumer<Body>,
-    ): Promise<SecureHttpResponse<Body>> => {
+      request: ProviderHttpRequest,
+      consume: ProviderHttpBodyConsumer<Body>,
+    ): Promise<ProviderHttpResponse<Body>> => {
       await request.beforeDispatch();
       const signal = request.signal ?? new AbortController().signal;
       const body = await consume({
@@ -238,7 +243,9 @@ describe('platform server registry composition', () => {
       },
     } satisfies NodeExecutionRuntime;
     const registry = createPlatformNodeRegistry({
-      httpRequest: { httpClient: { executeStreaming } },
+      httpRequest: {
+        httpClient: { redactText: (value: string) => value, executeStreaming },
+      },
       httpRequestTelemetry: { measure },
     });
 

@@ -29,7 +29,8 @@ import {
   parallelMergeGraph,
   nestedBranchGraph,
 } from './engine/fixture.js';
-import { createPlatformNodeRegistry } from '@pertexo/node-catalog/server';
+
+import { createPlatformNodeRegistry } from '../../src/providers/node-registry.js';
 
 describe('node attempt execution engine', () => {
   it('substitutes a test pin before mappings, input capture or executor dispatch', async () => {

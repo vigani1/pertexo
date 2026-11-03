@@ -1,3 +1,4 @@
+import { provideHttpClient } from '../../../../src/providers/http-client.js';
 import { NodeDispatchEvidenceError } from '@pertexo/node-sdk/server';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -5,17 +6,16 @@ import {
   createEmailSendNotificationExecutorRegistration,
   createResendClient,
   EmailSendNotificationExecutorError,
-  SecureHttpClient,
-  SecureHttpError,
-} from '../../../src/server.js';
-import { providerCredentialFailureCases } from '../../support/provider-credential-failure-cases.js';
+} from '@pertexo/integrations/server';
+import { SecureHttpClient, SecureHttpError } from '@pertexo/secrets/server';
+import { providerCredentialFailureCases } from '../../../../../../packages/integrations/test/support/provider-credential-failure-cases.js';
 import {
   secretVersionId,
   providerIdempotencyKey,
   originalBinding,
   runtime,
   invocation,
-} from '../../support/email-execution.js';
+} from '../../../../../../packages/integrations/test/support/email-execution.js';
 describe('email.send_notification@1', () => {
   it('preserves an executor failure returned by an injected provider adapter', async () => {
     const state = runtime(
@@ -97,12 +97,14 @@ describe('email.send_notification@1', () => {
   it('preserves dispatch identity through the real secure HTTP boundary', async () => {
     const transport = { dispatch: vi.fn() };
     const client = createResendClient(
-      new SecureHttpClient(
-        {
-          resolve: () =>
-            Promise.resolve([{ address: '8.8.8.8', family: 4 as const }]),
-        },
-        transport,
+      provideHttpClient(
+        new SecureHttpClient(
+          {
+            resolve: () =>
+              Promise.resolve([{ address: '8.8.8.8', family: 4 as const }]),
+          },
+          transport,
+        ),
       ),
     );
     const mismatch = runtime(undefined, secretVersionId, originalBinding, true);

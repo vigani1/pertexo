@@ -1,12 +1,15 @@
+import { provideHttpClient } from '../../../../src/providers/http-client.js';
 import { createHash, randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import {
   RESEND_API_ENDPOINT,
-  SecureHttpClient,
   createResendClient,
+} from '@pertexo/integrations/server';
+import {
+  SecureHttpClient,
   type SecureHttpTransportRequest,
   type SecureHttpTransportResponse,
-} from '@pertexo/integrations/server';
+} from '@pertexo/secrets/server';
 
 const publicTestAddress = '8.8.8.8';
 const maximumBytes = 10_485_760;
@@ -114,14 +117,16 @@ export function createEditorResendMailbox(
       },
     };
   };
-  const httpClient = new SecureHttpClient(
-    {
-      resolve: (hostname) =>
-        !closed && hostname === new URL(RESEND_API_ENDPOINT).hostname
-          ? Promise.resolve([{ address: publicTestAddress, family: 4 }])
-          : Promise.reject(new Error('Outside the owned Resend DNS')),
-    },
-    { dispatch },
+  const httpClient = provideHttpClient(
+    new SecureHttpClient(
+      {
+        resolve: (hostname) =>
+          !closed && hostname === new URL(RESEND_API_ENDPOINT).hostname
+            ? Promise.resolve([{ address: publicTestAddress, family: 4 }])
+            : Promise.reject(new Error('Outside the owned Resend DNS')),
+      },
+      { dispatch },
+    ),
   );
   return {
     httpClient,

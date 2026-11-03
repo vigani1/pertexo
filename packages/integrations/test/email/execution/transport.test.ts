@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 
 import {
   createEmailSendNotificationExecutorRegistration,
-  SECURE_HTTP_ERROR_CODE,
-  SecureHttpError,
+  PROVIDER_HTTP_ERROR_CODE,
+  ProviderHttpError,
 } from '../../../src/server.js';
 
 import {
@@ -16,21 +16,21 @@ describe('email.send_notification@1', () => {
   it('retries pre/post-dispatch transport failures and preserves cancellation', async () => {
     for (const [error, expected] of [
       [
-        new SecureHttpError(
-          SECURE_HTTP_ERROR_CODE.dnsFailed,
+        new ProviderHttpError(
+          PROVIDER_HTTP_ERROR_CODE.dnsFailed,
           'definite_failure',
           { possiblyDispatched: false },
         ),
         { kind: 'retry', errorKind: 'network', possiblyDispatched: false },
       ],
       [
-        new SecureHttpError(SECURE_HTTP_ERROR_CODE.timedOut, 'ambiguous', {
+        new ProviderHttpError(PROVIDER_HTTP_ERROR_CODE.timedOut, 'ambiguous', {
           possiblyDispatched: true,
         }),
         { kind: 'retry', errorKind: 'timeout', possiblyDispatched: true },
       ],
       [
-        new SecureHttpError(SECURE_HTTP_ERROR_CODE.canceled, 'ambiguous', {
+        new ProviderHttpError(PROVIDER_HTTP_ERROR_CODE.canceled, 'ambiguous', {
           possiblyDispatched: true,
         }),
         { kind: 'canceled', errorKind: 'canceled', possiblyDispatched: true },
@@ -70,8 +70,8 @@ describe('email.send_notification@1', () => {
   );
   it('preserves earlier dispatch ambiguity when a retry fails before redispatch', async () => {
     const state = runtime(
-      new SecureHttpError(
-        SECURE_HTTP_ERROR_CODE.dnsFailed,
+      new ProviderHttpError(
+        PROVIDER_HTTP_ERROR_CODE.dnsFailed,
         'definite_failure',
         { possiblyDispatched: false },
       ),

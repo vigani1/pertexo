@@ -1,6 +1,6 @@
 import { withArtifactReadOutage } from '../artifact-read-retry.js';
 
-import { createPlatformNodeRegistry } from '@pertexo/node-catalog/server';
+import { createPlatformNodeRegistry } from '../../../../src/providers/node-registry.js';
 
 import type {
   EditorBrowserWorkerState,

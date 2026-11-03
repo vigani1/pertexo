@@ -1,3 +1,4 @@
+import { provideHttpClient } from '../../../src/platform/connections/http-client.js';
 import { Readable } from 'node:stream';
 import { generateKeyPairSync, sign, createHash } from 'node:crypto';
 import { describe, expect, it, vi } from 'vitest';
@@ -5,7 +6,7 @@ import { createApplicationSecretEnvelope } from '@pertexo/secrets/server';
 import {
   SecureHttpClient,
   type SecureHttpTransportRequest,
-} from '@pertexo/integrations/server';
+} from '@pertexo/secrets/server';
 import {
   createOidcProofGateway,
   federationSecretContext,
@@ -122,11 +123,14 @@ function fixture(
       close: () => undefined,
     });
   });
-  const http = new SecureHttpClient(
-    {
-      resolve: () => Promise.resolve([{ address: '93.184.216.34', family: 4 }]),
-    },
-    { dispatch },
+  const http = provideHttpClient(
+    new SecureHttpClient(
+      {
+        resolve: () =>
+          Promise.resolve([{ address: '93.184.216.34', family: 4 }]),
+      },
+      { dispatch },
+    ),
   );
   return {
     provider,

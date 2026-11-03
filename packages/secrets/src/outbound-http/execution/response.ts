@@ -1,5 +1,5 @@
 import { utf8ByteLength } from '@pertexo/workflow-model';
-import { redactText } from '../../security/redact-text.js';
+import { redactText } from '../redact-text.js';
 
 import { boundedRedactedBody } from '../stream-redaction.js';
 import { SECURE_HTTP_ERROR_CODE, failure } from '../secure-error.js';

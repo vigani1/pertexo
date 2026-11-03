@@ -7,7 +7,8 @@ import {
   createSamlProofGateway,
   type SamlProofGateway,
 } from '../federation/protocol/saml/gateway.js';
-import { createNodeSecureHttpClient } from '@pertexo/integrations/server';
+
+import { createNodeProviderHttpClient } from '../../platform/connections/http-client.js';
 import type { ApplicationSecretEnvelope } from '@pertexo/secrets/server';
 import { OrganizationSignIn } from '../federation/journeys/organization.js';
 import {
@@ -172,7 +173,7 @@ export function createBetterAuthRuntime(
           gateway:
             config.federation.oidcGateway ??
             createOidcProofGateway({
-              http: createNodeSecureHttpClient(),
+              http: createNodeProviderHttpClient(),
               envelope: config.federation.envelope,
             }),
         }),

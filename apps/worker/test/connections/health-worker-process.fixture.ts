@@ -4,7 +4,8 @@ import { createOutboxDispatcherDatabase } from '@pertexo/core/outbox';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
 import { createQueueProducer, JOB_NAME } from '@pertexo/queue';
 import { createTransportMetrics } from '@pertexo/observability';
-import { createPlatformNodeRegistry } from '@pertexo/node-catalog/server';
+
+import { createPlatformNodeRegistry } from '../../src/providers/node-registry.js';
 import {
   ConnectionEnvelopeEncryption,
   type ConnectionSecretContext,
@@ -305,6 +306,7 @@ async function construct(
         slackSendMessage: { client },
         httpRequest: {
           httpClient: {
+            redactText: (value: string) => value,
             executeStreaming: () =>
               Promise.reject(new Error('HTTP outside health fixture')),
           },

@@ -4,23 +4,24 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { createOAuth2RenewalClient } from '../../src/http-request/execution/oauth2-renewal.js';
 import type {
-  SecureHttpBodyConsumer,
-  SecureHttpRequest,
-  SecureHttpResponse,
-  SecureHttpStreamingBody,
-} from '../../src/http/secure.js';
+  ProviderHttpBodyConsumer,
+  ProviderHttpRequest,
+  ProviderHttpResponse,
+  ProviderHttpStreamingBody,
+} from '../../src/providers/http-client.js';
 
 /** A service that answers each request with the next status, recording what it was sent. */
 function service(statuses: readonly number[]) {
-  const sent: SecureHttpRequest[] = [];
+  const sent: ProviderHttpRequest[] = [];
   let next = 0;
   return {
     sent,
     client: {
+      redactText: (value: string) => value,
       executeStreaming: async <Body>(
-        request: SecureHttpRequest,
-        consume: SecureHttpBodyConsumer<Body>,
-      ): Promise<SecureHttpResponse<Body>> => {
+        request: ProviderHttpRequest,
+        consume: ProviderHttpBodyConsumer<Body>,
+      ): Promise<ProviderHttpResponse<Body>> => {
         sent.push(request);
         const status = statuses[next] ?? 200;
         next += 1;
@@ -32,7 +33,7 @@ function service(statuses: readonly number[]) {
           finalUrl: 'https://api.example.com',
           redirectCount: 0,
           signal: new AbortController().signal,
-        } satisfies SecureHttpStreamingBody;
+        } satisfies ProviderHttpStreamingBody;
         return {
           status,
           headers: {},
@@ -52,7 +53,7 @@ const credential = (accessToken: string) => ({
   requestHosts: { mode: 'any' } as const,
 });
 
-const request = (method: SecureHttpRequest['method'], page = 1) =>
+const request = (method: ProviderHttpRequest['method'], page = 1) =>
   ({
     url: `https://api.example.com/items?page=${String(page)}`,
     method,
@@ -60,9 +61,9 @@ const request = (method: SecureHttpRequest['method'], page = 1) =>
     maxRedirects: 0,
     maxResponseBytes: 1_024,
     beforeDispatch: () => Promise.resolve(),
-  }) satisfies SecureHttpRequest;
+  }) satisfies ProviderHttpRequest;
 
-const statusOf = (stream: SecureHttpStreamingBody) =>
+const statusOf = (stream: ProviderHttpStreamingBody) =>
   Promise.resolve(stream.status);
 
 function client(statuses: readonly number[], marks = true) {
@@ -86,7 +87,7 @@ function client(statuses: readonly number[], marks = true) {
   };
 }
 
-const authorizationOf = (sent: SecureHttpRequest) =>
+const authorizationOf = (sent: ProviderHttpRequest) =>
   sent.headers?.authorization;
 
 describe('an OAuth2 request refused with a 401', () => {

@@ -1,10 +1,13 @@
+import { provideHttpClient } from '../../../src/providers/http-client.js';
 import { createHash, timingSafeEqual } from 'node:crypto';
 import {
   SecureHttpClient,
-  createSlackClient,
-  SLACK_API_ENDPOINTS,
   type SecureHttpTransportRequest,
   type SecureHttpTransportResponse,
+} from '@pertexo/secrets/server';
+import {
+  createSlackClient,
+  SLACK_API_ENDPOINTS,
 } from '@pertexo/integrations/server';
 import { CURATED_TEMPLATE_FIXTURE } from '../../../../../infrastructure/testing/curated-template-envelope-context.mjs';
 
@@ -151,20 +154,22 @@ export function createCuratedTemplateControlledTransports(
       return Promise.reject(new Error('Owned curated dispatch rejected'));
     }
   };
-  const httpClient = new SecureHttpClient(
-    {
-      resolve: (hostname) =>
-        !closed &&
-        [
-          new URL(CURATED_TEMPLATE_FIXTURE.httpEndpoint).hostname,
-          'slack.com',
-        ].includes(hostname)
-          ? Promise.resolve([
-              { address: publicTestAddress, family: 4 as const },
-            ])
-          : Promise.reject(new Error('Owned curated hostname rejected')),
-    },
-    { dispatch },
+  const httpClient = provideHttpClient(
+    new SecureHttpClient(
+      {
+        resolve: (hostname) =>
+          !closed &&
+          [
+            new URL(CURATED_TEMPLATE_FIXTURE.httpEndpoint).hostname,
+            'slack.com',
+          ].includes(hostname)
+            ? Promise.resolve([
+                { address: publicTestAddress, family: 4 as const },
+              ])
+            : Promise.reject(new Error('Owned curated hostname rejected')),
+      },
+      { dispatch },
+    ),
   );
   return {
     httpClient,

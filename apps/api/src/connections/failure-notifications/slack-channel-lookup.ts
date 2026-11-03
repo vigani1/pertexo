@@ -1,9 +1,10 @@
+import { ProviderHttpError } from '@pertexo/integrations/server';
 import {
   ConnectionUnavailableError,
   type ResolvedConnectionSecretRecord,
 } from '@pertexo/core/connections';
 import { ConnectionSecretEncryptionError } from '@pertexo/secrets/server';
-import { SecureHttpError } from '@pertexo/integrations/server';
+import { SecureHttpError } from '@pertexo/secrets/server';
 
 import type { WorkspaceAuthorizationSource } from '../../authorization/index.js';
 import {
@@ -208,7 +209,10 @@ async function lookupOne(
       },
     });
   } catch (error: unknown) {
-    if (!(error instanceof SecureHttpError)) throw error;
+    if (!(
+      error instanceof SecureHttpError || error instanceof ProviderHttpError
+    ))
+      throw error;
     return stopWith(channelId, 'provider_unavailable');
   }
   switch (result.kind) {

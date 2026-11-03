@@ -1,3 +1,4 @@
+import { ProviderHttpError } from '@pertexo/integrations/server';
 import type { FailureNotificationDestinationResponse } from '@pertexo/contracts';
 import { randomUUID } from 'node:crypto';
 import { CONNECTION_AUTH_TYPE } from '@pertexo/core/connections';
@@ -6,7 +7,7 @@ import { ConnectionSecretEncryptionError } from '@pertexo/secrets/server';
 import {
   SECURE_HTTP_ERROR_CODE,
   SecureHttpError,
-} from '@pertexo/integrations/server';
+} from '@pertexo/secrets/server';
 import type { WorkspaceAuthorizationSource } from '../../authorization/index.js';
 import {
   authorizeConnectionOperation,
@@ -227,7 +228,11 @@ export class TestConnectionUseCase {
             );
           }
         } catch (error: unknown) {
-          if (!(error instanceof SecureHttpError)) throw error;
+          if (!(
+            error instanceof SecureHttpError ||
+            error instanceof ProviderHttpError
+          ))
+            throw error;
           if (error.code === SECURE_HTTP_ERROR_CODE.dispatchEvidenceFailed)
             throw error;
           outcome = secureErrorOutcome(error);

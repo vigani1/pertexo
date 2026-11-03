@@ -31,7 +31,7 @@ image publishing and the owner-assisted beta launch are separate work.
 | --- | --- |
 | `packages/secrets/src/encryption/envelope-cipher.ts` | One AES-256-GCM credential cipher with a key-provider interface. Keep it. |
 | `packages/secrets/src/encryption/application-secret-envelope.ts` | Wraps with a current key and opens with current or previous keys. It already stores `keyVersion`; duplicate versions currently overwrite in a `Map` and must be rejected. |
-| `packages/integrations/src/credentials/local-key-provider.ts` | Uses the shared helper, but passes one key and the fixed reference/version `local:development`. Versioned configuration belongs here, not in each consumer. |
+| `packages/secrets/src/encryption/self-managed-key-provider.ts` | Uses the shared application envelope with the current and previous key ring. Versioned configuration belongs here, not in each consumer. |
 | `packages/secrets/src/encryption/connection-encryption.runtime.ts` | Shared API/worker parser rejects local mode when deployed and rejects mixed settings. Keep the single parser and fail-closed behavior. |
 | `packages/secrets/src/encryption/webhook-envelope.ts` | Already uses the same local provider and connection encryption configuration. Webhooks must receive the same improvement. |
 | API identity config and worker `config/application-key-ring.ts` | Both parse previous-key JSON independently. Consolidate the relevant key-ring rules in integrations; preserve mail and invitation variable names and behavior. |

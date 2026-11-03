@@ -1,6 +1,6 @@
 import { setImmediate as yieldToEventLoop } from 'node:timers/promises';
 
-import { isSerializableHttpHeaderValue } from './header-value.js';
+import { isSupportedHttpFieldValue as isSerializableHttpHeaderValue } from '@pertexo/contracts';
 
 import {
   SECURE_HTTP_ERROR_CODE,

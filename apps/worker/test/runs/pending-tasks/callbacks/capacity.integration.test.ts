@@ -14,7 +14,8 @@ import { callbackResources } from './fixtures.js';
 import { wait, reply, loop } from './capacity/fixture.js';
 import { Queue } from 'bullmq';
 import { QUEUE_NAME } from '@pertexo/queue';
-import { createPlatformNodeRegistry } from '@pertexo/node-catalog/server';
+
+import { createPlatformNodeRegistry } from '../../../../src/providers/node-registry.js';
 import { Readable } from 'node:stream';
 import { callbackTokenHash } from '@pertexo/secrets/server';
 
@@ -229,6 +230,7 @@ describe.runIf(fixture.enabled)(
       const registry = createPlatformNodeRegistry({
         httpRequest: {
           httpClient: {
+            redactText: (value: string) => value,
             executeStreaming: async (request, consume) => {
               sentUrl = new URL(request.url).searchParams.get('callback') ?? '';
               await request.beforeDispatch();

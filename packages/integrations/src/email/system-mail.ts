@@ -3,7 +3,7 @@ import {
   type ResendApiResult,
   type ResendClient,
 } from './client.js';
-import type { SecureHttpClient } from '../http/secure.js';
+import type { ProviderHttpClient } from '../providers/http-client.js';
 type ResendMailMessage = Omit<
   Parameters<ResendClient['sendNotification']>[0],
   'apiKey'
@@ -25,7 +25,7 @@ type ResendMailResult =
 
 export function createResendSystemMailClient(
   config: Readonly<{ apiKey: string }>,
-  http: Pick<SecureHttpClient, 'execute'>,
+  http: Pick<ProviderHttpClient, 'execute'>,
 ) {
   const resend = createResendClient(http);
   return Object.freeze({

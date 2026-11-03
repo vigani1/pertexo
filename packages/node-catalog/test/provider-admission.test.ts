@@ -8,12 +8,13 @@ import {
   SLACK_SEND_MESSAGE_EXECUTOR,
 } from '@pertexo/integrations';
 
-import { createPlatformNodeRegistry } from '../src/server.js';
+import { createPlatformNodeRegistry } from './registry.js';
 
 // The platform registry validates a provider step's config and input once,
 // before its executor runs, so no provider is ever called with either.
 function registry() {
   const clients = {
+    redactText: (value: string) => value,
     sendNotification: vi.fn(),
     sendMessage: vi.fn(),
     executeStreaming: vi.fn(),
@@ -26,7 +27,10 @@ function registry() {
       },
       slackSendMessage: { client: { sendMessage: clients.sendMessage } },
       httpRequest: {
-        httpClient: { executeStreaming: clients.executeStreaming } as never,
+        httpClient: {
+          redactText: (value: string) => value,
+          executeStreaming: clients.executeStreaming,
+        } as never,
       },
     }),
   };
