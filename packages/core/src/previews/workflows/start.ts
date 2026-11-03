@@ -1,5 +1,5 @@
 import type { PoolClient } from 'pg';
-import type { Role } from '@pertexo/workflow-model';
+import type { Role } from '@pertexo/policy';
 import { claimCommand, completeCommand } from '@pertexo/database/primitives';
 import { generatePersistedId } from '@pertexo/database/platform';
 import { lockArtifactReferences } from '../../artifacts/references/locks.repository.js';

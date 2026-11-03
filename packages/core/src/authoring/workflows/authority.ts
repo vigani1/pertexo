@@ -2,7 +2,7 @@ import { readFolderScope } from '../../shared/facts.queries.js';
 import { workflowAccessible } from '../../tenant-access/resources/workflows.queries.js';
 import type { WorkflowResourceCapability } from '../../shared/contract.js';
 import type { PoolClient } from 'pg';
-import type { Role } from '@pertexo/workflow-model';
+import type { Role } from '@pertexo/policy';
 import { WorkspaceAccessDeniedError } from '../../shared/errors.js';
 import {
   lockBrowsableWorkspaceAuthority,

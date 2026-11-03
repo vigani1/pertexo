@@ -22,7 +22,7 @@ import {
 } from 'drizzle-orm';
 import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
-import { UNPURGED_WORKSPACE_STATUSES } from '@pertexo/workflow-model';
+import { UNPURGED_WORKSPACE_STATUSES } from '@pertexo/policy';
 import type { Pool, PoolClient } from 'pg';
 import {
   accountPolicy,

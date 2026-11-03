@@ -9,7 +9,7 @@ import {
 import {
   BROWSABLE_WORKSPACE_STATUSES,
   UNPURGED_WORKSPACE_STATUSES,
-} from '@pertexo/workflow-model';
+} from '@pertexo/policy';
 import {
   users,
   workspaceMemberships,

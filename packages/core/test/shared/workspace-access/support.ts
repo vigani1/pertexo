@@ -1,4 +1,4 @@
-import { UNPURGED_WORKSPACE_STATUSES } from '@pertexo/workflow-model';
+import { UNPURGED_WORKSPACE_STATUSES } from '@pertexo/policy';
 import { Client } from 'pg';
 
 import { admin } from '../../lifecycle/calls/fixtures.js';

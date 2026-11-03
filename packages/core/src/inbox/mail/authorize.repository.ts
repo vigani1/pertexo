@@ -1,6 +1,6 @@
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { noticeMailBatches, noticeMailItems } from '@pertexo/database/schema';
-import { rolesForCapability } from '@pertexo/workflow-model';
+import { rolesForCapability } from '@pertexo/policy';
 import { and, eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';

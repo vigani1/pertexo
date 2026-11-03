@@ -1,5 +1,5 @@
 import type { CoordinatedEvent } from '@pertexo/contracts';
-import { BROWSABLE_WORKSPACE_STATUSES } from '@pertexo/workflow-model';
+import { BROWSABLE_WORKSPACE_STATUSES } from '@pertexo/policy';
 import { and, desc, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { alias } from 'drizzle-orm/pg-core';

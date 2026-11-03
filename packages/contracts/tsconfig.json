@@ -17,6 +17,9 @@
   },
   "references": [
     {
+      "path": "../policy/tsconfig.json"
+    },
+    {
       "path": "../workflow-model/tsconfig.json"
     },
     {

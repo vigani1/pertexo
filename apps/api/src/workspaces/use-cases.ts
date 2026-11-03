@@ -1,7 +1,5 @@
-import {
-  parseIdentityMetadata,
-  UNPURGED_WORKSPACE_STATUSES,
-} from '@pertexo/workflow-model';
+import { UNPURGED_WORKSPACE_STATUSES } from '@pertexo/policy';
+import { parseIdentityMetadata } from '@pertexo/workflow-model';
 import {
   authorizeWorkspaceOperation,
   BROWSABLE_WORKSPACE_STATUSES,

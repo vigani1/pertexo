@@ -1,6 +1,6 @@
 import { requireWorkflowInScope } from '../../workflows/access.js';
 import { readFolderScope } from '../../../shared/facts.queries.js';
-import { ACTIVE_WORKSPACE_STATUSES } from '@pertexo/workflow-model';
+import { ACTIVE_WORKSPACE_STATUSES } from '@pertexo/policy';
 import { and, eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';

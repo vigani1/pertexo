@@ -7,7 +7,7 @@ import {
   workspaceInvitations,
 } from '@pertexo/database/schema';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
-import type { Role } from '@pertexo/workflow-model';
+import type { Role } from '@pertexo/policy';
 
 import type { PoolClient } from 'pg';
 

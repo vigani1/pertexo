@@ -1,4 +1,4 @@
-export type { Role } from '@pertexo/workflow-model';
+export type { Role } from '@pertexo/policy';
 export {
   createIdentityWorkspaceStore,
   type IdentityWorkspaceStore,

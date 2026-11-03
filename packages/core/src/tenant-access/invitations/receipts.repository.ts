@@ -10,7 +10,7 @@ import {
   workspaceInvitationDeliveryAttempts as attempts,
   workspaceInvitationAcceptanceIntents as intents,
 } from '@pertexo/database/schema';
-import { ROLES } from '@pertexo/workflow-model';
+import { ROLES } from '@pertexo/policy';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
 

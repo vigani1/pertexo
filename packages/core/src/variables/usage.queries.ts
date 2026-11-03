@@ -6,7 +6,7 @@ import {
   workflowDrafts,
   workflowVersions,
 } from '@pertexo/database/schema';
-import type { Role } from '@pertexo/workflow-model';
+import type { Role } from '@pertexo/policy';
 import { and, eq, exists, gt, gte, lt, lte, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { alias } from 'drizzle-orm/pg-core';

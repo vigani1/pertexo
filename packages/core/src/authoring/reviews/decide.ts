@@ -1,7 +1,5 @@
-import {
-  publicationReviewDecision,
-  rolesForCapability,
-} from '@pertexo/workflow-model';
+import { rolesForCapability } from '@pertexo/policy';
+import { publicationReviewDecision } from '@pertexo/workflow-model';
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';

@@ -11,7 +11,7 @@ import {
 import {
   ACTIVE_WORKSPACE_STATUSES,
   BROWSABLE_WORKSPACE_STATUSES,
-} from '@pertexo/workflow-model';
+} from '@pertexo/policy';
 import type { Pool, PoolClient } from 'pg';
 
 import { withWorkspaceAccess } from '../../shared/workspace-access.js';

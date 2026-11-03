@@ -2,7 +2,7 @@ import type { AccessibleWorkspace } from '@pertexo/contracts';
 import {
   BROWSABLE_WORKSPACE_STATUSES,
   capabilitiesForRole,
-} from '@pertexo/workflow-model';
+} from '@pertexo/policy';
 import type { StatusTone } from '@/components/ui/status';
 
 export type WorkspaceAvailability = Readonly<{

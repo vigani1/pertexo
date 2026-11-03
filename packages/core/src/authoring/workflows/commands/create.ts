@@ -10,7 +10,8 @@ import {
   workflowDrafts,
   workflows,
 } from '@pertexo/database/schema';
-import { EMPTY_WORKFLOW_GRAPH, type Role } from '@pertexo/workflow-model';
+import { type Role } from '@pertexo/policy';
+import { EMPTY_WORKFLOW_GRAPH } from '@pertexo/workflow-model';
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';

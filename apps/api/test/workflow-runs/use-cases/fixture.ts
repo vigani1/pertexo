@@ -1,5 +1,5 @@
 import { runPersistenceSpies } from '../../support/run-ports.js';
-import type { Role } from '@pertexo/workflow-model';
+import type { Role } from '@pertexo/policy';
 
 import { vi } from 'vitest';
 import { createActorContext } from '../../../src/authorization/index.js';

@@ -2,7 +2,7 @@ import type { PoolClient } from 'pg';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { databaseSchema } from '@pertexo/database/schema';
 import { parseWorkspaceId } from '@pertexo/database/primitives';
-import type { Role } from '@pertexo/workflow-model';
+import type { Role } from '@pertexo/policy';
 import { cancelInTransaction } from '../../runs/commands/cancel-run.js';
 import { requireTestStopAuthority } from './access.js';
 import type { WorkflowTestRunInput } from './contract.js';

@@ -1,4 +1,4 @@
-import type { DelegatedRole, Role } from '@pertexo/workflow-model';
+import type { DelegatedRole, Role } from '@pertexo/policy';
 import { sql } from 'drizzle-orm';
 import {
   type PgTableExtraConfigValue,

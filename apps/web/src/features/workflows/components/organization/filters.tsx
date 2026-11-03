@@ -1,4 +1,4 @@
-import { isAdministrativeRole } from '@pertexo/workflow-model';
+import { isAdministrativeRole } from '@pertexo/policy';
 import { useState, type Ref } from 'react';
 import type { AccessibleWorkspace } from '@pertexo/contracts';
 import { Button } from '@/components/ui/button';

@@ -18,7 +18,7 @@ import {
   ACTIVE_WORKSPACE_STATUSES,
   BROWSABLE_WORKSPACE_STATUSES,
   type Role,
-} from '@pertexo/workflow-model';
+} from '@pertexo/policy';
 import type { AuthoringAccess } from '../workflows/access.js';
 import { WorkflowNotFoundError } from '../workflows/errors.js';
 import type {

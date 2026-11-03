@@ -15,7 +15,7 @@ import { workspaces, workflows, workflowRuns } from '@pertexo/database/schema';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import type { ResourceTransaction } from '../../../shared/contract.js';
 import { workflowScopeSql } from '../../../shared/scope.queries.js';
-import { UNPURGED_WORKSPACE_STATUSES } from '@pertexo/workflow-model';
+import { UNPURGED_WORKSPACE_STATUSES } from '@pertexo/policy';
 import { ordinaryRunSql } from '../../data-policy.js';
 import { emptyRunCounts, type RunStatusCounts } from '../counts.js';
 

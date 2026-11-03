@@ -4,7 +4,7 @@ import type { PoolClient } from 'pg';
 
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { connections } from '@pertexo/database/schema';
-import type { Role } from '@pertexo/workflow-model';
+import type { Role } from '@pertexo/policy';
 
 import {
   connectionScope,

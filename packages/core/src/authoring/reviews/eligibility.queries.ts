@@ -1,4 +1,4 @@
-import { rolesForCapability } from '@pertexo/workflow-model';
+import { rolesForCapability } from '@pertexo/policy';
 import { and, eq, sql, getTableColumns, type SQL } from 'drizzle-orm';
 import { alias, type SelectedFieldsFlat } from 'drizzle-orm/pg-core';
 import type { PublicationReview } from '@pertexo/contracts';
