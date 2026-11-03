@@ -9,7 +9,8 @@ import {
 } from '@pertexo/contracts';
 import { Catch, HttpException } from '@nestjs/common';
 import type { ArgumentsHost, ExceptionFilter } from '@nestjs/common';
-import { isRequestInputError } from './request-input.js';
+import { ZodError } from 'zod';
+import { isStoredDataError } from '@pertexo/database/platform';
 import {
   APPLICATION_ERROR_CATALOG,
   isApplicationError,
@@ -39,6 +40,7 @@ import {
   nestIssues,
   nestCode,
   safeHttpStatus,
+  unexpectedProblem,
 } from './problems/normalization/values.js';
 import { fromApplicationError } from './problems/normalization/application.js';
 
@@ -58,6 +60,7 @@ function normalize(
   request: HttpRequestLike,
   applicationErrorMappers: readonly HttpApplicationErrorMapper[],
 ): NormalizedProblem {
+  if (isStoredDataError(exception)) return unexpectedProblem(exception);
   if (!(exception instanceof Error) && isApplicationError(exception)) {
     return fromApplicationError(exception);
   }
@@ -81,7 +84,7 @@ function normalize(
     if (mapped !== undefined) return fromApplicationError(mapped);
   }
 
-  if (isRequestInputError(exception)) {
+  if (exception instanceof ZodError) {
     const entry = APPLICATION_ERROR_CATALOG['request.invalid'];
     return {
       code: 'request.invalid',

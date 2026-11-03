@@ -2,6 +2,7 @@ import { and, eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { dataTableReferenceIssues } from '../../../data-tables/columns/references.queries.js';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
+import { decodeStoredValue } from '@pertexo/database/platform';
 import {
   workflowDrafts,
   workflowVersions,
@@ -107,7 +108,7 @@ export async function validateDraft(
             compilesToChecksum(catalogs, draft.graphJson, live.checksum) &&
             sameWorkflowNotes(
               draft.graphJson,
-              parseWorkflowGraphDraft(live.graphJson),
+              decodeStoredValue(() => parseWorkflowGraphDraft(live.graphJson)),
             ),
         });
   return Object.freeze({ draft, validation, currentPublication });

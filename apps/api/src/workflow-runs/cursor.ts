@@ -41,7 +41,7 @@ export type WorkflowRunCursorContext = Readonly<{
   createdAtBefore?: string;
 }>;
 
-export class InvalidWorkflowRunCursorError extends TypeError {
+class InvalidWorkflowRunCursorError extends TypeError {
   public override readonly name = 'InvalidWorkflowRunCursorError';
 
   public constructor() {

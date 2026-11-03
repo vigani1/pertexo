@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 
 import {
   acquireDatabasePool,
+  decodeStoredValue,
   type DatabaseConfig,
   type DatabaseRuntime,
 } from '@pertexo/database/platform';
@@ -95,7 +96,9 @@ async function executeWrite(
         'conflict',
         'The retried data table command changed.',
       );
-    return dataTableResultSchema.parse(JSON.parse(prior.resultJson));
+    return decodeStoredValue(() =>
+      dataTableResultSchema.parse(JSON.parse(prior.resultJson)),
+    );
   }
   const table = await requireTable(
     client,

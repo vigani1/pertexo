@@ -18,7 +18,10 @@ import { and, eq, gt, sql } from 'drizzle-orm';
 import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { alias } from 'drizzle-orm/pg-core';
 import type { PoolClient } from 'pg';
-import { generatePersistedId } from '@pertexo/database/platform';
+import {
+  decodeStoredValue,
+  generatePersistedId,
+} from '@pertexo/database/platform';
 import {
   workspaceDataTableQuotas as quotas,
   workspaceDataTableRows as tableRows,
@@ -191,7 +194,9 @@ async function rewriteTableRows(
       .catch(rethrowQueryFailure);
     if (batch.length === 0) break;
     const rows = batch.map((row) => {
-      const stored = dataTableValuesSchema.parse(JSON.parse(row.values));
+      const stored = decodeStoredValue(() =>
+        dataTableValuesSchema.parse(JSON.parse(row.values)),
+      );
       const values = changeDataTableValues(
         table.columns,
         next,

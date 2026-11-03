@@ -11,6 +11,7 @@ import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
+import { decodeStoredValue } from '@pertexo/database/platform';
 import { workspaceDataTableRows as rows } from '@pertexo/database/schema';
 import type { DataTableDefinition, FindRowsInput } from '../contract.js';
 import { requireTable } from '../definitions.queries.js';
@@ -27,7 +28,9 @@ export const rowFields = {
 
 /** Text values retain their stored format; output follows the table's column order. */
 function projectRow(table: DataTableDefinition, row: StoredRow): DataTableRow {
-  const stored = dataTableValuesSchema.parse(JSON.parse(row.values));
+  const stored = decodeStoredValue(() =>
+    dataTableValuesSchema.parse(JSON.parse(row.values)),
+  );
   return {
     id: row.id,
     revision: row.revision,
