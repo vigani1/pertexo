@@ -1,4 +1,5 @@
 import { fileURLToPath } from 'node:url';
+import { ZodError } from 'zod';
 
 import { parseMigrationConfig, type MigrationConfig } from './config.js';
 import { MigrationFileFailedError, migrateDatabase } from './migrations.js';
@@ -20,10 +21,11 @@ function classifyError(error: unknown): 'Error' | 'NonError' {
 
 /**
  * A failed statement's Postgres message says what's wrong and carries no
- * connection details. Other errors could carry anything, so only their system
+ * connection details. Config issues contain fixed setting paths and validator messages,
+ * never their input. Other errors could carry anything, so only their system
  * code is reported.
  */
-function failureDetails(error: unknown): Readonly<Record<string, string>> {
+function failureDetails(error: unknown): Readonly<Record<string, unknown>> {
   try {
     if (error instanceof MigrationFileFailedError)
       return {
@@ -31,6 +33,13 @@ function failureDetails(error: unknown): Readonly<Record<string, string>> {
         ...(error.cause instanceof Error
           ? { reason: error.cause.message }
           : {}),
+      };
+    if (error instanceof ZodError)
+      return {
+        issues: error.issues.map(({ path, message }) => ({
+          path: path.join('.'),
+          message,
+        })),
       };
     const code = (error as { code?: unknown } | null | undefined)?.code;
     return typeof code === 'string' ? { code: code.slice(0, 32) } : {};
