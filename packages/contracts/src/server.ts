@@ -47,3 +47,4 @@ export { apiTokenRoutes } from './routes/identity/api-tokens.js';
 export { governanceRoutes } from './routes/identity/governance.js';
 export { workspaceRoutes } from './routes/identity/workspaces.js';
 export { invitationRoutes } from './routes/identity/invitations.js';
+export { workflowSettingsRoutes } from './routes/workflows/settings.js';

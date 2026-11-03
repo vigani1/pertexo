@@ -1,104 +1,71 @@
+import { Controller, Req, UseInterceptors } from '@nestjs/common';
 import {
-  Body,
-  Controller,
-  Get,
-  Header,
-  HttpCode,
-  Param,
-  Put,
-  Query,
-  Req,
-  UseGuards,
-  UseInterceptors,
-} from '@nestjs/common';
-import { workflowIdParamSchema } from '@pertexo/contracts';
-import {
-  CsrfProtectionGuard,
-  SessionAuthenticationGuard,
-} from '../../workspaces/index.js';
-import { projectAuthenticatedWorkspaceContext } from '../../workspaces/request/authenticated-context.js';
-import {
-  requestIdempotencyKey,
-  withRequestOperationSignal,
-} from '../../platform/http/index.js';
+  workflowSettingsRoutes as routes,
+  type RouteInput,
+} from '@pertexo/contracts/server';
+import { In, Route } from '../../workspaces/http/route.js';
+import { withRequestOperationSignal } from '../../platform/http/index.js';
 import type { AbortableRequest } from '../../platform/http/request-operation-signal.js';
-import { RateLimit } from '../../platform/rate-limit/metadata.js';
 import { WorkflowErrorUseCase } from './error-workflow.js';
-
-import { WorkflowReadGuard, WorkflowUpdateGuard } from '../http/guards.js';
+import { asker } from './asker.js';
 import type { WorkflowAuthoringRequest } from '../types.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
 import { authoringFailure } from '../../problems/context/normalize.js';
 
+type Request = WorkflowAuthoringRequest & AbortableRequest;
+
 @UseInterceptors(domainErrors(authoringFailure))
-@Controller('v1/workspaces/:workspaceId/workflows/:workflowId/error-workflow')
-@RateLimit('authenticated_read')
+@Controller()
 export class WorkflowErrorController {
   public constructor(private readonly controls: WorkflowErrorUseCase) {}
-  @Get('targets')
-  @Header('Cache-Control', 'private, no-store')
-  @UseGuards(SessionAuthenticationGuard, WorkflowUpdateGuard)
+
+  @Route(routes.errorTargets)
   public async targets(
-    @Req() request: WorkflowAuthoringRequest & AbortableRequest,
-    @Param() params: unknown,
-    @Query() query: unknown,
+    @Req() request: Request,
+    @In() { params, query }: RouteInput<typeof routes.errorTargets>,
   ) {
-    const { workspaceId, workflowId } = workflowIdParamSchema.parse(params);
     return await withRequestOperationSignal(request, (signal) =>
       this.controls.targets({
-        ...context(request, workspaceId),
-        workflowId,
+        ...asker(request, params),
+        workflowId: params.workflowId,
         request: query,
         signal,
       }),
     );
   }
-  @Get()
-  @Header('Cache-Control', 'private, no-store')
-  @UseGuards(SessionAuthenticationGuard, WorkflowReadGuard)
+
+  @Route(routes.errorWorkflow)
   public async read(
-    @Req() request: WorkflowAuthoringRequest & AbortableRequest,
-    @Param() params: unknown,
+    @Req() request: Request,
+    @In() { params }: RouteInput<typeof routes.errorWorkflow>,
   ) {
-    const { workspaceId, workflowId } = workflowIdParamSchema.parse(params);
     return await withRequestOperationSignal(request, (signal) =>
       this.controls.read({
-        ...context(request, workspaceId),
-        workflowId,
+        ...asker(request, params),
+        workflowId: params.workflowId,
         signal,
       }),
     );
   }
-  @Put()
-  @RateLimit('ordinary_mutation')
-  @HttpCode(200)
-  @Header('Cache-Control', 'private, no-store')
-  @UseGuards(
-    SessionAuthenticationGuard,
-    WorkflowUpdateGuard,
-    CsrfProtectionGuard,
-  )
+
+  @Route(routes.updateErrorWorkflow)
   public async update(
-    @Req() request: WorkflowAuthoringRequest & AbortableRequest,
-    @Param() params: unknown,
-    @Body() body: unknown,
+    @Req() request: Request,
+    @In()
+    {
+      params,
+      body,
+      idempotencyKey,
+    }: RouteInput<typeof routes.updateErrorWorkflow>,
   ) {
-    const { workspaceId, workflowId } = workflowIdParamSchema.parse(params);
-    const idempotencyKey = requestIdempotencyKey(request.headers);
     return await withRequestOperationSignal(request, (signal) =>
       this.controls.update({
-        ...context(request, workspaceId),
-        workflowId,
+        ...asker(request, params),
+        workflowId: params.workflowId,
         request: body,
         idempotencyKey,
         signal,
       }),
     );
   }
-}
-function context(request: WorkflowAuthoringRequest, workspaceId: string) {
-  return {
-    ...projectAuthenticatedWorkspaceContext(request, workspaceId),
-    routeWorkspaceId: workspaceId,
-  };
 }
