@@ -45,13 +45,3 @@ export type {
   RotateConnectionSecretInput,
   SealedConnectionSecretRecord,
 } from './connection.js';
-export {
-  createWorkflowIntegrationUsageStore,
-  type WorkflowIntegrationUsageStore,
-} from './discovery/integration-usage.repository.js';
-export type {
-  FindConnectionImpactInput,
-  FindProviderOperationImpactInput,
-  WorkflowIntegrationImpactPage,
-  WorkflowIntegrationImpactRecord,
-} from './discovery/connection-usage.types.js';

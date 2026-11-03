@@ -19,7 +19,6 @@ import {
   WorkflowRevisionConflictError,
 } from '../../src/authoring/workflows/workflow-authoring.errors.js';
 import { createWorkflowAuthoringFixtureDatabase as createWorkflowAuthoringStore } from './workflow-authoring-admission.fixture.js';
-import { createWorkflowIntegrationUsageStore } from '../../src/connections/discovery/integration-usage.repository.js';
 
 export {
   CONNECTION_AUTH_TYPE,
@@ -32,7 +31,6 @@ export {
   createConnectionStore,
   createHash,
   createWorkflowAuthoringStore,
-  createWorkflowIntegrationUsageStore,
   parseDatabaseConfig,
   randomUUID,
   workflowCompatibilityReport,
