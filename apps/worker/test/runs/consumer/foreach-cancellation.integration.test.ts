@@ -81,7 +81,7 @@ describeIntegration('For Each cancellation recovery', () => {
             '--import',
             'tsx',
             fileURLToPath(
-              new URL('./for-each-worker-process.fixture.ts', import.meta.url),
+              new URL('./for-each-worker-process.fixture.mjs', import.meta.url),
             ),
           ],
           {
