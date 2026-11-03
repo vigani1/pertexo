@@ -130,6 +130,7 @@ it('upgrades populated human tasks without changing their decisions or context',
       '0082_complete_trigger_pause_state.sql',
       '0083_remove_test_probe.sql',
       '0084_remove_redundant_rls_policies.sql',
+      '0085_execution_artifact_reference_coverage.sql',
     ]);
     const after = (
       await owner.query<Record<string, unknown>>(
