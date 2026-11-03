@@ -17,7 +17,13 @@ export const encryption = {
   },
   previous: [],
 };
-export function useOrganizationApi(suite: string) {
+export function useOrganizationApi(
+  suite: string,
+  options: Pick<
+    NonNullable<Parameters<typeof useBetterAuthRealApi>[1]>,
+    'socialProviders' | 'logger'
+  > = {},
+) {
   const authorizations = new Map<string, protocol.OidcProof>();
   const identities = new Map<string, OrganizationIdentity>();
   const gateway: protocol.OidcProofGateway = {
@@ -51,6 +57,7 @@ export function useOrganizationApi(suite: string) {
     };
   });
   const api = useBetterAuthRealApi(suite, {
+    ...options,
     federationEncryption: encryption,
     databasePoolMax: 1,
   });
