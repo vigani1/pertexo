@@ -26,10 +26,6 @@ import { journey } from './acceptance/view.js';
 import { parseToken, parseBinding } from './acceptance/proof.js';
 import { parseRequestInput } from '../../platform/http/request-input.js';
 
-const INTENT_TTL_MILLIS = 15 * 60_000;
-
-const PROOF_TTL_MILLIS = 5 * 60_000;
-
 const DEFAULT_SESSION_TTL_MILLIS = 8 * 60 * 60_000;
 
 type AcceptancePersistence = Required<
@@ -100,7 +96,6 @@ export class InvitationAcceptanceUseCase {
       intentId,
       bindingDigest: digestSha256Hex(bindingSecret, this.crypto),
       csrfDigest: digestSha256Hex(csrfToken, this.crypto),
-      expiresAt: new Date(this.clock.now().getTime() + INTENT_TTL_MILLIS),
       ...(prior === null
         ? {}
         : {
@@ -159,11 +154,6 @@ export class InvitationAcceptanceUseCase {
     if (!evidence.emailVerified)
       throw new IdentityError('identity.email_unverified');
     const now = this.clock.now();
-    if (now.getTime() - evidence.signedInAt.getTime() > PROOF_TTL_MILLIS)
-      throw new InvitationAcceptanceConflictError(
-        'proof_expired',
-        'A fresh sign-in is required',
-      );
     const recorded = await this.persistence.recordInvitationAcceptanceProof({
       workspaceId: selected.workspaceId,
       intentId: selected.intentId,
@@ -284,7 +274,6 @@ export class InvitationAcceptanceUseCase {
     );
     const unavailableIntent =
       intent?.id !== selected.intentId ||
-      intent.expiresAt.getTime() <= this.clock.now().getTime() ||
       intent.status === 'abandoned' ||
       intent.status === 'superseded' ||
       (intent.status !== 'completed' && intent.invitationStatus !== 'pending');

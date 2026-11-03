@@ -114,7 +114,6 @@ describe('member commands as a workspace leaves service', () => {
             ...key(),
             tokenDigest: randomUUID().replaceAll('-', '').repeat(2),
             sealedToken: invitation(workspaceId, owner).sealedToken,
-            expiresAt: new Date(Date.now() + 60_000),
           }),
         ),
       ).toEqual(refusal('actor_inactive'));

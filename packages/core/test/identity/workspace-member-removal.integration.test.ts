@@ -315,7 +315,6 @@ async function acceptInvitation(
     intentId,
     bindingDigest,
     csrfDigest: createHash('sha256').update(randomUUID()).digest('hex'),
-    expiresAt: new Date(Date.now() + 15 * 60_000),
   });
   const proofToken = await database.sessions(recipient.id);
   const [sourceSession] = await database.asAdmin<{ id: string }>(

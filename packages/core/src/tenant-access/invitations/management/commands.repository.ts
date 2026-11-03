@@ -1,3 +1,4 @@
+import { INVITATION_TTL_MILLIS, readInvitationTime } from '../deadlines.js';
 import { and, desc, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { Pool, PoolClient } from 'pg';
@@ -38,7 +39,6 @@ type NextDelivery = Readonly<{
   tokenDigest: string;
   sealed: ResendWorkspaceInvitationInput['sealedToken'];
   deliveryAttemptId: string;
-  expiresAt: Date;
 }>;
 
 export function resendInvitation(
@@ -49,7 +49,6 @@ export function resendInvitation(
     tokenDigest: raw.tokenDigest,
     sealed: raw.sealedToken,
     deliveryAttemptId: raw.deliveryAttemptId ?? generatePersistedId(),
-    expiresAt: raw.expiresAt,
   });
 }
 
@@ -99,9 +98,10 @@ async function changeInvitation(
           'role_forbidden',
           'The actor cannot manage this invitation',
         );
+      const now = await readInvitationTime(client);
       if (
         current.status === 'pending' &&
-        current.expiresAt.getTime() <= Date.now()
+        current.expiresAt.getTime() <= now.getTime()
       ) {
         await expireWorkspaceInvitations(client, { workspaceId, invitationId });
         return { expired: true } as const;
@@ -145,7 +145,10 @@ async function changeInvitation(
             ? {
                 revision: nextRevision,
                 tokenDigest: nextDelivery?.tokenDigest,
-                expiresAt: nextDelivery?.expiresAt,
+                expiresAt: new Date(
+                  (await readInvitationTime(client)).getTime() +
+                    INVITATION_TTL_MILLIS,
+                ),
                 deliveryStatus: 'queued',
                 updatedAt: sql`clock_timestamp()`,
               }

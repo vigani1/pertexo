@@ -1,4 +1,9 @@
-import { canonicalEmail } from '@pertexo/workflow-model';
+import { readInvitationTime } from '../deadlines.js';
+import { InvitationAcceptanceConflictError } from '../../tenant-access.errors.js';
+import {
+  canonicalEmail,
+  INVITATION_PROOF_TTL_MILLIS,
+} from '@pertexo/workflow-model';
 import { and, eq, getTableName, inArray, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { alias } from 'drizzle-orm/pg-core';
@@ -86,9 +91,10 @@ export async function recordInvitationAcceptanceProof(
         .for('update', { of: alias(intents, getTableName(intents)) })
         .catch(rethrowQueryFailure);
       const current = locked[0];
+      const now = await readInvitationTime(client);
       if (
         current === undefined ||
-        current.expires_at.getTime() <= raw.verifiedAt.getTime()
+        current.expires_at.getTime() <= now.getTime()
       )
         return null;
       if (current.status === 'completed')
@@ -97,6 +103,14 @@ export async function recordInvitationAcceptanceProof(
           : null;
       if (!(OPEN_INTENT_STATUSES as readonly string[]).includes(current.status))
         return null;
+      if (
+        now.getTime() - raw.verifiedAt.getTime() >
+        INVITATION_PROOF_TTL_MILLIS
+      )
+        throw new InvitationAcceptanceConflictError(
+          'proof_expired',
+          'Sign in again before verifying the invitation',
+        );
       const matches =
         canonicalEmail(current.recipient_email) === normalizedEmail;
       await db

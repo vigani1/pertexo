@@ -163,7 +163,6 @@ export type CreateWorkspaceInvitationInput = WorkspaceInvitationCommandInput &
     role: DelegatedRole;
     tokenDigest: string;
     sealedToken: SealedInvitationToken;
-    expiresAt: Date;
   }>;
 export type RevokeWorkspaceInvitationInput = WorkspaceInvitationCommandInput &
   Readonly<{
@@ -174,7 +173,6 @@ export type ResendWorkspaceInvitationInput = RevokeWorkspaceInvitationInput &
   Readonly<{
     tokenDigest: string;
     sealedToken: SealedInvitationToken;
-    expiresAt: Date;
     deliveryAttemptId?: string;
   }>;
 export type WorkspaceInvitationCommandResult = Readonly<{
@@ -221,7 +219,6 @@ export type ResolveInvitationAcceptanceInput = Readonly<{
   intentId: string;
   bindingDigest: string;
   csrfDigest: string;
-  expiresAt: Date;
   priorBinding?: Readonly<{
     workspaceId: string;
     intentId: string;

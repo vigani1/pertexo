@@ -1,3 +1,7 @@
+import {
+  ACCEPTANCE_INTENT_TTL_MILLIS,
+  readInvitationTime,
+} from '../deadlines.js';
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { Pool, PoolClient } from 'pg';
@@ -71,17 +75,6 @@ export async function resolveInvitationAcceptance(
       .catch(rethrowQueryFailure);
     const current = invitation[0];
     if (current?.status !== 'pending') return null;
-    const now = new Date();
-    if (current.expires_at.getTime() <= now.getTime()) {
-      await expireWorkspaceInvitations(client, {
-        workspaceId,
-        invitationId,
-      });
-      return null;
-    }
-    const expiresAt = new Date(
-      Math.min(raw.expiresAt.getTime(), current.expires_at.getTime()),
-    );
     if (priorBinding !== undefined) {
       await db
         .execute(
@@ -89,15 +82,33 @@ export async function resolveInvitationAcceptance(
         )
         .catch(rethrowQueryFailure);
     }
+    const now = await readInvitationTime(client);
+    if (current.expires_at.getTime() <= now.getTime()) {
+      await expireWorkspaceInvitations(client, {
+        workspaceId,
+        invitationId,
+      });
+      return null;
+    }
 
     if (priorBinding !== undefined) {
       const resolution = await resolveReplacementBinding(client, identity, {
         priorBinding,
         revision: current.revision,
-        now,
       });
       if (resolution.kind === 'resolved') return resolution.intent;
     }
+    const issuedAt = await readInvitationTime(client);
+    if (current.expires_at.getTime() <= issuedAt.getTime()) {
+      await expireWorkspaceInvitations(client, { workspaceId, invitationId });
+      return null;
+    }
+    const expiresAt = new Date(
+      Math.min(
+        issuedAt.getTime() + ACCEPTANCE_INTENT_TTL_MILLIS,
+        current.expires_at.getTime(),
+      ),
+    );
     const inserted = await insertAcceptanceIntent(client, identity, {
       revision: current.revision,
       expiresAt,
@@ -178,8 +189,7 @@ async function resolveReplacementBinding(
   {
     priorBinding,
     revision,
-    now,
-  }: Readonly<{ priorBinding: PriorBinding; revision: number; now: Date }>,
+  }: Readonly<{ priorBinding: PriorBinding; revision: number }>,
 ): Promise<ReplacementResolution> {
   const { workspaceId, invitationId, intentId, bindingDigest, csrfDigest } =
     identity;
@@ -231,6 +241,7 @@ async function resolveReplacementBinding(
     claim.successor_intent_id,
   );
   const successor = claimedIntent[0];
+  const now = await readInvitationTime(client);
   if (exactClaim) {
     const successorUnavailable =
       successor === undefined ||

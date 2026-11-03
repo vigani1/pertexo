@@ -297,7 +297,6 @@ describe('the locks a run command holds', () => {
               tag: 'tag',
               keyVersion: 'v1',
             },
-            expiresAt: new Date(Date.now() + 60_000),
           }),
       ]);
       expect(results).toEqual(results.map(() => 'done'));

@@ -1,3 +1,4 @@
+import { readInvitationTime } from '../deadlines.js';
 import { decodeStoredValue } from '../../../shared/stored-values.js';
 import { decideInvitationAcceptance } from '@pertexo/workflow-model';
 import { and, eq } from 'drizzle-orm';
@@ -108,6 +109,7 @@ export async function completeAcceptance(
             sourceSession,
             userStatus: user[0]?.status,
             workspaceStatus: workspace[0]?.status,
+            now: await readInvitationTime(client),
           });
         const existing = membership[0];
         // ADR 042: a removal ends the membership, so a later invitation starts
@@ -251,6 +253,7 @@ function requireAcceptanceProof(
     sourceSession,
     userStatus,
     workspaceStatus,
+    now,
   }: Awaited<ReturnType<typeof readScopedAcceptance>> &
     Readonly<{
       preview: NonNullable<Awaited<ReturnType<typeof selectIntent>>>;
@@ -259,6 +262,7 @@ function requireAcceptanceProof(
       >;
       userStatus: string | undefined;
       workspaceStatus: string | undefined;
+      now: Date;
     }>,
 ) {
   const decision = decideInvitationAcceptance({
@@ -270,7 +274,7 @@ function requireAcceptanceProof(
     sourceSession,
     userStatus,
     workspaceStatus,
-    now: new Date(),
+    now,
   });
   if (!decision.allowed)
     throw new InvitationAcceptanceConflictError(

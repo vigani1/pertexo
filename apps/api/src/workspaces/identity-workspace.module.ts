@@ -85,19 +85,13 @@ export class IdentityWorkspaceModule {
         useFactory: (
           persistence: IdentityWorkspaceDependencies['persistence'],
           identityCrypto: IdentityCrypto,
-          identityClock: IdentityClock,
         ) =>
           new WorkspaceInvitationManagementUseCase(
             invitationPersistence(persistence),
             dependencies.invitationTokens,
             identityCrypto,
-            identityClock,
           ),
-        inject: [
-          IDENTITY_WORKSPACE_PERSISTENCE,
-          IDENTITY_CRYPTO,
-          IDENTITY_CLOCK,
-        ],
+        inject: [IDENTITY_WORKSPACE_PERSISTENCE, IDENTITY_CRYPTO],
       },
       {
         provide: InvitationAcceptanceUseCase,
