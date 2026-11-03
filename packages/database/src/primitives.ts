@@ -8,7 +8,6 @@ export {
 export {
   canonicalOutboxPayloadChecksum,
   insertOutboxEvent,
-  serializeBoundedPlainJson,
 } from './outbox/events.repository.js';
 export { type CommandIdentity } from './platform/idempotency/command-identity.types.js';
 export {
@@ -51,3 +50,7 @@ export {
   installTransactionScope,
   parseWorkspaceId,
 } from './tenant-access/transactions/scope.js';
+export {
+  canonicalJson,
+  BoundedJsonInvalidError,
+} from './outbox/canonical-json.js';

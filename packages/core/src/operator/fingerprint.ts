@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 
-import { serializeBoundedPlainJson } from '@pertexo/database/primitives';
+import { serializeBoundedPlainJson } from './serialize-command-json.js';
 
 import type { CommandRequest } from './operator-command.js';
 

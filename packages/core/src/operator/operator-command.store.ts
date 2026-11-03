@@ -1,7 +1,5 @@
-import {
-  checkDatabaseReadiness,
-  serializeBoundedPlainJson,
-} from '@pertexo/database/primitives';
+import { serializeBoundedPlainJson } from './serialize-command-json.js';
+import { checkDatabaseReadiness } from '@pertexo/database/primitives';
 import { appendAuditFact } from '../governance/audit/facts.js';
 import {
   acquireDatabasePool,
