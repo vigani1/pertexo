@@ -1,3 +1,4 @@
+import { lockWorkflowArtifactReferences } from '../../../artifacts/references/locks.repository.js';
 import { decodeStoredValue } from '../../../shared/stored-values.js';
 import {
   withTenantScopedClient,
@@ -109,6 +110,7 @@ async function respondCallback(client: PoolClient, input: CallbackResponse) {
   const [owner] = await db
     .select({
       status: r.status,
+      workflowId: r.workflowId,
       closed: sql<boolean>`${r.cancelRequestedAt} is not null or (${r.deadlineAt} is not null and ${r.deadlineAt}<=clock_timestamp())`,
     })
     .from(r)
@@ -154,6 +156,11 @@ async function respondCallback(client: PoolClient, input: CallbackResponse) {
       kind: 'inline',
       value: input.output,
     }),
+  );
+  await lockWorkflowArtifactReferences(
+    db,
+    { workspaceId: identity.workspaceId, workflowId: owner.workflowId },
+    input.output,
   );
   await db
     .update(t)

@@ -1,3 +1,4 @@
+import { ArtifactMetadataNotFoundError } from '@pertexo/core/artifacts';
 import { createHmac } from 'node:crypto';
 import Fastify, { type FastifyInstance } from 'fastify';
 import type { StructuredLogger } from '@pertexo/observability';
@@ -17,7 +18,10 @@ const close: (() => Promise<unknown>)[] = [];
 afterEach(async () => {
   for (const cleanup of close.splice(0).reverse()) await cleanup();
 });
-function fixture(authentication: CallbackWaitConfig['authentication']) {
+function fixture(
+  authentication: CallbackWaitConfig['authentication'],
+  responseFailure?: Error,
+) {
   const keys = createCallbackTokenKeys({
     origin: 'https://example.test',
     keys: {
@@ -53,6 +57,7 @@ function fixture(authentication: CallbackWaitConfig['authentication']) {
       Promise.resolve(hash === callback.tokenHash ? callback : null),
     respond: async (input) => {
       await Promise.resolve();
+      if (responseFailure !== undefined) throw responseFailure;
       if (refused !== undefined) throw new CallbackResponseError(refused);
       if (answered) throw new CallbackResponseError('resolved');
       retained.push(
@@ -309,4 +314,20 @@ it('logs the cause when a callback cannot be read', async () => {
   expect(response.json()).toMatchObject({ code: 'callback.unavailable' });
   expect(logger.error).toHaveBeenCalledOnce();
   expect(logger.error.mock.calls[0]).toContain(failure);
+});
+
+it('refuses an unauthorized callback attachment as invalid input', async () => {
+  const f = fixture(
+    { mode: 'secret_url', allowedOrigins: [] },
+    new ArtifactMetadataNotFoundError(),
+  );
+  const response = await f.app.inject({
+    method: 'POST',
+    url: f.url,
+    headers: { 'content-type': 'application/json' },
+    payload: '{}',
+  });
+  expect(response.statusCode).toBe(400);
+  expect(response.json()).toMatchObject({ code: 'request.invalid' });
+  expect(f.retained).toEqual([]);
 });

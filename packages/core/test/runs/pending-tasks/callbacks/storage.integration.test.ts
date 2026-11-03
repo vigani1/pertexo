@@ -301,3 +301,57 @@ it('refuses an expired bound callback without storing a response', async () => {
     )[0]?.output_ref,
   ).toBeNull();
 });
+
+it('refuses callback artifact descriptors outside its workflow without saving a response', async () => {
+  const { scope, callback } = await prepared();
+  const artifactId = crypto.randomUUID();
+  const file = {
+    kind: 'artifact',
+    artifactId,
+    byteLength: 4,
+    mediaType: 'application/octet-stream',
+    sha256: 'a'.repeat(64),
+  };
+  await queryAsOwner(
+    "insert into app.artifacts(id,workspace_id,purpose,storage_key,media_type,byte_length,sha256,status,expires_at,finalized_at) values($1,$2,'run-output',$3,$4,4,$5,'available',clock_timestamp()+interval '1 day',clock_timestamp())",
+    [
+      artifactId,
+      workspaceId,
+      `workspaces/${workspaceId}/artifacts/${artifactId}`,
+      file.mediaType,
+      file.sha256,
+    ],
+    workspaceId,
+  );
+  await expect(
+    callbacks.respond({
+      callback,
+      output: { body: { file } },
+      redactOutput: unchanged,
+      signal: scope.signal,
+    }),
+  ).rejects.toMatchObject({ name: 'ArtifactMetadataNotFoundError' });
+  expect(
+    await executionQuery(
+      'select status,output_ref from app.pending_run_tasks where id=$1',
+      [callback.id],
+    ),
+  ).toEqual([{ status: 'prepared', output_ref: null }]);
+  await queryAsOwner(
+    "update app.workflow_runs set input_ref=$2::json,input_ref_expires_at=clock_timestamp()+interval '1 day' where id=$1",
+    [scope.runId, JSON.stringify({ kind: 'inline', value: { file } })],
+    workspaceId,
+  );
+  await callbacks.respond({
+    callback,
+    output: { body: { file } },
+    redactOutput: unchanged,
+    signal: scope.signal,
+  });
+  expect(
+    await executionQuery(
+      'select status from app.pending_run_tasks where id=$1',
+      [callback.id],
+    ),
+  ).toEqual([{ status: 'submitted' }]);
+});

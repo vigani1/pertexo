@@ -29,6 +29,7 @@ import { isRecord } from '@pertexo/workflow-model';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 import { artifactMetadataMatches } from '../metadata.js';
 import { ARTIFACT_UPLOAD_PURPOSE } from '../artifact.js';
+import { artifactReferenceOwnersSql } from './owners.repository.js';
 import { ArtifactMetadataNotFoundError } from '../artifact.errors.js';
 
 type ArtifactRow = Awaited<ReturnType<typeof referenceRows>>[number];
@@ -224,4 +225,35 @@ export async function lockActorArtifactReferences(
   );
   if (visible.size !== ids.length) throw new ArtifactMetadataNotFoundError();
   await lockExecutionArtifactReferences(transaction, value, previewRunId);
+}
+
+/** An ingress token authorizes its workflow, not files owned by other workflows. */
+export async function lockWorkflowArtifactReferences(
+  db: Pick<NodePgDatabase, 'select'>,
+  scope: Readonly<{ workspaceId: string; workflowId: string }>,
+  value: unknown,
+): Promise<void> {
+  const references = collectArtifactReferences(value);
+  if (references.length === 0) return;
+  const ids = [
+    ...new Set(references.map((reference) => reference.artifactId)),
+  ].sort();
+  const rows = await referenceRows(db)
+    .where(
+      and(
+        eq(artifacts.workspaceId, scope.workspaceId),
+        inArray(artifacts.id, ids),
+        eq(artifacts.status, 'available'),
+        isNull(artifacts.deletedAt),
+        artifactReferenceOwnersSql(
+          sql`${scope.workspaceId}`,
+          sql`${artifacts.id}`,
+          (workflow) => sql`${workflow}=${scope.workflowId}::uuid`,
+        ),
+      ),
+    )
+    .orderBy(artifacts.id)
+    .for('share', { of: alias(artifacts, getTableName(artifacts)) })
+    .catch(rethrowQueryFailure);
+  assertRows(references, rows);
 }

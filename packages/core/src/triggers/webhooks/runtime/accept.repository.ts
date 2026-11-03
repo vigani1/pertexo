@@ -1,3 +1,4 @@
+import { lockWorkflowArtifactReferences } from '../../../artifacts/references/locks.repository.js';
 import { lockWorkspaceRunAdmission } from '../../../runs/admission-locks.repository.js';
 import { WorkflowAlreadyRunningError } from '../../../runs/commands/acceptance/run-admission.errors.js';
 import { webhookTriggerReplayRecords as replays } from '@pertexo/database/schema';
@@ -166,6 +167,11 @@ export async function acceptVerifiedWebhookDelivery(
               };
             }
             if (candidate.replay) return undefined;
+            await lockWorkflowArtifactReferences(
+              transaction.db,
+              verification,
+              runInput,
+            );
             if (replay !== undefined && replayIdentity !== undefined)
               await deleteExpiredReplay(transaction, replayIdentity);
 
