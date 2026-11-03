@@ -149,6 +149,45 @@ describe('folder and batch HTTP routes with controlled session/persistence', () 
         expect(f.port(route)).not.toHaveBeenCalled();
       });
   }
+  it.each(
+    routes.filter(
+      (route) => route.method === 'bulk' || route.method === 'cleanup',
+    ),
+  )('refuses strict $method parents before admission', async (route) => {
+    const f = await setup();
+    for (const extra of [
+      { actorId },
+      { proof: true },
+      { parentHash: folderId },
+      { idempotencyKey: 'body-key' },
+      { selectAll: true },
+    ]) {
+      expect(
+        (await f.inject(route, { payload: { ...route.payload, ...extra } }))
+          .statusCode,
+      ).toBe(400);
+    }
+    for (const selection of [
+      [],
+      [
+        { workflowId, expectedOrganizationRevision: 1 },
+        { workflowId, expectedOrganizationRevision: 1 },
+      ],
+      [{ workflowId, expectedOrganizationRevision: 0 }],
+      Array.from({ length: 51 }, (_, index) => ({
+        workflowId: `${String(index).padStart(8, '0')}-aaaa-4aaa-8aaa-aaaaaaaaaaaa`,
+        expectedOrganizationRevision: 1,
+      })),
+    ]) {
+      expect(
+        (
+          await f.inject(route, {
+            payload: { ...route.payload, items: selection },
+          })
+        ).statusCode,
+      ).toBe(400);
+    }
+  });
   it('rejects invalid workspace/folder/workflow params and any nonempty read query', async () => {
     const f = await setup();
     for (const url of [
