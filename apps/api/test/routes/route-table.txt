@@ -34,10 +34,10 @@ POST /v1/workspaces/{workspaceId}/artifacts/{artifactId}/finalize 200 session ar
 POST /v1/workspaces/{workspaceId}/artifacts/uploads 201 session artifact:upload csrf ordinary_mutation
 GET /v1/workspaces/{workspaceId}/auto-pause 200 session workspace:read - authenticated_read
 PUT /v1/workspaces/{workspaceId}/auto-pause 200 session workspace:manage csrf ordinary_mutation
-GET /v1/workspaces/{workspaceId}/connections 200 session connection:read - authenticated_read
+GET /v1/workspaces/{workspaceId}/connections 200 session_or_token connection:read - authenticated_read
 POST /v1/workspaces/{workspaceId}/connections 201 session connection:manage csrf ordinary_mutation
 DELETE /v1/workspaces/{workspaceId}/connections/{connectionId} 200 session connection:manage csrf connection_mutation
-GET /v1/workspaces/{workspaceId}/connections/{connectionId} 200 session connection:read - authenticated_read
+GET /v1/workspaces/{workspaceId}/connections/{connectionId} 200 session_or_token connection:read - authenticated_read
 POST /v1/workspaces/{workspaceId}/connections/{connectionId}/oauth2/authorization 200 session connection:manage csrf provider_test
 PUT /v1/workspaces/{workspaceId}/connections/{connectionId}/secret 200 session connection:manage csrf connection_mutation
 GET /v1/workspaces/{workspaceId}/connections/{connectionId}/sharing 200 session connection:manage - authenticated_read
@@ -159,7 +159,7 @@ POST /v1/workspaces/{workspaceId}/workflow-tags/{tagId}/rename 200 session workf
 GET /v1/workspaces/{workspaceId}/workflow-tags/{tagId}/workflows 200 session workflow:read - authenticated_read
 POST /v1/workspaces/{workspaceId}/workflow-tags/cleanup/detach 200 session workflow:read csrf ordinary_mutation
 GET /v1/workspaces/{workspaceId}/workflows 200 session_or_token workflow:read - authenticated_read
-POST /v1/workspaces/{workspaceId}/workflows 201 session workflow:create csrf ordinary_mutation
+POST /v1/workspaces/{workspaceId}/workflows 201 session_or_token workflow:create csrf ordinary_mutation
 GET /v1/workspaces/{workspaceId}/workflows/{workflowId} 200 session_or_token workflow:read - authenticated_read
 POST /v1/workspaces/{workspaceId}/workflows/{workflowId}/archive 202 session workflow:publish csrf ordinary_mutation
 GET /v1/workspaces/{workspaceId}/workflows/{workflowId}/auto-pause 200 session workflow:read - authenticated_read
@@ -175,7 +175,7 @@ GET /v1/workspaces/{workspaceId}/workflows/{workflowId}/comments/people 200 sess
 GET /v1/workspaces/{workspaceId}/workflows/{workflowId}/concurrency 200 session workflow:read - authenticated_read
 PUT /v1/workspaces/{workspaceId}/workflows/{workflowId}/concurrency 200 session workflow:update csrf ordinary_mutation
 GET /v1/workspaces/{workspaceId}/workflows/{workflowId}/draft 200 session_or_token workflow:read - authenticated_read
-PUT /v1/workspaces/{workspaceId}/workflows/{workflowId}/draft 200 session workflow:update csrf ordinary_mutation
+PUT /v1/workspaces/{workspaceId}/workflows/{workflowId}/draft 200 session_or_token workflow:update csrf ordinary_mutation
 DELETE /v1/workspaces/{workspaceId}/workflows/{workflowId}/draft/nodes/{nodeId}/sample 200 session workflow:update csrf preview_test
 GET /v1/workspaces/{workspaceId}/workflows/{workflowId}/draft/nodes/{nodeId}/sample 200 session workflow:read - authenticated_read
 PUT /v1/workspaces/{workspaceId}/workflows/{workflowId}/draft/nodes/{nodeId}/sample 200 session workflow:update csrf preview_test

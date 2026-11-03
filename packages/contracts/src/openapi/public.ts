@@ -13,7 +13,7 @@ import { workflowPortabilityOpenApiDocument } from './workflows/portability.js';
 
 type PublicOperation = Readonly<{
   summary: string;
-  tag: 'Tokens' | 'Workflows' | 'Runs';
+  tag: 'Tokens' | 'Workflows' | 'Connections' | 'Runs';
   scopes: readonly string[];
   /** Beyond what every token route can answer. */
   problems?: readonly ApiProblemCode[];
@@ -47,6 +47,22 @@ const PUBLIC_OPERATIONS: Readonly<Record<string, PublicOperation>> = {
     summary: 'Read a workflow',
     tag: 'Workflows',
     scopes: ['workflow:read'],
+  },
+  createWorkflow: {
+    summary: 'Create a blank workflow',
+    tag: 'Workflows',
+    scopes: ['workflow:create'],
+    problems: ['request.idempotency_conflict', 'workflow.name_conflict'],
+  },
+  saveWorkflowDraft: {
+    summary: 'Save a workflow draft',
+    tag: 'Workflows',
+    scopes: ['workflow:update'],
+    problems: [
+      'request.precondition_required',
+      'workflow.revision_conflict',
+      'workflow.invalid',
+    ],
   },
   getWorkflowDraft: {
     summary: 'Read a workflow draft',
@@ -103,6 +119,16 @@ const PUBLIC_OPERATIONS: Readonly<Record<string, PublicOperation>> = {
       'workflow.portability_compatibility_conflict',
       'workflow.portability_unavailable',
     ],
+  },
+  listConnections: {
+    summary: 'List connections',
+    tag: 'Connections',
+    scopes: ['connection:read'],
+  },
+  getConnection: {
+    summary: 'Read a connection',
+    tag: 'Connections',
+    scopes: ['connection:read'],
   },
   startWorkflowRun: {
     summary: 'Start a run',
@@ -274,6 +300,10 @@ function buildPublicDocument() {
       {
         name: 'Workflows',
         description: 'Read, export, import and publish workflows',
+      },
+      {
+        name: 'Connections',
+        description: 'Read connections; secrets never leave the server',
       },
       { name: 'Runs', description: 'Start, read and cancel runs' },
     ],

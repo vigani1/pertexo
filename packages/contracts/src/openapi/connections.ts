@@ -9,6 +9,7 @@ import {
   problemResponse,
   queryParameter as requiredQueryParameter,
   responseReference,
+  automationSecurity,
 } from './primitives.js';
 import {
   connectionSharingRequestSchema,
@@ -170,7 +171,8 @@ export const connectionsOpenApiDocument = Object.freeze({
     '/v1/workspaces/{workspaceId}/connections': {
       get: {
         operationId: 'listConnections',
-        security: [{ cookieSession: [] }],
+        'x-pertexo-api-token-scopes': ['connection:read'],
+        security: automationSecurity,
         parameters: [
           workspaceParameter,
           queryParameter('limit', connectionPageLimitSchema),
@@ -300,7 +302,8 @@ export const connectionsOpenApiDocument = Object.freeze({
     '/v1/workspaces/{workspaceId}/connections/{connectionId}': {
       get: {
         operationId: 'getConnection',
-        security: [{ cookieSession: [] }],
+        'x-pertexo-api-token-scopes': ['connection:read'],
+        security: automationSecurity,
         parameters: [workspaceParameter, connectionParameter],
         responses: {
           '200': jsonResponse('Connection', 'ConnectionResponse'),
@@ -621,7 +624,9 @@ export const connectionsOpenApiDocument = Object.freeze({
         },
       },
   },
-  components: authenticatedComponents(schemas, problemResponses),
+  components: authenticatedComponents(schemas, problemResponses, {
+    automation: true,
+  }),
 });
 
 function queryParameter(name: 'limit' | 'after', schema: z.ZodType) {

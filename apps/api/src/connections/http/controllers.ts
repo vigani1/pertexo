@@ -1,3 +1,4 @@
+import { AutomationAuthenticationGuard } from '../../authentication/automation/guard.js';
 import {
   Body,
   Controller,
@@ -65,7 +66,7 @@ export class ConnectionsController {
 
   @Get()
   @RateLimit('authenticated_read')
-  @UseGuards(SessionAuthenticationGuard, ConnectionReadGuard)
+  @UseGuards(AutomationAuthenticationGuard, ConnectionReadGuard)
   public list(
     @Req() request: ConnectionRequest,
     @Param() params: unknown,
@@ -84,7 +85,7 @@ export class ConnectionsController {
 
   @Get(':connectionId')
   @RateLimit('authenticated_read')
-  @UseGuards(SessionAuthenticationGuard, ConnectionReadGuard)
+  @UseGuards(AutomationAuthenticationGuard, ConnectionReadGuard)
   public read(@Req() request: ConnectionRequest, @Param() params: unknown) {
     const route = connectionIdParamSchema.parse(params);
     const context = projectAuthenticatedWorkspaceContext(

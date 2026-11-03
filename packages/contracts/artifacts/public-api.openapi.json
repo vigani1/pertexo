@@ -24,11 +24,179 @@
       "description": "Read, export, import and publish workflows"
     },
     {
+      "name": "Connections",
+      "description": "Read connections; secrets never leave the server"
+    },
+    {
       "name": "Runs",
       "description": "Start, read and cancel runs"
     }
   ],
   "paths": {
+    "/v1/workspaces/{workspaceId}/connections": {
+      "get": {
+        "operationId": "listConnections",
+        "x-pertexo-api-token-scopes": [
+          "connection:read"
+        ],
+        "security": [
+          {
+            "apiToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workspaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          },
+          {
+            "name": "after",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Connections",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectionListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthenticated"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "500": {
+            "$ref": "#/components/responses/Unexpected"
+          },
+          "503": {
+            "$ref": "#/components/responses/ServiceUnavailable"
+          }
+        },
+        "summary": "List connections",
+        "tags": [
+          "Connections"
+        ],
+        "x-pertexo-problem-codes": [
+          "request.invalid",
+          "auth.unauthenticated",
+          "auth.token_scope_required",
+          "auth.forbidden",
+          "resource.not_found",
+          "request.rate_limited",
+          "request.rate_limit_unavailable"
+        ]
+      }
+    },
+    "/v1/workspaces/{workspaceId}/connections/{connectionId}": {
+      "get": {
+        "operationId": "getConnection",
+        "x-pertexo-api-token-scopes": [
+          "connection:read"
+        ],
+        "security": [
+          {
+            "apiToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workspaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "connectionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Connection",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectionResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthenticated"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "500": {
+            "$ref": "#/components/responses/Unexpected"
+          }
+        },
+        "summary": "Read a connection",
+        "tags": [
+          "Connections"
+        ],
+        "x-pertexo-problem-codes": [
+          "request.invalid",
+          "auth.unauthenticated",
+          "auth.token_scope_required",
+          "auth.forbidden",
+          "resource.not_found",
+          "request.rate_limited",
+          "request.rate_limit_unavailable"
+        ]
+      }
+    },
     "/v1/token": {
       "get": {
         "operationId": "readCurrentApiToken",
@@ -332,6 +500,106 @@
           "request.rate_limited",
           "request.rate_limit_unavailable"
         ]
+      },
+      "post": {
+        "operationId": "createWorkflow",
+        "x-pertexo-api-token-scopes": [
+          "workflow:create"
+        ],
+        "security": [
+          {
+            "apiToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workspaceId",
+            "in": "path",
+            "required": true,
+            "description": "Workspace identifier",
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^[\\x21-\\x2b\\x2d-\\x7e]+$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkflowCreateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Workflow created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowCreateResponse"
+                }
+              }
+            },
+            "headers": {
+              "ETag": {
+                "description": "Strong opaque validator for this draft representation",
+                "required": true,
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "type": "string",
+                  "pattern": "^\"draft\\.[A-Za-z0-9_-]{43}\"$"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthenticated"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "500": {
+            "$ref": "#/components/responses/Unexpected"
+          }
+        },
+        "summary": "Create a blank workflow",
+        "tags": [
+          "Workflows"
+        ],
+        "x-pertexo-problem-codes": [
+          "request.invalid",
+          "auth.unauthenticated",
+          "auth.token_scope_required",
+          "auth.forbidden",
+          "resource.not_found",
+          "request.rate_limited",
+          "request.rate_limit_unavailable",
+          "request.idempotency_conflict",
+          "workflow.name_conflict"
+        ]
       }
     },
     "/v1/workspaces/{workspaceId}/workflows/{workflowId}": {
@@ -586,6 +854,123 @@
           "resource.not_found",
           "request.rate_limited",
           "request.rate_limit_unavailable"
+        ]
+      },
+      "put": {
+        "operationId": "saveWorkflowDraft",
+        "x-pertexo-api-token-scopes": [
+          "workflow:update"
+        ],
+        "security": [
+          {
+            "apiToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workspaceId",
+            "in": "path",
+            "required": true,
+            "description": "Workspace identifier",
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "workflowId",
+            "in": "path",
+            "required": true,
+            "description": "Workflow identifier",
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "pattern": "^\"draft\\.[A-Za-z0-9_-]{43}\"$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkflowDraftSaveRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Workflow draft saved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowDraftResponse"
+                }
+              }
+            },
+            "headers": {
+              "ETag": {
+                "description": "Strong opaque validator for this draft representation",
+                "required": true,
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "type": "string",
+                  "pattern": "^\"draft\\.[A-Za-z0-9_-]{43}\"$"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthenticated"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "412": {
+            "$ref": "#/components/responses/PreconditionFailed"
+          },
+          "428": {
+            "$ref": "#/components/responses/PreconditionRequired"
+          },
+          "500": {
+            "$ref": "#/components/responses/Unexpected"
+          }
+        },
+        "summary": "Save a workflow draft",
+        "tags": [
+          "Workflows"
+        ],
+        "x-pertexo-problem-codes": [
+          "request.invalid",
+          "auth.unauthenticated",
+          "auth.token_scope_required",
+          "auth.forbidden",
+          "resource.not_found",
+          "request.rate_limited",
+          "request.rate_limit_unavailable",
+          "request.precondition_required",
+          "workflow.revision_conflict",
+          "workflow.invalid"
         ]
       }
     },
@@ -2121,6 +2506,2095 @@
   },
   "components": {
     "schemas": {
+      "ConnectionListResponse": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "readOnly": true,
+        "type": "object",
+        "properties": {
+          "items": {
+            "maxItems": 100,
+            "type": "array",
+            "items": {
+              "anyOf": [
+                {
+                  "readOnly": true,
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "workspaceId": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "providerKey": {
+                      "type": "string",
+                      "enum": [
+                        "http",
+                        "slack",
+                        "email",
+                        "signing"
+                      ]
+                    },
+                    "name": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 128
+                    },
+                    "authType": {
+                      "type": "string",
+                      "enum": [
+                        "hmac_key",
+                        "http_headers",
+                        "slack_bot_token",
+                        "resend_api_key"
+                      ]
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "active",
+                        "reauthorization_required",
+                        "revoked"
+                      ]
+                    },
+                    "secretVersionId": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "health": {
+                      "readOnly": true,
+                      "type": "object",
+                      "properties": {
+                        "lastTestedAt": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "format": "date-time",
+                              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "lastHealthyAt": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "format": "date-time",
+                              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "lastErrorCode": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 128
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "lastRunObservedAt": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "format": "date-time",
+                              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "lastHealthTransitionAt": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "format": "date-time",
+                              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "lastHealthTransitionSource": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "run",
+                                "test",
+                                "rotation",
+                                "revoke"
+                              ]
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "lastTestedAt",
+                        "lastHealthyAt",
+                        "lastErrorCode"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    },
+                    "updatedAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    },
+                    "accessMode": {
+                      "type": "string",
+                      "enum": [
+                        "workspace",
+                        "restricted"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "workspaceId",
+                    "providerKey",
+                    "name",
+                    "authType",
+                    "status",
+                    "secretVersionId",
+                    "health",
+                    "createdAt",
+                    "updatedAt"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "oneOf": [
+                    {
+                      "readOnly": true,
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "workspaceId": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "providerKey": {
+                          "type": "string",
+                          "const": "http"
+                        },
+                        "name": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 128
+                        },
+                        "authType": {
+                          "type": "string",
+                          "const": "oauth2"
+                        },
+                        "status": {
+                          "type": "string",
+                          "const": "active"
+                        },
+                        "secretVersionId": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "health": {
+                          "readOnly": true,
+                          "type": "object",
+                          "properties": {
+                            "lastTestedAt": {
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "format": "date-time",
+                                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "lastHealthyAt": {
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "format": "date-time",
+                                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "lastErrorCode": {
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 128
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "lastRunObservedAt": {
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "format": "date-time",
+                                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "lastHealthTransitionAt": {
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "format": "date-time",
+                                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "lastHealthTransitionSource": {
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "run",
+                                    "test",
+                                    "rotation",
+                                    "revoke"
+                                  ]
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            }
+                          },
+                          "required": [
+                            "lastTestedAt",
+                            "lastHealthyAt",
+                            "lastErrorCode"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        },
+                        "updatedAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        },
+                        "accessMode": {
+                          "type": "string",
+                          "enum": [
+                            "workspace",
+                            "restricted"
+                          ]
+                        },
+                        "oauth2": {
+                          "readOnly": true,
+                          "type": "object",
+                          "properties": {
+                            "settings": {
+                              "oneOf": [
+                                {
+                                  "readOnly": true,
+                                  "type": "object",
+                                  "properties": {
+                                    "grantType": {
+                                      "type": "string",
+                                      "const": "authorization_code"
+                                    },
+                                    "authorizationUrl": {
+                                      "type": "string",
+                                      "maxLength": 2048,
+                                      "format": "uri"
+                                    },
+                                    "authorizationParameters": {
+                                      "type": "object",
+                                      "propertyNames": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 64,
+                                        "pattern": "^[A-Za-z0-9_.~-]+$"
+                                      },
+                                      "additionalProperties": {
+                                        "type": "string",
+                                        "maxLength": 1024,
+                                        "pattern": "^[\\x20-\\x7e]+$"
+                                      }
+                                    },
+                                    "pkce": {
+                                      "type": "string",
+                                      "enum": [
+                                        "s256",
+                                        "none"
+                                      ]
+                                    },
+                                    "tokenUrl": {
+                                      "type": "string",
+                                      "maxLength": 2048,
+                                      "format": "uri"
+                                    },
+                                    "clientId": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 512,
+                                      "pattern": "^[\\x20-\\x7e]+$"
+                                    },
+                                    "scope": {
+                                      "type": "string",
+                                      "maxLength": 2048,
+                                      "pattern": "^[\\x20-\\x7e]*$"
+                                    },
+                                    "clientAuthentication": {
+                                      "type": "string",
+                                      "enum": [
+                                        "basic",
+                                        "body"
+                                      ]
+                                    },
+                                    "tokenParameters": {
+                                      "type": "object",
+                                      "propertyNames": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 64,
+                                        "pattern": "^[A-Za-z0-9_.~-]+$"
+                                      },
+                                      "additionalProperties": {
+                                        "type": "string",
+                                        "maxLength": 1024,
+                                        "pattern": "^[\\x20-\\x7e]+$"
+                                      }
+                                    },
+                                    "requestHosts": {
+                                      "oneOf": [
+                                        {
+                                          "readOnly": true,
+                                          "type": "object",
+                                          "properties": {
+                                            "mode": {
+                                              "type": "string",
+                                              "const": "any"
+                                            }
+                                          },
+                                          "required": [
+                                            "mode"
+                                          ],
+                                          "additionalProperties": false
+                                        },
+                                        {
+                                          "readOnly": true,
+                                          "type": "object",
+                                          "properties": {
+                                            "mode": {
+                                              "type": "string",
+                                              "const": "listed"
+                                            },
+                                            "hosts": {
+                                              "minItems": 1,
+                                              "maxItems": 32,
+                                              "type": "array",
+                                              "items": {
+                                                "type": "string",
+                                                "minLength": 1,
+                                                "maxLength": 253,
+                                                "pattern": "^(?:\\*\\.)?[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)*$"
+                                              }
+                                            }
+                                          },
+                                          "required": [
+                                            "mode",
+                                            "hosts"
+                                          ],
+                                          "additionalProperties": false
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  "required": [
+                                    "grantType",
+                                    "authorizationUrl",
+                                    "authorizationParameters",
+                                    "pkce",
+                                    "tokenUrl",
+                                    "clientId",
+                                    "scope",
+                                    "clientAuthentication",
+                                    "tokenParameters",
+                                    "requestHosts"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                {
+                                  "readOnly": true,
+                                  "type": "object",
+                                  "properties": {
+                                    "grantType": {
+                                      "type": "string",
+                                      "const": "client_credentials"
+                                    },
+                                    "tokenUrl": {
+                                      "type": "string",
+                                      "maxLength": 2048,
+                                      "format": "uri"
+                                    },
+                                    "clientId": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 512,
+                                      "pattern": "^[\\x20-\\x7e]+$"
+                                    },
+                                    "scope": {
+                                      "type": "string",
+                                      "maxLength": 2048,
+                                      "pattern": "^[\\x20-\\x7e]*$"
+                                    },
+                                    "clientAuthentication": {
+                                      "type": "string",
+                                      "enum": [
+                                        "basic",
+                                        "body"
+                                      ]
+                                    },
+                                    "tokenParameters": {
+                                      "type": "object",
+                                      "propertyNames": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 64,
+                                        "pattern": "^[A-Za-z0-9_.~-]+$"
+                                      },
+                                      "additionalProperties": {
+                                        "type": "string",
+                                        "maxLength": 1024,
+                                        "pattern": "^[\\x20-\\x7e]+$"
+                                      }
+                                    },
+                                    "requestHosts": {
+                                      "oneOf": [
+                                        {
+                                          "readOnly": true,
+                                          "type": "object",
+                                          "properties": {
+                                            "mode": {
+                                              "type": "string",
+                                              "const": "any"
+                                            }
+                                          },
+                                          "required": [
+                                            "mode"
+                                          ],
+                                          "additionalProperties": false
+                                        },
+                                        {
+                                          "readOnly": true,
+                                          "type": "object",
+                                          "properties": {
+                                            "mode": {
+                                              "type": "string",
+                                              "const": "listed"
+                                            },
+                                            "hosts": {
+                                              "minItems": 1,
+                                              "maxItems": 32,
+                                              "type": "array",
+                                              "items": {
+                                                "type": "string",
+                                                "minLength": 1,
+                                                "maxLength": 253,
+                                                "pattern": "^(?:\\*\\.)?[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)*$"
+                                              }
+                                            }
+                                          },
+                                          "required": [
+                                            "mode",
+                                            "hosts"
+                                          ],
+                                          "additionalProperties": false
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  "required": [
+                                    "grantType",
+                                    "tokenUrl",
+                                    "clientId",
+                                    "scope",
+                                    "clientAuthentication",
+                                    "tokenParameters",
+                                    "requestHosts"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              ]
+                            },
+                            "redirectUri": {
+                              "type": "string",
+                              "maxLength": 2048,
+                              "format": "uri"
+                            }
+                          },
+                          "required": [
+                            "settings",
+                            "redirectUri"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "grant": {
+                          "readOnly": true,
+                          "type": "object",
+                          "properties": {
+                            "authorizedAt": {
+                              "type": "string",
+                              "format": "date-time",
+                              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                            },
+                            "accessTokenExpiresAt": {
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "format": "date-time",
+                                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "renewable": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "authorizedAt",
+                            "accessTokenExpiresAt",
+                            "renewable"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "workspaceId",
+                        "providerKey",
+                        "name",
+                        "authType",
+                        "status",
+                        "secretVersionId",
+                        "health",
+                        "createdAt",
+                        "updatedAt",
+                        "oauth2",
+                        "grant"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "readOnly": true,
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "workspaceId": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "providerKey": {
+                          "type": "string",
+                          "const": "http"
+                        },
+                        "name": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 128
+                        },
+                        "authType": {
+                          "type": "string",
+                          "const": "oauth2"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "reauthorization_required",
+                            "revoked"
+                          ]
+                        },
+                        "secretVersionId": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "health": {
+                          "readOnly": true,
+                          "type": "object",
+                          "properties": {
+                            "lastTestedAt": {
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "format": "date-time",
+                                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "lastHealthyAt": {
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "format": "date-time",
+                                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "lastErrorCode": {
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 128
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "lastRunObservedAt": {
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "format": "date-time",
+                                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "lastHealthTransitionAt": {
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "format": "date-time",
+                                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "lastHealthTransitionSource": {
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "run",
+                                    "test",
+                                    "rotation",
+                                    "revoke"
+                                  ]
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            }
+                          },
+                          "required": [
+                            "lastTestedAt",
+                            "lastHealthyAt",
+                            "lastErrorCode"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        },
+                        "updatedAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        },
+                        "accessMode": {
+                          "type": "string",
+                          "enum": [
+                            "workspace",
+                            "restricted"
+                          ]
+                        },
+                        "oauth2": {
+                          "readOnly": true,
+                          "type": "object",
+                          "properties": {
+                            "settings": {
+                              "oneOf": [
+                                {
+                                  "readOnly": true,
+                                  "type": "object",
+                                  "properties": {
+                                    "grantType": {
+                                      "type": "string",
+                                      "const": "authorization_code"
+                                    },
+                                    "authorizationUrl": {
+                                      "type": "string",
+                                      "maxLength": 2048,
+                                      "format": "uri"
+                                    },
+                                    "authorizationParameters": {
+                                      "type": "object",
+                                      "propertyNames": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 64,
+                                        "pattern": "^[A-Za-z0-9_.~-]+$"
+                                      },
+                                      "additionalProperties": {
+                                        "type": "string",
+                                        "maxLength": 1024,
+                                        "pattern": "^[\\x20-\\x7e]+$"
+                                      }
+                                    },
+                                    "pkce": {
+                                      "type": "string",
+                                      "enum": [
+                                        "s256",
+                                        "none"
+                                      ]
+                                    },
+                                    "tokenUrl": {
+                                      "type": "string",
+                                      "maxLength": 2048,
+                                      "format": "uri"
+                                    },
+                                    "clientId": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 512,
+                                      "pattern": "^[\\x20-\\x7e]+$"
+                                    },
+                                    "scope": {
+                                      "type": "string",
+                                      "maxLength": 2048,
+                                      "pattern": "^[\\x20-\\x7e]*$"
+                                    },
+                                    "clientAuthentication": {
+                                      "type": "string",
+                                      "enum": [
+                                        "basic",
+                                        "body"
+                                      ]
+                                    },
+                                    "tokenParameters": {
+                                      "type": "object",
+                                      "propertyNames": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 64,
+                                        "pattern": "^[A-Za-z0-9_.~-]+$"
+                                      },
+                                      "additionalProperties": {
+                                        "type": "string",
+                                        "maxLength": 1024,
+                                        "pattern": "^[\\x20-\\x7e]+$"
+                                      }
+                                    },
+                                    "requestHosts": {
+                                      "oneOf": [
+                                        {
+                                          "readOnly": true,
+                                          "type": "object",
+                                          "properties": {
+                                            "mode": {
+                                              "type": "string",
+                                              "const": "any"
+                                            }
+                                          },
+                                          "required": [
+                                            "mode"
+                                          ],
+                                          "additionalProperties": false
+                                        },
+                                        {
+                                          "readOnly": true,
+                                          "type": "object",
+                                          "properties": {
+                                            "mode": {
+                                              "type": "string",
+                                              "const": "listed"
+                                            },
+                                            "hosts": {
+                                              "minItems": 1,
+                                              "maxItems": 32,
+                                              "type": "array",
+                                              "items": {
+                                                "type": "string",
+                                                "minLength": 1,
+                                                "maxLength": 253,
+                                                "pattern": "^(?:\\*\\.)?[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)*$"
+                                              }
+                                            }
+                                          },
+                                          "required": [
+                                            "mode",
+                                            "hosts"
+                                          ],
+                                          "additionalProperties": false
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  "required": [
+                                    "grantType",
+                                    "authorizationUrl",
+                                    "authorizationParameters",
+                                    "pkce",
+                                    "tokenUrl",
+                                    "clientId",
+                                    "scope",
+                                    "clientAuthentication",
+                                    "tokenParameters",
+                                    "requestHosts"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                {
+                                  "readOnly": true,
+                                  "type": "object",
+                                  "properties": {
+                                    "grantType": {
+                                      "type": "string",
+                                      "const": "client_credentials"
+                                    },
+                                    "tokenUrl": {
+                                      "type": "string",
+                                      "maxLength": 2048,
+                                      "format": "uri"
+                                    },
+                                    "clientId": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 512,
+                                      "pattern": "^[\\x20-\\x7e]+$"
+                                    },
+                                    "scope": {
+                                      "type": "string",
+                                      "maxLength": 2048,
+                                      "pattern": "^[\\x20-\\x7e]*$"
+                                    },
+                                    "clientAuthentication": {
+                                      "type": "string",
+                                      "enum": [
+                                        "basic",
+                                        "body"
+                                      ]
+                                    },
+                                    "tokenParameters": {
+                                      "type": "object",
+                                      "propertyNames": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 64,
+                                        "pattern": "^[A-Za-z0-9_.~-]+$"
+                                      },
+                                      "additionalProperties": {
+                                        "type": "string",
+                                        "maxLength": 1024,
+                                        "pattern": "^[\\x20-\\x7e]+$"
+                                      }
+                                    },
+                                    "requestHosts": {
+                                      "oneOf": [
+                                        {
+                                          "readOnly": true,
+                                          "type": "object",
+                                          "properties": {
+                                            "mode": {
+                                              "type": "string",
+                                              "const": "any"
+                                            }
+                                          },
+                                          "required": [
+                                            "mode"
+                                          ],
+                                          "additionalProperties": false
+                                        },
+                                        {
+                                          "readOnly": true,
+                                          "type": "object",
+                                          "properties": {
+                                            "mode": {
+                                              "type": "string",
+                                              "const": "listed"
+                                            },
+                                            "hosts": {
+                                              "minItems": 1,
+                                              "maxItems": 32,
+                                              "type": "array",
+                                              "items": {
+                                                "type": "string",
+                                                "minLength": 1,
+                                                "maxLength": 253,
+                                                "pattern": "^(?:\\*\\.)?[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)*$"
+                                              }
+                                            }
+                                          },
+                                          "required": [
+                                            "mode",
+                                            "hosts"
+                                          ],
+                                          "additionalProperties": false
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  "required": [
+                                    "grantType",
+                                    "tokenUrl",
+                                    "clientId",
+                                    "scope",
+                                    "clientAuthentication",
+                                    "tokenParameters",
+                                    "requestHosts"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              ]
+                            },
+                            "redirectUri": {
+                              "type": "string",
+                              "maxLength": 2048,
+                              "format": "uri"
+                            }
+                          },
+                          "required": [
+                            "settings",
+                            "redirectUri"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "workspaceId",
+                        "providerKey",
+                        "name",
+                        "authType",
+                        "status",
+                        "secretVersionId",
+                        "health",
+                        "createdAt",
+                        "updatedAt",
+                        "oauth2"
+                      ],
+                      "additionalProperties": false
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          "nextCursor": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 512
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "items",
+          "nextCursor"
+        ],
+        "additionalProperties": false
+      },
+      "ConnectionResponse": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "anyOf": [
+          {
+            "readOnly": true,
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "workspaceId": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "providerKey": {
+                "type": "string",
+                "enum": [
+                  "http",
+                  "slack",
+                  "email",
+                  "signing"
+                ]
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              },
+              "authType": {
+                "type": "string",
+                "enum": [
+                  "hmac_key",
+                  "http_headers",
+                  "slack_bot_token",
+                  "resend_api_key"
+                ]
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "active",
+                  "reauthorization_required",
+                  "revoked"
+                ]
+              },
+              "secretVersionId": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "health": {
+                "readOnly": true,
+                "type": "object",
+                "properties": {
+                  "lastTestedAt": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "format": "date-time",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "lastHealthyAt": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "format": "date-time",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "lastErrorCode": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 128
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "lastRunObservedAt": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "format": "date-time",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "lastHealthTransitionAt": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "format": "date-time",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "lastHealthTransitionSource": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "enum": [
+                          "run",
+                          "test",
+                          "rotation",
+                          "revoke"
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "lastTestedAt",
+                  "lastHealthyAt",
+                  "lastErrorCode"
+                ],
+                "additionalProperties": false
+              },
+              "createdAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              "updatedAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              "accessMode": {
+                "type": "string",
+                "enum": [
+                  "workspace",
+                  "restricted"
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "workspaceId",
+              "providerKey",
+              "name",
+              "authType",
+              "status",
+              "secretVersionId",
+              "health",
+              "createdAt",
+              "updatedAt"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "oneOf": [
+              {
+                "readOnly": true,
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "workspaceId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "providerKey": {
+                    "type": "string",
+                    "const": "http"
+                  },
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 128
+                  },
+                  "authType": {
+                    "type": "string",
+                    "const": "oauth2"
+                  },
+                  "status": {
+                    "type": "string",
+                    "const": "active"
+                  },
+                  "secretVersionId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "health": {
+                    "readOnly": true,
+                    "type": "object",
+                    "properties": {
+                      "lastTestedAt": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "lastHealthyAt": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "lastErrorCode": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 128
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "lastRunObservedAt": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "lastHealthTransitionAt": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "lastHealthTransitionSource": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "enum": [
+                              "run",
+                              "test",
+                              "rotation",
+                              "revoke"
+                            ]
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      }
+                    },
+                    "required": [
+                      "lastTestedAt",
+                      "lastHealthyAt",
+                      "lastErrorCode"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "createdAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                  },
+                  "updatedAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                  },
+                  "accessMode": {
+                    "type": "string",
+                    "enum": [
+                      "workspace",
+                      "restricted"
+                    ]
+                  },
+                  "oauth2": {
+                    "readOnly": true,
+                    "type": "object",
+                    "properties": {
+                      "settings": {
+                        "oneOf": [
+                          {
+                            "readOnly": true,
+                            "type": "object",
+                            "properties": {
+                              "grantType": {
+                                "type": "string",
+                                "const": "authorization_code"
+                              },
+                              "authorizationUrl": {
+                                "type": "string",
+                                "maxLength": 2048,
+                                "format": "uri"
+                              },
+                              "authorizationParameters": {
+                                "type": "object",
+                                "propertyNames": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 64,
+                                  "pattern": "^[A-Za-z0-9_.~-]+$"
+                                },
+                                "additionalProperties": {
+                                  "type": "string",
+                                  "maxLength": 1024,
+                                  "pattern": "^[\\x20-\\x7e]+$"
+                                }
+                              },
+                              "pkce": {
+                                "type": "string",
+                                "enum": [
+                                  "s256",
+                                  "none"
+                                ]
+                              },
+                              "tokenUrl": {
+                                "type": "string",
+                                "maxLength": 2048,
+                                "format": "uri"
+                              },
+                              "clientId": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 512,
+                                "pattern": "^[\\x20-\\x7e]+$"
+                              },
+                              "scope": {
+                                "type": "string",
+                                "maxLength": 2048,
+                                "pattern": "^[\\x20-\\x7e]*$"
+                              },
+                              "clientAuthentication": {
+                                "type": "string",
+                                "enum": [
+                                  "basic",
+                                  "body"
+                                ]
+                              },
+                              "tokenParameters": {
+                                "type": "object",
+                                "propertyNames": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 64,
+                                  "pattern": "^[A-Za-z0-9_.~-]+$"
+                                },
+                                "additionalProperties": {
+                                  "type": "string",
+                                  "maxLength": 1024,
+                                  "pattern": "^[\\x20-\\x7e]+$"
+                                }
+                              },
+                              "requestHosts": {
+                                "oneOf": [
+                                  {
+                                    "readOnly": true,
+                                    "type": "object",
+                                    "properties": {
+                                      "mode": {
+                                        "type": "string",
+                                        "const": "any"
+                                      }
+                                    },
+                                    "required": [
+                                      "mode"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "readOnly": true,
+                                    "type": "object",
+                                    "properties": {
+                                      "mode": {
+                                        "type": "string",
+                                        "const": "listed"
+                                      },
+                                      "hosts": {
+                                        "minItems": 1,
+                                        "maxItems": 32,
+                                        "type": "array",
+                                        "items": {
+                                          "type": "string",
+                                          "minLength": 1,
+                                          "maxLength": 253,
+                                          "pattern": "^(?:\\*\\.)?[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)*$"
+                                        }
+                                      }
+                                    },
+                                    "required": [
+                                      "mode",
+                                      "hosts"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                ]
+                              }
+                            },
+                            "required": [
+                              "grantType",
+                              "authorizationUrl",
+                              "authorizationParameters",
+                              "pkce",
+                              "tokenUrl",
+                              "clientId",
+                              "scope",
+                              "clientAuthentication",
+                              "tokenParameters",
+                              "requestHosts"
+                            ],
+                            "additionalProperties": false
+                          },
+                          {
+                            "readOnly": true,
+                            "type": "object",
+                            "properties": {
+                              "grantType": {
+                                "type": "string",
+                                "const": "client_credentials"
+                              },
+                              "tokenUrl": {
+                                "type": "string",
+                                "maxLength": 2048,
+                                "format": "uri"
+                              },
+                              "clientId": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 512,
+                                "pattern": "^[\\x20-\\x7e]+$"
+                              },
+                              "scope": {
+                                "type": "string",
+                                "maxLength": 2048,
+                                "pattern": "^[\\x20-\\x7e]*$"
+                              },
+                              "clientAuthentication": {
+                                "type": "string",
+                                "enum": [
+                                  "basic",
+                                  "body"
+                                ]
+                              },
+                              "tokenParameters": {
+                                "type": "object",
+                                "propertyNames": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 64,
+                                  "pattern": "^[A-Za-z0-9_.~-]+$"
+                                },
+                                "additionalProperties": {
+                                  "type": "string",
+                                  "maxLength": 1024,
+                                  "pattern": "^[\\x20-\\x7e]+$"
+                                }
+                              },
+                              "requestHosts": {
+                                "oneOf": [
+                                  {
+                                    "readOnly": true,
+                                    "type": "object",
+                                    "properties": {
+                                      "mode": {
+                                        "type": "string",
+                                        "const": "any"
+                                      }
+                                    },
+                                    "required": [
+                                      "mode"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "readOnly": true,
+                                    "type": "object",
+                                    "properties": {
+                                      "mode": {
+                                        "type": "string",
+                                        "const": "listed"
+                                      },
+                                      "hosts": {
+                                        "minItems": 1,
+                                        "maxItems": 32,
+                                        "type": "array",
+                                        "items": {
+                                          "type": "string",
+                                          "minLength": 1,
+                                          "maxLength": 253,
+                                          "pattern": "^(?:\\*\\.)?[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)*$"
+                                        }
+                                      }
+                                    },
+                                    "required": [
+                                      "mode",
+                                      "hosts"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                ]
+                              }
+                            },
+                            "required": [
+                              "grantType",
+                              "tokenUrl",
+                              "clientId",
+                              "scope",
+                              "clientAuthentication",
+                              "tokenParameters",
+                              "requestHosts"
+                            ],
+                            "additionalProperties": false
+                          }
+                        ]
+                      },
+                      "redirectUri": {
+                        "type": "string",
+                        "maxLength": 2048,
+                        "format": "uri"
+                      }
+                    },
+                    "required": [
+                      "settings",
+                      "redirectUri"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "grant": {
+                    "readOnly": true,
+                    "type": "object",
+                    "properties": {
+                      "authorizedAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                      },
+                      "accessTokenExpiresAt": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "renewable": {
+                        "type": "boolean"
+                      }
+                    },
+                    "required": [
+                      "authorizedAt",
+                      "accessTokenExpiresAt",
+                      "renewable"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "id",
+                  "workspaceId",
+                  "providerKey",
+                  "name",
+                  "authType",
+                  "status",
+                  "secretVersionId",
+                  "health",
+                  "createdAt",
+                  "updatedAt",
+                  "oauth2",
+                  "grant"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "readOnly": true,
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "workspaceId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "providerKey": {
+                    "type": "string",
+                    "const": "http"
+                  },
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 128
+                  },
+                  "authType": {
+                    "type": "string",
+                    "const": "oauth2"
+                  },
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "reauthorization_required",
+                      "revoked"
+                    ]
+                  },
+                  "secretVersionId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "health": {
+                    "readOnly": true,
+                    "type": "object",
+                    "properties": {
+                      "lastTestedAt": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "lastHealthyAt": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "lastErrorCode": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 128
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "lastRunObservedAt": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "lastHealthTransitionAt": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "lastHealthTransitionSource": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "enum": [
+                              "run",
+                              "test",
+                              "rotation",
+                              "revoke"
+                            ]
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      }
+                    },
+                    "required": [
+                      "lastTestedAt",
+                      "lastHealthyAt",
+                      "lastErrorCode"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "createdAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                  },
+                  "updatedAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                  },
+                  "accessMode": {
+                    "type": "string",
+                    "enum": [
+                      "workspace",
+                      "restricted"
+                    ]
+                  },
+                  "oauth2": {
+                    "readOnly": true,
+                    "type": "object",
+                    "properties": {
+                      "settings": {
+                        "oneOf": [
+                          {
+                            "readOnly": true,
+                            "type": "object",
+                            "properties": {
+                              "grantType": {
+                                "type": "string",
+                                "const": "authorization_code"
+                              },
+                              "authorizationUrl": {
+                                "type": "string",
+                                "maxLength": 2048,
+                                "format": "uri"
+                              },
+                              "authorizationParameters": {
+                                "type": "object",
+                                "propertyNames": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 64,
+                                  "pattern": "^[A-Za-z0-9_.~-]+$"
+                                },
+                                "additionalProperties": {
+                                  "type": "string",
+                                  "maxLength": 1024,
+                                  "pattern": "^[\\x20-\\x7e]+$"
+                                }
+                              },
+                              "pkce": {
+                                "type": "string",
+                                "enum": [
+                                  "s256",
+                                  "none"
+                                ]
+                              },
+                              "tokenUrl": {
+                                "type": "string",
+                                "maxLength": 2048,
+                                "format": "uri"
+                              },
+                              "clientId": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 512,
+                                "pattern": "^[\\x20-\\x7e]+$"
+                              },
+                              "scope": {
+                                "type": "string",
+                                "maxLength": 2048,
+                                "pattern": "^[\\x20-\\x7e]*$"
+                              },
+                              "clientAuthentication": {
+                                "type": "string",
+                                "enum": [
+                                  "basic",
+                                  "body"
+                                ]
+                              },
+                              "tokenParameters": {
+                                "type": "object",
+                                "propertyNames": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 64,
+                                  "pattern": "^[A-Za-z0-9_.~-]+$"
+                                },
+                                "additionalProperties": {
+                                  "type": "string",
+                                  "maxLength": 1024,
+                                  "pattern": "^[\\x20-\\x7e]+$"
+                                }
+                              },
+                              "requestHosts": {
+                                "oneOf": [
+                                  {
+                                    "readOnly": true,
+                                    "type": "object",
+                                    "properties": {
+                                      "mode": {
+                                        "type": "string",
+                                        "const": "any"
+                                      }
+                                    },
+                                    "required": [
+                                      "mode"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "readOnly": true,
+                                    "type": "object",
+                                    "properties": {
+                                      "mode": {
+                                        "type": "string",
+                                        "const": "listed"
+                                      },
+                                      "hosts": {
+                                        "minItems": 1,
+                                        "maxItems": 32,
+                                        "type": "array",
+                                        "items": {
+                                          "type": "string",
+                                          "minLength": 1,
+                                          "maxLength": 253,
+                                          "pattern": "^(?:\\*\\.)?[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)*$"
+                                        }
+                                      }
+                                    },
+                                    "required": [
+                                      "mode",
+                                      "hosts"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                ]
+                              }
+                            },
+                            "required": [
+                              "grantType",
+                              "authorizationUrl",
+                              "authorizationParameters",
+                              "pkce",
+                              "tokenUrl",
+                              "clientId",
+                              "scope",
+                              "clientAuthentication",
+                              "tokenParameters",
+                              "requestHosts"
+                            ],
+                            "additionalProperties": false
+                          },
+                          {
+                            "readOnly": true,
+                            "type": "object",
+                            "properties": {
+                              "grantType": {
+                                "type": "string",
+                                "const": "client_credentials"
+                              },
+                              "tokenUrl": {
+                                "type": "string",
+                                "maxLength": 2048,
+                                "format": "uri"
+                              },
+                              "clientId": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 512,
+                                "pattern": "^[\\x20-\\x7e]+$"
+                              },
+                              "scope": {
+                                "type": "string",
+                                "maxLength": 2048,
+                                "pattern": "^[\\x20-\\x7e]*$"
+                              },
+                              "clientAuthentication": {
+                                "type": "string",
+                                "enum": [
+                                  "basic",
+                                  "body"
+                                ]
+                              },
+                              "tokenParameters": {
+                                "type": "object",
+                                "propertyNames": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 64,
+                                  "pattern": "^[A-Za-z0-9_.~-]+$"
+                                },
+                                "additionalProperties": {
+                                  "type": "string",
+                                  "maxLength": 1024,
+                                  "pattern": "^[\\x20-\\x7e]+$"
+                                }
+                              },
+                              "requestHosts": {
+                                "oneOf": [
+                                  {
+                                    "readOnly": true,
+                                    "type": "object",
+                                    "properties": {
+                                      "mode": {
+                                        "type": "string",
+                                        "const": "any"
+                                      }
+                                    },
+                                    "required": [
+                                      "mode"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "readOnly": true,
+                                    "type": "object",
+                                    "properties": {
+                                      "mode": {
+                                        "type": "string",
+                                        "const": "listed"
+                                      },
+                                      "hosts": {
+                                        "minItems": 1,
+                                        "maxItems": 32,
+                                        "type": "array",
+                                        "items": {
+                                          "type": "string",
+                                          "minLength": 1,
+                                          "maxLength": 253,
+                                          "pattern": "^(?:\\*\\.)?[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)*$"
+                                        }
+                                      }
+                                    },
+                                    "required": [
+                                      "mode",
+                                      "hosts"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                ]
+                              }
+                            },
+                            "required": [
+                              "grantType",
+                              "tokenUrl",
+                              "clientId",
+                              "scope",
+                              "clientAuthentication",
+                              "tokenParameters",
+                              "requestHosts"
+                            ],
+                            "additionalProperties": false
+                          }
+                        ]
+                      },
+                      "redirectUri": {
+                        "type": "string",
+                        "maxLength": 2048,
+                        "format": "uri"
+                      }
+                    },
+                    "required": [
+                      "settings",
+                      "redirectUri"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "id",
+                  "workspaceId",
+                  "providerKey",
+                  "name",
+                  "authType",
+                  "status",
+                  "secretVersionId",
+                  "health",
+                  "createdAt",
+                  "updatedAt",
+                  "oauth2"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          }
+        ]
+      },
       "ApiTokenInfoResponse": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "type": "object",
@@ -2142,13 +4616,14 @@
           },
           "scopes": {
             "minItems": 1,
-            "maxItems": 8,
+            "maxItems": 9,
             "type": "array",
             "items": {
               "type": "string",
               "enum": [
                 "workflow:read",
                 "workflow:create",
+                "workflow:update",
                 "workflow:publish",
                 "run:read",
                 "run:read-data",
@@ -2724,6 +5199,1128 @@
         "required": [
           "items",
           "nextCursor"
+        ],
+        "additionalProperties": false
+      },
+      "WorkflowCreateRequest": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "folderId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "additionalProperties": false
+      },
+      "WorkflowCreateResponse": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "workflow": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "workspaceId": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              },
+              "nameRevision": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              },
+              "lifecycleStatus": {
+                "type": "string",
+                "enum": [
+                  "active",
+                  "archived"
+                ]
+              },
+              "lifecycleRevision": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              },
+              "activationStatus": {
+                "type": "string",
+                "enum": [
+                  "inactive",
+                  "activating",
+                  "active",
+                  "deactivating",
+                  "degraded",
+                  "error"
+                ]
+              },
+              "webhookSetupRequired": {
+                "type": "boolean"
+              },
+              "resourceAccess": {
+                "type": "object",
+                "properties": {
+                  "canEdit": {
+                    "type": "boolean"
+                  },
+                  "canPublish": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "canEdit",
+                  "canPublish"
+                ],
+                "additionalProperties": false
+              },
+              "publishedVersionId": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "createdAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              "updatedAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              }
+            },
+            "required": [
+              "id",
+              "workspaceId",
+              "name",
+              "nameRevision",
+              "lifecycleStatus",
+              "lifecycleRevision",
+              "activationStatus",
+              "webhookSetupRequired",
+              "publishedVersionId",
+              "createdAt",
+              "updatedAt"
+            ],
+            "additionalProperties": false
+          },
+          "draft": {
+            "type": "object",
+            "properties": {
+              "workflowId": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "revision": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              },
+              "graph": {
+                "type": "object",
+                "properties": {
+                  "nodes": {
+                    "maxItems": 200,
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/components/schemas/WorkflowCreateResponse/properties/draft/properties/graph/$defs/__schema0"
+                    }
+                  },
+                  "edges": {
+                    "maxItems": 4000,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 64
+                        },
+                        "source": {
+                          "type": "object",
+                          "properties": {
+                            "nodeId": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 64
+                            },
+                            "port": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 64
+                            }
+                          },
+                          "required": [
+                            "nodeId",
+                            "port"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "target": {
+                          "type": "object",
+                          "properties": {
+                            "nodeId": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 64
+                            },
+                            "port": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 64
+                            }
+                          },
+                          "required": [
+                            "nodeId",
+                            "port"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "source",
+                        "target"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "settings": {
+                    "type": "object",
+                    "properties": {
+                      "maxRunDurationMs": {
+                        "type": "integer",
+                        "exclusiveMinimum": 0,
+                        "maximum": 3600000
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  "callable": {
+                    "type": "object",
+                    "properties": {
+                      "input": {
+                        "$ref": "#/components/schemas/WorkflowCreateResponse/properties/draft/properties/graph/$defs/__schema3"
+                      },
+                      "resultType": {
+                        "$ref": "#/components/schemas/WorkflowCreateResponse/properties/draft/properties/graph/$defs/__schema3"
+                      },
+                      "result": {
+                        "oneOf": [
+                          {
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "const": "workspace_variable"
+                              },
+                              "name": {
+                                "type": "string",
+                                "pattern": "^[A-Z][A-Z0-9_]{0,63}$"
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "name"
+                            ],
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "const": "literal"
+                              },
+                              "value": {
+                                "$ref": "#/components/schemas/WorkflowCreateResponse/properties/draft/properties/graph/$defs/__schema2"
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "value"
+                            ],
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "const": "run_input"
+                              },
+                              "path": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "path"
+                            ],
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "const": "node_output"
+                              },
+                              "nodeId": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 64
+                              },
+                              "path": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "nodeId",
+                              "path"
+                            ],
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "const": "node_failure"
+                              },
+                              "nodeId": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 64
+                              },
+                              "path": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "nodeId",
+                              "path"
+                            ],
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "const": "expression"
+                              },
+                              "language": {
+                                "type": "string",
+                                "const": "jsonata"
+                              },
+                              "expression": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "language",
+                              "expression"
+                            ],
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "const": "structured_input"
+                              },
+                              "port": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 64
+                              },
+                              "path": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "port",
+                              "path"
+                            ],
+                            "additionalProperties": false
+                          }
+                        ]
+                      }
+                    },
+                    "required": [
+                      "input",
+                      "resultType",
+                      "result"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "notes": {
+                    "maxItems": 100,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "text": {
+                          "type": "string",
+                          "maxLength": 4000
+                        },
+                        "position": {
+                          "type": "object",
+                          "properties": {
+                            "x": {
+                              "type": "number",
+                              "minimum": -100000,
+                              "maximum": 100000
+                            },
+                            "y": {
+                              "type": "number",
+                              "minimum": -100000,
+                              "maximum": 100000
+                            }
+                          },
+                          "required": [
+                            "x",
+                            "y"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "size": {
+                          "type": "object",
+                          "properties": {
+                            "width": {
+                              "type": "number",
+                              "minimum": 200,
+                              "maximum": 1200
+                            },
+                            "height": {
+                              "type": "number",
+                              "minimum": 120,
+                              "maximum": 1200
+                            }
+                          },
+                          "required": [
+                            "width",
+                            "height"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "color": {
+                          "type": "string",
+                          "enum": [
+                            "neutral",
+                            "teal",
+                            "violet",
+                            "sage",
+                            "amber"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "text",
+                        "position",
+                        "size",
+                        "color"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                },
+                "required": [
+                  "nodes",
+                  "edges",
+                  "settings"
+                ],
+                "additionalProperties": false,
+                "$defs": {
+                  "__schema0": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 64
+                      },
+                      "definition": {
+                        "type": "object",
+                        "properties": {
+                          "key": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 64
+                          },
+                          "version": {
+                            "type": "integer",
+                            "exclusiveMinimum": 0,
+                            "maximum": 9007199254740991
+                          }
+                        },
+                        "required": [
+                          "key",
+                          "version"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "position": {
+                        "type": "object",
+                        "properties": {
+                          "x": {
+                            "type": "number"
+                          },
+                          "y": {
+                            "type": "number"
+                          }
+                        },
+                        "required": [
+                          "x",
+                          "y"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "configVersion": {
+                        "type": "integer",
+                        "exclusiveMinimum": 0,
+                        "maximum": 9007199254740991
+                      },
+                      "config": {
+                        "type": "object",
+                        "propertyNames": {
+                          "type": "string"
+                        },
+                        "additionalProperties": {
+                          "$ref": "#/components/schemas/WorkflowCreateResponse/properties/draft/properties/graph/$defs/__schema1"
+                        }
+                      },
+                      "inputMappings": {
+                        "type": "object",
+                        "propertyNames": {
+                          "type": "string"
+                        },
+                        "additionalProperties": {
+                          "oneOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "kind": {
+                                  "type": "string",
+                                  "const": "workspace_variable"
+                                },
+                                "name": {
+                                  "type": "string",
+                                  "pattern": "^[A-Z][A-Z0-9_]{0,63}$"
+                                }
+                              },
+                              "required": [
+                                "kind",
+                                "name"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "kind": {
+                                  "type": "string",
+                                  "const": "literal"
+                                },
+                                "value": {
+                                  "$ref": "#/components/schemas/WorkflowCreateResponse/properties/draft/properties/graph/$defs/__schema2"
+                                }
+                              },
+                              "required": [
+                                "kind",
+                                "value"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "kind": {
+                                  "type": "string",
+                                  "const": "run_input"
+                                },
+                                "path": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "kind",
+                                "path"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "kind": {
+                                  "type": "string",
+                                  "const": "node_output"
+                                },
+                                "nodeId": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 64
+                                },
+                                "path": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "kind",
+                                "nodeId",
+                                "path"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "kind": {
+                                  "type": "string",
+                                  "const": "node_failure"
+                                },
+                                "nodeId": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 64
+                                },
+                                "path": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "kind",
+                                "nodeId",
+                                "path"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "kind": {
+                                  "type": "string",
+                                  "const": "expression"
+                                },
+                                "language": {
+                                  "type": "string",
+                                  "const": "jsonata"
+                                },
+                                "expression": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "kind",
+                                "language",
+                                "expression"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "kind": {
+                                  "type": "string",
+                                  "const": "structured_input"
+                                },
+                                "port": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 64
+                                },
+                                "path": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "kind",
+                                "port",
+                                "path"
+                              ],
+                              "additionalProperties": false
+                            }
+                          ]
+                        }
+                      },
+                      "connectionRefs": {
+                        "type": "object",
+                        "propertyNames": {
+                          "type": "string"
+                        },
+                        "additionalProperties": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 64
+                        }
+                      },
+                      "label": {
+                        "type": "string"
+                      },
+                      "disabled": {
+                        "type": "boolean"
+                      },
+                      "retry": {
+                        "type": "object",
+                        "properties": {
+                          "maximumAttempts": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 5
+                          },
+                          "delayMillis": {
+                            "type": "integer",
+                            "minimum": 1000,
+                            "maximum": 60000,
+                            "multipleOf": 1000
+                          }
+                        },
+                        "required": [
+                          "maximumAttempts",
+                          "delayMillis"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "structured": {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "type": "string",
+                            "const": "for_each"
+                          },
+                          "maxIterations": {
+                            "type": "integer",
+                            "exclusiveMinimum": 0,
+                            "maximum": 4998
+                          },
+                          "maxConcurrency": {
+                            "type": "integer",
+                            "exclusiveMinimum": 0,
+                            "maximum": 200
+                          },
+                          "body": {
+                            "type": "object",
+                            "properties": {
+                              "nodes": {
+                                "type": "array",
+                                "items": {
+                                  "$ref": "#/components/schemas/WorkflowCreateResponse/properties/draft/properties/graph/$defs/__schema0"
+                                }
+                              },
+                              "edges": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "id": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 64
+                                    },
+                                    "source": {
+                                      "type": "object",
+                                      "properties": {
+                                        "nodeId": {
+                                          "type": "string",
+                                          "minLength": 1,
+                                          "maxLength": 64
+                                        },
+                                        "port": {
+                                          "type": "string",
+                                          "minLength": 1,
+                                          "maxLength": 64
+                                        }
+                                      },
+                                      "required": [
+                                        "nodeId",
+                                        "port"
+                                      ],
+                                      "additionalProperties": false
+                                    },
+                                    "target": {
+                                      "type": "object",
+                                      "properties": {
+                                        "nodeId": {
+                                          "type": "string",
+                                          "minLength": 1,
+                                          "maxLength": 64
+                                        },
+                                        "port": {
+                                          "type": "string",
+                                          "minLength": 1,
+                                          "maxLength": 64
+                                        }
+                                      },
+                                      "required": [
+                                        "nodeId",
+                                        "port"
+                                      ],
+                                      "additionalProperties": false
+                                    }
+                                  },
+                                  "required": [
+                                    "id",
+                                    "source",
+                                    "target"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              },
+                              "settings": {
+                                "type": "object",
+                                "properties": {
+                                  "maxRunDurationMs": {
+                                    "type": "integer",
+                                    "exclusiveMinimum": 0,
+                                    "maximum": 3600000
+                                  }
+                                },
+                                "additionalProperties": false
+                              },
+                              "inputPorts": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 64
+                                }
+                              },
+                              "outputPorts": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 64
+                                }
+                              }
+                            },
+                            "required": [
+                              "nodes",
+                              "edges",
+                              "settings",
+                              "inputPorts",
+                              "outputPorts"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "maxIterations",
+                          "maxConcurrency",
+                          "body"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "definition",
+                      "position",
+                      "configVersion",
+                      "config",
+                      "inputMappings",
+                      "connectionRefs"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "__schema1": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "null"
+                      },
+                      {
+                        "type": "array",
+                        "items": {
+                          "$ref": "#/components/schemas/WorkflowCreateResponse/properties/draft/properties/graph/$defs/__schema1"
+                        }
+                      },
+                      {
+                        "type": "object",
+                        "propertyNames": {
+                          "type": "string"
+                        },
+                        "additionalProperties": {
+                          "$ref": "#/components/schemas/WorkflowCreateResponse/properties/draft/properties/graph/$defs/__schema1"
+                        }
+                      }
+                    ]
+                  },
+                  "__schema2": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "null"
+                      },
+                      {
+                        "type": "array",
+                        "items": {
+                          "$ref": "#/components/schemas/WorkflowCreateResponse/properties/draft/properties/graph/$defs/__schema2"
+                        }
+                      },
+                      {
+                        "type": "object",
+                        "propertyNames": {
+                          "type": "string"
+                        },
+                        "additionalProperties": {
+                          "$ref": "#/components/schemas/WorkflowCreateResponse/properties/draft/properties/graph/$defs/__schema2"
+                        }
+                      }
+                    ]
+                  },
+                  "__schema3": {
+                    "oneOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "type": {
+                            "type": "string",
+                            "const": "null"
+                          }
+                        },
+                        "required": [
+                          "type"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "type": {
+                            "type": "string",
+                            "const": "boolean"
+                          }
+                        },
+                        "required": [
+                          "type"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "type": {
+                            "type": "string",
+                            "const": "number"
+                          }
+                        },
+                        "required": [
+                          "type"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "type": {
+                            "type": "string",
+                            "const": "string"
+                          }
+                        },
+                        "required": [
+                          "type"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "type": {
+                            "type": "string",
+                            "const": "array"
+                          },
+                          "items": {
+                            "$ref": "#/components/schemas/WorkflowCreateResponse/properties/draft/properties/graph/$defs/__schema3"
+                          },
+                          "maxItems": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 10000
+                          }
+                        },
+                        "required": [
+                          "type",
+                          "items",
+                          "maxItems"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "type": {
+                            "type": "string",
+                            "const": "object"
+                          },
+                          "properties": {
+                            "maxItems": 10000,
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "name": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 64
+                                },
+                                "valueType": {
+                                  "$ref": "#/components/schemas/WorkflowCreateResponse/properties/draft/properties/graph/$defs/__schema3"
+                                },
+                                "required": {
+                                  "type": "boolean"
+                                }
+                              },
+                              "required": [
+                                "name",
+                                "valueType",
+                                "required"
+                              ],
+                              "additionalProperties": false
+                            }
+                          }
+                        },
+                        "required": [
+                          "type",
+                          "properties"
+                        ],
+                        "additionalProperties": false
+                      }
+                    ]
+                  }
+                },
+                "description": "Structural workflow graph contract. Runtime validation additionally enforces aggregate node/edge, nesting-depth, and encoded-byte limits.",
+                "x-pertexo-runtime-bounds": true
+              },
+              "compatibility": {
+                "type": "object",
+                "properties": {
+                  "compatible": {
+                    "type": "boolean"
+                  },
+                  "fingerprint": {
+                    "type": "string",
+                    "pattern": "^wf-compat:sha256:[0-9a-f]{64}$"
+                  },
+                  "issues": {
+                    "maxItems": 1000,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "const": "unknown_definition"
+                        },
+                        "definitionKey": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 256
+                        },
+                        "version": {
+                          "type": "integer",
+                          "exclusiveMinimum": 0,
+                          "maximum": 9007199254740991
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "definitionKey",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                },
+                "required": [
+                  "compatible",
+                  "fingerprint",
+                  "issues"
+                ],
+                "additionalProperties": false
+              },
+              "updatedAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              }
+            },
+            "required": [
+              "workflowId",
+              "revision",
+              "graph",
+              "compatibility",
+              "updatedAt"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "workflow",
+          "draft"
         ],
         "additionalProperties": false
       },
@@ -4380,6 +7977,922 @@
           "graph",
           "compatibility",
           "updatedAt"
+        ],
+        "additionalProperties": false
+      },
+      "WorkflowDraftSaveRequest": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "graph": {
+            "type": "object",
+            "properties": {
+              "nodes": {
+                "maxItems": 200,
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/WorkflowDraftSaveRequest/properties/graph/$defs/__schema0"
+                }
+              },
+              "edges": {
+                "maxItems": 4000,
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 64
+                    },
+                    "source": {
+                      "type": "object",
+                      "properties": {
+                        "nodeId": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 64
+                        },
+                        "port": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 64
+                        }
+                      },
+                      "required": [
+                        "nodeId",
+                        "port"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "target": {
+                      "type": "object",
+                      "properties": {
+                        "nodeId": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 64
+                        },
+                        "port": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 64
+                        }
+                      },
+                      "required": [
+                        "nodeId",
+                        "port"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "source",
+                    "target"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "settings": {
+                "type": "object",
+                "properties": {
+                  "maxRunDurationMs": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0,
+                    "maximum": 3600000
+                  }
+                },
+                "additionalProperties": false
+              },
+              "callable": {
+                "type": "object",
+                "properties": {
+                  "input": {
+                    "$ref": "#/components/schemas/WorkflowDraftSaveRequest/properties/graph/$defs/__schema3"
+                  },
+                  "resultType": {
+                    "$ref": "#/components/schemas/WorkflowDraftSaveRequest/properties/graph/$defs/__schema3"
+                  },
+                  "result": {
+                    "oneOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "type": "string",
+                            "const": "workspace_variable"
+                          },
+                          "name": {
+                            "type": "string",
+                            "pattern": "^[A-Z][A-Z0-9_]{0,63}$"
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "name"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "type": "string",
+                            "const": "literal"
+                          },
+                          "value": {
+                            "$ref": "#/components/schemas/WorkflowDraftSaveRequest/properties/graph/$defs/__schema2"
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "value"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "type": "string",
+                            "const": "run_input"
+                          },
+                          "path": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "path"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "type": "string",
+                            "const": "node_output"
+                          },
+                          "nodeId": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 64
+                          },
+                          "path": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "nodeId",
+                          "path"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "type": "string",
+                            "const": "node_failure"
+                          },
+                          "nodeId": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 64
+                          },
+                          "path": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "nodeId",
+                          "path"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "type": "string",
+                            "const": "expression"
+                          },
+                          "language": {
+                            "type": "string",
+                            "const": "jsonata"
+                          },
+                          "expression": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "language",
+                          "expression"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "type": "string",
+                            "const": "structured_input"
+                          },
+                          "port": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 64
+                          },
+                          "path": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "port",
+                          "path"
+                        ],
+                        "additionalProperties": false
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "input",
+                  "resultType",
+                  "result"
+                ],
+                "additionalProperties": false
+              },
+              "notes": {
+                "maxItems": 100,
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "text": {
+                      "type": "string",
+                      "maxLength": 4000
+                    },
+                    "position": {
+                      "type": "object",
+                      "properties": {
+                        "x": {
+                          "type": "number",
+                          "minimum": -100000,
+                          "maximum": 100000
+                        },
+                        "y": {
+                          "type": "number",
+                          "minimum": -100000,
+                          "maximum": 100000
+                        }
+                      },
+                      "required": [
+                        "x",
+                        "y"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "size": {
+                      "type": "object",
+                      "properties": {
+                        "width": {
+                          "type": "number",
+                          "minimum": 200,
+                          "maximum": 1200
+                        },
+                        "height": {
+                          "type": "number",
+                          "minimum": 120,
+                          "maximum": 1200
+                        }
+                      },
+                      "required": [
+                        "width",
+                        "height"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "color": {
+                      "type": "string",
+                      "enum": [
+                        "neutral",
+                        "teal",
+                        "violet",
+                        "sage",
+                        "amber"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "text",
+                    "position",
+                    "size",
+                    "color"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "nodes",
+              "edges",
+              "settings"
+            ],
+            "additionalProperties": false,
+            "$defs": {
+              "__schema0": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 64
+                  },
+                  "definition": {
+                    "type": "object",
+                    "properties": {
+                      "key": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 64
+                      },
+                      "version": {
+                        "type": "integer",
+                        "exclusiveMinimum": 0,
+                        "maximum": 9007199254740991
+                      }
+                    },
+                    "required": [
+                      "key",
+                      "version"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "position": {
+                    "type": "object",
+                    "properties": {
+                      "x": {
+                        "type": "number"
+                      },
+                      "y": {
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "x",
+                      "y"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "configVersion": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "config": {
+                    "type": "object",
+                    "propertyNames": {
+                      "type": "string"
+                    },
+                    "additionalProperties": {
+                      "$ref": "#/components/schemas/WorkflowDraftSaveRequest/properties/graph/$defs/__schema1"
+                    }
+                  },
+                  "inputMappings": {
+                    "type": "object",
+                    "propertyNames": {
+                      "type": "string"
+                    },
+                    "additionalProperties": {
+                      "oneOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "kind": {
+                              "type": "string",
+                              "const": "workspace_variable"
+                            },
+                            "name": {
+                              "type": "string",
+                              "pattern": "^[A-Z][A-Z0-9_]{0,63}$"
+                            }
+                          },
+                          "required": [
+                            "kind",
+                            "name"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "kind": {
+                              "type": "string",
+                              "const": "literal"
+                            },
+                            "value": {
+                              "$ref": "#/components/schemas/WorkflowDraftSaveRequest/properties/graph/$defs/__schema2"
+                            }
+                          },
+                          "required": [
+                            "kind",
+                            "value"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "kind": {
+                              "type": "string",
+                              "const": "run_input"
+                            },
+                            "path": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "kind",
+                            "path"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "kind": {
+                              "type": "string",
+                              "const": "node_output"
+                            },
+                            "nodeId": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 64
+                            },
+                            "path": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "kind",
+                            "nodeId",
+                            "path"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "kind": {
+                              "type": "string",
+                              "const": "node_failure"
+                            },
+                            "nodeId": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 64
+                            },
+                            "path": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "kind",
+                            "nodeId",
+                            "path"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "kind": {
+                              "type": "string",
+                              "const": "expression"
+                            },
+                            "language": {
+                              "type": "string",
+                              "const": "jsonata"
+                            },
+                            "expression": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "kind",
+                            "language",
+                            "expression"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "kind": {
+                              "type": "string",
+                              "const": "structured_input"
+                            },
+                            "port": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 64
+                            },
+                            "path": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "kind",
+                            "port",
+                            "path"
+                          ],
+                          "additionalProperties": false
+                        }
+                      ]
+                    }
+                  },
+                  "connectionRefs": {
+                    "type": "object",
+                    "propertyNames": {
+                      "type": "string"
+                    },
+                    "additionalProperties": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 64
+                    }
+                  },
+                  "label": {
+                    "type": "string"
+                  },
+                  "disabled": {
+                    "type": "boolean"
+                  },
+                  "retry": {
+                    "type": "object",
+                    "properties": {
+                      "maximumAttempts": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 5
+                      },
+                      "delayMillis": {
+                        "type": "integer",
+                        "minimum": 1000,
+                        "maximum": 60000,
+                        "multipleOf": 1000
+                      }
+                    },
+                    "required": [
+                      "maximumAttempts",
+                      "delayMillis"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "structured": {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "const": "for_each"
+                      },
+                      "maxIterations": {
+                        "type": "integer",
+                        "exclusiveMinimum": 0,
+                        "maximum": 4998
+                      },
+                      "maxConcurrency": {
+                        "type": "integer",
+                        "exclusiveMinimum": 0,
+                        "maximum": 200
+                      },
+                      "body": {
+                        "type": "object",
+                        "properties": {
+                          "nodes": {
+                            "type": "array",
+                            "items": {
+                              "$ref": "#/components/schemas/WorkflowDraftSaveRequest/properties/graph/$defs/__schema0"
+                            }
+                          },
+                          "edges": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 64
+                                },
+                                "source": {
+                                  "type": "object",
+                                  "properties": {
+                                    "nodeId": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 64
+                                    },
+                                    "port": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 64
+                                    }
+                                  },
+                                  "required": [
+                                    "nodeId",
+                                    "port"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                "target": {
+                                  "type": "object",
+                                  "properties": {
+                                    "nodeId": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 64
+                                    },
+                                    "port": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 64
+                                    }
+                                  },
+                                  "required": [
+                                    "nodeId",
+                                    "port"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "source",
+                                "target"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "settings": {
+                            "type": "object",
+                            "properties": {
+                              "maxRunDurationMs": {
+                                "type": "integer",
+                                "exclusiveMinimum": 0,
+                                "maximum": 3600000
+                              }
+                            },
+                            "additionalProperties": false
+                          },
+                          "inputPorts": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 64
+                            }
+                          },
+                          "outputPorts": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 64
+                            }
+                          }
+                        },
+                        "required": [
+                          "nodes",
+                          "edges",
+                          "settings",
+                          "inputPorts",
+                          "outputPorts"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "maxIterations",
+                      "maxConcurrency",
+                      "body"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "id",
+                  "definition",
+                  "position",
+                  "configVersion",
+                  "config",
+                  "inputMappings",
+                  "connectionRefs"
+                ],
+                "additionalProperties": false
+              },
+              "__schema1": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/components/schemas/WorkflowDraftSaveRequest/properties/graph/$defs/__schema1"
+                    }
+                  },
+                  {
+                    "type": "object",
+                    "propertyNames": {
+                      "type": "string"
+                    },
+                    "additionalProperties": {
+                      "$ref": "#/components/schemas/WorkflowDraftSaveRequest/properties/graph/$defs/__schema1"
+                    }
+                  }
+                ]
+              },
+              "__schema2": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/components/schemas/WorkflowDraftSaveRequest/properties/graph/$defs/__schema2"
+                    }
+                  },
+                  {
+                    "type": "object",
+                    "propertyNames": {
+                      "type": "string"
+                    },
+                    "additionalProperties": {
+                      "$ref": "#/components/schemas/WorkflowDraftSaveRequest/properties/graph/$defs/__schema2"
+                    }
+                  }
+                ]
+              },
+              "__schema3": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "null"
+                      }
+                    },
+                    "required": [
+                      "type"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "boolean"
+                      }
+                    },
+                    "required": [
+                      "type"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "number"
+                      }
+                    },
+                    "required": [
+                      "type"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "string"
+                      }
+                    },
+                    "required": [
+                      "type"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "array"
+                      },
+                      "items": {
+                        "$ref": "#/components/schemas/WorkflowDraftSaveRequest/properties/graph/$defs/__schema3"
+                      },
+                      "maxItems": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 10000
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "items",
+                      "maxItems"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "object"
+                      },
+                      "properties": {
+                        "maxItems": 10000,
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "name": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 64
+                            },
+                            "valueType": {
+                              "$ref": "#/components/schemas/WorkflowDraftSaveRequest/properties/graph/$defs/__schema3"
+                            },
+                            "required": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "name",
+                            "valueType",
+                            "required"
+                          ],
+                          "additionalProperties": false
+                        }
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "properties"
+                    ],
+                    "additionalProperties": false
+                  }
+                ]
+              }
+            },
+            "description": "Structural workflow graph contract. Runtime validation additionally enforces aggregate node/edge, nesting-depth, and encoded-byte limits.",
+            "x-pertexo-runtime-bounds": true
+          }
+        },
+        "required": [
+          "graph"
         ],
         "additionalProperties": false
       },
@@ -11614,6 +16127,16 @@
           }
         }
       },
+      "NotFound": {
+        "description": "Artifact or workspace not found",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/ApiProblem"
+            }
+          }
+        }
+      },
       "Unexpected": {
         "description": "Unexpected server error",
         "content": {
@@ -11624,8 +16147,8 @@
           }
         }
       },
-      "NotFound": {
-        "description": "Artifact or workspace not found",
+      "ServiceUnavailable": {
+        "description": "Key or provider service unavailable",
         "content": {
           "application/problem+json": {
             "schema": {
@@ -11665,8 +16188,8 @@
           }
         }
       },
-      "UnprocessableEntity": {
-        "description": "Node test input is not executable",
+      "PreconditionRequired": {
+        "description": "Precondition required",
         "content": {
           "application/problem+json": {
             "schema": {
@@ -11675,8 +16198,8 @@
           }
         }
       },
-      "PreconditionRequired": {
-        "description": "Precondition required",
+      "UnprocessableEntity": {
+        "description": "Node test input is not executable",
         "content": {
           "application/problem+json": {
             "schema": {

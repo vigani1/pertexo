@@ -357,8 +357,13 @@ export const workflowAuthoringOpenApiDocument = Object.freeze({
       },
       post: {
         operationId: 'createWorkflow',
-        security: [{ cookieSession: [] }],
-        parameters: [...pathParameters, csrfParameter, idempotencyParameter],
+        'x-pertexo-api-token-scopes': ['workflow:create'],
+        security: automationSecurity,
+        parameters: [
+          ...pathParameters,
+          automationCsrfHeaderParameter(),
+          idempotencyParameter,
+        ],
         requestBody: jsonRequest('WorkflowCreateRequest'),
         responses: {
           '201': jsonResponseWithHeaders(
@@ -432,8 +437,13 @@ export const workflowAuthoringOpenApiDocument = Object.freeze({
       },
       put: {
         operationId: 'saveWorkflowDraft',
-        security: [{ cookieSession: [] }],
-        parameters: [...workflowParameters, csrfParameter, etagParameter],
+        'x-pertexo-api-token-scopes': ['workflow:update'],
+        security: automationSecurity,
+        parameters: [
+          ...workflowParameters,
+          automationCsrfHeaderParameter(),
+          etagParameter,
+        ],
         requestBody: jsonRequest('WorkflowDraftSaveRequest'),
         responses: {
           '200': jsonResponseWithHeaders(

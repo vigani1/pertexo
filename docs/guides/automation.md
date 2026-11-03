@@ -94,6 +94,9 @@ the browser. Request and response bodies are in the server's own spec, `GET /v1/
 | `workflows import-preview --workspace "$WORKSPACE_ID" --body preview.json` | `POST /workflows/import/preview` | `workflow:create`; `connection:read` if bindings exist |
 | `workflows import --workspace "$WORKSPACE_ID" --body import.json --key deploy-import-1` | `POST /workflows/import`, `Idempotency-Key: deploy-import-1` | same as preview |
 | `workflows publish --workspace "$WORKSPACE_ID" --workflow "$WORKFLOW_ID" --etag "$DRAFT_ETAG" --key deploy-publish-1` | `POST /workflows/$WORKFLOW_ID/publish`, both headers | `workflow:publish` |
+| (HTTP only) | `POST /workflows`, `Idempotency-Key` | `workflow:create` |
+| (HTTP only) | `PUT /workflows/$WORKFLOW_ID/draft`, `If-Match` from the draft read | `workflow:update` |
+| (HTTP only) | `GET /connections`, `GET /connections/$CONNECTION_ID` | `connection:read` |
 | `runs start --workspace "$WORKSPACE_ID" --workflow "$WORKFLOW_ID" --body run.json --key deploy-run-1` | `POST /workflows/$WORKFLOW_ID/runs`, `Idempotency-Key: deploy-run-1` | `run:start` |
 | `runs list --workspace "$WORKSPACE_ID" [--workflow UUID --status failed --limit 25 --after CURSOR]` | `GET /runs` with the corresponding query | `run:read`; also `workflow:read` for workflow names |
 | `runs get --workspace "$WORKSPACE_ID" --run "$RUN_ID"` | `GET /runs/$RUN_ID` | `run:read`; also `workflow:read` for workflow names |

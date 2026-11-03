@@ -1,3 +1,4 @@
+import { credentialCommandScope } from '@pertexo/database/platform';
 import {
   appendAuditFact,
   rethrowQueryFailure,
@@ -60,7 +61,7 @@ export async function createWorkflow(
   const command = {
     workspaceId: input.workspaceId,
     operation: 'workflow.create',
-    scope: input.actorId,
+    scope: credentialCommandScope(input.actorId, input.commandCredentialId),
     idempotencyKey: input.idempotencyKey,
   };
   const stored = await claimCommand<CreatedReceipt>(client, {

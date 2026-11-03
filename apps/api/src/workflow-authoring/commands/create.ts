@@ -1,5 +1,8 @@
 import { EMPTY_WORKFLOW_GRAPH } from '../graph.js';
-import type { WorkspaceAuthorizationSource } from '../../authorization/index.js';
+import {
+  commandCredential,
+  type WorkspaceAuthorizationSource,
+} from '../../authorization/index.js';
 
 import {
   WORKFLOW_AUTHORING_OPERATION,
@@ -50,6 +53,7 @@ export class CreateWorkflowUseCase {
             : { folderId: request.folderId }),
           emptyGraph: EMPTY_WORKFLOW_GRAPH,
           idempotencyKey: input.idempotencyKey,
+          ...commandCredential(input.actor),
           ...(input.requestId === undefined
             ? {}
             : { requestId: input.requestId }),

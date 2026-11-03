@@ -8,9 +8,15 @@
     "/v1/workspaces/{workspaceId}/connections": {
       "get": {
         "operationId": "listConnections",
+        "x-pertexo-api-token-scopes": [
+          "connection:read"
+        ],
         "security": [
           {
             "cookieSession": []
+          },
+          {
+            "apiToken": []
           }
         ],
         "parameters": [
@@ -503,9 +509,15 @@
     "/v1/workspaces/{workspaceId}/connections/{connectionId}": {
       "get": {
         "operationId": "getConnection",
+        "x-pertexo-api-token-scopes": [
+          "connection:read"
+        ],
         "security": [
           {
             "cookieSession": []
+          },
+          {
+            "apiToken": []
           }
         ],
         "parameters": [
@@ -9240,6 +9252,11 @@
       }
     },
     "securitySchemes": {
+      "apiToken": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "ptx_1 opaque personal token"
+      },
       "cookieSession": {
         "type": "apiKey",
         "in": "cookie",
