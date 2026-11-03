@@ -123,7 +123,7 @@ export class WorkflowPromotionUseCase {
       disclosure: 'not_found',
       allowedWorkspaceStatuses,
       ...(input.signal === undefined ? {} : { signal: input.signal }),
-      ...(input.authorizedWorkspace === undefined
+      ...(input.authorizedWorkspace?.capability !== capability
         ? {}
         : { authorizedWorkspace: input.authorizedWorkspace }),
     });
