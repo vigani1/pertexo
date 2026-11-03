@@ -1,3 +1,5 @@
+import { persistConsumedCalls } from '../calls/persist.repository.js';
+import { persistConsumedTasks } from '../pending-tasks/lifecycle/persist.repository.js';
 import { TERMINAL_NODE_FIELDS } from './persist/settlement.repository.js';
 import { TERMINAL_RUN_STATUSES } from '../statuses.js';
 import { createCheckpoint } from '@pertexo/workflow-engine';
@@ -80,6 +82,8 @@ export function failUnadvanceableRun(
         nodeRunAdmissions: [],
         attempts: [],
       };
+      await persistConsumedCalls(client, workspaceId, runId, plan);
+      await persistConsumedTasks(client, workspaceId, runId, plan);
       await persistCoordinatorRunTransition(client, {
         authoritativeCancellation: run.cancel_requested_at !== null,
         hadWaitingStep: false,
