@@ -1,6 +1,6 @@
 import type { Role } from '@pertexo/policy';
-import { APPLICATION_ERROR_MAPPERS } from '../../../../src/application-errors.js';
 import 'reflect-metadata';
+import { APPLICATION_ERROR_MAPPERS } from '../../../../src/application-errors.js';
 
 import type { ExecutionContext } from '@nestjs/common';
 
@@ -9,33 +9,30 @@ import {
   type NestFastifyApplication,
 } from '@nestjs/platform-fastify';
 import { Test } from '@nestjs/testing';
-import { vi } from 'vitest';
 import type {
-  WorkflowTagStore,
   WorkflowFavoriteStore,
+  WorkflowTagStore,
 } from '@pertexo/core/authoring';
-import { WorkflowOrganizationController } from '../../../../src/workflow-authoring/organization/controller.js';
+import { vi } from 'vitest';
 import { WorkflowOrganizationCommandsUseCase } from '../../../../src/workflow-authoring/organization/commands.js';
+import { WorkflowOrganizationController } from '../../../../src/workflow-authoring/organization/controller.js';
 import { WorkflowOrganizationReadsUseCase } from '../../../../src/workflow-authoring/organization/reads.js';
-import {
-  WorkflowReadGuard,
-  WorkflowUpdateGuard,
-} from '../../../../src/workflow-authoring/http/guards.js';
-import {
-  SessionAuthenticationGuard,
-  CsrfProtectionGuard,
-} from '../../../../src/workspaces/index.js';
+
 import { DoubleSubmitCsrfPolicy } from '../../../../src/identity/index.js';
 import {
   applicationError,
-  throwApplicationError,
-  RequestContextStore,
-  RequestContextMiddleware,
   ProblemDetailsFilter,
+  RequestContextMiddleware,
+  RequestContextStore,
+  throwApplicationError,
 } from '../../../../src/platform/http/index.js';
+import {
+  CsrfProtectionGuard,
+  SessionAuthenticationGuard,
+} from '../../../../src/workspaces/index.js';
 
-import { WORKSPACE_AUTHORIZATION } from '../../../../src/workspaces/tokens.js';
 import type { WorkflowAuthoringRequest } from '../../../../src/workflow-authoring/types.js';
+import { WORKSPACE_AUTHORIZATION } from '../../../../src/workspaces/tokens.js';
 
 export const workspaceId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
 
@@ -212,10 +209,6 @@ export async function httpFixture(role: Role = 'owner') {
     })
     .overrideGuard(CsrfProtectionGuard)
     .useValue(new CsrfProtectionGuard(new DoubleSubmitCsrfPolicy()))
-    .overrideGuard(WorkflowReadGuard)
-    .useValue(new WorkflowReadGuard(f.authorization, contexts))
-    .overrideGuard(WorkflowUpdateGuard)
-    .useValue(new WorkflowUpdateGuard(f.authorization, contexts))
     .compile();
   // Vitest's source transform omits compiler design:paramtypes. Explicit test
   // wiring exercises production routes, not compiler-generated constructor DI.

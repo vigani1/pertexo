@@ -7,11 +7,9 @@ export * from './commands/rename.js';
 export * from './commands/restore-version.js';
 
 export * from './http/etag.js';
-export * from './http/guards.js';
 export * from './module.js';
 export * from './ports.js';
 export * from './http/preconditions.js';
 export * from './telemetry.js';
-export * from './tokens.js';
 export * from './types.js';
 export * from './use-cases.js';

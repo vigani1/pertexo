@@ -57,10 +57,6 @@ export function queryParameter(
   } as const;
 }
 
-export function uuidPathParameter(name: string, description?: string) {
-  return pathParameter(name, jsonSchema(z.uuid(), 'input'), description);
-}
-
 export function pathParameter(
   name: string,
   schema: Readonly<Record<string, unknown>>,
