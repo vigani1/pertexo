@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { createRequestContext } from '../../platform/http/request-context.js';
 import type {
   FastifyInstance,
   FastifyReply,
@@ -143,7 +143,7 @@ async function dispatchBetterAuthRequest(
   const pathname = canonicalAuthPath(
     new URL(request.url, publicOrigin).pathname,
   );
-  const requestId = randomUUID();
+  const { requestId } = createRequestContext(request.id);
   const providerFormCallback = isProviderFormCallback(request.method, pathname);
   if (BLOCKED_BROWSER_AUTH_PATHS.has(pathname)) {
     sendProblem(reply, {
@@ -192,7 +192,9 @@ async function dispatchBetterAuthRequest(
     });
     return;
   }
-  const response = await handler(authenticationRequest(request, publicOrigin));
+  const response = await handler(
+    authenticationRequest(request, publicOrigin, requestId),
+  );
   await sendAuthenticationResponse(reply, response, {
     pathname,
     sessionCookie,
@@ -212,6 +214,7 @@ function namedAccount(body: unknown): { account: string } | undefined {
 function authenticationRequest(
   request: FastifyRequest,
   publicOrigin: string,
+  requestId: string,
 ): Request {
   const headers = new Headers();
   for (const [name, rawValue] of Object.entries(request.headers)) {
@@ -223,6 +226,7 @@ function authenticationRequest(
     }
   }
 
+  headers.set('x-request-id', requestId);
   const method = request.method.toUpperCase();
   const body =
     method === 'GET' || method === 'HEAD' ? undefined : requestBody(request);
@@ -248,7 +252,9 @@ async function sendAuthenticationResponse(
     response.status >= 400
       ? normalizedNativeError(response.status, responseBody, requestId)
       : undefined;
-  reply.code(nativeError?.status ?? response.status);
+  reply
+    .code(nativeError?.status ?? response.status)
+    .header('x-request-id', requestId);
   const setCookies = response.headers.getSetCookie();
   if (
     setCookies.some(establishesPertexoSession) &&

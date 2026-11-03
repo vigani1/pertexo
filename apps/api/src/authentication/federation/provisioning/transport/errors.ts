@@ -1,3 +1,4 @@
+import { recordAuthenticationFailure } from '../../../journeys/failures.js';
 import type { FastifyReply } from 'fastify';
 import { DirectoryError } from '@pertexo/core/identity';
 
@@ -10,6 +11,7 @@ export function sendDirectoryError(
   reply
     .code(status)
     .header('cache-control', 'no-store')
+    .header('x-request-id', reply.request.id)
     .type('application/scim+json')
     .send({
       schemas: ['urn:ietf:params:scim:api:messages:2.0:Error'],
@@ -20,6 +22,12 @@ export function sendDirectoryError(
 }
 export function directoryFailure(reply: FastifyReply, error: unknown): void {
   if (error instanceof DirectoryError) {
+    recordAuthenticationFailure(
+      reply.request.id,
+      'directory',
+      error.reason,
+      'refused',
+    );
     const failures: Record<
       DirectoryError['reason'],
       readonly [number, string, string?]
@@ -79,6 +87,12 @@ export function directoryFailure(reply: FastifyReply, error: unknown): void {
       : undefined;
   switch (code) {
     case 'FST_ERR_CTP_BODY_TOO_LARGE':
+      recordAuthenticationFailure(
+        reply.request.id,
+        'directory',
+        'request_invalid',
+        'refused',
+      );
       sendDirectoryError(
         reply,
         413,
@@ -87,6 +101,12 @@ export function directoryFailure(reply: FastifyReply, error: unknown): void {
       );
       return;
     case 'FST_ERR_CTP_INVALID_MEDIA_TYPE':
+      recordAuthenticationFailure(
+        reply.request.id,
+        'directory',
+        'request_invalid',
+        'refused',
+      );
       sendDirectoryError(
         reply,
         415,
@@ -99,6 +119,12 @@ export function directoryFailure(reply: FastifyReply, error: unknown): void {
     code === 'FST_ERR_CTP_EMPTY_JSON_BODY' ||
     code === 'FST_ERR_CTP_INVALID_JSON_BODY';
   if (invalidJson) {
+    recordAuthenticationFailure(
+      reply.request.id,
+      'directory',
+      'request_invalid',
+      'refused',
+    );
     sendDirectoryError(
       reply,
       400,
@@ -107,5 +133,11 @@ export function directoryFailure(reply: FastifyReply, error: unknown): void {
     );
     return;
   }
+  recordAuthenticationFailure(
+    reply.request.id,
+    'directory',
+    'internal_failure',
+    'failed',
+  );
   sendDirectoryError(reply, 500, 'Provisioning is temporarily unavailable.');
 }

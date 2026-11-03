@@ -93,7 +93,7 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
         expect(landing.searchParams.get('ssoTest')).toBe('failed');
         expect(landing.searchParams.get('ssoReason')).toBe(reason);
         expect(loggedSince(mark)).toEqual([
-          `Organization test failed: saml ${reason}`,
+          `Authentication refused: saml_callback ${reason} requestId=${String(reply.headers['x-request-id'])}`,
         ]);
       },
     );
@@ -129,7 +129,9 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
           users: await userCount(),
         }).toEqual(before);
         const logged = loggedSince(mark);
-        expect(logged).toEqual([`Organization sign-in failed: saml ${reason}`]);
+        expect(logged).toEqual([
+          `Authentication refused: saml_callback ${reason} requestId=${String(reply.headers['x-request-id'])}`,
+        ]);
         expect(logged.join()).not.toContain(MARKER);
         expect(logged.join()).not.toContain(fixture.domain);
       },
@@ -167,7 +169,7 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
       expect(new URL(String(reply.headers.location)).pathname).toBe('/login');
       expect(await sessionCount()).toBe(before);
       expect(loggedSince(mark)).toEqual([
-        'Organization sign-in failed: saml saml_signature_invalid',
+        `Authentication refused: saml_callback saml_signature_invalid requestId=${String(reply.headers['x-request-id'])}`,
       ]);
     });
 
@@ -185,14 +187,14 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
           payload: form,
         });
       const form = api.form(fixture, journey);
-      await send('', form);
+      const missingCookie = await send('', form);
       const elsewhere = new URLSearchParams(form);
       elsewhere.set('RelayState', 'x'.repeat(43));
-      await send(journey.cookie, elsewhere.toString());
+      const missingAttempt = await send(journey.cookie, elsewhere.toString());
 
       expect(loggedSince(mark)).toEqual([
-        'Organization sign-in failed: saml callback_invalid',
-        'Organization sign-in failed: saml attempt_unavailable',
+        `Authentication refused: saml_callback callback_invalid requestId=${String(missingCookie.headers['x-request-id'])}`,
+        `Authentication refused: saml_callback attempt_unavailable requestId=${String(missingAttempt.headers['x-request-id'])}`,
       ]);
       expect(await sessionCount()).toBe(before);
     });
@@ -213,7 +215,7 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
       expect(landing.pathname).toBe('/login');
       expect(landing.searchParams.has('ssoReason')).toBe(false);
       expect(loggedSince(mark)).toEqual([
-        'Organization sign-in failed: saml account_refused',
+        `Authentication refused: saml_callback account_refused requestId=${String(reply.headers['x-request-id'])}`,
       ]);
       expect(await sessionCount()).toBe(before);
     });

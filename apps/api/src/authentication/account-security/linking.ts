@@ -1,3 +1,4 @@
+import { recordAuthenticationFailure } from '../journeys/failures.js';
 import { randomUUID } from 'node:crypto';
 
 import type { Pool } from 'pg';
@@ -50,18 +51,30 @@ export class AccountLinking {
   }
 
   public async handle(request: Request): Promise<Response | undefined> {
-    const url = new URL(request.url);
-    if (!url.pathname.startsWith(`${LINK_PATH}/`)) return undefined;
-    if (url.pathname === `${LINK_PATH}/start` && request.method === 'POST')
-      return this.start(request);
-    const callbackPath = `${LINK_PATH}/callback/`;
-    if (url.pathname.startsWith(callbackPath) && request.method === 'GET') {
-      const provider = authenticationProviderSchema.safeParse(
-        url.pathname.slice(callbackPath.length),
+    try {
+      const url = new URL(request.url);
+      if (!url.pathname.startsWith(`${LINK_PATH}/`)) return undefined;
+      if (url.pathname === `${LINK_PATH}/start` && request.method === 'POST')
+        return await this.start(request);
+      const callbackPath = `${LINK_PATH}/callback/`;
+      if (url.pathname.startsWith(callbackPath) && request.method === 'GET') {
+        const provider = authenticationProviderSchema.safeParse(
+          url.pathname.slice(callbackPath.length),
+        );
+        if (provider.success)
+          return await this.callback(request, provider.data);
+      }
+      return new Response(null, { status: 404 });
+    } catch {
+      const callback = new URL(request.url).pathname.includes('/callback/');
+      recordAuthenticationFailure(
+        request.headers.get('x-request-id'),
+        callback ? 'link_callback' : 'link_start',
+        'internal_failure',
+        'failed',
       );
-      if (provider.success) return this.callback(request, provider.data);
+      return callback ? this.landing('failed') : problem(503);
     }
-    return new Response(null, { status: 404 });
   }
 
   private async start(request: Request): Promise<Response> {
@@ -111,7 +124,15 @@ export class AccountLinking {
       phase,
       activeProvider,
       state,
-    ).catch(() => undefined);
+    ).catch(() => {
+      recordAuthenticationFailure(
+        request.headers.get('x-request-id'),
+        'link_start',
+        'provider_unavailable',
+        'failed',
+      );
+      return undefined;
+    });
     if (authorizationUrl === undefined) return problem(503);
     await this.commands.start({
       id: attemptId,
@@ -145,9 +166,10 @@ export class AccountLinking {
       code.length > 4096 ||
       binding === undefined ||
       providerRejectedLinkCallback(url);
-    if (invalidCallbackProof) return this.landing('failed');
+    if (invalidCallbackProof) return this.refused(request, 'callback_invalid');
     const session = await this.input.authenticate(request);
-    if (session === undefined) return this.landing('sign-in');
+    if (session === undefined)
+      return this.refused(request, 'attempt_unavailable', 'sign-in');
     const attempt = await this.commands.find(journeyDigest(state));
     const journeyMismatch =
       attempt?.userId !== session.userId ||
@@ -156,7 +178,7 @@ export class AccountLinking {
       (attempt.phase === 'source'
         ? attempt.sourceProvider
         : attempt.targetProvider) !== provider;
-    if (journeyMismatch) return this.landing('failed');
+    if (journeyMismatch) return this.refused(request, 'attempt_unavailable');
     const identity = await this.input.providers
       .verify({
         provider,
@@ -166,28 +188,62 @@ export class AccountLinking {
         redirectUri: this.callbackUrl(provider),
         issuer: url.searchParams.get('iss'),
       })
-      .catch(() => undefined);
+      .then(
+        (identity) => {
+          if (identity === undefined)
+            recordAuthenticationFailure(
+              request.headers.get('x-request-id'),
+              'link_callback',
+              'proof_refused',
+              'refused',
+            );
+          return identity;
+        },
+        () => {
+          recordAuthenticationFailure(
+            request.headers.get('x-request-id'),
+            'link_callback',
+            'provider_unavailable',
+            'failed',
+          );
+          return undefined;
+        },
+      );
     if (identity === undefined) return this.landing('failed');
 
     if (attempt.phase === 'source')
-      return this.advanceToTarget(attempt, { state, binding, identity });
+      return this.advanceToTarget(request, attempt, {
+        state,
+        binding,
+        identity,
+      });
     const outcome = await this.commands.completeTarget(
       attempt,
       state,
       binding,
       identity,
     );
-    if (outcome.kind === 'failed') return this.landing('failed');
+    if (outcome.kind === 'failed')
+      return this.refused(request, 'account_refused');
     if (outcome.kind === 'already') return this.landing('returned');
     return landWithReplacementSession(
       (token) => this.input.deliver(token),
       outcome.token,
       () => this.landing('returned'),
-      () => this.landing('sign-in'),
+      () => {
+        recordAuthenticationFailure(
+          request.headers.get('x-request-id'),
+          'link_callback',
+          'session_delivery_failed',
+          'failed',
+        );
+        return this.landing('sign-in');
+      },
     );
   }
 
   private async advanceToTarget(
+    request: Request,
     attempt: Parameters<AccountLinkingCommands['updateSource']>[0],
     {
       state,
@@ -204,7 +260,15 @@ export class AccountLinking {
       'target',
       attempt.targetProvider,
       nextState,
-    ).catch(() => undefined);
+    ).catch(() => {
+      recordAuthenticationFailure(
+        request.headers.get('x-request-id'),
+        'link_callback',
+        'provider_unavailable',
+        'failed',
+      );
+      return undefined;
+    });
     if (nextUrl === undefined) return this.landing('failed');
     const accepted = await this.commands.updateSource(attempt, {
       state,
@@ -212,7 +276,9 @@ export class AccountLinking {
       identity,
       nextState,
     });
-    return accepted ? Response.redirect(nextUrl, 302) : this.landing('failed');
+    return accepted
+      ? Response.redirect(nextUrl, 302)
+      : this.refused(request, 'proof_refused');
   }
 
   private async authorizationUrl(
@@ -251,6 +317,24 @@ export class AccountLinking {
       path: LINK_PATH,
       secure: this.input.secureCookies,
     });
+  }
+
+  private refused(
+    request: Request,
+    reason:
+      | 'callback_invalid'
+      | 'attempt_unavailable'
+      | 'account_refused'
+      | 'proof_refused',
+    outcome: 'failed' | 'sign-in' = 'failed',
+  ): Response {
+    recordAuthenticationFailure(
+      request.headers.get('x-request-id'),
+      'link_callback',
+      reason,
+      'refused',
+    );
+    return this.landing(outcome);
   }
 
   private landing(outcome: 'returned' | 'failed' | 'sign-in'): Response {

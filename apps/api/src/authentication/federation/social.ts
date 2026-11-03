@@ -1,3 +1,7 @@
+import {
+  recordAuthenticationFailure,
+  type AuthenticationFailureReason,
+} from '../journeys/failures.js';
 import { randomUUID } from 'node:crypto';
 import { SocialSignInCommands, type SignUpMode } from '@pertexo/core/identity';
 import {
@@ -68,6 +72,7 @@ export class SocialSignIn {
     const id = randomUUID();
     const state = newJourneyToken();
     const browser = newJourneyToken();
+    let failedAt: AuthenticationFailureReason = 'provider_unavailable';
     try {
       const url = await this.input.providers.authorize({
         provider,
@@ -75,6 +80,7 @@ export class SocialSignIn {
         redirectUri: this.redirectUri(provider),
         ...this.proofSecrets(id, provider, browser),
       });
+      failedAt = 'storage_unavailable';
       await this.commands.start({
         id,
         provider,
@@ -97,6 +103,12 @@ export class SocialSignIn {
         },
       );
     } catch {
+      recordAuthenticationFailure(
+        request.headers.get('x-request-id'),
+        'social_start',
+        failedAt,
+        'failed',
+      );
       return failure(503);
     }
   }
@@ -119,8 +131,9 @@ export class SocialSignIn {
       code.length > 4096 ||
       query.has('error') ||
       ['state', 'code', 'iss'].some((name) => query.getAll(name).length > 1);
-    if (invalidSocialCallback) return this.failed();
+    if (invalidSocialCallback) return this.failed(request, 'callback_invalid');
     let returnPath: string | undefined;
+    let failedAt: AuthenticationFailureReason = 'storage_unavailable';
     try {
       const attempt = await this.commands.find(
         journeyDigest(state),
@@ -130,11 +143,12 @@ export class SocialSignIn {
         attempt?.provider !== provider ||
         !this.input.providers.available.includes(provider)
       )
-        return this.failed();
+        return this.failed(request, 'attempt_unavailable');
       returnPath = attempt.returnPath;
       const issuer = query.get('iss');
       if (issuer !== null && issuer.length > 2048)
-        return this.failed(returnPath);
+        return this.failed(request, 'callback_invalid', returnPath);
+      failedAt = 'provider_unavailable';
       const identity = await this.input.providers.verify({
         provider,
         code,
@@ -142,7 +156,9 @@ export class SocialSignIn {
         redirectUri: this.redirectUri(provider),
         ...this.proofSecrets(attempt.id, provider, browser),
       });
-      if (identity === undefined) return this.failed(returnPath);
+      if (identity === undefined)
+        return this.failed(request, 'proof_refused', returnPath);
+      failedAt = 'storage_unavailable';
       const result = await this.commands.complete({
         attemptId: attempt.id,
         provider,
@@ -153,7 +169,8 @@ export class SocialSignIn {
           displayName: identity.displayName ?? 'Pertexo member',
         },
       });
-      if (result.kind !== 'signed_in') return this.failed(returnPath);
+      if (result.kind !== 'signed_in')
+        return this.failed(request, 'account_refused', returnPath);
       return await landWithReplacementSession(
         this.input.deliver,
         result.token,
@@ -168,10 +185,11 @@ export class SocialSignIn {
               'cache-control': 'no-store',
             },
           }),
-        () => this.failed(returnPath),
+        () =>
+          this.failed(request, 'session_delivery_failed', returnPath, 'failed'),
       );
     } catch {
-      return this.failed(returnPath);
+      return this.failed(request, failedAt, returnPath, 'failed');
     }
   }
 
@@ -190,7 +208,18 @@ export class SocialSignIn {
     };
   }
 
-  private failed(returnPath?: string): Response {
+  private failed(
+    request: Request,
+    reason: AuthenticationFailureReason,
+    returnPath?: string,
+    kind: 'refused' | 'failed' = 'refused',
+  ): Response {
+    recordAuthenticationFailure(
+      request.headers.get('x-request-id'),
+      'social_callback',
+      reason,
+      kind,
+    );
     const url = new URL('/login?socialError=true', this.input.baseUrl);
     if (returnPath !== undefined && returnPath !== '/workspaces')
       url.searchParams.set('returnTo', returnPath);
