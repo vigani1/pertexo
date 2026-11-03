@@ -1,300 +1,175 @@
-import { toProblem } from '../../src/problems/registry.js';
-import { nodeTestingFailure } from '../../src/problems/context/normalize.js';
-import { nodeTestingSamples } from './fixture.js';
-import type { AcceptedPreviewRun } from '@pertexo/core/testing';
-import { describe, expect, it, vi } from 'vitest';
-
-import { NodeTestingController } from '../../src/node-testing/controller.js';
-
-import { APPLICATION_ERROR_CATALOG } from '../../src/platform/http/index.js';
 import {
-  GetPreviewRunUseCase,
-  TestWorkflowNodeUseCase,
-} from '../../src/node-testing/use-case.js';
+  afterAll,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vitest';
+
+import { NodeTestingModule } from '../../src/node-testing/module.js';
+import { FakeIdentityModule } from '../support/identity-module.js';
+import { routeHarness } from '../support/route-harness.js';
 import {
-  nodeTestingAcceptedAt,
-  nodeTestingDraft,
+  nodeTestingDependencies,
   nodeTestingIds,
   nodeTestingPreview,
 } from './fixture.js';
 
-const { actorId, workspaceId, workflowId } = nodeTestingIds;
-const guardActorId = '99999999-9999-4999-8999-999999999999';
-const previewRunId = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
-const acceptedAt = nodeTestingAcceptedAt;
-const expiresAt = new Date('2026-08-22T21:00:00.000Z');
+const { actorId, workspaceId, workflowId, previewRunId } = nodeTestingIds;
+const draft = `/v1/workspaces/${workspaceId}/workflows/${workflowId}/draft`;
+const nodeTest = `${draft}/nodes/http/test`;
+const traceparent = '00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01';
+const validate = {
+  mode: 'validate',
+  expectedRevision: 3,
+  sampleInput: { body: { encoding: 'utf8', value: 'hello' } },
+};
+const execute = {
+  mode: 'test_execute',
+  expectedRevision: 3,
+  acknowledgeSideEffects: true,
+  input: { kind: 'manual', value: { body: { encoding: 'utf8', value: 'hi' } } },
+};
 
-const draft = nodeTestingDraft;
+const dependencies = nodeTestingDependencies();
+const { persistence } = dependencies;
+let harness: Awaited<ReturnType<typeof routeHarness>>;
 
-function controller() {
-  const accepted: AcceptedPreviewRun = {
-    acceptedAt,
-    duplicate: false,
-    expiresAt,
-    outboxEventId: '11111111-1111-4111-8111-111111111111',
-    previewAttemptId: '22222222-2222-4222-8222-222222222222',
-    previewRunId,
-    status: 'queued',
-  };
-  const persistence = {
-    stepSamples: nodeTestingSamples(),
-    getDraft: vi.fn().mockResolvedValue(draft()),
-    acceptPreview: vi.fn().mockResolvedValue(accepted),
-    resolvePreviewReplay: vi.fn().mockResolvedValue(null),
-    readPreview: vi
-      .fn()
-      .mockResolvedValue(nodeTestingPreview({ id: previewRunId, expiresAt })),
-  };
-  const authorization = {
-    findAccess: vi.fn().mockResolvedValue({
-      actorId,
-      workspaceId,
-      role: 'owner' as const,
-      membershipStatus: 'active' as const,
-      workspaceStatus: 'active' as const,
-    }),
-  };
-  return {
-    controller: new NodeTestingController(
-      new TestWorkflowNodeUseCase(persistence, authorization, () => acceptedAt),
-      new GetPreviewRunUseCase(persistence, authorization),
-    ),
-    persistence,
-  };
-}
+beforeAll(async () => {
+  harness = await routeHarness(
+    NodeTestingModule.register(dependencies, { module: FakeIdentityModule }),
+  );
+});
+afterAll(() => harness.close());
+beforeEach(() => vi.clearAllMocks());
 
-function request(headers: Record<string, string | readonly string[]> = {}) {
-  return {
-    headers,
-    requestId: 'request-node-test',
-    traceId: 'trace-node-test',
-    identitySession: {
-      userId: actorId,
-      sessionId: '33333333-3333-4333-8333-333333333333',
-      expiresAt: new Date('2026-08-23T00:00:00.000Z'),
-      clientMetadata: {},
-    },
-  } as const;
-}
+const testNode = (body: unknown, headers: Record<string, string> = {}) =>
+  harness.send('POST', nodeTest, { body, headers });
 
-const params = { workspaceId, workflowId, nodeId: 'http' };
-
-describe('node testing controller', () => {
-  it('projects absent and guarded workspace context through the owning controller', async () => {
-    const execute = vi
-      .fn()
-      .mockResolvedValue({ mode: 'validate', valid: true });
-    const instance = new NodeTestingController(
-      { execute } as never,
-      { execute: vi.fn() } as never,
-    );
-    const response = { status: vi.fn() };
-    const command = { mode: 'validate' as const, expectedRevision: 3 };
-    await instance.test(request(), params, command, response);
-    expect(execute).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- Vitest asymmetric matcher is intentionally untyped at this nested boundary.
-        actor: expect.objectContaining({
-          actorId,
-          requestId: 'request-node-test',
-          traceId: 'trace-node-test',
-        }),
-        requestId: 'request-node-test',
-        traceId: 'trace-node-test',
-      }),
-    );
-    expect(execute.mock.calls.at(-1)?.[0]).not.toHaveProperty(
-      'authorizedWorkspace',
-    );
-
-    const base = request();
-    const authorizedWorkspace = {
-      actor: Object.freeze({
-        actorId: guardActorId,
-        kind: 'user' as const,
-        workspaceId,
-        sessionId: base.identitySession.sessionId,
-        requestId: 'guard-request',
-        traceId: 'guard-trace',
-      }),
-      workspaceId,
-      role: 'owner' as const,
-      capability: 'workflow:update' as const,
-    };
-    await instance.test(
-      { ...base, authorizedWorkspace },
-      params,
-      command,
-      response,
-    );
-    expect(execute).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        actor: authorizedWorkspace.actor,
-        authorizedWorkspace,
-        requestId: 'guard-request',
-        traceId: 'guard-trace',
-      }),
-    );
+describe('node test route', () => {
+  it('validates at 200 without needing or reading an idempotency key', async () => {
+    const reply = await testNode(validate, { 'idempotency-key': 'a,b' });
+    expect(reply.statusCode, reply.payload).toBe(200);
+    expect(reply.json()).toMatchObject({ mode: 'validate', valid: true });
+    expect(persistence.acceptPreview).not.toHaveBeenCalled();
   });
 
-  it('maps deeply nested authenticated input to request.invalid before preview work', async () => {
-    const execute = vi.fn();
-    const instance = new NodeTestingController(
-      { execute } as never,
-      { execute: vi.fn() } as never,
-    );
-    const authenticated = request({
-      cookie: 'pertexo_session=session; pertexo_csrf=csrf-token',
-      'x-csrf-token': 'csrf-token',
+  it('accepts a durable test at 202 and carries the trace context', async () => {
+    const reply = await testNode(execute, {
+      'idempotency-key': 'preview-key',
+      traceparent,
     });
-    const authorizedWorkspace = {
-      actor: {
-        actorId,
-        kind: 'user' as const,
-        workspaceId,
-        sessionId: authenticated.identitySession.sessionId,
-        requestId: authenticated.requestId,
-        traceId: authenticated.traceId,
-      },
-      workspaceId,
-      role: 'owner' as const,
-      capability: 'workflow:update' as const,
-    };
-    const sampleInput = JSON.parse(
-      `${'['.repeat(10_000)}null${']'.repeat(10_000)}`,
-    ) as unknown;
-
-    let thrown: unknown;
-    try {
-      await instance.test(
-        { ...authenticated, authorizedWorkspace },
-        params,
-        { mode: 'validate', expectedRevision: 3, sampleInput },
-        { status: vi.fn() },
-      );
-    } catch (error) {
-      thrown = error;
-    }
-    expect(toProblem(nodeTestingFailure(thrown))).toMatchObject({
-      code: 'request.invalid',
-    });
-    expect(APPLICATION_ERROR_CATALOG['request.invalid'].status).toBe(400);
-    expect(execute).not.toHaveBeenCalled();
-  });
-
-  it('returns validation at 200 without requiring or using idempotency', async () => {
-    const fixture = controller();
-    const response = { status: vi.fn() };
-    await expect(
-      fixture.controller.test(
-        request({ 'Idempotency-Key': ['ignored', 'duplicate'] }),
-        params,
-        {
-          mode: 'validate',
-          expectedRevision: 3,
-          sampleInput: {
-            body: { encoding: 'utf8', value: 'hello' },
-          },
-        },
-        response,
-      ),
-    ).resolves.toMatchObject({ mode: 'validate', valid: true });
-    expect(response.status).not.toHaveBeenCalled();
-    expect(fixture.persistence.acceptPreview).not.toHaveBeenCalled();
-  });
-
-  it('returns durable execution acceptance at 202', async () => {
-    const fixture = controller();
-    const response = { status: vi.fn() };
-    await expect(
-      fixture.controller.test(
-        request({
-          'Idempotency-Key': 'preview-key',
-          traceparent:
-            '00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01',
-        }),
-        params,
-        {
-          mode: 'test_execute',
-          expectedRevision: 3,
-          acknowledgeSideEffects: true,
-          input: {
-            kind: 'manual',
-            value: { body: { encoding: 'utf8', value: 'hello' } },
-          },
-        },
-        response,
-      ),
-    ).resolves.toMatchObject({
+    expect(reply.statusCode, reply.payload).toBe(202);
+    expect(reply.json()).toMatchObject({
       mode: 'test_execute',
       preview: { id: previewRunId, status: 'queued' },
     });
-    expect(response.status).toHaveBeenCalledWith(202);
-    expect(fixture.persistence.acceptPreview).toHaveBeenCalledTimes(1);
-    expect(fixture.persistence.acceptPreview).toHaveBeenCalledWith(
-      expect.objectContaining({
-        traceparent: '00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01',
-      }),
+    expect(persistence.acceptPreview).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({ traceparent }),
     );
   });
 
-  it('rejects a missing execution idempotency key', async () => {
-    const fixture = controller();
-    await expect(
-      fixture.controller.test(
-        request(),
-        params,
-        {
-          mode: 'test_execute',
-          expectedRevision: 3,
-          acknowledgeSideEffects: true,
-          input: { kind: 'manual', value: {} },
-        },
-        { status: vi.fn() },
-      ),
-    ).rejects.toMatchObject({ code: 'request.invalid' });
-    expect(fixture.persistence.acceptPreview).not.toHaveBeenCalled();
-  });
-
-  it.each([
-    ['', 'empty'],
-    ['contains space', 'malformed'],
-    ['first,second', 'comma-folded'],
-    [['first', 'second'], 'multiple'],
-  ] as const)(
-    'rejects %s execution idempotency as %s',
-    async (value, _label) => {
-      const fixture = controller();
-
-      await expect(
-        fixture.controller.test(
-          request({ 'Idempotency-Key': value }),
-          params,
-          {
-            mode: 'test_execute',
-            expectedRevision: 3,
-            acknowledgeSideEffects: true,
-            input: { kind: 'manual', value: {} },
-          },
-          { status: vi.fn() },
-        ),
-      ).rejects.toMatchObject({ code: 'request.invalid' });
-      expect(fixture.persistence.resolvePreviewReplay).not.toHaveBeenCalled();
-      expect(fixture.persistence.acceptPreview).not.toHaveBeenCalled();
+  it.each([[undefined], [''], ['contains space'], ['first,second']])(
+    'refuses execution with idempotency key %j before any preview work',
+    async (key) => {
+      const reply = await testNode(
+        execute,
+        key === undefined ? {} : { 'idempotency-key': key },
+      );
+      expect(reply.statusCode).toBe(400);
+      expect(reply.json()).toMatchObject({ code: 'request.invalid' });
+      expect(persistence.resolvePreviewReplay).not.toHaveBeenCalled();
+      expect(persistence.acceptPreview).not.toHaveBeenCalled();
     },
   );
 
-  it('reads one scoped preview status without using production events', async () => {
-    const fixture = controller();
-    await expect(
-      fixture.controller.status(request(), { workspaceId, previewRunId }),
-    ).resolves.toMatchObject({
+  it('refuses deeply nested input as a bad request before reading the draft', async () => {
+    const deep = `${'['.repeat(10_000)}null${']'.repeat(10_000)}`;
+    const reply = await harness.send('POST', nodeTest, {
+      json: `{"mode":"validate","expectedRevision":3,"sampleInput":${deep}}`,
+    });
+    expect(reply.statusCode).toBe(400);
+    expect(reply.json()).toMatchObject({ code: 'request.invalid' });
+    expect(persistence.getDraft).not.toHaveBeenCalled();
+  });
+
+  it('reads one preview for the signed-in actor', async () => {
+    persistence.readPreview.mockResolvedValueOnce(nodeTestingPreview());
+    const reply = await harness.send(
+      'GET',
+      `/v1/workspaces/${workspaceId}/previews/${previewRunId}`,
+    );
+    expect(reply.statusCode, reply.payload).toBe(200);
+    expect(reply.json()).toMatchObject({
       preview: { id: previewRunId, status: 'queued', output: null },
     });
-    expect(fixture.persistence.readPreview).toHaveBeenCalledWith({
+    expect(persistence.readPreview).toHaveBeenCalledExactlyOnceWith({
       workspaceId,
       actorUserId: actorId,
       previewRunId,
     });
+  });
+});
+
+describe('draft test routes', () => {
+  const testRequest = {
+    expectedRevision: 3,
+    expectedSamples: [],
+    expectedEffectfulSteps: [],
+    input: {},
+    acknowledgeSideEffects: false,
+  };
+  const suiteRequest = {
+    expectedRevision: 1,
+    expectedSamples: [],
+    expectedEffectfulSteps: ['http'],
+    expectedCases: [{ id: previewRunId, revision: 2 }],
+    expectedVariableSetRevision: 3,
+    signature: 'a'.repeat(64),
+    acknowledgeSideEffects: true,
+  };
+  const start = (path: string, body: unknown) =>
+    harness.send('POST', `${draft}/${path}`, {
+      body,
+      headers: { 'idempotency-key': 'draft-test' },
+    });
+
+  it.each([
+    { ...testRequest, acknowledgeSideEffects: 'yes' },
+    { ...testRequest, expectedEffectfulSteps: undefined },
+    { ...testRequest, overrides: {} },
+  ])('refuses test command %j before storage', async (body) => {
+    const reply = await start('tests', body);
+    expect(reply.statusCode).toBe(400);
+    expect(persistence.workflowTests.start).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    { ...suiteRequest, acknowledgeSideEffects: 'yes' },
+    { ...suiteRequest, signature: 'old' },
+    { ...suiteRequest, expectedCases: [] },
+    {
+      ...suiteRequest,
+      expectedCases: Array.from({ length: 51 }, (_, revision) => ({
+        id: previewRunId,
+        revision: revision + 1,
+      })),
+    },
+    { ...suiteRequest, input: {} },
+  ])('refuses suite manifest %# before storage', async (body) => {
+    const reply = await start('test-suites', body);
+    expect(reply.statusCode).toBe(400);
+    expect(persistence.workflowTestSuites.start).not.toHaveBeenCalled();
+  });
+
+  it('refuses a case ordinal outside the suite before reading', async () => {
+    const reply = await harness.send(
+      'GET',
+      `${draft}/test-suites/${previewRunId}/cases/50`,
+    );
+    expect(reply.statusCode).toBe(400);
+    expect(persistence.workflowTestSuites.report).not.toHaveBeenCalled();
   });
 });

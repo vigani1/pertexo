@@ -87,29 +87,6 @@ describe('draft workflow test boundary', () => {
       request,
     });
   });
-  it('refuses malformed commands before storage', async () => {
-    const f = fixture();
-    const request = {
-      expectedRevision: 3,
-      expectedSamples: [],
-      expectedEffectfulSteps: [],
-      input: {},
-      acknowledgeSideEffects: false,
-    };
-    for (const invalid of [
-      { ...request, acknowledgeSideEffects: 'yes' },
-      { ...request, expectedEffectfulSteps: undefined },
-      { ...request, overrides: {} },
-    ])
-      await expect(
-        f.useCase.start({
-          ...input,
-          request: invalid,
-          idempotencyKey: randomUUID(),
-        }),
-      ).rejects.toMatchObject({ name: 'ZodError' });
-    expect(f.store.start).not.toHaveBeenCalled();
-  });
   it('requires edit authority even when a person can read normal run data', async () => {
     const f = fixture('viewer');
     await expect(f.useCase.prepare(input)).rejects.toMatchObject({

@@ -97,3 +97,54 @@ export function nodeTestingSamples(): WorkflowStepSampleStore {
     remove: vi.fn().mockRejectedValue(new Error('Unexpected sample removal')),
   };
 }
+
+/** What `NodeTestingModule.register` needs, with a builder signed in and nothing stored. */
+export function nodeTestingDependencies() {
+  const evaluate = vi.fn().mockResolvedValue({
+    kind: 'value',
+    value: { encoding: 'utf8', value: 'evaluated' },
+    canonicalBytes: 39,
+  });
+  return {
+    authorization: {
+      findAccess: vi.fn().mockResolvedValue({
+        actorId: nodeTestingIds.actorId,
+        workspaceId: nodeTestingIds.workspaceId,
+        role: 'builder' as const,
+        membershipStatus: 'active' as const,
+        workspaceStatus: 'active' as const,
+      }),
+    },
+    persistence: {
+      workflowTestSuites: {
+        prepare: vi.fn(),
+        start: vi.fn(),
+        list: vi.fn(),
+        get: vi.fn(),
+        report: vi.fn(),
+        cancel: vi.fn(),
+      },
+      workflowTests: {
+        prepare: vi.fn(),
+        start: vi.fn(),
+        list: vi.fn(),
+        get: vi.fn(),
+        cancel: vi.fn(),
+      },
+      stepSamples: nodeTestingSamples(),
+      getDraft: vi.fn().mockResolvedValue(nodeTestingDraft()),
+      acceptPreview: vi.fn().mockResolvedValue({
+        acceptedAt: nodeTestingAcceptedAt,
+        duplicate: false,
+        expiresAt: nodeTestingExpiresAt,
+        outboxEventId: '11111111-1111-4111-8111-111111111111',
+        previewAttemptId: '22222222-2222-4222-8222-222222222222',
+        previewRunId: nodeTestingIds.previewRunId,
+        status: 'queued' as const,
+      }),
+      resolvePreviewReplay: vi.fn().mockResolvedValue(null),
+      readPreview: vi.fn().mockResolvedValue(null),
+    },
+    expressionEvaluator: { evaluate },
+  };
+}

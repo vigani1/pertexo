@@ -22,6 +22,14 @@ export type {
 export { catalogRoutes } from './routes/catalog.js';
 export { scheduleRoutes } from './routes/triggers/schedules.js';
 export { artifactRoutes } from './routes/execution/artifacts.js';
+export {
+  nodeTestingRoutes,
+  stepSampleRoutes,
+} from './routes/execution/node-testing.js';
+export {
+  workflowTestRoutes,
+  workflowTestSuiteRoutes,
+} from './routes/execution/draft-tests.js';
 export { notificationPreferenceRoutes } from './routes/identity/notification-preferences.js';
 export { inboxRoutes } from './routes/identity/inbox.js';
 export { webhookRoutes } from './routes/triggers/webhooks.js';

@@ -24,7 +24,9 @@ export const ownerAccess = {
 
 type Send = Readonly<{
   query?: Readonly<Record<string, string>>;
+  /** Sent as JSON; `json` instead sends text already written, such as one too deep to stringify. */
   body?: unknown;
+  json?: string;
   headers?: Readonly<Record<string, string>>;
 }>;
 
@@ -52,22 +54,24 @@ export async function routeHarness(feature: DynamicModule) {
       method: 'GET' | 'POST' | 'PUT' | 'DELETE',
       url: string,
       input: Send = {},
-    ) =>
-      adapter.getInstance().inject({
+    ) => {
+      const payload =
+        input.json ??
+        (input.body === undefined ? undefined : JSON.stringify(input.body));
+      return adapter.getInstance().inject({
         method,
         url,
         ...(input.query === undefined ? {} : { query: input.query }),
         headers: {
           cookie: 'pertexo_session=session-token',
-          ...(input.body === undefined
+          ...(payload === undefined
             ? {}
             : { 'content-type': 'application/json' }),
           ...input.headers,
         },
-        ...(input.body === undefined
-          ? {}
-          : { payload: JSON.stringify(input.body) }),
-      }),
+        ...(payload === undefined ? {} : { payload }),
+      });
+    },
     close: () => application.close(),
   };
 }

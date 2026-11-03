@@ -8,9 +8,8 @@ import { Module } from '@nestjs/common';
 import type { DynamicModule, Provider } from '@nestjs/common';
 
 import { NodeTestingController } from './controller.js';
-import { NodeTestingUpdateGuard, NodeSamplesReadGuard } from './guards.js';
 import type { NodeTestingDependencies } from './ports.js';
-import { NODE_TESTING_AUTHORIZATION } from './tokens.js';
+import { WORKSPACE_AUTHORIZATION } from '../workspaces/tokens.js';
 import { GetPreviewRunUseCase, TestWorkflowNodeUseCase } from './use-case.js';
 
 @Module({})
@@ -23,10 +22,9 @@ export class NodeTestingModule {
   ): DynamicModule {
     const providers: Provider[] = [
       {
-        provide: NODE_TESTING_AUTHORIZATION,
+        provide: WORKSPACE_AUTHORIZATION,
         useValue: dependencies.authorization,
       },
-      NodeTestingUpdateGuard,
       {
         provide: WorkflowTestSuitesUseCase,
         useValue: new WorkflowTestSuitesUseCase(
@@ -41,7 +39,6 @@ export class NodeTestingModule {
           dependencies.authorization,
         ),
       },
-      NodeSamplesReadGuard,
       {
         provide: StepSamplesUseCase,
         useValue: new StepSamplesUseCase(

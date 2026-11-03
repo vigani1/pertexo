@@ -146,8 +146,6 @@ export {
   workflowTestSuiteListSchema,
   workflowTestSuiteDetailSchema,
   workflowTestSuiteCaseReportSchema,
-  workflowTestSuiteParamsSchema,
-  workflowTestSuiteCaseParamsSchema,
   type WorkflowTestSuiteCurrent,
   type WorkflowTestSuitePreparation,
   type WorkflowTestSuiteStartRequest,

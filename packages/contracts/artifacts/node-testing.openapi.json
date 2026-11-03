@@ -18,7 +18,6 @@
             "name": "workspaceId",
             "in": "path",
             "required": true,
-            "description": "Workspace identifier",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
@@ -30,7 +29,6 @@
             "name": "workflowId",
             "in": "path",
             "required": true,
-            "description": "Workflow identifier",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
@@ -84,7 +82,6 @@
             "name": "workspaceId",
             "in": "path",
             "required": true,
-            "description": "Workspace identifier",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
@@ -96,7 +93,6 @@
             "name": "workflowId",
             "in": "path",
             "required": true,
-            "description": "Workflow identifier",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
@@ -108,7 +104,6 @@
             "name": "nodeId",
             "in": "path",
             "required": true,
-            "description": "Draft step identifier",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
@@ -160,7 +155,6 @@
             "name": "workspaceId",
             "in": "path",
             "required": true,
-            "description": "Workspace identifier",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
@@ -172,7 +166,6 @@
             "name": "workflowId",
             "in": "path",
             "required": true,
-            "description": "Workflow identifier",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
@@ -184,7 +177,6 @@
             "name": "nodeId",
             "in": "path",
             "required": true,
-            "description": "Draft step identifier",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
@@ -269,7 +261,6 @@
             "name": "workspaceId",
             "in": "path",
             "required": true,
-            "description": "Workspace identifier",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
@@ -281,7 +272,6 @@
             "name": "workflowId",
             "in": "path",
             "required": true,
-            "description": "Workflow identifier",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
@@ -293,7 +283,6 @@
             "name": "nodeId",
             "in": "path",
             "required": true,
-            "description": "Draft step identifier",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
@@ -380,7 +369,6 @@
             "name": "workspaceId",
             "in": "path",
             "required": true,
-            "description": "Workspace identifier",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
@@ -392,7 +380,6 @@
             "name": "workflowId",
             "in": "path",
             "required": true,
-            "description": "Workflow identifier",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
@@ -449,7 +436,6 @@
             "name": "workspaceId",
             "in": "path",
             "required": true,
-            "description": "Workspace identifier",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
@@ -461,7 +447,6 @@
             "name": "workflowId",
             "in": "path",
             "required": true,
-            "description": "Workflow identifier",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
@@ -516,7 +501,6 @@
             "name": "workspaceId",
             "in": "path",
             "required": true,
-            "description": "Workspace identifier",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
@@ -528,7 +512,6 @@
             "name": "workflowId",
             "in": "path",
             "required": true,
-            "description": "Workflow identifier",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
@@ -618,7 +601,6 @@
             "name": "workspaceId",
             "in": "path",
             "required": true,
-            "description": "Workspace identifier",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
@@ -630,7 +612,6 @@
             "name": "workflowId",
             "in": "path",
             "required": true,
-            "description": "Workflow identifier",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
@@ -642,7 +623,6 @@
             "name": "runId",
             "in": "path",
             "required": true,
-            "description": "Retained draft test identifier",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
@@ -699,7 +679,6 @@
             "name": "workspaceId",
             "in": "path",
             "required": true,
-            "description": "Workspace identifier",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
@@ -711,7 +690,6 @@
             "name": "workflowId",
             "in": "path",
             "required": true,
-            "description": "Workflow identifier",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
@@ -723,7 +701,6 @@
             "name": "runId",
             "in": "path",
             "required": true,
-            "description": "Retained draft test identifier",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
@@ -801,7 +778,6 @@
             "name": "workspaceId",
             "in": "path",
             "required": true,
-            "description": "Workspace identifier",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
@@ -813,7 +789,6 @@
             "name": "workflowId",
             "in": "path",
             "required": true,
-            "description": "Workflow identifier",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
@@ -880,7 +855,6 @@
             "name": "workspaceId",
             "in": "path",
             "required": true,
-            "description": "Workspace identifier",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
@@ -892,7 +866,6 @@
             "name": "workflowId",
             "in": "path",
             "required": true,
-            "description": "Workflow identifier",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
@@ -957,7 +930,6 @@
             "name": "workspaceId",
             "in": "path",
             "required": true,
-            "description": "Workspace identifier",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
@@ -969,7 +941,6 @@
             "name": "workflowId",
             "in": "path",
             "required": true,
-            "description": "Workflow identifier",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
@@ -1069,7 +1040,6 @@
             "name": "workspaceId",
             "in": "path",
             "required": true,
-            "description": "Workspace identifier",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
@@ -1081,7 +1051,6 @@
             "name": "workflowId",
             "in": "path",
             "required": true,
-            "description": "Workflow identifier",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
@@ -1093,7 +1062,6 @@
             "name": "suiteId",
             "in": "path",
             "required": true,
-            "description": "Retained test suite identifier",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
@@ -1160,7 +1128,6 @@
             "name": "workspaceId",
             "in": "path",
             "required": true,
-            "description": "Workspace identifier",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
@@ -1172,7 +1139,6 @@
             "name": "workflowId",
             "in": "path",
             "required": true,
-            "description": "Workflow identifier",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
@@ -1184,7 +1150,6 @@
             "name": "suiteId",
             "in": "path",
             "required": true,
-            "description": "Retained test suite identifier",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
@@ -1193,11 +1158,11 @@
             }
           },
           {
-            "in": "path",
             "name": "ordinal",
+            "in": "path",
             "required": true,
-            "description": "Zero-based case position",
             "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "integer",
               "minimum": 0,
               "maximum": 49
@@ -1262,7 +1227,6 @@
             "name": "workspaceId",
             "in": "path",
             "required": true,
-            "description": "Workspace identifier",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
@@ -1274,7 +1238,6 @@
             "name": "workflowId",
             "in": "path",
             "required": true,
-            "description": "Workflow identifier",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
@@ -1286,7 +1249,6 @@
             "name": "suiteId",
             "in": "path",
             "required": true,
-            "description": "Retained test suite identifier",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
@@ -1374,7 +1336,6 @@
             "name": "workspaceId",
             "in": "path",
             "required": true,
-            "description": "Workspace identifier",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
@@ -1386,7 +1347,6 @@
             "name": "workflowId",
             "in": "path",
             "required": true,
-            "description": "Workflow identifier",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
@@ -1398,7 +1358,6 @@
             "name": "nodeId",
             "in": "path",
             "required": true,
-            "description": "Workflow node identifier",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
@@ -1499,7 +1458,6 @@
             "name": "workspaceId",
             "in": "path",
             "required": true,
-            "description": "Workspace identifier",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
@@ -1511,7 +1469,6 @@
             "name": "previewRunId",
             "in": "path",
             "required": true,
-            "description": "Preview run identifier",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
@@ -2129,27 +2086,6 @@
         ],
         "additionalProperties": false
       },
-      "StepSampleDeleteRequest": {
-        "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "type": "object",
-        "properties": {
-          "expectedDraftRevision": {
-            "type": "integer",
-            "exclusiveMinimum": 0,
-            "maximum": 9007199254740991
-          },
-          "expectedSampleId": {
-            "type": "string",
-            "format": "uuid",
-            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-          }
-        },
-        "required": [
-          "expectedDraftRevision",
-          "expectedSampleId"
-        ],
-        "additionalProperties": false
-      },
       "StepSampleCommandResponse": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "type": "object",
@@ -2170,6 +2106,27 @@
           "sampleId",
           "removed",
           "replayed"
+        ],
+        "additionalProperties": false
+      },
+      "StepSampleDeleteRequest": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "expectedDraftRevision": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          },
+          "expectedSampleId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          }
+        },
+        "required": [
+          "expectedDraftRevision",
+          "expectedSampleId"
         ],
         "additionalProperties": false
       },
@@ -2234,6 +2191,79 @@
           "draftRevision",
           "samples",
           "effectfulSteps"
+        ],
+        "additionalProperties": false
+      },
+      "WorkflowTestList": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "items": {
+            "maxItems": 20,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "runId": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                },
+                "startedBy": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "draftRevision": {
+                  "type": "integer",
+                  "exclusiveMinimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "queued",
+                    "running",
+                    "waiting",
+                    "succeeded",
+                    "failed",
+                    "canceled",
+                    "timed_out",
+                    "outcome_unknown"
+                  ]
+                },
+                "createdAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                },
+                "expiresAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                }
+              },
+              "required": [
+                "runId",
+                "startedBy",
+                "draftRevision",
+                "status",
+                "createdAt",
+                "expiresAt"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "items"
         ],
         "additionalProperties": false
       },
@@ -2342,79 +2372,6 @@
         },
         "required": [
           "runId"
-        ],
-        "additionalProperties": false
-      },
-      "WorkflowTestList": {
-        "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "type": "object",
-        "properties": {
-          "items": {
-            "maxItems": 20,
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {
-                "runId": {
-                  "type": "string",
-                  "format": "uuid",
-                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-                },
-                "startedBy": {
-                  "anyOf": [
-                    {
-                      "type": "string",
-                      "format": "uuid",
-                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-                    },
-                    {
-                      "type": "null"
-                    }
-                  ]
-                },
-                "draftRevision": {
-                  "type": "integer",
-                  "exclusiveMinimum": 0,
-                  "maximum": 9007199254740991
-                },
-                "status": {
-                  "type": "string",
-                  "enum": [
-                    "queued",
-                    "running",
-                    "waiting",
-                    "succeeded",
-                    "failed",
-                    "canceled",
-                    "timed_out",
-                    "outcome_unknown"
-                  ]
-                },
-                "createdAt": {
-                  "type": "string",
-                  "format": "date-time",
-                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
-                },
-                "expiresAt": {
-                  "type": "string",
-                  "format": "date-time",
-                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
-                }
-              },
-              "required": [
-                "runId",
-                "startedBy",
-                "draftRevision",
-                "status",
-                "createdAt",
-                "expiresAt"
-              ],
-              "additionalProperties": false
-            }
-          }
-        },
-        "required": [
-          "items"
         ],
         "additionalProperties": false
       },
@@ -3534,119 +3491,6 @@
         ],
         "additionalProperties": false
       },
-      "WorkflowTestSuiteStartRequest": {
-        "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "type": "object",
-        "properties": {
-          "expectedRevision": {
-            "type": "integer",
-            "exclusiveMinimum": 0,
-            "maximum": 9007199254740991
-          },
-          "expectedSamples": {
-            "maxItems": 200,
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {
-                "nodeId": {
-                  "type": "string",
-                  "minLength": 1,
-                  "maxLength": 256
-                },
-                "sampleId": {
-                  "type": "string",
-                  "format": "uuid",
-                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-                }
-              },
-              "required": [
-                "nodeId",
-                "sampleId"
-              ],
-              "additionalProperties": false
-            }
-          },
-          "expectedEffectfulSteps": {
-            "maxItems": 200,
-            "type": "array",
-            "items": {
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 256
-            }
-          },
-          "acknowledgeSideEffects": {
-            "type": "boolean"
-          },
-          "expectedCases": {
-            "minItems": 1,
-            "maxItems": 50,
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {
-                "id": {
-                  "type": "string",
-                  "format": "uuid",
-                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-                },
-                "revision": {
-                  "type": "integer",
-                  "exclusiveMinimum": 0,
-                  "maximum": 9007199254740991
-                }
-              },
-              "required": [
-                "id",
-                "revision"
-              ],
-              "additionalProperties": false
-            }
-          },
-          "expectedVariableSetRevision": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "exclusiveMinimum": 0,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "signature": {
-            "type": "string",
-            "pattern": "^[0-9a-f]{64}$"
-          }
-        },
-        "required": [
-          "expectedRevision",
-          "expectedSamples",
-          "expectedEffectfulSteps",
-          "acknowledgeSideEffects",
-          "expectedCases",
-          "expectedVariableSetRevision",
-          "signature"
-        ],
-        "additionalProperties": false
-      },
-      "WorkflowTestSuiteAccepted": {
-        "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "type": "object",
-        "properties": {
-          "suiteId": {
-            "type": "string",
-            "format": "uuid",
-            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-          }
-        },
-        "required": [
-          "suiteId"
-        ],
-        "additionalProperties": false
-      },
       "WorkflowTestSuiteList": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "type": "object",
@@ -3855,6 +3699,119 @@
         "required": [
           "current",
           "items"
+        ],
+        "additionalProperties": false
+      },
+      "WorkflowTestSuiteStartRequest": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "expectedRevision": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          },
+          "expectedSamples": {
+            "maxItems": 200,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "nodeId": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 256
+                },
+                "sampleId": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                }
+              },
+              "required": [
+                "nodeId",
+                "sampleId"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "expectedEffectfulSteps": {
+            "maxItems": 200,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            }
+          },
+          "acknowledgeSideEffects": {
+            "type": "boolean"
+          },
+          "expectedCases": {
+            "minItems": 1,
+            "maxItems": 50,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                },
+                "revision": {
+                  "type": "integer",
+                  "exclusiveMinimum": 0,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "id",
+                "revision"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "expectedVariableSetRevision": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "signature": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        },
+        "required": [
+          "expectedRevision",
+          "expectedSamples",
+          "expectedEffectfulSteps",
+          "acknowledgeSideEffects",
+          "expectedCases",
+          "expectedVariableSetRevision",
+          "signature"
+        ],
+        "additionalProperties": false
+      },
+      "WorkflowTestSuiteAccepted": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "suiteId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          }
+        },
+        "required": [
+          "suiteId"
         ],
         "additionalProperties": false
       },
@@ -4250,227 +4207,6 @@
           }
         }
       },
-      "ApiProblem": {
-        "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "readOnly": true,
-        "type": "object",
-        "properties": {
-          "type": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 256
-          },
-          "title": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 256
-          },
-          "status": {
-            "type": "integer",
-            "minimum": 400,
-            "maximum": 599
-          },
-          "detail": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 2000
-          },
-          "instance": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 2048
-          },
-          "code": {
-            "type": "string",
-            "enum": [
-              "callback.already_received",
-              "callback.expired",
-              "callback.unavailable",
-              "api_token.unavailable",
-              "api_token.limit",
-              "auth.unauthenticated",
-              "auth.forbidden",
-              "auth.token_scope_required",
-              "auth.token_not_supported",
-              "auth.email_not_verified",
-              "auth.sso_required",
-              "auth.two_factor_locked",
-              "auth.method_limit",
-              "auth.recovery_required",
-              "auth.organization_email_managed",
-              "auth.alternative_required",
-              "auth.reset_link_invalid",
-              "auth.sign_up_closed",
-              "auth.conflict",
-              "auth.session_not_fresh",
-              "resource.not_found",
-              "request.invalid",
-              "request.precondition_required",
-              "request.idempotency_conflict",
-              "request.rate_limited",
-              "request.rate_limit_unavailable",
-              "request.method_not_allowed",
-              "request.too_large",
-              "request.unsupported_media_type",
-              "workspace.quota_exceeded",
-              "artifact.too_large",
-              "artifact.conflict",
-              "artifact.unavailable",
-              "workspace.conflict",
-              "data_table.conflict",
-              "data_table.key_conflict",
-              "data_table.quota_exceeded",
-              "export.already_running",
-              "webhook.setting_up",
-              "workspace.revision_conflict",
-              "workspace.member_role_revision_conflict",
-              "workspace.member_role_transition_conflict",
-              "workspace.member_removal_conflict",
-              "workspace.member_directory_managed",
-              "workspace.member_status_conflict",
-              "workspace.invitation_conflict",
-              "workspace.invitation_proof_expired",
-              "workspace.invitation_revision_conflict",
-              "workspace.invitation_recipient_mismatch",
-              "workspace.invitation_unavailable",
-              "workspace.invitation_delivery_unavailable",
-              "workspace.invitation_not_configured",
-              "user.profile_revision_conflict",
-              "workflow.revision_conflict",
-              "workflow.lifecycle_conflict",
-              "workflow.name_conflict",
-              "workflow.pause_conflict",
-              "workflow.auto_pause_settings_conflict",
-              "workflow.already_running",
-              "workflow.concurrency_revision_conflict",
-              "workflow.concurrency_limit_exceeded",
-              "workflow.concurrency_limit_unavailable",
-              "workflow.publish_approval_required",
-              "workflow.publication_review_conflict",
-              "workflow.promotion_conflict",
-              "workflow.promotion_unavailable",
-              "workflow.collaboration_conflict",
-              "workflow.error_policy_conflict",
-              "workflow.error_target_unavailable",
-              "pending_task.already_resolved",
-              "pending_task.expired",
-              "pending_task.run_closed",
-              "pending_task.self_decision",
-              "pending_task.not_eligible",
-              "notifications.changed",
-              "notifications.unavailable",
-              "notifications.unsubscribe_unavailable",
-              "variables.changed",
-              "variables.usage_changed",
-              "workflow.variable_snapshot_unavailable",
-              "trigger.coordination_unavailable",
-              "form.unavailable",
-              "form.changed",
-              "form.access_conflict",
-              "form.invalid",
-              "form.file_type_not_allowed",
-              "form.file_too_large",
-              "form.upload_limit",
-              "form.upload_busy",
-              "form.required",
-              "workflow.sample_conflict",
-              "workflow.sample_invalid",
-              "workflow.sample_limit",
-              "workflow.input_case_revision_conflict",
-              "workflow.input_case_limit_exceeded",
-              "workflow.tag_key_conflict",
-              "workflow.tag_limit_exceeded",
-              "workflow.tag_revision_conflict",
-              "workflow.tag_delete_overflow",
-              "workflow.organization_revision_conflict",
-              "workflow.folder_name_conflict",
-              "workflow.folder_limit_exceeded",
-              "workflow.folder_revision_conflict",
-              "workflow.folder_hierarchy_conflict",
-              "workflow.folder_not_empty",
-              "workflow.folder_not_visible",
-              "workflow.folder_audience_review_required",
-              "workspace.auto_pause_settings_conflict",
-              "workflow.invalid",
-              "workflow.portability_unavailable",
-              "workflow.portability_compatibility_conflict",
-              "workflow.portability_review_conflict",
-              "workflow.portability_invalid",
-              "workflow.template_origin_unavailable",
-              "workflow.validation_unavailable",
-              "workflow.published_version_conflict",
-              "workflow.not_published",
-              "workflow.activation_failed",
-              "run.not_cancelable",
-              "run.outcome_unknown",
-              "run.recovery_unavailable",
-              "connection.not_configured",
-              "webhook.not_configured",
-              "connection.conflict",
-              "connection.revoked",
-              "connection.oauth2_endpoint_refused",
-              "connection.oauth2_token_refused",
-              "provider.unavailable",
-              "webhook.authentication_failed",
-              "webhook.payload_too_large",
-              "webhook.unsupported_media_type",
-              "webhook.invalid_json",
-              "webhook.method_not_allowed",
-              "webhook.idempotency_conflict",
-              "webhook.rate_limited",
-              "webhook.workflow_paused",
-              "webhook.unavailable",
-              "request.aborted",
-              "internal.unexpected"
-            ]
-          },
-          "requestId": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 128,
-            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
-          },
-          "errors": {
-            "readOnly": true,
-            "maxItems": 100,
-            "type": "array",
-            "items": {
-              "readOnly": true,
-              "type": "object",
-              "properties": {
-                "path": {
-                  "type": "string",
-                  "maxLength": 1024
-                },
-                "code": {
-                  "type": "string",
-                  "minLength": 1,
-                  "maxLength": 128
-                },
-                "message": {
-                  "type": "string",
-                  "minLength": 1,
-                  "maxLength": 500
-                }
-              },
-              "required": [
-                "path",
-                "code",
-                "message"
-              ],
-              "additionalProperties": false
-            }
-          }
-        },
-        "required": [
-          "type",
-          "title",
-          "status",
-          "code",
-          "requestId"
-        ],
-        "additionalProperties": false
-      },
       "NodeTestRequest": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "oneOf": [
@@ -4644,40 +4380,6 @@
             "additionalProperties": false
           }
         ]
-      },
-      "NodeSideEffectDisclosure": {
-        "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "type": "object",
-        "properties": {
-          "sideEffectClass": {
-            "type": "string",
-            "enum": [
-              "safe",
-              "idempotent_with_key",
-              "unsafe"
-            ]
-          },
-          "mayContactProvider": {
-            "type": "boolean"
-          },
-          "mayCauseExternalSideEffect": {
-            "type": "boolean"
-          },
-          "dryRun": {
-            "type": "string",
-            "enum": [
-              "not_supported",
-              "provider_supported"
-            ]
-          }
-        },
-        "required": [
-          "sideEffectClass",
-          "mayContactProvider",
-          "mayCauseExternalSideEffect",
-          "dryRun"
-        ],
-        "additionalProperties": false
       },
       "NodeValidationResponse": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -5084,298 +4786,6 @@
           }
         }
       },
-      "PreviewRunSummary": {
-        "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "type": "object",
-        "properties": {
-          "codeDiagnostics": {
-            "type": "object",
-            "properties": {
-              "logs": {
-                "maxItems": 200,
-                "type": "array",
-                "items": {
-                  "type": "object",
-                  "properties": {
-                    "level": {
-                      "type": "string",
-                      "enum": [
-                        "log",
-                        "info",
-                        "warn",
-                        "error",
-                        "debug"
-                      ]
-                    },
-                    "message": {
-                      "type": "string",
-                      "maxLength": 2048
-                    }
-                  },
-                  "required": [
-                    "level",
-                    "message"
-                  ],
-                  "additionalProperties": false
-                }
-              },
-              "truncated": {
-                "type": "boolean"
-              },
-              "error": {
-                "type": "object",
-                "properties": {
-                  "message": {
-                    "type": "string",
-                    "maxLength": 2048
-                  },
-                  "line": {
-                    "type": "integer",
-                    "exclusiveMinimum": 0,
-                    "maximum": 9007199254740991
-                  },
-                  "column": {
-                    "type": "integer",
-                    "exclusiveMinimum": 0,
-                    "maximum": 9007199254740991
-                  }
-                },
-                "required": [
-                  "message"
-                ],
-                "additionalProperties": false
-              }
-            },
-            "required": [
-              "logs",
-              "truncated"
-            ],
-            "additionalProperties": false
-          },
-          "id": {
-            "type": "string",
-            "format": "uuid",
-            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-          },
-          "workspaceId": {
-            "type": "string",
-            "format": "uuid",
-            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-          },
-          "workflowId": {
-            "type": "string",
-            "format": "uuid",
-            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-          },
-          "draftRevision": {
-            "type": "integer",
-            "exclusiveMinimum": 0,
-            "maximum": 9007199254740991
-          },
-          "nodeId": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 256
-          },
-          "status": {
-            "type": "string",
-            "enum": [
-              "queued",
-              "running",
-              "succeeded",
-              "failed",
-              "canceled",
-              "timed_out",
-              "outcome_unknown"
-            ]
-          },
-          "pinnedSampleId": {
-            "type": "string",
-            "format": "uuid",
-            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-          },
-          "disclosure": {
-            "type": "object",
-            "properties": {
-              "sideEffectClass": {
-                "type": "string",
-                "enum": [
-                  "safe",
-                  "idempotent_with_key",
-                  "unsafe"
-                ]
-              },
-              "mayContactProvider": {
-                "type": "boolean"
-              },
-              "mayCauseExternalSideEffect": {
-                "type": "boolean"
-              },
-              "dryRun": {
-                "type": "string",
-                "enum": [
-                  "not_supported",
-                  "provider_supported"
-                ]
-              }
-            },
-            "required": [
-              "sideEffectClass",
-              "mayContactProvider",
-              "mayCauseExternalSideEffect",
-              "dryRun"
-            ],
-            "additionalProperties": false
-          },
-          "output": {
-            "anyOf": [
-              {
-                "oneOf": [
-                  {
-                    "type": "object",
-                    "properties": {
-                      "kind": {
-                        "type": "string",
-                        "const": "inline"
-                      },
-                      "value": {
-                        "$ref": "#/components/schemas/PreviewRunSummary/$defs/__schema0"
-                      }
-                    },
-                    "required": [
-                      "kind",
-                      "value"
-                    ],
-                    "additionalProperties": false
-                  },
-                  {
-                    "type": "object",
-                    "properties": {
-                      "kind": {
-                        "type": "string",
-                        "const": "artifact"
-                      },
-                      "artifactId": {
-                        "type": "string",
-                        "format": "uuid",
-                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-                      }
-                    },
-                    "required": [
-                      "kind",
-                      "artifactId"
-                    ],
-                    "additionalProperties": false
-                  }
-                ]
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "safeErrorCode": {
-            "anyOf": [
-              {
-                "type": "string",
-                "minLength": 1,
-                "maxLength": 128
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "errorSummary": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 2048
-          },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time",
-            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
-          },
-          "startedAt": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "date-time",
-                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "completedAt": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "date-time",
-                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "expiresAt": {
-            "type": "string",
-            "format": "date-time",
-            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
-          }
-        },
-        "required": [
-          "id",
-          "workspaceId",
-          "workflowId",
-          "draftRevision",
-          "nodeId",
-          "status",
-          "disclosure",
-          "output",
-          "safeErrorCode",
-          "createdAt",
-          "startedAt",
-          "completedAt",
-          "expiresAt"
-        ],
-        "additionalProperties": false,
-        "$defs": {
-          "__schema0": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "number"
-              },
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              },
-              {
-                "type": "array",
-                "items": {
-                  "$ref": "#/components/schemas/PreviewRunSummary/$defs/__schema0"
-                }
-              },
-              {
-                "type": "object",
-                "propertyNames": {
-                  "type": "string"
-                },
-                "additionalProperties": {
-                  "$ref": "#/components/schemas/PreviewRunSummary/$defs/__schema0"
-                }
-              }
-            ]
-          }
-        }
-      },
       "PreviewRunResponse": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "type": "object",
@@ -5676,6 +5086,261 @@
             ]
           }
         }
+      },
+      "ApiProblem": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "readOnly": true,
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          },
+          "status": {
+            "type": "integer",
+            "minimum": 400,
+            "maximum": 599
+          },
+          "detail": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000
+          },
+          "instance": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2048
+          },
+          "code": {
+            "type": "string",
+            "enum": [
+              "callback.already_received",
+              "callback.expired",
+              "callback.unavailable",
+              "api_token.unavailable",
+              "api_token.limit",
+              "auth.unauthenticated",
+              "auth.forbidden",
+              "auth.token_scope_required",
+              "auth.token_not_supported",
+              "auth.email_not_verified",
+              "auth.sso_required",
+              "auth.two_factor_locked",
+              "auth.method_limit",
+              "auth.recovery_required",
+              "auth.organization_email_managed",
+              "auth.alternative_required",
+              "auth.reset_link_invalid",
+              "auth.sign_up_closed",
+              "auth.conflict",
+              "auth.session_not_fresh",
+              "resource.not_found",
+              "request.invalid",
+              "request.precondition_required",
+              "request.idempotency_conflict",
+              "request.rate_limited",
+              "request.rate_limit_unavailable",
+              "request.method_not_allowed",
+              "request.too_large",
+              "request.unsupported_media_type",
+              "workspace.quota_exceeded",
+              "artifact.too_large",
+              "artifact.conflict",
+              "artifact.unavailable",
+              "workspace.conflict",
+              "data_table.conflict",
+              "data_table.key_conflict",
+              "data_table.quota_exceeded",
+              "export.already_running",
+              "webhook.setting_up",
+              "workspace.revision_conflict",
+              "workspace.member_role_revision_conflict",
+              "workspace.member_role_transition_conflict",
+              "workspace.member_removal_conflict",
+              "workspace.member_directory_managed",
+              "workspace.member_status_conflict",
+              "workspace.invitation_conflict",
+              "workspace.invitation_proof_expired",
+              "workspace.invitation_revision_conflict",
+              "workspace.invitation_recipient_mismatch",
+              "workspace.invitation_unavailable",
+              "workspace.invitation_delivery_unavailable",
+              "workspace.invitation_not_configured",
+              "user.profile_revision_conflict",
+              "workflow.revision_conflict",
+              "workflow.lifecycle_conflict",
+              "workflow.name_conflict",
+              "workflow.pause_conflict",
+              "workflow.auto_pause_settings_conflict",
+              "workflow.already_running",
+              "workflow.concurrency_revision_conflict",
+              "workflow.concurrency_limit_exceeded",
+              "workflow.concurrency_limit_unavailable",
+              "workflow.publish_approval_required",
+              "workflow.publication_review_conflict",
+              "workflow.promotion_conflict",
+              "workflow.promotion_unavailable",
+              "workflow.collaboration_conflict",
+              "workflow.error_policy_conflict",
+              "workflow.error_target_unavailable",
+              "pending_task.already_resolved",
+              "pending_task.expired",
+              "pending_task.run_closed",
+              "pending_task.self_decision",
+              "pending_task.not_eligible",
+              "notifications.changed",
+              "notifications.unavailable",
+              "notifications.unsubscribe_unavailable",
+              "variables.changed",
+              "variables.usage_changed",
+              "workflow.variable_snapshot_unavailable",
+              "trigger.coordination_unavailable",
+              "form.unavailable",
+              "form.changed",
+              "form.access_conflict",
+              "form.invalid",
+              "form.file_type_not_allowed",
+              "form.file_too_large",
+              "form.upload_limit",
+              "form.upload_busy",
+              "form.required",
+              "workflow.sample_conflict",
+              "workflow.sample_invalid",
+              "workflow.sample_limit",
+              "workflow.input_case_revision_conflict",
+              "workflow.input_case_limit_exceeded",
+              "workflow.tag_key_conflict",
+              "workflow.tag_limit_exceeded",
+              "workflow.tag_revision_conflict",
+              "workflow.tag_delete_overflow",
+              "workflow.organization_revision_conflict",
+              "workflow.folder_name_conflict",
+              "workflow.folder_limit_exceeded",
+              "workflow.folder_revision_conflict",
+              "workflow.folder_hierarchy_conflict",
+              "workflow.folder_not_empty",
+              "workflow.folder_not_visible",
+              "workflow.folder_audience_review_required",
+              "workspace.auto_pause_settings_conflict",
+              "workflow.invalid",
+              "workflow.portability_unavailable",
+              "workflow.portability_compatibility_conflict",
+              "workflow.portability_review_conflict",
+              "workflow.portability_invalid",
+              "workflow.template_origin_unavailable",
+              "workflow.validation_unavailable",
+              "workflow.published_version_conflict",
+              "workflow.not_published",
+              "workflow.activation_failed",
+              "run.not_cancelable",
+              "run.outcome_unknown",
+              "run.recovery_unavailable",
+              "connection.not_configured",
+              "webhook.not_configured",
+              "connection.conflict",
+              "connection.revoked",
+              "connection.oauth2_endpoint_refused",
+              "connection.oauth2_token_refused",
+              "provider.unavailable",
+              "webhook.authentication_failed",
+              "webhook.payload_too_large",
+              "webhook.unsupported_media_type",
+              "webhook.invalid_json",
+              "webhook.method_not_allowed",
+              "webhook.idempotency_conflict",
+              "webhook.rate_limited",
+              "webhook.workflow_paused",
+              "webhook.unavailable",
+              "request.aborted",
+              "internal.unexpected"
+            ]
+          },
+          "requestId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+          },
+          "errors": {
+            "readOnly": true,
+            "maxItems": 100,
+            "type": "array",
+            "items": {
+              "readOnly": true,
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string",
+                  "maxLength": 1024
+                },
+                "code": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128
+                },
+                "message": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 500
+                }
+              },
+              "required": [
+                "path",
+                "code",
+                "message"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "type",
+          "title",
+          "status",
+          "code",
+          "requestId"
+        ],
+        "additionalProperties": false
+      },
+      "NodeSideEffectDisclosure": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "sideEffectClass": {
+            "type": "string",
+            "enum": [
+              "safe",
+              "idempotent_with_key",
+              "unsafe"
+            ]
+          },
+          "mayContactProvider": {
+            "type": "boolean"
+          },
+          "mayCauseExternalSideEffect": {
+            "type": "boolean"
+          },
+          "dryRun": {
+            "type": "string",
+            "enum": [
+              "not_supported",
+              "provider_supported"
+            ]
+          }
+        },
+        "required": [
+          "sideEffectClass",
+          "mayContactProvider",
+          "mayCauseExternalSideEffect",
+          "dryRun"
+        ],
+        "additionalProperties": false
       }
     },
     "responses": {

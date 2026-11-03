@@ -1,112 +1,71 @@
+import { Controller, Req, Res, UseInterceptors } from '@nestjs/common';
 import {
-  Body,
-  Controller,
-  Get,
-  HttpCode,
-  Param,
-  Post,
-  Req,
-  Res,
-  UseGuards,
-  UseInterceptors,
-} from '@nestjs/common';
-import {
-  nodeTestParamsSchema,
-  nodeTestRequestSchema,
-  previewRunParamsSchema,
-} from '@pertexo/contracts';
+  nodeTestingRoutes as routes,
+  type RouteInput,
+} from '@pertexo/contracts/server';
 
-import {
-  CsrfProtectionGuard,
-  SessionAuthenticationGuard,
-} from '../workspaces/index.js';
 import { projectAuthenticatedWorkspaceContext } from '../workspaces/request/authenticated-context.js';
 import type { IdentityWorkspaceRequest } from '../workspaces/types.js';
+import { In, Route } from '../workspaces/http/route.js';
 import { requestIdempotencyKey } from '../platform/http/index.js';
 import { singleRequestHeader } from '../platform/http/request-headers.js';
-import { RateLimit } from '../platform/rate-limit/metadata.js';
-import { NodeTestingUpdateGuard } from './guards.js';
 import { GetPreviewRunUseCase, TestWorkflowNodeUseCase } from './use-case.js';
 import { domainErrors } from '../platform/http/problems/interceptor.js';
 import { nodeTestingFailure } from '../problems/context/normalize.js';
-import { parseRequestInput } from '../platform/http/request-input.js';
 
 interface StatusResponse {
   status(code: number): unknown;
 }
 
 @UseInterceptors(domainErrors(nodeTestingFailure))
-@Controller('v1/workspaces/:workspaceId')
-@RateLimit('preview_test')
+@Controller()
 export class NodeTestingController {
   public constructor(
     private readonly testNode: TestWorkflowNodeUseCase,
     private readonly getPreview: GetPreviewRunUseCase,
   ) {}
 
-  @Get('previews/:previewRunId')
-  @RateLimit('authenticated_read')
-  @UseGuards(SessionAuthenticationGuard, NodeTestingUpdateGuard)
+  @Route(routes.preview)
   public async status(
     @Req() request: IdentityWorkspaceRequest,
-    @Param() params: unknown,
+    @In() { params }: RouteInput<typeof routes.preview>,
   ) {
-    const route = previewRunParamsSchema.parse(params);
     const context = projectAuthenticatedWorkspaceContext(
       request,
-      route.workspaceId,
+      params.workspaceId,
     );
     return this.getPreview.execute({
       actor: context.actor,
-      routeWorkspaceId: route.workspaceId,
+      routeWorkspaceId: params.workspaceId,
       ...(context.authorizedWorkspace === undefined
         ? {}
         : { authorizedWorkspace: context.authorizedWorkspace }),
-      previewRunId: route.previewRunId,
+      previewRunId: params.previewRunId,
     });
   }
 
-  @Post('workflows/:workflowId/draft/nodes/:nodeId/test')
-  @HttpCode(200)
-  @UseGuards(
-    SessionAuthenticationGuard,
-    NodeTestingUpdateGuard,
-    CsrfProtectionGuard,
-  )
+  /** Validating answers at once; executing queues a durable test and answers 202. */
+  @Route(routes.test)
   public async test(
     @Req() request: IdentityWorkspaceRequest,
-    @Param() params: unknown,
-    @Body() body: unknown,
+    @In() { params, body }: RouteInput<typeof routes.test>,
     @Res({ passthrough: true }) response: StatusResponse,
   ) {
-    const route = nodeTestParamsSchema.parse(params);
-    const command = parseRequestInput(nodeTestRequestSchema, body);
-    const idempotencyKey =
-      command.mode === 'test_execute'
-        ? requestIdempotencyKey(request.headers)
-        : undefined;
-    const traceparent = singleHeader(request, 'traceparent');
-    const context = projectAuthenticatedWorkspaceContext(
-      request,
-      route.workspaceId,
-    );
+    const executing = body.mode === 'test_execute';
+    const idempotencyKey = executing
+      ? requestIdempotencyKey(request.headers)
+      : undefined;
+    const traceparent = singleRequestHeader(request.headers, 'traceparent');
     const result = await this.testNode.execute({
-      ...context,
-      routeWorkspaceId: route.workspaceId,
-      workflowId: route.workflowId,
-      nodeId: route.nodeId,
-      request: command,
+      ...projectAuthenticatedWorkspaceContext(request, params.workspaceId),
+      routeWorkspaceId: params.workspaceId,
+      workflowId: params.workflowId,
+      nodeId: params.nodeId,
+      request: body,
       ...(idempotencyKey === undefined ? {} : { idempotencyKey }),
       ...(traceparent === undefined ? {} : { traceparent }),
     });
-    if (command.mode === 'test_execute') response.status(202);
+    if (executing) response.status(202);
     return result;
   }
-}
-
-function singleHeader(
-  request: IdentityWorkspaceRequest,
-  name: string,
-): string | undefined {
-  return singleRequestHeader(request.headers, name);
 }

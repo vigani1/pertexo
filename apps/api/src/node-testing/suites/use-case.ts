@@ -1,6 +1,5 @@
 import {
   workflowTestSuitePreparationSchema,
-  workflowTestSuiteStartRequestSchema,
   workflowTestSuiteAcceptedSchema,
   workflowTestSuiteListSchema,
   workflowTestSuiteDetailSchema,
@@ -13,7 +12,7 @@ import {
   workflowTestScope,
   type WorkflowTestUseCaseInput,
 } from '../workflows/authorization.js';
-import { parseRequestInput } from '../../platform/http/request-input.js';
+import type { WorkflowTestSuiteStartRequest } from '@pertexo/contracts';
 export class WorkflowTestSuitesUseCase {
   constructor(
     private readonly store: WorkflowTestSuiteStore,
@@ -54,7 +53,7 @@ export class WorkflowTestSuitesUseCase {
   }
   async start(
     input: WorkflowTestUseCaseInput & {
-      request: unknown;
+      request: WorkflowTestSuiteStartRequest;
       idempotencyKey: string;
     },
   ) {
@@ -62,10 +61,7 @@ export class WorkflowTestSuitesUseCase {
     return workflowTestSuiteAcceptedSchema.parse(
       await this.store.start({
         ...workflowTestScope(input),
-        request: parseRequestInput(
-          workflowTestSuiteStartRequestSchema,
-          input.request,
-        ),
+        request: input.request,
         idempotencyKey: input.idempotencyKey,
       }),
     );
