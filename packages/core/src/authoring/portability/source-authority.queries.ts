@@ -1,4 +1,4 @@
-import { type Role } from '@pertexo/policy';
+import type { Role } from '@pertexo/policy';
 import {
   parseWorkflowGraphDraft,
   type PortableConnectionBinding,
