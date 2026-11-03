@@ -157,6 +157,7 @@ it('preserves mail identities through the rename and old messages through subseq
       '0082_complete_trigger_pause_state.sql',
       '0083_remove_test_probe.sql',
       '0084_remove_redundant_rls_policies.sql',
+      '0085_execution_artifact_reference_coverage.sql',
     ]);
     const after = await catalog('app.system_mail_deliveries');
     expect(after.relation).toEqual(before.relation);
