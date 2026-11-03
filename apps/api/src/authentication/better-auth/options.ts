@@ -1,10 +1,8 @@
+import { createPasswordResetPlugin } from './password-reset.js';
 import { randomUUID } from 'node:crypto';
 
 import { APIError } from 'better-auth/api';
-import {
-  authorizeCredentialSignIn,
-  hasCredentialAccount,
-} from '@pertexo/core/identity';
+import { authorizeCredentialSignIn } from '@pertexo/core/identity';
 import { betterAuth, type BetterAuthOptions } from 'better-auth';
 import { PostgresDialect } from 'kysely';
 import type { Pool } from 'pg';
@@ -120,7 +118,7 @@ export function createPertexoBetterAuth(input: PertexoBetterAuthInput) {
         updatedAt: 'updated_at',
       },
     },
-    emailAndPassword: credentialPolicy(pool, input.mail),
+    emailAndPassword: credentialPolicy(),
     emailVerification: {
       sendOnSignUp: true,
       autoSignInAfterVerification: false,
@@ -133,6 +131,7 @@ export function createPertexoBetterAuth(input: PertexoBetterAuthInput) {
       : { socialProviders: input.socialProviders }),
     plugins: [
       createTwoFactorPlugin(),
+      createPasswordResetPlugin(pool, input.mail),
       createTrustedSessionPlugin(pool, input.availableLinkProviders, {
         organizationProtocols: input.availableOrganizationProtocols ?? [],
         mail: input.mail,
@@ -207,7 +206,7 @@ function sessionPolicy(sessionTtlSeconds: number) {
 }
 
 /** Verified-email password accounts; resets only mail existing credentials. */
-function credentialPolicy(pool: Pool, mail: AuthenticationMail) {
+function credentialPolicy() {
   return {
     enabled: true,
     minPasswordLength: 12,
@@ -216,14 +215,6 @@ function credentialPolicy(pool: Pool, mail: AuthenticationMail) {
     autoSignIn: false,
     revokeSessionsOnPasswordReset: true,
     resetPasswordTokenExpiresIn: 60 * 60,
-    sendResetPassword: async ({ user, url }) => {
-      if (!(await hasCredentialAccount(pool, user.id))) return;
-      await mail.sendPasswordReset({
-        recipient: user.email,
-        displayName: user.name,
-        url,
-      });
-    },
   } satisfies BetterAuthOptions['emailAndPassword'];
 }
 

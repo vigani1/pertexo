@@ -44,6 +44,14 @@ export type AuthenticationMail = Readonly<{
       url: string;
     }>,
   ): Promise<void>;
+  preparePasswordReset?(
+    input: Readonly<{
+      recipient: string;
+      displayName: string;
+      url: string;
+      expiresAt: Date;
+    }>,
+  ): SystemMailInput;
   sendPasswordReset(
     input: Readonly<{
       recipient: string;
@@ -199,14 +207,28 @@ export class DurableAuthenticationMail implements AuthenticationMail {
     displayName: string;
     url: string;
   }): Promise<void> {
-    return this.enqueue('password_reset', input.recipient, {
+    return this.store.enqueue(
+      this.preparePasswordReset({
+        ...input,
+        expiresAt: new Date(this.now().getTime() + 60 * 60_000),
+      }),
+    );
+  }
+
+  public preparePasswordReset(input: {
+    recipient: string;
+    displayName: string;
+    url: string;
+    expiresAt: Date;
+  }): SystemMailInput {
+    return this.prepare('password_reset', input.recipient, {
       subject: 'Reset your Pertexo password',
       text: renderAuthenticationMail(
         input.displayName,
         'Use this time-limited link to reset your Pertexo password.',
         input.url,
       ),
-      validityMillis: 60 * 60_000,
+      validityMillis: input.expiresAt.getTime() - this.now().getTime(),
     });
   }
 

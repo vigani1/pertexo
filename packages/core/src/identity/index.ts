@@ -1,9 +1,9 @@
+export { issuePasswordResetProof } from './password-reset.repository.js';
 export { recordIdentitySecurityFact } from './facts.repository.js';
 export { EmailProofCommands } from './email.repository.js';
 export { AccountLinkingCommands } from './linking.repository.js';
 export {
   changePasswordAndRevokeSessions,
-  hasCredentialAccount,
   resetPasswordAndRevokeSessions,
   setupPasswordAndRevokeSessions,
   unlinkMethodAndRevokeSessions,
