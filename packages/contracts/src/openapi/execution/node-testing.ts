@@ -1,76 +1,23 @@
-import {
-  workflowTestSuiteContractSchemas,
-  workflowTestSuitePaths,
-} from './test-suites.js';
-import {
-  workflowTestPaths,
-  workflowTestContractSchemas,
-} from './workflow-tests.js';
-import { stepSampleContractSchemas, stepSamplePaths } from './step-samples.js';
-import { z } from 'zod';
-
-import {
-  authenticatedComponents,
-  csrfHeaderParameter,
-  idempotencyHeaderParameter,
-  jsonRequest,
-  jsonResponse,
-  jsonSchema,
-  problemResponse,
-  responseReference,
-  uuidPathParameter as pathParameter,
-} from '../primitives.js';
-
 import { apiProblemSchema } from '../../errors/api-problem.js';
 import {
-  nodeSideEffectDisclosureSchema,
-  nodeTestExecuteAcceptedResponseSchema,
-  nodeTestRequestSchema,
-  nodeValidationResponseSchema,
-  previewRunResponseSchema,
-  previewRunSummarySchema,
-} from '../../schemas/execution/node-testing.js';
+  workflowTestRoutes,
+  workflowTestSuiteRoutes,
+} from '../../routes/execution/draft-tests.js';
+import {
+  nodeTestingRoutes,
+  stepSampleRoutes,
+} from '../../routes/execution/node-testing.js';
+import { routePaths, routeSchemas } from '../../routes/openapi.js';
+import { nodeSideEffectDisclosureSchema } from '../../schemas/execution/node-testing.js';
+import { authenticatedComponents, problemResponse } from '../primitives.js';
 import { projectContractSchema } from '../schema-projection.js';
 
-function contractSchemas() {
-  return Object.freeze({
-    ...stepSampleContractSchemas(),
-    ...workflowTestContractSchemas(),
-    ...workflowTestSuiteContractSchemas(),
-    ApiProblem: projectContractSchema('ApiProblem', apiProblemSchema, 'output'),
-    NodeTestRequest: projectContractSchema(
-      'NodeTestRequest',
-      nodeTestRequestSchema,
-      'input',
-    ),
-    NodeSideEffectDisclosure: projectContractSchema(
-      'NodeSideEffectDisclosure',
-      nodeSideEffectDisclosureSchema,
-      'output',
-    ),
-    NodeValidationResponse: projectContractSchema(
-      'NodeValidationResponse',
-      nodeValidationResponseSchema,
-      'output',
-    ),
-    NodeTestExecuteAcceptedResponse: projectContractSchema(
-      'NodeTestExecuteAcceptedResponse',
-      nodeTestExecuteAcceptedResponseSchema,
-      'output',
-    ),
-    PreviewRunSummary: projectContractSchema(
-      'PreviewRunSummary',
-      previewRunSummarySchema,
-      'output',
-    ),
-    PreviewRunResponse: projectContractSchema(
-      'PreviewRunResponse',
-      previewRunResponseSchema,
-      'output',
-    ),
-  });
-}
-const openApiSchemas = contractSchemas();
+const routes = [
+  ...Object.values(stepSampleRoutes),
+  ...Object.values(workflowTestRoutes),
+  ...Object.values(workflowTestSuiteRoutes),
+  ...Object.values(nodeTestingRoutes),
+];
 
 const problemResponses = Object.freeze({
   BadRequest: problemResponse('Invalid request'),
@@ -82,77 +29,24 @@ const problemResponses = Object.freeze({
   Unexpected: problemResponse('Unexpected server error'),
 });
 
-const workspaceParameter = pathParameter('workspaceId', 'Workspace identifier');
-const workflowParameter = pathParameter('workflowId', 'Workflow identifier');
-const nodeParameter = {
-  ...pathParameter('nodeId', 'Workflow node identifier'),
-  schema: jsonSchema(z.string().min(1).max(256), 'input'),
-} as const;
-const previewRunParameter = pathParameter(
-  'previewRunId',
-  'Preview run identifier',
-);
-const csrfParameter = csrfHeaderParameter();
-const conditionalIdempotencyParameter = {
-  ...idempotencyHeaderParameter({ required: false }),
-  description:
-    'Required when request mode is test_execute; ignored for validate',
-} as const;
-
 export const nodeTestingOpenApiDocument = Object.freeze({
   openapi: '3.1.0',
   info: { title: 'Pertexo Node Testing API', version: '1.0.0' },
-  paths: {
-    ...stepSamplePaths,
-    ...workflowTestPaths,
-    ...workflowTestSuitePaths,
-    '/v1/workspaces/{workspaceId}/workflows/{workflowId}/draft/nodes/{nodeId}/test':
-      {
-        post: {
-          operationId: 'testWorkflowNode',
-          security: [{ cookieSession: [] }],
-          parameters: [
-            workspaceParameter,
-            workflowParameter,
-            nodeParameter,
-            csrfParameter,
-            conditionalIdempotencyParameter,
-          ],
-          requestBody: jsonRequest('NodeTestRequest'),
-          responses: {
-            '200': jsonResponse(
-              'Read-only node validation',
-              'NodeValidationResponse',
-            ),
-            '202': jsonResponse(
-              'Durable node test execution accepted',
-              'NodeTestExecuteAcceptedResponse',
-            ),
-            '400': responseReference('BadRequest'),
-            '401': responseReference('Unauthenticated'),
-            '403': responseReference('Forbidden'),
-            '404': responseReference('NotFound'),
-            '409': responseReference('Conflict'),
-            '422': responseReference('UnprocessableEntity'),
-            '500': responseReference('Unexpected'),
-          },
-        },
-      },
-    '/v1/workspaces/{workspaceId}/previews/{previewRunId}': {
-      get: {
-        operationId: 'getPreviewRun',
-        security: [{ cookieSession: [] }],
-        parameters: [workspaceParameter, previewRunParameter],
-        responses: {
-          '200': jsonResponse('Preview run status', 'PreviewRunResponse'),
-          '400': responseReference('BadRequest'),
-          '401': responseReference('Unauthenticated'),
-          '403': responseReference('Forbidden'),
-          '404': responseReference('NotFound'),
-          '500': responseReference('Unexpected'),
-        },
-      },
+  paths: routePaths(routes),
+  components: authenticatedComponents(
+    {
+      ...routeSchemas(routes),
+      ApiProblem: projectContractSchema(
+        'ApiProblem',
+        apiProblemSchema,
+        'output',
+      ),
+      NodeSideEffectDisclosure: projectContractSchema(
+        'NodeSideEffectDisclosure',
+        nodeSideEffectDisclosureSchema,
+        'output',
+      ),
     },
-  },
-  components: authenticatedComponents(openApiSchemas, problemResponses),
+    problemResponses,
+  ),
 });

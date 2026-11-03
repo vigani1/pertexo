@@ -1,126 +1,77 @@
+import { Controller, Req, UseInterceptors } from '@nestjs/common';
 import {
-  Body,
-  Controller,
-  Delete,
-  Get,
-  Header,
-  HttpCode,
-  Param,
-  Put,
-  Req,
-  UseGuards,
-  UseInterceptors,
-} from '@nestjs/common';
+  stepSampleRoutes as routes,
+  type RouteInput,
+} from '@pertexo/contracts/server';
+
+import { In, Route } from '../../workspaces/http/route.js';
+import { withRequestOperationSignal } from '../../platform/http/index.js';
 import {
-  nodeTestParamsSchema,
-  workflowIdParamSchema,
-} from '@pertexo/contracts';
-import {
-  CsrfProtectionGuard,
-  SessionAuthenticationGuard,
-} from '../../workspaces/index.js';
-import { projectAuthenticatedWorkspaceContext } from '../../workspaces/request/authenticated-context.js';
-import type { IdentityWorkspaceRequest } from '../../workspaces/types.js';
-import {
-  requestIdempotencyKey,
-  withRequestOperationSignal,
-} from '../../platform/http/index.js';
-import type { AbortableRequest } from '../../platform/http/request-operation-signal.js';
-import { RateLimit } from '../../platform/rate-limit/metadata.js';
-import { NodeSamplesReadGuard, NodeTestingUpdateGuard } from '../guards.js';
+  draftContext as context,
+  type DraftRequest as Request,
+} from '../draft-context.js';
 import { StepSamplesUseCase } from './use-case.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
 import { nodeTestingFailure } from '../../problems/context/normalize.js';
 
-type Request = IdentityWorkspaceRequest & AbortableRequest;
 @UseInterceptors(domainErrors(nodeTestingFailure))
-@Controller('v1/workspaces/:workspaceId/workflows/:workflowId/draft')
-@RateLimit('authenticated_read')
+@Controller()
 export class StepSamplesController {
   constructor(private readonly samples: StepSamplesUseCase) {}
-  @Get('samples')
-  @Header('Cache-Control', 'private, no-store')
-  @UseGuards(SessionAuthenticationGuard, NodeSamplesReadGuard)
-  async list(@Req() request: Request, @Param() params: unknown) {
-    const route = workflowIdParamSchema.parse(params);
+
+  @Route(routes.list)
+  list(
+    @Req() request: Request,
+    @In() { params }: RouteInput<typeof routes.list>,
+  ) {
     return withRequestOperationSignal(request, (signal) =>
-      this.samples.list({
-        ...context(request, route.workspaceId),
-        workflowId: route.workflowId,
-        signal,
-      }),
+      this.samples.list({ ...context(request, params), signal }),
     );
   }
-  @Get('nodes/:nodeId/sample')
-  @Header('Cache-Control', 'private, no-store')
-  @UseGuards(SessionAuthenticationGuard, NodeSamplesReadGuard)
-  async get(@Req() request: Request, @Param() params: unknown) {
-    const route = nodeTestParamsSchema.parse(params);
+
+  @Route(routes.get)
+  get(
+    @Req() request: Request,
+    @In() { params }: RouteInput<typeof routes.get>,
+  ) {
     return withRequestOperationSignal(request, (signal) =>
       this.samples.get({
-        ...context(request, route.workspaceId),
-        workflowId: route.workflowId,
-        nodeId: route.nodeId,
+        ...context(request, params),
+        nodeId: params.nodeId,
         signal,
       }),
     );
   }
-  @Put('nodes/:nodeId/sample')
-  @HttpCode(200)
-  @RateLimit('preview_test')
-  @UseGuards(
-    SessionAuthenticationGuard,
-    NodeTestingUpdateGuard,
-    CsrfProtectionGuard,
-  )
-  async put(
+
+  @Route(routes.put)
+  put(
     @Req() request: Request,
-    @Param() params: unknown,
-    @Body() body: unknown,
+    @In() { params, body, idempotencyKey }: RouteInput<typeof routes.put>,
   ) {
-    const route = nodeTestParamsSchema.parse(params);
-    const key = requestIdempotencyKey(request.headers);
     return withRequestOperationSignal(request, (signal) =>
       this.samples.put({
-        ...context(request, route.workspaceId),
-        workflowId: route.workflowId,
-        nodeId: route.nodeId,
+        ...context(request, params),
+        nodeId: params.nodeId,
         request: body,
-        idempotencyKey: key,
+        idempotencyKey,
         signal,
       }),
     );
   }
-  @Delete('nodes/:nodeId/sample')
-  @HttpCode(200)
-  @RateLimit('preview_test')
-  @UseGuards(
-    SessionAuthenticationGuard,
-    NodeTestingUpdateGuard,
-    CsrfProtectionGuard,
-  )
-  async remove(
+
+  @Route(routes.remove)
+  remove(
     @Req() request: Request,
-    @Param() params: unknown,
-    @Body() body: unknown,
+    @In() { params, body, idempotencyKey }: RouteInput<typeof routes.remove>,
   ) {
-    const route = nodeTestParamsSchema.parse(params);
-    const key = requestIdempotencyKey(request.headers);
     return withRequestOperationSignal(request, (signal) =>
       this.samples.remove({
-        ...context(request, route.workspaceId),
-        workflowId: route.workflowId,
-        nodeId: route.nodeId,
+        ...context(request, params),
+        nodeId: params.nodeId,
         request: body,
-        idempotencyKey: key,
+        idempotencyKey,
         signal,
       }),
     );
   }
-}
-function context(request: Request, workspaceId: string) {
-  return {
-    ...projectAuthenticatedWorkspaceContext(request, workspaceId),
-    routeWorkspaceId: workspaceId,
-  };
 }

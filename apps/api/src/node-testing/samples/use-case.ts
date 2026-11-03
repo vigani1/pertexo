@@ -1,8 +1,6 @@
 import {
   stepSampleListResponseSchema,
   stepSampleResponseSchema,
-  stepSampleWriteRequestSchema,
-  stepSampleDeleteRequestSchema,
   stepSampleCommandResponseSchema,
 } from '@pertexo/contracts';
 import type {
@@ -16,7 +14,10 @@ import {
 } from '../../authorization/index.js';
 import type { WorkspaceAuthorizationSource } from '../../workspaces/ports.js';
 import type { NodeTestUseCaseInput } from '../use-case.js';
-import { parseRequestInput } from '../../platform/http/request-input.js';
+import type {
+  StepSampleDeleteRequest,
+  StepSampleWriteRequest,
+} from '@pertexo/contracts';
 
 type ReadInput = Pick<
   NodeTestUseCaseInput,
@@ -24,8 +25,8 @@ type ReadInput = Pick<
 > &
   Readonly<{ signal?: AbortSignal }>;
 type NodeInput = ReadInput & Readonly<{ nodeId: string }>;
-type CommandInput = NodeInput &
-  Readonly<{ request: unknown; idempotencyKey: string }>;
+type CommandInput<Request> = NodeInput &
+  Readonly<{ request: Request; idempotencyKey: string }>;
 export class StepSamplesUseCase {
   constructor(
     private readonly store: WorkflowStepSampleStore,
@@ -53,24 +54,16 @@ export class StepSamplesUseCase {
       limits: STORED_EXECUTION_VALUE_LIMITS,
     });
   }
-  async put(input: CommandInput) {
+  async put(input: CommandInput<StepSampleWriteRequest>) {
     await this.authorize(input, { write: true });
-    const request = parseRequestInput(
-      stepSampleWriteRequestSchema,
-      input.request,
-    );
     return stepSampleCommandResponseSchema.parse(
-      await this.store.put({ ...this.command(input), ...request }),
+      await this.store.put({ ...this.command(input), ...input.request }),
     );
   }
-  async remove(input: CommandInput) {
+  async remove(input: CommandInput<StepSampleDeleteRequest>) {
     await this.authorize(input, { write: true });
-    const request = parseRequestInput(
-      stepSampleDeleteRequestSchema,
-      input.request,
-    );
     return stepSampleCommandResponseSchema.parse(
-      await this.store.remove({ ...this.command(input), ...request }),
+      await this.store.remove({ ...this.command(input), ...input.request }),
     );
   }
   private scope(input: ReadInput) {
@@ -81,7 +74,7 @@ export class StepSamplesUseCase {
       ...(input.signal === undefined ? {} : { signal: input.signal }),
     };
   }
-  private command(input: CommandInput) {
+  private command(input: CommandInput<unknown>) {
     return {
       ...this.scope(input),
       nodeId: input.nodeId,

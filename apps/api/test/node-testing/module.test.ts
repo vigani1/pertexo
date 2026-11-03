@@ -1,106 +1,20 @@
-import { nodeTestingSamples } from './fixture.js';
-import { Module } from '@nestjs/common';
+import { FakeIdentityModule } from '../support/identity-module.js';
 import { FastifyAdapter } from '@nestjs/platform-fastify';
 import { Test } from '@nestjs/testing';
-import { PLATFORM_NODE_CATALOG } from '@pertexo/node-catalog';
 import { describe, expect, it, vi } from 'vitest';
 
-import { DoubleSubmitCsrfPolicy } from '../../src/identity/index.js';
-import { SESSION_AUTHORITY } from '../../src/workspaces/index.js';
 import { NodeTestingModule } from '../../src/node-testing/module.js';
 import { TestWorkflowNodeUseCase } from '../../src/node-testing/use-case.js';
-import { RequestContextStore } from '../../src/platform/http/index.js';
 import {
   httpNodeTestingGraph,
-  nodeTestingAcceptedAt,
+  nodeTestingDependencies,
   nodeTestingDraft,
-  nodeTestingExpiresAt,
   nodeTestingIds,
 } from './fixture.js';
 
-// Nest dynamic modules require a class token.
-// eslint-disable-next-line @typescript-eslint/no-extraneous-class
-class FakeIdentityModule {}
-Module({
-  providers: [
-    {
-      provide: RequestContextStore,
-      useValue: { setActor: () => undefined, setWorkspace: () => undefined },
-    },
-    {
-      provide: SESSION_AUTHORITY,
-      useValue: {
-        authenticate: () =>
-          Promise.resolve({
-            userId: nodeTestingIds.actorId,
-            sessionId: 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
-            expiresAt: new Date('2030-01-01T00:00:00.000Z'),
-            clientMetadata: {},
-          }),
-      },
-    },
-    {
-      provide: DoubleSubmitCsrfPolicy,
-      useValue: { assertMutationAllowed: () => undefined },
-    },
-  ],
-  exports: [RequestContextStore, SESSION_AUTHORITY, DoubleSubmitCsrfPolicy],
-})(FakeIdentityModule);
-
-function dependencies() {
-  const evaluate = vi.fn().mockResolvedValue({
-    kind: 'value',
-    value: { encoding: 'utf8', value: 'evaluated' },
-    canonicalBytes: 39,
-  });
-  return {
-    authorization: {
-      findAccess: vi.fn().mockResolvedValue({
-        actorId: nodeTestingIds.actorId,
-        workspaceId: nodeTestingIds.workspaceId,
-        role: 'builder' as const,
-        membershipStatus: 'active' as const,
-        workspaceStatus: 'active' as const,
-      }),
-    },
-    persistence: {
-      workflowTestSuites: {
-        prepare: vi.fn(),
-        start: vi.fn(),
-        list: vi.fn(),
-        get: vi.fn(),
-        report: vi.fn(),
-        cancel: vi.fn(),
-      },
-      workflowTests: {
-        prepare: vi.fn(),
-        start: vi.fn(),
-        list: vi.fn(),
-        get: vi.fn(),
-        cancel: vi.fn(),
-      },
-      stepSamples: nodeTestingSamples(),
-      getDraft: vi.fn().mockResolvedValue(nodeTestingDraft()),
-      acceptPreview: vi.fn().mockResolvedValue({
-        acceptedAt: nodeTestingAcceptedAt,
-        duplicate: false,
-        expiresAt: nodeTestingExpiresAt,
-        outboxEventId: '11111111-1111-4111-8111-111111111111',
-        previewAttemptId: '22222222-2222-4222-8222-222222222222',
-        previewRunId: nodeTestingIds.previewRunId,
-        status: 'queued' as const,
-      }),
-      resolvePreviewReplay: vi.fn().mockResolvedValue(null),
-      readPreview: vi.fn().mockResolvedValue(null),
-    },
-    release: PLATFORM_NODE_CATALOG,
-    expressionEvaluator: { evaluate },
-  };
-}
-
 describe('node testing Nest module', () => {
   it('forwards the registered evaluator through the resolved use case', async () => {
-    const supplied = dependencies();
+    const supplied = nodeTestingDependencies();
     supplied.persistence.getDraft.mockResolvedValueOnce(
       nodeTestingDraft({
         graphJson: {
@@ -153,7 +67,7 @@ describe('node testing Nest module', () => {
   });
 
   it('serves sample reads and exact-key writes through Nest and Fastify', async () => {
-    const supplied = dependencies();
+    const supplied = nodeTestingDependencies();
     const sampleId = '11111111-1111-4111-8111-111111111111';
     const put = vi
       .spyOn(supplied.persistence.stepSamples, 'put')
@@ -234,7 +148,7 @@ describe('node testing Nest module', () => {
   });
 
   it('serves validation at 200 and durable acceptance at 202 through Nest and Fastify', async () => {
-    const supplied = dependencies();
+    const supplied = nodeTestingDependencies();
     const testing = await Test.createTestingModule({
       imports: [
         NodeTestingModule.register(supplied, { module: FakeIdentityModule }),

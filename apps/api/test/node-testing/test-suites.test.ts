@@ -58,30 +58,6 @@ describe('draft suite boundary', () => {
       idempotencyKey,
     });
   });
-  it('rejects invalid or overlarge manifests before storage', async () => {
-    const f = fixture();
-    for (const body of [
-      { ...request, acknowledgeSideEffects: 'yes' },
-      { ...request, signature: 'old' },
-      { ...request, expectedCases: [] },
-      {
-        ...request,
-        expectedCases: Array.from({ length: 51 }, () => ({
-          id: randomUUID(),
-          revision: 1,
-        })),
-      },
-      { ...request, input: {} },
-    ])
-      await expect(
-        f.useCase.start({
-          ...input,
-          request: body,
-          idempotencyKey: randomUUID(),
-        }),
-      ).rejects.toMatchObject({ name: 'ZodError' });
-    expect(f.store.start).not.toHaveBeenCalled();
-  });
   it('requires editor and run permissions for all reports and commands', async () => {
     const f = fixture('viewer');
     await expect(f.useCase.prepare(input)).rejects.toMatchObject({
