@@ -218,6 +218,3 @@ export function canInviteWorkspaceRole(
     administratorManagedRoles.some((role) => role === invitedRole)
   );
 }
-
-/** ADR 056: the largest configurable consecutive-failure pause threshold. */
-export const MAX_AUTO_PAUSE_THRESHOLD = 100;
