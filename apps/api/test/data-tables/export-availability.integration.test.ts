@@ -112,7 +112,12 @@ describe.runIf(betterAuthIntegrationEnabled)(
         });
         expect(extra.status).toBe(409);
         expect(extra.headers.get('content-disposition')).toBeNull();
-        expect(await extra.text()).toContain('export is already running');
+        const problem = (await extra.json()) as {
+          code: string;
+          detail: string;
+        };
+        expect(problem.code).toBe('export.already_running');
+        expect(problem.detail).toContain('export is already running');
       } finally {
         download.destroy();
         request.destroy();

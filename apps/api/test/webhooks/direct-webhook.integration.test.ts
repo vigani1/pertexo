@@ -1740,5 +1740,13 @@ describe.runIf(enabled)('direct webhook HTTP integration', () => {
     expect(settingUp.headers['retry-after']).toBe('5');
     expect(settingUp.json()).toMatchObject({ code: 'webhook.setting_up' });
     expect(apiProblemSchema.safeParse(settingUp.json()).success).toBe(true);
+    await ownerQuery(
+      "update app.workflow_triggers set status='disabled' where id=$1",
+      [seeded.trigger.id],
+    );
+    const unavailable = await provision();
+    expect(unavailable.statusCode, unavailable.body).toBe(409);
+    expect(unavailable.headers['retry-after']).toBeUndefined();
+    expect(unavailable.json()).toMatchObject({ code: 'workspace.conflict' });
   });
 });
