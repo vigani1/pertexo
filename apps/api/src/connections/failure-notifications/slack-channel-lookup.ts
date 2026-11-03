@@ -24,7 +24,6 @@ import {
 } from '../telemetry.js';
 import {
   slackBotTokenCredentialSchema,
-  slackChannelLookupQuerySchema,
   slackChannelLookupResponseSchema,
   type SlackChannelLookupItem,
   type SlackChannelLookupResponse,
@@ -34,7 +33,6 @@ import {
   encryptionSignal,
   type ConnectionCommandInput,
 } from '../use-cases/support.js';
-import { parseRequestInput } from '../../platform/http/request-input.js';
 
 /** ADR 046: per call and for the whole request, both bounded by the caller. */
 const LOOKUP_CALL_TIMEOUT_MILLIS = 5_000;
@@ -56,7 +54,7 @@ type ChannelOutcome = Readonly<{
 }>;
 
 export type LookupSlackChannelsQuery = ConnectionCommandInput &
-  Readonly<{ connectionId: string; query: unknown }>;
+  Readonly<{ connectionId: string; channelIds: readonly string[] }>;
 
 /**
  * Resolves Slack channel IDs to display names with the connection's bot
@@ -97,10 +95,7 @@ export class LookupSlackChannelsUseCase {
           this.authorization,
           'connection:use',
         );
-        const { channelIds } = parseRequestInput(
-          slackChannelLookupQuerySchema,
-          input.query,
-        );
+        const { channelIds } = input;
         const named = channelIds.filter(hasChannelName);
         if (named.length === 0) return respond(channelIds, new Map());
         if (this.slackClient === undefined)

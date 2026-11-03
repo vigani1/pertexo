@@ -1,164 +1,73 @@
+import { Controller, Req, UseInterceptors } from '@nestjs/common';
 import {
-  Body,
-  Controller,
-  Delete,
-  Get,
-  HttpCode,
-  Param,
-  Post,
-  Put,
-  Req,
-  UseGuards,
-  UseInterceptors,
-} from '@nestjs/common';
-import {
-  failureNotificationDestinationAppendVersionRequestSchema,
-  failureNotificationDestinationCreateRequestSchema,
-  failureNotificationDestinationStatusRequestSchema,
-  failureNotificationDestinationTestRequestSchema,
-  workflowFailureNotificationPolicyRequestSchema,
-} from '@pertexo/contracts';
-import { z } from 'zod';
+  failureNotificationRoutes as routes,
+  type RouteInput,
+} from '@pertexo/contracts/server';
 
-import {
-  CsrfProtectionGuard,
-  SessionAuthenticationGuard,
-} from '../../workspaces/index.js';
-import { projectAuthenticatedWorkspaceContext } from '../../workspaces/request/authenticated-context.js';
+import { In, Route } from '../../workspaces/http/route.js';
 import { TestConnectionUseCase } from '../use-cases/test-connection.js';
 import {
   applicationError,
   throwApplicationError,
 } from '../../platform/http/application-error.js';
-import {
-  requestIdempotencyKey,
-  withRequestOperationSignal,
-} from '../../platform/http/index.js';
-import { RateLimit } from '../../platform/rate-limit/metadata.js';
-import {
-  ConnectionManageGuard,
-  FailureNotificationReadGuard,
-  FailureNotificationWorkflowEditGuard,
-} from '../http/guards.js';
-import {
-  FailureNotificationDestinationUseCases,
-  type ClearWorkflowFailureNotificationPolicyInput,
-} from './destinations.js';
+import { withRequestOperationSignal } from '../../platform/http/index.js';
+import { context } from '../http/controllers.js';
+import { FailureNotificationDestinationUseCases } from './destinations.js';
 import type { ConnectionRequest } from '../types.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
 import { connectionFailure } from '../../problems/context/normalize.js';
-import { parseRequestInput } from '../../platform/http/request-input.js';
-
-const workspaceParamsShape = { workspaceId: z.uuid() };
-const workspaceParamsSchema = z
-  .object(workspaceParamsShape)
-  .strict()
-  .readonly();
-const destinationParamsSchema = z
-  .object({ ...workspaceParamsShape, destinationId: z.uuid() })
-  .strict()
-  .readonly();
-const workflowPolicyParamsSchema = z
-  .object({ ...workspaceParamsShape, workflowId: z.uuid() })
-  .strict()
-  .readonly();
-
-function requestCommand(
-  request: ConnectionRequest,
-  routeWorkspaceId: string,
-): Omit<
-  ClearWorkflowFailureNotificationPolicyInput,
-  'idempotencyKey' | 'workflowId'
-> {
-  return {
-    ...projectAuthenticatedWorkspaceContext(request, routeWorkspaceId),
-    routeWorkspaceId,
-  };
-}
 
 @UseInterceptors(domainErrors(connectionFailure))
-@Controller('v1/workspaces/:workspaceId')
-@RateLimit('ordinary_mutation')
+@Controller()
 export class FailureNotificationDestinationsController {
   public constructor(
     private readonly useCases: FailureNotificationDestinationUseCases,
     private readonly testConnection: TestConnectionUseCase,
   ) {}
 
-  @Post('failure-notification-destinations')
-  @UseGuards(
-    SessionAuthenticationGuard,
-    ConnectionManageGuard,
-    CsrfProtectionGuard,
-  )
-  @HttpCode(201)
-  public async create(
+  @Route(routes.create)
+  public create(
     @Req() request: ConnectionRequest,
-    @Param() params: unknown,
-    @Body() body: unknown,
+    @In() { params, body, idempotencyKey }: RouteInput<typeof routes.create>,
   ) {
-    const route = workspaceParamsSchema.parse(params);
     return this.useCases.create({
-      ...requestCommand(request, route.workspaceId),
-      idempotencyKey: requestIdempotencyKey(request.headers),
-      body: parseRequestInput(
-        failureNotificationDestinationCreateRequestSchema,
-        body,
-      ),
+      ...context(request, params),
+      idempotencyKey,
+      body,
     });
   }
 
-  @Get('failure-notification-destinations')
-  @RateLimit('authenticated_read')
-  @UseGuards(SessionAuthenticationGuard, FailureNotificationReadGuard)
-  public async list(
+  @Route(routes.list)
+  public list(
     @Req() request: ConnectionRequest,
-    @Param() params: unknown,
+    @In() { params }: RouteInput<typeof routes.list>,
   ) {
-    const route = workspaceParamsSchema.parse(params);
-    return this.useCases.list({
-      ...requestCommand(request, route.workspaceId),
-    });
+    return this.useCases.list(context(request, params));
   }
 
-  @Get('failure-notification-destinations/:destinationId')
-  @RateLimit('authenticated_read')
-  @UseGuards(SessionAuthenticationGuard, FailureNotificationReadGuard)
-  public async get(
+  @Route(routes.get)
+  public get(
     @Req() request: ConnectionRequest,
-    @Param() params: unknown,
+    @In() { params }: RouteInput<typeof routes.get>,
   ) {
-    const route = destinationParamsSchema.parse(params);
     return this.useCases.get({
-      ...requestCommand(request, route.workspaceId),
-      destinationId: route.destinationId,
+      ...context(request, params),
+      destinationId: params.destinationId,
     });
   }
 
-  @Post('failure-notification-destinations/:destinationId/test')
-  @RateLimit('destination_test')
-  @HttpCode(200)
-  @UseGuards(
-    SessionAuthenticationGuard,
-    ConnectionManageGuard,
-    CsrfProtectionGuard,
-  )
+  /** Only the version the person reviewed is sent a test. */
+  @Route(routes.test)
   public async test(
     @Req() request: ConnectionRequest,
-    @Param() params: unknown,
-    @Body() body: unknown,
+    @In() { params, body, idempotencyKey }: RouteInput<typeof routes.test>,
   ) {
-    const route = destinationParamsSchema.parse(params);
-    const input = parseRequestInput(
-      failureNotificationDestinationTestRequestSchema,
-      body,
-    );
-    const context = requestCommand(request, route.workspaceId);
+    const caller = context(request, params);
     const destination = await this.useCases.get({
-      ...context,
-      destinationId: route.destinationId,
+      ...caller,
+      destinationId: params.destinationId,
     });
-    if (destination.currentVersion !== input.expectedVersion)
+    if (destination.currentVersion !== body.expectedVersion)
       return throwApplicationError(
         applicationError('connection.conflict', {
           safeDetail:
@@ -167,117 +76,74 @@ export class FailureNotificationDestinationsController {
       );
     return withRequestOperationSignal(request, (signal) =>
       this.testConnection.executeDestination(
-        {
-          ...context,
-          idempotencyKey: requestIdempotencyKey(request.headers),
-          signal,
-        },
+        { ...caller, idempotencyKey, signal },
         destination,
       ),
     );
   }
 
-  @Post('failure-notification-destinations/:destinationId/versions')
-  @HttpCode(200)
-  @UseGuards(
-    SessionAuthenticationGuard,
-    ConnectionManageGuard,
-    CsrfProtectionGuard,
-  )
-  public async append(
+  @Route(routes.appendVersion)
+  public append(
     @Req() request: ConnectionRequest,
-    @Param() params: unknown,
-    @Body() body: unknown,
+    @In()
+    { params, body, idempotencyKey }: RouteInput<typeof routes.appendVersion>,
   ) {
-    const route = destinationParamsSchema.parse(params);
     return this.useCases.append({
-      ...requestCommand(request, route.workspaceId),
-      idempotencyKey: requestIdempotencyKey(request.headers),
-      destinationId: route.destinationId,
-      body: parseRequestInput(
-        failureNotificationDestinationAppendVersionRequestSchema,
-        body,
-      ),
+      ...context(request, params),
+      idempotencyKey,
+      destinationId: params.destinationId,
+      body,
     });
   }
 
-  @Put('failure-notification-destinations/:destinationId/status')
-  @UseGuards(
-    SessionAuthenticationGuard,
-    ConnectionManageGuard,
-    CsrfProtectionGuard,
-  )
-  public async status(
+  @Route(routes.setStatus)
+  public status(
     @Req() request: ConnectionRequest,
-    @Param() params: unknown,
-    @Body() body: unknown,
+    @In()
+    { params, body, idempotencyKey }: RouteInput<typeof routes.setStatus>,
   ) {
-    const route = destinationParamsSchema.parse(params);
     return this.useCases.status({
-      ...requestCommand(request, route.workspaceId),
-      idempotencyKey: requestIdempotencyKey(request.headers),
-      destinationId: route.destinationId,
-      body: parseRequestInput(
-        failureNotificationDestinationStatusRequestSchema,
-        body,
-      ),
+      ...context(request, params),
+      idempotencyKey,
+      destinationId: params.destinationId,
+      body,
     });
   }
 
-  @Get('workflows/:workflowId/failure-notification-policy')
-  @RateLimit('authenticated_read')
-  @UseGuards(SessionAuthenticationGuard, FailureNotificationReadGuard)
-  public async getPolicy(
+  @Route(routes.policy)
+  public getPolicy(
     @Req() request: ConnectionRequest,
-    @Param() params: unknown,
+    @In() { params }: RouteInput<typeof routes.policy>,
   ) {
-    const route = workflowPolicyParamsSchema.parse(params);
     return this.useCases.getPolicy({
-      ...requestCommand(request, route.workspaceId),
-      workflowId: route.workflowId,
+      ...context(request, params),
+      workflowId: params.workflowId,
     });
   }
 
-  @Put('workflows/:workflowId/failure-notification-policy')
-  @UseGuards(
-    SessionAuthenticationGuard,
-    FailureNotificationWorkflowEditGuard,
-    CsrfProtectionGuard,
-  )
-  @HttpCode(204)
+  @Route(routes.setPolicy)
   public async setPolicy(
     @Req() request: ConnectionRequest,
-    @Param() params: unknown,
-    @Body() body: unknown,
+    @In()
+    { params, body, idempotencyKey }: RouteInput<typeof routes.setPolicy>,
   ) {
-    const route = workflowPolicyParamsSchema.parse(params);
     await this.useCases.setPolicy({
-      ...requestCommand(request, route.workspaceId),
-      idempotencyKey: requestIdempotencyKey(request.headers),
-      workflowId: route.workflowId,
-      body: parseRequestInput(
-        workflowFailureNotificationPolicyRequestSchema,
-        body,
-      ),
+      ...context(request, params),
+      idempotencyKey,
+      workflowId: params.workflowId,
+      body,
     });
   }
 
-  @Delete('workflows/:workflowId/failure-notification-policy')
-  @UseGuards(
-    SessionAuthenticationGuard,
-    FailureNotificationWorkflowEditGuard,
-    CsrfProtectionGuard,
-  )
-  @HttpCode(204)
+  @Route(routes.clearPolicy)
   public async clearPolicy(
     @Req() request: ConnectionRequest,
-    @Param() params: unknown,
+    @In() { params, idempotencyKey }: RouteInput<typeof routes.clearPolicy>,
   ) {
-    const route = workflowPolicyParamsSchema.parse(params);
     await this.useCases.clearPolicy({
-      ...requestCommand(request, route.workspaceId),
-      idempotencyKey: requestIdempotencyKey(request.headers),
-      workflowId: route.workflowId,
+      ...context(request, params),
+      idempotencyKey,
+      workflowId: params.workflowId,
     });
   }
 }

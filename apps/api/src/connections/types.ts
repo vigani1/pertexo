@@ -1,10 +1,7 @@
-import { z } from 'zod';
 import type { IdentityWorkspaceRequest } from '../workspaces/types.js';
 
 export {
   connectionCreateRequestSchema,
-  connectionIdParamSchema,
-  connectionListQuerySchema,
   connectionListResponseSchema,
   connectionResponseSchema,
   connectionRotateSecretRequestSchema,
@@ -13,7 +10,6 @@ export {
   signingKeyCredentialSchema,
   httpHeadersCredentialSchema,
   slackBotTokenCredentialSchema,
-  slackChannelLookupQuerySchema,
   slackChannelLookupResponseSchema,
   resendApiKeyCredentialSchema,
   type ConnectionResponse,
@@ -23,11 +19,6 @@ export {
   type SlackChannelLookupResponse,
   type SlackChannelUnresolvedReason,
 } from '@pertexo/contracts';
-
-export const connectionWorkspaceParamSchema = z
-  .object({ workspaceId: z.uuid() })
-  .strict()
-  .readonly();
 
 export type ConnectionRequest = IdentityWorkspaceRequest &
   Readonly<{

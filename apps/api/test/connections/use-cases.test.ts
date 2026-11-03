@@ -29,7 +29,9 @@ import {
   actorId,
 } from './support/use-case-fixture.js';
 
-function mismatchedConnectionTestRequest(provider: string) {
+function mismatchedConnectionTestRequest(
+  provider: string,
+): TestConnectionCommand['request'] {
   if (provider === 'http')
     return { url: 'https://provider.example.test/health' };
   if (provider === 'slack') return { providerKey: 'slack' };
@@ -37,31 +39,6 @@ function mismatchedConnectionTestRequest(provider: string) {
 }
 
 describe('connection testing use case', () => {
-  it('rejects an invalid connection-test body before claiming work', async () => {
-    const testCommand: TestConnectionCommand = {
-      actor,
-      routeWorkspaceId: workspaceId,
-      connectionId,
-      idempotencyKey: 'test-invalid',
-      request: { url: 'http://provider.example.test/health' },
-    };
-    const store = connectionTestPersistence();
-    const open = vi.fn();
-    const execute = vi.fn();
-
-    await expect(
-      new TestConnectionUseCase(store, authorization(), {
-        encryption: { open, seal: vi.fn() },
-        httpClient: { execute },
-        applicationSecret: 'fixture-application-secret',
-      }).execute(testCommand),
-    ).rejects.toMatchObject({ name: 'ZodError' });
-
-    expect(store.startConnectionTest).not.toHaveBeenCalled();
-    expect(open).not.toHaveBeenCalled();
-    expect(execute).not.toHaveBeenCalled();
-  });
-
   it('decrypts just in time, commits dispatch evidence, and stores only a safe test result', async () => {
     const store = connectionTestPersistence();
     const access = authorization();
@@ -347,37 +324,6 @@ describe('connection testing use case', () => {
     expect(store.abandonConnectionTest).toHaveBeenCalledOnce();
     expect(plaintext.every((byte) => byte === 0)).toBe(true);
   });
-
-  it.each([
-    { providerKey: 'email' },
-    { providerKey: 'email', sideEffectDisclosureAccepted: false },
-  ])(
-    'rejects email test disclosure %j before claim, secret open, or dispatch',
-    async (request) => {
-      const store = connectionTestPersistence();
-      const open = vi.fn();
-      const sendNotification = vi.fn();
-      await expect(
-        new TestConnectionUseCase(store, authorization(), {
-          encryption: { seal: vi.fn(), open },
-          httpClient: { execute: vi.fn() },
-          applicationSecret: 'fixture-application-secret',
-          telemetry: undefined,
-          slackClient: undefined,
-          emailClient: { sendNotification },
-        }).execute({
-          actor,
-          routeWorkspaceId: workspaceId,
-          connectionId,
-          idempotencyKey: 'test-email-disclosure',
-          request,
-        }),
-      ).rejects.toBeDefined();
-      expect(store.startConnectionTest).not.toHaveBeenCalled();
-      expect(open).not.toHaveBeenCalled();
-      expect(sendNotification).not.toHaveBeenCalled();
-    },
-  );
 
   it('denies a viewer before claiming or decrypting a connection test', async () => {
     const store = connectionTestPersistence();

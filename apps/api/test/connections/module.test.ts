@@ -11,7 +11,7 @@ import {
   FailureNotificationDestinationUseCases,
   type ConnectionDependencies,
 } from '../../src/connections/index.js';
-import { CONNECTION_AUTHORIZATION } from '../../src/connections/tokens.js';
+import { WORKSPACE_AUTHORIZATION } from '../../src/workspaces/tokens.js';
 
 const dependencies = {
   applicationSecret: 'fixture-application-secret',
@@ -78,7 +78,7 @@ describe('connections Nest module', () => {
     );
     expect(dynamic.providers).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ provide: CONNECTION_AUTHORIZATION }),
+        expect.objectContaining({ provide: WORKSPACE_AUTHORIZATION }),
       ]),
     );
   });
@@ -102,7 +102,7 @@ describe('connections Nest module', () => {
     expect(dynamic.providers).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ provide: CreateConnectionUseCase }),
-        expect.objectContaining({ provide: CONNECTION_AUTHORIZATION }),
+        expect.objectContaining({ provide: WORKSPACE_AUTHORIZATION }),
       ]),
     );
     expect(dynamic.providers).not.toEqual(

@@ -1,4 +1,12 @@
-import { describe, expect, it, vi } from 'vitest';
+import {
+  afterAll,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vitest';
 import { CONNECTION_OPERATION } from '../../../src/connections/telemetry.js';
 import { TestConnectionUseCase } from '../../../src/connections/use-cases/test-connection.js';
 import {
@@ -8,7 +16,10 @@ import {
 } from '../support/use-case-fixture.js';
 import { FailureNotificationDestinationsController } from '../../../src/connections/failure-notifications/controller.js';
 import { FailureNotificationDestinationUseCases } from '../../../src/connections/failure-notifications/destinations.js';
-import { createActorContext } from '../../../src/authorization/index.js';
+import { ConnectionsModule } from '../../../src/connections/module.js';
+import { WORKSPACE_AUTHORIZATION } from '../../../src/workspaces/tokens.js';
+import { FakeIdentityModule } from '../../support/identity-module.js';
+import { ownerAccess, routeHarness } from '../../support/route-harness.js';
 import { hashRequest } from '../../../src/connections/use-cases/support.js';
 import {
   actorId,
@@ -16,7 +27,6 @@ import {
   destinationId,
   workflowId,
   record,
-  request,
   command,
   persistence,
   connectionId,
@@ -133,184 +143,6 @@ describe('failure notification destination API seams', () => {
     );
   });
 
-  it('refuses a changed destination before decrypting or dispatching a test', async () => {
-    const database = persistence();
-    const open = vi.fn();
-    const connectionTests = connectionTestPersistence();
-    const controller = new FailureNotificationDestinationsController(
-      new FailureNotificationDestinationUseCases(
-        database,
-        'fixture-application-secret',
-      ),
-      new TestConnectionUseCase(connectionTests, authorization(), {
-        encryption: { seal: vi.fn(), open },
-        httpClient: { execute: vi.fn() },
-        applicationSecret: 'fixture-application-secret',
-      }),
-    );
-    await expect(
-      controller.test(
-        request({ 'idempotency-key': 'destination-test-42' }),
-        { workspaceId, destinationId },
-        { expectedVersion: 2, sideEffectDisclosureAccepted: true },
-      ),
-    ).rejects.toMatchObject({ code: 'connection.conflict' });
-    expect(open).not.toHaveBeenCalled();
-    expect(connectionTests.startConnectionTest).not.toHaveBeenCalled();
-  });
-
-  it.each([
-    { expectedVersion: 1, sideEffectDisclosureAccepted: false },
-    {
-      expectedVersion: 1,
-      sideEffectDisclosureAccepted: true,
-      channelId: 'COTHER',
-    },
-  ])(
-    'rejects an undisclosed or caller-targeted destination test %j',
-    async (body) => {
-      const database = persistence();
-      const connectionTests = connectionTestPersistence();
-      const controller = new FailureNotificationDestinationsController(
-        new FailureNotificationDestinationUseCases(
-          database,
-          'fixture-application-secret',
-        ),
-        new TestConnectionUseCase(connectionTests, authorization(), {
-          encryption: { seal: vi.fn(), open: vi.fn() },
-          httpClient: { execute: vi.fn() },
-          applicationSecret: 'fixture-application-secret',
-        }),
-      );
-      await expect(
-        controller.test(
-          request({ 'idempotency-key': 'destination-test-42' }),
-          { workspaceId, destinationId },
-          body,
-        ),
-      ).rejects.toMatchObject({ name: 'ZodError' });
-      expect(database.get).not.toHaveBeenCalled();
-      expect(connectionTests.startConnectionTest).not.toHaveBeenCalled();
-    },
-  );
-
-  it('uses guarded actor identifiers consistently in destination commands', async () => {
-    const database = persistence();
-    const controller = new FailureNotificationDestinationsController(
-      new FailureNotificationDestinationUseCases(
-        database,
-        'fixture-application-secret',
-      ),
-      new TestConnectionUseCase(connectionTestPersistence(), authorization(), {
-        encryption: { seal: vi.fn().mockResolvedValue(sealed), open: vi.fn() },
-        httpClient: { execute: vi.fn() },
-        applicationSecret: 'fixture-application-secret',
-      }),
-    );
-    const guardedActor = createActorContext({
-      actorId: '99999999-9999-4999-8999-999999999999',
-      workspaceId,
-      sessionId: 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
-      requestId: 'guard-request',
-      traceId: 'guard-trace',
-    });
-    const authorizedWorkspace = {
-      actor: guardedActor,
-      workspaceId,
-      role: 'owner' as const,
-      capability: 'connection:manage' as const,
-    };
-
-    await controller.create(
-      {
-        ...request({ 'idempotency-key': 'guarded-destination' }),
-        authorizedWorkspace,
-      },
-      { workspaceId },
-      record.config,
-    );
-
-    expect(database.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        actorId: guardedActor.actorId,
-        requestId: 'guard-request',
-        traceId: 'guard-trace',
-      }),
-    );
-  });
-
-  it.each([[['duplicate-one', 'duplicate-two']], ['contains,comma'], ['']])(
-    'rejects invalid or duplicate idempotency header values %j',
-    async (value) => {
-      const controller = new FailureNotificationDestinationsController(
-        new FailureNotificationDestinationUseCases(
-          persistence(),
-          'fixture-application-secret',
-        ),
-        new TestConnectionUseCase(
-          connectionTestPersistence(),
-          authorization(),
-          {
-            encryption: {
-              seal: vi.fn().mockResolvedValue(sealed),
-              open: vi.fn(),
-            },
-            httpClient: { execute: vi.fn() },
-            applicationSecret: 'fixture-application-secret',
-          },
-        ),
-      );
-
-      await expect(
-        controller.create(
-          request({ 'idempotency-key': value }),
-          { workspaceId },
-          record.config,
-        ),
-      ).rejects.toMatchObject({ code: 'request.invalid' });
-    },
-  );
-
-  it('parses a command, requires idempotency, and forwards canonical metadata', async () => {
-    const database = persistence();
-    const controller = new FailureNotificationDestinationsController(
-      new FailureNotificationDestinationUseCases(
-        database,
-        'fixture-application-secret',
-      ),
-      new TestConnectionUseCase(connectionTestPersistence(), authorization(), {
-        encryption: { seal: vi.fn().mockResolvedValue(sealed), open: vi.fn() },
-        httpClient: { execute: vi.fn() },
-        applicationSecret: 'fixture-application-secret',
-      }),
-    );
-
-    await expect(
-      controller.create(
-        request({ 'idempotency-key': 'destination-create-42' }),
-        { workspaceId },
-        { kind: 'slack', connectionId, channelId: 'C12345' },
-      ),
-    ).resolves.toMatchObject({
-      id: destinationId,
-      createdAt: expect.any(String) as unknown,
-    });
-    expect(database.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        workspaceId,
-        actorId,
-        idempotencyKey: 'destination-create-42',
-        requestHash: expect.stringMatching(/^[0-9a-f]{64}$/u) as unknown,
-        requestId: 'request-42',
-        traceId: 'trace-42',
-      }),
-    );
-
-    await expect(
-      controller.create(request(), { workspaceId }, record.config),
-    ).rejects.toMatchObject({ code: 'request.invalid' });
-  });
-
   it('keeps GET idempotency-free and measures destination-specific commands', async () => {
     const database = persistence();
     const measured: string[] = [];
@@ -340,234 +172,222 @@ describe('failure notification destination API seams', () => {
     );
     expect(measured).toEqual(['failure_notification_destination.status']);
   });
+});
 
-  it('gets one destination through the controller without command metadata', async () => {
-    const database = persistence();
-    const controller = new FailureNotificationDestinationsController(
-      new FailureNotificationDestinationUseCases(
-        database,
-        'fixture-application-secret',
-      ),
-      new TestConnectionUseCase(connectionTestPersistence(), authorization(), {
-        encryption: { seal: vi.fn().mockResolvedValue(sealed), open: vi.fn() },
-        httpClient: { execute: vi.fn() },
-        applicationSecret: 'fixture-application-secret',
-      }),
-    );
+describe('failure notification destination routes', () => {
+  const database = persistence();
+  const connectionTests = connectionTestPersistence();
+  const open = vi.fn();
+  const destinations = `/v1/workspaces/${workspaceId}/failure-notification-destinations`;
+  const one = `${destinations}/${destinationId}`;
+  const policy = `/v1/workspaces/${workspaceId}/workflows/${workflowId}/failure-notification-policy`;
+  const projected = {
+    id: destinationId,
+    workspaceId,
+    kind: 'slack',
+    status: 'enabled',
+    currentVersion: 1,
+    config: record.config,
+    createdAt: '2026-08-25T10:00:00.000Z',
+    updatedAt: '2026-08-25T10:00:00.000Z',
+  };
+  let harness: Awaited<ReturnType<typeof routeHarness>>;
 
-    await expect(
-      controller.get(request(), { workspaceId, destinationId }),
-    ).resolves.toMatchObject({
-      id: destinationId,
-      createdAt: '2026-08-25T10:00:00.000Z',
-    });
-    expect(database.get).toHaveBeenCalledWith({
-      workspaceId,
-      destinationId,
-      actorId,
-      requestId: 'request-42',
-      traceId: 'trace-42',
+  beforeAll(async () => {
+    harness = await routeHarness({
+      module: ConnectionsModule,
+      imports: [{ module: FakeIdentityModule }],
+      controllers: [FailureNotificationDestinationsController],
+      providers: [
+        { provide: WORKSPACE_AUTHORIZATION, useValue: ownerAccess },
+        {
+          provide: FailureNotificationDestinationUseCases,
+          useValue: new FailureNotificationDestinationUseCases(
+            database,
+            'fixture-application-secret',
+          ),
+        },
+        {
+          provide: TestConnectionUseCase,
+          useValue: new TestConnectionUseCase(
+            connectionTests,
+            authorization(),
+            {
+              encryption: { seal: vi.fn().mockResolvedValue(sealed), open },
+              httpClient: { execute: vi.fn() },
+              applicationSecret: 'fixture-application-secret',
+            },
+          ),
+        },
+      ],
     });
   });
+  afterAll(() => harness.close());
+  beforeEach(() => vi.clearAllMocks());
 
-  it('reads the current workflow policy through the safe destination projection', async () => {
-    const database = persistence();
-    const controller = new FailureNotificationDestinationsController(
-      new FailureNotificationDestinationUseCases(
-        database,
-        'fixture-application-secret',
-      ),
-      new TestConnectionUseCase(connectionTestPersistence(), authorization(), {
-        encryption: { seal: vi.fn().mockResolvedValue(sealed), open: vi.fn() },
-        httpClient: { execute: vi.fn() },
-        applicationSecret: 'fixture-application-secret',
+  const send = (
+    method: 'POST' | 'PUT' | 'DELETE',
+    url: string,
+    body: unknown,
+    key: string | null,
+  ) =>
+    harness.send(method, url, {
+      ...(body === undefined ? {} : { body }),
+      headers: key === null ? {} : { 'idempotency-key': key },
+    });
+
+  it('refuses a test of a changed destination before decrypting or dispatching', async () => {
+    const reply = await send(
+      'POST',
+      `${one}/test`,
+      { expectedVersion: 2, sideEffectDisclosureAccepted: true },
+      'destination-test-42',
+    );
+    expect(reply.statusCode).toBe(409);
+    expect(reply.json()).toMatchObject({ code: 'connection.conflict' });
+    expect(open).not.toHaveBeenCalled();
+    expect(connectionTests.startConnectionTest).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    { expectedVersion: 1, sideEffectDisclosureAccepted: false },
+    {
+      expectedVersion: 1,
+      sideEffectDisclosureAccepted: true,
+      channelId: 'COTHER',
+    },
+  ])(
+    'refuses an undisclosed or caller-targeted test %j before reading',
+    async (body) => {
+      const reply = await send('POST', `${one}/test`, body, 'test-42');
+      expect(reply.statusCode).toBe(400);
+      expect(database.get).not.toHaveBeenCalled();
+      expect(connectionTests.startConnectionTest).not.toHaveBeenCalled();
+    },
+  );
+
+  it('creates with the signed-in actor, its key and a request hash', async () => {
+    const reply = await send(
+      'POST',
+      destinations,
+      { kind: 'slack', connectionId, channelId: 'C12345' },
+      'destination-create-42',
+    );
+    expect(reply.statusCode, reply.payload).toBe(201);
+    expect(reply.json()).toEqual(projected);
+    expect(database.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        workspaceId,
+        actorId,
+        idempotencyKey: 'destination-create-42',
+        requestHash: expect.stringMatching(/^[0-9a-f]{64}$/u) as unknown,
+        requestId: expect.any(String) as unknown,
       }),
     );
+  });
 
-    const current = await controller.getPolicy(request(), {
-      workspaceId,
-      workflowId,
-    });
-    expect(current).toEqual({
-      destination: {
-        id: destinationId,
-        workspaceId,
-        kind: 'slack',
-        status: 'enabled',
-        currentVersion: 1,
-        config: record.config,
-        createdAt: '2026-08-25T10:00:00.000Z',
-        updatedAt: '2026-08-25T10:00:00.000Z',
-      },
-    });
-    expect(JSON.stringify(current)).not.toContain('must-not-escape');
-    expect(database.getWorkflowPolicy).toHaveBeenCalledWith({
-      workspaceId,
-      workflowId,
-      actorId,
-      requestId: 'request-42',
-      traceId: 'trace-42',
-    });
+  it.each([null, '', 'contains,comma'])(
+    'refuses a create with idempotency key %j',
+    async (key) => {
+      const reply = await send('POST', destinations, record.config, key);
+      expect(reply.statusCode).toBe(400);
+      expect(reply.json()).toMatchObject({ code: 'request.invalid' });
+      expect(database.create).not.toHaveBeenCalled();
+    },
+  );
+
+  it('reads one destination without command metadata', async () => {
+    const reply = await harness.send('GET', one);
+    expect(reply.statusCode, reply.payload).toBe(200);
+    expect(reply.json()).toEqual(projected);
+    const [read] = vi.mocked(database.get).mock.calls[0] ?? [];
+    expect(read).toMatchObject({ workspaceId, destinationId, actorId });
+    expect(read).not.toHaveProperty('idempotencyKey');
+  });
+
+  it('reads the workflow policy through the safe destination projection', async () => {
+    const current = await harness.send('GET', policy);
+    expect(current.statusCode, current.payload).toBe(200);
+    expect(current.json()).toEqual({ destination: projected });
+    expect(current.payload).not.toContain('must-not-escape');
+    expect(database.getWorkflowPolicy).toHaveBeenCalledWith(
+      expect.objectContaining({ workspaceId, workflowId, actorId }),
+    );
 
     vi.mocked(database.getWorkflowPolicy).mockResolvedValueOnce(null);
-    await expect(
-      controller.getPolicy(request(), { workspaceId, workflowId }),
-    ).resolves.toEqual({ destination: null });
-    await expect(
-      controller.getPolicy(request(), { workspaceId, workflowId: 'nope' }),
-    ).rejects.toMatchObject({ name: 'ZodError' });
+    expect((await harness.send('GET', policy)).json()).toEqual({
+      destination: null,
+    });
+    const invalid = await harness.send(
+      'GET',
+      policy.replace(workflowId, 'nope'),
+    );
+    expect(invalid.statusCode).toBe(400);
   });
 
-  it('appends a version and propagates optimistic and idempotency conflicts', async () => {
-    const database = persistence();
-    const controller = new FailureNotificationDestinationsController(
-      new FailureNotificationDestinationUseCases(
-        database,
-        'fixture-application-secret',
-      ),
-      new TestConnectionUseCase(connectionTestPersistence(), authorization(), {
-        encryption: { seal: vi.fn().mockResolvedValue(sealed), open: vi.fn() },
-        httpClient: { execute: vi.fn() },
-        applicationSecret: 'fixture-application-secret',
-      }),
-    );
+  it('appends a version and answers its conflicts as conflicts', async () => {
     const body = {
       expectedVersion: 1,
       config: { ...record.config, channelId: 'C67890' },
-    } as const;
-
-    await expect(
-      controller.append(
-        request({ 'idempotency-key': 'destination-append-42' }),
-        { workspaceId, destinationId },
-        body,
-      ),
-    ).resolves.toMatchObject({ id: destinationId });
+    };
+    const appended = await send('POST', `${one}/versions`, body, 'append-42');
+    expect(appended.statusCode, appended.payload).toBe(200);
     expect(database.appendVersion).toHaveBeenCalledWith(
       expect.objectContaining({
         workspaceId,
         destinationId,
         expectedVersion: 1,
         config: body.config,
-        idempotencyKey: 'destination-append-42',
+        idempotencyKey: 'append-42',
       }),
     );
-
-    vi.mocked(database.appendVersion).mockRejectedValueOnce(
-      new FailureNotificationDestinationError('conflict'),
-    );
-    await expect(
-      controller.append(
-        request({ 'idempotency-key': 'destination-append-43' }),
-        { workspaceId, destinationId },
-        body,
-      ),
-    ).rejects.toMatchObject({
-      code: 'conflict',
-      name: 'FailureNotificationDestinationError',
-    });
-
-    vi.mocked(database.appendVersion).mockRejectedValueOnce(
-      new FailureNotificationDestinationError('idempotency_conflict'),
-    );
-    await expect(
-      controller.append(
-        request({ 'idempotency-key': 'destination-append-44' }),
-        { workspaceId, destinationId },
-        body,
-      ),
-    ).rejects.toMatchObject({
-      code: 'idempotency_conflict',
-      name: 'FailureNotificationDestinationError',
-    });
+    for (const code of ['conflict', 'idempotency_conflict'] as const) {
+      vi.mocked(database.appendVersion).mockRejectedValueOnce(
+        new FailureNotificationDestinationError(code),
+      );
+      const reply = await send('POST', `${one}/versions`, body, `a-${code}`);
+      expect(reply.statusCode).toBe(409);
+    }
   });
 
-  it('sets and clears workflow policy with exact idempotent replay metadata', async () => {
-    const database = persistence();
-    const controller = new FailureNotificationDestinationsController(
-      new FailureNotificationDestinationUseCases(
-        database,
-        'fixture-application-secret',
-      ),
-      new TestConnectionUseCase(connectionTestPersistence(), authorization(), {
-        encryption: { seal: vi.fn().mockResolvedValue(sealed), open: vi.fn() },
-        httpClient: { execute: vi.fn() },
-        applicationSecret: 'fixture-application-secret',
-      }),
-    );
-    const setRequest = request({ 'idempotency-key': 'policy-set-42' });
-    const clearRequest = request({ 'idempotency-key': 'policy-clear-42' });
-
-    await controller.setPolicy(
-      setRequest,
-      { workspaceId, workflowId },
-      { destinationId },
-    );
-    await controller.setPolicy(
-      setRequest,
-      { workspaceId, workflowId },
-      { destinationId },
-    );
-    await controller.clearPolicy(clearRequest, { workspaceId, workflowId });
-    await controller.clearPolicy(clearRequest, { workspaceId, workflowId });
-
-    expect(database.setWorkflowPolicy).toHaveBeenCalledTimes(2);
-    expect(vi.mocked(database.setWorkflowPolicy).mock.calls[0]?.[0]).toEqual(
-      vi.mocked(database.setWorkflowPolicy).mock.calls[1]?.[0],
-    );
-    expect(database.setWorkflowPolicy).toHaveBeenCalledWith(
-      expect.objectContaining({
-        workspaceId,
-        workflowId,
-        destinationId,
-        idempotencyKey: 'policy-set-42',
-        requestHash: expect.stringMatching(/^[0-9a-f]{64}$/u) as unknown,
-      }),
-    );
-    expect(database.clearWorkflowPolicy).toHaveBeenCalledTimes(2);
-    expect(vi.mocked(database.clearWorkflowPolicy).mock.calls[0]?.[0]).toEqual(
-      vi.mocked(database.clearWorkflowPolicy).mock.calls[1]?.[0],
-    );
+  it('replays setting and clearing a workflow policy with the same metadata', async () => {
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      const set = await send('PUT', policy, { destinationId }, 'policy-set-42');
+      expect(set.statusCode, set.payload).toBe(204);
+    }
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      const clear = await send('DELETE', policy, undefined, 'policy-clear-42');
+      expect(clear.statusCode, clear.payload).toBe(204);
+    }
+    const sets = vi.mocked(database.setWorkflowPolicy).mock.calls;
+    expect(sets).toHaveLength(2);
+    expect(sets[0]?.[0]).toMatchObject({
+      workspaceId,
+      workflowId,
+      destinationId,
+      idempotencyKey: 'policy-set-42',
+      requestHash: sets[1]?.[0].requestHash,
+    });
+    const clears = vi.mocked(database.clearWorkflowPolicy).mock.calls;
+    expect(clears).toHaveLength(2);
+    expect(clears[0]?.[0].requestHash).toBe(clears[1]?.[0].requestHash);
   });
 
-  it('propagates hidden destination read and write failures', async () => {
-    const database = persistence();
-    const controller = new FailureNotificationDestinationsController(
-      new FailureNotificationDestinationUseCases(
-        database,
-        'fixture-application-secret',
-      ),
-      new TestConnectionUseCase(connectionTestPersistence(), authorization(), {
-        encryption: { seal: vi.fn().mockResolvedValue(sealed), open: vi.fn() },
-        httpClient: { execute: vi.fn() },
-        applicationSecret: 'fixture-application-secret',
-      }),
-    );
+  it('answers a hidden destination as not found on read and write', async () => {
     vi.mocked(database.get).mockRejectedValueOnce(
       new FailureNotificationDestinationError('not_found'),
     );
-    await expect(
-      controller.get(request(), { workspaceId, destinationId }),
-    ).rejects.toMatchObject({
-      code: 'not_found',
-      name: 'FailureNotificationDestinationError',
-    });
+    expect((await harness.send('GET', one)).statusCode).toBe(404);
 
     vi.mocked(database.appendVersion).mockRejectedValueOnce(
       new FailureNotificationDestinationError('not_found'),
     );
-    await expect(
-      controller.append(
-        request({ 'idempotency-key': 'destination-hidden-42' }),
-        { workspaceId, destinationId },
-        {
-          expectedVersion: 1,
-          config: { ...record.config, channelId: 'C67890' },
-        },
-      ),
-    ).rejects.toMatchObject({
-      code: 'not_found',
-      name: 'FailureNotificationDestinationError',
-    });
+    const reply = await send(
+      'POST',
+      `${one}/versions`,
+      { expectedVersion: 1, config: { ...record.config, channelId: 'C6' } },
+      'destination-hidden-42',
+    );
+    expect(reply.statusCode).toBe(404);
   });
 });

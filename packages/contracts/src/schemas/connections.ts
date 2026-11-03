@@ -15,17 +15,10 @@ import {
   oauth2ConnectionResponseSchema,
   oauth2CredentialSchema,
 } from './oauth2-connections.js';
-export {
-  connectionIdentifierSchema,
-  connectionStatusSchema,
-} from './connection-fields.js';
+export { connectionStatusSchema } from './connection-fields.js';
 
-export const connectionCursorSchema = z.string().min(1).max(512);
-export const connectionPageLimitSchema = z.coerce
-  .number()
-  .int()
-  .min(1)
-  .max(100);
+const connectionCursorSchema = z.string().min(1).max(512);
+const connectionPageLimitSchema = z.coerce.number().int().min(1).max(100);
 
 const httpHeaderNameSchema = z
   .string()
@@ -295,8 +288,7 @@ export const connectionListQuerySchema = z
     limit: connectionPageLimitSchema.optional(),
     after: connectionCursorSchema.optional(),
   })
-  .strict()
-  .readonly();
+  .strict();
 
 export const connectionListResponseSchema = z
   .object({
@@ -364,7 +356,7 @@ const slackChannelIdPattern = '[CDGU][A-Z0-9]{1,79}';
 export const slackChannelLookupIdSchema = z
   .string()
   .regex(new RegExp(`^${slackChannelIdPattern}$`, 'u'));
-export const slackChannelLookupChannelIdsSchema = z
+const slackChannelLookupChannelIdsSchema = z
   .string()
   .regex(
     new RegExp(
@@ -378,8 +370,7 @@ export const slackChannelLookupChannelIdsSchema = z
   });
 export const slackChannelLookupQuerySchema = z
   .object({ channelIds: slackChannelLookupChannelIdsSchema })
-  .strict()
-  .readonly();
+  .strict();
 export const slackChannelUnresolvedReasonSchema = z.enum([
   'missing_scope',
   'not_found',
@@ -417,8 +408,7 @@ export const slackChannelLookupResponseSchema = z
 
 export const connectionIdParamSchema = z
   .object({ workspaceId: z.uuid(), connectionId: connectionIdentifierSchema })
-  .strict()
-  .readonly();
+  .strict();
 
 export type ConnectionCreateRequest = z.input<
   typeof connectionCreateRequestSchema

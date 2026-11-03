@@ -1,34 +1,12 @@
-import { AutomationAuthenticationGuard } from '../../authentication/automation/guard.js';
+import { Controller, Req, UseInterceptors } from '@nestjs/common';
 import {
-  Body,
-  Controller,
-  Delete,
-  Get,
-  HttpCode,
-  Param,
-  Post,
-  Put,
-  Query,
-  Req,
-  UseGuards,
-  UseInterceptors,
-} from '@nestjs/common';
+  connectionRoutes as routes,
+  type RouteInput,
+} from '@pertexo/contracts/server';
 
-import {
-  CsrfProtectionGuard,
-  SessionAuthenticationGuard,
-} from '../../workspaces/index.js';
 import { projectAuthenticatedWorkspaceContext } from '../../workspaces/request/authenticated-context.js';
-import { RateLimit } from '../../platform/rate-limit/metadata.js';
-import {
-  requestIdempotencyKey,
-  withRequestOperationSignal,
-} from '../../platform/http/index.js';
-import {
-  ConnectionManageGuard,
-  ConnectionReadGuard,
-  ConnectionUseGuard,
-} from './guards.js';
+import { In, Route } from '../../workspaces/http/route.js';
+import { withRequestOperationSignal } from '../../platform/http/index.js';
 import {
   CreateConnectionUseCase,
   GetConnectionUseCase,
@@ -38,19 +16,12 @@ import {
   RotateConnectionSecretUseCase,
   TestConnectionUseCase,
 } from '../use-cases/management.js';
-import {
-  connectionIdParamSchema,
-  connectionListQuerySchema,
-  connectionWorkspaceParamSchema,
-  type ConnectionRequest,
-} from '../types.js';
+import type { ConnectionRequest } from '../types.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
 import { connectionFailure } from '../../problems/context/normalize.js';
-import { parseRequestInput } from '../../platform/http/request-input.js';
 
 @UseInterceptors(domainErrors(connectionFailure))
-@Controller('v1/workspaces/:workspaceId/connections')
-@RateLimit('connection_mutation')
+@Controller()
 export class ConnectionsController {
   // Nest resolves these dependencies positionally; grouping them would change DI.
   // eslint-disable-next-line max-params
@@ -64,175 +35,112 @@ export class ConnectionsController {
     private readonly lookupSlackChannels: LookupSlackChannelsUseCase,
   ) {}
 
-  @Get()
-  @RateLimit('authenticated_read')
-  @UseGuards(AutomationAuthenticationGuard, ConnectionReadGuard)
+  @Route(routes.list)
   public list(
     @Req() request: ConnectionRequest,
-    @Param() params: unknown,
-    @Query() query: unknown,
+    @In() { params, query }: RouteInput<typeof routes.list>,
   ) {
-    const { workspaceId } = workspaceParams(params);
-    const input = parseRequestInput(connectionListQuerySchema, query ?? {});
-    const context = projectAuthenticatedWorkspaceContext(request, workspaceId);
     return this.listConnections.execute({
-      ...context,
-      routeWorkspaceId: workspaceId,
-      ...(input.limit === undefined ? {} : { limit: input.limit }),
-      ...(input.after === undefined ? {} : { after: input.after }),
+      ...context(request, params),
+      ...(query.limit === undefined ? {} : { limit: query.limit }),
+      ...(query.after === undefined ? {} : { after: query.after }),
     });
   }
 
-  @Get(':connectionId')
-  @RateLimit('authenticated_read')
-  @UseGuards(AutomationAuthenticationGuard, ConnectionReadGuard)
-  public read(@Req() request: ConnectionRequest, @Param() params: unknown) {
-    const route = connectionIdParamSchema.parse(params);
-    const context = projectAuthenticatedWorkspaceContext(
-      request,
-      route.workspaceId,
-    );
-    return this.getConnection.execute({
-      ...context,
-      routeWorkspaceId: route.workspaceId,
-      connectionId: route.connectionId,
-    });
-  }
-
-  @Post()
-  @RateLimit('ordinary_mutation')
-  @HttpCode(201)
-  @UseGuards(
-    SessionAuthenticationGuard,
-    ConnectionManageGuard,
-    CsrfProtectionGuard,
-  )
-  public async create(
+  @Route(routes.get)
+  public read(
     @Req() request: ConnectionRequest,
-    @Param() params: unknown,
-    @Body() body: unknown,
+    @In() { params }: RouteInput<typeof routes.get>,
   ) {
-    const { workspaceId } = workspaceParams(params);
-    const context = projectAuthenticatedWorkspaceContext(request, workspaceId);
+    return this.getConnection.execute({
+      ...context(request, params),
+      connectionId: params.connectionId,
+    });
+  }
+
+  @Route(routes.create)
+  public create(
+    @Req() request: ConnectionRequest,
+    @In() { params, body, idempotencyKey }: RouteInput<typeof routes.create>,
+  ) {
     return withRequestOperationSignal(request, (signal) =>
       this.createConnection.execute({
-        ...context,
-        routeWorkspaceId: workspaceId,
+        ...context(request, params),
         request: body,
-        idempotencyKey: requestIdempotencyKey(request.headers),
+        idempotencyKey,
         signal,
       }),
     );
   }
 
-  @Put(':connectionId/secret')
-  @HttpCode(200)
-  @UseGuards(
-    SessionAuthenticationGuard,
-    ConnectionManageGuard,
-    CsrfProtectionGuard,
-  )
-  public async rotate(
+  @Route(routes.rotateSecret)
+  public rotate(
     @Req() request: ConnectionRequest,
-    @Param() params: unknown,
-    @Body() body: unknown,
+    @In()
+    { params, body, idempotencyKey }: RouteInput<typeof routes.rotateSecret>,
   ) {
-    const route = connectionIdParamSchema.parse(params);
-    const context = projectAuthenticatedWorkspaceContext(
-      request,
-      route.workspaceId,
-    );
     return withRequestOperationSignal(request, (signal) =>
       this.rotateSecret.execute({
-        ...context,
-        routeWorkspaceId: route.workspaceId,
-        connectionId: route.connectionId,
+        ...context(request, params),
+        connectionId: params.connectionId,
         request: body,
-        idempotencyKey: requestIdempotencyKey(request.headers),
+        idempotencyKey,
         signal,
       }),
     );
   }
 
-  @Delete(':connectionId')
-  @HttpCode(200)
-  @UseGuards(
-    SessionAuthenticationGuard,
-    ConnectionManageGuard,
-    CsrfProtectionGuard,
-  )
-  public async revoke(
+  @Route(routes.revoke)
+  public revoke(
     @Req() request: ConnectionRequest,
-    @Param() params: unknown,
+    @In() { params }: RouteInput<typeof routes.revoke>,
   ) {
-    const route = connectionIdParamSchema.parse(params);
-    const context = projectAuthenticatedWorkspaceContext(
-      request,
-      route.workspaceId,
-    );
     return this.revokeConnection.execute({
-      ...context,
-      routeWorkspaceId: route.workspaceId,
-      connectionId: route.connectionId,
+      ...context(request, params),
+      connectionId: params.connectionId,
     });
   }
 
   /** ADR 046: bounded channel-name lookup; never fails for one channel. */
-  @Get(':connectionId/slack/channels')
-  @RateLimit('provider_test')
-  @UseGuards(SessionAuthenticationGuard, ConnectionUseGuard)
+  @Route(routes.slackChannels)
   public slackChannels(
     @Req() request: ConnectionRequest,
-    @Param() params: unknown,
-    @Query() query: unknown,
+    @In() { params, query }: RouteInput<typeof routes.slackChannels>,
   ) {
-    const route = connectionIdParamSchema.parse(params);
-    const context = projectAuthenticatedWorkspaceContext(
-      request,
-      route.workspaceId,
-    );
     return withRequestOperationSignal(request, (signal) =>
       this.lookupSlackChannels.execute({
-        ...context,
-        routeWorkspaceId: route.workspaceId,
-        connectionId: route.connectionId,
-        query: query ?? {},
+        ...context(request, params),
+        connectionId: params.connectionId,
+        channelIds: query.channelIds,
         signal,
       }),
     );
   }
 
-  @Post(':connectionId/test')
-  @RateLimit('provider_test')
-  @HttpCode(200)
-  @UseGuards(
-    SessionAuthenticationGuard,
-    ConnectionUseGuard,
-    CsrfProtectionGuard,
-  )
-  public async test(
+  @Route(routes.test)
+  public test(
     @Req() request: ConnectionRequest,
-    @Param() params: unknown,
-    @Body() body: unknown,
+    @In() { params, body, idempotencyKey }: RouteInput<typeof routes.test>,
   ) {
-    const route = connectionIdParamSchema.parse(params);
-    const context = projectAuthenticatedWorkspaceContext(
-      request,
-      route.workspaceId,
-    );
     return withRequestOperationSignal(request, (signal) =>
       this.testConnection.execute({
-        ...context,
-        routeWorkspaceId: route.workspaceId,
-        connectionId: route.connectionId,
+        ...context(request, params),
+        connectionId: params.connectionId,
         request: body,
-        idempotencyKey: requestIdempotencyKey(request.headers),
+        idempotencyKey,
         signal,
       }),
     );
   }
 }
 
-function workspaceParams(value: unknown): Readonly<{ workspaceId: string }> {
-  return connectionWorkspaceParamSchema.parse(value);
+/** Who is asking, in which workspace: what every connection use case starts from. */
+export function context(
+  request: ConnectionRequest,
+  { workspaceId }: Readonly<{ workspaceId: string }>,
+) {
+  return {
+    ...projectAuthenticatedWorkspaceContext(request, workspaceId),
+    routeWorkspaceId: workspaceId,
+  };
 }

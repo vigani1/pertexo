@@ -32,10 +32,8 @@ import {
   NOOP_CONNECTION_TELEMETRY,
   type ConnectionTelemetry,
 } from '../telemetry.js';
-import {
-  connectionTestRequestSchema as requestSchema,
-  type ConnectionTestResponse,
-} from '../types.js';
+import type { connectionTestRequestSchema as requestSchema } from '../types.js';
+import type { ConnectionTestResponse } from '../types.js';
 import { decodeCredential } from './testing/credentials.js';
 import {
   slackTestOutcome,
@@ -45,7 +43,6 @@ import {
 } from './testing/outcomes.js';
 import { oauth2RedirectUri } from '../oauth2/start-authorization.js';
 import { oauth2TestActor, testOAuth2Connection } from './testing/oauth2.js';
-import { parseRequestInput } from '../../platform/http/request-input.js';
 
 const CONNECTION_TEST_TIMEOUT_MILLIS = 15_000;
 const CONNECTION_TEST_MAXIMUM_REDIRECTS = 3;
@@ -58,7 +55,7 @@ type DecodedConnectionCredential = ReturnType<typeof decodeCredential>;
 export type TestConnectionCommand = ConnectionCommandInput &
   Readonly<{
     connectionId: string;
-    request: unknown;
+    request: ParsedConnectionTestRequest;
     idempotencyKey: string;
   }>;
 
@@ -144,7 +141,7 @@ export class TestConnectionUseCase {
         this.authorization,
         destination === undefined ? 'connection:use' : 'connection:manage',
       );
-      const request = parseRequestInput(requestSchema, input.request);
+      const { request } = input;
       const expectedProviderKey =
         'url' in request ? 'http' : request.providerKey;
       const requestHash = hashRequest(

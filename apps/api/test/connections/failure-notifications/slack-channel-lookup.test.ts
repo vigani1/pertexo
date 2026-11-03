@@ -99,7 +99,7 @@ function fixture(
     lookupChannel,
     plaintext: () => plaintext,
     lookup: (
-      channelIds: string,
+      channelIds: readonly string[],
       signal?: AbortSignal,
       metadata: Readonly<{ requestId?: string; traceId?: string }> = {
         requestId: 'request-lookup',
@@ -110,7 +110,7 @@ function fixture(
         routeWorkspaceId: workspaceId,
         connectionId,
         ...metadata,
-        query: { channelIds },
+        channelIds,
         ...(signal === undefined ? {} : { signal }),
       }),
   };
@@ -129,7 +129,7 @@ describe('Slack channel-name lookup use case (ADR 046)', () => {
     });
 
     await expect(
-      lookup.lookup('D0001,C0123,C0404,U0002,G0456'),
+      lookup.lookup(['D0001', 'C0123', 'C0404', 'U0002', 'G0456']),
     ).resolves.toEqual({
       items: [
         unresolved('D0001', 'not_a_channel'),
@@ -169,7 +169,7 @@ describe('Slack channel-name lookup use case (ADR 046)', () => {
   it('forwards only the request metadata the caller has', async () => {
     const lookup = fixture();
 
-    await lookup.lookup('C0001', undefined, { traceId: 'trace-lookup' });
+    await lookup.lookup(['C0001'], undefined, { traceId: 'trace-lookup' });
 
     const input =
       lookup.persistence.resolveConnectionLookupSecret.mock.calls[0]?.[0];
@@ -180,7 +180,7 @@ describe('Slack channel-name lookup use case (ADR 046)', () => {
   it('answers direct messages alone without touching the credential', async () => {
     const lookup = fixture();
 
-    await expect(lookup.lookup('D0001,U0002')).resolves.toEqual({
+    await expect(lookup.lookup(['D0001', 'U0002'])).resolves.toEqual({
       items: [
         unresolved('D0001', 'not_a_channel'),
         unresolved('U0002', 'not_a_channel'),
@@ -204,7 +204,7 @@ describe('Slack channel-name lookup use case (ADR 046)', () => {
     async (_label, options, reason) => {
       const lookup = fixture({}, options);
 
-      await expect(lookup.lookup('C0123,D0001')).resolves.toEqual({
+      await expect(lookup.lookup(['C0123', 'D0001'])).resolves.toEqual({
         items: [
           unresolved('C0123', reason),
           unresolved('D0001', 'not_a_channel'),
@@ -233,13 +233,15 @@ describe('Slack channel-name lookup use case (ADR 046)', () => {
     async (result, reason) => {
       const lookup = fixture({ C0001: result });
 
-      await expect(lookup.lookup('C0001,C0002,G0003')).resolves.toEqual({
-        items: [
-          unresolved('C0001', reason),
-          unresolved('C0002', reason),
-          unresolved('G0003', reason),
-        ],
-      });
+      await expect(lookup.lookup(['C0001', 'C0002', 'G0003'])).resolves.toEqual(
+        {
+          items: [
+            unresolved('C0001', reason),
+            unresolved('C0002', reason),
+            unresolved('G0003', reason),
+          ],
+        },
+      );
       expect(lookup.lookupChannel).toHaveBeenCalledOnce();
       expect(lookup.plaintext()?.every((byte) => byte === 0)).toBe(true);
     },
@@ -249,46 +251,38 @@ describe('Slack channel-name lookup use case (ADR 046)', () => {
     const failure = new Error('unexpected adapter failure');
     const lookup = fixture({ C0001: failure });
 
-    await expect(lookup.lookup('C0001')).rejects.toBe(failure);
+    await expect(lookup.lookup(['C0001'])).rejects.toBe(failure);
     expect(lookup.plaintext()?.every((byte) => byte === 0)).toBe(true);
 
     const aborted = fixture();
     const controller = new AbortController();
     controller.abort();
     await expect(
-      aborted.lookup('C0001', controller.signal),
+      aborted.lookup(['C0001'], controller.signal),
     ).rejects.toMatchObject({ name: 'AbortError' });
   });
 
   it('refuses a corrupt credential as unavailable protection', async () => {
     const lookup = fixture({}, { plaintext: { type: 'http_headers' } });
 
-    await expect(lookup.lookup('C0001')).rejects.toBeInstanceOf(
+    await expect(lookup.lookup(['C0001'])).rejects.toBeInstanceOf(
       ConnectionSecretEncryptionError,
     );
     expect(lookup.lookupChannel).not.toHaveBeenCalled();
     expect(lookup.plaintext()?.every((byte) => byte === 0)).toBe(true);
   });
 
-  it('keeps invisible connections, invalid queries and viewers away from the credential', async () => {
+  it('keeps invisible connections and viewers away from the credential', async () => {
     const hidden = fixture(
       {},
       { persistenceError: new ConnectionNotFoundError('hidden') },
     );
-    await expect(hidden.lookup('C0001')).rejects.toBeInstanceOf(
+    await expect(hidden.lookup(['C0001'])).rejects.toBeInstanceOf(
       ConnectionNotFoundError,
     );
 
-    const invalid = fixture();
-    await expect(invalid.lookup('C0001,C0001')).rejects.toMatchObject({
-      name: 'ZodError',
-    });
-    expect(
-      invalid.persistence.resolveConnectionLookupSecret,
-    ).not.toHaveBeenCalled();
-
     const viewer = fixture({}, { role: 'viewer' });
-    await expect(viewer.lookup('C0001')).rejects.toMatchObject({
+    await expect(viewer.lookup(['C0001'])).rejects.toMatchObject({
       code: 'resource.not_found',
     });
     expect(

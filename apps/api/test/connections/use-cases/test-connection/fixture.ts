@@ -1,3 +1,4 @@
+import type { TestConnectionCommand } from '../../../../src/connections/use-cases/test-connection.js';
 import type { ConnectionRecord } from '@pertexo/core/testing';
 
 import { vi } from 'vitest';
@@ -90,7 +91,7 @@ export function persistence(
   } satisfies ConnectionTestPersistence;
 }
 
-export function command(request: unknown) {
+export function command(request: TestConnectionCommand['request']) {
   return {
     actor,
     routeWorkspaceId: workspaceId,

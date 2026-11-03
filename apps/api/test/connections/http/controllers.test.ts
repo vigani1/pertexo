@@ -1,7 +1,16 @@
-import { describe, expect, it, vi } from 'vitest';
+import {
+  afterAll,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vitest';
 
+import { ConnectionsModule } from '../../../src/connections/module.js';
 import { ConnectionsController } from '../../../src/connections/http/controllers.js';
-import type {
+import {
   CreateConnectionUseCase,
   GetConnectionUseCase,
   ListConnectionsUseCase,
@@ -10,380 +19,237 @@ import type {
   RotateConnectionSecretUseCase,
   TestConnectionUseCase,
 } from '../../../src/connections/use-cases/management.js';
+import { WORKSPACE_AUTHORIZATION } from '../../../src/workspaces/tokens.js';
+import { FakeIdentityModule } from '../../support/identity-module.js';
+import {
+  HARNESS_ACTOR_ID as actorId,
+  ownerAccess,
+  routeHarness,
+} from '../../support/route-harness.js';
 
-const actorId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
-const guardActorId = '99999999-9999-4999-8999-999999999999';
 const workspaceId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 const connectionId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
-const secretVersionId = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
-const connectionResponse = Object.freeze({
+const connections = `/v1/workspaces/${workspaceId}/connections`;
+const one = `${connections}/${connectionId}`;
+const connection = {
   id: connectionId,
   workspaceId,
-  providerKey: 'http' as const,
+  providerKey: 'http',
   name: 'Operations API',
-  authType: 'http_headers' as const,
-  status: 'active' as const,
-  secretVersionId,
-  health: {
-    lastTestedAt: null,
-    lastHealthyAt: null,
-    lastErrorCode: null,
-  },
+  authType: 'http_headers',
+  status: 'active',
+  secretVersionId: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
+  health: { lastTestedAt: null, lastHealthyAt: null, lastErrorCode: null },
   createdAt: '2026-08-22T12:00:00.000Z',
   updatedAt: '2026-08-22T12:00:00.000Z',
-});
-
-function request(headers: Record<string, string> = {}) {
-  return {
-    requestId: 'request-42',
-    traceId: 'trace-42',
-    headers,
-    identitySession: {
-      userId: actorId,
-      sessionId: 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
-      expiresAt: new Date('2026-08-22T20:00:00.000Z'),
-      clientMetadata: {},
-    },
-  } as const;
-}
-
-function controller() {
-  const list = {
-    execute: vi.fn<ListConnectionsUseCase['execute']>(() =>
-      Promise.resolve({ items: [connectionResponse], nextCursor: null }),
-    ),
-  };
-  const read = {
-    execute: vi.fn<GetConnectionUseCase['execute']>(() =>
-      Promise.resolve(connectionResponse),
-    ),
-  };
-  const create = {
-    execute: vi.fn<CreateConnectionUseCase['execute']>(() =>
-      Promise.resolve(connectionResponse),
-    ),
-  };
-  const rotate = {
-    execute: vi.fn<RotateConnectionSecretUseCase['execute']>(() =>
-      Promise.resolve(connectionResponse),
-    ),
-  };
-  const revoke = {
-    execute: vi.fn<RevokeConnectionUseCase['execute']>(() =>
-      Promise.resolve({ ...connectionResponse, status: 'revoked' }),
-    ),
-  };
-  const test = {
-    execute: vi.fn<TestConnectionUseCase['execute']>(() =>
-      Promise.resolve({
-        connection: connectionResponse,
-        outcome: { ok: true, httpStatus: 204, errorCode: null },
-      }),
-    ),
-  };
-  const lookup = {
-    execute: vi.fn<LookupSlackChannelsUseCase['execute']>(() =>
-      Promise.resolve({ items: [] }),
-    ),
-  };
-  return {
-    instance: new ConnectionsController(
-      list as unknown as ListConnectionsUseCase,
-      read as unknown as GetConnectionUseCase,
-      create as unknown as CreateConnectionUseCase,
-      rotate as unknown as RotateConnectionSecretUseCase,
-      revoke as unknown as RevokeConnectionUseCase,
-      test as unknown as TestConnectionUseCase,
-      lookup as unknown as LookupSlackChannelsUseCase,
-    ),
-    lookup,
-    list,
-    read,
-    create,
-    rotate,
-    revoke,
-    test,
-  };
-}
-
+};
+// Header names arrive in lower case, as the use case receives them.
 const credential = {
   type: 'http_headers',
-  headers: { Authorization: 'Bearer secret' },
-} as const;
+  headers: { authorization: 'Bearer secret' },
+};
+const rotation = {
+  expectedSecretVersionId: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
+  credential,
+};
+const created = { providerKey: 'http', name: 'Operations API', credential };
 
-describe('connections controller public seam', () => {
-  it('validates and forwards list and read queries through the guarded context', async () => {
-    const { instance, list, read } = controller();
-    await instance.list(
-      request(),
-      { workspaceId },
-      { limit: '1', after: 'cursor-1' },
-    );
-    await instance.read(request(), { workspaceId, connectionId });
+const useCases = {
+  list: { execute: vi.fn() },
+  read: { execute: vi.fn() },
+  create: { execute: vi.fn() },
+  rotate: { execute: vi.fn() },
+  revoke: { execute: vi.fn() },
+  test: { execute: vi.fn() },
+  lookup: { execute: vi.fn() },
+};
+let harness: Awaited<ReturnType<typeof routeHarness>>;
 
-    const listInput = list.execute.mock.calls[0]?.[0];
-    const readInput = read.execute.mock.calls[0]?.[0];
-    expect(listInput).toMatchObject({
+/** The real routes, guards and parsing in front of use cases this test controls. */
+beforeAll(async () => {
+  harness = await routeHarness({
+    module: ConnectionsModule,
+    imports: [{ module: FakeIdentityModule }],
+    controllers: [ConnectionsController],
+    providers: [
+      { provide: WORKSPACE_AUTHORIZATION, useValue: ownerAccess },
+      { provide: ListConnectionsUseCase, useValue: useCases.list },
+      { provide: GetConnectionUseCase, useValue: useCases.read },
+      { provide: CreateConnectionUseCase, useValue: useCases.create },
+      { provide: RotateConnectionSecretUseCase, useValue: useCases.rotate },
+      { provide: RevokeConnectionUseCase, useValue: useCases.revoke },
+      { provide: TestConnectionUseCase, useValue: useCases.test },
+      { provide: LookupSlackChannelsUseCase, useValue: useCases.lookup },
+    ],
+  });
+});
+afterAll(() => harness.close());
+beforeEach(() => {
+  vi.clearAllMocks();
+  useCases.list.execute.mockResolvedValue({
+    items: [connection],
+    nextCursor: null,
+  });
+  for (const answer of [useCases.read, useCases.create, useCases.rotate])
+    answer.execute.mockResolvedValue(connection);
+  useCases.revoke.execute.mockResolvedValue({
+    ...connection,
+    status: 'revoked',
+  });
+  useCases.test.execute.mockResolvedValue({
+    connection,
+    outcome: { ok: true, httpStatus: 204, errorCode: null },
+  });
+  useCases.lookup.execute.mockResolvedValue({ items: [] });
+});
+
+const command = (
+  method: 'POST' | 'PUT',
+  url: string,
+  body: unknown,
+  idempotencyKey: string | null = 'command-42',
+) =>
+  harness.send(method, url, {
+    body,
+    headers:
+      idempotencyKey === null ? {} : { 'idempotency-key': idempotencyKey },
+  });
+
+const forwarded = (useCase: { execute: ReturnType<typeof vi.fn> }) =>
+  useCase.execute.mock.calls[0]?.[0] as Record<string, unknown>;
+
+describe('connection routes', () => {
+  it('lists a page and reads one for the signed-in actor', async () => {
+    const list = await harness.send('GET', connections, {
+      query: { limit: '1', after: 'cursor-1' },
+    });
+    const read = await harness.send('GET', one);
+    expect(list.statusCode, list.payload).toBe(200);
+    expect(read.statusCode, read.payload).toBe(200);
+    expect(forwarded(useCases.list)).toMatchObject({
       routeWorkspaceId: workspaceId,
       limit: 1,
       after: 'cursor-1',
+      actor: { actorId, workspaceId },
     });
-    expect(listInput?.actor).toMatchObject({ actorId, workspaceId });
-    expect(readInput).toMatchObject({
+    expect(forwarded(useCases.read)).toMatchObject({
       routeWorkspaceId: workspaceId,
       connectionId,
+      actor: { actorId, workspaceId },
     });
-    expect(readInput?.actor).toMatchObject({ actorId, workspaceId });
   });
 
-  it('forwards a channel lookup with its guarded context and operation signal', async () => {
-    const { instance, lookup } = controller();
-    await instance.slackChannels(
-      request(),
-      { workspaceId, connectionId },
-      { channelIds: 'C0123,D0456' },
-    );
-    await instance.slackChannels(
-      request(),
-      { workspaceId, connectionId },
-      undefined,
-    );
+  it('refuses an unknown list query field before reading', async () => {
+    const reply = await harness.send('GET', connections, {
+      query: { provider: 'http' },
+    });
+    expect(reply.statusCode).toBe(400);
+    expect(useCases.list.execute).not.toHaveBeenCalled();
+  });
 
-    const [first, second] = lookup.execute.mock.calls.map(([input]) => input);
-    expect(first).toMatchObject({
-      routeWorkspaceId: workspaceId,
-      connectionId,
+  it('looks up the listed Slack channels with the request signal', async () => {
+    const reply = await harness.send('GET', `${one}/slack/channels`, {
       query: { channelIds: 'C0123,D0456' },
     });
-    expect(first?.actor).toMatchObject({ actorId, workspaceId });
-    expect(first?.signal).toBeInstanceOf(AbortSignal);
-    expect(second?.query).toEqual({});
-    expect(() =>
-      instance.slackChannels(
-        request(),
-        { workspaceId, connectionId: 'not-a-connection' },
-        {},
-      ),
-    ).toThrow();
-  });
-
-  it('rejects unknown list query fields before delegating', () => {
-    const { instance, list } = controller();
-    expect(() =>
-      instance.list(request(), { workspaceId }, { provider: 'http' }),
-    ).toThrow();
-    expect(list.execute).not.toHaveBeenCalled();
-  });
-
-  it('forwards create input with immutable actor and request metadata once', async () => {
-    const { instance, create } = controller();
-    const body = { providerKey: 'http', name: 'Operations API', credential };
-    await instance.create(
-      request({ 'idempotency-key': 'create-42' }),
-      { workspaceId },
-      body,
-    );
-    expect(create.execute).toHaveBeenCalledOnce();
-    const command = create.execute.mock.calls[0]?.[0];
-    if (command === undefined)
-      throw new Error('controller did not forward a command');
-    expect(command).toEqual({
-      actor: {
-        actorId,
-        kind: 'user',
-        workspaceId,
-        sessionId: 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
-        requestId: 'request-42',
-        traceId: 'trace-42',
-      },
-      routeWorkspaceId: workspaceId,
-      request: body,
-      idempotencyKey: 'create-42',
-      requestId: 'request-42',
-      traceId: 'trace-42',
-      signal: command.signal,
-    });
-    expect(command.signal).toBeInstanceOf(AbortSignal);
-    expect(Object.isFrozen(command.actor)).toBe(true);
-    expect(command).not.toHaveProperty('authorizedWorkspace');
-  });
-
-  it('forwards rotation with the exact guarded actor, identifiers, and operation signal', async () => {
-    const { instance, rotate } = controller();
-    const base = request({ 'idempotency-key': 'rotate-guarded' });
-    const authorizedWorkspace = {
-      actor: Object.freeze({
-        actorId: guardActorId,
-        kind: 'user' as const,
-        workspaceId,
-        sessionId: base.identitySession.sessionId,
-        requestId: 'rotate-request',
-        traceId: 'rotate-trace',
-      }),
-      workspaceId,
-      role: 'owner' as const,
-      capability: 'connection:manage' as const,
-    };
-    const body = { expectedSecretVersionId: secretVersionId, credential };
-
-    await instance.rotate(
-      { ...base, authorizedWorkspace },
-      { workspaceId, connectionId },
-      body,
-    );
-
-    expect(rotate.execute).toHaveBeenCalledWith({
-      actor: authorizedWorkspace.actor,
-      authorizedWorkspace,
-      routeWorkspaceId: workspaceId,
+    expect(reply.statusCode, reply.payload).toBe(200);
+    expect(forwarded(useCases.lookup)).toMatchObject({
       connectionId,
-      request: body,
-      idempotencyKey: 'rotate-guarded',
-      requestId: 'rotate-request',
-      traceId: 'rotate-trace',
-      signal: rotate.execute.mock.calls[0]?.[0].signal,
+      channelIds: ['C0123', 'D0456'],
     });
-    expect(rotate.execute.mock.calls[0]?.[0].signal).toBeInstanceOf(
-      AbortSignal,
-    );
+    expect(forwarded(useCases.lookup).signal).toBeInstanceOf(AbortSignal);
   });
 
-  it('gives guarded actor and identifiers precedence over session context', async () => {
-    const { instance, create } = controller();
-    const base = request({ 'idempotency-key': 'guard-context' });
-    const authorizedWorkspace = {
-      actor: Object.freeze({
-        actorId: guardActorId,
-        kind: 'user' as const,
-        workspaceId,
-        sessionId: base.identitySession.sessionId,
-        requestId: 'guard-request',
-        traceId: 'guard-trace',
-      }),
-      workspaceId,
-      role: 'owner' as const,
-      capability: 'connection:manage' as const,
-    };
-    await instance.create(
-      { ...base, authorizedWorkspace },
-      { workspaceId },
-      { providerKey: 'http', name: 'Guarded', credential },
-    );
-    expect(create.execute).toHaveBeenCalledWith(
-      expect.objectContaining({
-        actor: authorizedWorkspace.actor,
-        authorizedWorkspace,
-        requestId: 'guard-request',
-        traceId: 'guard-trace',
-      }),
-    );
+  it.each([{}, { channelIds: 'C0001,C0001' }, { channelIds: 'c0001' }])(
+    'refuses Slack lookup query %j before the credential',
+    async (query) => {
+      const reply = await harness.send('GET', `${one}/slack/channels`, {
+        query,
+      });
+      expect(reply.statusCode).toBe(400);
+      expect(useCases.lookup.execute).not.toHaveBeenCalled();
+    },
+  );
+
+  it('creates once, with the request, its key and the actor', async () => {
+    const reply = await command('POST', connections, created);
+    expect(reply.statusCode, reply.payload).toBe(201);
+    expect(useCases.create.execute).toHaveBeenCalledOnce();
+    expect(forwarded(useCases.create)).toMatchObject({
+      routeWorkspaceId: workspaceId,
+      request: created,
+      idempotencyKey: 'command-42',
+      actor: { actorId, workspaceId },
+    });
   });
 
-  it('requires an idempotency key before delegating create or rotation', async () => {
-    const { instance, create, rotate } = controller();
-    await expect(
-      instance.create(
-        request(),
-        { workspaceId },
-        {
-          providerKey: 'http',
-          name: 'Operations API',
-          credential,
-        },
-      ),
-    ).rejects.toMatchObject({ code: 'request.invalid' });
-    await expect(
-      instance.rotate(
-        request(),
-        { workspaceId, connectionId },
-        { expectedSecretVersionId: secretVersionId, credential },
-      ),
-    ).rejects.toMatchObject({ code: 'request.invalid' });
-    expect(create.execute).not.toHaveBeenCalled();
-    expect(rotate.execute).not.toHaveBeenCalled();
+  it('rotates a secret with the identifiers, key and request signal', async () => {
+    const reply = await command('PUT', `${one}/secret`, rotation);
+    expect(reply.statusCode, reply.payload).toBe(200);
+    expect(forwarded(useCases.rotate)).toMatchObject({
+      connectionId,
+      request: rotation,
+      idempotencyKey: 'command-42',
+    });
+    expect(forwarded(useCases.rotate).signal).toBeInstanceOf(AbortSignal);
   });
 
-  it('rejects a repeated idempotency key before delegating', async () => {
-    const { instance, create } = controller();
-    await expect(
-      instance.create(
-        {
-          ...request(),
-          headers: { 'idempotency-key': ['first', 'second'] },
-        },
-        { workspaceId },
-        { providerKey: 'http', name: 'Operations API', credential },
-      ),
-    ).rejects.toMatchObject({ code: 'request.invalid' });
-    expect(create.execute).not.toHaveBeenCalled();
-  });
-
-  it('forwards unknown connection input to the independently safe use case', async () => {
-    const { instance, create } = controller();
-    const body = {
-      providerKey: 'http',
-      name: 'Operations API',
+  it('refuses a credential header that would redirect the request', async () => {
+    const reply = await command('POST', connections, {
+      ...created,
       credential: {
         type: 'http_headers',
         headers: { Host: 'metadata.internal' },
       },
-    };
-    await instance.create(
-      request({ 'idempotency-key': 'create-42' }),
-      { workspaceId },
-      body,
-    );
-    expect(create.execute).toHaveBeenCalledWith(
-      expect.objectContaining({ request: body }),
-    );
+    });
+    expect(reply.statusCode).toBe(400);
+    expect(useCases.create.execute).not.toHaveBeenCalled();
   });
 
-  it('parses and forwards revoke without accepting a credential body', async () => {
-    const { instance, revoke } = controller();
-    await instance.revoke(request(), { workspaceId, connectionId });
-    expect(revoke.execute).toHaveBeenCalledWith(
-      expect.objectContaining({ routeWorkspaceId: workspaceId, connectionId }),
-    );
-  });
+  it.each([
+    ['create', 'POST', connections, created],
+    ['rotation', 'PUT', `${one}/secret`, rotation],
+    ['test', 'POST', `${one}/test`, { url: 'https://example.test/health' }],
+  ] as const)(
+    'refuses %s without one well-formed idempotency key',
+    async (_name, method, url, body) => {
+      for (const key of [null, '', 'first,second'])
+        expect((await command(method, url, body, key)).statusCode).toBe(400);
+      for (const useCase of Object.values(useCases))
+        expect(useCase.execute).not.toHaveBeenCalled();
+    },
+  );
 
-  it('requires idempotency and forwards unknown test input to the safe use case', async () => {
-    const { instance, test } = controller();
-    const body = { url: 'https://provider.example.test/health' };
-    await instance.test(
-      request({ 'idempotency-key': 'test-42' }),
-      { workspaceId, connectionId },
-      body,
-    );
-    const command = test.execute.mock.calls[0]?.[0];
-    if (command === undefined)
-      throw new Error('controller did not forward a test command');
-    expect(command).toEqual({
-      actor: {
-        actorId,
-        kind: 'user',
-        workspaceId,
-        sessionId: 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
-        requestId: 'request-42',
-        traceId: 'trace-42',
-      },
+  it('revokes with only the identifiers', async () => {
+    const reply = await harness.send('DELETE', one);
+    expect(reply.statusCode, reply.payload).toBe(200);
+    expect(forwarded(useCases.revoke)).toMatchObject({
       routeWorkspaceId: workspaceId,
       connectionId,
-      idempotencyKey: 'test-42',
-      request: body,
-      requestId: 'request-42',
-      traceId: 'trace-42',
-      signal: command.signal,
     });
-    expect(command.signal).toBeInstanceOf(AbortSignal);
-    await instance.test(
-      request({ 'idempotency-key': 'test-43' }),
-      { workspaceId, connectionId },
-      { url: 'http://provider.example.test/health' },
-    );
-    expect(test.execute).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        request: { url: 'http://provider.example.test/health' },
-      }),
-    );
+    expect(forwarded(useCases.revoke)).not.toHaveProperty('request');
+  });
+
+  it('tests a connection with the request, key and signal', async () => {
+    const body = { url: 'https://provider.example.test/health' };
+    const reply = await command('POST', `${one}/test`, body);
+    expect(reply.statusCode, reply.payload).toBe(200);
+    expect(forwarded(useCases.test)).toMatchObject({
+      connectionId,
+      request: body,
+      idempotencyKey: 'command-42',
+      actor: { actorId, workspaceId },
+    });
+    expect(forwarded(useCases.test).signal).toBeInstanceOf(AbortSignal);
+  });
+
+  it.each([
+    { url: 'http://provider.example.test/health' },
+    { url: `https://provider.example.test/${'😀'.repeat(700)}` },
+    { providerKey: 'email' },
+    { providerKey: 'email', sideEffectDisclosureAccepted: false },
+  ])('refuses test request %# before claiming any work', async (body) => {
+    const reply = await command('POST', `${one}/test`, body);
+    expect(reply.statusCode).toBe(400);
+    expect(useCases.test.execute).not.toHaveBeenCalled();
   });
 });
