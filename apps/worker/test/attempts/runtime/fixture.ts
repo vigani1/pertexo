@@ -158,6 +158,10 @@ export async function capturedHandler(
       },
       registry: input.registry,
       runStore: input.runStore,
+      runFailures: {
+        failUnadvanceable: vi.fn().mockResolvedValue('failed'),
+        close: vi.fn().mockResolvedValue(undefined),
+      },
     },
   );
   if (handler === undefined)

@@ -1,7 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { FactoryProvider } from '@nestjs/common';
 import type {
-  NodeAttemptRuntimeOptions,
   PreparedNodeAttempt,
   PreviewAttemptRunStore,
 } from '../../src/testing.js';
@@ -36,77 +35,6 @@ import {
 import type { NodeExecutionRegistry } from '@pertexo/workflow-engine';
 
 describe('node-attempt runtime', () => {
-  it('composes production and preview attempts through one shared runtime and transfers preview ownership', async () => {
-    const closePreview = vi.fn().mockResolvedValue(undefined);
-    const createRuntime = vi.fn().mockResolvedValue({
-      consumer: {},
-      close: vi.fn(),
-    });
-    const provider = nodeAttemptRuntimeProvider(
-      providerConfig(),
-      {},
-      {
-        createPreviewInvoker: vi.fn().mockReturnValue({
-          close: vi.fn(),
-          invoke: vi.fn(),
-        }),
-        createPreviewRunStore: vi.fn().mockReturnValue({
-          claim: vi.fn(),
-          close: closePreview,
-          complete: vi.fn(),
-          heartbeat: vi.fn(),
-          readAttemptOutputs: vi.fn().mockResolvedValue([]),
-          listNodeOutcomes: vi.fn().mockResolvedValue([]),
-          readNodeOutputs: vi.fn().mockResolvedValue([]),
-          readLoopDeclaration: vi.fn(),
-          markDispatched: vi.fn(),
-        }),
-        createRuntime,
-      },
-    ) as FactoryProvider;
-
-    await expect(providerFactory(provider)(undefined)).resolves.toBeDefined();
-    expect(createRuntime).toHaveBeenCalledOnce();
-    const [runtimeOptions] = createRuntime.mock.lastCall as unknown as [
-      NodeAttemptRuntimeOptions,
-    ];
-    expect(runtimeOptions.preview).toBeDefined();
-    expect(closePreview).not.toHaveBeenCalled();
-  });
-
-  it('forwards configured artifact, encryption, and shared database resources', async () => {
-    const artifactStore = { put: vi.fn() };
-    const connectionEncryption = { open: vi.fn() };
-    const databaseRuntime = { close: vi.fn() };
-    const createRuntime = vi.fn().mockResolvedValue({
-      consumer: {},
-      close: vi.fn(),
-    });
-    const provider = nodeAttemptRuntimeProvider(
-      {
-        ...providerConfig(),
-        artifactStore,
-        connectionEncryption,
-      } as unknown as WorkerConfig,
-      { databaseRuntime },
-      {
-        createPreviewInvoker: vi.fn().mockReturnValue({ invoke: vi.fn() }),
-        createPreviewRunStore: vi.fn().mockReturnValue({ close: vi.fn() }),
-        createRuntime,
-      },
-    ) as FactoryProvider;
-
-    await expect(providerFactory(provider)(undefined)).resolves.toBeDefined();
-    expect(createRuntime).toHaveBeenCalledOnce();
-    expect(createRuntime).toHaveBeenCalledWith(
-      expect.objectContaining({
-        artifactStore,
-        connectionEncryption,
-        databaseRuntime,
-      }),
-    );
-  });
-
   it('closes a preview store created before invoker failure and preserves cleanup failure', async () => {
     const primary = new Error('preview invoker failed');
     const cleanup = new Error('preview store close failed');

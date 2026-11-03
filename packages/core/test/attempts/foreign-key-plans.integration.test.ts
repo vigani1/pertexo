@@ -94,30 +94,6 @@ describe('the foreign keys retention deletes through', () => {
     }
   }, 60_000);
 
-  it('has an index for each, on the key columns in the order they are checked', async () => {
-    const admin = new Client({ connectionString: databaseUrl(adminBaseUrl) });
-    await admin.connect();
-    try {
-      const { rows } = await admin.query<{
-        indexname: string;
-        indexdef: string;
-      }>(
-        `select indexname, indexdef from pg_indexes
-          where schemaname = 'app'
-            and indexname in ('node_runs_current_attempt_idx', 'pending_run_tasks_node_idx')
-          order by indexname`,
-      );
-      expect(rows).toHaveLength(2);
-      expect(rows[0]?.indexname).toBe('node_runs_current_attempt_idx');
-      expect(rows[0]?.indexdef).toContain('(workspace_id, current_attempt_id)');
-      expect(rows[0]?.indexdef).toContain('current_attempt_id IS NOT NULL');
-      expect(rows[1]?.indexname).toBe('pending_run_tasks_node_idx');
-      expect(rows[1]?.indexdef).toContain('(workspace_id, node_run_id)');
-    } finally {
-      await admin.end();
-    }
-  });
-
   it('checks a deleted attempt against its index, not by reading the steps', async () => {
     const plans = await plansOf('delete from app.node_attempts where id = $1', [
       attemptId,

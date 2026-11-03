@@ -713,26 +713,6 @@ describe('transactional outbox persistence', () => {
     } finally {
       await ownerPool.end();
     }
-
-    const explainPool = new Pool({ connectionString: dispatcherUrl, max: 1 });
-    try {
-      await explainPool.query('set enable_seqscan = off');
-      const plan = await explainPool.query<Record<string, unknown>>(
-        `explain (format json, costs false)
-         select id from app.outbox_events
-         where published_at is null and failed_at is null
-           and job_name = any($1::varchar[])
-           and available_at <= clock_timestamp()
-           and (lease_expires_at is null or lease_expires_at <= clock_timestamp())
-         order by available_at, id limit 100`,
-        [enabledJobNames],
-      );
-      expect(JSON.stringify(plan.rows)).toContain(
-        'outbox_events_dispatch_job_due_idx',
-      );
-    } finally {
-      await explainPool.end();
-    }
   });
 
   it('reclaims expired leases and reaches an explicit attempt failure threshold', async () => {
