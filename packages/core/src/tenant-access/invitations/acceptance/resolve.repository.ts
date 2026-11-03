@@ -14,6 +14,7 @@ import {
   workspaceInvitationBindingReplacementClaims as claims,
   workspaceInvitationAcceptanceIntents as intents,
   workspaceInvitations as invitations,
+  workspaces,
 } from '@pertexo/database/schema';
 
 import { expireWorkspaceInvitations } from '../expiration.repository.js';
@@ -57,6 +58,15 @@ export async function resolveInvitationAcceptance(
   };
   return withTenantScopedClient(pool, { workspaceId }, async (client) => {
     const db = drizzle(client);
+    // No accepting membership exists yet, so this cannot use withWorkspaceAccess.
+    // Take the workspace before the invitation: inserting an intent also takes
+    // a workspace FK lock, and management/acceptance commands lock it first.
+    await db
+      .select({ id: workspaces.id })
+      .from(workspaces)
+      .where(eq(workspaces.id, workspaceId))
+      .for('share')
+      .catch(rethrowQueryFailure);
     const invitation = await db
       .select({
         revision: invitations.revision,
