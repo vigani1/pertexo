@@ -1,3 +1,4 @@
+import { decodeStoredValue } from '../../../shared/stored-values.js';
 import type { PublishedWorkflow } from './workflow-execution.types.js';
 import { verifyWorkflowExecutable } from '@pertexo/workflow-engine';
 
@@ -11,9 +12,11 @@ export function verifyPersistedWorkflowProjection(
   projection: PublishedWorkflow,
   options: PersistedWorkflowProjectionVerificationOptions,
 ) {
-  return verifyWorkflowExecutable({
-    envelope: projection.executableJson,
-    checksum: projection.checksum,
-    catalog: options.catalog,
-  });
+  return decodeStoredValue(() =>
+    verifyWorkflowExecutable({
+      envelope: projection.executableJson,
+      checksum: projection.checksum,
+      catalog: options.catalog,
+    }),
+  );
 }
