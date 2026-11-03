@@ -44,7 +44,7 @@ export const workflowOrganizationFolderFilterSchema = z.union([
   identifier,
   z.literal('root'),
 ]);
-export const workflowFolderWorkspaceParamsSchema = z
+const workflowFolderWorkspaceParamsSchema = z
   .object({ workspaceId: identifier })
   .strict();
 export const workflowFolderParamsSchema =

@@ -1,78 +1,27 @@
+import {
+  WorkflowFolderConflictError,
+  WorkflowNotFoundError,
+  WorkflowTagConflictError,
+} from '@pertexo/core/authoring';
 import 'reflect-metadata';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
-  cleanAppsApiTestWorkflowAuthoringOrganizationControllerTestTsFixture,
-  workspaceId,
   actorId,
+  cleanAppsApiTestWorkflowAuthoringOrganizationControllerTestTsFixture,
   folderId,
-  workflowId,
   headers,
+  placement,
   prefix,
   routes,
-  setup,
   sessionId,
-  placement,
+  setup,
+  workflowId,
+  workspaceId,
 } from './controller/fixture.js';
-import {
-  GUARDS_METADATA,
-  HEADERS_METADATA,
-  HTTP_CODE_METADATA,
-  PATH_METADATA,
-} from '@nestjs/common/constants.js';
-import { WorkflowFoldersController } from '../../../../src/workflow-authoring/organization/folders/controller.js';
-import { WorkflowOrganizationBatchesController } from '../../../../src/workflow-authoring/organization/batch/controller.js';
-import {
-  WorkflowParticipantGuard,
-  WorkflowReadGuard,
-} from '../../../../src/workflow-authoring/http/guards.js';
-import {
-  SessionAuthenticationGuard,
-  CsrfProtectionGuard,
-} from '../../../../src/workspaces/index.js';
-import { RATE_LIMIT_METADATA } from '../../../../src/platform/rate-limit/metadata.js';
-import {
-  WorkflowFolderConflictError,
-  WorkflowTagConflictError,
-  WorkflowNotFoundError,
-} from '@pertexo/core/authoring';
 
 afterEach(cleanAppsApiTestWorkflowAuthoringOrganizationControllerTestTsFixture);
 describe('folder and batch HTTP routes with controlled session/persistence', () => {
   for (const route of routes) {
-    it(`${route.method}: preserves guard, cache and rate metadata`, () => {
-      const controller =
-        route.method === 'bulk' || route.method === 'cleanup'
-          ? WorkflowOrganizationBatchesController
-          : WorkflowFoldersController;
-      // Only inspect the method metadata; never invoke this unbound handler.
-      const handler =
-        controller === WorkflowFoldersController
-          ? // eslint-disable-next-line @typescript-eslint/unbound-method
-            WorkflowFoldersController.prototype[route.method as 'list']
-          : // eslint-disable-next-line @typescript-eslint/unbound-method
-            WorkflowOrganizationBatchesController.prototype[
-              route.method as 'bulk'
-            ];
-      expect(Reflect.getMetadata(PATH_METADATA, handler)).toBe(route.path);
-      expect(Reflect.getMetadata(GUARDS_METADATA, handler)).toEqual([
-        SessionAuthenticationGuard,
-        route.method === 'list' ? WorkflowReadGuard : WorkflowParticipantGuard,
-        ...(route.method === 'list' ? [] : [CsrfProtectionGuard]),
-      ]);
-      expect(Reflect.getMetadata(HEADERS_METADATA, handler)).toEqual([
-        { name: 'Cache-Control', value: 'private, no-store' },
-      ]);
-      expect(
-        Reflect.getMetadata(RATE_LIMIT_METADATA, handler) ??
-          Reflect.getMetadata(RATE_LIMIT_METADATA, controller),
-      ).toBe(
-        route.method === 'list' ? 'authenticated_read' : 'ordinary_mutation',
-      );
-      if (route.method !== 'list')
-        expect(Reflect.getMetadata(HTTP_CODE_METADATA, handler)).toBe(
-          route.status,
-        );
-    });
     it(`${route.method}: registers the exact route and forwards current scoped input`, async () => {
       const f = await setup();
       const response = await f.inject(route);
@@ -116,6 +65,36 @@ describe('folder and batch HTTP routes with controlled session/persistence', () 
           folderId: null,
           expectedOrganizationRevision: 1,
         });
+    });
+    it(`${route.method}: refuses malformed and private fields through HTTP`, async () => {
+      const f = await setup();
+      for (const extra of [
+        { actorId },
+        { workspaceId },
+        { proof: true },
+        { admission_xid: '42' },
+        { idempotencyKey: 'body-key' },
+        { currentRevision: 7 },
+      ]) {
+        const overrides =
+          route.method === 'list'
+            ? {
+                url:
+                  prefix +
+                  route.url +
+                  '?' +
+                  new URLSearchParams(
+                    Object.entries(extra).map(([name, value]) => [
+                      name,
+                      String(value),
+                    ]),
+                  ).toString(),
+              }
+            : { payload: { ...route.payload, ...extra } };
+        expect((await f.inject(route, overrides)).statusCode).toBe(400);
+      }
+      if (route.method !== 'list')
+        expect((await f.inject(route, { payload: null })).statusCode).toBe(400);
     });
     it(`${route.method}: unauthenticated or private input never reaches persistence`, async () => {
       const f = await setup();

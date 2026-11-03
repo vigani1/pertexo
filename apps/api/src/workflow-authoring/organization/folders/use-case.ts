@@ -1,35 +1,38 @@
-import {
-  sharingPrincipalsQuerySchema,
-  sharingPrincipalsResponseSchema,
+import type {
   folderSharingRequestSchema,
-  folderSharingResponseSchema,
-  workflowMoveReviewRequestSchema,
-  workflowMoveReviewResponseSchema,
-  workflowFolderListQuerySchema,
-  workflowFolderListResponseSchema,
+  sharingPrincipalsQuerySchema,
   workflowFolderCreateRequestSchema,
-  workflowFolderCreateResponseSchema,
-  workflowFolderRenameRequestSchema,
-  workflowFolderRenameResponseSchema,
-  workflowFolderMoveRequestSchema,
-  workflowFolderMoveResponseSchema,
   workflowFolderDeleteRequestSchema,
-  workflowFolderDeleteResponseSchema,
+  workflowFolderListQuerySchema,
+  workflowFolderMoveRequestSchema,
   workflowFolderPlacementRequestSchema,
+  workflowFolderRenameRequestSchema,
+  workflowMoveReviewRequestSchema,
+} from '@pertexo/contracts';
+import {
+  folderSharingResponseSchema,
+  sharingPrincipalsResponseSchema,
+  workflowFolderCreateResponseSchema,
+  workflowFolderDeleteResponseSchema,
+  workflowFolderListResponseSchema,
+  workflowFolderMoveResponseSchema,
   workflowFolderPlacementResponseSchema,
+  workflowFolderRenameResponseSchema,
+  workflowMoveReviewResponseSchema,
 } from '@pertexo/contracts';
 import type { WorkflowFolderStore } from '@pertexo/core/authoring';
+import type { z } from 'zod';
 import type { WorkspaceAuthorizationSource } from '../../../authorization/index.js';
 import {
   authorizeWorkflowOrganization,
   workflowOrganizationContext,
   type WorkflowOrganizationInput,
 } from '../authority.js';
-import { parseRequestInput } from '../../../platform/http/index.js';
 
-type Command = WorkflowOrganizationInput &
-  Readonly<{ request: unknown; idempotencyKey: string }>;
-type FolderCommand = Command & Readonly<{ folderId: string }>;
+type Command<Request = unknown> = WorkflowOrganizationInput &
+  Readonly<{ request: Request; idempotencyKey: string }>;
+type FolderCommand<Request = unknown> = Command<Request> &
+  Readonly<{ folderId: string }>;
 
 /** Folder metadata does not grant authority or change workflow lifecycle. */
 export class WorkflowFoldersUseCase {
@@ -39,9 +42,11 @@ export class WorkflowFoldersUseCase {
   ) {}
 
   public async sharingPrincipals(
-    input: WorkflowOrganizationInput & { query: unknown },
+    input: WorkflowOrganizationInput & {
+      query: z.output<typeof sharingPrincipalsQuerySchema>;
+    },
   ) {
-    const query = parseRequestInput(sharingPrincipalsQuerySchema, input.query);
+    const query = input.query;
     await authorizeWorkflowOrganization(input, this.authorization, 'admin', {
       reading: true,
     });
@@ -67,11 +72,10 @@ export class WorkflowFoldersUseCase {
     );
   }
 
-  public async replaceSharing(input: FolderCommand) {
-    const request = parseRequestInput(
-      folderSharingRequestSchema,
-      input.request,
-    );
+  public async replaceSharing(
+    input: FolderCommand<z.output<typeof folderSharingRequestSchema>>,
+  ) {
+    const request = input.request;
     const context = await this.command(input, 'admin');
     const { replayed, ...sharing } = await this.folders.replaceSharing({
       ...context,
@@ -82,12 +86,11 @@ export class WorkflowFoldersUseCase {
   }
 
   public async reviewMove(
-    input: WorkflowOrganizationInput & { request: unknown },
+    input: WorkflowOrganizationInput & {
+      request: z.output<typeof workflowMoveReviewRequestSchema>;
+    },
   ) {
-    const request = parseRequestInput(
-      workflowMoveReviewRequestSchema,
-      input.request,
-    );
+    const request = input.request;
     await authorizeWorkflowOrganization(input, this.authorization, 'editor', {
       fresh: true,
     });
@@ -100,9 +103,9 @@ export class WorkflowFoldersUseCase {
   }
 
   public async list(
-    input: WorkflowOrganizationInput & Readonly<{ query: unknown }>,
+    input: WorkflowOrganizationInput &
+      Readonly<{ query: z.output<typeof workflowFolderListQuerySchema> }>,
   ) {
-    parseRequestInput(workflowFolderListQuerySchema, input.query);
     await authorizeWorkflowOrganization(input, this.authorization, 'read', {
       reading: true,
     });
@@ -113,22 +116,20 @@ export class WorkflowFoldersUseCase {
     return workflowFolderListResponseSchema.parse(result);
   }
 
-  public async create(input: Command) {
-    const request = parseRequestInput(
-      workflowFolderCreateRequestSchema,
-      input.request,
-    );
+  public async create(
+    input: Command<z.output<typeof workflowFolderCreateRequestSchema>>,
+  ) {
+    const request = input.request;
     const context = await this.command(input, 'admin');
     const result = await this.folders.createFolder({ ...context, ...request });
     input.signal?.throwIfAborted();
     return workflowFolderCreateResponseSchema.parse(result);
   }
 
-  public async rename(input: FolderCommand) {
-    const request = parseRequestInput(
-      workflowFolderRenameRequestSchema,
-      input.request,
-    );
+  public async rename(
+    input: FolderCommand<z.output<typeof workflowFolderRenameRequestSchema>>,
+  ) {
+    const request = input.request;
     const context = await this.command(input, 'admin');
     const result = await this.folders.renameFolder({
       ...context,
@@ -139,11 +140,10 @@ export class WorkflowFoldersUseCase {
     return workflowFolderRenameResponseSchema.parse(result);
   }
 
-  public async move(input: FolderCommand) {
-    const request = parseRequestInput(
-      workflowFolderMoveRequestSchema,
-      input.request,
-    );
+  public async move(
+    input: FolderCommand<z.output<typeof workflowFolderMoveRequestSchema>>,
+  ) {
+    const request = input.request;
     const context = await this.command(input, 'admin');
     const result = await this.folders.moveFolder({
       ...context,
@@ -154,11 +154,10 @@ export class WorkflowFoldersUseCase {
     return workflowFolderMoveResponseSchema.parse(result);
   }
 
-  public async delete(input: FolderCommand) {
-    const request = parseRequestInput(
-      workflowFolderDeleteRequestSchema,
-      input.request,
-    );
+  public async delete(
+    input: FolderCommand<z.output<typeof workflowFolderDeleteRequestSchema>>,
+  ) {
+    const request = input.request;
     const context = await this.command(input, 'admin');
     const result = await this.folders.deleteFolder({
       ...context,
@@ -169,11 +168,11 @@ export class WorkflowFoldersUseCase {
     return workflowFolderDeleteResponseSchema.parse(result);
   }
 
-  public async place(input: Command & Readonly<{ workflowId: string }>) {
-    const request = parseRequestInput(
-      workflowFolderPlacementRequestSchema,
-      input.request,
-    );
+  public async place(
+    input: Command<z.output<typeof workflowFolderPlacementRequestSchema>> &
+      Readonly<{ workflowId: string }>,
+  ) {
+    const request = input.request;
     // Read guard at HTTP; this role fence permits archived admin placement.
     // Persistence owns the transactional lifecycle-specific editor fence.
     const context = await this.command(input, 'editor');

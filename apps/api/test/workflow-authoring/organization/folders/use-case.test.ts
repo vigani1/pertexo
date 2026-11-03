@@ -1,3 +1,4 @@
+import { foldersRoutes } from '@pertexo/contracts/server';
 import type { Role } from '@pertexo/policy';
 import { describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
@@ -112,13 +113,40 @@ function setup(role: Role = 'owner') {
   for (const operation of operations)
     store[operation.port].mockResolvedValue(operation.result);
   const useCase = new WorkflowFoldersUseCase(store, authorization);
-  function invoke(operation: Operation, overrides: object = {}) {
-    return useCase[operation.method]({
-      ...base,
-      request: operation.request,
-      query: operation.request,
-      ...overrides,
-    });
+  async function invoke(operation: Operation, overrides: object = {}) {
+    const input = { ...base, request: operation.request, ...overrides };
+    switch (operation.method) {
+      case 'list':
+        return useCase.list({
+          ...input,
+          query: foldersRoutes.list.query.parse(operation.request),
+        });
+      case 'create':
+        return useCase.create({
+          ...input,
+          request: foldersRoutes.create.body.schema.parse(input.request),
+        });
+      case 'rename':
+        return useCase.rename({
+          ...input,
+          request: foldersRoutes.rename.body.schema.parse(input.request),
+        });
+      case 'move':
+        return useCase.move({
+          ...input,
+          request: foldersRoutes.move.body.schema.parse(input.request),
+        });
+      case 'delete':
+        return useCase.delete({
+          ...input,
+          request: foldersRoutes.delete.body.schema.parse(input.request),
+        });
+      case 'place':
+        return useCase.place({
+          ...input,
+          request: foldersRoutes.place.body.schema.parse(input.request),
+        });
+    }
   }
   return { access, authorization, store, invoke };
 }
@@ -174,31 +202,7 @@ describe('folder use-case boundary', () => {
         },
       );
 
-      it('rejects private request/query fields before authority lookup', async () => {
-        for (const injected of [
-          { actorId },
-          { workspaceId },
-          { proof: true },
-          { admission_xid: '42' },
-          { idempotencyKey: 'body-key' },
-          { currentRevision: 7 },
-        ]) {
-          const f = setup();
-          const payload = { ...operation.request, ...injected };
-          await expect(
-            f.invoke(operation, { request: payload, query: payload }),
-          ).rejects.toBeInstanceOf(z.ZodError);
-          expect(f.authorization.findAccess).not.toHaveBeenCalled();
-          expect(f.store[operation.port]).not.toHaveBeenCalled();
-        }
-      });
-
-      it('rejects malformed input and private or incomplete persisted results', async () => {
-        const invalid = setup();
-        await expect(
-          invalid.invoke(operation, { request: null, query: null }),
-        ).rejects.toBeInstanceOf(z.ZodError);
-        expect(invalid.store[operation.port]).not.toHaveBeenCalled();
+      it('rejects private or incomplete persisted results', async () => {
         for (const result of [
           {},
           { ...operation.result, actorId, body: { name: 'private' } },
