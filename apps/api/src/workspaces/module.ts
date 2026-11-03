@@ -38,7 +38,7 @@ import {
   ListAccessibleWorkspacesUseCase,
   ListWorkspaceMembersUseCase,
   WorkspaceLifecycleUseCase,
-} from './use-cases.js';
+} from './workspaces.service.js';
 import type {
   IdentityWorkspaceDependencies,
   IdentitySessionAuthority,

@@ -8,7 +8,7 @@ import {
 import {
   TestWorkflowNodeUseCase,
   GetPreviewRunUseCase,
-} from '../../src/node-testing/use-case.js';
+} from '../../src/node-testing/node-testing.service.js';
 import { authorizeWorkspace } from '../../src/authorization/index.js';
 import {
   workspaceId,

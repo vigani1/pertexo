@@ -1,5 +1,5 @@
 import { WebhookTestEventController } from './test-events/controller.js';
-import { WebhookTestEventService } from './test-events/service.js';
+import { WebhookTestEventService } from './test-events/webhook-test-event.service.js';
 import { Module } from '@nestjs/common';
 import type { DynamicModule } from '@nestjs/common';
 
@@ -10,7 +10,7 @@ import {
   type WebhookIngressDependencies,
 } from './ingress/register.js';
 import { WebhookManagementController } from './management/controllers.js';
-import { WebhookManagementService } from './management/service.js';
+import { WebhookManagementService } from './management/webhook-management.service.js';
 import { WORKSPACE_AUTHORIZATION } from '../workspaces/tokens.js';
 import { WEBHOOK_PREFLIGHT } from './tokens.js';
 import {

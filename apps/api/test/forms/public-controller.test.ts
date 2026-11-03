@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { formRoutes } from '@pertexo/contracts/server';
 import { PublicFormsController } from '../../src/forms/public.controller.js';
 import { routeInput } from '../support/route-input.js';
-import type { FormService } from '../../src/forms/service.js';
+import type { FormService } from '../../src/forms/form.service.js';
 import type { HttpRateLimitAdmission } from '../../src/platform/rate-limit/admission.js';
 
 const publicId = randomUUID();

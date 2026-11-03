@@ -4,7 +4,7 @@ import type { FastifyRequest } from 'fastify';
 import type { formUploadRoutes as routes } from '@pertexo/contracts/server';
 import { PublicFormUploadsController } from '../../../src/artifacts/form-uploads/public.controller.js';
 import { routeInput } from '../../support/route-input.js';
-import type { FormUploadService } from '../../../src/artifacts/form-uploads/service.js';
+import type { FormUploadService } from '../../../src/artifacts/form-uploads/form-upload.service.js';
 import type { HttpRateLimitAdmission } from '../../../src/platform/rate-limit/admission.js';
 
 const publicId = randomUUID();

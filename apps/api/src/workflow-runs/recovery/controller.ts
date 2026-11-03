@@ -7,7 +7,10 @@ import { singleRequestHeader } from '../../platform/http/request-headers.js';
 import { In, Route } from '../../workspaces/http/route.js';
 import { authenticatedRequestIdentifiers } from '../../workspaces/request/authenticated-context.js';
 import { caller, type WorkflowRunsRequest } from '../http/request-context.js';
-import { GetRunRecoveryUseCase, RecoverRunUseCase } from './use-cases.js';
+import {
+  GetRunRecoveryUseCase,
+  RecoverRunUseCase,
+} from './run-recovery.service.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
 import { runFailure } from '../../problems/context/normalize.js';
 

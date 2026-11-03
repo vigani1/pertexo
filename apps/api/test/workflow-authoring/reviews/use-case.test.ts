@@ -5,7 +5,7 @@ import { expect, it, vi } from 'vitest';
 import type { PublicationReviewStore } from '@pertexo/core/authoring';
 import { PublicationReviewError } from '@pertexo/core/authoring';
 import { createActorContext } from '../../../src/authorization/index.js';
-import { PublicationReviewUseCase } from '../../../src/workflow-authoring/reviews/use-case.js';
+import { PublicationReviewUseCase } from '../../../src/workflow-authoring/reviews/publication-review.service.js';
 
 const actorId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
   workspaceId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',

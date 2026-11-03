@@ -15,7 +15,7 @@ import {
   CancelWorkflowRunUseCase,
   StreamRunEventsUseCase,
   WorkflowRunNotFoundError as WorkflowRunNotFoundError3,
-} from '../../src/workflow-runs/use-cases.js';
+} from '../../src/workflow-runs/workflow-runs.service.js';
 import {
   actorId,
   workspaceId,
@@ -35,7 +35,7 @@ import { createHash } from 'node:crypto';
 import {
   GetWorkflowNodeRunOutputUseCase,
   GetWorkflowRunInputUseCase,
-} from '../../src/workflow-runs/run-data/use-cases.js';
+} from '../../src/workflow-runs/run-data/run-data.service.js';
 import type { WorkflowRunEventStreamer } from '../../src/workflow-runs/ports.js';
 
 function tokenActor(scopes: readonly ApiTokenScope[]) {

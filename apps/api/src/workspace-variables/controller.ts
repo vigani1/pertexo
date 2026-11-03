@@ -7,7 +7,7 @@ import type { IdentityWorkspaceRequest } from '../workspaces/types.js';
 import { authenticatedRequestIdentifiers } from '../workspaces/request/authenticated-context.js';
 import { withRequestOperationSignal } from '../platform/http/index.js';
 import type { AbortableRequest } from '../platform/http/request-operation-signal.js';
-import { WorkspaceVariablesService } from './service.js';
+import { WorkspaceVariablesService } from './workspace-variables.service.js';
 import { domainErrors } from '../platform/http/problems/interceptor.js';
 import { resourceFailure } from '../problems/context/normalize.js';
 

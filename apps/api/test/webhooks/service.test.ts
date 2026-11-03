@@ -16,7 +16,7 @@ import {
   expectWiped,
   sealedEnvelope,
 } from './service/fixture.js';
-import type { WebhookManagementService } from '../../src/webhooks/management/service.js';
+import type { WebhookManagementService } from '../../src/webhooks/management/webhook-management.service.js';
 
 describe('webhook management service', () => {
   it('passes only hashes and sealed secrets to persistence and discloses original credentials', async () => {

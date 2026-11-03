@@ -5,7 +5,7 @@ import {
   createActorContext,
   authorizeWorkspace,
 } from '../../src/authorization/index.js';
-import { WorkflowTestsUseCase } from '../../src/node-testing/workflows/use-case.js';
+import { WorkflowTestsUseCase } from '../../src/node-testing/workflows/workflow-tests.service.js';
 const workspaceId = randomUUID(),
   actorId = randomUUID(),
   workflowId = randomUUID();

@@ -24,7 +24,7 @@ later work. Undelivered controls stay absent.
 
 ## Reconciled foundation
 
-- `apps/api/src/artifacts/service.ts` already authorizes begin, finalize,
+- `apps/api/src/artifacts/artifact.service.ts` already authorizes begin, finalize,
   metadata and download. Begin requires an idempotency key; finalize is
   idempotent. PUT alone does not make an artifact available.
 - `packages/database/src/artifacts/` owns metadata, reservations and accounting.

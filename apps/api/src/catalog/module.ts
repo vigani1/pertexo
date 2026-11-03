@@ -7,7 +7,7 @@ import {
   createCatalogUseCases,
   ListIntegrationsUseCase,
   ListNodeDefinitionsUseCase,
-} from './use-cases.js';
+} from './catalog.service.js';
 
 @Module({})
 // Nest dynamic modules require a class container.

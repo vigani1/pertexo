@@ -16,11 +16,11 @@ import type {
 import { vi } from 'vitest';
 import { WorkflowAuthoringController } from '../../../../../src/workflow-authoring/http/controllers.js';
 import { WorkflowOrganizationBatchesController } from '../../../../../src/workflow-authoring/organization/batch/controller.js';
-import { WorkflowOrganizationBatchesUseCase } from '../../../../../src/workflow-authoring/organization/batch/use-case.js';
+import { WorkflowOrganizationBatchesUseCase } from '../../../../../src/workflow-authoring/organization/batch/workflow-organization-batches.service.js';
 import { WorkflowOrganizationCommandsUseCase } from '../../../../../src/workflow-authoring/organization/commands.js';
 import { WorkflowOrganizationController } from '../../../../../src/workflow-authoring/organization/controller.js';
 import { WorkflowFoldersController } from '../../../../../src/workflow-authoring/organization/folders/controller.js';
-import { WorkflowFoldersUseCase } from '../../../../../src/workflow-authoring/organization/folders/use-case.js';
+import { WorkflowFoldersUseCase } from '../../../../../src/workflow-authoring/organization/folders/workflow-folders.service.js';
 import { WorkflowOrganizationReadsUseCase } from '../../../../../src/workflow-authoring/organization/reads.js';
 
 import { DoubleSubmitCsrfPolicy } from '../../../../../src/identity/index.js';

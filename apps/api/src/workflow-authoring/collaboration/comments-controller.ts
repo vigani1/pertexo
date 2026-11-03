@@ -4,7 +4,7 @@ import {
   type RouteInput,
 } from '@pertexo/contracts/server';
 import { In, Route } from '../../workspaces/http/route.js';
-import { WorkflowCollaborationUseCase } from './use-case.js';
+import { WorkflowCollaborationUseCase } from './workflow-collaboration.service.js';
 import { collaborationOperation } from './http.js';
 import type { WorkflowAuthoringRequest } from '../types.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';

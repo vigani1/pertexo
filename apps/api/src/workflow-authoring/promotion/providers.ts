@@ -1,6 +1,6 @@
 import type { Provider } from '@nestjs/common';
 import type { WorkflowAuthoringDependencies } from '../ports.js';
-import { WorkflowPromotionUseCase } from './use-case.js';
+import { WorkflowPromotionUseCase } from './workflow-promotion.service.js';
 export function workflowPromotionProviders(
   dependencies: WorkflowAuthoringDependencies,
 ): Provider[] {

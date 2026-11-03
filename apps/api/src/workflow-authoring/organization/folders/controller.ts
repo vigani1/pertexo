@@ -8,7 +8,7 @@ import { authoringFailure } from '../../../problems/context/normalize.js';
 import { In, Route } from '../../../workspaces/http/route.js';
 import type { WorkflowAuthoringRequest } from '../../types.js';
 import { withWorkflowOrganizationRequest } from '../http.js';
-import { WorkflowFoldersUseCase } from './use-case.js';
+import { WorkflowFoldersUseCase } from './workflow-folders.service.js';
 
 @UseInterceptors(domainErrors(authoringFailure))
 @Controller()

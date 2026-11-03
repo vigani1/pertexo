@@ -26,7 +26,7 @@ import {
   fixture,
 } from './use-case/fixture.js';
 import { toProblem } from '../../../src/problems/registry.js';
-import { WorkflowInputCasesUseCase } from '../../../src/workflow-authoring/input-cases/use-case.js';
+import { WorkflowInputCasesUseCase } from '../../../src/workflow-authoring/input-cases/workflow-input-cases.service.js';
 import { WORKSPACE_AUTHORIZATION } from '../../../src/workspaces/tokens.js';
 import { FakeIdentityModule } from '../../support/identity-module.js';
 import { ownerAccess, routeHarness } from '../../support/route-harness.js';

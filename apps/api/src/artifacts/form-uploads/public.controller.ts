@@ -10,7 +10,7 @@ import type { AbortableRequest } from '../../platform/http/request-operation-sig
 import { HttpRateLimitAdmission } from '../../platform/rate-limit/admission.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
 import { formUploadFailure } from '../../problems/context/normalize.js';
-import { FormUploadService } from './service.js';
+import { FormUploadService } from './form-upload.service.js';
 
 type PublicRequest = FastifyRequest & AbortableRequest;
 

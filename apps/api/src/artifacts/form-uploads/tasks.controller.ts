@@ -10,7 +10,7 @@ import { withRequestOperationSignal } from '../../platform/http/index.js';
 import type { AbortableRequest } from '../../platform/http/request-operation-signal.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
 import { formUploadFailure } from '../../problems/context/normalize.js';
-import { FormUploadService } from './service.js';
+import { FormUploadService } from './form-upload.service.js';
 
 type TaskRequest = IdentityWorkspaceRequest & AbortableRequest;
 

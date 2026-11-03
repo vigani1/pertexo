@@ -5,7 +5,7 @@ import { canonicalJson } from '@pertexo/workflow-model';
 import type {
   ReplayWorkflowRunInput,
   StartWorkflowRunInput,
-} from '../use-cases.js';
+} from '../workflow-runs.service.js';
 
 export function sha256(value: string): string {
   return createHash('sha256').update(value).digest('hex');

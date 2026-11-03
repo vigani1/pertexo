@@ -3,7 +3,7 @@ import type { WorkspaceVariablesStore } from '@pertexo/core/variables';
 import type { WorkspaceAuthorizationSource } from '../workspaces/ports.js';
 import { WORKSPACE_AUTHORIZATION } from '../workspaces/tokens.js';
 import { WorkspaceVariablesController } from './controller.js';
-import { WorkspaceVariablesService } from './service.js';
+import { WorkspaceVariablesService } from './workspace-variables.service.js';
 @Module({})
 // Nest dynamic modules require a class container.
 // eslint-disable-next-line @typescript-eslint/no-extraneous-class

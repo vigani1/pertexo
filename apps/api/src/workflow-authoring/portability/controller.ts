@@ -14,7 +14,7 @@ import {
   ExportWorkflowUseCase,
   ImportWorkflowUseCase,
   PreviewWorkflowImportUseCase,
-} from './use-cases.js';
+} from './workflow-portability.service.js';
 
 @UseInterceptors(domainErrors(authoringFailure))
 @Controller()

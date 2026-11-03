@@ -1,8 +1,8 @@
 import type { Provider } from '@nestjs/common';
 import { WorkflowOrganizationCommandsUseCase } from './commands.js';
 import { WorkflowOrganizationReadsUseCase } from './reads.js';
-import { WorkflowFoldersUseCase } from './folders/use-case.js';
-import { WorkflowOrganizationBatchesUseCase } from './batch/use-case.js';
+import { WorkflowFoldersUseCase } from './folders/workflow-folders.service.js';
+import { WorkflowOrganizationBatchesUseCase } from './batch/workflow-organization-batches.service.js';
 import type { WorkflowAuthoringDependencies } from '../ports.js';
 import { WorkflowOrganizationController } from './controller.js';
 import { WorkflowFoldersController } from './folders/controller.js';

@@ -9,7 +9,7 @@ import {
   SaveWorkflowDraftUseCase,
   ValidateWorkflowDraftUseCase,
   InvalidWorkflowCursorError,
-} from '../../src/workflow-authoring/use-cases.js';
+} from '../../src/workflow-authoring/workflow-authoring.service.js';
 import { createDraftRepresentationTag } from '../../src/workflow-authoring/http/etag.js';
 import {
   authorizeWorkspace,

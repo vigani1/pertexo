@@ -9,7 +9,7 @@ import {
   createFederationManagementStore,
 } from '@pertexo/core/identity';
 import { FederationManagementModule } from '../../authentication/federation/management/module.js';
-import { FederationManagementService } from '../../authentication/federation/management/service.js';
+import { FederationManagementService } from '../../authentication/federation/management/federation-management.service.js';
 import { federationSecretContext } from '../../authentication/federation/protocol/oidc.js';
 import {
   ApiTokenModule,

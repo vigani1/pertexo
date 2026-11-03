@@ -3,7 +3,7 @@ import { Module, type DynamicModule } from '@nestjs/common';
 import type { WorkspaceAuthorizationSource } from '../workspaces/ports.js';
 import { ScheduleManagementController } from './controllers.js';
 import { WORKSPACE_AUTHORIZATION } from '../workspaces/tokens.js';
-import { ScheduleManagementService } from './service.js';
+import { ScheduleManagementService } from './schedule-management.service.js';
 
 @Module({})
 // Nest dynamic modules require a class container.

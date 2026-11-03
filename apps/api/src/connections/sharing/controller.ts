@@ -7,7 +7,7 @@ import {
 import { In, Route } from '../../workspaces/http/route.js';
 import { context } from '../http/controllers.js';
 import type { ConnectionRequest } from '../types.js';
-import { ConnectionSharingUseCases } from './use-case.js';
+import { ConnectionSharingUseCases } from './connection-sharing.service.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
 import { connectionFailure } from '../../problems/context/normalize.js';
 

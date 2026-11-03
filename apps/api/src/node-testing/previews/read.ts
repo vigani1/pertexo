@@ -13,7 +13,7 @@ import type {
 
 import type { NodeTestingPersistence } from '../ports.js';
 
-import type { Authorization } from '../use-case.js';
+import type { Authorization } from '../node-testing.service.js';
 import { previewOutputResponse } from './response.js';
 
 export class GetPreviewRunUseCase {

@@ -9,7 +9,7 @@ import {
 } from 'vitest';
 
 import { ScheduleModule } from '../../src/schedules/module.js';
-import type { ScheduleManagementService } from '../../src/schedules/service.js';
+import type { ScheduleManagementService } from '../../src/schedules/schedule-management.service.js';
 import { FakeIdentityModule } from '../support/identity-module.js';
 import {
   HARNESS_ACTOR_ID as actorId,

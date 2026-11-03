@@ -6,7 +6,7 @@ import {
 
 import { In, Route } from '../../workspaces/http/route.js';
 import { withRequestOperationSignal } from '../../platform/http/index.js';
-import { WorkflowTestSuitesUseCase } from './use-case.js';
+import { WorkflowTestSuitesUseCase } from './workflow-test-suites.service.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
 import { nodeTestingFailure } from '../../problems/context/normalize.js';
 import { draftContext, type DraftRequest } from '../draft-context.js';

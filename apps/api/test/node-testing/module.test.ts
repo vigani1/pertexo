@@ -4,7 +4,7 @@ import { Test } from '@nestjs/testing';
 import { describe, expect, it, vi } from 'vitest';
 
 import { NodeTestingModule } from '../../src/node-testing/module.js';
-import { TestWorkflowNodeUseCase } from '../../src/node-testing/use-case.js';
+import { TestWorkflowNodeUseCase } from '../../src/node-testing/node-testing.service.js';
 import {
   httpNodeTestingGraph,
   nodeTestingDependencies,

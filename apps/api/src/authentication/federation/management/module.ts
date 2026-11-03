@@ -1,6 +1,6 @@
 import { Module, type DynamicModule } from '@nestjs/common';
 import { FederationManagementController } from './controller.js';
-import { FederationManagementService } from './service.js';
+import { FederationManagementService } from './federation-management.service.js';
 @Module({})
 // Nest dynamic modules require a class container.
 // eslint-disable-next-line @typescript-eslint/no-extraneous-class

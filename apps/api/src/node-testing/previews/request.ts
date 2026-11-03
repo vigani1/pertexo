@@ -12,7 +12,7 @@ import { z } from 'zod';
 
 import { NodeTestRequestError } from '../errors.js';
 
-import type { NodeTestUseCaseInput } from '../use-case.js';
+import type { NodeTestUseCaseInput } from '../node-testing.service.js';
 
 const executableNodeSchema = z
   .record(z.string(), z.json())

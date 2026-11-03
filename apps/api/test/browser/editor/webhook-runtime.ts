@@ -11,8 +11,8 @@ import { PLATFORM_NODE_CATALOG } from '@pertexo/node-catalog';
 import { composeExecutableCatalog } from '@pertexo/workflow-engine';
 import type { ApiConfig } from '../../../src/platform/config/api.js';
 import type { ApiWebhookRuntime } from '../../../src/platform/webhooks/runtime.module.js';
-import { WebhookManagementService } from '../../../src/webhooks/management/service.js';
-import { WebhookTestEventService } from '../../../src/webhooks/test-events/service.js';
+import { WebhookManagementService } from '../../../src/webhooks/management/webhook-management.service.js';
+import { WebhookTestEventService } from '../../../src/webhooks/test-events/webhook-test-event.service.js';
 import { createEditorBrowserEnvelopeKeys } from '../../../../../infrastructure/testing/editor-browser-envelope-keys.mjs';
 import { silentLogger } from '../../support/silent-logger.js';
 

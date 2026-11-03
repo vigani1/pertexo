@@ -8,7 +8,7 @@ import type {
   DatabaseRuntime,
 } from '@pertexo/database/platform';
 
-import { ScheduleManagementService } from '../../schedules/service.js';
+import { ScheduleManagementService } from '../../schedules/schedule-management.service.js';
 import {
   createScheduleTelemetry,
   type ScheduleTelemetry,

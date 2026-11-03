@@ -13,7 +13,7 @@ import {
   type FederationCommandScope,
   type FederationManagementRequest,
 } from './request.js';
-import { FederationManagementService } from './service.js';
+import { FederationManagementService } from './federation-management.service.js';
 
 type Request = FederationManagementRequest;
 @UseInterceptors(domainErrors(resourceFailure))

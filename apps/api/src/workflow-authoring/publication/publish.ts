@@ -15,7 +15,7 @@ import type { WorkflowPublishResponse } from '../types.js';
 
 import { serializeWorkflowPublication } from '../http/serializers.js';
 
-import type { WorkflowResourceInput } from '../use-cases.js';
+import type { WorkflowResourceInput } from '../workflow-authoring.service.js';
 import {
   type AuthoringPersistence,
   authorize,

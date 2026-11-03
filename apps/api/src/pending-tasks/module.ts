@@ -2,7 +2,7 @@ import { Module, type DynamicModule } from '@nestjs/common';
 import type { PendingTaskStore } from '@pertexo/core/runs';
 import type { WorkspaceAuthorizationSource } from '../workspaces/ports.js';
 import { PendingTasksController } from './controller.js';
-import { PendingTaskService } from './service.js';
+import { PendingTaskService } from './pending-task.service.js';
 import { WORKSPACE_AUTHORIZATION } from '../workspaces/tokens.js';
 @Module({})
 // Nest dynamic modules require a class container.

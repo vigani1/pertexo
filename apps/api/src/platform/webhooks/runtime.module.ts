@@ -12,8 +12,8 @@ import { composeExecutableCatalog } from '@pertexo/workflow-engine';
 
 import type { ApiConfig } from '../config/api.js';
 import { initialCheckpointFactory } from '@pertexo/core/runs';
-import { WebhookTestEventService } from '../../webhooks/test-events/service.js';
-import { WebhookManagementService } from '../../webhooks/management/service.js';
+import { WebhookTestEventService } from '../../webhooks/test-events/webhook-test-event.service.js';
+import { WebhookManagementService } from '../../webhooks/management/webhook-management.service.js';
 import type { WebhookIngressDependencies } from '../../webhooks/ingress/register.js';
 
 export type ApiWebhookRuntime = Readonly<{

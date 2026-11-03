@@ -8,7 +8,7 @@ import {
   StartWorkflowRunUseCase,
   type ReplayWorkflowRunInput,
   type StartWorkflowRunInput,
-} from '../../../src/workflow-runs/use-cases.js';
+} from '../../../src/workflow-runs/workflow-runs.service.js';
 
 export const actorId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 

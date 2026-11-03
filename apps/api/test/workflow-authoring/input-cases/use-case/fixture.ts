@@ -5,7 +5,7 @@ import { vi } from 'vitest';
 
 import { createWorkflowInputCaseTag } from '@pertexo/contracts';
 import type { WorkflowInputCaseStore } from '@pertexo/core/authoring';
-import { WorkflowInputCasesUseCase } from '../../../../src/workflow-authoring/input-cases/use-case.js';
+import { WorkflowInputCasesUseCase } from '../../../../src/workflow-authoring/input-cases/workflow-input-cases.service.js';
 
 import { createActorContext } from '../../../../src/authorization/index.js';
 

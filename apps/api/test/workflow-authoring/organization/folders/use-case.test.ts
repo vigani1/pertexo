@@ -10,7 +10,7 @@ import {
   createActorContext,
   AuthorizationError,
 } from '../../../../src/authorization/index.js';
-import { WorkflowFoldersUseCase } from '../../../../src/workflow-authoring/organization/folders/use-case.js';
+import { WorkflowFoldersUseCase } from '../../../../src/workflow-authoring/organization/folders/workflow-folders.service.js';
 
 const workspaceId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const actorId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';

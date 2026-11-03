@@ -1,16 +1,19 @@
 import { WorkflowTestSuitesController } from './suites/controller.js';
-import { WorkflowTestSuitesUseCase } from './suites/use-case.js';
+import { WorkflowTestSuitesUseCase } from './suites/workflow-test-suites.service.js';
 import { WorkflowTestsController } from './workflows/controller.js';
-import { WorkflowTestsUseCase } from './workflows/use-case.js';
+import { WorkflowTestsUseCase } from './workflows/workflow-tests.service.js';
 import { StepSamplesController } from './samples/controller.js';
-import { StepSamplesUseCase } from './samples/use-case.js';
+import { StepSamplesUseCase } from './samples/step-samples.service.js';
 import { Module } from '@nestjs/common';
 import type { DynamicModule, Provider } from '@nestjs/common';
 
 import { NodeTestingController } from './controller.js';
 import type { NodeTestingDependencies } from './ports.js';
 import { WORKSPACE_AUTHORIZATION } from '../workspaces/tokens.js';
-import { GetPreviewRunUseCase, TestWorkflowNodeUseCase } from './use-case.js';
+import {
+  GetPreviewRunUseCase,
+  TestWorkflowNodeUseCase,
+} from './node-testing.service.js';
 
 @Module({})
 // Nest dynamic modules require a class container.

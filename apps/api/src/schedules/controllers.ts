@@ -10,7 +10,7 @@ import {
 import { requestIdentifier, traceIdentifier } from '../workspaces/index.js';
 import { In, Route } from '../workspaces/http/route.js';
 import type { IdentityWorkspaceRequest } from '../workspaces/types.js';
-import { ScheduleManagementService } from './service.js';
+import { ScheduleManagementService } from './schedule-management.service.js';
 import { domainErrors } from '../platform/http/problems/interceptor.js';
 import { authoringFailure } from '../problems/context/normalize.js';
 

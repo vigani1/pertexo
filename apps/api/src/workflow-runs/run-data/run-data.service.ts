@@ -27,7 +27,7 @@ import type {
   WorkflowRunApplicationInput,
   WorkflowRunPersistence,
 } from '../ports.js';
-import { WorkflowRunNotFoundError } from '../use-cases.js';
+import { WorkflowRunNotFoundError } from '../workflow-runs.service.js';
 
 export type GetWorkflowRunInputInput = WorkflowRunApplicationInput &
   Readonly<{ runId: string }>;

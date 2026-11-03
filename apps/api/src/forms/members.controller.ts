@@ -9,7 +9,7 @@ import type { IdentityWorkspaceRequest } from '../workspaces/types.js';
 import { withRequestOperationSignal } from '../platform/http/index.js';
 import type { AbortableRequest } from '../platform/http/request-operation-signal.js';
 import { authenticatedRequestIdentifiers } from '../workspaces/request/authenticated-context.js';
-import { FormService } from './service.js';
+import { FormService } from './form.service.js';
 import { domainErrors } from '../platform/http/problems/interceptor.js';
 import { memberFormFailure } from '../problems/context/normalize.js';
 

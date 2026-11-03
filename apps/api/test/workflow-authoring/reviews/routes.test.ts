@@ -9,7 +9,7 @@ import {
 } from 'vitest';
 
 import { WorkflowPublicationReviewController } from '../../../src/workflow-authoring/reviews/controller.js';
-import { PublicationReviewUseCase } from '../../../src/workflow-authoring/reviews/use-case.js';
+import { PublicationReviewUseCase } from '../../../src/workflow-authoring/reviews/publication-review.service.js';
 import { WORKSPACE_AUTHORIZATION } from '../../../src/workspaces/tokens.js';
 import { FakeIdentityModule } from '../../support/identity-module.js';
 import { ownerAccess, routeHarness } from '../../support/route-harness.js';

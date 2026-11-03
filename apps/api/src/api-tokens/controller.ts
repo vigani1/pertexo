@@ -30,7 +30,7 @@ import {
   throwApplicationError,
 } from '../platform/http/index.js';
 import { RateLimit } from '../platform/rate-limit/metadata.js';
-import { ApiTokenManagement } from './use-cases.js';
+import { ApiTokenManagement } from './api-token.service.js';
 import { domainErrors } from '../platform/http/problems/interceptor.js';
 import { workspaceFailure } from '../problems/context/normalize.js';
 

@@ -2,7 +2,7 @@ import type { DynamicModule, Provider } from '@nestjs/common';
 import { Module } from '@nestjs/common';
 import { WorkflowCommentsController } from './collaboration/comments-controller.js';
 import { WorkflowPresenceController } from './collaboration/presence-controller.js';
-import { WorkflowCollaborationUseCase } from './collaboration/use-case.js';
+import { WorkflowCollaborationUseCase } from './collaboration/workflow-collaboration.service.js';
 import { WorkflowLifecycleController } from './http/lifecycle-controller.js';
 import { WorkflowVersionsController } from './http/versions-controller.js';
 import { WorkflowPromotionController } from './promotion/controller.js';
@@ -11,7 +11,7 @@ import {
   PublicationReviewController,
   WorkflowPublicationReviewController,
 } from './reviews/controller.js';
-import { PublicationReviewUseCase } from './reviews/use-case.js';
+import { PublicationReviewUseCase } from './reviews/publication-review.service.js';
 import { WorkflowErrorController } from './settings/error-workflow-controller.js';
 import { WorkflowErrorUseCase } from './settings/error-workflow.js';
 
@@ -24,7 +24,7 @@ import {
   PublishWorkflowUseCase,
   SaveWorkflowDraftUseCase,
   ValidateWorkflowDraftUseCase,
-} from './use-cases.js';
+} from './workflow-authoring.service.js';
 
 import { WORKSPACE_AUTHORIZATION } from '../workspaces/tokens.js';
 import { DuplicateWorkflowUseCase } from './commands/duplicate.js';
@@ -33,7 +33,7 @@ import { RenameWorkflowUseCase } from './commands/rename.js';
 import { RestoreWorkflowVersionUseCase } from './commands/restore-version.js';
 import { WorkflowAuthoringController } from './http/controllers.js';
 import { WorkflowInputCasesController } from './input-cases/controller.js';
-import { WorkflowInputCasesUseCase } from './input-cases/use-case.js';
+import { WorkflowInputCasesUseCase } from './input-cases/workflow-input-cases.service.js';
 import {
   workflowOrganizationControllers,
   workflowOrganizationProviders,
@@ -43,7 +43,7 @@ import {
   ExportWorkflowUseCase,
   ImportWorkflowUseCase,
   PreviewWorkflowImportUseCase,
-} from './portability/use-cases.js';
+} from './portability/workflow-portability.service.js';
 import type { WorkflowAuthoringDependencies } from './ports.js';
 import {
   WorkflowAutoPauseController,

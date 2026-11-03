@@ -19,7 +19,7 @@ export {
   ListAccessibleWorkspacesUseCase,
   ListWorkspaceMembersUseCase,
   WorkspaceLifecycleUseCase,
-} from './use-cases.js';
+} from './workspaces.service.js';
 export { DatabaseIdentityWorkspaceAdapter } from './persistence/database-adapter.js';
 export { WorkspaceInvitationManagementUseCase } from './invitations/management.js';
 export { InvitationAcceptanceController } from './invitations/acceptance-controller.js';
