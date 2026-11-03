@@ -1,4 +1,4 @@
-import { createWorkflowRunDatabase } from '../../../src/runs/store.js';
+import { createWorkflowRunDatabase } from '../../../src/runs/workflow-run.store.js';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
 import { Client } from 'pg';
 import { afterAll, describe, expect, it } from 'vitest';

@@ -1,4 +1,7 @@
-export { createDataTablesStore, type DataTablesStore } from './store.js';
+export {
+  createDataTablesStore,
+  type DataTablesStore,
+} from './data-tables.store.js';
 export {
   createWorkerDataTablesStore,
   type WorkerDataTablesStore,

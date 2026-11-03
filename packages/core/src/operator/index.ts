@@ -1,7 +1,7 @@
 export {
   createOperatorCommandStore,
   type OperatorCommandStore,
-} from './store.js';
+} from './operator-command.store.js';
 export {
   OperatorCommandConflictError,
   type GenericOperatorCommandResult,
@@ -20,7 +20,7 @@ export {
 export {
   createOperatorRunReplayStore,
   type OperatorRunReplayStore,
-} from './replay/store.js';
+} from './replay/operator-run-replay.store.js';
 export {
   OperatorRunReplayMismatchError,
   OperatorRunReplayNotExecutableError,

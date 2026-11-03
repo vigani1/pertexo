@@ -6,7 +6,7 @@ import {
   type SetStateAction,
 } from 'react';
 import { useNotifications } from '@/components/ui/use-notifications';
-import type { EditorStore } from '../model/state/store';
+import type { EditorStore } from '../model/state/workflow-editor.store';
 import { stepTitle } from '../model/graph/adapter';
 import {
   removeWorkflowElements,

@@ -1,7 +1,7 @@
 import { Pool, type PoolClient } from 'pg';
 import { describe, expect, it, vi } from 'vitest';
 
-import { createRunAdvanceStore } from '../../src/runs/advance/store.js';
+import { createRunAdvanceStore } from '../../src/runs/advance/run-advance.store.js';
 import { createDatabaseRuntime } from '@pertexo/database/platform';
 
 const noNetworkConfig = {

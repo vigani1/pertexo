@@ -10,7 +10,7 @@ export type { AuthorizationCapability } from '@pertexo/policy';
 export {
   createIdentityWorkspaceStore,
   type IdentityWorkspaceStore,
-} from './store.js';
+} from './identity-workspace.store.js';
 export { WorkspaceAccessDeniedError } from '../shared/errors.js';
 export {
   IdentityConflictError,
@@ -62,10 +62,13 @@ export type {
 export {
   createWorkspaceInvitationDeliveryStore,
   type WorkspaceInvitationDeliveryStore,
-} from './invitations/delivery/store.js';
+} from './invitations/delivery/workspace-invitation-delivery.store.js';
 export type { WorkspaceInvitationDeliveryClaim } from './invitations/delivery/invitation-delivery.types.js';
 
-export { createApiTokenStore, type ApiTokenStore } from './tokens/store.js';
+export {
+  createApiTokenStore,
+  type ApiTokenStore,
+} from './tokens/api-token.store.js';
 export { ApiTokenPolicyError } from './tokens/errors.js';
 export type {
   VerifiedApiToken,

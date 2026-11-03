@@ -5,7 +5,7 @@ import {
   createWorkflowErrorStore,
   WorkflowErrorSettingsConflictError,
   WorkflowErrorTargetUnavailableError,
-} from '../../../src/authoring/settings/error-workflow/store.js';
+} from '../../../src/authoring/settings/error-workflow/workflow-error.store.js';
 import { WorkflowNotFoundError } from '../../../src/authoring/workflows/errors.js';
 import {
   userId,
@@ -35,7 +35,7 @@ import { readErrorWorkflow } from '../../../src/runs/error-workflows/read.reposi
 import { createWorkspacePurgeCoordinator } from '../../../src/lifecycle/purge/coordinator.js';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
 import { waitForApplicationLock } from '../../support/postgres/lock-coordination.js';
-import { createErrorWorkflowStore } from '../../../src/runs/error-workflows/store.js';
+import { createErrorWorkflowStore } from '../../../src/runs/error-workflows/error-workflow.store.js';
 
 beforeAll(beforeAllFixture1);
 afterAll(afterAllFixture2);

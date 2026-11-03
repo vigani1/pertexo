@@ -8,16 +8,16 @@ import {
   createWorkspaceDatabase,
 } from '@pertexo/database/platform';
 import { acceptWorkflowRun } from '../../src/runs/commands/acceptance/accept.js';
-import { createIdentityWorkspaceStore } from '../../src/tenant-access/store.js';
+import { createIdentityWorkspaceStore } from '../../src/tenant-access/identity-workspace.store.js';
 import {
   migrateDatabase,
   dropDisconnectedDatabase,
 } from '@pertexo/database/testing';
-import { createOperatorCommandStore } from '../../src/operator/store.js';
-import { createOperatorRunReplayStore } from '../../src/operator/replay/store.js';
-import { createScheduleTriggerStore } from '../../src/triggers/schedules/store.js';
+import { createOperatorCommandStore } from '../../src/operator/operator-command.store.js';
+import { createOperatorRunReplayStore } from '../../src/operator/replay/operator-run-replay.store.js';
+import { createScheduleTriggerStore } from '../../src/triggers/schedules/schedule-trigger.store.js';
 import { createScheduleTriggerScanner } from '../../src/triggers/schedules/scanner.js';
-import { createWorkflowTriggerReconciliationStore } from '../../src/triggers/reconciliation/store.js';
+import { createWorkflowTriggerReconciliationStore } from '../../src/triggers/reconciliation/workflow-trigger-reconciliation.store.js';
 
 export function createScheduleTriggerTestEnvironment(
   options: Readonly<{ includeOperator?: boolean; scannerCount?: 1 | 2 }> = {},

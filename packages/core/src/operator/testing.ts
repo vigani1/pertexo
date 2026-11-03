@@ -1,12 +1,12 @@
 export {
   createOperatorRunReplayStore,
   type OperatorRunReplayStore,
-} from './replay/store.js';
+} from './replay/operator-run-replay.store.js';
 export {
   OperatorRunReplayMismatchError,
   OperatorRunReplayNotExecutableError,
 } from './replay/operator-replay.js';
-export { createOperatorCommandStore } from './store.js';
+export { createOperatorCommandStore } from './operator-command.store.js';
 export { OperatorCommandConflictError } from './operator-command.js';
 export {
   type GetOperatorCommandInput,

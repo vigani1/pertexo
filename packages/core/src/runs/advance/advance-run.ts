@@ -1,8 +1,8 @@
 import { isDeepStrictEqual } from 'node:util';
 
 import type { RunAdvanceInput, RunAdvanceResult } from './run-advance.types.js';
-import type { RunAdvanceStore } from './store.js';
-import type { WorkflowCallStore } from '../calls/store.js';
+import type { RunAdvanceStore } from './run-advance.store.js';
+import type { WorkflowCallStore } from '../calls/workflow-call.store.js';
 import { WorkflowCallRefusedError } from '../calls/errors.js';
 import { createInitialCheckpoint } from '../commands/create-initial-checkpoint.js';
 import {

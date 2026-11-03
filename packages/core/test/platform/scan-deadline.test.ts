@@ -1,7 +1,7 @@
 import { expect, it } from 'vitest';
 
 import { withDatabaseDeadlineBudget } from '@pertexo/database/testing';
-import { STALLED_WORK_POOL_ROLE } from '../../src/runs/stalled/store.js';
+import { STALLED_WORK_POOL_ROLE } from '../../src/runs/stalled/stalled-work.store.js';
 
 // What the worker's health check allows a scan before it ends the worker.
 const HEALTH_CHECK_LIMIT_MS = 300_000;

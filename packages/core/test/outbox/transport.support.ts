@@ -7,12 +7,12 @@ import {
   parseDatabaseConfig,
   createWorkspaceDatabase,
 } from '@pertexo/database/platform';
-import { createOutboxDispatcherDatabase } from '../../src/outbox/dispatcher/store.js';
+import { createOutboxDispatcherDatabase } from '../../src/outbox/dispatcher/outbox-dispatcher.store.js';
 import {
   migrateDatabase,
   createDisposableDatabaseFixture,
 } from '@pertexo/database/testing';
-import { createOperatorCommandStore } from '../../src/operator/store.js';
+import { createOperatorCommandStore } from '../../src/operator/operator-command.store.js';
 
 function deferredHandle<T extends object>(resolve: () => T): T {
   return new Proxy(Object.create(null) as T, {

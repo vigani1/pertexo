@@ -6,7 +6,7 @@ import {
   createApiTokenStore,
   parseApiTokenCredential,
 } from '../../../../src/tenant-access/index.js';
-import { createIdentityWorkspaceStore } from '../../../../src/tenant-access/store.js';
+import { createIdentityWorkspaceStore } from '../../../../src/tenant-access/identity-workspace.store.js';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
 import {
   migrateDatabase,

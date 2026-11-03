@@ -17,7 +17,7 @@ import {
   queryAsOwner,
   workspaceId,
 } from '../../support/workflow-authoring.js';
-import { createConnectionStore } from '../../../src/connections/store.js';
+import { createConnectionStore } from '../../../src/connections/connection.store.js';
 import {
   CONNECTION_AUTH_TYPE,
   ConnectionNotFoundError,

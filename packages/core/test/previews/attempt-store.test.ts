@@ -15,7 +15,7 @@ vi.mock('../../src/previews/attempts/mark-dispatched.js', () => ({
   markPreviewDispatched: database.markDispatched,
 }));
 
-import { createPreviewAttemptRunStore } from '../../src/previews/attempts/store.js';
+import { createPreviewAttemptRunStore } from '../../src/previews/attempts/preview-attempt-run.store.js';
 
 const config = {
   connectionString: 'postgresql://worker:password@localhost/pertexo',

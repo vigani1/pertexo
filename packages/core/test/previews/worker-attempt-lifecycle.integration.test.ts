@@ -4,7 +4,7 @@ import {
   withTenantScopedClient,
 } from '@pertexo/database/primitives';
 import { readPreviewRun } from '../../src/previews/runs/preview-runs.repository.js';
-import { createPreviewRunStore } from '../../src/previews/runs/store.js';
+import { createPreviewRunStore } from '../../src/previews/runs/preview-run.store.js';
 import { completePreviewAttempt } from '../../src/previews/attempts/complete.js';
 import {
   PreviewAttemptStateError,

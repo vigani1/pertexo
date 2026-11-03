@@ -1,7 +1,7 @@
 export {
   createWorkspaceInboxStore,
   type WorkspaceInboxStore,
-} from './threads/store.js';
+} from './threads/workspace-inbox.store.js';
 export type {
   ListThreadsInput,
   MarkAllReadInput,
@@ -15,12 +15,12 @@ export type {
 export {
   createWorkspaceInboxFoldStore,
   type WorkspaceInboxFoldStore,
-} from './folding/store.js';
+} from './folding/workspace-inbox-fold.store.js';
 export type { WorkspaceInboxChange } from './folding/workspace-inbox-change.types.js';
 export {
   createNoticePreferencesStore,
   type NoticePreferencesStore,
-} from './preferences/store.js';
+} from './preferences/notice-preferences.store.js';
 export {
   NoticeConflictError,
   NoticeUnavailableError,
@@ -30,7 +30,10 @@ export {
   type ReplaceNoticeSubscriptionInput,
   type UnsubscribeNoticeMailInput,
 } from './preferences/notice-preferences.js';
-export { createNoticeMailStore, type NoticeMailStore } from './mail/store.js';
+export {
+  createNoticeMailStore,
+  type NoticeMailStore,
+} from './mail/notice-mail.store.js';
 export type {
   NoticeMailItem,
   NoticeMailPersonFailure,

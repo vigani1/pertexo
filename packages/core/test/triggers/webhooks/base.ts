@@ -2,18 +2,18 @@ import { createHash } from 'node:crypto';
 
 import { Pool, type QueryResultRow } from 'pg';
 
-import { createIdentityWorkspaceStore } from '../../../src/tenant-access/store.js';
+import { createIdentityWorkspaceStore } from '../../../src/tenant-access/identity-workspace.store.js';
 import {
   migrateDatabase,
   dropDisconnectedDatabase,
 } from '@pertexo/database/testing';
 import { canonicalOutboxPayloadChecksum } from '@pertexo/database/primitives';
-import type { WorkflowAuthoringStore } from '../../../src/authoring/workflows/store.js';
+import type { WorkflowAuthoringStore } from '../../../src/authoring/workflows/workflow-authoring.store.js';
 import { createWorkflowAuthoringFixtureDatabase as createWorkflowAuthoringStore } from '../../support/workflow-authoring-admission.fixture.js';
 
-import { createWebhookTriggerStore } from '../../../src/triggers/webhooks/store.js';
-import { createWorkflowTriggerReconciliationStore } from '../../../src/triggers/reconciliation/store.js';
-import { createScheduleTriggerStore } from '../../../src/triggers/schedules/store.js';
+import { createWebhookTriggerStore } from '../../../src/triggers/webhooks/webhook-trigger.store.js';
+import { createWorkflowTriggerReconciliationStore } from '../../../src/triggers/reconciliation/workflow-trigger-reconciliation.store.js';
+import { createScheduleTriggerStore } from '../../../src/triggers/schedules/schedule-trigger.store.js';
 
 import {
   adminUrl,

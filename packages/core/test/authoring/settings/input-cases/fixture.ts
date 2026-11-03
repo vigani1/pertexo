@@ -1,4 +1,4 @@
-import { createWorkflowInputCaseStore } from '../../../../src/authoring/input-cases/store.js';
+import { createWorkflowInputCaseStore } from '../../../../src/authoring/input-cases/workflow-input-case.store.js';
 
 import {
   actorId,

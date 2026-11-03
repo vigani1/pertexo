@@ -1,6 +1,6 @@
 import { useBlocker } from '@tanstack/react-router';
 import { useCallback, useState } from 'react';
-import type { EditorStore } from '../model/state/store';
+import type { EditorStore } from '../model/state/workflow-editor.store';
 
 export type LeaveReason = 'unsaved' | 'unfinished';
 

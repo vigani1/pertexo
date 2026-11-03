@@ -3,10 +3,10 @@ import { randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
 import { afterAll, beforeAll, expect } from 'vitest';
 
-import { createWorkflowFolderStore } from '../../../src/authoring/organization/folders/store.js';
+import { createWorkflowFolderStore } from '../../../src/authoring/organization/folders/workflow-folder.store.js';
 import { ScheduleTriggerError } from '../../../src/triggers/schedules/errors.js';
 import { WebhookTriggerNotFoundError } from '../../../src/triggers/webhooks/errors.js';
-import { createWebhookTestEventStore } from '../../../src/triggers/webhooks/test-events/store.js';
+import { createWebhookTestEventStore } from '../../../src/triggers/webhooks/test-events/webhook-test-event.store.js';
 import { adminUrl, url } from '../webhooks/context.js';
 import type { createWebhookScenario } from '../webhooks/fixture.js';
 import {

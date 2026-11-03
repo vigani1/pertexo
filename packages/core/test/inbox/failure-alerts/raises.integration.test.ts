@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
 import type { NoticeMailToSeal } from '../../../src/inbox/mail/notice-mail.types.js';
-import { createNoticeMailStore } from '../../../src/inbox/mail/store.js';
-import { createNoticePreferencesStore } from '../../../src/inbox/preferences/store.js';
+import { createNoticeMailStore } from '../../../src/inbox/mail/notice-mail.store.js';
+import { createNoticePreferencesStore } from '../../../src/inbox/preferences/notice-preferences.store.js';
 import {
   claim,
   complete,

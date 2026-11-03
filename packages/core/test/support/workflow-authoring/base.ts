@@ -4,7 +4,7 @@ import { afterAll, beforeAll } from 'vitest';
 
 import { parseDatabaseConfig } from '@pertexo/database/platform';
 
-import { createIdentityWorkspaceStore } from '../../../src/tenant-access/store.js';
+import { createIdentityWorkspaceStore } from '../../../src/tenant-access/identity-workspace.store.js';
 import {
   migrateDatabase,
   createDisposableDatabaseFixture,

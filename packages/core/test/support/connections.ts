@@ -18,11 +18,11 @@ import {
   createConnectionStore,
   type ConnectionLookupStore,
   type ConnectionStore,
-} from '../../src/connections/store.js';
-import { createNotificationDestinationStore } from '../../src/notifications/destinations/store.js';
+} from '../../src/connections/connection.store.js';
+import { createNotificationDestinationStore } from '../../src/notifications/destinations/notification-destination.store.js';
 import { FailureNotificationDestinationError } from '../../src/notifications/destinations/errors.js';
-import type { NotificationDestinationStore } from '../../src/notifications/destinations/store.js';
-import { createFailureNotificationStore } from '../../src/notifications/store.js';
+import type { NotificationDestinationStore } from '../../src/notifications/destinations/notification-destination.store.js';
+import { createFailureNotificationStore } from '../../src/notifications/failure-notification.store.js';
 import {
   parseDatabaseConfig,
   generatePersistedId,

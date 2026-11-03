@@ -5,7 +5,7 @@ import {
   ArtifactStoreClosedError,
   createArtifactStore,
   ArtifactNotFoundError,
-} from '../src/store.js';
+} from '../src/artifact.store.js';
 import {
   WORKSPACE_ID,
   ARTIFACT_ID,

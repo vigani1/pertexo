@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 
 import type { acceptPreviewRun } from '../../../src/previews/runs/accept.js';
-import { createPreviewRunStore } from '../../../src/previews/runs/store.js';
+import { createPreviewRunStore } from '../../../src/previews/runs/preview-run.store.js';
 import { claimPreviewDelivery } from '../../../src/previews/attempts/claim.js';
 import type { AcceptPreviewRunInput } from '../../../src/previews/runs/acceptance/preview-acceptance.types.js';
 import type {

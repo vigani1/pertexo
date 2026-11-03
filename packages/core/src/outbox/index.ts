@@ -1,5 +1,5 @@
 export { DELIVERY_CONSUMER } from './delivery-consumers.js';
-export { createOutboxDispatcherDatabase } from './dispatcher/store.js';
+export { createOutboxDispatcherDatabase } from './dispatcher/outbox-dispatcher.store.js';
 export type {
   LeasedOutboxEvent,
   OutboxDispatcherDatabase,
@@ -19,7 +19,7 @@ export type { UnknownOutcomeReconciliationResult } from './reconcile-unknown-out
 // Other areas import these files directly (ADR 091); the door gains nothing.
 export type {} from './consume-message.js';
 export type {} from './dispatcher/outbox-dispatcher.types.js';
-export type {} from './dispatcher/store.js';
+export type {} from './dispatcher/outbox-dispatcher.store.js';
 export type {} from './overdue-deliveries.repository.js';
 export type {} from './reconcile-unknown-outcome.js';
 export type {} from './retention.js';

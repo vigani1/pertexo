@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { randomUUID } from 'node:crypto';
 import { withTenantScopedClient } from '@pertexo/database/primitives';
-import { createWorkflowOrganizationReadStore } from '../../../src/authoring/organization/workflows/store.js';
+import { createWorkflowOrganizationReadStore } from '../../../src/authoring/organization/workflows/workflow-organization-read.store.js';
 
 import {
   apiUrl,

@@ -1,7 +1,7 @@
 import { afterAll, afterEach, beforeAll } from 'vitest';
 import { createHash } from 'node:crypto';
 import { callbackWaitConfigSchema } from '@pertexo/workflow-model';
-import { createCallbackStore } from '../../../../src/runs/pending-tasks/callbacks/store.js';
+import { createCallbackStore } from '../../../../src/runs/pending-tasks/callbacks/callback.store.js';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
 import {
   running,

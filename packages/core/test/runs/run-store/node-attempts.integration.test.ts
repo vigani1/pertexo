@@ -37,7 +37,7 @@ import {
   UnknownOutcomeReconciliationStateError,
   reconcileUnknownOutcomeEvidence,
 } from '../../../src/testing.js';
-import { createOperatorCommandStore } from '../../../src/operator/store.js';
+import { createOperatorCommandStore } from '../../../src/operator/operator-command.store.js';
 import { createWorkspaceDatabase } from '@pertexo/database/testing';
 import { isConnectionFenceCurrent } from '../../../src/connections/runtime/credential-use.repository.js';
 

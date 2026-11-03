@@ -6,7 +6,7 @@ import type {
 import type { WorkspaceVariableValues } from '@pertexo/workflow-model';
 import type { WorkflowNodeFailureValue } from '@pertexo/workflow-model';
 
-import type { createNodeAttemptRunStore } from './store.js';
+import type { createNodeAttemptRunStore } from './node-attempt-run.store.js';
 
 export type NodeAttemptDelivery = Readonly<{
   outboxEventId: string;

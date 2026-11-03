@@ -15,7 +15,7 @@ import {
   FormAccessConflictError,
 } from '../../../src/triggers/forms/errors.js';
 import { admin } from '../../lifecycle/calls/fixtures.js';
-import { createWorkflowRunDatabase } from '../../../src/runs/store.js';
+import { createWorkflowRunDatabase } from '../../../src/runs/workflow-run.store.js';
 import { RunRequiresFormError } from '../../../src/runs/commands/acceptance/forms.repository.js';
 import { Client, Pool } from 'pg';
 import { createCheckpoint } from '@pertexo/workflow-engine';
@@ -41,7 +41,7 @@ import {
   addMember,
   type Form,
 } from './admission/door-support.js';
-import { createWorkflowFolderStore } from '../../../src/authoring/organization/folders/store.js';
+import { createWorkflowFolderStore } from '../../../src/authoring/organization/folders/workflow-folder.store.js';
 
 const ADMISSION_LOCK = /lock_workspace_run_admission/iu;
 

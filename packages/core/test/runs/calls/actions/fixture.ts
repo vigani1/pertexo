@@ -2,8 +2,8 @@ import { Pool } from 'pg';
 
 import { createCheckpoint } from '../../../../../workflow-engine/dist/index.js';
 
-import { createRunAdvanceStore } from '../../../../src/runs/advance/store.js';
-import { createWorkflowCallStore } from '../../../../src/runs/calls/store.js';
+import { createRunAdvanceStore } from '../../../../src/runs/advance/run-advance.store.js';
+import { createWorkflowCallStore } from '../../../../src/runs/calls/workflow-call.store.js';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
 
 import { admin } from '../../../lifecycle/calls/fixtures.js';

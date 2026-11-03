@@ -14,7 +14,7 @@ import {
   type GraphChange,
 } from '@/features/workflows/comparison.public';
 import { useEditorStore } from '../../model/state/context';
-import { shownConflict } from '../../model/state/store';
+import { shownConflict } from '../../model/state/workflow-editor.store';
 
 type Line = GraphChange;
 

@@ -1,7 +1,7 @@
 import { Pool } from 'pg';
 import { randomUUID } from 'node:crypto';
 import { beforeAll, afterAll, afterEach } from 'vitest';
-import { createRunValuesStore } from '../../../src/runs/values/store.js';
+import { createRunValuesStore } from '../../../src/runs/values/run-values.store.js';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
 import {
   withTenantScopedClient,

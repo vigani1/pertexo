@@ -10,8 +10,8 @@ import {
   acquireDatabasePool,
   createDatabaseRuntime,
 } from '@pertexo/database/platform';
-import { createPreviewAttemptRunStore } from '../../src/previews/attempts/store.js';
-import { createPreviewReconciliationStore } from '../../src/previews/reconciliation/store.js';
+import { createPreviewAttemptRunStore } from '../../src/previews/attempts/preview-attempt-run.store.js';
+import { createPreviewReconciliationStore } from '../../src/previews/reconciliation/preview-reconciliation.store.js';
 import {
   migrateDatabase,
   createDisposableDatabaseFixture,

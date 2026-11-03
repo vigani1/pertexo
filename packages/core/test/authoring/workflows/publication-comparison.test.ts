@@ -6,7 +6,7 @@ import {
 } from '@pertexo/workflow-model';
 import { EMPTY_DEFINITION_CATALOG } from '@pertexo/workflow-model/server';
 import { WorkflowEngineError } from '@pertexo/workflow-engine';
-import { createWorkflowAuthoringStore } from '../../../src/authoring/workflows/store.js';
+import { createWorkflowAuthoringStore } from '../../../src/authoring/workflows/workflow-authoring.store.js';
 import { authorizedCheckout, CONNECTION } from './admission/checkout.js';
 import { testExecutableCompiler } from '../../../src/authoring/test-executable-compiler.js';
 

@@ -24,7 +24,7 @@ import {
 } from './retention.support.js';
 import { randomUUID as randomUUID2 } from 'node:crypto';
 import { ArtifactUploadNotFoundError } from '../../src/artifacts/uploads/errors.js';
-import { createArtifactUploadStore } from '../../src/artifacts/uploads/store.js';
+import { createArtifactUploadStore } from '../../src/artifacts/uploads/artifact-upload.store.js';
 
 type Client = Parameters<Parameters<typeof withOwnerTransaction>[0]>[0];
 

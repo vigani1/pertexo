@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { Pool, type PoolClient } from 'pg';
 
 import { parseDatabaseConfig } from '@pertexo/database/platform';
-import { createArtifactUploadStore } from '../../../src/artifacts/uploads/store.js';
+import { createArtifactUploadStore } from '../../../src/artifacts/uploads/artifact-upload.store.js';
 import {
   migrateDatabase,
   createDisposableDatabaseFixture,

@@ -4,7 +4,7 @@ import type {
   PreviewTerminalOutcome,
 } from '../preview.types.js';
 import type { CodeDiagnostics } from '@pertexo/node-sdk';
-import type { createPreviewAttemptRunStore } from './store.js';
+import type { createPreviewAttemptRunStore } from './preview-attempt-run.store.js';
 
 export type PreviewClaimResult =
   | Readonly<{ kind: 'claimed'; lease: PreviewAttemptLease }>

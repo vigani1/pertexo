@@ -10,7 +10,7 @@ import {
   STEP_CARD,
   toBodyPosition,
 } from '../../model/graph/for-each-body-layout';
-import type { EditorStore } from '../../model/state/store';
+import type { EditorStore } from '../../model/state/workflow-editor.store';
 import { findDefinition } from '../../model/graph/adapter';
 import { positionAfter, type PortRef } from '../../model/graph/commands';
 import { levelSinks } from '../../model/graph/order';

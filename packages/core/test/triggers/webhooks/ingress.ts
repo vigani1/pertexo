@@ -1,4 +1,4 @@
-import type { createWebhookTriggerStore } from '../../../src/triggers/webhooks/store.js';
+import type { createWebhookTriggerStore } from '../../../src/triggers/webhooks/webhook-trigger.store.js';
 
 import { webhook } from './base.js';
 

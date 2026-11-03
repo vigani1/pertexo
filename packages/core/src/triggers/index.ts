@@ -11,7 +11,7 @@ export type {} from './skips.repository.js';
 export {
   createScheduleTriggerStore,
   type ScheduleTriggerStore,
-} from './schedules/store.js';
+} from './schedules/schedule-trigger.store.js';
 export { ScheduleTriggerError } from './schedules/errors.js';
 export type { ScheduleTriggerRecord } from './schedules/management/schedule-management.types.js';
 export type {
@@ -23,7 +23,7 @@ export type {
 export {
   createWebhookTriggerStore,
   type WebhookTriggerStore,
-} from './webhooks/store.js';
+} from './webhooks/webhook-trigger.store.js';
 export {
   WebhookDeliveryIneligibleError,
   WebhookDeliveryReplayMismatchError,
@@ -50,7 +50,7 @@ export type { ScanDueSchedulesResult } from './schedules/scanning/schedule-scann
 export {
   createWorkflowTriggerReconciliationStore,
   type WorkflowTriggerReconciliationStore,
-} from './reconciliation/store.js';
+} from './reconciliation/workflow-trigger-reconciliation.store.js';
 export {
   WorkflowTriggerReconciliationMismatchError,
   WorkflowTriggerStalePublicationError,
@@ -60,7 +60,7 @@ export {
   type WorkflowTriggerPauseFoldStore,
 } from './pause/fold.store.js';
 export type { WorkflowTriggerPauseDecision } from './pause/trigger-pause.types.js';
-export { createFormStore, type FormStore } from './forms/store.js';
+export { createFormStore, type FormStore } from './forms/form.store.js';
 export {
   FormUnavailableError,
   FormChangedError,
@@ -71,7 +71,7 @@ export type { PublicFormGrant } from './forms/form-admission.types.js';
 export {
   createWebhookResponseStore,
   type WebhookResponseStore,
-} from './webhooks/responses/store.js';
+} from './webhooks/responses/webhook-response.store.js';
 export type {
   WebhookResponseScope,
   WebhookResponseSnapshot,
@@ -87,7 +87,7 @@ export { EventCoordinationUnavailableError } from './coordination/errors.js';
 export {
   createWebhookTestEventStore,
   type WebhookTestEventStore,
-} from './webhooks/test-events/store.js';
+} from './webhooks/test-events/webhook-test-event.store.js';
 export { WebhookTestEventError } from './webhooks/test-events/errors.js';
 export type {
   TestEventReference,

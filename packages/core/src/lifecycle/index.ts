@@ -6,7 +6,7 @@ export type { PreviewRetentionProcessResult } from './previews/preview-retention
 export {
   createRetentionStore,
   type RetentionStore,
-} from './retention/store.js';
+} from './retention/retention.store.js';
 export type {
   RetentionPassResult,
   RetentionRuleName,

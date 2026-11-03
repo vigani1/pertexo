@@ -12,7 +12,7 @@ import {
   EditorStoreContext,
   useEditorStore,
 } from '@/features/workflow-editor/model/state/context';
-import { createEditorStore } from '@/features/workflow-editor/model/state/store';
+import { createEditorStore } from '@/features/workflow-editor/model/state/workflow-editor.store';
 import { updateWorkflowNode } from '@/features/workflow-editor/model/graph/commands';
 import type { NodeFormApi } from '@/features/workflow-editor/model/inspector/node-form';
 import { step, link } from '../../../support/fixtures/for-each';

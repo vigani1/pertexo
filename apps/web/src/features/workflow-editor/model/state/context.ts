@@ -1,6 +1,6 @@
 import { createContext, use } from 'react';
 import { useStore } from 'zustand';
-import type { EditorStore } from './store';
+import type { EditorStore } from './workflow-editor.store';
 import type { EditorSession } from './session';
 
 export const EditorStoreContext = createContext<EditorStore | null>(null);

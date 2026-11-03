@@ -7,7 +7,7 @@ import { screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { ConflictCompareDialog } from '@/features/workflow-editor/components/chrome/conflict-compare-dialog';
 import { EditorStoreContext } from '@/features/workflow-editor/model/state/context';
-import { createEditorStore } from '@/features/workflow-editor/model/state/store';
+import { createEditorStore } from '@/features/workflow-editor/model/state/workflow-editor.store';
 import { PublishChanges } from '@/features/workflow-publish/components/publication/publish-changes';
 import { ReviewCandidate } from '@/features/workflow-publish/components/reviews/candidate';
 import { summarizePublish } from '@/features/workflow-publish/model/publication/summary';

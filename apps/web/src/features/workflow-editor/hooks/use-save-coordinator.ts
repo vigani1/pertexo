@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef } from 'react';
-import type { EditorStore } from '../model/state/store';
+import type { EditorStore } from '../model/state/workflow-editor.store';
 import {
   createSaveCoordinator,
   type SaveCoordinatorTransport,

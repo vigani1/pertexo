@@ -22,7 +22,7 @@ import {
   appliedNote,
 } from '@/features/workflow-editor/model/notes/fields';
 import { safeNoteUrl } from '@/features/workflow-editor/model/notes/markup';
-import { createEditorStore } from '@/features/workflow-editor/model/state/store';
+import { createEditorStore } from '@/features/workflow-editor/model/state/workflow-editor.store';
 import { diffWorkflowGraphs } from '@/features/workflow-drafts/public';
 import {
   diffWorkflowGraphs as versionDiff,

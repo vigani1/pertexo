@@ -4,7 +4,7 @@ import type { ReactNode } from 'react';
 import { expect, it } from 'vitest';
 import { useNoteActions } from '@/features/workflow-editor/components/canvas/notes/use-actions';
 import { EditorStoreContext } from '@/features/workflow-editor/model/state/context';
-import { createEditorStore } from '@/features/workflow-editor/model/state/store';
+import { createEditorStore } from '@/features/workflow-editor/model/state/workflow-editor.store';
 
 const step = {
   id: 'step-1',

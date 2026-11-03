@@ -5,7 +5,7 @@ import { removeWorkflowElements } from '@/features/workflow-editor/model/graph/r
 import {
   createEditorStore,
   EDIT_COALESCE_WINDOW_MS,
-} from '@/features/workflow-editor/model/state/store';
+} from '@/features/workflow-editor/model/state/workflow-editor.store';
 
 import {
   firstStepChoice,

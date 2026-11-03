@@ -9,9 +9,9 @@ import {
 import { Pool } from 'pg';
 import type { DatabaseError } from 'pg';
 
-import { createWorkflowRunDatabase } from '../../../src/runs/store.js';
+import { createWorkflowRunDatabase } from '../../../src/runs/workflow-run.store.js';
 import { createApiTokenStore } from '../../../src/tenant-access/index.js';
-import { createIdentityWorkspaceStore } from '../../../src/tenant-access/store.js';
+import { createIdentityWorkspaceStore } from '../../../src/tenant-access/identity-workspace.store.js';
 
 const adminUrl =
   process.env.DATABASE_ADMIN_URL ??

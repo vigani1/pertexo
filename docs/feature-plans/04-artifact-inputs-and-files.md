@@ -30,7 +30,7 @@ later work. Undelivered controls stay absent.
 - `packages/database/src/artifacts/` owns metadata, reservations and accounting.
   Pending uploads have 15 minutes; available user uploads receive 30 days.
   Existing capabilities are `artifact:upload` and `artifact:read`.
-- `packages/artifact-store/src/store.ts` exposes a read stream verified against
+- `packages/artifact-store/src/artifact.store.ts` exposes a read stream verified against
   stored length, metadata and SHA-256. It owns bytes, not workspace permission.
 - `apps/worker/src/attempts/artifacts/runtime.ts` currently exposes write only.
   The SDK reference already contains ID, length, media type and SHA-256.

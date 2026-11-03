@@ -9,7 +9,7 @@ import { PublishChanges } from '@/features/workflow-publish/components/publicati
 import { ReviewCandidate } from '@/features/workflow-publish/components/reviews/candidate';
 import { summarizePublish } from '@/features/workflow-publish/model/publication/summary';
 import { ConflictCompareDialog } from '@/features/workflow-editor/components/chrome/conflict-compare-dialog';
-import { createEditorStore } from '@/features/workflow-editor/model/state/store';
+import { createEditorStore } from '@/features/workflow-editor/model/state/workflow-editor.store';
 import { EditorStoreContext } from '@/features/workflow-editor/model/state/context';
 import { PromotionReview } from '@/features/workflow-promotions/components/review';
 import { VersionDiffSummary } from '@/features/workflow-settings/components/versions/diff-summary';

@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
-import { createRetentionStore } from '../../src/lifecycle/retention/store.js';
+import { createRetentionStore } from '../../src/lifecycle/retention/retention.store.js';
 import type { Pool } from 'pg';
 import { describe, expect, it, vi } from 'vitest';
 

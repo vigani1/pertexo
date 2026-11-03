@@ -10,7 +10,7 @@ import {
   type WorkflowDefinitionCatalog,
 } from '@pertexo/workflow-model/server';
 import type { DatabaseConfig } from '@pertexo/database/platform';
-import { createWorkflowAuthoringStore } from '../../src/authoring/workflows/store.js';
+import { createWorkflowAuthoringStore } from '../../src/authoring/workflows/workflow-authoring.store.js';
 import { testExecutableCompiler } from '../../src/authoring/test-executable-compiler.js';
 import type {
   WorkflowAuthoringStoreOptions,

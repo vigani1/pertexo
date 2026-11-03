@@ -17,7 +17,7 @@ vi.mock('../../../database/dist/tenant-access/transactions.js', () => ({
   withTenantScopedClient: seams.withTenantScopedClient,
 }));
 
-import { createArtifactUploadStore } from '../../src/artifacts/uploads/store.js';
+import { createArtifactUploadStore } from '../../src/artifacts/uploads/artifact-upload.store.js';
 import type { ArtifactRecord } from '../../src/artifacts/artifact.js';
 
 const workspaceId = randomUUID();

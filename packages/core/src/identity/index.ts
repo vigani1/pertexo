@@ -19,12 +19,12 @@ export { isAuthenticationSessionAllowed } from './federation/sessions/lookup.rep
 export {
   createFederationManagementStore,
   type FederationManagementStore,
-} from './federation/management/store.js';
+} from './federation/management/federation-management.store.js';
 export { FederationConflictError } from './federation/management/errors.js';
 export {
   createDirectoryStore,
   type DirectoryStore,
-} from './federation/provisioning/store.js';
+} from './federation/provisioning/directory.store.js';
 export type {
   DirectoryGroup,
   DirectoryGroupValues,
@@ -39,7 +39,7 @@ export { DirectoryError } from './federation/provisioning/errors.js';
 export {
   createTwoFactorRecoveryStore,
   type TwoFactorRecoveryStore,
-} from './two-factor/store.js';
+} from './two-factor/two-factor-recovery.store.js';
 export type { TwoFactorRecoveryResult } from './two-factor/two-factor-recovery.types.js';
 
 // Other areas reach these directly (ADR 091).

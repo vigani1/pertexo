@@ -6,7 +6,7 @@ import {
   createWorkerConnectionResolutionStore,
   type ApiConnectionStore,
   type WorkerConnectionResolutionStore,
-} from '../../src/connections/store.js';
+} from '../../src/connections/connection.store.js';
 import { createDatabaseRuntime } from '@pertexo/database/platform';
 
 describe('@pertexo/database package contract', () => {

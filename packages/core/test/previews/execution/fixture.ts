@@ -12,7 +12,7 @@ import {
   createDisposableDatabaseFixture,
 } from '@pertexo/database/testing';
 import type { acceptPreviewRun } from '../../../src/previews/runs/accept.js';
-import { createPreviewRunStore } from '../../../src/previews/runs/store.js';
+import { createPreviewRunStore } from '../../../src/previews/runs/preview-run.store.js';
 
 const adminUrl =
   process.env.DATABASE_ADMIN_URL ??

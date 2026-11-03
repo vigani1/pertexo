@@ -3,7 +3,7 @@ import { Readable } from 'node:stream';
 import { describe, expect, it } from 'vitest';
 
 import { parseArtifactStoreConfig } from '../src/config/index.js';
-import { createArtifactStore } from '../src/store.js';
+import { createArtifactStore } from '../src/artifact.store.js';
 
 const integrationDescribe =
   process.env.ARTIFACT_STORE_INTEGRATION === 'true' ? describe : describe.skip;

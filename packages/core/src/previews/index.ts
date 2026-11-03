@@ -10,9 +10,9 @@ export {
   PreviewIdempotencyConflictError,
   PriorPreviewInputUnavailableError,
 } from './errors.js';
-export { createPreviewAttemptRunStore } from './attempts/store.js';
+export { createPreviewAttemptRunStore } from './attempts/preview-attempt-run.store.js';
 export type { PreviewAttemptRunStore } from './attempts/preview-attempt.types.js';
-export { createPreviewReconciliationStore } from './reconciliation/store.js';
+export { createPreviewReconciliationStore } from './reconciliation/preview-reconciliation.store.js';
 export type { PreviewReconciliationStore } from './reconciliation/preview-reconciliation.types.js';
 export type {
   PreviewAttemptLease,
@@ -27,8 +27,8 @@ export type {
 } from './attempts/preview-attempt.types.js';
 export type { PreviewDeliveryReconciliationResult } from './reconciliation/preview-reconciliation.types.js';
 export { WorkflowTestError } from './workflows/errors.js';
-export type { WorkflowTestStore } from './workflows/store.js';
-export type { WorkflowTestSuiteStore } from './suites/store.js';
+export type { WorkflowTestStore } from './workflows/workflow-test.store.js';
+export type { WorkflowTestSuiteStore } from './suites/workflow-test-suite.store.js';
 export { createWorkflowTestSuiteScanner } from './suites/scanner.js';
 export type { WorkflowTestSuiteScanner } from './suites/workflow-test-suite.types.js';
 export {
@@ -37,6 +37,6 @@ export {
 } from './runs/acceptance/limits.js';
 
 // Named for the areas that reach them directly (authoring composes these stores).
-export type {} from './runs/store.js';
+export type {} from './runs/preview-run.store.js';
 export type {} from './runs/preview-replay.types.js';
 export type {} from './runs/acceptance/preview-acceptance.types.js';

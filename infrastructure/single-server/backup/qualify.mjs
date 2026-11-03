@@ -12,7 +12,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { Readable } from 'node:stream';
 import { parseEnv } from 'node:util';
-import { createArtifactStore } from '../../../packages/artifact-store/dist/store.js';
+import { createArtifactStore } from '../../../packages/artifact-store/dist/artifact.store.js';
 import { parseArtifactStoreConfig } from '../../../packages/artifact-store/dist/config/index.js';
 
 const directory = mkdtempSync(join(tmpdir(), 'pertexo-recovery-'));
