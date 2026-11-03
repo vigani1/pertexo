@@ -177,11 +177,11 @@ try {
       [
         "import assert from 'node:assert/strict';",
         "import {parseWorkerConfig} from './apps/worker/dist/config/worker.js';",
-        "import {createSmtpClient} from './packages/secrets/dist/server.js';",
+        "import {createSystemMailClient} from './apps/worker/dist/mail/system-mail-client.js';",
         "const config=parseWorkerConfig({...process.env,WORKER_INSTANCE_ID:'fixture'});",
         'for(const delivery of [config.systemMailDelivery,config.invitationDelivery]) {',
         ' assert.equal(delivery.delivery.mode,process.env.SYSTEM_MAIL_TRANSPORT);',
-        ' const client=createSmtpClient(delivery.delivery);',
+        ' const client=createSystemMailClient(delivery.delivery);',
         " assert.equal(client.deduplicates,process.env.SYSTEM_MAIL_TRANSPORT==='resend');",
         " const result=await client.sendNotification({fromEmail:'a@example.test',toEmail:'b@example.test',subject:'test',text:'test',idempotencyKey:'fixture',timeoutMillis:100,signal:AbortSignal.abort(),beforeDispatch:async()=>{throw new Error('Unexpected dispatch');}});",
         " assert.equal(result.kind,'retryable');",
