@@ -127,6 +127,7 @@ it('upgrades populated human tasks without changing their decisions or context',
       '0079_workspace_data_token_scopes.sql',
       '0080_artifact_reference_locations.sql',
       '0081_serialize_capacity_provisioning.sql',
+      '0082_complete_trigger_pause_state.sql',
     ]);
     const after = (
       await owner.query<Record<string, unknown>>(
