@@ -189,73 +189,57 @@ export class TestConnectionUseCase {
           ...common,
           expectedProviderKey,
         });
-        // The token service opens the client secret for itself when it needs it.
-        if (resolved.connection.authType === CONNECTION_AUTH_TYPE.oauth2) {
-          return toTestResponse(
-            await this.persistence.completeConnectionTest({
-              ...common,
-              secretVersionId: resolved.secretVersionId,
-              outcome: await this.testOAuth2(input, request, {
-                connection: resolved.connection,
-                signal: requestSignal,
-                beforeDispatch: () =>
-                  this.persistence.markConnectionTestDispatched({
-                    ...common,
-                    secretVersionId: resolved.secretVersionId,
-                  }),
-              }),
-            }),
-            this.redirectUri(),
-          );
-        }
-        plaintext = await this.encryption.open(
-          resolved.sealed,
-          {
-            workspaceId: input.routeWorkspaceId,
-            connectionId: input.connectionId,
+        const beforeDispatch = () =>
+          this.persistence.markConnectionTestDispatched({
+            ...common,
             secretVersionId: resolved.secretVersionId,
-          },
-          requestSignal,
-        );
-        requestSignal.throwIfAborted();
-        const credential = decodeCredential(plaintext);
+          });
+        let outcome: ConnectionTestOutcome;
         try {
-          const outcome = await this.testProvider(
-            destination,
-            expectedProviderKey,
-            {
-              request: request,
-              credential: credential,
-              input: input,
+          // The token service opens its own client secret when it needs it.
+          if (resolved.connection.authType === CONNECTION_AUTH_TYPE.oauth2) {
+            outcome = await this.testOAuth2(input, request, {
+              connection: resolved.connection,
               signal: requestSignal,
-              beforeDispatch: () =>
-                this.persistence.markConnectionTestDispatched({
-                  ...common,
-                  secretVersionId: resolved.secretVersionId,
-                }),
-            },
-          );
-          return toTestResponse(
-            await this.persistence.completeConnectionTest({
-              ...common,
-              secretVersionId: resolved.secretVersionId,
-              outcome,
-            }),
-            this.redirectUri(),
-          );
+              beforeDispatch,
+            });
+          } else {
+            plaintext = await this.encryption.open(
+              resolved.sealed,
+              {
+                workspaceId: input.routeWorkspaceId,
+                connectionId: input.connectionId,
+                secretVersionId: resolved.secretVersionId,
+              },
+              requestSignal,
+            );
+            requestSignal.throwIfAborted();
+            outcome = await this.testProvider(
+              destination,
+              expectedProviderKey,
+              {
+                request,
+                credential: decodeCredential(plaintext),
+                input,
+                signal: requestSignal,
+                beforeDispatch,
+              },
+            );
+          }
         } catch (error: unknown) {
           if (!(error instanceof SecureHttpError)) throw error;
           if (error.code === SECURE_HTTP_ERROR_CODE.dispatchEvidenceFailed)
             throw error;
-          return toTestResponse(
-            await this.persistence.completeConnectionTest({
-              ...common,
-              secretVersionId: resolved.secretVersionId,
-              outcome: secureErrorOutcome(error),
-            }),
-            this.redirectUri(),
-          );
+          outcome = secureErrorOutcome(error);
         }
+        return toTestResponse(
+          await this.persistence.completeConnectionTest({
+            ...common,
+            secretVersionId: resolved.secretVersionId,
+            outcome,
+          }),
+          this.redirectUri(),
+        );
       } catch (error: unknown) {
         try {
           await this.persistence.abandonConnectionTest(common);
