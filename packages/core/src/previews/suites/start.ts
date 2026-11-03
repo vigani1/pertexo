@@ -1,3 +1,4 @@
+import { decodeStoredValue } from '../../shared/stored-values.js';
 import { workflowTestExpectationsSchema } from '@pertexo/workflow-model';
 import { and, eq, sql } from 'drizzle-orm';
 import {
@@ -99,10 +100,12 @@ export async function startTestSuite(
   if (cases.length !== current.cases.length)
     throw new WorkflowTestError('cases_changed');
   for (const entry of cases) {
-    const expectations = workflowTestExpectationsSchema.parse(
-      entry.expectations === null
-        ? DEFAULT_TEST_EXPECTATIONS
-        : JSON.parse(entry.expectations),
+    const expectations = decodeStoredValue(() =>
+      workflowTestExpectationsSchema.parse(
+        entry.expectations === null
+          ? DEFAULT_TEST_EXPECTATIONS
+          : JSON.parse(entry.expectations),
+      ),
     );
     if (
       expectations.assertions.some(
@@ -118,7 +121,7 @@ export async function startTestSuite(
     await lockArtifactReferences(
       client,
       input.workspaceId,
-      JSON.parse(entry.input),
+      decodeStoredValue((): unknown => JSON.parse(entry.input)),
       input.actorId,
     );
   }

@@ -1,3 +1,4 @@
+import { decodeStoredValue } from '../../shared/stored-values.js';
 import { and, eq, notInArray, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import {
@@ -79,7 +80,7 @@ export async function sampleDraft(
     .catch(rethrowQueryFailure);
   if (row === undefined)
     throw new WorkflowNotFoundError('Workflow is not visible');
-  const graph = parseWorkflowGraphDraft(row.graphJson);
+  const graph = decodeStoredValue(() => parseWorkflowGraphDraft(row.graphJson));
   return {
     revision: row.revision,
     graph,

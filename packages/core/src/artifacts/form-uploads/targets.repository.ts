@@ -1,3 +1,4 @@
+import { decodeStoredValue } from '../../shared/stored-values.js';
 import { createHash } from 'node:crypto';
 import { and, eq, isNull, type SQL } from 'drizzle-orm';
 import type { PoolClient } from 'pg';
@@ -97,7 +98,8 @@ async function loadInputRequest(
     taskId: row.id,
     capabilityHash: null,
     uploadedBy: target.actorId,
-    fields: inputRequestConfigSchema.parse(row.config).fields,
+    fields: decodeStoredValue(() => inputRequestConfigSchema.parse(row.config))
+      .fields,
   };
 }
 

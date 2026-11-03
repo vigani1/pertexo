@@ -1,3 +1,4 @@
+import { decodeStoredValue } from '../../shared/stored-values.js';
 import { and, desc, eq, sql, type SQLWrapper } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
@@ -173,7 +174,9 @@ function projectPersistedSchedule(
   if (!(row.fires ?? false))
     return Object.freeze({ observedAt, items: Object.freeze([]) });
   const nextFireAt = row.next_fire_at;
-  const recurrence = parsePersistedScheduleRecurrence(row);
+  const recurrence = decodeStoredValue(() =>
+    parsePersistedScheduleRecurrence(row),
+  );
   // The persisted next fire comes first, even while it waits for a scanner;
   // after it, each instant is what the scanner persists when it claims.
   const later =

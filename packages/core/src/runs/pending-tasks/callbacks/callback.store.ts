@@ -1,3 +1,4 @@
+import { decodeStoredValue } from '../../../shared/stored-values.js';
 import {
   withTenantScopedClient,
   rethrowQueryFailure,
@@ -38,7 +39,7 @@ function project(row: Row): PreparedCallback {
     scopeHash: row.callback_scope_hash,
     tokenHash: row.callback_token_hash,
     keyVersion: row.callback_key_version,
-    config: callbackWaitConfigSchema.parse(row.config),
+    config: decodeStoredValue(() => callbackWaitConfigSchema.parse(row.config)),
   };
 }
 export type CallbackStore = ReturnType<typeof createCallbackStore>;

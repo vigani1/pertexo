@@ -1,3 +1,4 @@
+import { decodeStoredValue } from '../shared/stored-values.js';
 import { and, eq } from 'drizzle-orm';
 import {
   outboxEvents,
@@ -78,7 +79,7 @@ export async function reconcileUnknownOutcomeEvidence(
         );
       let payload: z.output<typeof payloadSchema>;
       try {
-        payload = payloadSchema.parse(row?.payload);
+        payload = decodeStoredValue(() => payloadSchema.parse(row?.payload));
       } catch {
         throw new UnknownOutcomeReconciliationMismatchError();
       }

@@ -1,3 +1,4 @@
+import { decodeStoredValue } from '../shared/stored-values.js';
 import { z } from 'zod';
 
 import type { operatorCommands } from '@pertexo/database/schema';
@@ -19,19 +20,23 @@ export function commandRecord(
     createdAt: new Date(row.createdAt),
     dryRun: row.dryRun,
     outcome: row.outcome,
-    priorErrorCode: z
-      .string()
-      .nullable()
-      .parse(result.priorErrorCode ?? null),
-    priorFailedAt: persistedDateSchema
-      .nullable()
-      .parse(result.priorFailedAt ?? null),
-    priorPublishAttempts: z
-      .number()
-      .int()
-      .nonnegative()
-      .nullable()
-      .parse(result.priorPublishAttempts ?? null),
+    priorErrorCode: decodeStoredValue(() =>
+      z
+        .string()
+        .nullable()
+        .parse(result.priorErrorCode ?? null),
+    ),
+    priorFailedAt: decodeStoredValue(() =>
+      persistedDateSchema.nullable().parse(result.priorFailedAt ?? null),
+    ),
+    priorPublishAttempts: decodeStoredValue(() =>
+      z
+        .number()
+        .int()
+        .nonnegative()
+        .nullable()
+        .parse(result.priorPublishAttempts ?? null),
+    ),
     result: Object.freeze(result),
     requestFingerprint: row.requestFingerprint,
     status: row.status,

@@ -1,3 +1,4 @@
+import { decodeStoredValue } from '../../shared/stored-values.js';
 import type {
   PreviewReplayRecord,
   ResolvePreviewReplayInput,
@@ -90,7 +91,7 @@ export async function resolvePreviewReplay(
       : {
           pinnedSampleId,
           completedAt,
-          output: parseStoredExecutionValue(outputRef),
+          output: decodeStoredValue(() => parseStoredExecutionValue(outputRef)),
         }),
     status: replay.status,
     sideEffectClass: replay.sideEffectClass,

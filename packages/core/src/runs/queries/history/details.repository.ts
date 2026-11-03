@@ -1,3 +1,4 @@
+import { decodeStoredValue } from '../../../shared/stored-values.js';
 import {
   workflowVersions,
   nodeRuns,
@@ -58,7 +59,7 @@ export type ReadWorkflowRunInputInput = Readonly<RunDataInput>;
 export type ReadWorkflowNodeRunOutputInput = Readonly<NodeRunDataInput>;
 
 function toRunData(stored: unknown): WorkflowRunData {
-  const value = parseStoredExecutionValue(stored);
+  const value = decodeStoredValue(() => parseStoredExecutionValue(stored));
   return value.kind === 'inline'
     ? Object.freeze({ kind: 'inline', value: value.value })
     : Object.freeze({ kind: 'artifact', artifactId: value.artifactId });
@@ -312,6 +313,6 @@ export async function readWorkflowNodeRunDiagnostics(
     if (row === undefined) return undefined;
     return row.diagnostics === null
       ? null
-      : codeDiagnosticsSchema.parse(row.diagnostics);
+      : decodeStoredValue(() => codeDiagnosticsSchema.parse(row.diagnostics));
   });
 }

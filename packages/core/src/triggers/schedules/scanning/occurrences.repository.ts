@@ -1,3 +1,4 @@
+import { decodeStoredValue } from '../../../shared/stored-values.js';
 import {
   triggerSchedules as schedules,
   triggerScheduleOccurrences as occurrences,
@@ -268,7 +269,7 @@ export async function processScheduleClaim(
   let observation: ReturnType<typeof resolveScheduleObservation>;
   try {
     observation = resolveScheduleObservation(
-      parsePersistedScheduleRecurrence(claim),
+      decodeStoredValue(() => parsePersistedScheduleRecurrence(claim)),
       claim.anchor_at,
       claim.observed_at,
     );

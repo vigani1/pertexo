@@ -1,3 +1,4 @@
+import { decodeStoredValue } from '../../shared/stored-values.js';
 import { and, eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
@@ -37,7 +38,9 @@ export async function readReconciliationEvent(
     );
   let payload: z.output<typeof reconciliationPayloadSchema>;
   try {
-    payload = reconciliationPayloadSchema.parse(eventRow.payload);
+    payload = decodeStoredValue(() =>
+      reconciliationPayloadSchema.parse(eventRow.payload),
+    );
   } catch {
     throw new WorkflowTriggerReconciliationMismatchError(
       'Reconciliation outbox payload is invalid',

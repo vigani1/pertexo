@@ -1,3 +1,4 @@
+import { decodeStoredValue } from '../../../shared/stored-values.js';
 import { TERMINAL_RUN_STATUSES } from '../../statuses.js';
 import { releaseSlotDuringTimedWait } from '../timed-wait-slot.repository.js';
 import { drizzle } from 'drizzle-orm/node-postgres';
@@ -57,7 +58,9 @@ function scheduledOccurrence(
   )?.occurredAt;
   if (startedAt === undefined || row.trigger_type !== 'schedule')
     return undefined;
-  const storedInput = parseStoredExecutionValue(row.input_ref);
+  const storedInput = decodeStoredValue(() =>
+    parseStoredExecutionValue(row.input_ref),
+  );
   if (storedInput.kind !== 'inline')
     throw new CoordinatorRunStateCorruptError();
   const scheduleInput = scheduleRunInputSchema.safeParse(storedInput.value);

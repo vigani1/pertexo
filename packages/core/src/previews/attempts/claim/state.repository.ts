@@ -1,3 +1,4 @@
+import { decodeStoredValue } from '../../../shared/stored-values.js';
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { alias } from 'drizzle-orm/pg-core';
@@ -101,9 +102,9 @@ export async function loadPreviewLease(
       .parse(input.attemptFenceToken),
     workspaceId: input.workspaceId,
     executableNode: Object.freeze(
-      executableNodeSchema.parse(executableNodeJson),
+      decodeStoredValue(() => executableNodeSchema.parse(executableNodeJson)),
     ),
-    input: parseStoredExecutionValue(inputRef),
+    input: decodeStoredValue(() => parseStoredExecutionValue(inputRef)),
     ...(priorPreviewNodeId === null ? {} : { priorPreviewNodeId }),
     variables: await readVariableSetValues(
       db,

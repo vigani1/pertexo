@@ -1,3 +1,4 @@
+import { decodeStoredValue } from '../../shared/stored-values.js';
 import { validateCallableValue } from '@pertexo/workflow-model';
 import type { WorkflowRecoveryPreparation } from './workflow-recovery.types.js';
 import {
@@ -39,7 +40,9 @@ export function recoveryPreparation(
           status: metadata.run.status,
           workflowVersionId: metadata.run.workflowVersionId,
           completedAt: sourceCompletedAt,
-          checkpoint: parseCheckpoint(metadata.checkpoint),
+          checkpoint: decodeStoredValue(() =>
+            parseCheckpoint(metadata.checkpoint),
+          ),
           nodes: metadata.nodes,
         },
       });

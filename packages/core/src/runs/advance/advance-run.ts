@@ -1,3 +1,4 @@
+import { decodeStoredValue } from '../../shared/stored-values.js';
 import { isDeepStrictEqual } from 'node:util';
 
 import type { RunAdvanceInput, RunAdvanceResult } from './run-advance.types.js';
@@ -46,7 +47,7 @@ export async function advanceRun(
     return initial;
   });
   return dependencies.runs.advance(input, async (state) => {
-    const previous = parseCheckpoint(state.checkpoint);
+    const previous = decodeStoredValue(() => parseCheckpoint(state.checkpoint));
     const executable = verifyPersistedWorkflowProjection(
       state.workflow,
       dependencies.verification,

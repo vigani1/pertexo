@@ -1,3 +1,4 @@
+import { decodeStoredValue } from '../../shared/stored-values.js';
 import {
   postgresFailure,
   rethrowQueryFailure,
@@ -88,7 +89,7 @@ export async function reserveArtifactUpload(
     const artifact = await loadArtifact(
       client,
       input.workspaceId,
-      storedUploadSchema.parse(stored).artifactId,
+      decodeStoredValue(() => storedUploadSchema.parse(stored)).artifactId,
       ['pending', 'available'],
     );
     return Object.freeze({ artifact, replayed: true });

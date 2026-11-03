@@ -1,3 +1,4 @@
+import { decodeStoredValue } from '../shared/stored-values.js';
 import { parseWorkflowGraphDraft } from '@pertexo/workflow-model';
 import {
   inspectWorkflowVariableSource,
@@ -135,7 +136,9 @@ function* stagedSources(workflow: UsageWorkflow) {
     ['published', workflow.publishedGraph],
   ] as const) {
     if (graph === null) continue;
-    for (const entry of workflowVariableSources(parseWorkflowGraphDraft(graph)))
+    for (const entry of workflowVariableSources(
+      decodeStoredValue(() => parseWorkflowGraphDraft(graph)),
+    ))
       yield { stage, ordinal: ordinal++, entry };
   }
 }

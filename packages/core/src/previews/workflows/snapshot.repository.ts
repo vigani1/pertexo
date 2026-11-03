@@ -1,3 +1,4 @@
+import { decodeStoredValue } from '../../shared/stored-values.js';
 import { and, asc, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import {
@@ -50,7 +51,9 @@ export async function loadTestSnapshot(
       bindings.get(sample.nodeId) !== sample.binding
     )
       throw new WorkflowTestError('stale_sample');
-    const output = parseStoredExecutionValue(sample.outputRef);
+    const output = decodeStoredValue(() =>
+      parseStoredExecutionValue(sample.outputRef),
+    );
     if (output.kind !== 'inline') throw new WorkflowTestError('stale_sample');
     pins[sample.nodeId] = { sampleId: sample.id, output: output.value };
     frozenPins[sample.nodeId] = {

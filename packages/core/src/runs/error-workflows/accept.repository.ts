@@ -1,3 +1,4 @@
+import { decodeStoredValue } from '../../shared/stored-values.js';
 import { lockWorkspaceExecutionCounter } from '../admission-locks.repository.js';
 import {
   runErrorWorkflowIntents,
@@ -91,9 +92,9 @@ export async function acceptErrorWorkflow(
     return;
   }
   // A newer publication may have removed the trigger since Settings was saved.
-  const envelope = z
-    .object({ graph: z.unknown() })
-    .parse(projection.executableJson);
+  const envelope = decodeStoredValue(() =>
+    z.object({ graph: z.unknown() }).parse(projection.executableJson),
+  );
   if (!isWorkflowErrorTarget(envelope.graph)) {
     await refuse('invalid_target');
     return;
@@ -102,7 +103,9 @@ export async function acceptErrorWorkflow(
     .execute(sql`savepoint error_workflow_admission`)
     .catch(rethrowQueryFailure);
   try {
-    const summary = workflowErrorInputSchema.parse(row.context);
+    const summary = decodeStoredValue(() =>
+      workflowErrorInputSchema.parse(row.context),
+    );
     const initial = prepare(projection);
     const transaction = {
       db: drizzle(client, { schema: databaseSchema }),

@@ -1,3 +1,4 @@
+import { decodeStoredValue } from '../../../shared/stored-values.js';
 import { decideInvitationAcceptance } from '@pertexo/workflow-model';
 import { and, eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
@@ -88,7 +89,9 @@ export async function completeAcceptance(
           resourceId: intentId,
         });
         if (stored !== null)
-          return replayedAcceptance(acceptanceReceiptSchema.parse(stored));
+          return replayedAcceptance(
+            decodeStoredValue(() => acceptanceReceiptSchema.parse(stored)),
+          );
         if (intent.status === 'completed') {
           if (intent.acceptedUserId !== actorUserId || intent.receipt === null)
             throw new InvitationAcceptanceConflictError(

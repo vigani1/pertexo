@@ -1,3 +1,4 @@
+import { decodeStoredValue } from '../../shared/stored-values.js';
 import { classifyConnectionTestCompletion } from '@pertexo/workflow-model';
 import { eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
@@ -53,7 +54,9 @@ export async function completeConnectionTest(
       throw new ConnectionTestInProgressError(
         'Connection test completion ownership was lost',
       );
-    const claimState = connectionTestClaimSchema.parse(claim.resultRef);
+    const claimState = decodeStoredValue(() =>
+      connectionTestClaimSchema.parse(claim.resultRef),
+    );
     if (
       claimState.secretVersionId !== undefined &&
       claimState.secretVersionId !== secretVersionId

@@ -1,3 +1,4 @@
+import { decodeStoredValue } from '../../../shared/stored-values.js';
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { webhookTestEvents as listeners } from '@pertexo/database/schema';
@@ -167,7 +168,7 @@ function readTestEventListener(
       output:
         row.outputRef === null
           ? null
-          : parseStoredExecutionValue(row.outputRef),
+          : decodeStoredValue(() => parseStoredExecutionValue(row.outputRef)),
     };
   });
 }

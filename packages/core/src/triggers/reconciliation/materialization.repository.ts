@@ -1,3 +1,4 @@
+import { decodeStoredValue } from '../../shared/stored-values.js';
 import { and, eq, exists, ne, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { drizzle } from 'drizzle-orm/node-postgres';
@@ -159,7 +160,9 @@ async function materializeSchedule(
     observedAt: Date;
   }>,
 ): Promise<void> {
-  const desired = desiredScheduleConfig(row.desiredConfig);
+  const desired = decodeStoredValue(() =>
+    desiredScheduleConfig(row.desiredConfig),
+  );
   if (row.persistedFingerprint === null) {
     const nextAt = resolveScheduleObservation(
       desired.recurrence,

@@ -1,8 +1,9 @@
+import { decodeStoredValue } from '../../shared/stored-values.js';
 import { formConfigSchema, workflowGraphSchema } from '@pertexo/workflow-model';
 import { FormUnavailableError } from './form.errors.js';
 
 export function readFormDefinition(graph_json: unknown) {
-  const graph = workflowGraphSchema.parse(graph_json);
+  const graph = decodeStoredValue(() => workflowGraphSchema.parse(graph_json));
   const node = graph.nodes.find(
     (node) =>
       node.definition.key === 'core.form' &&
@@ -10,5 +11,8 @@ export function readFormDefinition(graph_json: unknown) {
       !(node.disabled ?? false),
   );
   if (node === undefined) throw new FormUnavailableError();
-  return { nodeId: node.id, form: formConfigSchema.parse(node.config) };
+  return {
+    nodeId: node.id,
+    form: decodeStoredValue(() => formConfigSchema.parse(node.config)),
+  };
 }

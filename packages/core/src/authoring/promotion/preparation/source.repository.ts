@@ -1,3 +1,4 @@
+import { decodeStoredValue } from '../../../shared/stored-values.js';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { and, asc, eq, inArray, sql } from 'drizzle-orm';
@@ -110,7 +111,9 @@ export async function readPromotionSources(
       throw new WorkflowNotFoundError(
         'A selected published workflow version is unavailable.',
       );
-    const graph = parseWorkflowGraphDraft(version.graph_json);
+    const graph = decodeStoredValue(() =>
+      parseWorkflowGraphDraft(version.graph_json),
+    );
     budget.add(graph);
     workflows.push({
       ...selection,

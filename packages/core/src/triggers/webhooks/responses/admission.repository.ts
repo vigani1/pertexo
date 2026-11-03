@@ -1,3 +1,4 @@
+import { decodeStoredValue } from '../../../shared/stored-values.js';
 import {
   workflowTriggers,
   webhookRunResponses as responses,
@@ -23,7 +24,9 @@ export async function openWebhookResponse(
   const row = result[0];
   if (row === undefined)
     throw new Error('Accepted webhook trigger is unavailable');
-  const config = CORE_WEBHOOK_CONFIG_SCHEMA.parse(row.desired_config);
+  const config = decodeStoredValue(() =>
+    CORE_WEBHOOK_CONFIG_SCHEMA.parse(row.desired_config),
+  );
   if (config.responseMode !== 'workflow') return undefined;
   const seconds = config.responseWaitSeconds ?? 10;
   await transaction.db.insert(responses).values({

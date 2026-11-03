@@ -1,3 +1,4 @@
+import { decodeStoredValue } from '../../shared/stored-values.js';
 import { credentialCommandScope } from '@pertexo/database/platform';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
@@ -75,7 +76,9 @@ export async function claimWorkflowCommand(
   });
   if (stored === null) return null;
   requireReadableReceipt(storedResultSchema, stored);
-  const { workflow } = storedResultSchema.parse(stored);
+  const { workflow } = decodeStoredValue(() =>
+    storedResultSchema.parse(stored),
+  );
   if (
     workflow.workspaceId !== command.workspaceId ||
     workflow.id !== command.workflowId

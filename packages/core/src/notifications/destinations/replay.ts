@@ -1,3 +1,4 @@
+import { decodeStoredValue } from '../../shared/stored-values.js';
 import { z } from 'zod';
 import { FailureNotificationDestinationConfigSchema } from '@pertexo/workflow-model';
 import type { FailureNotificationDestinationRecord } from './notification-destination.types.js';
@@ -32,7 +33,7 @@ export function serializeFailureNotificationDestinationRecord(
 export function decodeFailureNotificationDestinationReplay(
   value: unknown,
 ): FailureNotificationDestinationRecord {
-  const parsed = destinationReplaySchema.parse(value);
+  const parsed = decodeStoredValue(() => destinationReplaySchema.parse(value));
   return Object.freeze({
     ...parsed,
     createdAt: new Date(parsed.createdAt),

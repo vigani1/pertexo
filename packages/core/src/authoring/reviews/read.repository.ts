@@ -1,3 +1,4 @@
+import { decodeStoredValue } from '../../shared/stored-values.js';
 import { and, eq } from 'drizzle-orm';
 import {
   workflowDrafts,
@@ -63,7 +64,9 @@ export async function readReviewRow(
       ? await connectionUseIssues(
           { db: drizzle(client) },
           connectionScope(requester, resources.role, 'connection:use'),
-          workflowConnectionReferences(parseWorkflowGraphDraft(row.draftGraph)),
+          workflowConnectionReferences(
+            decodeStoredValue(() => parseWorkflowGraphDraft(row.draftGraph)),
+          ),
         )
       : [];
     if (!canPublish || issues.length > 0) {

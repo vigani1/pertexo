@@ -1,3 +1,4 @@
+import { decodeStoredValue } from '../../shared/stored-values.js';
 import { and, eq, sql } from 'drizzle-orm';
 import {
   workflows,
@@ -290,7 +291,9 @@ function prepareCallInput(
     throw new WorkflowCallRefusedError('call_target_unavailable');
   if (expired) throw new WorkflowCallRefusedError('call_deadline_expired');
   const initial = prepareChild(projection);
-  const stored = parseStoredExecutionValue(call.input_ref);
+  const stored = decodeStoredValue(() =>
+    parseStoredExecutionValue(call.input_ref),
+  );
   if (stored.kind !== 'inline')
     throw new WorkflowCallRefusedError('call_input_invalid');
 

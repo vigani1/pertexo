@@ -1,3 +1,4 @@
+import { decodeStoredValue } from '../../shared/stored-values.js';
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
@@ -37,7 +38,10 @@ export async function markConnectionTestDispatched(
     throw new ConnectionTestInProgressError(
       'Connection test dispatch ownership was lost',
     );
-  if (connectionTestClaimSchema.parse(claimRow.resultRef).state !== 'claimed')
+  if (
+    decodeStoredValue(() => connectionTestClaimSchema.parse(claimRow.resultRef))
+      .state !== 'claimed'
+  )
     throw new ConnectionTestInProgressError(
       'Connection test already has durable dispatch evidence',
     );

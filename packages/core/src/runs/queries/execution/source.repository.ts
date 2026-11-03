@@ -1,3 +1,4 @@
+import { decodeStoredValue } from '../../../shared/stored-values.js';
 import type { WorkflowExecutionProjection } from './workflow-execution.types.js';
 import type { WorkflowExecutionReader } from './workflow-execution.types.js';
 import { and, eq } from 'drizzle-orm';
@@ -127,7 +128,9 @@ export function createWorkflowExecutionReader(
           const sample = pin?.sample;
           if (sample === undefined || sample === null)
             throw new Error('Frozen test sample is unavailable');
-          const output = parseStoredExecutionValue(sample.outputRef);
+          const output = decodeStoredValue(() =>
+            parseStoredExecutionValue(sample.outputRef),
+          );
           if (output.kind !== 'inline')
             throw new Error('Frozen test sample is unavailable');
           return {

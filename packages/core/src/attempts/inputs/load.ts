@@ -1,3 +1,4 @@
+import { decodeStoredValue } from '../../shared/stored-values.js';
 import {
   withTenantScopedReadClient,
   rethrowQueryFailure,
@@ -65,8 +66,10 @@ function reconcileCompletedNodeOutputs(
           );
         if (invalidAttemptOutput) throw new NodeAttemptStateCorruptError();
       }
-      const stored = parseStoredExecutionValue(
-        reused ? output.nodeOutputRef : output.attemptOutputRef,
+      const stored = decodeStoredValue(() =>
+        parseStoredExecutionValue(
+          reused ? output.nodeOutputRef : output.attemptOutputRef,
+        ),
       );
       if (stored.kind !== 'inline') throw new NodeAttemptStateCorruptError();
       return Object.freeze({
@@ -91,7 +94,9 @@ export async function loadNodeAttemptInputs(
       if (row === undefined) throw new NodeAttemptStateCorruptError();
       let runInput: unknown = null;
       if (row.inputRef !== null) {
-        const stored = parseStoredExecutionValue(row.inputRef);
+        const stored = decodeStoredValue(() =>
+          parseStoredExecutionValue(row.inputRef),
+        );
         if (stored.kind !== 'inline') throw new NodeAttemptStateCorruptError();
         runInput = stored.value;
       }
@@ -108,7 +113,9 @@ export async function loadNodeAttemptInputs(
             ),
           )
           .catch(rethrowQueryFailure);
-        const stored = parseStoredExecutionValue(resumed[0]?.outputRef);
+        const stored = decodeStoredValue(() =>
+          parseStoredExecutionValue(resumed[0]?.outputRef),
+        );
         if (stored.kind !== 'inline') throw new NodeAttemptStateCorruptError();
         resumeOutput = stored.value;
       }
@@ -194,7 +201,9 @@ async function readSourceFailure(
     const selectedSource = source[0];
     if (source.length !== 1 || selectedSource === undefined)
       throw new NodeAttemptStateCorruptError();
-    const stored = parseStoredExecutionValue(selectedSource.failureRef);
+    const stored = decodeStoredValue(() =>
+      parseStoredExecutionValue(selectedSource.failureRef),
+    );
     const parsed =
       stored.kind === 'inline'
         ? workflowNodeFailureValueSchema.safeParse(stored.value)

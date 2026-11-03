@@ -1,3 +1,4 @@
+import { decodeStoredValue } from '../../../shared/stored-values.js';
 import { runEvents, workflowRuns } from '@pertexo/database/schema';
 import { utf8ByteLength } from '@pertexo/workflow-model';
 import { retainedTestRunSql } from '../../data-policy.js';
@@ -183,7 +184,9 @@ export async function readRunEventsAfter(
     events: Object.freeze(
       pageRows.map((row) =>
         Object.freeze({
-          createdAt: z.coerce.date().parse(row.created_at),
+          createdAt: decodeStoredValue(() =>
+            z.coerce.date().parse(row.created_at),
+          ),
           payload: row.payload,
           sequence: row.sequence,
           type: row.type,

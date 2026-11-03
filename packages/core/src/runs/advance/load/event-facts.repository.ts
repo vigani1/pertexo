@@ -1,3 +1,4 @@
+import { decodeStoredValue } from '../../../shared/stored-values.js';
 import type { nodeRuns } from '@pertexo/database/schema';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { and, eq, inArray, isNull } from 'drizzle-orm';
@@ -86,7 +87,9 @@ export function completedInlineOutput(
   const identity = attemptFact(row);
   let stored;
   try {
-    stored = parseStoredExecutionValue(row.attempt_output_ref);
+    stored = decodeStoredValue(() =>
+      parseStoredExecutionValue(row.attempt_output_ref),
+    );
   } catch {
     throw new CoordinatorRunStateCorruptError();
   }
@@ -216,7 +219,9 @@ function outcomeEventFact(
   if (row.attempt_output_ref !== null) {
     let stored;
     try {
-      stored = parseStoredExecutionValue(row.attempt_output_ref);
+      stored = decodeStoredValue(() =>
+        parseStoredExecutionValue(row.attempt_output_ref),
+      );
     } catch {
       throw new CoordinatorRunStateCorruptError();
     }

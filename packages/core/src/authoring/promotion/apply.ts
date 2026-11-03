@@ -1,3 +1,4 @@
+import { decodeStoredValue } from '../../shared/stored-values.js';
 import { requireReadableReceipt } from '../../shared/receipts.js';
 import { ACTIVE_WORKSPACE_STATUSES } from '@pertexo/policy';
 import { writePromotedDraft } from './writes/persist-candidate.js';
@@ -57,7 +58,9 @@ export async function applyPromotion(
   );
   if (completed !== null) {
     requireReadableReceipt(promotionReceiptSchema, completed);
-    const stored = promotionReceiptSchema.parse(completed);
+    const stored = decodeStoredValue(() =>
+      promotionReceiptSchema.parse(completed),
+    );
     return context.transactScopes(async (inWorkspace) => {
       await lockPromotionWorkspaces(
         inWorkspace,
@@ -107,7 +110,9 @@ export async function applyPromotion(
     );
     if (replay !== null) {
       requireReadableReceipt(promotionReceiptSchema, replay);
-      const stored = promotionReceiptSchema.parse(replay);
+      const stored = decodeStoredValue(() =>
+        promotionReceiptSchema.parse(replay),
+      );
       if (stored.targetWorkspaceId !== review.targetWorkspaceId)
         throw new WorkflowPromotionError(
           'stale',

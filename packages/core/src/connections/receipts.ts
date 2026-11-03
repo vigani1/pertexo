@@ -1,3 +1,4 @@
+import { decodeStoredValue } from '../shared/stored-values.js';
 import { createHash } from 'node:crypto';
 import {
   connectionHealthSnapshotSchema,
@@ -100,7 +101,7 @@ export function decodeDurableConnectionReplay(
   value: unknown,
 ): ConnectionRecord {
   return hydrateConnectionSnapshot(
-    durableConnectionSnapshotSchema.parse(value),
+    decodeStoredValue(() => durableConnectionSnapshotSchema.parse(value)),
   );
 }
 
@@ -198,7 +199,9 @@ const durableConnectionTestResultSchema = z
 export function parseConnectionTestResult(
   value: unknown,
 ): ConnectionTestResult {
-  const parsed = durableConnectionTestResultSchema.parse(value);
+  const parsed = decodeStoredValue(() =>
+    durableConnectionTestResultSchema.parse(value),
+  );
   return Object.freeze({
     connection: hydrateConnectionSnapshot(parsed.connection),
     outcome: parsed.outcome,

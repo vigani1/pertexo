@@ -1,3 +1,4 @@
+import { decodeStoredValue } from '../../../shared/stored-values.js';
 import {
   rethrowQueryFailure,
   claimCommand,
@@ -85,7 +86,8 @@ export async function respondToTask(
   const submitted =
     input.kind === 'input_request'
       ? parseFormValues(
-          inputRequestConfigSchema.parse(row.config).fields,
+          decodeStoredValue(() => inputRequestConfigSchema.parse(row.config))
+            .fields,
           input.values,
         )
       : undefined;
@@ -195,7 +197,7 @@ function responseFiles(
       uploadedBy: input.actorId,
       session: input.kind === 'input_request' ? input.uploadSession : undefined,
     },
-    inputRequestConfigSchema.parse(row.config).fields,
+    decodeStoredValue(() => inputRequestConfigSchema.parse(row.config)).fields,
     submitted,
   );
 }

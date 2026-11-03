@@ -1,3 +1,4 @@
+import { decodeStoredValue } from '../../../shared/stored-values.js';
 import type { ConnectionScope } from '../../../tenant-access/resources/connections/scope.js';
 import { and, desc, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
@@ -52,7 +53,9 @@ export async function rebindPromotionCalls(
     for (const node of level.nodes) {
       if (node.structured !== undefined) pending.push(node.structured.body);
       if (!isWorkflowCallDefinition(node.definition)) continue;
-      const pin = workflowCallConfigSchema.parse(node.config).target;
+      const pin = decodeStoredValue(() =>
+        workflowCallConfigSchema.parse(node.config),
+      ).target;
       const workflow = alias(workflows, 'workflow'),
         version = workflowVersions,
         origin = workflowVersionPromotions;
@@ -181,7 +184,9 @@ export async function inspectPromotionCallDependencies(
         .catch(rethrowQueryFailure);
       if (row === undefined)
         throw new Error('A reviewed target Call version is unavailable.');
-      const child = parseWorkflowGraphDraft(row.graph_json);
+      const child = decodeStoredValue(() =>
+        parseWorkflowGraphDraft(row.graph_json),
+      );
       budget.add(child);
       // Immutable children delegate execution, not discovery of private requirements.
       if (row.visible)

@@ -104,7 +104,7 @@ export function runFailure(error: unknown): unknown {
   if (error instanceof CallableInputInvalidError) return error;
   if (error instanceof WorkflowEngineError)
     return new WorkflowRunNotExecutableError();
-  if (error instanceof z.ZodError || error instanceof TypeError)
+  if (error instanceof z.ZodError)
     return new InvalidRequestError(
       'The workflow run request is invalid.',
       requestInputCause(error),
