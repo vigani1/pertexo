@@ -383,6 +383,28 @@ describe('workflow trigger pause (ADR 056)', () => {
     expect(await pauseAudits(workspaceId)).toEqual([]);
   });
 
+  it('has the same recovered pause state with a success just beyond the batch limit', async () => {
+    const states = [];
+    for (const limit of [10, 1000]) {
+      const { workspaceId, workflowId } = await seed();
+      await endMany(workspaceId, workflowId, 'failed', 10);
+      await end(workspaceId, workflowId, 'succeeded');
+      expect(await fold.foldPending(limit)).toEqual([]);
+      expect(await pending(workspaceId)).toBe(limit === 10 ? 1 : 0);
+      expect((await pauseState(workspaceId, workflowId))?.state).toBe('none');
+      await drain();
+      states.push({
+        state: (await pauseState(workspaceId, workflowId))?.state,
+        streak: await streak(workspaceId, workflowId),
+        audits: await pauseAudits(workspaceId),
+      });
+    }
+    expect(states).toEqual([
+      { state: 'none', streak: 0, audits: [] },
+      { state: 'none', streak: 0, audits: [] },
+    ]);
+  });
+
   it('extends an upgrade carry until the first success, retaining failures that ended after that success', async () => {
     const { workspaceId, workflowId } = await seed();
     await asAdmin(
