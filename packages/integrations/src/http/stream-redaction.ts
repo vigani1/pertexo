@@ -1,5 +1,7 @@
 import { setImmediate as yieldToEventLoop } from 'node:timers/promises';
 
+import { isSerializableHttpHeaderValue } from './header-value.js';
+
 import {
   SECURE_HTTP_ERROR_CODE,
   type SecureHttpError,
@@ -178,7 +180,14 @@ export async function* boundedRedactedBody(
   }>,
 ): AsyncGenerator<Uint8Array> {
   const patterns = sensitiveValues
-    .map((value) => new TextEncoder().encode(value))
+    .flatMap((value) => {
+      const text = Buffer.from(value, 'utf8');
+      if (!isSerializableHttpHeaderValue(value)) return [text];
+      // Node sends header values as Latin-1; services may echo either those
+      // bytes or their decoded text. Stored byte-valued credentials stay valid.
+      const wire = Buffer.from(value, 'latin1');
+      return text.equals(wire) ? [text] : [text, wire];
+    })
     .sort((left, right) => right.byteLength - left.byteLength);
   let rawBytes = 0;
   let emittedBytes = 0;
