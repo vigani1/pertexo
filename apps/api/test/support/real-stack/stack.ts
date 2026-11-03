@@ -1,4 +1,5 @@
 import { SUITE_REDIS_DATABASES } from './redis-databases.js';
+import { leaseRedisDatabase } from './lease.js';
 import { spawn, type ChildProcess } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
@@ -77,18 +78,28 @@ function withDatabase(base: string, name: string): string {
 }
 
 /** Real API and worker processes from their built entry points, on a disposable database. */
-export function createRealStack(suite: keyof typeof SUITE_REDIS_DATABASES) {
+export function createRealStack(
+  suite: keyof typeof SUITE_REDIS_DATABASES,
+  reservation?: Awaited<ReturnType<typeof leaseRedisDatabase>>,
+) {
   const databaseName = `pertexo_test_stack_${randomUUID().replaceAll('-', '')}`;
-  const redisUrl = suiteRedisUrl(suite);
+  const redisUrl = reservation?.url ?? suiteRedisUrl(suite);
   const processes = new Set<ChildProcess>();
   const output = new Map<ChildProcess, string>();
   const errorLogs = new Map<ChildProcess, string[]>();
   let admin: Pool | undefined;
   let owner: Pool | undefined;
   let port: number | undefined;
+  let redisLease = reservation;
 
   async function create() {
-    await clearRedis(redisUrl);
+    if (redisLease === undefined)
+      redisLease = await leaseRedisDatabase(
+        required('REDIS_URL'),
+        databaseName,
+        [SUITE_REDIS_DATABASES[suite]],
+      );
+    else await clearRedis(redisUrl);
     admin = new Pool({
       connectionString: required('DATABASE_ADMIN_URL'),
       max: 1,
@@ -239,12 +250,22 @@ export function createRealStack(suite: keyof typeof SUITE_REDIS_DATABASES) {
   }
 
   async function close() {
-    await Promise.all([...processes].map(stop));
-    await clearRedis(redisUrl);
-    await owner?.end();
-    if (admin !== undefined) {
-      await dropDisconnectedDatabase(admin, databaseName);
-      await admin.end();
+    const lease = redisLease;
+    redisLease = undefined;
+    const inspection = owner;
+    owner = undefined;
+    const databaseOwner = admin;
+    admin = undefined;
+    try {
+      await Promise.all([...processes].map(stop));
+      if (lease !== undefined) await clearRedis(redisUrl);
+      await inspection?.end();
+      if (databaseOwner !== undefined) {
+        await dropDisconnectedDatabase(databaseOwner, databaseName);
+        await databaseOwner.end();
+      }
+    } finally {
+      await lease?.release();
     }
   }
 

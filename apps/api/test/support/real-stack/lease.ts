@@ -19,7 +19,7 @@ export async function leaseRedisDatabase(
   try {
     while (Date.now() < deadline) {
       for (const database of databases) {
-        const lease = `pertexo:test:security-stack:${String(database)}`;
+        const lease = redisStackLeaseKey(database);
         const taken = await coordinator.set(
           lease,
           owner,
@@ -59,4 +59,8 @@ export async function flushRedisDatabase(url: string): Promise<void> {
   } finally {
     client.disconnect();
   }
+}
+
+export function redisStackLeaseKey(database: number): string {
+  return `pertexo:test:security-stack:${String(database)}`;
 }
