@@ -83,6 +83,8 @@ type JsonSuccess<Response extends z.ZodType> = Readonly<{
 type DocumentedSuccess = Readonly<{
   status: number;
   response: Readonly<Record<string, unknown>>;
+  /** The handler returns `{ url }` and the answer is a redirect there. */
+  redirect?: true;
 }>;
 
 type RouteShape = z.ZodObject;
@@ -102,6 +104,10 @@ export type RouteDeclaration<
   rateLimit: RouteRateClass;
   params?: Params;
   query?: Query;
+  /** Request headers a route reads as input, by lower-case name. */
+  headers?: z.ZodObject;
+  /** Fixed response headers, such as a Referrer-Policy. */
+  responseHeaders?: Readonly<Record<string, string>>;
   body?: NamedSchema<Body>;
   idempotent?: Idempotent;
   cacheControl?: string;
@@ -151,5 +157,10 @@ export type RouteInput<Route> =
         query: z.output<Query>;
         body: z.output<Body>;
         idempotencyKey: Idempotent extends true ? string : undefined;
+        headers: Route extends Readonly<{ headers: infer Headers }>
+          ? Headers extends z.ZodType
+            ? z.output<Headers>
+            : undefined
+          : undefined;
       }>
     : never;

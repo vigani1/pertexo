@@ -24,7 +24,7 @@ const workspaceInboxRevisionSchema = z
     },
     { message: 'Revision exceeds PostgreSQL bigint' },
   );
-export const workspaceInboxCursorSchema = z.string().min(1).max(1_024);
+const workspaceInboxCursorSchema = z.string().min(1).max(1_024);
 export const workspaceCapacityLimitSchema = z.enum([
   'active',
   'queue',
@@ -46,7 +46,7 @@ export const workspaceNoticeKindSchema = z.enum([
   'workflow_mention',
 ]);
 export const workspaceInboxFilterSchema = z.enum(['all', 'unread']);
-export const workspaceInboxLimitSchema = z.coerce
+const workspaceInboxLimitSchema = z.coerce
   .number()
   .int()
   .min(1)

@@ -1,131 +1,99 @@
+import { Controller, Req, UseInterceptors } from '@nestjs/common';
 import {
-  Body,
-  Controller,
-  Get,
-  Put,
-  Param,
-  Req,
-  UseGuards,
-  Header,
-  UseInterceptors,
-} from '@nestjs/common';
-import {
-  workspaceIdentifierSchema,
-  noticePreferencesRequestSchema,
-  noticeDefaultsRequestSchema,
-  noticeSubjectParamsSchema,
-  noticeSubscriptionRequestSchema,
-} from '@pertexo/contracts';
-import {
-  SessionAuthenticationGuard,
-  CsrfProtectionGuard,
-  authenticatedSession,
-} from '../../workspaces/index.js';
+  notificationPreferenceRoutes as routes,
+  type RouteInput,
+} from '@pertexo/contracts/server';
+import { authenticatedSession } from '../../workspaces/index.js';
+import { In, Route } from '../../workspaces/http/route.js';
 import type { IdentityWorkspaceRequest } from '../../workspaces/types.js';
-import {
-  requestIdempotencyKey,
-  withRequestOperationSignal,
-} from '../../platform/http/index.js';
+import { withRequestOperationSignal } from '../../platform/http/index.js';
 import type { AbortableRequest } from '../../platform/http/request-operation-signal.js';
-import { RateLimit } from '../../platform/rate-limit/metadata.js';
-import { NotificationChangeGuard, NotificationReadGuard } from '../guards.js';
 import { NoticePreferencesService } from './service.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
 import { inboxFailure } from '../../problems/context/normalize.js';
-import { parseRequestInput } from '../../platform/http/request-input.js';
 
 type Request = IdentityWorkspaceRequest & AbortableRequest;
+
 @UseInterceptors(domainErrors(inboxFailure))
-@Controller('v1/workspaces/:workspaceId/notifications')
-@UseGuards(SessionAuthenticationGuard, NotificationReadGuard)
-@RateLimit('authenticated_read')
+@Controller()
 export class NoticePreferencesController {
   constructor(private readonly preferences: NoticePreferencesService) {}
-  @Get('preferences')
-  @Header('Cache-Control', 'private, no-store')
-  read(@Req() request: Request, @Param('workspaceId') workspace: unknown) {
-    const workspaceId = workspaceIdentifierSchema.parse(workspace);
+
+  @Route(routes.read)
+  read(
+    @Req() request: Request,
+    @In() { params }: RouteInput<typeof routes.read>,
+  ) {
     return withRequestOperationSignal(request, (signal) =>
       this.preferences.read({
-        workspaceId,
+        workspaceId: params.workspaceId,
         actorId: authenticatedSession(request).userId,
         signal,
       }),
     );
   }
-  @Put('preferences')
-  @Header('Cache-Control', 'private, no-store')
-  @UseGuards(NotificationChangeGuard, CsrfProtectionGuard)
-  @RateLimit('ordinary_mutation')
+
+  @Route(routes.replace)
   replace(
     @Req() request: Request,
-    @Param('workspaceId') workspace: unknown,
-    @Body() body: unknown,
+    @In() { params, body, idempotencyKey }: RouteInput<typeof routes.replace>,
   ) {
-    const workspaceId = workspaceIdentifierSchema.parse(workspace);
-    const input = parseRequestInput(noticePreferencesRequestSchema, body);
-    const idempotencyKey = requestIdempotencyKey(request.headers);
     return withRequestOperationSignal(request, (signal) =>
       this.preferences.replace({
-        workspaceId,
+        workspaceId: params.workspaceId,
         actorId: authenticatedSession(request).userId,
-        ...input,
+        ...body,
         idempotencyKey,
         signal,
       }),
     );
   }
-  @Put('defaults')
-  @Header('Cache-Control', 'private, no-store')
-  @UseGuards(NotificationChangeGuard, CsrfProtectionGuard)
-  @RateLimit('ordinary_mutation')
+
+  @Route(routes.defaults)
   defaults(
     @Req() request: Request,
-    @Param('workspaceId') workspace: unknown,
-    @Body() body: unknown,
+    @In() { params, body, idempotencyKey }: RouteInput<typeof routes.defaults>,
   ) {
-    const workspaceId = workspaceIdentifierSchema.parse(workspace);
-    const input = parseRequestInput(noticeDefaultsRequestSchema, body);
-    const idempotencyKey = requestIdempotencyKey(request.headers);
     return withRequestOperationSignal(request, (signal) =>
       this.preferences.replaceDefaults({
-        workspaceId,
+        workspaceId: params.workspaceId,
         actorId: authenticatedSession(request).userId,
-        ...input,
+        ...body,
         idempotencyKey,
         signal,
       }),
     );
   }
-  @Get('subjects/:subjectKind/:subjectId')
-  @Header('Cache-Control', 'private, no-store')
-  subscription(@Req() request: Request, @Param() params: unknown) {
-    const route = noticeSubjectParamsSchema.parse(params);
+
+  @Route(routes.subscription)
+  subscription(
+    @Req() request: Request,
+    @In() { params }: RouteInput<typeof routes.subscription>,
+  ) {
     return withRequestOperationSignal(request, (signal) =>
       this.preferences.subscription({
-        ...route,
+        ...params,
         actorId: authenticatedSession(request).userId,
         signal,
       }),
     );
   }
-  @Put('subjects/:subjectKind/:subjectId')
-  @Header('Cache-Control', 'private, no-store')
-  @UseGuards(NotificationChangeGuard, CsrfProtectionGuard)
-  @RateLimit('ordinary_mutation')
+
+  @Route(routes.replaceSubscription)
   replaceSubscription(
     @Req() request: Request,
-    @Param() params: unknown,
-    @Body() body: unknown,
+    @In()
+    {
+      params,
+      body,
+      idempotencyKey,
+    }: RouteInput<typeof routes.replaceSubscription>,
   ) {
-    const route = noticeSubjectParamsSchema.parse(params);
-    const input = parseRequestInput(noticeSubscriptionRequestSchema, body);
-    const idempotencyKey = requestIdempotencyKey(request.headers);
     return withRequestOperationSignal(request, (signal) =>
       this.preferences.replaceSubscription({
-        ...route,
+        ...params,
         actorId: authenticatedSession(request).userId,
-        ...input,
+        ...body,
         idempotencyKey,
         signal,
       }),

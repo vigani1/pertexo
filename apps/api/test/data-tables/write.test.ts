@@ -45,6 +45,7 @@ function setup() {
       query: undefined as never,
       body: dataTableRoutes.write.body.schema.parse(body),
       idempotencyKey: 'write-1',
+      headers: undefined,
     });
   return { write, send };
 }
