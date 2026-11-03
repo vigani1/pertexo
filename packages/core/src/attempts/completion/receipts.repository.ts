@@ -1,9 +1,9 @@
 import { decodeStoredValue } from '../../shared/stored-values.js';
 import {
   withTenantScopedClient,
+  canonicalOutboxPayloadChecksum,
   rethrowQueryFailure,
 } from '@pertexo/database/primitives';
-import { serializeStoredExecutionJsonValue } from '../../runs/values/stored-execution.js';
 import { and, eq, isNull, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import {
@@ -11,7 +11,6 @@ import {
   inboxReceipts,
   transportSecurityAuditFacts,
 } from '@pertexo/database/schema';
-import { createHash } from 'node:crypto';
 import { generatePersistedId } from '@pertexo/database/platform';
 import type { Pool, PoolClient } from 'pg';
 import type { z } from 'zod';
@@ -57,9 +56,7 @@ export async function validateDelivery(
     payload = decodeStoredValue(() =>
       attemptJobPayloadSchema.parse(row?.payload),
     );
-    checksum = createHash('sha256')
-      .update(serializeStoredExecutionJsonValue(payload))
-      .digest('hex');
+    checksum = canonicalOutboxPayloadChecksum(payload);
   } catch {
     throw new DeliveryMismatch();
   }
