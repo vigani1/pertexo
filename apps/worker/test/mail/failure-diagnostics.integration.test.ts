@@ -156,14 +156,44 @@ it.each([
 );
 
 it.each([
-  [401, 'invalid_api_key', 'authentication', /credentials/u, 'failed'],
-  [403, 'domain_not_verified', 'sender_rejected', /sender/u, 'failed'],
-  [429, 'rate_limit_exceeded', 'rate_limited', /limiting/u, 'retry'],
-  [503, 'service_unavailable', 'provider_unavailable', /unavailable/u, 'retry'],
-  [400, 'validation_error', 'provider_rejected', /sending policy/u, 'failed'],
+  {
+    status: 401,
+    name: 'invalid_api_key',
+    category: 'authentication',
+    guidance: /credentials/u,
+    expectedStatus: 'failed',
+  },
+  {
+    status: 403,
+    name: 'domain_not_verified',
+    category: 'sender_rejected',
+    guidance: /sender/u,
+    expectedStatus: 'failed',
+  },
+  {
+    status: 429,
+    name: 'rate_limit_exceeded',
+    category: 'rate_limited',
+    guidance: /limiting/u,
+    expectedStatus: 'retry',
+  },
+  {
+    status: 503,
+    name: 'service_unavailable',
+    category: 'provider_unavailable',
+    guidance: /unavailable/u,
+    expectedStatus: 'retry',
+  },
+  {
+    status: 400,
+    name: 'validation_error',
+    category: 'provider_rejected',
+    guidance: /sending policy/u,
+    expectedStatus: 'failed',
+  },
 ] as const)(
-  'stores safe Resend %s/%s diagnosis and repair guidance',
-  async (status, name, category, guidance, expectedStatus) => {
+  'stores safe Resend $status/$name diagnosis and repair guidance',
+  async ({ status, name, category, guidance, expectedStatus }) => {
     const email = createSystemMailClient(
       { mode: 'resend', apiKey: 'api-key-canary' },
       {
