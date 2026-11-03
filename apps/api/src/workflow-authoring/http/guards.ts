@@ -19,15 +19,6 @@ export const WorkflowReadGuard = capabilityGuard(
 );
 
 /** Reads only an editor may make, such as promotion candidates. */
-export const WorkflowEditorReadGuard = capabilityGuard(
-  WORKFLOW_AUTHORING_AUTHORIZATION,
-  'workflow:update',
-  {
-    disclosure: 'not_found',
-    allowedWorkspaceStatuses: BROWSABLE_WORKSPACE_STATUSES,
-  },
-);
-
 /** Changes any reader may make, such as commenting: never while suspended. */
 export const WorkflowParticipantGuard = capabilityGuard(
   WORKFLOW_AUTHORING_AUTHORIZATION,
@@ -47,10 +38,4 @@ export const WorkflowUpdateGuard = capabilityGuard(
 export const WorkflowPublishGuard = capabilityGuard(
   WORKFLOW_AUTHORING_AUTHORIZATION,
   'workflow:publish',
-);
-
-export const WorkflowReviewGuard = capabilityGuard(
-  WORKFLOW_AUTHORING_AUTHORIZATION,
-  'governance:manage',
-  { disclosure: 'not_found', allowedWorkspaceStatuses: ['active'] },
 );

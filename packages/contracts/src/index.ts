@@ -184,7 +184,6 @@ export {
 export {
   publicationReviewRequestSchema,
   publicationReviewDecisionSchema,
-  publicationReviewParamsSchema,
   publicationReviewSchema,
   publicationReviewOverviewSchema,
   publicationReviewDetailSchema,

@@ -29,7 +29,6 @@ import {
   WorkflowCreateGuard,
   WorkflowPublishGuard,
   WorkflowReadGuard,
-  WorkflowReviewGuard,
   WorkflowUpdateGuard,
   WorkflowPauseDefaultGuard,
 } from './http/guards.js';
@@ -235,7 +234,6 @@ function workflowFeatureProviders(
     ...(dependencies.publicationReviewPersistence === undefined
       ? []
       : [
-          WorkflowReviewGuard,
           {
             provide: PublicationReviewUseCase,
             useValue: new PublicationReviewUseCase(

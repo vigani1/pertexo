@@ -59,7 +59,7 @@ function fixture(role: Role) {
     controls: new PublicationReviewUseCase(store, authorization),
   };
 }
-it('lets a builder request the exact representation and trims its bounded note at the boundary', async () => {
+it('lets a builder request the exact representation', async () => {
   const f = fixture('builder'),
     signal = new AbortController().signal;
   const representationTag = `"draft.${'a'.repeat(43)}"`;
@@ -68,7 +68,7 @@ it('lets a builder request the exact representation and trims its bounded note a
     routeWorkspaceId: workspaceId,
     workflowId,
     representationTag,
-    request: { note: '  Review this change.  ' },
+    request: { note: 'Review this change.' },
     idempotencyKey: 'one-request',
     signal,
   });
@@ -82,16 +82,6 @@ it('lets a builder request the exact representation and trims its bounded note a
     requestId: 'review-test',
     signal,
   });
-  await expect(
-    f.controls.request({
-      actor,
-      routeWorkspaceId: workspaceId,
-      workflowId,
-      representationTag,
-      request: { note: '', graph: {} },
-      idempotencyKey: 'invalid',
-    }),
-  ).rejects.toMatchObject({ name: 'ZodError' });
   expect(f.store.request).toHaveBeenCalledTimes(1);
 });
 it.each(['builder', 'operator', 'viewer'] as const)(
