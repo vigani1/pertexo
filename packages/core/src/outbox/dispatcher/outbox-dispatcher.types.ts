@@ -1,5 +1,4 @@
 import type { outboxEvents } from '@pertexo/database/schema';
-import type { ClaimInput } from './input.js';
 export type LeasedOutboxEvent = Readonly<
   Pick<
     typeof outboxEvents.$inferSelect,
@@ -21,7 +20,16 @@ export type LeasedOutboxEvent = Readonly<
   }
 >;
 
-import type { ReleaseInput } from './input.js';
+/** A failed publication either tries again or, for a row that can never publish, ends. */
+export type ReleaseInput = Readonly<{
+  id: string;
+  leaseToken: string;
+  errorCode: string;
+}> &
+  (
+    | Readonly<{ disposition: 'retry'; retryAt: Date }>
+    | Readonly<{ disposition: 'fail' }>
+  );
 
 export type ObserveOutboxBacklogInput = Readonly<{
   enabledJobNames: readonly string[];
@@ -47,11 +55,13 @@ export interface OutboxDispatcherDatabase {
   close(): Promise<void>;
 }
 
-export type ClaimOutboxBatchInput = Readonly<
-  Omit<ClaimInput, 'enabledJobNames'> & {
-    enabledJobNames: readonly string[];
-  }
->;
+export type ClaimOutboxBatchInput = Readonly<{
+  enabledJobNames: readonly string[];
+  leaseDurationMillis: number;
+  leaseOwner: string;
+  leaseToken: string;
+  limit: number;
+}>;
 
 export type ClaimOutboxBatchResult = Readonly<{
   events: readonly LeasedOutboxEvent[];
