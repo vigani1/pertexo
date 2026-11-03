@@ -70,6 +70,21 @@ export function Route(route: AnyRoute): MethodDecorator {
   );
 }
 
+/**
+ * The same route when its feature isn't configured: same path, sign-in and access
+ * checks, but it reads nothing it's sent, so every caller learns the feature is off.
+ */
+export function UnconfiguredRoute(route: AnyRoute): MethodDecorator {
+  const {
+    query: _query,
+    body: _body,
+    headers: _headers,
+    idempotent: _idempotent,
+    ...answersOnly
+  } = route;
+  return Route(answersOnly);
+}
+
 /** A handler's declared input, already parsed before it ran. */
 export const In = createParamDecorator(
   (_data: unknown, context: ExecutionContext): unknown =>

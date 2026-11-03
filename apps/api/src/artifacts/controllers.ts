@@ -8,7 +8,7 @@ import {
   optionalAuthorizedWorkspace,
   projectAuthenticatedWorkspaceContext,
 } from '../workspaces/request/authenticated-context.js';
-import { In, Route } from '../workspaces/http/route.js';
+import { In, Route, UnconfiguredRoute } from '../workspaces/http/route.js';
 import {
   withRequestOperationSignal,
   applicationError,
@@ -87,22 +87,22 @@ export class ArtifactsController {
 @UseInterceptors(domainErrors(artifactFailure))
 @Controller()
 export class UnconfiguredArtifactsController {
-  @Route(routes.beginUpload)
+  @UnconfiguredRoute(routes.beginUpload)
   public beginUpload(): never {
     return unavailableStorage();
   }
 
-  @Route(routes.finalizeUpload)
+  @UnconfiguredRoute(routes.finalizeUpload)
   public finalizeUpload(): never {
     return unavailableStorage();
   }
 
-  @Route(routes.metadata)
+  @UnconfiguredRoute(routes.metadata)
   public getMetadata(): never {
     return unavailableStorage();
   }
 
-  @Route(routes.beginDownload)
+  @UnconfiguredRoute(routes.beginDownload)
   public beginDownload(): never {
     return unavailableStorage();
   }

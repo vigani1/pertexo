@@ -1,6 +1,6 @@
 import { Controller } from '@nestjs/common';
 import { webhookRoutes as routes } from '@pertexo/contracts/server';
-import { Route } from '../../workspaces/http/route.js';
+import { UnconfiguredRoute } from '../../workspaces/http/route.js';
 import {
   applicationError,
   throwApplicationError,
@@ -13,32 +13,32 @@ function notConfigured(): never {
 /** The same routes when webhooks aren't configured: each says so. */
 @Controller()
 export class UnconfiguredWebhooksController {
-  @Route(routes.list)
+  @UnconfiguredRoute(routes.list)
   public list(): never {
     return notConfigured();
   }
 
-  @Route(routes.deliveries)
+  @UnconfiguredRoute(routes.deliveries)
   public deliveries(): never {
     return notConfigured();
   }
 
-  @Route(routes.provision)
+  @UnconfiguredRoute(routes.provision)
   public provision(): never {
     return notConfigured();
   }
 
-  @Route(routes.configureAuthentication)
+  @UnconfiguredRoute(routes.configureAuthentication)
   public configureAuthentication(): never {
     return notConfigured();
   }
 
-  @Route(routes.rotateEndpoint)
+  @UnconfiguredRoute(routes.rotateEndpoint)
   public rotateEndpoint(): never {
     return notConfigured();
   }
 
-  @Route(routes.rotateSecret)
+  @UnconfiguredRoute(routes.rotateSecret)
   public rotateSecret(): never {
     return notConfigured();
   }
@@ -46,17 +46,17 @@ export class UnconfiguredWebhooksController {
 
 @Controller()
 export class UnconfiguredWebhookTestsController {
-  @Route(routes.startTest)
+  @UnconfiguredRoute(routes.startTest)
   public start(): never {
     return notConfigured();
   }
 
-  @Route(routes.readTest)
+  @UnconfiguredRoute(routes.readTest)
   public read(): never {
     return notConfigured();
   }
 
-  @Route(routes.stopTest)
+  @UnconfiguredRoute(routes.stopTest)
   public stop(): never {
     return notConfigured();
   }
