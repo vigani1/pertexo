@@ -180,6 +180,7 @@ export function testMaintenanceRuntime(
 }
 
 export type TestNodeAttemptServices = Readonly<{
+  runFailures?: FactoryValue<NodeAttemptRuntimeFactories['runFailures']>;
   capabilityFactory?: NodeAttemptRuntimeFactories['capabilities'];
   consumerFactory?: NodeAttemptRuntimeFactories['consumer'];
   engine?: FactoryValue<NodeAttemptRuntimeFactories['engine']>;
@@ -218,6 +219,7 @@ export function testNodeAttemptRuntime(
       reader: returning(services.reader),
       registry: returning(services.registry),
       runStore: returning(services.runStore),
+      runFailures: returning(services.runFailures),
       previewTelemetry: returning(services.previewTelemetry),
       previewHandler: services.previewHandlerFactory,
     }) as Partial<NodeAttemptRuntimeFactories>,
