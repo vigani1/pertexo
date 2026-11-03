@@ -53,3 +53,10 @@ export class ExecutionCapabilityExpiredError extends Error {
     super(message);
   }
 }
+
+export class NodeAttemptRunAbortedError extends Error {
+  override readonly name = 'NodeAttemptRunAbortedError';
+  constructor(readonly reason: 'canceled' | 'timed_out') {
+    super('The run stopped before dispatch.');
+  }
+}
