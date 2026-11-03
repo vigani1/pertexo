@@ -2,7 +2,7 @@ import { DEFAULT_CODE_SETTINGS, type CodeSettings } from '@pertexo/node-sdk';
 import { Module } from '@nestjs/common';
 import type { DynamicModule, Provider } from '@nestjs/common';
 
-import { CatalogController } from './controllers.js';
+import { CatalogController } from './catalog.controller.js';
 import {
   createCatalogUseCases,
   ListIntegrationsUseCase,

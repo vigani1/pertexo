@@ -5,7 +5,10 @@ import type { ApiTokenStore } from '@pertexo/core/tenant-access';
 import type { IdentityClock } from '../identity/index.js';
 import { AutomationAuthenticationGuard } from '../authentication/automation/guard.js';
 import { HttpRateLimitAdmission } from '../platform/rate-limit/admission.js';
-import { ApiTokenController, CurrentApiTokenController } from './controller.js';
+import {
+  ApiTokenController,
+  CurrentApiTokenController,
+} from './api-token.controller.js';
 import { ApiTokenManagement } from './api-token.service.js';
 
 export type ApiTokenDependencies = Readonly<{

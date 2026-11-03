@@ -1,6 +1,6 @@
 import { EventEmitter } from 'node:events';
 import { vi } from 'vitest';
-import { WorkflowRunsController } from '../../../../src/workflow-runs/http/controllers.js';
+import { WorkflowRunsController } from '../../../../src/workflow-runs/http/workflow-runs.controller.js';
 import { ApiDrainState } from '../../../../src/platform/health/drain-state.js';
 import type { SseVisibilityMetrics } from '../../../../src/platform/observability/sse-visibility-metrics.js';
 

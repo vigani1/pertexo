@@ -16,7 +16,7 @@ import type {
 } from '@pertexo/core/authoring';
 import { vi } from 'vitest';
 import { WorkflowOrganizationCommandsUseCase } from '../../../../src/workflow-authoring/organization/commands.js';
-import { WorkflowOrganizationController } from '../../../../src/workflow-authoring/organization/controller.js';
+import { WorkflowOrganizationController } from '../../../../src/workflow-authoring/organization/workflow-organization.controller.js';
 import { WorkflowOrganizationReadsUseCase } from '../../../../src/workflow-authoring/organization/reads.js';
 
 import { DoubleSubmitCsrfPolicy } from '../../../../src/identity/index.js';

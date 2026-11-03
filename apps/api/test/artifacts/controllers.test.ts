@@ -4,7 +4,7 @@ import {
   ArtifactService,
   type ArtifactServiceDependencies,
 } from '../../src/artifacts/index.js';
-import { ArtifactsController } from '../../src/artifacts/controllers.js';
+import { ArtifactsController } from '../../src/artifacts/artifacts.controller.js';
 
 const actorId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const guardActorId = '99999999-9999-4999-8999-999999999999';

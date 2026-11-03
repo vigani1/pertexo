@@ -1,15 +1,15 @@
-import { GovernanceModule } from '../../governance/module.js';
+import { GovernanceModule } from '../../governance/governance.module.js';
 
-import { DataTablesModule } from '../../data-tables/module.js';
+import { DataTablesModule } from '../../data-tables/data-tables.module.js';
 
 import { DEFAULT_CODE_SETTINGS, type CodeSettings } from '@pertexo/node-sdk';
-import { WorkspaceVariablesModule } from '../../workspace-variables/module.js';
+import { WorkspaceVariablesModule } from '../../workspace-variables/workspace-variables.module.js';
 
 import { createFormStore } from '@pertexo/core/triggers';
 import { initialCheckpointFactory } from '@pertexo/core/runs';
-import { FormsModule } from '../../forms/module.js';
+import { FormsModule } from '../../forms/forms.module.js';
 import { createPendingTaskStore } from '@pertexo/core/runs';
-import { PendingTasksModule } from '../../pending-tasks/module.js';
+import { PendingTasksModule } from '../../pending-tasks/pending-tasks.module.js';
 import type { DynamicModule } from '@nestjs/common';
 import { Module } from '@nestjs/common';
 

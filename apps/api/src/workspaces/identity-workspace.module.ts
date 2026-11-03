@@ -12,7 +12,7 @@ import {
   WorkspaceDiscoveryController,
   WorkspaceMembersController,
   WorkspaceController,
-} from './http/controllers.js';
+} from './http/workspaces.controller.js';
 import { SessionController } from './http/session-controller.js';
 import { WorkspaceInvitationsController } from './invitations/management-controller.js';
 import { WorkspaceInvitationManagementUseCase } from './invitations/management.js';

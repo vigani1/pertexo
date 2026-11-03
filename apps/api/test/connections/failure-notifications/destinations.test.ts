@@ -14,9 +14,9 @@ import {
   connectionTestPersistence,
   sealed,
 } from '../support/use-case-fixture.js';
-import { FailureNotificationDestinationsController } from '../../../src/connections/failure-notifications/controller.js';
+import { FailureNotificationDestinationsController } from '../../../src/connections/failure-notifications/failure-notification-destinations.controller.js';
 import { FailureNotificationDestinationUseCases } from '../../../src/connections/failure-notifications/destinations.js';
-import { ConnectionsModule } from '../../../src/connections/module.js';
+import { ConnectionsModule } from '../../../src/connections/connections.module.js';
 import { WORKSPACE_AUTHORIZATION } from '../../../src/workspaces/tokens.js';
 import { FakeIdentityModule } from '../../support/identity-module.js';
 import { ownerAccess, routeHarness } from '../../support/route-harness.js';

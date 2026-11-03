@@ -8,8 +8,8 @@ import {
   vi,
 } from 'vitest';
 
-import { ConnectionsModule } from '../../../src/connections/module.js';
-import { ConnectionsController } from '../../../src/connections/http/controllers.js';
+import { ConnectionsModule } from '../../../src/connections/connections.module.js';
+import { ConnectionsController } from '../../../src/connections/http/connections.controller.js';
 import {
   CreateConnectionUseCase,
   GetConnectionUseCase,

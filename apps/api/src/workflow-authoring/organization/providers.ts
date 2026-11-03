@@ -4,9 +4,9 @@ import { WorkflowOrganizationReadsUseCase } from './reads.js';
 import { WorkflowFoldersUseCase } from './folders/workflow-folders.service.js';
 import { WorkflowOrganizationBatchesUseCase } from './batch/workflow-organization-batches.service.js';
 import type { WorkflowAuthoringDependencies } from '../ports.js';
-import { WorkflowOrganizationController } from './controller.js';
-import { WorkflowFoldersController } from './folders/controller.js';
-import { WorkflowOrganizationBatchesController } from './batch/controller.js';
+import { WorkflowOrganizationController } from './workflow-organization.controller.js';
+import { WorkflowFoldersController } from './folders/workflow-folders.controller.js';
+import { WorkflowOrganizationBatchesController } from './batch/workflow-organization-batches.controller.js';
 
 export const workflowOrganizationControllers = [
   WorkflowOrganizationController,

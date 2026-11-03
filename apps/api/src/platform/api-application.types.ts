@@ -14,7 +14,7 @@ import type { ApiWorkflowRuntime } from './workflow/runtime.module.js';
 import type { ApiWebhookRuntime } from './webhooks/runtime.module.js';
 import type { ApiScheduleRuntime } from './schedules/runtime.module.js';
 import type { ApiNotificationRuntime } from './notifications/runtime.module.js';
-import type { ApiRateLimit } from './rate-limit/module.js';
+import type { ApiRateLimit } from './rate-limit/rate-limit.module.js';
 import type { ApiArtifactRuntime } from './artifacts/runtime.module.js';
 
 export type ApiApplicationDependencies = Readonly<{

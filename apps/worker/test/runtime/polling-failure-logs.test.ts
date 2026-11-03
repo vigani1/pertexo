@@ -20,7 +20,7 @@ import {
   MAINTENANCE_RUNTIME,
   NODE_ATTEMPT_RUNTIME,
   TRIGGER_RUNTIME,
-} from '../../src/transport/module.js';
+} from '../../src/transport/transport.module.js';
 import { configuredWorkflowAutoPauseRuntime } from '../../src/workflows/auto-pause-provider.js';
 import { WORKFLOW_AUTO_PAUSE_RUNTIME } from '../../src/workflows/auto-pause-runtime.js';
 import { WorkerModule } from '../../src/worker.module.js';

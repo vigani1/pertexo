@@ -1,4 +1,4 @@
-import { DirectoryManagementModule } from '../../authentication/federation/provisioning/management/module.js';
+import { DirectoryManagementModule } from '../../authentication/federation/provisioning/management/directory-management.module.js';
 import {
   createIdentityWorkspaceStore,
   createApiTokenStore,
@@ -8,13 +8,13 @@ import {
   type DirectoryStore,
   createFederationManagementStore,
 } from '@pertexo/core/identity';
-import { FederationManagementModule } from '../../authentication/federation/management/module.js';
+import { FederationManagementModule } from '../../authentication/federation/management/federation-management.module.js';
 import { FederationManagementService } from '../../authentication/federation/management/federation-management.service.js';
 import { federationSecretContext } from '../../authentication/federation/protocol/oidc.js';
 import {
   ApiTokenModule,
   type ApiTokenDependencies,
-} from '../../api-tokens/module.js';
+} from '../../api-tokens/api-token.module.js';
 import type { DynamicModule } from '@nestjs/common';
 import { Module } from '@nestjs/common';
 import { metrics, trace } from '@opentelemetry/api';

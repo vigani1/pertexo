@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { WorkflowAuthoringController } from '../../../src/workflow-authoring/http/controllers.js';
+import { WorkflowAuthoringController } from '../../../src/workflow-authoring/http/workflow-authoring.controller.js';
 import { WorkflowLifecycleController } from '../../../src/workflow-authoring/http/lifecycle-controller.js';
 import { WorkflowVersionsController } from '../../../src/workflow-authoring/http/versions-controller.js';
 import {

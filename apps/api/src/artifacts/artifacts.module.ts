@@ -5,7 +5,7 @@ import type { DynamicModule, Provider } from '@nestjs/common';
 import {
   ArtifactsController,
   UnconfiguredArtifactsController,
-} from './controllers.js';
+} from './artifacts.controller.js';
 import { FormUploadService } from './form-uploads/form-upload.service.js';
 import { PublicFormUploadsController } from './form-uploads/public.controller.js';
 import { MemberFormUploadsController } from './form-uploads/members.controller.js';

@@ -11,7 +11,7 @@ import {
   throwApplicationError,
 } from '../../platform/http/application-error.js';
 import { withRequestOperationSignal } from '../../platform/http/index.js';
-import { context } from '../http/controllers.js';
+import { context } from '../http/connections.controller.js';
 import { FailureNotificationDestinationUseCases } from './destinations.js';
 import type { ConnectionRequest } from '../types.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';

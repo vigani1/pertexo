@@ -1,5 +1,5 @@
 import { Module, type DynamicModule } from '@nestjs/common';
-import { FederationManagementController } from './controller.js';
+import { FederationManagementController } from './federation-management.controller.js';
 import { FederationManagementService } from './federation-management.service.js';
 @Module({})
 // Nest dynamic modules require a class container.

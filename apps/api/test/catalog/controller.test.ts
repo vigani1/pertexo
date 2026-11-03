@@ -3,7 +3,7 @@ import { Reflector } from '@nestjs/core';
 import { GUARDS_METADATA } from '@nestjs/common/constants.js';
 import { describe, expect, it } from 'vitest';
 
-import { CatalogController } from '../../src/catalog/controllers.js';
+import { CatalogController } from '../../src/catalog/catalog.controller.js';
 import { SessionAuthenticationGuard } from '../../src/workspaces/index.js';
 import {
   platformBrowserNodeDefinitionCatalog,

@@ -5,12 +5,12 @@ import { WorkflowPresenceController } from './collaboration/presence-controller.
 import { WorkflowCollaborationUseCase } from './collaboration/workflow-collaboration.service.js';
 import { WorkflowLifecycleController } from './http/lifecycle-controller.js';
 import { WorkflowVersionsController } from './http/versions-controller.js';
-import { WorkflowPromotionController } from './promotion/controller.js';
+import { WorkflowPromotionController } from './promotion/workflow-promotion.controller.js';
 import { workflowPromotionProviders } from './promotion/providers.js';
 import {
   PublicationReviewController,
   WorkflowPublicationReviewController,
-} from './reviews/controller.js';
+} from './reviews/publication-review.controller.js';
 import { PublicationReviewUseCase } from './reviews/publication-review.service.js';
 import { WorkflowErrorController } from './settings/error-workflow-controller.js';
 import { WorkflowErrorUseCase } from './settings/error-workflow.js';
@@ -31,14 +31,14 @@ import { DuplicateWorkflowUseCase } from './commands/duplicate.js';
 import { TransitionWorkflowLifecycleUseCase } from './commands/lifecycle.js';
 import { RenameWorkflowUseCase } from './commands/rename.js';
 import { RestoreWorkflowVersionUseCase } from './commands/restore-version.js';
-import { WorkflowAuthoringController } from './http/controllers.js';
-import { WorkflowInputCasesController } from './input-cases/controller.js';
+import { WorkflowAuthoringController } from './http/workflow-authoring.controller.js';
+import { WorkflowInputCasesController } from './input-cases/workflow-input-cases.controller.js';
 import { WorkflowInputCasesUseCase } from './input-cases/workflow-input-cases.service.js';
 import {
   workflowOrganizationControllers,
   workflowOrganizationProviders,
 } from './organization/providers.js';
-import { WorkflowPortabilityController } from './portability/controller.js';
+import { WorkflowPortabilityController } from './portability/workflow-portability.controller.js';
 import {
   ExportWorkflowUseCase,
   ImportWorkflowUseCase,

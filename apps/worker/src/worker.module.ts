@@ -42,8 +42,8 @@ import { configuredWorkflowAutoPauseRuntime } from './workflows/auto-pause-provi
 import {
   DatabaseModule,
   WORKSPACE_DATABASE,
-} from './platform/database/module.js';
-import { ObservabilityModule } from './platform/observability/module.js';
+} from './platform/database/database.module.js';
+import { ObservabilityModule } from './platform/observability/observability.module.js';
 import { configuredRetentionRuntime } from './retention/composition.js';
 import {
   RETENTION_RUNTIME,
@@ -60,7 +60,7 @@ import { WorkerResourceMonitor } from './runtime/health/resource-monitor.js';
 import { WorkerDrainState } from './runtime/shutdown/drain-state.js';
 import { WorkerProcessKeepalive } from './runtime/process-keepalive.js';
 import { WorkerShutdownCoordinator } from './runtime/shutdown/coordinator.js';
-import { TransportModule } from './transport/module.js';
+import { TransportModule } from './transport/transport.module.js';
 import {
   COORDINATOR_RUNTIME,
   MAINTENANCE_RUNTIME,

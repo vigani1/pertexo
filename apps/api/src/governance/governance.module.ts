@@ -1,25 +1,25 @@
 import { Module, type DynamicModule } from '@nestjs/common';
-
+import type { GovernanceStore } from '@pertexo/core/governance';
 import type { WorkspaceAuthorizationSource } from '../workspaces/ports.js';
-import { ScheduleManagementController } from './controllers.js';
+import { GovernanceController } from './governance.controller.js';
+import { GOVERNANCE_STORE } from './tokens.js';
 import { WORKSPACE_AUTHORIZATION } from '../workspaces/tokens.js';
-import { ScheduleManagementService } from './schedule-management.service.js';
-
 @Module({})
 // Nest dynamic modules require a class container.
 // eslint-disable-next-line @typescript-eslint/no-extraneous-class
-export class ScheduleModule {
-  public static register(
-    service: ScheduleManagementService,
+export class GovernanceModule {
+  static register(
+    store: GovernanceStore,
     authorization: WorkspaceAuthorizationSource,
-    identityModule: DynamicModule,
+    identity: DynamicModule,
+    admission: DynamicModule,
   ): DynamicModule {
     return {
-      module: ScheduleModule,
-      imports: [identityModule],
-      controllers: [ScheduleManagementController],
+      module: GovernanceModule,
+      imports: [identity, admission],
+      controllers: [GovernanceController],
       providers: [
-        { provide: ScheduleManagementService, useValue: service },
+        { provide: GOVERNANCE_STORE, useValue: store },
         { provide: WORKSPACE_AUTHORIZATION, useValue: authorization },
       ],
     };

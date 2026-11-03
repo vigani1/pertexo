@@ -10,7 +10,7 @@ import {
 
 import type { WebhookIngressDependencies } from '../../src/webhooks/ingress/register.js';
 import type { WebhookManagementService } from '../../src/webhooks/management/webhook-management.service.js';
-import { WebhookModule } from '../../src/webhooks/module.js';
+import { WebhookModule } from '../../src/webhooks/webhook.module.js';
 import { FakeIdentityModule } from '../support/identity-module.js';
 import {
   HARNESS_ACTOR_ID as actorId,

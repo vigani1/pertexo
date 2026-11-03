@@ -38,7 +38,7 @@ import {
 import {
   WorkflowInputCasesController,
   parseCaseIfMatch,
-} from '../../../src/workflow-authoring/input-cases/controller.js';
+} from '../../../src/workflow-authoring/input-cases/workflow-input-cases.controller.js';
 
 describe('workflow input case application interface', () => {
   it('serializes dates/validators, paginates metadata only and scopes opaque cursors', async () => {

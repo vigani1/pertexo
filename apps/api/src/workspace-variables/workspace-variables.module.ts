@@ -1,25 +1,27 @@
 import { Module, type DynamicModule } from '@nestjs/common';
-import type { DataTablesStore } from '@pertexo/core/data-tables';
+import type { WorkspaceVariablesStore } from '@pertexo/core/variables';
 import type { WorkspaceAuthorizationSource } from '../workspaces/ports.js';
-import { DataTablesController } from './controller.js';
-import { DataTablesService } from './data-tables.service.js';
 import { WORKSPACE_AUTHORIZATION } from '../workspaces/tokens.js';
+import { WorkspaceVariablesController } from './workspace-variables.controller.js';
+import { WorkspaceVariablesService } from './workspace-variables.service.js';
 @Module({})
 // Nest dynamic modules require a class container.
 // eslint-disable-next-line @typescript-eslint/no-extraneous-class
-export class DataTablesModule {
+export class WorkspaceVariablesModule {
   static register(
-    store: DataTablesStore,
+    store: WorkspaceVariablesStore,
     authorization: WorkspaceAuthorizationSource,
     identityModule: DynamicModule,
-    admissionModule: DynamicModule,
   ): DynamicModule {
     return {
-      module: DataTablesModule,
-      imports: [identityModule, admissionModule],
-      controllers: [DataTablesController],
+      module: WorkspaceVariablesModule,
+      imports: [identityModule],
+      controllers: [WorkspaceVariablesController],
       providers: [
-        { provide: DataTablesService, useValue: new DataTablesService(store) },
+        {
+          provide: WorkspaceVariablesService,
+          useValue: new WorkspaceVariablesService(store),
+        },
         { provide: WORKSPACE_AUTHORIZATION, useValue: authorization },
       ],
     };

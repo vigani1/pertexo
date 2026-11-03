@@ -14,12 +14,12 @@ import type {
   WorkflowOrganizationBatchStore,
 } from '@pertexo/core/authoring';
 import { vi } from 'vitest';
-import { WorkflowAuthoringController } from '../../../../../src/workflow-authoring/http/controllers.js';
-import { WorkflowOrganizationBatchesController } from '../../../../../src/workflow-authoring/organization/batch/controller.js';
+import { WorkflowAuthoringController } from '../../../../../src/workflow-authoring/http/workflow-authoring.controller.js';
+import { WorkflowOrganizationBatchesController } from '../../../../../src/workflow-authoring/organization/batch/workflow-organization-batches.controller.js';
 import { WorkflowOrganizationBatchesUseCase } from '../../../../../src/workflow-authoring/organization/batch/workflow-organization-batches.service.js';
 import { WorkflowOrganizationCommandsUseCase } from '../../../../../src/workflow-authoring/organization/commands.js';
-import { WorkflowOrganizationController } from '../../../../../src/workflow-authoring/organization/controller.js';
-import { WorkflowFoldersController } from '../../../../../src/workflow-authoring/organization/folders/controller.js';
+import { WorkflowOrganizationController } from '../../../../../src/workflow-authoring/organization/workflow-organization.controller.js';
+import { WorkflowFoldersController } from '../../../../../src/workflow-authoring/organization/folders/workflow-folders.controller.js';
 import { WorkflowFoldersUseCase } from '../../../../../src/workflow-authoring/organization/folders/workflow-folders.service.js';
 import { WorkflowOrganizationReadsUseCase } from '../../../../../src/workflow-authoring/organization/reads.js';
 

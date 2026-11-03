@@ -14,7 +14,7 @@ import type { WorkerConfig } from '../../src/config/worker.js';
 import type { MaintenanceRuntime } from '../../src/maintenance/runtime.js';
 import type { WorkspaceInboxRuntime } from '../../src/notifications/inbox-runtime.js';
 import { WORKSPACE_INBOX_RUNTIME } from '../../src/notifications/inbox-runtime.js';
-import { WORKSPACE_DATABASE } from '../../src/platform/database/module.js';
+import { WORKSPACE_DATABASE } from '../../src/platform/database/database.module.js';
 import {
   RETENTION_RUNTIME,
   type RetentionRuntime,
@@ -37,7 +37,7 @@ import {
   OUTBOX_DISPATCHER,
   TRANSPORT_METRICS,
   TRIGGER_RUNTIME,
-} from '../../src/transport/module.js';
+} from '../../src/transport/transport.module.js';
 import { OutboxDispatcher } from '../../src/transport/outbox/dispatch/runtime.js';
 import { createOwnedOutboxDispatcher } from '../../src/transport/providers/dispatcher.js';
 import type { TriggerRuntime } from '../../src/triggers/runtime.js';

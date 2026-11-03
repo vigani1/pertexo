@@ -9,7 +9,7 @@ import { ListConnectionUsageUseCase } from '../use-cases/usage.js';
 import type { ConnectionRequest } from '../types.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
 import { connectionFailure } from '../../problems/context/normalize.js';
-import { context } from './controllers.js';
+import { context } from './connections.controller.js';
 
 /** Registered only when usage can be read, so it stands apart from the others. */
 @UseInterceptors(domainErrors(connectionFailure))

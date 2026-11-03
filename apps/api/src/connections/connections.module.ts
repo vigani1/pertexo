@@ -1,17 +1,17 @@
-import { ConnectionSharingController } from './sharing/controller.js';
+import { ConnectionSharingController } from './sharing/connection-sharing.controller.js';
 import { ConnectionSharingUseCases } from './sharing/connection-sharing.service.js';
 import { UnconfiguredConnectionsController } from './http/unavailable.js';
 import type { WorkspaceAuthorizationSource } from '../workspaces/ports.js';
 import { Module } from '@nestjs/common';
 import type { DynamicModule, Provider } from '@nestjs/common';
 
-import { ConnectionsController } from './http/controllers.js';
-import { ConnectionOAuth2Controller } from './oauth2/controller.js';
+import { ConnectionsController } from './http/connections.controller.js';
+import { ConnectionOAuth2Controller } from './oauth2/connection-o-auth2.controller.js';
 import { FinishOAuth2AuthorizationUseCase } from './oauth2/finish-authorization.js';
 import { StartOAuth2AuthorizationUseCase } from './oauth2/start-authorization.js';
 import { ConnectionUsageController } from './http/usage.js';
 import { ListConnectionUsageUseCase } from './use-cases/usage.js';
-import { FailureNotificationDestinationsController } from './failure-notifications/controller.js';
+import { FailureNotificationDestinationsController } from './failure-notifications/failure-notification-destinations.controller.js';
 import { FailureNotificationDestinationUseCases } from './failure-notifications/destinations.js';
 import type { ConnectionDependencies } from './ports.js';
 import {

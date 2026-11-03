@@ -1,6 +1,6 @@
 import { runPorts } from '../support/run-ports.js';
 import { UsageTrendsController } from '../../src/workflow-runs/usage/trends-controller.js';
-import { RunRecoveryController } from '../../src/workflow-runs/recovery/controller.js';
+import { RunRecoveryController } from '../../src/workflow-runs/recovery/run-recovery.controller.js';
 import { describe, expect, it } from 'vitest';
 
 import {

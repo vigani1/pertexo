@@ -8,7 +8,7 @@ import {
   vi,
 } from 'vitest';
 
-import { NodeTestingModule } from '../../src/node-testing/module.js';
+import { NodeTestingModule } from '../../src/node-testing/node-testing.module.js';
 import { FakeIdentityModule } from '../support/identity-module.js';
 import { routeHarness } from '../support/route-harness.js';
 import {

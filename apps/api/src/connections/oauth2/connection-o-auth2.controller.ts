@@ -22,7 +22,7 @@ import { domainErrors } from '../../platform/http/problems/interceptor.js';
 import { RateLimit } from '../../platform/rate-limit/metadata.js';
 import { connectionFailure } from '../../problems/context/normalize.js';
 import { In, Route } from '../../workspaces/http/route.js';
-import { context } from '../http/controllers.js';
+import { context } from '../http/connections.controller.js';
 import type { ConnectionRequest } from '../types.js';
 import {
   FinishOAuth2AuthorizationUseCase,

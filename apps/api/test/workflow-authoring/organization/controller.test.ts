@@ -2,7 +2,7 @@ import { WorkflowTagConflictError } from '@pertexo/core/authoring';
 import { EventEmitter } from 'node:events';
 import 'reflect-metadata';
 import { afterEach, describe, expect, it } from 'vitest';
-import { WorkflowOrganizationController } from '../../../src/workflow-authoring/organization/controller.js';
+import { WorkflowOrganizationController } from '../../../src/workflow-authoring/organization/workflow-organization.controller.js';
 import {
   actorId,
   cleanAppsApiTestWorkflowAuthoringOrganizationControllerTestTsFixture,
