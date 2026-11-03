@@ -90,20 +90,26 @@ describe('system mail delivery', () => {
   // worker-10: a retryable result was definitely not sent; recording it as
   // outcome unknown blurs it with a message that may have gone out.
   it('records a retryable provider result as not sent and retries the exact claim', async () => {
-    const fixture = dependencies({ kind: 'retryable' });
+    const fixture = dependencies({
+      kind: 'retryable',
+      failure: { category: 'network' },
+    });
     await fixture.handler.runOnce();
     expect(fixture.deliveryStore.settle).toHaveBeenCalledWith({
       id: claim.id,
       leaseToken: claim.leaseToken,
       leaseGeneration: claim.leaseGeneration,
       outcome: 'retry',
-      failureCode: 'delivery.retryable',
+      failureCode: 'delivery.network',
       retryAt: new Date('2026-09-23T00:00:02.000Z'),
     });
   });
 
   it('settles terminal provider rejection without retrying', async () => {
-    const fixture = dependencies({ kind: 'failed' });
+    const fixture = dependencies({
+      kind: 'failed',
+      failure: { category: 'provider_rejected' },
+    });
     await fixture.handler.runOnce();
     expect(fixture.deliveryStore.settle).toHaveBeenCalledWith({
       id: claim.id,
@@ -116,13 +122,16 @@ describe('system mail delivery', () => {
 
   // worker-10: rate limiting is a definite refusal, not an unknown outcome.
   it('retains the exact command after provider rate limiting', async () => {
-    const fixture = dependencies({ kind: 'retryable' });
+    const fixture = dependencies({
+      kind: 'retryable',
+      failure: { category: 'network' },
+    });
     await fixture.handler.runOnce();
     expect(fixture.deliveryStore.settle).toHaveBeenCalledWith(
       expect.objectContaining({
         id: claim.id,
         outcome: 'retry',
-        failureCode: 'delivery.retryable',
+        failureCode: 'delivery.network',
       }),
     );
   });
@@ -257,7 +266,10 @@ describe('non-idempotent SMTP recovery', () => {
     );
   });
   it('settles an unknown SMTP result without scheduling a retry', async () => {
-    const fixture = dependencies({ kind: 'unknown' });
+    const fixture = dependencies({
+      kind: 'unknown',
+      failure: { category: 'network' },
+    });
     const handler = createSystemMailDeliveryHandler({
       store: fixture.deliveryStore,
       envelope: {
@@ -281,7 +293,7 @@ describe('non-idempotent SMTP recovery', () => {
     expect(fixture.deliveryStore.settle).toHaveBeenCalledWith(
       expect.objectContaining({
         outcome: 'reconciliation_required',
-        failureCode: 'delivery.outcome_unknown',
+        failureCode: 'delivery.network',
       }),
     );
   });

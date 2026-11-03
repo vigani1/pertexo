@@ -498,7 +498,7 @@ it('delivers real personal notice mail, refuses revoked content before DATA, and
     await handler.runOnce();
     expect(await batch(uncertain.workspaceId)).toMatchObject({
       status: 'reconciliation_required',
-      failure_code: 'delivery.outcome_unknown',
+      failure_code: 'delivery.network',
     });
     expect(messages).toHaveLength(2);
     await handler.runOnce();

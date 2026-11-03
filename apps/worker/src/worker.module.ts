@@ -270,6 +270,11 @@ function systemMailProvider(
         email: createSystemMailClient(mail.delivery),
         timeoutMillis: mail.timeoutMillis,
         workerId: mail.workerId,
+        onFailure: (failure) => {
+          dependencies.logger.error('system_mail.delivery_failed', {
+            ...failure,
+          });
+        },
       });
       return createSystemMailRuntime(
         handler,

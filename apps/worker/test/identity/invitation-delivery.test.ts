@@ -73,7 +73,7 @@ describe('workspace invitation delivery', () => {
   // A late job and its redelivery can run together. The one that lost the race to
   // mark the attempt must not hand it back while the winner may be sending it.
   it('leaves the attempt alone when another copy of the job holds it', async () => {
-    const test = setup({ kind: 'retryable' });
+    const test = setup({ kind: 'retryable', failure: { category: 'network' } });
     const smtp = createWorkspaceInvitationDeliveryHandler({
       store: {
         ...test.store,
@@ -84,7 +84,7 @@ describe('workspace invitation delivery', () => {
         deduplicates: false,
         sendNotification: async (input) => {
           await input.beforeDispatch().catch(() => undefined);
-          return { kind: 'retryable' };
+          return { kind: 'retryable', failure: { category: 'network' } };
         },
       },
       fromEmail: 'invites@example.test',
@@ -101,7 +101,7 @@ describe('workspace invitation delivery', () => {
   });
 
   it('confirms the job only once it has been handled', async () => {
-    const test = setup({ kind: 'retryable' });
+    const test = setup({ kind: 'retryable', failure: { category: 'network' } });
 
     await expect(test.handler.handle(delivery, context)).rejects.toThrow(
       'requires retry',
@@ -174,7 +174,7 @@ describe('workspace invitation delivery', () => {
   });
 
   it('retains the exact attempt for retryable and uncertain provider outcomes', async () => {
-    const test = setup({ kind: 'retryable' });
+    const test = setup({ kind: 'retryable', failure: { category: 'network' } });
 
     await expect(test.handler.handle(delivery, context)).rejects.toThrow(
       'requires retry',
@@ -185,7 +185,10 @@ describe('workspace invitation delivery', () => {
   });
 
   it('records a definite rejection and clears its sealed delivery material', async () => {
-    const test = setup({ kind: 'failed' });
+    const test = setup({
+      kind: 'failed',
+      failure: { category: 'provider_rejected' },
+    });
 
     await test.handler.handle(delivery, context);
 
@@ -198,7 +201,7 @@ describe('workspace invitation delivery', () => {
   });
 
   it('retains the attempt when the real client parses a provider 5xx body', async () => {
-    const test = setup({ kind: 'retryable' });
+    const test = setup({ kind: 'retryable', failure: { category: 'network' } });
     const realClient = createSystemMailClient(
       { mode: 'resend', apiKey: 'provider-key' },
       {
@@ -261,7 +264,10 @@ describe('workspace invitation delivery', () => {
   ])(
     'classifies real client $label responses at the worker seam',
     async (testCase) => {
-      const test = setup({ kind: 'retryable' });
+      const test = setup({
+        kind: 'retryable',
+        failure: { category: 'network' },
+      });
       const requests: { key: string; body: string }[] = [];
       const realClient = createSystemMailClient(
         { mode: 'resend', apiKey: 'provider-key' },
@@ -314,7 +320,7 @@ describe('workspace invitation delivery', () => {
   );
 
   it('renders identical provider commands when an uncertain attempt is redelivered', async () => {
-    const test = setup({ kind: 'retryable' });
+    const test = setup({ kind: 'retryable', failure: { category: 'network' } });
     await expect(test.handler.handle(delivery, context)).rejects.toThrow();
     await expect(test.handler.handle(delivery, context)).rejects.toThrow();
     const [first, second] = test.sendNotification.mock.calls.map(([input]) => ({
@@ -345,13 +351,13 @@ describe('SMTP invitation recovery', () => {
     return { ...fixture, handler };
   }
   it('acknowledges an unknown result as unconfirmed without retrying the attempt', async () => {
-    const fixture = smtp({ kind: 'unknown' });
+    const fixture = smtp({ kind: 'unknown', failure: { category: 'network' } });
     await fixture.handler.handle(delivery, context);
     expect(fixture.store.retry).not.toHaveBeenCalled();
     expect(fixture.store.complete).toHaveBeenCalledWith(
       expect.objectContaining({
         status: 'unknown',
-        failureCode: 'delivery.outcome_unknown',
+        failureCode: 'delivery.network',
       }),
     );
   });
@@ -376,7 +382,10 @@ describe('SMTP invitation recovery', () => {
     expect(fixture.store.retry).not.toHaveBeenCalled();
   });
   it('requeues the same command after known nonacceptance', async () => {
-    const fixture = smtp({ kind: 'retryable' });
+    const fixture = smtp({
+      kind: 'retryable',
+      failure: { category: 'network' },
+    });
     await expect(fixture.handler.handle(delivery, context)).rejects.toThrow(
       'requires retry',
     );
@@ -385,7 +394,10 @@ describe('SMTP invitation recovery', () => {
     );
   });
   it('does not retry an invitation superseded while the relay rejected it', async () => {
-    const fixture = smtp({ kind: 'retryable' });
+    const fixture = smtp({
+      kind: 'retryable',
+      failure: { category: 'network' },
+    });
     vi.mocked(fixture.store.retry).mockResolvedValue(false);
     await fixture.handler.handle(delivery, context);
     expect(fixture.store.complete).not.toHaveBeenCalled();

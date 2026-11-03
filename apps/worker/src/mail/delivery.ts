@@ -4,7 +4,12 @@ import type {
   SystemMailDeliveryClaim,
   SystemMailDeliveryStore,
 } from '@pertexo/secrets/server';
+import {
+  systemMailFailureInstruction,
+  systemMailFailureCode,
+} from '@pertexo/integrations/server';
 import type {
+  SystemMailFailure,
   ApplicationSecretEnvelope,
   SystemMailResult,
   SystemMailClient,
@@ -34,6 +39,9 @@ export function createSystemMailDeliveryHandler(
     email: SystemMailClient;
     timeoutMillis: number;
     workerId: string;
+    onFailure?: (
+      failure: SystemMailFailure & Readonly<{ instruction: string }>,
+    ) => void;
     now?: () => Date;
     random?: () => number;
     notices?: Readonly<{
@@ -188,11 +196,16 @@ async function deliverClaim(
     });
     return;
   }
+  const failureCode = systemMailFailureCode(result.failure);
+  dependencies.onFailure?.({
+    ...result.failure,
+    instruction: systemMailFailureInstruction(result),
+  });
   if (result.kind === 'failed') {
     await dependencies.store.settle({
       ...claimIdentity(claim),
       outcome: 'failed',
-      failureCode: 'delivery.provider_rejected',
+      failureCode,
     });
     return;
   }
@@ -200,14 +213,14 @@ async function deliverClaim(
     await dependencies.store.settle({
       ...claimIdentity(claim),
       outcome: 'reconciliation_required',
-      failureCode: 'delivery.outcome_unknown',
+      failureCode,
     });
     return;
   }
   await settleRetry(dependencies.store, claim, {
     now: now,
     random: random,
-    failureCode: 'delivery.retryable',
+    failureCode,
   });
 }
 
