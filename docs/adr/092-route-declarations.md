@@ -33,7 +33,17 @@ documents.
 
 ## Consequences
 
-The declaration file isn't shorter than the OpenAPI it replaces: for `workspace-variables`
-it's 100 lines against 97, because it now also says what decorators and guards said. The
-saving is in controllers, guard files and services, about 26 lines a route, 24% of that
-module's route code. The point is that the facts can't disagree.
+The completed migration declares 238 of 250 configured Nest routes; 12 keep
+intentional protocol-specific admission. Raw Fastify protocols remain hand-written.
+Across the declaration migration and its required helper/type/cleanup commits through
+`7b495239e`, production API source shrank by 2,983 lines and contracts source grew by
+897: **2,086 lines saved overall**, including the shared machinery. Generated
+artifacts, tests, token feature growth and unrelated behavior fixes are excluded.
+The three shared declaration, OpenAPI builder and Nest adapter files total 709 lines
+at migration completion.
+
+The early 5,000–6,000-line forecast did not hold. Some modules grew: their gain is
+one executable contract for input, admission, success shapes and documentation.
+The special cases use explicit seams rather than a second routing engine. Keep
+raw sanitized portability input and native-form CSV parsing at their own boundary;
+probe and external protocol handlers do not need a declaration merely for coverage.
