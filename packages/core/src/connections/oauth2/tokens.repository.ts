@@ -13,11 +13,7 @@ import {
   connectionOAuth2Clients as clients,
   connectionOAuth2Tokens as tokens,
 } from '@pertexo/database/schema';
-import {
-  CONNECTION_AUTH_TYPE,
-  CONNECTION_STATUS,
-  type SealedConnectionSecretRecord,
-} from '../connection.js';
+import { CONNECTION_AUTH_TYPE, CONNECTION_STATUS } from '../connection.js';
 import { sealedFields } from '../connections.repository.js';
 import type {
   BlockOAuth2RefreshInput,
@@ -27,7 +23,6 @@ import type {
   OAuth2GrantRecord,
   OAuth2TokenRecord,
   OpenOAuth2GrantInput,
-  ReadOAuth2EarlierTokensInput,
   ReadOAuth2TokenInput,
   RejectOAuth2TokenInput,
 } from './oauth2-grant.types.js';
@@ -176,42 +171,6 @@ export function oauth2TokenFlows(pool: Pool) {
 
 const blockedFor = (seconds: number) =>
   sql`clock_timestamp()+make_interval(secs=>${seconds}::double precision)`;
-
-/** The sealed tokens a reconnect would replace, if they share its settings. */
-export async function readEarlierTokens(
-  pool: Pool,
-  input: ReadOAuth2EarlierTokensInput,
-): Promise<Readonly<{
-  id: string;
-  sealed: SealedConnectionSecretRecord;
-}> | null> {
-  const [row] = await withTenantScopedClient(
-    pool,
-    { workspaceId: input.workspaceId },
-    (client) =>
-      drizzle(client)
-        .select({
-          id: tokens.id,
-          sealed: {
-            kmsKeyReference: tokens.kmsKeyReference,
-            encryptedDataKey: tokens.encryptedDataKey,
-            ciphertext: tokens.ciphertext,
-            nonce: tokens.nonce,
-            tag: tokens.authTag,
-          },
-        })
-        .from(tokens)
-        .where(
-          and(
-            eq(tokens.workspaceId, input.workspaceId),
-            eq(tokens.connectionId, input.connectionId),
-            eq(tokens.secretVersionId, input.secretVersionId),
-          ),
-        )
-        .catch(rethrowQueryFailure),
-  );
-  return row === undefined ? null : Object.freeze(row);
-}
 
 /** One statement, so a client and its token can't come from two moments; it holds no lock. */
 async function openGrant(

@@ -9,7 +9,6 @@ import {
 import {
   decodeClientSettings,
   decodeStoredClientSecret,
-  decodeStoredTokens,
   encodeStoredTokens,
   isRenewable,
   isTemporaryOAuth2Error,
@@ -17,7 +16,6 @@ import {
   oauth2StateWorkspace,
   requestOAuth2Token,
   withCommitAttempts,
-  type OAuth2StoredTokens,
   type OAuth2TokenAnswer,
 } from '@pertexo/integrations/server';
 
@@ -227,7 +225,13 @@ export class FinishOAuth2AuthorizationUseCase {
     answer: IssuedAnswer,
     id: string,
   ) {
-    const tokens = await this.tokensToKeep(named, consumed, answer);
+    // A new consent may name a different account, even with unchanged client settings.
+    const tokens = {
+      accessToken: answer.accessToken,
+      ...(answer.refreshToken === undefined
+        ? {}
+        : { refreshToken: answer.refreshToken }),
+    };
     const plaintext = encodeStoredTokens(tokens);
     try {
       return {
@@ -240,37 +244,6 @@ export class FinishOAuth2AuthorizationUseCase {
       };
     } finally {
       plaintext.fill(0);
-    }
-  }
-
-  /**
-   * Some services give a refresh token only on first consent, so reconnecting under
-   * the same settings keeps the earlier one rather than silently ending renewal.
-   */
-  private async tokensToKeep(
-    named: Named,
-    consumed: Consumed,
-    { accessToken, refreshToken }: IssuedAnswer,
-  ): Promise<OAuth2StoredTokens> {
-    if (refreshToken !== undefined) return { accessToken, refreshToken };
-    const earlier = await this.oauth2.persistence.readOAuth2EarlierTokens({
-      ...named,
-      secretVersionId: consumed.secretVersionId,
-    });
-    if (earlier === null) return { accessToken };
-    const bytes = await this.encryption.open(
-      earlier.sealed,
-      { ...named, secretVersionId: earlier.id },
-      AbortSignal.timeout(CIPHER_TIMEOUT_MILLIS),
-    );
-    try {
-      const kept = decodeStoredTokens(bytes).refreshToken;
-      return {
-        accessToken,
-        ...(kept === undefined ? {} : { refreshToken: kept }),
-      };
-    } finally {
-      bytes.fill(0);
     }
   }
 

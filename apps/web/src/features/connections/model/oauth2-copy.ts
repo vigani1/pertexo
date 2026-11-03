@@ -121,7 +121,9 @@ export function grantSentence(
   formatTime: (value: string) => string,
 ): string {
   if (grant.renewable) return 'Token renews automatically';
-  return grant.accessTokenExpiresAt === null
-    ? 'The service gave no expiry'
-    : `Token expires ${formatTime(grant.accessTokenExpiresAt)}; someone will need to reconnect`;
+  const expiry =
+    grant.accessTokenExpiresAt === null
+      ? 'The service gave no expiry'
+      : `Token expires ${formatTime(grant.accessTokenExpiresAt)}; someone will need to reconnect`;
+  return `${expiry}. To restore automatic renewal, revoke this app’s access at the service, then connect again.`;
 }

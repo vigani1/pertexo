@@ -95,9 +95,6 @@ export type ConsumeOAuth2AuthorizationInput = Readonly<{
   bindingDigests: readonly Buffer[];
 }>;
 
-export type ReadOAuth2EarlierTokensInput = TokenScope &
-  Readonly<{ secretVersionId: string }>;
-
 export type AuthorizeOAuth2ConnectionInput = TokenScope &
   Readonly<{
     actorId: string;

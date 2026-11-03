@@ -159,7 +159,7 @@ describeOAuth2('how real services differ from the standard', () => {
   });
 
   // M6: Google gives a refresh token only on first consent unless asked again.
-  it('M6 reconnecting without a new refresh token keeps renewal working', async () => {
+  it('M6 reconnecting without a new refresh token requires consent again after expiry', async () => {
     const connection = await harness.connected(
       owner,
       'refresh-on-first-consent',
@@ -169,15 +169,14 @@ describeOAuth2('how real services differ from the standard', () => {
     expect((await harness.reconnect(owner, connection)).result).toBe(
       'connected',
     );
-    expect((await harness.tokenRow(connection.id))?.renewable).toBe(true);
+    expect((await harness.tokenRow(connection.id))?.renewable).toBe(false);
     await harness.expireToken(connection.id);
     const runId = await harness.run(owner, get(connection));
-    expect((await harness.finish(runId)).status).toBe('succeeded');
-    expect(refreshTokensSent(connection)).toEqual([held]);
+    expect((await harness.finish(runId)).status).toBe('failed');
+    expect(refreshTokensSent(connection)).toEqual([]);
   });
 
-  // M6's limit: "when the secret version is unchanged". New client details are a
-  // different sign-in, so an old refresh token must not carry over.
+  // New client details also replace the entire grant.
   it('M6 new client details never keep the old refresh token', async () => {
     const connection = await harness.connected(
       owner,

@@ -72,13 +72,9 @@ import type {
   AuthorizeOAuth2ConnectionInput,
   ConsumeOAuth2AuthorizationInput,
   ReadOAuth2ClientInput,
-  ReadOAuth2EarlierTokensInput,
   StartOAuth2AuthorizationInput,
 } from './oauth2/oauth2-grant.types.js';
-import {
-  oauth2TokenFlows,
-  readEarlierTokens,
-} from './oauth2/tokens.repository.js';
+import { oauth2TokenFlows } from './oauth2/tokens.repository.js';
 import {
   requireVisibleConnection,
   selectConnection,
@@ -216,8 +212,6 @@ export function createConnectionStore(
       manage(input, (client) => startOAuth2Authorization(client, input)),
     consumeOAuth2Authorization: (input: ConsumeOAuth2AuthorizationInput) =>
       consumeOAuth2Authorization(pool, input),
-    readOAuth2EarlierTokens: (input: ReadOAuth2EarlierTokensInput) =>
-      readEarlierTokens(pool, input),
     authorizeOAuth2Connection: (input: AuthorizeOAuth2ConnectionInput) =>
       authorizeOAuth2Connection(pool, input),
     ...oauth2TokenFlows(pool),
@@ -268,7 +262,6 @@ export type OAuth2ConsentStore = Pick<
   | 'readOAuth2Client'
   | 'startOAuth2Authorization'
   | 'consumeOAuth2Authorization'
-  | 'readOAuth2EarlierTokens'
   | 'authorizeOAuth2Connection'
 >;
 

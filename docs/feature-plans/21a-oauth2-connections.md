@@ -281,10 +281,11 @@ connection tests share it.
   would revoke even the winner's tokens, which is why L1 keeps it from happening at all.
 - **L4** A refresh isn't tied to the step's signal. Canceling a step lets the request
   and commit finish, because the provider may already have rotated.
-- **L5** A response with no `refresh_token` keeps the stored one (RFC 6749 §6). One
-  with a new one replaces it. Consent does the same under an unchanged secret version,
-  since some services give a refresh token only on first consent; the cost is that a reconnect
-  as another account, on a service that gives none, renews as the old account. Client
+- **L5** A refresh response with no `refresh_token` keeps the stored one (RFC 6749
+  §6). One with a new one replaces it. A new consent always replaces the whole
+  grant: unchanged client settings do not prove the external account is the same.
+  Without a new refresh token the grant is nonrenewable; explain that the person
+  can revoke access at the provider and connect again to restore renewal. Client
   credentials has no refresh token: renewing is a new token request, so it is always
   `renewable`.
 - **L6** `expires_in` is a positive integer or numeric string up to 315,360,000, and
