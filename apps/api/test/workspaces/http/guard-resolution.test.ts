@@ -1,3 +1,4 @@
+import { ApiTokenAuthentication } from '../../../src/authentication/automation/authority.js';
 import { NestFactory } from '@nestjs/core';
 import { FastifyAdapter } from '@nestjs/platform-fastify';
 import type { NestFastifyApplication } from '@nestjs/platform-fastify';
@@ -159,7 +160,18 @@ const webhookService = new WebhookManagementService(
   webhookEncryption,
 );
 
-const identityModule = IdentityWorkspaceModule.register(identityDependencies);
+const sessionModule = IdentityWorkspaceModule.register(identityDependencies);
+const identityModule = {
+  ...sessionModule,
+  providers: [
+    ...(sessionModule.providers ?? []),
+    {
+      provide: ApiTokenAuthentication,
+      useValue: { authenticate: notExercised },
+    },
+  ],
+  exports: [...(sessionModule.exports ?? []), ApiTokenAuthentication],
+};
 const scheduleModule = ScheduleModule.register(
   scheduleService,
   identityDependencies.authorization,
@@ -206,7 +218,7 @@ describe('feature guard provider resolution', () => {
     application = undefined;
   });
 
-  it('resolves identity guards exported by IdentityWorkspaceModule on multiple feature routes', async () => {
+  it('resolves session and token guards on multiple feature routes', async () => {
     application = await NestFactory.create<NestFastifyApplication>(
       rootModule,
       new FastifyAdapter(),
