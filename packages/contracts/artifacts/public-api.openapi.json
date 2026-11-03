@@ -102,6 +102,16 @@
           "404": {
             "$ref": "#/components/responses/NotFound"
           },
+          "429": {
+            "description": "Request rate limit reached",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
           "500": {
             "$ref": "#/components/responses/Unexpected"
           },
@@ -120,7 +130,8 @@
           "auth.forbidden",
           "resource.not_found",
           "request.rate_limited",
-          "request.rate_limit_unavailable"
+          "request.rate_limit_unavailable",
+          "api_token.unavailable"
         ]
       }
     },
@@ -182,8 +193,28 @@
           "404": {
             "$ref": "#/components/responses/NotFound"
           },
+          "429": {
+            "description": "Request rate limit reached",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
           "500": {
             "$ref": "#/components/responses/Unexpected"
+          },
+          "503": {
+            "description": "Token authentication or request admission unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
           }
         },
         "summary": "Read a connection",
@@ -197,7 +228,8 @@
           "auth.forbidden",
           "resource.not_found",
           "request.rate_limited",
-          "request.rate_limit_unavailable"
+          "request.rate_limit_unavailable",
+          "api_token.unavailable"
         ]
       }
     },
@@ -284,7 +316,288 @@
           "auth.forbidden",
           "resource.not_found",
           "request.rate_limited",
-          "request.rate_limit_unavailable"
+          "request.rate_limit_unavailable",
+          "api_token.unavailable"
+        ]
+      }
+    },
+    "/v1/workspaces/{workspaceId}/workflows/{workflowId}/archive": {
+      "post": {
+        "operationId": "archiveWorkflow",
+        "x-pertexo-api-token-scopes": [
+          "workflow:publish"
+        ],
+        "description": "Change desired lifecycle without changing drafts, published versions, or existing runs. Exact idempotent retries return the original accepted summary.",
+        "security": [
+          {
+            "apiToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workspaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "workflowId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^[\\x21-\\x2b\\x2d-\\x7e]+$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkflowLifecycleRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Workflow lifecycle accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowLifecycleResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthenticated"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "description": "Lifecycle revision or idempotency conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/WorkflowLifecycleConflictProblem"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ApiProblem"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Request rate limit reached",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/Unexpected"
+          },
+          "503": {
+            "description": "Token authentication or request admission unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Archive a workflow",
+        "tags": [
+          "Workflows"
+        ],
+        "x-pertexo-problem-codes": [
+          "request.invalid",
+          "auth.unauthenticated",
+          "auth.token_scope_required",
+          "auth.forbidden",
+          "resource.not_found",
+          "request.rate_limited",
+          "request.rate_limit_unavailable",
+          "api_token.unavailable",
+          "request.idempotency_conflict",
+          "workflow.lifecycle_conflict"
+        ]
+      }
+    },
+    "/v1/workspaces/{workspaceId}/workflows/{workflowId}/restore": {
+      "post": {
+        "operationId": "restoreWorkflow",
+        "x-pertexo-api-token-scopes": [
+          "workflow:publish"
+        ],
+        "description": "Change desired lifecycle without changing drafts, published versions, or existing runs. Exact idempotent retries return the original accepted summary.",
+        "security": [
+          {
+            "apiToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workspaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "workflowId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^[\\x21-\\x2b\\x2d-\\x7e]+$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkflowLifecycleRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Workflow lifecycle accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowLifecycleResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthenticated"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "description": "Lifecycle revision or idempotency conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/WorkflowLifecycleConflictProblem"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ApiProblem"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Request rate limit reached",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/Unexpected"
+          },
+          "503": {
+            "description": "Token authentication or request admission unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Restore an archived workflow",
+        "tags": [
+          "Workflows"
+        ],
+        "x-pertexo-problem-codes": [
+          "request.invalid",
+          "auth.unauthenticated",
+          "auth.token_scope_required",
+          "auth.forbidden",
+          "resource.not_found",
+          "request.rate_limited",
+          "request.rate_limit_unavailable",
+          "api_token.unavailable",
+          "request.idempotency_conflict",
+          "workflow.lifecycle_conflict"
         ]
       }
     },
@@ -501,7 +814,8 @@
           "auth.forbidden",
           "resource.not_found",
           "request.rate_limited",
-          "request.rate_limit_unavailable"
+          "request.rate_limit_unavailable",
+          "api_token.unavailable"
         ]
       },
       "post": {
@@ -583,8 +897,28 @@
           "409": {
             "$ref": "#/components/responses/Conflict"
           },
+          "429": {
+            "description": "Request rate limit reached",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
           "500": {
             "$ref": "#/components/responses/Unexpected"
+          },
+          "503": {
+            "description": "Token authentication or request admission unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
           }
         },
         "summary": "Create a blank workflow",
@@ -599,6 +933,7 @@
           "resource.not_found",
           "request.rate_limited",
           "request.rate_limit_unavailable",
+          "api_token.unavailable",
           "request.idempotency_conflict",
           "workflow.name_conflict"
         ]
@@ -733,7 +1068,8 @@
           "auth.forbidden",
           "resource.not_found",
           "request.rate_limited",
-          "request.rate_limit_unavailable"
+          "request.rate_limit_unavailable",
+          "api_token.unavailable"
         ]
       }
     },
@@ -850,7 +1186,8 @@
           "auth.forbidden",
           "resource.not_found",
           "request.rate_limited",
-          "request.rate_limit_unavailable"
+          "request.rate_limit_unavailable",
+          "api_token.unavailable"
         ]
       },
       "put": {
@@ -948,8 +1285,28 @@
           "428": {
             "$ref": "#/components/responses/PreconditionRequired"
           },
+          "429": {
+            "description": "Request rate limit reached",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
           "500": {
             "$ref": "#/components/responses/Unexpected"
+          },
+          "503": {
+            "description": "Token authentication or request admission unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
           }
         },
         "summary": "Save a workflow draft",
@@ -964,6 +1321,7 @@
           "resource.not_found",
           "request.rate_limited",
           "request.rate_limit_unavailable",
+          "api_token.unavailable",
           "request.precondition_required",
           "workflow.revision_conflict",
           "workflow.invalid"
@@ -1092,6 +1450,7 @@
           "resource.not_found",
           "request.rate_limited",
           "request.rate_limit_unavailable",
+          "api_token.unavailable",
           "request.precondition_required",
           "request.idempotency_conflict",
           "workflow.revision_conflict",
@@ -1225,7 +1584,385 @@
           "auth.forbidden",
           "resource.not_found",
           "request.rate_limited",
-          "request.rate_limit_unavailable"
+          "request.rate_limit_unavailable",
+          "api_token.unavailable"
+        ]
+      }
+    },
+    "/v1/workspaces/{workspaceId}/workflows/{workflowId}/auto-pause": {
+      "get": {
+        "operationId": "getWorkflowAutoPauseSettings",
+        "x-pertexo-api-token-scopes": [
+          "workflow:read"
+        ],
+        "description": "Read automatic-trigger pause state and effective settings. Requires workflow:read.",
+        "security": [
+          {
+            "apiToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workspaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "workflowId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Read automatic-trigger pause state and effective settings. Requires workflow:read.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowAutoPauseSettings"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthenticated"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "429": {
+            "description": "Request rate limit reached",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/Unexpected"
+          },
+          "503": {
+            "description": "Token authentication or request admission unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Read automatic-pause settings",
+        "tags": [
+          "Workflows"
+        ],
+        "x-pertexo-problem-codes": [
+          "request.invalid",
+          "auth.unauthenticated",
+          "auth.token_scope_required",
+          "auth.forbidden",
+          "resource.not_found",
+          "request.rate_limited",
+          "request.rate_limit_unavailable",
+          "api_token.unavailable"
+        ]
+      },
+      "put": {
+        "operationId": "updateWorkflowAutoPauseSettings",
+        "x-pertexo-api-token-scopes": [
+          "workflow:update"
+        ],
+        "description": "Update override or opt-out at the independent settings revision. Requires workflow:update. Does not resume, publish, enable triggers, or retroactively evaluate outcomes.",
+        "security": [
+          {
+            "apiToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workspaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "workflowId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^[\\x21-\\x2b\\x2d-\\x7e]+$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkflowAutoPauseSettingsRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Command accepted; exact retries replay the original settings snapshot",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowAutoPauseCommandResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthenticated"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "description": "Expected revision or idempotency conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/WorkflowAutoPauseSettingsConflictProblem"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ApiProblem"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Request rate limit reached",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/Unexpected"
+          },
+          "503": {
+            "description": "Token authentication or request admission unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Update automatic-pause settings",
+        "tags": [
+          "Workflows"
+        ],
+        "x-pertexo-problem-codes": [
+          "request.invalid",
+          "auth.unauthenticated",
+          "auth.token_scope_required",
+          "auth.forbidden",
+          "resource.not_found",
+          "request.rate_limited",
+          "request.rate_limit_unavailable",
+          "api_token.unavailable",
+          "request.idempotency_conflict",
+          "workflow.auto_pause_settings_conflict"
+        ]
+      }
+    },
+    "/v1/workspaces/{workspaceId}/workflows/{workflowId}/resume": {
+      "post": {
+        "operationId": "resumeWorkflow",
+        "x-pertexo-api-token-scopes": [
+          "workflow:publish"
+        ],
+        "description": "Explicitly clear automatic-trigger pause and reset the failure streak at the expected pause revision. Requires workflow:publish. An already-unpaused workflow is a no-op. Existing trigger disable states and workflow lifecycle are preserved.",
+        "security": [
+          {
+            "apiToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workspaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "workflowId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^[\\x21-\\x2b\\x2d-\\x7e]+$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkflowResumeRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Command accepted; exact retries replay the original settings snapshot",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowAutoPauseCommandResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthenticated"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "description": "Expected revision or idempotency conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/WorkflowPauseConflictProblem"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ApiProblem"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Request rate limit reached",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/Unexpected"
+          },
+          "503": {
+            "description": "Token authentication or request admission unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Resume automatic triggers",
+        "tags": [
+          "Workflows"
+        ],
+        "x-pertexo-problem-codes": [
+          "request.invalid",
+          "auth.unauthenticated",
+          "auth.token_scope_required",
+          "auth.forbidden",
+          "resource.not_found",
+          "request.rate_limited",
+          "request.rate_limit_unavailable",
+          "api_token.unavailable",
+          "request.idempotency_conflict",
+          "workflow.pause_conflict"
         ]
       }
     },
@@ -1486,7 +2223,8 @@
           "auth.forbidden",
           "resource.not_found",
           "request.rate_limited",
-          "request.rate_limit_unavailable"
+          "request.rate_limit_unavailable",
+          "api_token.unavailable"
         ]
       }
     },
@@ -1612,6 +2350,7 @@
           "resource.not_found",
           "request.rate_limited",
           "request.rate_limit_unavailable",
+          "api_token.unavailable",
           "request.idempotency_conflict",
           "workflow.not_published",
           "workflow.already_running",
@@ -1715,7 +2454,8 @@
           "auth.forbidden",
           "resource.not_found",
           "request.rate_limited",
-          "request.rate_limit_unavailable"
+          "request.rate_limit_unavailable",
+          "api_token.unavailable"
         ]
       }
     },
@@ -1789,6 +2529,16 @@
           },
           "500": {
             "$ref": "#/components/responses/Unexpected"
+          },
+          "503": {
+            "description": "Token authentication or request admission unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
           }
         },
         "summary": "Read a run’s input",
@@ -1802,7 +2552,8 @@
           "auth.forbidden",
           "resource.not_found",
           "request.rate_limited",
-          "request.rate_limit_unavailable"
+          "request.rate_limit_unavailable",
+          "api_token.unavailable"
         ]
       }
     },
@@ -1887,6 +2638,16 @@
           },
           "500": {
             "$ref": "#/components/responses/Unexpected"
+          },
+          "503": {
+            "description": "Token authentication or request admission unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
           }
         },
         "summary": "Read a step’s output",
@@ -1900,7 +2661,8 @@
           "auth.forbidden",
           "resource.not_found",
           "request.rate_limited",
-          "request.rate_limit_unavailable"
+          "request.rate_limit_unavailable",
+          "api_token.unavailable"
         ]
       }
     },
@@ -1985,6 +2747,16 @@
           },
           "500": {
             "$ref": "#/components/responses/Unexpected"
+          },
+          "503": {
+            "description": "Token authentication or request admission unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
           }
         },
         "summary": "Read a step’s input",
@@ -1998,7 +2770,8 @@
           "auth.forbidden",
           "resource.not_found",
           "request.rate_limited",
-          "request.rate_limit_unavailable"
+          "request.rate_limit_unavailable",
+          "api_token.unavailable"
         ]
       }
     },
@@ -2109,6 +2882,7 @@
           "resource.not_found",
           "request.rate_limited",
           "request.rate_limit_unavailable",
+          "api_token.unavailable",
           "run.not_cancelable"
         ]
       }
@@ -2249,6 +3023,7 @@
           "resource.not_found",
           "request.rate_limited",
           "request.rate_limit_unavailable",
+          "api_token.unavailable",
           "request.precondition_required",
           "workflow.revision_conflict",
           "workflow.portability_review_conflict",
@@ -2362,6 +3137,7 @@
           "resource.not_found",
           "request.rate_limited",
           "request.rate_limit_unavailable",
+          "api_token.unavailable",
           "workflow.portability_invalid",
           "workflow.portability_compatibility_conflict",
           "workflow.portability_unavailable"
@@ -2492,6 +3268,7 @@
           "resource.not_found",
           "request.rate_limited",
           "request.rate_limit_unavailable",
+          "api_token.unavailable",
           "request.idempotency_conflict",
           "workflow.portability_invalid",
           "workflow.portability_review_conflict",
@@ -3558,6 +4335,227 @@
         "required": [
           "items",
           "nextCursor"
+        ],
+        "additionalProperties": false
+      },
+      "ApiProblem": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "readOnly": true,
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          },
+          "status": {
+            "type": "integer",
+            "minimum": 400,
+            "maximum": 599
+          },
+          "detail": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000
+          },
+          "instance": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2048
+          },
+          "code": {
+            "type": "string",
+            "enum": [
+              "callback.already_received",
+              "callback.expired",
+              "callback.unavailable",
+              "api_token.unavailable",
+              "api_token.limit",
+              "auth.unauthenticated",
+              "auth.forbidden",
+              "auth.token_scope_required",
+              "auth.token_not_supported",
+              "auth.email_not_verified",
+              "auth.sso_required",
+              "auth.two_factor_locked",
+              "auth.method_limit",
+              "auth.recovery_required",
+              "auth.organization_email_managed",
+              "auth.alternative_required",
+              "auth.reset_link_invalid",
+              "auth.sign_up_closed",
+              "auth.conflict",
+              "auth.session_not_fresh",
+              "resource.not_found",
+              "request.invalid",
+              "request.precondition_required",
+              "request.idempotency_conflict",
+              "request.rate_limited",
+              "request.rate_limit_unavailable",
+              "request.method_not_allowed",
+              "request.too_large",
+              "request.unsupported_media_type",
+              "workspace.quota_exceeded",
+              "artifact.too_large",
+              "artifact.conflict",
+              "artifact.unavailable",
+              "workspace.conflict",
+              "data_table.conflict",
+              "data_table.key_conflict",
+              "data_table.quota_exceeded",
+              "export.already_running",
+              "webhook.setting_up",
+              "workspace.revision_conflict",
+              "workspace.member_role_revision_conflict",
+              "workspace.member_role_transition_conflict",
+              "workspace.member_removal_conflict",
+              "workspace.member_directory_managed",
+              "workspace.member_status_conflict",
+              "workspace.invitation_conflict",
+              "workspace.invitation_proof_expired",
+              "workspace.invitation_revision_conflict",
+              "workspace.invitation_recipient_mismatch",
+              "workspace.invitation_unavailable",
+              "workspace.invitation_delivery_unavailable",
+              "workspace.invitation_not_configured",
+              "user.profile_revision_conflict",
+              "workflow.revision_conflict",
+              "workflow.lifecycle_conflict",
+              "workflow.name_conflict",
+              "workflow.pause_conflict",
+              "workflow.auto_pause_settings_conflict",
+              "workflow.already_running",
+              "workflow.concurrency_revision_conflict",
+              "workflow.concurrency_limit_exceeded",
+              "workflow.concurrency_limit_unavailable",
+              "workflow.publish_approval_required",
+              "workflow.publication_review_conflict",
+              "workflow.promotion_conflict",
+              "workflow.promotion_unavailable",
+              "workflow.collaboration_conflict",
+              "workflow.error_policy_conflict",
+              "workflow.error_target_unavailable",
+              "pending_task.already_resolved",
+              "pending_task.expired",
+              "pending_task.run_closed",
+              "pending_task.self_decision",
+              "pending_task.not_eligible",
+              "notifications.changed",
+              "notifications.unavailable",
+              "notifications.unsubscribe_unavailable",
+              "variables.changed",
+              "variables.usage_changed",
+              "workflow.variable_snapshot_unavailable",
+              "trigger.coordination_unavailable",
+              "form.unavailable",
+              "form.changed",
+              "form.access_conflict",
+              "form.invalid",
+              "form.file_type_not_allowed",
+              "form.file_too_large",
+              "form.upload_limit",
+              "form.upload_busy",
+              "form.required",
+              "workflow.sample_conflict",
+              "workflow.sample_invalid",
+              "workflow.sample_limit",
+              "workflow.input_case_revision_conflict",
+              "workflow.input_case_limit_exceeded",
+              "workflow.tag_key_conflict",
+              "workflow.tag_limit_exceeded",
+              "workflow.tag_revision_conflict",
+              "workflow.tag_delete_overflow",
+              "workflow.organization_revision_conflict",
+              "workflow.folder_name_conflict",
+              "workflow.folder_limit_exceeded",
+              "workflow.folder_revision_conflict",
+              "workflow.folder_hierarchy_conflict",
+              "workflow.folder_not_empty",
+              "workflow.folder_not_visible",
+              "workflow.folder_audience_review_required",
+              "workspace.auto_pause_settings_conflict",
+              "workflow.invalid",
+              "workflow.portability_unavailable",
+              "workflow.portability_compatibility_conflict",
+              "workflow.portability_review_conflict",
+              "workflow.portability_invalid",
+              "workflow.template_origin_unavailable",
+              "workflow.validation_unavailable",
+              "workflow.published_version_conflict",
+              "workflow.not_published",
+              "workflow.activation_failed",
+              "run.not_cancelable",
+              "run.outcome_unknown",
+              "run.recovery_unavailable",
+              "connection.not_configured",
+              "webhook.not_configured",
+              "connection.conflict",
+              "connection.revoked",
+              "connection.oauth2_endpoint_refused",
+              "connection.oauth2_token_refused",
+              "provider.unavailable",
+              "webhook.authentication_failed",
+              "webhook.payload_too_large",
+              "webhook.unsupported_media_type",
+              "webhook.invalid_json",
+              "webhook.method_not_allowed",
+              "webhook.idempotency_conflict",
+              "webhook.rate_limited",
+              "webhook.workflow_paused",
+              "webhook.unavailable",
+              "request.aborted",
+              "internal.unexpected"
+            ]
+          },
+          "requestId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+          },
+          "errors": {
+            "readOnly": true,
+            "maxItems": 100,
+            "type": "array",
+            "items": {
+              "readOnly": true,
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string",
+                  "maxLength": 1024
+                },
+                "code": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128
+                },
+                "message": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 500
+                }
+              },
+              "required": [
+                "path",
+                "code",
+                "message"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "type",
+          "title",
+          "status",
+          "code",
+          "requestId"
         ],
         "additionalProperties": false
       },
@@ -4645,7 +5643,139 @@
         ],
         "additionalProperties": false
       },
-      "ApiProblem": {
+      "WorkflowLifecycleRequest": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "expectedLifecycleRevision": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "expectedLifecycleRevision"
+        ],
+        "additionalProperties": false
+      },
+      "WorkflowLifecycleResponse": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "workflow": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "workspaceId": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              },
+              "nameRevision": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              },
+              "lifecycleStatus": {
+                "type": "string",
+                "enum": [
+                  "active",
+                  "archived"
+                ]
+              },
+              "lifecycleRevision": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              },
+              "activationStatus": {
+                "type": "string",
+                "enum": [
+                  "inactive",
+                  "activating",
+                  "active",
+                  "deactivating",
+                  "degraded",
+                  "error"
+                ]
+              },
+              "webhookSetupRequired": {
+                "type": "boolean"
+              },
+              "resourceAccess": {
+                "type": "object",
+                "properties": {
+                  "canEdit": {
+                    "type": "boolean"
+                  },
+                  "canPublish": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "canEdit",
+                  "canPublish"
+                ],
+                "additionalProperties": false
+              },
+              "publishedVersionId": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "createdAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              "updatedAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              }
+            },
+            "required": [
+              "id",
+              "workspaceId",
+              "name",
+              "nameRevision",
+              "lifecycleStatus",
+              "lifecycleRevision",
+              "activationStatus",
+              "webhookSetupRequired",
+              "publishedVersionId",
+              "createdAt",
+              "updatedAt"
+            ],
+            "additionalProperties": false
+          },
+          "replayed": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "workflow",
+          "replayed"
+        ],
+        "additionalProperties": false
+      },
+      "WorkflowLifecycleConflictProblem": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "readOnly": true,
         "type": "object",
@@ -4661,9 +5791,8 @@
             "maxLength": 256
           },
           "status": {
-            "type": "integer",
-            "minimum": 400,
-            "maximum": 599
+            "type": "number",
+            "const": 409
           },
           "detail": {
             "type": "string",
@@ -4677,147 +5806,7 @@
           },
           "code": {
             "type": "string",
-            "enum": [
-              "callback.already_received",
-              "callback.expired",
-              "callback.unavailable",
-              "api_token.unavailable",
-              "api_token.limit",
-              "auth.unauthenticated",
-              "auth.forbidden",
-              "auth.token_scope_required",
-              "auth.token_not_supported",
-              "auth.email_not_verified",
-              "auth.sso_required",
-              "auth.two_factor_locked",
-              "auth.method_limit",
-              "auth.recovery_required",
-              "auth.organization_email_managed",
-              "auth.alternative_required",
-              "auth.reset_link_invalid",
-              "auth.sign_up_closed",
-              "auth.conflict",
-              "auth.session_not_fresh",
-              "resource.not_found",
-              "request.invalid",
-              "request.precondition_required",
-              "request.idempotency_conflict",
-              "request.rate_limited",
-              "request.rate_limit_unavailable",
-              "request.method_not_allowed",
-              "request.too_large",
-              "request.unsupported_media_type",
-              "workspace.quota_exceeded",
-              "artifact.too_large",
-              "artifact.conflict",
-              "artifact.unavailable",
-              "workspace.conflict",
-              "data_table.conflict",
-              "data_table.key_conflict",
-              "data_table.quota_exceeded",
-              "export.already_running",
-              "webhook.setting_up",
-              "workspace.revision_conflict",
-              "workspace.member_role_revision_conflict",
-              "workspace.member_role_transition_conflict",
-              "workspace.member_removal_conflict",
-              "workspace.member_directory_managed",
-              "workspace.member_status_conflict",
-              "workspace.invitation_conflict",
-              "workspace.invitation_proof_expired",
-              "workspace.invitation_revision_conflict",
-              "workspace.invitation_recipient_mismatch",
-              "workspace.invitation_unavailable",
-              "workspace.invitation_delivery_unavailable",
-              "workspace.invitation_not_configured",
-              "user.profile_revision_conflict",
-              "workflow.revision_conflict",
-              "workflow.lifecycle_conflict",
-              "workflow.name_conflict",
-              "workflow.pause_conflict",
-              "workflow.auto_pause_settings_conflict",
-              "workflow.already_running",
-              "workflow.concurrency_revision_conflict",
-              "workflow.concurrency_limit_exceeded",
-              "workflow.concurrency_limit_unavailable",
-              "workflow.publish_approval_required",
-              "workflow.publication_review_conflict",
-              "workflow.promotion_conflict",
-              "workflow.promotion_unavailable",
-              "workflow.collaboration_conflict",
-              "workflow.error_policy_conflict",
-              "workflow.error_target_unavailable",
-              "pending_task.already_resolved",
-              "pending_task.expired",
-              "pending_task.run_closed",
-              "pending_task.self_decision",
-              "pending_task.not_eligible",
-              "notifications.changed",
-              "notifications.unavailable",
-              "notifications.unsubscribe_unavailable",
-              "variables.changed",
-              "variables.usage_changed",
-              "workflow.variable_snapshot_unavailable",
-              "trigger.coordination_unavailable",
-              "form.unavailable",
-              "form.changed",
-              "form.access_conflict",
-              "form.invalid",
-              "form.file_type_not_allowed",
-              "form.file_too_large",
-              "form.upload_limit",
-              "form.upload_busy",
-              "form.required",
-              "workflow.sample_conflict",
-              "workflow.sample_invalid",
-              "workflow.sample_limit",
-              "workflow.input_case_revision_conflict",
-              "workflow.input_case_limit_exceeded",
-              "workflow.tag_key_conflict",
-              "workflow.tag_limit_exceeded",
-              "workflow.tag_revision_conflict",
-              "workflow.tag_delete_overflow",
-              "workflow.organization_revision_conflict",
-              "workflow.folder_name_conflict",
-              "workflow.folder_limit_exceeded",
-              "workflow.folder_revision_conflict",
-              "workflow.folder_hierarchy_conflict",
-              "workflow.folder_not_empty",
-              "workflow.folder_not_visible",
-              "workflow.folder_audience_review_required",
-              "workspace.auto_pause_settings_conflict",
-              "workflow.invalid",
-              "workflow.portability_unavailable",
-              "workflow.portability_compatibility_conflict",
-              "workflow.portability_review_conflict",
-              "workflow.portability_invalid",
-              "workflow.template_origin_unavailable",
-              "workflow.validation_unavailable",
-              "workflow.published_version_conflict",
-              "workflow.not_published",
-              "workflow.activation_failed",
-              "run.not_cancelable",
-              "run.outcome_unknown",
-              "run.recovery_unavailable",
-              "connection.not_configured",
-              "webhook.not_configured",
-              "connection.conflict",
-              "connection.revoked",
-              "connection.oauth2_endpoint_refused",
-              "connection.oauth2_token_refused",
-              "provider.unavailable",
-              "webhook.authentication_failed",
-              "webhook.payload_too_large",
-              "webhook.unsupported_media_type",
-              "webhook.invalid_json",
-              "webhook.method_not_allowed",
-              "webhook.idempotency_conflict",
-              "webhook.rate_limited",
-              "webhook.workflow_paused",
-              "webhook.unavailable",
-              "request.aborted",
-              "internal.unexpected"
-            ]
+            "const": "workflow.lifecycle_conflict"
           },
           "requestId": {
             "type": "string",
@@ -4855,6 +5844,11 @@
               ],
               "additionalProperties": false
             }
+          },
+          "currentLifecycleRevision": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
           }
         },
         "required": [
@@ -4862,7 +5856,8 @@
           "title",
           "status",
           "code",
-          "requestId"
+          "requestId",
+          "currentLifecycleRevision"
         ],
         "additionalProperties": false
       },
@@ -10819,6 +11814,452 @@
         "required": [
           "items",
           "nextCursor"
+        ],
+        "additionalProperties": false
+      },
+      "WorkflowAutoPauseSettings": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "thresholdOverride": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 3,
+                "maximum": 100
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "workspaceThreshold": {
+            "type": "integer",
+            "minimum": 3,
+            "maximum": 100
+          },
+          "effectiveThreshold": {
+            "type": "integer",
+            "minimum": 3,
+            "maximum": 100
+          },
+          "settingsRevision": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          },
+          "pauseState": {
+            "type": "string",
+            "enum": [
+              "none",
+              "paused"
+            ]
+          },
+          "pauseRevision": {
+            "type": "string",
+            "pattern": "^(?:[1-9][0-9]{0,17}|[1-8][0-9]{18}|9[0-1][0-9]{17}|92[0-1][0-9]{16}|922[0-2][0-9]{15}|9223[0-2][0-9]{14}|92233[0-6][0-9]{13}|922337[0-1][0-9]{12}|92233720[0-2][0-9]{10}|922337203[0-5][0-9]{9}|9223372036[0-7][0-9]{8}|92233720368[0-4][0-9]{7}|922337203685[0-3][0-9]{6}|9223372036854[0-6][0-9]{5}|92233720368547[0-6][0-9]{4}|922337203685477[0-4][0-9]{3}|9223372036854775[0-7][0-9]{2}|922337203685477580[0-6]|9223372036854775807)$"
+          },
+          "pausedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "pauseReason": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "consecutive_failures"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "pausedFailures": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "pausedLastRunId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "enabled",
+          "thresholdOverride",
+          "workspaceThreshold",
+          "effectiveThreshold",
+          "settingsRevision",
+          "pauseState",
+          "pauseRevision",
+          "pausedAt",
+          "pauseReason",
+          "pausedFailures",
+          "pausedLastRunId"
+        ],
+        "additionalProperties": false
+      },
+      "WorkflowAutoPauseSettingsRequest": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "thresholdOverride": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 3,
+                "maximum": 100
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "expectedSettingsRevision": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "enabled",
+          "thresholdOverride",
+          "expectedSettingsRevision"
+        ],
+        "additionalProperties": false
+      },
+      "WorkflowAutoPauseCommandResponse": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "settings": {
+            "type": "object",
+            "properties": {
+              "enabled": {
+                "type": "boolean"
+              },
+              "thresholdOverride": {
+                "anyOf": [
+                  {
+                    "type": "integer",
+                    "minimum": 3,
+                    "maximum": 100
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "workspaceThreshold": {
+                "type": "integer",
+                "minimum": 3,
+                "maximum": 100
+              },
+              "effectiveThreshold": {
+                "type": "integer",
+                "minimum": 3,
+                "maximum": 100
+              },
+              "settingsRevision": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              },
+              "pauseState": {
+                "type": "string",
+                "enum": [
+                  "none",
+                  "paused"
+                ]
+              },
+              "pauseRevision": {
+                "type": "string",
+                "pattern": "^(?:[1-9][0-9]{0,17}|[1-8][0-9]{18}|9[0-1][0-9]{17}|92[0-1][0-9]{16}|922[0-2][0-9]{15}|9223[0-2][0-9]{14}|92233[0-6][0-9]{13}|922337[0-1][0-9]{12}|92233720[0-2][0-9]{10}|922337203[0-5][0-9]{9}|9223372036[0-7][0-9]{8}|92233720368[0-4][0-9]{7}|922337203685[0-3][0-9]{6}|9223372036854[0-6][0-9]{5}|92233720368547[0-6][0-9]{4}|922337203685477[0-4][0-9]{3}|9223372036854775[0-7][0-9]{2}|922337203685477580[0-6]|9223372036854775807)$"
+              },
+              "pausedAt": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "format": "date-time",
+                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "pauseReason": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "const": "consecutive_failures"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "pausedFailures": {
+                "anyOf": [
+                  {
+                    "type": "integer",
+                    "exclusiveMinimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "pausedLastRunId": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "enabled",
+              "thresholdOverride",
+              "workspaceThreshold",
+              "effectiveThreshold",
+              "settingsRevision",
+              "pauseState",
+              "pauseRevision",
+              "pausedAt",
+              "pauseReason",
+              "pausedFailures",
+              "pausedLastRunId"
+            ],
+            "additionalProperties": false
+          },
+          "replayed": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "settings",
+          "replayed"
+        ],
+        "additionalProperties": false
+      },
+      "WorkflowAutoPauseSettingsConflictProblem": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "readOnly": true,
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          },
+          "status": {
+            "type": "number",
+            "const": 409
+          },
+          "detail": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000
+          },
+          "instance": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2048
+          },
+          "code": {
+            "type": "string",
+            "const": "workflow.auto_pause_settings_conflict"
+          },
+          "requestId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+          },
+          "errors": {
+            "readOnly": true,
+            "maxItems": 100,
+            "type": "array",
+            "items": {
+              "readOnly": true,
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string",
+                  "maxLength": 1024
+                },
+                "code": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128
+                },
+                "message": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 500
+                }
+              },
+              "required": [
+                "path",
+                "code",
+                "message"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "currentSettingsRevision": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "type",
+          "title",
+          "status",
+          "code",
+          "requestId",
+          "currentSettingsRevision"
+        ],
+        "additionalProperties": false
+      },
+      "WorkflowResumeRequest": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "expectedPauseRevision": {
+            "type": "string",
+            "pattern": "^(?:[1-9][0-9]{0,17}|[1-8][0-9]{18}|9[0-1][0-9]{17}|92[0-1][0-9]{16}|922[0-2][0-9]{15}|9223[0-2][0-9]{14}|92233[0-6][0-9]{13}|922337[0-1][0-9]{12}|92233720[0-2][0-9]{10}|922337203[0-5][0-9]{9}|9223372036[0-7][0-9]{8}|92233720368[0-4][0-9]{7}|922337203685[0-3][0-9]{6}|9223372036854[0-6][0-9]{5}|92233720368547[0-6][0-9]{4}|922337203685477[0-4][0-9]{3}|9223372036854775[0-7][0-9]{2}|922337203685477580[0-6]|9223372036854775807)$"
+          }
+        },
+        "required": [
+          "expectedPauseRevision"
+        ],
+        "additionalProperties": false
+      },
+      "WorkflowPauseConflictProblem": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "readOnly": true,
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          },
+          "status": {
+            "type": "number",
+            "const": 409
+          },
+          "detail": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000
+          },
+          "instance": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2048
+          },
+          "code": {
+            "type": "string",
+            "const": "workflow.pause_conflict"
+          },
+          "requestId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+          },
+          "errors": {
+            "readOnly": true,
+            "maxItems": 100,
+            "type": "array",
+            "items": {
+              "readOnly": true,
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string",
+                  "maxLength": 1024
+                },
+                "code": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128
+                },
+                "message": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 500
+                }
+              },
+              "required": [
+                "path",
+                "code",
+                "message"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "currentPauseRevision": {
+            "type": "string",
+            "pattern": "^(?:[1-9][0-9]{0,17}|[1-8][0-9]{18}|9[0-1][0-9]{17}|92[0-1][0-9]{16}|922[0-2][0-9]{15}|9223[0-2][0-9]{14}|92233[0-6][0-9]{13}|922337[0-1][0-9]{12}|92233720[0-2][0-9]{10}|922337203[0-5][0-9]{9}|9223372036[0-7][0-9]{8}|92233720368[0-4][0-9]{7}|922337203685[0-3][0-9]{6}|9223372036854[0-6][0-9]{5}|92233720368547[0-6][0-9]{4}|922337203685477[0-4][0-9]{3}|9223372036854775[0-7][0-9]{2}|922337203685477580[0-6]|9223372036854775807)$"
+          }
+        },
+        "required": [
+          "type",
+          "title",
+          "status",
+          "code",
+          "requestId",
+          "currentPauseRevision"
         ],
         "additionalProperties": false
       },

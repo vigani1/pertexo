@@ -64,7 +64,10 @@ describe('workflow lifecycle public contract', () => {
         `/v1/workspaces/{workspaceId}/workflows/{workflowId}/${command}` as const;
       const operation = workflowAuthoringOpenApiDocument.paths[path].post;
       expect(operation.operationId).toBe(`${command}Workflow`);
-      expect(operation.security).toEqual([{ cookieSession: [] }]);
+      expect(operation.security).toEqual([
+        { cookieSession: [] },
+        { apiToken: [] },
+      ]);
       expect(operation.parameters.map(({ name }) => name)).toEqual([
         'workspaceId',
         'workflowId',

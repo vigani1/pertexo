@@ -29,6 +29,7 @@ export type WorkflowAutoPauseScope = WorkspaceAutoPauseScope &
 
 type Command = Readonly<{
   idempotencyKey: string;
+  commandCredentialId?: string;
   requestId?: string;
   traceId?: string;
 }>;
@@ -62,6 +63,7 @@ export type CommandInput = Readonly<{
   workspaceId: string;
   actorId: string;
   idempotencyKey: string;
+  commandCredentialId?: string;
   requestId?: string;
   traceId?: string;
 }>;

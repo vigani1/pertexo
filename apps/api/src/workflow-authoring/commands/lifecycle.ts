@@ -1,3 +1,4 @@
+import { commandCredential } from '../../authorization/credentials.js';
 import type { workflowLifecycleRequestSchema } from '@pertexo/contracts';
 import {
   workflowLifecycleResponseSchema,
@@ -63,6 +64,7 @@ export class TransitionWorkflowLifecycleUseCase {
           workspaceId: input.routeWorkspaceId,
           workflowId: input.workflowId,
           actorId: input.actor.actorId,
+          ...commandCredential(input.actor),
           idempotencyKey: input.idempotencyKey,
           requestId: input.actor.requestId,
           ...(input.actor.traceId === undefined

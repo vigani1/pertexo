@@ -120,6 +120,38 @@ const PUBLIC_OPERATIONS: Readonly<Record<string, PublicOperation>> = {
       'workflow.portability_unavailable',
     ],
   },
+  archiveWorkflow: {
+    summary: 'Archive a workflow',
+    tag: 'Workflows',
+    scopes: ['workflow:publish'],
+    problems: ['request.idempotency_conflict', 'workflow.lifecycle_conflict'],
+  },
+  restoreWorkflow: {
+    summary: 'Restore an archived workflow',
+    tag: 'Workflows',
+    scopes: ['workflow:publish'],
+    problems: ['request.idempotency_conflict', 'workflow.lifecycle_conflict'],
+  },
+  getWorkflowAutoPauseSettings: {
+    summary: 'Read automatic-pause settings',
+    tag: 'Workflows',
+    scopes: ['workflow:read'],
+  },
+  updateWorkflowAutoPauseSettings: {
+    summary: 'Update automatic-pause settings',
+    tag: 'Workflows',
+    scopes: ['workflow:update'],
+    problems: [
+      'request.idempotency_conflict',
+      'workflow.auto_pause_settings_conflict',
+    ],
+  },
+  resumeWorkflow: {
+    summary: 'Resume automatic triggers',
+    tag: 'Workflows',
+    scopes: ['workflow:publish'],
+    problems: ['request.idempotency_conflict', 'workflow.pause_conflict'],
+  },
   listConnections: {
     summary: 'List connections',
     tag: 'Connections',
@@ -177,6 +209,7 @@ const EVERY_TOKEN_ROUTE: readonly ApiProblemCode[] = [
   'resource.not_found',
   'request.rate_limited',
   'request.rate_limit_unavailable',
+  'api_token.unavailable',
 ];
 
 const DOCUMENTS = [
