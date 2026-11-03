@@ -14,7 +14,7 @@ import type {
 import { WorkspaceAccessDeniedError } from '@pertexo/core/tenant-access';
 
 import { openNoticeUnsubscribe } from '@pertexo/core/inbox';
-import { type ApplicationSecretEnvelope } from '@pertexo/secrets/server';
+import type { ApplicationSecretEnvelope } from '@pertexo/secrets/server';
 import {
   applicationError,
   throwApplicationError,

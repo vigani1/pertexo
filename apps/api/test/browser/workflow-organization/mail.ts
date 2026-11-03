@@ -9,7 +9,7 @@ import {
   createApplicationSecretEnvelope,
   type ApplicationSecretEnvelope,
 } from '@pertexo/secrets/server';
-import { type SystemMailClient } from '@pertexo/secrets/server';
+import type { SystemMailClient } from '@pertexo/secrets/server';
 import {
   parseQueueJob,
   type QueueDelivery,

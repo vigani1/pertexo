@@ -8,7 +8,7 @@ import {
   type SamlProofGateway,
 } from '../federation/protocol/saml/gateway.js';
 import { createNodeSecureHttpClient } from '@pertexo/integrations/server';
-import { type ApplicationSecretEnvelope } from '@pertexo/secrets/server';
+import type { ApplicationSecretEnvelope } from '@pertexo/secrets/server';
 import { OrganizationSignIn } from '../federation/journeys/organization.js';
 import {
   createOidcProofGateway,
