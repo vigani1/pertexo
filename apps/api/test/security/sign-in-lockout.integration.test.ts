@@ -1,3 +1,10 @@
+import { Redis } from 'ioredis';
+import { randomUUID } from 'node:crypto';
+import { createRealStack } from '../support/real-stack/stack.js';
+import {
+  SUITE_REDIS_DATABASES,
+  SECURITY_REDIS_DATABASES,
+} from '../support/real-stack/redis-databases.js';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import { betterAuthIntegrationEnabled } from '../support/better-auth/real-api.support.js';
@@ -32,9 +39,36 @@ describe.runIf(betterAuthIntegrationEnabled)(
 
     beforeAll(async () => {
       const { startStack } = await import('./stack.js');
-      stack = await startStack({
-        environment: { AUTH_SIGN_UP_MODE: 'open' },
-      });
+      const coordinator = new Redis(process.env.REDIS_URL ?? '');
+      const owner = randomUUID(),
+        reserved: string[] = [];
+      try {
+        for (const database of [5, 6, 7, 8]) {
+          const key = `pertexo:test:security-stack:${String(database)}`;
+          if ((await coordinator.set(key, owner, 'EX', 120, 'NX')) === 'OK')
+            reserved.push(key);
+        }
+        stack = await startStack({
+          environment: { AUTH_SIGN_UP_MODE: 'open' },
+        });
+        const {
+          rows: [database],
+        } = await stack.query<{ name: string }>(
+          'select current_database() name',
+        );
+        expect(await coordinator.get('pertexo:test:security-stack:9')).toBe(
+          database?.name,
+        );
+      } finally {
+        for (const key of reserved)
+          await coordinator.eval(
+            "if redis.call('GET',KEYS[1])==ARGV[1] then return redis.call('DEL',KEYS[1]) end return 0",
+            1,
+            key,
+            owner,
+          );
+        coordinator.disconnect();
+      }
       await registerAccount(stack, VICTIM);
       await registerAccount(stack, ATTACKED);
     }, 120_000);
@@ -101,18 +135,53 @@ describe.runIf(betterAuthIntegrationEnabled)(
       expect(reply.status, reply.text).not.toBe(429);
     }, 60_000);
 
-    it('still stops one address guessing passwords', async () => {
-      const replies = [];
-      for (let attempt = 0; attempt < 11; attempt++)
-        replies.push(await failedSignIn(address(21)));
-
-      expect(replies.slice(0, 10).map((reply) => reply.status)).toEqual(
-        Array.from({ length: 10 }, () => 401),
-      );
-      const limited = replies.at(-1);
-      expect(limited?.status).toBe(429);
-      expect(Number(limited?.headers.get('retry-after'))).toBeGreaterThan(0);
-      expect(limited?.json()).toMatchObject({ code: 'request.rate_limited' });
+    it('keeps the eleventh guess blocked while every competing stack creates and closes', async () => {
+      const assignments = [
+        ...Object.values(SUITE_REDIS_DATABASES),
+        ...SECURITY_REDIS_DATABASES,
+      ];
+      const securityUrl = new URL(process.env.REDIS_URL ?? '');
+      securityUrl.pathname = '/9';
+      const security = new Redis(securityUrl.toString());
+      const sentinel = `regression:queue:${randomUUID()}`;
+      try {
+        await security.rpush(sentinel, 'queued-work');
+        for (let attempt = 0; attempt < 10; attempt++)
+          expect((await failedSignIn(address(21))).status).toBe(401);
+        for (const name of [
+          'capacity',
+          'timed-waits',
+          'webhook-endpoints',
+          'failure-alerts',
+        ] as const) {
+          const competing = createRealStack(name);
+          try {
+            await competing.create();
+            expect((await failedSignIn(address(21))).status).toBe(429);
+            expect(await security.lrange(sentinel, 0, -1)).toEqual([
+              'queued-work',
+            ]);
+          } finally {
+            await competing.close();
+          }
+          expect(await security.lrange(sentinel, 0, -1)).toEqual([
+            'queued-work',
+          ]);
+          const limited = await failedSignIn(address(21));
+          expect(limited.status).toBe(429);
+          expect(Number(limited.headers.get('retry-after'))).toBeGreaterThan(0);
+          expect(limited.json()).toMatchObject({
+            code: 'request.rate_limited',
+          });
+        }
+        expect(new Set(assignments).size).toBe(assignments.length);
+        expect(assignments.every((value) => value >= 1 && value <= 15)).toBe(
+          true,
+        );
+      } finally {
+        await security.del(sentinel);
+        security.disconnect();
+      }
     }, 60_000);
 
     it('still stops many addresses guessing one account', async () => {

@@ -82,6 +82,10 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
         await blocker.query('select pg_advisory_unlock(704281,1)');
         const reply = await pending;
         expectProblem(reply, 409, 'auth.authentication_changed');
+        expect(reply.json()).toMatchObject({
+          title:
+            'Sign-in settings changed. Sign in again using your current organization policy.',
+        });
         expect(reply.headers['set-cookie']).not.toEqual(
           expect.arrayContaining([
             expect.stringMatching(/^pertexo_session=[^;]/u),
