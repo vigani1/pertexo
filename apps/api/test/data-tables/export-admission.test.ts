@@ -34,7 +34,7 @@ it('refuses concurrent workspace exports across instances and releases after fai
     await expect(
       second.run('workspace', () => Promise.resolve()),
     ).rejects.toMatchObject({
-      code: 'workspace.conflict',
+      code: 'export.already_running',
       safeDetail: expect.stringContaining(
         'export is already running',
       ) as unknown,
@@ -66,7 +66,7 @@ it('caps each instance at two and does not acquire another workspace slot', asyn
     await expect(
       admission.run('three', () => Promise.resolve()),
     ).rejects.toMatchObject({
-      code: 'workspace.conflict',
+      code: 'export.already_running',
       safeDetail: expect.stringContaining(
         'export is already running',
       ) as unknown,

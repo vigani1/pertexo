@@ -31,7 +31,7 @@ describe('a webhook that cannot take an endpoint yet', () => {
 
     expect(response.status).toHaveBeenCalledWith(409);
     expect(response.header).toHaveBeenCalledWith('retry-after', '5');
-    expect(response.body).toMatchObject({ code: 'workspace.conflict' });
+    expect(response.body).toMatchObject({ code: 'webhook.setting_up' });
     expect(apiProblemSchema.safeParse(response.body).success).toBe(true);
   });
 

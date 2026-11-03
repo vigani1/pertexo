@@ -53,7 +53,7 @@ export class CsvExportAdmission {
 
   private refuse(): never {
     throwApplicationError(
-      applicationError('workspace.conflict', {
+      applicationError('export.already_running', {
         safeDetail:
           'An export is already running. Wait for it to finish or cancel it, then try again.',
       }),

@@ -1,3 +1,4 @@
+import { API_PROBLEM_MANIFEST } from '../errors/api-problem.js';
 import {
   connectionsClientContract,
   connectionsOpenApiDocument,
@@ -74,8 +75,31 @@ const CONTRACT_DOMAINS = Object.freeze([
   ],
 ] as const);
 
-export const CONTRACT_ARTIFACTS = Object.freeze(
-  CONTRACT_DOMAINS.flatMap(([domain, client, openapi]) => [
+function problemCatalog(): string {
+  const rows = Object.entries(API_PROBLEM_MANIFEST)
+    .toSorted(([left], [right]) => left.localeCompare(right))
+    .map(
+      ([code, { status, title }]) =>
+        `| \`${code}\` | ${String(status)} | ${title} |`,
+    );
+  return [
+    '# API problem codes',
+    '',
+    'Generated from the problem manifest; run `pnpm contracts:generate`. Branch on the code, never on `detail`.',
+    '',
+    '| Code | Status | Title |',
+    '| --- | --- | --- |',
+    ...rows,
+    '',
+  ].join('\n');
+}
+
+export const CONTRACT_ARTIFACTS = Object.freeze([
+  Object.freeze({
+    fileName: 'problem-codes.md',
+    content: problemCatalog(),
+  }),
+  ...CONTRACT_DOMAINS.flatMap(([domain, client, openapi]) => [
     Object.freeze({
       fileName: `${domain}.client-schema.json`,
       content: `${JSON.stringify(client, undefined, 2)}\n`,
@@ -85,4 +109,4 @@ export const CONTRACT_ARTIFACTS = Object.freeze(
       content: `${JSON.stringify(openapi, undefined, 2)}\n`,
     }),
   ]),
-);
+]);
