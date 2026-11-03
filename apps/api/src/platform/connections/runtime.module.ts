@@ -29,7 +29,7 @@ import {
   createResendClient,
 } from '@pertexo/integrations/server';
 
-import { createOAuth2TokenService } from './oauth2-token-service.js';
+import { createOAuth2TokenService } from './oauth2-token.runtime.js';
 
 import {
   ConnectionsModule,

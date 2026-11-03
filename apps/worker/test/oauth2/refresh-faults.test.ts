@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { SealedConnectionSecret } from '@pertexo/secrets/server';
 
-import { createOAuth2TokenService } from '../../src/providers/oauth2-token-service.js';
+import { createOAuth2TokenService } from '../../src/providers/oauth2-token.runtime.js';
 import {
   encodeStoredClientSecret,
   encodeStoredTokens,

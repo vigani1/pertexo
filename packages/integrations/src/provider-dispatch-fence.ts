@@ -11,7 +11,7 @@ import {
   PROVIDER_HTTP_ERROR_CODE,
   ProviderHttpError,
   providerHttpPreDispatchError,
-} from './providers/http-errors.js';
+} from './providers/http.errors.js';
 import {
   errorCodeIs,
   errorNameIs,

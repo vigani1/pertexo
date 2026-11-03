@@ -10,7 +10,7 @@ import {
   type JsonValue,
 } from '@pertexo/node-sdk/server';
 import { inspectJsonValue, resolveJsonPath } from '@pertexo/workflow-model';
-import { inspectProviderHttpError } from '../../providers/http-errors.js';
+import { inspectProviderHttpError } from '../../providers/http.errors.js';
 import type {
   ProviderHttpClient,
   ProviderHttpRequest,

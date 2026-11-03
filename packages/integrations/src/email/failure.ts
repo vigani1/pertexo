@@ -3,9 +3,9 @@ import {
   NodeExecutorFailure,
 } from '@pertexo/node-sdk/server';
 
-import { PROVIDER_HTTP_ERROR_CODE } from '../providers/http-errors.js';
+import { PROVIDER_HTTP_ERROR_CODE } from '../providers/http.errors.js';
 import { providerFailure } from '../providers/failure.js';
-import { inspectProviderHttpError } from '../providers/http-errors.js';
+import { inspectProviderHttpError } from '../providers/http.errors.js';
 import { safeInstanceOf } from '@pertexo/node-sdk/server';
 import type { ResendApiResult } from './client.js';
 

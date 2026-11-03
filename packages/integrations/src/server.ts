@@ -83,5 +83,5 @@ export type {
 export {
   ProviderHttpError,
   PROVIDER_HTTP_ERROR_CODE,
-} from './providers/http-errors.js';
-export type { ProviderHttpErrorCode } from './providers/http-errors.js';
+} from './providers/http.errors.js';
+export type { ProviderHttpErrorCode } from './providers/http.errors.js';

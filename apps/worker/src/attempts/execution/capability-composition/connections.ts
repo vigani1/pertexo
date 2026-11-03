@@ -5,7 +5,7 @@ import { createConnectionEnvelopeEncryption } from '@pertexo/secrets/server';
 
 import { createNodeProviderHttpClient } from '../../../providers/http-client.js';
 
-import { createOAuth2TokenService } from '../../../providers/oauth2-token-service.js';
+import { createOAuth2TokenService } from '../../../providers/oauth2-token.runtime.js';
 import { RedisRateLimitRuntime } from '@pertexo/rate-limit';
 
 import { createProviderConnectionRuntimeFactory } from '../../../providers/connections.js';
