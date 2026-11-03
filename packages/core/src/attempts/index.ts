@@ -22,3 +22,4 @@ export type {} from './dispatch/execution-capability.types.js';
 export type {} from './dispatch/fence.repository.js';
 export type {} from './events.repository.js';
 export type {} from './validation/shared.js';
+export type {} from './completion/receipts.repository.js';
