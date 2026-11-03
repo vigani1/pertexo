@@ -22,7 +22,7 @@ import {
 } from '../lifecycle/retention.support.js';
 
 describe.each(shapes)('artifact lifetime and cleanup (%s)', (shape) => {
-  it('conservatively retains nested artifactId values without an artifact-kind marker', async () => {
+  it('does not retain business JSON containing incidental artifactId values', async () => {
     const state = await fixture(shape);
     try {
       const graph = {
@@ -44,15 +44,10 @@ describe.each(shapes)('artifact lifetime and cleanup (%s)', (shape) => {
         ),
       );
       await expect(state.coordinator.processNext()).resolves.toMatchObject({
-        status: 'referenced',
-        artifactId: state.reference.artifactId,
-      });
-      expect(state.store.delete).not.toHaveBeenCalled();
-      await state.clear();
-      await expect(state.coordinator.processNext()).resolves.toMatchObject({
         status: 'completed',
         artifactId: state.reference.artifactId,
       });
+      expect(state.store.delete).toHaveBeenCalledOnce();
     } finally {
       await state.close();
     }
