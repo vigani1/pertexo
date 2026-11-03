@@ -1,28 +1,28 @@
-import { EMPTY_WORKFLOW_GRAPH } from '../graph.js';
+import type { z } from 'zod';
 import {
   commandCredential,
   type WorkspaceAuthorizationSource,
 } from '../../authorization/index.js';
+import { EMPTY_WORKFLOW_GRAPH } from '../graph.js';
 
+import type { WorkflowApplicationInput } from '../ports.js';
 import {
-  WORKFLOW_AUTHORING_OPERATION,
   NOOP_WORKFLOW_AUTHORING_TELEMETRY,
+  WORKFLOW_AUTHORING_OPERATION,
   type WorkflowAuthoringTelemetry,
 } from '../telemetry.js';
-import { workflowCreateRequestSchema } from '../types.js';
-import type { WorkflowApplicationInput } from '../ports.js';
+import type { workflowCreateRequestSchema } from '../types.js';
 
 import {
   serializeWorkflowCreate,
   type WorkflowCreateResult,
 } from '../http/serializers.js';
 
-import { parseRequestInput } from '../../platform/http/index.js';
 import { type AuthoringPersistence, authorize } from './authorization.js';
 
 export type CreateWorkflowInput = WorkflowApplicationInput &
   Readonly<{
-    request: unknown;
+    request: z.output<typeof workflowCreateRequestSchema>;
     idempotencyKey: string;
     requestId?: string;
     traceId?: string;
@@ -40,10 +40,7 @@ export class CreateWorkflowUseCase {
       WORKFLOW_AUTHORING_OPERATION.create,
       async () => {
         await authorize(input, 'workflow:create', this.authorization);
-        const request = parseRequestInput(
-          workflowCreateRequestSchema,
-          input.request,
-        );
+        const request = input.request;
         const created = await this.persistence.createWorkflow({
           workspaceId: input.routeWorkspaceId,
           actorId: input.actor.actorId,

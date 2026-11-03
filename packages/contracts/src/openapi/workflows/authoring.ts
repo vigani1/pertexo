@@ -1,7 +1,49 @@
+import type { z } from 'zod';
+import { apiProblemSchema } from '../../errors/api-problem.js';
+import { routePaths, routeSchemas } from '../../routes/openapi.js';
+import { authoringRoutes } from '../../routes/workflows/authoring.js';
+import { lifecycleRoutes } from '../../routes/workflows/lifecycle.js';
+import { versionRoutes } from '../../routes/workflows/versions.js';
 import {
-  collaborationContractSchemas,
+  strongEtagSchema,
+  workflowCompatibilityReportSchema,
+  workflowListResponseSchema,
+  workflowRevisionConflictProblemSchema,
+  workflowSummaryResponseSchema,
+  workflowSummarySchema,
+  workflowTemplateOriginProjectionResponseSchema,
+  workflowVersionResponseSchema,
+} from '../../schemas/workflows/authoring.js';
+import {
+  authenticatedComponents,
+  jsonSchema,
+  problemResponse,
+} from '../primitives.js';
+import { projectContractSchema } from '../schema-projection.js';
+import {
+  workflowAutoPauseContractPaths,
+  workflowAutoPauseContractSchemas,
+} from './auto-pause.js';
+import {
   collaborationContractPaths,
+  collaborationContractSchemas,
 } from './collaboration/contract.js';
+import {
+  workflowConcurrencyContractPaths,
+  workflowConcurrencyContractSchemas,
+} from './concurrency.js';
+import {
+  workflowErrorContractPaths,
+  workflowErrorContractSchemas,
+} from './error.js';
+import {
+  workflowInputCaseContractPaths,
+  workflowInputCaseContractSchemas,
+} from './input-cases.js';
+import {
+  workflowOrganizationContractPaths,
+  workflowOrganizationContractSchemas,
+} from './organization.js';
 import {
   workflowPromotionContractPaths,
   workflowPromotionContractSchemas,
@@ -10,90 +52,18 @@ import {
   publicationReviewContractPaths,
   publicationReviewContractSchemas,
 } from './publication-review.js';
-import {
-  workflowErrorContractPaths,
-  workflowErrorContractSchemas,
-} from './error.js';
-import { apiProblemSchema } from '../../errors/api-problem.js';
-import {
-  workflowOrganizationContractPaths,
-  workflowOrganizationContractSchemas,
-  workflowOrganizationGetReadContract,
-  workflowOrganizationListReadContract,
-} from './organization.js';
-import {
-  workflowInputCaseContractPaths,
-  workflowInputCaseContractSchemas,
-} from './input-cases.js';
-import {
-  workflowConcurrencyContractPaths,
-  workflowConcurrencyContractSchemas,
-} from './concurrency.js';
-import {
-  workflowAutoPauseContractPaths,
-  workflowAutoPauseContractSchemas,
-} from './auto-pause.js';
-import {
-  workflowCompatibilityReportSchema,
-  workflowCreateRequestSchema,
-  workflowCreateResponseSchema,
-  workflowDuplicateRequestSchema,
-  workflowDuplicateResponseSchema,
-  workflowDraftResponseSchema,
-  workflowDraftSaveRequestSchema,
-  workflowListResponseSchema,
-  workflowVersionRestoreRequestSchema,
-  workflowPublishResponseSchema,
-  workflowRevisionConflictProblemSchema,
-  workflowSummarySchema,
-  workflowSummaryResponseSchema,
-  workflowTemplateOriginProjectionResponseSchema,
-  workflowValidateResponseSchema,
-  workflowVersionResponseSchema,
-  workflowVersionsQuerySchema,
-  workflowVersionsResponseSchema,
-  strongEtagSchema,
-} from '../../schemas/workflows/authoring.js';
-import { projectContractSchema } from '../schema-projection.js';
-import {
-  workflowRevisionCommandPaths,
-  workflowRevisionCommandSchemas,
-} from './revision-commands.js';
-import {
-  authenticatedComponents,
-  automationSecurity,
-  automationCsrfHeaderParameter,
-  csrfHeaderParameter,
-  idempotencyHeaderParameter,
-  jsonRequest,
-  jsonResponse,
-  jsonSchema,
-  problemResponse,
-  responseReference,
-  uuidPathParameter as pathParameter,
-} from '../primitives.js';
-import type { z } from 'zod';
+import { workflowRevisionCommandSchemas } from './revision-commands.js';
 
 function contractSchemas() {
   const project = (name: string, schema: z.ZodType, io: 'input' | 'output') =>
     projectContractSchema(name, schema, io);
   return Object.freeze({
+    ...routeSchemas([
+      ...Object.values(authoringRoutes),
+      ...Object.values(lifecycleRoutes),
+      ...Object.values(versionRoutes),
+    ]),
     ApiProblem: project('ApiProblem', apiProblemSchema, 'output'),
-    WorkflowDuplicateRequest: project(
-      'WorkflowDuplicateRequest',
-      workflowDuplicateRequestSchema,
-      'input',
-    ),
-    WorkflowDuplicateResponse: project(
-      'WorkflowDuplicateResponse',
-      workflowDuplicateResponseSchema,
-      'output',
-    ),
-    WorkflowVersionRestoreRequest: project(
-      'WorkflowVersionRestoreRequest',
-      workflowVersionRestoreRequestSchema,
-      'input',
-    ),
     ...workflowRevisionCommandSchemas(project),
     ...workflowAutoPauseContractSchemas(project),
     ...workflowConcurrencyContractSchemas(project),
@@ -106,16 +76,6 @@ function contractSchemas() {
     WorkflowRevisionConflictProblem: project(
       'WorkflowRevisionConflictProblem',
       workflowRevisionConflictProblemSchema,
-      'output',
-    ),
-    WorkflowCreateRequest: project(
-      'WorkflowCreateRequest',
-      workflowCreateRequestSchema,
-      'input',
-    ),
-    WorkflowCreateResponse: project(
-      'WorkflowCreateResponse',
-      workflowCreateResponseSchema,
       'output',
     ),
     WorkflowSummary: project(
@@ -138,39 +98,14 @@ function contractSchemas() {
       workflowListResponseSchema,
       'output',
     ),
-    WorkflowDraftSaveRequest: project(
-      'WorkflowDraftSaveRequest',
-      workflowDraftSaveRequestSchema,
-      'input',
-    ),
-    WorkflowDraftResponse: project(
-      'WorkflowDraftResponse',
-      workflowDraftResponseSchema,
-      'output',
-    ),
     WorkflowCompatibilityReport: project(
       'WorkflowCompatibilityReport',
       workflowCompatibilityReportSchema,
       'output',
     ),
-    WorkflowValidationResponse: project(
-      'WorkflowValidationResponse',
-      workflowValidateResponseSchema,
-      'output',
-    ),
-    WorkflowPublishResponse: project(
-      'WorkflowPublishResponse',
-      workflowPublishResponseSchema,
-      'output',
-    ),
     WorkflowVersionResponse: project(
       'WorkflowVersionResponse',
       workflowVersionResponseSchema,
-      'output',
-    ),
-    WorkflowVersionsResponse: project(
-      'WorkflowVersionsResponse',
-      workflowVersionsResponseSchema,
       'output',
     ),
   });
@@ -232,22 +167,6 @@ const problemResponses = Object.freeze({
   Unexpected: problemResponse('Unexpected server error'),
 });
 
-const pathParameters = [
-  pathParameter('workspaceId', 'Workspace identifier'),
-] as const;
-const workflowParameters = [
-  ...pathParameters,
-  pathParameter('workflowId', 'Workflow identifier'),
-] as const;
-const etagParameter = {
-  name: 'If-Match',
-  in: 'header',
-  required: true,
-  schema: jsonSchema(strongEtagSchema, 'input'),
-} as const;
-const idempotencyParameter = idempotencyHeaderParameter();
-const csrfParameter = csrfHeaderParameter();
-
 export const workflowAuthoringOpenApiDocument = Object.freeze({
   openapi: '3.1.0',
   info: {
@@ -255,288 +174,15 @@ export const workflowAuthoringOpenApiDocument = Object.freeze({
     version: '1.0.0',
   },
   paths: {
-    '/v1/workspaces/{workspaceId}/workflows/{workflowId}/duplicate': {
-      post: {
-        operationId: 'duplicateWorkflow',
-        description:
-          'Create an independent unpublished workflow from the saved draft or the exact retained version. Draft source requires a single strong If-Match; version source does not. Exact authorized retries return the original destination.',
-        security: [{ cookieSession: [] }],
-        parameters: [
-          ...workflowParameters,
-          csrfParameter,
-          idempotencyParameter,
-          {
-            ...etagParameter,
-            required: false,
-            description:
-              'Required only for source.kind=draft; binds the saved source representation.',
-          },
-        ],
-        requestBody: jsonRequest('WorkflowDuplicateRequest'),
-        responses: {
-          '201': jsonResponseWithHeaders(
-            'Workflow duplicated',
-            'WorkflowDuplicateResponse',
-            {
-              Location: {
-                description: 'Authorized destination workflow path',
-                required: true,
-                schema: { type: 'string' },
-              },
-            },
-          ),
-          '400': responseReference('BadRequest'),
-          '401': responseReference('Unauthenticated'),
-          '403': responseReference('Forbidden'),
-          '404': responseReference('NotFound'),
-          '409': responseReference('Conflict'),
-          '412': responseReference('PreconditionFailed'),
-          '422': responseReference('UnprocessableEntity'),
-          '428': responseReference('PreconditionRequired'),
-          '500': responseReference('Unexpected'),
-        },
-      },
-    },
-    '/v1/workspaces/{workspaceId}/workflows/{workflowId}/versions/{versionId}/restore':
-      {
-        post: {
-          operationId: 'restoreWorkflowVersion',
-          description:
-            'Copy an immutable version into the current draft with strong concurrency control. Does not publish or change workflow lifecycle. A committed retry with the old tag returns 412.',
-          security: [{ cookieSession: [] }],
-          parameters: [
-            ...workflowParameters,
-            {
-              name: 'versionId',
-              in: 'path',
-              required: true,
-              schema: { type: 'string', format: 'uuid' },
-            },
-            csrfParameter,
-            etagParameter,
-          ],
-          requestBody: jsonRequest('WorkflowVersionRestoreRequest'),
-          responses: {
-            '200': jsonResponseWithHeaders(
-              'Workflow draft restored',
-              'WorkflowDraftResponse',
-              etagResponseHeader,
-            ),
-            '400': responseReference('BadRequest'),
-            '401': responseReference('Unauthenticated'),
-            '403': responseReference('Forbidden'),
-            '404': responseReference('NotFound'),
-            '412': responseReference('PreconditionFailed'),
-            '422': responseReference('UnprocessableEntity'),
-            '428': responseReference('PreconditionRequired'),
-            '500': responseReference('Unexpected'),
-          },
-        },
-      },
-    ...workflowRevisionCommandPaths,
-    '/v1/workspaces/{workspaceId}/workflows': {
-      get: {
-        operationId: 'listWorkflows',
-        'x-pertexo-api-token-scopes': ['workflow:read'],
-        security: automationSecurity,
-        parameters: [
-          ...pathParameters,
-          ...workflowOrganizationListReadContract.parameters,
-        ],
-        responses: {
-          '429': problemResponse('Rate limited; see Retry-After'),
-          '200': workflowOrganizationListReadContract.response,
-          '400': responseReference('BadRequest'),
-          '401': responseReference('Unauthenticated'),
-          '403': responseReference('Forbidden'),
-          '503': problemResponse(
-            'Automation token authentication, limiter or operation dependencies unavailable',
-          ),
-          '500': responseReference('Unexpected'),
-        },
-      },
-      post: {
-        operationId: 'createWorkflow',
-        'x-pertexo-api-token-scopes': ['workflow:create'],
-        security: automationSecurity,
-        parameters: [
-          ...pathParameters,
-          automationCsrfHeaderParameter(),
-          idempotencyParameter,
-        ],
-        requestBody: jsonRequest('WorkflowCreateRequest'),
-        responses: {
-          '201': jsonResponseWithHeaders(
-            'Workflow created',
-            'WorkflowCreateResponse',
-            etagResponseHeader,
-          ),
-          '400': responseReference('BadRequest'),
-          '401': responseReference('Unauthenticated'),
-          '403': responseReference('Forbidden'),
-          '409': responseReference('Conflict'),
-          '500': responseReference('Unexpected'),
-        },
-      },
-    },
-    '/v1/workspaces/{workspaceId}/workflows/{workflowId}': {
-      get: {
-        operationId: 'getWorkflow',
-        'x-pertexo-api-token-scopes': ['workflow:read'],
-        description:
-          'Default metadata retains its strict shape. include is exactly templateOrigin, organization, or templateOrigin,organization. Unsupported projection is unavailable, never inferred null or empty.',
-        security: automationSecurity,
-        parameters: [
-          ...workflowParameters,
-          workflowOrganizationGetReadContract.parameter,
-        ],
-        responses: {
-          '429': problemResponse('Rate limited; see Retry-After'),
-          '200': workflowOrganizationGetReadContract.response,
-          '400': responseReference('BadRequest'),
-          '401': responseReference('Unauthenticated'),
-          '403': responseReference('Forbidden'),
-          '404': responseReference('NotFound'),
-          '500': responseReference('Unexpected'),
-          '503': problemResponse(
-            'Automation token authentication, limiter or operation dependencies unavailable',
-          ),
-        },
-      },
-    },
-    '/v1/workspaces/{workspaceId}/workflows/{workflowId}/draft': {
-      get: {
-        operationId: 'getWorkflowDraft',
-        'x-pertexo-api-token-scopes': ['workflow:read'],
-        security: automationSecurity,
-        parameters: [
-          ...workflowParameters,
-          {
-            name: 'If-None-Match',
-            in: 'header',
-            required: false,
-            schema: jsonSchema(strongEtagSchema, 'input'),
-          },
-        ],
-        responses: {
-          '429': problemResponse('Rate limited; see Retry-After'),
-          '503': problemResponse(
-            'Automation token authentication, limiter or operation dependencies unavailable',
-          ),
-          '200': jsonResponseWithHeaders(
-            'Workflow draft',
-            'WorkflowDraftResponse',
-            etagResponseHeader,
-          ),
-          '304': { description: 'The draft still has this ETag' },
-          '401': responseReference('Unauthenticated'),
-          '403': responseReference('Forbidden'),
-          '404': responseReference('NotFound'),
-          '500': responseReference('Unexpected'),
-        },
-      },
-      put: {
-        operationId: 'saveWorkflowDraft',
-        'x-pertexo-api-token-scopes': ['workflow:update'],
-        security: automationSecurity,
-        parameters: [
-          ...workflowParameters,
-          automationCsrfHeaderParameter(),
-          etagParameter,
-        ],
-        requestBody: jsonRequest('WorkflowDraftSaveRequest'),
-        responses: {
-          '200': jsonResponseWithHeaders(
-            'Workflow draft saved',
-            'WorkflowDraftResponse',
-            etagResponseHeader,
-          ),
-          '400': responseReference('BadRequest'),
-          '401': responseReference('Unauthenticated'),
-          '403': responseReference('Forbidden'),
-          '404': responseReference('NotFound'),
-          '412': responseReference('PreconditionFailed'),
-          '428': responseReference('PreconditionRequired'),
-          '500': responseReference('Unexpected'),
-        },
-      },
-    },
-    '/v1/workspaces/{workspaceId}/workflows/{workflowId}/validate': {
-      post: {
-        operationId: 'validateWorkflowDraft',
-        security: [{ cookieSession: [] }],
-        parameters: [...workflowParameters, csrfParameter],
-        responses: {
-          '200': jsonResponseWithHeaders(
-            'Workflow validation report',
-            'WorkflowValidationResponse',
-            etagResponseHeader,
-          ),
-          '401': responseReference('Unauthenticated'),
-          '403': responseReference('Forbidden'),
-          '404': responseReference('NotFound'),
-          '500': responseReference('Unexpected'),
-          '503': responseReference('ValidationUnavailable'),
-        },
-      },
-    },
-    '/v1/workspaces/{workspaceId}/workflows/{workflowId}/publish': {
-      post: {
-        operationId: 'publishWorkflow',
-        'x-pertexo-api-token-scopes': ['workflow:publish'],
-        security: automationSecurity,
-        parameters: [
-          ...workflowParameters,
-          automationCsrfHeaderParameter(),
-          etagParameter,
-          idempotencyParameter,
-        ],
-        responses: {
-          '429': problemResponse('Rate limited; see Retry-After'),
-          '200': jsonResponse('Workflow published', 'WorkflowPublishResponse'),
-          '400': responseReference('BadRequest'),
-          '401': responseReference('Unauthenticated'),
-          '403': responseReference('Forbidden'),
-          '404': responseReference('NotFound'),
-          '409': responseReference('Conflict'),
-          '412': responseReference('PreconditionFailed'),
-          '428': responseReference('PreconditionRequired'),
-          '422': responseReference('UnprocessableEntity'),
-          '500': responseReference('Unexpected'),
-          '503': responseReference('PublicationUnavailable'),
-        },
-      },
-    },
-    '/v1/workspaces/{workspaceId}/workflows/{workflowId}/versions': {
-      get: {
-        operationId: 'listWorkflowVersions',
-        'x-pertexo-api-token-scopes': ['workflow:read'],
-        security: automationSecurity,
-        parameters: [
-          ...workflowParameters,
-          queryParameter('limit', workflowVersionsQuerySchema.shape.limit),
-          queryParameter('after', workflowVersionsQuerySchema.shape.after),
-          queryParameter(
-            'versionId',
-            workflowVersionsQuerySchema.shape.versionId,
-          ),
-        ],
-        responses: {
-          '429': problemResponse('Rate limited; see Retry-After'),
-          '503': problemResponse(
-            'Automation token authentication, limiter or operation dependencies unavailable',
-          ),
-          '200': jsonResponse(
-            'Immutable workflow versions',
-            'WorkflowVersionsResponse',
-          ),
-          '401': responseReference('Unauthenticated'),
-          '403': responseReference('Forbidden'),
-          '404': responseReference('NotFound'),
-          '500': responseReference('Unexpected'),
-        },
-      },
-    },
+    ...routePaths([
+      lifecycleRoutes.duplicate,
+      versionRoutes.restoreVersion,
+      lifecycleRoutes.archive,
+      lifecycleRoutes.restore,
+      lifecycleRoutes.rename,
+      ...Object.values(authoringRoutes),
+      versionRoutes.versions,
+    ]),
     ...workflowAutoPauseContractPaths,
     ...workflowConcurrencyContractPaths,
     ...workflowErrorContractPaths,
@@ -550,23 +196,3 @@ export const workflowAuthoringOpenApiDocument = Object.freeze({
     automation: true,
   }),
 });
-
-type SchemaName = keyof typeof openApiSchemas;
-function jsonResponseWithHeaders(
-  description: string,
-  name: SchemaName,
-  headers: Readonly<Record<string, unknown>>,
-) {
-  return { ...jsonResponse(description, name), headers } as const;
-}
-function queryParameter(
-  name: 'limit' | 'after' | 'order' | 'versionId',
-  schema: z.ZodType,
-) {
-  return {
-    name,
-    in: 'query',
-    required: false,
-    schema: jsonSchema(schema, 'input'),
-  } as const;
-}

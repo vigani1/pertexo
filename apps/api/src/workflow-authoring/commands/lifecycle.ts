@@ -1,29 +1,29 @@
+import type { workflowLifecycleRequestSchema } from '@pertexo/contracts';
 import {
-  workflowLifecycleRequestSchema,
   workflowLifecycleResponseSchema,
   type WorkflowLifecycleResponse,
 } from '@pertexo/contracts';
+import type { z } from 'zod';
 import {
   authorizeWorkspaceOperation,
   type WorkspaceAuthorizationSource,
 } from '../../authorization/index.js';
+import { workflowSummary } from '../http/serializers.js';
 import type {
   WorkflowApplicationInput,
   WorkflowAuthoringPersistence,
 } from '../ports.js';
-import { workflowSummary } from '../http/serializers.js';
 import {
   NOOP_WORKFLOW_AUTHORING_TELEMETRY,
   WORKFLOW_AUTHORING_OPERATION,
   type WorkflowAuthoringTelemetry,
 } from '../telemetry.js';
-import { parseRequestInput } from '../../platform/http/index.js';
 
 export type WorkflowLifecycleInput = WorkflowApplicationInput &
   Readonly<{
     command: 'archive' | 'restore';
     workflowId: string;
-    request: unknown;
+    request: z.output<typeof workflowLifecycleRequestSchema>;
     idempotencyKey: string;
     traceparent?: string;
   }>;
@@ -56,10 +56,7 @@ export class TransitionWorkflowLifecycleUseCase {
             ? {}
             : { authorizedWorkspace: input.authorizedWorkspace }),
         });
-        const request = parseRequestInput(
-          workflowLifecycleRequestSchema,
-          input.request,
-        );
+        const request = input.request;
         const accepted = await this.persistence.transitionWorkflowLifecycle({
           ...request,
           command: input.command,

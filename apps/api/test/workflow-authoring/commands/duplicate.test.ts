@@ -41,7 +41,7 @@ const input = {
   }),
   routeWorkspaceId: workspaceId,
   workflowId,
-  request: { name: '  Copy  ', source: { kind: 'draft' } },
+  request: { name: 'Copy', source: { kind: 'draft' as const } },
   representationTag: tag,
   idempotencyKey: 'copy-key',
 };
@@ -66,7 +66,7 @@ describe('workflow duplication application seam', () => {
       expect(duplicateWorkflow).toHaveBeenCalledTimes(1);
     },
   );
-  it('normalizes only the name and forwards exact selector/tag/key and cancellation to the atomic command', async () => {
+  it('accepts the normalized name and forwards exact selector/tag/key and cancellation to the atomic command', async () => {
     const { useCase, duplicateWorkflow } = fixture('builder');
     const signal = new AbortController().signal;
     await expect(useCase.execute({ ...input, signal })).resolves.toEqual({
@@ -140,7 +140,7 @@ describe('workflow duplication application seam', () => {
     }
   });
 
-  it('rejects missing/malformed draft tags and client graph/source overrides before persistence', async () => {
+  it('rejects missing/malformed draft tags before persistence', async () => {
     const { useCase, duplicateWorkflow } = fixture();
     for (const representationTag of [undefined, '*', 'W/"tag"']) {
       const { representationTag: _tag, ...withoutTag } = input;
@@ -151,15 +151,6 @@ describe('workflow duplication application seam', () => {
         }),
       ).rejects.toMatchObject({ name: 'WorkflowHeaderError' });
     }
-    for (const request of [
-      { ...input.request, graph: {} },
-      { name: 'Copy', source: { kind: 'draft', versionId } },
-      { name: 'Copy', source: { kind: 'version' } },
-      { name: 'Copy', source: { kind: 'version', versionId, graph: {} } },
-    ])
-      await expect(
-        useCase.execute({ ...input, request }),
-      ).rejects.toMatchObject({ name: 'ZodError' });
     expect(duplicateWorkflow).not.toHaveBeenCalled();
   });
 

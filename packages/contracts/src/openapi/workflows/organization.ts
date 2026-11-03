@@ -1,14 +1,14 @@
-import * as sharing from '../../schemas/workflows/sharing.js';
 import type { z } from 'zod';
-import * as organization from '../../schemas/workflows/organization.js';
-import * as folders from '../../schemas/workflows/organization-folders.js';
 import {
+  workflowCombinedOrganizationProjectionResponseSchema,
+  workflowGetQuerySchema,
   workflowOrganizationListQuerySchema,
   workflowOrganizationListResponseSchema,
   workflowOrganizationProjectionResponseSchema,
-  workflowCombinedOrganizationProjectionResponseSchema,
-  workflowGetQuerySchema,
 } from '../../schemas/workflows/authoring.js';
+import * as folders from '../../schemas/workflows/organization-folders.js';
+import * as organization from '../../schemas/workflows/organization.js';
+import * as sharing from '../../schemas/workflows/sharing.js';
 import {
   csrfHeaderParameter,
   idempotencyHeaderParameter,
@@ -519,58 +519,3 @@ export const workflowOrganizationContractPaths = {
     }),
   },
 };
-
-export const workflowOrganizationListReadContract = {
-  parameters: Object.entries(workflowOrganizationListQuerySchema.shape).map(
-    ([name, schema]) => queryParameter(name, schema),
-  ),
-  response: {
-    description:
-      'Default or filtered workflow summaries; include=organization explicitly requests private organization metadata. Filters apply before bounded pagination; unknown/foreign tag or folder filters return an empty scoped page. folderId selects an exact UUID without descendants, root selects unfiled, and omission includes all placements. pinsWorkflowId lists workflows whose current publication directly pins that target, using the ordinary list response and cursor; it cannot be combined with organization filters. Live pagination is not a snapshot and has no total count.',
-    headers: {
-      'Cache-Control': {
-        schema: { type: 'string', const: 'private, no-store' },
-      },
-    },
-    content: {
-      'application/json': {
-        schema: {
-          anyOf: [
-            { $ref: '#/components/schemas/WorkflowListResponse' },
-            { $ref: '#/components/schemas/WorkflowOrganizationListResponse' },
-          ],
-        },
-      },
-    },
-  },
-} as const;
-export const workflowOrganizationGetReadContract = {
-  parameter: queryParameter('include', workflowGetQuerySchema.shape.include),
-  response: {
-    description:
-      'Unchanged default metadata, or the exact requested template-origin and/or organization projection. Unsupported readers are unavailable, never fabricated empty metadata.',
-    headers: {
-      'Cache-Control': {
-        schema: { type: 'string', const: 'private, no-store' },
-      },
-    },
-    content: {
-      'application/json': {
-        schema: {
-          oneOf: [
-            { $ref: '#/components/schemas/WorkflowSummaryResponse' },
-            {
-              $ref: '#/components/schemas/WorkflowTemplateOriginProjectionResponse',
-            },
-            {
-              $ref: '#/components/schemas/WorkflowOrganizationProjectionResponse',
-            },
-            {
-              $ref: '#/components/schemas/WorkflowCombinedOrganizationProjectionResponse',
-            },
-          ],
-        },
-      },
-    },
-  },
-} as const;

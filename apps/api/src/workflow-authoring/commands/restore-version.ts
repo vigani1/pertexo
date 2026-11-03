@@ -1,29 +1,29 @@
-import { workflowVersionRestoreRequestSchema } from '@pertexo/contracts';
+import type { workflowVersionRestoreRequestSchema } from '@pertexo/contracts';
+import type { z } from 'zod';
 import {
   authorizeWorkspaceOperation,
   type WorkspaceAuthorizationSource,
 } from '../../authorization/index.js';
+import {
+  serializeWorkflowDraft,
+  type WorkflowDraftResult,
+} from '../http/serializers.js';
 import type {
   WorkflowApplicationInput,
   WorkflowAuthoringPersistence,
 } from '../ports.js';
 import {
-  serializeWorkflowDraft,
-  type WorkflowDraftResult,
-} from '../http/serializers.js';
-import {
   NOOP_WORKFLOW_AUTHORING_TELEMETRY,
   WORKFLOW_AUTHORING_OPERATION,
   type WorkflowAuthoringTelemetry,
 } from '../telemetry.js';
-import { parseRequestInput } from '../../platform/http/index.js';
 
 export type RestoreWorkflowVersionInput = WorkflowApplicationInput &
   Readonly<{
     workflowId: string;
     versionId: string;
     representationTag: string;
-    request: unknown;
+    request: z.output<typeof workflowVersionRestoreRequestSchema>;
   }>;
 
 /** Source identity, current tag and draft mutation share database authority. */
@@ -54,7 +54,6 @@ export class RestoreWorkflowVersionUseCase {
             ? {}
             : { authorizedWorkspace: input.authorizedWorkspace }),
         });
-        parseRequestInput(workflowVersionRestoreRequestSchema, input.request);
         const restored = await this.persistence.restoreWorkflowVersion({
           workspaceId: input.routeWorkspaceId,
           workflowId: input.workflowId,

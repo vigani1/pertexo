@@ -1,122 +1,79 @@
-import { workflowParams, requestContext, traceparent } from './context.js';
-
 import {
-  Body,
-  Controller,
-  HttpCode,
-  Param,
-  Post,
-  Req,
-  Res,
-  UseGuards,
-  UseInterceptors,
-} from '@nestjs/common';
+  lifecycleRoutes as routes,
+  type RouteInput,
+} from '@pertexo/contracts/server';
+import { In, Route } from '../../workspaces/http/route.js';
+import { requestContext, traceparent } from './context.js';
+
+import { Controller, Req, Res, UseInterceptors } from '@nestjs/common';
 import { withRequestOperationSignal } from '../../platform/http/request-operation-signal.js';
-import {
-  CsrfProtectionGuard,
-  SessionAuthenticationGuard,
-} from '../../workspaces/index.js';
 
-import {
-  parseRequestInput,
-  requestIdempotencyKey,
-} from '../../platform/http/index.js';
 import { requestHeaderValue } from '../../platform/http/request-headers.js';
-import { RateLimit } from '../../platform/rate-limit/metadata.js';
+import { DuplicateWorkflowUseCase } from '../commands/duplicate.js';
 import { TransitionWorkflowLifecycleUseCase } from '../commands/lifecycle.js';
 import { RenameWorkflowUseCase } from '../commands/rename.js';
-import { DuplicateWorkflowUseCase } from '../commands/duplicate.js';
-import { workflowDuplicateRequestSchema } from '@pertexo/contracts';
 
-import {
-  WorkflowCreateGuard,
-  WorkflowPublishGuard,
-  WorkflowParticipantGuard,
-  WorkflowUpdateGuard,
-} from './guards.js';
 import { parseStrongIfMatch } from './preconditions.js';
 
-import type { WorkflowAuthoringRequest, WorkflowResponse } from '../types.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
 import { authoringFailure } from '../../problems/context/normalize.js';
+import type { WorkflowAuthoringRequest, WorkflowResponse } from '../types.js';
 @UseInterceptors(domainErrors(authoringFailure))
-@Controller('v1/workspaces/:workspaceId/workflows')
-@RateLimit('authenticated_read')
+@Controller()
 export class WorkflowLifecycleController {
   public constructor(
     private readonly transitionLifecycle: TransitionWorkflowLifecycleUseCase,
     private readonly renameWorkflow: RenameWorkflowUseCase,
     private readonly duplicateWorkflow: DuplicateWorkflowUseCase,
   ) {}
-  @Post(':workflowId/archive')
-  @RateLimit('ordinary_mutation')
-  @HttpCode(202)
-  @UseGuards(
-    SessionAuthenticationGuard,
-    WorkflowPublishGuard,
-    CsrfProtectionGuard,
-  )
+
+  @Route(routes.archive)
   public archive(
     @Req() request: WorkflowAuthoringRequest,
-    @Param() params: unknown,
-    @Body() body: unknown,
+    @In() { params, body, idempotencyKey }: RouteInput<typeof routes.archive>,
   ) {
-    return this.lifecycleCommand('archive', request, params, body);
+    return this.lifecycleCommand('archive', request, {
+      params,
+      body,
+      idempotencyKey,
+    });
   }
-  @Post(':workflowId/restore')
-  @RateLimit('ordinary_mutation')
-  @HttpCode(202)
-  @UseGuards(
-    SessionAuthenticationGuard,
-    WorkflowPublishGuard,
-    CsrfProtectionGuard,
-  )
+
+  @Route(routes.restore)
   public restore(
     @Req() request: WorkflowAuthoringRequest,
-    @Param() params: unknown,
-    @Body() body: unknown,
+    @In() { params, body, idempotencyKey }: RouteInput<typeof routes.restore>,
   ) {
-    return this.lifecycleCommand('restore', request, params, body);
+    return this.lifecycleCommand('restore', request, {
+      params,
+      body,
+      idempotencyKey,
+    });
   }
-  @Post(':workflowId/rename')
-  @RateLimit('ordinary_mutation')
-  @HttpCode(200)
-  @UseGuards(
-    SessionAuthenticationGuard,
-    WorkflowUpdateGuard,
-    CsrfProtectionGuard,
-  )
+
+  @Route(routes.rename)
   public rename(
     @Req() request: WorkflowAuthoringRequest,
-    @Param() params: unknown,
-    @Body() body: unknown,
+    @In() { params, body, idempotencyKey }: RouteInput<typeof routes.rename>,
   ) {
-    const route = workflowParams(params);
+    const route = params;
     return this.renameWorkflow.execute({
       ...requestContext(request, route.workspaceId),
       routeWorkspaceId: route.workspaceId,
       workflowId: route.workflowId,
       request: body,
-      idempotencyKey: requestIdempotencyKey(request.headers),
+      idempotencyKey: idempotencyKey,
     });
   }
-  @Post(':workflowId/duplicate')
-  @RateLimit('ordinary_mutation')
-  @HttpCode(201)
-  @UseGuards(
-    SessionAuthenticationGuard,
-    WorkflowParticipantGuard,
-    WorkflowCreateGuard,
-    CsrfProtectionGuard,
-  )
+
+  @Route(routes.duplicate)
   public async duplicate(
     @Req() request: WorkflowAuthoringRequest,
-    @Param() params: unknown,
-    @Body() body: unknown,
+    @In() { params, body, idempotencyKey }: RouteInput<typeof routes.duplicate>,
     @Res({ passthrough: true }) response: WorkflowResponse,
   ) {
-    const route = workflowParams(params);
-    const input = parseRequestInput(workflowDuplicateRequestSchema, body);
+    const route = params;
+    const input = body;
     const representationTag =
       input.source.kind === 'draft'
         ? parseStrongIfMatch(requestHeaderValue(request.headers, 'if-match'))
@@ -128,7 +85,7 @@ export class WorkflowLifecycleController {
         routeWorkspaceId: route.workspaceId,
         workflowId: route.workflowId,
         request: input,
-        idempotencyKey: requestIdempotencyKey(request.headers),
+        idempotencyKey: idempotencyKey,
         ...(representationTag === undefined ? {} : { representationTag }),
         signal,
       }),
@@ -142,10 +99,16 @@ export class WorkflowLifecycleController {
   private lifecycleCommand(
     command: 'archive' | 'restore',
     request: WorkflowAuthoringRequest,
-    params: unknown,
-    body: unknown,
+    {
+      params,
+      body,
+      idempotencyKey,
+    }: Pick<
+      RouteInput<typeof routes.archive>,
+      'params' | 'body' | 'idempotencyKey'
+    >,
   ) {
-    const route = workflowParams(params);
+    const route = params;
     const context = requestContext(request, route.workspaceId);
     return this.transitionLifecycle.execute({
       command,
@@ -153,7 +116,7 @@ export class WorkflowLifecycleController {
       routeWorkspaceId: route.workspaceId,
       workflowId: route.workflowId,
       request: body,
-      idempotencyKey: requestIdempotencyKey(request.headers),
+      idempotencyKey: idempotencyKey,
       ...traceparent(request),
     });
   }

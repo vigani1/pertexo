@@ -1,3 +1,4 @@
+import { WORKSPACE_AUTHORIZATION } from '../../../../../src/workspaces/tokens.js';
 import { APPLICATION_ERROR_MAPPERS } from '../../../../../src/application-errors.js';
 import { AutomationAuthenticationGuard } from '../../../../../src/authentication/automation/guard.js';
 import 'reflect-metadata';
@@ -221,6 +222,7 @@ export async function setup() {
     providers: [
       ...siblingProviders,
       { provide: WORKFLOW_AUTHORING_AUTHORIZATION, useValue: authorization },
+      { provide: WORKSPACE_AUTHORIZATION, useValue: authorization },
       { provide: RequestContextStore, useValue: contexts },
       { provide: WorkflowFoldersUseCase, useValue: folderUseCase },
       { provide: WorkflowOrganizationBatchesUseCase, useValue: batchUseCase },

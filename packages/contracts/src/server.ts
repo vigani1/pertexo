@@ -51,3 +51,9 @@ export { workflowSettingsRoutes } from './routes/workflows/settings.js';
 export { inputCaseRoutes } from './routes/workflows/input-cases.js';
 export { publicationReviewRoutes } from './routes/workflows/reviews.js';
 export { promotionRoutes } from './routes/workflows/promotions.js';
+
+export { authoringRoutes } from './routes/workflows/authoring.js';
+
+export { lifecycleRoutes } from './routes/workflows/lifecycle.js';
+
+export { versionRoutes } from './routes/workflows/versions.js';

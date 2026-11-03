@@ -256,33 +256,6 @@ describe('workflow authoring application seams', () => {
     );
   });
 
-  it.each(
-    [null, [], { graph }, { expectedRevision: 1 }].map((request) => ({
-      request,
-    })),
-  )(
-    'rejects malformed version restore body %j before persistence',
-    async ({ request }) => {
-      const store = persistence();
-      await expect(
-        new RestoreWorkflowVersionUseCase(store, authorization()).execute({
-          actor,
-          routeWorkspaceId: workspaceId,
-          workflowId,
-          versionId: version().id,
-          representationTag: createDraftRepresentationTag({
-            workflowId,
-            revision: 1,
-            graph,
-            compatibilityFingerprint: fingerprint,
-          }),
-          request,
-        }),
-      ).rejects.toMatchObject({ name: 'ZodError' });
-      expect(store.restoreWorkflowVersion).not.toHaveBeenCalled();
-    },
-  );
-
   it.each(['archive', 'restore'] as const)(
     'accepts %s using publication authority and serializes the durable response',
     async (command) => {
@@ -333,31 +306,6 @@ describe('workflow authoring application seams', () => {
     },
   );
 
-  it.each([
-    {},
-    { expectedLifecycleRevision: 0 },
-    { expectedLifecycleRevision: 1.1 },
-    { expectedLifecycleRevision: '1' },
-    { expectedLifecycleRevision: Number.MAX_SAFE_INTEGER + 1 },
-    { expectedLifecycleRevision: 1, cancelRuns: true },
-  ])(
-    'rejects malformed lifecycle input before persistence: %j',
-    async (request) => {
-      const store = persistence();
-      await expect(
-        new TransitionWorkflowLifecycleUseCase(store, authorization()).execute({
-          actor,
-          routeWorkspaceId: workspaceId,
-          workflowId,
-          command: 'archive',
-          request,
-          idempotencyKey: 'key',
-        }),
-      ).rejects.toMatchObject({ name: 'ZodError' });
-      expect(store.transitionWorkflowLifecycle).not.toHaveBeenCalled();
-    },
-  );
-
   it.each(MUTATION_DENIALS)(
     'denies lifecycle mutation with %j',
     async (denial) => {
@@ -395,7 +343,7 @@ describe('workflow authoring application seams', () => {
       authorizedWorkspace,
       routeWorkspaceId: workspaceId,
       workflowId,
-      request: { name: '  Invoices  ', expectedNameRevision: 1 },
+      request: { name: 'Invoices', expectedNameRevision: 1 },
       idempotencyKey: 'rename-key',
     });
 
@@ -443,31 +391,6 @@ describe('workflow authoring application seams', () => {
       vi.mocked(store.renameWorkflow).mock.calls[0]?.[0],
     ).not.toHaveProperty('traceId');
   });
-
-  it.each([
-    {},
-    { name: 'Invoices' },
-    { name: '   ', expectedNameRevision: 1 },
-    { name: 'x'.repeat(129), expectedNameRevision: 1 },
-    { name: 'Invoices', expectedNameRevision: 0 },
-    { name: 'Invoices', expectedNameRevision: '1' },
-    { name: 'Invoices', expectedNameRevision: 1, expectedLifecycleRevision: 1 },
-  ])(
-    'rejects malformed rename input before persistence: %j',
-    async (request) => {
-      const store = persistence();
-      await expect(
-        new RenameWorkflowUseCase(store, authorization()).execute({
-          actor,
-          routeWorkspaceId: workspaceId,
-          workflowId,
-          request,
-          idempotencyKey: 'key',
-        }),
-      ).rejects.toMatchObject({ name: 'ZodError' });
-      expect(store.renameWorkflow).not.toHaveBeenCalled();
-    },
-  );
 
   it.each(MUTATION_DENIALS)('denies a rename with %j', async (denial) => {
     const store = persistence();
@@ -1333,7 +1256,7 @@ describe('workflow authoring application seams', () => {
     ).execute({
       actor,
       routeWorkspaceId: workspaceId,
-      request: { name: ' Operations ' },
+      request: { name: 'Operations' },
       idempotencyKey: 'create-42',
     });
     expect(result.body).toMatchObject({

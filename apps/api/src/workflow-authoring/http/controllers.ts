@@ -1,73 +1,38 @@
-import { AutomationAuthenticationGuard } from '../../authentication/automation/guard.js';
+import { Controller, Req, Res, UseInterceptors } from '@nestjs/common';
 import {
-  Body,
-  Controller,
-  Get,
-  HttpCode,
-  Param,
-  Post,
-  Put,
-  Query,
-  Req,
-  Res,
-  UseGuards,
-  UseInterceptors,
-} from '@nestjs/common';
+  authoringRoutes as routes,
+  type RouteInput,
+} from '@pertexo/contracts/server';
 import { withRequestOperationSignal } from '../../platform/http/request-operation-signal.js';
-import {
-  CsrfProtectionGuard,
-  SessionAuthenticationGuard,
-} from '../../workspaces/index.js';
+import { In, Route } from '../../workspaces/http/route.js';
 
-import {
-  parseRequestInput,
-  requestIdempotencyKey,
-} from '../../platform/http/index.js';
 import { requestHeaderValue } from '../../platform/http/request-headers.js';
-import { RateLimit } from '../../platform/rate-limit/metadata.js';
 
-import {
-  workflowOrganizationListQuerySchema,
-  workflowGetQuerySchema,
-} from '@pertexo/contracts';
-import { WorkflowOrganizationReadsUseCase } from '../organization/reads.js';
 import { withWorkflowOrganizationRequest } from '../organization/http.js';
+import { WorkflowOrganizationReadsUseCase } from '../organization/reads.js';
 
-import {
-  WorkflowCreateGuard,
-  WorkflowPublishGuard,
-  WorkflowReadGuard,
-  WorkflowUpdateGuard,
-} from './guards.js';
-import { parseStrongIfMatch } from './preconditions.js';
+import { domainErrors } from '../../platform/http/problems/interceptor.js';
+import { singleRequestHeader } from '../../platform/http/request-headers.js';
+import { authoringFailure } from '../../problems/context/normalize.js';
+import type {
+  ConditionalWorkflowResponse,
+  WorkflowAuthoringRequest,
+  WorkflowResponse,
+} from '../types.js';
 import {
   CreateWorkflowUseCase,
-  GetWorkflowUseCase,
   GetWorkflowDraftUseCase,
+  GetWorkflowUseCase,
   ListWorkflowsUseCase,
   PublishWorkflowUseCase,
   SaveWorkflowDraftUseCase,
   ValidateWorkflowDraftUseCase,
 } from '../use-cases.js';
-import {
-  workflowDraftSaveRequestSchema,
-  type WorkflowAuthoringRequest,
-  type ConditionalWorkflowResponse,
-  type WorkflowResponse,
-} from '../types.js';
-import { singleRequestHeader } from '../../platform/http/request-headers.js';
-import { domainErrors } from '../../platform/http/problems/interceptor.js';
-import { authoringFailure } from '../../problems/context/normalize.js';
-import {
-  workspaceParams,
-  workflowParams,
-  requestContext,
-  traceparent,
-} from './context.js';
+import { requestContext, traceparent } from './context.js';
+import { parseStrongIfMatch } from './preconditions.js';
 
 @UseInterceptors(domainErrors(authoringFailure))
-@Controller('v1/workspaces/:workspaceId/workflows')
-@RateLimit('authenticated_read')
+@Controller()
 export class WorkflowAuthoringController {
   // Nest resolves these dependencies positionally; grouping them would change DI.
   // eslint-disable-next-line max-params
@@ -81,19 +46,15 @@ export class WorkflowAuthoringController {
     private readonly publishWorkflow: PublishWorkflowUseCase,
     private readonly organization: WorkflowOrganizationReadsUseCase,
   ) {}
-  @Get()
-  @UseGuards(AutomationAuthenticationGuard, WorkflowReadGuard)
+
+  @Route(routes.list)
   public async list(
     @Req() request: WorkflowAuthoringRequest,
-    @Param() params: unknown,
-    @Query() query: unknown,
+    @In() { params, query }: RouteInput<typeof routes.list>,
     @Res({ passthrough: true }) response?: WorkflowResponse,
   ) {
-    const { workspaceId } = workspaceParams(params);
-    const input = parseRequestInput(
-      workflowOrganizationListQuerySchema,
-      query ?? {},
-    );
+    const { workspaceId } = params;
+    const input = query;
     const hasOrganizationFilters =
       input.query !== undefined ||
       input.view !== undefined ||
@@ -122,41 +83,33 @@ export class WorkflowAuthoringController {
       ...(input.order === undefined ? {} : { order: input.order }),
     });
   }
-  @Post()
-  @RateLimit('ordinary_mutation')
-  @HttpCode(201)
-  @UseGuards(
-    AutomationAuthenticationGuard,
-    WorkflowCreateGuard,
-    CsrfProtectionGuard,
-  )
+
+  @Route(routes.create)
   public async create(
     @Req() request: WorkflowAuthoringRequest,
-    @Param() params: unknown,
-    @Body() body: unknown,
+    @In() { params, body, idempotencyKey }: RouteInput<typeof routes.create>,
     @Res({ passthrough: true }) response: WorkflowResponse,
   ) {
-    const { workspaceId } = workspaceParams(params);
+    const { workspaceId } = params;
     const context = requestContext(request, workspaceId);
     const result = await this.createWorkflow.execute({
       ...context,
       routeWorkspaceId: workspaceId,
       request: body,
-      idempotencyKey: requestIdempotencyKey(request.headers),
+      idempotencyKey: idempotencyKey,
     });
     response.header('ETag', result.representationTag);
     return result.body;
   }
-  @Get(':workflowId')
-  @UseGuards(AutomationAuthenticationGuard, WorkflowReadGuard)
+
+  @Route(routes.get)
   public async get(
     @Req() request: WorkflowAuthoringRequest,
-    @Param() params: unknown,
-    @Query() query?: unknown,
+    @In() { params, query }: RouteInput<typeof routes.get>,
     @Res({ passthrough: true }) response?: WorkflowResponse,
   ) {
-    const route = workflowParams(params);
-    const projection = parseRequestInput(workflowGetQuerySchema, query ?? {});
+    const route = params;
+    const projection = query;
     if (projection.include !== undefined)
       response?.header('Cache-Control', 'private, no-store');
     if (
@@ -182,14 +135,14 @@ export class WorkflowAuthoringController {
         : { include: projection.include }),
     });
   }
-  @Get(':workflowId/draft')
-  @UseGuards(AutomationAuthenticationGuard, WorkflowReadGuard)
+
+  @Route(routes.draft)
   public async draft(
     @Req() request: WorkflowAuthoringRequest,
-    @Param() params: unknown,
+    @In() { params }: RouteInput<typeof routes.draft>,
     @Res({ passthrough: true }) response: ConditionalWorkflowResponse,
   ) {
-    const route = workflowParams(params);
+    const route = params;
     const context = requestContext(request, route.workspaceId);
     const result = await this.getDraft.execute({
       ...context,
@@ -206,21 +159,15 @@ export class WorkflowAuthoringController {
     }
     return result.body;
   }
-  @Put(':workflowId/draft')
-  @RateLimit('ordinary_mutation')
-  @UseGuards(
-    AutomationAuthenticationGuard,
-    WorkflowUpdateGuard,
-    CsrfProtectionGuard,
-  )
+
+  @Route(routes.save)
   public async save(
     @Req() request: WorkflowAuthoringRequest,
-    @Param() params: unknown,
-    @Body() body: unknown,
+    @In() { params, body }: RouteInput<typeof routes.save>,
     @Res({ passthrough: true }) response: WorkflowResponse,
   ) {
-    const route = workflowParams(params);
-    const input = parseRequestInput(workflowDraftSaveRequestSchema, body);
+    const route = params;
+    const input = body;
     const context = requestContext(request, route.workspaceId);
     const result = await this.saveDraft.execute({
       ...context,
@@ -234,16 +181,14 @@ export class WorkflowAuthoringController {
     response.header('ETag', result.representationTag);
     return result.body;
   }
-  @Post(':workflowId/validate')
-  @RateLimit('workflow_compile')
-  @HttpCode(200)
-  @UseGuards(SessionAuthenticationGuard, WorkflowReadGuard, CsrfProtectionGuard)
+
+  @Route(routes.validate)
   public async validate(
     @Req() request: WorkflowAuthoringRequest,
-    @Param() params: unknown,
+    @In() { params }: RouteInput<typeof routes.validate>,
     @Res({ passthrough: true }) response: WorkflowResponse,
   ) {
-    const route = workflowParams(params);
+    const route = params;
     const context = requestContext(request, route.workspaceId);
     const result = await withRequestOperationSignal(request, (signal) =>
       this.validateDraft.execute({
@@ -256,19 +201,13 @@ export class WorkflowAuthoringController {
     response.header('ETag', result.representationTag);
     return result.body;
   }
-  @Post(':workflowId/publish')
-  @RateLimit('workflow_compile')
-  @HttpCode(200)
-  @UseGuards(
-    AutomationAuthenticationGuard,
-    WorkflowPublishGuard,
-    CsrfProtectionGuard,
-  )
+
+  @Route(routes.publish)
   public async publish(
     @Req() request: WorkflowAuthoringRequest,
-    @Param() params: unknown,
+    @In() { params, idempotencyKey }: RouteInput<typeof routes.publish>,
   ) {
-    const route = workflowParams(params);
+    const route = params;
     const context = requestContext(request, route.workspaceId);
     return withRequestOperationSignal(request, (signal) =>
       this.publishWorkflow.execute({
@@ -278,7 +217,7 @@ export class WorkflowAuthoringController {
         representationTag: parseStrongIfMatch(
           requestHeaderValue(request.headers, 'if-match'),
         ),
-        idempotencyKey: requestIdempotencyKey(request.headers),
+        idempotencyKey: idempotencyKey,
         ...traceparent(request),
         signal,
       }),

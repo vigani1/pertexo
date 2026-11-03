@@ -1,570 +1,332 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { WorkflowAuthoringController } from '../../../src/workflow-authoring/http/controllers.js';
+import { WorkflowLifecycleController } from '../../../src/workflow-authoring/http/lifecycle-controller.js';
+import { WorkflowVersionsController } from '../../../src/workflow-authoring/http/versions-controller.js';
 import {
+  CreateWorkflowUseCase,
+  GetWorkflowUseCase,
+  GetWorkflowDraftUseCase,
+  ListWorkflowsUseCase,
+  PublishWorkflowUseCase,
+  SaveWorkflowDraftUseCase,
+  ValidateWorkflowDraftUseCase,
+  ListWorkflowVersionsUseCase,
+} from '../../../src/workflow-authoring/use-cases.js';
+import { TransitionWorkflowLifecycleUseCase } from '../../../src/workflow-authoring/commands/lifecycle.js';
+import { RenameWorkflowUseCase } from '../../../src/workflow-authoring/commands/rename.js';
+import { DuplicateWorkflowUseCase } from '../../../src/workflow-authoring/commands/duplicate.js';
+import { RestoreWorkflowVersionUseCase } from '../../../src/workflow-authoring/commands/restore-version.js';
+import { WorkflowOrganizationReadsUseCase } from '../../../src/workflow-authoring/organization/reads.js';
+import { WORKSPACE_AUTHORIZATION } from '../../../src/workspaces/tokens.js';
+import { FakeIdentityModule } from '../../support/identity-module.js';
+import { routeHarness } from '../../support/route-harness.js';
+import {
+  persistence,
+  authorization,
   workspaceId,
   workflowId,
-  actorId,
-  sessionId,
-  tag,
-  body,
-  workflow,
   version,
-  request,
-  makeController,
-  guardActorId,
-} from './controllers/fixture.js';
+  graph,
+} from '../use-cases/fixture.js';
 
-describe('workflow authoring controller public seam', () => {
-  it('passes an exact version filter under the normal workspace read authority', async () => {
-    const { versions: controller, listVersions } = makeController();
-    await controller.versions(
-      request(),
-      { workspaceId, workflowId },
-      { versionId: version.id },
-    );
-    expect(listVersions.execute).toHaveBeenCalledWith(
-      expect.objectContaining({
-        routeWorkspaceId: workspaceId,
-        workflowId,
-        versionId: version.id,
-      }),
-    );
-    listVersions.execute.mockClear();
-    await expect(
-      controller.versions(
-        request(),
-        { workspaceId, workflowId },
-        {
-          versionId: version.id,
-          after: 'older-page',
-        },
-      ),
-    ).rejects.toMatchObject({ name: 'ZodError' });
-    expect(listVersions.execute).not.toHaveBeenCalled();
+// Nest dynamic modules require a class token.
+// eslint-disable-next-line @typescript-eslint/no-extraneous-class
+class AuthoringRoutesUnderTest {}
+const store = persistence();
+const access = authorization();
+const url = `/v1/workspaces/${workspaceId}/workflows`;
+const one = `${url}/${workflowId}`;
+const versionUrl = `${one}/versions/${version().id}/restore`;
+let harness: Awaited<ReturnType<typeof routeHarness>>;
+let tag: string;
+const key = { 'idempotency-key': 'one-command' };
+beforeAll(async () => {
+  harness = await routeHarness({
+    module: AuthoringRoutesUnderTest,
+    imports: [{ module: FakeIdentityModule }],
+    controllers: [
+      WorkflowAuthoringController,
+      WorkflowLifecycleController,
+      WorkflowVersionsController,
+    ],
+    providers: [
+      { provide: WORKSPACE_AUTHORIZATION, useValue: access },
+      { provide: WorkflowOrganizationReadsUseCase, useValue: {} },
+      ...[
+        CreateWorkflowUseCase,
+        GetWorkflowUseCase,
+        GetWorkflowDraftUseCase,
+        ListWorkflowsUseCase,
+        PublishWorkflowUseCase,
+        SaveWorkflowDraftUseCase,
+        ValidateWorkflowDraftUseCase,
+        ListWorkflowVersionsUseCase,
+        TransitionWorkflowLifecycleUseCase,
+        RenameWorkflowUseCase,
+        DuplicateWorkflowUseCase,
+        RestoreWorkflowVersionUseCase,
+      ].map((useCase) => ({
+        provide: useCase,
+        useValue: new useCase(store, access),
+      })),
+    ],
   });
+  const draft = await harness.send('GET', `${one}/draft`);
+  expect(draft.statusCode).toBe(200);
+  tag = String(draft.headers.etag);
+});
+afterAll(() => harness.close());
 
-  it('uses the exact opt-in origin projection with no-store while preserving default GET', async () => {
-    const { authoring: controller, getWorkflow } = makeController();
-    const header = vi.fn();
-    await expect(
-      controller.get(request(), { workspaceId, workflowId }, {}, { header }),
-    ).resolves.toEqual({ workflow });
-    expect(getWorkflow.execute.mock.lastCall?.[0]).not.toHaveProperty(
-      'include',
-    );
-    expect(header).not.toHaveBeenCalled();
-    await controller.get(
-      request(),
-      { workspaceId, workflowId },
-      { include: 'templateOrigin' },
-      { header },
-    );
-    expect(getWorkflow.execute).toHaveBeenLastCalledWith(
-      expect.objectContaining({ include: 'templateOrigin' }),
-    );
-    expect(header).toHaveBeenCalledWith('Cache-Control', 'private, no-store');
+describe('workflow authoring HTTP contract', () => {
+  it('returns a draft with a strong validator and honors a conditional read', async () => {
+    const reply = await harness.send('GET', `${one}/draft`);
+    expect(reply.statusCode).toBe(200);
+    expect(reply.json()).toMatchObject({ workflowId, graph });
+    expect(reply.headers.etag).toBe(tag);
+    const unchanged = await harness.send('GET', `${one}/draft`, {
+      headers: { 'if-none-match': tag },
+    });
+    expect(unchanged.statusCode).toBe(304);
+    expect(unchanged.body).toBe('');
+    const other = await harness.send('GET', `${one}/draft`, {
+      headers: { 'if-none-match': '"something-else"' },
+    });
+    expect(other.statusCode).toBe(200);
   });
-
+  it('creates a workflow and returns its draft validator', async () => {
+    const reply = await harness.send('POST', url, {
+      body: { name: '  Operations  ' },
+      headers: key,
+    });
+    expect(reply.statusCode).toBe(201);
+    expect(reply.json()).toMatchObject({
+      workflow: { id: workflowId, name: 'Operations' },
+      draft: { workflowId },
+    });
+    expect(reply.headers.etag).toBe(tag);
+  });
+  it('saves a graph and restores a version with a fresh validator', async () => {
+    for (const [method, path, body] of [
+      ['PUT', `${one}/draft`, { graph }],
+      ['POST', versionUrl, {}],
+    ] as const) {
+      const reply = await harness.send(method, path, {
+        body,
+        headers: { 'if-match': tag },
+      });
+      expect(reply.statusCode).toBe(200);
+      expect(reply.json()).toMatchObject({ workflowId, revision: 2, graph });
+      expect(reply.headers.etag).not.toBe(tag);
+    }
+  });
+  it('returns the validation snapshot and publication', async () => {
+    const validation = await harness.send('POST', `${one}/validate`);
+    expect(validation.statusCode).toBe(200);
+    expect(validation.json()).toMatchObject({
+      compatibility: { compatible: true },
+    });
+    expect(validation.headers.etag).toBe(tag);
+    const published = await harness.send('POST', `${one}/publish`, {
+      headers: { ...key, 'if-match': tag },
+    });
+    expect(published.statusCode).toBe(200);
+    expect(published.json()).toMatchObject({
+      version: { id: version().id },
+      reused: false,
+    });
+  });
+  it.each(['archive', 'restore'] as const)(
+    'accepts %s with an idempotency key',
+    async (command) => {
+      const reply = await harness.send('POST', `${one}/${command}`, {
+        body: { expectedLifecycleRevision: 1 },
+        headers: key,
+      });
+      expect(reply.statusCode).toBe(202);
+      expect(reply.json()).toMatchObject({
+        workflow: { id: workflowId },
+        replayed: false,
+      });
+    },
+  );
+  it('renames and duplicates without returning a graph from duplication', async () => {
+    const rename = await harness.send('POST', `${one}/rename`, {
+      body: { name: 'Invoices', expectedNameRevision: 1 },
+      headers: key,
+    });
+    expect(rename.statusCode).toBe(200);
+    expect(rename.json()).toMatchObject({
+      workflow: { name: 'Invoices', nameRevision: 2 },
+    });
+    for (const source of [
+      { kind: 'draft' },
+      { kind: 'version', versionId: version().id },
+    ]) {
+      const reply = await harness.send('POST', `${one}/duplicate`, {
+        body: { name: 'Copy', source },
+        headers: source.kind === 'draft' ? { ...key, 'if-match': tag } : key,
+      });
+      expect(reply.statusCode).toBe(201);
+      expect(reply.json()).toEqual({ workflowId });
+      expect(reply.headers.location).toBe(one);
+    }
+  });
+  it.each([
+    { method: 'PUT', path: `${one}/draft`, body: { graph } },
+    { method: 'POST', path: versionUrl, body: {} },
+    {
+      method: 'POST',
+      path: `${one}/duplicate`,
+      body: { name: 'Copy', source: { kind: 'draft' } },
+    },
+    { method: 'POST', path: `${one}/publish` },
+  ] as const)(
+    'requires the draft precondition on $path',
+    async ({ method, path, ...input }) => {
+      expect(
+        (await harness.send(method, path, { ...input, headers: key }))
+          .statusCode,
+      ).toBe(428);
+    },
+  );
+  it.each([
+    { command: 'archive', body: { expectedLifecycleRevision: 1 } },
+    { command: 'restore', body: { expectedLifecycleRevision: 1 } },
+    { command: 'rename', body: { name: 'New', expectedNameRevision: 1 } },
+    {
+      command: 'duplicate',
+      body: {
+        name: 'Copy',
+        source: { kind: 'version', versionId: version().id },
+      },
+    },
+    { command: 'publish' },
+  ])('requires idempotency for $command', async ({ command, ...input }) => {
+    expect(
+      (
+        await harness.send('POST', `${one}/${command}`, {
+          ...input,
+          headers: { 'if-match': tag },
+        })
+      ).statusCode,
+    ).toBe(400);
+  });
+  it.each([
+    {},
+    { expectedLifecycleRevision: 0 },
+    { expectedLifecycleRevision: 1.1 },
+    { expectedLifecycleRevision: '1' },
+    { expectedLifecycleRevision: Number.MAX_SAFE_INTEGER + 1 },
+    { expectedLifecycleRevision: 1, cancelRuns: true },
+  ])('refuses malformed lifecycle input %j', async (body) => {
+    const reply = await harness.send('POST', `${one}/archive`, {
+      body,
+      headers: key,
+    });
+    expect(reply.statusCode).toBe(400);
+    expect(reply.json()).toHaveProperty('errors');
+  });
+  it.each([
+    {},
+    { name: 'Invoices' },
+    { name: ' ', expectedNameRevision: 1 },
+    { name: 'x'.repeat(129), expectedNameRevision: 1 },
+    { name: 'Invoices', expectedNameRevision: 0 },
+    { name: 'Invoices', expectedNameRevision: '1' },
+    { name: 'Invoices', expectedNameRevision: 1, expectedLifecycleRevision: 1 },
+  ])('refuses malformed rename input %j', async (body) => {
+    expect(
+      (await harness.send('POST', `${one}/rename`, { body, headers: key }))
+        .statusCode,
+    ).toBe(400);
+  });
+  it.each([null, [], { graph }, { expectedRevision: 1 }])(
+    'refuses malformed version restore input %j',
+    async (body) => {
+      expect(
+        (
+          await harness.send('POST', versionUrl, {
+            body,
+            headers: { 'if-match': tag },
+          })
+        ).statusCode,
+      ).toBe(400);
+    },
+  );
+  it.each([
+    { name: 'Copy', source: { kind: 'draft' }, graph: {} },
+    { name: 'Copy', source: { kind: 'draft', versionId: version().id } },
+    { name: 'Copy', source: { kind: 'version' } },
+    {
+      name: 'Copy',
+      source: { kind: 'version', versionId: version().id, graph: {} },
+    },
+  ])('refuses client graph or malformed selectors %j', async (body) => {
+    expect(
+      (
+        await harness.send('POST', `${one}/duplicate`, {
+          body,
+          headers: { ...key, 'if-match': tag },
+        })
+      ).statusCode,
+    ).toBe(400);
+  });
   it.each([
     { include: 'origin' },
-    { include: ['templateOrigin', 'templateOrigin'] },
-    { include: 'templateOrigin', extra: true },
-    { extra: true },
-  ])(
-    'rejects malformed projection query %j before persistence',
-    async (query) => {
-      const { authoring: controller, getWorkflow } = makeController();
-      await expect(
-        controller.get(request(), { workspaceId, workflowId }, query, {
-          header: vi.fn(),
-        }),
-      ).rejects.toMatchObject({ name: 'ZodError' });
-      expect(getWorkflow.execute).not.toHaveBeenCalled();
-    },
-  );
-
-  it('duplicates only a selected saved source and forwards lifetime with a safe destination Location', async () => {
-    const { lifecycle: controller, duplicateWorkflow } = makeController();
-    const header = vi.fn();
-    const payload = { name: 'Copy', source: { kind: 'draft' } };
-    await expect(
-      controller.duplicate(
-        request({ 'if-match': tag, 'idempotency-key': 'copy-once' }),
-        { workspaceId, workflowId },
-        payload,
-        { header },
-      ),
-    ).resolves.toEqual({ workflowId });
-    expect(duplicateWorkflow.execute).toHaveBeenCalledWith(
-      expect.objectContaining({
-        request: payload,
-        representationTag: tag,
-        idempotencyKey: 'copy-once',
-        signal: expect.any(AbortSignal) as unknown,
-      }),
-    );
-    expect(header).toHaveBeenCalledWith(
-      'Location',
-      `/v1/workspaces/${workspaceId}/workflows/${workflowId}`,
-    );
-    await controller.duplicate(
-      request({ 'idempotency-key': 'version-copy' }),
-      { workspaceId, workflowId },
-      { name: 'Version', source: { kind: 'version', versionId: version.id } },
-      { header },
-    );
-    expect(duplicateWorkflow.execute.mock.calls[1]?.[0]).not.toHaveProperty(
-      'representationTag',
-    );
+    { include: 'templateOrigin', extra: 'yes' },
+    { extra: 'yes' },
+  ])('refuses malformed projections %j', async (query) => {
+    expect((await harness.send('GET', one, { query })).statusCode).toBe(400);
   });
-
-  it('rejects absent/malformed draft tags and client graph payloads before duplication', async () => {
-    const { lifecycle: controller, duplicateWorkflow } = makeController();
-    const payload = { name: 'Copy', source: { kind: 'draft' } };
-    for (const headers of [
-      { 'idempotency-key': 'copy' },
-      { 'idempotency-key': 'copy', 'if-match': '*' },
-    ]) {
-      await expect(
-        controller.duplicate(
-          request(headers),
-          { workspaceId, workflowId },
-          payload,
-          { header: vi.fn() },
-        ),
-      ).rejects.toMatchObject({ name: 'WorkflowHeaderError' });
-    }
-    await expect(
-      controller.duplicate(
-        request({ 'idempotency-key': 'copy', 'if-match': tag }),
-        { workspaceId, workflowId },
-        { ...payload, graph: body.graph },
-        { header: vi.fn() },
-      ),
-    ).rejects.toMatchObject({ name: 'ZodError' });
-    expect(duplicateWorkflow.execute).not.toHaveBeenCalled();
-  });
-
-  it('returns the checked snapshot tag and forwards the request signal for validate and publish', async () => {
-    const {
-      authoring: controller,
-      validateDraft,
-      publishWorkflow,
-    } = makeController();
-    const header = vi.fn();
-    await expect(
-      controller.validate(request(), { workspaceId, workflowId }, { header }),
-    ).resolves.toEqual({
-      valid: true,
-      currentPublication: null,
-      issues: [],
-      compatibility: body.compatibility,
+  it('keeps default metadata available and an unavailable projection explicit', async () => {
+    expect((await harness.send('GET', one)).json()).toMatchObject({
+      workflow: { id: workflowId },
     });
-    expect(header).toHaveBeenCalledWith('ETag', tag);
-    expect(validateDraft.execute).toHaveBeenCalledWith(
-      expect.objectContaining({ workflowId }),
-    );
-    expect(validateDraft.execute.mock.calls[0]?.[0]).toHaveProperty(
-      'signal',
-      expect.any(AbortSignal),
-    );
-    await controller.publish(
-      request({ 'if-match': tag, 'idempotency-key': 'original-key' }),
-      { workspaceId, workflowId },
-    );
-    expect(publishWorkflow.execute).toHaveBeenCalledWith(
-      expect.objectContaining({
-        representationTag: tag,
-        idempotencyKey: 'original-key',
-      }),
-    );
-    expect(publishWorkflow.execute.mock.calls[0]?.[0]).toHaveProperty(
-      'signal',
-      expect.any(AbortSignal),
-    );
-  });
-
-  it('delegates bounded list input and rejects empty or oversized cursors before delegation', async () => {
-    const { authoring: controller, listWorkflows } = makeController();
-    await expect(
-      controller.list(
-        request(),
-        { workspaceId },
-        {
-          limit: '100',
-          order: 'updated_desc',
-        },
-      ),
-    ).resolves.toEqual({ items: [], nextCursor: null });
-    expect(listWorkflows.execute).toHaveBeenCalledExactlyOnceWith({
-      actor: {
-        actorId,
-        kind: 'user',
-        requestId: 'request-42',
-        sessionId,
-        workspaceId,
-      },
-      requestId: 'request-42',
-      routeWorkspaceId: workspaceId,
-      limit: 100,
-      order: 'updated_desc',
+    const origin = await harness.send('GET', one, {
+      query: { include: 'templateOrigin' },
     });
-
-    for (const after of ['', 'x'.repeat(513)]) {
-      await expect(
-        controller.list(request(), { workspaceId }, { after }),
-      ).rejects.toMatchObject({ name: 'ZodError' });
-    }
-    expect(listWorkflows.execute).toHaveBeenCalledOnce();
+    expect(origin.statusCode).toBe(503);
   });
-
-  it('delegates a pinned-parent read and rejects organization filters mixed with it', async () => {
-    const { authoring: controller, listWorkflows } = makeController();
-    await controller.list(
-      request(),
-      { workspaceId },
-      { pinsWorkflowId: workflowId },
-    );
-    expect(listWorkflows.execute).toHaveBeenCalledWith(
-      expect.objectContaining({ pinsWorkflowId: workflowId }),
-    );
-    await expect(
-      controller.list(
-        request(),
-        { workspaceId },
-        { pinsWorkflowId: workflowId, query: 'ignored' },
-      ),
-    ).rejects.toMatchObject({ name: 'ZodError' });
-    expect(listWorkflows.execute).toHaveBeenCalledOnce();
-  });
-
-  it('uses session context without a guard and gives guarded context precedence', async () => {
-    const { authoring: controller, createWorkflow } = makeController();
-    await controller.create(
-      request(
-        { 'idempotency-key': 'session-context' },
-        { traceId: 'session-trace' },
-      ),
-      { workspaceId },
-      { name: 'Session context' },
-      { header: vi.fn() },
-    );
-    expect(createWorkflow.execute).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- Vitest asymmetric matcher is intentionally untyped at this nested boundary.
-        actor: expect.objectContaining({ actorId, requestId: 'request-42' }),
-        requestId: 'request-42',
-        traceId: 'session-trace',
-      }),
-    );
-    expect(createWorkflow.execute.mock.calls.at(-1)?.[0]).not.toHaveProperty(
-      'authorizedWorkspace',
-    );
-
-    const authorizedWorkspace = {
-      actor: Object.freeze({
-        actorId: guardActorId,
-        kind: 'user' as const,
-        workspaceId,
-        sessionId,
-        requestId: 'guard-request',
-        traceId: 'guard-trace',
-      }),
-      workspaceId,
-      role: 'owner' as const,
-      capability: 'workflow:update' as const,
-    };
-    await controller.create(
-      {
-        ...request(
-          { 'idempotency-key': 'guard-context' },
-          { requestId: 'ignored-request', traceId: 'ignored-trace' },
-        ),
-        authorizedWorkspace,
-      },
-      { workspaceId },
-      { name: 'Guard context' },
-      { header: vi.fn() },
-    );
-    expect(createWorkflow.execute).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        actor: authorizedWorkspace.actor,
-        authorizedWorkspace,
-        requestId: 'guard-request',
-        traceId: 'guard-trace',
-      }),
-    );
-  });
-
-  it('requires If-Match for version restore and returns its fresh draft tag', async () => {
-    const { versions: controller, restoreVersion } = makeController();
-    const route = {
-      workspaceId,
-      workflowId,
-      versionId: 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
-    };
-    const response = { header: vi.fn() };
-    await expect(
-      controller.restoreVersion(request(), route, {}, response),
-    ).rejects.toMatchObject({ code: 'precondition_required' });
-    expect(restoreVersion.execute).not.toHaveBeenCalled();
+  it('accepts an exact version filter and rejects conflicting pagination', async () => {
     expect(
-      await controller.restoreVersion(
-        request({ 'if-match': tag }),
-        route,
-        {},
-        response,
-      ),
-    ).toEqual(body);
-    expect(restoreVersion.execute).toHaveBeenCalledExactlyOnceWith(
-      expect.objectContaining({
-        workflowId,
-        versionId: route.versionId,
-        representationTag: tag,
-        request: {},
-      }),
-    );
-    expect(response.header).toHaveBeenCalledWith('ETag', tag);
+      (
+        await harness.send('GET', `${one}/versions`, {
+          query: { versionId: version().id },
+        })
+      ).statusCode,
+    ).toBe(200);
+    expect(
+      (
+        await harness.send('GET', `${one}/versions`, {
+          query: { versionId: version().id, after: 'old' },
+        })
+      ).statusCode,
+    ).toBe(400);
   });
-
-  it.each(['archive', 'restore'] as const)(
-    'forwards one %s command and requires idempotency',
-    async (command) => {
-      const { lifecycle: controller, transitionLifecycle } = makeController();
-      expect(() =>
-        controller[command](
-          request(),
-          { workspaceId, workflowId },
-          { expectedLifecycleRevision: 1 },
-        ),
-      ).toThrow(expect.objectContaining({ code: 'request.invalid' }));
-      expect(transitionLifecycle.execute).not.toHaveBeenCalled();
-      await controller[command](
-        request({ 'idempotency-key': 'key' }),
-        { workspaceId, workflowId },
-        { expectedLifecycleRevision: 1 },
-      );
-      expect(transitionLifecycle.execute).toHaveBeenCalledExactlyOnceWith(
-        expect.objectContaining({
-          command,
-          workflowId,
-          routeWorkspaceId: workspaceId,
-          request: { expectedLifecycleRevision: 1 },
-          idempotencyKey: 'key',
-        }),
-      );
-    },
-  );
-
-  it('forwards one rename command and requires idempotency before delegation', async () => {
-    const { lifecycle: controller, renameWorkflow } = makeController();
-    const renameBody = { name: 'Invoices', expectedNameRevision: 1 };
-    expect(() =>
-      controller.rename(request(), { workspaceId, workflowId }, renameBody),
-    ).toThrow(expect.objectContaining({ code: 'request.invalid' }));
-    expect(() =>
-      controller.rename(
-        request({ 'idempotency-key': 'key' }),
-        { workspaceId, workflowId: 'not-a-workflow' },
-        renameBody,
-      ),
-    ).toThrow();
-    expect(renameWorkflow.execute).not.toHaveBeenCalled();
-
-    await expect(
-      controller.rename(
-        request({ 'idempotency-key': 'rename-key' }, { traceId: 'trace-7' }),
-        { workspaceId, workflowId },
-        renameBody,
-      ),
-    ).resolves.toEqual({ workflow, replayed: false });
-    expect(renameWorkflow.execute).toHaveBeenCalledExactlyOnceWith(
-      expect.objectContaining({
-        workflowId,
-        routeWorkspaceId: workspaceId,
-        request: renameBody,
-        idempotencyKey: 'rename-key',
-      }),
-    );
+  it.each([
+    { after: '' },
+    { after: 'x'.repeat(2049) },
+    { limit: '101' },
+    { pinsWorkflowId: workflowId, include: 'organization' },
+  ])('refuses malformed list input %j', async (query) => {
+    expect((await harness.send('GET', url, { query })).statusCode).toBe(400);
   });
-
-  it('parses and delegates a draft read once, then maps the representation ETag', async () => {
-    const { authoring: controller, getDraft } = makeController();
-    const response = { header: vi.fn(), status: vi.fn() };
-    const result = await controller.draft(
-      request(),
-      { workspaceId, workflowId },
-      response,
-    );
-    expect(result).toEqual(body);
-    expect(getDraft.execute).toHaveBeenCalledExactlyOnceWith({
-      actor: {
-        actorId,
-        kind: 'user',
-        requestId: 'request-42',
-        sessionId,
-        workspaceId,
-      },
-      requestId: 'request-42',
-      routeWorkspaceId: workspaceId,
-      workflowId,
-    });
-    expect(response.header).toHaveBeenCalledWith('ETag', tag);
-  });
-
-  it('classifies missing If-Match before calling the save use case', async () => {
-    const { authoring: controller, saveDraft } = makeController();
-    await expect(
-      controller.save(
-        request(),
-        { workspaceId, workflowId },
-        { graph: body.graph },
-        { header: vi.fn() },
-      ),
-    ).rejects.toMatchObject({
-      code: 'precondition_required',
-      name: 'WorkflowHeaderError',
-    });
-    expect(saveDraft.execute).not.toHaveBeenCalled();
-  });
-
-  it('delegates one valid create command and maps its draft ETag', async () => {
-    const { authoring: controller, createWorkflow } = makeController();
-    const response = { header: vi.fn() };
-
-    await controller.create(
-      request({ 'idempotency-key': 'create-42' }),
-      { workspaceId },
-      { name: 'Operations' },
-      response,
-    );
-
-    expect(response.header).toHaveBeenCalledWith('ETag', tag);
-    expect(createWorkflow.execute).toHaveBeenCalledExactlyOnceWith({
-      actor: {
-        actorId,
-        kind: 'user',
-        requestId: 'request-42',
-        sessionId,
-        workspaceId,
-      },
-      requestId: 'request-42',
-      routeWorkspaceId: workspaceId,
-      request: { name: 'Operations' },
-      idempotencyKey: 'create-42',
-    });
-  });
-
-  it('parses a complete graph and forwards exactly one save command', async () => {
-    const { authoring: controller, saveDraft } = makeController();
-    const response = { header: vi.fn() };
-    await controller.save(
-      request({ 'if-match': tag }),
-      { workspaceId, workflowId },
-      { graph: body.graph },
-      response,
-    );
-    expect(response.header).toHaveBeenCalledWith('ETag', tag);
-    expect(saveDraft.execute).toHaveBeenCalledExactlyOnceWith({
-      actor: {
-        actorId,
-        kind: 'user',
-        requestId: 'request-42',
-        sessionId,
-        workspaceId,
-      },
-      requestId: 'request-42',
-      routeWorkspaceId: workspaceId,
-      workflowId,
-      representationTag: tag,
-      graph: body.graph,
-    });
-  });
-
-  it('forwards request and trace identifiers on mutating commands', async () => {
-    const {
-      authoring: controller,
-      createWorkflow,
-      saveDraft,
-      publishWorkflow,
-    } = makeController();
-    const identifiers = {
-      requestId: 'request-forwarded-42',
-      traceId: 'trace-forwarded-42',
-    } as const;
-    const headers = {
-      'if-match': tag,
-      'idempotency-key': 'publish-forwarded-42',
-      traceparent: '00-11111111111111111111111111111111-2222222222222222-01',
-    };
-
-    await controller.create(
-      request({ 'idempotency-key': 'create-forwarded-42' }, identifiers),
-      { workspaceId },
-      { name: 'Operations' },
-      { header: vi.fn() },
-    );
-    await controller.save(
-      request(headers, identifiers),
-      { workspaceId, workflowId },
-      { graph: body.graph },
-      { header: vi.fn() },
-    );
-    await controller.publish(request(headers, identifiers), {
-      workspaceId,
-      workflowId,
-    });
-
-    expect(createWorkflow.execute).toHaveBeenCalledWith(
-      expect.objectContaining(identifiers),
-    );
-    expect(saveDraft.execute).toHaveBeenCalledWith(
-      expect.objectContaining(identifiers),
-    );
-    expect(publishWorkflow.execute).toHaveBeenCalledWith(
-      expect.objectContaining({
-        ...identifiers,
-        traceparent: headers.traceparent,
-      }),
-    );
-  });
-
-  it('does not call create when its route parsing fails', async () => {
-    const { authoring: controller, createWorkflow } = makeController();
-    await expect(
-      controller.create(
-        request({ 'idempotency-key': 'create-42' }),
-        { workspaceId: 'not-a-uuid' },
-        { name: 'Operations' },
-        { header: vi.fn() },
-      ),
-    ).rejects.toMatchObject({ name: 'ZodError' });
-    expect(createWorkflow.execute).not.toHaveBeenCalled();
-  });
-
-  it('does not call save when its independently valid route has a malformed body', async () => {
-    const { authoring: controller, saveDraft } = makeController();
-    await expect(
-      controller.save(
-        request({ 'if-match': tag }),
-        { workspaceId, workflowId },
-        { graph: { ...body.graph, unexpected: true } },
-        { header: vi.fn() },
-      ),
-    ).rejects.toMatchObject({ name: 'ZodError' });
-    expect(saveDraft.execute).not.toHaveBeenCalled();
-  });
-
-  it('rejects route fields outside the workflow collection contract', async () => {
-    const { authoring: controller, createWorkflow } = makeController();
-
-    await expect(
-      controller.create(
-        request({ 'idempotency-key': 'create-42' }),
-        { workspaceId, unexpected: 'route-value' },
-        { name: 'Operations' },
-        { header: vi.fn() },
-      ),
-    ).rejects.toMatchObject({ name: 'ZodError' });
-    expect(createWorkflow.execute).not.toHaveBeenCalled();
+  it('refuses invalid route ids and graph fields', async () => {
+    expect(
+      (
+        await harness.send('POST', url.replace(workspaceId, 'not-a-uuid'), {
+          body: { name: 'Operations' },
+          headers: key,
+        })
+      ).statusCode,
+    ).toBe(400);
+    expect(
+      (
+        await harness.send('PUT', `${one}/draft`, {
+          body: { graph: { ...graph, unexpected: true } },
+          headers: { 'if-match': tag },
+        })
+      ).statusCode,
+    ).toBe(400);
   });
 });
