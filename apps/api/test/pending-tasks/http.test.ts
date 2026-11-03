@@ -2,11 +2,6 @@ import type { NestFastifyApplication } from '@nestjs/platform-fastify';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { PendingTasksController } from '../../src/pending-tasks/controller.js';
-import {
-  ApprovalAudienceGuard,
-  PendingTaskReadGuard,
-  TASK_AUTHORIZATION,
-} from '../../src/pending-tasks/guards.js';
 import { PendingTaskService } from '../../src/pending-tasks/service.js';
 import {
   browserHeaders,
@@ -18,7 +13,36 @@ import {
 
 const taskId = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
 const uploadSession = 'U'.repeat(43);
-const decided = { task: { id: taskId }, replayed: false };
+/** A decided approval, in the shape the route answers with. */
+const decided = {
+  task: {
+    id: taskId,
+    workspaceId: sessionWorkspaceId,
+    workflowId: '11111111-1111-4111-8111-111111111111',
+    workflowName: 'Invoices',
+    runId: '22222222-2222-4222-8222-222222222222',
+    nodeId: 'approve',
+    stepName: null,
+    nodeRunId: '33333333-3333-4333-8333-333333333333',
+    iterationPath: [],
+    kind: 'approval',
+    title: 'Approve the invoice',
+    details: {},
+    status: 'approved',
+    createdAt: '2026-08-21T12:00:00.000Z',
+    expiresAt: '2026-08-28T12:00:00.000Z',
+    onExpiry: 'fail',
+    completedAt: '2026-08-21T12:05:00.000Z',
+    completedByName: 'Owner',
+    canRespond: false,
+    blockedReason: 'resolved',
+    workflowVersionId: '44444444-4444-4444-8444-444444444444',
+    instructions: '',
+    audience: { roles: ['owner'], memberIds: [] },
+    output: null,
+  },
+  replayed: false,
+};
 
 const mutations = [
   {
@@ -40,10 +64,6 @@ async function tasksApp() {
   };
   const fixture = await sessionHttpApp({
     controller: PendingTasksController,
-    guards: [
-      { guard: PendingTaskReadGuard, token: TASK_AUTHORIZATION },
-      { guard: ApprovalAudienceGuard, token: TASK_AUTHORIZATION },
-    ],
     providers: [{ provide: PendingTaskService, useValue: tasks }],
     fields: { tasks },
   });

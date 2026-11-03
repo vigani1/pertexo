@@ -38,16 +38,11 @@ export {
 } from './schemas/workflows/error.js';
 
 export {
-  pendingTaskParamsSchema,
-  pendingTaskListQuerySchema,
   pendingTaskDetailSchema,
   pendingTaskResponseSchema,
   pendingTaskListResponseSchema,
-  pendingTaskDecisionRequestSchema,
   pendingTaskDecisionResponseSchema,
-  approvalAudienceQuerySchema,
   approvalAudiencePageSchema,
-  approvalAudienceInspectionRequestSchema,
   approvalAudienceInspectionResponseSchema,
   type ApprovalAudienceInspectionRequest,
   type ApprovalAudienceInspectionResponse,
@@ -59,10 +54,7 @@ export {
   type ApprovalAudienceQuery,
 } from './schemas/execution/pending-tasks.js';
 
-export {
-  pendingTaskSubmitRequestSchema,
-  type PendingTaskSubmitRequest,
-} from './schemas/execution/pending-tasks.js';
+export { type PendingTaskSubmitRequest } from './schemas/execution/pending-tasks.js';
 export {
   formParamsSchema,
   publicFormParamsSchema,
