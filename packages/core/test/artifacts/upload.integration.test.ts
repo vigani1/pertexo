@@ -30,7 +30,7 @@ import {
   ArtifactUploadConflictError,
 } from '../../src/artifacts/uploads/errors.js';
 import { randomUUID, createHash } from 'node:crypto';
-import type { Role } from '@pertexo/workflow-model';
+import type { Role } from '@pertexo/policy';
 import { canonicalOutboxPayloadChecksum } from '@pertexo/database/primitives';
 
 const FILE = {
