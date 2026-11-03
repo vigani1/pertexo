@@ -128,13 +128,13 @@ POST /v1/workspaces/{workspaceId}/sso/directory/credentials/{credentialId}/revok
 PUT /v1/workspaces/{workspaceId}/sso/directory/mappings 200 session workspace:manage csrf ordinary_mutation
 GET /v1/workspaces/{workspaceId}/sso/directory/people 200 session member:read - authenticated_read
 POST /v1/workspaces/{workspaceId}/sso/directory/workspaces/{targetWorkspaceId}/unlink 200 session workspace:manage csrf ordinary_mutation
-POST /v1/workspaces/{workspaceId}/sso/domains 200 session workspace:manage csrf ordinary_mutation
+POST /v1/workspaces/{workspaceId}/sso/domains 201 session workspace:manage csrf ordinary_mutation
 PUT /v1/workspaces/{workspaceId}/sso/domains/{domainId}/enforcement 200 session workspace:manage csrf ordinary_mutation
 POST /v1/workspaces/{workspaceId}/sso/domains/{domainId}/remove 200 session workspace:manage csrf ordinary_mutation
 POST /v1/workspaces/{workspaceId}/sso/domains/{domainId}/renew 200 session workspace:manage csrf ordinary_mutation
 POST /v1/workspaces/{workspaceId}/sso/domains/{domainId}/verify 200 session workspace:manage csrf ordinary_mutation
-POST /v1/workspaces/{workspaceId}/sso/organization 200 session workspace:manage csrf ordinary_mutation
-POST /v1/workspaces/{workspaceId}/sso/providers 200 session workspace:manage csrf ordinary_mutation
+POST /v1/workspaces/{workspaceId}/sso/organization 201 session workspace:manage csrf ordinary_mutation
+POST /v1/workspaces/{workspaceId}/sso/providers 201 session workspace:manage csrf ordinary_mutation
 PUT /v1/workspaces/{workspaceId}/sso/providers/{providerId} 200 session workspace:manage csrf ordinary_mutation
 POST /v1/workspaces/{workspaceId}/sso/providers/{providerId}/remove 200 session workspace:manage csrf ordinary_mutation
 GET /v1/workspaces/{workspaceId}/sso/saml/metadata 200 session member:read - authenticated_read

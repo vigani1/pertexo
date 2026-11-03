@@ -1,67 +1,37 @@
-import { projectContractSchema } from '../schema-projection.js';
+import { federationRoutes } from '../../routes/identity/federation.js';
+import { routePaths, routeSchemas } from '../../routes/openapi.js';
+import { authorizationStartedSchema } from '../../schemas/identity/federation/authorization.js';
+import * as settings from '../../schemas/identity/federation/settings.js';
+import * as signIn from '../../schemas/identity/federation/sign-in.js';
 import {
-  jsonResponse,
-  jsonRequest,
-  uuidPathParameter,
   csrfHeaderParameter,
-  idempotencyHeaderParameter,
+  jsonRequest,
+  jsonResponse,
   problemResponse,
   queryParameter,
 } from '../primitives.js';
-import * as settings from '../../schemas/identity/federation/settings.js';
-import * as signIn from '../../schemas/identity/federation/sign-in.js';
-import { authorizationStartedSchema } from '../../schemas/identity/federation/authorization.js';
+import { projectContractSchema } from '../schema-projection.js';
 export function federationContractSchemas() {
-  return Object.fromEntries(
-    (
-      [
-        ['FederationSettings', settings.federationSettingsSchema, 'output'],
-        ['SamlMetadata', settings.samlMetadataSchema, 'output'],
+  return {
+    ...routeSchemas(Object.values(federationRoutes)),
+    ...Object.fromEntries(
+      (
         [
-          'FederationOrganizationCreate',
-          settings.federationOrganizationCreateSchema,
-          'input',
-        ],
-        [
-          'FederationWorkspaceLink',
-          settings.federationWorkspaceLinkSchema,
-          'input',
-        ],
-        [
-          'FederationDomainCreate',
-          settings.federationDomainCreateSchema,
-          'input',
-        ],
-        [
-          'FederationRevisionCommand',
-          settings.federationRevisionCommandSchema,
-          'input',
-        ],
-        [
-          'FederationEnforcement',
-          settings.federationEnforcementSchema,
-          'input',
-        ],
-        [
-          'FederationProviderCreate',
-          settings.federationProviderCreateSchema,
-          'input',
-        ],
-        [
-          'FederationProviderUpdate',
-          settings.federationProviderUpdateSchema,
-          'input',
-        ],
-        ['FederationTestStart', settings.federationTestStartSchema, 'input'],
-        ['FederationDiscovery', signIn.federationDiscoverySchema, 'output'],
-        ['FederationSignInStart', signIn.federationSignInStartSchema, 'input'],
-        ['AuthorizationStarted', authorizationStartedSchema, 'output'],
-      ] as const
-    ).map(([name, schema, io]) => [
-      name,
-      projectContractSchema(name, schema, io),
-    ]),
-  );
+          ['FederationTestStart', settings.federationTestStartSchema, 'input'],
+          ['FederationDiscovery', signIn.federationDiscoverySchema, 'output'],
+          [
+            'FederationSignInStart',
+            signIn.federationSignInStartSchema,
+            'input',
+          ],
+          ['AuthorizationStarted', authorizationStartedSchema, 'output'],
+        ] as const
+      ).map(([name, schema, io]) => [
+        name,
+        projectContractSchema(name, schema, io),
+      ]),
+    ),
+  };
 }
 const errors = {
   '400': problemResponse('Invalid request or configuration missing'),
@@ -73,109 +43,10 @@ const errors = {
   '500': problemResponse('Unexpected failure'),
   '503': problemResponse('Identity provider unavailable'),
 };
-function operation(
-  operationId: string,
-  request?: string,
-  path?: 'domainId' | 'providerId',
-) {
-  return {
-    operationId,
-    security: [{ cookieSession: [] }],
-    parameters: [
-      uuidPathParameter('workspaceId'),
-      ...(path === undefined ? [] : [uuidPathParameter(path)]),
-      ...(request === undefined
-        ? []
-        : [csrfHeaderParameter(), idempotencyHeaderParameter()]),
-    ],
-    ...(request === undefined ? {} : { requestBody: jsonRequest(request) }),
-    responses: {
-      '200': jsonResponse(
-        'Safe organization sign-in settings',
-        'FederationSettings',
-      ),
-      ...errors,
-    },
-  };
-}
+
 export const federationContractPaths = {
-  '/v1/workspaces/{workspaceId}/sso': {
-    get: operation('readFederationSettings'),
-  },
-  '/v1/workspaces/{workspaceId}/sso/organization': {
-    post: operation(
-      'createIdentityOrganization',
-      'FederationOrganizationCreate',
-    ),
-  },
-  '/v1/workspaces/{workspaceId}/sso/workspaces': {
-    post: operation(
-      'linkIdentityOrganizationWorkspace',
-      'FederationWorkspaceLink',
-    ),
-  },
-  '/v1/workspaces/{workspaceId}/sso/domains': {
-    post: operation('createIdentityDomain', 'FederationDomainCreate'),
-  },
-  '/v1/workspaces/{workspaceId}/sso/domains/{domainId}/verify': {
-    post: operation(
-      'verifyIdentityDomain',
-      'FederationRevisionCommand',
-      'domainId',
-    ),
-  },
-  '/v1/workspaces/{workspaceId}/sso/domains/{domainId}/renew': {
-    post: operation(
-      'renewIdentityDomainChallenge',
-      'FederationRevisionCommand',
-      'domainId',
-    ),
-  },
-  '/v1/workspaces/{workspaceId}/sso/domains/{domainId}/remove': {
-    post: operation(
-      'removeIdentityDomain',
-      'FederationRevisionCommand',
-      'domainId',
-    ),
-  },
-  '/v1/workspaces/{workspaceId}/sso/domains/{domainId}/enforcement': {
-    put: operation(
-      'configureIdentityDomainEnforcement',
-      'FederationEnforcement',
-      'domainId',
-    ),
-  },
-  '/v1/workspaces/{workspaceId}/sso/providers': {
-    post: operation('createIdentityProvider', 'FederationProviderCreate'),
-  },
-  '/v1/workspaces/{workspaceId}/sso/providers/{providerId}': {
-    put: operation(
-      'updateIdentityProvider',
-      'FederationProviderUpdate',
-      'providerId',
-    ),
-  },
-  '/v1/workspaces/{workspaceId}/sso/saml/metadata': {
-    get: {
-      operationId: 'downloadSamlServiceProviderMetadata',
-      security: [{ cookieSession: [] }],
-      parameters: [uuidPathParameter('workspaceId')],
-      responses: {
-        '200': jsonResponse(
-          'Bounded SP metadata for XML download',
-          'SamlMetadata',
-        ),
-        ...errors,
-      },
-    },
-  },
-  '/v1/workspaces/{workspaceId}/sso/providers/{providerId}/remove': {
-    post: operation(
-      'removeIdentityProvider',
-      'FederationRevisionCommand',
-      'providerId',
-    ),
-  },
+  ...routePaths(Object.values(federationRoutes)),
+
   '/v1/auth/federation/discover': {
     get: {
       operationId: 'discoverOrganizationSignIn',
