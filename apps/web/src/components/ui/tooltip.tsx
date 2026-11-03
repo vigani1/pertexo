@@ -1,5 +1,5 @@
 import { Tooltip as TooltipPrimitive } from '@base-ui/react/tooltip';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/class-names';
 import { popupSurface } from './popup-surface';
 
 export const TooltipProvider = TooltipPrimitive.Provider;

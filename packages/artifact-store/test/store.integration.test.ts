@@ -2,7 +2,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { Readable } from 'node:stream';
 import { describe, expect, it } from 'vitest';
 
-import { parseArtifactStoreConfig } from '../src/config/index.js';
+import { parseArtifactStoreConfig } from '../src/config/artifact-store.config.js';
 import { createArtifactStore } from '../src/artifact.store.js';
 
 const integrationDescribe =

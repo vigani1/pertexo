@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/empty';
 import { workflowSummaryQueryOptions } from '@/features/workflows/queries.public';
 import type { ApiClient } from '@/lib/api/client';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/class-names';
 import { visibleSettingsData } from '../model/settings-query';
 import { SettingsSection } from '@/components/patterns/settings/section';
 import { QueryView } from '@/components/patterns/states/query-view';

@@ -7,7 +7,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/class-names';
 import type { WorkflowTests } from '../../hooks/use-workflow-tests';
 
 function testBusy(tests: WorkflowTests) {

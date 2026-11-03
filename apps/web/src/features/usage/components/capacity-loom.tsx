@@ -1,7 +1,7 @@
 import type { UsageCapacityResponse } from '@pertexo/contracts';
 import { formatByteLength } from '@/lib/format/bytes';
 import { FORMAT_LOCALE } from '@/lib/format/locale';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/class-names';
 
 const VISIBLE_SLOTS = 24;
 const SIZE = 112;

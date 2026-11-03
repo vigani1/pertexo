@@ -1,5 +1,5 @@
 import type { StatusTone } from '@/components/ui/status';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/class-names';
 import { statusToneText } from '@/components/ui/status-tone';
 import { toneLineStyle } from '../model/presentation/tone-styles';
 

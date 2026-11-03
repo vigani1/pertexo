@@ -1,6 +1,6 @@
 import { Radio } from '@base-ui/react/radio';
 import { RadioGroup } from '@base-ui/react/radio-group';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/class-names';
 
 /** A small, labelled choice of two or three settings, as real radio buttons. */
 export function RadioChoice<Value extends string>({

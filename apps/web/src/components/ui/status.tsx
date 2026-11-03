@@ -1,6 +1,6 @@
 import type { ComponentProps, ReactNode } from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/class-names';
 import { statusToneText } from './status-tone';
 
 // One glyph, one colour, one word for every status in the product. Features

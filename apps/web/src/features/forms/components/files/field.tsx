@@ -8,7 +8,7 @@ import {
 } from '@/components/ui/field';
 import { FileDrop } from '@/components/ui/file-drop';
 import { useRemovalFocus } from '@/lib/hooks/use-removal-focus';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/class-names';
 import {
   acceptAttribute,
   acceptSummary,

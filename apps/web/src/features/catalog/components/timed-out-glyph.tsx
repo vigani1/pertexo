@@ -1,4 +1,4 @@
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/class-names';
 
 /**
  * The Timed out path's mark: an hourglass whose sand has run through, drawn

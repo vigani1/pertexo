@@ -3,7 +3,7 @@ import { RefreshCwIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { StatusGlyph } from '@/components/ui/status';
 import { formatShortTime } from '@/lib/format/time';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/class-names';
 
 /**
  * A background refresh failed: the data stays on screen and one amber line

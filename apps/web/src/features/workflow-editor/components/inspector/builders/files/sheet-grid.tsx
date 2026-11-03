@@ -1,6 +1,6 @@
 import { ChevronLeftIcon, ChevronRightIcon } from 'lucide-react';
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/class-names';
 import { SHEET_PREVIEW_ROWS } from '../../../../model/inspector/files/sheet-preview';
 
 const PLACEHOLDER_WIDTHS = [

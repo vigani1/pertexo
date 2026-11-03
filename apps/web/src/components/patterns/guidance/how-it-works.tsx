@@ -1,5 +1,5 @@
 import { useId, type ReactNode } from 'react';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/class-names';
 
 export type HowItWorksStep = Readonly<{ title: string; body: ReactNode }>;
 

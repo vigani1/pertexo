@@ -14,7 +14,7 @@ import {
   rolesForCapability,
   type AuthorizationCapability,
   type Role,
-} from '../src/index.js';
+} from '../src/authorization-policy.js';
 
 const expectedCapabilitiesByRole = {
   owner: AUTHORIZATION_CAPABILITIES,

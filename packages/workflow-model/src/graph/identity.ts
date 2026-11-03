@@ -10,7 +10,7 @@ import {
   type WorkflowNode,
 } from './workflow-graph.schemas.js';
 import { parseWorkflowGraphDraft } from './validation/preflight.js';
-import { validateWorkflowGraph } from './validation/index.js';
+import { validateWorkflowGraph } from './validation/validate-workflow-graph.js';
 import {
   InvalidWorkflowGraphError,
   type GraphValidationIssue,

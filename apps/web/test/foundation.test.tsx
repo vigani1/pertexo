@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createQueryClient } from '../src/app/query-client';
-import { cn } from '../src/lib/utils';
+import { cn } from '../src/lib/class-names';
 
 describe('frontend foundation', () => {
   it('creates isolated server caches and does not retry writes', () => {

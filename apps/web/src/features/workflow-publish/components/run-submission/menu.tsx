@@ -9,7 +9,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { LoadingOrb } from '@/components/ui/loading-orb';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/class-names';
 import {
   Tooltip,
   TooltipContent,

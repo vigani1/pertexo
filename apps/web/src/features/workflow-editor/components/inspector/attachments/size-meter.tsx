@@ -1,6 +1,6 @@
 import { EMAIL_SEND_NOTIFICATION_LIMITS } from '@pertexo/integrations';
 import { formatByteLength } from '@/lib/format/bytes';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/class-names';
 import type { attachmentsSize } from '../../../model/inspector/object-mappings/attachments';
 
 type Size = ReturnType<typeof attachmentsSize>;

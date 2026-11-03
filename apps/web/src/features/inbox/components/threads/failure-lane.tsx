@@ -1,5 +1,5 @@
 import type { WorkspaceInboxFailureThread } from '@pertexo/contracts';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/class-names';
 
 const DAY_MILLIS = 86_400_000;
 const DAYS = 30;

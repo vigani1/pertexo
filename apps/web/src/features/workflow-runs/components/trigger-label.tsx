@@ -10,7 +10,7 @@ import {
   OctagonXIcon,
   type LucideIcon,
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/class-names';
 import {
   describeTrigger,
   type RunTriggerType,

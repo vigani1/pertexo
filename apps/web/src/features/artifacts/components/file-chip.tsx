@@ -1,7 +1,7 @@
 import { cva } from 'class-variance-authority';
 import type { ReactNode } from 'react';
 import { formatByteLength } from '@/lib/format/bytes';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/class-names';
 import { fileTypeTag, type FileFamily } from '../model/artifact-labels';
 
 // The same family tints as step tiles: data mint, documents ice, images

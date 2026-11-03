@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { ChevronRightIcon } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/class-names';
 
 const disclosureVariants = cva('', {
   variants: {

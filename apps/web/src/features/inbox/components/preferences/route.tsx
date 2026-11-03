@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { InboxIcon, MailIcon, MailXIcon, SparkleIcon } from 'lucide-react';
 import type { NoticePreferencesResponse } from '@pertexo/contracts';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/class-names';
 import { describeSchedule } from '../../model/email-schedule';
 
 /**

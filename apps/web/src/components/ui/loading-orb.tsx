@@ -1,5 +1,5 @@
 import type { ComponentProps } from 'react';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/class-names';
 
 // A lightweight echo of Pertexo's execution orb. It deliberately uses CSS
 // rather than mounting a WebGL canvas inside short-lived button interactions.

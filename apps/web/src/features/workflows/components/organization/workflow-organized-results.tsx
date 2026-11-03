@@ -17,7 +17,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Empty, EmptyTitle, EmptyDescription } from '@/components/ui/empty';
 import { StaleLine } from '@/components/patterns/states/stale-line';
 import type { ApiClient } from '@/lib/api/client';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/class-names';
 import {
   ROW_REVEAL_CLASS,
   type WorkflowRowActions,

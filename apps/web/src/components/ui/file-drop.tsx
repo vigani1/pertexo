@@ -1,7 +1,7 @@
 import { useId, useState, type ComponentProps, type ReactNode } from 'react';
 import { UploadIcon } from 'lucide-react';
 import { formatByteLength } from '@/lib/format/bytes';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/class-names';
 
 type FileDropState = Readonly<{
   file: File | undefined;

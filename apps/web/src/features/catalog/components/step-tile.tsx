@@ -1,5 +1,5 @@
 import { cva } from 'class-variance-authority';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/class-names';
 import type { StepPresentation } from '../model/steps/registry';
 
 // Family colours: trigger cyan, action ice, logic lavender, transform mint,

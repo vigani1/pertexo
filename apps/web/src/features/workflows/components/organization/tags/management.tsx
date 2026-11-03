@@ -16,7 +16,7 @@ import { useFieldValidation } from '@/components/ui/use-field-validation';
 import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/ui/notice';
 import { useNotifications } from '@/components/ui/use-notifications';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/class-names';
 import type { WorkflowOrganizationAttempt } from '../../../model/organization/requests';
 import type { useWorkflowOrganizationCommand } from '../../../hooks/use-workflow-organization-command';
 

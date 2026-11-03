@@ -7,7 +7,7 @@ import {
 import { XIcon } from 'lucide-react';
 import { use, useEffect, useRef, useState, type CSSProperties } from 'react';
 import { TimedOutGlyph } from '@/features/catalog/presentation.public';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/class-names';
 import type { WorkflowFlowEdge } from '../../model/graph/adapter';
 import { CanvasActionsContext } from '../../model/canvas/actions-context';
 

@@ -5,7 +5,7 @@ import { SpanKind } from '@opentelemetry/api';
 
 import { node } from '@opentelemetry/sdk-node';
 import { expect } from 'vitest';
-import { createNodeInstrumentations } from '../../../src/telemetry/index.js';
+import { createNodeInstrumentations } from '../../../src/telemetry/telemetry.runtime.js';
 
 export const WEBHOOK_PATH_SECRET = 'k'.repeat(43);
 

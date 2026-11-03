@@ -18,7 +18,7 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet';
 import { Status } from '@/components/ui/status';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/class-names';
 import { QueryView } from '@/components/patterns/states/query-view';
 import { connectionAccessLost } from '../../model/connection-access';
 import type { ConnectionMutationScope } from '../../data/connections.mutations';

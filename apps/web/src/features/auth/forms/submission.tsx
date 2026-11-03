@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { DialogFooter } from '@/components/ui/dialog';
 import { Notice } from '@/components/ui/notice';
 import { ProgressButton } from '@/components/ui/progress-button';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/class-names';
 
 /**
  * A sign-in family form inside the lens: its fields, one failure line and the

@@ -8,7 +8,7 @@ import { CopyButton } from '@/components/ui/copy-button';
 import type { ApiClient } from '@/lib/api/client';
 import { formatDateTime, formatRelativeTime } from '@/lib/format/time';
 import { SettingsSection } from '@/components/patterns/settings/section';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/class-names';
 import {
   DangerZone,
   WorkspaceLifecycleControls,

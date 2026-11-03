@@ -1,5 +1,5 @@
 import type { ComponentProps } from 'react';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/class-names';
 
 // Every empty state names its next action: compose Empty with a media slot
 // (a status glyph or small Core), a title, a description and EmptyActions.

@@ -9,7 +9,7 @@ import {
   formatDayHeading,
   formatRelativeTime,
 } from '@/lib/format/time';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/class-names';
 
 /** The parts of a paged (infinite) query a recent-activity list reads. */
 export type RecentLogQuery = Readonly<{

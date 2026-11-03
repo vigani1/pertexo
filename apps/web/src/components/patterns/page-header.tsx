@@ -1,5 +1,5 @@
 import type { ComponentProps } from 'react';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/class-names';
 
 // The one page-header composition: a display title, a mono status line of
 // live facts, and actions on the right. Named slots; no context needed.

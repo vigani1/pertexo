@@ -55,7 +55,7 @@ export const workflowHubRoute = createRoute({
       ),
     );
   },
-  component: lazyRoute(() => import('./index'), 'WorkflowHubRoute'),
+  component: lazyRoute(() => import('./workflow-hub'), 'WorkflowHubRoute'),
 });
 
 export const workflowBuildRoute = createRoute({

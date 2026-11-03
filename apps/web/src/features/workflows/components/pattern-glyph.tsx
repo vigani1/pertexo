@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import type { WorkflowGraphContract } from '@pertexo/contracts';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/class-names';
 import { glyphEdgePath, layoutPatternGlyph } from '../model/shape';
 
 const SIZES = {

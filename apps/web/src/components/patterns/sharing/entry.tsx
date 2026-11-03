@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { ShieldCheckIcon, UsersRoundIcon } from 'lucide-react';
 import { formatInitials } from '@/lib/format/initials';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/class-names';
 
 /** A person's initials, or a group mark, in the same ringed disc as presence. */
 function SharingAvatar({

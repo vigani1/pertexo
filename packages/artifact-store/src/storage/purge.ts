@@ -3,7 +3,7 @@ import {
   ListObjectVersionsCommand,
 } from '@aws-sdk/client-s3';
 
-import type { ArtifactStoreConfig } from '../config/index.js';
+import type { ArtifactStoreConfig } from '../config/artifact-store.config.js';
 
 import { sendS3 } from '../s3/s3-client.js';
 import { requestSignal } from '../s3/request-lifecycle.js';

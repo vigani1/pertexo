@@ -9,7 +9,7 @@ import {
 import { WORKFLOW_NOTE_LIMITS as limits } from '@pertexo/workflow-model';
 import { Button } from '@/components/ui/button';
 import { lazyPiece } from '@/components/patterns/app-update/lazy';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/class-names';
 import { boundedNotePosition } from '../../../model/notes/commands';
 import { NoteForm } from './form';
 import { noteKeyDown } from './keyboard';

@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/class-names';
 import { tableCellText } from '../../model/values';
 import { COLUMN_TYPES } from '../../model/column-types';
 

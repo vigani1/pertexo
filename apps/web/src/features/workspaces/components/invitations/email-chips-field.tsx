@@ -1,6 +1,6 @@
 import { XIcon } from 'lucide-react';
 import { LabelledField } from '@/components/ui/field';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/class-names';
 
 /**
  * Several addresses as chips. Typing a comma, space or Enter turns the text

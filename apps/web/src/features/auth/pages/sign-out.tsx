@@ -2,7 +2,7 @@ import { Link } from '@tanstack/react-router';
 import { buttonVariants } from '@/components/ui/button-variants';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { CoreOrb } from '@/components/patterns/core/orb';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/class-names';
 import { Wordmark } from '../components/stage/wordmark';
 
 /**

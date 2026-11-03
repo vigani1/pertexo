@@ -7,7 +7,7 @@ import {
   PopoverTitle,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/class-names';
 
 /**
  * A small (i) beside a term that explains it. A popover rather than a

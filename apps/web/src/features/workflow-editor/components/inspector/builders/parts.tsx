@@ -8,7 +8,7 @@ import {
   FieldLabel,
 } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/class-names';
 import type { FieldParseResult } from '../../../model/inspector/draft';
 import type { NodeFormApi } from '../../../model/inspector/node-form';
 import { useInspectorDraftField } from '../use-draft-field';

@@ -5,7 +5,7 @@ import { LabelledField } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { StatusGlyph } from '@/components/ui/status';
 import { FileChip } from '@/features/artifacts/public';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/class-names';
 import { directPredecessorOptions } from '../../../model/inspector/input-mappings/draft';
 import { describeMappingSource } from '../../../model/inspector/mapping-summary';
 import {

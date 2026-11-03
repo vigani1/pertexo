@@ -2,7 +2,7 @@ import type { ConnectionResponse } from '@pertexo/contracts';
 import { ChevronRightIcon, LockIcon } from 'lucide-react';
 import { Status } from '@/components/ui/status';
 import { formatRelativeTime } from '@/lib/format/time';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/class-names';
 import {
   describeConnectionHealth,
   describeConnectionStatus,

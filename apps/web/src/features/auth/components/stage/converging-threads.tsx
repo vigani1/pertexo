@@ -1,6 +1,6 @@
 import { useRef, type RefObject } from 'react';
 import { useCanvasRenderer } from '@/lib/hooks/use-canvas-renderer';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/class-names';
 import {
   ConvergingThreadsScene,
   type ThreadTarget,

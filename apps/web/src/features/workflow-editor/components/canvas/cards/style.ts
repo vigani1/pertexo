@@ -3,7 +3,7 @@ import {
   familyWord,
   type StepPresentation,
 } from '@/features/catalog/presentation.public';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/class-names';
 import type { WorkflowFlowNode } from '../../../model/graph/adapter';
 
 // Looks and words every step card shares, whatever its shape.

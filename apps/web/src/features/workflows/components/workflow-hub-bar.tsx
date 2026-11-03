@@ -6,7 +6,7 @@ import { buttonVariants } from '@/components/ui/button-variants';
 import { useMediaQuery } from '@/lib/hooks/use-media-query';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { ApiClient } from '@/lib/api/client';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/class-names';
 import { WorkflowActivationState } from './header/activation-state';
 import { WorkflowNameWithDialog } from './workflow-name-field';
 import { WorkflowDuplicateAction } from './workflow-duplicate-action';

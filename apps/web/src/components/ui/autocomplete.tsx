@@ -1,5 +1,5 @@
 import { Autocomplete as AutocompletePrimitive } from '@base-ui/react/autocomplete';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/class-names';
 import { popupSurface } from './popup-surface';
 
 // A free-text input that suggests matching items as you type (typeahead).

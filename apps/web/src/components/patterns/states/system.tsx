@@ -1,5 +1,5 @@
 import type { ComponentProps } from 'react';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/class-names';
 
 // Full-screen or in-shell state for missing, forbidden and failed screens.
 // Compose: SystemState > SystemStateArt, SystemStateTitle,

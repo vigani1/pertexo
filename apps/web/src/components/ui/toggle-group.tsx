@@ -1,6 +1,6 @@
 import { Toggle as TogglePrimitive } from '@base-ui/react/toggle';
 import { ToggleGroup as ToggleGroupPrimitive } from '@base-ui/react/toggle-group';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/class-names';
 
 // A segmented control for small, mutually exclusive option sets (2–7 items).
 export function ToggleGroup({

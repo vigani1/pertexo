@@ -94,7 +94,7 @@ export {
   parseWorkflowGraphDraft,
   safeParseWorkflowGraphDraft,
 } from './graph/validation/preflight.js';
-export { validateWorkflowGraph } from './graph/validation/index.js';
+export { validateWorkflowGraph } from './graph/validation/validate-workflow-graph.js';
 export {
   InvalidWorkflowGraphError,
   WORKFLOW_GRAPH_LIMITS,

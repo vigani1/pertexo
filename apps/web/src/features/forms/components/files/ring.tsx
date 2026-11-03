@@ -1,4 +1,4 @@
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/class-names';
 import type { UploadPhase } from '../../model/uploads';
 
 const CENTER = 14;

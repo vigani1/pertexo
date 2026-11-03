@@ -1,6 +1,6 @@
 import { ChevronRightIcon } from 'lucide-react';
 import { useId, useState, type ReactNode } from 'react';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/class-names';
 import type { FieldNode } from '../../../../model/inspector/input-mappings/fields';
 
 export type FieldPick = (

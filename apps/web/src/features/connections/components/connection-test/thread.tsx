@@ -1,5 +1,5 @@
 import { CoreOrb, type CoreOrbState } from '@/components/patterns/core/orb';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/class-names';
 import type { TestPhase } from '../../model/connection-health';
 import type { ProviderKey } from '../../model/connection-providers';
 import { ProviderTile } from '../provider-tile';

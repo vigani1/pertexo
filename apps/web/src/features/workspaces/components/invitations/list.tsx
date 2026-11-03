@@ -10,7 +10,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Status } from '@/components/ui/status';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/class-names';
 import {
   describeInvitationDelivery,
   describeInvitationExpiry,

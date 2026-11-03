@@ -1,5 +1,5 @@
 import { CopyButton } from '@/components/ui/copy-button';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/class-names';
 
 /**
  * A labelled value shown in full — a secret shown once, an ID for support —
