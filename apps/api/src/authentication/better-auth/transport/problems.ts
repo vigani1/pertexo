@@ -37,6 +37,73 @@ type NativeProblem = Readonly<{
 
 const NATIVE_PROBLEMS = new Map<string, NativeProblem>([
   [
+    '400:INVALID_PASSWORD',
+    {
+      status: 400,
+      code: 'auth.invalid_password',
+      title: API_PROBLEM_MANIFEST['auth.invalid_password'].title,
+    },
+  ],
+  [
+    '409:PASSWORD_ALREADY_CONFIGURED',
+    {
+      status: 409,
+      code: 'auth.password_already_configured',
+      title: API_PROBLEM_MANIFEST['auth.password_already_configured'].title,
+    },
+  ],
+  [
+    '409:AUTHENTICATION_CHANGED',
+    {
+      status: 409,
+      code: 'auth.authentication_changed',
+      title: API_PROBLEM_MANIFEST['auth.authentication_changed'].title,
+    },
+  ],
+  [
+    '403:SESSION_NOT_FRESH',
+    {
+      status: 403,
+      code: 'auth.session_not_fresh',
+      title: 'Sign in again before changing account security settings.',
+    },
+  ],
+  [
+    '403:EMAIL_VERIFICATION_REQUIRED',
+    {
+      status: 403,
+      code: 'auth.email_not_verified',
+      title: 'Verify your email before adding a password.',
+    },
+  ],
+  [
+    '404:AUTHENTICATION_METHOD_NOT_FOUND',
+    {
+      status: 404,
+      code: 'resource.not_found',
+      title:
+        'This sign-in method is no longer available. Reload security settings.',
+    },
+  ],
+  [
+    '400:CURRENT_SESSION_REQUIRES_LOGOUT',
+    {
+      status: 400,
+      code: 'request.invalid',
+      title: 'Sign out to end the current session.',
+    },
+  ],
+  [
+    '400:TRUST_DEVICE_DISABLED',
+    {
+      status: 400,
+      code: 'request.invalid',
+      title:
+        'Use an authenticator or recovery code at every password sign-in. Trusted devices are disabled.',
+    },
+  ],
+
+  [
     '400:LAST_AUTHENTICATION_METHOD',
     {
       status: 400,

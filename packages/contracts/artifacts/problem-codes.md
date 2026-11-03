@@ -10,12 +10,15 @@ Generated from the problem manifest; run `pnpm contracts:generate`. Branch on th
 | `artifact.too_large` | 413 | File too large |
 | `artifact.unavailable` | 503 | Artifact storage unavailable |
 | `auth.alternative_required` | 403 | Another sign-in method required |
+| `auth.authentication_changed` | 409 | Sign-in settings changed. Sign in again using your current organization policy. |
 | `auth.conflict` | 409 | Authentication change conflict |
 | `auth.email_not_verified` | 403 | Email verification required |
 | `auth.forbidden` | 403 | Forbidden |
+| `auth.invalid_password` | 400 | The current password is incorrect. Check it and try again. |
 | `auth.last_method` | 400 | Another working sign-in method required |
 | `auth.method_limit` | 400 | Sign-in method limit reached |
 | `auth.organization_email_managed` | 403 | Organization email address is managed |
+| `auth.password_already_configured` | 409 | A password is already configured. Reload security settings and use Change password. |
 | `auth.recovery_required` | 403 | Recovery password required |
 | `auth.reset_link_invalid` | 400 | Reset link invalid or expired |
 | `auth.session_not_fresh` | 403 | Recent sign-in required |

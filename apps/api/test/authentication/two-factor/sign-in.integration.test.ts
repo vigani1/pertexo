@@ -150,7 +150,7 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
             payload: { password: 'wrong-password' },
           }),
           400,
-          'request.invalid',
+          'auth.invalid_password',
         );
         expectProblem(
           await api.send('POST', `/v1/auth/two-factor/${path}`, {
@@ -200,7 +200,7 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
             payload: { password: factorPassword },
           }),
           403,
-          'auth.forbidden',
+          'auth.session_not_fresh',
         );
       const disabled = await api.send('POST', '/v1/auth/two-factor/disable', {
         browser: other,
@@ -367,7 +367,7 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
             : (user.backupCodes[0] ?? ''),
           index === 1,
         );
-        expectProblem(reply, 409, 'auth.conflict');
+        expectProblem(reply, 409, 'auth.authentication_changed');
         expect(reply.headers['set-cookie'] ?? []).not.toContainEqual(
           expect.stringMatching(/^pertexo_session=[^;]/u),
         );

@@ -34,6 +34,9 @@ export const API_PROBLEM_CODES = [
   'auth.email_not_verified',
   'auth.sso_required',
   'auth.two_factor_locked',
+  'auth.invalid_password',
+  'auth.password_already_configured',
+  'auth.authentication_changed',
   'auth.last_method',
   'auth.method_limit',
   'auth.recovery_required',
@@ -244,6 +247,26 @@ const apiProblemDetails = {
   'auth.two_factor_locked': {
     status: 429,
     title: 'Two-factor sign-in temporarily locked',
+    severity: 'info',
+    exposeDetail: false,
+  },
+  'auth.invalid_password': {
+    status: 400,
+    title: 'The current password is incorrect. Check it and try again.',
+    severity: 'info',
+    exposeDetail: false,
+  },
+  'auth.password_already_configured': {
+    status: 409,
+    title:
+      'A password is already configured. Reload security settings and use Change password.',
+    severity: 'info',
+    exposeDetail: false,
+  },
+  'auth.authentication_changed': {
+    status: 409,
+    title:
+      'Sign-in settings changed. Sign in again using your current organization policy.',
     severity: 'info',
     exposeDetail: false,
   },
