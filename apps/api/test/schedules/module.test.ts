@@ -4,7 +4,7 @@ import { Test } from '@nestjs/testing';
 import { describe, expect, it, vi } from 'vitest';
 
 import { ScheduleModule } from '../../src/schedules/module.js';
-import { ScheduleManagementService } from '../../src/schedules/service.js';
+import type { ScheduleManagementService } from '../../src/schedules/service.js';
 
 const scheduleOperations = {
   list: vi.fn(),
