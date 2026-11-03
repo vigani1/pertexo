@@ -15,8 +15,13 @@ export const SCOPE_COPY: Readonly<
     description: 'List, inspect and export saved workflows.',
   },
   'workflow:create': {
-    label: 'Import workflows',
-    description: 'Preview an import and create its unpublished copy.',
+    label: 'Create workflows',
+    description:
+      'Create a blank workflow, or preview an import and create its unpublished copy.',
+  },
+  'workflow:update': {
+    label: 'Edit workflow drafts',
+    description: 'Save a draft over the exact version you read.',
   },
   'workflow:publish': {
     label: 'Publish workflows',
@@ -40,9 +45,9 @@ export const SCOPE_COPY: Readonly<
     description: 'Request cancellation of a run.',
   },
   'connection:read': {
-    label: 'Resolve connection bindings',
+    label: 'Read connections',
     description:
-      'Resolve explicit credential bindings during an import. Does not reveal secrets.',
+      'List connections and resolve bindings during an import. Never reveals secrets.',
   },
 };
 export const TOKEN_STATUS: Readonly<

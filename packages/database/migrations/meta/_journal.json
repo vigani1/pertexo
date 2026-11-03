@@ -547,6 +547,13 @@
       "when": 1793645938472,
       "tag": "0077_run_data_token_scope",
       "breakpoints": true
+    },
+    {
+      "idx": 78,
+      "version": "7",
+      "when": 1793672318993,
+      "tag": "0078_workflow_update_token_scope",
+      "breakpoints": true
     }
   ]
 }
