@@ -20,7 +20,7 @@ const adminUrl =
   'postgresql://postgres:pertexo-local-superuser@localhost:5432/postgres';
 const fixture = createDisposableDatabaseFixture({
   adminUrl,
-  connectRoles: ['pertexo_migration', 'pertexo_app', 'pertexo_app'],
+  connectRoles: ['pertexo_migration', 'pertexo_app', 'pertexo_maintenance'],
   databaseName: `pertexo_test_trigger_pause_${randomUUID().replaceAll('-', '')}`,
   ownerRole: 'pertexo_owner',
 });
@@ -37,6 +37,11 @@ const apiUrl = url(
 const workerUrl = url(
   'DATABASE_URL',
   'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo',
+);
+
+const maintenanceUrl = url(
+  'DATABASE_MAINTENANCE_URL',
+  'postgresql://pertexo_maintenance:pertexo-local-maintenance@localhost:5432/pertexo',
 );
 
 let identity: ReturnType<typeof createIdentityWorkspaceStore>;
@@ -56,7 +61,7 @@ beforeAll(async () => {
     parseDatabaseConfig({ connectionString: apiUrl, max: 2 }),
   );
   fold = createWorkflowTriggerPauseFoldStore(
-    parseDatabaseConfig({ connectionString: workerUrl, max: 6 }),
+    parseDatabaseConfig({ connectionString: maintenanceUrl, max: 6 }),
   );
   admin = new Pool({ connectionString: fixture.databaseUrl(adminUrl), max: 2 });
   worker = new Pool({ connectionString: workerUrl, max: 2 });

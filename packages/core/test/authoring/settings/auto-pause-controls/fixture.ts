@@ -201,7 +201,7 @@ export async function beforeAllFixture1() {
     { executableCompiler: testExecutableCompiler },
   );
   fold = createWorkflowTriggerPauseFoldStore(
-    parseDatabaseConfig({ connectionString: workerUrl, max: 6 }),
+    parseDatabaseConfig({ connectionString: maintenanceUrl, max: 6 }),
   );
   admin = new Pool({ connectionString: fixture.databaseUrl(adminUrl), max: 4 });
   api = new Pool({ connectionString: apiUrl, max: 2 });

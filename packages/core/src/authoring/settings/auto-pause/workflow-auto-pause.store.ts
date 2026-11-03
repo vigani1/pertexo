@@ -155,7 +155,7 @@ async function resumePausedWorkflow(
         .catch(rethrowQueryFailure);
       const clock = now.rows[0]?.resumed_at;
       if (clock === undefined) throw new Error('Resume time is unavailable');
-      const resumedAt = new Date(clock).toISOString();
+      const resumedAt = clock;
       // The paused-state CHECK guarantees the retained pause start is present.
       await db
         .insert(workflowTriggerPausePeriods)
@@ -173,6 +173,7 @@ async function resumePausedWorkflow(
           workspaceId: input.workspaceId,
           workflowId,
           consecutiveFailures: 0,
+          legacyFailures: 0,
           resumedAfter: resumedAt,
         })
         .onConflictDoUpdate({
@@ -182,6 +183,7 @@ async function resumePausedWorkflow(
           ],
           set: {
             consecutiveFailures: 0,
+            legacyFailures: 0,
             lastRunId: null,
             lastEndedAt: null,
             resumedAfter: resumedAt,

@@ -5,6 +5,8 @@ export type {} from './forms/form.errors.js';
 export type {} from './forms/publication.repository.js';
 export type {} from './forms/form-versions.repository.js';
 export type {} from './pause/outcomes.repository.js';
+export type {} from './pause/locks.repository.js';
+export type {} from './pause/retention.repository.js';
 export type {} from './reconciliation/projection.js';
 export type {} from './skips.repository.js';
 

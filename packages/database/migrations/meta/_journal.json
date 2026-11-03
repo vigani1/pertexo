@@ -603,6 +603,13 @@
       "when": 1793711666497,
       "tag": "0085_execution_artifact_reference_coverage",
       "breakpoints": true
+    },
+    {
+      "idx": 86,
+      "version": "7",
+      "when": 1793718918599,
+      "tag": "0086_ordered_trigger_outcomes",
+      "breakpoints": true
     }
   ]
 }

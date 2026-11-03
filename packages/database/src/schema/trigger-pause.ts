@@ -111,6 +111,13 @@ export const workflowFailureStreaks = appSchema.table(
     workspaceId: uuid('workspace_id').notNull(),
     workflowId: uuid('workflow_id').notNull(),
     consecutiveFailures: integer('consecutive_failures').notNull(),
+    // Pre-ledger counts have no individual completion positions.
+    legacyFailures: integer('legacy_failures').notNull().default(0),
+    successEndedAt: timestamp('success_ended_at', {
+      withTimezone: true,
+      mode: 'string',
+    }),
+    successOutcomeId: uuid('success_outcome_id'),
     resumedAfter: timestamp('resumed_after', {
       withTimezone: true,
       mode: 'string',
@@ -133,6 +140,14 @@ export const workflowFailureStreaks = appSchema.table(
       'workflow_failure_streaks_last_run_valid',
       sql`((last_run_id IS NULL) = (last_ended_at IS NULL))`,
     ),
+    check(
+      'workflow_failure_streaks_legacy_failures_check',
+      sql`(legacy_failures >= 0 AND legacy_failures <= consecutive_failures)`,
+    ),
+    check(
+      'workflow_failure_streaks_success_valid',
+      sql`((success_ended_at IS NULL) = (success_outcome_id IS NULL))`,
+    ),
     primaryKey({
       name: 'workflow_failure_streaks_pkey',
       columns: [table.workspaceId, table.workflowId],
@@ -142,5 +157,37 @@ export const workflowFailureStreaks = appSchema.table(
       columns: [table.workspaceId, table.workflowId],
       foreignColumns: [workflows.workspaceId, workflows.id],
     }).onDelete('cascade'),
+  ],
+);
+
+/** Failure positions remain until a success or resume makes them irrelevant. */
+export const workflowTriggerFailures = appSchema.table(
+  'workflow_trigger_failures',
+  {
+    id: uuid('id').primaryKey(),
+    workspaceId: uuid('workspace_id').notNull(),
+    workflowId: uuid('workflow_id').notNull(),
+    runId: uuid('run_id').notNull(),
+    endedAt: timestamp('ended_at', {
+      withTimezone: true,
+      mode: 'string',
+    }).notNull(),
+  },
+  (table): PgTableExtraConfigValue[] => [
+    foreignKey({
+      name: 'workflow_trigger_failures_workflow_fk',
+      columns: [table.workspaceId, table.workflowId],
+      foreignColumns: [workflows.workspaceId, workflows.id],
+    }).onDelete('cascade'),
+    uniqueIndex('workflow_trigger_failures_run_unique').on(
+      table.workspaceId,
+      table.runId,
+    ),
+    index('workflow_trigger_failures_order_idx').on(
+      table.workspaceId,
+      table.workflowId,
+      table.endedAt,
+      table.id,
+    ),
   ],
 );
