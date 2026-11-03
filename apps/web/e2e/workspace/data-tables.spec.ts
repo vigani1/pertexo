@@ -80,7 +80,7 @@ for (const width of [1280, 375])
             type: 'about:blank',
             status: 409,
             title: 'Conflict',
-            code: 'workspace.conflict',
+            code: 'data_table.conflict',
             requestId: 'table-proof',
             detail: 'This row changed. Reload before saving.',
           },

@@ -40,7 +40,7 @@ describe.runIf(requested)('export admission on real Redis', () => {
       await expect(
         second.run(workspace, () => Promise.resolve()),
       ).rejects.toMatchObject({
-        code: 'workspace.conflict',
+        code: 'export.already_running',
         safeDetail: expect.stringContaining(
           'export is already running',
         ) as unknown,

@@ -25,11 +25,13 @@ export const webhooksProblems = [
     return applicationError('resource.not_found');
   }),
   errorRegistration(WebhookTriggerStateError, (error) => {
+    if (error.reason === 'setting_up')
+      return applicationError('webhook.setting_up', {
+        safeDetail: TRIGGER_STATE_COPY[error.reason],
+        details: { retryAfterSeconds: SETUP_RETRY_AFTER_SECONDS },
+      });
     return applicationError('workspace.conflict', {
       safeDetail: TRIGGER_STATE_COPY[error.reason],
-      ...(error.reason === 'setting_up'
-        ? { details: { retryAfterSeconds: SETUP_RETRY_AFTER_SECONDS } }
-        : {}),
     });
   }),
   errorRegistration(WebhookTriggerIdempotencyConflictError, () => {
