@@ -15,8 +15,9 @@ import {
   type WorkspaceMemberRemovalResponse,
 } from '../workspace-transport.js';
 
-type WorkspaceMemberRemovalPersistence = Required<
-  Pick<IdentityWorkspacePersistence, 'removeWorkspaceMember'>
+type WorkspaceMemberRemovalPersistence = Pick<
+  IdentityWorkspacePersistence,
+  'removeWorkspaceMember'
 >;
 
 /** ADR 042: removes an existing member at the revision the actor saw. */

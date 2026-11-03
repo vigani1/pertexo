@@ -28,15 +28,13 @@ import { parseRequestInput } from '../../platform/http/request-input.js';
 
 const DEFAULT_SESSION_TTL_MILLIS = 8 * 60 * 60_000;
 
-type AcceptancePersistence = Required<
-  Pick<
-    IdentityWorkspacePersistence,
-    | 'resolveInvitationAcceptance'
-    | 'readInvitationAcceptance'
-    | 'recordInvitationAcceptanceProof'
-    | 'completeInvitationAcceptance'
-    | 'abandonInvitationAcceptance'
-  >
+type AcceptancePersistence = Pick<
+  IdentityWorkspacePersistence,
+  | 'resolveInvitationAcceptance'
+  | 'readInvitationAcceptance'
+  | 'recordInvitationAcceptanceProof'
+  | 'completeInvitationAcceptance'
+  | 'abandonInvitationAcceptance'
 >;
 
 export class InvitationAcceptanceUseCase {

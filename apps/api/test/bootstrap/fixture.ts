@@ -1,3 +1,4 @@
+import { unusedWorkspacePersistence } from '../support/identity-workspace.fixture.js';
 import {
   stubFederationService,
   stubDirectoryStore,
@@ -50,6 +51,7 @@ export function identityRuntime(
   const identityDependencies: IdentityWorkspaceDependencies = {
     config: { publicWebOrigin: 'https://app.example.test' },
     persistence: {
+      ...unusedWorkspacePersistence(),
       findUserById: (userId) =>
         Promise.resolve({
           id: userId,

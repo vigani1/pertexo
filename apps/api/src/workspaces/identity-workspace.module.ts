@@ -43,14 +43,7 @@ import type {
   IdentityWorkspaceDependencies,
   IdentitySessionAuthority,
 } from './ports.js';
-import {
-  acceptancePersistence,
-  invitationPersistence,
-  memberRemovalPersistence,
-  membershipLifecyclePersistence,
-  profilePersistence,
-  renamePersistence,
-} from './persistence/capabilities.js';
+
 import {
   CSRF_POLICY,
   IDENTITY_CLOCK,
@@ -87,7 +80,7 @@ export class IdentityWorkspaceModule {
           identityCrypto: IdentityCrypto,
         ) =>
           new WorkspaceInvitationManagementUseCase(
-            invitationPersistence(persistence),
+            persistence,
             dependencies.invitationTokens,
             identityCrypto,
           ),
@@ -101,7 +94,7 @@ export class IdentityWorkspaceModule {
           identityClock: IdentityClock,
         ) =>
           new InvitationAcceptanceUseCase(
-            acceptancePersistence(persistence),
+            persistence,
             identityCrypto,
             identityClock,
             dependencies.config,
@@ -187,11 +180,7 @@ function identityReadProviders(): Provider[] {
       useFactory: (
         persistence: IdentityWorkspaceDependencies['persistence'],
         telemetry: IdentityWorkspaceTelemetry,
-      ) =>
-        new RemoveWorkspaceMemberUseCase(
-          memberRemovalPersistence(persistence),
-          telemetry,
-        ),
+      ) => new RemoveWorkspaceMemberUseCase(persistence, telemetry),
       inject: [IDENTITY_WORKSPACE_PERSISTENCE, IDENTITY_WORKSPACE_TELEMETRY],
     },
     {
@@ -201,11 +190,7 @@ function identityReadProviders(): Provider[] {
         clock: IdentityClock,
         telemetry: IdentityWorkspaceTelemetry,
       ) =>
-        new WorkspaceMembershipLifecycleUseCase(
-          membershipLifecyclePersistence(persistence),
-          clock,
-          telemetry,
-        ),
+        new WorkspaceMembershipLifecycleUseCase(persistence, clock, telemetry),
       inject: [
         IDENTITY_WORKSPACE_PERSISTENCE,
         IDENTITY_CLOCK,
@@ -217,11 +202,7 @@ function identityReadProviders(): Provider[] {
       useFactory: (
         persistence: IdentityWorkspaceDependencies['persistence'],
         telemetry: IdentityWorkspaceTelemetry,
-      ) =>
-        new UpdateUserProfileUseCase(
-          profilePersistence(persistence),
-          telemetry,
-        ),
+      ) => new UpdateUserProfileUseCase(persistence, telemetry),
       inject: [IDENTITY_WORKSPACE_PERSISTENCE, IDENTITY_WORKSPACE_TELEMETRY],
     },
     {
@@ -312,8 +293,7 @@ function identityCoreProviders(
       useFactory: (
         persistence: IdentityWorkspaceDependencies['persistence'],
         telemetry: IdentityWorkspaceTelemetry,
-      ) =>
-        new RenameWorkspaceUseCase(renamePersistence(persistence), telemetry),
+      ) => new RenameWorkspaceUseCase(persistence, telemetry),
       inject: [IDENTITY_WORKSPACE_PERSISTENCE, IDENTITY_WORKSPACE_TELEMETRY],
     },
     {

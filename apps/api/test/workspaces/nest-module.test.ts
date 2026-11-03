@@ -1,3 +1,9 @@
+import {
+  acceptancePersistence,
+  invitationPersistence,
+  renamePersistence,
+} from './persistence-capabilities.fixture.js';
+import { unusedWorkspacePersistence } from '../support/identity-workspace.fixture.js';
 import { NestFactory } from '@nestjs/core';
 import { describe, expect, it } from 'vitest';
 
@@ -23,6 +29,7 @@ const sessions = {} as IdentitySessionAuthority;
 const dependencies: IdentityWorkspaceDependencies = {
   config: { publicWebOrigin: 'https://app.example.test' },
   persistence: {
+    ...unusedWorkspacePersistence(),
     findUserById: () => Promise.resolve(null),
     listAccessibleWorkspaces: () => Promise.resolve({ items: [] }),
     listWorkspaceMembers: () => Promise.resolve({ items: [] }),
@@ -110,11 +117,17 @@ describe('identity/workspace Nest module', () => {
     }
   });
 
-  it('fails closed through public use cases when optional workspace persistence is not configured', async () => {
+  it('propagates declared legacy fixture refusals through public use cases', async () => {
     const context = await NestFactory.createApplicationContext(
       {
         ...IdentityWorkspaceModule.register({
           ...dependencies,
+          persistence: {
+            ...dependencies.persistence,
+            ...acceptancePersistence({}),
+            ...invitationPersistence({}),
+            ...renamePersistence({}),
+          },
           invitationTokens: {
             seal: () => ({
               ciphertext: 'ciphertext',
@@ -199,7 +212,7 @@ describe('identity/workspace Nest module', () => {
     }
   });
 
-  it('constructs every optional workspace persistence adapter when configured', async () => {
+  it('constructs every workspace use case from configured persistence', async () => {
     const notExercised = () => Promise.reject(new Error('not exercised'));
     const context = await NestFactory.createApplicationContext(
       {
