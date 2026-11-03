@@ -69,3 +69,5 @@ export { batchRoutes } from './routes/workflows/batch.js';
 export { federationRoutes } from './routes/identity/federation.js';
 
 export { directoryRoutes } from './routes/identity/directory.js';
+
+export { portabilityRoutes } from './routes/workflows/portability.js';

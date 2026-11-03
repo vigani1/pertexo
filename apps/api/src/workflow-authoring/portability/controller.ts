@@ -1,44 +1,31 @@
-import { AutomationAuthenticationGuard } from '../../authentication/automation/guard.js';
-import { requestIdempotencyKey } from '../../platform/http/index.js';
+import { Body, Controller, Req, Res, UseInterceptors } from '@nestjs/common';
 import {
-  Body,
-  Controller,
-  HttpCode,
-  Param,
-  Post,
-  Req,
-  Res,
-  UseGuards,
-  UseInterceptors,
-} from '@nestjs/common';
-import { CsrfProtectionGuard } from '../../workspaces/index.js';
-import { projectAuthenticatedWorkspaceContext } from '../../workspaces/request/authenticated-context.js';
-import { withRequestOperationSignal } from '../../platform/http/request-operation-signal.js';
+  portabilityRoutes as routes,
+  type RouteInput,
+} from '@pertexo/contracts/server';
+import { domainErrors } from '../../platform/http/problems/interceptor.js';
 import { requestHeaderValue } from '../../platform/http/request-headers.js';
-import { RateLimit } from '../../platform/rate-limit/metadata.js';
-import {
-  WorkflowCreateGuard,
-  WorkflowParticipantGuard,
-} from '../http/guards.js';
-import {
-  ExportWorkflowUseCase,
-  ImportWorkflowUseCase,
-  PreviewWorkflowImportUseCase,
-} from './use-cases.js';
+import { withRequestOperationSignal } from '../../platform/http/request-operation-signal.js';
+import { authoringFailure } from '../../problems/context/normalize.js';
+import { In, Route } from '../../workspaces/http/route.js';
+import { projectAuthenticatedWorkspaceContext } from '../../workspaces/request/authenticated-context.js';
 import {
   workflowIdParamSchema,
   type WorkflowAuthoringRequest,
   type WorkflowResponse,
 } from '../types.js';
-import { domainErrors } from '../../platform/http/problems/interceptor.js';
-import { authoringFailure } from '../../problems/context/normalize.js';
+import {
+  ExportWorkflowUseCase,
+  ImportWorkflowUseCase,
+  PreviewWorkflowImportUseCase,
+} from './use-cases.js';
 
 const workspaceParams = workflowIdParamSchema
   .pick({ workspaceId: true })
   .strict();
 
 @UseInterceptors(domainErrors(authoringFailure))
-@Controller('v1/workspaces/:workspaceId/workflows')
+@Controller()
 export class WorkflowPortabilityController {
   public constructor(
     private readonly exportWorkflow: ExportWorkflowUseCase,
@@ -46,22 +33,14 @@ export class WorkflowPortabilityController {
     private readonly importWorkflow: ImportWorkflowUseCase,
   ) {}
 
-  @Post(':workflowId/export')
-  @HttpCode(200)
-  @RateLimit('workflow_compile')
-  @UseGuards(
-    AutomationAuthenticationGuard,
-    WorkflowParticipantGuard,
-    CsrfProtectionGuard,
-  )
+  @Route(routes.export)
   public async export(
     @Req() request: WorkflowAuthoringRequest,
-    @Param() params: unknown,
+    @In() { params }: RouteInput<typeof routes.export>,
     @Body() body: unknown,
     @Res({ passthrough: true }) response: WorkflowResponse,
   ) {
-    const route = workflowIdParamSchema.parse(params);
-    privateResponse(response);
+    const route = params;
     const result = await withRequestOperationSignal(request, (signal) =>
       this.exportWorkflow.execute({
         ...projectAuthenticatedWorkspaceContext(request, route.workspaceId),
@@ -87,22 +66,14 @@ export class WorkflowPortabilityController {
     return result;
   }
 
-  @Post('import/preview')
-  @HttpCode(200)
-  @RateLimit('workflow_compile')
-  @UseGuards(
-    AutomationAuthenticationGuard,
-    WorkflowCreateGuard,
-    CsrfProtectionGuard,
-  )
+  @Route(routes.preview)
   public preview(
     @Req() request: WorkflowAuthoringRequest,
-    @Param() params: unknown,
+    @In() { params }: RouteInput<typeof routes.preview>,
     @Body() body: unknown,
     @Res({ passthrough: true }) response: WorkflowResponse,
   ) {
-    const { workspaceId } = workspaceParams.parse(params);
-    privateResponse(response);
+    const { workspaceId } = params;
     return withRequestOperationSignal(request, (signal) =>
       this.previewImport.execute({
         ...projectAuthenticatedWorkspaceContext(request, workspaceId),
@@ -113,28 +84,20 @@ export class WorkflowPortabilityController {
     );
   }
 
-  @Post('import')
-  @HttpCode(201)
-  @RateLimit('workflow_compile')
-  @UseGuards(
-    AutomationAuthenticationGuard,
-    WorkflowCreateGuard,
-    CsrfProtectionGuard,
-  )
+  @Route(routes.import)
   public async import(
     @Req() request: WorkflowAuthoringRequest,
-    @Param() params: unknown,
+    @In() { params, idempotencyKey }: RouteInput<typeof routes.import>,
     @Body() body: unknown,
     @Res({ passthrough: true }) response: WorkflowResponse,
   ) {
-    const { workspaceId } = workspaceParams.parse(params);
-    privateResponse(response);
+    const { workspaceId } = params;
     const result = await withRequestOperationSignal(request, (signal) =>
       this.importWorkflow.execute({
         ...projectAuthenticatedWorkspaceContext(request, workspaceId),
         routeWorkspaceId: workspaceId,
         request: body,
-        idempotencyKey: requestIdempotencyKey(request.headers),
+        idempotencyKey: idempotencyKey,
         signal,
       }),
     );
@@ -144,7 +107,4 @@ export class WorkflowPortabilityController {
     );
     return result;
   }
-}
-function privateResponse(response: WorkflowResponse): void {
-  response.header('Cache-Control', 'private, no-store');
 }
