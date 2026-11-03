@@ -48,16 +48,10 @@ describe.runIf(betterAuthIntegrationEnabled)(
     beforeAll(async () => {
       const { startStack } = await import('./stack.js');
       const coordinator = new Redis(process.env.REDIS_URL ?? '');
-      const owner = randomUUID(),
-        reserved: string[] = [];
       try {
-        for (const database of [5, 6, 7, 8]) {
-          const key = redisStackLeaseKey(database);
-          if ((await coordinator.set(key, owner, 'EX', 120, 'NX')) === 'OK')
-            reserved.push(key);
-        }
         stack = await startStack({
           environment: { AUTH_SIGN_UP_MODE: 'open' },
+          redisDatabase: 9,
         });
         const {
           rows: [database],
@@ -68,13 +62,6 @@ describe.runIf(betterAuthIntegrationEnabled)(
           database?.name,
         );
       } finally {
-        for (const key of reserved)
-          await coordinator.eval(
-            "if redis.call('GET',KEYS[1])==ARGV[1] then return redis.call('DEL',KEYS[1]) end return 0",
-            1,
-            key,
-            owner,
-          );
         coordinator.disconnect();
       }
       await registerAccount(stack, VICTIM);

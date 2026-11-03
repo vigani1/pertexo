@@ -108,6 +108,7 @@ export type StackOptions = Readonly<{
   /** Replaces what the API and worker see; `undefined` removes a setting. */
   environment?: Readonly<Record<string, string | undefined>>;
   host?: string;
+  redisDatabase?: (typeof SECURITY_REDIS_DATABASES)[number];
 }>;
 
 export type Reply = Readonly<{
@@ -144,7 +145,9 @@ export async function startStack(options: StackOptions = {}) {
   const redis = await leaseRedisDatabase(
     redisUrl,
     name,
-    SECURITY_REDIS_DATABASES,
+    options.redisDatabase === undefined
+      ? SECURITY_REDIS_DATABASES
+      : [options.redisDatabase],
   );
   const port = options.port ?? (await freePort());
   const apiOrigin = `http://127.0.0.1:${String(port)}`;
