@@ -26,7 +26,7 @@ import {
   usageCapacityQueryOptions,
 } from '../data/usage.queries';
 import { accessLost } from '../model/usage-access';
-import { parseUsageSearch, type UsageSearch } from '../search.public';
+import { parseUsageSearch, type UsageSearch } from '../usage-search.public';
 
 const windows = {
   '1h': '1 hour',

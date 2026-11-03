@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { workflowLatestRunsQueryOptions } from '@/features/workflow-runs/queries.public';
+import { workflowLatestRunsQueryOptions } from '@/features/workflow-runs/workflow-runs-queries.public';
 import type { ApiClient } from '@/lib/api/client';
 import { RUN_STRIP_LENGTH, runTicks } from '../../model/run-strip';
 

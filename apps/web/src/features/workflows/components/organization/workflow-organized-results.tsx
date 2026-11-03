@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/react-router';
-import { promotionSearch } from '@/features/workflow-promotions/search.public';
+import { promotionSearch } from '@/features/workflow-promotions/workflow-promotions-search.public';
 import { XIcon } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import { PROMOTION_LIMITS } from '@pertexo/contracts';

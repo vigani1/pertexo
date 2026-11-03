@@ -1,19 +1,19 @@
-import { parseTaskSearch } from '@/features/pending-tasks/search.public';
+import { parseTaskSearch } from '@/features/pending-tasks/pending-tasks-search.public';
 import { createRoute, notFound, redirect } from '@tanstack/react-router';
 import { lazyRoute } from '@/components/patterns/app-update/lazy';
 import {
   type AccessibleWorkspace,
   workflowRunIdentifierSchema,
 } from '@pertexo/contracts';
-import { parseConnectionsSearch } from '@/features/connections/search.public';
-import { parseInboxSearch } from '@/features/inbox/search.public';
+import { parseConnectionsSearch } from '@/features/connections/connections-search.public';
+import { parseInboxSearch } from '@/features/inbox/inbox-search.public';
 import {
   filtersFromSearch,
   sanitizeRunSearch,
-} from '@/features/workflow-runs/search.public';
+} from '@/features/workflow-runs/workflow-runs-search.public';
 import { parseWorkflowListSearch } from '@/features/workflows/list-search.public';
 import { isWorkspaceOpenable } from '@/features/workspaces/availability.public';
-import { parseTeamSearch } from '@/features/workspaces/search.public';
+import { parseTeamSearch } from '@/features/workspaces/workspaces-search.public';
 import { pageTitle } from '../root/page-title';
 import {
   findWorkspace,
@@ -91,7 +91,7 @@ export const workflowsRoute = createRoute({
   loaderDeps: ({ search: { create: _create, ...list } }) => list,
   loader: async ({ context, deps }) => {
     const { workflowListQueryOptions } =
-      await import('@/features/workflows/queries.public');
+      await import('@/features/workflows/workflows-queries.public');
 
     const { apiClient, queryClient, user, workspace } = context;
     warmPrefetches(context, [
@@ -117,7 +117,7 @@ export const runsRoute = createRoute({
   loaderDeps: ({ search }) => filtersFromSearch(search),
   loader: async ({ context, deps }) => {
     const { runStatisticsQueryOptions, workflowRunsInfiniteQueryOptions } =
-      await import('@/features/workflow-runs/queries.public');
+      await import('@/features/workflow-runs/workflow-runs-queries.public');
 
     const { apiClient, queryClient, user, workspace } = context;
     if (!workspace.capabilities.includes('run:read')) return;
@@ -155,7 +155,7 @@ export const runDetailRoute = createRoute({
     Readonly<{ found: false }> | Readonly<{ found: true; run: RunCrumb }>
   > => {
     const { workflowRunQueryOptions } =
-      await import('@/features/workflow-runs/queries.public');
+      await import('@/features/workflow-runs/workflow-runs-queries.public');
 
     const { apiClient, queryClient, user, workspace } = context;
     const runId = workflowRunIdentifierSchema.safeParse(params.runId);
@@ -191,7 +191,7 @@ export const connectionsRoute = createRoute({
   validateSearch: (search) => parseConnectionsSearch(search),
   loader: async ({ context }) => {
     const { connectionsInfiniteQueryOptions } =
-      await import('@/features/connections/queries.public');
+      await import('@/features/connections/connections-queries.public');
 
     const { apiClient, queryClient, user, workspace } = context;
     if (!workspace.capabilities.includes('connection:read')) return;
@@ -219,7 +219,7 @@ export const inboxRoute = createRoute({
   }),
   loader: async ({ context, deps }) => {
     const { inboxSummaryQueryOptions, inboxThreadsInfiniteQueryOptions } =
-      await import('@/features/inbox/queries.public');
+      await import('@/features/inbox/inbox-queries.public');
 
     const { apiClient, queryClient, user, workspace } = context;
     if (!workspace.capabilities.includes('workspace:read')) return;
@@ -251,7 +251,7 @@ export const teamRoute = createRoute({
   validateSearch: (search) => parseTeamSearch(search),
   loader: async ({ context }) => {
     const { workspaceMembersInfiniteQueryOptions } =
-      await import('@/features/workspaces/queries.public');
+      await import('@/features/workspaces/workspaces-queries.public');
 
     const { apiClient, queryClient, user, workspace } = context;
     if (!workspace.capabilities.includes('member:read')) return;

@@ -25,10 +25,10 @@ export const homeRoute = createRoute({
       },
       { recentWorkflowsQueryOptions, workflowsInfiniteQueryOptions },
     ] = await Promise.all([
-      import('@/features/connections/queries.public'),
-      import('@/features/failure-notifications/queries.public'),
-      import('@/features/workflow-runs/queries.public'),
-      import('@/features/workflows/queries.public'),
+      import('@/features/connections/connections-queries.public'),
+      import('@/features/failure-notifications/failure-notifications-queries.public'),
+      import('@/features/workflow-runs/workflow-runs-queries.public'),
+      import('@/features/workflows/workflows-queries.public'),
     ]);
 
     const { apiClient, queryClient, user, workspace } = context;

@@ -1,5 +1,5 @@
-import { inboxKeys } from '@/features/inbox/queries.public';
-import { workflowKeys } from '@/features/workflows/queries.public';
+import { inboxKeys } from '@/features/inbox/inbox-queries.public';
+import { workflowKeys } from '@/features/workflows/workflows-queries.public';
 import { workflowPublishKeys } from '../../data/workflow-publish.queries';
 import { useId } from 'react';
 import { useQueryClient } from '@tanstack/react-query';

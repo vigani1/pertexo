@@ -7,8 +7,8 @@ import type {
 import { useSuspenseQuery } from '@tanstack/react-query';
 import { ReactFlowProvider } from '@xyflow/react';
 import type { ReactNode } from 'react';
-import { authoringCatalogQueryOptions } from '@/features/catalog/queries.public';
-import { editorConnectionsQueryOptions } from '@/features/connections/queries.public';
+import { authoringCatalogQueryOptions } from '@/features/catalog/catalog-queries.public';
+import { editorConnectionsQueryOptions } from '@/features/connections/connections-queries.public';
 import type { ApiClient } from '@/lib/api/client';
 import { EditorProvider } from '../model/state/provider';
 import { workflowDraftQueryOptions } from '../data/workflow-editor.queries';

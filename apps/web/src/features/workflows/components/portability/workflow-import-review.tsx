@@ -21,7 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { connectionDiscoveryQueryOptions } from '@/features/connections/queries.public';
+import { connectionDiscoveryQueryOptions } from '@/features/connections/connections-queries.public';
 import type { ApiClient } from '@/lib/api/client';
 import {
   describeConnectionRequirement,

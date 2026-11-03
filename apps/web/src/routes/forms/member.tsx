@@ -1,6 +1,6 @@
 import { useParams } from '@tanstack/react-router';
 import { FormPage } from '@/features/forms/pages.public';
-import { memberFormScope } from '@/features/forms/queries.public';
+import { memberFormScope } from '@/features/forms/forms-queries.public';
 import { useWorkspaceScope } from '../workspace/shell/use-workspace-scope';
 export function MemberFormRoute() {
   const { apiClient, user, workspace } = useWorkspaceScope();

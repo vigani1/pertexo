@@ -21,7 +21,7 @@ import { UnavailablePage } from '@/components/patterns/states/unavailable-page';
 import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/ui/notice';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
-import { connectionDiscoveryQueryOptions } from '@/features/connections/queries.public';
+import { connectionDiscoveryQueryOptions } from '@/features/connections/connections-queries.public';
 import type { ApiClient } from '@/lib/api/client';
 import { isForbidden, isNotFound } from '@/lib/api/error-copy';
 import { isApiError } from '@/lib/api/error';

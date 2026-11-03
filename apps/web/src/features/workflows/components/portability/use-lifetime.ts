@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { assertSessionIdentity } from '@/features/auth/session/identity.public';
 import { subscribeSessionChanges } from '@/features/auth/session/sync.public';
-import { getAllAccessibleWorkspaces } from '@/features/workspaces/queries.public';
+import { getAllAccessibleWorkspaces } from '@/features/workspaces/workspaces-queries.public';
 import { watchWorkspaceReadDenial } from '@/lib/api/read-denial';
 import type { ApiClient } from '@/lib/api/client';
 import { isDuplicateAccessLoss } from '../../model/duplicate/access-loss';

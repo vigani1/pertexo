@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { tablesQuery } from '@/features/data-tables/picker.public';
-import { taskQueryOptions } from '@/features/pending-tasks/queries.public';
+import { taskQueryOptions } from '@/features/pending-tasks/pending-tasks-queries.public';
 import type { NameScope } from './breadcrumbs';
 
 /** A request named by its title, from the read its page already makes. */

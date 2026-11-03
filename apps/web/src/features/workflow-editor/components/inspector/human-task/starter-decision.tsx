@@ -5,7 +5,7 @@ import type { TaskAudience } from '@pertexo/workflow-model';
 import {
   audienceInspectionQueryOptions,
   type TaskScope,
-} from '@/features/pending-tasks/queries.public';
+} from '@/features/pending-tasks/pending-tasks-queries.public';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Field, FieldLabel, FieldDescription } from '@/components/ui/field';
 import { Notice } from '@/components/ui/notice';

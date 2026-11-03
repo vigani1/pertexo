@@ -1,5 +1,5 @@
 import { useQueries } from '@tanstack/react-query';
-import { slackChannelNamesQueryOptions } from '@/features/connections/queries.public';
+import { slackChannelNamesQueryOptions } from '@/features/connections/connections-queries.public';
 import type { ApiClient } from '@/lib/api/client';
 import {
   channelLookups,

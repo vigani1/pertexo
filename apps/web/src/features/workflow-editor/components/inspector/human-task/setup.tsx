@@ -6,7 +6,7 @@ import {
   FormAccessControl,
   FormEventHistory,
 } from '@/features/forms/sharing.public';
-import type { MemberFormScope } from '@/features/forms/queries.public';
+import type { MemberFormScope } from '@/features/forms/forms-queries.public';
 import {
   approvalConfigSchema,
   inputRequestConfigSchema,

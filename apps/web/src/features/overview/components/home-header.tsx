@@ -12,7 +12,7 @@ import { buttonVariants } from '@/components/ui/button-variants';
 import { Kbd } from '@/components/ui/kbd';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { LiveRunCounts, RunCount } from '@/features/workflow-runs/loom.public';
-import type { RunStatistics } from '@/features/workflow-runs/queries.public';
+import type { RunStatistics } from '@/features/workflow-runs/workflow-runs-queries.public';
 import { formatShortTime } from '@/lib/format/time';
 import { shortcut } from '@/lib/shortcut-keys';
 

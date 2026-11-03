@@ -4,7 +4,7 @@ import type {
 } from '@pertexo/contracts';
 import { useRef, useState } from 'react';
 import { useQueryClient, type QueryClient } from '@tanstack/react-query';
-import { workflowKeys } from '@/features/workflows/queries.public';
+import { workflowKeys } from '@/features/workflows/workflows-queries.public';
 import type { ApiClient } from '@/lib/api/client';
 import {
   RETRY_WINDOW_ENDED,

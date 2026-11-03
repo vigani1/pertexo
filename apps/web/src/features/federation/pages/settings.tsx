@@ -1,5 +1,5 @@
 import { QueryView } from '@/components/patterns/states/query-view';
-import type { FederationSection } from '../search.public';
+import type { FederationSection } from '../federation-search.public';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import type {

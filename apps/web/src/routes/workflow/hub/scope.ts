@@ -1,6 +1,6 @@
 import { workflowWorkspaceAccess } from '@/features/workflows/access.public';
 import { useQuery } from '@tanstack/react-query';
-import { workflowSummaryQueryOptions } from '@/features/workflows/queries.public';
+import { workflowSummaryQueryOptions } from '@/features/workflows/workflows-queries.public';
 import { useRouteContext } from '@tanstack/react-router';
 
 /**

@@ -1,7 +1,7 @@
 import { createRoute } from '@tanstack/react-router';
 import { lazyRoute } from '@/components/patterns/app-update/lazy';
 import { publicFormParamsSchema } from '@pertexo/contracts';
-import { publicFormScope } from '@/features/forms/queries.public';
+import { publicFormScope } from '@/features/forms/forms-queries.public';
 import { rootRoute } from '../root/route';
 export const publicFormRoute = createRoute({
   getParentRoute: () => rootRoute,

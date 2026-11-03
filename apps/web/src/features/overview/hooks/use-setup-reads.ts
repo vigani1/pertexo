@@ -1,7 +1,7 @@
 import type { AccessibleWorkspace } from '@pertexo/contracts';
 import { useQuery } from '@tanstack/react-query';
-import { connectionDiscoveryQueryOptions } from '@/features/connections/queries.public';
-import { failureNotificationDestinationsQueryOptions } from '@/features/failure-notifications/queries.public';
+import { connectionDiscoveryQueryOptions } from '@/features/connections/connections-queries.public';
+import { failureNotificationDestinationsQueryOptions } from '@/features/failure-notifications/failure-notifications-queries.public';
 import type { ApiClient } from '@/lib/api/client';
 
 /**

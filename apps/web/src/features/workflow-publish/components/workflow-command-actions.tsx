@@ -1,14 +1,14 @@
 import { PublicationControls } from './publication/controls';
 import type { ReactNode } from 'react';
 import { useNavigate } from '@tanstack/react-router';
-import { workflowRunVersionQueryOptions } from '@/features/workflow-runs/queries.public';
+import { workflowRunVersionQueryOptions } from '@/features/workflow-runs/workflow-runs-queries.public';
 import type {
   AccessibleWorkspace,
   WorkflowGraphContract,
   WorkflowSummary,
 } from '@pertexo/contracts';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { workflowSummaryQueryOptions } from '@/features/workflows/queries.public';
+import { workflowSummaryQueryOptions } from '@/features/workflows/workflows-queries.public';
 import { useState } from 'react';
 import type { ApiClient } from '@/lib/api/client';
 import { IssuesChip } from './validation/issues-chip';

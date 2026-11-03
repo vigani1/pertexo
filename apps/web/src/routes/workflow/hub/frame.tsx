@@ -8,7 +8,7 @@ import {
   WorkflowHubBar,
   type WorkflowHubTab,
 } from '@/features/workflows/hub.public';
-import { workflowSummaryQueryOptions } from '@/features/workflows/queries.public';
+import { workflowSummaryQueryOptions } from '@/features/workflows/workflows-queries.public';
 import { WorkflowPausedBanner } from '@/features/workflow-settings/auto-pause.public';
 import { useWorkflowHubScope } from './scope';
 

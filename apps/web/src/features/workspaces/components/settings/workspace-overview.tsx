@@ -15,10 +15,10 @@ import {
   needsReconnecting,
   PROVIDERS,
 } from '@/features/connections/provider.public';
-import { connectionsInfiniteQueryOptions } from '@/features/connections/queries.public';
-import { failureNotificationDestinationsQueryOptions } from '@/features/failure-notifications/queries.public';
+import { connectionsInfiniteQueryOptions } from '@/features/connections/connections-queries.public';
+import { failureNotificationDestinationsQueryOptions } from '@/features/failure-notifications/failure-notifications-queries.public';
 import { countWorkflowStates } from '@/features/workflows/counts.public';
-import { workflowsInfiniteQueryOptions } from '@/features/workflows/queries.public';
+import { workflowsInfiniteQueryOptions } from '@/features/workflows/workflows-queries.public';
 import type { ApiClient } from '@/lib/api/client';
 import { ROLE_NAMES, WORKSPACE_ROLES } from '../../model/workspace-roles';
 import { workspaceMembersInfiniteQueryOptions } from '../../data/workspaces.queries';

@@ -6,7 +6,7 @@ import { Disclosure } from '@/components/ui/disclosure';
 import { Status } from '@/components/ui/status';
 import { JsonTree } from '@/components/patterns/code/json-tree';
 import { describeNodeStatus } from '@/features/workflow-runs/labels.public';
-import { nodeRunOutputQueryOptions } from '@/features/workflow-runs/queries.public';
+import { nodeRunOutputQueryOptions } from '@/features/workflow-runs/workflow-runs-queries.public';
 import { workflowTestStepLabels } from '../../model/testing/workflow';
 import { PinRecordedOutputButton } from '../samples/controls';
 import type { WorkflowTests } from '../../hooks/use-workflow-tests';
