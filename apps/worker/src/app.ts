@@ -1,3 +1,4 @@
+import { reportUnavailableMailKey } from './mail/report-unavailable-mail-key.js';
 import { verifyWorkerCallbacks } from './runtime/startup/verify-callbacks.js';
 import type { createCallbackStore } from '@pertexo/core/runs';
 import { verifyWorkerEncryption } from './runtime/startup/verify-encryption.js';
@@ -68,11 +69,7 @@ export async function createWorkerApplication(
       config,
       factories.encryptionKeysRepository,
       (version) => {
-        dependencies.logger.warn('system_mail.key_unavailable', {
-          keyVersion: version,
-          instruction:
-            'Restore this version in AUTH_MAIL_PREVIOUS_KEYS and restart the worker. Affected mail waits encrypted; workflows continue.',
-        });
+        reportUnavailableMailKey(dependencies.logger, version);
       },
     );
     await verifyWorkerCallbacks(config, factories.callbackStore);
