@@ -92,7 +92,7 @@
     "@pertexo/secrets": "workspace:*",
     "@pertexo/workflow-engine": "workspace:*",
     "@pertexo/workflow-model": "workspace:*",
-    "cron-parser": "5.10.2",
+    "cron-parser": "5.10.3",
     "drizzle-orm": "0.45.4",
     "scimmy": "1.3.5",
     "uuid": "13.0.2",
