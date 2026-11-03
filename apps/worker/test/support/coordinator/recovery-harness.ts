@@ -9,8 +9,8 @@ import {
 } from '@pertexo/queue';
 import { Queue } from 'bullmq';
 
-import { createCoordinatorRuntime } from '../../../src/runs/runtime.js';
-import type { createNodeAttemptRuntime } from '../../../src/attempts/delivery/runtime.js';
+import { createCoordinatorRuntime } from '../../../src/runs/coordinator.runtime.js';
+import type { createNodeAttemptRuntime } from '../../../src/attempts/delivery/node-attempt.runtime.js';
 import { coordinatorFixture } from './consumer.js';
 
 const {

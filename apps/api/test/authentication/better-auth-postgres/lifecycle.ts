@@ -4,7 +4,7 @@ import { Pool } from 'pg';
 import {
   createBetterAuthRuntime,
   type BetterAuthRuntime,
-} from '../../../src/authentication/better-auth/runtime.js';
+} from '../../../src/authentication/better-auth/better-auth.runtime.js';
 
 import { adminUrl, databaseName, migrationUrl, apiUrl } from './environment.js';
 import { mail } from './mail.js';

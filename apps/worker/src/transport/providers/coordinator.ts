@@ -5,7 +5,7 @@ import type { WorkerConfig } from '../../config/worker.js';
 import {
   createCoordinatorRuntime,
   type CoordinatorRuntime,
-} from '../../runs/runtime.js';
+} from '../../runs/coordinator.runtime.js';
 import {
   COORDINATOR_RUNTIME,
   QUEUE_CONSUMER_OBSERVER,

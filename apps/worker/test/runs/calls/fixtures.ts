@@ -15,10 +15,10 @@ import type {
   CallableDeclaration,
 } from '@pertexo/workflow-model';
 import { vi } from 'vitest';
-import { createCoordinatorRuntime } from '../../../src/runs/runtime.js';
-import type { createNodeAttemptRuntime } from '../../../src/attempts/delivery/runtime.js';
+import { createCoordinatorRuntime } from '../../../src/runs/coordinator.runtime.js';
+import type { createNodeAttemptRuntime } from '../../../src/attempts/delivery/node-attempt.runtime.js';
 import { WorkerDrainState } from '../../../src/runtime/shutdown/drain-state.js';
-import { OutboxDispatcher } from '../../../src/transport/outbox/dispatch/runtime.js';
+import { OutboxDispatcher } from '../../../src/transport/outbox/dispatch/outbox-dispatcher.runtime.js';
 import { coordinatorFixture } from '../../support/coordinator/consumer.js';
 import { insertCompiledWorkflow } from '../../support/coordinator/workflows.js';
 import { acceptManualFixtureRun } from '../../support/attempts/manual-start.js';

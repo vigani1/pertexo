@@ -7,9 +7,9 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { parseWorkerConfig } from '../../src/config/worker.js';
 import { WORKSPACE_INBOX_RUNTIME } from '../../src/notifications/inbox-runtime.js';
-import { SYSTEM_MAIL_RUNTIME } from '../../src/mail/runtime.js';
+import { SYSTEM_MAIL_RUNTIME } from '../../src/mail/system-mail.runtime.js';
 import { configuredRetentionRuntime } from '../../src/retention/composition.js';
-import { RETENTION_RUNTIME } from '../../src/retention/runtime.js';
+import { RETENTION_RUNTIME } from '../../src/retention/retention.runtime.js';
 import {
   configuredStalledWorkRuntime,
   STALLED_WORK_RUNTIME,

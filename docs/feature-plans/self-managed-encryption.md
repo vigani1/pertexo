@@ -32,7 +32,7 @@ image publishing and the owner-assisted beta launch are separate work.
 | `packages/integrations/src/crypto/envelope-cipher.ts` | One AES-256-GCM credential cipher with a key-provider interface. Keep it. |
 | `packages/integrations/src/security/application-secret-envelope.ts` | Wraps with a current key and opens with current or previous keys. It already stores `keyVersion`; duplicate versions currently overwrite in a `Map` and must be rejected. |
 | `packages/integrations/src/credentials/local-key-provider.ts` | Uses the shared helper, but passes one key and the fixed reference/version `local:development`. Versioned configuration belongs here, not in each consumer. |
-| `packages/integrations/src/credentials/runtime.ts` | Shared API/worker parser rejects local mode when deployed and rejects mixed settings. Keep the single parser and fail-closed behavior. |
+| `packages/integrations/src/credentials/connection-encryption.runtime.ts` | Shared API/worker parser rejects local mode when deployed and rejects mixed settings. Keep the single parser and fail-closed behavior. |
 | `packages/integrations/src/webhooks/crypto.ts` | Already uses the same local provider and connection encryption configuration. Webhooks must receive the same improvement. |
 | API identity config and worker `config/application-key-ring.ts` | Both parse previous-key JSON independently. Consolidate the relevant key-ring rules in integrations; preserve mail and invitation variable names and behavior. |
 | `packages/database/migrations/0000_baseline.sql` | Both secret tables grant existing maintenance-role SELECT and cross-workspace policies. The API cannot directly SELECT webhook secrets; broad API verification would require authority it does not have. |

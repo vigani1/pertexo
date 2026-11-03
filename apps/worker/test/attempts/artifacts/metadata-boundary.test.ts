@@ -1,6 +1,6 @@
 import { Readable } from 'node:stream';
 import { describe, expect, it, vi } from 'vitest';
-import { createNodeArtifactRuntimeFactory } from '../../../src/attempts/artifacts/runtime.js';
+import { createNodeArtifactRuntimeFactory } from '../../../src/attempts/artifacts/node-artifact.runtime.js';
 import { artifactWriteMetadataSchema } from '../../../src/attempts/artifacts/policy.js';
 
 describe('executor artifact metadata boundary', () => {

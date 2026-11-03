@@ -28,7 +28,7 @@ import {
   SYSTEM_MAIL_RUNTIME,
   createSystemMailRuntime,
   type SystemMailRuntime,
-} from './mail/runtime.js';
+} from './mail/system-mail.runtime.js';
 import {
   createWorkspaceInboxRuntime,
   WORKSPACE_INBOX_RUNTIME,
@@ -48,7 +48,7 @@ import { configuredRetentionRuntime } from './retention/composition.js';
 import {
   RETENTION_RUNTIME,
   type RetentionRuntime,
-} from './retention/runtime.js';
+} from './retention/retention.runtime.js';
 import {
   configuredStalledWorkRuntime,
   STALLED_WORK_RUNTIME,
@@ -67,10 +67,10 @@ import {
   NODE_ATTEMPT_RUNTIME,
   TRIGGER_RUNTIME,
 } from './transport/tokens.js';
-import type { NodeAttemptRuntime } from './attempts/delivery/runtime.js';
-import type { MaintenanceRuntime } from './maintenance/runtime.js';
-import type { CoordinatorRuntime } from './runs/runtime.js';
-import type { TriggerRuntime } from './triggers/runtime.js';
+import type { NodeAttemptRuntime } from './attempts/delivery/node-attempt.runtime.js';
+import type { MaintenanceRuntime } from './maintenance/maintenance.runtime.js';
+import type { CoordinatorRuntime } from './runs/coordinator.runtime.js';
+import type { TriggerRuntime } from './triggers/trigger.runtime.js';
 import { OutboxDispatcherLifecycle } from './transport/lifecycle.js';
 
 export type WorkerModuleDependencies = Readonly<{

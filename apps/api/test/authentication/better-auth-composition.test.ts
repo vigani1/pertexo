@@ -6,7 +6,7 @@ import {
   type AuthenticationMail,
   type BetterAuthRuntime,
 } from '../../src/authentication/index.js';
-import type { BetterAuthRuntimeConfig } from '../../src/authentication/better-auth/runtime.js';
+import type { BetterAuthRuntimeConfig } from '../../src/authentication/better-auth/better-auth.runtime.js';
 import type * as IdentityInfrastructure from '../../src/authentication/index.js';
 import type { ApiIdentityConfig } from '../../src/platform/config/identity.js';
 import { composeBetterAuthRuntime } from '../../src/platform/identity/better-auth-composition.js';

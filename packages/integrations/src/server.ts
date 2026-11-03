@@ -151,12 +151,12 @@ export type {
 export {
   createConnectionEnvelopeEncryption,
   parseConnectionEncryptionConfig,
-} from './credentials/runtime.js';
+} from './credentials/connection-encryption.runtime.js';
 export type {
   ConnectionEnvelopeEncryptionConfig,
   ConnectionEnvelopeEncryptionRuntime,
   SelfManagedConnectionEncryptionConfig,
-} from './credentials/runtime.js';
+} from './credentials/connection-encryption.runtime.js';
 
 export {
   applicationKeyVersionSchema,

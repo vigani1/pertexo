@@ -1,8 +1,8 @@
 import { createPreviewAttemptRunStore } from '@pertexo/core/previews';
 import type { DatabaseConfig } from '@pertexo/database/testing';
 import { createPlatformNodeRegistry } from '@pertexo/node-catalog/server';
-import type { NodeAttemptRuntimeOptions } from '../../../src/attempts/delivery/runtime.js';
-import { createPlatformPreviewNodeInvoker } from '../../../src/previews/runtime.js';
+import type { NodeAttemptRuntimeOptions } from '../../../src/attempts/delivery/node-attempt.runtime.js';
+import { createPlatformPreviewNodeInvoker } from '../../../src/previews/preview-invoker.runtime.js';
 
 /** The shared attempt runtime takes ownership of these existing preview ports. */
 export async function createEditorPreview(

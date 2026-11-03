@@ -5,8 +5,8 @@ import {
 import { createQueueProducer, JOB_NAME } from '@pertexo/queue';
 
 import { WorkerDrainState } from '../../../../src/runtime/shutdown/drain-state.js';
-import { createCoordinatorRuntime } from '../../../../src/runs/runtime.js';
-import { OutboxDispatcher } from '../../../../src/transport/outbox/dispatch/runtime.js';
+import { createCoordinatorRuntime } from '../../../../src/runs/coordinator.runtime.js';
+import { OutboxDispatcher } from '../../../../src/transport/outbox/dispatch/outbox-dispatcher.runtime.js';
 import { createBenchmarkScanGate } from '../../../support/infrastructure/benchmark-scan-gate.js';
 import {
   dispatcherConfig,

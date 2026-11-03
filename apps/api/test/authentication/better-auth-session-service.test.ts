@@ -1,7 +1,7 @@
 import { APIError } from 'better-auth/api';
 import { describe, expect, it, vi } from 'vitest';
 
-import type { BetterAuthRuntime } from '../../src/authentication/better-auth/runtime.js';
+import type { BetterAuthRuntime } from '../../src/authentication/better-auth/better-auth.runtime.js';
 import { BetterAuthSessionService } from '../../src/authentication/better-auth/session-service.js';
 import { IdentityError } from '../../src/identity/identity.errors.js';
 

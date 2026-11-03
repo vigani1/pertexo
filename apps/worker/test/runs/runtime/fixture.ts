@@ -1,7 +1,7 @@
 import type { QueueConsumer } from '@pertexo/queue';
 import { vi } from 'vitest';
 import type { TestCoordinatorServices } from '../../support/runtime-factories.js';
-import type { CoordinatorRuntimeOptions } from '../../../src/runs/runtime.js';
+import type { CoordinatorRuntimeOptions } from '../../../src/runs/coordinator.runtime.js';
 
 export const WORKSPACE_ID = '11111111-1111-4111-8111-111111111111';
 

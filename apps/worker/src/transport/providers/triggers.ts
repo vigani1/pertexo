@@ -5,7 +5,7 @@ import type { WorkerConfig } from '../../config/worker.js';
 import {
   createTriggerRuntime,
   type TriggerRuntime,
-} from '../../triggers/runtime.js';
+} from '../../triggers/trigger.runtime.js';
 import {
   QUEUE_CONSUMER_OBSERVER,
   TRIGGER_RUNTIME,

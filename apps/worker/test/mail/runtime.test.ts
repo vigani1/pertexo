@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { createSystemMailRuntime } from '../../src/mail/runtime.js';
+import { createSystemMailRuntime } from '../../src/mail/system-mail.runtime.js';
 
 function store(close = vi.fn(() => Promise.resolve())) {
   return { claim: vi.fn(), settle: vi.fn(), close };

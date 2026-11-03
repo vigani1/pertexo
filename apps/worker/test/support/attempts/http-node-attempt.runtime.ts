@@ -19,7 +19,7 @@ import { createQueueProducer, QUEUE_NAME } from '@pertexo/queue';
 
 import { Queue } from 'bullmq';
 
-import { createCoordinatorRuntime } from '../../../src/runs/runtime.js';
+import { createCoordinatorRuntime } from '../../../src/runs/coordinator.runtime.js';
 
 import { createWorkerNodeRuntimeCapabilities } from '../../../src/attempts/execution/runtime-capabilities.js';
 import {

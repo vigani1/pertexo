@@ -10,7 +10,10 @@ import type { StructuredLogger } from '@pertexo/observability';
 
 import type { WorkerConfig } from '../config/worker.js';
 import { createRetentionMetrics } from './metrics.js';
-import { createRetentionRuntime, type RetentionRuntime } from './runtime.js';
+import {
+  createRetentionRuntime,
+  type RetentionRuntime,
+} from './retention.runtime.js';
 
 /**
  * The wait once nothing is left. Nobody waits on this work: windows are days long,

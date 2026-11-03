@@ -4,12 +4,15 @@ export {
   parseMaintenanceDatabaseConfig,
   parseOperatorDatabaseConfig,
 } from '../config.js';
-export { acquireDatabasePool, createDatabaseRuntime } from './pool/runtime.js';
+export {
+  acquireDatabasePool,
+  createDatabaseRuntime,
+} from './pool/database-pool.runtime.js';
 export { surviveConnectionLoss } from './pool/connection-loss.js';
 export type {
   DatabaseRuntime,
   DatabaseRuntimeOptions,
-} from './pool/runtime.js';
+} from './pool/database-pool.runtime.js';
 export { generatePersistedId } from './persisted-id.js';
 export { isTransientDatabaseFailure } from './query-errors.js';
 export { decodeStoredValue, isStoredDataError } from './stored-values.js';

@@ -9,8 +9,8 @@ import {
 import { expect, vi } from 'vitest';
 import { WorkerDrainState } from '../../../../src/runtime/shutdown/drain-state.js';
 
-import { createTriggerRuntime } from '../../../../src/triggers/runtime.js';
-import { OutboxDispatcher } from '../../../../src/transport/outbox/dispatch/runtime.js';
+import { createTriggerRuntime } from '../../../../src/triggers/trigger.runtime.js';
+import { OutboxDispatcher } from '../../../../src/transport/outbox/dispatch/outbox-dispatcher.runtime.js';
 
 import {
   actorId,

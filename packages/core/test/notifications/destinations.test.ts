@@ -6,9 +6,12 @@ const tenantState = vi.hoisted<{ client: PoolClient | undefined }>(() => ({
   client: undefined,
 }));
 
-vi.mock('../../../database/dist/platform/pool/runtime.js', () => ({
-  acquireDatabasePool: () => ({ close, pool: {} }),
-}));
+vi.mock(
+  '../../../database/dist/platform/pool/database-pool.runtime.js',
+  () => ({
+    acquireDatabasePool: () => ({ close, pool: {} }),
+  }),
+);
 
 vi.mock('../../../database/dist/tenant-access/transactions.js', () => ({
   withTenantScopedClient: async (

@@ -2,7 +2,7 @@ import { Readable } from 'node:stream';
 import { finished } from 'node:stream/promises';
 import { randomUUID } from 'node:crypto';
 import { describe, expect, it, vi } from 'vitest';
-import { createConnectionEnvelopeEncryption } from '../../src/credentials/runtime.js';
+import { createConnectionEnvelopeEncryption } from '../../src/credentials/connection-encryption.runtime.js';
 import { createWebhookTriggerEnvelopeEncryption } from '../../src/webhooks/crypto.js';
 import { SelfManagedEnvelopeKeyProvider } from '../../src/credentials/self-managed-key-provider.js';
 import {

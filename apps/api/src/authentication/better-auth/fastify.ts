@@ -21,7 +21,7 @@ import {
   type RateLimitMetricRecorder,
 } from '../../platform/rate-limit/admission.js';
 import { createRateLimitMetricRecorder } from '../../platform/rate-limit/metrics.js';
-import type { BetterAuthRuntime } from './runtime.js';
+import type { BetterAuthRuntime } from './better-auth.runtime.js';
 import { isProviderFormCallback } from '../journeys/form-callback.js';
 import { TWO_FACTOR_VERIFICATION_PATHS } from './two-factor.js';
 import { sendProblem, normalizedNativeError } from './transport/problems.js';

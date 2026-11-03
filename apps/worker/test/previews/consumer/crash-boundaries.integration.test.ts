@@ -7,8 +7,8 @@ import { createQueueProducer, JOB_NAME, parseQueueJob } from '@pertexo/queue';
 import { Queue } from 'bullmq';
 import { Redis } from 'ioredis';
 import { expect, it } from 'vitest';
-import { createNodeAttemptRuntime } from '../../../src/attempts/delivery/runtime.js';
-import { createMaintenanceRuntime } from '../../../src/maintenance/runtime.js';
+import { createNodeAttemptRuntime } from '../../../src/attempts/delivery/node-attempt.runtime.js';
+import { createMaintenanceRuntime } from '../../../src/maintenance/maintenance.runtime.js';
 import {
   databaseUrl,
   dispatcherUrl,

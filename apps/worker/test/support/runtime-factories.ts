@@ -6,14 +6,14 @@ import {
   createNodeAttemptRuntime,
   type NodeAttemptRuntimeFactories,
   type NodeAttemptRuntimeOptions,
-} from '../../src/attempts/delivery/runtime.js';
+} from '../../src/attempts/delivery/node-attempt.runtime.js';
 import { unknownOutcomeReconciliationFactories } from '../../src/attempts/delivery/unknown-outcome-reconciliation.js';
 import type { NodeExecutionCapabilityFactories } from '../../src/attempts/execution/capabilities.js';
 import { connectionHealthObservationFactories } from '../../src/connections/health-runtime.js';
 import {
   createMaintenanceRuntime,
   type MaintenanceRuntimeFactories,
-} from '../../src/maintenance/runtime.js';
+} from '../../src/maintenance/maintenance.runtime.js';
 import { errorWorkflowFactories } from '../../src/notifications/error-workflow.js';
 import { failureNotificationFactories } from '../../src/notifications/failure-composition.js';
 import { operatorRunReplayFactories } from '../../src/operator/run-replay.js';
@@ -23,12 +23,12 @@ import {
   createCoordinatorRuntime,
   type CoordinatorCompositionFactories,
   type CoordinatorRuntimeOptions,
-} from '../../src/runs/runtime.js';
+} from '../../src/runs/coordinator.runtime.js';
 import {
   createTriggerRuntime,
   type TriggerCompositionFactories,
   type TriggerRuntimeOptions,
-} from '../../src/triggers/runtime.js';
+} from '../../src/triggers/trigger.runtime.js';
 
 type FactoryValue<Factory> = Factory extends (...args: never[]) => infer Result
   ? Awaited<Result>

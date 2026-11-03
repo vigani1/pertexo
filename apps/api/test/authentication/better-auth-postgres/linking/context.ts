@@ -1,4 +1,4 @@
-import { createBetterAuthRuntime } from '../../../../src/authentication/better-auth/runtime.js';
+import { createBetterAuthRuntime } from '../../../../src/authentication/better-auth/better-auth.runtime.js';
 import type { SocialProviderGateway } from '../../../../src/authentication/social-provider.types.js';
 
 import { apiUrl } from '../environment.js';

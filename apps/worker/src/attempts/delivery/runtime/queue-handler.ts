@@ -19,7 +19,7 @@ import {
 import {
   mapPreviewHandlerError,
   type PreviewAttemptHandler,
-} from '../../../previews/runtime.js';
+} from '../../../previews/preview-invoker.runtime.js';
 
 /** Shown on the run: its stored state can never produce this attempt. */
 const UNADVANCEABLE_RUN_CODE = 'execution.run_state_invalid';

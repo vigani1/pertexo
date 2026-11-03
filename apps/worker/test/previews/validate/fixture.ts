@@ -5,7 +5,7 @@ import { createPlatformNodeRegistry } from '@pertexo/node-catalog/server';
 
 import { describe, vi } from 'vitest';
 
-import { createPlatformPreviewNodeInvoker } from '../../../src/previews/runtime.js';
+import { createPlatformPreviewNodeInvoker } from '../../../src/previews/preview-invoker.runtime.js';
 import {
   databaseUrl,
   redisUrl,

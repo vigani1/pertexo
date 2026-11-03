@@ -3,7 +3,7 @@ import { parseDatabaseConfig } from '@pertexo/database/testing';
 import { createQueueProducer, JOB_NAME } from '@pertexo/queue';
 
 import { WorkerDrainState } from '../../../src/runtime/shutdown/drain-state.js';
-import { OutboxDispatcher } from '../../../src/transport/outbox/dispatch/runtime.js';
+import { OutboxDispatcher } from '../../../src/transport/outbox/dispatch/outbox-dispatcher.runtime.js';
 
 export function createTransportDispatchControls(
   context: Readonly<{ dispatcherUrl: string; redisUrl: string }>,

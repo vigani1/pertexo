@@ -1,5 +1,5 @@
 import { createEditorNotifications } from '../notifications/runtime.js';
-import { createMaintenanceRuntime } from '../../../../src/maintenance/runtime.js';
+import { createMaintenanceRuntime } from '../../../../src/maintenance/maintenance.runtime.js';
 
 import { parseDatabaseConfig } from '@pertexo/database/testing';
 

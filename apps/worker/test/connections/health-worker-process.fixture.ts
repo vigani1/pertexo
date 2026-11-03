@@ -12,10 +12,10 @@ import {
 } from '@pertexo/integrations/server';
 import { createEditorBrowserEnvelopeKeys } from '../../../../infrastructure/testing/editor-browser-envelope-keys.mjs';
 import { createConnectionHealthSlackTransport } from '../../../../infrastructure/testing/connection-health-slack-transport.mjs';
-import { createCoordinatorRuntime } from '../../src/runs/runtime.js';
+import { createCoordinatorRuntime } from '../../src/runs/coordinator.runtime.js';
 import { createWorkerNodeRuntimeCapabilities } from '../../src/attempts/execution/runtime-capabilities.js';
-import { createMaintenanceRuntime } from '../../src/maintenance/runtime.js';
-import { OutboxDispatcher } from '../../src/transport/outbox/dispatch/runtime.js';
+import { createMaintenanceRuntime } from '../../src/maintenance/maintenance.runtime.js';
+import { OutboxDispatcher } from '../../src/transport/outbox/dispatch/outbox-dispatcher.runtime.js';
 import { createRedisTestNamespace } from '../support/infrastructure/redis-test-namespace.js';
 
 import {

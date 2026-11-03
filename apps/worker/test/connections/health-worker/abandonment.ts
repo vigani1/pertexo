@@ -8,8 +8,8 @@ import { parseDatabaseConfig } from '@pertexo/database/testing';
 import { createQueueProducer, JOB_NAME } from '@pertexo/queue';
 import { createTransportMetrics } from '@pertexo/observability';
 
-import { createMaintenanceRuntime } from '../../../src/maintenance/runtime.js';
-import { OutboxDispatcher } from '../../../src/transport/outbox/dispatch/runtime.js';
+import { createMaintenanceRuntime } from '../../../src/maintenance/maintenance.runtime.js';
+import { OutboxDispatcher } from '../../../src/transport/outbox/dispatch/outbox-dispatcher.runtime.js';
 
 import { WorkerDrainState } from '../../../src/runtime/shutdown/drain-state.js';
 

@@ -6,8 +6,8 @@ import { parseStoredExecutionValue } from '@pertexo/core/runs';
 import { createPlatformNodeRegistry } from '@pertexo/node-catalog/server';
 import { describe, expect, it } from 'vitest';
 
-import { createNodeAttemptRuntime } from '../../../src/attempts/delivery/runtime.js';
-import { createPlatformPreviewNodeInvoker } from '../../../src/previews/runtime.js';
+import { createNodeAttemptRuntime } from '../../../src/attempts/delivery/node-attempt.runtime.js';
+import { createPlatformPreviewNodeInvoker } from '../../../src/previews/preview-invoker.runtime.js';
 import {
   acceptDelivery,
   databaseUrl,

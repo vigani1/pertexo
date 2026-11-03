@@ -13,7 +13,7 @@ import type { QueueProducer } from '@pertexo/queue';
 import { expect } from 'vitest';
 
 import type { WorkerDrainState } from '../../../../src/runtime/shutdown/drain-state.js';
-import { OutboxDispatcher } from '../../../../src/transport/outbox/dispatch/runtime.js';
+import { OutboxDispatcher } from '../../../../src/transport/outbox/dispatch/outbox-dispatcher.runtime.js';
 
 import { localApiUrl, localDispatcherUrl, redisUrl } from './environment.js';
 import type { OutboxProofState } from './contract.js';
