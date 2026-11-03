@@ -43,10 +43,10 @@ command; permanent rejection records failure. If the final acknowledgement is
 lost, or a worker crashes while a dispatch is unresolved, SMTP cannot promise
 deduplication. Pertexo leaves account mail `reconciliation_required` and
 invitation attempts `unknown`; it never blindly resends them. A person can
-request another account link. An unresolved invitation keeps the existing
-resend restriction until you've established what the relay did. Do not clear
-unknown records merely to enable resend; confirm acceptance or nonacceptance with
-the relay operator first. Today that means asking the relay and leaving the row:
+request another account link. An unconfirmed invitation shows “Delivery
+unconfirmed” and cannot resend its uncertain attempt. The workspace owner can
+revoke that invitation, invalidating its link, then create a new invitation to
+send another link. Do not clear unknown records to enable a blind resend;
 [operator commands](operator-commands.md) cover run attempts, not mail.
 
 To change transport, stop workers and establish outcomes for all unresolved
