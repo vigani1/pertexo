@@ -73,19 +73,31 @@ describe('accepted folder and general-bulk public contracts', () => {
     const operations = Object.entries(paths).flatMap(([path, methods]) =>
       Object.keys(methods).map((method) => `${method.toUpperCase()} ${path}`),
     );
-    expect(operations.slice(8)).toEqual([
-      'GET /v1/workspaces/{workspaceId}/workflow-folders',
-      'POST /v1/workspaces/{workspaceId}/workflow-folders',
-      'POST /v1/workspaces/{workspaceId}/workflow-folders/{folderId}/rename',
-      'POST /v1/workspaces/{workspaceId}/workflow-folders/{folderId}/move',
-      'GET /v1/workspaces/{workspaceId}/resource-sharing-principals',
-      'GET /v1/workspaces/{workspaceId}/workflow-folders/{folderId}/sharing',
-      'POST /v1/workspaces/{workspaceId}/workflow-folders/{folderId}/sharing',
-      'POST /v1/workspaces/{workspaceId}/workflow-folders/review-move',
-      'POST /v1/workspaces/{workspaceId}/workflow-folders/{folderId}/delete',
-      'POST /v1/workspaces/{workspaceId}/workflows/{workflowId}/folder',
-      'POST /v1/workspaces/{workspaceId}/workflows/organization/bulk',
-    ]);
+    expect(
+      operations
+        .filter(
+          (operation) =>
+            operation.includes('/workflow-folders') ||
+            operation.endsWith('/folder') ||
+            operation.endsWith('/organization/bulk') ||
+            operation.endsWith('/resource-sharing-principals'),
+        )
+        .toSorted(),
+    ).toEqual(
+      [
+        'GET /v1/workspaces/{workspaceId}/workflow-folders',
+        'POST /v1/workspaces/{workspaceId}/workflow-folders',
+        'POST /v1/workspaces/{workspaceId}/workflow-folders/{folderId}/rename',
+        'POST /v1/workspaces/{workspaceId}/workflow-folders/{folderId}/move',
+        'GET /v1/workspaces/{workspaceId}/resource-sharing-principals',
+        'GET /v1/workspaces/{workspaceId}/workflow-folders/{folderId}/sharing',
+        'POST /v1/workspaces/{workspaceId}/workflow-folders/{folderId}/sharing',
+        'POST /v1/workspaces/{workspaceId}/workflow-folders/review-move',
+        'POST /v1/workspaces/{workspaceId}/workflow-folders/{folderId}/delete',
+        'POST /v1/workspaces/{workspaceId}/workflows/{workflowId}/folder',
+        'POST /v1/workspaces/{workspaceId}/workflows/organization/bulk',
+      ].toSorted(),
+    );
     expect(
       paths['/v1/workspaces/{workspaceId}/workflow-folders'].post.description,
     ).toContain('without broadening workspace:manage');

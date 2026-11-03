@@ -1,246 +1,157 @@
+import { Controller, Req, UseInterceptors } from '@nestjs/common';
 import {
-  Body,
-  Controller,
-  Get,
-  Header,
-  HttpCode,
-  Param,
-  Post,
-  Query,
-  Req,
-  UseGuards,
-  UseInterceptors,
-} from '@nestjs/common';
-import {
-  workflowFolderWorkspaceParamsSchema,
-  workflowFolderParamsSchema,
-  workflowIdParamSchema,
-} from '@pertexo/contracts';
-import {
-  SessionAuthenticationGuard,
-  CsrfProtectionGuard,
-} from '../../../workspaces/index.js';
-import { RateLimit } from '../../../platform/rate-limit/metadata.js';
-import {
-  WorkflowParticipantGuard,
-  WorkflowReadGuard,
-} from '../../http/guards.js';
-import type { WorkflowAuthoringRequest } from '../../types.js';
-import { WorkflowFoldersUseCase } from './use-case.js';
-import {
-  withWorkflowOrganizationRequest,
-  withWorkflowOrganizationCommand,
-} from '../http.js';
+  foldersRoutes as routes,
+  type RouteInput,
+} from '@pertexo/contracts/server';
 import { domainErrors } from '../../../platform/http/problems/interceptor.js';
 import { authoringFailure } from '../../../problems/context/normalize.js';
+import { In, Route } from '../../../workspaces/http/route.js';
+import type { WorkflowAuthoringRequest } from '../../types.js';
+import { withWorkflowOrganizationRequest } from '../http.js';
+import { WorkflowFoldersUseCase } from './use-case.js';
 
 @UseInterceptors(domainErrors(authoringFailure))
-@Controller('v1/workspaces/:workspaceId')
-@RateLimit('authenticated_read')
+@Controller()
 export class WorkflowFoldersController {
   public constructor(private readonly folders: WorkflowFoldersUseCase) {}
 
-  @Get('workflow-folders')
-  @Header('Cache-Control', 'private, no-store')
-  @UseGuards(SessionAuthenticationGuard, WorkflowReadGuard)
+  @Route(routes.list)
   public list(
     @Req() request: WorkflowAuthoringRequest,
-    @Param() params: unknown,
-    @Query() query: unknown,
+    @In() { params, query }: RouteInput<typeof routes.list>,
   ) {
-    const { workspaceId } = workflowFolderWorkspaceParamsSchema.parse(params);
+    const { workspaceId } = params;
     return withWorkflowOrganizationRequest(request, workspaceId, (input) =>
       this.folders.list({
         ...input,
-        query: query ?? {},
+        query: query,
       }),
     );
   }
 
-  @Get('resource-sharing-principals')
-  @Header('Cache-Control', 'private, no-store')
-  @UseGuards(SessionAuthenticationGuard, WorkflowReadGuard)
+  @Route(routes.sharingPrincipals)
   public sharingPrincipals(
     @Req() request: WorkflowAuthoringRequest,
-    @Param() params: unknown,
-    @Query() query: unknown,
+    @In() { params, query }: RouteInput<typeof routes.sharingPrincipals>,
   ) {
-    const { workspaceId } = workflowFolderWorkspaceParamsSchema.parse(params);
+    const { workspaceId } = params;
     return withWorkflowOrganizationRequest(request, workspaceId, (input) =>
       this.folders.sharingPrincipals({ ...input, query }),
     );
   }
 
-  @Get('workflow-folders/:folderId/sharing')
-  @Header('Cache-Control', 'private, no-store')
-  @UseGuards(SessionAuthenticationGuard, WorkflowReadGuard)
+  @Route(routes.readSharing)
   public readSharing(
     @Req() request: WorkflowAuthoringRequest,
-    @Param() params: unknown,
+    @In() { params }: RouteInput<typeof routes.readSharing>,
   ) {
-    const { workspaceId, folderId } = workflowFolderParamsSchema.parse(params);
+    const { workspaceId, folderId } = params;
     return withWorkflowOrganizationRequest(request, workspaceId, (input) =>
       this.folders.readSharing({ ...input, folderId }),
     );
   }
 
-  @Post('workflow-folders/:folderId/sharing')
-  @Header('Cache-Control', 'private, no-store')
-  @RateLimit('ordinary_mutation')
-  @HttpCode(200)
-  @UseGuards(
-    SessionAuthenticationGuard,
-    WorkflowParticipantGuard,
-    CsrfProtectionGuard,
-  )
+  @Route(routes.replaceSharing)
   public replaceSharing(
     @Req() request: WorkflowAuthoringRequest,
-    @Param() params: unknown,
-    @Body() body: unknown,
+    @In()
+    { params, body, idempotencyKey }: RouteInput<typeof routes.replaceSharing>,
   ) {
-    const { workspaceId, folderId } = workflowFolderParamsSchema.parse(params);
-    return withWorkflowOrganizationCommand(request, workspaceId, (input) =>
+    const { workspaceId, folderId } = params;
+    return withWorkflowOrganizationRequest(request, workspaceId, (input) =>
       this.folders.replaceSharing({
         ...input,
+        idempotencyKey,
         folderId,
         request: body,
       }),
     );
   }
 
-  @Post('workflow-folders/review-move')
-  @Header('Cache-Control', 'private, no-store')
-  @RateLimit('authenticated_read')
-  @HttpCode(200)
-  @UseGuards(
-    SessionAuthenticationGuard,
-    WorkflowParticipantGuard,
-    CsrfProtectionGuard,
-  )
+  @Route(routes.reviewMove)
   public reviewMove(
     @Req() request: WorkflowAuthoringRequest,
-    @Param() params: unknown,
-    @Body() body: unknown,
+    @In() { params, body }: RouteInput<typeof routes.reviewMove>,
   ) {
-    const { workspaceId } = workflowFolderWorkspaceParamsSchema.parse(params);
+    const { workspaceId } = params;
     return withWorkflowOrganizationRequest(request, workspaceId, (input) =>
       this.folders.reviewMove({ ...input, request: body }),
     );
   }
 
-  @Post('workflow-folders')
-  @Header('Cache-Control', 'private, no-store')
-  @RateLimit('ordinary_mutation')
-  @HttpCode(201)
-  @UseGuards(
-    SessionAuthenticationGuard,
-    WorkflowParticipantGuard,
-    CsrfProtectionGuard,
-  )
+  @Route(routes.create)
   public create(
     @Req() request: WorkflowAuthoringRequest,
-    @Param() params: unknown,
-    @Body() body: unknown,
+    @In() { params, body, idempotencyKey }: RouteInput<typeof routes.create>,
   ) {
-    const { workspaceId } = workflowFolderWorkspaceParamsSchema.parse(params);
-    return withWorkflowOrganizationCommand(request, workspaceId, (input) =>
+    const { workspaceId } = params;
+    return withWorkflowOrganizationRequest(request, workspaceId, (input) =>
       this.folders.create({
         ...input,
+        idempotencyKey,
         request: body,
       }),
     );
   }
 
-  @Post('workflow-folders/:folderId/rename')
-  @Header('Cache-Control', 'private, no-store')
-  @RateLimit('ordinary_mutation')
-  @HttpCode(200)
-  @UseGuards(
-    SessionAuthenticationGuard,
-    WorkflowParticipantGuard,
-    CsrfProtectionGuard,
-  )
+  @Route(routes.rename)
   public rename(
     @Req() request: WorkflowAuthoringRequest,
-    @Param() params: unknown,
-    @Body() body: unknown,
+    @In() { params, body, idempotencyKey }: RouteInput<typeof routes.rename>,
   ) {
-    const { workspaceId, folderId } = workflowFolderParamsSchema.parse(params);
-    return withWorkflowOrganizationCommand(request, workspaceId, (input) =>
+    const { workspaceId, folderId } = params;
+    return withWorkflowOrganizationRequest(request, workspaceId, (input) =>
       this.folders.rename({
         ...input,
+        idempotencyKey,
         folderId,
         request: body,
       }),
     );
   }
 
-  @Post('workflow-folders/:folderId/move')
-  @Header('Cache-Control', 'private, no-store')
-  @RateLimit('ordinary_mutation')
-  @HttpCode(200)
-  @UseGuards(
-    SessionAuthenticationGuard,
-    WorkflowParticipantGuard,
-    CsrfProtectionGuard,
-  )
+  @Route(routes.move)
   public move(
     @Req() request: WorkflowAuthoringRequest,
-    @Param() params: unknown,
-    @Body() body: unknown,
+    @In() { params, body, idempotencyKey }: RouteInput<typeof routes.move>,
   ) {
-    const { workspaceId, folderId } = workflowFolderParamsSchema.parse(params);
-    return withWorkflowOrganizationCommand(request, workspaceId, (input) =>
+    const { workspaceId, folderId } = params;
+    return withWorkflowOrganizationRequest(request, workspaceId, (input) =>
       this.folders.move({
         ...input,
+        idempotencyKey,
         folderId,
         request: body,
       }),
     );
   }
 
-  @Post('workflow-folders/:folderId/delete')
-  @Header('Cache-Control', 'private, no-store')
-  @RateLimit('ordinary_mutation')
-  @HttpCode(200)
-  @UseGuards(
-    SessionAuthenticationGuard,
-    WorkflowParticipantGuard,
-    CsrfProtectionGuard,
-  )
+  @Route(routes.delete)
   public delete(
     @Req() request: WorkflowAuthoringRequest,
-    @Param() params: unknown,
-    @Body() body: unknown,
+    @In() { params, body, idempotencyKey }: RouteInput<typeof routes.delete>,
   ) {
-    const { workspaceId, folderId } = workflowFolderParamsSchema.parse(params);
-    return withWorkflowOrganizationCommand(request, workspaceId, (input) =>
+    const { workspaceId, folderId } = params;
+    return withWorkflowOrganizationRequest(request, workspaceId, (input) =>
       this.folders.delete({
         ...input,
+        idempotencyKey,
         folderId,
         request: body,
       }),
     );
   }
 
-  @Post('workflows/:workflowId/folder')
-  @Header('Cache-Control', 'private, no-store')
-  @RateLimit('ordinary_mutation')
-  @HttpCode(200)
-  @UseGuards(
-    SessionAuthenticationGuard,
-    WorkflowParticipantGuard,
-    CsrfProtectionGuard,
-  )
+  @Route(routes.place)
   public place(
     @Req() request: WorkflowAuthoringRequest,
-    @Param() params: unknown,
-    @Body() body: unknown,
+    @In() { params, body, idempotencyKey }: RouteInput<typeof routes.place>,
   ) {
-    const { workspaceId, workflowId } = workflowIdParamSchema.parse(params);
-    return withWorkflowOrganizationCommand(request, workspaceId, (input) =>
+    const { workspaceId, workflowId } = params;
+    return withWorkflowOrganizationRequest(request, workspaceId, (input) =>
       this.folders.place({
         ...input,
+        idempotencyKey,
         workflowId,
         request: body,
       }),

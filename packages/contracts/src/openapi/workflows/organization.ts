@@ -1,5 +1,6 @@
 import type { z } from 'zod';
 import { routePaths, routeSchemas } from '../../routes/openapi.js';
+import { foldersRoutes } from '../../routes/workflows/folders.js';
 import { organizationRoutes } from '../../routes/workflows/organization.js';
 import {
   workflowCombinedOrganizationProjectionResponseSchema,
@@ -10,34 +11,17 @@ import {
 } from '../../schemas/workflows/authoring.js';
 import * as folders from '../../schemas/workflows/organization-folders.js';
 import * as organization from '../../schemas/workflows/organization.js';
-import * as sharing from '../../schemas/workflows/sharing.js';
 import {
   csrfHeaderParameter,
   idempotencyHeaderParameter,
   jsonRequest,
   jsonResponse,
   problemResponse,
-  queryParameter,
   responseReference,
   uuidPathParameter,
 } from '../primitives.js';
 
 const definitions = {
-  SharingPrincipalsResponse: [
-    sharing.sharingPrincipalsResponseSchema,
-    'output',
-  ],
-  FolderSharingRequest: [sharing.folderSharingRequestSchema, 'input'],
-  FolderSharingResponse: [sharing.folderSharingResponseSchema, 'output'],
-  FolderSharingCommandResponse: [
-    sharing.folderSharingCommandResponseSchema,
-    'output',
-  ],
-  WorkflowMoveReviewRequest: [sharing.workflowMoveReviewRequestSchema, 'input'],
-  WorkflowMoveReviewResponse: [
-    sharing.workflowMoveReviewResponseSchema,
-    'output',
-  ],
   WorkflowTagListQuery: [organization.workflowTagListQuerySchema, 'input'],
 
   WorkflowTagCleanupDetachRequest: [
@@ -64,47 +48,7 @@ const definitions = {
   ],
   WorkflowGetQuery: [workflowGetQuerySchema, 'input'],
   WorkflowFolderListQuery: [folders.workflowFolderListQuerySchema, 'input'],
-  WorkflowFolderListResponse: [
-    folders.workflowFolderListResponseSchema,
-    'output',
-  ],
-  WorkflowFolderCreateRequest: [
-    folders.workflowFolderCreateRequestSchema,
-    'input',
-  ],
-  WorkflowFolderCreateResponse: [
-    folders.workflowFolderCreateResponseSchema,
-    'output',
-  ],
-  WorkflowFolderRenameRequest: [
-    folders.workflowFolderRenameRequestSchema,
-    'input',
-  ],
-  WorkflowFolderRenameResponse: [
-    folders.workflowFolderRenameResponseSchema,
-    'output',
-  ],
-  WorkflowFolderMoveRequest: [folders.workflowFolderMoveRequestSchema, 'input'],
-  WorkflowFolderMoveResponse: [
-    folders.workflowFolderMoveResponseSchema,
-    'output',
-  ],
-  WorkflowFolderDeleteRequest: [
-    folders.workflowFolderDeleteRequestSchema,
-    'input',
-  ],
-  WorkflowFolderDeleteResponse: [
-    folders.workflowFolderDeleteResponseSchema,
-    'output',
-  ],
-  WorkflowFolderPlacementRequest: [
-    folders.workflowFolderPlacementRequestSchema,
-    'input',
-  ],
-  WorkflowFolderPlacementResponse: [
-    folders.workflowFolderPlacementResponseSchema,
-    'output',
-  ],
+
   WorkflowOrganizationBulkRequest: [
     folders.workflowOrganizationBulkRequestSchema,
     'input',
@@ -123,6 +67,7 @@ export function workflowOrganizationContractSchemas<Projected>(
   ) => Projected,
 ) {
   return {
+    ...routeSchemas(Object.values(foldersRoutes)),
     ...routeSchemas(Object.values(organizationRoutes)),
     ...(Object.fromEntries(
       Object.entries(definitions).map(([name, [schema, io]]) => [
@@ -137,10 +82,6 @@ const workspaceParameters = [
   uuidPathParameter('workspaceId', 'Workspace identifier'),
 ];
 
-const workflowParameters = [
-  ...workspaceParameters,
-  uuidPathParameter('workflowId', 'Workflow identifier'),
-];
 const commandHeaders = [csrfHeaderParameter(), idempotencyHeaderParameter()];
 
 const privateHeaders = {
@@ -170,10 +111,6 @@ const commandProblems = {
   ),
 };
 
-const folderParameters = [
-  ...workspaceParameters,
-  uuidPathParameter('folderId', 'Folder identifier'),
-];
 function folderCommand({
   operationId,
   description,
@@ -206,6 +143,7 @@ function folderCommand({
 }
 
 export const workflowOrganizationContractPaths = {
+  ...routePaths(Object.values(foldersRoutes)),
   ...routePaths(Object.values(organizationRoutes)),
 
   '/v1/workspaces/{workspaceId}/workflow-tags/cleanup/detach': {
@@ -226,129 +164,6 @@ export const workflowOrganizationContractPaths = {
     },
   },
 
-  '/v1/workspaces/{workspaceId}/workflow-folders': {
-    get: {
-      operationId: 'listWorkflowFolders',
-      description:
-        'Current workflow:read in an active workspace. At most 256 folders in ascending UUID order with derived depth at most 4; no total count or recursive workflow inventory. Folders never grant authority.',
-      security: [{ cookieSession: [] }],
-      parameters: workspaceParameters,
-      responses: {
-        '200': privateResponse(
-          'Bounded folder hierarchy',
-          'WorkflowFolderListResponse',
-        ),
-        ...readProblems,
-      },
-    },
-    post: folderCommand({
-      operationId: 'createWorkflowFolder',
-      description:
-        'Current owner/admin in an active workspace, without broadening workspace:manage. U+0020-trimmed display name; ASCII-only sibling identity is internal. Maximum depth 4 and 256 live folders.',
-      parameters: workspaceParameters,
-      request: 'WorkflowFolderCreateRequest',
-      response: 'WorkflowFolderCreateResponse',
-      created: true,
-    }),
-  },
-  '/v1/workspaces/{workspaceId}/workflow-folders/{folderId}/rename': {
-    post: folderCommand({
-      operationId: 'renameWorkflowFolder',
-      description:
-        'Current owner/admin; expectedFolderRevision checked. New no-op commands advance once; exact authorized replay does not. Descendants, workflow organization revisions and timestamps remain unchanged.',
-      parameters: folderParameters,
-      request: 'WorkflowFolderRenameRequest',
-      response: 'WorkflowFolderRenameResponse',
-    }),
-  },
-  '/v1/workspaces/{workspaceId}/workflow-folders/{folderId}/move': {
-    post: folderCommand({
-      operationId: 'moveWorkflowFolder',
-      description:
-        'Current owner/admin; expectedFolderRevision checked. Current destination existence, cycles and entire subtree depth are checked, without a historical destination revision. No-op advances once; replay does not.',
-      parameters: folderParameters,
-      request: 'WorkflowFolderMoveRequest',
-      response: 'WorkflowFolderMoveResponse',
-    }),
-  },
-  '/v1/workspaces/{workspaceId}/resource-sharing-principals': {
-    get: {
-      operationId: 'listResourceSharingPrincipals',
-      description:
-        'Current owner/admin discovers active members or current linked directory groups before pagination; no local group management.',
-      security: [{ cookieSession: [] }],
-      parameters: [
-        ...workspaceParameters,
-        ...Object.entries(sharing.sharingPrincipalsQuerySchema.shape).map(
-          ([name, schema]) => queryParameter(name, schema),
-        ),
-      ],
-      responses: {
-        '200': privateResponse(
-          'Bounded current principals',
-          'SharingPrincipalsResponse',
-        ),
-        ...readProblems,
-      },
-    },
-  },
-  '/v1/workspaces/{workspaceId}/workflow-folders/{folderId}/sharing': {
-    get: {
-      operationId: 'readWorkflowFolderSharing',
-      description: 'Current owner/admin reads bounded folder grants.',
-      security: [{ cookieSession: [] }],
-      parameters: folderParameters,
-      responses: {
-        '200': privateResponse('Current sharing', 'FolderSharingResponse'),
-        ...readProblems,
-      },
-    },
-    post: folderCommand({
-      operationId: 'replaceWorkflowFolderSharing',
-      description:
-        'Current owner/admin replaces at most 100 current member or linked directory group grants with expected folder revision and one audit fact.',
-      parameters: folderParameters,
-      request: 'FolderSharingRequest',
-      response: 'FolderSharingCommandResponse',
-    }),
-  },
-  '/v1/workspaces/{workspaceId}/workflow-folders/review-move': {
-    post: {
-      operationId: 'reviewWorkflowMoveAudience',
-      description:
-        'Batch review up to 50 visible workflows or one folder. Administrator acknowledgement of the current token is required when a restriction is removed or replaced.',
-      security: [{ cookieSession: [] }],
-      parameters: [...workspaceParameters, csrfHeaderParameter()],
-      requestBody: jsonRequest('WorkflowMoveReviewRequest'),
-      responses: {
-        '200': privateResponse(
-          'Current audience review',
-          'WorkflowMoveReviewResponse',
-        ),
-        ...readProblems,
-      },
-    },
-  },
-  '/v1/workspaces/{workspaceId}/workflow-folders/{folderId}/delete': {
-    post: folderCommand({
-      operationId: 'deleteWorkflowFolder',
-      description:
-        'Current owner/admin; expectedFolderRevision checked. Any immediate child or assigned workflow, including archived workflows, conflicts with zero changes. No recursive delete or implicit unfiling. Missing/foreign folders are generic 404.',
-      parameters: folderParameters,
-      request: 'WorkflowFolderDeleteRequest',
-      response: 'WorkflowFolderDeleteResponse',
-    }),
-  },
-  '/v1/workspaces/{workspaceId}/workflows/{workflowId}/folder': {
-    post: folderCommand({
-      operationId: 'placeWorkflowInFolder',
-      description:
-        'Current workflow:update for active workflows; archived placement/unfiling requires owner/admin. Independent expectedOrganizationRevision; new no-op advances once, exact authorized replay does not. Current lifecycle and role are rechecked. Graph and workflow timestamps are unchanged.',
-      parameters: workflowParameters,
-      request: 'WorkflowFolderPlacementRequest',
-      response: 'WorkflowFolderPlacementResponse',
-    }),
-  },
   '/v1/workspaces/{workspaceId}/workflows/organization/bulk': {
     post: folderCommand({
       operationId: 'updateWorkflowOrganizationBulk',

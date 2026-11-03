@@ -1,6 +1,5 @@
-import { requestIdempotencyKey } from '../../platform/http/idempotency-key.js';
-import { projectAuthenticatedWorkspaceContext } from '../../workspaces/request/authenticated-context.js';
 import { withRequestOperationSignal } from '../../platform/http/request-operation-signal.js';
+import { projectAuthenticatedWorkspaceContext } from '../../workspaces/request/authenticated-context.js';
 import type { WorkflowOrganizationInput } from './authority.js';
 
 import type { WorkflowAuthoringRequest } from '../types.js';
@@ -16,22 +15,6 @@ export async function withWorkflowOrganizationRequest<T>(
       ...projectAuthenticatedWorkspaceContext(request, workspaceId),
       routeWorkspaceId: workspaceId,
       signal,
-    }),
-  );
-}
-
-/** Command keys are read after scoped authorization/cancellation, as at each route. */
-export function withWorkflowOrganizationCommand<T>(
-  request: WorkflowAuthoringRequest,
-  workspaceId: string,
-  work: (
-    input: WorkflowOrganizationInput & Readonly<{ idempotencyKey: string }>,
-  ) => Promise<T>,
-): Promise<T> {
-  return withWorkflowOrganizationRequest(request, workspaceId, (input) =>
-    work({
-      ...input,
-      idempotencyKey: requestIdempotencyKey(request.headers),
     }),
   );
 }
