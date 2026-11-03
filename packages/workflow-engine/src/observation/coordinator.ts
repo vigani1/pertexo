@@ -18,7 +18,7 @@ import { branchPathHasPrefix, sameIterationPath } from '../scope.js';
 import { UUID_PATTERN } from '@pertexo/workflow-model';
 import { invocationKey as createInvocationKey } from '../transition/scheduling/loops.js';
 import { invocationIdentity } from '../transition/status.js';
-import type { WorkflowObservation } from '../types.js';
+import type { WorkflowObservation } from '../workflow-execution.js';
 
 type CheckpointInvocation = ReturnType<
   typeof parseCheckpoint

@@ -1,4 +1,4 @@
-import type { CanvasFlowNode } from './notes/types';
+import type { CanvasFlowNode } from './notes/canvas-note-identity';
 import { FlowZoomLens } from '@/components/patterns/flow-zoom-lens';
 import { useEditorStore } from '../../model/state/context';
 import type { WorkflowFlowNode } from '../../model/graph/adapter';

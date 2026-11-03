@@ -1,7 +1,7 @@
 import { isSelectedFailureScope, isCompletedFailureHandler } from './scope.js';
 import type { WorkflowNodeFailureValue } from '@pertexo/workflow-model';
 import { WorkflowEngineError } from '../errors.js';
-import type { InvocationState } from '../types.js';
+import type { InvocationState } from '../workflow-execution.js';
 import { invocationKey } from '../transition/scheduling/loops.js';
 import {
   transitionEvent,

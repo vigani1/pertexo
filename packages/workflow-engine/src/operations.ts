@@ -37,13 +37,13 @@ import {
 } from './compilation/foundation.js';
 import type { ControlNodeConfig } from '@pertexo/workflow-model';
 
-import type { WorkflowObservation } from './types.js';
+import type { WorkflowObservation } from './workflow-execution.js';
 import { parseCheckpoint } from './checkpoint/create-and-parse.js';
 import type { SchedulerState } from './transition/scheduling/readiness.js';
 import { operationError, record } from './operation-values.js';
 import { parsePersistedObservations } from './observation/persisted.js';
 import { nodeProviderIdempotencyKey } from './attempt/derive-provider-key.js';
-import type { WorkflowTransitionPlan } from './types.js';
+import type { WorkflowTransitionPlan } from './workflow-execution.js';
 
 import { assertCheckpointMatchesExecutable } from './checkpoint/matches-executable.js';
 import { assertIdentity, assertNotAborted } from './attempt/admission.js';

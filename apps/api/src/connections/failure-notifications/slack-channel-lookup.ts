@@ -28,7 +28,7 @@ import {
   type SlackChannelLookupItem,
   type SlackChannelLookupResponse,
   type SlackChannelUnresolvedReason,
-} from '../types.js';
+} from '../connection-request.js';
 import {
   encryptionSignal,
   type ConnectionCommandInput,

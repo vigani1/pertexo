@@ -49,7 +49,7 @@ export {
   invocationKey,
   loopIterationOrdinal,
 } from './transition/scheduling/loops.js';
-export type * from './types.js';
+export type * from './workflow-execution.js';
 export { selectRecoveryPrefix } from './recovery/select-prefix.js';
 export { planRecovery } from './recovery/plan.js';
 export { seedRecovery, type RecoveryCopy } from './recovery/seed.js';
@@ -85,7 +85,7 @@ export {
   runReplayOutcome,
   redispatchOutcome,
 } from './operator/decisions.js';
-export { NODE_ATTEMPT_INPUT_LIMITS } from './types.js';
+export { NODE_ATTEMPT_INPUT_LIMITS } from './workflow-execution.js';
 
 export {
   errorWorkflowInput,

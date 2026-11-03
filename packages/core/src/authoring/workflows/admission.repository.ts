@@ -7,7 +7,7 @@ import {
   type WorkflowAuthoringValidationOptions,
 } from '@pertexo/workflow-model/server';
 import { authoringIdleBudgetIsSafe } from './idle-budget.js';
-import type { WorkflowAuthoringGraphValidator } from './types.js';
+import type { WorkflowAuthoringGraphValidator } from './authoring-dependencies.types.js';
 
 /** Only idle-in-transaction applies to the off-thread wait; query_timeout does not. */
 export async function admitWorkflowAuthoring(

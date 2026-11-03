@@ -1,5 +1,5 @@
 import { isRecord } from '@pertexo/workflow-model';
-import type { JoinState } from '../types.js';
+import type { JoinState } from '../workflow-execution.js';
 import {
   assertCheckpoint,
   assertExactKeys,

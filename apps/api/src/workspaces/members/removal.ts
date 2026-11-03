@@ -13,7 +13,7 @@ import type { z } from 'zod';
 import {
   workspaceMemberRemovalResponseSchema,
   type WorkspaceMemberRemovalResponse,
-} from '../types.js';
+} from '../workspace-transport.js';
 
 type WorkspaceMemberRemovalPersistence = Required<
   Pick<IdentityWorkspacePersistence, 'removeWorkspaceMember'>

@@ -6,7 +6,7 @@ import {
 } from '@pertexo/node-sdk/server';
 import type { StepRetrySettings } from '@pertexo/workflow-model';
 
-import type { SideEffectClass } from '../types.js';
+import type { SideEffectClass } from '../workflow-execution.js';
 
 export interface RetryPolicy {
   readonly maximumAttempts: number;

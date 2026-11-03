@@ -10,7 +10,7 @@ import type { z } from 'zod';
 import {
   workspaceMemberRoleChangeResponseSchema,
   type WorkspaceMemberRoleChangeResponse,
-} from '../types.js';
+} from '../workspace-transport.js';
 
 type WorkspaceMemberRolePersistence = Pick<
   IdentityWorkspacePersistence,

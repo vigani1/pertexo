@@ -10,7 +10,7 @@ import { In, Route } from '../http/route.js';
 import { WorkspaceMembershipLifecycleUseCase } from './lifecycle.js';
 import type { IdentitySessionAuthority } from '../ports.js';
 import { SESSION_AUTHORITY } from '../tokens.js';
-import type { IdentityWorkspaceRequest } from '../types.js';
+import type { IdentityWorkspaceRequest } from '../workspace-transport.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
 import { workspaceFailure } from '../../problems/context/normalize.js';
 

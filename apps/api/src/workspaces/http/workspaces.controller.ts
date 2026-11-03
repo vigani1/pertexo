@@ -16,7 +16,7 @@ import {
 } from '../request/authenticated-context.js';
 import { requestIdentifier, traceIdentifier } from '../request/identifiers.js';
 import { memberCommand } from '../request/member-commands.js';
-import type { IdentityWorkspaceRequest } from '../types.js';
+import type { IdentityWorkspaceRequest } from '../workspace-transport.js';
 import {
   ChangeWorkspaceMemberRoleUseCase,
   CreateWorkspaceUseCase,

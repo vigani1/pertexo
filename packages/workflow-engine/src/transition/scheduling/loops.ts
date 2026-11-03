@@ -9,7 +9,7 @@ import type {
   JoinState,
   LoopState,
   OutputReference,
-} from '../../types.js';
+} from '../../workflow-execution.js';
 
 const terminalDispositions = new Set([
   'arrived',

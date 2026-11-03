@@ -9,7 +9,7 @@ import {
   type JsonValue,
 } from '@pertexo/workflow-model';
 
-import type { WorkflowObservation } from '../types.js';
+import type { WorkflowObservation } from '../workflow-execution.js';
 import { exactKeys, operationError, record } from '../operation-values.js';
 import type {
   AttemptFailureObservation,

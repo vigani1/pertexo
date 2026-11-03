@@ -20,7 +20,7 @@ import type {
   WorkflowCallOutcome,
   WorkflowCheckpoint,
   WorkflowObservation,
-} from '../types.js';
+} from '../workflow-execution.js';
 import { completedOutputReference } from './coordinator-output.js';
 import { parseBranchPath, parseIterationPath } from '../checkpoint/fields.js';
 import { invocationKey } from '../transition/scheduling/loops.js';

@@ -9,7 +9,10 @@ import { operationError } from '../operation-values.js';
 import { compareOrdinal } from '@pertexo/workflow-model';
 import { sameOutputReference } from '../output-reference.js';
 import { parsePersistedObservation } from './persisted-parser.js';
-import type { OutputReference, WorkflowObservation } from '../types.js';
+import type {
+  OutputReference,
+  WorkflowObservation,
+} from '../workflow-execution.js';
 import { normalizePersistedObservationWindow } from './persisted-admission.js';
 
 type OutcomeObservation = Extract<

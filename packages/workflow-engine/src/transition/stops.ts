@@ -3,7 +3,11 @@ import { compareOrdinal } from '@pertexo/workflow-model';
 import { sameIterationPath } from '../scope.js';
 import { completeLoopIteration } from './scheduling/loops.js';
 import { assertNodeTransition, invocationIdentity } from './status.js';
-import type { InvocationState, LoopState, EngineEventName } from '../types.js';
+import type {
+  InvocationState,
+  LoopState,
+  EngineEventName,
+} from '../workflow-execution.js';
 import {
   isTerminalNodeStatus,
   nodeEventName,

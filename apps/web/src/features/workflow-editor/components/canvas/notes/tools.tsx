@@ -1,5 +1,5 @@
 import { noteTextStart } from '@/features/workflow-drafts/public';
-import { noteElementId } from './types';
+import { noteElementId } from './canvas-note-identity';
 import { useState, type RefObject } from 'react';
 import { useReactFlow } from '@xyflow/react';
 import { ListIcon, StickyNoteIcon } from 'lucide-react';

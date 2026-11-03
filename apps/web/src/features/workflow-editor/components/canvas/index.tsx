@@ -1,6 +1,9 @@
 import { CanvasNote } from './notes/card';
 import { useNoteProjection } from './notes/use-projection';
-import { isNoteFlowId, type CanvasFlowNode } from './notes/types';
+import {
+  isNoteFlowId,
+  type CanvasFlowNode,
+} from './notes/canvas-note-identity';
 import { useAppearance } from '@/lib/appearance/use-choice';
 import '@xyflow/react/dist/style.css';
 import {

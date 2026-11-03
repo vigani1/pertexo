@@ -7,5 +7,5 @@ export * from './failure-notifications/destinations.js';
 export * from './connections.module.js';
 export * from './ports.js';
 export * from './telemetry.js';
-export * from './types.js';
+export * from './connection-request.js';
 export * from './use-cases/management.js';

@@ -20,7 +20,7 @@ import type {
   AttemptAdmissionPlan,
   NodeRunAdmissionPlan,
   WorkflowTransitionPlan,
-} from '../types.js';
+} from '../workflow-execution.js';
 import {
   isTerminalNodeStatus,
   schedulerAttemptSideEffectClass,

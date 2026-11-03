@@ -11,7 +11,7 @@ import {
   type JsonValue,
 } from '@pertexo/workflow-model';
 import { hasExactFields } from '../exact-fields.js';
-import type { SideEffectClass } from '../types.js';
+import type { SideEffectClass } from '../workflow-execution.js';
 import {
   type ExecutableRuntimePolicies,
   WORKFLOW_EXECUTABLE_LIMITS,

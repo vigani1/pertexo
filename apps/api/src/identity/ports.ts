@@ -2,7 +2,7 @@ import type {
   SafeClientMetadata,
   SessionCookieOptions,
   SessionLookup,
-} from './types.js';
+} from './identity-session.types.js';
 
 export interface SessionCookieBoundary {
   writeSessionCookieHeaders(

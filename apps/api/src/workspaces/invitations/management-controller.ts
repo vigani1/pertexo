@@ -8,7 +8,7 @@ import { projectAuthenticatedWorkspaceContext } from '../request/authenticated-c
 import { In, Route } from '../http/route.js';
 import { WorkspaceInvitationManagementUseCase } from './management.js';
 import { requestIdentifier, traceIdentifier } from '../request/identifiers.js';
-import type { IdentityWorkspaceRequest } from '../types.js';
+import type { IdentityWorkspaceRequest } from '../workspace-transport.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
 import { workspaceFailure } from '../../problems/context/normalize.js';
 

@@ -11,7 +11,7 @@ import {
   WORKFLOW_AUTHORING_OPERATION,
   type WorkflowAuthoringTelemetry,
 } from '../telemetry.js';
-import type { workflowCreateRequestSchema } from '../types.js';
+import type { workflowCreateRequestSchema } from '../workflow-transport.js';
 
 import {
   serializeWorkflowCreate,

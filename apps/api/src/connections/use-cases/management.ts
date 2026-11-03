@@ -31,8 +31,8 @@ import {
 import type {
   connectionCreateRequestSchema,
   connectionRotateSecretRequestSchema,
-} from '../types.js';
-import type { ConnectionResponse } from '../types.js';
+} from '../connection-request.js';
+import type { ConnectionResponse } from '../connection-request.js';
 
 export { TestConnectionUseCase } from './test-connection.js';
 export type { TestConnectionCommand } from './test-connection.js';

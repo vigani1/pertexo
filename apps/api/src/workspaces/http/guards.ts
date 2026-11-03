@@ -24,7 +24,7 @@ import {
 import type {
   IdentityWorkspaceRequest,
   AuthenticatedRequestSession,
-} from '../types.js';
+} from '../workspace-transport.js';
 import type {
   IdentitySessionAuthority,
   WorkspaceAuthorizationSource,

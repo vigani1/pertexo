@@ -1,6 +1,6 @@
 import type { JsonValue } from '@pertexo/workflow-model';
 import { WorkflowEngineError } from '../errors.js';
-import type { WorkflowTransitionPlan } from '../types.js';
+import type { WorkflowTransitionPlan } from '../workflow-execution.js';
 
 export type CallableResultDecision =
   | Readonly<{ kind: 'valid'; value: JsonValue }>

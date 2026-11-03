@@ -2,7 +2,7 @@ import type { InvitationAcceptanceIntentPersistenceRecord } from '../../ports.js
 import {
   invitationAcceptanceJourneySchema,
   type InvitationAcceptanceJourney,
-} from '../../types.js';
+} from '../../workspace-transport.js';
 
 export function journey(
   intent: InvitationAcceptanceIntentPersistenceRecord,

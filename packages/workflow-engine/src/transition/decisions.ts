@@ -1,6 +1,9 @@
 import { configuredParallelMaxConcurrency } from './scheduling/readiness.js';
 import type { SchedulerNodeLookup } from './state.js';
-import type { InvocationState, WorkflowCheckpoint } from '../types.js';
+import type {
+  InvocationState,
+  WorkflowCheckpoint,
+} from '../workflow-execution.js';
 import { WorkflowEngineError } from '../errors.js';
 
 export function boundedReadyAdmissions(input: {

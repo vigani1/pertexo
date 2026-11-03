@@ -29,7 +29,7 @@ import {
   CsrfProtectionGuard,
   SessionAuthenticationGuard,
 } from '../../src/workspaces/index.js';
-import type { IdentityWorkspaceRequest } from '../../src/workspaces/types.js';
+import type { IdentityWorkspaceRequest } from '../../src/workspaces/workspace-transport.js';
 import type { WorkspaceAuthorizationSource } from '../../src/workspaces/ports.js';
 
 export const sessionActorId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';

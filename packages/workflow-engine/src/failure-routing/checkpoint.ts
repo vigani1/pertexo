@@ -3,7 +3,10 @@ import {
   type CompiledWorkflowExecutable,
 } from '../compilation/foundation.js';
 import { operationError } from '../operation-values.js';
-import type { InvocationState, WorkflowCheckpoint } from '../types.js';
+import type {
+  InvocationState,
+  WorkflowCheckpoint,
+} from '../workflow-execution.js';
 import { invocationKey } from '../transition/scheduling/loops.js';
 import { isSelectedFailureScope, isCompletedFailureHandler } from './scope.js';
 

@@ -6,7 +6,7 @@ export {
   type IdentityCrypto,
 } from './crypto.js';
 export { DoubleSubmitCsrfPolicy } from './csrf.js';
-export type { SessionCookieOptions } from './types.js';
+export type { SessionCookieOptions } from './identity-session.types.js';
 export type {
   IdentityClock,
   SessionCookieBoundary,

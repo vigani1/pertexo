@@ -8,7 +8,7 @@ import {
 import {
   workspaceRenameResponseSchema,
   type WorkspaceRenameResponse,
-} from '../types.js';
+} from '../workspace-transport.js';
 import type { WorkspaceRenameRequest } from '@pertexo/contracts';
 
 type RenamePersistence = Required<

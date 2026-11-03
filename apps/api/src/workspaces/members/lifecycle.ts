@@ -23,7 +23,7 @@ import {
   type WorkspaceLeaveResponse,
   type WorkspaceMemberStatusResponse,
   type WorkspaceOwnershipTransferResponse,
-} from '../types.js';
+} from '../workspace-transport.js';
 
 type MembershipLifecyclePersistence = Required<
   Pick<

@@ -1,5 +1,8 @@
 import { credentialCommandScope } from '@pertexo/database/platform';
-import type { ActorContext, AuthorizationCapability } from './types.js';
+import type {
+  ActorContext,
+  AuthorizationCapability,
+} from './workspace-authorization.js';
 
 export function credentialAllowsCapability(
   actor: ActorContext,

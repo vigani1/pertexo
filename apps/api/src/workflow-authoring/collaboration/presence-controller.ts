@@ -6,7 +6,7 @@ import {
 import { In, Route } from '../../workspaces/http/route.js';
 import { WorkflowCollaborationUseCase } from './workflow-collaboration.service.js';
 import { collaborationOperation } from './http.js';
-import type { WorkflowAuthoringRequest } from '../types.js';
+import type { WorkflowAuthoringRequest } from '../workflow-transport.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
 import { collaborationFailure } from '../../problems/context/normalize.js';
 @UseInterceptors(domainErrors(collaborationFailure))

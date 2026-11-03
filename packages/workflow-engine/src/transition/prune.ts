@@ -1,5 +1,5 @@
 import { branchPathHasPrefix, iterationPathHasPrefix } from '../scope.js';
-import type { InvocationState, LoopState } from '../types.js';
+import type { InvocationState, LoopState } from '../workflow-execution.js';
 import {
   isTerminalNodeStatus,
   type MutableWorkflowTransition,

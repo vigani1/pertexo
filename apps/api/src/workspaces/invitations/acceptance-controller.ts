@@ -40,7 +40,10 @@ import {
   SESSION_AUTHORITY,
   SESSION_COOKIE_POLICY,
 } from '../tokens.js';
-import type { CookieResponse, IdentityWorkspaceRequest } from '../types.js';
+import type {
+  CookieResponse,
+  IdentityWorkspaceRequest,
+} from '../workspace-transport.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
 import { workspaceFailure } from '../../problems/context/normalize.js';
 

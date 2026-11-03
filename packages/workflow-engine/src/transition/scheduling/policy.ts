@@ -5,8 +5,11 @@ import {
 } from '@pertexo/workflow-model';
 import type { ExecutionFailureRoute } from '../../compilation/foundation.js';
 
-import type { BranchScopePart, IterationScopePart } from '../../types.js';
-import type { SideEffectClass } from '../../types.js';
+import type {
+  BranchScopePart,
+  IterationScopePart,
+} from '../../workflow-execution.js';
+import type { SideEffectClass } from '../../workflow-execution.js';
 
 /** Private execution projection derived only from a verified executable. */
 export interface SchedulerState {

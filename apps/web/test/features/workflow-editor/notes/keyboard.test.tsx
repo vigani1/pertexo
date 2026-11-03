@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { NodeProps } from '@xyflow/react';
 import type { WorkflowNote } from '@pertexo/workflow-model';
 import { CanvasNote } from '@/features/workflow-editor/components/canvas/notes/card';
-import type { NoteFlowNode } from '@/features/workflow-editor/components/canvas/notes/types';
+import type { NoteFlowNode } from '@/features/workflow-editor/components/canvas/notes/canvas-note-identity';
 import { EditorStoreContext } from '@/features/workflow-editor/model/state/context';
 import { createEditorStore } from '@/features/workflow-editor/model/state/workflow-editor.store';
 

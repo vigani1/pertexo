@@ -25,7 +25,7 @@ export type {
   WorkflowPage,
   WorkflowVersionPage,
 } from './authoring/workflows/workflow-commands.types.js';
-export type { WorkflowAuthoringStoreOptions } from './authoring/workflows/types.js';
+export type { WorkflowAuthoringStoreOptions } from './authoring/workflows/authoring-dependencies.types.js';
 export type {
   WorkflowDraftRecord,
   WorkflowRecord,

@@ -40,7 +40,7 @@ import type {
 import { readDraft, validateDraft } from './reads/drafts.repository.js';
 import { listVersions, readVersion } from './reads/versions.repository.js';
 import { listWorkflows, readWorkflow } from './reads/workflows.repository.js';
-import type { WorkflowAuthoringStoreOptions } from './types.js';
+import type { WorkflowAuthoringStoreOptions } from './authoring-dependencies.types.js';
 
 export type WorkflowAuthoringStore = ReturnType<
   typeof createWorkflowAuthoringStore

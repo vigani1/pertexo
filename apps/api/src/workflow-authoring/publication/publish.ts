@@ -11,7 +11,7 @@ import {
   NOOP_WORKFLOW_AUTHORING_TELEMETRY,
   type WorkflowAuthoringTelemetry,
 } from '../telemetry.js';
-import type { WorkflowPublishResponse } from '../types.js';
+import type { WorkflowPublishResponse } from '../workflow-transport.js';
 
 import { serializeWorkflowPublication } from '../http/serializers.js';
 

@@ -2,7 +2,7 @@ import {
   noteFlowId,
   isNoteFlowId,
   noteIdFromFlowId,
-} from '@/features/workflow-editor/components/canvas/notes/types';
+} from '@/features/workflow-editor/components/canvas/notes/canvas-note-identity';
 import { describe, expect, it } from 'vitest';
 import type { WorkflowGraphContract } from '@pertexo/contracts';
 import {

@@ -6,7 +6,7 @@ import type {
   InvocationState,
   LoopState,
   WorkflowObservation,
-} from '../types.js';
+} from '../workflow-execution.js';
 import {
   isTerminalNodeStatus,
   isFinishedIterationScope,
