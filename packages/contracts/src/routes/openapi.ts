@@ -11,8 +11,10 @@ import {
   pathParameter,
   queryParameter,
 } from '../openapi/primitives.js';
+import { projectContractSchema } from '../openapi/schema-projection.js';
 import {
   routePathParameters,
+  type NamedSchema,
   type AnyRoute,
   type RouteAccess,
   type RouteMethod,
@@ -39,16 +41,26 @@ export function routeSchemas(
 ): Record<string, unknown> {
   const schemas: Record<string, unknown> = {};
   for (const { body, success } of routes) {
-    if (body !== undefined)
-      schemas[body.name] = jsonSchema(body.schema, 'input');
-    schemas[success.body.name] = jsonSchema(success.body.schema, 'output');
+    if (body !== undefined) schemas[body.name] = projected(body, 'input');
+    if ('body' in success)
+      schemas[success.body.name] = projected(success.body, 'output');
   }
   return schemas;
+}
+
+function projected(named: NamedSchema, io: 'input' | 'output') {
+  return named.projected === true
+    ? projectContractSchema(named.name, named.schema, io)
+    : jsonSchema(named.schema, io);
 }
 
 function operation(route: AnyRoute) {
   return {
     operationId: route.operationId,
+    ...tokenScopes(route.access),
+    ...(route.description === undefined
+      ? {}
+      : { description: route.description }),
     ...security(route.access),
     parameters: [
       ...routePathParameters(route.path).map((name) =>
@@ -61,16 +73,28 @@ function operation(route: AnyRoute) {
       ...(route.idempotent === true ? [idempotencyHeaderParameter()] : []),
       ...queryParameters(route),
     ],
-    ...(route.body === undefined
-      ? {}
-      : { requestBody: jsonRequest(route.body.name) }),
+    ...requestBody(route),
     responses: {
-      [String(route.success.status)]: jsonResponse(
-        route.success.description,
-        route.success.body.name,
-      ),
+      [String(route.success.status)]:
+        'body' in route.success
+          ? jsonResponse(route.success.description, route.success.body.name)
+          : route.success.response,
       ...route.problems,
     },
+  };
+}
+
+function requestBody({ body, requestDocument }: AnyRoute) {
+  if (requestDocument !== undefined) return { requestBody: requestDocument };
+  return body === undefined ? {} : { requestBody: jsonRequest(body.name) };
+}
+
+function tokenScopes(access: RouteAccess) {
+  if (access.auth !== 'session_or_token') return {};
+  return {
+    'x-pertexo-api-token-scopes': (access.capabilities ?? []).map(
+      ({ name }) => name,
+    ),
   };
 }
 
@@ -81,9 +105,18 @@ function security(access: RouteAccess) {
     : { security: automationSecurity };
 }
 
-function csrfParameter(route: AnyRoute) {
-  if (route.method === 'get' || route.access.auth === 'public') return [];
-  return route.access.auth === 'session'
+function csrfParameter({ method, access }: AnyRoute) {
+  if (method === 'get' || access.auth === 'public') return [];
+  if (access.csrf === 'header_or_body')
+    return [
+      {
+        ...csrfHeaderParameter(),
+        required: false,
+        description:
+          'Required for JSON POST; native form POST supplies csrfToken in its body.',
+      },
+    ];
+  return access.auth === 'session'
     ? [csrfHeaderParameter()]
     : [automationCsrfHeaderParameter()];
 }

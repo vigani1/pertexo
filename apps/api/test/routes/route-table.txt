@@ -46,7 +46,7 @@ GET /v1/workspaces/{workspaceId}/connections/{connectionId}/slack/channels 200 s
 POST /v1/workspaces/{workspaceId}/connections/{connectionId}/test 200 session connection:use csrf provider_test
 GET /v1/workspaces/{workspaceId}/connections/{connectionId}/usage 200 session connection:read - authenticated_read
 GET /v1/workspaces/{workspaceId}/data-tables 200 session workspace:read - authenticated_read
-POST /v1/workspaces/{workspaceId}/data-tables 200 session workflow:update csrf ordinary_mutation
+POST /v1/workspaces/{workspaceId}/data-tables 201 session workflow:update csrf ordinary_mutation
 DELETE /v1/workspaces/{workspaceId}/data-tables/{tableId} 200 session workflow:update csrf ordinary_mutation
 POST /v1/workspaces/{workspaceId}/data-tables/{tableId}/export 200 session workspace:read - data_table_export
 POST /v1/workspaces/{workspaceId}/data-tables/{tableId}/import 200 session workflow:update csrf ordinary_mutation

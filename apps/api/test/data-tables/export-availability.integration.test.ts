@@ -37,7 +37,7 @@ describe.runIf(betterAuthIntegrationEnabled)(
           columns: [{ name: 'note', type: 'text', required: true }],
         },
       });
-      expect(created.statusCode, created.payload).toBe(200);
+      expect(created.statusCode, created.payload).toBe(201);
       const tableId = created.json<{ id: string }>().id;
       const database = api.database();
       await database.query(

@@ -1088,7 +1088,7 @@
           }
         },
         "responses": {
-          "200": {
+          "201": {
             "description": "Workspace data tables",
             "content": {
               "application/json": {
@@ -1610,6 +1610,7 @@
     "/v1/workspaces/{workspaceId}/data-tables/{tableId}/export": {
       "post": {
         "operationId": "exportDataTableCsv",
+        "description": "Streams the complete filtered CSV in row creation order. Interrupted transfers are aborted. Native forms supply query JSON and csrfToken as URL-encoded fields.",
         "security": [
           {
             "cookieSession": []
@@ -1762,8 +1763,7 @@
               }
             }
           }
-        },
-        "description": "Streams the complete filtered CSV in row creation order. Interrupted transfers are aborted. Native forms supply query JSON and csrfToken as URL-encoded fields."
+        }
       }
     },
     "/v1/workspaces/{workspaceId}/data-tables/{tableId}/rows/query": {
@@ -12211,6 +12211,187 @@
         ],
         "additionalProperties": false
       },
+      "DataTableCreate": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9](?:[A-Za-z0-9 _-]{0,62}[A-Za-z0-9_-])?$"
+          },
+          "columns": {
+            "minItems": 1,
+            "maxItems": 50,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z][A-Za-z0-9_]{0,63}$"
+                },
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "text",
+                    "number",
+                    "boolean",
+                    "date",
+                    "json"
+                  ]
+                },
+                "required": {
+                  "default": false,
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "name",
+                "type"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "keyColumn": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[A-Za-z][A-Za-z0-9_]{0,63}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "name",
+          "columns"
+        ],
+        "additionalProperties": false
+      },
+      "DataTableCreated": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "additionalProperties": false
+      },
+      "DataTableLimits": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "tableLimit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "columnLimit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 50
+          },
+          "rowLimit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100000
+          },
+          "byteLimit": {
+            "type": "integer",
+            "minimum": 65536,
+            "maximum": 1073741824
+          }
+        },
+        "required": [
+          "tableLimit",
+          "columnLimit",
+          "rowLimit",
+          "byteLimit"
+        ],
+        "additionalProperties": false
+      },
+      "DataTableQuotas": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "tableLimit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "columnLimit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 50
+          },
+          "rowLimit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100000
+          },
+          "byteLimit": {
+            "type": "integer",
+            "minimum": 65536,
+            "maximum": 1073741824
+          },
+          "tableCount": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "storedBytes": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "tableLimit",
+          "columnLimit",
+          "rowLimit",
+          "byteLimit",
+          "tableCount",
+          "storedBytes"
+        ],
+        "additionalProperties": false
+      },
+      "DataTableRemove": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "expectedRevision": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "expectedRevision"
+        ],
+        "additionalProperties": false
+      },
+      "DataTableRemoved": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "removed": {
+            "type": "boolean",
+            "const": true
+          }
+        },
+        "required": [
+          "removed"
+        ],
+        "additionalProperties": false
+      },
       "DataTableSchemaEdit": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "type": "object",
@@ -12458,109 +12639,6 @@
             }
           }
         },
-        "additionalProperties": false
-      },
-      "DataTableCreate": {
-        "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "type": "object",
-        "properties": {
-          "name": {
-            "type": "string",
-            "pattern": "^[A-Za-z0-9](?:[A-Za-z0-9 _-]{0,62}[A-Za-z0-9_-])?$"
-          },
-          "columns": {
-            "minItems": 1,
-            "maxItems": 50,
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {
-                "name": {
-                  "type": "string",
-                  "pattern": "^[A-Za-z][A-Za-z0-9_]{0,63}$"
-                },
-                "type": {
-                  "type": "string",
-                  "enum": [
-                    "text",
-                    "number",
-                    "boolean",
-                    "date",
-                    "json"
-                  ]
-                },
-                "required": {
-                  "default": false,
-                  "type": "boolean"
-                }
-              },
-              "required": [
-                "name",
-                "type"
-              ],
-              "additionalProperties": false
-            }
-          },
-          "keyColumn": {
-            "anyOf": [
-              {
-                "type": "string",
-                "pattern": "^[A-Za-z][A-Za-z0-9_]{0,63}$"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        },
-        "required": [
-          "name",
-          "columns"
-        ],
-        "additionalProperties": false
-      },
-      "DataTableCreated": {
-        "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid",
-            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-          }
-        },
-        "required": [
-          "id"
-        ],
-        "additionalProperties": false
-      },
-      "DataTableRemove": {
-        "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "type": "object",
-        "properties": {
-          "expectedRevision": {
-            "type": "integer",
-            "exclusiveMinimum": 0,
-            "maximum": 9007199254740991
-          }
-        },
-        "required": [
-          "expectedRevision"
-        ],
-        "additionalProperties": false
-      },
-      "DataTableRemoved": {
-        "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "type": "object",
-        "properties": {
-          "removed": {
-            "type": "boolean",
-            "const": true
-          }
-        },
-        "required": [
-          "removed"
-        ],
         "additionalProperties": false
       },
       "DataTableQuery": {
@@ -13712,84 +13790,6 @@
         },
         "required": [
           "affected"
-        ],
-        "additionalProperties": false
-      },
-      "DataTableLimits": {
-        "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "type": "object",
-        "properties": {
-          "tableLimit": {
-            "type": "integer",
-            "minimum": 1,
-            "maximum": 100
-          },
-          "columnLimit": {
-            "type": "integer",
-            "minimum": 1,
-            "maximum": 50
-          },
-          "rowLimit": {
-            "type": "integer",
-            "minimum": 1,
-            "maximum": 100000
-          },
-          "byteLimit": {
-            "type": "integer",
-            "minimum": 65536,
-            "maximum": 1073741824
-          }
-        },
-        "required": [
-          "tableLimit",
-          "columnLimit",
-          "rowLimit",
-          "byteLimit"
-        ],
-        "additionalProperties": false
-      },
-      "DataTableQuotas": {
-        "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "type": "object",
-        "properties": {
-          "tableLimit": {
-            "type": "integer",
-            "minimum": 1,
-            "maximum": 100
-          },
-          "columnLimit": {
-            "type": "integer",
-            "minimum": 1,
-            "maximum": 50
-          },
-          "rowLimit": {
-            "type": "integer",
-            "minimum": 1,
-            "maximum": 100000
-          },
-          "byteLimit": {
-            "type": "integer",
-            "minimum": 65536,
-            "maximum": 1073741824
-          },
-          "tableCount": {
-            "type": "integer",
-            "minimum": 0,
-            "maximum": 9007199254740991
-          },
-          "storedBytes": {
-            "type": "integer",
-            "minimum": 0,
-            "maximum": 9007199254740991
-          }
-        },
-        "required": [
-          "tableLimit",
-          "columnLimit",
-          "rowLimit",
-          "byteLimit",
-          "tableCount",
-          "storedBytes"
         ],
         "additionalProperties": false
       },

@@ -55,7 +55,9 @@ export function Route(route: AnyRoute): MethodDecorator {
     HttpCode(route.success.status),
     RateLimit(route.rateLimit),
     UseGuards(...routeGuards(route)),
-    UseInterceptors(RouteResponseInterceptor),
+    ...('body' in route.success
+      ? [UseInterceptors(RouteResponseInterceptor)]
+      : []),
     ...(route.cacheControl === undefined
       ? []
       : [Header('Cache-Control', route.cacheControl)]),
@@ -72,7 +74,11 @@ export const In = createParamDecorator(
     return {
       params: parseDeclared(route.params, request.params),
       query: parseDeclared(route.query, request.query),
-      body: parseDeclared(route.body?.schema, request.body),
+      // A route that documents its own request body, such as a form post, reads it itself.
+      body:
+        route.requestDocument === undefined
+          ? parseDeclared(route.body?.schema, request.body)
+          : undefined,
       idempotencyKey:
         route.idempotent === true
           ? requestIdempotencyKey(request.headers ?? {})
@@ -105,7 +111,9 @@ class RouteResponseInterceptor implements NestInterceptor {
     context: ExecutionContext,
     next: CallHandler,
   ): Observable<unknown> {
-    const { body, status } = declaredRoute(context).success;
+    const { success } = declaredRoute(context);
+    if (!('body' in success)) return next.handle();
+    const { body, status } = success;
     return next.handle().pipe(
       map((value: unknown) => {
         const checked = body.schema.safeParse(value);
@@ -128,12 +136,13 @@ function routeGuards({
   method,
 }: AnyRoute): readonly Type<CanActivate>[] {
   if (access.auth === 'public') return [];
+  const csrf = method !== 'get' && access.csrf !== 'header_or_body';
   return [
     access.auth === 'session'
       ? SessionAuthenticationGuard
       : AutomationAuthenticationGuard,
-    ...(access.capability === undefined ? [] : [guardFor(access.capability)]),
-    ...(method === 'get' ? [] : [CsrfProtectionGuard]),
+    ...(access.capabilities ?? []).map(guardFor),
+    ...(csrf ? [CsrfProtectionGuard] : []),
   ];
 }
 

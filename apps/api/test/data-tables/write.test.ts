@@ -2,6 +2,8 @@ import { randomUUID } from 'node:crypto';
 import { describe, expect, it, vi } from 'vitest';
 import { ZodError } from 'zod';
 
+import { dataTableRoutes } from '@pertexo/contracts/server';
+
 import { DataTablesController } from '../../src/data-tables/controller.js';
 import type { DataTablesService } from '../../src/data-tables/service.js';
 import type { CsvExportAdmission } from '../../src/platform/http/csv/admission.js';
@@ -36,8 +38,14 @@ function setup() {
       clientMetadata: {},
     },
   };
+  // What @In hands the handler: the body parsed by the route's declared schema.
   const send = (body: unknown) =>
-    controller.write(request, workspaceId, tableId, body);
+    controller.write(request, {
+      params: { workspaceId, tableId },
+      query: undefined as never,
+      body: dataTableRoutes.write.body.schema.parse(body),
+      idempotencyKey: 'write-1',
+    });
   return { write, send };
 }
 
