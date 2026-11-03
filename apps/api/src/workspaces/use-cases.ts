@@ -12,7 +12,6 @@ import {
 } from '../authorization/index.js';
 import {
   accessibleWorkspacesResponseSchema,
-  workspaceCreateRequestSchema,
   workspaceLifecycleChangeResponseSchema,
   workspaceResponseSchema,
   workspaceMembersResponseSchema,
@@ -37,7 +36,7 @@ import {
   type IdentityWorkspaceTelemetry,
 } from './telemetry.js';
 import { projectUserProfile } from './commands/user-profile.js';
-import { parseRequestInput } from '../platform/http/request-input.js';
+import type { WorkspaceCreateRequest } from '@pertexo/contracts';
 
 type CurrentUserPersistence = Pick<
   IdentityWorkspacePersistence,
@@ -192,7 +191,7 @@ export { ChangeWorkspaceMemberRoleUseCase } from './members/role.js';
 export type CreateWorkspaceInput = Readonly<{
   actorId: string;
   idempotencyKey: string;
-  request: unknown;
+  request: WorkspaceCreateRequest;
   requestId?: string;
   traceId?: string;
   metadata?: Record<string, unknown>;
@@ -210,10 +209,7 @@ export class CreateWorkspaceUseCase {
     return this.telemetry.measure(
       IDENTITY_WORKSPACE_OPERATION.workspaceCreate,
       async () => {
-        const request = parseRequestInput(
-          workspaceCreateRequestSchema,
-          input.request,
-        );
+        const { request } = input;
         const workspace = await this.persistence.createWorkspaceWithOwner({
           ownerUserId: input.actorId,
           idempotencyKey: input.idempotencyKey,

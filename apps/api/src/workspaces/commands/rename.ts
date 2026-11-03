@@ -6,11 +6,10 @@ import {
   type IdentityWorkspaceTelemetry,
 } from '../telemetry.js';
 import {
-  workspaceRenameRequestSchema,
   workspaceRenameResponseSchema,
   type WorkspaceRenameResponse,
 } from '../types.js';
-import { parseRequestInput } from '../../platform/http/request-input.js';
+import type { WorkspaceRenameRequest } from '@pertexo/contracts';
 
 type RenamePersistence = Required<
   Pick<IdentityWorkspacePersistence, 'renameWorkspace'>
@@ -26,7 +25,7 @@ export class RenameWorkspaceUseCase {
     input: Readonly<{
       actor: ActorContext;
       routeWorkspaceId: string;
-      request: unknown;
+      request: WorkspaceRenameRequest;
       idempotencyKey: string;
       requestId?: string;
       traceId?: string;
@@ -35,10 +34,7 @@ export class RenameWorkspaceUseCase {
     return this.telemetry.measure(
       IDENTITY_WORKSPACE_OPERATION.workspaceRename,
       async () => {
-        const request = parseRequestInput(
-          workspaceRenameRequestSchema,
-          input.request,
-        );
+        const { request } = input;
         const result = await this.persistence.renameWorkspace({
           workspaceId: input.routeWorkspaceId,
           actorUserId: input.actor.actorId,

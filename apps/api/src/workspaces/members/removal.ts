@@ -8,12 +8,12 @@ import {
   NOOP_IDENTITY_WORKSPACE_TELEMETRY,
   type IdentityWorkspaceTelemetry,
 } from '../telemetry.js';
+import type { workspaceMemberRemovalRequestSchema } from '@pertexo/contracts';
+import type { z } from 'zod';
 import {
-  workspaceMemberRemovalRequestSchema,
   workspaceMemberRemovalResponseSchema,
   type WorkspaceMemberRemovalResponse,
 } from '../types.js';
-import { parseRequestInput } from '../../platform/http/request-input.js';
 
 type WorkspaceMemberRemovalPersistence = Required<
   Pick<IdentityWorkspacePersistence, 'removeWorkspaceMember'>
@@ -27,18 +27,16 @@ export class RemoveWorkspaceMemberUseCase {
   ) {}
 
   public execute(
-    input: WorkspaceMemberCommandInput,
+    input: WorkspaceMemberCommandInput<
+      z.output<typeof workspaceMemberRemovalRequestSchema>
+    >,
   ): Promise<WorkspaceMemberRemovalResponse> {
     return this.telemetry.measure(
       IDENTITY_WORKSPACE_OPERATION.workspaceMemberRemoval,
       async () => {
-        const request = parseRequestInput(
-          workspaceMemberRemovalRequestSchema,
-          input.request,
-        );
         const result = await this.persistence.removeWorkspaceMember({
           ...memberCommandFields(input),
-          expectedRoleRevision: request.expectedRoleRevision,
+          expectedRoleRevision: input.request.expectedRoleRevision,
         });
         return workspaceMemberRemovalResponseSchema.parse(result);
       },

@@ -1,7 +1,6 @@
 import type { VerifiedApiToken } from '@pertexo/core/tenant-access';
 import type { ApiTokenActorContext } from '../authorization/types.js';
 export {
-  accessibleWorkspacesQuerySchema,
   accessibleWorkspacesResponseSchema,
   accountSecurityLinkStartRequestSchema,
   accountSecurityLinkStartResponseSchema,
@@ -33,9 +32,7 @@ export {
   workspaceDeletionRequestSchema,
   workspaceIdParamSchema,
   workspaceLifecycleChangeResponseSchema,
-  workspaceMembersQuerySchema,
   workspaceMembersResponseSchema,
-  workspaceMemberRoleParamsSchema,
   workspaceMemberRoleChangeRequestSchema,
   workspaceMemberRoleChangeResponseSchema,
   workspaceMemberRemovalRequestSchema,

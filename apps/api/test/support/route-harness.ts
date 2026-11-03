@@ -51,7 +51,7 @@ export async function routeHarness(feature: DynamicModule) {
   await adapter.getInstance().ready();
   return {
     send: (
-      method: 'GET' | 'POST' | 'PUT' | 'DELETE',
+      method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE',
       url: string,
       input: Send = {},
     ) => {

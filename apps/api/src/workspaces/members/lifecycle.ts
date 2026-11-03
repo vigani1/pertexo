@@ -11,18 +11,19 @@ import {
   type IdentityWorkspaceOperation,
   type IdentityWorkspaceTelemetry,
 } from '../telemetry.js';
-import {
-  workspaceLeaveRequestSchema,
-  workspaceLeaveResponseSchema,
+import type {
   workspaceMemberStatusRequestSchema,
-  workspaceMemberStatusResponseSchema,
   workspaceOwnershipTransferRequestSchema,
+} from '@pertexo/contracts';
+import type { z } from 'zod';
+import {
+  workspaceLeaveResponseSchema,
+  workspaceMemberStatusResponseSchema,
   workspaceOwnershipTransferResponseSchema,
   type WorkspaceLeaveResponse,
   type WorkspaceMemberStatusResponse,
   type WorkspaceOwnershipTransferResponse,
 } from '../types.js';
-import { parseRequestInput } from '../../platform/http/request-input.js';
 
 type MembershipLifecyclePersistence = Required<
   Pick<
@@ -32,6 +33,10 @@ type MembershipLifecyclePersistence = Required<
     | 'reactivateWorkspaceMember'
     | 'transferWorkspaceOwnership'
   >
+>;
+
+type StatusCommand = WorkspaceMemberCommandInput<
+  z.output<typeof workspaceMemberStatusRequestSchema>
 >;
 
 /**
@@ -52,7 +57,6 @@ export class WorkspaceMembershipLifecycleUseCase {
     return this.telemetry.measure(
       IDENTITY_WORKSPACE_OPERATION.workspaceMemberLeave,
       async () => {
-        parseRequestInput(workspaceLeaveRequestSchema, input.request);
         const fields = memberCommandFields(input);
         const result = await this.persistence.leaveWorkspace({
           workspaceId: fields.workspaceId,
@@ -68,9 +72,7 @@ export class WorkspaceMembershipLifecycleUseCase {
     );
   }
 
-  public suspend(
-    input: WorkspaceMemberCommandInput,
-  ): Promise<WorkspaceMemberStatusResponse> {
+  public suspend(input: StatusCommand): Promise<WorkspaceMemberStatusResponse> {
     return this.changeStatus(
       input,
       IDENTITY_WORKSPACE_OPERATION.workspaceMemberSuspend,
@@ -79,7 +81,7 @@ export class WorkspaceMembershipLifecycleUseCase {
   }
 
   public reactivate(
-    input: WorkspaceMemberCommandInput,
+    input: StatusCommand,
   ): Promise<WorkspaceMemberStatusResponse> {
     return this.changeStatus(
       input,
@@ -90,15 +92,15 @@ export class WorkspaceMembershipLifecycleUseCase {
 
   /** Needs a sign-in from the last five minutes (ADR 047). */
   public transferOwnership(
-    input: WorkspaceMemberCommandInput & Readonly<{ signedInAt: Date }>,
+    input: WorkspaceMemberCommandInput<
+      z.output<typeof workspaceOwnershipTransferRequestSchema>
+    > &
+      Readonly<{ signedInAt: Date }>,
   ): Promise<WorkspaceOwnershipTransferResponse> {
     return this.telemetry.measure(
       IDENTITY_WORKSPACE_OPERATION.workspaceOwnershipTransfer,
       async () => {
-        const request = parseRequestInput(
-          workspaceOwnershipTransferRequestSchema,
-          input.request,
-        );
+        const { request } = input;
         assertRecentSignIn(input.signedInAt, this.clock.now());
         const result = await this.persistence.transferWorkspaceOwnership({
           ...memberCommandFields(input),
@@ -111,18 +113,14 @@ export class WorkspaceMembershipLifecycleUseCase {
   }
 
   private changeStatus(
-    input: WorkspaceMemberCommandInput,
+    input: StatusCommand,
     operation: IdentityWorkspaceOperation,
     send: MembershipLifecyclePersistence['suspendWorkspaceMember'],
   ): Promise<WorkspaceMemberStatusResponse> {
     return this.telemetry.measure(operation, async () => {
-      const request = parseRequestInput(
-        workspaceMemberStatusRequestSchema,
-        input.request,
-      );
       const result = await send({
         ...memberCommandFields(input),
-        expectedRoleRevision: request.expectedRoleRevision,
+        expectedRoleRevision: input.request.expectedRoleRevision,
       });
       return workspaceMemberStatusResponseSchema.parse(result);
     });

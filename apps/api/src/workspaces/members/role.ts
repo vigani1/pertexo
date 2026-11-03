@@ -5,12 +5,12 @@ import {
   NOOP_IDENTITY_WORKSPACE_TELEMETRY,
   type IdentityWorkspaceTelemetry,
 } from '../telemetry.js';
+import type { workspaceMemberRoleChangeRequestSchema } from '@pertexo/contracts';
+import type { z } from 'zod';
 import {
-  workspaceMemberRoleChangeRequestSchema,
   workspaceMemberRoleChangeResponseSchema,
   type WorkspaceMemberRoleChangeResponse,
 } from '../types.js';
-import { parseRequestInput } from '../../platform/http/request-input.js';
 
 type WorkspaceMemberRolePersistence = Pick<
   IdentityWorkspacePersistence,
@@ -18,11 +18,11 @@ type WorkspaceMemberRolePersistence = Pick<
 >;
 
 /** The authorized route, body and delivery identifiers of a member command. */
-export type WorkspaceMemberCommandInput = Readonly<{
+export type WorkspaceMemberCommandInput<Request = unknown> = Readonly<{
   actor: ActorContext;
   routeWorkspaceId: string;
   targetUserId: string;
-  request: unknown;
+  request: Request;
   idempotencyKey: string;
   requestId?: string;
   traceId?: string;
@@ -47,15 +47,14 @@ export class ChangeWorkspaceMemberRoleUseCase {
   ) {}
 
   public execute(
-    input: WorkspaceMemberCommandInput,
+    input: WorkspaceMemberCommandInput<
+      z.output<typeof workspaceMemberRoleChangeRequestSchema>
+    >,
   ): Promise<WorkspaceMemberRoleChangeResponse> {
     return this.telemetry.measure(
       IDENTITY_WORKSPACE_OPERATION.workspaceMemberRoleChange,
       async () => {
-        const request = parseRequestInput(
-          workspaceMemberRoleChangeRequestSchema,
-          input.request,
-        );
+        const { request } = input;
         const result = await this.persistence.changeWorkspaceMemberRole({
           ...memberCommandFields(input),
           role: request.role,
