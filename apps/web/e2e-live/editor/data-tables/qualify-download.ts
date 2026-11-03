@@ -23,7 +23,7 @@ export async function qualifyLargeDownload(page: Page, workspaceId: string) {
       ],
     },
   });
-  expect(created.status()).toBe(200);
+  expect(created.status()).toBe(201);
   const table = dataTableCreatedSchema.parse(await created.json());
   for (let batch = 0; batch < 2; batch += 1) {
     const imported = await page.request.post(`${base}/${table.id}/import`, {
