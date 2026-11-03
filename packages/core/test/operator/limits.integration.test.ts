@@ -58,3 +58,38 @@ describe('oversized operator input', () => {
     expect(await auditFor(input.commandId)).toEqual([]);
   });
 });
+
+it('refuses a class instance as replay input without recording a command or audit', async () => {
+  const input = base();
+  const runInput = new (class ReplayInput {
+    value = 1;
+  })();
+  await expect(
+    schedule.operator.replayRun({
+      ...input,
+      dryRun: true,
+      runInput,
+      sourceRunId,
+      workflowVersionId: versionId,
+    }),
+  ).rejects.toThrow('must contain plain objects');
+  expect(await storedCommand(input.commandId)).toBeUndefined();
+  expect(await auditFor(input.commandId)).toEqual([]);
+});
+
+it('refuses too many replay members even when the input fits the byte limit, and records nothing', async () => {
+  const input = base();
+  const runInput = Array.from({ length: 10_001 }, () => 0);
+  expect(Buffer.byteLength(JSON.stringify(runInput))).toBeLessThan(65_536);
+  await expect(
+    schedule.operator.replayRun({
+      ...input,
+      dryRun: true,
+      runInput,
+      sourceRunId,
+      workflowVersionId: versionId,
+    }),
+  ).rejects.toThrow('member limit');
+  expect(await storedCommand(input.commandId)).toBeUndefined();
+  expect(await auditFor(input.commandId)).toEqual([]);
+});
