@@ -59,12 +59,8 @@ export const workflowRunTriggerTypeSchema = z.enum([
   'workflow_error',
   'form',
 ]);
-export const workflowRunPageLimitSchema = z.coerce
-  .number()
-  .int()
-  .min(1)
-  .max(100);
-export const workflowRunCursorSchema = z.string().min(1).max(1_024);
+const workflowRunPageLimitSchema = z.coerce.number().int().min(1).max(100);
+const workflowRunCursorSchema = z.string().min(1).max(1_024);
 const workflowRunCreatedAtInputSchema = z.union([
   z.iso.datetime({ offset: true, precision: 0 }),
   z.iso.datetime({ offset: true, precision: 1 }),
@@ -92,8 +88,9 @@ export function normalizeWorkflowRunCreatedAt(value: string): string {
   return `${utcWhole}.${(fraction ?? '').padEnd(6, '0')}Z`;
 }
 
-export const workflowRunCreatedAtSchema =
-  workflowRunCreatedAtInputSchema.transform(normalizeWorkflowRunCreatedAt);
+const workflowRunCreatedAtSchema = workflowRunCreatedAtInputSchema.transform(
+  normalizeWorkflowRunCreatedAt,
+);
 
 /**
  * The server applies the exact bounded execution-value contract before
@@ -245,7 +242,7 @@ export const workflowRunStatisticsWindowSchema = z.enum([
   '24h',
   '7d',
 ]);
-export const workflowRunStatisticsBreakdownSchema = z.enum(['workflow']);
+const workflowRunStatisticsBreakdownSchema = z.enum(['workflow']);
 /** Workflows returned by a per-workflow breakdown, busiest first. */
 export const WORKFLOW_RUN_STATISTICS_WORKFLOW_LIMIT = 50;
 

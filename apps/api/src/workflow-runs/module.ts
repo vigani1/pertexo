@@ -16,13 +16,6 @@ import {
 import type { WorkspaceAuthorizationSource } from '../workspaces/ports.js';
 import { ApiLifecycleModule } from '../platform/health/drain-state.js';
 import { WorkflowRunsController } from './http/controllers.js';
-import {
-  UsageCapacityArtifactReadGuard,
-  WorkflowRunCancelGuard,
-  WorkflowRunReplayGuard,
-  WorkflowRunReadGuard,
-  WorkflowRunStartGuard,
-} from './http/guards.js';
 import type {
   WorkflowRunEventStreamer,
   WorkflowRunPersistence,
@@ -40,7 +33,7 @@ import {
 import { GetWorkflowRunStatisticsUseCase } from './statistics.js';
 import { GetUsageCapacityUseCase } from './usage/capacity.js';
 import { UsageCapacityController } from './usage/capacity-controller.js';
-import { WORKFLOW_RUN_AUTHORIZATION } from './tokens.js';
+import { WORKSPACE_AUTHORIZATION } from '../workspaces/tokens.js';
 import {
   CancelWorkflowRunUseCase,
   GetWorkflowRunUseCase,
@@ -67,7 +60,7 @@ export class WorkflowRunsModule {
   ): DynamicModule {
     const providers: Provider[] = [
       {
-        provide: WORKFLOW_RUN_AUTHORIZATION,
+        provide: WORKSPACE_AUTHORIZATION,
         useValue: dependencies.authorization,
       },
       {
@@ -75,7 +68,6 @@ export class WorkflowRunsModule {
         useValue:
           dependencies.visibilityMetrics ?? createSseVisibilityMetrics(),
       },
-      WorkflowRunReadGuard,
       {
         provide: GetUsageTrendsUseCase,
         useValue: new GetUsageTrendsUseCase(
@@ -83,7 +75,6 @@ export class WorkflowRunsModule {
           dependencies.authorization,
         ),
       },
-      UsageCapacityArtifactReadGuard,
       {
         provide: GetUsageCapacityUseCase,
         useValue: new GetUsageCapacityUseCase(
@@ -91,8 +82,6 @@ export class WorkflowRunsModule {
           dependencies.authorization,
         ),
       },
-      WorkflowRunStartGuard,
-      WorkflowRunReplayGuard,
       {
         provide: GetRunRecoveryUseCase,
         useValue: new GetRunRecoveryUseCase(
@@ -107,7 +96,6 @@ export class WorkflowRunsModule {
           dependencies.authorization,
         ),
       },
-      WorkflowRunCancelGuard,
       {
         provide: StartWorkflowRunUseCase,
         useValue: new StartWorkflowRunUseCase(

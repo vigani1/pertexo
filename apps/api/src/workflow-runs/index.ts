@@ -7,6 +7,5 @@ export * from './http/controllers.js';
 export * from './run-data/controller.js';
 export * from './run-data/use-cases.js';
 export * from './events/streamer.js';
-export * from './http/guards.js';
 export * from './module.js';
 export * from './postgres-persistence.js';

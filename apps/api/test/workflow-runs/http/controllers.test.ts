@@ -13,46 +13,41 @@ import {
   streamController,
 } from './controllers/fixture.js';
 import { ApiDrainState } from '../../../src/platform/health/drain-state.js';
+import type { workflowRunRoutes as routes } from '@pertexo/contracts/server';
+import type { RouteInput } from '@pertexo/contracts/server';
 
-describe('workflow runs controller public seam', () => {
-  it('strictly parses and forwards bounded run-history filters', async () => {
-    const fixture = controller();
-    await fixture.instance.listRuns(
-      request(),
-      { workspaceId },
-      {
-        limit: '25',
-        workflowId,
-        status: 'succeeded',
-        createdAtFrom: '2026-08-20T00:00:00.000Z',
-        createdAtBefore: '2026-08-21T00:00:00.000Z',
-      },
-    );
-    expect(fixture.list.execute).toHaveBeenCalledWith(
-      expect.objectContaining({
-        routeWorkspaceId: workspaceId,
-        limit: 25,
-        workflowId,
-        status: 'succeeded',
-      }),
-    );
-    await expect(
-      fixture.instance.listRuns(request(), { workspaceId }, { unknown: true }),
-    ).rejects.toBeDefined();
-    expect(fixture.list.execute).toHaveBeenCalledTimes(1);
+/** What the route hands a handler once its declared input has parsed. */
+function input<Route>(
+  values: Partial<RouteInput<Route>> & Pick<RouteInput<Route>, 'params'>,
+): RouteInput<Route> {
+  return {
+    query: {},
+    body: undefined,
+    idempotencyKey: undefined,
+    headers: undefined,
+    ...values,
+  } as RouteInput<Route>;
+}
+
+const events = (lastEventId?: string) =>
+  input<typeof routes.events>({
+    params: { workspaceId, runId },
+    headers: lastEventId === undefined ? {} : { 'last-event-id': lastEventId },
   });
 
-  it('strictly parses a fixed statistics window and optional breakdown', async () => {
+describe('workflow runs controller', () => {
+  it('forwards a statistics window and breakdown only when asked for', async () => {
     const fixture = controller();
     await fixture.instance.getRunStatistics(
       request(),
-      { workspaceId },
-      { window: '7d', breakdown: 'workflow' },
+      input<typeof routes.statistics>({
+        params: { workspaceId },
+        query: { window: '7d', breakdown: 'workflow' },
+      }),
     );
     await fixture.instance.getRunStatistics(
       request(),
-      { workspaceId },
-      undefined,
+      input<typeof routes.statistics>({ params: { workspaceId }, query: {} }),
     );
     expect(fixture.statistics.execute).toHaveBeenNthCalledWith(1, {
       actor: expect.objectContaining({ actorId, workspaceId }) as unknown,
@@ -63,48 +58,17 @@ describe('workflow runs controller public seam', () => {
     expect(fixture.statistics.execute.mock.calls[1]?.[0]).not.toHaveProperty(
       'window',
     );
-    for (const query of [
-      { window: '30d' },
-      { createdAtFrom: '2026-08-20T00:00:00.000Z' },
-    ])
-      await expect(
-        fixture.instance.getRunStatistics(request(), { workspaceId }, query),
-      ).rejects.toBeDefined();
-    await expect(
-      fixture.instance.getRunStatistics(
-        request(),
-        { workspaceId: 'not-a-workspace' },
-        {},
-      ),
-    ).rejects.toBeDefined();
-    expect(fixture.statistics.execute).toHaveBeenCalledTimes(2);
-  });
-
-  it('forwards distinct sub-millisecond run-history boundaries', async () => {
-    const fixture = controller();
-    await fixture.instance.listRuns(
-      request(),
-      { workspaceId },
-      {
-        createdAtFrom: '2026-08-21T00:00:00.000100Z',
-        createdAtBefore: '2026-08-21T00:00:00.000900Z',
-      },
-    );
-
-    expect(fixture.list.execute).toHaveBeenCalledWith(
-      expect.objectContaining({
-        createdAtFrom: '2026-08-21T00:00:00.000100Z',
-        createdAtBefore: '2026-08-21T00:00:00.000900Z',
-      }),
-    );
   });
 
   it('uses session context without a guard and gives guarded context precedence', async () => {
     const fixture = controller();
     await fixture.instance.startRun(
       request({ 'idempotency-key': 'session-context' }),
-      { workspaceId, workflowId },
-      {},
+      input<typeof routes.start>({
+        params: { workspaceId, workflowId },
+        body: {},
+        idempotencyKey: 'session-context',
+      }),
     );
     expect(fixture.start.execute).toHaveBeenLastCalledWith(
       expect.objectContaining({
@@ -136,8 +100,11 @@ describe('workflow runs controller public seam', () => {
         ...request({ 'idempotency-key': 'guard-context' }),
         authorizedWorkspace,
       },
-      { workspaceId, workflowId },
-      {},
+      input<typeof routes.start>({
+        params: { workspaceId, workflowId },
+        body: {},
+        idempotencyKey: 'guard-context',
+      }),
     );
     expect(fixture.start.execute).toHaveBeenLastCalledWith(
       expect.objectContaining({
@@ -173,7 +140,7 @@ describe('workflow runs controller public seam', () => {
         authorizedWorkspace,
         reauthorizeIdentitySession,
       },
-      { workspaceId, runId },
+      events(),
       reply as never,
     );
     expect(fixture.stream.execute).toHaveBeenCalledWith(
@@ -196,8 +163,11 @@ describe('workflow runs controller public seam', () => {
         'idempotency-key': 'run-start-42',
         traceparent: '00-11111111111111111111111111111111-2222222222222222-01',
       }),
-      { workspaceId, workflowId },
-      { input: { customerId: 'customer-42' } },
+      input<typeof routes.start>({
+        params: { workspaceId, workflowId },
+        body: { input: { customerId: 'customer-42' } },
+        idempotencyKey: 'run-start-42',
+      }),
     );
 
     expect(fixture.start.execute).toHaveBeenCalledWith(
@@ -212,14 +182,6 @@ describe('workflow runs controller public seam', () => {
     );
   });
 
-  it('rejects a missing idempotency key before calling the start use case', async () => {
-    const fixture = controller();
-    await expect(
-      fixture.instance.startRun(request(), { workspaceId, workflowId }, {}),
-    ).rejects.toMatchObject({ code: 'request.invalid' });
-    expect(fixture.start.execute).not.toHaveBeenCalled();
-  });
-
   it('parses an explicit replay request and forwards the source and version', async () => {
     const fixture = controller();
     await fixture.instance.replayRun(
@@ -228,12 +190,15 @@ describe('workflow runs controller public seam', () => {
         'x-csrf-token': 'csrf-token-42',
         traceparent: '00-11111111111111111111111111111111-2222222222222222-01',
       }),
-      { workspaceId, runId },
-      {
-        workflowVersionId,
-        input: { customerId: 'customer-42' },
-        deadlineAt: '2026-08-21T18:00:00.000Z',
-      },
+      input<typeof routes.replay>({
+        params: { workspaceId, runId },
+        body: {
+          workflowVersionId,
+          input: { customerId: 'customer-42' },
+          deadlineAt: '2026-08-21T18:00:00.000Z',
+        },
+        idempotencyKey: 'run-replay-42',
+      }),
     );
 
     expect(fixture.replay.execute).toHaveBeenCalledWith(
@@ -255,7 +220,7 @@ describe('workflow runs controller public seam', () => {
     const reply = sseReply();
     await fixture.instance.streamRunEvents(
       request({ 'last-event-id': '1' }),
-      { workspaceId, runId },
+      events('1'),
       reply as never,
     );
 
@@ -295,11 +260,7 @@ describe('workflow runs controller public seam', () => {
     const instance = streamController(stream, visibilityMetrics);
 
     const reply = sseReply();
-    await instance.streamRunEvents(
-      request(),
-      { workspaceId, runId },
-      reply as never,
-    );
+    await instance.streamRunEvents(request(), events(), reply as never);
 
     expect(reply.raw.chunks).toHaveLength(2);
     expect(visibilityMetrics.recordFirstEligibleFrame).toHaveBeenCalledTimes(1);
@@ -344,11 +305,7 @@ describe('workflow runs controller public seam', () => {
     const instance = streamController(stream, visibilityMetrics);
     const reply = sseReply();
 
-    await instance.streamRunEvents(
-      request(),
-      { workspaceId, runId },
-      reply as never,
-    );
+    await instance.streamRunEvents(request(), events(), reply as never);
 
     expect(reply.raw.chunks).toHaveLength(2);
     expect(visibilityMetrics.recordFirstEligibleFrame).toHaveBeenCalledTimes(2);
@@ -381,11 +338,7 @@ describe('workflow runs controller public seam', () => {
     const reply = sseReply();
     let streaming: Promise<void> | undefined;
     try {
-      streaming = instance.streamRunEvents(
-        request(),
-        { workspaceId, runId },
-        reply as never,
-      );
+      streaming = instance.streamRunEvents(request(), events(), reply as never);
       await vi.advanceTimersByTimeAsync(0);
       expect(drainState.activeStreamCount()).toBe(1);
       expect(returnIterator).toHaveBeenCalledOnce();
@@ -431,11 +384,7 @@ describe('workflow runs controller public seam', () => {
     });
 
     await expect(
-      instance.streamRunEvents(
-        selectedRequest,
-        { workspaceId, runId },
-        reply as never,
-      ),
+      instance.streamRunEvents(selectedRequest, events(), reply as never),
     ).rejects.toBe(preparationFailure);
 
     expect(iteratorFactory).not.toHaveBeenCalled();
@@ -463,11 +412,7 @@ describe('workflow runs controller public seam', () => {
     const reply = sseReply();
 
     await expect(
-      instance.streamRunEvents(
-        selectedRequest,
-        { workspaceId, runId },
-        reply as never,
-      ),
+      instance.streamRunEvents(selectedRequest, events(), reply as never),
     ).resolves.toBeUndefined();
 
     const end = vi.mocked(reply.raw.end);
@@ -483,8 +428,10 @@ describe('workflow runs controller public seam', () => {
       request({
         traceparent: '00-11111111111111111111111111111111-2222222222222222-01',
       }),
-      { workspaceId, runId },
-      { reason: 'operator request' },
+      input<typeof routes.cancel>({
+        params: { workspaceId, runId },
+        body: { reason: 'operator request' },
+      }),
     );
 
     expect(fixture.cancel.execute).toHaveBeenCalledWith(

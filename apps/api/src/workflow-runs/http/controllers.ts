@@ -1,49 +1,25 @@
 import { throwApplicationError } from '../../platform/http/application-error.js';
-import { AutomationAuthenticationGuard } from '../../authentication/automation/guard.js';
 import {
-  Body,
   Controller,
-  Get,
-  HttpCode,
   Inject,
-  Param,
-  Post,
   Optional,
-  Query,
   Req,
   Res,
-  UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
 import {
-  lastRunEventIdHeaderSchema,
-  workflowRunCancelRequestSchema,
-  workflowRunListParamsSchema,
-  workflowRunListQuerySchema,
-  workflowRunParamsSchema,
-  workflowRunReplayRequestSchema,
-  workflowRunStartParamsSchema,
-  workflowRunStartRequestSchema,
-  workflowRunStatisticsQuerySchema,
-} from '@pertexo/contracts';
+  workflowRunRoutes as routes,
+  type RouteInput,
+} from '@pertexo/contracts/server';
 import type { FastifyReply } from 'fastify';
 
 import { singleRequestHeader } from '../../platform/http/request-headers.js';
+import { In, Route } from '../../workspaces/http/route.js';
 
-import {
-  CsrfProtectionGuard,
-  SessionAuthenticationGuard,
-  authenticatedSession,
-} from '../../workspaces/index.js';
-import {
-  authenticatedRequestIdentifiers,
-  optionalAuthorizedWorkspace,
-} from '../../workspaces/request/authenticated-context.js';
-import { actorFrom, type WorkflowRunsRequest } from './request-context.js';
-import {
-  applicationError,
-  requestIdempotencyKey,
-} from '../../platform/http/index.js';
+import { authenticatedSession } from '../../workspaces/index.js';
+import { authenticatedRequestIdentifiers } from '../../workspaces/request/authenticated-context.js';
+import { caller, type WorkflowRunsRequest } from './request-context.js';
+import { applicationError } from '../../platform/http/index.js';
 import { ApiDrainState } from '../../platform/health/drain-state.js';
 import {
   createSseVisibilityMetrics,
@@ -52,14 +28,6 @@ import {
   type SseVisibilityPath,
 } from '../../platform/observability/sse-visibility-metrics.js';
 import { prepareSseResponse } from '../../platform/http/sse-response.js';
-import { RateLimit } from '../../platform/rate-limit/metadata.js';
-
-import {
-  WorkflowRunCancelGuard,
-  WorkflowRunReplayGuard,
-  WorkflowRunReadGuard,
-  WorkflowRunStartGuard,
-} from './guards.js';
 import { GetWorkflowRunStatisticsUseCase } from '../statistics.js';
 import { streamCleanupCompletion } from '../events/stream-cleanup.js';
 import { writeSseFrames } from '../events/sse-transport.js';
@@ -73,11 +41,9 @@ import {
 } from '../use-cases.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
 import { runFailure } from '../../problems/context/normalize.js';
-import { parseRequestInput } from '../../platform/http/request-input.js';
 
 @UseInterceptors(domainErrors(runFailure))
-@Controller('v1/workspaces/:workspaceId')
-@RateLimit('authenticated_read')
+@Controller()
 export class WorkflowRunsController {
   // Nest resolves these dependencies positionally; grouping them would change DI.
   // eslint-disable-next-line max-params
@@ -96,151 +62,102 @@ export class WorkflowRunsController {
     private readonly drainState: ApiDrainState = new ApiDrainState(),
   ) {}
 
-  @Post('workflows/:workflowId/runs')
-  @RateLimit('run_admission')
-  @HttpCode(202)
-  @UseGuards(
-    AutomationAuthenticationGuard,
-    WorkflowRunStartGuard,
-    CsrfProtectionGuard,
-  )
+  @Route(routes.start)
   public async startRun(
     @Req() request: WorkflowRunsRequest,
-    @Param() params: unknown,
-    @Body() body: unknown,
+    @In() { params, body, idempotencyKey }: RouteInput<typeof routes.start>,
   ) {
-    const route = workflowRunStartParamsSchema.parse(params);
-    // No body means run the current version with its default input.
-    const input = parseRequestInput(workflowRunStartRequestSchema, body ?? {});
     return this.startWorkflowRun.execute({
-      actor: actorFrom(request, route.workspaceId),
-      routeWorkspaceId: route.workspaceId,
-      ...guardAuthorization(request),
-      workflowId: route.workflowId,
-      idempotencyKey: requestIdempotencyKey(request.headers),
-      ...(input.expectedPublishedVersionId === undefined
+      ...caller(request, params),
+      workflowId: params.workflowId,
+      idempotencyKey,
+      ...(body.expectedPublishedVersionId === undefined
         ? {}
-        : { expectedPublishedVersionId: input.expectedPublishedVersionId }),
-      ...(input.input === undefined ? {} : { input: input.input }),
-      ...(input.deadlineAt === undefined
-        ? {}
-        : { deadlineAt: input.deadlineAt }),
+        : { expectedPublishedVersionId: body.expectedPublishedVersionId }),
+      ...(body.input === undefined ? {} : { input: body.input }),
+      ...(body.deadlineAt === undefined ? {} : { deadlineAt: body.deadlineAt }),
       ...requestIdentifiers(request),
       ...traceparent(request),
     });
   }
 
-  @Post('runs/:runId/replay')
-  @RateLimit('run_admission')
-  @HttpCode(202)
-  @UseGuards(
-    SessionAuthenticationGuard,
-    WorkflowRunReplayGuard,
-    CsrfProtectionGuard,
-  )
+  @Route(routes.replay)
   public async replayRun(
     @Req() request: WorkflowRunsRequest,
-    @Param() params: unknown,
-    @Body() body: unknown,
+    @In() { params, body, idempotencyKey }: RouteInput<typeof routes.replay>,
   ) {
-    const route = workflowRunParamsSchema.parse(params);
-    const input = parseRequestInput(workflowRunReplayRequestSchema, body);
     return this.replayWorkflowRun.execute({
-      actor: actorFrom(request, route.workspaceId),
-      routeWorkspaceId: route.workspaceId,
-      ...guardAuthorization(request),
-      runId: route.runId,
-      workflowVersionId: input.workflowVersionId,
-      input: input.input,
-      ...(input.deadlineAt === undefined
-        ? {}
-        : { deadlineAt: input.deadlineAt }),
-      idempotencyKey: requestIdempotencyKey(request.headers),
+      ...caller(request, params),
+      runId: params.runId,
+      workflowVersionId: body.workflowVersionId,
+      input: body.input,
+      ...(body.deadlineAt === undefined ? {} : { deadlineAt: body.deadlineAt }),
+      idempotencyKey,
       ...requestIdentifiers(request),
       ...traceparent(request),
     });
   }
 
-  @Get('runs/:runId')
-  @UseGuards(AutomationAuthenticationGuard, WorkflowRunReadGuard)
+  @Route(routes.get)
   public async getRun(
     @Req() request: WorkflowRunsRequest,
-    @Param() params: unknown,
+    @In() { params }: RouteInput<typeof routes.get>,
   ) {
-    const route = workflowRunParamsSchema.parse(params);
     return this.getWorkflowRun.execute({
-      actor: actorFrom(request, route.workspaceId),
-      routeWorkspaceId: route.workspaceId,
-      ...guardAuthorization(request),
-      runId: route.runId,
+      ...caller(request, params),
+      runId: params.runId,
     });
   }
 
-  @Get('runs')
-  @UseGuards(AutomationAuthenticationGuard, WorkflowRunReadGuard)
+  @Route(routes.list)
   public async listRuns(
     @Req() request: WorkflowRunsRequest,
-    @Param() params: unknown,
-    @Query() query: unknown,
+    @In() { params, query }: RouteInput<typeof routes.list>,
   ) {
-    const route = workflowRunListParamsSchema.parse(params);
-    const input = parseRequestInput(workflowRunListQuerySchema, query ?? {});
     return this.listWorkflowRuns.execute({
-      actor: actorFrom(request, route.workspaceId),
-      routeWorkspaceId: route.workspaceId,
-      ...guardAuthorization(request),
-      ...(input.limit === undefined ? {} : { limit: input.limit }),
-      ...(input.runValueKey === undefined
+      ...caller(request, params),
+      ...(query.limit === undefined ? {} : { limit: query.limit }),
+      ...(query.runValueKey === undefined
         ? {}
         : {
-            runValueKey: input.runValueKey,
-            ...(input.runValue === undefined
+            runValueKey: query.runValueKey,
+            ...(query.runValue === undefined
               ? {}
-              : { runValue: input.runValue }),
+              : { runValue: query.runValue }),
           }),
-      ...(input.after === undefined ? {} : { after: input.after }),
-      ...(input.workflowId === undefined
+      ...(query.after === undefined ? {} : { after: query.after }),
+      ...(query.workflowId === undefined
         ? {}
-        : { workflowId: input.workflowId }),
-      ...(input.workflowNamePrefix === undefined
+        : { workflowId: query.workflowId }),
+      ...(query.workflowNamePrefix === undefined
         ? {}
-        : { workflowNamePrefix: input.workflowNamePrefix }),
-      ...(input.status === undefined ? {} : { status: input.status }),
-      ...(input.createdAtFrom === undefined
+        : { workflowNamePrefix: query.workflowNamePrefix }),
+      ...(query.status === undefined ? {} : { status: query.status }),
+      ...(query.createdAtFrom === undefined
         ? {}
-        : { createdAtFrom: input.createdAtFrom }),
-      ...(input.createdAtBefore === undefined
+        : { createdAtFrom: query.createdAtFrom }),
+      ...(query.createdAtBefore === undefined
         ? {}
-        : { createdAtBefore: input.createdAtBefore }),
+        : { createdAtBefore: query.createdAtBefore }),
     });
   }
 
-  @Get('run-statistics')
-  @UseGuards(SessionAuthenticationGuard, WorkflowRunReadGuard)
+  @Route(routes.statistics)
   public async getRunStatistics(
     @Req() request: WorkflowRunsRequest,
-    @Param() params: unknown,
-    @Query() query: unknown,
+    @In() { params, query }: RouteInput<typeof routes.statistics>,
   ) {
-    const route = workflowRunListParamsSchema.parse(params);
-    const input = parseRequestInput(
-      workflowRunStatisticsQuerySchema,
-      query ?? {},
-    );
     return this.getWorkflowRunStatistics.execute({
-      actor: actorFrom(request, route.workspaceId),
-      routeWorkspaceId: route.workspaceId,
-      ...guardAuthorization(request),
-      ...(input.window === undefined ? {} : { window: input.window }),
-      ...(input.breakdown === undefined ? {} : { breakdown: input.breakdown }),
+      ...caller(request, params),
+      ...(query.window === undefined ? {} : { window: query.window }),
+      ...(query.breakdown === undefined ? {} : { breakdown: query.breakdown }),
     });
   }
 
-  @Get('runs/:runId/events')
-  @UseGuards(SessionAuthenticationGuard, WorkflowRunReadGuard)
+  @Route(routes.events)
   public async streamRunEvents(
     @Req() request: WorkflowRunsRequest,
-    @Param() params: unknown,
+    @In() { params, headers }: RouteInput<typeof routes.events>,
     @Res() reply: FastifyReply,
   ): Promise<void> {
     const controller = new AbortController();
@@ -251,13 +168,10 @@ export class WorkflowRunsController {
     const releaseDrainRegistration = this.drainState.registerStream(controller);
     let releaseAfterCleanup: Promise<void> | undefined;
     try {
-      const route = workflowRunParamsSchema.parse(params);
-      const requestedLastEventId = lastEventId(request);
+      const requestedLastEventId = Number(headers['last-event-id'] ?? 0);
       const frames = await this.streamEvents.execute({
-        actor: actorFrom(request, route.workspaceId),
-        routeWorkspaceId: route.workspaceId,
-        ...guardAuthorization(request),
-        runId: route.runId,
+        ...caller(request, params),
+        runId: params.runId,
         lastEventId: requestedLastEventId,
         sessionExpiresAt: authenticatedSession(request).expiresAt,
         reauthorizeSession: sessionReauthorization(request),
@@ -287,37 +201,19 @@ export class WorkflowRunsController {
     }
   }
 
-  @Post('runs/:runId/cancel')
-  @RateLimit('ordinary_mutation')
-  @HttpCode(200)
-  @UseGuards(
-    AutomationAuthenticationGuard,
-    WorkflowRunCancelGuard,
-    CsrfProtectionGuard,
-  )
+  @Route(routes.cancel)
   public async cancelRun(
     @Req() request: WorkflowRunsRequest,
-    @Param() params: unknown,
-    @Body() body: unknown,
+    @In() { params, body }: RouteInput<typeof routes.cancel>,
   ) {
-    const route = workflowRunParamsSchema.parse(params);
-    const input = parseRequestInput(workflowRunCancelRequestSchema, body ?? {});
     return this.cancelWorkflowRun.execute({
-      actor: actorFrom(request, route.workspaceId),
-      routeWorkspaceId: route.workspaceId,
-      ...guardAuthorization(request),
-      runId: route.runId,
-      ...(input.reason === undefined ? {} : { reason: input.reason }),
+      ...caller(request, params),
+      runId: params.runId,
+      ...(body.reason === undefined ? {} : { reason: body.reason }),
       ...requestIdentifiers(request),
       ...traceparent(request),
     });
   }
-}
-
-function guardAuthorization(
-  request: WorkflowRunsRequest,
-): Pick<WorkflowRunsRequest, 'authorizedWorkspace'> {
-  return optionalAuthorizedWorkspace(request);
 }
 
 function routeLastEventPath(lastEventId: number): SseVisibilityPath {
@@ -331,12 +227,6 @@ function sessionReauthorization(
     return throwApplicationError(applicationError('auth.unauthenticated'));
   }
   return request.reauthorizeIdentitySession;
-}
-
-function lastEventId(request: WorkflowRunsRequest): number {
-  const value = singleRequestHeader(request.headers, 'last-event-id');
-  if (value === undefined) return 0;
-  return Number(lastRunEventIdHeaderSchema.parse(value));
 }
 
 function requestIdentifiers(request: WorkflowRunsRequest): Readonly<{

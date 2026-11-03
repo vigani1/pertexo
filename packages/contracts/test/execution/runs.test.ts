@@ -101,7 +101,7 @@ describe('workflow-run public contracts', () => {
         '/v1/workspaces/{workspaceId}/runs/{runId}/events'
       ].get;
     expect(stream.parameters.map(({ name }) => name)).toContain(
-      'Last-Event-ID',
+      'last-event-id',
     );
     expect(stream.responses['200'].content).toHaveProperty('text/event-stream');
     expect(workflowRunsOpenApiDocument.components.schemas).not.toHaveProperty(
