@@ -28,6 +28,7 @@ export type Command = Readonly<{
   actorId: string;
   triggerId: string;
   idempotencyKey: string;
+  commandCredentialId?: string;
   requestHash: string;
 }>;
 

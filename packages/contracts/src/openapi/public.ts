@@ -150,6 +150,11 @@ function buildPublicDocument() {
         description: 'Read connections; secrets never leave the server',
       },
       { name: 'Runs', description: 'Start, read and cancel runs' },
+      {
+        name: 'Triggers',
+        description:
+          'Observe deliveries and schedules and control published triggers',
+      },
     ],
     paths,
     components: {

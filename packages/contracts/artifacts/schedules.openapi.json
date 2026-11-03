@@ -859,9 +859,15 @@
     "/v1/workspaces/{workspaceId}/workflows/{workflowId}/triggers/schedules": {
       "get": {
         "operationId": "listScheduleTriggers",
+        "x-pertexo-api-token-scopes": [
+          "workflow:read"
+        ],
         "security": [
           {
             "cookieSession": []
+          },
+          {
+            "apiToken": []
           }
         ],
         "parameters": [
@@ -908,8 +914,28 @@
           "404": {
             "$ref": "#/components/responses/NotFound"
           },
+          "429": {
+            "description": "Request rate limit reached",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
           "500": {
             "$ref": "#/components/responses/Unexpected"
+          },
+          "503": {
+            "description": "Token authentication or request admission unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
           }
         }
       }
@@ -917,9 +943,15 @@
     "/v1/workspaces/{workspaceId}/workflows/{workflowId}/triggers/{triggerId}/schedule/occurrences": {
       "get": {
         "operationId": "listScheduleOccurrences",
+        "x-pertexo-api-token-scopes": [
+          "workflow:read"
+        ],
         "security": [
           {
             "cookieSession": []
+          },
+          {
+            "apiToken": []
           }
         ],
         "parameters": [
@@ -1007,6 +1039,16 @@
           },
           "500": {
             "$ref": "#/components/responses/Unexpected"
+          },
+          "503": {
+            "description": "Token authentication or request admission unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
           }
         }
       }
@@ -1014,9 +1056,15 @@
     "/v1/workspaces/{workspaceId}/workflows/{workflowId}/triggers/{triggerId}/schedule/next-runs": {
       "get": {
         "operationId": "listScheduleNextRuns",
+        "x-pertexo-api-token-scopes": [
+          "workflow:read"
+        ],
         "security": [
           {
             "cookieSession": []
+          },
+          {
+            "apiToken": []
           }
         ],
         "parameters": [
@@ -1093,6 +1141,16 @@
           },
           "500": {
             "$ref": "#/components/responses/Unexpected"
+          },
+          "503": {
+            "description": "Token authentication or request admission unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
           }
         }
       }
@@ -1100,9 +1158,15 @@
     "/v1/workspaces/{workspaceId}/workflows/{workflowId}/triggers/schedules/preview": {
       "post": {
         "operationId": "previewScheduleRuns",
+        "x-pertexo-api-token-scopes": [
+          "workflow:read"
+        ],
         "security": [
           {
             "cookieSession": []
+          },
+          {
+            "apiToken": []
           }
         ],
         "parameters": [
@@ -1131,13 +1195,14 @@
           {
             "name": "x-csrf-token",
             "in": "header",
-            "required": true,
+            "required": false,
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
               "minLength": 16,
               "maxLength": 256
-            }
+            },
+            "description": "Required with cookie sessions. Bearer API tokens do not use CSRF."
           }
         ],
         "requestBody": {
@@ -1178,6 +1243,16 @@
           },
           "500": {
             "$ref": "#/components/responses/Unexpected"
+          },
+          "503": {
+            "description": "Token authentication or request admission unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
           }
         }
       }
@@ -1185,9 +1260,15 @@
     "/v1/workspaces/{workspaceId}/workflows/{workflowId}/triggers/{triggerId}/schedule/enable": {
       "post": {
         "operationId": "enableScheduleTrigger",
+        "x-pertexo-api-token-scopes": [
+          "workflow:update"
+        ],
         "security": [
           {
             "cookieSession": []
+          },
+          {
+            "apiToken": []
           }
         ],
         "parameters": [
@@ -1227,13 +1308,14 @@
           {
             "name": "x-csrf-token",
             "in": "header",
-            "required": true,
+            "required": false,
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
               "minLength": 16,
               "maxLength": 256
-            }
+            },
+            "description": "Required with cookie sessions. Bearer API tokens do not use CSRF."
           },
           {
             "name": "Idempotency-Key",
@@ -1284,8 +1366,28 @@
           "409": {
             "$ref": "#/components/responses/Conflict"
           },
+          "429": {
+            "description": "Request rate limit reached",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
           "500": {
             "$ref": "#/components/responses/Unexpected"
+          },
+          "503": {
+            "description": "Token authentication or request admission unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
           }
         }
       }
@@ -1293,9 +1395,15 @@
     "/v1/workspaces/{workspaceId}/workflows/{workflowId}/triggers/{triggerId}/schedule/disable": {
       "post": {
         "operationId": "disableScheduleTrigger",
+        "x-pertexo-api-token-scopes": [
+          "workflow:update"
+        ],
         "security": [
           {
             "cookieSession": []
+          },
+          {
+            "apiToken": []
           }
         ],
         "parameters": [
@@ -1335,13 +1443,14 @@
           {
             "name": "x-csrf-token",
             "in": "header",
-            "required": true,
+            "required": false,
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
               "minLength": 16,
               "maxLength": 256
-            }
+            },
+            "description": "Required with cookie sessions. Bearer API tokens do not use CSRF."
           },
           {
             "name": "Idempotency-Key",
@@ -1392,8 +1501,28 @@
           "409": {
             "$ref": "#/components/responses/Conflict"
           },
+          "429": {
+            "description": "Request rate limit reached",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
           "500": {
             "$ref": "#/components/responses/Unexpected"
+          },
+          "503": {
+            "description": "Token authentication or request admission unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
           }
         }
       }

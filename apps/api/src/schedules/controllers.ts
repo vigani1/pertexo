@@ -1,3 +1,5 @@
+import { commandCredential } from '../authorization/credentials.js';
+import { projectAuthenticatedWorkspaceContext } from '../workspaces/request/authenticated-context.js';
 import { Controller, Req, UseInterceptors } from '@nestjs/common';
 import { SCHEDULE_FIRE_TIME_DEFAULT_COUNT } from '@pertexo/contracts';
 import {
@@ -5,11 +7,7 @@ import {
   type RouteInput,
 } from '@pertexo/contracts/server';
 
-import {
-  authenticatedSession,
-  requestIdentifier,
-  traceIdentifier,
-} from '../workspaces/index.js';
+import { requestIdentifier, traceIdentifier } from '../workspaces/index.js';
 import { In, Route } from '../workspaces/http/route.js';
 import type { IdentityWorkspaceRequest } from '../workspaces/types.js';
 import { ScheduleManagementService } from './service.js';
@@ -31,7 +29,8 @@ export class ScheduleManagementController {
   ) {
     return this.service.list({
       ...params,
-      actorId: authenticatedSession(request).userId,
+      actorId: projectAuthenticatedWorkspaceContext(request, params.workspaceId)
+        .actor.actorId,
     });
   }
 
@@ -42,7 +41,8 @@ export class ScheduleManagementController {
   ) {
     return this.service.listOccurrences({
       ...params,
-      actorId: authenticatedSession(request).userId,
+      actorId: projectAuthenticatedWorkspaceContext(request, params.workspaceId)
+        .actor.actorId,
       ...(query.limit === undefined ? {} : { limit: query.limit }),
       ...(query.after === undefined ? {} : { after: query.after }),
     });
@@ -55,7 +55,8 @@ export class ScheduleManagementController {
   ) {
     return this.service.nextRuns({
       ...params,
-      actorId: authenticatedSession(request).userId,
+      actorId: projectAuthenticatedWorkspaceContext(request, params.workspaceId)
+        .actor.actorId,
       count: query.count ?? SCHEDULE_FIRE_TIME_DEFAULT_COUNT,
     });
   }
@@ -67,7 +68,8 @@ export class ScheduleManagementController {
   ) {
     return this.service.previewRuns({
       ...params,
-      actorId: authenticatedSession(request).userId,
+      actorId: projectAuthenticatedWorkspaceContext(request, params.workspaceId)
+        .actor.actorId,
       config: body.config,
       count: body.count ?? SCHEDULE_FIRE_TIME_DEFAULT_COUNT,
     });
@@ -88,11 +90,16 @@ export class ScheduleManagementController {
     { params, idempotencyKey }: TriggerCommand,
     enabled: boolean,
   ) {
+    const { actor } = projectAuthenticatedWorkspaceContext(
+      request,
+      params.workspaceId,
+    );
     const traceId = traceIdentifier(request);
     return this.service.setEnabled(
       {
         ...params,
-        actorId: authenticatedSession(request).userId,
+        actorId: actor.actorId,
+        ...commandCredential(actor),
         idempotencyKey,
         requestId: requestIdentifier(request),
         ...(traceId === undefined ? {} : { traceId }),

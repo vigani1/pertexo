@@ -174,7 +174,10 @@ describe('schedule public contracts', () => {
     >;
     for (const methods of Object.values(paths))
       for (const [method, operation] of Object.entries(methods)) {
-        expect(operation.security).toEqual([{ cookieSession: [] }]);
+        expect(operation.security).toEqual([
+          { cookieSession: [] },
+          { apiToken: [] },
+        ]);
         expect(operation.responses['200']).toHaveProperty(
           'content.application/json.schema.$ref',
         );
@@ -186,7 +189,7 @@ describe('schedule public contracts', () => {
               (parameter) =>
                 parameter.in === 'header' &&
                 String(parameter.name).toLowerCase() === 'x-csrf-token' &&
-                parameter.required,
+                parameter.required === false,
             ),
           ).toBe(true);
       }
