@@ -1,12 +1,5 @@
-import {
-  csrfHeaderParameter,
-  idempotencyHeaderParameter,
-  jsonRequest,
-  jsonResponse,
-  jsonSchema,
-  problemResponse,
-  responseReference,
-} from '../primitives.js';
+import { sessionRoutes } from '../../routes/identity/session.js';
+import { routePaths } from '../../routes/openapi.js';
 import {
   accountSecurityLinkStartRequestSchema,
   accountSecurityLinkStartResponseSchema,
@@ -28,6 +21,14 @@ import {
   socialSignInStartSchema,
   socialSignInStartedSchema,
 } from '../../schemas/identity/federation/social.js';
+import {
+  csrfHeaderParameter,
+  jsonRequest,
+  jsonResponse,
+  jsonSchema,
+  problemResponse,
+  responseReference,
+} from '../primitives.js';
 
 /**
  * Sign-in, browser-session and account-security operations of the
@@ -93,6 +94,7 @@ export const authenticationContractSchemas = Object.freeze({
 });
 
 export const authenticationContractPaths = Object.freeze({
+  ...routePaths(Object.values(sessionRoutes)),
   '/v1/auth/sign-in/social': {
     post: {
       operationId: 'startSocialSignIn',
@@ -174,37 +176,7 @@ export const authenticationContractPaths = Object.freeze({
       },
     },
   },
-  '/v1/users/me': {
-    get: {
-      operationId: 'getCurrentUserProfile',
-      security: [{ cookieSession: [] }],
-      responses: {
-        '200': jsonResponse('Current user profile', 'UserProfileResponse'),
-        '401': responseReference('Unauthenticated'),
-        '429': responseReference('RateLimited'),
-        '500': responseReference('Unexpected'),
-      },
-    },
-    patch: {
-      operationId: 'updateCurrentUserProfile',
-      security: [{ cookieSession: [] }],
-      parameters: [csrfHeaderParameter(), idempotencyHeaderParameter()],
-      requestBody: jsonRequest('UserProfileUpdateRequest'),
-      responses: {
-        '200': jsonResponse(
-          'Current user display-name change receipt',
-          'UserProfileUpdateResponse',
-        ),
-        '400': responseReference('BadRequest'),
-        '401': responseReference('Unauthenticated'),
-        '403': responseReference('Forbidden'),
-        '409': responseReference('Conflict'),
-        '412': problemResponse('Profile revision changed'),
-        '429': responseReference('RateLimited'),
-        '500': responseReference('Unexpected'),
-      },
-    },
-  },
+
   '/v1/auth/account-security/sessions': {
     get: {
       operationId: 'listAccountSecuritySessions',
@@ -345,19 +317,6 @@ export const authenticationContractPaths = Object.freeze({
           'Other-session revocation result',
           'AccountSecurityRevokeOthersResponse',
         ),
-        '401': responseReference('Unauthenticated'),
-        '403': responseReference('Forbidden'),
-        '500': responseReference('Unexpected'),
-      },
-    },
-  },
-  '/v1/auth/logout': {
-    post: {
-      operationId: 'logoutSession',
-      security: [{ cookieSession: [] }],
-      parameters: [csrfHeaderParameter()],
-      responses: {
-        '204': { description: 'Browser session revoked' },
         '401': responseReference('Unauthenticated'),
         '403': responseReference('Forbidden'),
         '500': responseReference('Unexpected'),

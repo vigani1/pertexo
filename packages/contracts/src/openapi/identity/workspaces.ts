@@ -1,55 +1,47 @@
-import type { RoutePaths } from '../../routes/openapi.js';
-import {
-  directoryContractSchemas,
-  directoryContractPaths,
-} from './directory.js';
-import {
-  federationContractSchemas,
-  federationContractPaths,
-} from './federation.js';
-import {
-  governanceContractSchemas,
-  governanceContractPaths,
-} from './governance.js';
+import { apiProblemSchema } from '../../errors/api-problem.js';
 import { dataTableRoutes } from '../../routes/identity/data-tables.js';
+import { sessionRoutes } from '../../routes/identity/session.js';
 import { variableRoutes } from '../../routes/identity/variables.js';
 import { workspaceRoutes } from '../../routes/identity/workspaces.js';
+import type { RoutePaths } from '../../routes/openapi.js';
 import { routePaths, routeSchemas } from '../../routes/openapi.js';
-import {
-  apiTokenContractPaths,
-  apiTokenContractSchemas,
-} from './api-tokens.js';
-import { apiProblemSchema } from '../../errors/api-problem.js';
-import {
-  authenticationContractPaths,
-  authenticationContractSchemas,
-} from './authentication.js';
 import {
   authenticatedComponents,
   jsonSchema,
   problemResponse,
 } from '../primitives.js';
 import {
+  apiTokenContractPaths,
+  apiTokenContractSchemas,
+} from './api-tokens.js';
+import {
+  authenticationContractPaths,
+  authenticationContractSchemas,
+} from './authentication.js';
+import {
+  directoryContractPaths,
+  directoryContractSchemas,
+} from './directory.js';
+import {
+  federationContractPaths,
+  federationContractSchemas,
+} from './federation.js';
+import {
+  governanceContractPaths,
+  governanceContractSchemas,
+} from './governance.js';
+import {
   workspaceInvitationContractPaths,
   workspaceInvitationContractSchemas,
 } from './invitations.js';
-import {
-  userProfileResponseSchema,
-  userProfileUpdateRequestSchema,
-  userProfileUpdateResponseSchema,
-} from '../../schemas/identity/workspaces.js';
 
 const schemas = Object.freeze({
+  ...routeSchemas(Object.values(sessionRoutes)),
   ...apiTokenContractSchemas,
   ...routeSchemas(Object.values(variableRoutes)),
   ...routeSchemas(Object.values(workspaceRoutes)),
   ApiProblem: jsonSchema(apiProblemSchema, 'output'),
-  UserProfileResponse: jsonSchema(userProfileResponseSchema, 'output'),
-  UserProfileUpdateRequest: jsonSchema(userProfileUpdateRequestSchema, 'input'),
-  UserProfileUpdateResponse: jsonSchema(
-    userProfileUpdateResponseSchema,
-    'output',
-  ),
+
   ...workspaceInvitationContractSchemas,
   ...authenticationContractSchemas,
 });

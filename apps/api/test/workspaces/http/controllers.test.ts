@@ -59,6 +59,7 @@ const deletionRequested = {
 
 const store = {
   findUserById: vi.fn(),
+  updateUserProfile: vi.fn(),
   listWorkspaceMembers: vi.fn(),
   changeWorkspaceMemberRole: vi.fn(),
   removeWorkspaceMember: vi.fn(),
@@ -96,7 +97,10 @@ beforeAll(async () => {
         provide: GetCurrentUserUseCase,
         useValue: new GetCurrentUserUseCase(store),
       },
-      { provide: UpdateUserProfileUseCase, useValue: { execute: vi.fn() } },
+      {
+        provide: UpdateUserProfileUseCase,
+        useValue: new UpdateUserProfileUseCase(store),
+      },
       {
         provide: ListAccessibleWorkspacesUseCase,
         useValue: new ListAccessibleWorkspacesUseCase(store),
@@ -168,6 +172,58 @@ describe('workspace routes', () => {
     expect(reply.statusCode).toBe(400);
     expect(lifecycle.requestDeletion).not.toHaveBeenCalled();
   });
+
+  it('changes the signed-in display name and projects the receipt', async () => {
+    store.updateUserProfile.mockResolvedValue({
+      user: {
+        id: actorId,
+        email: 'person@example.test',
+        displayName: 'Grace Hopper',
+        status: 'active',
+        profileRevision: 3,
+        createdAt: at,
+        updatedAt: at,
+      },
+      changed: true,
+      replayed: false,
+    });
+    const reply = await harness.send('PATCH', '/v1/users/me', {
+      body: { displayName: '  Grace Hopper ', expectedRevision: 2 },
+      headers: { 'idempotency-key': 'profile-command-1' },
+    });
+    expect(reply.statusCode).toBe(200);
+    expect(reply.json()).toEqual({
+      profile: {
+        id: actorId,
+        email: 'person@example.test',
+        displayName: 'Grace Hopper',
+        status: 'active',
+        revision: 3,
+        createdAt: at.toISOString(),
+        updatedAt: at.toISOString(),
+      },
+      changed: true,
+      replayed: false,
+    });
+    expect(reply.headers['cache-control']).toBe('private, no-store');
+    expect(store.updateUserProfile).toHaveBeenCalledWith({
+      actorUserId: actorId,
+      displayName: 'Grace Hopper',
+      expectedRevision: 2,
+      idempotencyKey: 'profile-command-1',
+    });
+  });
+  it.each(['', 'x'.repeat(129), 'Tab\tName'])(
+    'refuses an invalid display name %j through HTTP',
+    async (displayName) => {
+      const reply = await harness.send('PATCH', '/v1/users/me', {
+        body: { displayName, expectedRevision: 2 },
+        headers: { 'idempotency-key': 'profile-command-1' },
+      });
+      expect(reply.statusCode).toBe(400);
+      expect(reply.json()).toHaveProperty('errors');
+    },
+  );
 
   it('answers the current profile and keeps it out of caches', async () => {
     store.findUserById.mockResolvedValue({

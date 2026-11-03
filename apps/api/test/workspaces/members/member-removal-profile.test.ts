@@ -1,25 +1,21 @@
-import { toProblem } from '../../../src/problems/registry.js';
-import { workspaceFailure } from '../../../src/problems/context/normalize.js';
 import {
   UserProfileCommandConflictError,
   WorkspaceMemberRemovalCommandConflictError,
   type IdentityWorkspaceStore,
 } from '@pertexo/core/tenant-access';
 import { describe, expect, it, vi } from 'vitest';
+import { workspaceFailure } from '../../../src/problems/context/normalize.js';
+import { toProblem } from '../../../src/problems/registry.js';
 
+import type { workspaceRoutes as routes } from '@pertexo/contracts/server';
 import {
   DatabaseIdentityWorkspaceAdapter,
-  GetCurrentUserUseCase,
   ListWorkspaceMembersUseCase,
   RemoveWorkspaceMemberUseCase,
-  UpdateUserProfileUseCase,
-  UserController,
   WorkspaceMembersController,
   type ChangeWorkspaceMemberRoleUseCase,
-  type CookieResponse,
 } from '../../../src/workspaces/index.js';
 import { routeInput } from '../../support/route-input.js';
-import type { workspaceRoutes as routes } from '@pertexo/contracts/server';
 
 const actorId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const targetId = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
@@ -89,58 +85,6 @@ describe('member removal and self profile commands', () => {
       traceId: 'trace-removal',
     });
     expect(removeWorkspaceMember).toHaveBeenCalledOnce();
-  });
-
-  it('changes the signed-in display name and projects the receipt', async () => {
-    const updateUserProfile = vi.fn().mockResolvedValue({
-      user: profile({ displayName: 'Grace Hopper', profileRevision: 3 }),
-      changed: true,
-      replayed: false,
-    });
-    const response: CookieResponse = { header: vi.fn() };
-    const controller = new UserController(
-      new GetCurrentUserUseCase({ findUserById: vi.fn() }),
-      new UpdateUserProfileUseCase({ updateUserProfile }),
-    );
-
-    await expect(
-      controller.updateMe(
-        request('profile-command-1'),
-        { displayName: '  Grace Hopper ', expectedRevision: 2 },
-        response,
-      ),
-    ).resolves.toEqual({
-      profile: {
-        id: actorId,
-        email: 'person@example.test',
-        displayName: 'Grace Hopper',
-        status: 'active',
-        revision: 3,
-        createdAt: at.toISOString(),
-        updatedAt: at.toISOString(),
-      },
-      changed: true,
-      replayed: false,
-    });
-    expect(updateUserProfile).toHaveBeenCalledWith({
-      actorUserId: actorId,
-      displayName: 'Grace Hopper',
-      expectedRevision: 2,
-      idempotencyKey: 'profile-command-1',
-    });
-    // eslint-disable-next-line @typescript-eslint/unbound-method
-    expect(vi.mocked(response.header)).toHaveBeenCalledWith(
-      'Cache-Control',
-      'private, no-store',
-    );
-    for (const displayName of ['', 'x'.repeat(129), 'Tab\tName'])
-      await expect(
-        controller.updateMe(
-          request(),
-          { displayName, expectedRevision: 2 },
-          response,
-        ),
-      ).rejects.toMatchObject({ name: 'ZodError' });
   });
 
   it.each([

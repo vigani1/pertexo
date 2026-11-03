@@ -1,46 +1,32 @@
-import {
-  Controller,
-  HttpCode,
-  Inject,
-  Post,
-  Req,
-  Res,
-  UseGuards,
-  UseInterceptors,
-} from '@nestjs/common';
+import { Controller, Inject, Req, Res, UseInterceptors } from '@nestjs/common';
+import { sessionRoutes } from '@pertexo/contracts/server';
+import { Route } from './route.js';
 
 import {
   applicationError,
   throwApplicationError,
 } from '../../platform/http/index.js';
-import { RateLimit } from '../../platform/rate-limit/metadata.js';
-import {
-  CSRF_COOKIE_NAME,
-  CsrfProtectionGuard,
-  readCookie,
-  SESSION_COOKIE_NAME,
-  SessionAuthenticationGuard,
-} from './guards.js';
+import { domainErrors } from '../../platform/http/problems/interceptor.js';
+import { workspaceFailure } from '../../problems/context/normalize.js';
 import type {
   IdentitySessionAuthority,
   SessionCookiePolicy,
 } from '../ports.js';
-import type { CookieResponse, IdentityWorkspaceRequest } from '../types.js';
-import {
-  IDENTITY_WORKSPACE_TELEMETRY,
-  SESSION_AUTHORITY,
-  SESSION_COOKIE_POLICY,
-} from '../tokens.js';
 import {
   IDENTITY_WORKSPACE_OPERATION,
   NOOP_IDENTITY_WORKSPACE_TELEMETRY,
   type IdentityWorkspaceTelemetry,
 } from '../telemetry.js';
-import { domainErrors } from '../../platform/http/problems/interceptor.js';
-import { workspaceFailure } from '../../problems/context/normalize.js';
+import {
+  IDENTITY_WORKSPACE_TELEMETRY,
+  SESSION_AUTHORITY,
+  SESSION_COOKIE_POLICY,
+} from '../tokens.js';
+import type { CookieResponse, IdentityWorkspaceRequest } from '../types.js';
+import { CSRF_COOKIE_NAME, readCookie, SESSION_COOKIE_NAME } from './guards.js';
 
 @UseInterceptors(domainErrors(workspaceFailure))
-@Controller('v1/auth')
+@Controller()
 export class SessionController {
   public constructor(
     @Inject(SESSION_AUTHORITY)
@@ -51,10 +37,7 @@ export class SessionController {
     private readonly telemetry: IdentityWorkspaceTelemetry = NOOP_IDENTITY_WORKSPACE_TELEMETRY,
   ) {}
 
-  @Post('logout')
-  @RateLimit('actor_mutation')
-  @HttpCode(204)
-  @UseGuards(SessionAuthenticationGuard, CsrfProtectionGuard)
+  @Route(sessionRoutes.logout)
   public async logout(
     @Req() request: IdentityWorkspaceRequest,
     @Res({ passthrough: true }) response: CookieResponse,
