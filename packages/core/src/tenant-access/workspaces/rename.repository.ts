@@ -21,7 +21,7 @@ import {
   renameReceipt,
   requireReadableReceipt,
 } from '../../shared/receipts.js';
-import { isActiveMemberManager } from '../members/manager.js';
+import { hasCapability } from '@pertexo/policy';
 import { workspaceRecord, workspaceSelection } from './projection.js';
 
 function durableResult(result: WorkspaceRenameResult) {
@@ -94,7 +94,11 @@ export function createIdentityWorkspaceRenameStore(pool: Pool) {
           const [actor] = await readLockedMembers(client, workspaceId, [
             actorUserId,
           ]);
-          if (!isActiveMemberManager(actor))
+          if (
+            actor?.status !== 'active' ||
+            actor.user_status !== 'active' ||
+            !hasCapability(actor.role, 'workspace:manage')
+          )
             throw new WorkspaceRenameCommandConflictError(
               'actor_inactive',
               'The actor cannot manage this workspace',

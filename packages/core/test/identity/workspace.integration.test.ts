@@ -477,13 +477,11 @@ describe('identity/workspace persistence', () => {
       identityDatabase.renameWorkspace({
         workspaceId: target.id,
         actorUserId: actor.id,
-        name: 'Admin-authorized name',
+        name: 'Forbidden admin name',
         expectedRevision: 2,
         idempotencyKey: `rename-${randomUUID()}`,
       }),
-    ).resolves.toMatchObject({
-      workspace: { name: 'Admin-authorized name', revision: 3 },
-    });
+    ).rejects.toMatchObject({ reason: 'actor_inactive' });
     const demoter = new Pool({ connectionString: adminDatabaseUrl, max: 1 });
     try {
       await demoter.query(
@@ -499,7 +497,7 @@ describe('identity/workspace persistence', () => {
         workspaceId: target.id,
         actorUserId: actor.id,
         name: 'Forbidden builder name',
-        expectedRevision: 3,
+        expectedRevision: 2,
         idempotencyKey: `rename-${randomUUID()}`,
       }),
     ).rejects.toBeInstanceOf(WorkspaceRenameCommandConflictError);
