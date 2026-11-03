@@ -1,28 +1,28 @@
+import type { workflowRenameRequestSchema } from '@pertexo/contracts';
 import {
-  workflowRenameRequestSchema,
   workflowRenameResponseSchema,
   type WorkflowRenameResponse,
 } from '@pertexo/contracts';
+import type { z } from 'zod';
 import {
   authorizeWorkspaceOperation,
   type WorkspaceAuthorizationSource,
 } from '../../authorization/index.js';
+import { workflowSummary } from '../http/serializers.js';
 import type {
   WorkflowApplicationInput,
   WorkflowAuthoringPersistence,
 } from '../ports.js';
-import { workflowSummary } from '../http/serializers.js';
 import {
   NOOP_WORKFLOW_AUTHORING_TELEMETRY,
   WORKFLOW_AUTHORING_OPERATION,
   type WorkflowAuthoringTelemetry,
 } from '../telemetry.js';
-import { parseRequestInput } from '../../platform/http/index.js';
 
 export type RenameWorkflowInput = WorkflowApplicationInput &
   Readonly<{
     workflowId: string;
-    request: unknown;
+    request: z.output<typeof workflowRenameRequestSchema>;
     idempotencyKey: string;
   }>;
 
@@ -55,10 +55,7 @@ export class RenameWorkflowUseCase {
             ? {}
             : { authorizedWorkspace: input.authorizedWorkspace }),
         });
-        const { name, expectedNameRevision } = parseRequestInput(
-          workflowRenameRequestSchema,
-          input.request,
-        );
+        const { name, expectedNameRevision } = input.request;
         const renamed = await this.persistence.renameWorkflow({
           name,
           expectedNameRevision,

@@ -129,7 +129,12 @@ export type RouteDeclaration<
    * A strong `If-Match` the handler checks itself, so a missing one answers 428
    * and a stale one 412, not a generic 400. Documented as a required header.
    */
-  precondition?: Readonly<{ description: string; schema: z.ZodType }>;
+  precondition?: Readonly<{
+    description: string;
+    schema: z.ZodType;
+    /** The handler checks whether this request needs the validator. */
+    when?: string;
+  }>;
   success: JsonSuccess<Response> | DocumentedSuccess;
   /**
    * Answers the handler may choose instead, by setting the status, such as 202 when

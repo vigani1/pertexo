@@ -1,29 +1,8 @@
 import { z } from 'zod';
-import { projectAuthenticatedWorkspaceContext } from '../../workspaces/request/authenticated-context.js';
 import { singleRequestHeader } from '../../platform/http/request-headers.js';
+import { projectAuthenticatedWorkspaceContext } from '../../workspaces/request/authenticated-context.js';
 
-import {
-  workflowIdParamSchema,
-  type WorkflowAuthoringRequest,
-} from '../types.js';
-
-const workflowWorkspaceParamSchema = workflowIdParamSchema
-  .pick({ workspaceId: true })
-  .strict()
-  .readonly();
-
-export function workspaceParams(
-  value: unknown,
-): Readonly<{ workspaceId: string }> {
-  return workflowWorkspaceParamSchema.parse(value);
-}
-
-export function workflowParams(value: unknown): Readonly<{
-  workspaceId: string;
-  workflowId: string;
-}> {
-  return workflowIdParamSchema.parse(value);
-}
+import type { WorkflowAuthoringRequest } from '../types.js';
 
 export function requestContext(
   request: WorkflowAuthoringRequest,

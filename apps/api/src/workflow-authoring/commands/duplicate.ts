@@ -1,28 +1,28 @@
+import type { workflowDuplicateRequestSchema } from '@pertexo/contracts';
 import {
-  workflowDuplicateRequestSchema,
   workflowDuplicateResponseSchema,
   type WorkflowDuplicateResponse,
 } from '@pertexo/contracts';
+import type { z } from 'zod';
 import {
   authorizeWorkspaceOperation,
   type WorkspaceAuthorizationSource,
 } from '../../authorization/index.js';
+import { parseStrongIfMatch } from '../http/preconditions.js';
 import type {
   WorkflowApplicationInput,
   WorkflowAuthoringPersistence,
 } from '../ports.js';
-import { parseStrongIfMatch } from '../http/preconditions.js';
 import {
   NOOP_WORKFLOW_AUTHORING_TELEMETRY,
   WORKFLOW_AUTHORING_OPERATION,
   type WorkflowAuthoringTelemetry,
 } from '../telemetry.js';
-import { parseRequestInput } from '../../platform/http/index.js';
 
 export type DuplicateWorkflowInput = WorkflowApplicationInput &
   Readonly<{
     workflowId: string;
-    request: unknown;
+    request: z.output<typeof workflowDuplicateRequestSchema>;
     representationTag?: string;
     idempotencyKey: string;
     signal?: AbortSignal;
@@ -68,10 +68,7 @@ export class DuplicateWorkflowUseCase {
             ? { authorizedWorkspace: input.authorizedWorkspace }
             : {}),
         });
-        const { name, source } = parseRequestInput(
-          workflowDuplicateRequestSchema,
-          input.request,
-        );
+        const { name, source } = input.request;
         const representationTag =
           source.kind === 'draft'
             ? parseStrongIfMatch(input.representationTag)

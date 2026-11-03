@@ -304,7 +304,6 @@
             "name": "workspaceId",
             "in": "path",
             "required": true,
-            "description": "Workspace identifier",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
@@ -520,7 +519,6 @@
             "name": "workspaceId",
             "in": "path",
             "required": true,
-            "description": "Workspace identifier",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
@@ -623,7 +621,6 @@
             "name": "workspaceId",
             "in": "path",
             "required": true,
-            "description": "Workspace identifier",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
@@ -635,7 +632,6 @@
             "name": "workflowId",
             "in": "path",
             "required": true,
-            "description": "Workflow identifier",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
@@ -757,7 +753,6 @@
             "name": "workspaceId",
             "in": "path",
             "required": true,
-            "description": "Workspace identifier",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
@@ -769,7 +764,6 @@
             "name": "workflowId",
             "in": "path",
             "required": true,
-            "description": "Workflow identifier",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
@@ -778,13 +772,12 @@
             }
           },
           {
-            "name": "If-None-Match",
             "in": "header",
+            "name": "if-none-match",
             "required": false,
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
-              "type": "string",
-              "pattern": "^\"draft\\.[A-Za-z0-9_-]{43}\"$"
+              "type": "string"
             }
           }
         ],
@@ -875,7 +868,6 @@
             "name": "workspaceId",
             "in": "path",
             "required": true,
-            "description": "Workspace identifier",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
@@ -887,7 +879,6 @@
             "name": "workflowId",
             "in": "path",
             "required": true,
-            "description": "Workflow identifier",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
@@ -899,6 +890,7 @@
             "name": "If-Match",
             "in": "header",
             "required": true,
+            "description": "One strong opaque draft representation validator",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
@@ -994,7 +986,6 @@
             "name": "workspaceId",
             "in": "path",
             "required": true,
-            "description": "Workspace identifier",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
@@ -1006,22 +997,11 @@
             "name": "workflowId",
             "in": "path",
             "required": true,
-            "description": "Workflow identifier",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
               "format": "uuid",
               "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-            }
-          },
-          {
-            "name": "If-Match",
-            "in": "header",
-            "required": true,
-            "schema": {
-              "$schema": "https://json-schema.org/draft/2020-12/schema",
-              "type": "string",
-              "pattern": "^\"draft\\.[A-Za-z0-9_-]{43}\"$"
             }
           },
           {
@@ -1034,6 +1014,17 @@
               "minLength": 1,
               "maxLength": 128,
               "pattern": "^[\\x21-\\x2b\\x2d-\\x7e]+$"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "description": "One strong opaque draft representation validator",
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "pattern": "^\"draft\\.[A-Za-z0-9_-]{43}\"$"
             }
           }
         ],
@@ -1126,7 +1117,6 @@
             "name": "workspaceId",
             "in": "path",
             "required": true,
-            "description": "Workspace identifier",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
@@ -1138,7 +1128,6 @@
             "name": "workflowId",
             "in": "path",
             "required": true,
-            "description": "Workflow identifier",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",

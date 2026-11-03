@@ -126,7 +126,7 @@ function preconditionParameter({ precondition }: AnyRoute) {
     {
       name: 'If-Match',
       in: 'header',
-      required: true,
+      required: precondition.when === undefined,
       description: precondition.description,
       schema: jsonSchema(precondition.schema, 'input'),
     },
