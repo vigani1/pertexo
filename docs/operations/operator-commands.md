@@ -143,6 +143,18 @@ run_ops \
 `OPERATOR_EVIDENCE_REF` is a JSON object saying where the proof is, such as
 `'{"ticket":"SUP-123"}'`. Don't put secrets or customer data in it.
 
+A terminal publication refusal logs `outbox.publication_refused` with the event, workspace,
+job, safe error code and invalid field/validator codes. It omits payload values and validator
+messages. Match the event ID from `stuck-work.list` to this log to find the producer defect.
+The person waiting on that work sees it as stalled; an operator must repair the cause.
+
+`outbox.redispatch` preserves the immutable payload. It can retry after infrastructure or
+consumer repair, but cannot repair invalid producer data. For `outbox.invalid_contract` or
+`outbox.checksum_mismatch`, fix the producer/version mismatch, then repeat the original
+supported action to create valid work (for example, resend an invitation or replay a run).
+Do not edit the stored payload or checksum. Append-only unknown-outcome evidence remains
+available even when no delayed action follows it.
+
 ## `outbox.redispatch`
 
 Use this when a message to the queue used up its publish attempts, usually after a Redis outage,
