@@ -84,12 +84,12 @@ for (const [name, grant, text] of [
       accessTokenExpiresAt: timestamp,
       renewable: false,
     },
-    /^Token expires .+; someone will need to reconnect$/u,
+    /^Token expires .+; someone will need to reconnect\. To restore automatic renewal, revoke this app’s access at the service, then connect again\.$/u,
   ],
   [
     'with no expiry',
     { authorizedAt: timestamp, accessTokenExpiresAt: null, renewable: false },
-    'The service gave no expiry',
+    /^The service gave no expiry\. To restore automatic renewal, revoke this app’s access at the service, then connect again\.$/u,
   ],
 ] as const)
   test(`detail: an active grant ${name} says so`, async ({ page }) => {
