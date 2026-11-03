@@ -1,3 +1,4 @@
+import type { z } from 'zod';
 import type {
   IdentityWorkspacePersistence,
   UserProfilePersistenceRecord,
@@ -7,14 +8,13 @@ import {
   NOOP_IDENTITY_WORKSPACE_TELEMETRY,
   type IdentityWorkspaceTelemetry,
 } from '../telemetry.js';
+import type { userProfileUpdateRequestSchema } from '../types.js';
 import {
   userProfileResponseSchema,
-  userProfileUpdateRequestSchema,
   userProfileUpdateResponseSchema,
   type UserProfileResponse,
   type UserProfileUpdateResponse,
 } from '../types.js';
-import { parseRequestInput } from '../../platform/http/request-input.js';
 
 type ProfilePersistence = Required<
   Pick<IdentityWorkspacePersistence, 'updateUserProfile'>
@@ -48,17 +48,14 @@ export class UpdateUserProfileUseCase {
   public execute(
     input: Readonly<{
       actorUserId: string;
-      request: unknown;
+      request: z.output<typeof userProfileUpdateRequestSchema>;
       idempotencyKey: string;
     }>,
   ): Promise<UserProfileUpdateResponse> {
     return this.telemetry.measure(
       IDENTITY_WORKSPACE_OPERATION.userProfileUpdate,
       async () => {
-        const request = parseRequestInput(
-          userProfileUpdateRequestSchema,
-          input.request,
-        );
+        const request = input.request;
         const result = await this.persistence.updateUserProfile({
           actorUserId: input.actorUserId,
           displayName: request.displayName,

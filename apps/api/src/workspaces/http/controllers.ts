@@ -1,81 +1,55 @@
-import {
-  Body,
-  Controller,
-  Get,
-  HttpCode,
-  Patch,
-  Req,
-  Res,
-  UseGuards,
-  UseInterceptors,
-} from '@nestjs/common';
+import { Controller, Req, UseInterceptors } from '@nestjs/common';
+import { sessionRoutes } from '@pertexo/contracts/server';
 
-import { requestIdempotencyKey } from '../../platform/http/index.js';
-import { RateLimit } from '../../platform/rate-limit/metadata.js';
-import {
-  authenticatedSession,
-  CsrfProtectionGuard,
-  SessionAuthenticationGuard,
-} from './guards.js';
-import {
-  CreateWorkspaceUseCase,
-  GetCurrentUserUseCase,
-  ListAccessibleWorkspacesUseCase,
-  ListWorkspaceMembersUseCase,
-  ChangeWorkspaceMemberRoleUseCase,
-  WorkspaceLifecycleUseCase,
-} from '../use-cases.js';
-import { RenameWorkspaceUseCase } from '../commands/rename.js';
-import { RemoveWorkspaceMemberUseCase } from '../members/removal.js';
-import { memberCommand } from '../request/member-commands.js';
-import { In, Route } from './route.js';
 import {
   workspaceRoutes as routes,
   type RouteInput,
 } from '@pertexo/contracts/server';
+import { domainErrors } from '../../platform/http/problems/interceptor.js';
+import { workspaceFailure } from '../../problems/context/normalize.js';
+import { RenameWorkspaceUseCase } from '../commands/rename.js';
 import { UpdateUserProfileUseCase } from '../commands/user-profile.js';
-import type { CookieResponse, IdentityWorkspaceRequest } from '../types.js';
-import { requestIdentifier, traceIdentifier } from '../request/identifiers.js';
+import { RemoveWorkspaceMemberUseCase } from '../members/removal.js';
 import {
   optionalAuthorizedWorkspace,
   projectAuthenticatedWorkspaceContext,
 } from '../request/authenticated-context.js';
-import { domainErrors } from '../../platform/http/problems/interceptor.js';
-import { workspaceFailure } from '../../problems/context/normalize.js';
+import { requestIdentifier, traceIdentifier } from '../request/identifiers.js';
+import { memberCommand } from '../request/member-commands.js';
+import type { IdentityWorkspaceRequest } from '../types.js';
+import {
+  ChangeWorkspaceMemberRoleUseCase,
+  CreateWorkspaceUseCase,
+  GetCurrentUserUseCase,
+  ListAccessibleWorkspacesUseCase,
+  ListWorkspaceMembersUseCase,
+  WorkspaceLifecycleUseCase,
+} from '../use-cases.js';
+import { authenticatedSession } from './guards.js';
+import { In, Route } from './route.js';
 
 @UseInterceptors(domainErrors(workspaceFailure))
-@Controller('v1/users')
+@Controller()
 export class UserController {
   public constructor(
     private readonly currentUser: GetCurrentUserUseCase,
     private readonly profile: UpdateUserProfileUseCase,
   ) {}
 
-  @Get('me')
-  @RateLimit('authenticated_read')
-  @UseGuards(SessionAuthenticationGuard)
-  public async me(
-    @Req() request: IdentityWorkspaceRequest,
-    @Res({ passthrough: true }) response: CookieResponse,
-  ) {
-    response.header('Cache-Control', 'private, no-store');
+  @Route(sessionRoutes.me)
+  public async me(@Req() request: IdentityWorkspaceRequest) {
     return this.currentUser.execute(authenticatedSession(request).userId);
   }
 
-  @Patch('me')
-  @HttpCode(200)
-  @RateLimit('actor_mutation')
-  @UseGuards(SessionAuthenticationGuard, CsrfProtectionGuard)
+  @Route(sessionRoutes.updateMe)
   public async updateMe(
     @Req() request: IdentityWorkspaceRequest,
-    @Body() body: unknown,
-    @Res({ passthrough: true }) response: CookieResponse,
+    @In() { body, idempotencyKey }: RouteInput<typeof sessionRoutes.updateMe>,
   ) {
-    response.header('Cache-Control', 'private, no-store');
     return this.profile.execute({
       actorUserId: authenticatedSession(request).userId,
       request: body,
-      idempotencyKey: requestIdempotencyKey(request.headers),
+      idempotencyKey: idempotencyKey,
     });
   }
 }

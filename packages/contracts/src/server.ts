@@ -71,3 +71,5 @@ export { federationRoutes } from './routes/identity/federation.js';
 export { directoryRoutes } from './routes/identity/directory.js';
 
 export { portabilityRoutes } from './routes/workflows/portability.js';
+
+export { sessionRoutes } from './routes/identity/session.js';
