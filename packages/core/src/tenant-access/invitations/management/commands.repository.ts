@@ -138,6 +138,12 @@ async function changeInvitation(
         );
       const nextRevision = current.revision + 1;
       await retireInvitationEvidence(client, workspaceId, invitationId);
+      const mutationTime = await readInvitationTime(client);
+      if (current.expiresAt.getTime() <= mutationTime.getTime())
+        throw new WorkspaceInvitationCommandConflictError(
+          'invitation_inactive',
+          'The invitation has expired',
+        );
       const updated = await db
         .update(invitations)
         .set(
@@ -146,8 +152,7 @@ async function changeInvitation(
                 revision: nextRevision,
                 tokenDigest: nextDelivery?.tokenDigest,
                 expiresAt: new Date(
-                  (await readInvitationTime(client)).getTime() +
-                    INVITATION_TTL_MILLIS,
+                  mutationTime.getTime() + INVITATION_TTL_MILLIS,
                 ),
                 deliveryStatus: 'queued',
                 updatedAt: sql`clock_timestamp()`,
