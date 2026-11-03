@@ -107,7 +107,7 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
           payload: { password: 'wrong-password' },
         }),
         400,
-        'request.invalid',
+        'auth.invalid_password',
       );
       expect(notices()).toHaveLength(0);
       const disabled = await api.send('POST', '/v1/auth/two-factor/disable', {

@@ -100,7 +100,7 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
           });
           await blocker.query('select pg_advisory_unlock(704282,1)');
           const reply = await pending;
-          expectProblem(reply, 409, 'auth.conflict');
+          expectProblem(reply, 409, 'auth.authentication_changed');
           expect(
             api
               .mailedMessages(email)
