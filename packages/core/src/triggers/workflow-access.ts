@@ -7,7 +7,7 @@ import {
   type WorkspaceActor,
 } from '../shared/workspace-access.js';
 import { WorkspaceAccessDeniedError } from '../shared/errors.js';
-import type { WorkflowResourceCapability } from '../shared/contract.js';
+import type { WorkflowResourceCapability } from '../shared/folder-access.types.js';
 import { workflowAccessible } from '../tenant-access/resources/workflows.repository.js';
 
 /**

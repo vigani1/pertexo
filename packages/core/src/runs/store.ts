@@ -61,7 +61,7 @@ import type {
   StartPublishedWorkflowRunInput,
   ReplayPublishedWorkflowRunInput,
   CancelWorkflowRunInput,
-} from './commands/contract.js';
+} from './commands/run-commands.types.js';
 import { startInTransaction } from './commands/start-run.js';
 import { cancelInTransaction } from './commands/cancel-run.js';
 

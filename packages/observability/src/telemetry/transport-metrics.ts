@@ -14,7 +14,7 @@ import type {
   ActiveConcurrencyChange,
   TransportMetrics,
   TransportMetricsOptions,
-} from './transport/contract.js';
+} from './transport/transport-metrics.types.js';
 
 export {
   type TransportErrorClass,
@@ -32,7 +32,7 @@ export {
   type ActiveConcurrencyChange,
   type TransportMetrics,
   type TransportMetricsOptions,
-} from './transport/contract.js';
+} from './transport/transport-metrics.types.js';
 export const TRANSPORT_METRIC_NAME = Object.freeze({
   artifactBytes: 'pertexo.transport.artifact.bytes',
   artifactCount: 'pertexo.transport.artifact.count',

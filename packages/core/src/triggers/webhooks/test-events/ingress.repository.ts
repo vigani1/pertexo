@@ -12,9 +12,15 @@ import { inlineSampleOutput } from '../../../authoring/step-samples/records.repo
 import { WorkflowNotFoundError } from '../../../authoring/workflows/errors.js';
 import { WebhookIngressRateLimitExceededError } from '../errors.js';
 import { testEventDraftForCreator } from './authority.repository.js';
-import type { TestEventReference, TestEventScope } from './contract.js';
+import type {
+  TestEventReference,
+  TestEventScope,
+} from './webhook-test-event.types.js';
 import { WebhookTestEventError } from './errors.js';
-import { listenerSelection, lockListener } from './webhook-test-listeners.repository.js';
+import {
+  listenerSelection,
+  lockListener,
+} from './webhook-test-listeners.repository.js';
 
 const LISTENER_ATTEMPT_LIMIT = 60;
 

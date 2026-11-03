@@ -1,12 +1,12 @@
 import type { Pool } from 'pg';
 import type { AuthoringCatalogs } from '../../authoring/workflows/catalogs.js';
-import type { SampleScope } from '../../authoring/step-samples/contract.js';
+import type { SampleScope } from '../../authoring/step-samples/step-sample.types.js';
 import { cancelWorkflowTest } from './cancel.js';
 import type {
   WorkflowTestCommand,
   WorkflowTestPreparation,
   WorkflowTestRunInput,
-} from './contract.js';
+} from './workflow-test.types.js';
 import { loadTestSnapshot } from './snapshot.repository.js';
 import { startWorkflowTest } from './start.js';
 import { withTestChange, withTestRead } from './access.js';

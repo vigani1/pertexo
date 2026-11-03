@@ -61,7 +61,7 @@ export type {
   RecoveryCandidate,
   RecoveryValues,
   RecoveryPlan,
-} from './recovery/contract.js';
+} from './recovery/workflow-recovery.types.js';
 
 export {
   testStepDisposition,

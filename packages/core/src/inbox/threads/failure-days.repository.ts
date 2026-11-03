@@ -3,7 +3,7 @@ import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { and, eq, gte, inArray, lte, sql } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import type { databaseSchema } from '@pertexo/database/schema';
-import { WORKSPACE_INBOX_FAILURE_KINDS } from './contract.js';
+import { WORKSPACE_INBOX_FAILURE_KINDS } from './workspace-inbox-thread.js';
 import { workflowRuns } from '@pertexo/database/schema';
 
 type FailureDay = Readonly<{ day: string; count: number }>;

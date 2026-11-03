@@ -3,7 +3,7 @@ import { UnrecoverableError } from 'bullmq';
 import type {
   QueueConsumerOptions,
   QueueConsumer,
-} from './consumption/contract.js';
+} from './consumption/queue-consumer.types.js';
 
 import { BullMqQueueConsumer } from './consumption/runtime.js';
 export { InvalidQueueDeliveryError } from './jobs/delivery-admission.js';
@@ -23,7 +23,7 @@ export {
   type QueueConsumerOptions,
   type QueueConsumerCloseResult,
   type QueueConsumer,
-} from './consumption/contract.js';
+} from './consumption/queue-consumer.types.js';
 export {
   QueueConsumerConfigurationError,
   QueueConsumerNotReadyError,

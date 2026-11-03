@@ -10,8 +10,8 @@ import type { Pool, PoolClient } from 'pg';
 import type {
   ClaimOutboxBatchInput,
   ClaimOutboxBatchResult,
-} from './contract.js';
-import type { LeasedOutboxEvent } from './contract.js';
+} from './outbox-dispatcher.types.js';
+import type { LeasedOutboxEvent } from './outbox-dispatcher.types.js';
 
 export async function claimOutboxBatch(
   pool: Pool,

@@ -23,7 +23,7 @@ import type {
   SampleMetadata,
   SampleMetadataRow,
   SampleScope,
-} from './contract.js';
+} from './step-sample.types.js';
 
 export const sampleMetadataProjection = {
   id: workflowStepSamples.id,

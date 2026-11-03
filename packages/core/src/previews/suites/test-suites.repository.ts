@@ -11,7 +11,7 @@ import { and, asc, desc, eq, sql } from 'drizzle-orm';
 import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { alias } from 'drizzle-orm/pg-core';
 import type { PoolClient } from 'pg';
-import type { SampleScope } from '../../authoring/step-samples/contract.js';
+import type { SampleScope } from '../../authoring/step-samples/step-sample.types.js';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import {
   workflowTestSuiteCases,

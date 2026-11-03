@@ -18,8 +18,11 @@ import type {
   ScheduleHealthTransition,
   ScheduleTriggerCommandResult,
   SetEnabledInput,
-} from './contract.js';
-import { parseStoredScheduleTrigger, readSchedule } from './state.repository.js';
+} from './schedule-management.types.js';
+import {
+  parseStoredScheduleTrigger,
+  readSchedule,
+} from './state.repository.js';
 
 export function scheduleCommandIdentity(
   input: SetEnabledInput,

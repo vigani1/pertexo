@@ -1,5 +1,8 @@
 import { z } from 'zod';
-import { testAssertionSchema, testExpectationValueSchema } from './contract.js';
+import {
+  testAssertionSchema,
+  testExpectationValueSchema,
+} from './workflow-test-expectations.schemas.js';
 
 const observation = z
   .object({

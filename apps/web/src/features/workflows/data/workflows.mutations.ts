@@ -4,14 +4,14 @@ import {
   isUnconfirmedCommand,
   newCommandKey,
   type CommandKey,
-} from '@/lib/api/commands/contract';
+} from '@/lib/api/commands/command-retry';
 import { useResendExpired } from '@/lib/api/commands/use-resend-window';
 import { useRef, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type {
   InlineRenameCommand,
   InlineRenameError,
-} from '@/components/patterns/actions/rename/contract';
+} from '@/components/patterns/actions/rename/inline-rename.types';
 import type { ApiClient } from '@/lib/api/client';
 import { isApiError } from '@/lib/api/error';
 import { describeCommandError } from '@/lib/api/error-copy';

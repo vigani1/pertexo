@@ -6,7 +6,7 @@ import { ACTIVE_WORKSPACE_STATUSES } from '@pertexo/policy';
 import type { PoolClient } from 'pg';
 
 import { WorkflowNotFoundError } from '../../workflows/errors.js';
-import type { WorkflowAutoPauseSettings } from './contract.js';
+import type { WorkflowAutoPauseSettings } from './auto-pause-settings.types.js';
 
 export const workspaceProjection = {
   autoPauseThreshold: workspaces.autoPauseThreshold,

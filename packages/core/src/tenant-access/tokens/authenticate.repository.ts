@@ -16,7 +16,7 @@ import {
   type ParsedApiTokenCredential,
 } from './credential.js';
 import { apiTokenStatus } from './metadata.js';
-import type { VerifiedApiToken } from './contract.js';
+import type { VerifiedApiToken } from './api-token.types.js';
 
 /** Off the helper: no member is behind this yet. The token is what names one. */
 export function authenticateApiToken(

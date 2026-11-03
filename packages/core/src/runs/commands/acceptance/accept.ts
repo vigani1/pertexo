@@ -23,7 +23,7 @@ import type {
   AcceptWorkflowRunInput,
   AcceptedWorkflowRun,
   PreparedWorkflowRunAcceptance,
-} from './contract.js';
+} from './run-acceptance.types.js';
 import { IdempotencyRecordCorruptError } from './errors.js';
 import { readExistingAcceptance } from './replay.repository.js';
 import {

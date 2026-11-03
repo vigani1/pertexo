@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import { createSystemMailDeliveryStore } from '@pertexo/secrets/server';
-import type { NoticeMailToSeal } from '../../../src/inbox/mail/contract.js';
+import type { NoticeMailToSeal } from '../../../src/inbox/mail/notice-mail.types.js';
 import { purgeTestWorkspace } from '../../support/workflow-authoring.js';
 import {
   config,

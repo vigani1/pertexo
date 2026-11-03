@@ -1,4 +1,4 @@
-import type { PublishedWorkflow } from '../queries/execution/contract.js';
+import type { PublishedWorkflow } from '../queries/execution/workflow-execution.types.js';
 import type { JsonValue } from '@pertexo/workflow-model';
 
 /** Called after the ordinary storage boundary, before fresh acceptance effects. */

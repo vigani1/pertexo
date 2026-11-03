@@ -14,7 +14,7 @@ import {
 } from '@pertexo/database/platform';
 import type { InitialCheckpointFactory } from '../commands/initial-checkpoint.js';
 import { ErrorWorkflowDeliveryMismatchError } from './errors.js';
-import type { ErrorWorkflowDeliveryInput } from './contract.js';
+import type { ErrorWorkflowDeliveryInput } from './error-workflow-delivery.types.js';
 import { acceptErrorWorkflow } from './accept.repository.js';
 import { DELIVERY_CONSUMER } from '../../outbox/delivery-consumers.js';
 

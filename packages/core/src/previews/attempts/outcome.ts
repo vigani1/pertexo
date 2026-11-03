@@ -4,7 +4,10 @@ import {
   serializeStoredExecutionValue,
 } from '../../runs/values/stored-execution.js';
 import { canonicalJson } from '@pertexo/workflow-model';
-import type { PreviewStatus, PreviewTerminalOutcome } from '../contract.js';
+import type {
+  PreviewStatus,
+  PreviewTerminalOutcome,
+} from '../preview.types.js';
 import { PREVIEW_STATUS } from '../state.js';
 
 export type CanonicalCompletionOutcome =

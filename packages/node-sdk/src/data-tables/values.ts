@@ -4,7 +4,7 @@ import {
   type DataTableNewColumn,
   type DataTableValues,
   type DataTableQuery,
-} from './contract.js';
+} from './data-table.schemas.js';
 import { inspectBoundedJson } from '../values/bounds.js';
 
 export function validateDataTableValues(

@@ -1,4 +1,4 @@
-import type { WebhookReplayIdentity } from './contract.js';
+import type { WebhookReplayIdentity } from './webhook-delivery.types.js';
 import { alias } from 'drizzle-orm/pg-core';
 import {
   webhookTriggerReplayRecords,

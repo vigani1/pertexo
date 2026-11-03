@@ -1,8 +1,8 @@
 import { isWorkflowTriggerKey } from '../../graph/triggers.js';
 import { parseJsonPath } from '../../values/json/path.js';
-import type { WorkflowGraph } from '../../graph/contract.js';
-import type { GraphValidationIssue } from '../../graph/validation/contract.js';
-import { callableTypeIssues } from './contract.js';
+import type { WorkflowGraph } from '../../graph/workflow-graph.schemas.js';
+import type { GraphValidationIssue } from '../../graph/validation/graph-validation.js';
+import { callableTypeIssues } from './callable-types.js';
 
 /** A result is selected across the run, including completed structured scopes. */
 export function callableDeclarationIssues(

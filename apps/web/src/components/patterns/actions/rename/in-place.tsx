@@ -2,7 +2,7 @@ import { CheckIcon, RotateCwIcon, XIcon } from 'lucide-react';
 import { useId } from 'react';
 import { LoadingOrb } from '@/components/ui/loading-orb';
 import { cn } from '@/lib/utils';
-import type { RenameFormProps } from './contract';
+import type { RenameFormProps } from './inline-rename.types';
 import { useRenameDraft } from './use-draft';
 import { RenameOutcome } from './outcome';
 

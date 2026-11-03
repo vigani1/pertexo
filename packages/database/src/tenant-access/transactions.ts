@@ -10,7 +10,7 @@ import type {
   TenantTransactionScope,
   TransactionScope,
   WorkspaceScopeRunner,
-} from './transactions/contract.js';
+} from './transactions/workspace-transaction.types.js';
 import {
   installTransactionScope,
   assertNoTenantContext,
@@ -25,7 +25,7 @@ export {
   type WorkspaceTransactionOptions,
   type TenantTransactionScope,
   type WorkspaceScopeRunner,
-} from './transactions/contract.js';
+} from './transactions/workspace-transaction.types.js';
 export { parseWorkspaceId } from './transactions/scope.js';
 /**
  * Runs one workspace-scoped transaction on a single checked-out pool client

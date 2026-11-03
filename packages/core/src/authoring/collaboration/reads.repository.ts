@@ -34,7 +34,7 @@ import type {
   ListCommentsInput,
   ReadPeopleInput,
   ReadThreadInput,
-} from './contract.js';
+} from './workflow-collaboration.types.js';
 const preview = new QueryBuilder()
   .select({ body: sql<string>`left(${workflowComments.body},200)` })
   .from(workflowComments)

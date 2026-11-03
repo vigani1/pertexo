@@ -1,4 +1,4 @@
-import type { ClaimRetirement } from './scanning/contract.js';
+import type { ClaimRetirement } from './scanning/schedule-scanning.types.js';
 import { sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';

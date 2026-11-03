@@ -8,7 +8,7 @@ import { applyWorkspaceLifecycleChange } from './apply.repository.js';
 import type {
   WorkspaceLifecycleChange,
   WorkspaceLifecycleOperation,
-} from './contract.js';
+} from './workspace-lifecycle.types.js';
 
 /**
  * Only the owner changes a workspace's lifecycle, one change at a time, and the

@@ -2,7 +2,7 @@ import { canonicalEmailDomainSql } from '../../canonical-email.js';
 import type {
   AuthenticationSession,
   IdentityEmailChangeEligibility,
-} from './contract.js';
+} from './authentication-session.types.js';
 import {
   users,
   workspaceMemberships,

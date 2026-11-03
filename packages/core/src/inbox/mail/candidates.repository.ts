@@ -10,7 +10,7 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import { alias } from 'drizzle-orm/pg-core';
 import type { Pool } from 'pg';
 
-import type { NoticeMailPerson } from './contract.js';
+import type { NoticeMailPerson } from './notice-mail.types.js';
 
 const workspaceMemberships = alias(membershipsTable, 'member');
 

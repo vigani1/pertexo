@@ -16,7 +16,7 @@ import { requireConnectionBindings } from '../../../tenant-access/resources/conn
 import { pruneStepSamples } from '../../step-samples/records.repository.js';
 
 import type { AuthoringCatalogs } from '../catalogs.js';
-import type { RestoreWorkflowVersionInput } from '../contract.js';
+import type { RestoreWorkflowVersionInput } from '../workflow-commands.types.js';
 import {
   WorkflowNotFoundError,
   WorkflowRevisionConflictError,
@@ -24,7 +24,7 @@ import {
 import { requirePlaceableDefinitionAdditions } from '../placement.js';
 import { draftRepresentationTag } from '../representation/tag.js';
 import { lockActiveWorkflow, lockDraft } from './locks.repository.js';
-import type { WorkflowDraftRecord } from '../representation/contract.js';
+import type { WorkflowDraftRecord } from '../representation/workflow-record.types.js';
 import {
   draftProjection,
   projectDraft,

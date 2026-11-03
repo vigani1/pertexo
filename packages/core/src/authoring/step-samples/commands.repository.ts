@@ -20,7 +20,7 @@ import type {
   SampleRow,
   SampleSource,
   SampleTransaction,
-} from './contract.js';
+} from './step-sample.types.js';
 
 const resultSchema = z
   .object({ sampleId: z.uuid(), removed: z.boolean() })

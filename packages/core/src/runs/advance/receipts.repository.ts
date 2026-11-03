@@ -22,7 +22,7 @@ import {
 import type {
   CoordinatorAdvanceDelivery,
   RunAdvanceResult,
-} from './contract.js';
+} from './run-advance.types.js';
 import { withCoordinatorWriteClient } from './coordinator-transaction.js';
 import { DELIVERY_CONSUMER } from '../../outbox/delivery-consumers.js';
 

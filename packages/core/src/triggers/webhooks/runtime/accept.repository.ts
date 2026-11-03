@@ -20,7 +20,7 @@ import type { Pool } from 'pg';
 
 import { generatePersistedId } from '@pertexo/database/platform';
 
-import type { WebhookReplayIdentity } from '../contract.js';
+import type { WebhookReplayIdentity } from '../webhook-delivery.types.js';
 import { insertWebhookDelivery } from '../deliveries.repository.js';
 import {
   replayDeliveryOutcome,
@@ -41,7 +41,7 @@ import {
 import type {
   AcceptVerifiedWebhookDeliveryInput,
   WebhookAcceptance,
-} from './contract.js';
+} from './webhook-runtime.types.js';
 
 import {
   executableProjection,

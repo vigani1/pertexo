@@ -12,7 +12,7 @@ import type {
 import type {
   RecoveryNode,
   RecoverySource,
-} from '../../src/recovery/contract.js';
+} from '../../src/recovery/workflow-recovery.types.js';
 import { graph, nodeCatalog } from '../support/executable-workflow.js';
 
 export const completedAt = '2026-10-13T00:00:00.000Z';

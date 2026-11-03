@@ -26,7 +26,7 @@ import type {
   CallbackPreparation,
   CallbackResponse,
   PreparedCallback,
-} from './contract.js';
+} from './callback.types.js';
 
 type Row = Awaited<ReturnType<typeof resolveCallback>>[number];
 function project(row: Row): PreparedCallback {

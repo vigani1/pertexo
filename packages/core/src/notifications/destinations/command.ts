@@ -8,7 +8,7 @@ import type {
   CommandMetadata,
   DestinationAuditTarget,
   IdempotentCommandMetadata,
-} from './contract.js';
+} from './notification-destination.types.js';
 
 import type { PoolClient } from 'pg';
 import { z } from 'zod';

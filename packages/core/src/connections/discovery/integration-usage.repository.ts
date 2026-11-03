@@ -10,7 +10,7 @@ import type {
   FindProviderOperationImpactInput,
   WorkflowIntegrationImpactPage,
   WorkflowIntegrationImpactRecord,
-} from './contract.js';
+} from './connection-usage.types.js';
 
 import { withWorkspaceTransaction } from '@pertexo/database/primitives';
 

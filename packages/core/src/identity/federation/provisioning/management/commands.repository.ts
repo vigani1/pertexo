@@ -34,14 +34,14 @@ import { advanceOrganization } from '../../management/commands.repository.js';
 import type {
   FederationCommand,
   FederationScope,
-} from '../../management/contract.js';
+} from '../../management/federation-management.types.js';
 import { DirectoryError } from '../errors.js';
 import {
   directoryWorkspaces,
   lockDirectoryOrganization,
   lockDirectoryParticipants,
 } from '../authority.repository.js';
-import type { DirectoryOrganization } from '../contract.js';
+import type { DirectoryOrganization } from '../directory-provisioning.types.js';
 import { previewDirectoryAdoption } from './adoption.repository.js';
 type ManagedOrganization = Readonly<{
   organization: DirectoryOrganization;

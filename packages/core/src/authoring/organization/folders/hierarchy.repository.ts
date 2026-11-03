@@ -10,7 +10,7 @@ import { WorkflowNotFoundError } from '../../workflows/errors.js';
 
 import { WorkflowFolderConflictError } from '../errors.js';
 
-import type { WorkflowFolderRecord } from './contract.js';
+import type { WorkflowFolderRecord } from './workflow-folder.types.js';
 import { nameKey } from './input.js';
 
 export const folderProjection = {

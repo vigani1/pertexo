@@ -16,14 +16,17 @@ export {
   type ArtifactUploadResult,
   type BeginArtifactUploadInput,
   type FinalizeArtifactUploadInput,
-} from './uploads/contract.js';
-export { ARTIFACT_UPLOAD_PURPOSE } from './contract.js';
+} from './uploads/artifact-upload.js';
+export { ARTIFACT_UPLOAD_PURPOSE } from './artifact.js';
 export {
   createFormUploadStore,
   type FormUploadStore,
 } from './form-uploads/store.js';
 export { FormUploadLimitError } from './form-uploads/errors.js';
-export type { FormUpload, FormUploadTarget } from './form-uploads/contract.js';
+export type {
+  FormUpload,
+  FormUploadTarget,
+} from './form-uploads/form-upload.types.js';
 export {
   artifactStorageKey,
   createPendingArtifact,

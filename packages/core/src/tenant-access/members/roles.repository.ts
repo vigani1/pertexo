@@ -5,7 +5,7 @@ import { canChangeWorkspaceMemberRole } from '@pertexo/policy';
 import type {
   ChangeWorkspaceMemberRoleInput,
   WorkspaceMemberRoleChangeResult,
-} from '../contract.js';
+} from '../tenant-access.types.js';
 import { WorkspaceMemberRoleCommandConflictError } from '../errors.js';
 import { roleReceipt } from '../../shared/receipts.js';
 import { revokeUserSessions } from '../users/sessions.repository.js';

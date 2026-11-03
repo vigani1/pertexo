@@ -16,7 +16,7 @@ import type {
   ListSchedulesInput,
   ScheduleTriggerCommandResult,
   SetEnabledInput,
-} from './management/contract.js';
+} from './management/schedule-management.types.js';
 import {
   applyScheduleHealthTransition,
   claimScheduleCommand,

@@ -4,7 +4,7 @@ import { expect, it } from 'vitest';
 import { createWorkflowFolderStore } from '../../src/authoring/organization/folders/store.js';
 import { createPendingTaskStore } from '../../src/runs/pending-tasks/responses/store.js';
 import { PendingTaskNotFoundError } from '../../src/runs/pending-tasks/responses/errors.js';
-import type { NoticeMailToSeal } from '../../src/inbox/mail/contract.js';
+import type { NoticeMailToSeal } from '../../src/inbox/mail/notice-mail.types.js';
 import {
   own,
   config,

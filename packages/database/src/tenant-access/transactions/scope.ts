@@ -2,7 +2,10 @@ import { isIntegerInRange } from '../../platform/persisted-primitives.js';
 import type { PoolClient } from 'pg';
 
 import { workspaceIdSchema } from './input.js';
-import type { WorkspaceId, TransactionScope } from './contract.js';
+import type {
+  WorkspaceId,
+  TransactionScope,
+} from './workspace-transaction.types.js';
 
 export function parseWorkspaceId(value: string): WorkspaceId {
   return workspaceIdSchema.parse(value) as WorkspaceId;

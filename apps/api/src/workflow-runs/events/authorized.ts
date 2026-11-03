@@ -17,7 +17,7 @@ import {
   type StreamFailure,
 } from './stream-cleanup.js';
 
-import type { StreamRunEventsInput } from '../access/contract.js';
+import type { StreamRunEventsInput } from '../access/workflow-run-inputs.types.js';
 import { WorkflowRunNotFoundError, authorize } from '../access/authorize.js';
 
 /** Maximum time an open stream may rely on a previously verified access fact. */

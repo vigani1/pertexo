@@ -3,7 +3,7 @@ export { createOutboxDispatcherDatabase } from './dispatcher/store.js';
 export type {
   LeasedOutboxEvent,
   OutboxDispatcherDatabase,
-} from './dispatcher/contract.js';
+} from './dispatcher/outbox-dispatcher.types.js';
 export {
   InboxChecksumMismatchError,
   InboxReceiptUnavailableError,
@@ -18,7 +18,7 @@ export type { UnknownOutcomeReconciliationResult } from './reconcile-unknown-out
 
 // Other areas import these files directly (ADR 091); the door gains nothing.
 export type {} from './consume-message.js';
-export type {} from './dispatcher/contract.js';
+export type {} from './dispatcher/outbox-dispatcher.types.js';
 export type {} from './dispatcher/store.js';
 export type {} from './overdue-deliveries.repository.js';
 export type {} from './reconcile-unknown-outcome.js';

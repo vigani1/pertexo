@@ -34,13 +34,13 @@ export type {
   DirectoryUser,
   DirectoryUserProfile,
   DirectoryUserValues,
-} from './federation/provisioning/contract.js';
+} from './federation/provisioning/directory-provisioning.types.js';
 export { DirectoryError } from './federation/provisioning/errors.js';
 export {
   createTwoFactorRecoveryStore,
   type TwoFactorRecoveryStore,
 } from './two-factor/store.js';
-export type { TwoFactorRecoveryResult } from './two-factor/contract.js';
+export type { TwoFactorRecoveryResult } from './two-factor/two-factor-recovery.types.js';
 
 // Other areas reach these directly (ADR 091).
 export type {} from './federation/provisioning/management/detach.repository.js';

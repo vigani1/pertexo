@@ -1,6 +1,6 @@
 import { createWorkspaceDatabase } from '@pertexo/database/platform';
 import { applyConnectionHealthObservation } from '../../../../src/connections/health/observations.repository.js';
-import type { NodeAttemptLease } from '../../../../src/attempts/contract.js';
+import type { NodeAttemptLease } from '../../../../src/attempts/node-attempt.js';
 import {
   asOwner,
   databaseUrl,

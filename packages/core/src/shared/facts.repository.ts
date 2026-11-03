@@ -21,7 +21,10 @@ import {
   type Role,
 } from '@pertexo/policy';
 import { readWorkspaceRole } from './authority.repository.js';
-import type { ResourceActor, ResourceTransaction } from './contract.js';
+import type {
+  ResourceActor,
+  ResourceTransaction,
+} from './folder-access.types.js';
 import { folderScope, RESOURCE_ADMINISTRATORS } from './folder-policy.js';
 
 function matchingGrants(db: WorkspaceTransaction['db'], actor: ResourceActor) {

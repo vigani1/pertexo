@@ -25,7 +25,7 @@ import type {
   RecoveryPrefixNode,
   RecoveryRefused,
   RecoverySource,
-} from './contract.js';
+} from './workflow-recovery.types.js';
 import type {
   CompiledWorkflowExecutable,
   WorkflowExecutableNode,

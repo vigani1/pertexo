@@ -1,4 +1,4 @@
-import type { JsonValue } from '../execution/contract.js';
+import type { JsonValue } from '../execution/node-execution.types.js';
 import { InvalidBoundedJsonError } from '../execution/errors.js';
 import {
   inspectBoundedJson,

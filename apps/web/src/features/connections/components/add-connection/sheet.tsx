@@ -6,7 +6,7 @@ import {
   isUnconfirmedCommand,
   newCommandKey,
   type CommandKey,
-} from '@/lib/api/commands/contract';
+} from '@/lib/api/commands/command-retry';
 import { useId, useRef, useState } from 'react';
 import {
   ConfirmDialog,

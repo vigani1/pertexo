@@ -1,4 +1,4 @@
-import type { WorkflowTriggerProjection } from './contract.js';
+import type { WorkflowTriggerProjection } from './trigger-reconciliation.types.js';
 import { CORE_WEBHOOK_CONFIG_SCHEMA } from '@pertexo/workflow-model';
 import { canonicalJson } from '@pertexo/workflow-model';
 import { createHash } from 'node:crypto';

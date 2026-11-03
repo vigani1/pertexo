@@ -1,4 +1,4 @@
-import type { WorkflowGraph } from '../../src/graph/contract.js';
+import type { WorkflowGraph } from '../../src/graph/workflow-graph.schemas.js';
 
 export const node = (id: string) => ({
   id,

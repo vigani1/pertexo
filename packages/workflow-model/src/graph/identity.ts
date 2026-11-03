@@ -8,13 +8,13 @@ import {
   WORKFLOW_VALIDATION_MAX_ISSUES,
   type WorkflowGraph,
   type WorkflowNode,
-} from './contract.js';
+} from './workflow-graph.schemas.js';
 import { parseWorkflowGraphDraft } from './validation/preflight.js';
 import { validateWorkflowGraph } from './validation/index.js';
 import {
   InvalidWorkflowGraphError,
   type GraphValidationIssue,
-} from './validation/contract.js';
+} from './validation/graph-validation.js';
 
 export interface WorkflowDefinitionCatalog {
   readonly definitions: readonly {

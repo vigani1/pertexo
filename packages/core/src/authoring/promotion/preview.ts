@@ -7,7 +7,10 @@ import type {
 import type { WorkspaceScopeRunner } from '@pertexo/database/primitives';
 import { linkedPromotionTarget } from './authority.repository.js';
 import { WorkflowPromotionError } from './errors.js';
-import type { PromotionContext, PromotionScope } from './contract.js';
+import type {
+  PromotionContext,
+  PromotionScope,
+} from './workflow-promotion.types.js';
 import { PromotionGraphBudget, promotionDigest } from './preparation/graph.js';
 import { readPromotionSources } from './preparation/source.repository.js';
 import { preparePromotionTarget } from './preparation/target.repository.js';

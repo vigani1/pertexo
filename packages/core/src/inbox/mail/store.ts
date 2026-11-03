@@ -19,7 +19,7 @@ import type {
   NoticeMailPerson,
   NoticeMailPersonFailure,
   NoticeMailSealer,
-} from './contract.js';
+} from './notice-mail.types.js';
 import { preparePerson } from './prepare.repository.js';
 
 const CANDIDATE_PAGE_SIZE = 10;

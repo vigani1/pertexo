@@ -16,14 +16,14 @@ import type {
   CreateConnectionInput,
   FindConnectionCreateReplayInput,
   RevokeConnectionInput,
-} from '../contract.js';
+} from '../connection.js';
 import {
   CONNECTION_AUTH_TYPE,
   CONNECTION_EVENT_TYPE,
   CONNECTION_STATUS,
   ConnectionConflictError,
   ConnectionNotFoundError,
-} from '../contract.js';
+} from '../connection.js';
 import { recordMemberAction } from '../events.repository.js';
 import { healthOfNewSecret } from '../health/rules.js';
 import { revokeConnectionHealth } from '../health/transitions.repository.js';
@@ -37,7 +37,10 @@ import {
   decodeDurableConnectionReplay,
   serializeConnectionSnapshot,
 } from '../receipts.js';
-import { connectionFields, selectConnection } from '../connections.repository.js';
+import {
+  connectionFields,
+  selectConnection,
+} from '../connections.repository.js';
 import { insertSecretVersion } from './secret-version.repository.js';
 
 const CREATE_OPERATION = 'connection.create';

@@ -9,7 +9,7 @@ import { previewAttempts, previewRuns } from '@pertexo/database/schema';
 import type {
   HeartbeatPreviewLeaseInput,
   PreviewHeartbeatResult,
-} from './contract.js';
+} from './preview-attempt.types.js';
 
 import { PreviewAttemptStateError } from '../errors.js';
 import { optionsFor } from '../input.js';

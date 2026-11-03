@@ -31,7 +31,7 @@ import {
 } from '../commands/acceptance/errors.js';
 import type { InitialCheckpointFactory } from '../commands/initial-checkpoint.js';
 import { findLockedReplayVersion } from '../commands/replay-run.js';
-import type { PublishedWorkflow } from '../queries/execution/contract.js';
+import type { PublishedWorkflow } from '../queries/execution/workflow-execution.types.js';
 import { WorkflowCallRefusedError } from './errors.js';
 import { wakeWorkflowRun } from '../wakeups/advance.repository.js';
 

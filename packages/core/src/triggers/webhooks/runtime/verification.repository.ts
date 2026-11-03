@@ -18,7 +18,7 @@ import { readTriggerConfig } from './state.repository.js';
 import type {
   StoredWebhookTriggerSecret,
   WebhookVerificationReference,
-} from './contract.js';
+} from './webhook-runtime.types.js';
 
 export async function resolveWebhookVerification(
   pool: Pool,

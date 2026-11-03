@@ -2,19 +2,28 @@ import { and, eq, ne } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { workflows } from '@pertexo/database/schema';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
-import { readTargetOrigin, lockTargetWorkflow } from './target-workflows.repository.js';
+import {
+  readTargetOrigin,
+  lockTargetWorkflow,
+} from './target-workflows.repository.js';
 import { workflowAccessible } from '../../../../tenant-access/resources/workflows.repository.js';
 import { WorkflowNotFoundError } from '../../../workflows/errors.js';
 import type { PoolClient } from 'pg';
 
 import { parseWorkflowGraphDraft } from '@pertexo/workflow-model';
 
-import type { PromotionContext } from '../../contract.js';
+import type { PromotionContext } from '../../workflow-promotion.types.js';
 import { promotionDigest } from '../graph.js';
 import type { PromotionSource } from '../source.repository.js';
 
-import type { ReviewedWorkflow, TargetReviewState } from './contract.js';
-import type { Origin, TargetWorkflowRow } from './target-workflows.repository.js';
+import type {
+  ReviewedWorkflow,
+  TargetReviewState,
+} from './target-review.types.js';
+import type {
+  Origin,
+  TargetWorkflowRow,
+} from './target-workflows.repository.js';
 import { prepareTargetGraph } from './bind-graph.js';
 
 export async function prepareTargetWorkflow(

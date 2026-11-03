@@ -24,7 +24,7 @@ import { refuseClosedSignUp } from './sign-up-gate.js';
 import { AuthenticationTransactions } from './transactions/context.js';
 
 import { AccountLinking } from '../account-security/linking.js';
-import type { SocialProviderGateway } from '../providers/contract.js';
+import type { SocialProviderGateway } from '../social-provider.types.js';
 import type { AuthenticationMail } from '../mail/delivery.js';
 import {
   betterAuthSocialProviders,

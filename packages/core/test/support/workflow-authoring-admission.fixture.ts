@@ -2,7 +2,7 @@ import { parseWorkflowGraphDraft } from '@pertexo/workflow-model';
 import type {
   CreateWorkflowInput,
   SaveWorkflowDraftInput,
-} from '../../src/authoring/workflows/contract.js';
+} from '../../src/authoring/workflows/workflow-commands.types.js';
 import {
   AuthoringValidationUnavailableError,
   EMPTY_DEFINITION_CATALOG,

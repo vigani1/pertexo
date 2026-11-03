@@ -1,5 +1,5 @@
-import type { WorkflowExecutionProjection } from './contract.js';
-import type { WorkflowExecutionReader } from './contract.js';
+import type { WorkflowExecutionProjection } from './workflow-execution.types.js';
+import type { WorkflowExecutionReader } from './workflow-execution.types.js';
 import { and, eq } from 'drizzle-orm';
 import { QueryBuilder } from 'drizzle-orm/pg-core';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';

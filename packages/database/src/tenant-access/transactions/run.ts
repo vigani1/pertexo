@@ -6,7 +6,7 @@ import { acquireAbortablePoolClient } from '../../platform/pool/abortable-checko
 import type {
   WorkspaceTransactionOptions,
   TransactionScope,
-} from './contract.js';
+} from './workspace-transaction.types.js';
 import {
   installTransactionScope,
   assertNoTenantContext,

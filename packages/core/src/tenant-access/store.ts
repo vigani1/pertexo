@@ -21,7 +21,7 @@ import type {
   WorkspaceLifecycleOperation,
   WorkspaceRecord,
   WorkspaceWithOwnerInput,
-} from './contract.js';
+} from './tenant-access.types.js';
 import { createIdentityWorkspaceInvitationAcceptanceStore } from './invitations/acceptance/store.js';
 import { createIdentityWorkspaceInvitationStore } from './invitations/store.js';
 import { createIdentityWorkspaceMembershipLifecycleStore } from './members/lifecycle.repository.js';

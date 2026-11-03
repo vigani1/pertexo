@@ -22,7 +22,7 @@ import {
   CONNECTION_AUTH_TYPE,
   ConnectionNotFoundError,
   ConnectionSharingRevisionConflictError,
-} from '../../../src/connections/contract.js';
+} from '../../../src/connections/connection.js';
 
 const builder = randomUUID(),
   viewer = randomUUID(),

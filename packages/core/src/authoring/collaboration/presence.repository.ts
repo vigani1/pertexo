@@ -12,7 +12,10 @@ import type { WorkflowPresence } from '@pertexo/contracts';
 import type { PoolClient } from 'pg';
 import type { EnterCollaboration } from './authority.repository.js';
 import { WorkflowCollaborationError } from './errors.js';
-import type { HeartbeatInput, PresenceInput } from './contract.js';
+import type {
+  HeartbeatInput,
+  PresenceInput,
+} from './workflow-collaboration.types.js';
 async function readPresence(
   client: PoolClient,
   input: PresenceInput,

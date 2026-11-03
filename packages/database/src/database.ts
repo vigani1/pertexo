@@ -9,7 +9,7 @@ import {
 import type {
   DatabaseReadiness,
   InstanceCapacity,
-} from './platform/contract.js';
+} from './platform/database-platform.types.js';
 import { withWorkspaceTransaction } from './tenant-access/transactions.js';
 import type {
   WorkspaceTransaction,

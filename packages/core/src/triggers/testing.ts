@@ -3,7 +3,7 @@ export {
   WorkflowTriggerReconciliationMismatchError,
   WorkflowTriggerStalePublicationError,
 } from './reconciliation/errors.js';
-export type { WorkflowTriggerHealth } from './reconciliation/contract.js';
+export type { WorkflowTriggerHealth } from './reconciliation/trigger-reconciliation.types.js';
 export type { WorkflowTriggerReconciliationStore } from './reconciliation/store.js';
 export {
   createWebhookTriggerStore,
@@ -22,11 +22,11 @@ export {
   type AcceptVerifiedWebhookDeliveryInput,
   type SealedWebhookTriggerSecret,
   type WebhookVerificationReference,
-} from './webhooks/runtime/contract.js';
+} from './webhooks/runtime/webhook-runtime.types.js';
 export type {
   WebhookDeliveryPage,
   WebhookDeliveryRecord,
-} from './webhooks/contract.js';
+} from './webhooks/webhook-delivery.types.js';
 export { workflowTriggerProjection } from './reconciliation/projection.js';
 export {
   createScheduleTriggerStore,
@@ -35,20 +35,20 @@ export {
 export {
   type ScheduleTriggerCommandResult,
   type ScheduleTriggerRecord,
-} from './schedules/management/contract.js';
+} from './schedules/management/schedule-management.types.js';
 export {
   createScheduleTriggerScanner,
   type ScheduleTriggerScanner,
 } from './schedules/scanner.js';
 export { ScheduleClaimLostError } from './schedules/errors.js';
-export type { ScanDueSchedulesResult } from './schedules/scanning/contract.js';
+export type { ScanDueSchedulesResult } from './schedules/scanning/schedule-scanning.types.js';
 export { ScheduleTriggerError } from './schedules/errors.js';
 export type {
   ScheduleFireTimes,
   ScheduleOccurrencePage,
   ScheduleOccurrencePosition,
   ScheduleOccurrenceRecord,
-} from './schedules/contract.js';
+} from './schedules/schedule-occurrence.types.js';
 export {
   parseScheduleRecurrence,
   resolveScheduleObservation,
@@ -56,7 +56,7 @@ export {
   type ScheduleObservation,
   type ScheduleRecurrence,
 } from './schedules/recurrence.js';
-export type { WorkflowTriggerProjection } from './reconciliation/contract.js';
+export type { WorkflowTriggerProjection } from './reconciliation/trigger-reconciliation.types.js';
 
 export {
   createWebhookResponseStore,
@@ -66,4 +66,4 @@ export type {
   WebhookResponseScope,
   WebhookResponseSnapshot,
   WriteWebhookResponse,
-} from './webhooks/responses/contract.js';
+} from './webhooks/responses/webhook-response.types.js';

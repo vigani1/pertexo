@@ -7,7 +7,7 @@ export {
   WorkspaceVariableUsageChangedError,
   type ReplaceWorkspaceVariablesInput,
   type VariableUsageInput,
-} from './contract.js';
+} from './workspace-variables.js';
 export type { WorkspaceActor } from '../shared/workspace-access.js';
 
 // Other areas import these files directly (ADR 091); the door gains nothing.

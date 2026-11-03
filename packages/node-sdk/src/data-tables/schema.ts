@@ -4,7 +4,7 @@ import {
   type DataTableColumn,
   type DataTableSchemaChange,
   type DataTableValues,
-} from './contract.js';
+} from './data-table.schemas.js';
 import { validateDataTableValues } from './values.js';
 
 interface DataTableSchemaState {

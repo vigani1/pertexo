@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { IdempotencyConflictError } from '@pertexo/database/platform';
 import { afterAll, beforeAll, expect, it } from 'vitest';
 
-import { WorkspaceVariablesConflictError } from '../../src/variables/contract.js';
+import { WorkspaceVariablesConflictError } from '../../src/variables/workspace-variables.js';
 
 import { admin } from '../lifecycle/calls/fixtures.js';
 import { userId } from '../lifecycle/retention.support.js';

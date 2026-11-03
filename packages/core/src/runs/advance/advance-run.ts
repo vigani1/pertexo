@@ -1,6 +1,6 @@
 import { isDeepStrictEqual } from 'node:util';
 
-import type { RunAdvanceInput, RunAdvanceResult } from './contract.js';
+import type { RunAdvanceInput, RunAdvanceResult } from './run-advance.types.js';
 import type { RunAdvanceStore } from './store.js';
 import type { WorkflowCallStore } from '../calls/store.js';
 import { WorkflowCallRefusedError } from '../calls/errors.js';

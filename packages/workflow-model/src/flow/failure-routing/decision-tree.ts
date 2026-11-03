@@ -1,6 +1,6 @@
-import { isCallbackWaitNode } from '../callbacks/contract.js';
+import { isCallbackWaitNode } from '../callbacks/callback-wait.js';
 import { isWorkflowTriggerKey } from '../../graph/triggers.js';
-import type { WorkflowEdge } from '../../graph/contract.js';
+import type { WorkflowEdge } from '../../graph/workflow-graph.schemas.js';
 
 export type DecisionTreeNode = Readonly<{
   id: string;

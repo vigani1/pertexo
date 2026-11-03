@@ -25,7 +25,7 @@ import type {
   PreparedWebhookRequest,
   IngressRejectionRecorder,
   WebhookRequestData,
-} from './contract.js';
+} from './webhook-ingress.types.js';
 import { optionalIdempotencyKey, sha256 } from './fingerprint.js';
 
 /** Pending events leave on their own schedule, so this only paces the sender. */

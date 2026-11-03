@@ -10,7 +10,7 @@ import {
   rethrowQueryFailure,
   canonicalOutboxPayloadChecksum,
 } from '@pertexo/database/primitives';
-import type { FolderScope } from '../../../shared/contract.js';
+import type { FolderScope } from '../../../shared/folder-access.types.js';
 import type {
   AudienceReview,
   WorkflowMoveReviewRequest,

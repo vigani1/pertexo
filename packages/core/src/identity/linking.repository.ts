@@ -2,7 +2,7 @@ import { isUniqueConstraintFailure } from '@pertexo/database/primitives';
 import { hasSignInMethodCapacity } from './federation/accounts/limits.repository.js';
 import { readEligibleAuthenticationSession } from './federation/sessions/authority.repository.js';
 import { issueSession } from './federation/sessions/issue.repository.js';
-import type { AuthenticationSession } from './federation/sessions/contract.js';
+import type { AuthenticationSession } from './federation/sessions/authentication-session.types.js';
 import { createHash, randomUUID } from 'node:crypto';
 
 import { and, eq, gt, sql } from 'drizzle-orm';

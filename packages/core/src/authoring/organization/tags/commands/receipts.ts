@@ -13,7 +13,7 @@ import type {
   AssignmentCommand,
   Command,
   WorkflowTagCommandResult,
-} from '../contract.js';
+} from '../workflow-tag.types.js';
 import { tagResult } from '../input.js';
 import { tagRecord, type TagRow } from '../state.repository.js';
 

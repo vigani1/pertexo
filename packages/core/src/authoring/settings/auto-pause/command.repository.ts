@@ -13,7 +13,7 @@ import type {
   AutoPauseCommandResult,
   CommandInput,
   Transact,
-} from './contract.js';
+} from './auto-pause-settings.types.js';
 import { lockWorkspace, type WorkspaceRow } from './state.repository.js';
 /**
  * One settings command: the actor's role, then an exact retry's first

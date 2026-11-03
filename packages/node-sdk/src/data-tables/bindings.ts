@@ -6,7 +6,7 @@ import {
   type DataTableCommand,
   type DataTableQuery,
   type DataTableResult,
-} from './contract.js';
+} from './data-table.schemas.js';
 
 /** Stable workflow aliases resolve to the current names used by table rows. */
 export function resolveDataTableBindings({

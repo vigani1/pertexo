@@ -28,7 +28,7 @@ import type {
   PreparedWebhookRequest,
   IngressReferences,
   IngressRejectionRecorder,
-} from './contract.js';
+} from './webhook-ingress.types.js';
 
 async function verifyWebhookSecrets(
   encryption: WebhookTriggerEnvelopeEncryption,

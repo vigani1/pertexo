@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { eventCoordinationPolicySchema } from '../triggers/event-coordination/contract.js';
+import { eventCoordinationPolicySchema } from './event-coordination/event-coordination.schemas.js';
 
 // Endpoint keys and signing secrets belong to materialized trigger state.
 export const CORE_WEBHOOK_CONFIG_SCHEMA = z

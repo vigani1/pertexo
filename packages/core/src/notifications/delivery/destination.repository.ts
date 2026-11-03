@@ -12,14 +12,17 @@ import {
   failureNotificationDestinations as destination,
   runFailureNotificationIntents as intent,
 } from '@pertexo/database/schema';
-import { currentDestinationSql, deliverySources } from './sources.repository.js';
+import {
+  currentDestinationSql,
+  deliverySources,
+} from './sources.repository.js';
 
 import { recordCredentialAccess } from '../../connections/runtime/credential-use.repository.js';
 import type {
   FailureNotificationResolvedDestination,
   FenceDispatchInput,
   LoadDestinationInput,
-} from '../contract.js';
+} from '../failure-notification.types.js';
 import { auditFailureNotification } from './evidence.repository.js';
 import { FailureNotificationStateError } from '../errors.js';
 

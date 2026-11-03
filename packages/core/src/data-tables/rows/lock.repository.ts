@@ -14,7 +14,7 @@ import type { PoolClient } from 'pg';
 import type {
   DataTableDefinition,
   DataTableWriteCommand,
-} from '../contract.js';
+} from '../data-table-commands.types.js';
 import { queryClause, rowFields, type StoredRow } from './find.repository.js';
 import { keyValue } from './key.js';
 

@@ -13,7 +13,7 @@ import {
   isUnconfirmedCommand,
   newCommandKey,
   type CommandKey,
-} from '@/lib/api/commands/contract';
+} from '@/lib/api/commands/command-retry';
 import { commandErrorMessage } from './command-utils';
 
 type RunAttempt = Readonly<{

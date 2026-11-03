@@ -1,4 +1,4 @@
-import type { ScanDueEventsInput } from './contract.js';
+import type { ScanDueEventsInput } from './event-coordination.types.js';
 import { sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import {

@@ -12,7 +12,7 @@ import {
   authDirectoryGroups,
 } from '@pertexo/database/schema';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
-import type { ResourceActor } from '../../shared/contract.js';
+import type { ResourceActor } from '../../shared/folder-access.types.js';
 
 /** Principal discovery is bounded and anchored to this workspace's current identities. The caller holds an administrator's authority. */
 export async function readSharingPrincipals(

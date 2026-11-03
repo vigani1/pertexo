@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import { afterAll, beforeAll, expect, it } from 'vitest';
 
-import type { VariableUsagePage } from '../../src/variables/contract.js';
+import type { VariableUsagePage } from '../../src/variables/workspace-variables.js';
 
 import { admin } from '../lifecycle/calls/fixtures.js';
 import { userId } from '../lifecycle/retention.support.js';

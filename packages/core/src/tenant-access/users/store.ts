@@ -7,7 +7,7 @@ import { users } from '@pertexo/database/schema';
 import type { Pool } from 'pg';
 import { z } from 'zod';
 
-import type { CreateUserInput, UserRecord } from '../contract.js';
+import type { CreateUserInput, UserRecord } from '../tenant-access.types.js';
 import { throwIdentityDatabaseConflict } from '../conflicts.js';
 import { userRecord, userSelection } from './projection.js';
 

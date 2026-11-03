@@ -1,6 +1,6 @@
 import type { Pool } from 'pg';
 import type { WorkflowTestSuitePreparation } from '@pertexo/contracts';
-import type { SampleScope } from '../../authoring/step-samples/contract.js';
+import type { SampleScope } from '../../authoring/step-samples/step-sample.types.js';
 import type { AuthoringCatalogs } from '../../authoring/workflows/catalogs.js';
 import { withTestChange, withTestRead } from '../workflows/access.js';
 import { cancelTestSuite } from './cancel.js';
@@ -8,9 +8,13 @@ import type {
   WorkflowTestSuiteCaseInput,
   WorkflowTestSuiteInput,
   WorkflowTestSuiteStartInput,
-} from './contract.js';
+} from './workflow-test-suite.types.js';
 import { readSuiteCurrent } from './current.repository.js';
-import { listSuites, readCaseReport, readSuite } from './test-suites.repository.js';
+import {
+  listSuites,
+  readCaseReport,
+  readSuite,
+} from './test-suites.repository.js';
 import { prepareTestSuite, startTestSuite } from './start.js';
 
 export type WorkflowTestSuiteStore = ReturnType<

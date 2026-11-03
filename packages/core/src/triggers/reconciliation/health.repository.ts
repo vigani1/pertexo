@@ -1,4 +1,4 @@
-import type { WorkflowTriggerHealth } from './contract.js';
+import type { WorkflowTriggerHealth } from './trigger-reconciliation.types.js';
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import {

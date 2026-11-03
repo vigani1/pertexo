@@ -8,7 +8,7 @@ import type { PoolClient } from 'pg';
 import { v7 as uuidv7 } from 'uuid';
 import { previewRuns, usageEvents } from '@pertexo/database/schema';
 import { PreviewAttemptStateError } from '../errors.js';
-import type { PreviewStatus } from '../contract.js';
+import type { PreviewStatus } from '../preview.types.js';
 
 export async function appendPreviewTerminalFacts(
   client: PoolClient,

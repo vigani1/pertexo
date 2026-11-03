@@ -38,7 +38,7 @@ import type {
   GetWorkflowRunInput,
   ListWorkflowRunsInput,
   CancelWorkflowRunInput,
-} from './access/contract.js';
+} from './access/workflow-run-inputs.types.js';
 import { WorkflowRunNotFoundError, authorize } from './access/authorize.js';
 
 export {
@@ -48,7 +48,7 @@ export {
   type ListWorkflowRunsInput,
   type CancelWorkflowRunInput,
   type StreamRunEventsInput,
-} from './access/contract.js';
+} from './access/workflow-run-inputs.types.js';
 export { WorkflowRunNotFoundError } from './access/authorize.js';
 export { StreamRunEventsUseCase } from './events/authorized.js';
 export class StartWorkflowRunUseCase {

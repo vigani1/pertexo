@@ -7,7 +7,7 @@ import {
 import type { PoolClient } from 'pg';
 import type { z } from 'zod';
 
-import type { DataTableMutation } from './contract.js';
+import type { DataTableMutation } from './data-table-commands.types.js';
 import { requireReadableReceipt } from '../shared/receipts.js';
 
 type TableCommand<T extends object> = Readonly<{

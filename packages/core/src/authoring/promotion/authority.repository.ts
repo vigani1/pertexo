@@ -13,7 +13,7 @@ import {
 } from '@pertexo/policy';
 import { lockWorkflowAuthoringAuthority } from '../workflows/authority.js';
 import { WorkflowPromotionError } from './errors.js';
-import type { PromotionScope } from './contract.js';
+import type { PromotionScope } from './workflow-promotion.types.js';
 
 export type PromotionLink = Readonly<{
   revision: number;

@@ -1,4 +1,7 @@
-import type { MembershipAddition, MembershipChange } from './contract.js';
+import type {
+  MembershipAddition,
+  MembershipChange,
+} from './membership.types.js';
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import {

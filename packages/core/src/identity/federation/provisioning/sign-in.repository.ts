@@ -25,7 +25,7 @@ import {
 import type { PoolClient } from 'pg';
 import { SignInProofRejectedError } from '../accounts/rejection.js';
 import type { DirectoryUserRow } from './resources/directory-resources.repository.js';
-import type { DirectoryOrganization } from './contract.js';
+import type { DirectoryOrganization } from './directory-provisioning.types.js';
 import { projectDirectoryMemberships } from './projection.repository.js';
 
 /** A directory email is authorization to await SSO, never proof of account ownership. */

@@ -33,7 +33,7 @@ import type {
   DataTableAttempt,
   DataTableDefinition,
   ExecuteTableCommandInput,
-} from './contract.js';
+} from './data-table-commands.types.js';
 import { readQuotas, requireTable } from './table-lookups.repository.js';
 import { translateWorkerFailure } from './errors.js';
 import { findRows } from './rows/find.repository.js';

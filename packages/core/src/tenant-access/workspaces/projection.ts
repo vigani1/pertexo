@@ -1,6 +1,6 @@
 import { sql } from 'drizzle-orm';
 import { workspaces } from '@pertexo/database/schema';
-import type { WorkspaceRecord } from '../contract.js';
+import type { WorkspaceRecord } from '../tenant-access.types.js';
 
 export const workspaceSelection = {
   id: workspaces.id,

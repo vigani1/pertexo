@@ -18,7 +18,7 @@ import { workflowIntegrationUsage } from '@pertexo/workflow-model/server';
 
 import type { PoolClient } from 'pg';
 
-import type { WorkflowVersionRecord } from '../workflows/representation/contract.js';
+import type { WorkflowVersionRecord } from '../workflows/representation/workflow-record.types.js';
 
 import { persistPublicationCalls } from './calls.repository.js';
 import {
@@ -29,7 +29,7 @@ import {
 import type {
   CompiledPublication,
   PublicationCandidateInput,
-} from './contract.js';
+} from './workflow-publication.types.js';
 
 export async function persistPublicationProjections(
   client: PoolClient,

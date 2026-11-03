@@ -27,7 +27,7 @@ import type {
   WorkspaceAccessRecord,
   WorkspaceMembersPage,
   WorkspaceStatus,
-} from '../contract.js';
+} from '../tenant-access.types.js';
 import { withWorkspaceAccess } from '../../shared/workspace-access.js';
 import { DEFAULT_PAGE_LIMIT } from '../state.js';
 

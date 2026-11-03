@@ -22,7 +22,7 @@ import type {
   DestinationConfig,
   FailureNotificationDestinationRecord,
   SetDestinationStatusInput,
-} from './contract.js';
+} from './notification-destination.types.js';
 import {
   destinationRecords,
   readFailureNotificationDestination,

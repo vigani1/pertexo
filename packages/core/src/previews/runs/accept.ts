@@ -31,7 +31,7 @@ import {
 import type {
   AcceptPreviewRunInput,
   AcceptedPreviewRun,
-} from './acceptance/contract.js';
+} from './acceptance/preview-acceptance.types.js';
 import { assertPreviewDeadlines } from './acceptance/limits.js';
 import {
   readExistingAcceptance,

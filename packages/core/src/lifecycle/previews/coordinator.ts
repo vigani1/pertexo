@@ -1,4 +1,4 @@
-import type { PreviewRetentionProcessResult } from './contract.js';
+import type { PreviewRetentionProcessResult } from './preview-retention.types.js';
 import {
   optionsSchema,
   type PreviewRetentionCoordinatorOptions,

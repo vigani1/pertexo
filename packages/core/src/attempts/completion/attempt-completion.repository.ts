@@ -10,7 +10,7 @@ import {
   inboxReceipts,
 } from '@pertexo/database/schema';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
-import type { CompleteAttemptInput } from '../contract.js';
+import type { CompleteAttemptInput } from '../node-attempt.js';
 import { nodeAttemptConsumerName } from './receipts.repository.js';
 import { runAbortReason } from '../control.js';
 

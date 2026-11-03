@@ -1,4 +1,4 @@
-import type { PreparedFormEvent } from './contract.js';
+import type { PreparedFormEvent } from './form-admission.types.js';
 import { sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import {
@@ -14,7 +14,10 @@ import {
   FormValuesInvalidError,
 } from '@pertexo/workflow-model';
 import { authorizeForm, readFormVersion } from './form-versions.repository.js';
-import type { PublicFormGrant, SubmitFormInput } from './contract.js';
+import type {
+  PublicFormGrant,
+  SubmitFormInput,
+} from './form-admission.types.js';
 import { resolveFormFiles } from '../../artifacts/form-uploads/resolve.repository.js';
 
 import type { createEventCoordinationPreparation } from '../coordination/prepare.js';

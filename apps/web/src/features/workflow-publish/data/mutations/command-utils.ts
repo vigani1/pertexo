@@ -1,4 +1,4 @@
-import { isUnconfirmedCommand } from '@/lib/api/commands/contract';
+import { isUnconfirmedCommand } from '@/lib/api/commands/command-retry';
 import { runAdmissionError } from '@/features/workflow-runs/commands.public';
 import { describeCommandError } from '@/lib/api/error-copy';
 import { sampleErrorDetail } from '../../model/testing/samples';

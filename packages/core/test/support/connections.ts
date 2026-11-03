@@ -13,7 +13,7 @@ import {
   ConnectionTestInProgressError,
   ConnectionUnavailableError,
   type CreateConnectionInput,
-} from '../../src/connections/contract.js';
+} from '../../src/connections/connection.js';
 import {
   createConnectionStore,
   type ConnectionLookupStore,

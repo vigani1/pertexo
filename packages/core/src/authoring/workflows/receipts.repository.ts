@@ -9,7 +9,7 @@ import {
 import { claimCommand, completeCommand } from '@pertexo/database/primitives';
 import type { CommandIdentity } from '@pertexo/database/primitives';
 import { requireReadableReceipt } from '../../shared/receipts.js';
-import type { WorkflowRecord } from './representation/contract.js';
+import type { WorkflowRecord } from './representation/workflow-record.types.js';
 
 const uuidSchema = z.uuid();
 const revisionSchema = z.number().int().positive().max(Number.MAX_SAFE_INTEGER);

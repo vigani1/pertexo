@@ -1,7 +1,7 @@
 import type { ValueSource, WorkflowGraph } from '@pertexo/workflow-model';
 import { describe, expect, it } from 'vitest';
 
-import { WorkspaceVariableUsageChangedError } from '../../src/variables/contract.js';
+import { WorkspaceVariableUsageChangedError } from '../../src/variables/workspace-variables.js';
 import { scanVariableUsage } from '../../src/variables/usage-scan.js';
 import { walkVariableUsage } from '../../src/variables/usage-walk.js';
 

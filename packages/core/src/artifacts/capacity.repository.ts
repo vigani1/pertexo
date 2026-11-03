@@ -3,8 +3,8 @@ import { sql } from 'drizzle-orm';
 import { artifacts, runCheckpoints, runEvents } from '@pertexo/database/schema';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 
-import { ARTIFACT_STATUS } from './contract.js';
-import type { ArtifactStatus } from './contract.js';
+import { ARTIFACT_STATUS } from './artifact.js';
+import type { ArtifactStatus } from './artifact.js';
 
 export type ArtifactCapacityObservation = Readonly<{
   bytes: number;

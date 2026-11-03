@@ -22,7 +22,7 @@ import {
   resolveScheduleObservation,
 } from '../recurrence.js';
 import { claimedScheduleWorkflowPaused } from '../pause.repository.js';
-import type { RecordedScheduleOccurrence } from '../contract.js';
+import type { RecordedScheduleOccurrence } from '../schedule-occurrence.types.js';
 import {
   claimCleanupTimeoutMillis,
   retireScheduleClaim,
@@ -39,7 +39,7 @@ import type {
   ClaimOutcome,
   ClaimedOccurrence,
   ScannerResources,
-} from './contract.js';
+} from './schedule-scanning.types.js';
 import { cancellationFailure } from './leases.repository.js';
 
 /**

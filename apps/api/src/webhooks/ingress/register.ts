@@ -37,13 +37,13 @@ import type {
   WebhookIngressDependencies,
   WebhookMethod,
   WebhookAcceptanceOptions,
-} from './contract.js';
+} from './webhook-ingress.types.js';
 import { prepareWebhookRequest } from './prepare.js';
 import { preflightVerification, resolveIngressReference } from './resolve.js';
 import { authenticateIngressRequest } from './authenticate.js';
 import { captureIngressTestEvent, admitIngressDelivery } from './accept.js';
 
-export { type WebhookIngressDependencies } from './contract.js';
+export { type WebhookIngressDependencies } from './webhook-ingress.types.js';
 export function registerWebhookIngress(
   fastify: FastifyInstance,
   dependencies: WebhookIngressDependencies,

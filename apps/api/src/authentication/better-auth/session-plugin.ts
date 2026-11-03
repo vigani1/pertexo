@@ -23,7 +23,7 @@ import type {
   AuthenticationMail,
   AuthenticationSecurityNotice,
 } from '../mail/delivery.js';
-import type { SocialProviderGateway } from '../providers/contract.js';
+import type { SocialProviderGateway } from '../social-provider.types.js';
 import { accountSecurityEndpoints } from '../account-security/endpoints.js';
 import { requireDoubleSubmitCsrf } from './csrf.js';
 import {

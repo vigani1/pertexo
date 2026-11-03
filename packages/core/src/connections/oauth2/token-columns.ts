@@ -2,7 +2,7 @@ import { and, eq, sql } from 'drizzle-orm';
 
 import { connectionOAuth2Tokens as tokens } from '@pertexo/database/schema';
 
-import type { IssuedOAuth2Tokens } from './contract.js';
+import type { IssuedOAuth2Tokens } from './oauth2-grant.types.js';
 
 export const sealedColumns = (issued: IssuedOAuth2Tokens) => ({
   kmsKeyReference: issued.sealed.kmsKeyReference,

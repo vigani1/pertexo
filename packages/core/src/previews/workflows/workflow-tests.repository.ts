@@ -10,10 +10,13 @@ import {
 } from '../../runs/data-policy.js';
 import type { PoolClient } from 'pg';
 
-import type { SampleScope } from '../../authoring/step-samples/contract.js';
+import type { SampleScope } from '../../authoring/step-samples/step-sample.types.js';
 import { WorkflowTestError } from './errors.js';
 import { ACTIVE_TEST_RUN_STATUSES } from './rules.js';
-import type { WorkflowTestDetail, WorkflowTestSummary } from './contract.js';
+import type {
+  WorkflowTestDetail,
+  WorkflowTestSummary,
+} from './workflow-test.types.js';
 
 const run = alias(workflowRuns, 'run');
 const testSummarySelection = {

@@ -4,7 +4,7 @@ import type { PendingCoordinatorFailure } from '../load/state.repository.js';
 
 import type { RunTransitionPlan } from '../plan.js';
 
-import type { CoordinatorExecutionIdentity } from './admissions/contract.js';
+import type { CoordinatorExecutionIdentity } from './admissions/execution-identity.types.js';
 import { persistPendingFailureDecisions } from './admissions/failure-decisions.repository.js';
 import {
   persistNodeAdmissions,

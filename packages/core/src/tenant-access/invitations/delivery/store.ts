@@ -15,7 +15,7 @@ import type {
   MarkInvitationDeliveryDispatchingInput,
   RetryInvitationDeliveryInput,
   WorkspaceInvitationDeliveryClaim,
-} from './contract.js';
+} from './invitation-delivery.types.js';
 import { assertInvitationDeliveryIdentity } from './identity.repository.js';
 import { sealedToken } from '../input.js';
 import { DELIVERY_CONSUMER } from '../../../outbox/delivery-consumers.js';

@@ -5,7 +5,7 @@ import {
   portableGraphDigest,
   portableManifestDigest,
   workflowPortableManifestSchema,
-} from '../src/authoring/portability/contract.js';
+} from '../src/authoring/portability/portable-manifest.js';
 import {
   inspectWorkflowPortableManifest,
   projectWorkflowPortableManifest,

@@ -2,7 +2,7 @@ import { eq, getTableName, inArray, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { AnyPgColumn, PgTable } from 'drizzle-orm/pg-core';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
-import type { PurgeStep } from './contract.js';
+import type { PurgeStep } from './workspace-purge.types.js';
 
 type WorkspaceTable = PgTable & Readonly<{ workspaceId: AnyPgColumn }>;
 

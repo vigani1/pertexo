@@ -17,7 +17,7 @@ import {
 } from '@pertexo/database/schema';
 import type { Pool, PoolClient } from 'pg';
 import { generatePersistedId } from '@pertexo/database/platform';
-import type { WorkspaceInboxChange } from '../folding/contract.js';
+import type { WorkspaceInboxChange } from '../folding/workspace-inbox-change.types.js';
 import { readAttentionFact, type AttentionFact } from './facts.repository.js';
 
 const STATEMENT_TIMEOUT_MILLIS = 5_000;

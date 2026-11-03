@@ -17,10 +17,10 @@ import { previewAttempts, previewRuns } from '@pertexo/database/schema';
 import type {
   CompletePreviewAttemptInput,
   PreviewCompletionResult,
-} from './contract.js';
+} from './preview-attempt.types.js';
 import { appendPreviewTerminalFacts } from './facts.repository.js';
 
-import type { PreviewDelivery } from '../contract.js';
+import type { PreviewDelivery } from '../preview.types.js';
 import { previewConsumerName } from '../delivery.js';
 import { PreviewAttemptStateError } from '../errors.js';
 import { optionsFor } from '../input.js';

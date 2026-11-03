@@ -4,7 +4,7 @@ import {
   isUnconfirmedCommand,
   newCommandKey,
   type CommandKey,
-} from '@/lib/api/commands/contract';
+} from '@/lib/api/commands/command-retry';
 import type { PublicationReview } from '@pertexo/contracts';
 import { requestPublicationReview } from '../reviews/api';
 import { publicationReviewKeys } from '../reviews/queries';

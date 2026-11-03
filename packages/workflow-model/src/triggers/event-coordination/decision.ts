@@ -1,4 +1,4 @@
-import type { EventCoordinationPolicy } from './contract.js';
+import type { EventCoordinationPolicy } from './event-coordination.schemas.js';
 export type EventCoordinationWindow = Readonly<{
   startedAt: number;
   used: number;

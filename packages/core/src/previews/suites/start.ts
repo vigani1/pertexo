@@ -21,7 +21,7 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
 import { lockArtifactReferences } from '../../artifacts/references/locks.repository.js';
 import { lockInputCaseQuota } from '../../authoring/input-cases/metadata.repository.js';
-import type { SampleScope } from '../../authoring/step-samples/contract.js';
+import type { SampleScope } from '../../authoring/step-samples/step-sample.types.js';
 import type { AuthoringCatalogs } from '../../authoring/workflows/catalogs.js';
 import { generatePersistedId } from '@pertexo/database/platform';
 import { TEST_RUN_RETENTION_MILLIS } from '../../runs/data-policy.js';
@@ -40,8 +40,11 @@ import {
   saveTestSnapshot,
 } from '../workflows/snapshot.repository.js';
 import { admitSuiteCase } from './admit.js';
-import type { WorkflowTestSuiteStartInput } from './contract.js';
-import { readSuiteCasePayloads, readSuiteCurrent } from './current.repository.js';
+import type { WorkflowTestSuiteStartInput } from './workflow-test-suite.types.js';
+import {
+  readSuiteCasePayloads,
+  readSuiteCurrent,
+} from './current.repository.js';
 import { assertPreparedSuite, SUITE_MAX_DURATION_MS } from './rules.js';
 
 export async function prepareTestSuite(

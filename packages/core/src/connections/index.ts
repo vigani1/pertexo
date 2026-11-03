@@ -10,7 +10,7 @@ export {
   ConnectionSecretVersionConflictError,
   ConnectionTestInProgressError,
   ConnectionUnavailableError,
-} from './contract.js';
+} from './connection.js';
 export {
   createConnectionStore,
   createWorkerConnectionResolutionStore,
@@ -34,16 +34,16 @@ export type {
   ListConnectionsInput,
   ReadConnectionInput,
   ResolvedConnectionSecretRecord,
-} from './contract.js';
+} from './connection.js';
 export type {
   ConnectionUsageCursor,
   ConnectionUsagePage,
   ConnectionUsageRecord,
   ListConnectionUsageInput,
-} from './discovery/contract.js';
-export type { ConsumedOAuth2Authorization } from './oauth2/contract.js';
+} from './discovery/connection-usage.types.js';
+export type { ConsumedOAuth2Authorization } from './oauth2/oauth2-grant.types.js';
 export { applyConnectionHealthObservation } from './health/observations.repository.js';
-export type { ConnectionHealthApplicationResult } from './health/contract.js';
+export type { ConnectionHealthApplicationResult } from './health/connection-health.types.js';
 
 // Attempts, authoring, lifecycle, notifications and previews use these directly (ADR 091).
 export type {} from './oauth2/clients.repository.js';

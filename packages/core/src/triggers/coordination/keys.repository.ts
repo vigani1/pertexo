@@ -11,7 +11,7 @@ import {
 } from '@pertexo/workflow-model';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 import { generatePersistedId } from '@pertexo/database/platform';
-import type { CoordinateEventInput } from './contract.js';
+import type { CoordinateEventInput } from './event-coordination.types.js';
 function readEventWindow(
   transaction: WorkspaceTransaction,
   input: CoordinateEventInput,

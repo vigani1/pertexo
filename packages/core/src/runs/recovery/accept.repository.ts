@@ -17,7 +17,7 @@ import {
   requireWorkflowRunRecord,
 } from '../commands/records.repository.js';
 import { lockRunAcceptanceCommand } from '../commands/acceptance/lock.repository.js';
-import type { RecoverPublishedWorkflowRunInput } from '../commands/contract.js';
+import type { RecoverPublishedWorkflowRunInput } from '../commands/run-commands.types.js';
 
 export type RecoverWorkflowRunInput = RecoverPublishedWorkflowRunInput;
 

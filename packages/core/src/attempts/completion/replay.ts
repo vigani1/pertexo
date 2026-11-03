@@ -7,7 +7,7 @@ import {
   SETTLED_ATTEMPT_STATUSES,
   type CompleteAttemptInput,
   type CompleteNodeAttemptResult,
-} from '../contract.js';
+} from '../node-attempt.js';
 import { completeReceipt } from './receipts.repository.js';
 
 import { serializeStoredExecutionValue } from '../../runs/values/stored-execution.js';
@@ -16,7 +16,7 @@ import type {
   CompletionReceiptRow,
   LockedAttemptRow,
   CompletionFields,
-} from './contract.js';
+} from './attempt-completion.types.js';
 
 export async function duplicateCompletion(
   client: PoolClient,

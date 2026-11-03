@@ -1,4 +1,4 @@
-import type { CapabilityAssembly } from './contract.js';
+import type { CapabilityAssembly } from './node-runtime-capabilities.types.js';
 
 export function assertCapabilityRuntimeOpen(lifecycle: {
   terminal: boolean;

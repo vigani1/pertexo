@@ -17,11 +17,14 @@ import { workflowDefinitionCatalogFingerprint } from '@pertexo/workflow-model/se
 import { readTablesByNames } from '../../../data-tables/table-lookups.repository.js';
 
 import { WorkflowPromotionError } from '../errors.js';
-import type { PromotionContext, PromotionScope } from '../contract.js';
+import type {
+  PromotionContext,
+  PromotionScope,
+} from '../workflow-promotion.types.js';
 import type { PromotionGraphBudget } from './graph.js';
 import type { PromotionSourceSet } from './source.repository.js';
 
-import type { ReviewedWorkflow } from './target/contract.js';
+import type { ReviewedWorkflow } from './target/target-review.types.js';
 import type { Origin } from './target/target-workflows.repository.js';
 import { prepareTargetWorkflow } from './target/inspect-workflow.repository.js';
 

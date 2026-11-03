@@ -4,7 +4,7 @@ import {
   isUnconfirmedCommand,
   newCommandKey,
   type CommandKey,
-} from '@/lib/api/commands/contract';
+} from '@/lib/api/commands/command-retry';
 import { useResendExpired } from '@/lib/api/commands/use-resend-window';
 import { RUN_COMMAND_EXPIRED_MESSAGE } from '../../model/commands/run';
 import type { ApiClient } from '@/lib/api/client';

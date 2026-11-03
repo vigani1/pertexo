@@ -5,8 +5,8 @@ import { artifacts } from '@pertexo/database/schema';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 import { readTransactionFolderScope } from '../../shared/facts.repository.js';
 import { workflowScopeSql } from '../../shared/scope.repository.js';
-import type { ResourceActor } from '../../shared/contract.js';
-import { ARTIFACT_UPLOAD_PURPOSE } from '../contract.js';
+import type { ResourceActor } from '../../shared/folder-access.types.js';
+import { ARTIFACT_UPLOAD_PURPOSE } from '../artifact.js';
 import { artifactReferenceOwnersSql } from './owners.repository.js';
 
 /** Check stored sources before the caller persists a new reference. */

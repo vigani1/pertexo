@@ -35,7 +35,7 @@ import {
   ErrorWorkflowDeliveryMismatchError,
   ErrorWorkflowVersionUnavailableError,
 } from './errors.js';
-import type { ErrorWorkflowDeliveryInput } from './contract.js';
+import type { ErrorWorkflowDeliveryInput } from './error-workflow-delivery.types.js';
 import { deferErrorWorkflowForQueue } from './queue-wait.repository.js';
 
 export async function acceptErrorWorkflow(

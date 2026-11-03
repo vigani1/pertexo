@@ -3,7 +3,7 @@ import {
   CONNECTION_EVENT_TYPE,
   type ConnectionStatus,
   type ConnectionTestOutcome,
-} from './contract.js';
+} from './connection.js';
 
 export function classifyConnectionTestCompletion(
   currentStatus: ConnectionStatus,

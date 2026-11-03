@@ -1,4 +1,4 @@
-import type { WorkflowCallRefusalCode } from './contract.js';
+import type { WorkflowCallRefusalCode } from './workflow-call-refusal.types.js';
 
 /** A definite refusal rolls candidate acceptance back, then settles the intent. */
 export class WorkflowCallRefusedError extends Error {

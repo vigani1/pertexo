@@ -22,7 +22,7 @@ import {
 } from '../errors.js';
 import type { ArtifactStoreConfig } from '../config/index.js';
 
-import { sendS3 } from '../s3/contract.js';
+import { sendS3 } from '../s3/s3-client.js';
 import { requestSignal } from '../s3/request-lifecycle.js';
 import {
   signArtifactDownload,
@@ -47,7 +47,7 @@ import type {
   PurgeWorkspaceObjectsRequest,
   WorkspaceObjectPurgePage,
   WorkspaceObjectPurgeStore,
-} from './contract.js';
+} from './artifact-storage.types.js';
 import {
   metadataSchema,
   beginDirectUploadSchema,

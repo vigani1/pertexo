@@ -21,13 +21,13 @@ import { createApiArtifactRuntime } from './platform/artifacts/runtime.module.js
 import type {
   ApiApplicationDependencies,
   ApiRuntimeSet,
-} from './platform/application/contract.js';
+} from './platform/api-application.types.js';
 
 type ApiRuntimeResources = {
   -readonly [Key in keyof ApiRuntimeSet]?: ApiRuntimeSet[Key] | undefined;
 };
 
-export { type ApiApplicationDependencies } from './platform/application/contract.js';
+export { type ApiApplicationDependencies } from './platform/api-application.types.js';
 export async function acquireApiRuntimes(
   config: ApiConfig,
   { logger }: Pick<ApiApplicationDependencies, 'logger'>,

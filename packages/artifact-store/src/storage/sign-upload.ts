@@ -10,7 +10,7 @@ import type {
   BeginDirectUploadRequest,
   DirectUpload,
   PutObjectPresigner,
-} from './contract.js';
+} from './artifact-storage.types.js';
 import {
   DIRECT_UPLOAD_SIGNABLE_HEADERS,
   DIRECT_UPLOAD_UNHOISTABLE_HEADERS,

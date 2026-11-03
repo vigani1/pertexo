@@ -10,7 +10,7 @@ import type { PoolClient } from 'pg';
 
 import type { Role } from '@pertexo/policy';
 import { ApiTokenPolicyError } from './errors.js';
-import type { ApiTokenOwner } from './contract.js';
+import type { ApiTokenOwner } from './api-token.types.js';
 import { tokenOwnerMayAct } from './policy.js';
 
 export type TokenOwnerAuthority = Readonly<{ revision: number; role: Role }>;

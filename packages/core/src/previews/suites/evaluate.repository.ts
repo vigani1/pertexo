@@ -20,7 +20,7 @@ import {
   workflowTestSnapshots,
 } from '@pertexo/database/schema';
 import { isActiveTestRun } from '../workflows/rules.js';
-import type { SuiteCaseRow } from './contract.js';
+import type { SuiteCaseRow } from './workflow-test-suite.types.js';
 export interface SuiteRunOutcome {
   status: WorkflowTestSuiteReport['actualOutcome'];
   outputRef: unknown;

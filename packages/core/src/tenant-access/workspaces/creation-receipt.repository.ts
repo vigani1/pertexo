@@ -18,7 +18,7 @@ import { IDEMPOTENCY_STATUS } from '../../runs/commands/acceptance/vocabulary.js
 import type {
   WorkspaceCreationResult as PublicWorkspaceCreationResult,
   WorkspaceRecord,
-} from '../contract.js';
+} from '../tenant-access.types.js';
 import { WORKSPACE_STATUS } from '../state.js';
 
 type WorkspaceCreationResult = PublicWorkspaceCreationResult;

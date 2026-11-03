@@ -11,7 +11,7 @@ import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 import type {
   PreviewRunRecord,
   ReadPreviewRunInput,
-} from './acceptance/contract.js';
+} from './acceptance/preview-acceptance.types.js';
 
 export async function readPreviewRun(
   transaction: WorkspaceTransaction,

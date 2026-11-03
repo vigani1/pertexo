@@ -9,7 +9,7 @@ import type {
   ScanDueInput,
   ScanDueSchedulesResult,
   ScannerResources,
-} from './scanning/contract.js';
+} from './scanning/schedule-scanning.types.js';
 import {
   cancellationFailure,
   claimDueSchedules,

@@ -1,6 +1,6 @@
 import { ProgressButton } from '@/components/ui/progress-button';
 import { DialogClose } from '@/components/ui/dialog';
-import { isUnconfirmedCommand } from '@/lib/api/commands/contract';
+import { isUnconfirmedCommand } from '@/lib/api/commands/command-retry';
 import { useState } from 'react';
 import type { ConnectionResponse } from '@pertexo/contracts';
 import {

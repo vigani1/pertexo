@@ -1,5 +1,5 @@
 import { PreviewAdmissionDeniedError } from '../../errors.js';
-import type { AcceptPreviewRunInput } from './contract.js';
+import type { AcceptPreviewRunInput } from './preview-acceptance.types.js';
 
 export const PREVIEW_RETENTION_MAX_MS = 7 * 24 * 60 * 60 * 1_000;
 

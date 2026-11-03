@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
 
 import { changeWorkspaceLifecycle } from '../../../src/lifecycle/deletion/change.js';
-import type { WorkspaceLifecycleChange } from '../../../src/lifecycle/deletion/contract.js';
+import type { WorkspaceLifecycleChange } from '../../../src/lifecycle/deletion/workspace-lifecycle.types.js';
 import {
   migrateDatabase,
   dropDisconnectedDatabase,

@@ -12,7 +12,7 @@ import {
   OperatorCommandConflictError,
   type CommandRequest,
   type GenericOperatorCommandResult,
-} from './contract.js';
+} from './operator-command.js';
 import { requestFingerprint } from './fingerprint.js';
 
 /** Seed of the advisory lock that serializes requests reusing one command id. */

@@ -1,4 +1,4 @@
-import type { PreviewDelivery } from '../../../src/previews/contract.js';
+import type { PreviewDelivery } from '../../../src/previews/preview.types.js';
 
 import { withTenantScopedClient } from '@pertexo/database/primitives';
 

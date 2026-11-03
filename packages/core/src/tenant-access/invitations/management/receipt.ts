@@ -1,4 +1,4 @@
-import type { WorkspaceInvitationRecord } from '../../contract.js';
+import type { WorkspaceInvitationRecord } from '../../tenant-access.types.js';
 
 export type DurableInvitationResult = Readonly<{
   invitation: ReturnType<typeof serializeInvitation>;

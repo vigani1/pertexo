@@ -16,7 +16,7 @@ export {
   type RecordUnknownOutcomeEvidenceInput,
   type RedispatchFailedOutboxInput,
   type ReplayOperatorRunInput,
-} from './contract.js';
+} from './operator-command.js';
 export {
   createOperatorRunReplayStore,
   type OperatorRunReplayStore,
@@ -24,7 +24,7 @@ export {
 export {
   OperatorRunReplayMismatchError,
   OperatorRunReplayNotExecutableError,
-} from './replay/contract.js';
+} from './replay/operator-replay.js';
 
 // Stalled-work recovery settles attempts the same way (ADR 091: import these directly).
 export type {} from './handlers/attempts.repository.js';

@@ -24,7 +24,7 @@ import {
   readConnectionScope,
 } from '../../tenant-access/resources/connections/scope.js';
 import type { AuthoringCatalogs } from '../workflows/catalogs.js';
-import type { ExportWorkflowInput } from '../workflows/contract.js';
+import type { ExportWorkflowInput } from '../workflows/workflow-commands.types.js';
 import {
   WorkflowNotFoundError,
   WorkflowRevisionConflictError,

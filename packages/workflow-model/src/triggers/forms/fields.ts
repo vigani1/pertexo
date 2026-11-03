@@ -1,4 +1,4 @@
-import { eventCoordinationPolicySchema } from '../event-coordination/contract.js';
+import { eventCoordinationPolicySchema } from '../event-coordination/event-coordination.schemas.js';
 import { formRedirectUrlSchema } from './links.js';
 import { storageTextSchema } from '../../values/json/text.js';
 import { inspectJsonValue } from '../../values/json/canonical.js';

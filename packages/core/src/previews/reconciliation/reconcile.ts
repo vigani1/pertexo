@@ -3,7 +3,7 @@ import type {
   PreviewDeliveryReconciliationResult,
   PreviewReconciliationScope,
   ReconcilePreviewDeliveryInput,
-} from './contract.js';
+} from './preview-reconciliation.types.js';
 import { lockPreviewReconciliationState } from './state.repository.js';
 
 import { drizzle } from 'drizzle-orm/node-postgres';

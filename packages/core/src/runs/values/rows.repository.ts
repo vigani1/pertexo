@@ -4,7 +4,7 @@ import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 import { workflowRunValues, workflowRuns } from '@pertexo/database/schema';
 import { expiredRunSql } from '../data-policy.js';
 import { generatePersistedId } from '@pertexo/database/platform';
-import { RunValuesLimitError } from './contract.js';
+import { RunValuesLimitError } from './run-values.js';
 
 export async function runValuesInTransaction(
   transaction: WorkspaceTransaction,

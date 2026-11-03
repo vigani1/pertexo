@@ -18,7 +18,7 @@ import type {
   DomainChallengeInput,
   FederationCommand,
   FederationScope,
-} from './contract.js';
+} from './federation-management.types.js';
 import { FederationConflictError } from './errors.js';
 import { projectOrganization } from './settings.repository.js';
 

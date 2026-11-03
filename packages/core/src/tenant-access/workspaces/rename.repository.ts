@@ -14,7 +14,7 @@ import type { CommandIdentity } from '@pertexo/database/primitives';
 import type {
   RenameWorkspaceInput,
   WorkspaceRenameResult,
-} from '../contract.js';
+} from '../tenant-access.types.js';
 import { WorkspaceRenameCommandConflictError } from '../errors.js';
 import { readLockedMembers } from '../members/commands.repository.js';
 import {

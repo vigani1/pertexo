@@ -10,7 +10,7 @@ import { RedisRateLimitRuntime } from '@pertexo/rate-limit';
 
 import { createProviderConnectionRuntimeFactory } from '../../../providers/connections.js';
 
-import type { CapabilityAssembly } from './contract.js';
+import type { CapabilityAssembly } from './node-runtime-capabilities.types.js';
 
 export function prepareConnectionCapability(state: CapabilityAssembly): void {
   const providerRateLimiter =

@@ -11,7 +11,7 @@ import { selectRecoveryPrefix } from '../../src/recovery/select-prefix.js';
 import type {
   RecoveryCandidate,
   RecoveryValues,
-} from '../../src/recovery/contract.js';
+} from '../../src/recovery/workflow-recovery.types.js';
 import { conditional, id, linear, record, source } from './fixtures.js';
 import { graph, nodeCatalog } from '../support/executable-workflow.js';
 

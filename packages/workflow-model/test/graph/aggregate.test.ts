@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { validateWorkflowGraph } from '../../src/graph/validation/index.js';
-import { WORKFLOW_VALIDATION_MAX_ISSUES } from '../../src/graph/contract.js';
+import { WORKFLOW_VALIDATION_MAX_ISSUES } from '../../src/graph/workflow-graph.schemas.js';
 import { node, forEachNode, graph } from '../support/graph-aggregate.js';
 describe('workflow graph validation', () => {
   it('accepts a DAG and rejects duplicate IDs, dangling edges, and arbitrary cycles', () => {

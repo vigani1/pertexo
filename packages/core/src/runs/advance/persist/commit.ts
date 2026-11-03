@@ -11,7 +11,7 @@ import { CoordinatorRunStateCorruptError } from '../../state-errors.js';
 import type {
   CoordinatorAdvanceDelivery,
   RunAdvanceResult,
-} from '../contract.js';
+} from '../run-advance.types.js';
 import { persistConsumedCalls } from '../../calls/persist.repository.js';
 import { persistCoordinatorExecutionTransitions } from './node-admissions.js';
 import type { RunTransitionPlan } from '../plan.js';

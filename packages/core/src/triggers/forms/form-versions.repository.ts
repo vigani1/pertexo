@@ -13,7 +13,7 @@ import { authorizeWorkflowResource } from '../../tenant-access/resources/authori
 import { readFormDefinition } from './definition.js';
 import type { PoolClient } from 'pg';
 import { FormUnavailableError } from './errors.js';
-import type { FormScope, PublicFormGrant } from './contract.js';
+import type { FormScope, PublicFormGrant } from './form-admission.types.js';
 
 /**
  * Who may read or submit a published form: someone with its current link, on an

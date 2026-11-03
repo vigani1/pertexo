@@ -1,12 +1,15 @@
 import { canonicalJson } from '@pertexo/workflow-model';
 import type { WorkflowTestSuiteCurrent } from '@pertexo/contracts';
 import { WorkflowTestError } from '../workflows/errors.js';
-import type { WorkflowTestPreparation } from '../workflows/contract.js';
+import type { WorkflowTestPreparation } from '../workflows/workflow-test.types.js';
 import {
   assertEffectsAcknowledged,
   sameTestSamples,
 } from '../workflows/rules.js';
-import type { SuiteRow, WorkflowTestSuiteStartInput } from './contract.js';
+import type {
+  SuiteRow,
+  WorkflowTestSuiteStartInput,
+} from './workflow-test-suite.types.js';
 
 /** More cases can't be added than this, so reading one more proves a change. */
 export const SUITE_MAX_CASES = 50;

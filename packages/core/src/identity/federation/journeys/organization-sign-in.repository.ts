@@ -26,7 +26,7 @@ import {
   requireFederationOwner,
 } from '../management/authority.repository.js';
 import { FederationConflictError } from '../management/errors.js';
-import type { FederationScope } from '../management/contract.js';
+import type { FederationScope } from '../management/federation-management.types.js';
 import { readEligibleAuthenticationSession } from '../sessions/authority.repository.js';
 import { SignInProofRejectedError } from '../accounts/rejection.js';
 import {
@@ -34,11 +34,11 @@ import {
   findFederationAttempt,
 } from './federation-journeys.repository.js';
 import { completeFederationJourney } from './complete.repository.js';
-import type { CompleteFederationJourney } from './contract.js';
+import type { CompleteFederationJourney } from './federation-journey.types.js';
 import type {
   StartFederationJourney,
   FederationCompletion,
-} from './contract.js';
+} from './federation-journey.types.js';
 
 /**
  * Sign-in has no member behind it, so all but the owner's provider test stay

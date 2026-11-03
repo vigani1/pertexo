@@ -24,7 +24,10 @@ import { requireReadableReceipt } from '../../../shared/receipts.js';
 import { requireWorkflowInScope } from '../access.js';
 import { createdWorkflowReceipt } from '../receipts.repository.js';
 import type { AuthoringCatalogs } from '../catalogs.js';
-import type { CreateWorkflowInput, CreateWorkflowResult } from '../contract.js';
+import type {
+  CreateWorkflowInput,
+  CreateWorkflowResult,
+} from '../workflow-commands.types.js';
 import { WorkflowNotFoundError } from '../errors.js';
 import { requirePlaceableDefinitionAdditions } from '../placement.js';
 import {

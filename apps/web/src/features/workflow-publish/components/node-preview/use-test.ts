@@ -3,7 +3,7 @@ import {
   isUnconfirmedCommand,
   newCommandKey,
   type CommandKey,
-} from '@/lib/api/commands/contract';
+} from '@/lib/api/commands/command-retry';
 import type {
   NodeValidationResponse,
   PreviewRunSummary,

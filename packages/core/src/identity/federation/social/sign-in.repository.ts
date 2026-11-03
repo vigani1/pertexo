@@ -14,7 +14,7 @@ import type {
   ProvenSocialSignIn,
   SocialSignInAttempt,
   SocialSignInResult,
-} from './contract.js';
+} from './social-sign-in.types.js';
 
 /** A provider proves identity before this owner acquires a transaction. Nobody is signed in yet, so it stays off `withWorkspaceAccess`. */
 export class SocialSignInCommands {

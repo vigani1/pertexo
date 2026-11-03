@@ -20,7 +20,7 @@ import {
 import type {
   WorkspacePurgeObjectStore,
   WorkspacePurgeProcessResult,
-} from './contract.js';
+} from './workspace-purge.types.js';
 import { optionsSchema, type WorkspacePurgeOptions } from './input.js';
 import { PURGE_PRESERVED_TABLES, PURGE_STEPS } from './steps.js';
 

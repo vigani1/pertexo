@@ -1,4 +1,7 @@
-import type { VariableUsageInput, VariableUsageScan } from './contract.js';
+import type {
+  VariableUsageInput,
+  VariableUsageScan,
+} from './workspace-variables.js';
 import {
   scanVariableUsage,
   type UsageSpending,

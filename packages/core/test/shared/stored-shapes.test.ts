@@ -23,36 +23,39 @@ import type {
 } from '@pertexo/database/schema';
 import { expectTypeOf, it } from 'vitest';
 
-import type { NodeAttemptLease } from '../../src/attempts/contract.js';
-import type { ArtifactStatus } from '../../src/artifacts/contract.js';
+import type { NodeAttemptLease } from '../../src/attempts/node-attempt.js';
+import type { ArtifactStatus } from '../../src/artifacts/artifact.js';
 import type {
   ConnectionAuthType,
   ConnectionStatus,
-} from '../../src/connections/contract.js';
-import type { DirectoryUserProfile } from '../../src/identity/federation/provisioning/contract.js';
-import type { FailureNotificationClaimResult } from '../../src/notifications/contract.js';
+} from '../../src/connections/connection.js';
+import type { DirectoryUserProfile } from '../../src/identity/federation/provisioning/directory-provisioning.types.js';
+import type { FailureNotificationClaimResult } from '../../src/notifications/failure-notification.types.js';
 import type {
   DestinationConfig,
   StoredDestinationConfig as AreaStoredDestinationConfig,
-} from '../../src/notifications/destinations/contract.js';
+} from '../../src/notifications/destinations/notification-destination.types.js';
 import type {
   GenericOperatorCommandResult,
   OperatorCommandRecord,
-} from '../../src/operator/contract.js';
+} from '../../src/operator/operator-command.js';
 import type {
   PreviewAttemptLease,
   PreviewStatus,
-} from '../../src/previews/contract.js';
-import type { AcceptWorkflowRunInput as AcceptanceInput } from '../../src/runs/commands/acceptance/contract.js';
-import type { FolderAccess, FolderFact } from '../../src/shared/contract.js';
-import type { WorkflowTriggerHealth } from '../../src/triggers/reconciliation/contract.js';
-import type { RecordedScheduleOccurrence } from '../../src/triggers/schedules/contract.js';
-import type { ScheduleTriggerRecord } from '../../src/triggers/schedules/management/contract.js';
+} from '../../src/previews/preview.types.js';
+import type { AcceptWorkflowRunInput as AcceptanceInput } from '../../src/runs/commands/acceptance/run-acceptance.types.js';
+import type {
+  FolderAccess,
+  FolderFact,
+} from '../../src/shared/folder-access.types.js';
+import type { WorkflowTriggerHealth } from '../../src/triggers/reconciliation/trigger-reconciliation.types.js';
+import type { RecordedScheduleOccurrence } from '../../src/triggers/schedules/schedule-occurrence.types.js';
+import type { ScheduleTriggerRecord } from '../../src/triggers/schedules/management/schedule-management.types.js';
 import type {
   WebhookDeliveryOutcome,
   WebhookReplayCheck,
   WebhookSignatureCheck,
-} from '../../src/triggers/webhooks/contract.js';
+} from '../../src/triggers/webhooks/webhook-delivery.types.js';
 
 // `pnpm typecheck` is the real assertion: a schema column and an area's contract
 // can't drift apart without this file failing to compile.

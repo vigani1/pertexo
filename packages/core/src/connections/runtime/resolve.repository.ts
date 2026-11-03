@@ -9,14 +9,14 @@ import type {
   AssertConnectionSecretCurrentInput,
   ResolveConnectionSecretInput,
   ResolvedConnectionSecretRecord,
-} from '../contract.js';
+} from '../connection.js';
 import {
   CONNECTION_AUTH_TYPE,
   CONNECTION_STATUS,
   ConnectionOAuth2NotConnectedError,
   ConnectionOAuth2RevokedError,
   ConnectionUnavailableError,
-} from '../contract.js';
+} from '../connection.js';
 import { selectConnection } from '../connections.repository.js';
 import { withConnectionTransaction } from '../transaction.js';
 import { connectionSecrets } from './credentials.repository.js';

@@ -17,7 +17,7 @@ import { CopyButton } from '@/components/ui/copy-button';
 import { Notice } from '@/components/ui/notice';
 import { Status } from '@/components/ui/status';
 import { useLatestRequest } from '@/lib/hooks/use-latest-request';
-import { isUnconfirmedCommand } from '@/lib/api/commands/contract';
+import { isUnconfirmedCommand } from '@/lib/api/commands/command-retry';
 import { describeCommandError } from '@/lib/api/error-copy';
 import { createDirectoryCredential } from '../../data/directory.api';
 import type { FederationScope } from '../../data/settings.api';

@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { ApiClient } from '@/lib/api/client';
-import { isUnconfirmedCommand } from '@/lib/api/commands/contract';
+import { isUnconfirmedCommand } from '@/lib/api/commands/command-retry';
 import {
   clearFailureNotificationPolicy,
   setFailureNotificationPolicy,

@@ -3,7 +3,7 @@ import {
   storedExecutionJsonStringBytes,
   StoredExecutionValueInvalidError,
 } from '../../values/stored-json.js';
-import type { JsonValue } from '../../execution/contract.js';
+import type { JsonValue } from '../../execution/node-execution.types.js';
 import { FILE_PAGE_LIMITS } from '../page-limits.js';
 import { refuseFilePages } from './failure.js';
 

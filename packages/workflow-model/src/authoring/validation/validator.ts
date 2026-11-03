@@ -6,7 +6,7 @@ import { Worker, type WorkerOptions } from 'node:worker_threads';
 import { canonicalizeJson } from '../../values/json/canonical.js';
 import { parseWorkflowGraphDraft } from '../../graph/validation/preflight.js';
 
-import type { GraphValidationResult } from '../../graph/validation/contract.js';
+import type { GraphValidationResult } from '../../graph/validation/graph-validation.js';
 import {
   AUTHORING_VALIDATION_BUDGET as budget,
   AuthoringValidationUnavailableError,

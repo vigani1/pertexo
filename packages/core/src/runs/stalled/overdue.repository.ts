@@ -23,7 +23,7 @@ import {
 import { RUN_DELIVERY_JOB_NAMES } from '../../outbox/dispatcher/store.js';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { coordinatorConsumerName } from '../advance/receipts.repository.js';
-import type { StuckWork } from './contract.js';
+import type { StuckWork } from './stalled-work.types.js';
 
 const ACTIVE_STATUSES = ['running', 'waiting'] as const;
 

@@ -1,6 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query';
 import type { ApiClient } from '@/lib/api/client';
-import { isUnconfirmedCommand } from '@/lib/api/commands/contract';
+import { isUnconfirmedCommand } from '@/lib/api/commands/command-retry';
 import { isApiError } from '@/lib/api/error';
 import { describeCommandError } from '@/lib/api/error-copy';
 import { runAdmissionError } from '../../model/commands/run';

@@ -13,7 +13,7 @@ import {
   authOrganizations,
   authFederationAttempts,
 } from '@pertexo/database/schema';
-import type { FederationAttempt } from './contract.js';
+import type { FederationAttempt } from './federation-journey.types.js';
 
 const provider = alias(authProviders, 'provider');
 const domain = alias(authDomains, 'domain');

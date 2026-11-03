@@ -9,7 +9,7 @@ import type {
 
 import type { WorkspaceDatabase } from '@pertexo/database/platform';
 
-import type { ApiRuntimeSet } from './platform/application/contract.js';
+import type { ApiRuntimeSet } from './platform/api-application.types.js';
 import type { ApiConfig } from './platform/config/api.js';
 import { ConnectionsModule } from './connections/index.js';
 import { CatalogModule } from './catalog/index.js';

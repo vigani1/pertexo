@@ -1,4 +1,7 @@
-import type { RecoveryUser, TwoFactorRecoveryResult } from './contract.js';
+import type {
+  RecoveryUser,
+  TwoFactorRecoveryResult,
+} from './two-factor-recovery.types.js';
 import { eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { DatabaseConfig } from '@pertexo/database/platform';

@@ -1,7 +1,7 @@
 import {
   RETRY_WINDOW_ENDED,
   isUnconfirmedCommand,
-} from '@/lib/api/commands/contract';
+} from '@/lib/api/commands/command-retry';
 import { isApiError } from '@/lib/api/error';
 import { describeCommandError } from '@/lib/api/error-copy';
 

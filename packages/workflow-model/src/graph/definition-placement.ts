@@ -1,4 +1,4 @@
-import type { WorkflowGraph } from './contract.js';
+import type { WorkflowGraph } from './workflow-graph.schemas.js';
 import type { WorkflowDefinitionCatalog } from './identity.js';
 
 export type WorkflowDefinitionPlacementIssue = Readonly<{

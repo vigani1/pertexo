@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { useFieldValidation } from '@/components/ui/use-field-validation';
-import type { RenameFormProps } from './contract';
+import type { RenameFormProps } from './inline-rename.types';
 
 /**
  * What both rename forms share: the draft, its validation, the revision the

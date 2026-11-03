@@ -6,7 +6,7 @@ import type {
   FolderScope,
   MatchingFolderGrant,
   WorkflowResourceCapability,
-} from './contract.js';
+} from './folder-access.types.js';
 
 export const RESOURCE_ADMINISTRATORS: readonly Role[] = ADMINISTRATIVE_ROLES;
 

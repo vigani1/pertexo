@@ -121,11 +121,11 @@ export {
   oauth2StateWorkspace,
   oauth2VerifierPurpose,
 } from './oauth2/consent.js';
-export { OAuth2TokenFailure } from './oauth2/contract.js';
+export { OAuth2TokenFailure } from './oauth2/oauth2-token.js';
 export type {
   OAuth2GrantLossActor,
   OAuth2TokenStore,
-} from './oauth2/contract.js';
+} from './oauth2/oauth2-token.js';
 export { refusedEndpoint } from './oauth2/endpoints.js';
 export type { OAuth2EndpointPolicy } from './oauth2/endpoints.js';
 export {

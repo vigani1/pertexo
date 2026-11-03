@@ -11,7 +11,7 @@ import type {
   SecureHttpRequest,
   SecureHttpTransportResponse,
   RedirectState,
-} from './contract.js';
+} from './secure-http.js';
 
 export const MAX_URL_BYTES = 2_048;
 

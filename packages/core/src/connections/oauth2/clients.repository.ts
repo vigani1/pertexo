@@ -13,7 +13,7 @@ import {
   CONNECTION_AUTH_TYPE,
   CONNECTION_STATUS,
   type ConnectionRecord,
-} from '../contract.js';
+} from '../connection.js';
 
 /** A connection's client for one secret version: inserted beside that version. */
 export async function insertOAuth2Client(

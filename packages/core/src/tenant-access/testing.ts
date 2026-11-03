@@ -27,7 +27,7 @@ export type {
   WorkspaceRecord,
   WorkspaceStatus,
   WorkspaceWithOwnerInput,
-} from './contract.js';
+} from './tenant-access.types.js';
 export type {
   IdentityConflictReason,
   WorkspaceLifecycleConflictReason,

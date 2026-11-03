@@ -24,7 +24,7 @@ import {
   requireControlOrganization,
   runFederationCommand,
 } from './commands.repository.js';
-import type { ConfigureEnforcementInput } from './contract.js';
+import type { ConfigureEnforcementInput } from './federation-management.types.js';
 import { requireOrganizationDomain } from './domains.repository.js';
 
 async function requireRecoveryCredential(

@@ -20,7 +20,7 @@ import type { WorkerConfig } from '../../config/worker.js';
 import { WorkerDrainState } from '../../runtime/shutdown/drain-state.js';
 import { maintenanceDeliveries } from './maintenance.js';
 import { OutboxDispatcher } from '../outbox/dispatch/runtime.js';
-import type { OutboxDispatcherOptions } from '../outbox/dispatch/contract.js';
+import type { OutboxDispatcherOptions } from '../outbox/dispatch/outbox-dispatch.types.js';
 import { createQueueMetricsObserver } from '../metrics-adapter.js';
 import {
   OUTBOX_DISPATCHER,

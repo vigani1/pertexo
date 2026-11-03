@@ -15,7 +15,11 @@ import {
 import type { PoolClient } from 'pg';
 import { inlineSampleOutput } from './records.repository.js';
 import { WorkflowStepSampleError } from './errors.js';
-import type { SampleCommand, SampleRow, SampleSource } from './contract.js';
+import type {
+  SampleCommand,
+  SampleRow,
+  SampleSource,
+} from './step-sample.types.js';
 
 export async function captureSampleSource(
   client: PoolClient,

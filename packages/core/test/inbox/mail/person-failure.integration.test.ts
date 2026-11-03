@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { describe, expect, it, vi } from 'vitest';
-import type { NoticeMailPersonFailure } from '../../../src/inbox/mail/contract.js';
+import type { NoticeMailPersonFailure } from '../../../src/inbox/mail/notice-mail.types.js';
 import { createNoticeMailStore } from '../../../src/inbox/mail/store.js';
 import {
   config,

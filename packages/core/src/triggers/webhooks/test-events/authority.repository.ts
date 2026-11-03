@@ -4,7 +4,7 @@ import { rolesForCapability } from '@pertexo/policy';
 import { lockWorkflowAuthoringAuthority } from '../../../authoring/workflows/authority.js';
 import { sampleDraft } from '../../../authoring/step-samples/records.repository.js';
 import { WebhookTestEventError } from './errors.js';
-import type { TestEventScope } from './contract.js';
+import type { TestEventScope } from './webhook-test-event.types.js';
 
 /**
  * For the ingress side, where the sender isn't a member: the listener only works

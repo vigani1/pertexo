@@ -9,7 +9,10 @@ import {
 } from '@pertexo/database/schema';
 
 import { WorkflowNotFoundError } from '../workflows/errors.js';
-import type { Scope, WorkflowInputCaseMetadata } from './contract.js';
+import type {
+  Scope,
+  WorkflowInputCaseMetadata,
+} from './workflow-input-case.types.js';
 import {
   WorkflowInputCaseLimitError,
   WorkflowInputCaseRevisionConflictError,

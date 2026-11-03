@@ -1,4 +1,4 @@
-import type { WorkflowGraph } from '../../src/graph/contract.js';
+import type { WorkflowGraph } from '../../src/graph/workflow-graph.schemas.js';
 
 import type { WorkflowPortabilityCatalog } from '../../src/authoring/portability/projection.js';
 export const catalog: WorkflowPortabilityCatalog = {

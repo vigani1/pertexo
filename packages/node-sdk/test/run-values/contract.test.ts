@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { saveRunValuesInputSchema } from '../../src/run-values/contract.js';
+import { saveRunValuesInputSchema } from '../../src/run-values/run-value.schemas.js';
 
 describe('bounded run values', () => {
   it('preserves exact business text, empty values, case and maximum lengths', () => {

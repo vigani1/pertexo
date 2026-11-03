@@ -9,7 +9,7 @@ import type {
 } from '@pertexo/database/platform';
 import { acquireDatabasePool } from '@pertexo/database/platform';
 import { DEFAULT_INSTANCE_LIMITS } from '../../runs/instance-limits.js';
-import type { WebhookResponseScope } from './responses/contract.js';
+import type { WebhookResponseScope } from './responses/webhook-response.types.js';
 import { readWebhookResponse } from './responses/webhook-responses.repository.js';
 
 import { readHealth } from '../reconciliation/health.repository.js';
@@ -26,7 +26,7 @@ import type {
   ReadWebhookHealthInput,
   RotateWebhookEndpointInput,
   RotateWebhookSecretInput,
-} from './runtime/contract.js';
+} from './runtime/webhook-runtime.types.js';
 
 import { acceptVerifiedWebhookDelivery } from './runtime/accept.repository.js';
 import { createWorkspaceTurns } from './runtime/workspace-turns.js';

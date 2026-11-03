@@ -21,10 +21,10 @@ import {
 import type {
   MembershipChange,
   MembershipAddition,
-} from '../../../tenant-access/members/contract.js';
+} from '../../../tenant-access/members/membership.types.js';
 
 import { revokeSessionsForUsers } from '../../../tenant-access/users/sessions.repository.js';
-import type { DirectoryOrganization } from './contract.js';
+import type { DirectoryOrganization } from './directory-provisioning.types.js';
 
 import { projectMember } from './projection.js';
 import { directoryRole } from './roles.js';

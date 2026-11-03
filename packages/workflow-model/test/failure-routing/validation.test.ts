@@ -3,7 +3,7 @@ import {
   inspectWorkflowFailureRoutes,
   type FailureRoutingGraph,
 } from '../../src/flow/failure-routing/validation.js';
-import { WORKFLOW_FAILURE_PORT } from '../../src/flow/failure-routing/contract.js';
+import { WORKFLOW_FAILURE_PORT } from '../../src/flow/failure-routing/failure-routes.js';
 const node = (
   id: string,
   key = 'core.set',

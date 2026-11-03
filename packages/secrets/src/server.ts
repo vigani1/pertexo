@@ -12,5 +12,5 @@ export type {
   SystemMailDeliveryClaim,
   SystemMailInput,
   SystemMailPurpose,
-} from './mail/contract.js';
+} from './mail/system-mail.types.js';
 export { authenticationMailAssociatedData } from './mail/payload.js';

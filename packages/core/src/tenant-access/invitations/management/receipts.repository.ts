@@ -20,7 +20,7 @@ import {
 import type {
   WorkspaceInvitationCommandResult,
   WorkspaceInvitationRecord,
-} from '../../contract.js';
+} from '../../tenant-access.types.js';
 
 import {
   invitationReceipt,

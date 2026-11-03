@@ -16,7 +16,7 @@ import { expireWorkspaceInvitations } from '../expiration.repository.js';
 import type {
   InvitationAcceptanceIntentRecord,
   ResolveInvitationAcceptanceInput,
-} from '../../contract.js';
+} from '../../tenant-access.types.js';
 import { OPEN_INTENT_STATUSES } from '../open-intents.repository.js';
 import {
   replacementLineageIsLive,

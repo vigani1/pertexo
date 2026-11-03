@@ -3,7 +3,7 @@ import type { LiveRunEventSource } from '../../../workflow-runs/events/index.js'
 import type {
   ApiWorkflowRuntime,
   WorkflowRuntimeAssembly,
-} from './contract.js';
+} from './workflow-runtime.types.js';
 import { closeWorkflowResources } from './lifecycle.js';
 
 export function assembleWorkflowRuntime({

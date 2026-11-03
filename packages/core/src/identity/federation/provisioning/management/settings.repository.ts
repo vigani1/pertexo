@@ -14,7 +14,7 @@ import type {
   DirectorySettings,
   DirectoryPeopleQuery,
 } from '@pertexo/contracts';
-import type { DirectoryOrganization } from '../contract.js';
+import type { DirectoryOrganization } from '../directory-provisioning.types.js';
 import { publicCredential } from './credential-records.repository.js';
 
 /** Live and revoked; only live ones count towards `DIRECTORY_LIMITS.credentials`. */

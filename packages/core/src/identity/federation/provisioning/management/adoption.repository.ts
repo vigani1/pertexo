@@ -12,7 +12,7 @@ import {
 } from '@pertexo/database/primitives';
 import type { PoolClient } from 'pg';
 import { DirectoryError } from '../errors.js';
-import type { DirectoryOrganization } from '../contract.js';
+import type { DirectoryOrganization } from '../directory-provisioning.types.js';
 import { readDirectoryRole } from '../roles.repository.js';
 import { judgeAdoption } from './adoption.js';
 import type {

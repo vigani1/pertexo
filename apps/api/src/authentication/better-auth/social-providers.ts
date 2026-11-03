@@ -7,7 +7,7 @@ import { verifyProviderIdToken } from 'better-auth/oauth2';
 import type {
   SocialProviderGateway,
   SocialProviderName,
-} from '../providers/contract.js';
+} from '../social-provider.types.js';
 import type { PertexoBetterAuth } from './options.js';
 
 export function configuredSocialProviders(

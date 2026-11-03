@@ -10,7 +10,7 @@ import type {
   CompletePreviewAttemptInput,
   HeartbeatPreviewLeaseInput,
   MarkPreviewDispatchedInput,
-} from './contract.js';
+} from './preview-attempt.types.js';
 import { heartbeatPreviewLease } from './heartbeat.js';
 import { markPreviewDispatched } from './mark-dispatched.js';
 

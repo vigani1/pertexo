@@ -1,5 +1,5 @@
 import { TransportOperationTimeoutError } from '../operation-deadline.js';
-import type { OutboxDispatcherRuntimeHooks } from './contract.js';
+import type { OutboxDispatcherRuntimeHooks } from './outbox-dispatch.types.js';
 
 const WORKSPACE_CAPACITY_SAMPLE_INTERVAL_MILLIS = 5 * 60_000;
 

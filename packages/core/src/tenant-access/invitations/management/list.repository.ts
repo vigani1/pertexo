@@ -14,7 +14,7 @@ import { DEFAULT_PAGE_LIMIT } from '../../state.js';
 import type {
   ListWorkspaceInvitationsInput,
   WorkspaceInvitationsPage,
-} from '../../contract.js';
+} from '../../tenant-access.types.js';
 import { invitationSelection } from './state.repository.js';
 
 export async function listWorkspaceInvitations(

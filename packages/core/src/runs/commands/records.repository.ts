@@ -10,7 +10,7 @@ import {
 import type { RunValues } from '@pertexo/node-sdk';
 import { runValuesInTransaction } from '../values/rows.repository.js';
 import { retainedTestRunSql } from '../data-policy.js';
-import type { WorkflowRecoverySummary } from '../recovery/contract.js';
+import type { WorkflowRecoverySummary } from '../recovery/workflow-recovery.types.js';
 import { workflowRuns } from '@pertexo/database/schema';
 import {
   workflowRunReadQuery,
@@ -19,7 +19,7 @@ import {
 import { and, eq } from 'drizzle-orm';
 
 import { acceptWorkflowRun } from './acceptance/accept.js';
-import type { AcceptWorkflowRunInput } from './acceptance/contract.js';
+import type { AcceptWorkflowRunInput } from './acceptance/run-acceptance.types.js';
 import { WorkflowRunNotFoundError } from '../errors.js';
 
 export type WorkflowRunRecord = Readonly<WorkflowRunRow>;

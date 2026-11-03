@@ -23,7 +23,7 @@ import {
 import type {
   AdoptMembershipInput,
   ReplaceMappingsInput,
-} from '../contract.js';
+} from '../directory-provisioning.types.js';
 
 export async function replaceDirectoryMappings(
   pool: Pool,

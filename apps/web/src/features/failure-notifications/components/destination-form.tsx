@@ -3,7 +3,7 @@ import {
   isUnconfirmedCommand,
   newCommandKey,
   type CommandKey,
-} from '@/lib/api/commands/contract';
+} from '@/lib/api/commands/command-retry';
 import { usableConnections } from '../model/destination-copy';
 import { useId, useRef, useState } from 'react';
 import type {

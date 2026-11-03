@@ -19,7 +19,7 @@ import { randomUUID } from 'node:crypto';
 import {
   OperatorRunReplayMismatchError,
   OperatorRunReplayNotExecutableError,
-} from '../../src/operator/replay/contract.js';
+} from '../../src/operator/replay/operator-replay.js';
 import {
   reconcileUnknownOutcomeEvidence,
   UnknownOutcomeReconciliationMismatchError,

@@ -12,7 +12,10 @@ import type { AccessibleWorkspace } from '@pertexo/contracts';
 import { subscribeSessionChanges } from '@/features/auth/session/sync.public';
 import { isApiError } from '@/lib/api/error';
 import type { ApiClient } from '@/lib/api/client';
-import { RETRY_WINDOW_ENDED, canResend } from '@/lib/api/commands/contract';
+import {
+  RETRY_WINDOW_ENDED,
+  canResend,
+} from '@/lib/api/commands/command-retry';
 import {
   freezeWorkflowOrganizationAttempt,
   type WorkflowOrganizationAttempt,

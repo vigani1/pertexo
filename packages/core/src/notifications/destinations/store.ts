@@ -30,7 +30,7 @@ import type {
   SetDestinationStatusInput,
   SetWorkflowPolicyInput,
   WorkflowPolicyInput,
-} from './contract.js';
+} from './notification-destination.types.js';
 import { destinationError } from './command.js';
 import {
   appendDestinationVersion,

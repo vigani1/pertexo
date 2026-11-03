@@ -1,7 +1,7 @@
 import { availableParallelism } from 'node:os';
 import { z } from 'zod';
-import { GRAPH_ISSUE_CODES } from '../../graph/validation/contract.js';
-import { WORKFLOW_VALIDATION_MAX_ISSUES } from '../../graph/contract.js';
+import { GRAPH_ISSUE_CODES } from '../../graph/validation/graph-validation.js';
+import { WORKFLOW_VALIDATION_MAX_ISSUES } from '../../graph/workflow-graph.schemas.js';
 
 export type WorkflowAuthoringValidationOptions = Readonly<{
   signal?: AbortSignal;

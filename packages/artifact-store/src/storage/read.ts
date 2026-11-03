@@ -8,13 +8,13 @@ import { artifactStorageKey, type ArtifactIdentity } from '../identity.js';
 import { ArtifactIntegrityError, ArtifactNotFoundError } from '../errors.js';
 import type { ArtifactStoreConfig } from '../config/index.js';
 
-import { sendS3 } from '../s3/contract.js';
+import { sendS3 } from '../s3/s3-client.js';
 
 import type {
   S3ClientLike,
   ArtifactMetadata,
   ArtifactDownload,
-} from './contract.js';
+} from './artifact-storage.types.js';
 import {
   isNotFound,
   metadataFromHead,

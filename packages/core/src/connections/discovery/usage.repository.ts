@@ -8,16 +8,16 @@ import {
   workflows as workflow,
 } from '@pertexo/database/schema';
 import type { Role } from '@pertexo/policy';
-import type { FolderScope } from '../../shared/contract.js';
+import type { FolderScope } from '../../shared/folder-access.types.js';
 import { readFolderScope } from '../../shared/facts.repository.js';
 import { workflowScopeSql } from '../../shared/scope.repository.js';
-import { ConnectionNotFoundError } from '../contract.js';
+import { ConnectionNotFoundError } from '../connection.js';
 import { requireVisibleConnection } from '../connections.repository.js';
 import type {
   ConnectionUsagePage,
   ConnectionUsageRecord,
   ListConnectionUsageInput,
-} from './contract.js';
+} from './connection-usage.types.js';
 import { DEFAULT_CONNECTION_PAGE_SIZE } from './reads.repository.js';
 
 /** The projection index pages version identities before bounded metadata joins. */

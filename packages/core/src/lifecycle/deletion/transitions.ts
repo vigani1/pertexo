@@ -1,4 +1,4 @@
-import type { WorkspaceLifecycleCommandType } from './contract.js';
+import type { WorkspaceLifecycleCommandType } from './workspace-lifecycle.types.js';
 
 /** How long a workspace waits for restore before it is purged. */
 export const WORKSPACE_RECOVERY_DAYS = 30;

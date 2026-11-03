@@ -33,7 +33,7 @@ import type {
   HttpApplicationErrorMapper,
   ProblemResponse,
   NormalizedProblem,
-} from './problems/normalization/contract.js';
+} from './problems/normalization/http-problem.types.js';
 import {
   text,
   zodIssues,
@@ -48,7 +48,7 @@ export {
   type HttpErrorLogEntry,
   type HttpErrorLogger,
   type HttpApplicationErrorMapper,
-} from './problems/normalization/contract.js';
+} from './problems/normalization/http-problem.types.js';
 export const HTTP_ERROR_LOGGER = Symbol('HTTP_ERROR_LOGGER');
 
 export const HTTP_APPLICATION_ERROR_MAPPERS = Symbol(

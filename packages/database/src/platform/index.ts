@@ -17,7 +17,10 @@ export {
   IdempotencyConflictError,
   credentialCommandScope,
 } from './idempotency/repository.js';
-export type { DatabaseReadiness, InstanceCapacity } from './contract.js';
+export type {
+  DatabaseReadiness,
+  InstanceCapacity,
+} from './database-platform.types.js';
 export { createWorkspaceDatabase } from '../database.js';
 export type { WorkspaceDatabase } from '../database.js';
 

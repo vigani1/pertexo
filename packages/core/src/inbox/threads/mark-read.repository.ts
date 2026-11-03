@@ -5,10 +5,18 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import { alias } from 'drizzle-orm/pg-core';
 import type { PoolClient } from 'pg';
 
-import type { FolderScope } from '../../shared/contract.js';
-import type { MarkAllReadInput, MarkThreadReadInput } from './contract.js';
+import type { FolderScope } from '../../shared/folder-access.types.js';
+import type {
+  MarkAllReadInput,
+  MarkThreadReadInput,
+} from './workspace-inbox-thread.js';
 import { noticeVisibilitySql } from './eligibility.repository.js';
-import { seen, seenByActor, thread, unreadSql } from './inbox-notices.repository.js';
+import {
+  seen,
+  seenByActor,
+  thread,
+  unreadSql,
+} from './inbox-notices.repository.js';
 
 const excluded = alias(workspaceInboxReads, 'excluded');
 /** A read never moves backwards. */

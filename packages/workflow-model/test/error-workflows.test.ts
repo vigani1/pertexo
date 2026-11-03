@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { workflowErrorInputSchema } from '../src/triggers/error-workflows/contract.js';
+import { workflowErrorInputSchema } from '../src/triggers/error-workflows/workflow-error-input.schemas.js';
 import { isWorkflowErrorTarget } from '../src/triggers/error-workflows/target.js';
 
 const uuid = '12345678-1234-4234-8234-123456789abc';

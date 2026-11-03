@@ -29,7 +29,7 @@ import type {
   RotateWebhookEndpointInput,
   RotateWebhookSecretInput,
   WebhookCommandResult,
-} from './contract.js';
+} from './webhook-runtime.types.js';
 import {
   claimWebhookCommand,
   completeWebhookCommand,

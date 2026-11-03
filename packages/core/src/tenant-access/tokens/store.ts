@@ -37,7 +37,7 @@ import type {
   CreateApiTokenInput,
   ListApiTokensInput,
   RevokeApiTokenInput,
-} from './contract.js';
+} from './api-token.types.js';
 import type { ParsedApiTokenCredential } from './credential.js';
 
 const MILLISECONDS_PER_DAY = 86_400_000;

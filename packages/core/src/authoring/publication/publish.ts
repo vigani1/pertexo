@@ -40,12 +40,12 @@ import { validateApprovalAudience } from './pending-tasks.repository.js';
 import type {
   PublishWorkflowInput,
   PublishWorkflowResult,
-} from '../workflows/contract.js';
+} from '../workflows/workflow-commands.types.js';
 import {
   WorkflowNotFoundError,
   WorkflowRevisionConflictError,
 } from '../workflows/errors.js';
-import type { WorkflowVersionRecord } from '../workflows/representation/contract.js';
+import type { WorkflowVersionRecord } from '../workflows/representation/workflow-record.types.js';
 import {
   projectDraft,
   projectVersion,
@@ -60,7 +60,7 @@ import type {
   CompiledPublication,
   PublicationCandidateInput,
   PublicationClaim,
-} from './contract.js';
+} from './workflow-publication.types.js';
 import { requireReadableReceipt } from '../../shared/receipts.js';
 import { executableSchema, publicationReceipt } from './input.js';
 import {

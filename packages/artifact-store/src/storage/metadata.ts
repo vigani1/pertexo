@@ -10,7 +10,10 @@ import { z } from 'zod';
 import { artifactIdentitySchema, type ArtifactIdentity } from '../identity.js';
 import { ArtifactIntegrityError } from '../errors.js';
 
-import type { ArtifactMetadata, Destroyable } from './contract.js';
+import type {
+  ArtifactMetadata,
+  Destroyable,
+} from './artifact-storage.types.js';
 
 export const purgeWorkspaceSchema = z.object({
   maxObjects: z.number().int().min(1).max(500),

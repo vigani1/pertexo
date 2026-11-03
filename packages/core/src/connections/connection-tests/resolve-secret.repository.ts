@@ -12,12 +12,12 @@ import {
 import type {
   ResolveConnectionTestSecretInput,
   ResolvedConnectionSecretRecord,
-} from '../contract.js';
+} from '../connection.js';
 import {
   CONNECTION_EVENT_TYPE,
   ConnectionTestInProgressError,
   ConnectionUnavailableError,
-} from '../contract.js';
+} from '../connection.js';
 import { appendConnectionEvent } from '../events.repository.js';
 import { withOneOAuth2Fact } from '../oauth2/clients.repository.js';
 import { connectionSecrets } from '../runtime/credentials.repository.js';

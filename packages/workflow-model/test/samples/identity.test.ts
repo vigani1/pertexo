@@ -3,7 +3,7 @@ import {
   stepSampleBindings,
   stepSampleIdentity,
 } from '../../src/authoring/samples/identity.js';
-import type { WorkflowNode } from '../../src/graph/contract.js';
+import type { WorkflowNode } from '../../src/graph/workflow-graph.schemas.js';
 
 const node: WorkflowNode = {
   id: 'step',

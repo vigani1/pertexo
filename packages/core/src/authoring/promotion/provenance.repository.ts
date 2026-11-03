@@ -8,7 +8,7 @@ import {
 } from '@pertexo/database/schema';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import type { PoolClient } from 'pg';
-import type { WorkflowVersionRecord } from '../workflows/representation/contract.js';
+import type { WorkflowVersionRecord } from '../workflows/representation/workflow-record.types.js';
 import { promotionDigest } from './preparation/graph.js';
 
 /** Only the unchanged promoted draft can attribute a published version to its source. */

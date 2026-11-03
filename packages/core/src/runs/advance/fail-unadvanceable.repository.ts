@@ -6,7 +6,7 @@ import type { Pool, PoolClient } from 'pg';
 import { appendAttemptEvent } from '../../attempts/events.repository.js';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { nodeAttempts, nodeRuns } from '@pertexo/database/schema';
-import type { CoordinatorAdvanceDelivery } from './contract.js';
+import type { CoordinatorAdvanceDelivery } from './run-advance.types.js';
 import { lockRunForAdvance } from './load/locks.repository.js';
 import { persistCoordinatorRunTransition } from './persist/run-transition.repository.js';
 import type { RunTransitionPlan } from './plan.js';

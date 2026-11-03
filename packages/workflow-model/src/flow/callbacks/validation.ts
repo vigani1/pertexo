@@ -1,9 +1,9 @@
-import type { ValueSource } from '../../graph/contract.js';
+import type { ValueSource } from '../../graph/workflow-graph.schemas.js';
 import {
   callbackWaitConfigSchema,
   isCallbackWaitNode,
   CALLBACKS_PER_STEP,
-} from './contract.js';
+} from './callback-wait.js';
 import type { CallbackReference } from './references.js';
 
 type Node = Readonly<{

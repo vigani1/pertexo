@@ -29,7 +29,7 @@ import {
 } from '../uploads/reservation.repository.js';
 import { FormUploadLimitError } from './errors.js';
 import { assertUnsentPublicRoom } from './unsent.repository.js';
-import { FORM_UPLOAD_PURPOSE } from '../contract.js';
+import { FORM_UPLOAD_PURPOSE } from '../artifact.js';
 import type {
   BeginFormUploadInput,
   DiscoverFormInput,
@@ -37,7 +37,7 @@ import type {
   FormUpload,
   FormUploadSession,
   ReadFormUploadInput,
-} from './contract.js';
+} from './form-upload.types.js';
 import {
   boundUploadsSql,
   formUploadSessionHash,

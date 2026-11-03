@@ -8,7 +8,7 @@ export {
   ConnectionSecretVersionConflictError,
   ConnectionTestInProgressError,
   ConnectionUnavailableError,
-} from './contract.js';
+} from './connection.js';
 export {
   createConnectionStore,
   createWorkerConnectionResolutionStore,
@@ -44,7 +44,7 @@ export type {
   RevokeConnectionInput,
   RotateConnectionSecretInput,
   SealedConnectionSecretRecord,
-} from './contract.js';
+} from './connection.js';
 export {
   createWorkflowIntegrationUsageStore,
   type WorkflowIntegrationUsageStore,
@@ -54,4 +54,4 @@ export type {
   FindProviderOperationImpactInput,
   WorkflowIntegrationImpactPage,
   WorkflowIntegrationImpactRecord,
-} from './discovery/contract.js';
+} from './discovery/connection-usage.types.js';

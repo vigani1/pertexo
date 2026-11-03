@@ -12,7 +12,7 @@ import type { PoolClient } from 'pg';
 import { CoordinatorRunStateCorruptError } from '../../../state-errors.js';
 
 import type { RunTransitionPlan } from '../../plan.js';
-import type { ExecutionIdentityMap } from './contract.js';
+import type { ExecutionIdentityMap } from './execution-identity.types.js';
 
 export async function persistNodeAdmissions(
   client: PoolClient,

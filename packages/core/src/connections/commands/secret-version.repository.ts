@@ -4,7 +4,7 @@ import type { PoolClient } from 'pg';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { connectionSecretVersions } from '@pertexo/database/schema';
 
-import type { SealedConnectionSecretRecord } from '../contract.js';
+import type { SealedConnectionSecretRecord } from '../connection.js';
 
 /** Secret versions are only ever added: a new one replaces the current pointer. */
 export async function insertSecretVersion(

@@ -18,7 +18,7 @@ import {
   type ReplaceNoticeDefaultsInput,
   type ReplaceNoticePreferencesInput,
   type ReplaceNoticeSubscriptionInput,
-} from './contract.js';
+} from './notice-preferences.js';
 export async function replacePreference(
   client: PoolClient,
   command:

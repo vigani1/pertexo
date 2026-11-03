@@ -20,7 +20,7 @@ import type {
   QueueStateObservation,
   QueueProducer,
   QueueMap,
-} from './publication/contract.js';
+} from './publication/queue-producer.types.js';
 import { parseProducerOptions } from './publication/configuration.js';
 import { QueueNotReadyError } from './publication/errors.js';
 
@@ -30,7 +30,7 @@ export {
   type QueuePublishResult,
   type QueueStateObservation,
   type QueueProducer,
-} from './publication/contract.js';
+} from './publication/queue-producer.types.js';
 export {
   QueueConfigurationError,
   QueueNotReadyError,

@@ -15,7 +15,7 @@ import { reconcileWorkflowTriggersPayload } from '../../publication/trigger-reco
 import type {
   TransitionWorkflowLifecycleInput,
   TransitionWorkflowLifecycleResult,
-} from '../contract.js';
+} from '../workflow-commands.types.js';
 import {
   WorkflowLifecycleRevisionConflictError,
   WorkflowNotFoundError,

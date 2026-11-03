@@ -13,7 +13,7 @@ import type {
   PlaceWorkflowInput,
   ReviewMoveInput,
   WorkflowFolderPlacementResult,
-} from '../contract.js';
+} from '../workflow-folder.types.js';
 import { placementResult } from '../input.js';
 
 export function reviewFolderMove(

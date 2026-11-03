@@ -1,7 +1,7 @@
 import type { OAuth2StepFailureCode } from '@pertexo/contracts';
 import { NodeExecutorFailure } from '@pertexo/node-sdk/server';
 
-import type { OAuth2TokenFailure } from '../../oauth2/contract.js';
+import type { OAuth2TokenFailure } from '../../oauth2/oauth2-token.js';
 
 type Outcome = Readonly<{
   kind: 'failed' | 'retry';

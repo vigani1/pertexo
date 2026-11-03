@@ -21,7 +21,7 @@ import type {
   PutObjectPresigner,
   ArtifactStore,
   WorkspaceObjectPurgeStore,
-} from './storage/contract.js';
+} from './storage/artifact-storage.types.js';
 
 import { ObservedArtifactStore } from './storage/observed.js';
 import { AwsArtifactStore } from './storage/aws.js';
@@ -47,7 +47,7 @@ export {
   type PurgeWorkspaceObjectsRequest,
   type WorkspaceObjectPurgePage,
   type WorkspaceObjectPurgeStore,
-} from './storage/contract.js';
+} from './storage/artifact-storage.types.js';
 
 export function createArtifactStore(
   config: ArtifactStoreConfig,

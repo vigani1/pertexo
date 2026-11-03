@@ -10,7 +10,7 @@ import { FOLDER_DEPTH_LIMIT } from '../limits.js';
 import { FOLDER_LIMIT } from '../../../shared/folder-policy.js';
 
 import type { createOrganizationSession } from '../session.js';
-import type { WorkflowFolderRecord } from './contract.js';
+import type { WorkflowFolderRecord } from './workflow-folder.types.js';
 
 export function listFolders(
   session: ReturnType<typeof createOrganizationSession>,

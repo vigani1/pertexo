@@ -22,7 +22,7 @@ import type {
   RenameFolderInput,
   WorkflowFolderCommandResult,
   WorkflowFolderDeleteResult,
-} from '../contract.js';
+} from '../workflow-folder.types.js';
 import {
   folderDepth,
   folderProjection,

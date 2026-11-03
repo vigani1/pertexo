@@ -1,5 +1,5 @@
 import { parentPort } from 'node:worker_threads';
-import type { WorkflowGraph } from '../../graph/contract.js';
+import type { WorkflowGraph } from '../../graph/workflow-graph.schemas.js';
 import {
   AuthoringValidationUnavailableError,
   type WorkflowExpressionPolicyProjection,

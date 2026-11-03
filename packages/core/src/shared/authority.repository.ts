@@ -15,7 +15,7 @@ import {
   BROWSABLE_WORKSPACE_STATUSES,
   type Role,
 } from '@pertexo/policy';
-import type { ResourceActor } from './contract.js';
+import type { ResourceActor } from './folder-access.types.js';
 import { WorkspaceAccessDeniedError } from './errors.js';
 
 /** Ordered current authority fence shared by workspace commands. Call only inside the same tenant transaction as the protected work. */

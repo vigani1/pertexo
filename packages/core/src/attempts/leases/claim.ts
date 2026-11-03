@@ -16,7 +16,7 @@ import {
   type ClaimDeliveryInput,
   type NodeAttemptClaimResult,
   type NodeAttemptLease,
-} from '../contract.js';
+} from '../node-attempt.js';
 import {
   auditMismatch,
   claimReceipt,

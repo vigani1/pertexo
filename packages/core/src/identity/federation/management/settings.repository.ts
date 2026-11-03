@@ -9,11 +9,14 @@ import {
 import { asc, eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
-import { domainRecords, providerRecords } from './identity-organizations.repository.js';
+import {
+  domainRecords,
+  providerRecords,
+} from './identity-organizations.repository.js';
 
 import type { PoolClient } from 'pg';
 import type { OrganizationRow } from './identity-organizations.repository.js';
-import type { OrganizationSnapshot } from './contract.js';
+import type { OrganizationSnapshot } from './federation-management.types.js';
 
 export async function projectOrganization(
   client: PoolClient,

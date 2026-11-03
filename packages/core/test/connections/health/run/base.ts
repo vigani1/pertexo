@@ -6,7 +6,7 @@ import { generatePersistedId } from '@pertexo/database/platform';
 import type {
   NodeAttemptLease,
   NodeAttemptRunStore,
-} from '../../../../src/attempts/contract.js';
+} from '../../../../src/attempts/node-attempt.js';
 import {
   actorId,
   apiBaseUrl,

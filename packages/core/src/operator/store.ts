@@ -27,7 +27,7 @@ import type {
   RecordUnknownOutcomeEvidenceInput,
   RedispatchFailedOutboxInput,
   ReplayOperatorRunInput,
-} from './contract.js';
+} from './operator-command.js';
 import { REPLAY_INPUT_BYTES } from './fingerprint.js';
 import {
   reconcileAttempt,

@@ -12,12 +12,12 @@ import {
 import type {
   CompleteConnectionTestInput,
   ConnectionTestResult,
-} from '../contract.js';
+} from '../connection.js';
 import {
   CONNECTION_EVENT_TYPE,
   ConnectionNotFoundError,
   ConnectionTestInProgressError,
-} from '../contract.js';
+} from '../connection.js';
 import { appendConnectionEvent } from '../events.repository.js';
 import { applyCurrentConnectionTestHealth } from '../health/transitions.repository.js';
 import { withOneOAuth2Fact } from '../oauth2/clients.repository.js';

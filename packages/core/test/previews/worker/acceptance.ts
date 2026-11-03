@@ -3,11 +3,11 @@ import { createHash } from 'node:crypto';
 import type { acceptPreviewRun } from '../../../src/previews/runs/accept.js';
 import { createPreviewRunStore } from '../../../src/previews/runs/store.js';
 import { claimPreviewDelivery } from '../../../src/previews/attempts/claim.js';
-import type { AcceptPreviewRunInput } from '../../../src/previews/runs/acceptance/contract.js';
+import type { AcceptPreviewRunInput } from '../../../src/previews/runs/acceptance/preview-acceptance.types.js';
 import type {
   PreviewAttemptLease,
   PreviewDelivery,
-} from '../../../src/previews/contract.js';
+} from '../../../src/previews/preview.types.js';
 import { canonicalOutboxPayloadChecksum } from '@pertexo/database/primitives';
 
 import {

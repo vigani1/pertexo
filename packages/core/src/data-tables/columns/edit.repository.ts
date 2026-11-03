@@ -33,7 +33,7 @@ import type {
   DataTableDefinition,
   DataTableQuotas,
   EditTableSchemaInput,
-} from '../contract.js';
+} from '../data-table-commands.types.js';
 import { readQuotas, requireTable } from '../table-lookups.repository.js';
 import { keyValue } from '../rows/key.js';
 

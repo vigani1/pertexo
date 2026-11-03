@@ -7,7 +7,7 @@ import type {
   NodeAttemptHandlerDependencies,
   HeartbeatFailure,
   NodeAttemptHeartbeat,
-} from './contract.js';
+} from './node-attempt-delivery.types.js';
 
 const OUTAGE_RETRY_INTERVAL_MILLIS = 1_000;
 

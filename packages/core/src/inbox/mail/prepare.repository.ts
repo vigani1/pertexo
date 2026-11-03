@@ -15,7 +15,10 @@ import type { PoolClient } from 'pg';
 
 import { lockWorkspaceAuthority } from '../../shared/authority.repository.js';
 import { createNoticeMailBatch } from './batches.repository.js';
-import type { NoticeMailPerson, NoticeMailSealer } from './contract.js';
+import type {
+  NoticeMailPerson,
+  NoticeMailSealer,
+} from './notice-mail.types.js';
 import { mailCutoff } from './items.js';
 import { recipient, setNextDue, settings } from './recipients.repository.js';
 import { readMailSubjects } from './subjects.repository.js';

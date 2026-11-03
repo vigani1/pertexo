@@ -1,5 +1,8 @@
 import { afterAll, expect, it } from 'vitest';
-import type { WorkflowGraph, ValueSource } from '../../src/graph/contract.js';
+import type {
+  WorkflowGraph,
+  ValueSource,
+} from '../../src/graph/workflow-graph.schemas.js';
 import { WorkflowAuthoringValidator } from '../../src/authoring/validation/validator.js';
 
 const owner = new WorkflowAuthoringValidator();

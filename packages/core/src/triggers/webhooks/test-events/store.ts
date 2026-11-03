@@ -30,7 +30,7 @@ import type {
   TestEventReference,
   TestEventScope,
   TestEventSnapshot,
-} from './contract.js';
+} from './webhook-test-event.types.js';
 
 const WORKSPACE_LISTENER_LIMIT = 10;
 

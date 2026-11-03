@@ -19,7 +19,7 @@ import type {
   PromotionCandidatesInput,
   PromotionContext,
   PromotionHistoryInput,
-} from './contract.js';
+} from './workflow-promotion.types.js';
 
 // These took the locks by hand, so they stay `change`.
 const BROWSE_AS_EDITOR = {

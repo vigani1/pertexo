@@ -13,7 +13,7 @@ import type { PoolClient } from 'pg';
 import { normalizedJson } from '@pertexo/workflow-model';
 import type { WorkflowTestPins } from '@pertexo/workflow-engine';
 import type { AuthoringCatalogs } from '../../authoring/workflows/catalogs.js';
-import type { SampleScope } from '../../authoring/step-samples/contract.js';
+import type { SampleScope } from '../../authoring/step-samples/step-sample.types.js';
 
 import { readDatabaseClock } from '../clock.repository.js';
 import { WorkflowTestError } from './errors.js';

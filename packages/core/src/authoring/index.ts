@@ -8,7 +8,7 @@ export type {
   WorkflowFolderDeleteResult,
   WorkflowFolderPlacementResult,
   WorkflowFolderRecord,
-} from './organization/folders/contract.js';
+} from './organization/folders/workflow-folder.types.js';
 export type { WorkflowFolderConflictKind } from './organization/errors.js';
 export { createWorkflowOrganizationBatchStore } from './organization/batches/store.js';
 export type {
@@ -37,7 +37,7 @@ export type {
   WorkflowTagDeleteResult,
   WorkflowTagRecord,
   WorkflowTagReplaceResult,
-} from './organization/tags/contract.js';
+} from './organization/tags/workflow-tag.types.js';
 export type { WorkflowTagConflictKind } from './organization/errors.js';
 export { createWorkflowFavoriteStore } from './organization/favorites/store.js';
 export type {
@@ -58,7 +58,7 @@ export {
 export type {
   WorkflowInputCaseMetadata,
   WorkflowInputCaseResult,
-} from './input-cases/contract.js';
+} from './input-cases/workflow-input-case.types.js';
 export {
   WorkflowConcurrencyLimitExceededError,
   WorkflowConcurrencyLimitUnavailableError,
@@ -77,7 +77,7 @@ export type {
   AutoPauseCommandResult,
   WorkflowAutoPauseSettings,
   WorkspaceAutoPauseSettings,
-} from './settings/auto-pause/contract.js';
+} from './settings/auto-pause/auto-pause-settings.types.js';
 export {
   createWorkflowAuthoringStore,
   type WorkflowAuthoringStore,
@@ -107,12 +107,12 @@ export type {
   TransitionWorkflowLifecycleInput,
   TransitionWorkflowLifecycleResult,
   WorkflowLifecycleCommand,
-} from './workflows/contract.js';
+} from './workflows/workflow-commands.types.js';
 export type {
   WorkflowDraftRecord,
   WorkflowRecord,
   WorkflowVersionRecord,
-} from './workflows/representation/contract.js';
+} from './workflows/representation/workflow-record.types.js';
 
 export {
   WorkflowErrorSettingsConflictError,
@@ -125,7 +125,7 @@ export type {
   SampleMetadata,
   SampleRead,
   SampleResult,
-} from './step-samples/contract.js';
+} from './step-samples/step-sample.types.js';
 
 export { PublicationReviewError } from './reviews/errors.js';
 export { type PublicationReviewStore } from './reviews/store.js';

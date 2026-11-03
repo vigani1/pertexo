@@ -1,5 +1,8 @@
 import { useCaseOwner } from './use-case-owner';
-import { canResend, isUnconfirmedCommand } from '@/lib/api/commands/contract';
+import {
+  canResend,
+  isUnconfirmedCommand,
+} from '@/lib/api/commands/command-retry';
 import { useCallback, useState } from 'react';
 import {
   useInfiniteQuery,

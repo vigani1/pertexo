@@ -9,7 +9,10 @@ import { issueSession } from '../sessions/issue.repository.js';
 import type { PoolClient } from 'pg';
 import { recordIdentitySecurityFact } from '../../facts.repository.js';
 import { admitNewAccount, type SignUpMode } from '../../sign-up.js';
-import type { ProvenSocialSignIn, SocialSignInResult } from './contract.js';
+import type {
+  ProvenSocialSignIn,
+  SocialSignInResult,
+} from './social-sign-in.types.js';
 
 export async function completeSocialSignIn(
   client: PoolClient,

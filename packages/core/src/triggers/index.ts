@@ -1,5 +1,5 @@
 // Authoring, artifacts and runs use these directly (ADR 091).
-export type {} from './forms/contract.js';
+export type {} from './forms/form-admission.types.js';
 export type {} from './forms/discover.repository.js';
 export type {} from './forms/errors.js';
 export type {} from './forms/publication.repository.js';
@@ -13,13 +13,13 @@ export {
   type ScheduleTriggerStore,
 } from './schedules/store.js';
 export { ScheduleTriggerError } from './schedules/errors.js';
-export type { ScheduleTriggerRecord } from './schedules/management/contract.js';
+export type { ScheduleTriggerRecord } from './schedules/management/schedule-management.types.js';
 export type {
   ScheduleFireTimes,
   ScheduleOccurrencePage,
   ScheduleOccurrencePosition,
   ScheduleOccurrenceRecord,
-} from './schedules/contract.js';
+} from './schedules/schedule-occurrence.types.js';
 export {
   createWebhookTriggerStore,
   type WebhookTriggerStore,
@@ -34,19 +34,19 @@ export {
   WebhookTriggerStateError,
   WebhookWorkflowPausedError,
 } from './webhooks/errors.js';
-export type { WebhookVerificationReference } from './webhooks/runtime/contract.js';
+export type { WebhookVerificationReference } from './webhooks/runtime/webhook-runtime.types.js';
 export type {
   RejectedWebhookDelivery,
   WebhookDeliveryPage,
   WebhookDeliveryPosition,
   WebhookDeliveryRecord,
-} from './webhooks/contract.js';
-export type { WorkflowTriggerHealth } from './reconciliation/contract.js';
+} from './webhooks/webhook-delivery.types.js';
+export type { WorkflowTriggerHealth } from './reconciliation/trigger-reconciliation.types.js';
 export {
   createScheduleTriggerScanner,
   type ScheduleTriggerScanner,
 } from './schedules/scanner.js';
-export type { ScanDueSchedulesResult } from './schedules/scanning/contract.js';
+export type { ScanDueSchedulesResult } from './schedules/scanning/schedule-scanning.types.js';
 export {
   createWorkflowTriggerReconciliationStore,
   type WorkflowTriggerReconciliationStore,
@@ -59,14 +59,14 @@ export {
   createWorkflowTriggerPauseFoldStore,
   type WorkflowTriggerPauseFoldStore,
 } from './pause/fold.store.js';
-export type { WorkflowTriggerPauseDecision } from './pause/contract.js';
+export type { WorkflowTriggerPauseDecision } from './pause/trigger-pause.types.js';
 export { createFormStore, type FormStore } from './forms/store.js';
 export {
   FormUnavailableError,
   FormChangedError,
   FormAccessConflictError,
 } from './forms/errors.js';
-export type { PublicFormGrant } from './forms/contract.js';
+export type { PublicFormGrant } from './forms/form-admission.types.js';
 
 export {
   createWebhookResponseStore,
@@ -76,7 +76,7 @@ export type {
   WebhookResponseScope,
   WebhookResponseSnapshot,
   WriteWebhookResponse,
-} from './webhooks/responses/contract.js';
+} from './webhooks/responses/webhook-response.types.js';
 
 export {
   createTriggerEventScanner,
@@ -92,4 +92,4 @@ export { WebhookTestEventError } from './webhooks/test-events/errors.js';
 export type {
   TestEventReference,
   TestEventScope,
-} from './webhooks/test-events/contract.js';
+} from './webhooks/test-events/webhook-test-event.types.js';

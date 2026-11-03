@@ -1,6 +1,6 @@
 import type { WorkspaceMember } from '@pertexo/contracts';
 import type { ApiClient } from '@/lib/api/client';
-import { newCommandKey } from '@/lib/api/commands/contract';
+import { newCommandKey } from '@/lib/api/commands/command-retry';
 import { transferWorkspaceOwnership } from '../../workspaces.api';
 import { useMemberCommand, type MemberCommandAttempt } from './use-command';
 

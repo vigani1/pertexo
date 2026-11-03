@@ -8,7 +8,7 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import { nodeRuns, nodeAttempts, workflowRuns } from '@pertexo/database/schema';
 import type { Pool } from 'pg';
 import { NodeAttemptReconciliationRequiredError } from '../errors.js';
-import type { HeartbeatInput, NodeAttemptHeartbeat } from '../contract.js';
+import type { HeartbeatInput, NodeAttemptHeartbeat } from '../node-attempt.js';
 
 export async function heartbeatNodeAttempt(
   pool: Pool,

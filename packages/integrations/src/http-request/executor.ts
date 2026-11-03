@@ -24,7 +24,7 @@ import {
 } from '../provider-dispatch-fence.js';
 import { decodeCredential } from './material.js';
 import { serviceResponseFacts } from './execution/service-response.js';
-import { OAuth2TokenFailure } from '../oauth2/contract.js';
+import { OAuth2TokenFailure } from '../oauth2/oauth2-token.js';
 import { HttpOAuth2Failure } from './execution/oauth2-failure.js';
 import { createOAuth2RenewalClient } from './execution/oauth2-renewal.js';
 
@@ -33,7 +33,7 @@ import {
   type HttpRequestExecutorDependencies,
   NOOP_HTTP_REQUEST_EXECUTOR_TELEMETRY,
   failedConfiguration,
-} from './execution/contract.js';
+} from './execution/http-request-execution.js';
 import { consumeResponseBody, releaseHttpMaterial } from './execution/body.js';
 import { requestHeaders } from './execution/input.js';
 import {
@@ -49,7 +49,7 @@ export {
   type HttpRequestExecutorDependencies,
   type HttpRequestExecutorTelemetry,
   NOOP_HTTP_REQUEST_EXECUTOR_TELEMETRY,
-} from './execution/contract.js';
+} from './execution/http-request-execution.js';
 
 async function executeHttpRequest(
   dependencies: HttpRequestExecutorDependencies,

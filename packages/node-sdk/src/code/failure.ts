@@ -1,5 +1,8 @@
 import { NodeExecutorFailure } from '../execution/errors.js';
-import type { CodeDiagnostics, CodeErrorCode } from './contract.js';
+import type {
+  CodeDiagnostics,
+  CodeErrorCode,
+} from './code-protocol.schemas.js';
 
 /** Only the closed code is public failure evidence; diagnostics stay private. */
 export class NodeCodeFailure extends NodeExecutorFailure {

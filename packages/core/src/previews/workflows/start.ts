@@ -13,7 +13,7 @@ import {
   requireNoActiveTest,
 } from './admit.js';
 import { requireTestCapability } from './access.js';
-import type { WorkflowTestCommand } from './contract.js';
+import type { WorkflowTestCommand } from './workflow-test.types.js';
 import { WorkflowTestError } from './errors.js';
 import {
   assertEffectsAcknowledged,

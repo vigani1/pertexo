@@ -20,7 +20,7 @@ import type {
   ClaimDeliveryInput,
   FailureNotificationClaimResult,
   FailureNotificationDelivery,
-} from '../contract.js';
+} from '../failure-notification.types.js';
 import { FailureNotificationStateError } from '../errors.js';
 import { auditFailureNotification as audit } from './evidence.repository.js';
 

@@ -5,7 +5,7 @@ import {
   parsePortableJson,
   PortableJsonError,
   WORKFLOW_PORTABILITY_LIMITS,
-} from '../src/authoring/portability/contract.js';
+} from '../src/authoring/portability/portable-manifest.js';
 import {
   inspectWorkflowPortableManifest,
   projectWorkflowPortableManifest,

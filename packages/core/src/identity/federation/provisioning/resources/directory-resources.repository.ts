@@ -1,4 +1,7 @@
-import type { DirectoryQuery, DirectoryPage } from '../contract.js';
+import type {
+  DirectoryQuery,
+  DirectoryPage,
+} from '../directory-provisioning.types.js';
 import { authDirectoryGroupMembers } from '@pertexo/database/schema';
 import { and, asc, count, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
@@ -13,8 +16,8 @@ import {
   type DirectoryKind,
 } from './filter.js';
 
-import type { DirectoryUser } from '../contract.js';
-import type { DirectoryGroup } from '../contract.js';
+import type { DirectoryUser } from '../directory-provisioning.types.js';
+import type { DirectoryGroup } from '../directory-provisioning.types.js';
 async function listRows(
   client: PoolClient,
   organizationId: string,

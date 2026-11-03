@@ -10,7 +10,7 @@ import type {
   EventCoordinationReason,
   EventCoordinationStatus,
 } from '@pertexo/workflow-model';
-import type { CoordinateEventInput } from './contract.js';
+import type { CoordinateEventInput } from './event-coordination.types.js';
 
 type EventState = Readonly<{
   outcome: 'accepted' | 'skipped' | EventCoordinationReceipt['outcome'];

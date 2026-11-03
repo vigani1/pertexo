@@ -14,7 +14,10 @@ import {
   type WorkflowDefinitionCatalog,
 } from '@pertexo/workflow-model/server';
 
-import type { WorkflowDraftRecord, WorkflowVersionRecord } from './contract.js';
+import type {
+  WorkflowDraftRecord,
+  WorkflowVersionRecord,
+} from './workflow-record.types.js';
 
 const missingEndpoint = new QueryBuilder()
   .select({ id: workflowTriggers.id })

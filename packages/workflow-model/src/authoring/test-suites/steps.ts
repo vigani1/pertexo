@@ -1,4 +1,4 @@
-import type { WorkflowGraph } from '../../graph/contract.js';
+import type { WorkflowGraph } from '../../graph/workflow-graph.schemas.js';
 /** Frozen and current test UIs use the same names, including nested steps. */
 export function workflowTestStepChoices(
   graph: WorkflowGraph,

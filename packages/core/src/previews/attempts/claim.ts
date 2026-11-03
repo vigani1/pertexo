@@ -9,9 +9,9 @@ import { previewAttempts, previewRuns } from '@pertexo/database/schema';
 import type {
   ClaimPreviewDeliveryInput,
   PreviewClaimResult,
-} from './contract.js';
+} from './preview-attempt.types.js';
 
-import type { PreviewDelivery } from '../contract.js';
+import type { PreviewDelivery } from '../preview.types.js';
 import { previewConsumerName } from '../delivery.js';
 import { PreviewAttemptStateError } from '../errors.js';
 import { optionsFor } from '../input.js';

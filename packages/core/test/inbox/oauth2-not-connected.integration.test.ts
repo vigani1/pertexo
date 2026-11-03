@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { expect, it } from 'vitest';
 
 import { createConnectionStore } from '../../src/connections/store.js';
-import type { NoticeMailToSeal } from '../../src/inbox/mail/contract.js';
+import type { NoticeMailToSeal } from '../../src/inbox/mail/notice-mail.types.js';
 import {
   config,
   inbox,

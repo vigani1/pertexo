@@ -19,7 +19,7 @@ import {
 import { WorkflowTestError } from './errors.js';
 import { ACTIVE_TEST_RUN_STATUSES } from './rules.js';
 import { testRunSql } from '../../runs/data-policy.js';
-import type { SampleScope } from '../../authoring/step-samples/contract.js';
+import type { SampleScope } from '../../authoring/step-samples/step-sample.types.js';
 
 export async function requireNoActiveTest(
   client: PoolClient,

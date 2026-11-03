@@ -12,7 +12,7 @@ export {
   WORKFLOW_FAILURE_PATHS,
   isWorkflowFailureSource,
   type WorkflowFailureRoute,
-} from './flow/failure-routing/contract.js';
+} from './flow/failure-routing/failure-routes.js';
 export {
   inspectWorkflowFailureRoutes,
   type FailureRoutingGraph,
@@ -33,7 +33,7 @@ export {
   WORKFLOW_RECOVERY_REFUSALS,
   type WorkflowRecoveryEffectRisk,
   type WorkflowRecoveryRefusal,
-} from './execution/recovery/contract.js';
+} from './execution/recovery/workflow-recovery.js';
 export {
   workflowCallPinSchema,
   workflowCallConfigSchema,
@@ -48,7 +48,7 @@ export {
   type CallableType,
   type CallableDeclaration,
   type CallableTypeIssue,
-} from './flow/callable/contract.js';
+} from './flow/callable/callable-types.js';
 export {
   validateCallableValue,
   type CallableValueIssue,
@@ -81,7 +81,7 @@ export {
   type WorkflowGraph,
   type WorkflowNode,
   type WorkflowSettings,
-} from './graph/contract.js';
+} from './graph/workflow-graph.schemas.js';
 export {
   workflowControlOutputKind,
   workflowControlOutputNodeIds,
@@ -101,7 +101,7 @@ export {
   WorkflowGraphContractError,
   type GraphValidationResult,
   type GraphValidationIssue,
-} from './graph/validation/contract.js';
+} from './graph/validation/graph-validation.js';
 export {
   CANONICAL_JSON_MAX_DEPTH,
   canonicalJson,
@@ -118,7 +118,7 @@ export {
   stepRetrySettingsSchema,
   supportsStepRetrySettings,
   type StepRetrySettings,
-} from './execution/step-retries/contract.js';
+} from './execution/step-retries/step-retry.schemas.js';
 export {
   planWorkflowLifecycleCommand,
   workflowActivationAfterReconciliation,
@@ -150,7 +150,7 @@ export {
   type PortableConnectionSlot,
   type PortableIssue,
   type WorkflowPortableManifest,
-} from './authoring/portability/contract.js';
+} from './authoring/portability/portable-manifest.js';
 export {
   WorkflowPortabilityError,
   inspectWorkflowPortableManifest,
@@ -173,7 +173,7 @@ export {
 export {
   workflowErrorInputSchema,
   type WorkflowErrorInput,
-} from './triggers/error-workflows/contract.js';
+} from './triggers/error-workflows/workflow-error-input.schemas.js';
 
 export { isWorkflowErrorTarget } from './triggers/error-workflows/target.js';
 
@@ -276,7 +276,7 @@ export {
   EMPTY_VARIABLE_SNAPSHOT,
   type WorkspaceVariableValues,
   type WorkspaceVariableSnapshot,
-} from './values/variables/contract.js';
+} from './values/variables/workspace-variable.schemas.js';
 
 export { ianaTimeZoneSchema } from './values/json/time-zone.js';
 export {
@@ -295,7 +295,7 @@ export {
   stepSampleIdentity,
   stepSampleBindings,
 } from './authoring/samples/identity.js';
-export type { StepSampleSource } from './authoring/samples/contract.js';
+export type { StepSampleSource } from './authoring/samples/step-sample-source.types.js';
 
 export { isStorageText } from './values/json/text.js';
 export {
@@ -305,7 +305,7 @@ export {
   DEFAULT_TEST_EXPECTATIONS,
   type WorkflowTestExpectations,
   type TestAssertion,
-} from './authoring/test-suites/contract.js';
+} from './authoring/test-suites/workflow-test-expectations.schemas.js';
 export {
   matchesTestAssertion,
   observeTestAssertion,
@@ -328,7 +328,7 @@ export {
   type EventCoordinationStatus,
   type EventCoordinationReason,
   asksSenderToRetry,
-} from './triggers/event-coordination/contract.js';
+} from './triggers/event-coordination/event-coordination.schemas.js';
 export {
   decideEventCoordination,
   type EventCoordinationWindow,
@@ -345,7 +345,7 @@ export {
   workflowNotesSchema,
   type WorkflowNote,
   type WorkflowNoteColor,
-} from './graph/notes/contract.js';
+} from './graph/notes/canvas-note.schemas.js';
 export { sameWorkflowNotes } from './graph/notes/identity.js';
 
 export {
@@ -362,7 +362,7 @@ export {
   type CallbackWaitConfig,
   type CallbackBindings,
   type CallbackBinding,
-} from './flow/callbacks/contract.js';
+} from './flow/callbacks/callback-wait.js';
 
 export { supportsExpressionMappings } from './values/mapping/policy.js';
 
@@ -457,7 +457,7 @@ export {
 } from './execution/notification-policy.js';
 export { decideScheduleHealthTransition } from './triggers/schedules/health.js';
 
-export * from './authoring/connections/contract.js';
+export * from './authoring/connections/connection.js';
 export {
   classifyConnectionTestCompletion,
   connectionTestStatus,

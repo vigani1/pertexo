@@ -3,7 +3,7 @@ import {
   canResend,
   isUnconfirmedCommand,
   type CommandKey,
-} from '@/lib/api/commands/contract';
+} from '@/lib/api/commands/command-retry';
 import { useResendExpired } from '@/lib/api/commands/use-resend-window';
 import type { WorkspaceMember } from '@pertexo/contracts';
 import {

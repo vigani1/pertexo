@@ -4,7 +4,7 @@ import type {
   SecureHttpRequest,
   SecureHttpResponse,
 } from '../../http/secure.js';
-import { OAuth2TokenFailure } from '../../oauth2/contract.js';
+import { OAuth2TokenFailure } from '../../oauth2/oauth2-token.js';
 
 export type OAuth2RenewalCredential = Readonly<{
   accessToken: string;

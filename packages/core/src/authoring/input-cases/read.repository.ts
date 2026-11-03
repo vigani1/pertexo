@@ -18,7 +18,7 @@ import type {
   InputCaseDetail,
   InputCasePage,
   ListInputCasesInput,
-} from './contract.js';
+} from './workflow-input-case.types.js';
 import { metadataProjection, workflow } from './metadata.repository.js';
 
 export function listInputCases(

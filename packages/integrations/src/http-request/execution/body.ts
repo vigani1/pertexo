@@ -12,7 +12,7 @@ import type { SecureHttpClient } from '../../http/secure.js';
 
 import { safeInstanceOf } from '../../http/unknown-error.js';
 
-import { HttpRequestExecutorError } from './contract.js';
+import { HttpRequestExecutorError } from './http-request-execution.js';
 
 // Leaves room in the step's 1 MiB, 10,000-member output for the text and
 // headers the parsed value sits beside.

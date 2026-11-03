@@ -8,7 +8,7 @@ import {
   isUnconfirmedCommand,
   newCommandKey,
   type CommandKey,
-} from './contract';
+} from './command-retry';
 import { useResendExpired } from './use-resend-window';
 type Command<Input> = Readonly<{ body: Input; uncertain: boolean }> &
   CommandKey;

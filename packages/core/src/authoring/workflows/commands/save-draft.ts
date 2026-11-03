@@ -12,12 +12,12 @@ import { requireConnectionBindings } from '../../../tenant-access/resources/conn
 import { pruneStepSamples } from '../../step-samples/records.repository.js';
 
 import type { AuthoringCatalogs } from '../catalogs.js';
-import type { SaveWorkflowDraftInput } from '../contract.js';
+import type { SaveWorkflowDraftInput } from '../workflow-commands.types.js';
 import {
   WorkflowNotFoundError,
   WorkflowRevisionConflictError,
 } from '../errors.js';
-import type { WorkflowDraftRecord } from '../representation/contract.js';
+import type { WorkflowDraftRecord } from '../representation/workflow-record.types.js';
 import { draftRepresentationTag } from '../representation/tag.js';
 import { requirePlaceableDefinitionAdditions } from '../placement.js';
 import {

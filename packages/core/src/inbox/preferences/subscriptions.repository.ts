@@ -15,7 +15,7 @@ import { workflowScopeSql } from '../../shared/scope.repository.js';
 import {
   NoticeUnavailableError,
   type ReadNoticeSubscriptionInput,
-} from './contract.js';
+} from './notice-preferences.js';
 
 /** The workflow or connection exists and, for a workflow, this person can see it. */
 export async function requireSubject(

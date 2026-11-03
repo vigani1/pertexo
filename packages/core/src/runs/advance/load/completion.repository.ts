@@ -11,7 +11,7 @@ import { parseStoredExecutionValue } from '../../values/stored-execution.js';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { readVariableSetValues } from '../../../variables/values.repository.js';
 import type { PoolClient } from 'pg';
-import type { RunAdvanceState } from '../contract.js';
+import type { RunAdvanceState } from '../run-advance.types.js';
 
 /** This projection is needed only when a callable run is about to succeed. */
 export async function readRunCompletionValues(

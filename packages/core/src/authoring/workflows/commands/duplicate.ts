@@ -28,7 +28,7 @@ import {
   decodeStoredValue,
   generatePersistedId,
 } from '@pertexo/database/platform';
-import type { FolderScope } from '../../../shared/contract.js';
+import type { FolderScope } from '../../../shared/folder-access.types.js';
 import { requireReadableReceipt } from '../../../shared/receipts.js';
 import { requireWorkflowInScope } from '../access.js';
 import { createdWorkflowReceipt } from '../receipts.repository.js';
@@ -36,7 +36,7 @@ import type { AuthoringCatalogs } from '../catalogs.js';
 import type {
   DuplicateWorkflowInput,
   DuplicateWorkflowResult,
-} from '../contract.js';
+} from '../workflow-commands.types.js';
 import {
   WorkflowNotFoundError,
   WorkflowRevisionConflictError,

@@ -11,7 +11,7 @@ import {
   canResend,
   isUnconfirmedCommand,
   type CommandKey,
-} from '@/lib/api/commands/contract';
+} from '@/lib/api/commands/command-retry';
 import { commandWebhook, setScheduleEnabled } from '../workflow-settings.api';
 import { workflowSettingsKeys } from '../workflow-settings.queries';
 import {
