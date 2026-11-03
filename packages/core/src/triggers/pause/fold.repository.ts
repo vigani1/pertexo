@@ -159,32 +159,11 @@ async function foldWorkflow(
       prior.resumedAfter === null || endedAt > prior.resumedAfter,
   );
   if (eligible.length === 0) return null;
-  // Consumption is bounded, but a committed recovery beyond this batch must
-  // prevent a historical pause. The partial completion index bounds this lookup.
-  const [pendingSuccess] = await db
-    .select({
-      id: outcomes.id,
-      runId: outcomes.runId,
-      countsAsFailure: outcomes.countsAsFailure,
-      endedAt: completionTime(outcomes.endedAt),
-    })
-    .from(outcomes)
-    .where(
-      and(
-        eq(outcomes.workspaceId, workspaceId),
-        eq(outcomes.workflowId, workflowId),
-        eq(outcomes.countsAsFailure, false),
-        prior.resumedAfter === null
-          ? undefined
-          : sql`${outcomes.endedAt}>${prior.resumedAfter}::timestamptz`,
-      ),
-    )
-    .orderBy(
-      sql`${outcomes.endedAt} desc nulls last`,
-      sql`${outcomes.id} desc nulls last`,
-    )
-    .limit(1)
-    .catch(rethrowQueryFailure);
+  const pendingSuccess = await readPendingSuccess(
+    client,
+    scope,
+    prior.resumedAfter,
+  );
   const threshold = workflow.threshold ?? workspace.threshold;
   const evidence = await applyOrderedOutcomes(client, scope, prior, {
     outcomes: eligible,
@@ -226,6 +205,41 @@ async function foldWorkflow(
     },
   });
   return { ...scope, consecutiveFailures: evidence.failures };
+}
+
+// A committed recovery beyond consumption's limit must prevent a historical
+// pause. The partial completion index bounds this lookup under workflow serialization.
+async function readPendingSuccess(
+  client: PoolClient,
+  scope: Readonly<{ workspaceId: string; workflowId: string }>,
+  resumedAfter: string | null,
+) {
+  const db = drizzle(client);
+  const [pendingSuccess] = await db
+    .select({
+      id: outcomes.id,
+      runId: outcomes.runId,
+      countsAsFailure: outcomes.countsAsFailure,
+      endedAt: completionTime(outcomes.endedAt),
+    })
+    .from(outcomes)
+    .where(
+      and(
+        eq(outcomes.workspaceId, scope.workspaceId),
+        eq(outcomes.workflowId, scope.workflowId),
+        eq(outcomes.countsAsFailure, false),
+        resumedAfter === null
+          ? undefined
+          : sql`${outcomes.endedAt}>${resumedAfter}::timestamptz`,
+      ),
+    )
+    .orderBy(
+      sql`${outcomes.endedAt} desc nulls last`,
+      sql`${outcomes.id} desc nulls last`,
+    )
+    .limit(1)
+    .catch(rethrowQueryFailure);
+  return pendingSuccess;
 }
 
 type StreakHistory = Readonly<{
@@ -330,11 +344,8 @@ async function applyOrderedOutcomes(
       .catch(rethrowQueryFailure);
   const latestFailure = ordered.at(-1);
   const latestSuccess =
-    success === null
-      ? undefined
-      : pendingSuccess?.id === success.id
-        ? pendingSuccess
-        : eligible.find(({ id }) => id === success.id);
+    eligible.find(({ id }) => id === success?.id) ??
+    (pendingSuccess?.id === success?.id ? pendingSuccess : undefined);
   const last = latestFailure ?? latestSuccess;
   const consecutiveFailures = Math.max(
     legacyFailures,
