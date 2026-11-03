@@ -24,10 +24,11 @@ let callbackKeys;
 let verifyingCallbacks = false;
 try {
   const environment = process.env;
-  const config = parseConnectionEncryptionConfig(
-    environment,
-    environment.NODE_ENV === 'staging' || environment.NODE_ENV === 'production',
-  );
+  const config = parseConnectionEncryptionConfig(environment, {
+    deployed:
+      environment.NODE_ENV === 'staging' ||
+      environment.NODE_ENV === 'production',
+  });
   if (config === undefined)
     throw new Error('Encryption configuration is required');
   requireCompatibleRelease(config, process.argv[2]);
@@ -44,10 +45,11 @@ try {
     signal,
   );
   verifyingCallbacks = true;
-  const callbackConfig = parseCallbackKeyConfig(
-    environment,
-    environment.NODE_ENV === 'staging' || environment.NODE_ENV === 'production',
-  );
+  const callbackConfig = parseCallbackKeyConfig(environment, {
+    deployed:
+      environment.NODE_ENV === 'staging' ||
+      environment.NODE_ENV === 'production',
+  });
   callbackKeys =
     callbackConfig === undefined
       ? undefined

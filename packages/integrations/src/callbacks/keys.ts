@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import { createHash, createHmac } from 'node:crypto';
 import { canonicalJson } from '@pertexo/workflow-model';
 import {
@@ -14,8 +15,12 @@ export type CallbackKeyConfig = Readonly<{
 }>;
 export function parseCallbackKeyConfig(
   environment: Readonly<Record<string, string | undefined>>,
-  { deployed }: Readonly<{ deployed: boolean }>,
+  options: Readonly<{ deployed: boolean }>,
 ): CallbackKeyConfig | undefined {
+  const { deployed } = z
+    .object({ deployed: z.boolean() })
+    .strict()
+    .parse(options);
   const key = environment.CALLBACK_TOKEN_KEY;
   if (key === undefined) {
     if (
