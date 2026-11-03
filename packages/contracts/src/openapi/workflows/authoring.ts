@@ -1,3 +1,4 @@
+import type { RoutePaths } from '../../routes/openapi.js';
 import type { z } from 'zod';
 import { apiProblemSchema } from '../../errors/api-problem.js';
 import { routePaths, routeSchemas } from '../../routes/openapi.js';
@@ -167,31 +168,46 @@ const problemResponses = Object.freeze({
   Unexpected: problemResponse('Unexpected server error'),
 });
 
+type DeclaredAuthoringRoute =
+  | (typeof authoringRoutes)[keyof typeof authoringRoutes]
+  | (typeof lifecycleRoutes)[keyof typeof lifecycleRoutes]
+  | (typeof versionRoutes)[keyof typeof versionRoutes];
+type AuthoringPaths = RoutePaths<readonly DeclaredAuthoringRoute[]> &
+  typeof workflowAutoPauseContractPaths &
+  typeof workflowConcurrencyContractPaths &
+  typeof workflowErrorContractPaths &
+  typeof publicationReviewContractPaths &
+  typeof collaborationContractPaths &
+  typeof workflowPromotionContractPaths &
+  typeof workflowInputCaseContractPaths &
+  typeof workflowOrganizationContractPaths;
+const paths: AuthoringPaths = {
+  ...routePaths([
+    lifecycleRoutes.duplicate,
+    versionRoutes.restoreVersion,
+    lifecycleRoutes.archive,
+    lifecycleRoutes.restore,
+    lifecycleRoutes.rename,
+    ...Object.values(authoringRoutes),
+    versionRoutes.versions,
+  ]),
+  ...workflowAutoPauseContractPaths,
+  ...workflowConcurrencyContractPaths,
+  ...workflowErrorContractPaths,
+  ...publicationReviewContractPaths,
+  ...collaborationContractPaths,
+  ...workflowPromotionContractPaths,
+  ...workflowInputCaseContractPaths,
+  ...workflowOrganizationContractPaths,
+};
+
 export const workflowAuthoringOpenApiDocument = Object.freeze({
   openapi: '3.1.0',
   info: {
     title: 'Pertexo Workflow Authoring API',
     version: '1.0.0',
   },
-  paths: {
-    ...routePaths([
-      lifecycleRoutes.duplicate,
-      versionRoutes.restoreVersion,
-      lifecycleRoutes.archive,
-      lifecycleRoutes.restore,
-      lifecycleRoutes.rename,
-      ...Object.values(authoringRoutes),
-      versionRoutes.versions,
-    ]),
-    ...workflowAutoPauseContractPaths,
-    ...workflowConcurrencyContractPaths,
-    ...workflowErrorContractPaths,
-    ...publicationReviewContractPaths,
-    ...collaborationContractPaths,
-    ...workflowPromotionContractPaths,
-    ...workflowInputCaseContractPaths,
-    ...workflowOrganizationContractPaths,
-  },
+  paths,
   components: authenticatedComponents(openApiSchemas, problemResponses, {
     automation: true,
   }),
