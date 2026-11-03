@@ -265,6 +265,7 @@ export const workflowRunsOpenApiDocument = Object.freeze({
           queryParameter('createdAtBefore', workflowRunCreatedAtSchema),
         ],
         responses: {
+          '429': problemResponse('Rate limited; see Retry-After'),
           '503': problemResponse(
             'Automation token authentication, limiter or operation dependencies unavailable',
           ),
@@ -315,6 +316,7 @@ export const workflowRunsOpenApiDocument = Object.freeze({
           required: false,
         },
         responses: {
+          '429': problemResponse('Rate limited; see Retry-After'),
           '503': problemResponse(
             'Automation token authentication, limiter or operation dependencies unavailable',
           ),
@@ -339,6 +341,7 @@ export const workflowRunsOpenApiDocument = Object.freeze({
         security: automationSecurity,
         parameters: [workspaceParameter, runParameter],
         responses: {
+          '429': problemResponse('Rate limited; see Retry-After'),
           '503': problemResponse(
             'Automation token authentication, limiter or operation dependencies unavailable',
           ),
@@ -358,6 +361,7 @@ export const workflowRunsOpenApiDocument = Object.freeze({
         security: automationSecurity,
         parameters: [workspaceParameter, runParameter],
         responses: {
+          '429': problemResponse('Rate limited; see Retry-After'),
           '200': jsonResponse(
             'The input the run started with',
             'WorkflowRunInputResponse',
@@ -377,6 +381,7 @@ export const workflowRunsOpenApiDocument = Object.freeze({
         security: automationSecurity,
         parameters: [workspaceParameter, runParameter, nodeRunParameter],
         responses: {
+          '429': problemResponse('Rate limited; see Retry-After'),
           '200': jsonResponse(
             'The output one step run produced',
             'WorkflowNodeRunOutputResponse',
@@ -415,6 +420,7 @@ export const workflowRunsOpenApiDocument = Object.freeze({
         security: automationSecurity,
         parameters: [workspaceParameter, runParameter, nodeRunParameter],
         responses: {
+          '429': problemResponse('Rate limited; see Retry-After'),
           '200': jsonResponse(
             'The input one step run received, when it was recorded',
             'WorkflowNodeRunInputResponse',
@@ -508,6 +514,7 @@ export const workflowRunsOpenApiDocument = Object.freeze({
           required: false,
         },
         responses: {
+          '429': problemResponse('Rate limited; see Retry-After'),
           '503': problemResponse(
             'Automation token authentication, limiter or operation dependencies unavailable',
           ),

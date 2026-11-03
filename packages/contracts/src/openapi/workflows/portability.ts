@@ -103,6 +103,7 @@ export const workflowPortabilityOpenApiDocument = Object.freeze({
         ],
         requestBody: jsonRequest('WorkflowExportRequest'),
         responses: {
+          '429': problemResponse('Rate limited; see Retry-After'),
           '200': {
             ...jsonResponse(
               'Reviewed portable workflow',
@@ -134,6 +135,7 @@ export const workflowPortabilityOpenApiDocument = Object.freeze({
         parameters: [workspace, csrf],
         requestBody: jsonRequest('WorkflowImportPreviewRequest'),
         responses: {
+          '429': problemResponse('Rate limited; see Retry-After'),
           '200': {
             ...jsonResponse(
               'Advisory compatibility preview',
@@ -155,6 +157,7 @@ export const workflowPortabilityOpenApiDocument = Object.freeze({
         parameters: [workspace, csrf, idempotencyHeaderParameter()],
         requestBody: jsonRequest('WorkflowImportRequest'),
         responses: {
+          '429': problemResponse('Rate limited; see Retry-After'),
           '201': {
             ...jsonResponse('Workflow imported', 'WorkflowImportResponse'),
             headers: {

@@ -82,8 +82,8 @@ describe('admitRateLimit', () => {
         metrics,
         decision,
       );
-    expect(await admit()).toEqual({ kind: 'admitted' });
-    expect(await admit()).toEqual({ kind: 'admitted' });
+    expect(await admit()).toMatchObject({ kind: 'admitted' });
+    expect(await admit()).toMatchObject({ kind: 'admitted' });
     expect(await admit()).toMatchObject({ kind: 'limited' });
     expect(metrics.record).toHaveBeenCalledWith({
       endpointClass: 'callback_ingress',

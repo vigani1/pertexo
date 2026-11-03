@@ -782,6 +782,16 @@
           "403": {
             "$ref": "#/components/responses/Forbidden"
           },
+          "429": {
+            "description": "Rate limited; see Retry-After",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
           "500": {
             "$ref": "#/components/responses/Unexpected"
           },
@@ -990,6 +1000,16 @@
           "404": {
             "$ref": "#/components/responses/NotFound"
           },
+          "429": {
+            "description": "Rate limited; see Retry-After",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
           "500": {
             "$ref": "#/components/responses/Unexpected"
           },
@@ -1076,6 +1096,16 @@
           },
           "404": {
             "$ref": "#/components/responses/NotFound"
+          },
+          "429": {
+            "description": "Rate limited; see Retry-After",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
           },
           "500": {
             "$ref": "#/components/responses/Unexpected"
@@ -1396,6 +1426,16 @@
           "428": {
             "$ref": "#/components/responses/PreconditionRequired"
           },
+          "429": {
+            "description": "Rate limited; see Retry-After",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
           "500": {
             "$ref": "#/components/responses/Unexpected"
           },
@@ -1498,6 +1538,16 @@
           },
           "404": {
             "$ref": "#/components/responses/NotFound"
+          },
+          "429": {
+            "description": "Rate limited; see Retry-After",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
           },
           "500": {
             "$ref": "#/components/responses/Unexpected"

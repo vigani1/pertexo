@@ -277,6 +277,21 @@ like an absent resource. Invalid or revoked credentials return generic 401; they
 never reveal whether a token exists. Rate limits remain tied to the owner and
 workspace as well as the token. Cancellation retries reuse state, not a new run.
 
+## Rate limits
+
+Successful responses carry `RateLimit-Limit`, `RateLimit-Remaining` and `RateLimit-Reset`
+(seconds) for the tightest budget the request counted against. A 429 has `Retry-After`.
+Limits are per minute, for the person and for the whole workspace:
+
+| Routes | Person | Workspace |
+| --- | --- | --- |
+| Reads | 600 | 1200 |
+| Starting a run | 60 | 120 |
+| Publishing, import and export | 30 | 60 |
+| Other changes | 120 | 300 |
+
+Every token request also counts against 600 per minute for its address.
+
 Keep the command keys and reviewed files in your deployment records, protect any
 sensitive workflow inputs there, and use the JSON code/request ID when asking the
 operator for help. Do not copy secrets or Authorization headers into diagnostics.

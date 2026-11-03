@@ -1,6 +1,7 @@
 export {
   DistributedRateLimiter,
   type DistributedRateLimitResult,
+  type RateLimitQuota,
   type RateLimitScriptExecutor,
 } from './distributed-rate-limiter.js';
 export { LocalRateLimiter } from './local-rate-limiter.js';
