@@ -26,13 +26,16 @@ vi.mock(
   }),
 );
 
-vi.mock('../../../../../database/dist/platform/pool/runtime.js', () => ({
-  acquireDatabasePool: () => {
-    const pool = seams.pools.shift();
-    if (pool === undefined) throw new Error('Unexpected pool acquisition');
-    return { pool, close: pool.close };
-  },
-}));
+vi.mock(
+  '../../../../../database/dist/platform/pool/database-pool.runtime.js',
+  () => ({
+    acquireDatabasePool: () => {
+      const pool = seams.pools.shift();
+      if (pool === undefined) throw new Error('Unexpected pool acquisition');
+      return { pool, close: pool.close };
+    },
+  }),
+);
 
 vi.mock('../../../../../database/dist/tenant-access/transactions.js', () => ({
   withPlatformTransaction: async (

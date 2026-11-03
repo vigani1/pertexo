@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { waitForDelayOrStop } from '../src/runtime.js';
+import { waitForDelayOrStop } from '../src/wait-for-delay-or-stop.js';
 
 describe('waitForDelayOrStop', () => {
   it('resolves after the requested delay', async () => {

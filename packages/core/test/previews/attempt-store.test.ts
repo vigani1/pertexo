@@ -8,9 +8,12 @@ const database = vi.hoisted(() => ({
   markDispatched: vi.fn(() => Promise.resolve('committed' as const)),
 }));
 
-vi.mock('../../../database/dist/platform/pool/runtime.js', () => ({
-  acquireDatabasePool: database.acquire,
-}));
+vi.mock(
+  '../../../database/dist/platform/pool/database-pool.runtime.js',
+  () => ({
+    acquireDatabasePool: database.acquire,
+  }),
+);
 vi.mock('../../src/previews/attempts/mark-dispatched.js', () => ({
   markPreviewDispatched: database.markDispatched,
 }));

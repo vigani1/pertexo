@@ -380,7 +380,7 @@ evidence:
   `OUTBOX_DISPATCH_*`: existing dispatcher defaults are 25 jobs, 30-second lease,
   five-second publish-operation timeout and ten attempts. They concern transport
   publication, not audience capture. `maintenanceBounds` in
-  [maintenance runtime](../../apps/worker/src/maintenance/runtime.ts) separately
+  [maintenance runtime](../../apps/worker/src/maintenance/maintenance.runtime.ts) separately
   defaults provider delivery to 30 seconds and shutdown cleanup to five seconds.
   Neither proves the proposed capture budget or aggregate worker admission.
 - [Tenant transactions](../../packages/database/src/tenant-access/transactions.ts),

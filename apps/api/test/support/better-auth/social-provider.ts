@@ -1,7 +1,7 @@
 import { createApplicationSecretEnvelope } from '@pertexo/integrations/server';
 import { beforeAll, afterAll, vi } from 'vitest';
 import * as composition from '../../../src/platform/identity/better-auth-composition.js';
-import { createBetterAuthRuntime } from '../../../src/authentication/better-auth/runtime.js';
+import { createBetterAuthRuntime } from '../../../src/authentication/better-auth/better-auth.runtime.js';
 import type { SocialProviderGateway } from '../../../src/authentication/social-provider.types.js';
 
 /** Replace the external provider at composition; the real API/session/database stay intact. */

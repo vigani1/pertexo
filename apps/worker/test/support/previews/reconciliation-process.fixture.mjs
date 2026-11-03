@@ -9,7 +9,7 @@ import { parseDatabaseConfig } from '@pertexo/database/testing';
 import { createPreviewAttemptRunStore } from '@pertexo/core/previews';
 import { Pool } from 'pg';
 
-import { createNodeAttemptRuntime } from '../../../src/attempts/delivery/runtime.ts';
+import { createNodeAttemptRuntime } from '../../../src/attempts/delivery/node-attempt.runtime.ts';
 
 const rawInput = JSON.parse(
   process.env.PREVIEW_RECONCILIATION_CHILD_INPUT ?? '{}',

@@ -13,7 +13,7 @@ import {
 } from './outbox-dispatcher/fixture.js';
 import { transportMetrics } from '../support/transport/metrics.js';
 import { JOB_NAME, type QueueJob, type QueueProducer } from '@pertexo/queue';
-import { OutboxDispatcher } from '../../src/transport/outbox/dispatch/runtime.js';
+import { OutboxDispatcher } from '../../src/transport/outbox/dispatch/outbox-dispatcher.runtime.js';
 import { WorkerDrainState } from '../../src/runtime/shutdown/drain-state.js';
 import type {
   LeasedOutboxEvent,

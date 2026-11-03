@@ -9,7 +9,7 @@ import type {
 } from '../../identity/ports.js';
 import type { SafeClientMetadata } from '../../identity/identity-session.types.js';
 import type { SignInEvidence } from '../../identity/ports.js';
-import type { BetterAuthRuntime } from './runtime.js';
+import type { BetterAuthRuntime } from './better-auth.runtime.js';
 import type { BetterAuthSessionDelivery } from './trusted-sessions.js';
 
 type BetterAuthCookieOptions = Readonly<{

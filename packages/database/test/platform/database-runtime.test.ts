@@ -12,7 +12,7 @@ vi.mock('../../src/platform/pool/telemetry/create-pool.js', () => ({
 import {
   acquireDatabasePool,
   createDatabaseRuntime,
-} from '../../src/platform/pool/runtime.js';
+} from '../../src/platform/pool/database-pool.runtime.js';
 
 const config = {
   connectionString: 'postgresql://runtime:password@db/pertexo',

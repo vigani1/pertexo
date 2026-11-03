@@ -12,7 +12,7 @@ import {
 import { createQueueProducer, JOB_NAME, parseQueueJob } from '@pertexo/queue';
 import { describe, expect, it } from 'vitest';
 
-import { createMaintenanceRuntime } from '../../../src/maintenance/runtime.js';
+import { createMaintenanceRuntime } from '../../../src/maintenance/maintenance.runtime.js';
 import {
   acceptanceInput,
   databaseUrl,

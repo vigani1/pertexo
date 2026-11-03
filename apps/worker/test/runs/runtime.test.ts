@@ -5,7 +5,7 @@ import {
   type QueueConsumer,
   type QueueConsumerOptions,
 } from '@pertexo/queue';
-import type { CoordinatorCompositionFactories } from '../../src/runs/runtime.js';
+import type { CoordinatorCompositionFactories } from '../../src/runs/coordinator.runtime.js';
 import {
   runtimeOptions,
   runtimeDependencies,

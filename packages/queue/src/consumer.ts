@@ -5,7 +5,7 @@ import type {
   QueueConsumer,
 } from './consumption/queue-consumer.types.js';
 
-import { BullMqQueueConsumer } from './consumption/runtime.js';
+import { BullMqQueueConsumer } from './consumption/bullmq-consumer.runtime.js';
 export { InvalidQueueDeliveryError } from './jobs/delivery-admission.js';
 export {
   type QueueDeliveryTransport,

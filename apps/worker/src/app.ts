@@ -26,7 +26,7 @@ import {
   OUTBOX_DISPATCHER,
   TRANSPORT_METRICS,
 } from './transport/transport.module.js';
-import type { OutboxDispatcher } from './transport/outbox/dispatch/runtime.js';
+import type { OutboxDispatcher } from './transport/outbox/dispatch/outbox-dispatcher.runtime.js';
 import {
   WorkerModule,
   type WorkerModuleDependencies,

@@ -3,7 +3,7 @@ import { createHmac, timingSafeEqual } from 'node:crypto';
 import { z } from 'zod';
 import { createBoundedKmsClient } from '../credentials/kms-client.js';
 import { SelfManagedEnvelopeKeyProvider } from '../credentials/self-managed-key-provider.js';
-import type { ConnectionEnvelopeEncryptionConfig } from '../credentials/runtime.js';
+import type { ConnectionEnvelopeEncryptionConfig } from '../credentials/connection-encryption.runtime.js';
 import {
   AwsKmsEnvelopeKeyProviderCore,
   EnvelopeCipher,

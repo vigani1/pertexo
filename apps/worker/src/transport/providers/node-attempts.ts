@@ -8,8 +8,8 @@ import type { WorkerConfig } from '../../config/worker.js';
 import {
   createNodeAttemptRuntime,
   type NodeAttemptRuntime,
-} from '../../attempts/delivery/runtime.js';
-import { createPlatformPreviewNodeInvoker } from '../../previews/runtime.js';
+} from '../../attempts/delivery/node-attempt.runtime.js';
+import { createPlatformPreviewNodeInvoker } from '../../previews/preview-invoker.runtime.js';
 import {
   NODE_ATTEMPT_RUNTIME,
   QUEUE_CONSUMER_OBSERVER,

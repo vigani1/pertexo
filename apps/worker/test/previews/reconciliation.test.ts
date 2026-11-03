@@ -3,7 +3,7 @@ import {
   parseDatabaseConfig,
   canonicalOutboxPayloadChecksum,
 } from '@pertexo/database/testing';
-import type { MaintenanceRuntimeFactories } from '../../src/maintenance/runtime.js';
+import type { MaintenanceRuntimeFactories } from '../../src/maintenance/maintenance.runtime.js';
 import {
   idleConnectionHealth,
   delivery,

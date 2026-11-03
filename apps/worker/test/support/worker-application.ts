@@ -9,17 +9,17 @@ import type {
 import type { QueueProducer } from '@pertexo/queue';
 
 import type { WorkerApplicationCompositionFactories } from '../../src/app.js';
-import type { NodeAttemptRuntime } from '../../src/attempts/delivery/runtime.js';
+import type { NodeAttemptRuntime } from '../../src/attempts/delivery/node-attempt.runtime.js';
 import type { WorkerConfig } from '../../src/config/worker.js';
-import type { MaintenanceRuntime } from '../../src/maintenance/runtime.js';
+import type { MaintenanceRuntime } from '../../src/maintenance/maintenance.runtime.js';
 import type { WorkspaceInboxRuntime } from '../../src/notifications/inbox-runtime.js';
 import { WORKSPACE_INBOX_RUNTIME } from '../../src/notifications/inbox-runtime.js';
 import { WORKSPACE_DATABASE } from '../../src/platform/database/database.module.js';
 import {
   RETENTION_RUNTIME,
   type RetentionRuntime,
-} from '../../src/retention/runtime.js';
-import type { CoordinatorRuntime } from '../../src/runs/runtime.js';
+} from '../../src/retention/retention.runtime.js';
+import type { CoordinatorRuntime } from '../../src/runs/coordinator.runtime.js';
 import {
   STALLED_WORK_RUNTIME,
   type StalledWorkRuntime,
@@ -38,9 +38,9 @@ import {
   TRANSPORT_METRICS,
   TRIGGER_RUNTIME,
 } from '../../src/transport/transport.module.js';
-import { OutboxDispatcher } from '../../src/transport/outbox/dispatch/runtime.js';
+import { OutboxDispatcher } from '../../src/transport/outbox/dispatch/outbox-dispatcher.runtime.js';
 import { createOwnedOutboxDispatcher } from '../../src/transport/providers/dispatcher.js';
-import type { TriggerRuntime } from '../../src/triggers/runtime.js';
+import type { TriggerRuntime } from '../../src/triggers/trigger.runtime.js';
 import {
   WORKFLOW_AUTO_PAUSE_RUNTIME,
   type WorkflowAutoPauseRuntime,

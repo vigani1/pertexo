@@ -11,7 +11,7 @@ import { workspaceInvitationDeliveryFactories } from '../../identity/invitation-
 import {
   createMaintenanceRuntime,
   type MaintenanceRuntime,
-} from '../../maintenance/runtime.js';
+} from '../../maintenance/maintenance.runtime.js';
 import {
   MAINTENANCE_RUNTIME,
   QUEUE_CONSUMER_OBSERVER,

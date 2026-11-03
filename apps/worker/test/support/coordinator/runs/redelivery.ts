@@ -4,7 +4,7 @@ import { createQueueProducer, JOB_NAME, QUEUE_NAME } from '@pertexo/queue';
 
 import { Queue } from 'bullmq';
 
-import { createCoordinatorRuntime } from '../../../../src/runs/runtime.js';
+import { createCoordinatorRuntime } from '../../../../src/runs/coordinator.runtime.js';
 
 import {
   databaseUrl,

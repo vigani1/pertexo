@@ -35,7 +35,7 @@ import type { ProviderRateLimiter } from '../../../providers/connections.js';
 import type {
   ArtifactSpoolOperations,
   WorkerArtifactPersistence,
-} from '../../artifacts/runtime.js';
+} from '../../artifacts/node-artifact.runtime.js';
 
 export type WorkerNodeRuntimeCapabilityOptions = Readonly<{
   callbacks?: CallbackKeyConfig;

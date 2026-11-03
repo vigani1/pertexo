@@ -17,11 +17,11 @@ import {
   workerTestFactories,
   type WorkerTestServices,
 } from '../support/worker-application.js';
-import type { CoordinatorRuntime } from '../../src/runs/runtime.js';
-import type { NodeAttemptRuntime } from '../../src/attempts/delivery/runtime.js';
-import type { MaintenanceRuntime } from '../../src/maintenance/runtime.js';
-import type { TriggerRuntime } from '../../src/triggers/runtime.js';
-import type { RetentionRuntime } from '../../src/retention/runtime.js';
+import type { CoordinatorRuntime } from '../../src/runs/coordinator.runtime.js';
+import type { NodeAttemptRuntime } from '../../src/attempts/delivery/node-attempt.runtime.js';
+import type { MaintenanceRuntime } from '../../src/maintenance/maintenance.runtime.js';
+import type { TriggerRuntime } from '../../src/triggers/trigger.runtime.js';
+import type { RetentionRuntime } from '../../src/retention/retention.runtime.js';
 import type { WorkflowAutoPauseRuntime } from '../../src/workflows/auto-pause-runtime.js';
 
 export function createWorkerApplication(

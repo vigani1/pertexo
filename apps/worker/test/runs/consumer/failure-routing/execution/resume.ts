@@ -1,6 +1,6 @@
 import { expect } from 'vitest';
 
-import { createCoordinatorRuntime } from '../../../../../dist/runs/runtime.js';
+import { createCoordinatorRuntime } from '../../../../../dist/runs/coordinator.runtime.js';
 
 import { coordinatorFixture as fixture } from '../../../../support/coordinator/consumer.js';
 

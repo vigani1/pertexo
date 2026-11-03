@@ -1,5 +1,5 @@
-import { acquireDatabasePool } from './platform/pool/runtime.js';
-import type { DatabaseRuntime } from './platform/pool/runtime.js';
+import { acquireDatabasePool } from './platform/pool/database-pool.runtime.js';
+import type { DatabaseRuntime } from './platform/pool/database-pool.runtime.js';
 
 import type { DatabaseConfig } from './config.js';
 import {

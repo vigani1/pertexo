@@ -7,7 +7,7 @@ import type {
 } from '@pertexo/core/testing';
 import { JOB_NAME, type QueueProducer } from '@pertexo/queue';
 import { vi } from 'vitest';
-import { OutboxDispatcher } from '../../../src/transport/outbox/dispatch/runtime.js';
+import { OutboxDispatcher } from '../../../src/transport/outbox/dispatch/outbox-dispatcher.runtime.js';
 
 import { WorkerDrainState } from '../../../src/runtime/shutdown/drain-state.js';
 

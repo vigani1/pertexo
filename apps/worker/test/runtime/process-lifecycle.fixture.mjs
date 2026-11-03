@@ -3,7 +3,7 @@ import { createDatabaseRuntime } from '@pertexo/database/platform';
 import { createWorkerApplication } from '../../dist/app.js';
 import { WORKSPACE_INBOX_RUNTIME } from '../../dist/notifications/inbox-runtime.js';
 import { WORKSPACE_DATABASE } from '../../dist/platform/database/database.module.js';
-import { RETENTION_RUNTIME } from '../../dist/retention/runtime.js';
+import { RETENTION_RUNTIME } from '../../dist/retention/retention.runtime.js';
 import { STALLED_WORK_RUNTIME } from '../../dist/runs/stalled-work.js';
 import { WorkerReadiness } from '../../dist/runtime/health/readiness.js';
 import { WorkerReadinessMonitor } from '../../dist/runtime/health/readiness-monitor.js';
@@ -17,7 +17,7 @@ import {
   TRANSPORT_METRICS,
   TRIGGER_RUNTIME,
 } from '../../dist/transport/transport.module.js';
-import { OutboxDispatcher } from '../../dist/transport/outbox/dispatch/runtime.js';
+import { OutboxDispatcher } from '../../dist/transport/outbox/dispatch/outbox-dispatcher.runtime.js';
 import { createOwnedOutboxDispatcher } from '../../dist/transport/providers/dispatcher.js';
 import { WORKFLOW_AUTO_PAUSE_RUNTIME } from '../../dist/workflows/auto-pause-runtime.js';
 import process from 'node:process';

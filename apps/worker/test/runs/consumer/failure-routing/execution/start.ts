@@ -7,9 +7,9 @@ import { createOutboxDispatcherDatabase } from '@pertexo/core/testing';
 import { NodeExecutorFailure } from '@pertexo/node-sdk/server';
 import { createQueueProducer, JOB_NAME } from '@pertexo/queue';
 
-import { createCoordinatorRuntime } from '../../../../../dist/runs/runtime.js';
+import { createCoordinatorRuntime } from '../../../../../dist/runs/coordinator.runtime.js';
 import { WorkerDrainState } from '../../../../../dist/runtime/shutdown/drain-state.js';
-import { OutboxDispatcher } from '../../../../../dist/transport/outbox/dispatch/runtime.js';
+import { OutboxDispatcher } from '../../../../../dist/transport/outbox/dispatch/outbox-dispatcher.runtime.js';
 import { coordinatorFixture as fixture } from '../../../../support/coordinator/consumer.js';
 
 import type { RoutingBase } from './contract.js';

@@ -4,7 +4,7 @@ import type { QueueConsumerObserver } from '@pertexo/queue';
 import { describe, expect, it, vi } from 'vitest';
 
 import { parseWorkerConfig } from '../../src/config/worker.js';
-import type { MaintenanceRuntime } from '../../src/maintenance/runtime.js';
+import type { MaintenanceRuntime } from '../../src/maintenance/maintenance.runtime.js';
 import {
   createOwnedMaintenanceRuntime,
   type MaintenanceProviderFactories,

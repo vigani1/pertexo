@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   createConnectionEnvelopeEncryption,
   parseConnectionEncryptionConfig,
-} from '../../src/credentials/runtime.js';
+} from '../../src/credentials/connection-encryption.runtime.js';
 import { createWebhookTriggerEnvelopeEncryption } from '../../src/webhooks/crypto.js';
 
 const key = Buffer.alloc(32, 7).toString('base64');

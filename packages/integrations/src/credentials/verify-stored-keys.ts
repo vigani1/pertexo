@@ -4,7 +4,7 @@ import {
   SelfManagedEnvelopeKeyProvider,
   isSelfManagedKeyReference,
 } from './self-managed-key-provider.js';
-import type { ConnectionEnvelopeEncryptionConfig } from './runtime.js';
+import type { ConnectionEnvelopeEncryptionConfig } from './connection-encryption.runtime.js';
 
 export type StoredEncryptionKey = Readonly<{
   kind: 'connection' | 'webhook';

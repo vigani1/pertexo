@@ -4,8 +4,8 @@ import type { WorkflowAuthoringStore } from '@pertexo/core/testing';
 import type { Queue } from 'bullmq';
 import type { QueryResult, QueryResultRow } from 'pg';
 
-import type { OutboxDispatcher } from '../../../src/transport/outbox/dispatch/runtime.js';
-import type { TriggerRuntime } from '../../../src/triggers/runtime.js';
+import type { OutboxDispatcher } from '../../../src/transport/outbox/dispatch/outbox-dispatcher.runtime.js';
+import type { TriggerRuntime } from '../../../src/triggers/trigger.runtime.js';
 
 export const lifecycleRunKeys = [
   'queued',

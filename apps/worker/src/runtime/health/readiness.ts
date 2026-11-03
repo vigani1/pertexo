@@ -3,7 +3,7 @@ import type { WorkspaceDatabase } from '@pertexo/database/platform';
 import {
   SYSTEM_MAIL_RUNTIME,
   type SystemMailRuntime,
-} from '../../mail/runtime.js';
+} from '../../mail/system-mail.runtime.js';
 
 import {
   WORKSPACE_INBOX_RUNTIME,
@@ -21,11 +21,11 @@ import {
   OUTBOX_DISPATCHER,
   TRIGGER_RUNTIME,
 } from '../../transport/transport.module.js';
-import type { TriggerRuntime } from '../../triggers/runtime.js';
-import type { OutboxDispatcher } from '../../transport/outbox/dispatch/runtime.js';
-import type { NodeAttemptRuntime } from '../../attempts/delivery/runtime.js';
-import type { CoordinatorRuntime } from '../../runs/runtime.js';
-import type { MaintenanceRuntime } from '../../maintenance/runtime.js';
+import type { TriggerRuntime } from '../../triggers/trigger.runtime.js';
+import type { OutboxDispatcher } from '../../transport/outbox/dispatch/outbox-dispatcher.runtime.js';
+import type { NodeAttemptRuntime } from '../../attempts/delivery/node-attempt.runtime.js';
+import type { CoordinatorRuntime } from '../../runs/coordinator.runtime.js';
+import type { MaintenanceRuntime } from '../../maintenance/maintenance.runtime.js';
 import { WorkerDrainState } from '../shutdown/drain-state.js';
 
 class WorkerDrainingError extends Error {

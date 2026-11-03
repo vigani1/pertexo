@@ -21,7 +21,7 @@ import {
   vi,
 } from 'vitest';
 
-import { OutboxDispatcher } from '../../src/transport/outbox/dispatch/runtime.js';
+import { OutboxDispatcher } from '../../src/transport/outbox/dispatch/outbox-dispatcher.runtime.js';
 import { WorkerDrainState } from '../../src/runtime/shutdown/drain-state.js';
 
 const required = (name: string): string => {

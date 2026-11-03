@@ -15,8 +15,8 @@ import type { DeliveredEmail } from './notifications/resend-mailbox.js';
 import {
   createTriggerRuntime,
   type TriggerRuntime,
-} from '../../../src/triggers/runtime.js';
-import { OutboxDispatcher } from '../../../src/transport/outbox/dispatch/runtime.js';
+} from '../../../src/triggers/trigger.runtime.js';
+import { OutboxDispatcher } from '../../../src/transport/outbox/dispatch/outbox-dispatcher.runtime.js';
 import { createTransportMetrics } from '@pertexo/observability';
 
 import { EditorBrowserWorkerShutdownError } from './cleanup.js';

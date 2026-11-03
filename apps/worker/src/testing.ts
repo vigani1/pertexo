@@ -11,10 +11,10 @@ export type {
 export type {
   NodeAttemptRuntime,
   NodeAttemptRuntimeOptions,
-} from './attempts/delivery/runtime.js';
+} from './attempts/delivery/node-attempt.runtime.js';
 export { createWorkerNodeRuntimeCapabilities } from './attempts/execution/runtime-capabilities.js';
 export {
   createPlatformPreviewNodeInvoker,
   mapPreviewHandlerError,
-} from './previews/runtime.js';
+} from './previews/preview-invoker.runtime.js';
 export type { PreviewAttemptRunStore } from './previews/handler.js';

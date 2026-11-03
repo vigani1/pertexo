@@ -1,6 +1,6 @@
 import { createCallbackStore } from '@pertexo/core/runs';
 import { createCallbackTokenKeys } from '@pertexo/integrations/server';
-import { createCallbackRuntime } from '../../callbacks/runtime.js';
+import { createCallbackRuntime } from '../../callbacks/callback.runtime.js';
 
 import type { CapabilityAssembly } from './node-runtime-capabilities.types.js';
 import { assertCapabilityRuntimeOpen } from './lifecycle.js';

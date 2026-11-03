@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { RetentionMetrics } from '../../src/retention/metrics.js';
-import { createRetentionRuntime } from '../../src/retention/runtime.js';
+import { createRetentionRuntime } from '../../src/retention/retention.runtime.js';
 
 function setup(pollMillis = 60_000) {
   const resources = {

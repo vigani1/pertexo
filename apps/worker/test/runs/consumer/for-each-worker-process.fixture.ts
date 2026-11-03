@@ -3,8 +3,8 @@ import { randomUUID } from 'node:crypto';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
 import { createPlatformNodeRegistry } from '@pertexo/node-catalog/server';
 
-import { createCoordinatorRuntime } from '../../../src/runs/runtime.js';
-import type { createNodeAttemptRuntime } from '../../../src/attempts/delivery/runtime.js';
+import { createCoordinatorRuntime } from '../../../src/runs/coordinator.runtime.js';
+import type { createNodeAttemptRuntime } from '../../../src/attempts/delivery/node-attempt.runtime.js';
 import { testNodeAttemptRuntime } from '../../support/runtime-factories.js';
 
 const databaseUrl = process.env.FOR_EACH_DATABASE_URL;

@@ -32,7 +32,7 @@ later work. Undelivered controls stay absent.
   Existing capabilities are `artifact:upload` and `artifact:read`.
 - `packages/artifact-store/src/artifact.store.ts` exposes a read stream verified against
   stored length, metadata and SHA-256. It owns bytes, not workspace permission.
-- `apps/worker/src/attempts/artifacts/runtime.ts` currently exposes write only.
+- `apps/worker/src/attempts/artifacts/node-artifact.runtime.ts` currently exposes write only.
   The SDK reference already contains ID, length, media type and SHA-256.
 - HTTP Request accepts optional inline UTF-8/base64 bodies. Its executor and
   secure transport both enforce 1 MiB request bodies; GET/HEAD forbid bodies.

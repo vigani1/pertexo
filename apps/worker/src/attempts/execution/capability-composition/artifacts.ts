@@ -17,7 +17,7 @@ import {
 import {
   createNodeArtifactRuntimeFactory,
   type WorkerArtifactPersistence,
-} from '../../artifacts/runtime.js';
+} from '../../artifacts/node-artifact.runtime.js';
 import type { CapabilityAssembly } from './node-runtime-capabilities.types.js';
 import { assertCapabilityRuntimeOpen } from './lifecycle.js';
 
