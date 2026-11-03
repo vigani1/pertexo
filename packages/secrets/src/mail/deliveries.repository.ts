@@ -5,6 +5,7 @@ import {
   gt,
   inArray,
   isNull,
+  notInArray,
   lt,
   lte,
   or,
@@ -131,7 +132,8 @@ export async function settleMail(
   const id = input.id,
     leaseToken = input.leaseToken;
   const leaseGeneration = input.leaseGeneration;
-  const outcome = input.outcome;
+  const payloadUnavailable = input.outcome === 'payload_unavailable';
+  const outcome = payloadUnavailable ? 'retry' : input.outcome;
   const retryAt = input.retryAt ?? null;
   const db = drizzle(pool);
   const delivery = systemMailDeliveries;
@@ -140,7 +142,7 @@ export async function settleMail(
     .select({
       id: delivery.id,
       allowed:
-        sql<boolean>`${outcome}='retry' and ${delivery.attemptCount}<${MAX_ATTEMPTS} and ${retryAt}::timestamptz<${delivery.expiresAt} and ${retryAt}::timestamptz<${delivery.createdAt}+${DELIVERY_WINDOW}`.as(
+        sql<boolean>`${outcome}='retry' and (${payloadUnavailable} or ${delivery.attemptCount}<${MAX_ATTEMPTS}) and ${retryAt}::timestamptz<${delivery.expiresAt} and ${retryAt}::timestamptz<${delivery.createdAt}+${DELIVERY_WINDOW}`.as(
           'allowed',
         ),
     })
@@ -151,6 +153,8 @@ export async function settleMail(
     .update(delivery)
     .set({
       status: sql`case when ${outcome}<>'retry' then ${outcome} when ${retry.allowed} then 'retry' else 'reconciliation_required' end`,
+      // Opening a payload never attempted delivery, so it must not exhaust retries.
+      attemptCount: sql`case when ${payloadUnavailable} then ${delivery.attemptCount}-1 else ${delivery.attemptCount} end`,
       nextAttemptAt: sql`case when ${outcome}='retry' then ${retryAt}::timestamptz else ${delivery.nextAttemptAt} end`,
       providerReference: sql`left(${input.providerReference ?? null}::text,${PROVIDER_REFERENCE_LENGTH})`,
       failureCode: sql`left(${input.failureCode ?? null}::text,${FAILURE_CODE_LENGTH})`,
@@ -176,4 +180,25 @@ export async function settleMail(
     .returning({ id: delivery.id })
     .catch(rethrowQueryFailure);
   return updated.length === 1;
+}
+
+/** Only a missing retained version is needed to refuse startup, never mail content. */
+export async function findUnavailableMailKey(
+  pool: Pool,
+  availableVersions: readonly string[],
+): Promise<string | undefined> {
+  const [row] = await drizzle(pool)
+    .select({ version: systemMailDeliveries.payloadKeyVersion })
+    .from(systemMailDeliveries)
+    .where(
+      and(
+        gt(systemMailDeliveries.expiresAt, sql`clock_timestamp()`),
+        notInArray(systemMailDeliveries.payloadKeyVersion, [
+          ...availableVersions,
+        ]),
+      ),
+    )
+    .limit(1)
+    .catch(rethrowQueryFailure);
+  return row?.version ?? undefined;
 }
