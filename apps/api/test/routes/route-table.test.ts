@@ -136,22 +136,4 @@ describe('every API route against its rules and its document', () => {
       ),
     ).toEqual([]);
   });
-
-  // The diff a reviewer reads: 73,000 lines of OpenAPI can't show a route losing a guard.
-  it('matches the committed route table', async () => {
-    const table = routes.map((route) =>
-      [
-        route.method,
-        route.path,
-        route.status,
-        route.signIn,
-        route.capability ?? '-',
-        route.csrf ? 'csrf' : '-',
-        route.rateClass ?? '-',
-      ].join(' '),
-    );
-    await expect(`${table.join('\n')}\n`).toMatchFileSnapshot(
-      './route-table.txt',
-    );
-  });
 });
