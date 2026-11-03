@@ -12,7 +12,7 @@ import {
 import { WebhookManagementController } from './management/controllers.js';
 import { WebhookManagementService } from './management/service.js';
 import { WORKSPACE_AUTHORIZATION } from '../workspaces/tokens.js';
-import { WEBHOOK_AUTHORIZATION, WEBHOOK_PREFLIGHT } from './tokens.js';
+import { WEBHOOK_PREFLIGHT } from './tokens.js';
 import {
   UnconfiguredWebhooksController,
   UnconfiguredWebhookTestsController,
@@ -64,7 +64,6 @@ export class WebhookModule {
                 useValue: createWebhookPreflight(runtime.ingress),
               },
             ]),
-        { provide: WEBHOOK_AUTHORIZATION, useValue: authorization },
         { provide: WORKSPACE_AUTHORIZATION, useValue: authorization },
       ],
     };
