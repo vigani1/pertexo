@@ -1,16 +1,31 @@
-import { afterAll, beforeAll } from 'vitest';
-
+import { afterAll, beforeAll, expect, it } from 'vitest';
 import { assertIntegrationGateConfigured } from '../support/integration-gate.js';
-import { artifactTransferIntegrationRequested } from './transfer.support.js';
+import {
+  artifactTransferIntegrationRequested,
+  expectProblem,
+  mutationHeaders,
+} from './transfer.support.js';
 import {
   integrationDescribe,
   prepareAuthenticatedArtifactTransferHTTPFixture,
   closeAuthenticatedArtifactTransferHTTPFixture,
+  denialCases,
+  uploadUrl,
+  requestMetadata,
+  fixture,
+  recordBenchmarkOperation,
+  signedPut,
+  parseResponse,
+  begin,
+  expectInvalidPutOrFinalization,
 } from './transfer/fixture.js';
-import { registerRejectsNameBeforePersistenceStorage } from './transfer/rejects-name-before-persistence-storage.cases.js';
-import { registerClaimsOneExactConcurrentUploadEnforces } from './transfer/claims-one-exact-concurrent-upload-enforces.cases.js';
-import { registerRejectsImmutableSignedPUTMetadataName } from './transfer/rejects-immutable-signed-putmetadata-name.cases.js';
-import { registerDoesNotReleasePendingChargeOn } from './transfer/does-not-release-pending-charge-on.cases.js';
+import { randomUUID } from 'node:crypto';
+import {
+  artifactDownloadResponseSchema,
+  artifactMetadataResponseSchema,
+  artifactUploadResponseSchema,
+} from '@pertexo/contracts';
+
 if (artifactTransferIntegrationRequested) {
   assertIntegrationGateConfigured({
     name: 'artifact transfer HTTP and object-store integration',
@@ -30,11 +45,550 @@ integrationDescribe('authenticated artifact transfer HTTP', () => {
   beforeAll(prepareAuthenticatedArtifactTransferHTTPFixture);
 
   afterAll(closeAuthenticatedArtifactTransferHTTPFixture);
-  registerRejectsNameBeforePersistenceStorage();
+  it.each(denialCases)(
+    'rejects $name before persistence or storage',
+    async ({ execute, status, code }) => {
+      const baseline = await fixture.readCapacity();
+      const storageBefore = fixture.readStorageCalls();
+      const response = await execute(
+        fixture,
+        requestMetadata(Buffer.from('denial probe')),
+      );
 
-  registerClaimsOneExactConcurrentUploadEnforces();
+      expectProblem(response, status, code);
+      expect(await fixture.readCapacity()).toEqual(baseline);
+      expect(fixture.readStorageCalls()).toEqual(storageBefore);
+    },
+  );
 
-  registerRejectsImmutableSignedPUTMetadataName();
+  it('rejects uploads while the workspace is suspended and restores state', async () => {
+    const baseline = await fixture.readCapacity();
+    const storageBefore = fixture.readStorageCalls();
+    const owner = await fixture.login('owner');
+    await fixture.setWorkspaceStatus('suspended');
+    try {
+      // Suspension revokes members' sessions (ADR 013).
+      const revoked = await fixture.application.inject({
+        method: 'POST',
+        url: uploadUrl(fixture),
+        headers: mutationHeaders(owner, 'denial-revoked'),
+        payload: requestMetadata(Buffer.from('revoked denial')),
+      });
+      expectProblem(revoked, 401, 'auth.unauthenticated');
+      const suspended = await fixture.application.inject({
+        method: 'POST',
+        url: uploadUrl(fixture),
+        headers: mutationHeaders(
+          await fixture.login('owner'),
+          'denial-suspended',
+        ),
+        payload: requestMetadata(Buffer.from('suspended denial')),
+      });
+      expectProblem(suspended, 404, 'resource.not_found');
+    } finally {
+      await fixture.setWorkspaceStatus('active');
+    }
+    expect(await fixture.readCapacity()).toEqual(baseline);
+    expect(fixture.readStorageCalls()).toEqual(storageBefore);
+  });
 
-  registerDoesNotReleasePendingChargeOn();
+  it('still reads an artifact while the workspace is suspended', async () => {
+    const owner = await fixture.login('owner');
+    const begun = await fixture.application.inject({
+      method: 'POST',
+      url: uploadUrl(fixture),
+      headers: mutationHeaders(owner, 'suspended-read'),
+      payload: requestMetadata(Buffer.from('suspended read')),
+    });
+    expect(begun.statusCode, begun.payload).toBe(201);
+    const artifactId = begun.json<{ artifact: { id: string } }>().artifact.id;
+    await fixture.setWorkspaceStatus('suspended');
+    try {
+      const metadata = await fixture.application.inject({
+        method: 'GET',
+        url: `/v1/workspaces/${fixture.workspaceId}/artifacts/${artifactId}`,
+        headers: { cookie: (await fixture.login('viewer')).cookieHeader },
+      });
+      expect(metadata.statusCode, metadata.payload).toBe(200);
+    } finally {
+      await fixture.setWorkspaceStatus('active');
+    }
+  });
+
+  it('rejects uploads during pending deletion and restores state', async () => {
+    const baseline = await fixture.readCapacity();
+    const storageBefore = fixture.readStorageCalls();
+    await fixture.setWorkspaceStatus('pending_deletion');
+    try {
+      // Pending-deletion projection revokes existing workspace sessions. Log
+      // in again while the workspace is still pending so the request reaches
+      // the workspace-state authorization boundary rather than session auth.
+      const pendingOwner = await fixture.login('owner');
+      const deleting = await fixture.application.inject({
+        method: 'POST',
+        url: uploadUrl(fixture),
+        headers: mutationHeaders(pendingOwner, 'denial-pending-deletion'),
+        payload: requestMetadata(Buffer.from('pending deletion denial')),
+      });
+      expectProblem(deleting, 404, 'resource.not_found');
+    } finally {
+      await fixture.setWorkspaceStatus('active');
+    }
+
+    expect(await fixture.readCapacity()).toEqual(baseline);
+    expect(fixture.readStorageCalls()).toEqual(storageBefore);
+  });
+
+  it('claims one exact concurrent upload, enforces immutable signed PUT metadata, and finalizes', async () => {
+    const owner = await fixture.login('owner');
+    const body = Buffer.alloc(1_048_576, 0x61);
+    const metadata = requestMetadata(body);
+    const key = `concurrent-${randomUUID()}`;
+    const base = `/v1/workspaces/${fixture.workspaceId}/artifacts`;
+    const uploadUrl = `${base}/uploads`;
+    let operationStartedAt = performance.now();
+    const responses = await Promise.all(
+      [0, 1].map(() =>
+        fixture.application.inject({
+          method: 'POST',
+          url: uploadUrl,
+          headers: mutationHeaders(owner, key),
+          payload: metadata,
+        }),
+      ),
+    );
+    recordBenchmarkOperation('artifact-begin', operationStartedAt, 2);
+    for (const response of responses) expect(response.statusCode).toBe(201);
+    const bodies = responses.map((response) =>
+      parseResponse(response, artifactUploadResponseSchema),
+    );
+    expect(bodies[0]?.artifact.id).toBe(bodies[1]?.artifact.id);
+    expect(bodies.map((value) => value.replayed).toSorted()).toEqual([
+      false,
+      true,
+    ]);
+    const artifactId = bodies[0]?.artifact.id;
+    const upload = bodies[0]?.upload;
+    if (artifactId === undefined || upload === undefined)
+      throw new Error('concurrent begin did not return a capability');
+    expect(bodies[0]?.artifact).not.toHaveProperty('storageKey');
+    expect(bodies[0]?.artifact).not.toHaveProperty('purpose');
+    expect(upload.method).toBe('PUT');
+    expect(upload.expiresInSeconds).toBeGreaterThanOrEqual(60);
+    expect(upload.expiresInSeconds).toBeLessThanOrEqual(900);
+    expect(new URL(upload.url).pathname).toContain(artifactId);
+
+    const changedReplay = await fixture.application.inject({
+      method: 'POST',
+      url: uploadUrl,
+      headers: mutationHeaders(owner, key),
+      payload: { ...metadata, mediaType: 'application/octet-stream' },
+    });
+    expectProblem(changedReplay, 409);
+
+    operationStartedAt = performance.now();
+    const uploaded = await signedPut(upload, body);
+    recordBenchmarkOperation(
+      'artifact-upload',
+      operationStartedAt,
+      body.length,
+    );
+    expect(uploaded.ok).toBe(true);
+    await expect(
+      fixture.verificationStore.head({
+        artifactId,
+        workspaceId: fixture.workspaceId,
+      }),
+    ).resolves.toMatchObject({
+      artifactId,
+      workspaceId: fixture.workspaceId,
+      byteLength: body.length,
+      mediaType: metadata.mediaType,
+      sha256: metadata.sha256,
+    });
+
+    operationStartedAt = performance.now();
+    const finalized = await fixture.application.inject({
+      method: 'POST',
+      url: `${base}/${artifactId}/finalize`,
+      headers: mutationHeaders(owner, `finalize-${artifactId}`),
+      payload: {},
+    });
+    recordBenchmarkOperation('artifact-finalize', operationStartedAt);
+    expect(finalized.statusCode).toBe(200);
+    const finalizedBody = parseResponse(
+      finalized,
+      artifactMetadataResponseSchema,
+    );
+    expect(finalizedBody).toMatchObject({
+      id: artifactId,
+      workspaceId: fixture.workspaceId,
+      byteLength: body.length,
+      mediaType: metadata.mediaType,
+      sha256: metadata.sha256,
+      status: 'available',
+      expiresAt: null,
+    });
+    await expect(
+      fixture.verificationStore.head({
+        artifactId,
+        workspaceId: fixture.workspaceId,
+      }),
+    ).resolves.toMatchObject({
+      artifactId,
+      workspaceId: fixture.workspaceId,
+      byteLength: body.length,
+      mediaType: metadata.mediaType,
+      sha256: metadata.sha256,
+    });
+
+    const retry = await fixture.application.inject({
+      method: 'POST',
+      url: `${base}/${artifactId}/finalize`,
+      headers: mutationHeaders(owner, `finalize-retry-${artifactId}`),
+      payload: {},
+    });
+    expect(retry.statusCode).toBe(200);
+    expect(parseResponse(retry, artifactMetadataResponseSchema)).toEqual(
+      finalizedBody,
+    );
+
+    // A completed idempotency identity must never mint a replacement PUT
+    // capability for an already-available artifact.
+    const beforeAvailableReplay = fixture.readStorageCalls();
+    const availableBeginReplay = await fixture.application.inject({
+      method: 'POST',
+      url: uploadUrl,
+      headers: mutationHeaders(owner, key),
+      payload: metadata,
+    });
+    expectProblem(availableBeginReplay, 409, 'artifact.conflict');
+    expect(fixture.readStorageCalls()).toEqual(beforeAvailableReplay);
+
+    const viewer = await fixture.login('viewer');
+    operationStartedAt = performance.now();
+    const safeMetadata = await fixture.application.inject({
+      method: 'GET',
+      url: `${base}/${artifactId}`,
+      headers: { cookie: viewer.cookieHeader },
+    });
+    recordBenchmarkOperation('artifact-metadata', operationStartedAt);
+    expect(safeMetadata.statusCode).toBe(200);
+    expect(safeMetadata.headers['cache-control']).toBe('no-store');
+    expect(parseResponse(safeMetadata, artifactMetadataResponseSchema)).toEqual(
+      finalizedBody,
+    );
+    expect(safeMetadata.payload).not.toContain('storageKey');
+    expect(safeMetadata.payload).not.toContain('workspaces/');
+
+    operationStartedAt = performance.now();
+    const download = await fixture.application.inject({
+      method: 'GET',
+      url: `${base}/${artifactId}/download`,
+      headers: { cookie: viewer.cookieHeader },
+    });
+    expect(download.statusCode).toBe(200);
+    expect(download.headers['cache-control']).toBe('no-store');
+    const capability = parseResponse(download, artifactDownloadResponseSchema);
+    expect(capability.method).toBe('GET');
+    expect(
+      new URL(capability.url).searchParams.get('response-content-disposition'),
+    ).toBe('attachment');
+    expect(capability.url).not.toContain('filename');
+    const downloaded = await fetch(capability.url, {
+      method: capability.method,
+      signal: AbortSignal.timeout(5_000),
+    });
+    try {
+      expect(downloaded.ok).toBe(true);
+      expect(Buffer.from(await downloaded.arrayBuffer())).toEqual(body);
+    } finally {
+      if (!downloaded.bodyUsed) await downloaded.body?.cancel();
+    }
+    recordBenchmarkOperation(
+      'artifact-download',
+      operationStartedAt,
+      body.length,
+    );
+
+    const durableEvidence =
+      await fixture.readDurableTransferEvidence(artifactId);
+    const durableEvidenceText = JSON.stringify(durableEvidence);
+    const persistedClaim = durableEvidence.find((value) =>
+      value.startsWith('idempotency:'),
+    );
+    if (persistedClaim === undefined) throw new Error('Upload claim missing');
+    expect(JSON.parse(persistedClaim.slice('idempotency:'.length))).toEqual({
+      artifactId,
+    });
+    expect(durableEvidenceText).not.toContain(upload.url);
+    expect(durableEvidenceText).not.toContain(capability.url);
+    expect(fixture.readLogText()).not.toContain(upload.url);
+    expect(fixture.readLogText()).not.toContain(capability.url);
+
+    const persisted = await fixture.readArtifact(artifactId);
+    expect(persisted).toMatchObject({
+      id: artifactId,
+      workspaceId: fixture.workspaceId,
+      purpose: 'user-upload',
+      storageKey: `workspaces/${fixture.workspaceId}/artifacts/${artifactId}`,
+      status: 'available',
+      byteLength: body.length,
+    });
+    const capacity = await fixture.readCapacity();
+    expect(Number.isSafeInteger(capacity.chargedBytes)).toBe(true);
+    expect(Number.isSafeInteger(capacity.chargedCount)).toBe(true);
+  });
+
+  it.each([
+    {
+      name: 'changed content type',
+      uploadBody: (body: Buffer) => body,
+      headers: () => ({
+        'content-type': 'application/octet-stream',
+      }),
+    },
+    {
+      name: 'changed checksum',
+      uploadBody: (body: Buffer) => body,
+      headers: () => ({
+        'x-amz-checksum-sha256': Buffer.from('wrong').toString('base64'),
+      }),
+    },
+    {
+      name: 'changed content length',
+      uploadBody: (body: Buffer) => body.subarray(0, body.length - 1),
+      headers: (body: Buffer) => ({
+        'content-length': String(body.length - 1),
+      }),
+    },
+  ] as const)(
+    'rejects immutable signed PUT metadata: $name',
+    async ({ name, uploadBody, headers }) => {
+      const owner = await fixture.login('owner');
+      const body = Buffer.from('immutable signed metadata');
+      const started = await begin(fixture, owner, requestMetadata(body));
+      const result = await signedPut(
+        started.upload,
+        uploadBody(body),
+        headers(body),
+      );
+
+      await expectInvalidPutOrFinalization({
+        fixture: fixture,
+        owner: owner,
+        uploadsUrl: uploadUrl(fixture),
+        artifactId: started.artifact.id,
+        result: result,
+        idempotencyKey: `${name.replaceAll(' ', '-')}-${started.artifact.id}`,
+      });
+    },
+  );
+
+  it('keeps finalize fail-closed for missing and expired objects', async () => {
+    const owner = await fixture.login('owner');
+    const body = Buffer.from('missing-object-finalize');
+    const metadata = requestMetadata(body);
+    const base = `/v1/workspaces/${fixture.workspaceId}/artifacts`;
+
+    const missingBegin = await begin(fixture, owner, metadata);
+    const missingId = missingBegin.artifact.id;
+    const missingFinalize = await fixture.application.inject({
+      method: 'POST',
+      url: `${base}/${missingId}/finalize`,
+      headers: mutationHeaders(owner, `missing-finalize-${missingId}`),
+      payload: {},
+    });
+    expectProblem(missingFinalize, 409);
+    expect((await fixture.readArtifact(missingId))?.status).toBe('pending');
+
+    const expiredBegin = await begin(fixture, owner, metadata);
+    await fixture.expireArtifact(expiredBegin.artifact.id);
+    const beforeExpiredFinalize = await fixture.readCapacity();
+    const expiredFinalize = await fixture.application.inject({
+      method: 'POST',
+      url: `${base}/${expiredBegin.artifact.id}/finalize`,
+      headers: mutationHeaders(
+        owner,
+        `expired-finalize-${expiredBegin.artifact.id}`,
+      ),
+      payload: {},
+    });
+    expectProblem(expiredFinalize, 409);
+    expect(await fixture.readCapacity()).toEqual(beforeExpiredFinalize);
+  });
+
+  it('serializes a quota race and restores the shared capacity limit', async () => {
+    const owner = await fixture.login('owner');
+    const base = `/v1/workspaces/${fixture.workspaceId}/artifacts`;
+    const quotaBefore = await fixture.readCapacity();
+    const quotaBody = Buffer.from('quota race');
+    await fixture.setCapacity({
+      byteLimit: quotaBefore.chargedBytes + quotaBody.length,
+      artifactCountLimit: quotaBefore.chargedCount + 1,
+    });
+    try {
+      const quotaMetadata = requestMetadata(quotaBody);
+      const quotaResponses = await Promise.all(
+        [0, 1].map((index) =>
+          fixture.application.inject({
+            method: 'POST',
+            url: `${base}/uploads`,
+            headers: mutationHeaders(
+              owner,
+              `quota-race-${randomUUID()}-${String(index)}`,
+            ),
+            payload: quotaMetadata,
+          }),
+        ),
+      );
+      expect(
+        quotaResponses.map((response) => response.statusCode).toSorted(),
+      ).toEqual([201, 429]);
+      const quotaAfter = await fixture.readCapacity();
+      expect(quotaAfter.chargedBytes).toBe(
+        quotaBefore.chargedBytes + quotaBody.length,
+      );
+      expect(quotaAfter.chargedCount).toBe(quotaBefore.chargedCount + 1);
+    } finally {
+      await fixture.setCapacity({
+        byteLimit: quotaBefore.byteLimit,
+        artifactCountLimit: quotaBefore.artifactCountLimit,
+      });
+    }
+  });
+
+  it('preserves post-verification authorization denial without committing finalize', async () => {
+    const owner = await fixture.login('owner');
+    const body = Buffer.from('membership changes after object verification');
+    const started = await begin(fixture, owner, requestMetadata(body));
+    expect((await signedPut(started.upload, body)).ok).toBe(true);
+    const charged = await fixture.readCapacity();
+    fixture.afterNextUploadVerification(() =>
+      fixture.withOwner(async (client) => {
+        await client.query(
+          `update app.workspace_memberships set status='removed',updated_at=clock_timestamp()
+             where workspace_id=$1 and user_id=$2`,
+          [fixture.workspaceId, fixture.ownerUserId],
+        );
+      }),
+    );
+
+    try {
+      const finalized = await fixture.application.inject({
+        method: 'POST',
+        url: `/v1/workspaces/${fixture.workspaceId}/artifacts/${started.artifact.id}/finalize`,
+        headers: mutationHeaders(
+          owner,
+          `authorization-race-${started.artifact.id}`,
+        ),
+        payload: {},
+      });
+      expectProblem(finalized, 403, 'auth.forbidden');
+      expect((await fixture.readArtifact(started.artifact.id))?.status).toBe(
+        'pending',
+      );
+      expect(await fixture.readCapacity()).toEqual(charged);
+    } finally {
+      await fixture.withOwner(async (client) => {
+        await client.query(
+          `update app.workspace_memberships set status='active',updated_at=clock_timestamp()
+             where workspace_id=$1 and user_id=$2`,
+          [fixture.workspaceId, fixture.ownerUserId],
+        );
+      });
+    }
+  });
+
+  it('rejects deletion that races after upload verification without releasing capacity', async () => {
+    const owner = await fixture.login('owner');
+    const body = Buffer.from('deletion races verified upload');
+    const started = await begin(fixture, owner, requestMetadata(body));
+    expect((await signedPut(started.upload, body)).ok).toBe(true);
+    const charged = await fixture.readCapacity();
+    fixture.afterNextUploadVerification(() =>
+      fixture.withOwner(async (client) => {
+        await client.query(
+          `update app.artifacts set status='deleting',updated_at=clock_timestamp()
+             where workspace_id=$1 and id=$2`,
+          [fixture.workspaceId, started.artifact.id],
+        );
+      }),
+    );
+    const finalized = await fixture.application.inject({
+      method: 'POST',
+      url: `/v1/workspaces/${fixture.workspaceId}/artifacts/${started.artifact.id}/finalize`,
+      headers: mutationHeaders(owner, `deletion-race-${started.artifact.id}`),
+      payload: {},
+    });
+    expectProblem(finalized, 409, 'artifact.conflict');
+    expect((await fixture.readArtifact(started.artifact.id))?.status).toBe(
+      'deleting',
+    );
+    expect(await fixture.readCapacity()).toEqual(charged);
+  });
+
+  it('does not release a pending charge on expiry and releases exactly once after deletion', async () => {
+    const owner = await fixture.login('owner');
+    const body = Buffer.from('retention charge proof');
+    const metadata = requestMetadata(body);
+    const started = await begin(fixture, owner, metadata);
+    const artifactId = started.artifact.id;
+    const uploaded = await signedPut(started.upload, body);
+    expect(uploaded.ok).toBe(true);
+    await expect(
+      fixture.verificationStore.validateDirectUpload({
+        ...metadata,
+        artifactId,
+        workspaceId: fixture.workspaceId,
+      }),
+    ).resolves.toMatchObject({
+      artifactId,
+      workspaceId: fixture.workspaceId,
+      byteLength: body.length,
+      mediaType: metadata.mediaType,
+      sha256: metadata.sha256,
+    });
+    await fixture.expireArtifact(artifactId);
+    const held = await fixture.readCapacity();
+    expect(held.chargedCount).toBeGreaterThan(0);
+    expect((await fixture.readArtifact(artifactId))?.status).toBe('pending');
+
+    await fixture.withOwner(async (client) => {
+      await client.query(
+        `update app.artifacts set status='deleting',updated_at=clock_timestamp()
+          where workspace_id=$1 and id=$2`,
+        [fixture.workspaceId, artifactId],
+      );
+    });
+    expect(await fixture.readCapacity()).toEqual(held);
+
+    await fixture.verificationStore.delete({
+      artifactId,
+      workspaceId: fixture.workspaceId,
+    });
+    await expect(
+      fixture.verificationStore.head({
+        artifactId,
+        workspaceId: fixture.workspaceId,
+      }),
+    ).resolves.toBeNull();
+    await fixture.withOwner(async (client) => {
+      await client.query(
+        `update app.artifacts
+            set status='deleted',deleted_at=clock_timestamp(),updated_at=clock_timestamp()
+          where workspace_id=$1 and id=$2`,
+        [fixture.workspaceId, artifactId],
+      );
+    });
+    const released = await fixture.readCapacity();
+    expect(released.chargedCount).toBe(held.chargedCount - 1);
+    expect(released.chargedBytes).toBe(held.chargedBytes - body.length);
+
+    await fixture.verificationStore.delete({
+      artifactId,
+      workspaceId: fixture.workspaceId,
+    });
+    expect(await fixture.readCapacity()).toEqual(released);
+  });
 });
