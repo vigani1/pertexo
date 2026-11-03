@@ -29,7 +29,7 @@ import type {
   RemoveProviderInput,
   UpdateProviderInput,
   VerifyDomainInput,
-} from './contract.js';
+} from './federation-management.types.js';
 import {
   createDomain,
   removeDomain,

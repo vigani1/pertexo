@@ -18,7 +18,7 @@ import { expireWorkspaceInvitations } from '../expiration.repository.js';
 import type {
   CreateWorkspaceInvitationInput,
   WorkspaceInvitationCommandResult,
-} from '../../contract.js';
+} from '../../tenant-access.types.js';
 import {
   claimInvitationCommand,
   completeInvitationCommand,
@@ -26,7 +26,10 @@ import {
   invitationKey,
   recordAudit,
 } from './receipts.repository.js';
-import { invitationSelection, lockAuthorizedActor } from './state.repository.js';
+import {
+  invitationSelection,
+  lockAuthorizedActor,
+} from './state.repository.js';
 
 export async function createWorkspaceInvitation(
   pool: Pool,

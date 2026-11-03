@@ -10,7 +10,10 @@ import {
 } from '@pertexo/workflow-model';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { artifacts, formUploads } from '@pertexo/database/schema';
-import { boundUploadsSql, type FormUploadBinding } from './targets.repository.js';
+import {
+  boundUploadsSql,
+  type FormUploadBinding,
+} from './targets.repository.js';
 
 /**
  * Swaps a response's upload IDs for file references. Only finalized, unexpired

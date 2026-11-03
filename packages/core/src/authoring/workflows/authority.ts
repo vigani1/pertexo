@@ -1,6 +1,6 @@
 import { readFolderScope } from '../../shared/facts.repository.js';
 import { workflowAccessible } from '../../tenant-access/resources/workflows.repository.js';
-import type { WorkflowResourceCapability } from '../../shared/contract.js';
+import type { WorkflowResourceCapability } from '../../shared/folder-access.types.js';
 import type { PoolClient } from 'pg';
 import type { Role } from '@pertexo/policy';
 import { WorkspaceAccessDeniedError } from '../../shared/errors.js';

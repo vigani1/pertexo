@@ -3,7 +3,7 @@ import { expect } from 'vitest';
 import type {
   SocialProviderGateway,
   VerifiedSocialIdentity,
-} from '../../../../src/authentication/providers/contract.js';
+} from '../../../../src/authentication/social-provider.types.js';
 import { useSocialProviderGateway } from '../../../support/better-auth/social-provider.js';
 import {
   setCookie,

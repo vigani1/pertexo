@@ -8,7 +8,7 @@ export {
   type FailureNotificationStore,
 } from './store.js';
 export { FailureNotificationStateError } from './errors.js';
-export type { FailureNotificationResolvedDestination } from './contract.js';
+export type { FailureNotificationResolvedDestination } from './failure-notification.types.js';
 
 // Run acceptance and a run's completion use these directly (ADR 091).
 export type {} from './policies/admission.repository.js';

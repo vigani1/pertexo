@@ -21,7 +21,7 @@ import type {
   SystemMailDeliveryClaim,
   SystemMailInput,
   SystemMailSettlement,
-} from './contract.js';
+} from './system-mail.types.js';
 
 // Twelve attempts within 24 hours, before link expiry, under a 60-second lease. The
 // table's system_mail_attempts_bounded check holds the same twelve.

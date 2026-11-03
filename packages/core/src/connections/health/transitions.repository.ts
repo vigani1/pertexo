@@ -10,7 +10,7 @@ import {
   type ConnectionRecord,
   type ConnectionStatus,
   type ConnectionTestOutcome,
-} from '../contract.js';
+} from '../connection.js';
 import { appendConnectionEvent } from '../events.repository.js';
 import { connectionFields } from '../connections.repository.js';
 import { isStaleTestObservation } from './rules.js';

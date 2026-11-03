@@ -20,7 +20,10 @@ import {
 } from '../../../attempts/dispatch/fence.repository.js';
 import { generatePersistedId } from '@pertexo/database/platform';
 import { CallbackCapacityError } from './errors.js';
-import type { CallbackPreparation, PreparedCallback } from './contract.js';
+import type {
+  CallbackPreparation,
+  PreparedCallback,
+} from './callback.types.js';
 export async function prepareCallbacks(
   client: PoolClient,
   input: CallbackPreparation,

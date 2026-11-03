@@ -1,7 +1,7 @@
 import type { EventCoordinationReceipt } from '@pertexo/workflow-model';
 
 import { coordinatedReceipt } from '../coordination/events.repository.js';
-import type { WebhookDeliveryOutcome } from './contract.js';
+import type { WebhookDeliveryOutcome } from './webhook-delivery.types.js';
 import { WebhookDeliveryReplayMismatchError } from './errors.js';
 import type { WebhookReplayRecord } from './replay.repository.js';
 

@@ -23,7 +23,7 @@ import type {
   ImportRowsInput,
   RemoveTableInput,
   WriteRowsInput,
-} from './contract.js';
+} from './data-table-commands.types.js';
 import { editSchema } from './columns/edit.repository.js';
 import { exportTable } from './csv/export.js';
 import { listTables } from './table-lookups.repository.js';

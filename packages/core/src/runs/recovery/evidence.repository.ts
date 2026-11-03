@@ -31,7 +31,7 @@ import { lockReplaySource, lockReplayVersion } from '../commands/replay-run.js';
 import type {
   WorkflowRecoveryMetadata,
   WorkflowRecoveryPreparation,
-} from './contract.js';
+} from './workflow-recovery.types.js';
 import {
   readWorkflowRunFailedSteps,
   runInputInTransaction,

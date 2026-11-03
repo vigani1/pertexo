@@ -13,7 +13,7 @@ import type { PoolClient } from 'pg';
 import { hasCapability, rolesForCapability, type Role } from '@pertexo/policy';
 import { WorkspaceAccessDeniedError } from '../../../shared/errors.js';
 import { readWorkspaceAuthority } from '../../../shared/authority.repository.js';
-import type { ResourceActor } from '../../../shared/contract.js';
+import type { ResourceActor } from '../../../shared/folder-access.types.js';
 import { RESOURCE_ADMINISTRATORS } from '../../../shared/folder-policy.js';
 
 export type ConnectionCapability = 'connection:read' | 'connection:use';

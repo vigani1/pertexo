@@ -9,7 +9,7 @@ import {
 import {
   EVENT_COORDINATION_LIMITS,
   type EventCoordinationPolicy,
-} from './contract.js';
+} from './event-coordination.schemas.js';
 
 export function inspectEventCoordinationExpression(
   expression: string,

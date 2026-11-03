@@ -7,7 +7,7 @@ import {
   type AuditFact,
 } from '@pertexo/database/primitives';
 import { updateMemberships } from '../../../src/tenant-access/members/records.repository.js';
-import type { MembershipChange } from '../../../src/tenant-access/members/contract.js';
+import type { MembershipChange } from '../../../src/tenant-access/members/membership.types.js';
 import { revokeSessionsForUsers } from '../../../src/tenant-access/users/sessions.repository.js';
 import { useIdentityCommandDatabase } from '../command.support.js';
 

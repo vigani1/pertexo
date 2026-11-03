@@ -5,16 +5,16 @@ import type { PoolClient } from 'pg';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { connectionSecretVersions } from '@pertexo/database/schema';
 
-import type { ResolvedConnectionSecretRecord } from '../contract.js';
+import type { ResolvedConnectionSecretRecord } from '../connection.js';
 import {
   CONNECTION_EVENT_TYPE,
   CONNECTION_STATUS,
   ConnectionNotFoundError,
   ConnectionUnavailableError,
-} from '../contract.js';
+} from '../connection.js';
 import { recordMemberAction } from '../events.repository.js';
 import { sealedFields, selectConnection } from '../connections.repository.js';
-import type { ResolveConnectionLookupSecretInput } from './contract.js';
+import type { ResolveConnectionLookupSecretInput } from './connection-resolution.types.js';
 
 /**
  * The credential for an ADR 046 read-only provider lookup, with its access

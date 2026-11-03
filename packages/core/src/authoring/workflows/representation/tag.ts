@@ -1,5 +1,5 @@
 import { workflowDraftRepresentationTag } from '@pertexo/workflow-model/server';
-import type { WorkflowDraftRecord } from './contract.js';
+import type { WorkflowDraftRecord } from './workflow-record.types.js';
 
 /** The If-Match value of a saved draft, as this catalog reads it. */
 export function draftRepresentationTag(

@@ -1,6 +1,6 @@
 import type { Worker } from 'node:worker_threads';
 import { utf8ByteLength } from '../../values/text.js';
-import type { GraphValidationResult } from '../../graph/validation/contract.js';
+import type { GraphValidationResult } from '../../graph/validation/graph-validation.js';
 import {
   AUTHORING_VALIDATION_BUDGET as budget,
   AuthoringValidationUnavailableError,

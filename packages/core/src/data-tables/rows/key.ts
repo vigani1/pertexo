@@ -5,7 +5,7 @@ import {
 } from '@pertexo/node-sdk';
 import { canonicalJson, utf8ByteLength } from '@pertexo/workflow-model';
 
-import type { DataTableDefinition } from '../contract.js';
+import type { DataTableDefinition } from '../data-table-commands.types.js';
 
 /** What a row's unique key is stored as, so equal values clash however they're written. */
 export function keyValue(

@@ -9,7 +9,7 @@ import {
   workflowTestSnapshots,
 } from '@pertexo/database/schema';
 import { admitTestRun } from '../workflows/admit.js';
-import type { SuiteCaseRow, SuiteRow } from './contract.js';
+import type { SuiteCaseRow, SuiteRow } from './workflow-test-suite.types.js';
 export async function admitSuiteCase(
   client: PoolClient,
   suite: SuiteRow,

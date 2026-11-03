@@ -1,4 +1,4 @@
-import type { DatabaseReadiness } from './contract.js';
+import type { DatabaseReadiness } from './database-platform.types.js';
 import { sql } from 'drizzle-orm';
 import { QueryBuilder } from 'drizzle-orm/pg-core';
 import type { Pool } from 'pg';

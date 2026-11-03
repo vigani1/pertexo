@@ -2,7 +2,7 @@ import { enforceTestRetention } from '../support/workflow-authoring.js';
 import { randomUUID } from 'node:crypto';
 import { expect, it } from 'vitest';
 import { createWorkflowAuthoringFixtureDatabase } from '../support/workflow-authoring-admission.fixture.js';
-import type { NoticeMailToSeal } from '../../src/inbox/mail/contract.js';
+import type { NoticeMailToSeal } from '../../src/inbox/mail/notice-mail.types.js';
 import {
   config,
   own,

@@ -15,7 +15,7 @@ import {
 import type {
   ReplaceWorkspaceVariablesInput,
   VariableUsageInput,
-} from './contract.js';
+} from './workspace-variables.js';
 import { replaceWorkspaceVariables } from './replace.js';
 import { readWorkspaceVariables } from './set.repository.js';
 import { readVariableUsage } from './usage.repository.js';

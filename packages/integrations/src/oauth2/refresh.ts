@@ -15,8 +15,8 @@ import type {
   OAuth2GrantLossActor,
   OAuth2Token,
   OAuth2TokenStore,
-} from './contract.js';
-import { OAuth2TokenFailure } from './contract.js';
+} from './oauth2-token.js';
+import { OAuth2TokenFailure } from './oauth2-token.js';
 import {
   decodeClientSettings,
   decodeStoredClientSecret,

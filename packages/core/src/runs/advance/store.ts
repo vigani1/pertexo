@@ -10,7 +10,7 @@ import type {
   RunAdvanceInput,
   RunAdvanceResult,
   RunAdvanceState,
-} from './contract.js';
+} from './run-advance.types.js';
 import {
   auditCoordinatorDeliveryMismatch,
   claimCoordinatorReceipt,

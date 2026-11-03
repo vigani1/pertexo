@@ -11,7 +11,7 @@ import {
 import type {
   ApplyConnectionHealthObservationInput,
   ConnectionHealthApplicationResult,
-} from './contract.js';
+} from './connection-health.types.js';
 
 import type { WorkspaceDatabase } from '@pertexo/database/platform';
 import {

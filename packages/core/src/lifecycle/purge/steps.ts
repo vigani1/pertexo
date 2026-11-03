@@ -127,7 +127,7 @@ import {
 import { purgeDirectoryMemberships } from './directory.repository.js';
 import { reapInvitationReplacementClaims } from '../retention/rules/invitation-claims.repository.js';
 
-import type { PurgeStep } from './contract.js';
+import type { PurgeStep } from './workspace-purge.types.js';
 import { deleteRows } from './delete-rows.js';
 
 /**

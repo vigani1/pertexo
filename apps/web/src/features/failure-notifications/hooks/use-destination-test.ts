@@ -3,7 +3,7 @@ import {
   isUnconfirmedCommand,
   newCommandKey,
   type CommandKey,
-} from '@/lib/api/commands/contract';
+} from '@/lib/api/commands/command-retry';
 import { useRef } from 'react';
 import type { FailureNotificationDestinationResponse } from '@pertexo/contracts';
 import { isApiError } from '@/lib/api/error';

@@ -21,7 +21,7 @@ export type {
   NodeSideEffectClass,
   ResolvedHttpCredential,
   ResolvedNodeConnection,
-} from './execution/contract.js';
+} from './execution/node-execution.types.js';
 export {
   DefinitionNotFoundError,
   ExecutorNotFoundError,
@@ -66,7 +66,7 @@ export type {
   NodeCodeRuntime,
   CodeDiagnostics,
   CodeResult,
-} from './code/contract.js';
+} from './code/code-protocol.schemas.js';
 
 export { readCodeFrame, writeCodeFrame } from './code/framing.js';
 
@@ -87,4 +87,4 @@ export type {
   NodeCallbackRuntime,
   NodeCallbackTarget,
   NodeCallbackBindings,
-} from './callbacks/contract.js';
+} from './callbacks/node-callback.types.js';

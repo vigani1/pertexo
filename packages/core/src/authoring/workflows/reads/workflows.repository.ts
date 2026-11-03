@@ -8,7 +8,7 @@ import {
   workflowOrganizationState,
   workflows,
 } from '@pertexo/database/schema';
-import type { FolderScope } from '../../../shared/contract.js';
+import type { FolderScope } from '../../../shared/folder-access.types.js';
 import { workflowScopeSql } from '../../../shared/scope.repository.js';
 import {
   workflowAccessible,
@@ -16,7 +16,7 @@ import {
 } from '../../../tenant-access/resources/workflows.repository.js';
 import { workflowProjection } from '../representation/workflow-representations.repository.js';
 import type { WorkflowRef } from '../access.js';
-import type { ListWorkflowsInput } from '../contract.js';
+import type { ListWorkflowsInput } from '../workflow-commands.types.js';
 
 const folder = new QueryBuilder()
   .select({ id: workflowOrganizationState.folderId })

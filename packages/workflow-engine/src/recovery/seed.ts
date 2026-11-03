@@ -11,7 +11,10 @@ import type {
   SideEffectClass,
   WorkflowCheckpoint,
 } from '../types.js';
-import type { RecoveryPlan, RecoveryRefused } from './contract.js';
+import type {
+  RecoveryPlan,
+  RecoveryRefused,
+} from './workflow-recovery.types.js';
 
 export interface RecoveryCopy {
   readonly id: string;

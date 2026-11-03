@@ -8,12 +8,12 @@ export { PURGE_PRESERVED_TABLES, PURGE_STEPS } from './purge/steps.js';
 export type {
   WorkspacePurgeObjectStore,
   WorkspacePurgeProcessResult,
-} from './purge/contract.js';
+} from './purge/workspace-purge.types.js';
 export type { WorkspacePurgeCoordinator } from './purge/coordinator.js';
-export type { RunArtifactRetentionProcessResult } from './artifacts/contract.js';
+export type { RunArtifactRetentionProcessResult } from './artifacts/artifact-retention.types.js';
 export type { RunArtifactRetentionCoordinator } from './artifacts/coordinator.js';
-export type { RetentionPassResult } from './retention/contract.js';
+export type { RetentionPassResult } from './retention/retention-pass.types.js';
 export type { RetentionStore } from './retention/store.js';
 export { createPreviewRetentionCoordinator } from './previews/coordinator.js';
 export type { PreviewRetentionCoordinator } from './previews/coordinator.js';
-export type { PreviewRetentionProcessResult } from './previews/contract.js';
+export type { PreviewRetentionProcessResult } from './previews/preview-retention.types.js';

@@ -13,7 +13,7 @@ import { prepareNodeAttemptInput } from './input.js';
 import type {
   ExecuteNodeAttemptInput,
   NodeAttemptOutcome,
-} from './contract.js';
+} from './node-attempt.types.js';
 
 import { isCoreMergeDefinition } from '../core-definition-identities.js';
 

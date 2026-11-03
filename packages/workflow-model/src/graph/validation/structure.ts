@@ -1,11 +1,14 @@
 import { canonicalJson } from '../../values/json/canonical.js';
-import { supportsStepRetrySettings } from '../../execution/step-retries/contract.js';
+import { supportsStepRetrySettings } from '../../execution/step-retries/step-retry.schemas.js';
 import type {
   ForEachStructure,
   WorkflowGraph,
   WorkflowNode,
-} from '../contract.js';
-import type { GraphIssueCode, WorkflowGraphLimits } from './contract.js';
+} from '../workflow-graph.schemas.js';
+import type {
+  GraphIssueCode,
+  WorkflowGraphLimits,
+} from './graph-validation.js';
 
 type Issue = (code: GraphIssueCode, path: string, message: string) => void;
 interface Totals {

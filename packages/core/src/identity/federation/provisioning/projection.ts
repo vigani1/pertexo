@@ -1,6 +1,6 @@
 import type { Role } from '@pertexo/policy';
 
-import type { DirectoryRole } from './contract.js';
+import type { DirectoryRole } from './directory-provisioning.types.js';
 
 export type ProjectedMember = Readonly<{
   role: Role;

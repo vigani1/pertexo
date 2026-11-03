@@ -19,7 +19,7 @@ import type {
   NodeAttemptHandlerResult,
   NodeAttemptHandlerDependencies,
   NodeAttemptHeartbeat,
-} from './contract.js';
+} from './node-attempt-delivery.types.js';
 
 export async function completeControlOutcome(
   dependencies: NodeAttemptHandlerDependencies,

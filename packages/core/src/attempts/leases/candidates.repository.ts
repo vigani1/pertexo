@@ -1,4 +1,4 @@
-import type { ClaimDeliveryInput } from '../contract.js';
+import type { ClaimDeliveryInput } from '../node-attempt.js';
 import { and, eq, exists, lt, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { drizzle } from 'drizzle-orm/node-postgres';

@@ -28,7 +28,7 @@ import {
 import {
   collaborationContractPaths,
   collaborationContractSchemas,
-} from './collaboration/contract.js';
+} from './collaboration/collaboration.openapi.js';
 import {
   workflowConcurrencyContractPaths,
   workflowConcurrencyContractSchemas,

@@ -24,7 +24,7 @@ import type {
   QueueConsumerCloseResult,
   QueueConsumer,
   ActiveExecution,
-} from './contract.js';
+} from './queue-consumer.types.js';
 import { parseConsumerOptions } from './configuration.js';
 import {
   QueueConsumerNotReadyError,

@@ -2,7 +2,7 @@ import { Client } from 'pg';
 
 import { parseDatabaseConfig } from '@pertexo/database/platform';
 import { createWorkspacePurgeCoordinator } from '../../src/lifecycle/purge/coordinator.js';
-import type { WorkspacePurgeObjectStore } from '../../src/lifecycle/purge/contract.js';
+import type { WorkspacePurgeObjectStore } from '../../src/lifecycle/purge/workspace-purge.types.js';
 
 /** An object store with nothing in it. */
 export const emptyObjectStore: WorkspacePurgeObjectStore = Object.freeze({

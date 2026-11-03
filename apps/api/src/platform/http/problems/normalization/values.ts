@@ -9,7 +9,7 @@ import {
 
 import { isRequestInputError } from '../../request-input.js';
 
-import type { ProblemIssue, NormalizedProblem } from './contract.js';
+import type { ProblemIssue, NormalizedProblem } from './http-problem.types.js';
 
 export function text(
   value: unknown,

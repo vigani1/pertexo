@@ -4,7 +4,7 @@ import type {
   CompleteInvitationAcceptanceInput,
   RecordInvitationAcceptanceProofInput,
   ResolveInvitationAcceptanceInput,
-} from '../../contract.js';
+} from '../../tenant-access.types.js';
 
 import { completeAcceptance } from './complete.repository.js';
 import { resolveInvitationAcceptance } from './resolve.repository.js';

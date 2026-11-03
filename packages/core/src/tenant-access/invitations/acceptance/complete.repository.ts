@@ -20,7 +20,7 @@ import {
 import type {
   CompleteInvitationAcceptanceInput,
   InvitationAcceptanceResult,
-} from '../../contract.js';
+} from '../../tenant-access.types.js';
 import { InvitationAcceptanceConflictError } from '../../errors.js';
 import {
   acceptanceReceiptSchema,

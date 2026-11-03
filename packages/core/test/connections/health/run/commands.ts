@@ -1,4 +1,4 @@
-import type { ConnectionTestOutcome } from '../../../../src/connections/contract.js';
+import type { ConnectionTestOutcome } from '../../../../src/connections/connection.js';
 import { randomUUID } from 'node:crypto';
 import { createOutboxDispatcherDatabase } from '../../../../src/outbox/dispatcher/store.js';
 import type { PoolClient } from 'pg';

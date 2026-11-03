@@ -11,12 +11,12 @@ export type {
   WorkspaceInboxSummary,
   WorkspaceInboxThreadPage,
   WorkspaceInboxThreadRecord,
-} from './threads/contract.js';
+} from './threads/workspace-inbox-thread.js';
 export {
   createWorkspaceInboxFoldStore,
   type WorkspaceInboxFoldStore,
 } from './folding/store.js';
-export type { WorkspaceInboxChange } from './folding/contract.js';
+export type { WorkspaceInboxChange } from './folding/workspace-inbox-change.types.js';
 export {
   createNoticePreferencesStore,
   type NoticePreferencesStore,
@@ -29,14 +29,14 @@ export {
   type ReplaceNoticePreferencesInput,
   type ReplaceNoticeSubscriptionInput,
   type UnsubscribeNoticeMailInput,
-} from './preferences/contract.js';
+} from './preferences/notice-preferences.js';
 export { createNoticeMailStore, type NoticeMailStore } from './mail/store.js';
 export type {
   NoticeMailItem,
   NoticeMailPersonFailure,
   NoticeMailSealer,
   NoticeMailToSeal,
-} from './mail/contract.js';
+} from './mail/notice-mail.types.js';
 export type { WorkspaceActor } from '../shared/workspace-access.js';
 
 // A run's completion and retention use these directly (ADR 091).

@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import {
   NoticeConflictError,
   NoticeUnavailableError,
-} from '../../../src/inbox/preferences/contract.js';
+} from '../../../src/inbox/preferences/notice-preferences.js';
 import {
   observer,
   preferences,

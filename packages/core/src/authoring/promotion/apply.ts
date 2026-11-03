@@ -22,7 +22,10 @@ import {
   lockPromotionWorkspaces,
 } from './authority.repository.js';
 import { WorkflowPromotionError } from './errors.js';
-import type { ApplyPromotionInput, PromotionContext } from './contract.js';
+import type {
+  ApplyPromotionInput,
+  PromotionContext,
+} from './workflow-promotion.types.js';
 import { preparePromotion } from './preview.js';
 
 export async function applyPromotion(

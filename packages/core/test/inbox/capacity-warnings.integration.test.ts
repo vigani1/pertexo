@@ -6,7 +6,7 @@ import {
   purgeTestWorkspace,
 } from '../support/workflow-authoring.js';
 import { useInstanceCapacity } from '../support/instance-capacity.js';
-import type { NoticeMailToSeal } from '../../src/inbox/mail/contract.js';
+import type { NoticeMailToSeal } from '../../src/inbox/mail/notice-mail.types.js';
 import { withTenantScopedClient } from '@pertexo/database/primitives';
 import {
   seedNoticeWorkspace,

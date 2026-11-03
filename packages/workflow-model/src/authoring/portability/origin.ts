@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { canonicalWorkflowPortableJson } from './contract.js';
+import { canonicalWorkflowPortableJson } from './portable-manifest.js';
 import { utf8ByteLength } from '../../values/text.js';
 
 const originFields = {

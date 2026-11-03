@@ -1,5 +1,5 @@
 import { isHumanTaskDefinition } from '../pending-tasks/approval.js';
-import type { WorkflowEdge } from '../../graph/contract.js';
+import type { WorkflowEdge } from '../../graph/workflow-graph.schemas.js';
 import {
   inspectWorkflowDecisionTree,
   type DecisionTreeNode,
@@ -10,7 +10,7 @@ import {
   WORKFLOW_FAILURE_PATHS,
   WORKFLOW_FAILURE_PORT,
   type WorkflowFailureRoute,
-} from './contract.js';
+} from './failure-routes.js';
 
 type Mapping = Readonly<{ kind: string; nodeId?: string; path?: string }>;
 export type FailureRoutingGraph = Readonly<{

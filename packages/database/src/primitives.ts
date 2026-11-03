@@ -11,7 +11,7 @@ export {
   insertOutboxEvent,
   serializeBoundedPlainJson,
 } from './outbox/events.repository.js';
-export { type CommandIdentity } from './platform/idempotency/contract.js';
+export { type CommandIdentity } from './platform/idempotency/command-identity.types.js';
 export {
   claimCommand,
   completeCommand,
@@ -47,7 +47,7 @@ export {
   type WorkspaceScopeRunner,
   type WorkspaceTransaction,
   type WorkspaceTransactionOptions,
-} from './tenant-access/transactions/contract.js';
+} from './tenant-access/transactions/workspace-transaction.types.js';
 export {
   installTransactionScope,
   parseWorkspaceId,

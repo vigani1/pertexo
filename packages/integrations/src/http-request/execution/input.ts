@@ -21,7 +21,7 @@ import {
 import { mergeHeaders } from '../material.js';
 
 import { artifactContentType } from '../read-body.js';
-import { failedConfiguration } from './contract.js';
+import { failedConfiguration } from './http-request-execution.js';
 
 export function requestHeaders(
   input: HttpRequestInput,

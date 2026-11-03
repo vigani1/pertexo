@@ -23,7 +23,7 @@ import type {
   SampleRead,
   SampleScope,
   SampleTransaction,
-} from './contract.js';
+} from './step-sample.types.js';
 
 const SAMPLES_LISTED = 200;
 

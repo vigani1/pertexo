@@ -5,7 +5,7 @@ import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import type { PoolClient } from 'pg';
 import type { WorkflowCommentThread } from '@pertexo/contracts';
 import { WorkflowNotFoundError } from '../workflows/errors.js';
-import type { ThreadScope } from './contract.js';
+import type { ThreadScope } from './workflow-collaboration.types.js';
 export type StoredCommentThread = typeof workflowCommentThreads.$inferSelect & {
   preview?: string | null;
 };

@@ -1,4 +1,4 @@
-import type { CompleteFederationJourney } from './contract.js';
+import type { CompleteFederationJourney } from './federation-journey.types.js';
 import {
   authFederationAttempts,
   authProviderChecks,
@@ -28,7 +28,7 @@ import {
 import { issueSession } from '../sessions/issue.repository.js';
 import { findFederationAttempt } from './federation-journeys.repository.js';
 import { grantJustInTimeMemberships } from './membership.repository.js';
-import type { FederationCompletion } from './contract.js';
+import type { FederationCompletion } from './federation-journey.types.js';
 export async function completeFederationJourney(
   client: PoolClient,
   input: CompleteFederationJourney,

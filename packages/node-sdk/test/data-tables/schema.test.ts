@@ -3,7 +3,7 @@ import {
   changeDataTableDefinition,
   changeDataTableValues,
 } from '../../src/data-tables/schema.js';
-import type { DataTableColumn } from '../../src/data-tables/contract.js';
+import type { DataTableColumn } from '../../src/data-tables/data-table.schemas.js';
 
 const columns: DataTableColumn[] = [
   { id: 'key', name: 'Key', type: 'text', required: true },

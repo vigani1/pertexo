@@ -10,7 +10,7 @@ import {
   type VariableUsageInput,
   type VariableUsagePage,
   type VariableUsageScan,
-} from './contract.js';
+} from './workspace-variables.js';
 
 const MAX_SOURCES_PER_PAGE = 100;
 const MAX_SOURCE_BYTES_PER_PAGE = 65_536;

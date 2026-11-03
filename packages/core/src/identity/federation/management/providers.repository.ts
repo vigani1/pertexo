@@ -24,7 +24,7 @@ import type {
   CreateProviderInput,
   RemoveProviderInput,
   UpdateProviderInput,
-} from './contract.js';
+} from './federation-management.types.js';
 import { requireResourceCapacity } from './organizations.repository.js';
 import { assertRequiredDomainsReady } from './enforcement.repository.js';
 

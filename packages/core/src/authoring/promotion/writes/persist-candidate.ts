@@ -16,7 +16,10 @@ import { generatePersistedId } from '@pertexo/database/platform';
 import { pruneStepSamples } from '../../step-samples/records.repository.js';
 import { publishWorkflowDirectly } from '../../publication/publish.js';
 import { requestPublicationReview } from '../../reviews/request.js';
-import type { ApplyPromotionInput, PromotionContext } from '../contract.js';
+import type {
+  ApplyPromotionInput,
+  PromotionContext,
+} from '../workflow-promotion.types.js';
 import { promotionDigest } from '../preparation/graph.js';
 export async function writePromotedDraft(
   client: PoolClient,

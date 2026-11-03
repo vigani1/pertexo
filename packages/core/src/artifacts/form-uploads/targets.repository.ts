@@ -19,7 +19,7 @@ import {
   PendingTaskDecisionError,
   PendingTaskNotFoundError,
 } from '../../runs/pending-tasks/responses/errors.js';
-import type { FormUploadTarget } from './contract.js';
+import type { FormUploadTarget } from './form-upload.types.js';
 
 /** The response an upload belongs to; a submission may only use matching uploads. */
 export type FormUploadBinding = Readonly<{

@@ -23,7 +23,7 @@ import type {
   PendingTaskRead,
   PendingTaskScope,
   PendingTaskSubmission,
-} from './contract.js';
+} from './pending-task-response.types.js';
 
 export type PendingTaskStore = ReturnType<typeof createPendingTaskStore>;
 

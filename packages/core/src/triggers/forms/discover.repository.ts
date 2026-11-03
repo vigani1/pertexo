@@ -4,7 +4,10 @@ import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import type { Pool } from 'pg';
 
 import { capabilityHash } from './access.repository.js';
-import type { DiscoverFormInput, PublicFormGrant } from './contract.js';
+import type {
+  DiscoverFormInput,
+  PublicFormGrant,
+} from './form-admission.types.js';
 import { FormUnavailableError } from './errors.js';
 
 /** No member behind this one either: it turns a link into a grant. */

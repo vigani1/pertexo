@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { FailureNotificationDestinationConfigSchema } from '@pertexo/workflow-model';
-import type { FailureNotificationDestinationRecord } from './contract.js';
+import type { FailureNotificationDestinationRecord } from './notification-destination.types.js';
 
 const destinationReplaySchema = z
   .object({

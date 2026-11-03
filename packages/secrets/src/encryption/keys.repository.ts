@@ -1,4 +1,4 @@
-import type { StoredEncryptionKey } from './contract.js';
+import type { StoredEncryptionKey } from './stored-encryption-key.types.js';
 import { and, asc, gt, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import {

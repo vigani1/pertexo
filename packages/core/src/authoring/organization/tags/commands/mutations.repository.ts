@@ -25,7 +25,7 @@ import type {
   WorkflowTagCommandResult,
   WorkflowTagDeleteResult,
   WorkflowTagReplaceResult,
-} from '../contract.js';
+} from '../workflow-tag.types.js';
 import { assignment, deleteResult, replaceResult } from '../input.js';
 import {
   readTag,

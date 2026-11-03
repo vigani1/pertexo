@@ -1,4 +1,4 @@
-import type { LinkedWorkspace } from './contract.js';
+import type { LinkedWorkspace } from './federation-journey.types.js';
 import { and, eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import {

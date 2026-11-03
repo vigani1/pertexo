@@ -6,7 +6,7 @@ import { and, asc, eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import type { PoolClient } from 'pg';
-import type { DirectoryRole } from './contract.js';
+import type { DirectoryRole } from './directory-provisioning.types.js';
 import { directoryRole } from './roles.js';
 
 export async function readDirectoryRole(

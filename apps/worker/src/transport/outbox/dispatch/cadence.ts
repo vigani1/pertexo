@@ -1,4 +1,4 @@
-import type { OutboxDispatchResult } from './contract.js';
+import type { OutboxDispatchResult } from './outbox-dispatch.types.js';
 
 export const ACTIVE_POLL_INTERVAL_MILLIS = 25;
 

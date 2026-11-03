@@ -13,8 +13,11 @@ import {
   connectionScopeSql,
   type ConnectionCapability,
 } from '../tenant-access/resources/connections/scope.js';
-import type { ResourceActor } from '../shared/contract.js';
-import { ConnectionNotFoundError, type ConnectionRecord } from './contract.js';
+import type { ResourceActor } from '../shared/folder-access.types.js';
+import {
+  ConnectionNotFoundError,
+  type ConnectionRecord,
+} from './connection.js';
 
 export const connectionFields = {
   id: connections.id,

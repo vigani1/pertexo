@@ -16,7 +16,7 @@ import {
 import type {
   CompleteNodeAttemptResult,
   CompleteAttemptInput,
-} from '../contract.js';
+} from '../node-attempt.js';
 import { auditMismatch, validateDelivery } from './receipts.repository.js';
 import { applyNodeAttemptCompletion } from './outcomes.js';
 import { StoredExecutionValueInvalidError } from '@pertexo/node-sdk';

@@ -20,7 +20,7 @@ import {
   NodeAttemptDispatchBindingMismatchError,
   NodeAttemptReconciliationRequiredError,
 } from '../errors.js';
-import type { MarkDispatchedInput } from '../contract.js';
+import type { MarkDispatchedInput } from '../node-attempt.js';
 import { isConnectionFenceCurrent } from '../../connections/runtime/credential-use.repository.js';
 
 export async function markNodeAttemptDispatched(

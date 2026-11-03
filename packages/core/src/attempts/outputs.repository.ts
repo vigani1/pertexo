@@ -21,7 +21,7 @@ import type {
   ReadAttemptOutputsInput,
   ListNodeOutcomesInput,
   ReadNodeOutputsInput,
-} from './contract.js';
+} from './node-attempt.js';
 
 export async function readNodeAttemptLoopDeclaration(
   pool: Pool,

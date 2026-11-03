@@ -6,7 +6,7 @@ import {
   workspaceVariableDescriptionsSchema,
   workspaceVariableNameSchema,
   workspaceVariableValuesSchema,
-} from '../../src/values/variables/contract.js';
+} from '../../src/values/variables/workspace-variable.schemas.js';
 
 const evaluator = new JsonataEvaluator();
 afterAll(() => evaluator.shutdown());

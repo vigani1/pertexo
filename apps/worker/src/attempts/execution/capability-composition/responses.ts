@@ -1,6 +1,6 @@
 import { createWebhookResponseStore } from '@pertexo/core/triggers';
 
-import type { CapabilityAssembly } from './contract.js';
+import type { CapabilityAssembly } from './node-runtime-capabilities.types.js';
 import { assertCapabilityRuntimeOpen } from './lifecycle.js';
 
 export function prepareWebhookResponseCapability(

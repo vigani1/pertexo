@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { completingThroughOutage } from '../../../src/attempts/delivery/complete-through-outage.js';
 import { startNodeAttemptHeartbeat } from '../../../src/attempts/delivery/heartbeat.js';
-import type { NodeAttemptHandlerDependencies } from '../../../src/attempts/delivery/contract.js';
+import type { NodeAttemptHandlerDependencies } from '../../../src/attempts/delivery/node-attempt-delivery.types.js';
 
 const outage = Object.assign(new Error('connect ECONNREFUSED 127.0.0.1:5432'), {
   code: 'ECONNREFUSED',

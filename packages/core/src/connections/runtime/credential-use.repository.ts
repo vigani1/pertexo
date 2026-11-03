@@ -1,4 +1,4 @@
-import type { ConnectionFence } from './contract.js';
+import type { ConnectionFence } from './connection-resolution.types.js';
 import {
   rethrowQueryFailure,
   appendAuditFact,
@@ -8,7 +8,7 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import { workspaces, connections } from '@pertexo/database/schema';
 import type { PoolClient } from 'pg';
 
-import { CONNECTION_EVENT_TYPE } from '../contract.js';
+import { CONNECTION_EVENT_TYPE } from '../connection.js';
 import { appendConnectionEvent } from '../events.repository.js';
 
 /**

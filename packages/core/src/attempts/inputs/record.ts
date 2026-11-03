@@ -7,7 +7,7 @@ import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { nodeRuns, nodeAttempts, workflowRuns } from '@pertexo/database/schema';
 import type { Pool } from 'pg';
-import type { RecordInputInput } from '../contract.js';
+import type { RecordInputInput } from '../node-attempt.js';
 
 /**
  * Writes an attempt's resolved input onto its node run while the caller still

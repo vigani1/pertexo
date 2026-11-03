@@ -1,7 +1,7 @@
 import { utf8ByteLength } from '../../values/text.js';
 import { canonicalJson, type JsonValue } from '../../values/json/canonical.js';
 import { resolveJsonPath } from '../../values/json/path.js';
-import type { TestAssertion } from './contract.js';
+import type { TestAssertion } from './workflow-test-expectations.schemas.js';
 
 export function matchesTestAssertion(
   actual: JsonValue,

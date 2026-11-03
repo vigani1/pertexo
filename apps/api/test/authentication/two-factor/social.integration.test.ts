@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
-import type { SocialProviderGateway } from '../../../src/authentication/providers/contract.js';
+import type { SocialProviderGateway } from '../../../src/authentication/social-provider.types.js';
 import {
   betterAuthIntegrationEnabled,
   browserFrom,

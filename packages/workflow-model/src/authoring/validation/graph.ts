@@ -4,19 +4,19 @@ import { callbackReferenceIssue } from '../../flow/callbacks/validation.js';
 import {
   eventCoordinationPolicySchema,
   isEventCoordinationTrigger,
-} from '../../triggers/event-coordination/contract.js';
+} from '../../triggers/event-coordination/event-coordination.schemas.js';
 import { inspectEventCoordinationExpression } from '../../triggers/event-coordination/key.js';
-import { workspaceVariableNameSchema } from '../../values/variables/contract.js';
+import { workspaceVariableNameSchema } from '../../values/variables/workspace-variable.schemas.js';
 import {
   WORKFLOW_VALIDATION_MAX_ISSUES,
   type WorkflowGraph,
   type ValueSource,
-} from '../../graph/contract.js';
+} from '../../graph/workflow-graph.schemas.js';
 import { validateWorkflowGraph } from '../../graph/validation/index.js';
 import type {
   GraphValidationIssue,
   GraphValidationResult,
-} from '../../graph/validation/contract.js';
+} from '../../graph/validation/graph-validation.js';
 import {
   inspectExpression,
   type ExpressionValidation,

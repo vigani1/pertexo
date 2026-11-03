@@ -8,7 +8,7 @@ import {
   prepareSessionChange,
   applySessionChange,
 } from '../tenant-access/users/sessions.repository.js';
-import type { AuthenticationReplacement } from '../tenant-access/users/contract.js';
+import type { AuthenticationReplacement } from '../tenant-access/users/authentication-replacement.types.js';
 import { isProtectedRecoveryOwner } from './federation/sessions/recovery.repository.js';
 import { randomUUID } from 'node:crypto';
 

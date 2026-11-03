@@ -7,7 +7,7 @@ import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
 
-import type { UnsubscribeNoticeMailInput } from './contract.js';
+import type { UnsubscribeNoticeMailInput } from './notice-preferences.js';
 
 /** An unsubscribe link holds while the membership and preference it was sent for do. */
 export async function unsubscribeMail(

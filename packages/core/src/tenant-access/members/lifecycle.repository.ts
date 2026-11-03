@@ -14,7 +14,7 @@ import type {
   WorkspaceMemberStatusCommandInput,
   WorkspaceMemberStatusResult,
   WorkspaceOwnershipTransferResult,
-} from '../contract.js';
+} from '../tenant-access.types.js';
 import {
   WorkspaceMembershipCommandConflictError,
   type WorkspaceMembershipCommandConflictReason,

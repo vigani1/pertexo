@@ -3,7 +3,7 @@ import {
   type DatabaseRuntime,
 } from '@pertexo/database/platform';
 import type { DatabaseConfig } from '@pertexo/database/platform';
-import type { ReconcilePreviewDeliveryInput } from './contract.js';
+import type { ReconcilePreviewDeliveryInput } from './preview-reconciliation.types.js';
 import { reconcilePreviewDelivery } from './reconcile.js';
 
 /** Maintenance has no member behind it, so this stays off withWorkspaceAccess. */

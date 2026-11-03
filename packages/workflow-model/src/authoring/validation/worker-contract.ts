@@ -1,7 +1,7 @@
 import type { Worker } from 'node:worker_threads';
 import { z } from 'zod';
-import type { WorkflowGraph } from '../../graph/contract.js';
-import type { GraphValidationResult } from '../../graph/validation/contract.js';
+import type { WorkflowGraph } from '../../graph/workflow-graph.schemas.js';
+import type { GraphValidationResult } from '../../graph/validation/graph-validation.js';
 import {
   validationReportSchema,
   type AuthoringValidationUnavailableReason,

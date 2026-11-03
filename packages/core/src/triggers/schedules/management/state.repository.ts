@@ -20,7 +20,7 @@ import type {
   ScheduleHealthTransition,
   ScheduleTriggerRecord,
   SetEnabledInput,
-} from './contract.js';
+} from './schedule-management.types.js';
 import { scheduleTriggerSchema } from './receipt.js';
 
 const SCHEDULE_LIST_LIMIT = 1000;

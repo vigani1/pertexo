@@ -65,7 +65,7 @@ import { EXPECTED_MIGRATION_HEAD } from '@pertexo/database/testing';
 import { ScheduleTriggerError } from '../../src/triggers/schedules/errors.js';
 import { isScheduleClaimEligible } from '../../src/triggers/schedules/scanning/occurrences.repository.js';
 import { waitForBlockedBy } from '../support/postgres/lock-coordination.js';
-import type { WebhookDeliveryPosition } from '../../src/triggers/webhooks/contract.js';
+import type { WebhookDeliveryPosition } from '../../src/triggers/webhooks/webhook-delivery.types.js';
 import { createTriggerEventScanner } from '../../src/triggers/coordination/scanner.repository.js';
 import { setTimeout as delay } from 'node:timers/promises';
 import { holdAdmissionRow } from './webhooks/ingress/hold-admission-row.js';

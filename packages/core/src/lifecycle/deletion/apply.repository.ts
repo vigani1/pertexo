@@ -6,7 +6,7 @@ import type {
   WorkspaceLifecycleCommandType,
   WorkspaceLifecycleOperation,
   WorkspaceLifecycleChange,
-} from './contract.js';
+} from './workspace-lifecycle.types.js';
 import { deleteWorkspaceOAuth2Grants } from '../../connections/oauth2/clients.repository.js';
 import {
   connections,

@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import type { PoolClient } from 'pg';
 import { describe, expect, it, vi } from 'vitest';
-import type { SuiteCaseRow } from '../../../src/previews/suites/contract.js';
+import type { SuiteCaseRow } from '../../../src/previews/suites/workflow-test-suite.types.js';
 import { evaluateSuiteCase } from '../../../src/previews/suites/evaluate.repository.js';
 import { ZodError } from 'zod';
 const entry: SuiteCaseRow = {

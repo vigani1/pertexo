@@ -12,7 +12,7 @@ import type {
   SystemMailClaimRequest,
   SystemMailInput,
   SystemMailSettlement,
-} from './contract.js';
+} from './system-mail.types.js';
 
 /*
  * No member stands behind either store, so neither goes through a workspace's

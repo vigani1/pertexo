@@ -13,8 +13,8 @@ import { acceptPreviewRun } from './accept.js';
 import type {
   AcceptPreviewRunInput,
   ReadPreviewRunInput,
-} from './acceptance/contract.js';
-import type { ResolvePreviewReplayInput } from './contract.js';
+} from './acceptance/preview-acceptance.types.js';
+import type { ResolvePreviewReplayInput } from './preview-replay.types.js';
 import { readPreviewRun } from './preview-runs.repository.js';
 import { resolvePreviewReplay } from './resolve-replay.js';
 

@@ -29,7 +29,7 @@ number after that reviewed decision, despite its absence from this main baseline
   preserves IDs and dynamic JSONata; it did not introduce a remapper. Import
   creates a different workflow, so preserving IDs avoids breaking dynamic
   `$lookup(nodeOutputs, runInput.stepId)` references without runtime aliases.
-- [Graph contract](../../packages/workflow-model/src/graph/contract.ts),
+- [Graph contract](../../packages/workflow-model/src/graph/workflow-graph.schemas.ts),
   [draft preflight](../../packages/workflow-model/src/graph/validation/preflight.ts) and
   [placement](../../packages/workflow-model/src/graph/definition-placement.ts)
   own bounded graph parsing and new-placement semantics. Import compares with

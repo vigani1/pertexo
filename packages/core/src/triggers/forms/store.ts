@@ -39,7 +39,7 @@ import type {
   ReadFormAccessInput,
   SetFormAccessInput,
   SubmitFormInput,
-} from './contract.js';
+} from './form-admission.types.js';
 import { authorizeForm, readFormVersion } from './form-versions.repository.js';
 import { discoverPublicForm } from './discover.repository.js';
 import { readFormAccess, changeFormAccess } from './access.repository.js';

@@ -1,5 +1,5 @@
 import { canonicalJson } from '../../values/json/canonical.js';
-import type { WorkflowNote } from './contract.js';
+import type { WorkflowNote } from './canvas-note.schemas.js';
 
 type DocumentedGraph = Readonly<{
   notes?: readonly WorkflowNote[] | undefined;

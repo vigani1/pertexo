@@ -15,7 +15,7 @@ import { createWorkspaceInboxStore } from '../../src/inbox/threads/store.js';
 import { createNoticePreferencesStore } from '../../src/inbox/preferences/store.js';
 import { createNoticeMailStore } from '../../src/inbox/mail/store.js';
 import { createConnectionStore } from '../../src/connections/store.js';
-import type { NoticeMailToSeal } from '../../src/inbox/mail/contract.js';
+import type { NoticeMailToSeal } from '../../src/inbox/mail/notice-mail.types.js';
 const resources: { close(): Promise<void> }[] = [];
 export const own = <T extends { close(): Promise<void> }>(resource: T): T => {
   resources.push(resource);

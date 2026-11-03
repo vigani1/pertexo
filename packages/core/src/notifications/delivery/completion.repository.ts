@@ -11,7 +11,7 @@ import {
 } from '@pertexo/database/primitives';
 import { runFailureNotificationIntents as intents } from '@pertexo/database/schema';
 
-import type { CompleteDeliveryInput } from '../contract.js';
+import type { CompleteDeliveryInput } from '../failure-notification.types.js';
 import { FailureNotificationStateError } from '../errors.js';
 import {
   auditFailureNotification,

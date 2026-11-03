@@ -1,10 +1,10 @@
 import {
   EMPTY_WORKFLOW_GRAPH,
   type WorkflowGraph,
-} from '../../src/graph/contract.js';
+} from '../../src/graph/workflow-graph.schemas.js';
 
 import { parseWorkflowGraphDraft } from '../../src/graph/validation/preflight.js';
-import { WorkflowGraphContractError } from '../../src/graph/validation/contract.js';
+import { WorkflowGraphContractError } from '../../src/graph/validation/graph-validation.js';
 export const TEST_DEFINITION_CATALOG = {
   definitions: [
     { key: 'core.other', version: 1 },

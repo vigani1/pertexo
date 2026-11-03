@@ -25,7 +25,7 @@ import {
   ConnectionNotOAuth2Error,
   ConnectionUnavailableError,
   type ConnectionRecord,
-} from '../contract.js';
+} from '../connection.js';
 import { recordMemberAction } from '../events.repository.js';
 import {
   connectionFields,
@@ -42,7 +42,7 @@ import type {
   OAuth2ClientRecord,
   ReadOAuth2ClientInput,
   StartOAuth2AuthorizationInput,
-} from './contract.js';
+} from './oauth2-grant.types.js';
 import { expiryOf, sealedColumns } from './token-columns.js';
 
 /** Only a connection that can still be connected may start consent. */

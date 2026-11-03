@@ -8,7 +8,7 @@ import type {
   GraphValidationIssue,
   WorkflowGraph,
 } from '@pertexo/workflow-model';
-import { CONNECTION_STATUS } from '../../connections/contract.js';
+import { CONNECTION_STATUS } from '../../connections/connection.js';
 import {
   workflowConnectionReferences,
   connectionReferenceIds,
@@ -17,7 +17,7 @@ import {
   readConnectionScope,
   connectionScopeSql,
 } from '../../tenant-access/resources/connections/scope.js';
-import type { ResourceActor } from '../../shared/contract.js';
+import type { ResourceActor } from '../../shared/folder-access.types.js';
 
 /** Permission applies to every binding; only enabled steps require a non-revoked secret. */
 export async function connectionReferenceIssues(

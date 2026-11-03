@@ -18,7 +18,7 @@ import { withPlatformTransaction } from '@pertexo/database/platform';
 import type {
   InvitationAcceptanceIntentRecord,
   RecordInvitationAcceptanceProofInput,
-} from '../../contract.js';
+} from '../../tenant-access.types.js';
 import { OPEN_INTENT_STATUSES } from '../open-intents.repository.js';
 import { selectIntent } from './state.repository.js';
 

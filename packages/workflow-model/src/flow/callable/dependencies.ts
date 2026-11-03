@@ -1,4 +1,4 @@
-import type { WorkflowGraph } from '../../graph/contract.js';
+import type { WorkflowGraph } from '../../graph/workflow-graph.schemas.js';
 import {
   isWorkflowCallDefinition,
   workflowCallConfigSchema,

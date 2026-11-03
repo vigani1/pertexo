@@ -19,7 +19,7 @@ import {
 import type { DatabaseConfig } from '@pertexo/database/platform';
 import { NodeAttemptReconciliationRequiredError } from '../../../attempts/errors.js';
 import type { NodeWebhookResponseReceipt } from '@pertexo/node-sdk';
-import type { WriteWebhookResponse } from './contract.js';
+import type { WriteWebhookResponse } from './webhook-response.types.js';
 
 export type WebhookResponseStore = ReturnType<
   typeof createWebhookResponseStore

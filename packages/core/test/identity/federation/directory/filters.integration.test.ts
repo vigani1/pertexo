@@ -8,7 +8,7 @@ import {
   listDirectoryUsers,
   listDirectoryGroups,
 } from '../../../../src/identity/federation/provisioning/resources/directory-resources.repository.js';
-import type { DirectoryQuery } from '../../../../src/identity/federation/provisioning/contract.js';
+import type { DirectoryQuery } from '../../../../src/identity/federation/provisioning/directory-provisioning.types.js';
 import { withDirectoryRead } from '../../../../src/identity/federation/provisioning/authority.repository.js';
 
 const db = useIdentityCommandDatabase('scim_filter');

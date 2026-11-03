@@ -9,7 +9,7 @@ import type {
   WorkflowInputCaseResult,
   Command,
   CaseTransaction,
-} from '../contract.js';
+} from '../workflow-input-case.types.js';
 import { resultSchema } from '../input.js';
 import { workflow, lockInputCaseQuota } from '../metadata.repository.js';
 

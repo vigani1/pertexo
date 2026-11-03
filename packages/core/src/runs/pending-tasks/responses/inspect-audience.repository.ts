@@ -7,7 +7,7 @@ import type {
   ApprovalAudienceInspectionRequest,
   ApprovalAudienceInspectionResponse,
 } from '@pertexo/contracts';
-import type { PendingTaskScope } from './contract.js';
+import type { PendingTaskScope } from './pending-task-response.types.js';
 import { rolesForCapability } from '@pertexo/policy';
 import { taskAudienceSelectionSql } from './eligibility.repository.js';
 

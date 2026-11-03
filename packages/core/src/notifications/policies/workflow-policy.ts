@@ -21,7 +21,7 @@ import type {
   FailureNotificationDestinationRecord,
   SetWorkflowPolicyInput,
   WorkflowPolicyInput,
-} from '../destinations/contract.js';
+} from '../destinations/notification-destination.types.js';
 import { readFailureNotificationDestination } from '../destinations/notification-destinations.repository.js';
 
 /**

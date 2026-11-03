@@ -3,7 +3,7 @@ import {
   inspectWorkflowDecisionTree,
   type DecisionTreeNode,
 } from '../../src/flow/failure-routing/decision-tree.js';
-import type { WorkflowEdge } from '../../src/graph/contract.js';
+import type { WorkflowEdge } from '../../src/graph/workflow-graph.schemas.js';
 const node = (id: string, key = 'core.set'): DecisionTreeNode => ({
   id,
   definition: { key, version: 1 },

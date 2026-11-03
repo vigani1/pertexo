@@ -7,7 +7,7 @@ export {
 
 // Other areas import these files directly (ADR 091); the door gains nothing.
 export type {} from './authority.repository.js';
-export type {} from './contract.js';
+export type {} from './folder-access.types.js';
 export type {} from './errors.js';
 export type {} from './facts.repository.js';
 export type {} from './folder-policy.js';

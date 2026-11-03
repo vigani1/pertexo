@@ -12,7 +12,7 @@ import {
   type SecureHttpTransportResponse,
   type RedirectState,
   POST_DISPATCH_AMBIGUITY,
-} from './contract.js';
+} from './secure-http.js';
 import { MAX_URL_BYTES } from './routing.js';
 import { raceWithSignal } from './cancellation.js';
 

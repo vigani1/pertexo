@@ -12,13 +12,13 @@ import {
   checkDatabaseReadiness,
 } from '@pertexo/database/primitives';
 import { claimOutboxBatch } from './claim.js';
-import type { ClaimOutboxBatchInput } from './contract.js';
+import type { ClaimOutboxBatchInput } from './outbox-dispatcher.types.js';
 import type { ReleaseInput } from './input.js';
 import type {
   OutboxDispatcherDatabase,
   ObserveOutboxBacklogInput,
   ReleaseOutboxResult,
-} from './contract.js';
+} from './outbox-dispatcher.types.js';
 import { observeOutboxBacklog } from './backlog.repository.js';
 import { watchForOutboxRows } from './watch-rows.js';
 

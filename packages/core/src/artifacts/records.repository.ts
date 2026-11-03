@@ -14,7 +14,7 @@ import {
   type CreatePendingArtifactInput,
   type CreatePendingPreviewArtifactInput,
   type FinalizeArtifactInput,
-} from './contract.js';
+} from './artifact.js';
 import {
   ArtifactFinalizeConflictError,
   ArtifactLifecycleConflictError,

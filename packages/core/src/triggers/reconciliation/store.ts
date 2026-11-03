@@ -23,7 +23,7 @@ import type {
   ReconcileWorkflowTriggersInput,
   RecordReconciliationFailureInput,
   WorkflowTriggerHealth,
-} from './contract.js';
+} from './trigger-reconciliation.types.js';
 import {
   assertDeliveryIdentity,
   readReconciliationEvent,

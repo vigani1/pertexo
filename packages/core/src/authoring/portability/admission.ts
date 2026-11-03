@@ -7,7 +7,7 @@ import {
   WorkflowPortabilityError,
 } from '@pertexo/workflow-model';
 
-import type { PreviewWorkflowImportInput } from '../workflows/contract.js';
+import type { PreviewWorkflowImportInput } from '../workflows/workflow-commands.types.js';
 import { requirePlaceableDefinitionAdditions } from '../workflows/placement.js';
 import type { PortableCatalog } from '../workflows/types.js';
 import {

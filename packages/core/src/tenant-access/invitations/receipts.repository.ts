@@ -15,7 +15,7 @@ import type { PoolClient } from 'pg';
 import { z } from 'zod';
 
 import type { CommandIdentity } from '@pertexo/database/primitives';
-import type { InvitationAcceptanceResult } from '../contract.js';
+import type { InvitationAcceptanceResult } from '../tenant-access.types.js';
 
 /** Durable acceptance receipt stored on the intent and as the command's result. */
 export const acceptanceReceiptSchema = z

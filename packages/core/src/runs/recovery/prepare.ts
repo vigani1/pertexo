@@ -1,5 +1,5 @@
 import { validateCallableValue } from '@pertexo/workflow-model';
-import type { WorkflowRecoveryPreparation } from './contract.js';
+import type { WorkflowRecoveryPreparation } from './workflow-recovery.types.js';
 import {
   parseCheckpoint,
   planRecovery,

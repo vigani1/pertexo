@@ -1,4 +1,4 @@
-import type { RetentionPassResult } from './contract.js';
+import type { RetentionPassResult } from './retention-pass.types.js';
 import { optionsSchema, type RetentionStoreOptions } from './input.js';
 import { sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';

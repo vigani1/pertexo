@@ -3,7 +3,7 @@ import {
   isUnconfirmedCommand,
   newCommandKey,
   type CommandKey,
-} from '@/lib/api/commands/contract';
+} from '@/lib/api/commands/command-retry';
 import { useResendExpired } from '@/lib/api/commands/use-resend-window';
 import { useState } from 'react';
 import type { FailureNotificationDestinationResponse } from '@pertexo/contracts';

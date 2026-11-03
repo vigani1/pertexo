@@ -5,7 +5,7 @@ import type {
   WorkerNodeRuntimeCapabilityDependencies,
   WorkerNodeRuntimeCapabilities,
   CapabilityAssembly,
-} from './capability-composition/contract.js';
+} from './capability-composition/node-runtime-capabilities.types.js';
 import {
   assertCapabilityRuntimeOpen,
   closeCapabilityResources,
@@ -24,7 +24,7 @@ export {
   type WorkerNodeRuntimeCapabilityOptions,
   type WorkerNodeRuntimeCapabilityDependencies,
   type WorkerNodeRuntimeCapabilities,
-} from './capability-composition/contract.js';
+} from './capability-composition/node-runtime-capabilities.types.js';
 const DEFAULT_ARTIFACT_RETENTION_MILLIS = 30 * 24 * 60 * 60_000;
 
 export async function createWorkerNodeRuntimeCapabilities(

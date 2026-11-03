@@ -6,7 +6,7 @@ import {
   appendAuditFact,
 } from '@pertexo/database/primitives';
 import type { EnterCollaboration } from './authority.repository.js';
-import type { CollaborationCommand } from './contract.js';
+import type { CollaborationCommand } from './workflow-collaboration.types.js';
 export function runCommentCommand(
   enter: EnterCollaboration,
   input: CollaborationCommand,

@@ -17,7 +17,7 @@ import {
 } from '@pertexo/workflow-model';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 import { readTablesByNames } from '../table-lookups.repository.js';
-import type { DataTableDefinition } from '../contract.js';
+import type { DataTableDefinition } from '../data-table-commands.types.js';
 
 type ReferenceNode = Pick<
   WorkflowNode,

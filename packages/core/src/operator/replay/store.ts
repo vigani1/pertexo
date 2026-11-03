@@ -27,7 +27,7 @@ import {
   OperatorRunReplayNotExecutableError,
   type FailReplayInput,
   type ReplayDeliveryInput,
-} from './contract.js';
+} from './operator-replay.js';
 
 const payloadSchema = z
   .object({

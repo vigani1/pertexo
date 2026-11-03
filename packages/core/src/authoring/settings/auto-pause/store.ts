@@ -26,7 +26,7 @@ import type {
   WorkflowAutoPauseSettings,
   WorkspaceAutoPauseScope,
   WorkspaceAutoPauseSettings,
-} from './contract.js';
+} from './auto-pause-settings.types.js';
 import {
   WorkflowAutoPauseSettingsRevisionConflictError,
   WorkflowPauseRevisionConflictError,

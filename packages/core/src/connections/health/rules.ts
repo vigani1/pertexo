@@ -4,7 +4,7 @@ import {
   type ConnectionAuthType,
   type ConnectionRecord,
   type ConnectionStatus,
-} from '../contract.js';
+} from '../connection.js';
 
 /** A client alone isn't connected: consent gives it its first token. */
 export function healthOfNewSecret(

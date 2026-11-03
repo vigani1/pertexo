@@ -4,7 +4,7 @@ import {
   callbackReferences,
   type CallbackReference,
 } from '../../flow/callbacks/references.js';
-import type { CallbackBindings } from '../../flow/callbacks/contract.js';
+import type { CallbackBindings } from '../../flow/callbacks/callback-wait.js';
 import {
   expressionVariableReferences,
   type ExpressionVariableReferences,
@@ -12,7 +12,7 @@ import {
 import {
   workspaceVariableValuesSchema,
   type WorkspaceVariableValues,
-} from '../variables/contract.js';
+} from '../variables/workspace-variable.schemas.js';
 
 import { availableParallelism } from 'node:os';
 import jsonata from 'jsonata';

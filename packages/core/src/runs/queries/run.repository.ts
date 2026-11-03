@@ -14,7 +14,7 @@ import {
 import { and, eq, exists, isNull, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import type { Pool } from 'pg';
-import type { ResourceTransaction } from '../../shared/contract.js';
+import type { ResourceTransaction } from '../../shared/folder-access.types.js';
 import { WorkflowRunReadCapacityError } from '../errors.js';
 import {
   readWorkflowRunReadRecord,

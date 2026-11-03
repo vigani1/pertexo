@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 import { normalizeRedisEndpoint } from '../redis/endpoint.js';
-import type { QueueProducerOptions } from './contract.js';
+import type { QueueProducerOptions } from './queue-producer.types.js';
 import { QueueConfigurationError } from './errors.js';
 
 const DEFAULT_READY_TIMEOUT_MS = 5_000;

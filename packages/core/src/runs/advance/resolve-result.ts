@@ -3,7 +3,7 @@ import {
   STORED_EXECUTION_VALUE_LIMITS,
   StoredExecutionValueInvalidError,
 } from '@pertexo/node-sdk';
-import type { RunAdvanceState } from './contract.js';
+import type { RunAdvanceState } from './run-advance.types.js';
 import type { CallableResultDecision } from '@pertexo/workflow-engine';
 import {
   resolveValueSource,

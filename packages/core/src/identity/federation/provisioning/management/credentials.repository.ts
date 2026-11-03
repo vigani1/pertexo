@@ -24,7 +24,7 @@ import {
 import type {
   CreateCredentialInput,
   RevokeCredentialInput,
-} from '../contract.js';
+} from '../directory-provisioning.types.js';
 
 export async function createDirectoryCredential(
   pool: Pool,

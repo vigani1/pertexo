@@ -13,7 +13,7 @@ import { webhookMediaType } from '../requests/body.js';
 import type {
   WebhookAcceptanceOptions,
   PreparedWebhookRequest,
-} from './contract.js';
+} from './webhook-ingress.types.js';
 
 function requestMediaType(
   request: FastifyRequest,

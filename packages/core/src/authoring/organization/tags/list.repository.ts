@@ -18,7 +18,7 @@ import type {
   Page,
   WorkflowTagAssignment,
   WorkflowTagRecord,
-} from './contract.js';
+} from './workflow-tag.types.js';
 import { page, pagination, tagProjection } from './state.repository.js';
 
 export async function listTags(

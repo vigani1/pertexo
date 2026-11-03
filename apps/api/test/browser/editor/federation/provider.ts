@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import type { SocialProviderGateway } from '../../../../src/authentication/providers/contract.js';
+import type { SocialProviderGateway } from '../../../../src/authentication/social-provider.types.js';
 
 /** Synthetic provider only; Pertexo still verifies, persists and signs in normally. */
 export function createBrowserIdentityProvider() {

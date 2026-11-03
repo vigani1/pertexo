@@ -4,12 +4,12 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
 
 import type { WorkspaceActor } from '../../shared/workspace-access.js';
-import type { FolderScope } from '../../shared/contract.js';
+import type { FolderScope } from '../../shared/folder-access.types.js';
 import type {
   ListThreadsInput,
   WorkspaceInboxSummary,
   WorkspaceInboxThreadPage,
-} from './contract.js';
+} from './workspace-inbox-thread.js';
 import { noticeVisibilitySql } from './eligibility.repository.js';
 import { projectNotices } from './projection.js';
 import {

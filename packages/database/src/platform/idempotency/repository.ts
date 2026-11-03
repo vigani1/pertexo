@@ -1,4 +1,4 @@
-import type { CommandIdentity } from './contract.js';
+import type { CommandIdentity } from './command-identity.types.js';
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { idempotencyRecords } from '../../schema/runs/support.js';

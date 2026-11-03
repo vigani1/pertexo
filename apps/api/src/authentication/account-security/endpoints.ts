@@ -17,7 +17,7 @@ import { setSessionCookie } from 'better-auth/cookies';
 import type { Pool } from 'pg';
 import { z } from 'zod';
 
-import type { SocialProviderGateway } from '../providers/contract.js';
+import type { SocialProviderGateway } from '../social-provider.types.js';
 import { requireDoubleSubmitCsrf } from '../better-auth/csrf.js';
 
 type EndpointContext = Parameters<typeof setSessionCookie>[0];

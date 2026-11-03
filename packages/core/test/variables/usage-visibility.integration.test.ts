@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
-import { CONNECTION_AUTH_TYPE } from '../../src/connections/contract.js';
+import { CONNECTION_AUTH_TYPE } from '../../src/connections/connection.js';
 import { createConnectionStore } from '../../src/connections/store.js';
 import {
   actorId,

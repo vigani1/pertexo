@@ -1,4 +1,4 @@
-import type { CompleteAttemptInput } from '../contract.js';
+import type { CompleteAttemptInput } from '../node-attempt.js';
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import {

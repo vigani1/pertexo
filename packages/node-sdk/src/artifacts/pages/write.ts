@@ -1,4 +1,4 @@
-import type { NodeArtifactRuntime } from '../../execution/contract.js';
+import type { NodeArtifactRuntime } from '../../execution/node-execution.types.js';
 import { STORED_EXECUTION_VALUE_LIMITS } from '../../values/stored-json.js';
 import { FILE_PAGE_LIMITS } from '../page-limits.js';
 import type { FilePageBundle } from './bundle.js';

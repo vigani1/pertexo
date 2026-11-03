@@ -1,5 +1,8 @@
 import { canonicalJson } from '../../values/json/canonical.js';
-import type { WorkflowGraph, WorkflowNode } from '../../graph/contract.js';
+import type {
+  WorkflowGraph,
+  WorkflowNode,
+} from '../../graph/workflow-graph.schemas.js';
 
 /** An equality binding for one step's setup; cosmetic edits and links are not inputs. */
 export function stepSampleIdentity(node: WorkflowNode): string {

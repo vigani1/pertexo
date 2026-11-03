@@ -11,7 +11,7 @@ import {
 } from '@pertexo/database/primitives';
 import { workflowTestSuites } from '@pertexo/database/schema';
 import { advanceSuite } from './advance.js';
-import type { WorkflowTestSuiteScanner } from './contract.js';
+import type { WorkflowTestSuiteScanner } from './workflow-test-suite.types.js';
 /**
  * Global discovery uses maintenance; all progress and admission are tenant
  * scoped. The worker acts for whoever started the suite, and losing their

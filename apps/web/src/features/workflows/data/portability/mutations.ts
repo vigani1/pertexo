@@ -4,7 +4,7 @@ import {
   isUnconfirmedCommand,
   newCommandKey,
   type CommandKey,
-} from '@/lib/api/commands/contract';
+} from '@/lib/api/commands/command-retry';
 import { useCallback, useRef, useState } from 'react';
 import type { WorkflowImportRequest } from '@pertexo/contracts';
 import { useQueryClient } from '@tanstack/react-query';

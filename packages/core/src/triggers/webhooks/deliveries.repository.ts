@@ -25,7 +25,7 @@ import type {
   WebhookDeliveryPosition,
   WebhookReplayCheck,
   WebhookSignatureCheck,
-} from './contract.js';
+} from './webhook-delivery.types.js';
 import { HTTP_STATUS } from './delivery.js';
 
 import { generatePersistedId } from '@pertexo/database/platform';

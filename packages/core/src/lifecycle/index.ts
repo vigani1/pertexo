@@ -2,7 +2,7 @@ export {
   createPreviewRetentionCoordinator,
   type PreviewRetentionCoordinator,
 } from './previews/coordinator.js';
-export type { PreviewRetentionProcessResult } from './previews/contract.js';
+export type { PreviewRetentionProcessResult } from './previews/preview-retention.types.js';
 export {
   createRetentionStore,
   type RetentionStore,
@@ -10,20 +10,20 @@ export {
 export type {
   RetentionPassResult,
   RetentionRuleName,
-} from './retention/contract.js';
+} from './retention/retention-pass.types.js';
 export {
   createRunArtifactRetentionCoordinator,
   type RunArtifactRetentionCoordinator,
 } from './artifacts/coordinator.js';
-export type { RunArtifactRetentionProcessResult } from './artifacts/contract.js';
+export type { RunArtifactRetentionProcessResult } from './artifacts/artifact-retention.types.js';
 export {
   createWorkspacePurgeCoordinator,
   type WorkspacePurgeCoordinator,
 } from './purge/coordinator.js';
-export type { WorkspacePurgeProcessResult } from './purge/contract.js';
+export type { WorkspacePurgeProcessResult } from './purge/workspace-purge.types.js';
 
 // Workspace commands reach these directly (ADR 091).
 export type {} from './deletion/change.js';
-export type {} from './deletion/contract.js';
+export type {} from './deletion/workspace-lifecycle.types.js';
 // Each area writes its own retention rule with this.
 export type {} from './retention/deletion-rule.js';

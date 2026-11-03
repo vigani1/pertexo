@@ -17,7 +17,7 @@ import {
   lockWorkspaceRow,
 } from '../../../shared/authority.repository.js';
 import { FederationConflictError } from './errors.js';
-import type { FederationScope } from './contract.js';
+import type { FederationScope } from './federation-management.types.js';
 import type { OrganizationRow } from './identity-organizations.repository.js';
 
 export function requireFederationOwner(

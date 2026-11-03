@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { Logger } from '@nestjs/common';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { SocialProviderGateway } from '../../../src/authentication/providers/contract.js';
+import type { SocialProviderGateway } from '../../../src/authentication/social-provider.types.js';
 import { useSocialProviderGateway } from '../../support/better-auth/social-provider.js';
 import {
   betterAuthIntegrationEnabled,

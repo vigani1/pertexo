@@ -11,7 +11,7 @@ import { normalizeUnknownError } from '../unknown-error.js';
 import type {
   SecureHttpFailureStage,
   DispatchFailureContext,
-} from './contract.js';
+} from './secure-http.js';
 
 export function failureStage(
   code: SecureHttpErrorCode,

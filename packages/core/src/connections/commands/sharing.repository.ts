@@ -17,7 +17,7 @@ import {
 import type {
   ReadConnectionSharingInput,
   ReplaceConnectionSharingInput,
-} from './contract.js';
+} from './connection-sharing.types.js';
 
 import { CONNECTION_SHARE_LIMIT } from '@pertexo/workflow-model';
 import type { ConnectionSharing } from '@pertexo/contracts';
@@ -26,7 +26,7 @@ import {
   ConnectionNotFoundError,
   ConnectionSharingCorruptError,
   ConnectionSharingRevisionConflictError,
-} from '../contract.js';
+} from '../connection.js';
 import { connectionCommand, connectionCommandScope } from '../receipts.js';
 
 async function readSharing(

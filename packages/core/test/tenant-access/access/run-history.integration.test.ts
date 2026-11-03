@@ -4,7 +4,7 @@ import { Client } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { withRetainedRunRead } from '../../../src/runs/access.js';
-import type { ResourceTransaction } from '../../../src/shared/contract.js';
+import type { ResourceTransaction } from '../../../src/shared/folder-access.types.js';
 import {
   admin,
   adminDatabaseUrl,

@@ -4,4 +4,4 @@ export {
   type ConfigureGovernanceInput,
   type ExportAuditInput,
   type ListAuditInput,
-} from './contract.js';
+} from './governance.js';

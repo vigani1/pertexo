@@ -22,7 +22,7 @@ import type {
   PromotionContext,
   PromotionScope,
   SetPromotionTargetInput,
-} from './contract.js';
+} from './workflow-promotion.types.js';
 import {
   lockPromotionWorkspaces,
   readPromotionLink,

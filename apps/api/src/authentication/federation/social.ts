@@ -13,7 +13,7 @@ import type { Pool } from 'pg';
 import type {
   SocialProviderGateway,
   SocialProviderName,
-} from '../providers/contract.js';
+} from '../social-provider.types.js';
 import {
   deriveJourneySecret,
   isJourneyToken,

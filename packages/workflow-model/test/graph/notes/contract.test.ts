@@ -2,11 +2,11 @@ import { describe, expect, it } from 'vitest';
 import {
   workflowGraphSchema,
   type WorkflowGraph,
-} from '../../../src/graph/contract.js';
+} from '../../../src/graph/workflow-graph.schemas.js';
 import {
   WORKFLOW_NOTE_LIMITS,
   type WorkflowNote,
-} from '../../../src/graph/notes/contract.js';
+} from '../../../src/graph/notes/canvas-note.schemas.js';
 import { sameWorkflowNotes } from '../../../src/graph/notes/identity.js';
 import { stepSampleBindings } from '../../../src/authoring/samples/identity.js';
 import {

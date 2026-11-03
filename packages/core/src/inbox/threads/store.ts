@@ -15,13 +15,13 @@ import {
   withWorkspaceAccess,
   type WorkspaceActor,
 } from '../../shared/workspace-access.js';
-import type { FolderScope } from '../../shared/contract.js';
+import type { FolderScope } from '../../shared/folder-access.types.js';
 import { WorkspaceAccessDeniedError } from '../../shared/errors.js';
 import type {
   ListThreadsInput,
   MarkAllReadInput,
   MarkThreadReadInput,
-} from './contract.js';
+} from './workspace-inbox-thread.js';
 import { listThreads, readSummary } from './list.repository.js';
 import { markAllRead, markThreadRead } from './mark-read.repository.js';
 

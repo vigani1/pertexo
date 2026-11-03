@@ -3,7 +3,7 @@ import { workspaceRenameRequestSchema } from '@pertexo/contracts';
 import { InlineRename } from '@/components/patterns/actions/rename/inline';
 import { useNotifications } from '@/components/ui/use-notifications';
 import type { ApiClient } from '@/lib/api/client';
-import { newCommandKey } from '@/lib/api/commands/contract';
+import { newCommandKey } from '@/lib/api/commands/command-retry';
 import { cn } from '@/lib/utils';
 import { useWorkspaceRename } from '../../data/mutations/use-workspace-rename';
 

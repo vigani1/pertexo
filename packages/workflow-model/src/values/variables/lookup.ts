@@ -1,4 +1,4 @@
-import type { WorkspaceVariableValues } from './contract.js';
+import type { WorkspaceVariableValues } from './workspace-variable.schemas.js';
 export function lookupWorkspaceVariable(
   name: string,
   values: WorkspaceVariableValues,

@@ -1,4 +1,4 @@
-import type { DirectoryOrganization } from './contract.js';
+import type { DirectoryOrganization } from './directory-provisioning.types.js';
 import {
   workspaces,
   users,
@@ -14,7 +14,7 @@ import type { Pool, PoolClient } from 'pg';
 import { withPlatformTransaction } from '@pertexo/database/platform';
 import { lockWorkspaceRow } from '../../../shared/authority.repository.js';
 import { DirectoryError } from './errors.js';
-import type { DirectoryPrincipal } from './contract.js';
+import type { DirectoryPrincipal } from './directory-provisioning.types.js';
 
 /** Workspace locks precede organization and member locks in every identity writer. */
 export async function lockDirectoryOrganization(

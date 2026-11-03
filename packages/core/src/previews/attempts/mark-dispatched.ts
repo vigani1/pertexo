@@ -9,7 +9,7 @@ import { previewAttempts } from '@pertexo/database/schema';
 
 import { isConnectionFenceCurrent } from '../../connections/runtime/credential-use.repository.js';
 import { PreviewAttemptStateError } from '../errors.js';
-import type { MarkPreviewDispatchedInput } from './contract.js';
+import type { MarkPreviewDispatchedInput } from './preview-attempt.types.js';
 import { optionsFor } from '../input.js';
 
 export async function markPreviewDispatched(

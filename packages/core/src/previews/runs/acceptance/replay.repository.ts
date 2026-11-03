@@ -13,7 +13,10 @@ import {
   PreviewIdempotencyConflictError,
   PriorPreviewInputUnavailableError,
 } from '../../errors.js';
-import type { AcceptedPreviewRun, AcceptPreviewRunInput } from './contract.js';
+import type {
+  AcceptedPreviewRun,
+  AcceptPreviewRunInput,
+} from './preview-acceptance.types.js';
 import { resultRefSchema } from './input.js';
 
 export async function readExistingAcceptance(

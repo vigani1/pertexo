@@ -49,7 +49,7 @@ import type {
   OutboxDispatcherOptions,
   OutboxDispatcherRuntimeHooks,
   OutboxDispatchResult,
-} from './contract.js';
+} from './outbox-dispatch.types.js';
 
 const CYCLE_FAILURE_LOG_INTERVAL_MILLIS = 60_000;
 

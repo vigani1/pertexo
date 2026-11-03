@@ -16,7 +16,7 @@ import type {
   ScheduleOccurrencePage,
   ScheduleOccurrencePosition,
   TriggerRead,
-} from './contract.js';
+} from './schedule-occurrence.types.js';
 
 import type { Pool, PoolClient } from 'pg';
 

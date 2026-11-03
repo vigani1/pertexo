@@ -8,7 +8,7 @@ import {
   type ManualStartRejection,
 } from './start-rejections.repository.js';
 import { findPublishedWorkflow } from '../queries/execution/published.repository.js';
-import type { PublishedWorkflow } from '../queries/execution/contract.js';
+import type { PublishedWorkflow } from '../queries/execution/workflow-execution.types.js';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 import {
   WorkflowRunNotExecutableError,
@@ -19,7 +19,7 @@ import {
   readWorkflowRunRecord,
 } from './records.repository.js';
 import type { WorkflowRunRecord } from './records.repository.js';
-import type { StartPublishedWorkflowRunInput } from './contract.js';
+import type { StartPublishedWorkflowRunInput } from './run-commands.types.js';
 
 export async function startInTransaction(
   transaction: WorkspaceTransaction,

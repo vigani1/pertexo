@@ -4,7 +4,7 @@ import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { webhookTestEvents as listeners } from '@pertexo/database/schema';
 import type { PoolClient } from 'pg';
 
-import type { TestEventScope } from './contract.js';
+import type { TestEventScope } from './webhook-test-event.types.js';
 
 export const listenerSelection = {
   ...getTableColumns(listeners),

@@ -6,7 +6,7 @@ import { previewRuns, previewAttempts } from '@pertexo/database/schema';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { PreviewAttemptStateError } from '../errors.js';
 import { previewPairConsistent } from '../state.js';
-import type { PreviewAttemptLease } from '../contract.js';
+import type { PreviewAttemptLease } from '../preview.types.js';
 
 export async function lockPreviewReconciliationState(
   client: PoolClient,

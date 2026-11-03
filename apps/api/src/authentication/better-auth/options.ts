@@ -11,7 +11,7 @@ import type { Pool } from 'pg';
 import type { AuthenticationTransactions } from './transactions/context.js';
 import { AuthenticationTransactionDialect } from './transactions/dialect.js';
 
-import type { SocialProviderGateway } from '../providers/contract.js';
+import type { SocialProviderGateway } from '../social-provider.types.js';
 import type { AuthenticationMail } from '../mail/delivery.js';
 import type { OwnedEmailProofs } from '../mail/email-proofs.js';
 import { createTrustedSessionPlugin } from './session-plugin.js';

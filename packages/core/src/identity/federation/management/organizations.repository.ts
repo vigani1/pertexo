@@ -27,7 +27,7 @@ import {
 import type {
   CreateOrganizationInput,
   LinkWorkspaceInput,
-} from './contract.js';
+} from './federation-management.types.js';
 
 export function createOrganization(
   pool: Pool,

@@ -14,7 +14,7 @@ import {
   users,
 } from '@pertexo/database/schema';
 import { and, eq, sql } from 'drizzle-orm';
-import type { FolderScope } from '../../../shared/contract.js';
+import type { FolderScope } from '../../../shared/folder-access.types.js';
 import { workflowScopeSql } from '../../../shared/scope.repository.js';
 import type { PoolClient } from 'pg';
 import {
@@ -29,7 +29,10 @@ import {
   PendingTaskDecisionError,
   PendingTaskNotFoundError,
 } from './errors.js';
-import type { PendingTaskDecision, PendingTaskSubmission } from './contract.js';
+import type {
+  PendingTaskDecision,
+  PendingTaskSubmission,
+} from './pending-task-response.types.js';
 import { projectTask, readTaskRow } from './records.repository.js';
 import { resolveFormFiles } from '../../../artifacts/form-uploads/resolve.repository.js';
 import { requireReadableReceipt } from '../../../shared/receipts.js';

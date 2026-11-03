@@ -5,7 +5,7 @@ import { canRemoveWorkspaceMember } from '@pertexo/policy';
 import type {
   RemoveWorkspaceMemberInput,
   WorkspaceMemberRemovalResult,
-} from '../contract.js';
+} from '../tenant-access.types.js';
 import { WorkspaceMemberRemovalCommandConflictError } from '../errors.js';
 import { memberReceipt } from '../../shared/receipts.js';
 import { revokeUserSessions } from '../users/sessions.repository.js';

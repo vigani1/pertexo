@@ -2,7 +2,7 @@ import { canonicalJson } from '@pertexo/workflow-model';
 import type {
   WorkflowTestCommand,
   WorkflowTestPreparation,
-} from './contract.js';
+} from './workflow-test.types.js';
 import { WorkflowTestError } from './errors.js';
 
 /** A test of one step at a time, however long the workflow itself may run. */

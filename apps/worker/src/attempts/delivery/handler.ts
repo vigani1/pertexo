@@ -34,7 +34,7 @@ import type {
   NodeAttemptHandler,
   NodeAttemptHandlerDependencies,
   NodeAttemptHeartbeat,
-} from './contract.js';
+} from './node-attempt-delivery.types.js';
 import { completingThroughOutage } from './complete-through-outage.js';
 import { startNodeAttemptHeartbeat } from './heartbeat.js';
 import {
@@ -50,7 +50,7 @@ export {
   type NodeAttemptHandlerResult,
   type NodeAttemptHandler,
   type NodeAttemptHandlerDependencies,
-} from './contract.js';
+} from './node-attempt-delivery.types.js';
 
 // The step's input or setup can't work; each code becomes `execution.<code>`.
 const STEP_REFUSAL_CODES: ReadonlySet<EngineErrorCode> = new Set([

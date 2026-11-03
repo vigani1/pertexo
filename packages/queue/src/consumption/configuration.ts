@@ -8,7 +8,7 @@ import { normalizeRedisEndpoint } from '../redis/endpoint.js';
 import type {
   QueueConsumerOptions,
   ParsedConsumerOptions,
-} from './contract.js';
+} from './queue-consumer.types.js';
 import { QueueConsumerConfigurationError } from './errors.js';
 
 const DEFAULT_READY_TIMEOUT_MS = 5_000;

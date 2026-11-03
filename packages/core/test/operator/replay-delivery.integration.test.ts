@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { canonicalOutboxPayloadChecksum } from '@pertexo/database/primitives';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { OperatorRunReplayMismatchError } from '../../src/operator/replay/contract.js';
+import { OperatorRunReplayMismatchError } from '../../src/operator/replay/operator-replay.js';
 import { createScheduleTriggerTestEnvironment } from '../support/schedule-triggers.js';
 
 const schedule = createScheduleTriggerTestEnvironment({

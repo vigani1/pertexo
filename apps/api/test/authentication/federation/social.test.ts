@@ -2,7 +2,7 @@ import { Pool } from 'pg';
 import { afterAll, afterEach, describe, expect, it, vi } from 'vitest';
 import { SocialSignInCommands } from '@pertexo/core/identity';
 import { SocialSignIn } from '../../../src/authentication/federation/social.js';
-import type { SocialProviderGateway } from '../../../src/authentication/providers/contract.js';
+import type { SocialProviderGateway } from '../../../src/authentication/social-provider.types.js';
 
 const pool = new Pool({
   connectionString: 'postgresql://unused:unused@127.0.0.1:1/unused',

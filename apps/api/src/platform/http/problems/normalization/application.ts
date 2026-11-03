@@ -12,7 +12,7 @@ import {
 
 import { normalizeWorkflowMetadataConflict } from '../workflow-metadata-conflict.js';
 import { normalizeAutoPauseConflict } from '../auto-pause-conflict.js';
-import type { NormalizedProblem } from './contract.js';
+import type { NormalizedProblem } from './http-problem.types.js';
 import { text, unexpectedProblem, applicationProblemIssues } from './values.js';
 
 export function fromApplicationError(

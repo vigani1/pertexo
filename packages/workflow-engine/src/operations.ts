@@ -51,7 +51,7 @@ export type {
   ExecuteNodeAttemptInput,
   NodeAttemptOutcome,
   NodeExecutionRegistry,
-} from './attempt/contract.js';
+} from './attempt/node-attempt.types.js';
 export type {
   AttemptFailureObservation,
   DeadlineExpiredObservation,

@@ -10,7 +10,7 @@ import type {
   RecoveryPlan,
   RecoveryRefused,
   RecoveryValues,
-} from './contract.js';
+} from './workflow-recovery.types.js';
 
 function containsArtifact(value: JsonValue): boolean {
   const pending = [value];

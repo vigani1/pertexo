@@ -24,7 +24,7 @@ import {
   type RedirectState,
   type DispatchFailureContext,
   POST_DISPATCH_AMBIGUITY,
-} from './execution/contract.js';
+} from './execution/secure-http.js';
 import {
   assertResponseStatus,
   redirectTransition,
@@ -57,7 +57,7 @@ export {
   type SecureHttpTransportRequest,
   type SecureHttpTransportResponse,
   type SecureHttpTransport,
-} from './execution/contract.js';
+} from './execution/secure-http.js';
 export function secureHttpPreDispatchError(
   code:
     | typeof SECURE_HTTP_ERROR_CODE.connectionFenceFailed

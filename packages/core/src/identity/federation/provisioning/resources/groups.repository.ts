@@ -1,4 +1,4 @@
-import type { DirectoryGroup } from '../contract.js';
+import type { DirectoryGroup } from '../directory-provisioning.types.js';
 import {
   authDirectoryGroupMembers,
   authDirectoryUsers,
@@ -16,7 +16,10 @@ import type { Pool, PoolClient } from 'pg';
 import { generatePersistedId } from '@pertexo/database/platform';
 import { withDirectoryTransaction } from '../authority.repository.js';
 import { DirectoryError } from '../errors.js';
-import type { DirectoryPrincipal, DirectoryGroupValues } from '../contract.js';
+import type {
+  DirectoryPrincipal,
+  DirectoryGroupValues,
+} from '../directory-provisioning.types.js';
 
 import { DIRECTORY_LIMITS } from '@pertexo/workflow-model';
 import { projectDirectoryMemberships } from '../projection.repository.js';

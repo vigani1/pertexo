@@ -8,7 +8,10 @@ import { workflows } from '@pertexo/database/schema';
 
 import type { PoolClient } from 'pg';
 
-import type { RenameWorkflowInput, RenameWorkflowResult } from '../contract.js';
+import type {
+  RenameWorkflowInput,
+  RenameWorkflowResult,
+} from '../workflow-commands.types.js';
 import {
   WorkflowNameRevisionConflictError,
   WorkflowNotFoundError,
@@ -18,7 +21,7 @@ import {
   completeWorkflowCommand,
   type WorkflowCommand,
 } from '../receipts.repository.js';
-import type { WorkflowRecord } from '../representation/contract.js';
+import type { WorkflowRecord } from '../representation/workflow-record.types.js';
 import { workflowProjection } from '../representation/workflow-representations.repository.js';
 
 type RenameCommand = Readonly<{

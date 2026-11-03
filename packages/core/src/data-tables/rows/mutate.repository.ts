@@ -28,7 +28,7 @@ import type {
   DataTableDefinition,
   DataTableQuotas,
   DataTableWriteCommand,
-} from '../contract.js';
+} from '../data-table-commands.types.js';
 import { boundedResult, type StoredRow } from './find.repository.js';
 import { keyConflictMessage, keyValue } from './key.js';
 import { lockMutationRows, type RowIdentity } from './lock.repository.js';

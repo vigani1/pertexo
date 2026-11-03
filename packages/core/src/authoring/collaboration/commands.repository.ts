@@ -23,7 +23,7 @@ import type {
   RemoveCommentInput,
   ReplyInput,
   SetThreadStatusInput,
-} from './contract.js';
+} from './workflow-collaboration.types.js';
 import { lockCommentThread } from './comment-threads.repository.js';
 import { syncCommentMentions } from './mentions.repository.js';
 import { runCommentCommand } from './receipt.js';

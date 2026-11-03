@@ -7,7 +7,7 @@ import {
   isUnconfirmedCommand,
   newCommandKey,
   type CommandKey,
-} from '@/lib/api/commands/contract';
+} from '@/lib/api/commands/command-retry';
 import { useResendExpired } from '@/lib/api/commands/use-resend-window';
 import { describeCommandError } from '@/lib/api/error-copy';
 import { isApiError } from '@/lib/api/error';

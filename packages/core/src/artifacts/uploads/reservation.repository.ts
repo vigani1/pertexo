@@ -11,7 +11,7 @@ import { z } from 'zod';
 import { artifacts } from '@pertexo/database/schema';
 import { artifactStorageKey } from '../records.repository.js';
 import { generatePersistedId } from '@pertexo/database/platform';
-import type { ArtifactRecord, ArtifactUploadPurpose } from '../contract.js';
+import type { ArtifactRecord, ArtifactUploadPurpose } from '../artifact.js';
 import type { ArtifactMetadataIdentity } from '../metadata.js';
 import { artifactMetadataMatches } from '../metadata.js';
 import {
@@ -23,7 +23,7 @@ import {
 import {
   ARTIFACT_UPLOAD_PENDING_MS,
   type ArtifactUploadResult,
-} from './contract.js';
+} from './artifact-upload.js';
 
 export type ArtifactUploadReservation = Readonly<{
   workspaceId: string;

@@ -27,7 +27,7 @@ import type {
   ReadLoopDeclarationInput,
   ReadNodeOutputsInput,
   RecordInputInput,
-} from './contract.js';
+} from './node-attempt.js';
 
 /**
  * Every flow here is the worker holding a lease, with no member behind it, so it

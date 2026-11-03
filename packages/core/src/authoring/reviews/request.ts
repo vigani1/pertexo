@@ -15,14 +15,21 @@ import type { PoolClient } from 'pg';
 import { z } from 'zod';
 import { generatePersistedId } from '@pertexo/database/platform';
 import { PublicationReviewError } from './errors.js';
-import type { RequestReviewInput, ReviewDependencies } from './contract.js';
+import type {
+  RequestReviewInput,
+  ReviewDependencies,
+} from './publication-review.types.js';
 import {
   readReviewDraft,
   readReviewSummary,
   readReviewRow,
   projectReview,
 } from './read.repository.js';
-import { reviewSource, review, reviewStateSql } from './eligibility.repository.js';
+import {
+  reviewSource,
+  review,
+  reviewStateSql,
+} from './eligibility.repository.js';
 
 /** How long a request waits for a decision. */
 const REVIEW_LIFETIME = sql`interval '7 days'`;

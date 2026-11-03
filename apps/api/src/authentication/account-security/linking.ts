@@ -10,7 +10,7 @@ import {
 import type {
   SocialProviderGateway,
   SocialProviderName,
-} from '../providers/contract.js';
+} from '../social-provider.types.js';
 
 import {
   deriveJourneySecret,

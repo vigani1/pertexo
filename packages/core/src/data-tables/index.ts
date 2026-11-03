@@ -15,7 +15,7 @@ export type {
   ImportRowsInput,
   RemoveTableInput,
   WriteRowsInput,
-} from './contract.js';
+} from './data-table-commands.types.js';
 export type { WorkspaceActor } from '../shared/workspace-access.js';
 
 // Runs and authoring check table references directly (ADR 091).

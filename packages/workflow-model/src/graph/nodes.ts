@@ -1,4 +1,4 @@
-import type { WorkflowGraph } from './contract.js';
+import type { WorkflowGraph } from './workflow-graph.schemas.js';
 
 /**
  * Enumerate every node with the same stack order previously used by the two

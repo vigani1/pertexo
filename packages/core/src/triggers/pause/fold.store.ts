@@ -4,7 +4,7 @@ import {
   rethrowQueryFailure,
   checkDatabaseReadiness,
 } from '@pertexo/database/primitives';
-import type { WorkflowTriggerPauseDecision } from './contract.js';
+import type { WorkflowTriggerPauseDecision } from './trigger-pause.types.js';
 
 import type { DatabaseConfig } from '@pertexo/database/platform';
 import {

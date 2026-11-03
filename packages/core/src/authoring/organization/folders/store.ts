@@ -24,7 +24,7 @@ import type {
   ReplaceFolderSharingInput,
   ReviewMoveInput,
   SharingPrincipalsInput,
-} from './contract.js';
+} from './workflow-folder.types.js';
 
 import {
   createFolder,

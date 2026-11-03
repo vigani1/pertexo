@@ -6,7 +6,7 @@ import { and, eq, getTableName, type SQL } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
-import type { InvitationAcceptanceIntentRecord } from '../../contract.js';
+import type { InvitationAcceptanceIntentRecord } from '../../tenant-access.types.js';
 import {
   workspaceInvitationAcceptanceIntents as intents,
   workspaceInvitations as invitations,

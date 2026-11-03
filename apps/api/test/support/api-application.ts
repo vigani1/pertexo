@@ -7,7 +7,7 @@ import {
   type ApiApplicationDependencies,
 } from '../../src/api-runtimes.js';
 import { assembleApiApplication } from '../../src/app.js';
-import type { ApiRuntimeSet } from '../../src/platform/application/contract.js';
+import type { ApiRuntimeSet } from '../../src/platform/api-application.types.js';
 import { createApiArtifactRuntime } from '../../src/platform/artifacts/runtime.module.js';
 import type { ApiConfig } from '../../src/platform/config/api.js';
 import type { RateLimitConsumer } from '../../src/platform/rate-limit/interceptor.js';

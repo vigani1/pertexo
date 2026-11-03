@@ -7,7 +7,7 @@ import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import type { WorkspaceScopeRunner } from '@pertexo/database/primitives';
 import { readFolderScope } from '../../shared/facts.repository.js';
 import { workflowScopeSql } from '../../shared/scope.repository.js';
-import type { PromotionScope } from './contract.js';
+import type { PromotionScope } from './workflow-promotion.types.js';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
 

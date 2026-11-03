@@ -1,6 +1,6 @@
-import type { PublishedWorkflow } from './contract.js';
-import type { ReadPublishedWorkflowForExecutionInput } from './contract.js';
-import type { PublishedWorkflowReader } from './contract.js';
+import type { PublishedWorkflow } from './workflow-execution.types.js';
+import type { ReadPublishedWorkflowForExecutionInput } from './workflow-execution.types.js';
+import type { PublishedWorkflowReader } from './workflow-execution.types.js';
 import { workflowVersions } from '@pertexo/database/schema';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { acquireDatabasePool } from '@pertexo/database/platform';

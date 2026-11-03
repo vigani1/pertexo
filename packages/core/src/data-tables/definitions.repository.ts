@@ -14,7 +14,7 @@ import type {
   ConfigureTablesInput,
   CreateTableInput,
   RemoveTableInput,
-} from './contract.js';
+} from './data-table-commands.types.js';
 import { readQuotas, requireTable } from './table-lookups.repository.js';
 import {
   configuredTablesReceipt,

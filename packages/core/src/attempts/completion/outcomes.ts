@@ -18,7 +18,7 @@ import {
 import type {
   CompleteAttemptInput,
   CompleteNodeAttemptResult,
-} from '../contract.js';
+} from '../node-attempt.js';
 import { completeReceipt } from './receipts.repository.js';
 import { persistConnectionHealthObservation } from './connection-health.repository.js';
 import type {
@@ -26,7 +26,7 @@ import type {
   CompletionReceiptRow,
   LockedAttemptRow,
   CompletionFields,
-} from './contract.js';
+} from './attempt-completion.types.js';
 import { duplicateCompletion } from './replay.js';
 
 function completionFields(input: CompleteAttemptInput): CompletionFields {

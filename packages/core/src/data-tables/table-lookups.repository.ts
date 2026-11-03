@@ -7,7 +7,10 @@ import {
   workspaceDataTableQuotas as quotas,
 } from '@pertexo/database/schema';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
-import type { DataTableDefinition, DataTableQuotas } from './contract.js';
+import type {
+  DataTableDefinition,
+  DataTableQuotas,
+} from './data-table-commands.types.js';
 
 const tableFields = {
   id: tables.id,

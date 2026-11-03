@@ -11,7 +11,7 @@ import {
   noticeWorkspaceSettings,
 } from '@pertexo/database/schema';
 import { projectNoticePreferences } from '../preferences/effective.js';
-import type { NoticeMailPerson } from './contract.js';
+import type { NoticeMailPerson } from './notice-mail.types.js';
 
 const users = alias(usersTable, 'person');
 const workspaceMemberships = alias(membershipsTable, 'member');

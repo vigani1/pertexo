@@ -16,7 +16,7 @@ import type { Pool, PoolClient } from 'pg';
 
 import { withWorkspaceAccess } from '../../shared/workspace-access.js';
 import { WorkspaceAccessDeniedError } from '../../shared/errors.js';
-import { ARTIFACT_UPLOAD_PURPOSE, type ArtifactRecord } from '../contract.js';
+import { ARTIFACT_UPLOAD_PURPOSE, type ArtifactRecord } from '../artifact.js';
 import { artifactMetadataMatches } from '../metadata.js';
 import { visibleArtifactIds } from '../references/access.repository.js';
 import type {
@@ -25,7 +25,7 @@ import type {
   BeginArtifactUploadInput,
   FinalizeArtifactUploadInput,
   NormalizedBeginArtifactUploadInput,
-} from './contract.js';
+} from './artifact-upload.js';
 import {
   ArtifactUploadConflictError,
   ArtifactUploadNotFoundError,

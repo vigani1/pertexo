@@ -1,5 +1,5 @@
 import { users } from '@pertexo/database/schema';
-import type { UserRecord } from '../contract.js';
+import type { UserRecord } from '../tenant-access.types.js';
 
 export const userSelection = {
   id: users.id,

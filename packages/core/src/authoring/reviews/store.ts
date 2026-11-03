@@ -28,7 +28,7 @@ import type {
   ReviewDependencies,
   ReviewOverviewInput,
   ReviewScope,
-} from './contract.js';
+} from './publication-review.types.js';
 import { readReviewDetail, readReviewSummary } from './read.repository.js';
 import { requestPublicationReview } from './request.js';
 import { decidePublicationReview } from './decide.js';

@@ -8,7 +8,7 @@ import {
   connectionOAuth2Tokens as tokens,
 } from '@pertexo/database/schema';
 
-import { CONNECTION_EVENT_TYPE, CONNECTION_STATUS } from '../contract.js';
+import { CONNECTION_EVENT_TYPE, CONNECTION_STATUS } from '../connection.js';
 import { appendConnectionEvent } from '../events.repository.js';
 import { selectConnection } from '../connections.repository.js';
 import { withConnectionTransaction } from '../transaction.js';
@@ -16,7 +16,7 @@ import type {
   CommitOAuth2RefreshInput,
   LoseOAuth2GrantInput,
   OAuth2GrantLossActor,
-} from './contract.js';
+} from './oauth2-grant.types.js';
 import { expiryOf, sealedColumns, versionIs } from './token-columns.js';
 
 /** A refresh changes the token row and lastHealthyAt: never an event or a revision. */

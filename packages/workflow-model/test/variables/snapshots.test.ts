@@ -3,7 +3,7 @@ import { afterAll, expect, it } from 'vitest';
 import {
   workspaceVariableValuesSchema,
   workspaceVariableSnapshotSchema,
-} from '../../src/values/variables/contract.js';
+} from '../../src/values/variables/workspace-variable.schemas.js';
 import { canonicalJson } from '../../src/values/json/canonical.js';
 import { JsonataEvaluator } from '../../src/values/expressions/evaluator.js';
 import { validateExpression } from '../../src/values/expressions/policy.js';
@@ -22,7 +22,7 @@ function workflowVariableReferences(graph: WorkflowGraph) {
     incomplete: inspected.some((item) => item.incomplete),
   };
 }
-import type { WorkflowGraph } from '../../src/graph/contract.js';
+import type { WorkflowGraph } from '../../src/graph/workflow-graph.schemas.js';
 const evaluator = new JsonataEvaluator();
 afterAll(() => evaluator.shutdown());
 const context = {

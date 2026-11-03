@@ -20,7 +20,7 @@ import type {
   DeleteInputCaseInput,
   UpdateInputCaseInput,
   WorkflowInputCaseResult,
-} from '../contract.js';
+} from '../workflow-input-case.types.js';
 import { payload } from '../input.js';
 import { lockedCase, quota } from '../metadata.repository.js';
 import { mutate } from './receipt.repository.js';

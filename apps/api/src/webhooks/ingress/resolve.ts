@@ -12,7 +12,7 @@ import type {
   WebhookAcceptanceOptions,
   PreparedWebhookRequest,
   IngressReferences,
-} from './contract.js';
+} from './webhook-ingress.types.js';
 import { sha256 } from './fingerprint.js';
 
 export async function preflightVerification(

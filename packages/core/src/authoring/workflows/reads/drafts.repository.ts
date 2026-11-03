@@ -27,7 +27,7 @@ import {
 } from '@pertexo/workflow-model/server';
 import type { PoolClient } from 'pg';
 import { WorkflowEngineError } from '@pertexo/workflow-engine';
-import type { FolderScope } from '../../../shared/contract.js';
+import type { FolderScope } from '../../../shared/folder-access.types.js';
 import { workflowAccessible } from '../../../tenant-access/resources/workflows.repository.js';
 import type { WorkflowRef } from '../access.js';
 import type { AuthoringCatalogs } from '../catalogs.js';

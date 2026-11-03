@@ -1,6 +1,6 @@
 import { CAPACITY_LIMIT_LABELS } from '../observations/capacity-labels.js';
 import { FAILURE_ALERT_CHANNEL_NAMES } from '../threads/alert-channels.js';
-import type { NoticeMailItem } from './contract.js';
+import type { NoticeMailItem } from './notice-mail.types.js';
 import type { MailSubjectRow } from './subjects.repository.js';
 
 export function mailItem(row: MailSubjectRow): NoticeMailItem {

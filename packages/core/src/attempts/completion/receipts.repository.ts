@@ -23,7 +23,7 @@ import { attemptJobPayloadSchema } from '../validation/delivery.js';
 import type {
   NodeAttemptDelivery,
   NodeAttemptDeliveryIdentity,
-} from '../contract.js';
+} from '../node-attempt.js';
 import { DELIVERY_CONSUMER } from '../../outbox/delivery-consumers.js';
 
 export const nodeAttemptConsumerName =

@@ -16,7 +16,10 @@ import {
 } from '@pertexo/database/schema';
 import { publishWorkflowCandidate } from '../publication/publish.js';
 import { lockWorkflowAuthoringAuthority } from '../workflows/authority.js';
-import type { DecideReviewInput, ReviewDependencies } from './contract.js';
+import type {
+  DecideReviewInput,
+  ReviewDependencies,
+} from './publication-review.types.js';
 import { PublicationReviewError } from './errors.js';
 import {
   projectReview,

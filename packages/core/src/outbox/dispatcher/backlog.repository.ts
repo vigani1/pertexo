@@ -6,7 +6,7 @@ import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import type {
   ObserveOutboxBacklogInput,
   OutboxBacklogSnapshot,
-} from './contract.js';
+} from './outbox-dispatcher.types.js';
 
 export async function observeOutboxBacklog(
   pool: Pool,

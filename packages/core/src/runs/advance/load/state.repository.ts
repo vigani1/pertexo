@@ -12,7 +12,7 @@ import { workflowControlOutputNodeIds } from '@pertexo/workflow-model';
 
 import { projectExecutionSource } from '../../queries/execution/source.repository.js';
 import { CoordinatorRunStateCorruptError } from '../../state-errors.js';
-import type { RunAdvanceState } from '../contract.js';
+import type { RunAdvanceState } from '../run-advance.types.js';
 import {
   assertAvailableArtifacts,
   completedInlineOutput,

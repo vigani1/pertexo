@@ -16,7 +16,7 @@ import type {
   ResendWorkspaceInvitationInput,
   RevokeWorkspaceInvitationInput,
   WorkspaceInvitationCommandResult,
-} from '../../contract.js';
+} from '../../tenant-access.types.js';
 import { WorkspaceInvitationCommandConflictError } from '../../errors.js';
 import { cancelOpenInvitationDeliveries } from '../delivery-cancellation.repository.js';
 import { expireWorkspaceInvitations } from '../expiration.repository.js';
@@ -28,7 +28,10 @@ import {
   invitationKey,
   recordAudit,
 } from './receipts.repository.js';
-import { invitationSelection, lockAuthorizedActor } from './state.repository.js';
+import {
+  invitationSelection,
+  lockAuthorizedActor,
+} from './state.repository.js';
 
 /** What a new delivery of the invitation needs; a revocation has none. */
 type NextDelivery = Readonly<{

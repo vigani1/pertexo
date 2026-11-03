@@ -3,7 +3,7 @@ import {
   folderScope,
   removesFolderRestriction,
 } from '../../../src/shared/folder-policy.js';
-import type { FolderFact } from '../../../src/shared/contract.js';
+import type { FolderFact } from '../../../src/shared/folder-access.types.js';
 
 const workspaceId = '11111111-1111-4111-8111-111111111111';
 

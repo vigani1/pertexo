@@ -1,7 +1,7 @@
 import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/ui/notice';
 import { ProgressButton } from '@/components/ui/progress-button';
-import type { InlineRenameCommand } from './contract';
+import type { InlineRenameCommand } from './inline-rename.types';
 import type { useRenameDraft } from './use-draft';
 
 /** A failed or conflicting save: the message, and for a conflict the choice. */

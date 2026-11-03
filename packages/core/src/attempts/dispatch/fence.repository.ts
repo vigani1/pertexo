@@ -1,4 +1,4 @@
-import type { ExecutionCapabilityScope } from './contract.js';
+import type { ExecutionCapabilityScope } from './execution-capability.types.js';
 import { ExecutionCapabilityExpiredError } from '../errors.js';
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';

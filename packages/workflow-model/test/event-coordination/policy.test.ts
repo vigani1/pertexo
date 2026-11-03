@@ -2,7 +2,7 @@ import { afterAll, expect, it } from 'vitest';
 import {
   eventCoordinationPolicySchema,
   isEventCoordinationTrigger,
-} from '../../src/triggers/event-coordination/contract.js';
+} from '../../src/triggers/event-coordination/event-coordination.schemas.js';
 import { decideEventCoordination } from '../../src/triggers/event-coordination/decision.js';
 import {
   resolveEventCoordinationKey,

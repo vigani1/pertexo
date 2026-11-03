@@ -9,7 +9,7 @@ import { previewAttempts, previewRuns } from '@pertexo/database/schema';
 import { readVariableSetValues } from '../../../variables/values.repository.js';
 import { executableNodeSchema } from '../../executable-node.js';
 
-import type { PreviewAttemptLease } from '../../contract.js';
+import type { PreviewAttemptLease } from '../../preview.types.js';
 import { PreviewAttemptStateError } from '../../errors.js';
 import { previewPairConsistent } from '../../state.js';
 

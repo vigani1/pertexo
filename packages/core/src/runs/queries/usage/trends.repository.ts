@@ -13,7 +13,7 @@ import {
 } from 'drizzle-orm';
 import { workspaces, workflows, workflowRuns } from '@pertexo/database/schema';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
-import type { ResourceTransaction } from '../../../shared/contract.js';
+import type { ResourceTransaction } from '../../../shared/folder-access.types.js';
 import { workflowScopeSql } from '../../../shared/scope.repository.js';
 import { UNPURGED_WORKSPACE_STATUSES } from '@pertexo/policy';
 import { ordinaryRunSql } from '../../data-policy.js';

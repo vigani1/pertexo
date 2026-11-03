@@ -13,7 +13,7 @@ import type { Pool } from 'pg';
 import type {
   WebhookResponseScope,
   WebhookResponseSnapshot,
-} from './contract.js';
+} from './webhook-response.types.js';
 
 export function readWebhookResponse(
   pool: Pool,

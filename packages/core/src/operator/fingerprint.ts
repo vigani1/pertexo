@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 
 import { serializeBoundedPlainJson } from '@pertexo/database/primitives';
 
-import type { CommandRequest } from './contract.js';
+import type { CommandRequest } from './operator-command.js';
 
 export const REPLAY_INPUT_BYTES = 65_536;
 /** Request material is bounded by its largest field, a replay input, with room for the rest. */

@@ -1,4 +1,4 @@
-import type { LoadInputsInput } from '../contract.js';
+import type { LoadInputsInput } from '../node-attempt.js';
 import { and, eq, inArray, isNotNull, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';

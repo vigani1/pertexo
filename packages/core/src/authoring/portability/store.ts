@@ -38,7 +38,7 @@ import type {
   ExportWorkflowInput,
   ImportWorkflowInput,
   PreviewWorkflowImportInput,
-} from '../workflows/contract.js';
+} from '../workflows/workflow-commands.types.js';
 
 import { admitWorkflowAuthoring } from '../workflows/admission.repository.js';
 import {

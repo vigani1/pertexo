@@ -7,7 +7,7 @@ import {
   failureNotificationDestinations as destination,
   failureNotificationDestinationVersions as version,
 } from '@pertexo/database/schema';
-import type { FailureNotificationDestinationRecord } from './contract.js';
+import type { FailureNotificationDestinationRecord } from './notification-destination.types.js';
 
 import { FailureNotificationDestinationError } from './errors.js';
 

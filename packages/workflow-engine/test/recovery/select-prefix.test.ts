@@ -5,7 +5,7 @@ import {
 } from '../../src/index.js';
 import { graph, nodeCatalog } from '../support/executable-workflow.js';
 import { selectRecoveryPrefix } from '../../src/recovery/select-prefix.js';
-import type { RecoveryNode } from '../../src/recovery/contract.js';
+import type { RecoveryNode } from '../../src/recovery/workflow-recovery.types.js';
 import { conditional, id, linear, record, source } from './fixtures.js';
 
 function changeTarget(

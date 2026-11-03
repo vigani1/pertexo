@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   workflowTestExpectationsSchema,
   testAssertionSchema,
-} from '../../src/authoring/test-suites/contract.js';
+} from '../../src/authoring/test-suites/workflow-test-expectations.schemas.js';
 import {
   matchesTestAssertion,
   observeTestAssertion,

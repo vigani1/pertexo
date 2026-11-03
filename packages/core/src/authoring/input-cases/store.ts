@@ -12,7 +12,7 @@ import type {
   GetInputCaseInput,
   ListInputCasesInput,
   UpdateInputCaseInput,
-} from './contract.js';
+} from './workflow-input-case.types.js';
 
 import {
   createInputCase,

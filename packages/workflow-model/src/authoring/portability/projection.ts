@@ -1,5 +1,5 @@
 import { compareOrdinal } from '../../values/ordering.js';
-import type { WorkflowGraph } from '../../graph/contract.js';
+import type { WorkflowGraph } from '../../graph/workflow-graph.schemas.js';
 import { parseWorkflowGraphDraft } from '../../graph/validation/preflight.js';
 import type { JsonValue } from '../../values/json/canonical.js';
 import {
@@ -10,7 +10,7 @@ import {
   type PortableConnectionSlot,
   type PortableIssue,
   WORKFLOW_PORTABILITY_LIMITS,
-} from './contract.js';
+} from './portable-manifest.js';
 
 export type WorkflowPortabilityCatalog = Readonly<{
   definitions: readonly Readonly<{

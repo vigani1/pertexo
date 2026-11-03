@@ -29,7 +29,7 @@ import { randomUUID } from 'node:crypto';
 import { claimPreviewDelivery } from '../../src/previews/attempts/claim.js';
 import { PREVIEW_STATUS } from '../../src/previews/state.js';
 import { v7 as uuidv7 } from 'uuid';
-import type { PreviewDelivery } from '../../src/previews/contract.js';
+import type { PreviewDelivery } from '../../src/previews/preview.types.js';
 import { heartbeatPreviewLease } from '../../src/previews/attempts/heartbeat.js';
 import { markPreviewDispatched } from '../../src/previews/attempts/mark-dispatched.js';
 

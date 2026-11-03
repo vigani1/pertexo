@@ -4,7 +4,7 @@ import type {
   ListWorkspaceInvitationsInput,
   ResendWorkspaceInvitationInput,
   RevokeWorkspaceInvitationInput,
-} from '../contract.js';
+} from '../tenant-access.types.js';
 import {
   resendInvitation,
   revokeInvitation,

@@ -13,7 +13,10 @@ import type { PoolClient } from 'pg';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { decodeStoredValue } from '@pertexo/database/platform';
 import { workspaceDataTableRows as rows } from '@pertexo/database/schema';
-import type { DataTableDefinition, FindRowsInput } from '../contract.js';
+import type {
+  DataTableDefinition,
+  FindRowsInput,
+} from '../data-table-commands.types.js';
 import { requireTable } from '../table-lookups.repository.js';
 
 export type StoredRow = Pick<

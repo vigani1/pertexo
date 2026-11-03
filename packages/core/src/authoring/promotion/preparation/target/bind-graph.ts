@@ -12,7 +12,7 @@ import { collectArtifactReferences } from '../../../../artifacts/references/lock
 import { admitWorkflowAuthoring } from '../../../workflows/admission.repository.js';
 import { lockWorkspaceVariableNames } from '../../../../variables/head.repository.js';
 import { requirePlaceableDefinitionAdditions } from '../../../workflows/placement.js';
-import type { PromotionContext } from '../../contract.js';
+import type { PromotionContext } from '../../workflow-promotion.types.js';
 import { mapPromotionNodes } from '../graph.js';
 import type { PromotionSource } from '../source.repository.js';
 import { rebindPromotionTable } from '../tables.js';
@@ -23,7 +23,7 @@ import {
 } from '../calls.repository.js';
 import { inspectPromotionRequirements } from '../requirements.repository.js';
 import type { Origin } from './target-workflows.repository.js';
-import type { TargetReviewState } from './contract.js';
+import type { TargetReviewState } from './target-review.types.js';
 
 export async function prepareTargetGraph(
   client: PoolClient,

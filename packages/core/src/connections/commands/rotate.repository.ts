@@ -10,7 +10,7 @@ import type {
   ConnectionRecord,
   FindConnectionRotateReplayInput,
   RotateConnectionSecretInput,
-} from '../contract.js';
+} from '../connection.js';
 import {
   CONNECTION_AUTH_TYPE,
   CONNECTION_EVENT_TYPE,
@@ -18,7 +18,7 @@ import {
   ConnectionNotFoundError,
   ConnectionSecretVersionConflictError,
   ConnectionUnavailableError,
-} from '../contract.js';
+} from '../connection.js';
 import { recordMemberAction } from '../events.repository.js';
 import { healthOfNewSecret } from '../health/rules.js';
 import { rotateConnectionHealth } from '../health/transitions.repository.js';

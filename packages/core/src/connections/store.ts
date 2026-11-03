@@ -20,7 +20,7 @@ import { WorkspaceAccessDeniedError } from '../shared/errors.js';
 import type {
   ReadConnectionSharingInput,
   ReplaceConnectionSharingInput,
-} from './commands/contract.js';
+} from './commands/connection-sharing.types.js';
 import {
   createConnection,
   findConnectionCreateReplay,
@@ -54,10 +54,13 @@ import type {
   RevokeConnectionInput,
   RotateConnectionSecretInput,
   StartConnectionTestInput,
-} from './contract.js';
-import { ConnectionNotFoundError } from './contract.js';
-import type { ListConnectionUsageInput } from './discovery/contract.js';
-import { listConnections, readConnection } from './discovery/reads.repository.js';
+} from './connection.js';
+import { ConnectionNotFoundError } from './connection.js';
+import type { ListConnectionUsageInput } from './discovery/connection-usage.types.js';
+import {
+  listConnections,
+  readConnection,
+} from './discovery/reads.repository.js';
 import { listConnectionUsage } from './discovery/usage.repository.js';
 import {
   authorizeOAuth2Connection,
@@ -71,7 +74,7 @@ import type {
   ReadOAuth2ClientInput,
   ReadOAuth2EarlierTokensInput,
   StartOAuth2AuthorizationInput,
-} from './oauth2/contract.js';
+} from './oauth2/oauth2-grant.types.js';
 import {
   oauth2TokenFlows,
   readEarlierTokens,
@@ -80,7 +83,7 @@ import {
   requireVisibleConnection,
   selectConnection,
 } from './connections.repository.js';
-import type { ResolveConnectionLookupSecretInput } from './runtime/contract.js';
+import type { ResolveConnectionLookupSecretInput } from './runtime/connection-resolution.types.js';
 import { resolveConnectionLookupSecret } from './runtime/lookup.repository.js';
 import {
   assertConnectionSecretCurrent,

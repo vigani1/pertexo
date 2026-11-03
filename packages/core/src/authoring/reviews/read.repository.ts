@@ -27,7 +27,10 @@ import {
   WorkflowRevisionConflictError,
 } from '../workflows/errors.js';
 import { draftRepresentationTag } from '../workflows/representation/tag.js';
-import type { ReviewDependencies, ReviewScope } from './contract.js';
+import type {
+  ReviewDependencies,
+  ReviewScope,
+} from './publication-review.types.js';
 import { review, reviewDetails } from './eligibility.repository.js';
 type ReviewRow = Awaited<ReturnType<typeof reviewDetails>>[number]['record'];
 export async function readReviewRow(

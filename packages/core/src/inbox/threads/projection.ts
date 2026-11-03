@@ -10,7 +10,7 @@ import { parseWorkspaceId } from '@pertexo/database/primitives';
 import { readWorkflowRunFailedSteps } from '../../runs/queries/history/details.repository.js';
 import { FAILURE_ALERT_CHANNEL_NAMES } from './alert-channels.js';
 import { readFailureDays } from './failure-days.repository.js';
-import type { WorkspaceInboxFailureKind } from './contract.js';
+import type { WorkspaceInboxFailureKind } from './workspace-inbox-thread.js';
 import type { NoticeRecord } from './inbox-notices.repository.js';
 type NoticeRow = NoticeRecord &
   (

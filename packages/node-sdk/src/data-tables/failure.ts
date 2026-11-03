@@ -1,5 +1,5 @@
 import { NodeExecutorFailure } from '../execution/errors.js';
-import type { DataTableError } from './contract.js';
+import type { DataTableError } from './data-table.schemas.js';
 export class NodeDataTableFailure extends NodeExecutorFailure {
   constructor(readonly code: DataTableError['code']) {
     super({

@@ -19,7 +19,10 @@ import {
   WebhookTriggerNotFoundError,
 } from '../errors.js';
 
-import type { Command, SealedWebhookTriggerSecret } from './contract.js';
+import type {
+  Command,
+  SealedWebhookTriggerSecret,
+} from './webhook-runtime.types.js';
 
 function webhookCommand(input: Command, operation: string) {
   return {

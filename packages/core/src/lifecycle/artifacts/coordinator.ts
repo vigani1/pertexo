@@ -1,4 +1,4 @@
-import type { RunArtifactRetentionProcessResult } from './contract.js';
+import type { RunArtifactRetentionProcessResult } from './artifact-retention.types.js';
 import {
   optionsSchema,
   type RunArtifactRetentionCoordinatorOptions,

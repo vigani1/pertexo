@@ -22,7 +22,7 @@ import type {
   CoordinateEventInput,
   CoordinateEventResult,
   StartCoordinatedRun,
-} from './contract.js';
+} from './event-coordination.types.js';
 
 /** Both ingress paths already hold the workspace admission lock and current publication fence. */
 export async function coordinateEvent(

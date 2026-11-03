@@ -13,9 +13,9 @@ import {
 } from '../shared/workspace-access.js';
 import { and, eq, sql } from 'drizzle-orm';
 import { WorkflowRunNotFoundError } from './errors.js';
-import type { ResourceTransaction } from '../shared/contract.js';
+import type { ResourceTransaction } from '../shared/folder-access.types.js';
 import { workflowScopeSql } from '../shared/scope.repository.js';
-import type { WorkflowResourceCapability } from '../shared/contract.js';
+import type { WorkflowResourceCapability } from '../shared/folder-access.types.js';
 
 /** The command already holds the workspace authority fence before touching run rows. */
 export async function requireRunAccess(

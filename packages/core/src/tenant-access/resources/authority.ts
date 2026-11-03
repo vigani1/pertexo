@@ -13,7 +13,7 @@ import {
 import type {
   ResourceActor,
   WorkflowResourceCapability,
-} from '../../shared/contract.js';
+} from '../../shared/folder-access.types.js';
 import { readFolderScope } from '../../shared/facts.repository.js';
 import { workflowAccessible } from './workflows.repository.js';
 

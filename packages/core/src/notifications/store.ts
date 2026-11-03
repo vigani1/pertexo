@@ -12,7 +12,7 @@ import type {
   CompleteDeliveryInput,
   FenceDispatchInput,
   LoadDestinationInput,
-} from './contract.js';
+} from './failure-notification.types.js';
 import { claimDelivery } from './delivery/claim.repository.js';
 import { completeDelivery } from './delivery/completion.repository.js';
 import {

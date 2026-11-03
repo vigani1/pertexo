@@ -12,7 +12,7 @@ import {
   workflowVersions,
   workflowErrorPolicies,
 } from '@pertexo/database/schema';
-import type { FolderScope } from '../../../shared/contract.js';
+import type { FolderScope } from '../../../shared/folder-access.types.js';
 import { workflowAccessible } from '../../../tenant-access/resources/workflows.repository.js';
 import { workflowScopeSql } from '../../../shared/scope.repository.js';
 import type { PoolClient } from 'pg';

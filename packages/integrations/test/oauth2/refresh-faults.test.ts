@@ -9,7 +9,7 @@ import {
 import type {
   OAuth2IssuedRow,
   OAuth2Token,
-} from '../../src/oauth2/contract.js';
+} from '../../src/oauth2/oauth2-token.js';
 
 const SCOPE = {
   workspaceId: '00000000-0000-4000-8000-000000000001',

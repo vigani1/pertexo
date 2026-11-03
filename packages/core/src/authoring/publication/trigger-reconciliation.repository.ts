@@ -5,7 +5,7 @@ import { generatePersistedId } from '@pertexo/database/platform';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { workflowTriggers } from '@pertexo/database/schema';
 import { workflowTriggerProjection } from '../../triggers/reconciliation/projection.js';
-import type { WorkflowVersionRecord } from '../workflows/representation/contract.js';
+import type { WorkflowVersionRecord } from '../workflows/representation/workflow-record.types.js';
 
 export function reconcileWorkflowTriggersPayload(
   input: Readonly<{

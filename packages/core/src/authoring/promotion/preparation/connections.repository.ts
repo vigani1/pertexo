@@ -20,7 +20,10 @@ import {
 import type { WorkflowPromotionRequirement } from '@pertexo/contracts';
 import type { AuthoringCatalogs } from '../../workflows/catalogs.js';
 import { WorkflowPromotionError } from '../errors.js';
-import type { PromotionSource, PromotionSourceSet } from './source.repository.js';
+import type {
+  PromotionSource,
+  PromotionSourceSet,
+} from './source.repository.js';
 import { promotionNodes } from './graph.js';
 
 export async function rebindPromotionConnections(

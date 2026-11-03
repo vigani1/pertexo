@@ -12,7 +12,7 @@ import {
   throwStartupFailure,
   type ApiApplicationDependencies,
 } from './api-runtimes.js';
-import type { ApiRuntimeSet } from './platform/application/contract.js';
+import type { ApiRuntimeSet } from './platform/api-application.types.js';
 import { AppModule } from './app.module.js';
 import { configuredSocialProviders } from './authentication/index.js';
 import type { ApiConfig } from './platform/config/api.js';

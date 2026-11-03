@@ -36,7 +36,7 @@ import type {
   RestoreWorkflowVersionInput,
   SaveWorkflowDraftInput,
   TransitionWorkflowLifecycleInput,
-} from './contract.js';
+} from './workflow-commands.types.js';
 import { readDraft, validateDraft } from './reads/drafts.repository.js';
 import { listVersions, readVersion } from './reads/versions.repository.js';
 import { listWorkflows, readWorkflow } from './reads/workflows.repository.js';

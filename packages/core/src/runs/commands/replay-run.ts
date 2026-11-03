@@ -3,7 +3,7 @@ import { isTestRun } from '../data-policy.js';
 import { and, eq, sql } from 'drizzle-orm';
 
 import { readWorkflowRunAcceptanceReplay } from './acceptance/replay.repository.js';
-import type { PublishedWorkflow } from '../queries/execution/contract.js';
+import type { PublishedWorkflow } from '../queries/execution/workflow-execution.types.js';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 import { generatePersistedId } from '@pertexo/database/platform';
 import {
@@ -14,7 +14,7 @@ import {
   acceptWorkflowRunWithAudit,
   requireWorkflowRunRecord,
 } from './records.repository.js';
-import type { ReplayPublishedWorkflowRunInput } from './contract.js';
+import type { ReplayPublishedWorkflowRunInput } from './run-commands.types.js';
 import type { WorkflowRunRecord } from './records.repository.js';
 
 export async function replayWorkflowRunInTransaction(

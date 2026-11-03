@@ -16,7 +16,7 @@ import { WorkflowRunNotFoundError } from '../../runs/errors.js';
 import { requireTestStopAuthority } from '../workflows/access.js';
 import { WorkflowTestError } from '../workflows/errors.js';
 import { skipPendingCases } from './cases.repository.js';
-import type { WorkflowTestSuiteInput } from './contract.js';
+import type { WorkflowTestSuiteInput } from './workflow-test-suite.types.js';
 
 export async function cancelTestSuite(
   client: PoolClient,

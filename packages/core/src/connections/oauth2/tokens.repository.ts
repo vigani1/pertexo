@@ -17,7 +17,7 @@ import {
   CONNECTION_AUTH_TYPE,
   CONNECTION_STATUS,
   type SealedConnectionSecretRecord,
-} from '../contract.js';
+} from '../connection.js';
 import { sealedFields } from '../connections.repository.js';
 import type {
   BlockOAuth2RefreshInput,
@@ -30,7 +30,7 @@ import type {
   ReadOAuth2EarlierTokensInput,
   ReadOAuth2TokenInput,
   RejectOAuth2TokenInput,
-} from './contract.js';
+} from './oauth2-grant.types.js';
 import { commitRefresh, loseGrant } from './grant-changes.repository.js';
 import { versionIs } from './token-columns.js';
 

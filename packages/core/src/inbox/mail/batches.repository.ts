@@ -5,7 +5,10 @@ import type { PoolClient } from 'pg';
 import { generatePersistedId } from '@pertexo/database/platform';
 import { insertSystemMail } from '@pertexo/secrets/server';
 import type { PreferenceRow } from '../preferences/effective.js';
-import type { NoticeMailPerson, NoticeMailSealer } from './contract.js';
+import type {
+  NoticeMailPerson,
+  NoticeMailSealer,
+} from './notice-mail.types.js';
 import { mailItem } from './items.js';
 import type { recipient, settings } from './recipients.repository.js';
 import type { MailSubjectRow } from './subjects.repository.js';

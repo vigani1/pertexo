@@ -11,9 +11,9 @@ import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { and, eq, or, sql } from 'drizzle-orm';
 import type { PoolClient } from 'pg';
 
-import type { PublishedWorkflow } from '../../../runs/queries/execution/contract.js';
+import type { PublishedWorkflow } from '../../../runs/queries/execution/workflow-execution.types.js';
 import { readHealth } from '../../reconciliation/health.repository.js';
-import type { WorkflowTriggerHealth } from '../../reconciliation/contract.js';
+import type { WorkflowTriggerHealth } from '../../reconciliation/trigger-reconciliation.types.js';
 
 import {
   WebhookDeliveryIneligibleError,
@@ -24,7 +24,7 @@ import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 import type {
   WebhookConfig,
   WebhookVerificationReference,
-} from './contract.js';
+} from './webhook-runtime.types.js';
 import { endpointTakesDeliveries } from './endpoint-rules.js';
 
 export async function oneHealth(

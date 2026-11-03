@@ -10,10 +10,10 @@ import {
 } from '../representation/workflow-representations.repository.js';
 
 import type { PoolClient } from 'pg';
-import type { FolderScope } from '../../../shared/contract.js';
+import type { FolderScope } from '../../../shared/folder-access.types.js';
 import { workflowAccessible } from '../../../tenant-access/resources/workflows.repository.js';
 import type { WorkflowRef } from '../access.js';
-import type { ListWorkflowVersionsInput } from '../contract.js';
+import type { ListWorkflowVersionsInput } from '../workflow-commands.types.js';
 
 export async function readVersion(
   client: PoolClient,

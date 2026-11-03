@@ -1,5 +1,5 @@
 import { useNow } from '../../hooks/use-now';
-import { COMMAND_RETRY_WINDOW_MS, type CommandKey } from './contract';
+import { COMMAND_RETRY_WINDOW_MS, type CommandKey } from './command-retry';
 
 /**
  * Whether a held command's retry window has ended, re-rendering the moment it

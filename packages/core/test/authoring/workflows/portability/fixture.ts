@@ -6,7 +6,7 @@ import {
 import { workflowDefinitionCatalogFingerprint } from '@pertexo/workflow-model/server';
 import { verifyCuratedTemplateManifest } from '@pertexo/templates';
 
-import type { ImportWorkflowInput } from '../../../../src/authoring/workflows/contract.js';
+import type { ImportWorkflowInput } from '../../../../src/authoring/workflows/workflow-commands.types.js';
 
 import type { WorkflowAuthoringStoreOptions } from '../../../../src/authoring/workflows/types.js';
 import {

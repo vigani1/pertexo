@@ -1,5 +1,8 @@
 import { utf8ByteLength } from '../text.js';
-import type { WorkflowGraph, ValueSource } from '../../graph/contract.js';
+import type {
+  WorkflowGraph,
+  ValueSource,
+} from '../../graph/workflow-graph.schemas.js';
 import { inspectExpression, EXPRESSION_POLICY } from './policy.js';
 export type WorkflowVariableReference = Readonly<{
   nodeId: string | null;

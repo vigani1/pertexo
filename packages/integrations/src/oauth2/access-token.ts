@@ -4,8 +4,8 @@ import type {
   OAuth2AccessToken,
   OAuth2Grant,
   OAuth2Token,
-} from './contract.js';
-import { OAuth2TokenFailure } from './contract.js';
+} from './oauth2-token.js';
+import { OAuth2TokenFailure } from './oauth2-token.js';
 import {
   loseOAuth2Grant,
   openOAuth2Grant,

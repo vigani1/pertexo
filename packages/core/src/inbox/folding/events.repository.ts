@@ -6,7 +6,7 @@ import type { PoolClient } from 'pg';
 
 import { generatePersistedId } from '@pertexo/database/platform';
 import type { RunTransitionPlan } from '../../runs/advance/plan.js';
-import { WORKSPACE_INBOX_FAILURE_KINDS } from '../threads/contract.js';
+import { WORKSPACE_INBOX_FAILURE_KINDS } from '../threads/workspace-inbox-thread.js';
 
 const inboxKinds: ReadonlySet<string> = new Set(WORKSPACE_INBOX_FAILURE_KINDS);
 

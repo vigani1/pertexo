@@ -5,7 +5,7 @@ import {
   type DataTableConfig,
 } from '@pertexo/node-sdk';
 import type { WorkflowNode } from '@pertexo/workflow-model';
-import type { DataTableDefinition } from '../../../data-tables/contract.js';
+import type { DataTableDefinition } from '../../../data-tables/data-table-commands.types.js';
 import type { WorkflowPromotionRequirement } from '@pertexo/contracts';
 
 /** Names locate the destination schema; aliases keep downstream output paths stable. */

@@ -2,7 +2,7 @@ import { readFolderScope } from '../../shared/facts.repository.js';
 import type {
   FolderScope,
   WorkflowResourceCapability,
-} from '../../shared/contract.js';
+} from '../../shared/folder-access.types.js';
 import {
   withWorkspaceAccess,
   type WorkspaceAccess,

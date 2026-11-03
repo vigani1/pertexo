@@ -5,7 +5,7 @@ import type {
   NormalizedArtifactIdentity,
   NormalizedBeginArtifactUploadInput,
   NormalizedFinalizeArtifactUploadInput,
-} from './contract.js';
+} from './artifact-upload.js';
 import { ArtifactUploadNotFoundError } from './errors.js';
 
 export function normalizeBeginInput(

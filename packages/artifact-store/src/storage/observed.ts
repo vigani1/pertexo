@@ -25,7 +25,7 @@ import type {
   PurgeWorkspaceObjectsRequest,
   WorkspaceObjectPurgePage,
   WorkspaceObjectPurgeStore,
-} from './contract.js';
+} from './artifact-storage.types.js';
 
 export class ObservedArtifactStore
   implements

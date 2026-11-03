@@ -2,7 +2,7 @@ import { retainCodeOutput } from '../../code/output.js';
 
 import { CODE_LIMITS } from '@pertexo/node-sdk';
 
-import type { CapabilityAssembly } from './contract.js';
+import type { CapabilityAssembly } from './node-runtime-capabilities.types.js';
 import { assertCapabilityRuntimeOpen } from './lifecycle.js';
 
 export function prepareCodeCapability(state: CapabilityAssembly): void {

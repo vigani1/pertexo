@@ -8,7 +8,7 @@ import type {
   NodeExecutionRuntime,
   NodeExecutorRegistration,
   NodeRegistryOptions,
-} from './contract.js';
+} from './node-execution.types.js';
 import {
   DefinitionNotFoundError,
   ExecutorNotFoundError,

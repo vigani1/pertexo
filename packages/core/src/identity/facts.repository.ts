@@ -1,4 +1,4 @@
-import type { IdentitySecurityEvent } from './contract.js';
+import type { IdentitySecurityEvent } from './identity-security-event.types.js';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { Pool, PoolClient } from 'pg';
 

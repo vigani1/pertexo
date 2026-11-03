@@ -10,7 +10,7 @@ import type { PendingCoordinatorFailure } from '../../load/state.repository.js';
 import { terminalStatus } from '../../load/event-facts.repository.js';
 import type { RunTransitionPlan } from '../../plan.js';
 
-import type { ExecutionIdentityMap } from './contract.js';
+import type { ExecutionIdentityMap } from './execution-identity.types.js';
 
 export async function loadEventExecutionIdentities(
   client: PoolClient,

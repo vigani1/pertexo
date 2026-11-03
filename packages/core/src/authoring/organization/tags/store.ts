@@ -12,7 +12,7 @@ import type {
   ListTagsInput,
   RenameTagInput,
   ReplaceTagsInput,
-} from './contract.js';
+} from './workflow-tag.types.js';
 
 import {
   createTag,

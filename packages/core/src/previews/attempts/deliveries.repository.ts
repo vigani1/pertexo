@@ -14,7 +14,7 @@ import {
   transportSecurityAuditFacts,
 } from '@pertexo/database/schema';
 
-import type { PreviewDelivery } from '../contract.js';
+import type { PreviewDelivery } from '../preview.types.js';
 import {
   previewDeliveryPayloadSchema,
   previewReconciliationPayloadSchema,

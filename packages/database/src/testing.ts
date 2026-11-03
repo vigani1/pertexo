@@ -29,7 +29,7 @@ export {
   EXPECTED_MIGRATION_HEAD,
   checkDatabaseReadiness,
 } from './platform/readiness.repository.js';
-export type { DatabaseReadiness } from './platform/contract.js';
+export type { DatabaseReadiness } from './platform/database-platform.types.js';
 export {
   artifacts,
   auditEvents,

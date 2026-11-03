@@ -7,7 +7,7 @@ import {
   ProviderExecutionRateLimitError,
 } from '@pertexo/node-sdk/server';
 import { HTTP_SIDE_EFFECT_CLASS } from '../../http/outcome-policy.js';
-import { OAuth2TokenFailure } from '../../oauth2/contract.js';
+import { OAuth2TokenFailure } from '../../oauth2/oauth2-token.js';
 
 import { errorNameIs, safeInstanceOf } from '../../http/unknown-error.js';
 import { HTTP_REQUEST_CONNECTION_SLOT } from '../definition.js';
@@ -15,7 +15,10 @@ import type { HttpRequestConfig, HttpRequestInput } from '../validation.js';
 
 import { encodeMultipart } from '../multipart/encode.js';
 import { readRequestBody } from '../read-body.js';
-import { HttpRequestExecutorError, failedConfiguration } from './contract.js';
+import {
+  HttpRequestExecutorError,
+  failedConfiguration,
+} from './http-request-execution.js';
 import { releaseHttpMaterial } from './body.js';
 import { fillPlaceholders } from './input.js';
 import { HttpOAuth2Failure } from './oauth2-failure.js';

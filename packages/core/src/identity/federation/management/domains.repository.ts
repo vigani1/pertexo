@@ -20,7 +20,7 @@ import type {
   CreateDomainInput,
   DomainCommand,
   VerifyDomainInput,
-} from './contract.js';
+} from './federation-management.types.js';
 import { requireResourceCapacity } from './organizations.repository.js';
 
 const newDomainChallenge = () => ({

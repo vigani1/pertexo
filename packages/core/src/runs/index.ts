@@ -10,7 +10,7 @@ export {
 export type {
   PublishedWorkflowReader,
   PublishedWorkflow,
-} from './queries/execution/contract.js';
+} from './queries/execution/workflow-execution.types.js';
 export type { InitialCheckpointFactory } from './commands/initial-checkpoint.js';
 export { createWorkflowRunDatabase } from './store.js';
 export type { WorkflowRunDatabase } from './store.js';
@@ -42,7 +42,7 @@ export type {
   RunAdvanceInput,
   RunAdvanceResult,
   RunAdvanceState,
-} from './advance/contract.js';
+} from './advance/run-advance.types.js';
 export { createRunAdvanceStore } from './advance/store.js';
 export type { RunAdvanceStore } from './advance/store.js';
 export {
@@ -61,7 +61,7 @@ export type {
   StalledWorkRecovery,
   StuckRun,
   StuckWork,
-} from './stalled/contract.js';
+} from './stalled/stalled-work.types.js';
 export type { StalledWorkStore } from './stalled/store.js';
 
 export { createWorkflowCallStore } from './calls/store.js';
@@ -72,13 +72,13 @@ export type {
   WorkflowRecoveryMetadata,
   WorkflowRecoveryPreparation,
   PreparedWorkflowRecovery,
-} from './recovery/contract.js';
+} from './recovery/workflow-recovery.types.js';
 export { WorkflowRecoveryUnavailableError } from './recovery/errors.js';
-export type { WorkflowRecoverySummary } from './recovery/contract.js';
+export type { WorkflowRecoverySummary } from './recovery/workflow-recovery.types.js';
 export type {
   WorkflowRecoveryPreviewInput,
   RecoverPublishedWorkflowRunInput,
-} from './commands/contract.js';
+} from './commands/run-commands.types.js';
 
 export { createErrorWorkflowStore } from './error-workflows/store.js';
 export {
@@ -100,12 +100,12 @@ export { createWorkflowExecutionReader } from './queries/execution/source.reposi
 export type {
   WorkflowExecutionReader,
   WorkflowExecutionProjection,
-} from './queries/execution/contract.js';
+} from './queries/execution/workflow-execution.types.js';
 
 export type { UsageTrendsInput } from './queries/usage/trends.js';
 
 export { createRunValuesStore } from './values/store.js';
-export { RunValuesLimitError } from './values/contract.js';
+export { RunValuesLimitError } from './values/run-values.js';
 export type { RunValuesStore } from './values/store.js';
 export { ExecutionCapabilityExpiredError } from '../attempts/errors.js';
 
@@ -117,7 +117,7 @@ export {
 export type {
   PreparedCallback,
   CallbackIdentity,
-} from './pending-tasks/callbacks/contract.js';
+} from './pending-tasks/callbacks/callback.types.js';
 export type { CallbackStore } from './pending-tasks/callbacks/store.js';
 export { DEFAULT_INSTANCE_LIMITS } from './instance-limits.js';
 export {

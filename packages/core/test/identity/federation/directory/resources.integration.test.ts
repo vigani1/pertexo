@@ -23,7 +23,7 @@ import {
 } from '../../../../src/identity/federation/provisioning/sign-in.repository.js';
 import { directorySessionAllowed } from '../../../../src/identity/federation/provisioning/session.repository.js';
 import { withPlatformTransaction } from '@pertexo/database/platform';
-import type { DirectoryUserValues } from '../../../../src/identity/federation/provisioning/contract.js';
+import type { DirectoryUserValues } from '../../../../src/identity/federation/provisioning/directory-provisioning.types.js';
 import type { DirectoryUserRow } from '../../../../src/identity/federation/provisioning/resources/directory-resources.repository.js';
 
 const db = useIdentityCommandDatabase('scim_resources');

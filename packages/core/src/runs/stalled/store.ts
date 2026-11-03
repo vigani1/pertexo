@@ -35,7 +35,7 @@ import type {
   StalledWorkFailure,
   StalledWorkRecovery,
   StalledWorkStageFailure,
-} from './contract.js';
+} from './stalled-work.types.js';
 
 /** A busy run holds its lock only briefly; the next scan tries again. */
 const LOCK_TIMEOUT_MILLIS = 5_000;

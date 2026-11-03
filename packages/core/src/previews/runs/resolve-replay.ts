@@ -1,7 +1,7 @@
 import type {
   PreviewReplayRecord,
   ResolvePreviewReplayInput,
-} from './contract.js';
+} from './preview-replay.types.js';
 
 import type { Role } from '@pertexo/policy';
 import { and, eq, gt } from 'drizzle-orm';

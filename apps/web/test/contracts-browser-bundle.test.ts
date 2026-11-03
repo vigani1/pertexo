@@ -54,7 +54,7 @@ describe('browser contract consumer bundle', () => {
       true,
     );
     expect(
-      moduleIds.some((id) => id.endsWith('/portability/contract.js')),
+      moduleIds.some((id) => id.endsWith('/portability/portable-manifest.js')),
     ).toBe(true);
     expect(
       moduleIds.some((id) => id.includes('/contracts/dist/openapi/')),

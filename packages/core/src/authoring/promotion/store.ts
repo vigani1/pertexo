@@ -3,7 +3,7 @@ import type {
   ApplyPromotionInput,
   PreviewPromotionInput,
   PromotionContext,
-} from './contract.js';
+} from './workflow-promotion.types.js';
 import { preparePromotion } from './preview.js';
 import { promotionReads } from './reads.repository.js';
 import { promotionSettings } from './settings.repository.js';

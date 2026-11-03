@@ -3,7 +3,7 @@ import { Pool } from 'pg';
 import type { PoolClient } from 'pg';
 import { expect } from 'vitest';
 
-import type { LeasedOutboxEvent } from '../../../../src/outbox/dispatcher/contract.js';
+import type { LeasedOutboxEvent } from '../../../../src/outbox/dispatcher/outbox-dispatcher.types.js';
 import {
   canonicalOutboxPayloadChecksum,
   insertOutboxEvent,

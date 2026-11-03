@@ -45,12 +45,12 @@ import {
 import type {
   ApiWorkflowRuntime,
   WorkflowResources,
-} from './composition/contract.js';
+} from './composition/workflow-runtime.types.js';
 import { assembleWorkflowRuntime } from './composition/assemble.js';
 import { collectWorkflowCloseFailures } from './composition/lifecycle.js';
 import { productionTelemetry } from './composition/telemetry.js';
 export { createCoreWorkflowAuthoringDatabase } from './compatibility.js';
-export { type ApiWorkflowRuntime } from './composition/contract.js';
+export { type ApiWorkflowRuntime } from './composition/workflow-runtime.types.js';
 export async function createApiWorkflowRuntime(
   databaseConfig: DatabaseConfig,
   identityRuntime: ApiIdentityRuntime,

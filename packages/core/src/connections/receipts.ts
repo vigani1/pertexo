@@ -12,7 +12,7 @@ import {
   ConnectionIdempotencyConflictError,
   type ConnectionRecord,
   type ConnectionTestResult,
-} from './contract.js';
+} from './connection.js';
 
 const providerKeySchema = z
   .string()

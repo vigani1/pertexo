@@ -7,7 +7,7 @@ import { triggerSchedules } from '@pertexo/database/schema';
 
 import { withPlatformTransaction } from '@pertexo/database/platform';
 import { releaseClaims } from '../retirement.repository.js';
-import type { ScanDueInput, ScheduleClaim } from './contract.js';
+import type { ScanDueInput, ScheduleClaim } from './schedule-scanning.types.js';
 import { claimSchema } from './input.js';
 
 function throwableError(value: unknown, fallbackMessage: string): Error {

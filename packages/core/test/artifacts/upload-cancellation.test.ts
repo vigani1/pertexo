@@ -18,7 +18,7 @@ vi.mock('../../../database/dist/tenant-access/transactions.js', () => ({
 }));
 
 import { createArtifactUploadStore } from '../../src/artifacts/uploads/store.js';
-import type { ArtifactRecord } from '../../src/artifacts/contract.js';
+import type { ArtifactRecord } from '../../src/artifacts/artifact.js';
 
 const workspaceId = randomUUID();
 const actorId = randomUUID();

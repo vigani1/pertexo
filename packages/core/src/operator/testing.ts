@@ -5,9 +5,9 @@ export {
 export {
   OperatorRunReplayMismatchError,
   OperatorRunReplayNotExecutableError,
-} from './replay/contract.js';
+} from './replay/operator-replay.js';
 export { createOperatorCommandStore } from './store.js';
-export { OperatorCommandConflictError } from './contract.js';
+export { OperatorCommandConflictError } from './operator-command.js';
 export {
   type GetOperatorCommandInput,
   type GenericOperatorCommandResult,
@@ -21,4 +21,4 @@ export {
   type ReconcileOperatorAttemptInput,
   type RecordUnknownOutcomeEvidenceInput,
   type RedispatchFailedOutboxInput,
-} from './contract.js';
+} from './operator-command.js';

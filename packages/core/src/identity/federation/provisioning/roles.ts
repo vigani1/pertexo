@@ -1,4 +1,7 @@
-import type { DirectoryMapping, DirectoryRole } from './contract.js';
+import type {
+  DirectoryMapping,
+  DirectoryRole,
+} from './directory-provisioning.types.js';
 
 /** Mapping order is explicit: builder and operator are not a privilege ladder. */
 export function directoryRole(

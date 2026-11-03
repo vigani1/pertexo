@@ -20,7 +20,7 @@ import type {
   ConfigureGovernanceInput,
   ExportAuditInput,
   ListAuditInput,
-} from './contract.js';
+} from './governance.js';
 import { configureGovernance } from './settings/configure.js';
 import { readGovernanceSettings } from './settings/policy.repository.js';
 

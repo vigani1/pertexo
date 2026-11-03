@@ -10,7 +10,7 @@ import {
   acquireDatabasePool,
   type DatabaseRuntime,
 } from '@pertexo/database/platform';
-import type { RunAdvanceInput } from '../advance/contract.js';
+import type { RunAdvanceInput } from '../advance/run-advance.types.js';
 import {
   auditCoordinatorDeliveryMismatch,
   DeliveryMismatch,

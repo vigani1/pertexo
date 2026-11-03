@@ -6,7 +6,10 @@ import {
   importedTableRowsReceipt,
   writtenTableRowsReceipt,
 } from '../receipts.js';
-import type { ImportRowsInput, WriteRowsInput } from '../contract.js';
+import type {
+  ImportRowsInput,
+  WriteRowsInput,
+} from '../data-table-commands.types.js';
 import { readQuotas, requireTable } from '../table-lookups.repository.js';
 import { insertTableBatch, mutateRows } from './mutate.repository.js';
 

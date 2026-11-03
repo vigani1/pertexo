@@ -2,7 +2,7 @@ import type { AuditFilter } from '@pertexo/contracts';
 import { escapeCsvValue } from '@pertexo/node-sdk';
 import type { PoolClient } from 'pg';
 
-import { GovernanceError } from '../contract.js';
+import { GovernanceError } from '../governance.js';
 import { auditCursorOf, type AuditCursor } from './cursor.js';
 import {
   countAuditEvents,

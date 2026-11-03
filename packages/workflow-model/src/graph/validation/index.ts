@@ -5,7 +5,7 @@ import { inspectWorkflowFailureRoutes } from '../../flow/failure-routing/validat
 import {
   WORKFLOW_VALIDATION_MAX_ISSUES,
   type WorkflowGraph,
-} from '../contract.js';
+} from '../workflow-graph.schemas.js';
 import { validateGraphStructure } from './structure.js';
 import {
   WORKFLOW_GRAPH_LIMITS,
@@ -13,7 +13,7 @@ import {
   type GraphValidationIssue,
   type GraphValidationResult,
   type WorkflowGraphLimits,
-} from './contract.js';
+} from './graph-validation.js';
 
 /**
  * Checks a parsed graph against the structural rules and limits. Authoring

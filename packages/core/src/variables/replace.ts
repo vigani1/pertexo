@@ -24,7 +24,7 @@ import type { PoolClient } from 'pg';
 import {
   WorkspaceVariablesConflictError,
   type ReplaceWorkspaceVariablesInput,
-} from './contract.js';
+} from './workspace-variables.js';
 import { planWorkspaceVariableReplacement } from './replacement.js';
 
 const acceptedReplacement = z

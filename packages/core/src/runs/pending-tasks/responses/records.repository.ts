@@ -10,7 +10,7 @@ import { workflowGraphStepSql } from '../../queries/execution/graph-step.js';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { parseStoredExecutionValue } from '../../values/stored-execution.js';
 import { and, eq, desc, inArray, lt, or, sql } from 'drizzle-orm';
-import type { FolderScope } from '../../../shared/contract.js';
+import type { FolderScope } from '../../../shared/folder-access.types.js';
 import { workflowScopeSql } from '../../../shared/scope.repository.js';
 import type { PoolClient } from 'pg';
 import type {
@@ -28,7 +28,7 @@ import {
 } from '@pertexo/workflow-model';
 import type { Role } from '@pertexo/policy';
 import { PendingTaskNotFoundError } from './errors.js';
-import type { PendingTaskScope } from './contract.js';
+import type { PendingTaskScope } from './pending-task-response.types.js';
 
 import {
   task,

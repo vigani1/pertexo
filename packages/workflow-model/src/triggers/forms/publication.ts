@@ -1,6 +1,6 @@
 import { formConfigSchema } from './fields.js';
-import type { WorkflowGraph } from '../../graph/contract.js';
-import type { GraphValidationIssue } from '../../graph/validation/contract.js';
+import type { WorkflowGraph } from '../../graph/workflow-graph.schemas.js';
+import type { GraphValidationIssue } from '../../graph/validation/graph-validation.js';
 
 /** Form admission supplies one entry, never a second implicitly active root. */
 export function formDeclarationIssues(

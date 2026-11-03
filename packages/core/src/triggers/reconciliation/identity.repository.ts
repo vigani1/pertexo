@@ -7,7 +7,7 @@ import {
   rethrowQueryFailure,
 } from '@pertexo/database/primitives';
 import { outboxEvents } from '@pertexo/database/schema';
-import type { ReconcileWorkflowTriggersInput } from './contract.js';
+import type { ReconcileWorkflowTriggersInput } from './trigger-reconciliation.types.js';
 import { WorkflowTriggerReconciliationMismatchError } from './errors.js';
 import { reconciliationPayloadSchema } from './input.js';
 

@@ -1,5 +1,5 @@
 import type { JsonValue } from '../../values/json/canonical.js';
-import type { CallableType } from './contract.js';
+import type { CallableType } from './callable-types.js';
 
 export type CallableValueIssue = Readonly<{
   path: readonly (string | number)[];

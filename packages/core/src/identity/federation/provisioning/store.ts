@@ -4,7 +4,7 @@ import {
   acquireDatabasePool,
   type DatabaseRuntime,
 } from '@pertexo/database/platform';
-import type { FederationScope } from '../management/contract.js';
+import type { FederationScope } from '../management/federation-management.types.js';
 import {
   authenticateDirectory,
   withDirectoryRead,
@@ -21,7 +21,7 @@ import type {
   ReplaceMappingsInput,
   RevokeCredentialInput,
   UnlinkWorkspaceInput,
-} from './contract.js';
+} from './directory-provisioning.types.js';
 import {
   createDirectoryUser,
   changeDirectoryUser,

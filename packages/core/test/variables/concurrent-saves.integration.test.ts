@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { WorkspaceVariablesConflictError } from '../../src/variables/contract.js';
+import { WorkspaceVariablesConflictError } from '../../src/variables/workspace-variables.js';
 import { createWorkspaceVariablesStore } from '../../src/variables/store.js';
 
 import { admin } from '../lifecycle/calls/fixtures.js';

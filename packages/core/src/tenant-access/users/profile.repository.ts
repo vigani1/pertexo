@@ -19,7 +19,7 @@ import type {
   UpdateUserProfileInput,
   UserProfileUpdateResult,
   UserRecord,
-} from '../contract.js';
+} from '../tenant-access.types.js';
 import { UserProfileCommandConflictError } from '../errors.js';
 import { userRecord, userSelection } from './projection.js';
 

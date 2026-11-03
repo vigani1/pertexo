@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { EMPTY_WORKFLOW_GRAPH } from '../../src/graph/contract.js';
+import { EMPTY_WORKFLOW_GRAPH } from '../../src/graph/workflow-graph.schemas.js';
 import {
   workflowCompatibilityReport,
   workflowDraftRepresentationTag,

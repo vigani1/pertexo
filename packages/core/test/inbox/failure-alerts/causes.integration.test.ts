@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { beforeAll, describe, expect, it } from 'vitest';
 
-import type { NoticeMailToSeal } from '../../../src/inbox/mail/contract.js';
+import type { NoticeMailToSeal } from '../../../src/inbox/mail/notice-mail.types.js';
 import { createNotificationDestinationStore } from '../../../src/testing.js';
 import {
   config,
