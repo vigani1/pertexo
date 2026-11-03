@@ -825,8 +825,6 @@ export default tseslint.config(
       'packages/workflow-model/src/index.ts',
       // At the limit already; the move split its test-door import in two.
       'apps/worker/test/support/workflow-lifecycle.integration.support.ts',
-      'packages/database/src/schema/foundation.ts',
-      'packages/database/src/schema/runs/execution.ts',
       'packages/contracts/src/errors/api-problem.ts',
       'packages/contracts/src/openapi/connections.ts',
       'packages/contracts/src/openapi/execution/runs.ts',
