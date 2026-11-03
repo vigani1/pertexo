@@ -7,7 +7,7 @@ import {
   membershipLifecyclePersistence,
   profilePersistence,
   renamePersistence,
-} from '../../src/workspaces/persistence/capabilities.js';
+} from './persistence-capabilities.fixture.js';
 import type { IdentityWorkspacePersistence } from '../../src/workspaces/ports.js';
 
 type AnyCapability = (...input: never[]) => Promise<unknown>;
