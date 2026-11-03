@@ -1,3 +1,4 @@
+import { ARTIFACT_DESCRIPTOR_JSON_PATH } from './descriptor-shape.js';
 import { expiredRunSql, retainedTestRunSql } from '../../runs/data-policy.js';
 import { and, eq, exists, sql, type SQL, type SQLWrapper } from 'drizzle-orm';
 import { alias, QueryBuilder } from 'drizzle-orm/pg-core';
@@ -34,14 +35,21 @@ const event = alias(runEvents, 'event');
 const checkpoint = alias(runCheckpoints, 'checkpoint');
 const task = alias(pendingRunTasks, 'task');
 const db = new QueryBuilder();
+type OwnerValue =
+  | Readonly<{ kind: 'authored'; value: SQL }>
+  | Readonly<{
+      kind: 'execution';
+      value: SQL;
+      format: 'value' | 'event' | 'checkpoint';
+    }>;
 type ReferenceOwner = Readonly<{
   build(where: SQL | undefined): SQLWrapper;
   workspace: SQLWrapper;
   workflow: SQLWrapper;
   retained?: SQL;
   accessibleWhen?: SQL;
-  accessibleValues?: readonly SQL[];
-  values: readonly SQL[];
+  accessibleValues?: readonly OwnerValue[];
+  values: readonly OwnerValue[];
 }>;
 const liveRunValues = sql`${run.detailsPurgedAt} is null and ${retainedTestRunSql('run', 'clock_timestamp()')} and not (${expiredRunSql('run', 'details')})`;
 /** Retention and access share existing reference facts, including sharing through a readable owner. */
@@ -55,7 +63,7 @@ const OWNERS: readonly ReferenceOwner[] = [
     workspace: snapshot.workspaceId,
     workflow: snapshot.workflowId,
     retained: sql`${snapshot.expiresAt}>clock_timestamp()`,
-    values: [sql`${snapshot.graphJson}::jsonb`],
+    values: [{ kind: 'authored', value: sql`${snapshot.graphJson}::jsonb` }],
   },
   {
     build: (where) =>
@@ -73,7 +81,7 @@ const OWNERS: readonly ReferenceOwner[] = [
     workspace: entry.workspaceId,
     workflow: suite.workflowId,
     retained: sql`${suite.expiresAt}>clock_timestamp()`,
-    values: [sql`${entry.input}::jsonb`],
+    values: [{ kind: 'authored', value: sql`${entry.input}::jsonb` }],
   },
   {
     build: (where) =>
@@ -83,7 +91,7 @@ const OWNERS: readonly ReferenceOwner[] = [
         .where(where),
     workspace: draft.workspaceId,
     workflow: draft.workflowId,
-    values: [sql`${draft.graphJson}::jsonb`],
+    values: [{ kind: 'authored', value: sql`${draft.graphJson}::jsonb` }],
   },
   {
     build: (where) =>
@@ -93,7 +101,7 @@ const OWNERS: readonly ReferenceOwner[] = [
         .where(where),
     workspace: version.workspaceId,
     workflow: version.workflowId,
-    values: [sql`${version.graphJson}::jsonb`],
+    values: [{ kind: 'authored', value: sql`${version.graphJson}::jsonb` }],
   },
   {
     build: (where) =>
@@ -111,7 +119,7 @@ const OWNERS: readonly ReferenceOwner[] = [
     workspace: payload.workspaceId,
     workflow: inputCase.workflowId,
     accessibleWhen: sql`${inputCase.deletedAt} is null and ${inputCase.revision}=${payload.revision}`,
-    values: [sql`${payload.input}::jsonb`],
+    values: [{ kind: 'authored', value: sql`${payload.input}::jsonb` }],
   },
   {
     build: (where) =>
@@ -122,7 +130,7 @@ const OWNERS: readonly ReferenceOwner[] = [
     workspace: sample.workspaceId,
     workflow: sample.workflowId,
     retained: sql`${sample.expiresAt}>clock_timestamp()`,
-    values: [sql`${sample.outputRef}::jsonb`],
+    values: [executionReferences(sql`${sample.outputRef}::jsonb`)],
   },
   {
     build: (where) =>
@@ -134,9 +142,9 @@ const OWNERS: readonly ReferenceOwner[] = [
     workflow: preview.workflowId,
     retained: sql`${preview.expiresAt}>clock_timestamp()`,
     values: [
-      sql`${preview.inputRef}::jsonb`,
-      sql`${preview.executableNodeJson}::jsonb`,
-      sql`${preview.outputRef}::jsonb`,
+      executionReferences(sql`${preview.inputRef}::jsonb`),
+      { kind: 'authored', value: sql`${preview.executableNodeJson}::jsonb` },
+      executionReferences(sql`${preview.outputRef}::jsonb`),
     ],
   },
   {
@@ -264,11 +272,22 @@ const OWNERS: readonly ReferenceOwner[] = [
     values: [executionReferences(sql`${task.outputRef}::jsonb`)],
   },
 ];
-function referencesArtifact(value: SQL, artifact: SQL): SQL {
+function referencesArtifact(source: OwnerValue, artifact: SQL): SQL {
+  if (source.kind === 'execution')
+    return exists(
+      db
+        .select({ one: sql`1` })
+        .from(
+          sql`app.execution_artifact_ids(${source.value},${source.format}) reference`,
+        )
+        .where(sql`reference=${artifact}::uuid`),
+    );
   return exists(
     db
       .select({ one: sql`1` })
-      .from(sql`jsonb_path_query(${value},'lax $.**.artifactId') reference`)
+      .from(
+        sql`jsonb_path_query(${source.value},${ARTIFACT_DESCRIPTOR_JSON_PATH}::jsonpath) reference`,
+      )
       .where(sql`reference=to_jsonb(${artifact}::uuid::text)`),
   );
 }
@@ -301,7 +320,9 @@ export function artifactReferenceOwnersSql(
   return sql`(${sql.join(owners, sql` or `)})`;
 }
 
-function executionReferences(value: SQL, format = 'value'): SQL {
-  return sql`(select coalesce(jsonb_agg(jsonb_build_object('artifactId',id)), '[]'::jsonb)
-    from app.execution_artifact_ids(${value},${format}) id)`;
+function executionReferences(
+  value: SQL,
+  format: 'value' | 'event' | 'checkpoint' = 'value',
+): OwnerValue {
+  return { kind: 'execution', value, format };
 }

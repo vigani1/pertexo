@@ -1,3 +1,4 @@
+import { isArtifactDescriptor } from './descriptor-shape.js';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import {
   visibleArtifactIds,
@@ -64,13 +65,7 @@ export function collectArtifactReferences(
       const children: readonly unknown[] = current;
       pending.push(...children);
     } else if (isRecord(current)) {
-      const artifactReference =
-        current.kind === 'artifact' &&
-        'artifactId' in current &&
-        'byteLength' in current &&
-        'mediaType' in current &&
-        'sha256' in current;
-      if (artifactReference) {
+      if (isArtifactDescriptor(current)) {
         const { kind: _kind, ...descriptor } = current;
         found.push(nodeArtifactReferenceSchema.parse(descriptor));
       } else pending.push(...Object.values(current));

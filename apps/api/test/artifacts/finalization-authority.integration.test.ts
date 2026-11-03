@@ -122,6 +122,92 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
         (await api.send('GET', `${path}/download`, { browser: builder }))
           .statusCode,
       ).toBe(404);
+      const publicWorkflow = await api.send(
+        'POST',
+        `/v1/workspaces/${workspaceId}/workflows`,
+        {
+          browser: builder,
+          headers: { 'Idempotency-Key': randomUUID() },
+          payload: { name: 'Business data preview' },
+        },
+      );
+      expect(publicWorkflow.statusCode, publicWorkflow.payload).toBe(201);
+      const publicWorkflowId = publicWorkflow.json<{
+        workflow: { id: string };
+      }>().workflow.id;
+      const publicDraft = `/v1/workspaces/${workspaceId}/workflows/${publicWorkflowId}/draft`;
+      const saved = await api.send('PUT', publicDraft, {
+        browser: builder,
+        headers: {
+          'Idempotency-Key': randomUUID(),
+          'if-match': String(publicWorkflow.headers.etag),
+        },
+        payload: {
+          graph: {
+            edges: [],
+            settings: {},
+            nodes: [
+              {
+                id: 'business',
+                definition: { key: 'core.set', version: 1 },
+                position: { x: 0, y: 0 },
+                configVersion: 1,
+                config: {},
+                connectionRefs: {},
+                inputMappings: {
+                  payload: { kind: 'run_input', path: '$.payload' },
+                },
+              },
+            ],
+          },
+        },
+      });
+      expect(saved.statusCode, saved.payload).toBe(200);
+      const testNode = (value: object) =>
+        api.send('POST', `${publicDraft}/nodes/business/test`, {
+          browser: builder,
+          headers: { 'Idempotency-Key': randomUUID() },
+          payload: {
+            mode: 'test_execute',
+            expectedRevision: 2,
+            acknowledgeSideEffects: true,
+            input: { kind: 'manual', value: { payload: value } },
+          },
+        });
+      const descriptor = await testNode({
+        kind: 'artifact',
+        artifactId,
+        byteLength: 17,
+        mediaType: 'application/json',
+        sha256: 'a'.repeat(64),
+      });
+      expect(descriptor.statusCode, descriptor.payload).toBe(400);
+      expect(descriptor.json()).toMatchObject({ code: 'request.invalid' });
+      const incidental = await testNode({
+        ordinaryBusinessData: { artifactId },
+      });
+      expect(incidental.statusCode, incidental.payload).toBe(202);
+      const persisted = await api
+        .database()
+        .query<{ input_ref: unknown }>(
+          'select input_ref from app.preview_runs where workflow_id=$1',
+          [publicWorkflowId],
+        );
+      expect(persisted.rows).toEqual([
+        {
+          input_ref: {
+            kind: 'inline',
+            value: { payload: { ordinaryBusinessData: { artifactId } } },
+          },
+        },
+      ]);
+      const refusedDownload = await api.send('GET', `${path}/download`, {
+        browser: builder,
+      });
+      expect(refusedDownload.statusCode, refusedDownload.payload).toBe(404);
+      expect(refusedDownload.json()).toMatchObject({
+        code: 'resource.not_found',
+      });
       const hidden = await api.send('POST', `${path}/finalize`, {
         browser: builder,
         payload: {},
