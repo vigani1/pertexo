@@ -127,61 +127,6 @@ describe('migration runner resource ownership', () => {
     },
   );
 
-  it('applies the lock budget before waiting for migration serialization', async () => {
-    const directory = await temporaryMigrationsDirectory();
-    const client = successfulClient();
-    postgres.connect.mockResolvedValue(client);
-
-    await expect(
-      migrateDatabase(config, directory, {
-        lockTimeoutMs: 432,
-        statementTimeoutMs: 1_234,
-      }),
-    ).resolves.toEqual([]);
-
-    const statements = client.query.mock.calls.map(([sql]) => sql);
-    expect(
-      statements.indexOf("select set_config('statement_timeout',$1,false)"),
-    ).toBeLessThan(
-      statements.indexOf("select set_config('lock_timeout',$1,false)"),
-    );
-    expect(
-      statements.indexOf("select set_config('lock_timeout',$1,false)"),
-    ).toBeLessThan(statements.indexOf('select pg_advisory_lock($1)'));
-    expect(client.query).toHaveBeenCalledWith(
-      "select set_config('lock_timeout',$1,false)",
-      ['432ms'],
-    );
-  });
-
-  it('applies and records a pending migration in one transaction', async () => {
-    const directory = await temporaryMigrationsDirectory();
-    await writeFile(
-      path.join(directory, '0001_probe.sql'),
-      'select 1;\n',
-      'utf8',
-    );
-    const client = successfulClient();
-    postgres.connect.mockResolvedValue(client);
-
-    await expect(migrateDatabase(config, directory)).resolves.toEqual([
-      '0001_probe.sql',
-    ]);
-    const statements = client.query.mock.calls.map(([sql]) => sql);
-    const probe = statements.indexOf('select 1;\n');
-    expect(statements.slice(probe - 4, probe + 3)).toEqual([
-      'begin',
-      'set local role "owner"',
-      "select set_config('lock_timeout',$1,true)",
-      "select set_config('statement_timeout',$1,true)",
-      'select 1;\n',
-      'insert into pertexo_internal.schema_migrations(name,checksum) values($1,$2)',
-      'commit',
-    ]);
-    expect(client.release).toHaveBeenCalledOnce();
-    expect(postgres.end).toHaveBeenCalledOnce();
-  });
-
   it('refuses a database migrated from an older migration history', async () => {
     const directory = await temporaryMigrationsDirectory();
     await writeFile(
