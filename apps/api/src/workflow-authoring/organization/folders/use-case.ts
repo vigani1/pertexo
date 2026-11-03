@@ -41,7 +41,7 @@ export class WorkflowFoldersUseCase {
   public async sharingPrincipals(
     input: WorkflowOrganizationInput & { query: unknown },
   ) {
-    const query = sharingPrincipalsQuerySchema.parse(input.query);
+    const query = parseRequestInput(sharingPrincipalsQuerySchema, input.query);
     await authorizeWorkflowOrganization(input, this.authorization, 'admin', {
       reading: true,
     });
@@ -68,7 +68,10 @@ export class WorkflowFoldersUseCase {
   }
 
   public async replaceSharing(input: FolderCommand) {
-    const request = parseRequestInput(folderSharingRequestSchema, input.request);
+    const request = parseRequestInput(
+      folderSharingRequestSchema,
+      input.request,
+    );
     const context = await this.command(input, 'admin');
     const { replayed, ...sharing } = await this.folders.replaceSharing({
       ...context,
@@ -99,7 +102,7 @@ export class WorkflowFoldersUseCase {
   public async list(
     input: WorkflowOrganizationInput & Readonly<{ query: unknown }>,
   ) {
-    workflowFolderListQuerySchema.parse(input.query);
+    parseRequestInput(workflowFolderListQuerySchema, input.query);
     await authorizeWorkflowOrganization(input, this.authorization, 'read', {
       reading: true,
     });

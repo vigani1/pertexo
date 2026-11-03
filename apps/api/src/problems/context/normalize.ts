@@ -102,7 +102,10 @@ export function runFailure(error: unknown): unknown {
   if (error instanceof WorkflowEngineError)
     return new WorkflowRunNotExecutableError();
   if (error instanceof z.ZodError || error instanceof TypeError)
-    return new InvalidRequestError('The workflow run request is invalid.');
+    return new InvalidRequestError(
+      'The workflow run request is invalid.',
+      requestInputCause(error),
+    );
   return hiddenResourceFailure(error);
 }
 
@@ -124,6 +127,7 @@ export function dataTableFailure(error: unknown): unknown {
   if (error instanceof z.ZodError)
     return new InvalidRequestError(
       error.issues[0]?.message ?? 'The data table request is invalid.',
+      requestInputCause(error),
     );
   return resourceFailure(error);
 }

@@ -14,6 +14,7 @@ import {
   type UserProfileResponse,
   type UserProfileUpdateResponse,
 } from '../types.js';
+import { parseRequestInput } from '../../platform/http/request-input.js';
 
 type ProfilePersistence = Required<
   Pick<IdentityWorkspacePersistence, 'updateUserProfile'>
@@ -54,7 +55,10 @@ export class UpdateUserProfileUseCase {
     return this.telemetry.measure(
       IDENTITY_WORKSPACE_OPERATION.userProfileUpdate,
       async () => {
-        const request = userProfileUpdateRequestSchema.parse(input.request);
+        const request = parseRequestInput(
+          userProfileUpdateRequestSchema,
+          input.request,
+        );
         const result = await this.persistence.updateUserProfile({
           actorUserId: input.actorUserId,
           displayName: request.displayName,

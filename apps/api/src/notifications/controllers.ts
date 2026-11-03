@@ -50,6 +50,7 @@ import { WorkspaceInboxService } from './service.js';
 import { INBOX_HINT_SOURCE, NOTIFICATION_AUTHORIZATION } from './tokens.js';
 import { domainErrors } from '../platform/http/problems/interceptor.js';
 import { inboxFailure } from '../problems/context/normalize.js';
+import { parseRequestInput } from '../platform/http/request-input.js';
 
 const workspaceRouteSchema = z
   .object({ workspaceId: z.uuid() })
@@ -89,7 +90,7 @@ export class NotificationsController {
     @Query() query: unknown,
   ) {
     const { workspaceId } = workspaceRouteSchema.parse(params);
-    const input = workspaceInboxListQuerySchema.parse(query ?? {});
+    const input = parseRequestInput(workspaceInboxListQuerySchema, query ?? {});
     return this.service.list({
       workspaceId,
       actorId: authenticatedSession(request).userId,
@@ -129,7 +130,10 @@ export class NotificationsController {
     @Body() body: unknown,
   ) {
     const { workspaceId } = workspaceRouteSchema.parse(params);
-    const { revision } = workspaceInboxReadAllRequestSchema.parse(body);
+    const { revision } = parseRequestInput(
+      workspaceInboxReadAllRequestSchema,
+      body,
+    );
     return this.service.markAllRead({
       workspaceId,
       actorId: authenticatedSession(request).userId,
@@ -151,7 +155,10 @@ export class NotificationsController {
     @Body() body: unknown,
   ) {
     const route = workspaceInboxThreadParamsSchema.parse(params);
-    const { revision } = workspaceInboxReadRequestSchema.parse(body);
+    const { revision } = parseRequestInput(
+      workspaceInboxReadRequestSchema,
+      body,
+    );
     return this.service.markRead({
       workspaceId: route.workspaceId,
       actorId: authenticatedSession(request).userId,

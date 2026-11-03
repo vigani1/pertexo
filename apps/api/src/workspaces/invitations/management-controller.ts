@@ -32,6 +32,7 @@ import {
 } from '../types.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
 import { workspaceFailure } from '../../problems/context/normalize.js';
+import { parseRequestInput } from '../../platform/http/request-input.js';
 
 @UseInterceptors(domainErrors(workspaceFailure))
 @Controller('v1/workspaces')
@@ -50,7 +51,10 @@ export class WorkspaceInvitationsController {
     @Res({ passthrough: true }) response: CookieResponse,
   ) {
     const { workspaceId } = workspaceIdParamSchema.parse(params);
-    const parsed = workspaceInvitationsQuerySchema.parse(query ?? {});
+    const parsed = parseRequestInput(
+      workspaceInvitationsQuerySchema,
+      query ?? {},
+    );
     response.header('Cache-Control', 'private, no-store');
     return this.invitations.list({
       actor: projectAuthenticatedWorkspaceContext(request, workspaceId).actor,

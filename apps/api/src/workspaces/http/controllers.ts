@@ -51,6 +51,7 @@ import {
 } from '../request/authenticated-context.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
 import { workspaceFailure } from '../../problems/context/normalize.js';
+import { parseRequestInput } from '../../platform/http/request-input.js';
 
 @UseInterceptors(domainErrors(workspaceFailure))
 @Controller('v1/users')
@@ -104,7 +105,10 @@ export class WorkspaceDiscoveryController {
     @Query() query: unknown,
     @Res({ passthrough: true }) response: CookieResponse,
   ) {
-    const input = accessibleWorkspacesQuerySchema.parse(query ?? {});
+    const input = parseRequestInput(
+      accessibleWorkspacesQuerySchema,
+      query ?? {},
+    );
     response.header('Cache-Control', 'private, no-store');
     return this.workspaces.execute(authenticatedSession(request).userId, {
       ...(input.limit === undefined ? {} : { limit: input.limit }),
@@ -132,7 +136,7 @@ export class WorkspaceMembersController {
     @Res({ passthrough: true }) response: CookieResponse,
   ) {
     const { workspaceId } = workspaceIdParamSchema.parse(params);
-    const input = workspaceMembersQuerySchema.parse(query ?? {});
+    const input = parseRequestInput(workspaceMembersQuerySchema, query ?? {});
     const actor = lifecycleActorFrom(request, workspaceId);
     response.header('Cache-Control', 'private, no-store');
     return this.members.execute({
@@ -242,7 +246,10 @@ export class WorkspaceController {
     @Body() body: unknown,
   ) {
     const { workspaceId } = workspaceIdParamSchema.parse(params);
-    const deletion = workspaceDeletionRequestSchema.parse(body ?? {});
+    const deletion = parseRequestInput(
+      workspaceDeletionRequestSchema,
+      body ?? {},
+    );
     const actor = lifecycleActorFrom(request, workspaceId);
     const requestId = actor.requestId;
     const traceId = actor.traceId;

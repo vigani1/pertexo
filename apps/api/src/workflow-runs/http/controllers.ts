@@ -73,6 +73,7 @@ import {
 } from '../use-cases.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
 import { runFailure } from '../../problems/context/normalize.js';
+import { parseRequestInput } from '../../platform/http/request-input.js';
 
 @UseInterceptors(domainErrors(runFailure))
 @Controller('v1/workspaces/:workspaceId')
@@ -110,7 +111,7 @@ export class WorkflowRunsController {
   ) {
     const route = workflowRunStartParamsSchema.parse(params);
     // No body means run the current version with its default input.
-    const input = workflowRunStartRequestSchema.parse(body ?? {});
+    const input = parseRequestInput(workflowRunStartRequestSchema, body ?? {});
     return this.startWorkflowRun.execute({
       actor: actorFrom(request, route.workspaceId),
       routeWorkspaceId: route.workspaceId,
@@ -143,7 +144,7 @@ export class WorkflowRunsController {
     @Body() body: unknown,
   ) {
     const route = workflowRunParamsSchema.parse(params);
-    const input = workflowRunReplayRequestSchema.parse(body);
+    const input = parseRequestInput(workflowRunReplayRequestSchema, body);
     return this.replayWorkflowRun.execute({
       actor: actorFrom(request, route.workspaceId),
       routeWorkspaceId: route.workspaceId,
@@ -183,7 +184,7 @@ export class WorkflowRunsController {
     @Query() query: unknown,
   ) {
     const route = workflowRunListParamsSchema.parse(params);
-    const input = workflowRunListQuerySchema.parse(query ?? {});
+    const input = parseRequestInput(workflowRunListQuerySchema, query ?? {});
     return this.listWorkflowRuns.execute({
       actor: actorFrom(request, route.workspaceId),
       routeWorkspaceId: route.workspaceId,
@@ -222,7 +223,10 @@ export class WorkflowRunsController {
     @Query() query: unknown,
   ) {
     const route = workflowRunListParamsSchema.parse(params);
-    const input = workflowRunStatisticsQuerySchema.parse(query ?? {});
+    const input = parseRequestInput(
+      workflowRunStatisticsQuerySchema,
+      query ?? {},
+    );
     return this.getWorkflowRunStatistics.execute({
       actor: actorFrom(request, route.workspaceId),
       routeWorkspaceId: route.workspaceId,
@@ -297,7 +301,7 @@ export class WorkflowRunsController {
     @Body() body: unknown,
   ) {
     const route = workflowRunParamsSchema.parse(params);
-    const input = workflowRunCancelRequestSchema.parse(body ?? {});
+    const input = parseRequestInput(workflowRunCancelRequestSchema, body ?? {});
     return this.cancelWorkflowRun.execute({
       actor: actorFrom(request, route.workspaceId),
       routeWorkspaceId: route.workspaceId,

@@ -10,6 +10,7 @@ import {
   workspaceRenameResponseSchema,
   type WorkspaceRenameResponse,
 } from '../types.js';
+import { parseRequestInput } from '../../platform/http/request-input.js';
 
 type RenamePersistence = Required<
   Pick<IdentityWorkspacePersistence, 'renameWorkspace'>
@@ -34,7 +35,10 @@ export class RenameWorkspaceUseCase {
     return this.telemetry.measure(
       IDENTITY_WORKSPACE_OPERATION.workspaceRename,
       async () => {
-        const request = workspaceRenameRequestSchema.parse(input.request);
+        const request = parseRequestInput(
+          workspaceRenameRequestSchema,
+          input.request,
+        );
         const result = await this.persistence.renameWorkspace({
           workspaceId: input.routeWorkspaceId,
           actorUserId: input.actor.actorId,

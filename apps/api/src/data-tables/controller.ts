@@ -43,6 +43,7 @@ import { DataTablesReadGuard, DataTablesManageGuard } from './guards.js';
 import { DataTablesService } from './service.js';
 import { domainErrors } from '../platform/http/problems/interceptor.js';
 import { dataTableFailure } from '../problems/context/normalize.js';
+import { parseRequestInput } from '../platform/http/request-input.js';
 
 type Request = IdentityWorkspaceRequest & AbortableRequest;
 @UseInterceptors(domainErrors(dataTableFailure))
@@ -79,7 +80,7 @@ export class DataTablesController {
     @Param('workspaceId') workspace: unknown,
     @Body() body: unknown,
   ) {
-    const input = dataTableCreateSchema.parse(body);
+    const input = parseRequestInput(dataTableCreateSchema, body);
     return withRequestOperationSignal(request, (signal) =>
       this.tables.store.create({
         ...this.scope(request, workspace),
@@ -99,7 +100,7 @@ export class DataTablesController {
     @Param('workspaceId') workspace: unknown,
     @Body() body: unknown,
   ) {
-    const input = dataTableLimitsSchema.parse(body);
+    const input = parseRequestInput(dataTableLimitsSchema, body);
     return withRequestOperationSignal(request, (signal) =>
       this.tables.store.configure({
         ...this.scope(request, workspace),
@@ -119,7 +120,7 @@ export class DataTablesController {
     @Param('tableId') table: unknown,
     @Body() body: unknown,
   ) {
-    const input = dataTableRemoveSchema.parse(body);
+    const input = parseRequestInput(dataTableRemoveSchema, body);
     const tableId = workspaceIdentifierSchema.parse(table);
     return withRequestOperationSignal(request, (signal) =>
       this.tables.store.remove({
@@ -141,7 +142,7 @@ export class DataTablesController {
     @Param('tableId') table: unknown,
     @Body() body: unknown,
   ) {
-    const input = dataTableSchemaEditSchema.parse(body);
+    const input = parseRequestInput(dataTableSchemaEditSchema, body);
     const tableId = workspaceIdentifierSchema.parse(table);
     return withRequestOperationSignal(request, (signal) =>
       this.tables.store.editSchema({
@@ -192,7 +193,7 @@ export class DataTablesController {
     @Param('tableId') table: unknown,
     @Body() body: unknown,
   ) {
-    const query = dataTableQuerySchema.parse(body);
+    const query = parseRequestInput(dataTableQuerySchema, body);
     const tableId = workspaceIdentifierSchema.parse(table);
     return withRequestOperationSignal(request, (signal) =>
       this.tables.store.find({
@@ -214,7 +215,7 @@ export class DataTablesController {
     @Param('tableId') table: unknown,
     @Body() body: unknown,
   ) {
-    const input = dataTableWriteSchema.parse(body);
+    const input = parseRequestInput(dataTableWriteSchema, body);
     const tableId = workspaceIdentifierSchema.parse(table);
     return withRequestOperationSignal(request, (signal) =>
       this.tables.store.write({
@@ -240,7 +241,7 @@ export class DataTablesController {
     @Param('tableId') table: unknown,
     @Body() body: unknown,
   ) {
-    const input = dataTableCsvImportSchema.parse(body);
+    const input = parseRequestInput(dataTableCsvImportSchema, body);
     const tableId = workspaceIdentifierSchema.parse(table);
     return withRequestOperationSignal(request, (signal) =>
       this.tables.importCsv({

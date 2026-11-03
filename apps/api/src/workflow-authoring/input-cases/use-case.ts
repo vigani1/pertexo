@@ -41,7 +41,7 @@ export class WorkflowInputCasesUseCase {
   ) {}
   public async list(input: ReadInput & Readonly<{ query: unknown }>) {
     await this.authorize(input, 'workflow:read');
-    const query = workflowInputCaseQuerySchema.parse(input.query);
+    const query = parseRequestInput(workflowInputCaseQuerySchema, input.query);
     const context = this.context(input);
     const result = await this.persistence.listCases({
       ...context,

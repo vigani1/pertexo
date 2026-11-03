@@ -34,6 +34,7 @@ import {
   encryptionSignal,
   type ConnectionCommandInput,
 } from '../use-cases/support.js';
+import { parseRequestInput } from '../../platform/http/request-input.js';
 
 /** ADR 046: per call and for the whole request, both bounded by the caller. */
 const LOOKUP_CALL_TIMEOUT_MILLIS = 5_000;
@@ -96,7 +97,10 @@ export class LookupSlackChannelsUseCase {
           this.authorization,
           'connection:use',
         );
-        const { channelIds } = slackChannelLookupQuerySchema.parse(input.query);
+        const { channelIds } = parseRequestInput(
+          slackChannelLookupQuerySchema,
+          input.query,
+        );
         const named = channelIds.filter(hasChannelName);
         if (named.length === 0) return respond(channelIds, new Map());
         if (this.slackClient === undefined)

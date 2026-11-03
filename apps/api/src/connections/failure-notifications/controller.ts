@@ -47,6 +47,7 @@ import {
 import type { ConnectionRequest } from '../types.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
 import { connectionFailure } from '../../problems/context/normalize.js';
+import { parseRequestInput } from '../../platform/http/request-input.js';
 
 const workspaceParamsShape = { workspaceId: z.uuid() };
 const workspaceParamsSchema = z
@@ -100,7 +101,10 @@ export class FailureNotificationDestinationsController {
     return this.useCases.create({
       ...requestCommand(request, route.workspaceId),
       idempotencyKey: requestIdempotencyKey(request.headers),
-      body: failureNotificationDestinationCreateRequestSchema.parse(body),
+      body: parseRequestInput(
+        failureNotificationDestinationCreateRequestSchema,
+        body,
+      ),
     });
   }
 
@@ -145,7 +149,10 @@ export class FailureNotificationDestinationsController {
     @Body() body: unknown,
   ) {
     const route = destinationParamsSchema.parse(params);
-    const input = failureNotificationDestinationTestRequestSchema.parse(body);
+    const input = parseRequestInput(
+      failureNotificationDestinationTestRequestSchema,
+      body,
+    );
     const context = requestCommand(request, route.workspaceId);
     const destination = await this.useCases.get({
       ...context,
@@ -187,7 +194,8 @@ export class FailureNotificationDestinationsController {
       ...requestCommand(request, route.workspaceId),
       idempotencyKey: requestIdempotencyKey(request.headers),
       destinationId: route.destinationId,
-      body: failureNotificationDestinationAppendVersionRequestSchema.parse(
+      body: parseRequestInput(
+        failureNotificationDestinationAppendVersionRequestSchema,
         body,
       ),
     });
@@ -209,7 +217,10 @@ export class FailureNotificationDestinationsController {
       ...requestCommand(request, route.workspaceId),
       idempotencyKey: requestIdempotencyKey(request.headers),
       destinationId: route.destinationId,
-      body: failureNotificationDestinationStatusRequestSchema.parse(body),
+      body: parseRequestInput(
+        failureNotificationDestinationStatusRequestSchema,
+        body,
+      ),
     });
   }
 
@@ -244,7 +255,10 @@ export class FailureNotificationDestinationsController {
       ...requestCommand(request, route.workspaceId),
       idempotencyKey: requestIdempotencyKey(request.headers),
       workflowId: route.workflowId,
-      body: workflowFailureNotificationPolicyRequestSchema.parse(body),
+      body: parseRequestInput(
+        workflowFailureNotificationPolicyRequestSchema,
+        body,
+      ),
     });
   }
 

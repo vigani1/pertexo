@@ -32,6 +32,7 @@ import { formUploadFailure } from '../../problems/context/normalize.js';
 import { InputRequestResponderGuard } from '../guards.js';
 import { uploadSession } from './session.js';
 import { FormUploadService } from './service.js';
+import { parseRequestInput } from '../../platform/http/request-input.js';
 
 type TaskRequest = IdentityWorkspaceRequest & AbortableRequest;
 
@@ -56,7 +57,7 @@ export class InputRequestUploadsController {
     @Body() body: unknown,
   ) {
     const scope = taskUploadsParamsSchema.parse(params);
-    const input = taskUploadRequestSchema.parse(body);
+    const input = parseRequestInput(taskUploadRequestSchema, body);
     const idempotencyKey = requestIdempotencyKey(request.headers);
     return withRequestOperationSignal(request, (signal) =>
       this.uploads.begin({
@@ -78,7 +79,7 @@ export class InputRequestUploadsController {
     @Body() body: unknown,
   ) {
     const { uploadId, ...scope } = taskUploadParamsSchema.parse(params);
-    formFinalizeUploadRequestSchema.parse(body);
+    parseRequestInput(formFinalizeUploadRequestSchema, body);
     return withRequestOperationSignal(request, (signal) =>
       this.uploads.finalize({
         target: taskTarget(request, scope),

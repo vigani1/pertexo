@@ -28,6 +28,7 @@ import { domainErrors } from '../../platform/http/problems/interceptor.js';
 import { formUploadFailure } from '../../problems/context/normalize.js';
 import { FormUploadService } from './service.js';
 import { uploadSession } from './session.js';
+import { parseRequestInput } from '../../platform/http/request-input.js';
 
 type PublicRequest = FastifyRequest & AbortableRequest;
 
@@ -51,7 +52,7 @@ export class PublicFormUploadsController {
     @Body() body: unknown,
   ) {
     const { publicId } = publicFormParamsSchema.parse(params);
-    const input = formUploadRequestSchema.parse(body);
+    const input = parseRequestInput(formUploadRequestSchema, body);
     const responder = this.responder(request);
     const idempotencyKey = requestIdempotencyKey(request.headers);
     return withRequestOperationSignal(request, async (signal) => {
@@ -76,7 +77,7 @@ export class PublicFormUploadsController {
     @Body() body: unknown,
   ) {
     const { publicId, uploadId } = publicFormUploadParamsSchema.parse(params);
-    formFinalizeUploadRequestSchema.parse(body);
+    parseRequestInput(formFinalizeUploadRequestSchema, body);
     const responder = this.responder(request);
     return withRequestOperationSignal(request, async (signal) => {
       const target = await this.admit(request, publicId, responder, signal);

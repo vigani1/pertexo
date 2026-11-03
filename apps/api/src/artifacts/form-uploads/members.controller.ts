@@ -32,6 +32,7 @@ import { formUploadFailure } from '../../problems/context/normalize.js';
 import { FormResponderGuard } from '../guards.js';
 import { FormUploadService } from './service.js';
 import { uploadSession } from './session.js';
+import { parseRequestInput } from '../../platform/http/request-input.js';
 
 type MemberRequest = IdentityWorkspaceRequest & AbortableRequest;
 
@@ -51,7 +52,7 @@ export class MemberFormUploadsController {
     @Body() body: unknown,
   ) {
     const scope = formParamsSchema.parse(params);
-    const input = formUploadRequestSchema.parse(body);
+    const input = parseRequestInput(formUploadRequestSchema, body);
     const idempotencyKey = requestIdempotencyKey(request.headers);
     return withRequestOperationSignal(request, (signal) =>
       this.uploads.begin({
@@ -73,7 +74,7 @@ export class MemberFormUploadsController {
     @Body() body: unknown,
   ) {
     const { uploadId, ...scope } = memberFormUploadParamsSchema.parse(params);
-    formFinalizeUploadRequestSchema.parse(body);
+    parseRequestInput(formFinalizeUploadRequestSchema, body);
     return withRequestOperationSignal(request, (signal) =>
       this.uploads.finalize({
         target: memberTarget(request, scope),

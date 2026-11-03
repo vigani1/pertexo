@@ -40,7 +40,10 @@ export class WorkflowPromotionUseCase {
   }
   async setTarget(input: Command) {
     await this.authorize(input, 'workspace:manage');
-    const body = parseRequestInput(workflowPromotionTargetSchema, input.request);
+    const body = parseRequestInput(
+      workflowPromotionTargetSchema,
+      input.request,
+    );
     return workflowPromotionTargetResultSchema.parse(
       await this.store.setTarget({
         ...this.scope(input),
@@ -51,14 +54,20 @@ export class WorkflowPromotionUseCase {
   }
   async candidates(input: Read) {
     await this.authorizeRead(input);
-    const query = workflowPromotionCandidatesQuerySchema.parse(input.request);
+    const query = parseRequestInput(
+      workflowPromotionCandidatesQuerySchema,
+      input.request,
+    );
     return workflowPromotionCandidatesSchema.parse(
       await this.store.candidates({ ...this.scope(input), ...query }),
     );
   }
   async history(input: Read) {
     await this.authorizeRead(input);
-    const query = workflowPromotionPageQuerySchema.parse(input.request);
+    const query = parseRequestInput(
+      workflowPromotionPageQuerySchema,
+      input.request,
+    );
     return workflowPromotionHistorySchema.parse(
       await this.store.history({ ...this.scope(input), ...query }),
     );

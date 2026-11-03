@@ -10,6 +10,7 @@ import {
   workspaceMemberRoleChangeResponseSchema,
   type WorkspaceMemberRoleChangeResponse,
 } from '../types.js';
+import { parseRequestInput } from '../../platform/http/request-input.js';
 
 type WorkspaceMemberRolePersistence = Pick<
   IdentityWorkspacePersistence,
@@ -51,7 +52,8 @@ export class ChangeWorkspaceMemberRoleUseCase {
     return this.telemetry.measure(
       IDENTITY_WORKSPACE_OPERATION.workspaceMemberRoleChange,
       async () => {
-        const request = workspaceMemberRoleChangeRequestSchema.parse(
+        const request = parseRequestInput(
+          workspaceMemberRoleChangeRequestSchema,
           input.request,
         );
         const result = await this.persistence.changeWorkspaceMemberRole({
