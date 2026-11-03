@@ -8,6 +8,7 @@ import {
   webhookTriggerEndpoints,
 } from '@pertexo/database/schema';
 import { parseWorkflowGraphDraft } from '@pertexo/workflow-model';
+import { decodeStoredValue } from '@pertexo/database/platform';
 import {
   workflowCompatibilityReport,
   type WorkflowDefinitionCatalog,
@@ -74,7 +75,7 @@ export function projectDraft(
   row: Pick<typeof workflowDrafts.$inferSelect, keyof typeof draftProjection>,
   catalog: WorkflowDefinitionCatalog,
 ): WorkflowDraftRecord {
-  const graph = parseWorkflowGraphDraft(row.graphJson);
+  const graph = decodeStoredValue(() => parseWorkflowGraphDraft(row.graphJson));
   return Object.freeze({
     ...row,
     graphJson: graph,
@@ -89,6 +90,6 @@ export function projectVersion(
 ): WorkflowVersionRecord {
   return Object.freeze({
     ...row,
-    graphJson: parseWorkflowGraphDraft(row.graphJson),
+    graphJson: decodeStoredValue(() => parseWorkflowGraphDraft(row.graphJson)),
   });
 }

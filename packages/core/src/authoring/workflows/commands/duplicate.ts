@@ -24,7 +24,10 @@ import {
 import { requireWorkflowCallTargets } from '../../../tenant-access/resources/bindings.queries.js';
 import { requireConnectionBindings } from '../../../tenant-access/resources/connections/bindings.queries.js';
 
-import { generatePersistedId } from '@pertexo/database/platform';
+import {
+  decodeStoredValue,
+  generatePersistedId,
+} from '@pertexo/database/platform';
 import type { FolderScope } from '../../../shared/contract.js';
 import { requireReadableReceipt } from '../../../shared/receipts.js';
 import { requireWorkflowInScope } from '../access.js';
@@ -62,7 +65,7 @@ async function selectedGraph(
       .catch(rethrowQueryFailure);
     if (row === undefined)
       throw new WorkflowNotFoundError('Workflow source is not visible');
-    return parseWorkflowGraphDraft(row.graph_json);
+    return decodeStoredValue(() => parseWorkflowGraphDraft(row.graph_json));
   }
   const row = await lockDraft(client, input);
   if (row === undefined)

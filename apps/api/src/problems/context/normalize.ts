@@ -1,5 +1,8 @@
 import { WorkspaceAccessDeniedError } from '@pertexo/core/tenant-access';
-import { IdempotencyConflictError } from '@pertexo/database/platform';
+import {
+  IdempotencyConflictError,
+  isStoredDataError,
+} from '@pertexo/database/platform';
 import { ArtifactMetadataNotFoundError } from '@pertexo/core/artifacts';
 import {
   WorkflowRunNotExecutableError,
@@ -12,11 +15,8 @@ import {
   InvalidWorkflowGraphError,
 } from '@pertexo/workflow-model';
 import { WorkflowEngineError } from '@pertexo/workflow-engine';
-import {
-  isRequestInputError,
-  requestInputCause,
-} from '../../platform/http/request-input.js';
-import { InvalidWorkflowRunCursorError } from '../../workflow-runs/cursor.js';
+import { z } from 'zod';
+import { requestInputCause } from '../../platform/http/request-input.js';
 import {
   FormAdmissionError,
   HiddenResourceError,
@@ -34,7 +34,7 @@ export function requestFailure(
   error: unknown,
   message = 'The request is invalid.',
 ): unknown {
-  return isRequestInputError(error)
+  return error instanceof z.ZodError && !isStoredDataError(error)
     ? new InvalidRequestError(message, requestInputCause(error))
     : error;
 }
@@ -54,7 +54,7 @@ export function workspaceFailure(error: unknown): unknown {
 }
 
 export function authoringFailure(error: unknown): unknown {
-  if (isRequestInputError(error)) {
+  if (error instanceof z.ZodError && !isStoredDataError(error)) {
     const graphInvalid = error.issues.some(
       (issue) => issue.path[0] === 'graph',
     );
@@ -84,6 +84,7 @@ export function collaborationFailure(error: unknown): unknown {
 }
 
 export function nodeTestingFailure(error: unknown): unknown {
+  if (isStoredDataError(error)) return error;
   if (error instanceof WorkflowEngineError)
     return new WorkflowTestPreparationError(
       'The saved draft cannot be tested. Check its step setup and links.',
@@ -101,13 +102,11 @@ export function nodeTestingFailure(error: unknown): unknown {
 }
 
 export function runFailure(error: unknown): unknown {
+  if (isStoredDataError(error)) return error;
   if (error instanceof CallableInputInvalidError) return error;
   if (error instanceof WorkflowEngineError)
     return new WorkflowRunNotExecutableError();
-  if (
-    isRequestInputError(error) ||
-    error instanceof InvalidWorkflowRunCursorError
-  )
+  if (error instanceof z.ZodError || error instanceof TypeError)
     return new InvalidRequestError(
       'The workflow run request is invalid.',
       requestInputCause(error),
@@ -130,7 +129,7 @@ export function inboxFailure(error: unknown): unknown {
 }
 
 export function dataTableFailure(error: unknown): unknown {
-  if (isRequestInputError(error))
+  if (error instanceof z.ZodError && !isStoredDataError(error))
     return new InvalidRequestError(
       error.issues[0]?.message ?? 'The data table request is invalid.',
       requestInputCause(error),

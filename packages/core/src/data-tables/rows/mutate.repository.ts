@@ -1,4 +1,7 @@
-import { generatePersistedId } from '@pertexo/database/platform';
+import {
+  decodeStoredValue,
+  generatePersistedId,
+} from '@pertexo/database/platform';
 import {
   isUniqueConstraintFailure,
   queryFailure,
@@ -151,7 +154,9 @@ async function patchRows(
   let byteDelta = 0;
   const updates = old.map((row) => {
     const values = validateDataTableValues(table.columns, {
-      ...dataTableValuesSchema.parse(JSON.parse(row.values)),
+      ...decodeStoredValue(() =>
+        dataTableValuesSchema.parse(JSON.parse(row.values)),
+      ),
       ...patch,
     });
     const text = normalizedJson(values);

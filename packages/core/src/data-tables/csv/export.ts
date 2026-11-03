@@ -1,3 +1,4 @@
+import { decodeStoredValue } from '@pertexo/database/platform';
 import type {
   DataTableDefinition,
   DataTableExportQuery,
@@ -108,7 +109,9 @@ function exportTableCsv(
       if (batch.length === 0) return;
       for (const row of batch) {
         signal?.throwIfAborted();
-        const values = dataTableValuesSchema.parse(JSON.parse(row.valuesText));
+        const values = decodeStoredValue(() =>
+          dataTableValuesSchema.parse(JSON.parse(row.valuesText)),
+        );
         yield table.columns
           .map((column) => escapeCsvValue(values[column.name] ?? null))
           .join(',') + '\r\n';
