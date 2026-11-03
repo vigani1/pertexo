@@ -9,7 +9,7 @@ const run = promisify(execFile);
 const root = fileURLToPath(new URL('../../../../../', import.meta.url));
 
 it('runs the production verifier against an empty upgraded install and refuses development keys and insecure origins', async () => {
-  await withUpgradeDatabase(89, async ({ config }) => {
+  await withUpgradeDatabase(91, async ({ config }) => {
     const url = (base: string) => {
       const value = new URL(base);
       value.pathname = new URL(config.connectionString).pathname;

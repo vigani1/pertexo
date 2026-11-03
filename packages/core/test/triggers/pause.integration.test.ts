@@ -598,10 +598,9 @@ describe('workflow trigger pause (ADR 056)', () => {
       );
       // Exclude reclaimable MVCC tuples; measure live evidence, not vacuum scheduling.
       await asAdmin('vacuum (analyze) app.workflow_trigger_failures');
-      const measuredFold = createWorkflowTriggerPauseFoldStore({
-        connectionString: maintenanceUrl,
-        max: 1,
-      });
+      const measuredFold = createWorkflowTriggerPauseFoldStore(
+        parseDatabaseConfig({ connectionString: maintenanceUrl, max: 1 }),
+      );
       const before = await reads();
       try {
         expect(await measuredFold.foldPending(1000)).toEqual([]);
@@ -611,10 +610,9 @@ describe('workflow trigger pause (ADR 056)', () => {
       // Closing the connection flushes its pg_stat_statements counters.
       samples.push((await reads()) - before);
     }
-    const retention = createRetentionStore({
-      connectionString: maintenanceUrl,
-      max: 1,
-    });
+    const retention = createRetentionStore(
+      parseDatabaseConfig({ connectionString: maintenanceUrl, max: 1 }),
+    );
     try {
       await retention.enforce();
     } finally {
