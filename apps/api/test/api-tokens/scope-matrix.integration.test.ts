@@ -105,5 +105,32 @@ describe.runIf(betterAuthIntegrationEnabled)(
         }
       }
     });
+
+    it('publishes the scopes independently qualified by each of the 27 real operations', async () => {
+      const response = await api.send('GET', '/v1/openapi.json');
+      expect(response.statusCode, response.payload).toBe(200);
+      const document = response.json<{
+        paths: Record<
+          string,
+          Record<
+            string,
+            { operationId: string; 'x-pertexo-api-token-scopes': string[] }
+          >
+        >;
+      }>();
+      const operations = Object.values(document.paths).flatMap((path) =>
+        Object.values(path),
+      );
+      for (const route of routes) {
+        const matched = operations.filter(
+          (operation) => operation.operationId === route.operationId,
+        );
+        expect(matched, route.operationId).toHaveLength(1);
+        expect(
+          matched[0]?.['x-pertexo-api-token-scopes'].toSorted(),
+          route.operationId,
+        ).toEqual(route.scopes.toSorted());
+      }
+    });
   },
 );

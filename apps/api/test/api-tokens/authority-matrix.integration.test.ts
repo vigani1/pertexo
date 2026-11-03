@@ -8,32 +8,53 @@ describe.runIf(betterAuthIntegrationEnabled)(
   'Step 5 routes retain current workspace authority',
   () => {
     const { api, setup } = useQualificationApi();
-    it('refuses every token route while the workspace is suspended', async () => {
-      const w = await setup();
-      for (const route of routes) await w.credential(route.scopes);
-      await api
-        .database()
-        .query("update app.workspaces set status='suspended' where id=$1", [
-          w.workspaceId,
-        ]);
-      for (const route of routes) {
-        const response = await api.send(route.method, route.path(w), {
-          headers: {
-            ...(await w.credential(route.scopes)),
-            'idempotency-key': randomUUID(),
-          },
-          ...(route.body === undefined
-            ? {}
-            : {
-                payload:
-                  typeof route.body === 'function' ? route.body(w) : route.body,
-              }),
-        });
-        expect(response.statusCode, `${route.name}: ${response.payload}`).toBe(
-          401,
-        );
-      }
-    });
+    it.each(['suspended', 'pending_deletion', 'purging'] as const)(
+      'refuses every token route while the workspace is %s',
+      async (status) => {
+        const w = await setup();
+        for (const route of routes) await w.credential(route.scopes);
+        if (status === 'suspended')
+          await api
+            .database()
+            .query("update app.workspaces set status='suspended' where id=$1", [
+              w.workspaceId,
+            ]);
+        else {
+          const deletion = await api.send('POST', `${w.base}/deletion`, {
+            browser: w.browser,
+            headers: { 'idempotency-key': randomUUID() },
+            payload: { reason: 'Token maintenance boundary qualification' },
+          });
+          expect(deletion.statusCode, deletion.payload).toBe(200);
+          if (status === 'purging')
+            await api
+              .database()
+              .query("update app.workspaces set status='purging' where id=$1", [
+                w.workspaceId,
+              ]);
+        }
+        for (const route of routes) {
+          const response = await api.send(route.method, route.path(w), {
+            headers: {
+              ...(await w.credential(route.scopes)),
+              'idempotency-key': randomUUID(),
+            },
+            ...(route.body === undefined
+              ? {}
+              : {
+                  payload:
+                    typeof route.body === 'function'
+                      ? route.body(w)
+                      : route.body,
+                }),
+          });
+          expect(
+            response.statusCode,
+            `${route.name}: ${response.payload}`,
+          ).toBe(401);
+        }
+      },
+    );
     it.each(['downgrade', 'removal', 'rejoin'] as const)(
       'permanently refuses old credentials after %s on every added route',
       async (change) => {

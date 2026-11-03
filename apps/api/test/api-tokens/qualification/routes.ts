@@ -3,6 +3,7 @@ import type { World } from './fixture.js';
 
 type Case = Readonly<{
   name: string;
+  operationId: string;
   method: 'GET' | 'POST' | 'PUT' | 'DELETE';
   path: (w: World) => string;
   scopes: readonly ApiTokenScope[];
@@ -16,6 +17,7 @@ const table = (w: World) => `${w.base}/data-tables/${w.tableId}`;
 export const routes: readonly Case[] = [
   {
     name: 'archive',
+    operationId: 'archiveWorkflow',
     method: 'POST',
     path: (w) => `${workflow(w)}/archive`,
     scopes: ['workflow:publish'],
@@ -24,6 +26,7 @@ export const routes: readonly Case[] = [
   },
   {
     name: 'restore',
+    operationId: 'restoreWorkflow',
     method: 'POST',
     path: (w) => `${workflow(w)}/restore`,
     scopes: ['workflow:publish'],
@@ -32,6 +35,7 @@ export const routes: readonly Case[] = [
   },
   {
     name: 'pause settings',
+    operationId: 'getWorkflowAutoPauseSettings',
     method: 'GET',
     path: (w) => `${workflow(w)}/auto-pause`,
     scopes: ['workflow:read'],
@@ -39,6 +43,7 @@ export const routes: readonly Case[] = [
   },
   {
     name: 'replace pause',
+    operationId: 'updateWorkflowAutoPauseSettings',
     method: 'PUT',
     path: (w) => `${workflow(w)}/auto-pause`,
     scopes: ['workflow:update'],
@@ -47,6 +52,7 @@ export const routes: readonly Case[] = [
   },
   {
     name: 'resume',
+    operationId: 'resumeWorkflow',
     method: 'POST',
     path: (w) => `${workflow(w)}/resume`,
     scopes: ['workflow:publish'],
@@ -55,6 +61,7 @@ export const routes: readonly Case[] = [
   },
   {
     name: 'webhooks',
+    operationId: 'listWebhookTriggers',
     method: 'GET',
     path: (w) => w.webhook.base,
     scopes: ['workflow:read'],
@@ -62,6 +69,7 @@ export const routes: readonly Case[] = [
   },
   {
     name: 'provision webhook',
+    operationId: 'provisionWebhookEndpoint',
     method: 'POST',
     path: (w) => `${w.webhook.endpoint}/provision`,
     scopes: ['workflow:update'],
@@ -70,6 +78,7 @@ export const routes: readonly Case[] = [
   },
   {
     name: 'deliveries',
+    operationId: 'listWebhookDeliveries',
     method: 'GET',
     path: (w) => `${w.webhook.endpoint}/deliveries`,
     scopes: ['workflow:read'],
@@ -77,6 +86,7 @@ export const routes: readonly Case[] = [
   },
   {
     name: 'schedules',
+    operationId: 'listScheduleTriggers',
     method: 'GET',
     path: (w) => `${w.schedule.base}/schedules`,
     scopes: ['workflow:read'],
@@ -84,6 +94,7 @@ export const routes: readonly Case[] = [
   },
   {
     name: 'disable schedule',
+    operationId: 'disableScheduleTrigger',
     method: 'POST',
     path: (w) => `${w.schedule.endpoint}/disable`,
     scopes: ['workflow:update'],
@@ -92,6 +103,7 @@ export const routes: readonly Case[] = [
   },
   {
     name: 'enable schedule',
+    operationId: 'enableScheduleTrigger',
     method: 'POST',
     path: (w) => `${w.schedule.endpoint}/enable`,
     scopes: ['workflow:update'],
@@ -100,6 +112,7 @@ export const routes: readonly Case[] = [
   },
   {
     name: 'occurrences',
+    operationId: 'listScheduleOccurrences',
     method: 'GET',
     path: (w) => `${w.schedule.endpoint}/occurrences`,
     scopes: ['workflow:read'],
@@ -107,6 +120,7 @@ export const routes: readonly Case[] = [
   },
   {
     name: 'next runs',
+    operationId: 'listScheduleNextRuns',
     method: 'GET',
     path: (w) => `${w.schedule.endpoint}/next-runs`,
     scopes: ['workflow:read'],
@@ -114,6 +128,7 @@ export const routes: readonly Case[] = [
   },
   {
     name: 'schedule preview',
+    operationId: 'previewScheduleRuns',
     method: 'POST',
     path: (w) => `${w.schedule.base}/schedules/preview`,
     scopes: ['workflow:read'],
@@ -124,6 +139,7 @@ export const routes: readonly Case[] = [
   },
   {
     name: 'tables',
+    operationId: 'listDataTables',
     method: 'GET',
     path: (w) => `${w.base}/data-tables`,
     scopes: ['workspace:read'],
@@ -131,6 +147,7 @@ export const routes: readonly Case[] = [
   },
   {
     name: 'create table',
+    operationId: 'createDataTable',
     method: 'POST',
     path: (w) => `${w.base}/data-tables`,
     scopes: ['workflow:update'],
@@ -142,6 +159,7 @@ export const routes: readonly Case[] = [
   },
   {
     name: 'edit schema',
+    operationId: 'editDataTableSchema',
     method: 'PUT',
     path: (w) => `${table(w)}/schema`,
     scopes: ['workflow:update'],
@@ -156,6 +174,7 @@ export const routes: readonly Case[] = [
   },
   {
     name: 'query rows',
+    operationId: 'findDataTableRows',
     method: 'POST',
     path: (w) => `${table(w)}/rows/query`,
     scopes: ['workspace:read'],
@@ -164,6 +183,7 @@ export const routes: readonly Case[] = [
   },
   {
     name: 'write rows',
+    operationId: 'writeDataTableRows',
     method: 'POST',
     path: (w) => `${table(w)}/rows`,
     scopes: ['workflow:update'],
@@ -178,6 +198,7 @@ export const routes: readonly Case[] = [
   },
   {
     name: 'import rows',
+    operationId: 'importDataTableCsv',
     method: 'POST',
     path: (w) => `${table(w)}/import`,
     scopes: ['workflow:update'],
@@ -186,6 +207,7 @@ export const routes: readonly Case[] = [
   },
   {
     name: 'variables',
+    operationId: 'getWorkspaceVariables',
     method: 'GET',
     path: (w) => `${w.base}/variables`,
     scopes: ['workspace:read'],
@@ -193,6 +215,7 @@ export const routes: readonly Case[] = [
   },
   {
     name: 'replace variables',
+    operationId: 'replaceWorkspaceVariables',
     method: 'PUT',
     path: (w) => `${w.base}/variables`,
     scopes: ['variable:manage'],
@@ -204,6 +227,7 @@ export const routes: readonly Case[] = [
   },
   {
     name: 'variable references',
+    operationId: 'listWorkspaceVariableReferences',
     method: 'GET',
     path: (w) => `${w.base}/variables/usage?name=REGION`,
     scopes: ['workspace:read', 'workflow:read'],
@@ -211,6 +235,7 @@ export const routes: readonly Case[] = [
   },
   {
     name: 'tags',
+    operationId: 'listWorkflowTags',
     method: 'GET',
     path: (w) => `${w.base}/workflow-tags`,
     scopes: ['workflow:read'],
@@ -218,6 +243,7 @@ export const routes: readonly Case[] = [
   },
   {
     name: 'assign tags',
+    operationId: 'replaceWorkflowTags',
     method: 'POST',
     path: (w) => `${workflow(w)}/tags`,
     scopes: ['workflow:update'],
@@ -226,6 +252,7 @@ export const routes: readonly Case[] = [
   },
   {
     name: 'tag assignments',
+    operationId: 'listWorkflowTagAssignments',
     method: 'GET',
     path: (w) => `${w.base}/workflow-tags/${w.tagId}/workflows`,
     scopes: ['workflow:read'],
@@ -233,6 +260,7 @@ export const routes: readonly Case[] = [
   },
   {
     name: 'remove table',
+    operationId: 'removeDataTable',
     method: 'DELETE',
     path: table,
     scopes: ['workflow:update'],
