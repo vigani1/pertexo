@@ -1,3 +1,4 @@
+import { organizationRoutes } from '../../../src/routes/workflows/organization.js';
 import { describe, expect, it } from 'vitest';
 import * as organization from '../../../src/schemas/workflows/organization.js';
 import { workflowGetQuerySchema } from '../../../src/schemas/workflows/authoring.js';
@@ -20,9 +21,9 @@ describe('strict organization endpoint transport schemas', () => {
       { workspaceId: null },
       { workspaceId: 'invalid' },
     ])
-      expect(
-        organization.workflowTagWorkspaceParamsSchema.safeParse(params).success,
-      ).toBe(false);
+      expect(organizationRoutes.listTags.params.safeParse(params).success).toBe(
+        false,
+      );
     expect(
       organization.workflowTagParamsSchema.safeParse({ workspaceId: id(1) })
         .success,

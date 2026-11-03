@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { batchRoutes } from '@pertexo/contracts/server';
 import {
   WorkflowFolderConflictError,
   WorkflowNotFoundError,
@@ -6,29 +6,29 @@ import {
   type WorkflowOrganizationBatchItemResult,
 } from '@pertexo/core/authoring';
 import { IdempotencyConflictError } from '@pertexo/database/platform';
+import { describe, expect, it } from 'vitest';
 import {
   AuthorizationError,
   authorizeWorkspace,
 } from '../../../../src/authorization/index.js';
 import {
-  workspaceId,
-  actorId,
-  firstId,
-  secondId,
-  folderId,
-  tagId,
+  access,
   actor,
+  actorId,
   base,
+  cleanup,
+  deferred,
+  firstId,
+  fixture,
+  folderId,
   items,
   move,
-  access,
-  updated,
   result,
-  fixture,
-  deferred,
-  cleanup,
+  secondId,
+  tagId,
+  updated,
+  workspaceId,
 } from './use-case/fixture.js';
-import { z } from 'zod';
 
 describe('workflow organization full-parent batch orchestration', () => {
   it('normalizes the full parent without reordering selection and passes the same identity to admission and every item', async () => {
@@ -48,7 +48,13 @@ describe('workflow organization full-parent batch orchestration', () => {
       tagIds: [secondId, tagId],
       items,
     };
-    expect(await f.useCase.bulk({ ...base, request, signal })).toEqual({
+    expect(
+      await f.useCase.bulk({
+        ...base,
+        request: batchRoutes.bulk.body.schema.parse(request),
+        signal,
+      }),
+    ).toEqual({
       items: items.map((item) => updated(item.workflowId)),
     });
     const parent = {
@@ -84,7 +90,10 @@ describe('workflow organization full-parent batch orchestration', () => {
       firstStarted.resolve(undefined);
       return firstCompleted.promise;
     });
-    const pending = f.useCase.bulk({ ...base, request: move });
+    const pending = f.useCase.bulk({
+      ...base,
+      request: batchRoutes.bulk.body.schema.parse(move),
+    });
     await admissionStarted.promise;
     expect(f.batches.executeBatchItem).not.toHaveBeenCalled();
     expect(f.authorization.findAccess).toHaveBeenCalledOnce();
@@ -116,9 +125,12 @@ describe('workflow organization full-parent batch orchestration', () => {
     async (error) => {
       const f = fixture();
       f.batches.admitBatch.mockRejectedValueOnce(error);
-      await expect(f.useCase.bulk({ ...base, request: move })).rejects.toBe(
-        error,
-      );
+      await expect(
+        f.useCase.bulk({
+          ...base,
+          request: batchRoutes.bulk.body.schema.parse(move),
+        }),
+      ).rejects.toBe(error);
       expect(f.batches.admitBatch).toHaveBeenCalledOnce();
       expect(f.batches.executeBatchItem).not.toHaveBeenCalled();
       expect(f.authorization.findAccess).toHaveBeenCalledOnce();
@@ -154,7 +166,12 @@ describe('workflow organization full-parent batch orchestration', () => {
         expectedOrganizationRevision: 1,
       })),
     };
-    expect(await f.useCase.bulk({ ...base, request })).toEqual({
+    expect(
+      await f.useCase.bulk({
+        ...base,
+        request: batchRoutes.bulk.body.schema.parse(request),
+      }),
+    ).toEqual({
       items: [
         updated(ids[0] ?? '', 8, true),
         { workflowId: ids[1], status: 'not_visible' },
@@ -205,13 +222,13 @@ describe('workflow organization full-parent batch orchestration', () => {
       await f.useCase.bulk({
         ...base,
         authorizedWorkspace,
-        request: {
+        request: batchRoutes.bulk.body.schema.parse({
           ...move,
           items: [
             ...items,
             { workflowId: tagId, expectedOrganizationRevision: 4 },
           ],
-        },
+        }),
       }),
     ).toEqual({
       items: [
@@ -235,7 +252,11 @@ describe('workflow organization full-parent batch orchestration', () => {
     f.authorization.findAccess.mockClear();
     f.authorization.findAccess.mockResolvedValue(undefined);
     await expect(
-      f.useCase.bulk({ ...base, authorizedWorkspace, request: move }),
+      f.useCase.bulk({
+        ...base,
+        authorizedWorkspace,
+        request: batchRoutes.bulk.body.schema.parse(move),
+      }),
     ).rejects.toBeInstanceOf(AuthorizationError);
     expect(f.authorization.findAccess).toHaveBeenCalledOnce();
     expect(f.batches.admitBatch).not.toHaveBeenCalled();
@@ -266,7 +287,12 @@ describe('workflow organization full-parent batch orchestration', () => {
       } else {
         status = 'not_visible';
       }
-      expect(await f.useCase.bulk({ ...base, request: move })).toEqual({
+      expect(
+        await f.useCase.bulk({
+          ...base,
+          request: batchRoutes.bulk.body.schema.parse(move),
+        }),
+      ).toEqual({
         items: [
           { workflowId: firstId, status },
           mode === 'lost-role'
@@ -291,7 +317,12 @@ describe('workflow organization full-parent batch orchestration', () => {
         'historical revision 999 actor private',
       ),
     );
-    expect(await f.useCase.bulk({ ...base, request: move })).toEqual({
+    expect(
+      await f.useCase.bulk({
+        ...base,
+        request: batchRoutes.bulk.body.schema.parse(move),
+      }),
+    ).toEqual({
       items: [
         { workflowId: firstId, status: 'forbidden' },
         { workflowId: secondId, status: 'not_processed' },
@@ -316,13 +347,23 @@ describe('workflow organization full-parent batch orchestration', () => {
     f.batches.executeBatchItem.mockRejectedValueOnce(
       new Error('unknown first-item commit'),
     );
-    expect((await f.useCase.bulk({ ...base, request: move })).items[0]).toEqual(
-      { workflowId: firstId, status: 'outcome_unknown' },
-    );
+    expect(
+      (
+        await f.useCase.bulk({
+          ...base,
+          request: batchRoutes.bulk.body.schema.parse(move),
+        })
+      ).items[0],
+    ).toEqual({ workflowId: firstId, status: 'outcome_unknown' });
     f.batches.executeBatchItem.mockImplementation((input) =>
       Promise.resolve({ ...result(input), replayed: true }),
     );
-    expect(await f.useCase.bulk({ ...base, request: move })).toEqual({
+    expect(
+      await f.useCase.bulk({
+        ...base,
+        request: batchRoutes.bulk.body.schema.parse(move),
+      }),
+    ).toEqual({
       items: [updated(firstId, 8, true), updated(secondId, 8, true)],
     });
     const admissions = f.batches.admitBatch.mock.calls.map(([input]) => input);
@@ -347,12 +388,18 @@ describe('workflow organization full-parent batch orchestration', () => {
     ]) {
       f.batches.executeBatchItem.mockClear();
       await expect(
-        f.useCase.bulk({ ...base, request: changed }),
+        f.useCase.bulk({
+          ...base,
+          request: batchRoutes.bulk.body.schema.parse(changed),
+        }),
       ).rejects.toBeInstanceOf(IdempotencyConflictError);
       expect(f.batches.executeBatchItem).not.toHaveBeenCalled();
     }
     await expect(
-      f.useCase.cleanup({ ...base, request: cleanup }),
+      f.useCase.cleanup({
+        ...base,
+        request: batchRoutes.cleanup.body.schema.parse(cleanup),
+      }),
     ).rejects.toBeInstanceOf(IdempotencyConflictError);
     expect(f.batches.executeBatchItem).not.toHaveBeenCalled();
     const cleanupInput = f.batches.admitBatch.mock.calls.at(-1)?.[0];
@@ -375,7 +422,12 @@ describe('workflow organization full-parent batch orchestration', () => {
           workflowId: item.workflowId.toUpperCase(),
         })),
       };
-      expect(await f.useCase.cleanup({ ...base, request })).toEqual({
+      expect(
+        await f.useCase.cleanup({
+          ...base,
+          request: batchRoutes.cleanup.body.schema.parse(request),
+        }),
+      ).toEqual({
         items: items.map((item) => ({
           ...updated(item.workflowId),
           status: 'detached',
@@ -399,7 +451,10 @@ describe('workflow organization full-parent batch orchestration', () => {
     async (role) => {
       const f = fixture(role);
       await expect(
-        f.useCase.cleanup({ ...base, request: cleanup }),
+        f.useCase.cleanup({
+          ...base,
+          request: batchRoutes.cleanup.body.schema.parse(cleanup),
+        }),
       ).rejects.toBeInstanceOf(AuthorizationError);
       expect(f.batches.admitBatch).not.toHaveBeenCalled();
       expect(f.batches.executeBatchItem).not.toHaveBeenCalled();
@@ -412,12 +467,20 @@ describe('workflow organization full-parent batch orchestration', () => {
       new Error('cleanup outcome unknown'),
     );
     expect(
-      (await f.useCase.cleanup({ ...base, request: cleanup })).items[0],
+      (
+        await f.useCase.cleanup({
+          ...base,
+          request: batchRoutes.cleanup.body.schema.parse(cleanup),
+        })
+      ).items[0],
     ).toEqual({ workflowId: firstId, status: 'outcome_unknown' });
     f.batches.executeBatchItem.mockImplementation((input) =>
       Promise.resolve({ ...result(input), replayed: true }),
     );
-    const recovered = await f.useCase.cleanup({ ...base, request: cleanup });
+    const recovered = await f.useCase.cleanup({
+      ...base,
+      request: batchRoutes.cleanup.body.schema.parse(cleanup),
+    });
     expect(recovered).toEqual({
       items: items.map((item) => ({
         ...updated(item.workflowId, 8, true),
@@ -431,7 +494,12 @@ describe('workflow organization full-parent batch orchestration', () => {
       .mockResolvedValueOnce(access('admin'))
       .mockResolvedValueOnce(access('builder'));
     f.batches.executeBatchItem.mockClear();
-    expect(await f.useCase.cleanup({ ...base, request: cleanup })).toEqual({
+    expect(
+      await f.useCase.cleanup({
+        ...base,
+        request: batchRoutes.cleanup.body.schema.parse(cleanup),
+      }),
+    ).toEqual({
       items: [
         { workflowId: firstId, status: 'forbidden' },
         { workflowId: secondId, status: 'not_processed' },
@@ -439,45 +507,6 @@ describe('workflow organization full-parent batch orchestration', () => {
     });
     expect(f.batches.executeBatchItem).not.toHaveBeenCalled();
   });
-
-  it.each(['bulk', 'cleanup'] as const)(
-    'rejects strict invalid %s parents before authority or admission',
-    async (method) => {
-      const request = method === 'bulk' ? move : cleanup;
-      for (const extra of [
-        { actorId },
-        { proof: true },
-        { parentHash: folderId },
-        { idempotencyKey: 'body-key' },
-        { selectAll: true },
-      ]) {
-        const f = fixture();
-        await expect(
-          f.useCase[method]({ ...base, request: { ...request, ...extra } }),
-        ).rejects.toBeInstanceOf(z.ZodError);
-        expect(f.authorization.findAccess).not.toHaveBeenCalled();
-        expect(f.batches.admitBatch).not.toHaveBeenCalled();
-      }
-      for (const selection of [
-        [],
-        [items[0], items[0]],
-        [{ workflowId: firstId, expectedOrganizationRevision: 0 }],
-        Array.from({ length: 51 }, (_, index) => ({
-          workflowId: `${String(index).padStart(8, '0')}-aaaa-4aaa-8aaa-aaaaaaaaaaaa`,
-          expectedOrganizationRevision: 1,
-        })),
-      ]) {
-        const f = fixture();
-        await expect(
-          f.useCase[method]({
-            ...base,
-            request: { ...request, items: selection },
-          }),
-        ).rejects.toBeInstanceOf(z.ZodError);
-        expect(f.batches.admitBatch).not.toHaveBeenCalled();
-      }
-    },
-  );
 
   it.each(['move', 'replace_tags', 'tag_cleanup'] as const)(
     'converts malformed/private/mismatched %s item results to sanitized unknown, not success',
@@ -502,13 +531,17 @@ describe('workflow organization full-parent batch orchestration', () => {
         } as unknown as WorkflowOrganizationBatchItemResult);
         const response =
           operation === 'tag_cleanup'
-            ? await f.useCase.cleanup({ ...base, request: cleanup })
+            ? await f.useCase.cleanup({
+                ...base,
+                request: batchRoutes.cleanup.body.schema.parse(cleanup),
+              })
             : await f.useCase.bulk({
                 ...base,
-                request:
+                request: batchRoutes.bulk.body.schema.parse(
                   operation === 'move'
                     ? move
                     : { operation, tagIds: [], items },
+                ),
               });
         expect(response.items[0]).toEqual({
           workflowId: firstId,
@@ -533,7 +566,12 @@ describe('workflow organization full-parent batch orchestration', () => {
       f.batches.executeBatchItem
         .mockRejectedValueOnce(new WorkflowFolderConflictError('name'))
         .mockRejectedValueOnce(new WorkflowTagConflictError('key'));
-      expect(await f.useCase.bulk({ ...base, request })).toEqual({
+      expect(
+        await f.useCase.bulk({
+          ...base,
+          request: batchRoutes.bulk.body.schema.parse(request),
+        }),
+      ).toEqual({
         items: items.map((item) => ({
           workflowId: item.workflowId,
           status: 'outcome_unknown',
@@ -548,7 +586,11 @@ describe('workflow organization full-parent batch orchestration', () => {
       (
         await f.useCase.bulk({
           ...base,
-          request: { operation: 'replace_tags', tagIds: [], items },
+          request: batchRoutes.bulk.body.schema.parse({
+            operation: 'replace_tags',
+            tagIds: [],
+            items,
+          }),
         })
       ).items[0],
     ).toEqual({ workflowId: firstId, status: 'outcome_unknown' });
@@ -597,7 +639,11 @@ describe('workflow organization full-parent batch orchestration', () => {
           });
       }
       await expect(
-        f.useCase.bulk({ ...base, request: move, signal: controller.signal }),
+        f.useCase.bulk({
+          ...base,
+          request: batchRoutes.bulk.body.schema.parse(move),
+          signal: controller.signal,
+        }),
       ).rejects.toBe(reason);
       expect(f.batches.executeBatchItem).toHaveBeenCalledTimes(
         phase === 'item' || phase === 'not-found-recheck' ? 1 : 0,

@@ -63,3 +63,5 @@ export { collaborationRoutes } from './routes/workflows/collaboration.js';
 export { organizationRoutes } from './routes/workflows/organization.js';
 
 export { foldersRoutes } from './routes/workflows/folders.js';
+
+export { batchRoutes } from './routes/workflows/batch.js';

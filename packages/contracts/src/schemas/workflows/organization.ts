@@ -40,7 +40,7 @@ const canonicalIdentifierSchema = z
   .uuid()
   .length(36)
   .regex(/^[0-9a-f-]+(?![\s\S])/u);
-export const workflowTagWorkspaceParamsSchema = z
+const workflowTagWorkspaceParamsSchema = z
   .object({ workspaceId: commandIdentifierSchema })
   .strict();
 export const workflowTagParamsSchema = workflowTagWorkspaceParamsSchema.extend({

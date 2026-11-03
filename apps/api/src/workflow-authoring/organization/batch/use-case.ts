@@ -1,20 +1,23 @@
-import {
+import type {
   workflowOrganizationBulkRequestSchema,
-  workflowOrganizationBulkResponseSchema,
-  workflowOrganizationBulkItemOutcomeSchema,
-  workflowFolderPlacementResponseSchema,
   workflowTagCleanupDetachRequestSchema,
+} from '@pertexo/contracts';
+import {
+  workflowFolderPlacementResponseSchema,
+  workflowOrganizationBulkItemOutcomeSchema,
+  workflowOrganizationBulkResponseSchema,
   workflowTagCleanupDetachResponseSchema,
   type WorkflowOrganizationBulkItemOutcome,
 } from '@pertexo/contracts';
-import { IdempotencyConflictError } from '@pertexo/database/platform';
 import {
   WorkflowFolderConflictError,
   WorkflowNotFoundError,
   WorkflowTagConflictError,
-  type WorkflowOrganizationBatchStore,
   type WorkflowOrganizationBatchRequest,
+  type WorkflowOrganizationBatchStore,
 } from '@pertexo/core/authoring';
+import { IdempotencyConflictError } from '@pertexo/database/platform';
+import type { z } from 'zod';
 import {
   AuthorizationError,
   type WorkspaceAuthorizationSource,
@@ -24,10 +27,9 @@ import {
   workflowOrganizationContext,
   type WorkflowOrganizationInput,
 } from '../authority.js';
-import { parseRequestInput } from '../../../platform/http/index.js';
 
-type Input = WorkflowOrganizationInput &
-  Readonly<{ request: unknown; idempotencyKey: string }>;
+type Input<Request = unknown> = WorkflowOrganizationInput &
+  Readonly<{ request: Request; idempotencyKey: string }>;
 
 /** Commit one shared parent before sequential, independently committed items.
  * Retrying always resubmits the full original parent, never just failed items. */
@@ -37,21 +39,19 @@ export class WorkflowOrganizationBatchesUseCase {
     private readonly authorization: WorkspaceAuthorizationSource,
   ) {}
 
-  public async bulk(input: Input) {
-    const request = parseRequestInput(
-      workflowOrganizationBulkRequestSchema,
-      input.request,
-    );
+  public async bulk(
+    input: Input<z.output<typeof workflowOrganizationBulkRequestSchema>>,
+  ) {
+    const request = input.request;
     return workflowOrganizationBulkResponseSchema.parse({
       items: await this.execute(input, request),
     });
   }
 
-  public async cleanup(input: Input) {
-    const request = parseRequestInput(
-      workflowTagCleanupDetachRequestSchema,
-      input.request,
-    );
+  public async cleanup(
+    input: Input<z.output<typeof workflowTagCleanupDetachRequestSchema>>,
+  ) {
+    const request = input.request;
     const items = await this.execute(input, {
       operation: 'tag_cleanup',
       tagId: request.tagId,
