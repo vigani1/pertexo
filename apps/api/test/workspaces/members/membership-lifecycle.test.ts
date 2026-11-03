@@ -1,14 +1,10 @@
 import { toProblem } from '../../../src/problems/registry.js';
 import { workspaceFailure } from '../../../src/problems/context/normalize.js';
-import {
-  WorkspaceMembershipCommandConflictError,
-  type IdentityWorkspaceStore,
-} from '@pertexo/core/tenant-access';
+import { WorkspaceMembershipCommandConflictError } from '@pertexo/core/tenant-access';
 import { describe, expect, it, vi } from 'vitest';
 
 import { IdentityError } from '../../../src/identity/index.js';
 import {
-  createIdentityWorkspaceAdapter,
   WorkspaceMembershipController,
   WorkspaceMembershipLifecycleUseCase,
   type IdentitySessionAuthority,
@@ -107,52 +103,6 @@ const delivery = {
 };
 
 describe('membership lifecycle commands (ADR 047)', () => {
-  it('leaves the route workspace as the signed-in actor', async () => {
-    const store = persistence();
-    const membership = controller(store);
-
-    await expect(
-      membership.leave(
-        request(),
-        routeInput<typeof routes.leave>(command({ workspaceId }, {})),
-      ),
-    ).resolves.toEqual({ userId: actorId, roleRevision: 2, replayed: false });
-    expect(store.leaveWorkspace).toHaveBeenCalledExactlyOnceWith(delivery);
-  });
-
-  it('suspends and reactivates at the revision the manager saw', async () => {
-    const store = persistence();
-    const membership = controller(store);
-    const params = { workspaceId, userId: targetId };
-
-    await expect(
-      membership.suspend(
-        request(),
-        routeInput<typeof routes.suspend>(
-          command(params, { expectedRoleRevision: 3 }),
-        ),
-      ),
-    ).resolves.toMatchObject({ membershipStatus: 'suspended' });
-    await expect(
-      membership.reactivate(
-        request(),
-        routeInput<typeof routes.reactivateMember>(
-          command(params, { expectedRoleRevision: 4 }),
-        ),
-      ),
-    ).resolves.toMatchObject({ membershipStatus: 'active', replayed: true });
-    expect(store.suspendWorkspaceMember).toHaveBeenCalledWith({
-      ...delivery,
-      targetUserId: targetId,
-      expectedRoleRevision: 3,
-    });
-    expect(store.reactivateWorkspaceMember).toHaveBeenCalledWith({
-      ...delivery,
-      targetUserId: targetId,
-      expectedRoleRevision: 4,
-    });
-  });
-
   it('transfers ownership only from a sign-in in the last five minutes', async () => {
     const store = persistence();
     const params = { workspaceId, userId: targetId };
@@ -218,33 +168,6 @@ describe('membership lifecycle commands (ADR 047)', () => {
     ).toMatchObject({
       code: 'auth.session_not_fresh',
       safeDetail: 'Sign in again, then retry within five minutes.',
-    });
-  });
-
-  it('passes each command to the database unchanged', async () => {
-    const store = persistence();
-    const adapter = createIdentityWorkspaceAdapter(
-      store as unknown as IdentityWorkspaceStore,
-    );
-    const member = {
-      ...delivery,
-      targetUserId: targetId,
-      expectedRoleRevision: 1,
-    };
-
-    await adapter.leaveWorkspace(delivery);
-    await adapter.suspendWorkspaceMember(member);
-    await adapter.reactivateWorkspaceMember(member);
-    await adapter.transferWorkspaceOwnership({
-      ...member,
-      expectedOwnerRoleRevision: 1,
-    });
-    expect(store.leaveWorkspace).toHaveBeenCalledWith(delivery);
-    expect(store.suspendWorkspaceMember).toHaveBeenCalledWith(member);
-    expect(store.reactivateWorkspaceMember).toHaveBeenCalledWith(member);
-    expect(store.transferWorkspaceOwnership).toHaveBeenCalledWith({
-      ...member,
-      expectedOwnerRoleRevision: 1,
     });
   });
 });

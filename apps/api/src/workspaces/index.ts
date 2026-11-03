@@ -23,7 +23,6 @@ export {
 export { createIdentityWorkspaceAdapter } from './persistence/database-adapter.js';
 export { WorkspaceInvitationManagementUseCase } from './invitations/management.js';
 export { InvitationAcceptanceController } from './invitations/acceptance-controller.js';
-export { RemoveWorkspaceMemberUseCase } from './members/removal.js';
 export { WorkspaceMembershipLifecycleUseCase } from './members/lifecycle.js';
 export { WorkspaceMembershipController } from './members/lifecycle-controller.js';
 export { UpdateUserProfileUseCase } from './commands/user-profile.js';

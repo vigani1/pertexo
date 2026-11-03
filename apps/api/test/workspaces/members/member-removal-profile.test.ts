@@ -7,34 +7,12 @@ import { describe, expect, it, vi } from 'vitest';
 import { workspaceFailure } from '../../../src/problems/context/normalize.js';
 import { toProblem } from '../../../src/problems/registry.js';
 
-import type { workspaceRoutes as routes } from '@pertexo/contracts/server';
-import {
-  createIdentityWorkspaceAdapter,
-  ListWorkspaceMembersUseCase,
-  RemoveWorkspaceMemberUseCase,
-  WorkspaceMembersController,
-  type ChangeWorkspaceMemberRoleUseCase,
-} from '../../../src/workspaces/index.js';
-import { routeInput } from '../../support/route-input.js';
+import { createIdentityWorkspaceAdapter } from '../../../src/workspaces/index.js';
 
 const actorId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const targetId = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
 const workspaceId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
 const at = new Date('2026-09-24T10:00:00.000Z');
-
-function request(idempotencyKey = 'member-command-1') {
-  return {
-    requestId: 'request-removal',
-    traceId: 'trace-removal',
-    headers: { 'idempotency-key': idempotencyKey },
-    identitySession: {
-      userId: actorId,
-      sessionId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
-      expiresAt: new Date('2026-09-25T00:00:00.000Z'),
-      clientMetadata: {},
-    },
-  } as const;
-}
 
 function profile(overrides: Readonly<Record<string, unknown>> = {}) {
   return {
@@ -50,43 +28,6 @@ function profile(overrides: Readonly<Record<string, unknown>> = {}) {
 }
 
 describe('member removal and self profile commands', () => {
-  it('forwards one member removal at the revision the actor saw', async () => {
-    const removeWorkspaceMember = vi.fn().mockResolvedValue({
-      userId: targetId,
-      roleRevision: 4,
-      replayed: false,
-    });
-    const controller = new WorkspaceMembersController(
-      new ListWorkspaceMembersUseCase(
-        { listWorkspaceMembers: vi.fn() },
-        { findAccess: vi.fn() },
-      ),
-      { execute: vi.fn() } as unknown as ChangeWorkspaceMemberRoleUseCase,
-      new RemoveWorkspaceMemberUseCase({ removeWorkspaceMember }),
-    );
-
-    await expect(
-      controller.remove(
-        request(),
-        routeInput<typeof routes.remove>({
-          params: { workspaceId, userId: targetId },
-          body: { expectedRoleRevision: 3 },
-          idempotencyKey: 'member-command-1',
-        }),
-      ),
-    ).resolves.toEqual({ userId: targetId, roleRevision: 4, replayed: false });
-    expect(removeWorkspaceMember).toHaveBeenCalledWith({
-      workspaceId,
-      actorUserId: actorId,
-      targetUserId: targetId,
-      expectedRoleRevision: 3,
-      idempotencyKey: 'member-command-1',
-      requestId: 'request-removal',
-      traceId: 'trace-removal',
-    });
-    expect(removeWorkspaceMember).toHaveBeenCalledOnce();
-  });
-
   it.each([
     ['target_missing', 'resource.not_found'],
     ['revision_conflict', 'workspace.member_role_revision_conflict'],
