@@ -46,11 +46,7 @@ export const workspaceNoticeKindSchema = z.enum([
   'workflow_mention',
 ]);
 export const workspaceInboxFilterSchema = z.enum(['all', 'unread']);
-const workspaceInboxLimitSchema = z.coerce
-  .number()
-  .int()
-  .min(1)
-  .max(100);
+const workspaceInboxLimitSchema = z.coerce.number().int().min(1).max(100);
 export const workspaceInboxListQuerySchema = z
   .object({
     filter: workspaceInboxFilterSchema.optional(),
