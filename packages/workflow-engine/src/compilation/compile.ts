@@ -31,7 +31,7 @@ import {
   registerExecutableIdentity,
   validateGlobals,
 } from './foundation.js';
-import { sideEffectClass } from './validation.js';
+import { sideEffectClass } from './executable.validation.js';
 
 export { computeWorkflowExecutableChecksum } from './identity.js';
 

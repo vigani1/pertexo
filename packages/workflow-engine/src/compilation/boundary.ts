@@ -21,7 +21,7 @@ import {
   normalizeBoundedEngineValue,
   parseGlobals,
   record,
-} from './validation.js';
+} from './executable.validation.js';
 
 export function parseBoundary(input: {
   readonly envelope: unknown;

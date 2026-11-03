@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { nodeValidationResponseSchema } from '@pertexo/contracts';
 import { describe, expect, it } from 'vitest';
 
-import { prepareNodeValidation } from '../../src/node-testing/validation.js';
+import { prepareNodeValidation } from '../../src/node-testing/prepare-node-validation.js';
 
 function graph(overrides: Readonly<Record<string, unknown>> = {}) {
   return {

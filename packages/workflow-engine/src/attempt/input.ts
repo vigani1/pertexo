@@ -16,7 +16,7 @@ import type {
   WorkflowExecutableGraph,
   WorkflowExecutableNode,
 } from '../compilation/foundation.js';
-import { normalizeBoundedEngineValue } from '../compilation/validation.js';
+import { normalizeBoundedEngineValue } from '../compilation/executable.validation.js';
 import { exactKeys, operationError, record } from '../operation-values.js';
 import type { ExecuteNodeAttemptInput } from './node-attempt.types.js';
 import { invocationKey as createInvocationKey } from '../transition/scheduling/loops.js';

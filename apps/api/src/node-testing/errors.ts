@@ -1,4 +1,4 @@
-import type { NodeValidationIssue } from './validation.js';
+import type { NodeValidationIssue } from './prepare-node-validation.js';
 
 export class NodeTestRequestError extends Error {
   public override readonly name = 'NodeTestRequestError';

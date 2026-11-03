@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   inspectWorkflowFailureRoutes,
   type FailureRoutingGraph,
-} from '../../src/flow/failure-routing/validation.js';
+} from '../../src/flow/failure-routing/failure-routes.validation.js';
 import { WORKFLOW_FAILURE_PORT } from '../../src/flow/failure-routing/failure-routes.js';
 const node = (
   id: string,
