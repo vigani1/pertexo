@@ -20,7 +20,7 @@ system and tests.
   are grouped the same way (`routes/root`, `auth`, `workspace`, `workflow`).
 - Follow ARCHITECTURE.md's function-placement and composition rules: keep helpers
   with their owner, use named `lib` modules only for genuine cross-feature reuse,
-  and keep `lib/utils.ts` focused on `cn`. Pure logic is not a custom hook.
+  and keep `lib/class-names.ts` focused on `cn`. Pure logic is not a custom hook.
 - Prefer props/children and explicit feature compositions. Use compound
   components only for genuinely coordinated parts; use existing Base UI
   primitives instead of reimplementing their accessibility/state behavior.

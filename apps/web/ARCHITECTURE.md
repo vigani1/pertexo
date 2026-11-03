@@ -168,7 +168,7 @@ Grouping within a feature:
   layout under `test/features/`.
 
 Naming: kebab-case filenames; PascalCase components/types; `useX` for hooks;
-`*.api.ts`, `*.queries.ts`, `*.mutations.ts`, `*.schema.ts` and `*.store.ts`
+`*.api.ts`, `*.queries.ts`, `*.mutations.ts`, `*.schemas.ts` and `*.store.ts`
 when the distinction is useful. Use named exports and `import type`. Prefer
 ordinary TypeScript, explicit props and discriminated unions over clever generic
 layers. Comments explain invariants/tradeoffs, not what the next statement says.
@@ -207,17 +207,17 @@ Do not create empty folders, a store for every feature or a hook for every file.
 Tests mirror the owning feature under `test/features/`; shared test setup stays
 in `test/support/`.
 
-| Responsibility          | Consistent home and rule                                                                                                 |
-| ----------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| Page/navigation         | `routes/`: validated params/search, loaders and feature composition; no business implementation                          |
-| Feature presentation    | Feature entry composes separate UI modules; substantial cards, panels and toolbars live in its `components/`             |
-| Feature behavior        | Named feature-local functions/hooks; pure rules and transformations in `model/` when grouping is useful                  |
-| API communication       | Feature `*.api.ts` uses shared `lib/api` transport; no direct fetch calls in UI or stores                                |
-| Server synchronization  | `*.queries.ts` and `*.mutations.ts`; no duplicate query keys, request logic or cache rules in components                 |
-| Forms and validation    | Feature-owned forms and `*.schema.ts`; import portable shared contracts where applicable, keep UI-only input rules local |
-| Types and helpers       | Beside the behavior that owns them; shared wire types come from approved package exports, never backend internals        |
-| Reusable presentation   | `components/ui` for primitives, `components/patterns` for genuinely domain-independent compositions                      |
-| Reusable infrastructure | Focused `lib/<responsibility>` modules; no generic helpers/services dumping ground                                       |
+| Responsibility          | Consistent home and rule                                                                                                  |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| Page/navigation         | `routes/`: validated params/search, loaders and feature composition; no business implementation                           |
+| Feature presentation    | Feature entry composes separate UI modules; substantial cards, panels and toolbars live in its `components/`              |
+| Feature behavior        | Named feature-local functions/hooks; pure rules and transformations in `model/` when grouping is useful                   |
+| API communication       | Feature `*.api.ts` uses shared `lib/api` transport; no direct fetch calls in UI or stores                                 |
+| Server synchronization  | `*.queries.ts` and `*.mutations.ts`; no duplicate query keys, request logic or cache rules in components                  |
+| Forms and validation    | Feature-owned forms and `*.schemas.ts`; import portable shared contracts where applicable, keep UI-only input rules local |
+| Types and helpers       | Beside the behavior that owns them; shared wire types come from approved package exports, never backend internals         |
+| Reusable presentation   | `components/ui` for primitives, `components/patterns` for genuinely domain-independent compositions                       |
+| Reusable infrastructure | Focused `lib/<responsibility>` modules; no generic helpers/services dumping ground                                        |
 
 #### Small modules, meaningful names
 
@@ -1189,8 +1189,8 @@ unread.
   the editor store with its React contexts; feature hooks (`use-*.ts`) sit at
   the feature root; server command hooks live in `<feature>.mutations.ts` or,
   once there are several, one per file in `mutations/`. Query options other
-  features or loaders need come from one `queries.public.ts`; lazy pages and
-  focused interfaces use `public.ts` or `<responsibility>.public.ts`.
+  features or loaders need come from one `<feature>-queries.public.ts`; lazy
+  pages and focused interfaces use `public.ts` or `<responsibility>.public.ts`.
 
 #### Copy and feedback rules
 
@@ -1381,7 +1381,7 @@ already exist.
 | Primitive control                          | `components/ui/`                                           | Button/field/dialog; no domain branching                                                                   |
 | Cross-app domain definition                | Existing appropriate public workspace package              | Shared contract/graph type, not a browser helper moved into contracts                                      |
 
-Keep existing `lib/utils.ts` for `cn`; it is not the destination for every
+Keep existing `lib/class-names.ts` for `cn`; it is not the destination for every
 function. Do not create `helpers.ts`, `common.ts`, `functions.ts`, `use-app.ts`
 or a giant `types.ts` to avoid choosing an owner. A feature-owned formatter
 stays with that feature even if several of its components use it.
