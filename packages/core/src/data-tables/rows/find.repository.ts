@@ -11,7 +11,7 @@ import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
-import { decodeStoredValue } from '@pertexo/database/platform';
+import { decodeStoredValue } from '../../shared/stored-values.js';
 import { workspaceDataTableRows as rows } from '@pertexo/database/schema';
 import type {
   DataTableDefinition,

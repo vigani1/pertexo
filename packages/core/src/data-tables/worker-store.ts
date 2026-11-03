@@ -2,10 +2,10 @@ import { createHash } from 'node:crypto';
 
 import {
   acquireDatabasePool,
-  decodeStoredValue,
   type DatabaseConfig,
   type DatabaseRuntime,
 } from '@pertexo/database/platform';
+import { decodeStoredValue } from '../shared/stored-values.js';
 import {
   rethrowQueryFailure,
   withTenantScopedClient,

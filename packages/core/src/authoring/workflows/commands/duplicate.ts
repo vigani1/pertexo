@@ -24,10 +24,8 @@ import {
 import { requireWorkflowCallTargets } from '../../../tenant-access/resources/bindings.repository.js';
 import { requireConnectionBindings } from '../../../tenant-access/resources/connections/bindings.repository.js';
 
-import {
-  decodeStoredValue,
-  generatePersistedId,
-} from '@pertexo/database/platform';
+import { generatePersistedId } from '@pertexo/database/platform';
+import { decodeStoredValue } from '../../../shared/stored-values.js';
 import type { FolderScope } from '../../../shared/folder-access.types.js';
 import { requireReadableReceipt } from '../../../shared/receipts.js';
 import { requireWorkflowInScope } from '../access.js';

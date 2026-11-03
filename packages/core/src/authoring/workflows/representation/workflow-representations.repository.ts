@@ -8,7 +8,7 @@ import {
   webhookTriggerEndpoints,
 } from '@pertexo/database/schema';
 import { parseWorkflowGraphDraft } from '@pertexo/workflow-model';
-import { decodeStoredValue } from '@pertexo/database/platform';
+import { decodeStoredValue } from '../../../shared/stored-values.js';
 import {
   workflowCompatibilityReport,
   type WorkflowDefinitionCatalog,

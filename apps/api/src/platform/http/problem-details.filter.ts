@@ -10,7 +10,7 @@ import {
 import { Catch, HttpException } from '@nestjs/common';
 import type { ArgumentsHost, ExceptionFilter } from '@nestjs/common';
 import { ZodError } from 'zod';
-import { isStoredDataError } from '@pertexo/database/platform';
+import { isStoredDataError } from '@pertexo/core/authoring';
 import {
   APPLICATION_ERROR_CATALOG,
   isApplicationError,

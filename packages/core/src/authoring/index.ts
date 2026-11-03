@@ -142,3 +142,5 @@ export type {} from './reviews/eligibility.repository.js';
 export type {} from './step-samples/records.repository.js';
 export type {} from './workflows/authority.js';
 export type {} from './workflows/catalogs.js';
+
+export { isStoredDataError } from '../shared/stored-values.js';

@@ -1,7 +1,5 @@
-import {
-  decodeStoredValue,
-  generatePersistedId,
-} from '@pertexo/database/platform';
+import { generatePersistedId } from '@pertexo/database/platform';
+import { decodeStoredValue } from '../../shared/stored-values.js';
 import {
   isUniqueConstraintFailure,
   queryFailure,
