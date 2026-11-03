@@ -633,18 +633,22 @@ describe('workflow trigger pause (ADR 056)', () => {
       );
       return row?.blocks ?? 0;
     };
-    const samples: number[] = [];
-    for (let batch = 0; batch < 10; batch++) {
-      await asAdmin(
-        `with tenant as (select set_config('app.workspace_id',$1::text,true)), runs as (
-         insert into app.workflow_runs(id,workspace_id,workflow_id,workflow_version_id,trigger_type,status)
-         select gen_random_uuid(),$1::uuid,$2::uuid,gen_random_uuid(),'schedule','failed'
-         from tenant cross join generate_series(1,500) returning id)
-         insert into app.workflow_trigger_outcomes(id,workspace_id,workflow_id,run_id,counts_as_failure,ended_at)
-         select gen_random_uuid(),$1::uuid,$2::uuid,id,true,'2026-10-01'::timestamptz from runs`,
-        [workspaceId, workflowId],
+    // Folded positions outlive run summaries; seed that retained history directly
+    // instead of measuring thousands of unrelated run-admission transactions.
+    const history = async (count: number, offset: number) =>
+      asAdmin(
+        `insert into app.workflow_trigger_failures(id,workspace_id,workflow_id,run_id,ended_at)
+       select gen_random_uuid(),$1,$2,gen_random_uuid(),'2026-10-01'::timestamptz+($3::int+n)*interval '1 second'
+       from generate_series(1,$4::int) n`,
+        [workspaceId, workflowId, offset, count],
       );
-      // Exclude reclaimable MVCC tuples; measure live evidence, not vacuum scheduling.
+    const measureFold = async (second: number) => {
+      await end(workspaceId, workflowId, 'failed', {
+        endedAt: new Date(
+          Date.parse('2026-10-01T00:00:00Z') + second * 1000,
+        ).toISOString(),
+      });
+      // Compare live evidence independently of vacuum scheduling and stats flushing.
       await asAdmin('vacuum (analyze) app.workflow_trigger_failures');
       const measuredFold = createWorkflowTriggerPauseFoldStore(
         parseDatabaseConfig({ connectionString: maintenanceUrl, max: 1 }),
@@ -655,9 +659,12 @@ describe('workflow trigger pause (ADR 056)', () => {
       } finally {
         await measuredFold.close();
       }
-      // Closing the connection flushes its pg_stat_statements counters.
-      samples.push((await reads()) - before);
-    }
+      return (await reads()) - before;
+    };
+    await history(100, 0);
+    const small = await measureFold(101);
+    await history(5000, 101);
+    const large = await measureFold(5102);
     const retention = createRetentionStore(
       parseDatabaseConfig({ connectionString: maintenanceUrl, max: 1 }),
     );
@@ -670,9 +677,10 @@ describe('workflow trigger pause (ADR 056)', () => {
       'select count(*)::int count from app.workflow_trigger_failures where workflow_id=$1',
       [workflowId],
     );
-    expect(retained?.count).toBe(100);
-    // Buffer reads measure the real fold's ledger queries, independent of wall-clock noise.
-    expect(Math.max(...samples)).toBeLessThanOrEqual(32);
+    expect.soft(retained?.count).toBe(100);
+    expect.soft(small).toBeLessThanOrEqual(16);
+    expect.soft(large).toBeLessThanOrEqual(16);
+    expect(large).toBeLessThanOrEqual(small + 4);
     expect(await pending(workspaceId)).toBe(0);
     expect(await pauseAudits(workspaceId)).toEqual([]);
   });
