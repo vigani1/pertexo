@@ -1,3 +1,4 @@
+import { WORKSPACE_AUTHORIZATION } from '../../src/workspaces/tokens.js';
 import 'reflect-metadata';
 
 import type {
@@ -64,8 +65,8 @@ type CapabilityGuard = Type<CanActivate>;
 export async function sessionHttpApp(
   input: Readonly<{
     controller: Type;
-    /** The capability guards the controller uses and their authorization token. */
-    guards: readonly Readonly<{ guard: CapabilityGuard; token: symbol }>[];
+    /** A controller not yet declared: its own capability guards and their token. */
+    guards?: readonly Readonly<{ guard: CapabilityGuard; token: symbol }>[];
     providers: readonly Provider[];
     /** Fields the controller keeps; Vitest drops constructor parameter types. */
     fields: Readonly<Record<string, unknown>>;
@@ -106,7 +107,9 @@ export async function sessionHttpApp(
     providers: [
       { provide: RequestContextStore, useValue: contexts },
       { provide: CsrfProtectionGuard, useValue: csrf },
-      ...input.guards.map(({ token }) => ({
+      // Declared routes build their capability guards on this token.
+      { provide: WORKSPACE_AUTHORIZATION, useValue: membership },
+      ...(input.guards ?? []).map(({ token }) => ({
         provide: token,
         useValue: membership,
       })),
@@ -117,7 +120,7 @@ export async function sessionHttpApp(
     .useValue(new SessionAuthenticationGuard(sessions as never, contexts))
     .overrideGuard(CsrfProtectionGuard)
     .useValue(csrf);
-  for (const { guard } of input.guards)
+  for (const { guard } of input.guards ?? [])
     builder = builder
       .overrideGuard(guard)
       .useValue(new guard(membership, contexts));

@@ -1,179 +1,110 @@
+import { Controller, Req, UseInterceptors } from '@nestjs/common';
 import {
-  Body,
-  Controller,
-  Get,
-  Header,
-  HttpCode,
-  Param,
-  Post,
-  Query,
-  Req,
-  UseGuards,
-  UseInterceptors,
-} from '@nestjs/common';
-import { z } from 'zod';
-import {
-  pendingTaskParamsSchema,
-  pendingTaskListQuerySchema,
-  pendingTaskDecisionRequestSchema,
-  pendingTaskSubmitRequestSchema,
-  approvalAudienceQuerySchema,
-  approvalAudienceInspectionRequestSchema,
-} from '@pertexo/contracts';
-import {
-  CsrfProtectionGuard,
-  SessionAuthenticationGuard,
-  authenticatedSession,
-} from '../workspaces/index.js';
+  pendingTaskRoutes as routes,
+  type RouteInput,
+} from '@pertexo/contracts/server';
+import { authenticatedSession } from '../workspaces/index.js';
+import { In, Route } from '../workspaces/http/route.js';
 import type { IdentityWorkspaceRequest } from '../workspaces/types.js';
-import {
-  parseRequestInput,
-  requestIdempotencyKey,
-  withRequestOperationSignal,
-} from '../platform/http/index.js';
+import { withRequestOperationSignal } from '../platform/http/index.js';
 import type { AbortableRequest } from '../platform/http/request-operation-signal.js';
 import { authenticatedRequestIdentifiers } from '../workspaces/request/authenticated-context.js';
-import { RateLimit } from '../platform/rate-limit/metadata.js';
-import { optionalUploadSession } from '../artifacts/form-uploads/session.js';
-import {
-  ApprovalAudienceGuard,
-  ApprovalAudienceReadGuard,
-  PendingTaskReadGuard,
-  PendingTaskRespondGuard,
-} from './guards.js';
 import { PendingTaskService } from './service.js';
 import { domainErrors } from '../platform/http/problems/interceptor.js';
 import { resourceFailure } from '../problems/context/normalize.js';
 
-const workspaceParams = z.object({ workspaceId: z.uuid() }).strict();
 type TaskRequest = IdentityWorkspaceRequest & AbortableRequest;
+
 @UseInterceptors(domainErrors(resourceFailure))
-@Controller('v1/workspaces/:workspaceId/pending-tasks')
-@RateLimit('authenticated_read')
-@UseGuards(SessionAuthenticationGuard)
+@Controller()
 export class PendingTasksController {
   constructor(private readonly tasks: PendingTaskService) {}
-  @Get()
-  @Header('Cache-Control', 'private, no-store')
-  @UseGuards(PendingTaskReadGuard)
+
+  @Route(routes.list)
   list(
     @Req() request: TaskRequest,
-    @Param() params: unknown,
-    @Query() query: unknown,
+    @In() { params, query }: RouteInput<typeof routes.list>,
   ) {
-    const { workspaceId } = workspaceParams.parse(params);
-    const input = parseRequestInput(pendingTaskListQuerySchema, query ?? {});
     return withRequestOperationSignal(request, (signal) =>
-      this.tasks.list({
-        workspaceId,
-        actorId: authenticatedSession(request).userId,
-        ...input,
-        signal,
-      }),
+      this.tasks.list({ ...asker(request, params), ...query, signal }),
     );
   }
-  @Get('audience')
-  @Header('Cache-Control', 'private, no-store')
-  @UseGuards(ApprovalAudienceReadGuard)
+
+  @Route(routes.audience)
   audience(
     @Req() request: TaskRequest,
-    @Param() params: unknown,
-    @Query() query: unknown,
+    @In() { params, query }: RouteInput<typeof routes.audience>,
   ) {
-    const { workspaceId } = workspaceParams.parse(params);
-    const input = parseRequestInput(approvalAudienceQuerySchema, query ?? {});
     return withRequestOperationSignal(request, (signal) =>
-      this.tasks.audience({
-        workspaceId,
-        actorId: authenticatedSession(request).userId,
-        ...input,
-        signal,
-      }),
+      this.tasks.audience({ ...asker(request, params), ...query, signal }),
     );
   }
-  @Post('audience/inspect')
-  @HttpCode(200)
-  @Header('Cache-Control', 'private, no-store')
-  @UseGuards(ApprovalAudienceGuard, CsrfProtectionGuard)
+
+  @Route(routes.inspectAudience)
   inspectAudience(
     @Req() request: TaskRequest,
-    @Param() params: unknown,
-    @Body() body: unknown,
+    @In() { params, body }: RouteInput<typeof routes.inspectAudience>,
   ) {
-    const { workspaceId } = workspaceParams.parse(params);
-    const input = parseRequestInput(
-      approvalAudienceInspectionRequestSchema,
-      body,
-    );
     return withRequestOperationSignal(request, (signal) =>
       this.tasks.inspectAudience({
-        workspaceId,
-        actorId: authenticatedSession(request).userId,
-        ...input,
+        ...asker(request, params),
+        ...body,
         signal,
       }),
     );
   }
-  @Get(':taskId')
-  @Header('Cache-Control', 'private, no-store')
-  @UseGuards(PendingTaskReadGuard)
-  read(@Req() request: TaskRequest, @Param() params: unknown) {
-    const route = pendingTaskParamsSchema.parse(params);
+
+  @Route(routes.read)
+  read(
+    @Req() request: TaskRequest,
+    @In() { params }: RouteInput<typeof routes.read>,
+  ) {
     return withRequestOperationSignal(request, (signal) =>
-      this.tasks.read({
-        ...route,
-        actorId: authenticatedSession(request).userId,
-        signal,
-      }),
+      this.tasks.read({ ...asker(request, params), ...params, signal }),
     );
   }
-  @Post(':taskId/decide')
-  @HttpCode(200)
-  @Header('Cache-Control', 'private, no-store')
-  @RateLimit('ordinary_mutation')
-  @UseGuards(PendingTaskRespondGuard, CsrfProtectionGuard)
+
+  @Route(routes.decide)
   decide(
     @Req() request: TaskRequest,
-    @Param() params: unknown,
-    @Body() body: unknown,
+    @In() { params, body, idempotencyKey }: RouteInput<typeof routes.decide>,
   ) {
-    const route = pendingTaskParamsSchema.parse(params);
-    const input = parseRequestInput(pendingTaskDecisionRequestSchema, body);
-    const idempotencyKey = requestIdempotencyKey(request.headers);
     return withRequestOperationSignal(request, (signal) =>
       this.tasks.decide({
-        ...route,
-        ...input,
-        actorId: authenticatedSession(request).userId,
+        ...asker(request, params),
+        ...params,
+        ...body,
         idempotencyKey,
         ...authenticatedRequestIdentifiers(request),
         signal,
       }),
     );
   }
-  @Post(':taskId/submit')
-  @HttpCode(200)
-  @Header('Cache-Control', 'private, no-store')
-  @RateLimit('ordinary_mutation')
-  @UseGuards(PendingTaskRespondGuard, CsrfProtectionGuard)
+
+  @Route(routes.submit)
   submit(
     @Req() request: TaskRequest,
-    @Param() params: unknown,
-    @Body() body: unknown,
+    @In()
+    { params, body, idempotencyKey, headers }: RouteInput<typeof routes.submit>,
   ) {
-    const route = pendingTaskParamsSchema.parse(params);
-    const input = parseRequestInput(pendingTaskSubmitRequestSchema, body);
-    const idempotencyKey = requestIdempotencyKey(request.headers);
+    const uploadSession = headers['x-pertexo-form-session'];
     return withRequestOperationSignal(request, (signal) =>
       this.tasks.submit({
-        ...route,
-        ...input,
-        ...optionalUploadSession(request.headers),
-        actorId: authenticatedSession(request).userId,
+        ...asker(request, params),
+        ...params,
+        ...body,
+        ...(uploadSession === undefined ? {} : { uploadSession }),
         idempotencyKey,
         ...authenticatedRequestIdentifiers(request),
         signal,
       }),
     );
   }
+}
+
+function asker(
+  request: TaskRequest,
+  { workspaceId }: Readonly<{ workspaceId: string }>,
+) {
+  return { workspaceId, actorId: authenticatedSession(request).userId };
 }
