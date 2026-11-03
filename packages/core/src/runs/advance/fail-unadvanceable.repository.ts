@@ -1,3 +1,4 @@
+import { TERMINAL_NODE_FIELDS } from './persist/settlement.repository.js';
 import { TERMINAL_RUN_STATUSES } from '../statuses.js';
 import { createCheckpoint } from '@pertexo/workflow-engine';
 import { and, eq, inArray, sql } from 'drizzle-orm';
@@ -152,12 +153,7 @@ async function closeOpenWork(
     .update(nodeRuns)
     .set({
       status: sql`case when ${nodeRuns.id} in ${unknownNodes.length === 0 ? sql`(null::uuid)` : unknownNodes} then 'outcome_unknown' else 'canceled' end`,
-      resumeAt: null,
-      retryDueAt: null,
-      dueWakeupAt: null,
-      waitKind: null,
-      completedAt: sql`clock_timestamp()`,
-      updatedAt: sql`clock_timestamp()`,
+      ...TERMINAL_NODE_FIELDS,
     })
     .where(
       and(

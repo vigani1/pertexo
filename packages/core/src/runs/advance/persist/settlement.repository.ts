@@ -9,6 +9,17 @@ import type { WorkflowCheckpoint } from '@pertexo/workflow-engine';
 import { CoordinatorRunStateCorruptError } from '../../state-errors.js';
 import type { RunTransitionPlan } from '../plan.js';
 
+/** Terminal physical nodes retain no logical control or scheduled wakeup. */
+export const TERMINAL_NODE_FIELDS = {
+  completedAt: sql`clock_timestamp()`,
+  resumeAt: null,
+  retryDueAt: null,
+  dueWakeupAt: null,
+  controlKind: null,
+  waitKind: null,
+  updatedAt: sql`clock_timestamp()`,
+} as const;
+
 /**
  * A For Each whose collection exceeded its limit fails the node that produced
  * the collection. That node already succeeded, so its row moves to failed here

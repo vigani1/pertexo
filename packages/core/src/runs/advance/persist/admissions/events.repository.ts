@@ -1,3 +1,4 @@
+import { TERMINAL_NODE_FIELDS } from '../settlement.repository.js';
 import type { PgInsertValue } from 'drizzle-orm/pg-core';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { and, eq, inArray, sql } from 'drizzle-orm';
@@ -148,14 +149,8 @@ async function settleInvocations(
     .update(n)
     .set({
       status: sql`settled.status`,
-      completedAt: sql`clock_timestamp()`,
+      ...TERMINAL_NODE_FIELDS,
       safeErrorCode: sql`settled.code`,
-      resumeAt: null,
-      retryDueAt: null,
-      dueWakeupAt: null,
-      controlKind: null,
-      waitKind: null,
-      updatedAt: sql`clock_timestamp()`,
     })
     .from(
       sql`unnest(${sql.param(settled.map(({ key }) => key))}::text[],${sql.param(settled.map(({ status }) => status))}::text[],${sql.param(settled.map(({ code }) => code))}::text[]) settled(key,status,code)`,
