@@ -7,7 +7,7 @@ import {
 } from '../../platform/migrations/upgrade-fixture.js';
 
 it('carries old streaks and pending outcomes through 0086 and 0088 without changing pause evidence or inventing history', async () => {
-  await withUpgradeDatabase(85, async ({ admin, upgrade }) => {
+  await withUpgradeDatabase(84, async ({ admin, upgrade }) => {
     const { workspaceId, workflowId } = await seedWorkflow(admin);
     const lastRunId = randomUUID();
     await admin.query(
@@ -35,7 +35,11 @@ it('carries old streaks and pending outcomes through 0086 and 0088 without chang
     );
     const snapshot = async () =>
       (
-        await admin.query(
+        await admin.query<{
+          workflow: unknown;
+          streak: Record<string, unknown>;
+          pending: unknown;
+        }>(
           `select
       (select to_jsonb(w) from app.workflows w where id=$1) workflow,
       (select to_jsonb(s) from app.workflow_failure_streaks s where workflow_id=$1) streak,
@@ -44,6 +48,7 @@ it('carries old streaks and pending outcomes through 0086 and 0088 without chang
         )
       ).rows[0];
     const before = await snapshot();
+    if (before === undefined) throw new Error('Upgrade state missing');
     await upgrade(88);
     const after = await snapshot();
     expect(after).toEqual({
