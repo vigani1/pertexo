@@ -29,7 +29,7 @@ afterAll(closeWorld);
 
 describe('who can make a member command', () => {
   it.each(COMMAND_NAMES)(
-    '%s goes through for an owner and an admin',
+    '%s enforces the owner’s and admin’s command grants',
     async (name) => {
       const world = await team();
       await expect(
@@ -38,7 +38,9 @@ describe('who can make a member command', () => {
       const second = await team();
       await expect(
         answer(COMMANDS[name](second.workspaceId, second.admin)),
-      ).resolves.toBe('answered');
+      ).resolves.toEqual(
+        name === 'rename' ? refusal('actor_inactive') : 'answered',
+      );
     },
   );
 
