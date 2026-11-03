@@ -1,3 +1,4 @@
+import { canonicalEmailDomainSql } from '../../canonical-email.js';
 import type {
   AuthenticationSession,
   IdentityEmailChangeEligibility,
@@ -50,7 +51,7 @@ async function readAuthenticationPolicy(
     .leftJoin(
       authDomains,
       and(
-        sql`${authDomains.domain}=lower(split_part(${users.email},'@',2))`,
+        sql`${authDomains.domain}=${canonicalEmailDomainSql(users.email)}`,
         isNotNull(authDomains.verifiedAt),
       ),
     )

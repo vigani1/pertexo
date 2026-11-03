@@ -8,3 +8,8 @@ import { sql, type SQLWrapper } from 'drizzle-orm';
 export function canonicalEmailSql(address: SQLWrapper) {
   return sql`lower(normalize((${address})::text,NFKC))`;
 }
+
+/** Organization policy follows the same stored identity spelling as sign-in. */
+export function canonicalEmailDomainSql(address: SQLWrapper) {
+  return sql`split_part(${canonicalEmailSql(address)},'@',2)`;
+}

@@ -1,3 +1,4 @@
+import { canonicalEmailDomainSql } from '../../canonical-email.js';
 import {
   workspaceMemberships,
   users,
@@ -194,7 +195,7 @@ export function configureDomainEnforcement(
         const affected = drizzle(client)
           .select({ id: users.id })
           .from(users)
-          .where(sql`lower(split_part(${users.email},'@',2))=${domain.domain}`);
+          .where(sql`${canonicalEmailDomainSql(users.email)}=${domain.domain}`);
         await drizzle(client)
           .delete(authSessions)
           .where(inArray(authSessions.userId, affected))
