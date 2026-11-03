@@ -77,6 +77,7 @@ export { createResendClient, RESEND_API_ENDPOINT } from './email/client.js';
 export type { ResendApiResult, ResendClient } from './email/client.js';
 export {
   createApplicationSecretEnvelope,
+  ApplicationSecretKeyUnavailableError,
   type ApplicationSealedSecret,
   type ApplicationSecretEnvelope,
 } from './security/application-secret-envelope.js';

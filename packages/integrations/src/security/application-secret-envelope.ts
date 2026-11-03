@@ -24,6 +24,13 @@ export type ApplicationSecretEnvelope = Readonly<{
   open(sealed: unknown, associatedData: string): string;
 }>;
 
+export class ApplicationSecretKeyUnavailableError extends Error {
+  public constructor(public readonly keyVersion: string) {
+    super('Application secret key is unavailable');
+    this.name = 'ApplicationSecretKeyUnavailableError';
+  }
+}
+
 export function createApplicationSecretEnvelope(
   config: Readonly<{
     current: Readonly<{ version: string; key: string }>;
@@ -71,7 +78,7 @@ export function createApplicationSecretEnvelope(
       assertBounded(associatedData, 512);
       const key = keys.get(sealed.keyVersion);
       if (key === undefined)
-        throw new Error('Application secret key is unavailable');
+        throw new ApplicationSecretKeyUnavailableError(sealed.keyVersion);
       const nonce = Buffer.from(sealed.nonce, 'base64url');
       const tag = Buffer.from(sealed.tag, 'base64url');
       const ciphertext = Buffer.from(sealed.ciphertext, 'base64url');

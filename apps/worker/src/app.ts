@@ -64,7 +64,17 @@ export async function createWorkerApplication(
   let dispatcherDatabaseRuntime: DatabaseRuntime | undefined;
   let application: INestApplicationContext;
   try {
-    await verifyWorkerEncryption(config, factories.encryptionKeysRepository);
+    await verifyWorkerEncryption(
+      config,
+      factories.encryptionKeysRepository,
+      (version) => {
+        dependencies.logger.warn('system_mail.key_unavailable', {
+          keyVersion: version,
+          instruction:
+            'Restore this version in AUTH_MAIL_PREVIOUS_KEYS and restart the worker. Affected mail waits encrypted; workflows continue.',
+        });
+      },
+    );
     await verifyWorkerCallbacks(config, factories.callbackStore);
     databaseRuntime = factories.databaseRuntime(config.database, {
       role: 'worker',

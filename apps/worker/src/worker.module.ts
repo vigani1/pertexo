@@ -270,6 +270,13 @@ function systemMailProvider(
         email: createSystemMailClient(mail.delivery),
         timeoutMillis: mail.timeoutMillis,
         workerId: mail.workerId,
+        onUnavailableKey: (version) => {
+          dependencies.logger.warn('system_mail.key_unavailable', {
+            keyVersion: version,
+            instruction:
+              'Restore this version in AUTH_MAIL_PREVIOUS_KEYS and restart the worker. Affected mail waits encrypted; workflows continue.',
+          });
+        },
         onFailure: (failure) => {
           dependencies.logger.error('system_mail.delivery_failed', {
             ...failure,
