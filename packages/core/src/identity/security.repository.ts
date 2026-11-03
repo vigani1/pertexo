@@ -29,24 +29,6 @@ import { recordIdentitySecurityFact } from './facts.repository.js';
 
 // A person changing their own sign-in methods, in no workspace: these stay off
 // `withWorkspaceAccess`, which has no member to check.
-export async function hasCredentialAccount(
-  pool: Pool,
-  userId: string,
-): Promise<boolean> {
-  const accounts = await drizzle(pool)
-    .select({ id: authAccounts.id })
-    .from(authAccounts)
-    .where(
-      and(
-        eq(authAccounts.userId, userId),
-        eq(authAccounts.providerId, 'credential'),
-      ),
-    )
-    .limit(1)
-    .catch(rethrowQueryFailure);
-  return accounts.length !== 0;
-}
-
 /** Credential changes and revocation share one database commit. */
 export async function changePasswordAndRevokeSessions(
   pool: Pool,
