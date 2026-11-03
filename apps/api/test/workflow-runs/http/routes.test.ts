@@ -8,8 +8,8 @@ import {
   vi,
 } from 'vitest';
 
-import { WorkflowRunsController } from '../../../src/workflow-runs/http/controllers.js';
-import { WorkflowRunsModule } from '../../../src/workflow-runs/module.js';
+import { WorkflowRunsController } from '../../../src/workflow-runs/http/workflow-runs.controller.js';
+import { WorkflowRunsModule } from '../../../src/workflow-runs/workflow-runs.module.js';
 import { GetWorkflowRunStatisticsUseCase } from '../../../src/workflow-runs/statistics.js';
 import {
   CancelWorkflowRunUseCase,

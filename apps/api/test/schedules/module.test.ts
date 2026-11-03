@@ -3,7 +3,7 @@ import { FastifyAdapter } from '@nestjs/platform-fastify';
 import { Test } from '@nestjs/testing';
 import { describe, expect, it, vi } from 'vitest';
 
-import { ScheduleModule } from '../../src/schedules/module.js';
+import { ScheduleModule } from '../../src/schedules/schedule.module.js';
 import type { ScheduleManagementService } from '../../src/schedules/schedule-management.service.js';
 
 const scheduleOperations = {

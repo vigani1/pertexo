@@ -1,10 +1,10 @@
 import { NoticePreferencesService } from './preferences/notice-preferences.service.js';
-import { NoticePreferencesController } from './preferences/controller.js';
+import { NoticePreferencesController } from './preferences/notice-preferences.controller.js';
 import { NoticeUnsubscribeController } from './preferences/unsubscribe.controller.js';
 import { Module, type DynamicModule } from '@nestjs/common';
 
 import type { WorkspaceAuthorizationSource } from '../workspaces/ports.js';
-import { NotificationsController } from './controllers.js';
+import { NotificationsController } from './notifications.controller.js';
 import { WORKSPACE_AUTHORIZATION } from '../workspaces/tokens.js';
 import type { InboxHintSource } from './inbox-hint-hub.js';
 import { WorkspaceInboxService } from './workspace-inbox.service.js';

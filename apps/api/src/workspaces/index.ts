@@ -1,11 +1,11 @@
-export { IdentityWorkspaceModule } from './module.js';
+export { IdentityWorkspaceModule } from './identity-workspace.module.js';
 export { SessionController } from './http/session-controller.js';
 export {
   UserController,
   WorkspaceDiscoveryController,
   WorkspaceMembersController,
   WorkspaceController,
-} from './http/controllers.js';
+} from './http/workspaces.controller.js';
 export {
   CsrfProtectionGuard,
   SessionAuthenticationGuard,

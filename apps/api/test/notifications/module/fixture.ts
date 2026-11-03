@@ -11,12 +11,12 @@ import { FastifyAdapter } from '@nestjs/platform-fastify';
 import { Test } from '@nestjs/testing';
 import { vi } from 'vitest';
 
-import { NotificationsModule } from '../../../src/notifications/module.js';
+import { NotificationsModule } from '../../../src/notifications/notifications.module.js';
 import type { InboxHintSource } from '../../../src/notifications/inbox-hint-hub.js';
 import { WorkspaceInboxService } from '../../../src/notifications/workspace-inbox.service.js';
 
 import { APPLICATION_ERROR_MAPPERS } from '../../../src/application-errors.js';
-import { HttpPlatformModule } from '../../../src/platform/http/module.js';
+import { HttpPlatformModule } from '../../../src/platform/http/http-platform.module.js';
 
 export const actorId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 

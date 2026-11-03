@@ -4,7 +4,7 @@ import {
   GetRunRecoveryUseCase,
   RecoverRunUseCase,
 } from './recovery/run-recovery.service.js';
-import { RunRecoveryController } from './recovery/controller.js';
+import { RunRecoveryController } from './recovery/run-recovery.controller.js';
 import { Module } from '@nestjs/common';
 import type { DynamicModule, Provider } from '@nestjs/common';
 
@@ -15,12 +15,12 @@ import {
 } from '../platform/observability/sse-visibility-metrics.js';
 import type { WorkspaceAuthorizationSource } from '../workspaces/ports.js';
 import { ApiLifecycleModule } from '../platform/health/drain-state.js';
-import { WorkflowRunsController } from './http/controllers.js';
+import { WorkflowRunsController } from './http/workflow-runs.controller.js';
 import type {
   WorkflowRunEventStreamer,
   WorkflowRunPersistence,
 } from './ports.js';
-import { WorkflowRunDataController } from './run-data/controller.js';
+import { WorkflowRunDataController } from './run-data/workflow-run-data.controller.js';
 import {
   GetWorkflowNodeRunInputUseCase,
   GetWorkflowNodeRunDiagnosticsUseCase,

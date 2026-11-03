@@ -13,14 +13,14 @@ import {
   WORKFLOW_AUTO_PAUSE_RUNTIME,
   type WorkflowAutoPauseRuntime,
 } from '../../workflows/auto-pause-runtime.js';
-import { WORKSPACE_DATABASE } from '../../platform/database/module.js';
+import { WORKSPACE_DATABASE } from '../../platform/database/database.module.js';
 import {
   COORDINATOR_RUNTIME,
   MAINTENANCE_RUNTIME,
   NODE_ATTEMPT_RUNTIME,
   OUTBOX_DISPATCHER,
   TRIGGER_RUNTIME,
-} from '../../transport/module.js';
+} from '../../transport/transport.module.js';
 import type { TriggerRuntime } from '../../triggers/runtime.js';
 import type { OutboxDispatcher } from '../../transport/outbox/dispatch/runtime.js';
 import type { NodeAttemptRuntime } from '../../attempts/delivery/runtime.js';

@@ -1,5 +1,5 @@
 import { Module, type DynamicModule } from '@nestjs/common';
-import { DirectoryManagementController } from './controller.js';
+import { DirectoryManagementController } from './directory-management.controller.js';
 import { DIRECTORY_STORE } from './tokens.js';
 import type { DirectoryStore } from '@pertexo/core/identity';
 @Module({})

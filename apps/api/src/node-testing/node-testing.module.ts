@@ -1,13 +1,13 @@
-import { WorkflowTestSuitesController } from './suites/controller.js';
+import { WorkflowTestSuitesController } from './suites/workflow-test-suites.controller.js';
 import { WorkflowTestSuitesUseCase } from './suites/workflow-test-suites.service.js';
-import { WorkflowTestsController } from './workflows/controller.js';
+import { WorkflowTestsController } from './workflows/workflow-tests.controller.js';
 import { WorkflowTestsUseCase } from './workflows/workflow-tests.service.js';
-import { StepSamplesController } from './samples/controller.js';
+import { StepSamplesController } from './samples/step-samples.controller.js';
 import { StepSamplesUseCase } from './samples/step-samples.service.js';
 import { Module } from '@nestjs/common';
 import type { DynamicModule, Provider } from '@nestjs/common';
 
-import { NodeTestingController } from './controller.js';
+import { NodeTestingController } from './node-testing.controller.js';
 import type { NodeTestingDependencies } from './ports.js';
 import { WORKSPACE_AUTHORIZATION } from '../workspaces/tokens.js';
 import {

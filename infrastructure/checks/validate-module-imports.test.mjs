@@ -453,7 +453,7 @@ test('the path around the secrets door is refused in both directions', () => {
     'packages/database/test/a.ts',
   ])
     assert.notEqual(
-      imports(file, '../../secrets/src/mail/store.js'),
+      imports(file, '../../secrets/src/mail/system-mail.store.js'),
       '',
       `${file} reached secrets by a relative path`,
     );

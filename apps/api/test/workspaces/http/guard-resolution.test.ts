@@ -13,16 +13,16 @@ import {
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { APPLICATION_ERROR_MAPPERS } from '../../../src/application-errors.js';
-import { IdentityWorkspaceModule } from '../../../src/workspaces/module.js';
+import { IdentityWorkspaceModule } from '../../../src/workspaces/identity-workspace.module.js';
 import { IdentityError } from '../../../src/identity/index.js';
 import type {
   IdentitySessionAuthority,
   IdentityWorkspaceDependencies,
 } from '../../../src/workspaces/ports.js';
-import { HttpPlatformModule } from '../../../src/platform/http/module.js';
-import { ScheduleModule } from '../../../src/schedules/module.js';
+import { HttpPlatformModule } from '../../../src/platform/http/http-platform.module.js';
+import { ScheduleModule } from '../../../src/schedules/schedule.module.js';
 import { ScheduleManagementService } from '../../../src/schedules/schedule-management.service.js';
-import { WebhookModule } from '../../../src/webhooks/module.js';
+import { WebhookModule } from '../../../src/webhooks/webhook.module.js';
 import { WebhookManagementService } from '../../../src/webhooks/management/webhook-management.service.js';
 import type {
   WorkspaceAccess,

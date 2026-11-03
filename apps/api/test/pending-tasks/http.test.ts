@@ -1,7 +1,7 @@
 import type { NestFastifyApplication } from '@nestjs/platform-fastify';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { PendingTasksController } from '../../src/pending-tasks/controller.js';
+import { PendingTasksController } from '../../src/pending-tasks/pending-tasks.controller.js';
 import { PendingTaskService } from '../../src/pending-tasks/pending-task.service.js';
 import {
   browserHeaders,

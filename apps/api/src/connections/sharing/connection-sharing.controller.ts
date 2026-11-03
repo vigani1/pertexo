@@ -5,7 +5,7 @@ import {
 } from '@pertexo/contracts/server';
 
 import { In, Route } from '../../workspaces/http/route.js';
-import { context } from '../http/controllers.js';
+import { context } from '../http/connections.controller.js';
 import type { ConnectionRequest } from '../types.js';
 import { ConnectionSharingUseCases } from './connection-sharing.service.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';

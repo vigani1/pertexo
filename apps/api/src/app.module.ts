@@ -18,7 +18,7 @@ import { ArtifactsModule } from './artifacts/index.js';
 import {
   DatabaseModule,
   WORKSPACE_DATABASE,
-} from './platform/database/module.js';
+} from './platform/database/database.module.js';
 import { LiveController } from './platform/health/live.controller.js';
 import { PublicApiController } from './platform/http/public-api.controller.js';
 import {
@@ -30,19 +30,19 @@ import {
   ApiLifecycleModule,
   ApiShutdownCoordinator,
 } from './platform/health/drain-state.js';
-import { HttpPlatformModule } from './platform/http/module.js';
+import { HttpPlatformModule } from './platform/http/http-platform.module.js';
 import type {
   HttpErrorLogEntry,
   HttpErrorLogger,
 } from './platform/http/problem-details.filter.js';
-import { ObservabilityModule } from './platform/observability/module.js';
+import { ObservabilityModule } from './platform/observability/observability.module.js';
 import { ConnectionRuntimeModule } from './platform/connections/runtime.module.js';
 import { IdentityRuntimeModule } from './platform/identity/runtime.module.js';
 import { WorkflowRuntimeModule } from './platform/workflow/runtime.module.js';
-import { WebhookModule } from './webhooks/module.js';
-import { ScheduleModule } from './schedules/module.js';
-import { NotificationsModule } from './notifications/module.js';
-import { RateLimitModule } from './platform/rate-limit/module.js';
+import { WebhookModule } from './webhooks/webhook.module.js';
+import { ScheduleModule } from './schedules/schedule.module.js';
+import { NotificationsModule } from './notifications/notifications.module.js';
+import { RateLimitModule } from './platform/rate-limit/rate-limit.module.js';
 import { APPLICATION_ERROR_MAPPERS } from './application-errors.js';
 import {
   ArtifactRuntimeModule,

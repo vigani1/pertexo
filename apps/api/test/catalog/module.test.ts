@@ -2,8 +2,8 @@ import { Module } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { describe, expect, it } from 'vitest';
 
-import { CatalogController } from '../../src/catalog/controllers.js';
-import { CatalogModule } from '../../src/catalog/module.js';
+import { CatalogController } from '../../src/catalog/catalog.controller.js';
+import { CatalogModule } from '../../src/catalog/catalog.module.js';
 import {
   ListIntegrationsUseCase,
   ListNodeDefinitionsUseCase,

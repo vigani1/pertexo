@@ -1,27 +1,25 @@
 import { Module, type DynamicModule } from '@nestjs/common';
-import type { PendingTaskStore } from '@pertexo/core/runs';
+
 import type { WorkspaceAuthorizationSource } from '../workspaces/ports.js';
-import { PendingTasksController } from './controller.js';
-import { PendingTaskService } from './pending-task.service.js';
+import { ScheduleManagementController } from './schedule-management.controller.js';
 import { WORKSPACE_AUTHORIZATION } from '../workspaces/tokens.js';
+import { ScheduleManagementService } from './schedule-management.service.js';
+
 @Module({})
 // Nest dynamic modules require a class container.
 // eslint-disable-next-line @typescript-eslint/no-extraneous-class
-export class PendingTasksModule {
-  static register(
-    store: PendingTaskStore,
+export class ScheduleModule {
+  public static register(
+    service: ScheduleManagementService,
     authorization: WorkspaceAuthorizationSource,
     identityModule: DynamicModule,
   ): DynamicModule {
     return {
-      module: PendingTasksModule,
+      module: ScheduleModule,
       imports: [identityModule],
-      controllers: [PendingTasksController],
+      controllers: [ScheduleManagementController],
       providers: [
-        {
-          provide: PendingTaskService,
-          useValue: new PendingTaskService(store),
-        },
+        { provide: ScheduleManagementService, useValue: service },
         { provide: WORKSPACE_AUTHORIZATION, useValue: authorization },
       ],
     };

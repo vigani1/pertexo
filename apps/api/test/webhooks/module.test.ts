@@ -4,7 +4,7 @@ import { FastifyAdapter } from '@nestjs/platform-fastify';
 import { Test } from '@nestjs/testing';
 import { describe, expect, it, vi } from 'vitest';
 
-import { WebhookModule } from '../../src/webhooks/module.js';
+import { WebhookModule } from '../../src/webhooks/webhook.module.js';
 import type { WebhookManagementService } from '../../src/webhooks/management/webhook-management.service.js';
 
 const webhookOperations = {

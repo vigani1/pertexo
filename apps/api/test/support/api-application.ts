@@ -11,7 +11,7 @@ import type { ApiRuntimeSet } from '../../src/platform/api-application.types.js'
 import { createApiArtifactRuntime } from '../../src/platform/artifacts/runtime.module.js';
 import type { ApiConfig } from '../../src/platform/config/api.js';
 import type { RateLimitConsumer } from '../../src/platform/rate-limit/interceptor.js';
-import type { ApiRateLimit } from '../../src/platform/rate-limit/module.js';
+import type { ApiRateLimit } from '../../src/platform/rate-limit/rate-limit.module.js';
 import { createApiCallbackRuntime } from '../../src/platform/webhooks/callback-runtime.module.js';
 import { createApiWorkflowRuntime } from '../../src/platform/workflow/runtime.module.js';
 

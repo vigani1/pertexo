@@ -1,7 +1,7 @@
 import type { NestFastifyApplication } from '@nestjs/platform-fastify';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { GovernanceController } from '../../src/governance/controller.js';
+import { GovernanceController } from '../../src/governance/governance.controller.js';
 import { GOVERNANCE_STORE } from '../../src/governance/tokens.js';
 import { CsvExportAdmission } from '../../src/platform/http/csv/admission.js';
 import {

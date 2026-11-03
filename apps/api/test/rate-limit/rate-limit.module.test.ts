@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { CsvExportAdmission } from '../../src/platform/http/csv/admission.js';
 import { HttpRateLimitAdmission } from '../../src/platform/rate-limit/admission.js';
-import { RateLimitModule } from '../../src/platform/rate-limit/module.js';
+import { RateLimitModule } from '../../src/platform/rate-limit/rate-limit.module.js';
 import { Test } from '@nestjs/testing';
 import { ApiLifecycleModule } from '../../src/platform/health/drain-state.js';
 
