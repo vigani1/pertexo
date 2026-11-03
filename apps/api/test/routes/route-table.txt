@@ -101,7 +101,7 @@ GET /v1/workspaces/{workspaceId}/promotions/candidates 200 session workflow:upda
 GET /v1/workspaces/{workspaceId}/promotions/history 200 session workflow:update - authenticated_read
 POST /v1/workspaces/{workspaceId}/promotions/preview 200 session workflow:update csrf workflow_compile
 GET /v1/workspaces/{workspaceId}/promotions/settings 200 session workflow:update - authenticated_read
-PUT /v1/workspaces/{workspaceId}/promotions/settings 200 session workflow:update csrf ordinary_mutation
+PUT /v1/workspaces/{workspaceId}/promotions/settings 200 session workspace:manage csrf ordinary_mutation
 GET /v1/workspaces/{workspaceId}/publication-requests/{requestId} 200 session workflow:read - authenticated_read
 POST /v1/workspaces/{workspaceId}/publication-requests/{requestId}/decision 200 session governance:manage csrf workflow_compile
 POST /v1/workspaces/{workspaceId}/reactivate 200 session workspace:manage csrf ordinary_mutation
