@@ -11,8 +11,8 @@ import {
   classifySecureHttpResponse,
 } from '../http/outcome-policy.js';
 
-import { PROVIDER_HTTP_ERROR_CODE } from '../providers/http-errors.js';
-import { inspectProviderHttpError } from '../providers/http-errors.js';
+import { PROVIDER_HTTP_ERROR_CODE } from '../providers/http.errors.js';
+import { inspectProviderHttpError } from '../providers/http.errors.js';
 import { errorNameIs, safeInstanceOf } from '@pertexo/node-sdk/server';
 import { HTTP_REQUEST_EXECUTOR } from './http-request.definition.js';
 import {

@@ -5,7 +5,7 @@ import { parseBoundedRetryAfterMillis } from './retry-after.js';
 import {
   PROVIDER_HTTP_ERROR_CODE,
   type ProviderHttpError,
-} from '../providers/http-errors.js';
+} from '../providers/http.errors.js';
 
 export const HTTP_SIDE_EFFECT_CLASS = Object.freeze({
   idempotentWithKey: 'idempotent_with_key',

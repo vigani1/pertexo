@@ -3,7 +3,7 @@ import {
   ProviderHttpError,
   inspectProviderHttpError,
   type ProviderHttpErrorCode,
-} from './http-errors.js';
+} from './http.errors.js';
 
 export type ProviderHttpRequest = Readonly<{
   url: string;

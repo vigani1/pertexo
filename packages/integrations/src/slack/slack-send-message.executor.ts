@@ -5,8 +5,8 @@ import {
   NodeExecutorFailure,
 } from '@pertexo/node-sdk/server';
 
-import { PROVIDER_HTTP_ERROR_CODE } from '../providers/http-errors.js';
-import { inspectProviderHttpError } from '../providers/http-errors.js';
+import { PROVIDER_HTTP_ERROR_CODE } from '../providers/http.errors.js';
+import { inspectProviderHttpError } from '../providers/http.errors.js';
 import { safeInstanceOf } from '@pertexo/node-sdk/server';
 import type { SlackApiResult, SlackClient } from './client.js';
 import { classifySlackConnectionHealth } from './connection-health.js';

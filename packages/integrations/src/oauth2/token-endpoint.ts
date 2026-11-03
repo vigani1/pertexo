@@ -11,7 +11,7 @@ import {
   PROVIDER_HTTP_ERROR_CODE,
   inspectProviderHttpError,
   type ProviderHttpErrorCode,
-} from '../providers/http-errors.js';
+} from '../providers/http.errors.js';
 import type { ProviderHttpClient } from '../providers/http-client.js';
 
 const TOKEN_REQUEST_TIMEOUT_MILLIS = 15_000;
