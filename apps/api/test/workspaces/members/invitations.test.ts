@@ -39,14 +39,14 @@ describe('workspace invitation use cases', () => {
         workspaceFailure(
           new WorkspaceInvitationCommandConflictError(
             'delivery_unresolved',
-            'delivery remains unknown',
+            'Email delivery could not be confirmed. Revoke this invitation and create a new one to send another link.',
           ),
         ),
       ),
     ).toMatchObject({
       code: 'workspace.invitation_delivery_unavailable',
       safeDetail:
-        'The prior delivery outcome must be reconciled before resending.',
+        'Email delivery could not be confirmed. Revoke this invitation and create a new one to send another link.',
     });
   });
 
