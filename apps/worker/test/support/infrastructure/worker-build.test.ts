@@ -3,6 +3,7 @@ import {
   mkdir,
   readFile,
   rm,
+  rename,
   unlink,
   writeFile,
 } from 'node:fs/promises';
@@ -17,6 +18,7 @@ it('requires a current emitted build and refuses a missing output even when buil
   const project = join(directory, 'tsconfig.json');
   const source = join(directory, 'src', 'runtime.ts');
   const output = join(directory, 'dist', 'runtime.js');
+  const fixture = join(directory, 'fixture.mjs');
   try {
     await mkdir(join(directory, 'src'));
     await writeFile(
@@ -33,8 +35,9 @@ it('requires a current emitted build and refuses a missing output even when buil
       }),
     );
     await writeFile(source, 'export const version = 1;');
+    await writeFile(fixture, "import { version } from './dist/runtime.js';");
     expect(() => {
-      requireCurrentWorkerBuild(project);
+      requireCurrentWorkerBuild(project, fixture);
     }).toThrow(/pnpm build:packages --force/u);
     const build = () => {
       expect(
@@ -47,20 +50,28 @@ it('requires a current emitted build and refuses a missing output even when buil
     };
     build();
     expect(() => {
-      requireCurrentWorkerBuild(project);
+      requireCurrentWorkerBuild(project, fixture);
     }).not.toThrow();
     await writeFile(source, 'export const version = 2;');
     expect(() => {
-      requireCurrentWorkerBuild(project);
+      requireCurrentWorkerBuild(project, fixture);
     }).toThrow(/pnpm build:packages --force/u);
     build();
     expect(await readFile(output, 'utf8')).toContain('version = 2');
     expect(() => {
-      requireCurrentWorkerBuild(project);
+      requireCurrentWorkerBuild(project, fixture);
     }).not.toThrow();
+    await rename(source, join(directory, 'src', 'renamed.ts'));
+    build();
+    expect(await readFile(output, 'utf8')).toContain('version = 2');
+    expect(() => {
+      requireCurrentWorkerBuild(project, fixture);
+    }).toThrow(/runtime\.ts.*missing.*rebuild/iu);
+    await rename(join(directory, 'src', 'renamed.ts'), source);
+    build();
     await unlink(output);
     expect(() => {
-      requireCurrentWorkerBuild(project);
+      requireCurrentWorkerBuild(project, fixture);
     }).toThrow(/pnpm build:packages --force/u);
   } finally {
     await rm(directory, { recursive: true, force: true });

@@ -1,3 +1,4 @@
+// @ts-check
 import { randomUUID } from 'node:crypto';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
 import { createPlatformNodeRegistry } from '../../../dist/providers/node-registry.js';
@@ -13,11 +14,15 @@ if (
 )
   throw new Error('For Each process fixture configuration is incomplete');
 const database = parseDatabaseConfig({ connectionString: databaseUrl, max: 6 });
+/** @type {Awaited<ReturnType<typeof createCoordinatorRuntime>> | undefined} */
 let coordinator;
+/** @type {Awaited<ReturnType<typeof createNodeAttemptRuntime>> | undefined} */
 let attempts;
+/** @type {Promise<void> | undefined} */
 let closePromise;
 const close = () => {
   closePromise ??= (async () => {
+    /** @type {unknown[]} */
     const errors = [];
     await attempts?.close().catch((error) => errors.push(error));
     await coordinator?.close().catch((error) => errors.push(error));

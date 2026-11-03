@@ -2,11 +2,17 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "composite": false,
+    "allowJs": true,
     "noEmit": true,
     "rootDir": "../..",
     "tsBuildInfoFile": "dist/test-types/tsconfig.tsbuildinfo",
     "declaration": false,
     "declarationMap": false
   },
-  "include": ["src/**/*.ts", "test/**/*.ts", "vitest*.config.ts"]
+  "include": [
+    "src/**/*.ts",
+    "test/**/*.ts",
+    "test/runs/consumer/for-each-worker-process.fixture.mjs",
+    "vitest*.config.ts"
+  ]
 }
