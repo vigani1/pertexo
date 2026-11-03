@@ -33,7 +33,11 @@ describeIntegration('Publication retry database clock', () => {
           new Error('Redis unavailable'),
           { operationTimeoutMillis: 2_000, retryDelayMillis: 30_000 },
         );
-        const result = await pool.query(
+        const result = await pool.query<{
+          failed_at: Date | null;
+          last_error_code: string;
+          remaining: string;
+        }>(
           'select failed_at, last_error_code, extract(epoch from available_at-clock_timestamp())*1000 as remaining from app.outbox_events where id=$1',
           [id],
         );

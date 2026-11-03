@@ -5,7 +5,6 @@ import type {
   PreviewAttemptRunStore,
 } from '../../src/testing.js';
 import { nodeAttemptRuntimeProvider } from '../../src/transport/providers/node-attempts.js';
-import type { WorkerConfig } from '../../src/config/worker.js';
 import {
   database,
   providerConfig,

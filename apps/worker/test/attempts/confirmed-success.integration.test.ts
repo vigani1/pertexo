@@ -44,9 +44,15 @@ describeIntegration('Provider-confirmed success after run control', () => {
             await new Promise<void>((resolve) => {
               if (request.signal.aborted) resolve();
               else
-                request.signal.addEventListener('abort', () => resolve(), {
-                  once: true,
-                });
+                request.signal.addEventListener(
+                  'abort',
+                  () => {
+                    resolve();
+                  },
+                  {
+                    once: true,
+                  },
+                );
             });
             return {
               kind: 'succeeded',
