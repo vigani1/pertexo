@@ -230,7 +230,9 @@ function authenticationRequest(
   const method = request.method.toUpperCase();
   const body =
     method === 'GET' || method === 'HEAD' ? undefined : requestBody(request);
-  return new Request(new URL(request.url, publicOrigin), {
+  const url = new URL(request.url, publicOrigin);
+  url.pathname = canonicalAuthPath(url.pathname);
+  return new Request(url, {
     method,
     headers,
     ...(body === undefined ? {} : { body }),
