@@ -205,6 +205,3 @@ export function loopScenarios(): readonly LoopScenario[] {
     })),
   ];
 }
-export function unsafeNestedGraph(): WorkflowGraph {
-  return graph(loop('outer', 2, 2, loop('inner', 2_498, 200, node('body'))));
-}

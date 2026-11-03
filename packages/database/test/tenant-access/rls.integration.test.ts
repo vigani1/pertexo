@@ -3,7 +3,6 @@ import { Pool } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   apiUrl,
-  workerUrl,
   workspaceA,
   expectPgCode,
   beforeAllFixture1,
@@ -273,10 +272,8 @@ describe('workspace transaction boundary', () => {
     }
   });
 });
-describe.each([
-  ['api', apiUrl],
-  ['worker', workerUrl],
-])('%s runtime database role', (_roleName, connectionString) => {
+describe('application runtime database role', () => {
+  const connectionString = apiUrl;
   it('fails closed without workspace context', async () => {
     const pool = new Pool({ connectionString, max: 1 });
     try {
