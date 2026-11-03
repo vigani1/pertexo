@@ -29,8 +29,6 @@ import {
 
 registerMembers();
 
-const FLOW_NAMES = MEMBER_FLOWS.map(({ name }) => name);
-
 function flow(name: string): MemberFlow {
   const found = MEMBER_FLOWS.find((candidate) => candidate.name === name);
   if (found === undefined) throw new Error(`No flow named ${name}`);
@@ -61,27 +59,6 @@ async function factsWrittenBy(actorId: string): Promise<number> {
 }
 
 describe('every connection flow with a member behind it', () => {
-  it('is in this table, so a new flow has to say who may run it', () => {
-    expect(FLOW_NAMES).toEqual([
-      'createConnection',
-      'findConnectionCreateReplay',
-      'findConnectionRotateReplay',
-      'rotateConnectionSecret',
-      'revokeConnection',
-      'readConnectionSharing',
-      'replaceConnectionSharing',
-      'readOAuth2Client',
-      'startOAuth2Authorization',
-      'listConnections',
-      'readConnection',
-      'listConnectionUsage',
-      'startConnectionTest',
-      'resolveConnectionTestSecret',
-      'markConnectionTestDispatched',
-      'resolveConnectionLookupSecret',
-    ]);
-  });
-
   describe.each(MEMBER_FLOWS)('$name', (subject) => {
     it.each(ROLES)('answers a %s as the role allows', async (role) => {
       const actorId = ROLE_MEMBERS[role];

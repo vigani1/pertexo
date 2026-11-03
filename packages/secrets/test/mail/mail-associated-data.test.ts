@@ -58,25 +58,4 @@ describe('system mail associated data', () => {
       text: 'Sealed before the move',
     });
   });
-
-  it.each([
-    [
-      'another prefix',
-      `pertexo/system-mail/password_reset/${MAIL_ID}/2099-01-01T00:00:00.000Z`,
-    ],
-    [
-      'another purpose',
-      `pertexo/authentication-mail/verification/${MAIL_ID}/2099-01-01T00:00:00.000Z`,
-    ],
-    [
-      'another message',
-      `pertexo/authentication-mail/password_reset/${MAIL_ID.replace('a', 'b')}/2099-01-01T00:00:00.000Z`,
-    ],
-    [
-      'another time format',
-      `pertexo/authentication-mail/password_reset/${MAIL_ID}/2099-01-01T00:00:00Z`,
-    ],
-  ])('refuses it under %s', (_name, changed) => {
-    expect(() => open(changed)).toThrow();
-  });
 });

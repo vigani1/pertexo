@@ -199,7 +199,7 @@ describe('connection envelope encryption', () => {
     const identity = context();
     const plaintext = Buffer.from('native decipher temporary secret');
     const sealed = await encryption.seal(plaintext, identity);
-    const snapshots: Buffer[] = [];
+    const temporaries: Buffer[] = [];
     const bufferPrototype = Buffer.prototype as unknown as {
       fill(value: unknown, start?: unknown, end?: unknown): Buffer;
     };
@@ -215,22 +215,20 @@ describe('connection envelope encryption', () => {
         (end !== undefined && typeof end !== 'number')
       )
         throw new TypeError('Unexpected Buffer.fill test invocation');
-      snapshots.push(Buffer.from(this));
+      if (this.equals(plaintext)) temporaries.push(this);
       Uint8Array.prototype.fill.call(this, value, start, end);
       return this;
     });
 
     const opened = await encryption.open(sealed, identity);
     expect(Buffer.from(opened).equals(plaintext)).toBe(true);
-    const successfulPlaintextTemporaries = snapshots.filter((snapshot) =>
-      snapshot.equals(plaintext),
-    );
+    const successfulPlaintextTemporaries = temporaries;
     expect(successfulPlaintextTemporaries.length).toBeGreaterThanOrEqual(2);
     for (const temporary of successfulPlaintextTemporaries)
-      expect(temporary.byteLength).toBe(plaintext.byteLength);
+      expect(temporary.every((byte) => byte === 0)).toBe(true);
     expect(Buffer.from(opened).equals(plaintext)).toBe(true);
 
-    snapshots.length = 0;
+    temporaries.length = 0;
     await expect(
       encryption.open(
         {
@@ -240,7 +238,10 @@ describe('connection envelope encryption', () => {
         identity,
       ),
     ).rejects.toBeInstanceOf(ConnectionSecretEncryptionError);
-    expect(snapshots.some((snapshot) => snapshot.equals(plaintext))).toBe(true);
+    expect(temporaries.length).toBeGreaterThan(0);
+    expect(
+      temporaries.every((temporary) => temporary.every((byte) => byte === 0)),
+    ).toBe(true);
     expect(Buffer.from(opened).equals(plaintext)).toBe(true);
     opened.fill(0);
     plaintext.fill(0);
