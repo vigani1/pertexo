@@ -1,3 +1,4 @@
+import { NodeAttemptHandlerStateError } from '../delivery/handler-state-error.js';
 import { testStepDisposition } from '@pertexo/workflow-engine';
 import { WORKFLOW_FAILURE_PORT } from '@pertexo/workflow-model';
 import {
@@ -140,7 +141,7 @@ function prepareNode(
   const executable = verifyPersistedWorkflowProjection(projection, options);
   const located = locateNode(executable.envelope.graph, lease.nodeId);
   if (located === undefined)
-    throw new TypeError('Node attempt is not in workflow');
+    throw new NodeAttemptHandlerStateError('workflow_node_missing');
   const { graph, node } = located;
   const disposition =
     projection.test === undefined
@@ -151,7 +152,7 @@ function prepareNode(
   const pinnedSample =
     disposition?.kind === 'pinned' ? projection.testSample : undefined;
   if (disposition?.kind === 'pinned' && pinnedSample === undefined)
-    throw new TypeError('Frozen test sample is unavailable');
+    throw new NodeAttemptHandlerStateError('frozen_test_sample_missing');
   const upstreamNodeOutputs = substituted
     ? []
     : deriveUpstreamNodeOutputs(graph, node, lease);
