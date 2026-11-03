@@ -8,13 +8,18 @@ import type { WorkerConfig } from '../../config/worker.js';
 export async function verifyWorkerEncryption(
   config: WorkerConfig,
   createRepository: typeof createEncryptionKeyRepository = createEncryptionKeyRepository,
+  onUnavailableMailKey: (version: string) => void = () => undefined,
 ): Promise<void> {
   const mail = config.systemMailDelivery;
   if (mail !== undefined)
-    await verifySystemMailKeys(config.retention.maintenanceDatabase, [
-      mail.encryption.current.version,
-      ...mail.encryption.previous.map((key) => key.version),
-    ]);
+    await verifySystemMailKeys(
+      config.retention.maintenanceDatabase,
+      [
+        mail.encryption.current.version,
+        ...mail.encryption.previous.map((key) => key.version),
+      ],
+      onUnavailableMailKey,
+    );
   if (config.connectionEncryption === undefined) return;
   const repository = createRepository(config.retention.maintenanceDatabase);
   try {

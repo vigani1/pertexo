@@ -5,6 +5,7 @@ import type {
   SystemMailDeliveryStore,
 } from '@pertexo/secrets/server';
 import {
+  ApplicationSecretKeyUnavailableError,
   systemMailFailureInstruction,
   systemMailFailureCode,
 } from '@pertexo/integrations/server';
@@ -39,6 +40,7 @@ export function createSystemMailDeliveryHandler(
     email: SystemMailClient;
     timeoutMillis: number;
     workerId: string;
+    onUnavailableKey?: (version: string) => void;
     onFailure?: (
       failure: SystemMailFailure & Readonly<{ instruction: string }>,
     ) => void;
@@ -120,13 +122,17 @@ async function deliverClaim(
         dependencies.envelope.open(claim.sealedPayload, associatedData),
       ) as unknown,
     );
-  } catch {
+  } catch (error: unknown) {
     await dependencies.store.settle({
       ...claimIdentity(claim),
       outcome: 'payload_unavailable',
       failureCode: 'delivery.payload_unavailable',
       retryAt: new Date(now().getTime() + 60_000),
     });
+    if (error instanceof ApplicationSecretKeyUnavailableError) {
+      dependencies.onUnavailableKey?.(error.keyVersion);
+      return;
+    }
     throw new Error(
       'Cannot open queued system mail. Restore AUTH_MAIL_KEY and AUTH_MAIL_PREVIOUS_KEYS, or repair the queued payload, then restart the worker. Mail is retained until expiry.',
     );

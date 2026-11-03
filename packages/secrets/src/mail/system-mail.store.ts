@@ -52,20 +52,16 @@ export function createSystemMailDeliveryStore(
   });
 }
 
-/** Startup refuses missing retained mail keys before any delivery can be claimed. */
+/** Reports retained mail keys without gating unrelated worker capabilities. */
 export async function verifySystemMailKeys(
   config: DatabaseConfig,
   availableVersions: readonly string[],
+  onUnavailable: (version: string) => void,
 ): Promise<void> {
   const lease = acquireDatabasePool(config, undefined, { role: 'maintenance' });
   try {
-    if (
-      (await findUnavailableMailKey(lease.pool, availableVersions)) !==
-      undefined
-    )
-      throw new Error(
-        'Queued system mail needs an unavailable AUTH_MAIL_KEY version. Restore its AUTH_MAIL_PREVIOUS_KEYS entry before starting the worker.',
-      );
+    const version = await findUnavailableMailKey(lease.pool, availableVersions);
+    if (version !== undefined) onUnavailable(version);
   } finally {
     await lease.close();
   }
