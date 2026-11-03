@@ -77,7 +77,7 @@ export function idleStores() {
       close: vi.fn().mockResolvedValue(undefined),
     },
     reconciliationStore: { close: vi.fn(), reconcile: vi.fn() },
-    unknownOutcomeStore: { close: vi.fn(), reconcile: vi.fn() },
+
     runReplayStore: {
       close: vi.fn().mockResolvedValue(undefined),
       fail: vi.fn(),

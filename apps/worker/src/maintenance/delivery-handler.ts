@@ -8,10 +8,6 @@ import {
   mapPreviewReconciliationError,
   type createPreviewReconciliationHandler,
 } from '../previews/reconciliation.js';
-import {
-  mapUnknownOutcomeReconciliationError,
-  type createUnknownOutcomeReconciliationHandler,
-} from '../attempts/delivery/unknown-outcome-reconciliation.js';
 import type { createOperatorRunReplayHandler } from '../operator/run-replay.js';
 import type { FailureNotificationHandler } from '../notifications/failure-handler.js';
 import type { WorkspaceInvitationDeliveryHandler } from '../identity/invitation-delivery.js';
@@ -22,7 +18,6 @@ export type MaintenanceHandlers = Readonly<{
   errorWorkflow?: ErrorWorkflowHandler;
   reconciliation?: ReturnType<typeof createPreviewReconciliationHandler>;
   replay?: ReturnType<typeof createOperatorRunReplayHandler>;
-  unknownOutcome?: ReturnType<typeof createUnknownOutcomeReconciliationHandler>;
   workspaceInvitation?: WorkspaceInvitationDeliveryHandler;
   connectionHealth?: ReturnType<
     typeof createConnectionHealthObservationHandler
@@ -57,17 +52,6 @@ export function maintenanceDeliveryHandler(
           await handlers.reconciliation.handle(delivery, context);
         } catch (error: unknown) {
           throw mapPreviewReconciliationError(error);
-        }
-        return;
-      case JOB_NAME.reconcileUnknownOutcome:
-        assertMaintenanceHandlerEnabled(
-          handlers.unknownOutcome,
-          'Unknown-outcome reconciliation is not enabled',
-        );
-        try {
-          await handlers.unknownOutcome.handle(delivery, context);
-        } catch (error: unknown) {
-          throw mapUnknownOutcomeReconciliationError(error);
         }
         return;
       case JOB_NAME.replayWorkflowRun:

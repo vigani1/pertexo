@@ -30,36 +30,25 @@ describe('preview reconciliation handler', () => {
     ['traceRunner', []],
     [
       'errorWorkflowStore',
-      [
-        'previewStore',
-        'failureNotificationStore',
-        'unknownOutcomeStore',
-        'replayStore',
-      ],
+      ['previewStore', 'failureNotificationStore', 'replayStore'],
     ],
     [
       'errorWorkflowHandler',
       [
         'previewStore',
         'failureNotificationStore',
-        'unknownOutcomeStore',
         'replayStore',
         'errorWorkflowStore',
       ],
     ],
     ['previewStore', []],
     ['failureNotificationStore', ['previewStore']],
-    ['unknownOutcomeStore', ['previewStore', 'failureNotificationStore']],
-    [
-      'replayStore',
-      ['previewStore', 'failureNotificationStore', 'unknownOutcomeStore'],
-    ],
+    ['replayStore', ['previewStore', 'failureNotificationStore']],
     [
       'previewHandler',
       [
         'previewStore',
         'failureNotificationStore',
-        'unknownOutcomeStore',
         'replayStore',
         'errorWorkflowStore',
       ],
@@ -69,7 +58,6 @@ describe('preview reconciliation handler', () => {
       [
         'previewStore',
         'failureNotificationStore',
-        'unknownOutcomeStore',
         'replayStore',
         'errorWorkflowStore',
       ],
@@ -95,10 +83,6 @@ describe('preview reconciliation handler', () => {
         fenceDispatch: vi.fn(),
         loadDestination: vi.fn(),
         recoverDue: vi.fn(),
-      };
-      const unknownOutcomeStore = {
-        close: close('unknownOutcomeStore'),
-        reconcile: vi.fn(),
       };
       const replayStore = {
         close: close('replayStore'),
@@ -135,12 +119,7 @@ describe('preview reconciliation handler', () => {
           store: vi.fn(() => acquire('replayStore', replayStore)),
         },
         traceRunner: vi.fn(() => acquire('traceRunner', {})),
-        unknownOutcome: {
-          handler: vi.fn(() => ({ handle: vi.fn() })),
-          store: vi.fn(() =>
-            acquire('unknownOutcomeStore', unknownOutcomeStore),
-          ),
-        },
+
         connectionHealth: idleConnectionHealth,
         errorWorkflows: {
           store: vi.fn(() =>
@@ -180,7 +159,6 @@ describe('preview reconciliation handler', () => {
       preview: vi.fn().mockResolvedValue(undefined),
       errorWorkflow: vi.fn().mockResolvedValue(undefined),
       notification: vi.fn().mockResolvedValue(undefined),
-      unknown: vi.fn().mockResolvedValue(undefined),
       replay: vi.fn().mockResolvedValue(undefined),
     };
     const factories = {
@@ -208,10 +186,7 @@ describe('preview reconciliation handler', () => {
         store: vi.fn(),
       },
       traceRunner: vi.fn(() => ({})),
-      unknownOutcome: {
-        handler: vi.fn(() => ({ handle: handles.unknown })),
-        store: vi.fn(),
-      },
+
       connectionHealth: idleConnectionHealth,
       errorWorkflows: {
         store: vi.fn(),
@@ -237,7 +212,7 @@ describe('preview reconciliation handler', () => {
           loadDestination: vi.fn(),
           recoverDue: vi.fn().mockResolvedValue(0),
         },
-        unknownOutcomeStore: { close: vi.fn(), reconcile: vi.fn() },
+
         runReplayStore: {
           close: vi.fn(),
           fail: vi.fn(),
@@ -250,7 +225,6 @@ describe('preview reconciliation handler', () => {
       [JOB_NAME.startErrorWorkflow, handles.errorWorkflow],
       [JOB_NAME.reconcilePreviewAttempt, handles.preview],
       [JOB_NAME.deliverRunFailureNotification, handles.notification],
-      [JOB_NAME.reconcileUnknownOutcome, handles.unknown],
       [JOB_NAME.replayWorkflowRun, handles.replay],
     ] as const;
     for (const [name, handle] of cases) {
@@ -279,7 +253,7 @@ describe('preview reconciliation handler', () => {
       preview: { handler: vi.fn(), store: vi.fn() },
       replay: { handler: vi.fn(), store: vi.fn() },
       traceRunner: vi.fn(() => ({})),
-      unknownOutcome: { handler: vi.fn(), store: vi.fn() },
+
       connectionHealth: idleConnectionHealth,
       errorWorkflows: idleErrorWorkflows,
     } as unknown as MaintenanceRuntimeFactories;
@@ -689,7 +663,7 @@ describe('preview reconciliation handler', () => {
       preview: { handler: vi.fn(), store: vi.fn() },
       replay: { handler: vi.fn(), store: vi.fn() },
       traceRunner: vi.fn(() => ({})),
-      unknownOutcome: { handler: vi.fn(), store: vi.fn() },
+
       connectionHealth: idleConnectionHealth,
       errorWorkflows: idleErrorWorkflows,
     } as unknown as MaintenanceRuntimeFactories;

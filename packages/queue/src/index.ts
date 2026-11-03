@@ -8,7 +8,6 @@ export {
   QUEUE_JOB_REGISTRY,
   ReconcileWorkflowTriggersJobSchema,
   ReconcilePreviewAttemptJobSchema,
-  ReconcileUnknownOutcomeJobSchema,
   ReplayWorkflowRunJobSchema,
   UnknownQueueJobError,
   parseQueueJob,
@@ -26,7 +25,6 @@ export type {
   QueueJobParseResult,
   ReconcileWorkflowTriggersJob,
   ReconcilePreviewAttemptJob,
-  ReconcileUnknownOutcomeJob,
   ReplayWorkflowRunJob,
 } from './jobs/contracts.js';
 export { JOB_NAME, QUEUE_FOR_JOB, QUEUE_NAME } from './jobs/names.js';

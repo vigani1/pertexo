@@ -185,7 +185,6 @@ export async function recordUnknownOutcomeEvidence(
   const status = attempt?.status;
   const outcome = evidenceOutcome(status);
 
-  let outboxEventId: string | null = null;
   if (outcome === 'evidence_recorded') {
     await transaction.db.insert(operatorUnknownOutcomeEvidence).values({
       commandId: input.commandId,
@@ -194,21 +193,12 @@ export async function recordUnknownOutcomeEvidence(
       evidenceKind: input.evidenceKind,
       evidenceRef: sql`${input.evidenceRef}::jsonb`,
     });
-    outboxEventId = await enqueue(transaction, {
-      jobName: 'reconcile-unknown-outcome',
-      aggregateType: 'node-attempt',
-      aggregateId: input.attemptId,
-      fields: {
-        attemptId: input.attemptId,
-        evidenceCommandId: input.commandId,
-      },
-    });
   }
   return {
     outcome,
     result: {
       evidenceKind: input.evidenceKind,
-      outboxEventId,
+      outboxEventId: null,
       outcome,
     },
   };

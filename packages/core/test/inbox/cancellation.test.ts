@@ -13,7 +13,6 @@ vi.mock('../../../database/dist/database.js', () => ({
 }));
 
 import type { WorkspaceDatabase } from '@pertexo/database/platform';
-import { reconcileUnknownOutcomeEvidence } from '../../src/outbox/reconcile-unknown-outcome.js';
 import { createOperatorRunReplayStore } from '../../src/operator/replay/operator-run-replay.store.js';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 
@@ -132,35 +131,6 @@ describe('inbox caller cancellation', () => {
     databaseMocks.withWorkspace.mockReset();
     databaseMocks.withWorkspace.mockResolvedValue({ status: 'duplicate' });
     databaseMocks.createWorkspaceDatabase.mockReturnValue(duplicateDatabase());
-  });
-
-  it('cancels unknown-outcome reconciliation during its inbox transaction', async () => {
-    const fixture = interruptibleDatabase();
-    const controller = new AbortController();
-    const removeListener = vi.spyOn(controller.signal, 'removeEventListener');
-    const reason = new Error('cancel reconciliation transaction');
-    const reconciling = reconcileUnknownOutcomeEvidence(fixture.database, {
-      attemptId: randomUUID(),
-      delivery: {
-        outboxEventId: randomUUID(),
-        payloadChecksum: checksum,
-      },
-      evidenceCommandId: randomUUID(),
-      signal: controller.signal,
-      workspaceId: randomUUID(),
-    });
-    const rejection = expect(reconciling).rejects.toBe(reason);
-    await fixture.operationStarted.promise;
-    controller.abort(reason);
-    await rejection;
-    await fixture.operationSettled.promise;
-
-    expect(fixture.withWorkspace.mock.calls[0]?.[2]).toEqual({
-      signal: controller.signal,
-    });
-    expect(fixture.completionUpdate).not.toHaveBeenCalled();
-    expect(fixture.state.rolledBack).toBe(true);
-    expect(removeListener).toHaveBeenCalledWith('abort', expect.any(Function));
   });
 
   it('cancels operator replay during its inbox transaction', async () => {

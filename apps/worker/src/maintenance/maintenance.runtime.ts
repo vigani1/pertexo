@@ -21,10 +21,6 @@ import {
 } from '@pertexo/queue';
 
 import { previewReconciliationFactories } from '../previews/reconciliation.js';
-import {
-  unknownOutcomeReconciliationFactories,
-  type UnknownOutcomeReconciliationStore,
-} from '../attempts/delivery/unknown-outcome-reconciliation.js';
 import type {
   FailureNotificationDeliveryCapability,
   FailureNotificationHandler,
@@ -61,10 +57,6 @@ export type MaintenanceRuntimeFactories = Readonly<{
     store: typeof operatorRunReplayFactories.store;
   }>;
   traceRunner: typeof createQueueTraceRunner;
-  unknownOutcome: Readonly<{
-    handler: typeof unknownOutcomeReconciliationFactories.handler;
-    store: typeof unknownOutcomeReconciliationFactories.store;
-  }>;
 }>;
 
 const productionFactories: MaintenanceRuntimeFactories = {
@@ -75,7 +67,6 @@ const productionFactories: MaintenanceRuntimeFactories = {
   preview: previewReconciliationFactories,
   replay: operatorRunReplayFactories,
   traceRunner: createQueueTraceRunner,
-  unknownOutcome: unknownOutcomeReconciliationFactories,
 };
 
 type MaintenanceOptions = Readonly<{
@@ -110,9 +101,6 @@ export async function createMaintenanceRuntime(
   let reconciliationStore:
     (PreviewReconciliationStore & { close?: () => Promise<void> }) | undefined;
   let failureNotificationStore: FailureNotificationStore | undefined;
-  let unknownOutcomeStore:
-    | (UnknownOutcomeReconciliationStore & { close?: () => Promise<void> })
-    | undefined;
   let runReplayStore: OperatorRunReplayStore | undefined;
   let connectionHealthStore: ConnectionHealthObservationStore | undefined;
   let failureNotification: FailureNotificationHandler | undefined;
@@ -138,10 +126,6 @@ export async function createMaintenanceRuntime(
         ...FAILURE_NOTIFICATION_DELIVERY,
       });
     }
-    unknownOutcomeStore = factories.unknownOutcome.store(
-      options.database,
-      options.databaseRuntime,
-    );
     runReplayStore = factories.replay.store(
       options.database,
       options.databaseRuntime,
@@ -157,7 +141,6 @@ export async function createMaintenanceRuntime(
         connectionHealthStore,
       ),
       reconciliation: factories.preview.handler(reconciliationStore),
-      unknownOutcome: factories.unknownOutcome.handler(unknownOutcomeStore),
       replay: factories.replay.handler(runReplayStore),
       ...(failureNotification === undefined ? {} : { failureNotification }),
       ...(options.workspaceInvitationDelivery === undefined
@@ -177,7 +160,6 @@ export async function createMaintenanceRuntime(
         errorWorkflowStore,
         connectionHealthStore,
         reconciliationStore,
-        unknownOutcomeStore,
         runReplayStore,
         failureNotificationStore,
       ],
@@ -201,7 +183,6 @@ export async function createMaintenanceRuntime(
       errorWorkflowStore,
       connectionHealthStore,
       reconciliationStore,
-      unknownOutcomeStore,
       runReplayStore,
       failureNotificationStore,
       ...(options.deliveryOwners ?? []),

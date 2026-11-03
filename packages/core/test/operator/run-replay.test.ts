@@ -1,6 +1,5 @@
 import {
   beforeEachFixture1,
-  beforeEachFixture2,
   mocks,
   commandId,
   sourceRunId,
@@ -11,8 +10,6 @@ import {
   publishedVersion,
   storeWith,
   replayInput,
-  evidencePayload,
-  reconciliationWith,
 } from './run-replay/fixture.js';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { randomUUID } from 'node:crypto';
@@ -20,11 +17,6 @@ import {
   OperatorRunReplayMismatchError,
   OperatorRunReplayNotExecutableError,
 } from '../../src/operator/replay/operator-replay.js';
-import {
-  reconcileUnknownOutcomeEvidence,
-  UnknownOutcomeReconciliationMismatchError,
-  UnknownOutcomeReconciliationStateError,
-} from '../../src/outbox/reconcile-unknown-outcome.js';
 
 describe('operator run replay validation', () => {
   beforeEach(beforeEachFixture1);
@@ -169,74 +161,5 @@ describe('operator run replay validation', () => {
     });
     expect(fixture.query).not.toHaveBeenCalled();
     expect(mocks.acceptWorkflowRun).not.toHaveBeenCalled();
-  });
-});
-describe('unknown-outcome reconciliation validation', () => {
-  beforeEach(beforeEachFixture2);
-  it('processes exact evidence delivery identity and validates its public signal', async () => {
-    const fixture = reconciliationWith();
-    await expect(
-      reconcileUnknownOutcomeEvidence(fixture.database, fixture.input),
-    ).resolves.toEqual({ kind: 'processed' });
-    expect(fixture.read).toHaveBeenCalledTimes(2);
-
-    await expect(
-      reconcileUnknownOutcomeEvidence(fixture.database, {
-        ...fixture.input,
-        signal: {} as AbortSignal,
-      }),
-    ).rejects.toBeInstanceOf(TypeError);
-    expect(mocks.consumeInboxMessage).toHaveBeenCalledOnce();
-  });
-
-  it.each([
-    ['missing outbox', null],
-    ['wrong aggregate id', { aggregateId: randomUUID() }],
-    ['wrong aggregate type', { aggregateType: 'workflow-run' }],
-    ['wrong job', { jobName: 'advance-workflow-run' }],
-    ['wrong checksum', { payloadChecksum: 'c'.repeat(64) }],
-    [
-      'wrong payload attempt',
-      { payload: { ...evidencePayload, attemptId: randomUUID() } },
-    ],
-    [
-      'wrong payload command',
-      { payload: { ...evidencePayload, evidenceCommandId: randomUUID() } },
-    ],
-    [
-      'wrong payload event',
-      { payload: { ...evidencePayload, outboxEventId: randomUUID() } },
-    ],
-    [
-      'wrong payload workspace',
-      { payload: { ...evidencePayload, workspaceId: randomUUID() } },
-    ],
-    ['malformed payload', { payload: {} }],
-  ])('rejects %s before reading evidence', async (_scenario, override) => {
-    const fixture = reconciliationWith(override);
-    await expect(
-      reconcileUnknownOutcomeEvidence(fixture.database, fixture.input),
-    ).rejects.toBeInstanceOf(UnknownOutcomeReconciliationMismatchError);
-    expect(fixture.read).toHaveBeenCalledOnce();
-  });
-
-  it.each([
-    ['missing', null],
-    ['no longer unknown', { status: 'succeeded' }],
-  ])('rejects %s evidence state without completion', async (_scenario, row) => {
-    const fixture = reconciliationWith(undefined, row);
-    await expect(
-      reconcileUnknownOutcomeEvidence(fixture.database, fixture.input),
-    ).rejects.toBeInstanceOf(UnknownOutcomeReconciliationStateError);
-    expect(fixture.read).toHaveBeenCalledTimes(2);
-  });
-
-  it('returns duplicate without reading durable evidence again', async () => {
-    const fixture = reconciliationWith();
-    mocks.consumeInboxMessage.mockResolvedValueOnce({ status: 'duplicate' });
-    await expect(
-      reconcileUnknownOutcomeEvidence(fixture.database, fixture.input),
-    ).resolves.toEqual({ kind: 'duplicate' });
-    expect(fixture.read).not.toHaveBeenCalled();
   });
 });

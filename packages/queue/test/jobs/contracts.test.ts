@@ -120,15 +120,6 @@ describe('queue contracts', () => {
         },
       ],
       [
-        JOB_NAME.reconcileUnknownOutcome,
-        {
-          workspaceId: IDS.workspaceId,
-          attemptId: IDS.attemptId,
-          evidenceCommandId: IDS.evidenceCommandId,
-          outboxEventId: IDS.outboxEventId,
-        },
-      ],
-      [
         JOB_NAME.replayWorkflowRun,
         {
           workspaceId: IDS.workspaceId,
