@@ -1,84 +1,56 @@
+import { Controller, Req, UseInterceptors } from '@nestjs/common';
 import {
-  Body,
-  Controller,
-  Header,
-  HttpCode,
-  Param,
-  Post,
-  Req,
-  UseGuards,
-  UseInterceptors,
-} from '@nestjs/common';
-import {
-  formFinalizeUploadRequestSchema,
-  formParamsSchema,
-  formUploadRequestSchema,
-  memberFormUploadParamsSchema,
-} from '@pertexo/contracts';
-import {
-  CsrfProtectionGuard,
-  SessionAuthenticationGuard,
-  authenticatedSession,
-} from '../../workspaces/index.js';
+  formUploadRoutes as routes,
+  type RouteInput,
+} from '@pertexo/contracts/server';
+import { authenticatedSession } from '../../workspaces/index.js';
+import { In, Route } from '../../workspaces/http/route.js';
 import type { IdentityWorkspaceRequest } from '../../workspaces/types.js';
-import {
-  requestIdempotencyKey,
-  withRequestOperationSignal,
-} from '../../platform/http/index.js';
+import { withRequestOperationSignal } from '../../platform/http/index.js';
 import type { AbortableRequest } from '../../platform/http/request-operation-signal.js';
-import { RateLimit } from '../../platform/rate-limit/metadata.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
 import { formUploadFailure } from '../../problems/context/normalize.js';
-import { FormResponderGuard } from '../guards.js';
 import { FormUploadService } from './service.js';
-import { uploadSession } from './session.js';
-import { parseRequestInput } from '../../platform/http/request-input.js';
 
 type MemberRequest = IdentityWorkspaceRequest & AbortableRequest;
 
 @UseInterceptors(domainErrors(formUploadFailure))
-@Controller('v1/workspaces/:workspaceId/workflows/:workflowId/form/uploads')
-@UseGuards(SessionAuthenticationGuard, FormResponderGuard, CsrfProtectionGuard)
-@RateLimit('ordinary_mutation')
+@Controller()
 export class MemberFormUploadsController {
   constructor(private readonly uploads: FormUploadService) {}
 
-  @Post()
-  @HttpCode(201)
-  @Header('Cache-Control', 'private, no-store')
+  @Route(routes.memberBegin)
   begin(
     @Req() request: MemberRequest,
-    @Param() params: unknown,
-    @Body() body: unknown,
+    @In()
+    {
+      params,
+      body,
+      idempotencyKey,
+      headers,
+    }: RouteInput<typeof routes.memberBegin>,
   ) {
-    const scope = formParamsSchema.parse(params);
-    const input = parseRequestInput(formUploadRequestSchema, body);
-    const idempotencyKey = requestIdempotencyKey(request.headers);
     return withRequestOperationSignal(request, (signal) =>
       this.uploads.begin({
-        target: memberTarget(request, scope),
-        session: uploadSession(request.headers),
-        ...input,
+        target: memberTarget(request, params),
+        session: headers['x-pertexo-form-session'],
+        ...body,
         idempotencyKey,
         signal,
       }),
     );
   }
 
-  @Post(':uploadId/finalize')
-  @HttpCode(200)
-  @Header('Cache-Control', 'private, no-store')
+  @Route(routes.memberFinalize)
   finalize(
     @Req() request: MemberRequest,
-    @Param() params: unknown,
-    @Body() body: unknown,
+    @In() { params, headers }: RouteInput<typeof routes.memberFinalize>,
   ) {
-    const { uploadId, ...scope } = memberFormUploadParamsSchema.parse(params);
-    parseRequestInput(formFinalizeUploadRequestSchema, body);
+    const { uploadId, ...scope } = params;
     return withRequestOperationSignal(request, (signal) =>
       this.uploads.finalize({
         target: memberTarget(request, scope),
-        session: uploadSession(request.headers),
+        session: headers['x-pertexo-form-session'],
         uploadId,
         signal,
       }),
@@ -88,11 +60,15 @@ export class MemberFormUploadsController {
 
 function memberTarget(
   request: MemberRequest,
-  scope: Readonly<{ workspaceId: string; workflowId: string }>,
+  {
+    workspaceId,
+    workflowId,
+  }: Readonly<{ workspaceId: string; workflowId: string }>,
 ) {
   return {
     kind: 'member_form' as const,
-    ...scope,
+    workspaceId,
+    workflowId,
     actorId: authenticatedSession(request).userId,
   };
 }

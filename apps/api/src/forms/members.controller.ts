@@ -1,146 +1,98 @@
+import { Controller, Req, UseInterceptors } from '@nestjs/common';
 import {
-  Body,
-  Controller,
-  Get,
-  Header,
-  HttpCode,
-  Param,
-  Post,
-  Req,
-  Query,
-  UseGuards,
-  UseInterceptors,
-} from '@nestjs/common';
-import {
-  formParamsSchema,
-  formSubmissionRequestSchema,
-  formAccessRequestSchema,
-  coordinatedEventHistoryQuerySchema,
-} from '@pertexo/contracts';
-import {
-  CsrfProtectionGuard,
-  SessionAuthenticationGuard,
-  authenticatedSession,
-} from '../workspaces/index.js';
+  formRoutes as routes,
+  type RouteInput,
+} from '@pertexo/contracts/server';
+import { authenticatedSession } from '../workspaces/index.js';
+import { In, Route } from '../workspaces/http/route.js';
 import type { IdentityWorkspaceRequest } from '../workspaces/types.js';
-import {
-  requestIdempotencyKey,
-  withRequestOperationSignal,
-} from '../platform/http/index.js';
+import { withRequestOperationSignal } from '../platform/http/index.js';
 import type { AbortableRequest } from '../platform/http/request-operation-signal.js';
 import { authenticatedRequestIdentifiers } from '../workspaces/request/authenticated-context.js';
-import { RateLimit } from '../platform/rate-limit/metadata.js';
-import {
-  FormManageGuard,
-  FormManagerReadGuard,
-  FormMemberGuard,
-  FormReadGuard,
-} from './guards.js';
 import { FormService } from './service.js';
-import { optionalUploadSession } from '../artifacts/form-uploads/session.js';
 import { domainErrors } from '../platform/http/problems/interceptor.js';
 import { memberFormFailure } from '../problems/context/normalize.js';
-import { parseRequestInput } from '../platform/http/request-input.js';
 
 type FormRequest = IdentityWorkspaceRequest & AbortableRequest;
+
 @UseInterceptors(domainErrors(memberFormFailure))
-@Controller('v1/workspaces/:workspaceId/workflows/:workflowId/form')
-@UseGuards(SessionAuthenticationGuard)
-@RateLimit('authenticated_read')
+@Controller()
 export class MemberFormsController {
   constructor(private readonly forms: FormService) {}
-  @Get()
-  @Header('Cache-Control', 'private, no-store')
-  @UseGuards(FormReadGuard)
-  read(@Req() request: FormRequest, @Param() params: unknown) {
-    const scope = formParamsSchema.parse(params);
+
+  @Route(routes.read)
+  read(
+    @Req() request: FormRequest,
+    @In() { params }: RouteInput<typeof routes.read>,
+  ) {
     return withRequestOperationSignal(request, (signal) =>
-      this.forms.read({
-        ...scope,
-        actorId: authenticatedSession(request).userId,
-        signal,
-      }),
+      this.forms.read({ ...params, actorId: actorId(request), signal }),
     );
   }
-  @Post('submit')
-  @HttpCode(200)
-  @Header('Cache-Control', 'private, no-store')
-  @UseGuards(FormMemberGuard, CsrfProtectionGuard)
-  @RateLimit('ordinary_mutation')
+
+  @Route(routes.submit)
   submit(
     @Req() request: FormRequest,
-    @Param() params: unknown,
-    @Body() body: unknown,
+    @In()
+    { params, body, idempotencyKey, headers }: RouteInput<typeof routes.submit>,
   ) {
-    const scope = formParamsSchema.parse(params);
-    const input = parseRequestInput(formSubmissionRequestSchema, body);
-    const idempotencyKey = requestIdempotencyKey(request.headers);
+    const uploadSession = headers['x-pertexo-form-session'];
     return withRequestOperationSignal(request, (signal) =>
       this.forms.submit({
-        ...scope,
-        ...input,
-        ...optionalUploadSession(request.headers),
-        actorId: authenticatedSession(request).userId,
+        ...params,
+        ...body,
+        ...(uploadSession === undefined ? {} : { uploadSession }),
+        actorId: actorId(request),
         idempotencyKey,
         ...authenticatedRequestIdentifiers(request),
         signal,
       }),
     );
   }
-  @Get('events')
-  @Header('Cache-Control', 'private, no-store')
-  @UseGuards(FormManagerReadGuard)
+
+  @Route(routes.events)
   history(
     @Req() request: FormRequest,
-    @Param() params: unknown,
-    @Query() query: unknown,
+    @In() { params, query }: RouteInput<typeof routes.events>,
   ) {
-    const scope = formParamsSchema.parse(params);
-    const input = parseRequestInput(coordinatedEventHistoryQuerySchema, query);
     return withRequestOperationSignal(request, (signal) =>
       this.forms.history({
-        ...scope,
-        ...input,
-        actorId: authenticatedSession(request).userId,
+        ...params,
+        ...query,
+        actorId: actorId(request),
         signal,
       }),
     );
   }
-  @Get('access')
-  @Header('Cache-Control', 'private, no-store')
-  @UseGuards(FormManagerReadGuard)
-  access(@Req() request: FormRequest, @Param() params: unknown) {
-    const scope = formParamsSchema.parse(params);
+
+  @Route(routes.access)
+  access(
+    @Req() request: FormRequest,
+    @In() { params }: RouteInput<typeof routes.access>,
+  ) {
     return withRequestOperationSignal(request, (signal) =>
-      this.forms.access({
-        ...scope,
-        actorId: authenticatedSession(request).userId,
-        signal,
-      }),
+      this.forms.access({ ...params, actorId: actorId(request), signal }),
     );
   }
-  @Post('access')
-  @HttpCode(200)
-  @Header('Cache-Control', 'private, no-store')
-  @UseGuards(FormManageGuard, CsrfProtectionGuard)
-  @RateLimit('ordinary_mutation')
+
+  @Route(routes.setAccess)
   setAccess(
     @Req() request: FormRequest,
-    @Param() params: unknown,
-    @Body() body: unknown,
+    @In() { params, body, idempotencyKey }: RouteInput<typeof routes.setAccess>,
   ) {
-    const scope = formParamsSchema.parse(params);
-    const input = parseRequestInput(formAccessRequestSchema, body);
-    const idempotencyKey = requestIdempotencyKey(request.headers);
     return withRequestOperationSignal(request, (signal) =>
       this.forms.setAccess({
-        ...scope,
-        ...input,
-        actorId: authenticatedSession(request).userId,
+        ...params,
+        ...body,
+        actorId: actorId(request),
         idempotencyKey,
         ...authenticatedRequestIdentifiers(request),
         signal,
       }),
     );
   }
+}
+
+function actorId(request: FormRequest): string {
+  return authenticatedSession(request).userId;
 }

@@ -1,113 +1,86 @@
-import {
-  Body,
-  Controller,
-  Header,
-  HttpCode,
-  Param,
-  Post,
-  Req,
-  UseInterceptors,
-} from '@nestjs/common';
+import { Controller, Req, UseInterceptors } from '@nestjs/common';
 import type { FastifyRequest } from 'fastify';
 import {
-  formCapabilitySchema,
-  formFinalizeUploadRequestSchema,
-  formUploadRequestSchema,
-  publicFormParamsSchema,
-  publicFormUploadParamsSchema,
-} from '@pertexo/contracts';
-import { firstRequestHeader } from '../../platform/http/request-headers.js';
-import {
-  requestIdempotencyKey,
-  withRequestOperationSignal,
-} from '../../platform/http/index.js';
+  formUploadRoutes as routes,
+  type RouteInput,
+} from '@pertexo/contracts/server';
+import { In, Route } from '../../workspaces/http/route.js';
+import { withRequestOperationSignal } from '../../platform/http/index.js';
 import type { AbortableRequest } from '../../platform/http/request-operation-signal.js';
-import { RateLimit } from '../../platform/rate-limit/metadata.js';
 import { HttpRateLimitAdmission } from '../../platform/rate-limit/admission.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
 import { formUploadFailure } from '../../problems/context/normalize.js';
 import { FormUploadService } from './service.js';
-import { uploadSession } from './session.js';
-import { parseRequestInput } from '../../platform/http/request-input.js';
 
 type PublicRequest = FastifyRequest & AbortableRequest;
 
 /** Anyone with the link may upload, so each request spends the upload budget too. */
 @UseInterceptors(domainErrors(formUploadFailure))
-@Controller('v1/forms/:publicId/uploads')
-@RateLimit('form_read')
+@Controller()
 export class PublicFormUploadsController {
   constructor(
     private readonly uploads: FormUploadService,
     private readonly limits: HttpRateLimitAdmission,
   ) {}
 
-  @Post()
-  @HttpCode(201)
-  @Header('Cache-Control', 'no-store')
-  @Header('Referrer-Policy', 'no-referrer')
+  @Route(routes.publicBegin)
   begin(
     @Req() request: PublicRequest,
-    @Param() params: unknown,
-    @Body() body: unknown,
+    @In()
+    {
+      params,
+      body,
+      idempotencyKey,
+      headers,
+    }: RouteInput<typeof routes.publicBegin>,
   ) {
-    const { publicId } = publicFormParamsSchema.parse(params);
-    const input = parseRequestInput(formUploadRequestSchema, body);
-    const responder = this.responder(request);
-    const idempotencyKey = requestIdempotencyKey(request.headers);
     return withRequestOperationSignal(request, async (signal) => {
-      const target = await this.admit(request, publicId, responder, signal);
+      const target = await this.admit(
+        request,
+        params.publicId,
+        headers,
+        signal,
+      );
       return this.uploads.begin({
         target,
-        session: responder.session,
-        ...input,
+        session: headers['x-pertexo-form-session'],
+        ...body,
         idempotencyKey,
         signal,
       });
     });
   }
 
-  @Post(':uploadId/finalize')
-  @HttpCode(200)
-  @Header('Cache-Control', 'no-store')
-  @Header('Referrer-Policy', 'no-referrer')
+  @Route(routes.publicFinalize)
   finalize(
     @Req() request: PublicRequest,
-    @Param() params: unknown,
-    @Body() body: unknown,
+    @In() { params, headers }: RouteInput<typeof routes.publicFinalize>,
   ) {
-    const { publicId, uploadId } = publicFormUploadParamsSchema.parse(params);
-    parseRequestInput(formFinalizeUploadRequestSchema, body);
-    const responder = this.responder(request);
     return withRequestOperationSignal(request, async (signal) => {
-      const target = await this.admit(request, publicId, responder, signal);
+      const target = await this.admit(
+        request,
+        params.publicId,
+        headers,
+        signal,
+      );
       return this.uploads.finalize({
         target,
-        session: responder.session,
-        uploadId,
+        session: headers['x-pertexo-form-session'],
+        uploadId: params.uploadId,
         signal,
       });
     });
   }
 
-  private responder(request: PublicRequest) {
-    return {
-      capability: formCapabilitySchema.parse(
-        firstRequestHeader(request.headers, 'x-pertexo-form-key'),
-      ),
-      session: uploadSession(request.headers),
-    };
-  }
-
   private async admit(
     request: PublicRequest,
     publicId: string,
-    responder: Readonly<{ capability: string }>,
+    headers: Readonly<{ 'x-pertexo-form-key': string }>,
     signal: AbortSignal,
   ) {
     const grant = await this.uploads.discover({
       publicId,
-      capability: responder.capability,
+      capability: headers['x-pertexo-form-key'],
       signal,
     });
     await this.limits.admit('form_upload', {

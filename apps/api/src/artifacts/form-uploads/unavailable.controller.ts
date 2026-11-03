@@ -1,19 +1,10 @@
-import {
-  Controller,
-  Header,
-  Post,
-  UseGuards,
-  UseInterceptors,
-} from '@nestjs/common';
-import {
-  CsrfProtectionGuard,
-  SessionAuthenticationGuard,
-} from '../../workspaces/index.js';
+import { Controller, UseInterceptors } from '@nestjs/common';
+import { formUploadRoutes as routes } from '@pertexo/contracts/server';
+import { UnconfiguredRoute } from '../../workspaces/http/route.js';
 import {
   applicationError,
   throwApplicationError,
 } from '../../platform/http/index.js';
-import { RateLimit } from '../../platform/rate-limit/metadata.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
 import { formUploadFailure } from '../../problems/context/normalize.js';
 
@@ -26,29 +17,37 @@ function unavailableStorage(): never {
   );
 }
 
+/** The same upload routes when file storage isn't configured: each says so. */
 @UseInterceptors(domainErrors(formUploadFailure))
 @Controller()
 export class UnconfiguredFormUploadsController {
-  @Post([
-    'v1/forms/:publicId/uploads',
-    'v1/forms/:publicId/uploads/:uploadId/finalize',
-  ])
-  @RateLimit('form_read')
-  @Header('Cache-Control', 'no-store')
-  public publicUpload(): never {
+  @UnconfiguredRoute(routes.publicBegin)
+  public publicBegin(): never {
     return unavailableStorage();
   }
 
-  @Post([
-    'v1/workspaces/:workspaceId/workflows/:workflowId/form/uploads',
-    'v1/workspaces/:workspaceId/workflows/:workflowId/form/uploads/:uploadId/finalize',
-    'v1/workspaces/:workspaceId/pending-tasks/:taskId/uploads',
-    'v1/workspaces/:workspaceId/pending-tasks/:taskId/uploads/:uploadId/finalize',
-  ])
-  @RateLimit('ordinary_mutation')
-  @UseGuards(SessionAuthenticationGuard, CsrfProtectionGuard)
-  @Header('Cache-Control', 'no-store')
-  public memberUpload(): never {
+  @UnconfiguredRoute(routes.publicFinalize)
+  public publicFinalize(): never {
+    return unavailableStorage();
+  }
+
+  @UnconfiguredRoute(routes.memberBegin)
+  public memberBegin(): never {
+    return unavailableStorage();
+  }
+
+  @UnconfiguredRoute(routes.memberFinalize)
+  public memberFinalize(): never {
+    return unavailableStorage();
+  }
+
+  @UnconfiguredRoute(routes.taskBegin)
+  public taskBegin(): never {
+    return unavailableStorage();
+  }
+
+  @UnconfiguredRoute(routes.taskFinalize)
+  public taskFinalize(): never {
     return unavailableStorage();
   }
 }

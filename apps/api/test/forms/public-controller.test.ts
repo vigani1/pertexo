@@ -2,7 +2,9 @@ import { randomUUID } from 'node:crypto';
 import type { FastifyRequest } from 'fastify';
 import { describe, expect, it, vi } from 'vitest';
 
+import type { formRoutes } from '@pertexo/contracts/server';
 import { PublicFormsController } from '../../src/forms/public.controller.js';
+import { routeInput } from '../support/route-input.js';
 import type { FormService } from '../../src/forms/service.js';
 import type { HttpRateLimitAdmission } from '../../src/platform/rate-limit/admission.js';
 
@@ -18,15 +20,18 @@ const capability = 'K'.repeat(43);
 const uploadSession = 'S'.repeat(43);
 const body = { versionId: randomUUID(), values: { name: 'Ada' } };
 
-function request(headers: Readonly<Record<string, string>> = {}) {
-  return {
-    ip: '203.0.113.7',
+const request = { ip: '203.0.113.7', headers: {} } as unknown as FastifyRequest;
+
+function submission(session?: string) {
+  return routeInput<typeof formRoutes.publicSubmit>({
+    params: { publicId },
+    body,
+    idempotencyKey: 'submit-1',
     headers: {
       'x-pertexo-form-key': capability,
-      'idempotency-key': 'submit-1',
-      ...headers,
+      ...(session === undefined ? {} : { 'x-pertexo-form-session': session }),
     },
-  } as unknown as FastifyRequest;
+  });
 }
 
 function setup(admit = vi.fn().mockResolvedValue(undefined)) {
@@ -44,7 +49,7 @@ function setup(admit = vi.fn().mockResolvedValue(undefined)) {
 describe('public form submission', () => {
   it('spends the workspace submission budget of the form it opened', async () => {
     const { forms, admit, controller } = setup();
-    await controller.submit(request(), { publicId }, body);
+    await controller.submit(request, submission());
     expect(forms.discover).toHaveBeenCalledWith(
       expect.objectContaining({ publicId, capability }),
     );
@@ -66,7 +71,7 @@ describe('public form submission', () => {
   it('starts no run once the workspace budget is spent', async () => {
     const limited = new Error('rate limited');
     const { forms, controller } = setup(vi.fn().mockRejectedValue(limited));
-    await expect(controller.submit(request(), { publicId }, body)).rejects.toBe(
+    await expect(controller.submit(request, submission())).rejects.toBe(
       limited,
     );
     expect(forms.submit).not.toHaveBeenCalled();
@@ -74,11 +79,7 @@ describe('public form submission', () => {
 
   it('passes the response session that owns the uploaded files', async () => {
     const { forms, controller } = setup();
-    await controller.submit(
-      request({ 'x-pertexo-form-session': uploadSession }),
-      { publicId },
-      body,
-    );
+    await controller.submit(request, submission(uploadSession));
     expect(forms.submit).toHaveBeenCalledWith(
       expect.objectContaining({ uploadSession }),
       grant,
@@ -87,7 +88,7 @@ describe('public form submission', () => {
 
   it('submits a response without uploads with no session', async () => {
     const { forms, controller } = setup();
-    await controller.submit(request(), { publicId }, body);
+    await controller.submit(request, submission());
     expect(forms.submit.mock.calls[0]?.[0]).not.toHaveProperty('uploadSession');
   });
 });

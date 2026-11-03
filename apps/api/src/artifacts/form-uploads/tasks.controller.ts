@@ -1,89 +1,57 @@
+import { Controller, Req, UseInterceptors } from '@nestjs/common';
 import {
-  Body,
-  Controller,
-  Header,
-  HttpCode,
-  Param,
-  Post,
-  Req,
-  UseGuards,
-  UseInterceptors,
-} from '@nestjs/common';
-import {
-  formFinalizeUploadRequestSchema,
-  taskUploadParamsSchema,
-  taskUploadRequestSchema,
-  taskUploadsParamsSchema,
-} from '@pertexo/contracts';
-import {
-  CsrfProtectionGuard,
-  SessionAuthenticationGuard,
-  authenticatedSession,
-} from '../../workspaces/index.js';
+  formUploadRoutes as routes,
+  type RouteInput,
+} from '@pertexo/contracts/server';
+import { authenticatedSession } from '../../workspaces/index.js';
+import { In, Route } from '../../workspaces/http/route.js';
 import type { IdentityWorkspaceRequest } from '../../workspaces/types.js';
-import {
-  requestIdempotencyKey,
-  withRequestOperationSignal,
-} from '../../platform/http/index.js';
+import { withRequestOperationSignal } from '../../platform/http/index.js';
 import type { AbortableRequest } from '../../platform/http/request-operation-signal.js';
-import { RateLimit } from '../../platform/rate-limit/metadata.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
 import { formUploadFailure } from '../../problems/context/normalize.js';
-import { InputRequestResponderGuard } from '../guards.js';
-import { uploadSession } from './session.js';
 import { FormUploadService } from './service.js';
-import { parseRequestInput } from '../../platform/http/request-input.js';
 
 type TaskRequest = IdentityWorkspaceRequest & AbortableRequest;
 
 /** Request input responders upload on the task page, as its eligible members. */
 @UseInterceptors(domainErrors(formUploadFailure))
-@Controller('v1/workspaces/:workspaceId/pending-tasks/:taskId/uploads')
-@UseGuards(
-  SessionAuthenticationGuard,
-  InputRequestResponderGuard,
-  CsrfProtectionGuard,
-)
-@RateLimit('ordinary_mutation')
+@Controller()
 export class InputRequestUploadsController {
   constructor(private readonly uploads: FormUploadService) {}
 
-  @Post()
-  @HttpCode(201)
-  @Header('Cache-Control', 'private, no-store')
+  @Route(routes.taskBegin)
   begin(
     @Req() request: TaskRequest,
-    @Param() params: unknown,
-    @Body() body: unknown,
+    @In()
+    {
+      params,
+      body,
+      idempotencyKey,
+      headers,
+    }: RouteInput<typeof routes.taskBegin>,
   ) {
-    const scope = taskUploadsParamsSchema.parse(params);
-    const input = parseRequestInput(taskUploadRequestSchema, body);
-    const idempotencyKey = requestIdempotencyKey(request.headers);
     return withRequestOperationSignal(request, (signal) =>
       this.uploads.begin({
-        target: taskTarget(request, scope),
-        session: uploadSession(request.headers),
-        ...input,
+        target: taskTarget(request, params),
+        session: headers['x-pertexo-form-session'],
+        ...body,
         idempotencyKey,
         signal,
       }),
     );
   }
 
-  @Post(':uploadId/finalize')
-  @HttpCode(200)
-  @Header('Cache-Control', 'private, no-store')
+  @Route(routes.taskFinalize)
   finalize(
     @Req() request: TaskRequest,
-    @Param() params: unknown,
-    @Body() body: unknown,
+    @In() { params, headers }: RouteInput<typeof routes.taskFinalize>,
   ) {
-    const { uploadId, ...scope } = taskUploadParamsSchema.parse(params);
-    parseRequestInput(formFinalizeUploadRequestSchema, body);
+    const { uploadId, ...scope } = params;
     return withRequestOperationSignal(request, (signal) =>
       this.uploads.finalize({
         target: taskTarget(request, scope),
-        session: uploadSession(request.headers),
+        session: headers['x-pertexo-form-session'],
         uploadId,
         signal,
       }),
@@ -93,11 +61,12 @@ export class InputRequestUploadsController {
 
 function taskTarget(
   request: TaskRequest,
-  scope: Readonly<{ workspaceId: string; taskId: string }>,
+  { workspaceId, taskId }: Readonly<{ workspaceId: string; taskId: string }>,
 ) {
   return {
     kind: 'input_request' as const,
-    ...scope,
+    workspaceId,
+    taskId,
     actorId: authenticatedSession(request).userId,
   };
 }

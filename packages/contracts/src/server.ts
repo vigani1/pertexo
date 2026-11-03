@@ -24,6 +24,8 @@ export { scheduleRoutes } from './routes/triggers/schedules.js';
 export { artifactRoutes } from './routes/execution/artifacts.js';
 export { workflowRunRoutes } from './routes/execution/runs.js';
 export { pendingTaskRoutes } from './routes/execution/pending-tasks.js';
+export { formRoutes } from './routes/forms/forms.js';
+export { formUploadRoutes } from './routes/forms/uploads.js';
 export { workflowRunDataRoutes } from './routes/execution/run-data.js';
 export { usageRoutes } from './routes/execution/usage.js';
 export { connectionRoutes } from './routes/connections/management.js';

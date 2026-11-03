@@ -161,21 +161,45 @@ function csrfParameter({ method, access }: AnyRoute) {
 
 function queryParameters({ query }: AnyRoute) {
   if (query === undefined) return [];
+  const required = requiredFields(query);
   return Object.entries(query.shape).map(([name, schema]) =>
     queryParameter(name, schema as z.ZodType, {
-      required: !(schema as z.ZodType).safeParse(undefined).success,
+      required: required.has(name),
     }),
   );
 }
 
 function headerParameters({ headers }: AnyRoute) {
   if (headers === undefined) return [];
-  return Object.entries(headers.shape).map(([name, schema]) => ({
-    in: 'header',
-    name,
-    required: !(schema as z.ZodType).safeParse(undefined).success,
-    schema: jsonSchema(schema as z.ZodType, 'input'),
-  }));
+  const required = requiredFields(headers);
+  return Object.entries(headers.shape).map(([name, field]) => {
+    const schema = field as z.ZodType;
+    return {
+      in: 'header',
+      name,
+      required: required.has(name),
+      // A header's purpose is rarely clear from its name, so `.describe()` says it.
+      ...(schema.description === undefined
+        ? {}
+        : { description: schema.description }),
+      schema: jsonSchema(schema, 'input'),
+    };
+  });
+}
+
+/**
+ * The fields an empty object is refused for. Asking each field about `undefined`
+ * would call an exact-optional field required, though leaving it out is fine.
+ */
+function requiredFields(object: z.ZodObject): ReadonlySet<PropertyKey> {
+  const issues = object.safeParse({}).error?.issues ?? [];
+  return new Set(
+    issues.flatMap(({ code, path: [field, ...nested] }) =>
+      code === 'invalid_type' && field !== undefined && nested.length === 0
+        ? [field]
+        : [],
+    ),
+  );
 }
 
 function requiredShapeField(
