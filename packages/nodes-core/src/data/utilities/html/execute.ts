@@ -4,7 +4,7 @@ import type { ChildNode, Element } from 'domhandler';
 import { parse, SelectorType, type Selector } from 'css-what';
 import { selectAll } from 'css-select';
 import { textContent } from 'domutils';
-import type { HtmlConfig } from './validation.js';
+import type { HtmlConfig } from './html.schemas.js';
 import { parseBoundedHtml } from './parse.js';
 import { refuseUtility } from '../result.js';
 

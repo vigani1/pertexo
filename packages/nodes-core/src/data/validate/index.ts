@@ -1,3 +1,3 @@
-export * from './definition.js';
+export * from './validate.definition.js';
 export * from './semantics.js';
-export * from './validation.js';
+export * from './validate.schemas.js';

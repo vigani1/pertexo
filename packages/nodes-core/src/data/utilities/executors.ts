@@ -10,11 +10,11 @@ import { transformCrypto } from './crypto/execute.js';
 import { transformXml } from './xml/execute.js';
 import { extractHtml } from './html/execute.js';
 import { signHmac } from './hmac/execute.js';
-import type { TextConfig, TextInput } from './text/validation.js';
-import type { NumberConfig } from './number/validation.js';
-import type { CryptoConfig } from './crypto/validation.js';
-import type { XmlConfig } from './xml/validation.js';
-import type { HtmlConfig } from './html/validation.js';
+import type { TextConfig, TextInput } from './text/text.schemas.js';
+import type { NumberConfig } from './number/number.schemas.js';
+import type { CryptoConfig } from './crypto/crypto.schemas.js';
+import type { XmlConfig } from './xml/xml.schemas.js';
+import type { HtmlConfig } from './html/html.schemas.js';
 
 type Invocation = NodeExecutionInvocation<unknown, unknown>;
 function utilityExecutor(

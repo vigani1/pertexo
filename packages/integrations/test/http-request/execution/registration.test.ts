@@ -20,7 +20,7 @@ import {
 import {
   httpRequestConfigSchema,
   httpRequestInputSchema,
-} from '../../../src/http-request/validation.js';
+} from '../../../src/http-request/http-request.schemas.js';
 import {
   connectionId,
   encoder,

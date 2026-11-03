@@ -2,7 +2,7 @@ import { utf8ByteLength } from '@pertexo/workflow-model';
 import { HttpPaginationFailure } from './failure.js';
 import type { JsonValue } from '@pertexo/node-sdk/server';
 import { resolveJsonPath } from '@pertexo/workflow-model';
-import type { HttpPagination } from './validation.js';
+import type { HttpPagination } from './http-pagination.schemas.js';
 import { nextLink } from './link.js';
 
 function scalar(

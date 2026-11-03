@@ -5,7 +5,7 @@ export {
   EMAIL_SEND_NOTIFICATION_MANIFEST,
   EMAIL_SEND_NOTIFICATION_POLICY,
   RESEND_API_KEY_CONNECTION_SLOT,
-} from './definition.js';
+} from './email-send-notification.definition.js';
 export {
   EMAIL_SEND_NOTIFICATION_LIMITS,
   emailAttachmentSchema,
@@ -16,12 +16,12 @@ export {
   emailSendNotificationInputSchema,
   emailSendNotificationOutputSchema,
   resolvedResendApiKeyCredentialSchema,
-} from './validation.js';
+} from './email-send-notification.schemas.js';
 export type {
   EmailAttachment,
   EmailSentAttachment,
   EmailSendNotificationOutput,
-} from './validation.js';
+} from './email-send-notification.schemas.js';
 export {
   defaultAttachmentFilename,
   sanitizeAttachmentFilename,

@@ -6,7 +6,7 @@ import {
   SLACK_SEND_MESSAGE_LIMITS,
   slackChannelIdSchema,
   slackMessageTimestampSchema,
-} from './validation.js';
+} from './slack-send-message.schemas.js';
 
 export const SLACK_API_ENDPOINTS = Object.freeze({
   authTest: 'https://slack.com/api/auth.test',

@@ -1,3 +1,3 @@
-export * from './definition.js';
+export * from './webhook.definition.js';
 export * from './run-input.js';
-export * from './validation.js';
+export * from './webhook.schemas.js';

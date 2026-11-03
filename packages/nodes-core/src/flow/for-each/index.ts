@@ -1,2 +1,2 @@
-export * from './definition.js';
-export * from './validation.js';
+export * from './for-each.definition.js';
+export * from './for-each.schemas.js';

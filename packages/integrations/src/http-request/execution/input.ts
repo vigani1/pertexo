@@ -10,7 +10,7 @@ import {
   safeRequestUrl,
   type HttpRequestConfig,
   type HttpRequestInput,
-} from '../validation.js';
+} from '../http-request.schemas.js';
 import {
   fillHttpTemplate,
   HTTP_PLACEHOLDER_NAME,

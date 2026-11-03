@@ -1,7 +1,7 @@
 import { isWebhookResponseHeaderAllowed } from '@pertexo/node-sdk';
 import { describe, expect, it } from 'vitest';
 
-import { CORE_RESPOND_WEBHOOK_CONFIG_SCHEMA } from '../../src/flow/respond-webhook/validation.js';
+import { CORE_RESPOND_WEBHOOK_CONFIG_SCHEMA } from '../../src/flow/respond-webhook/respond-webhook.schemas.js';
 
 describe('what a Respond to webhook step may ask a browser to do', () => {
   it.each([

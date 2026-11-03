@@ -3,32 +3,32 @@ import {
   textConfigSchema,
   textInputSchema,
   textOutputSchema,
-} from './text/validation.js';
+} from './text/text.schemas.js';
 import {
   numberConfigSchema,
   numberInputSchema,
   numberOutputSchema,
-} from './number/validation.js';
+} from './number/number.schemas.js';
 import {
   cryptoConfigSchema,
   cryptoInputSchema,
   cryptoOutputSchema,
-} from './crypto/validation.js';
+} from './crypto/crypto.schemas.js';
 import {
   hmacConfigSchema,
   hmacInputSchema,
   hmacOutputSchema,
-} from './hmac/validation.js';
+} from './hmac/hmac.schemas.js';
 import {
   xmlConfigSchema,
   xmlInputSchema,
   xmlOutputSchema,
-} from './xml/validation.js';
+} from './xml/xml.schemas.js';
 import {
   htmlConfigSchema,
   htmlInputSchema,
   htmlOutputSchema,
-} from './html/validation.js';
+} from './html/html.schemas.js';
 
 export const UTILITY_DEFINITIONS = Object.freeze([
   defineUtility({

@@ -7,7 +7,7 @@ import { InvalidBoundedJsonError } from '@pertexo/node-sdk/server';
 import type {
   CoreRespondWebhookConfig,
   CoreRespondWebhookInput,
-} from './validation.js';
+} from './respond-webhook.schemas.js';
 
 export function serializeWebhookResponse(
   config: CoreRespondWebhookConfig,

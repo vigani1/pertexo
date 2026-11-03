@@ -1,5 +1,5 @@
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
-import type { CryptoConfig } from './validation.js';
+import type { CryptoConfig } from './crypto.schemas.js';
 import { refuseUtility } from '../result.js';
 export function transformCrypto(
   config: CryptoConfig,

@@ -4,7 +4,7 @@ import {
   FileInputFailure,
   type NodeArtifactRuntime,
 } from '@pertexo/node-sdk/server';
-import { HTTP_REQUEST_LIMITS } from '../validation.js';
+import { HTTP_REQUEST_LIMITS } from '../http-request.schemas.js';
 
 /** CombinedStream needs an explicit bridge: it does not expose modern close semantics. */
 export async function collectMultipart(

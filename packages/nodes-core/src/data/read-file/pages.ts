@@ -11,7 +11,7 @@ import {
 import { readCsvRecords } from './csv/records.js';
 import { readJsonRecords } from './json/records.js';
 import { readXlsxRecords } from './xlsx/records.js';
-import type { CoreReadFileConfig } from './validation.js';
+import type { CoreReadFileConfig } from './read-file.schemas.js';
 
 export async function readFilePages(
   reference: NodeArtifactReference,

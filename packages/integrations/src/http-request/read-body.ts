@@ -6,7 +6,7 @@ import {
   HTTP_REQUEST_LIMITS,
   type HttpRequestInput,
   type HttpRequestConfig,
-} from './validation.js';
+} from './http-request.schemas.js';
 import { requestBody } from './material.js';
 
 export async function readRequestBody(

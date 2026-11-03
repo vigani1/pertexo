@@ -1,11 +1,14 @@
 import { utf8ByteLength } from '@pertexo/workflow-model';
 import { FileInputFailure } from '@pertexo/node-sdk/server';
-import { HTTP_REQUEST_LIMITS, type HttpRequestInput } from '../validation.js';
+import {
+  HTTP_REQUEST_LIMITS,
+  type HttpRequestInput,
+} from '../http-request.schemas.js';
 import type {
   HttpMultipartConfig,
   HttpMultipartFile,
   HttpMultipartPart,
-} from './validation.js';
+} from './http-multipart.schemas.js';
 
 export type ResolvedMultipartPart = Readonly<{
   part: HttpMultipartPart;

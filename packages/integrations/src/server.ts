@@ -80,29 +80,29 @@ export {
   type ApplicationSealedSecret,
   type ApplicationSecretEnvelope,
 } from './security/application-secret-envelope.js';
-export { createEmailSendNotificationExecutorRegistration } from './email/executor.js';
+export { createEmailSendNotificationExecutorRegistration } from './email/email-send-notification.executor.js';
 export { EmailSendNotificationExecutorError } from './email/failure.js';
 export type {
   EmailSendNotificationExecutorDependencies,
   EmailSendNotificationExecutorTelemetry,
-} from './email/executor.js';
+} from './email/email-send-notification.executor.js';
 export {
   createSlackSendMessageExecutorRegistration,
   SlackSendMessageExecutorError,
-} from './slack/executor.js';
+} from './slack/slack-send-message.executor.js';
 export type {
   SlackSendMessageExecutorDependencies,
   SlackSendMessageExecutorTelemetry,
-} from './slack/executor.js';
+} from './slack/slack-send-message.executor.js';
 export {
   createHttpRequestExecutorRegistration,
   HttpRequestExecutorError,
   NOOP_HTTP_REQUEST_EXECUTOR_TELEMETRY,
-} from './http-request/executor.js';
+} from './http-request/http-request.executor.js';
 export type {
   HttpRequestExecutorDependencies,
   HttpRequestExecutorTelemetry,
-} from './http-request/executor.js';
+} from './http-request/http-request.executor.js';
 export {
   createOAuth2RenewalClient,
   isOAuth2HostAllowed,

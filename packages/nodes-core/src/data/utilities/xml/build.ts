@@ -1,10 +1,10 @@
 import { utf8ByteLength } from '@pertexo/workflow-model';
-import { COLLECTION_MAX_ITEMS } from '../../lists/semantics/validation.js';
+import { COLLECTION_MAX_ITEMS } from '../../lists/semantics/semantics.schemas.js';
 import { STORED_EXECUTION_VALUE_LIMITS } from '@pertexo/node-sdk';
 import XMLBuilder from 'fast-xml-builder';
 import { parseBoundedXml } from './parse.js';
 import { qName } from 'xml-naming';
-import { XML_LIMITS } from './validation.js';
+import { XML_LIMITS } from './xml.schemas.js';
 import { isRecord } from '@pertexo/workflow-model';
 import { refuseUtility } from '../result.js';
 

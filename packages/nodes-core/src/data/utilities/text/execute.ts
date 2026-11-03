@@ -1,8 +1,8 @@
 import { utf8ByteLength } from '@pertexo/workflow-model';
 import { STORED_EXECUTION_VALUE_LIMITS } from '@pertexo/node-sdk';
-import { COLLECTION_MAX_ITEMS } from '../../lists/semantics/validation.js';
+import { COLLECTION_MAX_ITEMS } from '../../lists/semantics/semantics.schemas.js';
 import { refuseUtility } from '../result.js';
-import type { TextConfig, TextInput } from './validation.js';
+import type { TextConfig, TextInput } from './text.schemas.js';
 
 export function transformText(
   config: TextConfig,

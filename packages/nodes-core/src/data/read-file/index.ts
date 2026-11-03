@@ -1,2 +1,2 @@
-export * from './definition.js';
-export * from './validation.js';
+export * from './read-file.definition.js';
+export * from './read-file.schemas.js';

@@ -1,2 +1,2 @@
-export * from './definition.js';
-export * from './validation.js';
+export * from './schedule.definition.js';
+export * from './schedule.schemas.js';

@@ -5,8 +5,11 @@ import {
   type NodeArtifactRuntime,
   type NodeVerifiedByteSource,
 } from '@pertexo/node-sdk/server';
-import { HTTP_REQUEST_LIMITS, type HttpRequestInput } from '../validation.js';
-import type { HttpMultipartConfig } from './validation.js';
+import {
+  HTTP_REQUEST_LIMITS,
+  type HttpRequestInput,
+} from '../http-request.schemas.js';
+import type { HttpMultipartConfig } from './http-multipart.schemas.js';
 import { multipartValues } from './values.js';
 import { collectMultipart } from './collect.js';
 

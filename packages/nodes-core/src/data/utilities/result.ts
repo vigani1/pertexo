@@ -1,4 +1,4 @@
-import { COLLECTION_MAX_ITEMS } from '../lists/semantics/validation.js';
+import { COLLECTION_MAX_ITEMS } from '../lists/semantics/semantics.schemas.js';
 import {
   STORED_EXECUTION_VALUE_LIMITS,
   storedExecutionJsonStringBytes,

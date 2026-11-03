@@ -1,6 +1,6 @@
 import type { z } from 'zod';
 
-import type { CORE_WEBHOOK_CONFIG_SCHEMA } from './validation.js';
+import type { CORE_WEBHOOK_CONFIG_SCHEMA } from './webhook.schemas.js';
 
 /** One authenticated webhook call with its body already parsed. */
 export type WebhookRequest = Readonly<{

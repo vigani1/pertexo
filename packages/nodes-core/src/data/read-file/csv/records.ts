@@ -6,7 +6,7 @@ import { parse, CsvError, type Options } from 'csv-parse';
 import { FileInputFailure, type JsonValue } from '@pertexo/node-sdk/server';
 import { convertCsvValue } from '../conversion.js';
 import { admitHeaders } from '../headers.js';
-import type { CoreReadFileConfig } from '../validation.js';
+import type { CoreReadFileConfig } from '../read-file.schemas.js';
 
 type CsvConfig = Extract<CoreReadFileConfig, { format: 'csv' }>;
 /** Header, column and conversion rules are shared by inline and paged reads. */

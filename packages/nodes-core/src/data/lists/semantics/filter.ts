@@ -1,7 +1,7 @@
 import type {
   CoreFilterConfig,
   CoreFilterInput,
-} from '../filter/validation.js';
+} from '../filter/filter.schemas.js';
 import type { JsonValue } from '@pertexo/workflow-model';
 import { invalidInput, projectItems } from './selection.js';
 

@@ -1,2 +1,2 @@
-export * from './definition.js';
-export * from './validation.js';
+export * from './sort.definition.js';
+export * from './sort.schemas.js';

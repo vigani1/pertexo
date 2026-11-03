@@ -6,7 +6,7 @@ import { z } from 'zod';
 import { parseBoundedRetryAfterMillis } from '../http/retry-after.js';
 
 import type { SecureHttpClient, SecureHttpRequest } from '../http/secure.js';
-import { EMAIL_SEND_NOTIFICATION_LIMITS } from './validation.js';
+import { EMAIL_SEND_NOTIFICATION_LIMITS } from './email-send-notification.schemas.js';
 import {
   encodeMessageWithAttachments,
   type ResendAttachment,

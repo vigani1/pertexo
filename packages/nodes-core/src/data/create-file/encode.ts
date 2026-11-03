@@ -1,11 +1,11 @@
 import { utf8ByteLength } from '@pertexo/workflow-model';
 import { ARTIFACT_INPUT_MAX_BYTES, escapeCsvValue } from '@pertexo/node-sdk';
 import type { JsonValue } from '@pertexo/node-sdk/server';
-import { COLLECTION_MAX_ITEMS } from '../lists/semantics/validation.js';
+import { COLLECTION_MAX_ITEMS } from '../lists/semantics/semantics.schemas.js';
 import {
   fileColumnNameSchema,
   type CoreCreateFileConfig,
-} from './validation.js';
+} from './create-file.schemas.js';
 import { refuseFileCreation } from './failure.js';
 import { writeWorkbook, XLSX_MEDIA_TYPE } from './xlsx/workbook.js';
 

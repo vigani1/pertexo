@@ -7,7 +7,7 @@ import {
   resolvedHttpHeadersCredentialSchema,
   type HttpRequestConfig,
   type HttpRequestInput,
-} from './validation.js';
+} from './http-request.schemas.js';
 
 type FailureFactory = () => Error;
 type HttpCredential = z.output<typeof resolvedHttpHeadersCredentialSchema>;
