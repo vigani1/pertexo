@@ -41,7 +41,7 @@ export async function listWorkspaceInvitations(
       const result = await drizzle(client)
         .select({
           ...invitationSelection,
-          created_at_cursor: sql<string>`to_char(${invitations.createdAt},'YYYY-MM-DD"T"HH24:MI:SS.US"Z"')`,
+          created_at_cursor: sql<string>`to_char(${invitations.createdAt} AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"')`,
         })
         .from(invitations)
         .where(
