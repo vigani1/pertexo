@@ -1,6 +1,9 @@
-import {
+import type { z } from 'zod';
+import type {
   publicationReviewRequestSchema,
   publicationReviewDecisionSchema,
+} from '@pertexo/contracts';
+import {
   publicationReviewSchema,
   publicationReviewOverviewSchema,
   publicationReviewDetailSchema,
@@ -12,7 +15,6 @@ import {
   BROWSABLE_WORKSPACE_STATUSES,
 } from '../../authorization/index.js';
 import type { WorkflowApplicationInput } from '../ports.js';
-import { parseRequestInput } from '../../platform/http/index.js';
 
 type Scope = WorkflowApplicationInput & {
   signal?: AbortSignal;
@@ -42,16 +44,13 @@ export class PublicationReviewUseCase {
   }
   async request(
     input: WorkflowInput & {
-      request: unknown;
+      request: z.output<typeof publicationReviewRequestSchema>;
       representationTag: string;
       idempotencyKey: string;
     },
   ) {
     await this.authorize(input, 'workflow:publish');
-    const body = parseRequestInput(
-      publicationReviewRequestSchema,
-      input.request,
-    );
+    const body = input.request;
     return publicationReviewSchema.parse(
       await this.store.request({
         ...this.scope(input),
@@ -63,13 +62,13 @@ export class PublicationReviewUseCase {
     );
   }
   async decide(
-    input: RequestInput & { request: unknown; idempotencyKey: string },
+    input: RequestInput & {
+      request: z.output<typeof publicationReviewDecisionSchema>;
+      idempotencyKey: string;
+    },
   ) {
     await this.authorize(input, 'governance:manage');
-    const body = parseRequestInput(
-      publicationReviewDecisionSchema,
-      input.request,
-    );
+    const body = input.request;
     return publicationReviewSchema.parse(
       await this.store.decide({
         ...this.scope(input),

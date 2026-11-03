@@ -98,9 +98,9 @@ function contractSchemas() {
     ...workflowAutoPauseContractSchemas(project),
     ...workflowConcurrencyContractSchemas(project),
     ...workflowErrorContractSchemas(),
-    ...publicationReviewContractSchemas(project),
+    ...publicationReviewContractSchemas(),
     ...collaborationContractSchemas(project),
-    ...workflowPromotionContractSchemas(project),
+    ...workflowPromotionContractSchemas(),
     ...workflowInputCaseContractSchemas(project),
     ...workflowOrganizationContractSchemas(project),
     WorkflowRevisionConflictProblem: project(

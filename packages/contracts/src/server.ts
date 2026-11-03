@@ -49,3 +49,5 @@ export { workspaceRoutes } from './routes/identity/workspaces.js';
 export { invitationRoutes } from './routes/identity/invitations.js';
 export { workflowSettingsRoutes } from './routes/workflows/settings.js';
 export { inputCaseRoutes } from './routes/workflows/input-cases.js';
+export { publicationReviewRoutes } from './routes/workflows/reviews.js';
+export { promotionRoutes } from './routes/workflows/promotions.js';

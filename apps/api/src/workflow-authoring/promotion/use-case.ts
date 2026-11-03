@@ -1,14 +1,17 @@
+import type { z } from 'zod';
+import type {
+  workflowPromotionTargetSchema,
+  workflowPromotionPageQuerySchema,
+  workflowPromotionCandidatesQuerySchema,
+  workflowPromotionPreviewRequestSchema,
+  workflowPromotionApplySchema,
+} from '@pertexo/contracts';
 import {
   workflowPromotionSettingsSchema,
-  workflowPromotionTargetSchema,
   workflowPromotionTargetResultSchema,
-  workflowPromotionPageQuerySchema,
   workflowPromotionCandidatesSchema,
-  workflowPromotionCandidatesQuerySchema,
   workflowPromotionHistorySchema,
-  workflowPromotionPreviewRequestSchema,
   workflowPromotionPreviewSchema,
-  workflowPromotionApplySchema,
   workflowPromotionResultSchema,
 } from '@pertexo/contracts';
 import type { WorkflowPromotionStore } from '@pertexo/core/authoring';
@@ -19,14 +22,14 @@ import {
   type WorkspaceStatus,
 } from '../../authorization/index.js';
 import type { WorkflowApplicationInput } from '../ports.js';
-import { parseRequestInput } from '../../platform/http/index.js';
 
 type Scope = WorkflowApplicationInput & {
   signal?: AbortSignal;
   traceparent?: string;
 };
-type Read = Scope & { request: unknown };
-type Command = Read & { idempotencyKey: string };
+type Read<Request> = Scope & { request: Request };
+type Command<Request> = Read<Request> & { idempotencyKey: string };
+type Of<Schema extends z.ZodType> = z.output<Schema>;
 export class WorkflowPromotionUseCase {
   constructor(
     private readonly store: WorkflowPromotionStore,
@@ -38,12 +41,9 @@ export class WorkflowPromotionUseCase {
       await this.store.settings(this.scope(input)),
     );
   }
-  async setTarget(input: Command) {
+  async setTarget(input: Command<Of<typeof workflowPromotionTargetSchema>>) {
     await this.authorize(input, 'workspace:manage');
-    const body = parseRequestInput(
-      workflowPromotionTargetSchema,
-      input.request,
-    );
+    const body = input.request;
     return workflowPromotionTargetResultSchema.parse(
       await this.store.setTarget({
         ...this.scope(input),
@@ -52,38 +52,31 @@ export class WorkflowPromotionUseCase {
       }),
     );
   }
-  async candidates(input: Read) {
+  async candidates(
+    input: Read<Of<typeof workflowPromotionCandidatesQuerySchema>>,
+  ) {
     await this.authorizeRead(input);
-    const query = parseRequestInput(
-      workflowPromotionCandidatesQuerySchema,
-      input.request,
-    );
+    const query = input.request;
     return workflowPromotionCandidatesSchema.parse(
       await this.store.candidates({ ...this.scope(input), ...query }),
     );
   }
-  async history(input: Read) {
+  async history(input: Read<Of<typeof workflowPromotionPageQuerySchema>>) {
     await this.authorizeRead(input);
-    const query = parseRequestInput(
-      workflowPromotionPageQuerySchema,
-      input.request,
-    );
+    const query = input.request;
     return workflowPromotionHistorySchema.parse(
       await this.store.history({ ...this.scope(input), ...query }),
     );
   }
-  async preview(input: Read) {
+  async preview(input: Read<Of<typeof workflowPromotionPreviewRequestSchema>>) {
     await this.authorize(input, 'workflow:update');
-    const body = parseRequestInput(
-      workflowPromotionPreviewRequestSchema,
-      input.request,
-    );
+    const body = input.request;
     return workflowPromotionPreviewSchema.parse(
       await this.store.preview({ ...this.scope(input), ...body }),
     );
   }
-  async apply(input: Command) {
-    const body = parseRequestInput(workflowPromotionApplySchema, input.request);
+  async apply(input: Command<Of<typeof workflowPromotionApplySchema>>) {
+    const body = input.request;
     await this.authorize(
       input,
       body.mode === 'draft' ? 'workflow:update' : 'workflow:publish',

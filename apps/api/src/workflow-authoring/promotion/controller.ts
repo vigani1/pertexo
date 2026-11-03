@@ -1,152 +1,111 @@
+import { Controller, Req, UseInterceptors } from '@nestjs/common';
 import {
-  Body,
-  Controller,
-  Get,
-  Header,
-  HttpCode,
-  Param,
-  Post,
-  Put,
-  Query,
-  Req,
-  UseGuards,
-  UseInterceptors,
-} from '@nestjs/common';
-import { z } from 'zod';
-import {
-  CsrfProtectionGuard,
-  SessionAuthenticationGuard,
-} from '../../workspaces/index.js';
+  promotionRoutes as routes,
+  type RouteInput,
+} from '@pertexo/contracts/server';
+import { In, Route } from '../../workspaces/http/route.js';
 import { projectAuthenticatedWorkspaceContext } from '../../workspaces/request/authenticated-context.js';
-import {
-  requestIdempotencyKey,
-  withRequestOperationSignal,
-} from '../../platform/http/index.js';
+import { withRequestOperationSignal } from '../../platform/http/index.js';
 import { singleRequestHeader } from '../../platform/http/request-headers.js';
-import { RateLimit } from '../../platform/rate-limit/metadata.js';
-import {
-  WorkflowEditorReadGuard,
-  WorkflowUpdateGuard,
-  WorkflowPauseDefaultGuard,
-} from '../http/guards.js';
-
 import type { WorkflowAuthoringRequest } from '../types.js';
 import { WorkflowPromotionUseCase } from './use-case.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
 import { authoringFailure } from '../../problems/context/normalize.js';
 
 @UseInterceptors(domainErrors(authoringFailure))
-@Controller('v1/workspaces/:workspaceId/promotions')
-@RateLimit('authenticated_read')
-@UseGuards(SessionAuthenticationGuard)
+@Controller()
 export class WorkflowPromotionController {
-  constructor(private readonly controls: WorkflowPromotionUseCase) {}
-  @Header('Cache-Control', 'private, no-store')
-  @Get('settings')
-  @UseGuards(WorkflowEditorReadGuard)
-  async settings(
+  constructor(private readonly promotions: WorkflowPromotionUseCase) {}
+
+  @Route(routes.settings)
+  settings(
     @Req() request: WorkflowAuthoringRequest,
-    @Param('workspaceId') workspaceId: string,
+    @In() { params }: RouteInput<typeof routes.settings>,
   ) {
-    return await withRequestOperationSignal(request, (signal) =>
-      this.controls.settings({ ...context(request, workspaceId), signal }),
+    return withRequestOperationSignal(request, (signal) =>
+      this.promotions.settings({ ...context(request, params), signal }),
     );
   }
-  @Header('Cache-Control', 'private, no-store')
-  @Put('settings')
-  @HttpCode(200)
-  @RateLimit('ordinary_mutation')
-  @UseGuards(
-    WorkflowUpdateGuard,
-    WorkflowPauseDefaultGuard,
-    CsrfProtectionGuard,
-  )
-  async setTarget(
+
+  @Route(routes.setTarget)
+  setTarget(
     @Req() request: WorkflowAuthoringRequest,
-    @Param('workspaceId') workspaceId: string,
-    @Body() body: unknown,
+    @In() { params, body, idempotencyKey }: RouteInput<typeof routes.setTarget>,
   ) {
-    return await withRequestOperationSignal(request, (signal) =>
-      this.controls.setTarget({
-        ...context(request, workspaceId),
+    return withRequestOperationSignal(request, (signal) =>
+      this.promotions.setTarget({
+        ...context(request, params),
         request: body,
-        idempotencyKey: requestIdempotencyKey(request.headers),
+        idempotencyKey,
         signal,
       }),
     );
   }
-  @Header('Cache-Control', 'private, no-store')
-  @Get('candidates')
-  @UseGuards(WorkflowEditorReadGuard)
-  async candidates(
+
+  @Route(routes.candidates)
+  candidates(
     @Req() request: WorkflowAuthoringRequest,
-    @Param('workspaceId') workspaceId: string,
-    @Query() query: unknown,
+    @In() { params, query }: RouteInput<typeof routes.candidates>,
   ) {
-    return await withRequestOperationSignal(request, (signal) =>
-      this.controls.candidates({
-        ...context(request, workspaceId),
+    return withRequestOperationSignal(request, (signal) =>
+      this.promotions.candidates({
+        ...context(request, params),
         request: query,
         signal,
       }),
     );
   }
-  @Header('Cache-Control', 'private, no-store')
-  @Get('history')
-  @UseGuards(WorkflowEditorReadGuard)
-  async history(
+
+  @Route(routes.history)
+  history(
     @Req() request: WorkflowAuthoringRequest,
-    @Param('workspaceId') workspaceId: string,
-    @Query() query: unknown,
+    @In() { params, query }: RouteInput<typeof routes.history>,
   ) {
-    return await withRequestOperationSignal(request, (signal) =>
-      this.controls.history({
-        ...context(request, workspaceId),
+    return withRequestOperationSignal(request, (signal) =>
+      this.promotions.history({
+        ...context(request, params),
         request: query,
         signal,
       }),
     );
   }
-  @Header('Cache-Control', 'private, no-store')
-  @Post('preview')
-  @HttpCode(200)
-  @RateLimit('workflow_compile')
-  @UseGuards(WorkflowUpdateGuard, CsrfProtectionGuard)
-  async preview(
+
+  @Route(routes.preview)
+  preview(
     @Req() request: WorkflowAuthoringRequest,
-    @Param('workspaceId') workspaceId: string,
-    @Body() body: unknown,
+    @In() { params, body }: RouteInput<typeof routes.preview>,
   ) {
-    return await withRequestOperationSignal(request, (signal) =>
-      this.controls.preview({
-        ...context(request, workspaceId),
+    return withRequestOperationSignal(request, (signal) =>
+      this.promotions.preview({
+        ...context(request, params),
         request: body,
         signal,
       }),
     );
   }
-  @Header('Cache-Control', 'private, no-store')
-  @Post('apply')
-  @HttpCode(200)
-  @RateLimit('workflow_compile')
-  @UseGuards(WorkflowUpdateGuard, CsrfProtectionGuard)
-  async apply(
+
+  @Route(routes.apply)
+  apply(
     @Req() request: WorkflowAuthoringRequest,
-    @Param('workspaceId') workspaceId: string,
-    @Body() body: unknown,
+    @In() { params, body, idempotencyKey }: RouteInput<typeof routes.apply>,
   ) {
-    return await withRequestOperationSignal(request, (signal) =>
-      this.controls.apply({
-        ...context(request, workspaceId),
+    return withRequestOperationSignal(request, (signal) =>
+      this.promotions.apply({
+        ...context(request, params),
         request: body,
-        idempotencyKey: requestIdempotencyKey(request.headers),
+        idempotencyKey,
         signal,
       }),
     );
   }
 }
-function context(request: WorkflowAuthoringRequest, workspaceIdInput: string) {
-  const workspaceId = z.uuid().parse(workspaceIdInput).toLowerCase();
+
+/** Promotion keys records by the lower-case workspace ID, whatever the path's case. */
+function context(
+  request: WorkflowAuthoringRequest,
+  params: Readonly<{ workspaceId: string }>,
+) {
+  const workspaceId = params.workspaceId.toLowerCase();
   const traceparent = singleRequestHeader(request.headers, 'traceparent');
   return {
     ...projectAuthenticatedWorkspaceContext(request, workspaceId),
