@@ -27,7 +27,9 @@ type Successes<Route extends AnyRoute> =
       : never);
 type SuccessResponse<Success> = Success extends { body: NamedSchema }
   ? ReturnType<typeof jsonResponse> &
-      (Success extends { headers: infer Headers } ? { headers: Headers } : {})
+      (Success extends { headers: infer Headers }
+        ? { headers: Headers }
+        : unknown)
   : Success extends { response: infer Response }
     ? Response
     : never;
@@ -55,7 +57,7 @@ type RouteOperation<Route extends AnyRoute> = Omit<
     : Route extends { body: NamedSchema }
       ? { requestBody: ReturnType<typeof jsonRequest> }
       : { requestBody?: never });
-type RoutePaths<Routes extends readonly AnyRoute[]> = {
+export type RoutePaths<Routes extends readonly AnyRoute[]> = {
   [Path in Routes[number]['path']]: {
     [
       Method in Extract<Routes[number], { path: Path }>['method']
