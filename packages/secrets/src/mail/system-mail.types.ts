@@ -3,7 +3,7 @@ import type { SystemMailPurpose } from '@pertexo/database/schema';
 export type { SystemMailPurpose };
 
 import type { ApplicationSealedSecret } from '../encryption/application-secret-envelope.js';
-export type SealedSystemMailPayload = ApplicationSealedSecret;
+export type SealedSystemMailPayload = Readonly<ApplicationSealedSecret>;
 
 export type SystemMailInput = Readonly<{
   id: string;

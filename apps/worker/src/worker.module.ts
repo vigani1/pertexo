@@ -1,3 +1,4 @@
+import { reportUnavailableMailKey } from './mail/report-unavailable-mail-key.js';
 import { createSystemMailClient } from './mail/system-mail-client.js';
 import { sealNoticeMail } from './mail/notice-content.js';
 import 'reflect-metadata';
@@ -269,11 +270,7 @@ function systemMailProvider(
         timeoutMillis: mail.timeoutMillis,
         workerId: mail.workerId,
         onUnavailableKey: (version) => {
-          dependencies.logger.warn('system_mail.key_unavailable', {
-            keyVersion: version,
-            instruction:
-              'Restore this version in AUTH_MAIL_PREVIOUS_KEYS and restart the worker. Affected mail waits encrypted; workflows continue.',
-          });
+          reportUnavailableMailKey(dependencies.logger, version);
         },
         onFailure: (failure) => {
           dependencies.logger.error('system_mail.delivery_failed', {

@@ -1,3 +1,4 @@
+import { authenticationMailAssociatedData } from '@pertexo/secrets/server';
 import { sealNoticeUnsubscribe } from '@pertexo/core/inbox';
 import type { ApplicationSecretEnvelope } from '@pertexo/secrets/server';
 import type { NoticeMailItem, NoticeMailToSeal } from '@pertexo/core/inbox';
@@ -64,7 +65,11 @@ export function sealNoticeMail(
   }
   return envelope.seal(
     serialized,
-    `pertexo/authentication-mail/workspace_notice/${input.id}/${input.expiresAt.toISOString()}`,
+    authenticationMailAssociatedData(
+      'workspace_notice',
+      input.id,
+      input.expiresAt,
+    ),
   );
 }
 
