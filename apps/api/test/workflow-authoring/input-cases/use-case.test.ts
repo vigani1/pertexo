@@ -1,5 +1,4 @@
-import 'reflect-metadata';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
   inputCaseFailure,
   authoringFailure,
@@ -27,29 +26,24 @@ import {
   fixture,
 } from './use-case/fixture.js';
 import { toProblem } from '../../../src/problems/registry.js';
+import { WorkflowInputCasesUseCase } from '../../../src/workflow-authoring/input-cases/use-case.js';
+import { WORKSPACE_AUTHORIZATION } from '../../../src/workspaces/tokens.js';
+import { FakeIdentityModule } from '../../support/identity-module.js';
+import { ownerAccess, routeHarness } from '../../support/route-harness.js';
 import { createWorkflowInputCaseTag } from '@pertexo/contracts';
 import {
   WorkflowInputCaseRevisionConflictError,
   WorkflowInputCaseLimitError,
 } from '@pertexo/core/authoring';
-import { GUARDS_METADATA, HEADERS_METADATA } from '@nestjs/common/constants.js';
 import {
   WorkflowInputCasesController,
   parseCaseIfMatch,
 } from '../../../src/workflow-authoring/input-cases/controller.js';
-import {
-  WorkflowReadGuard,
-  WorkflowUpdateGuard,
-} from '../../../src/workflow-authoring/http/guards.js';
-import {
-  SessionAuthenticationGuard,
-  CsrfProtectionGuard,
-} from '../../../src/workspaces/index.js';
 
 describe('workflow input case application interface', () => {
   it('serializes dates/validators, paginates metadata only and scopes opaque cursors', async () => {
     const { persistence, cases } = fixture('viewer');
-    const page = await cases.list({ ...context, query: { limit: '5' } });
+    const page = await cases.list({ ...context, query: { limit: 5 } });
     expect(page.items[0]).toEqual({
       ...item,
       createdAt: item.createdAt.toISOString(),
@@ -59,7 +53,7 @@ describe('workflow input case application interface', () => {
     expect(page.items[0]).not.toHaveProperty('input');
     expect(page.nextCursor).toBeDefined();
     const nextCursor = page.nextCursor ?? '';
-    await cases.list({ ...context, query: { after: nextCursor } });
+    await cases.list({ ...context, query: { limit: 20, after: nextCursor } });
     expect(persistence.listCases).toHaveBeenLastCalledWith({
       workspaceId,
       workflowId,
@@ -71,7 +65,9 @@ describe('workflow input case application interface', () => {
       value: 1,
     });
     persistence.listCases.mockResolvedValue({ items: [] });
-    expect(await cases.list({ ...context, query: {} })).toEqual({ items: [] });
+    expect(await cases.list({ ...context, query: { limit: 20 } })).toEqual({
+      items: [],
+    });
     expect(() =>
       decodeInputCaseCursor(nextCursor, { workspaceId, workflowId: caseId }),
     ).toThrow();
@@ -139,7 +135,7 @@ describe('workflow input case application interface', () => {
           ...command,
           request: {
             workflowVersionId: versionId,
-            name: ' Synthetic ',
+            name: 'Synthetic',
             input: null,
           },
         }),
@@ -239,13 +235,13 @@ describe('workflow input case application interface', () => {
     const abort = new AbortController();
     abort.abort();
     await expect(
-      cases.list({ ...context, query: {}, signal: abort.signal }),
+      cases.list({ ...context, query: { limit: 20 }, signal: abort.signal }),
     ).rejects.toMatchObject({ name: 'AbortError' });
     expect(persistence.getCase).not.toHaveBeenCalled();
     expect(persistence.listCases).not.toHaveBeenCalled();
   });
 
-  it('denies rebinding, oversized JSON and wrong-case or malformed validators before persistence', async () => {
+  it('denies wrong-case or malformed validators before persistence', async () => {
     const { cases, persistence } = fixture();
     const command = {
       ...context,
@@ -253,22 +249,6 @@ describe('workflow input case application interface', () => {
       representationTag,
       idempotencyKey: 'case-once',
     };
-    await expect(
-      cases.update({
-        ...command,
-        request: { name: 'x', input: {}, workflowVersionId: versionId },
-      }),
-    ).rejects.toMatchObject({ name: 'ZodError' });
-    await expect(
-      cases.create({
-        ...command,
-        request: {
-          name: 'x',
-          input: 'a'.repeat(65_536),
-          workflowVersionId: versionId,
-        },
-      }),
-    ).rejects.toMatchObject({ name: 'ZodError' });
     await expect(
       cases.delete({ ...command, representationTag: 'bad' }),
     ).rejects.toMatchObject({ name: 'WorkflowHeaderError', code: 'invalid' });
@@ -299,6 +279,10 @@ describe('workflow input case application interface', () => {
     ).toMatchObject({ code: 'workflow.input_case_limit_exceeded' });
   });
 });
+// Nest dynamic modules require a class token.
+// eslint-disable-next-line @typescript-eslint/no-extraneous-class
+class InputCaseRoutesUnderTest {}
+
 describe('workflow input case HTTP interface', () => {
   it('enforces exact strong If-Match grammar', () => {
     expect(parseCaseIfMatch([representationTag])).toBe(representationTag);
@@ -319,106 +303,82 @@ describe('workflow input case HTTP interface', () => {
       );
   });
 
-  it('declares session/read, update/CSRF, ordinary mutations and no-store on every route', () => {
-    for (const name of ['list', 'get', 'create', 'update', 'delete'] as const) {
-      // Metadata inspection does not invoke unbound controller methods.
-      // eslint-disable-next-line @typescript-eslint/unbound-method
-      const method = WorkflowInputCasesController.prototype[name];
-      expect(Reflect.getMetadata(GUARDS_METADATA, method)).toEqual(
-        name === 'list' || name === 'get'
-          ? [SessionAuthenticationGuard, WorkflowReadGuard]
-          : [
-              SessionAuthenticationGuard,
-              WorkflowUpdateGuard,
-              CsrfProtectionGuard,
-            ],
-      );
-      expect(Reflect.getMetadata(HEADERS_METADATA, method)).toContainEqual({
-        name: 'Cache-Control',
-        value: 'private, no-store',
-      });
-    }
-  });
-
-  it('passes commands and emits current GET ETag while rejecting malformed routes/headers', async () => {
-    const { cases } = fixture();
-    const controller = new WorkflowInputCasesController(cases);
-    const request = {
-      headers: {
+  it('answers commands, sends the current ETag and refuses bad input over HTTP', async () => {
+    const { cases, persistence } = fixture();
+    const harness = await routeHarness({
+      module: InputCaseRoutesUnderTest,
+      imports: [{ module: FakeIdentityModule }],
+      controllers: [WorkflowInputCasesController],
+      providers: [
+        { provide: WORKSPACE_AUTHORIZATION, useValue: ownerAccess },
+        { provide: WorkflowInputCasesUseCase, useValue: cases },
+      ],
+    });
+    try {
+      const root = `/v1/workspaces/${workspaceId}/workflows/${workflowId}/input-cases`;
+      const one = `${root}/${caseId}`;
+      const headers = {
         'idempotency-key': 'case-once',
         'if-match': representationTag,
-      },
-      identitySession: {
-        userId: actorId,
-        sessionId,
-        expiresAt: new Date('2027-01-01'),
-        clientMetadata: {},
-      },
-      requestId: 'input-case-test',
-    };
-    expect(
-      await controller.list(request, { workspaceId, workflowId }, {}),
-    ).toHaveProperty('items');
-    const response = { header: vi.fn() };
-    expect(
-      await controller.get(
-        request,
-        { workspaceId, workflowId, caseId },
-        response,
-      ),
-    ).toHaveProperty('case.input');
-    expect(response.header).toHaveBeenCalledWith('ETag', representationTag);
-    expect(
-      await controller.create(
-        request,
-        { workspaceId, workflowId },
-        { name: 'x', input: {}, workflowVersionId: versionId },
-      ),
-    ).toEqual(result);
-    expect(
-      await controller.update(
-        request,
-        { workspaceId, workflowId, caseId },
-        { name: 'x', input: {} },
-      ),
-    ).toEqual(result);
-    expect(
-      await controller.delete(request, { workspaceId, workflowId, caseId }),
-    ).toEqual(result);
-    await expect(
-      problemResult(
-        controller.update(
-          { ...request, headers: { 'idempotency-key': 'case-once' } },
-          { workspaceId, workflowId, caseId },
-          { name: 'x', input: {} },
-        ),
-        inputCaseFailure,
-      ),
-    ).rejects.toMatchObject({ code: 'request.precondition_required' });
-    await expect(
-      problemResult(
-        controller.delete(
-          {
-            ...request,
-            headers: {
-              'idempotency-key': 'bad,key',
-              'if-match': representationTag,
-            },
+      };
+      expect((await harness.send('GET', root)).json()).toHaveProperty('items');
+      const read = await harness.send('GET', one);
+      expect(read.json()).toHaveProperty('case.input');
+      expect(read.headers.etag).toBe(representationTag);
+      expect(read.headers['cache-control']).toBe('private, no-store');
+      const created = await harness.send('POST', root, {
+        body: { name: ' x ', input: {}, workflowVersionId: versionId },
+        headers,
+      });
+      expect(created.statusCode, created.payload).toBe(201);
+      expect(persistence.createCase).toHaveBeenCalledWith(
+        expect.objectContaining({ name: 'x' }),
+      );
+      const updated = await harness.send('PUT', one, {
+        body: { name: 'x', input: {} },
+        headers,
+      });
+      expect(updated.json()).toEqual(result);
+      expect((await harness.send('DELETE', one, { headers })).json()).toEqual(
+        result,
+      );
+      const refusals = [
+        // Rebinding the version, and input past the size bound.
+        harness.send('PUT', one, {
+          body: { name: 'x', input: {}, workflowVersionId: versionId },
+          headers,
+        }),
+        harness.send('POST', root, {
+          body: {
+            name: 'x',
+            input: 'a'.repeat(65_536),
+            workflowVersionId: versionId,
           },
-          { workspaceId, workflowId, caseId },
-        ),
-        inputCaseFailure,
-      ),
-    ).rejects.toMatchObject({ code: 'request.invalid' });
-    await expect(
-      problemResult(
-        controller.get(
-          request,
-          { workspaceId, workflowId, caseId: 'bad' },
-          response,
-        ),
-        inputCaseFailure,
-      ),
-    ).rejects.toMatchObject({ code: 'request.invalid' });
+          headers,
+        }),
+        harness.send('DELETE', one, {
+          headers: {
+            'idempotency-key': 'bad,key',
+            'if-match': representationTag,
+          },
+        }),
+        harness.send('GET', `${root}/bad`),
+      ];
+      for (const reply of await Promise.all(refusals)) {
+        expect(reply.statusCode).toBe(400);
+        expect(reply.json()).toMatchObject({ code: 'request.invalid' });
+      }
+      const unconditional = await harness.send('PUT', one, {
+        body: { name: 'x', input: {} },
+        headers: { 'idempotency-key': 'case-once' },
+      });
+      expect(unconditional.statusCode).toBe(428);
+      expect(unconditional.json()).toMatchObject({
+        code: 'request.precondition_required',
+      });
+      expect(persistence.createCase).toHaveBeenCalledOnce();
+    } finally {
+      await harness.close();
+    }
   });
 });

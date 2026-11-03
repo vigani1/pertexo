@@ -4468,7 +4468,6 @@
             "name": "workspaceId",
             "in": "path",
             "required": true,
-            "description": "Workspace identifier",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
@@ -4480,7 +4479,6 @@
             "name": "workflowId",
             "in": "path",
             "required": true,
-            "description": "Workflow identifier",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
@@ -4493,10 +4491,11 @@
             "in": "query",
             "required": false,
             "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "default": 20,
               "type": "integer",
               "minimum": 1,
-              "maximum": 100,
-              "default": 20
+              "maximum": 100
             }
           },
           {
@@ -4504,6 +4503,7 @@
             "in": "query",
             "required": false,
             "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
               "minLength": 1,
               "maxLength": 1024
@@ -4551,7 +4551,6 @@
             "name": "workspaceId",
             "in": "path",
             "required": true,
-            "description": "Workspace identifier",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
@@ -4563,7 +4562,6 @@
             "name": "workflowId",
             "in": "path",
             "required": true,
-            "description": "Workflow identifier",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
@@ -4651,7 +4649,6 @@
             "name": "workspaceId",
             "in": "path",
             "required": true,
-            "description": "Workspace identifier",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
@@ -4663,7 +4660,6 @@
             "name": "workflowId",
             "in": "path",
             "required": true,
-            "description": "Workflow identifier",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
@@ -4675,7 +4671,6 @@
             "name": "caseId",
             "in": "path",
             "required": true,
-            "description": "Run-input case identifier",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
@@ -4736,7 +4731,6 @@
             "name": "workspaceId",
             "in": "path",
             "required": true,
-            "description": "Workspace identifier",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
@@ -4748,7 +4742,6 @@
             "name": "workflowId",
             "in": "path",
             "required": true,
-            "description": "Workflow identifier",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
@@ -4760,7 +4753,6 @@
             "name": "caseId",
             "in": "path",
             "required": true,
-            "description": "Run-input case identifier",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
@@ -4870,7 +4862,6 @@
             "name": "workspaceId",
             "in": "path",
             "required": true,
-            "description": "Workspace identifier",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
@@ -4882,7 +4873,6 @@
             "name": "workflowId",
             "in": "path",
             "required": true,
-            "description": "Workflow identifier",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
@@ -4894,7 +4884,6 @@
             "name": "caseId",
             "in": "path",
             "required": true,
-            "description": "Run-input case identifier",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
@@ -14923,70 +14912,221 @@
         ],
         "additionalProperties": false
       },
-      "WorkflowInputCaseMetadata": {
+      "WorkflowInputCaseListResponse": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "type": "object",
         "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid",
-            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          "items": {
+            "maxItems": 100,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                },
+                "workspaceId": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                },
+                "workflowId": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                },
+                "workflowVersionId": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                },
+                "versionChecksum": {
+                  "type": "string",
+                  "pattern": "^wf:sha256:[0-9a-f]{64}$"
+                },
+                "name": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128
+                },
+                "revision": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 2147483647
+                },
+                "representationTag": {
+                  "type": "string",
+                  "pattern": "^\"wic1\\.[0-9a-f]{32}\\.[0-9a-z]{1,6}\"$"
+                },
+                "createdAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                },
+                "updatedAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                }
+              },
+              "required": [
+                "id",
+                "workspaceId",
+                "workflowId",
+                "workflowVersionId",
+                "versionChecksum",
+                "name",
+                "revision",
+                "representationTag",
+                "createdAt",
+                "updatedAt"
+              ],
+              "additionalProperties": false
+            }
           },
-          "workspaceId": {
+          "nextCursor": {
             "type": "string",
-            "format": "uuid",
-            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-          },
-          "workflowId": {
-            "type": "string",
-            "format": "uuid",
-            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-          },
+            "minLength": 1,
+            "maxLength": 1024
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "additionalProperties": false
+      },
+      "WorkflowInputCaseCreateRequest": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
           "workflowVersionId": {
             "type": "string",
             "format": "uuid",
             "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-          },
-          "versionChecksum": {
-            "type": "string",
-            "pattern": "^wf:sha256:[0-9a-f]{64}$"
           },
           "name": {
             "type": "string",
             "minLength": 1,
             "maxLength": 128
           },
+          "input": {
+            "description": "Manually entered JSON; bounded validation does not guarantee acceptance by workflow nodes or providers.",
+            "x-pertexo-runtime-max-bytes": 65536,
+            "x-pertexo-runtime-max-depth": 64,
+            "x-pertexo-runtime-max-members": 10000
+          },
+          "expectations": {
+            "type": "object",
+            "properties": {
+              "outcome": {
+                "default": "succeeds",
+                "type": "string",
+                "enum": [
+                  "succeeds",
+                  "fails"
+                ]
+              },
+              "assertions": {
+                "default": [],
+                "maxItems": 20,
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "source": {
+                      "oneOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "kind": {
+                              "type": "string",
+                              "const": "final"
+                            }
+                          },
+                          "required": [
+                            "kind"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "kind": {
+                              "type": "string",
+                              "const": "step"
+                            },
+                            "nodeId": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 256
+                            }
+                          },
+                          "required": [
+                            "kind",
+                            "nodeId"
+                          ],
+                          "additionalProperties": false
+                        }
+                      ]
+                    },
+                    "path": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 512
+                    },
+                    "operator": {
+                      "type": "string",
+                      "enum": [
+                        "equals",
+                        "contains"
+                      ]
+                    },
+                    "expected": {}
+                  },
+                  "required": [
+                    "source",
+                    "path",
+                    "operator",
+                    "expected"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "workflowVersionId",
+          "name",
+          "input"
+        ],
+        "additionalProperties": false
+      },
+      "WorkflowInputCaseCommandResponse": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "caseId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
           "revision": {
             "type": "integer",
             "minimum": 1,
             "maximum": 2147483647
           },
-          "representationTag": {
-            "type": "string",
-            "pattern": "^\"wic1\\.[0-9a-f]{32}\\.[0-9a-z]{1,6}\"$"
-          },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time",
-            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
-          },
-          "updatedAt": {
-            "type": "string",
-            "format": "date-time",
-            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          "replayed": {
+            "type": "boolean"
           }
         },
         "required": [
-          "id",
-          "workspaceId",
-          "workflowId",
-          "workflowVersionId",
-          "versionChecksum",
-          "name",
+          "caseId",
           "revision",
-          "representationTag",
-          "createdAt",
-          "updatedAt"
+          "replayed"
         ],
         "additionalProperties": false
       },
@@ -15224,199 +15364,6 @@
           }
         }
       },
-      "WorkflowInputCaseListResponse": {
-        "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "type": "object",
-        "properties": {
-          "items": {
-            "maxItems": 100,
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {
-                "id": {
-                  "type": "string",
-                  "format": "uuid",
-                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-                },
-                "workspaceId": {
-                  "type": "string",
-                  "format": "uuid",
-                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-                },
-                "workflowId": {
-                  "type": "string",
-                  "format": "uuid",
-                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-                },
-                "workflowVersionId": {
-                  "type": "string",
-                  "format": "uuid",
-                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-                },
-                "versionChecksum": {
-                  "type": "string",
-                  "pattern": "^wf:sha256:[0-9a-f]{64}$"
-                },
-                "name": {
-                  "type": "string",
-                  "minLength": 1,
-                  "maxLength": 128
-                },
-                "revision": {
-                  "type": "integer",
-                  "minimum": 1,
-                  "maximum": 2147483647
-                },
-                "representationTag": {
-                  "type": "string",
-                  "pattern": "^\"wic1\\.[0-9a-f]{32}\\.[0-9a-z]{1,6}\"$"
-                },
-                "createdAt": {
-                  "type": "string",
-                  "format": "date-time",
-                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
-                },
-                "updatedAt": {
-                  "type": "string",
-                  "format": "date-time",
-                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
-                }
-              },
-              "required": [
-                "id",
-                "workspaceId",
-                "workflowId",
-                "workflowVersionId",
-                "versionChecksum",
-                "name",
-                "revision",
-                "representationTag",
-                "createdAt",
-                "updatedAt"
-              ],
-              "additionalProperties": false
-            }
-          },
-          "nextCursor": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 1024
-          }
-        },
-        "required": [
-          "items"
-        ],
-        "additionalProperties": false
-      },
-      "WorkflowInputCaseCreateRequest": {
-        "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "type": "object",
-        "properties": {
-          "workflowVersionId": {
-            "type": "string",
-            "format": "uuid",
-            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-          },
-          "name": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 128
-          },
-          "input": {
-            "description": "Manually entered JSON; bounded validation does not guarantee acceptance by workflow nodes or providers.",
-            "x-pertexo-runtime-max-bytes": 65536,
-            "x-pertexo-runtime-max-depth": 64,
-            "x-pertexo-runtime-max-members": 10000
-          },
-          "expectations": {
-            "type": "object",
-            "properties": {
-              "outcome": {
-                "default": "succeeds",
-                "type": "string",
-                "enum": [
-                  "succeeds",
-                  "fails"
-                ]
-              },
-              "assertions": {
-                "default": [],
-                "maxItems": 20,
-                "type": "array",
-                "items": {
-                  "type": "object",
-                  "properties": {
-                    "source": {
-                      "oneOf": [
-                        {
-                          "type": "object",
-                          "properties": {
-                            "kind": {
-                              "type": "string",
-                              "const": "final"
-                            }
-                          },
-                          "required": [
-                            "kind"
-                          ],
-                          "additionalProperties": false
-                        },
-                        {
-                          "type": "object",
-                          "properties": {
-                            "kind": {
-                              "type": "string",
-                              "const": "step"
-                            },
-                            "nodeId": {
-                              "type": "string",
-                              "minLength": 1,
-                              "maxLength": 256
-                            }
-                          },
-                          "required": [
-                            "kind",
-                            "nodeId"
-                          ],
-                          "additionalProperties": false
-                        }
-                      ]
-                    },
-                    "path": {
-                      "type": "string",
-                      "minLength": 1,
-                      "maxLength": 512
-                    },
-                    "operator": {
-                      "type": "string",
-                      "enum": [
-                        "equals",
-                        "contains"
-                      ]
-                    },
-                    "expected": {}
-                  },
-                  "required": [
-                    "source",
-                    "path",
-                    "operator",
-                    "expected"
-                  ],
-                  "additionalProperties": false
-                }
-              }
-            },
-            "additionalProperties": false
-          }
-        },
-        "required": [
-          "workflowVersionId",
-          "name",
-          "input"
-        ],
-        "additionalProperties": false
-      },
       "WorkflowInputCaseUpdateRequest": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "type": "object",
@@ -15519,28 +15466,70 @@
         ],
         "additionalProperties": false
       },
-      "WorkflowInputCaseCommandResponse": {
+      "WorkflowInputCaseMetadata": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "type": "object",
         "properties": {
-          "caseId": {
+          "id": {
             "type": "string",
             "format": "uuid",
             "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "workspaceId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "workflowId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "workflowVersionId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "versionChecksum": {
+            "type": "string",
+            "pattern": "^wf:sha256:[0-9a-f]{64}$"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
           },
           "revision": {
             "type": "integer",
             "minimum": 1,
             "maximum": 2147483647
           },
-          "replayed": {
-            "type": "boolean"
+          "representationTag": {
+            "type": "string",
+            "pattern": "^\"wic1\\.[0-9a-f]{32}\\.[0-9a-z]{1,6}\"$"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
           }
         },
         "required": [
-          "caseId",
+          "id",
+          "workspaceId",
+          "workflowId",
+          "workflowVersionId",
+          "versionChecksum",
+          "name",
           "revision",
-          "replayed"
+          "representationTag",
+          "createdAt",
+          "updatedAt"
         ],
         "additionalProperties": false
       },
