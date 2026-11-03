@@ -74,8 +74,6 @@ it('upgrades only acknowledged unknown invitation deliveries in 0089, preserves 
     const before = await snapshot();
     expect(await upgrade(89)).toEqual([
       '0089_expose_unconfirmed_invitation_delivery.sql',
-      '0090_bound_trigger_failure_evidence.sql',
-      '0091_pending_trigger_success_order.sql',
     ]);
     expect(await snapshot()).toEqual([
       {
