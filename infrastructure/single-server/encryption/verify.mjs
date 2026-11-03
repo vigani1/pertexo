@@ -79,10 +79,10 @@ try {
           ? error.code
           : 'configuration_or_database_invalid',
       detail: verifyingCallbacks
-        ? 'Callback key verification failed; restore CALLBACK_TOKEN_KEY and all required CALLBACK_TOKEN_PREVIOUS_KEYS separately.'
+        ? 'Check CALLBACK_TOKEN_KEY, CALLBACK_TOKEN_KEY_VERSION, CALLBACK_TOKEN_PREVIOUS_KEYS and HTTPS PUBLIC_WEB_ORIGIN; restore all retained callback key versions.'
         : error instanceof StoredKeyVerificationError
           ? error.message
-          : 'Encryption configuration or database access is invalid',
+          : 'Check CONNECTION_ENCRYPTION_MODE, deployed self-managed/KMS settings and database access. Deployed releases forbid local keys and require HTTPS KMS endpoints.',
     }) + '\n',
   );
   process.exitCode = 1;
