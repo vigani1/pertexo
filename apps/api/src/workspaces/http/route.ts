@@ -64,7 +64,7 @@ export function Route(route: AnyRoute): MethodDecorator {
     ...Object.entries(route.responseHeaders ?? {}).map(([name, value]) =>
       Header(name, value),
     ),
-    ...('redirect' in route.success && route.success.redirect
+    ...('redirect' in route.success
       ? [Redirect(undefined, route.success.status)]
       : []),
   );
