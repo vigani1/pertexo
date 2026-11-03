@@ -96,7 +96,12 @@ export function useOrganizationApi(suite: string) {
       `/v1/workspaces/${workspaceId}/sso${path}`,
       { browser, payload, headers: { 'idempotency-key': key } },
     );
-    expect(reply.statusCode, reply.payload).toBe(200);
+    expect(reply.statusCode, reply.payload).toBe(
+      method === 'POST' &&
+        ['/organization', '/domains', '/providers'].includes(path)
+        ? 201
+        : 200,
+    );
     return federationSettingsSchema.parse(reply.json());
   }
   async function setup(ownerInDomain = false) {

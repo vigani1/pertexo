@@ -241,7 +241,7 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
             headers: { 'idempotency-key': randomUUID() },
           })
         ).statusCode,
-      ).toBe(200);
+      ).toBe(201);
       const response = await api.send('POST', `${base}/providers`, {
         browser: owner,
         headers: { 'idempotency-key': randomUUID() },

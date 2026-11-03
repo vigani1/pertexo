@@ -3660,7 +3660,7 @@
           }
         },
         "responses": {
-          "200": {
+          "201": {
             "description": "Safe organization sign-in settings",
             "content": {
               "application/json": {
@@ -3956,7 +3956,7 @@
           }
         },
         "responses": {
-          "200": {
+          "201": {
             "description": "Safe organization sign-in settings",
             "content": {
               "application/json": {
@@ -4740,7 +4740,7 @@
           }
         },
         "responses": {
-          "200": {
+          "201": {
             "description": "Safe organization sign-in settings",
             "content": {
               "application/json": {
@@ -14466,33 +14466,6 @@
         ],
         "additionalProperties": false
       },
-      "SamlMetadata": {
-        "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "type": "object",
-        "properties": {
-          "entityId": {
-            "type": "string",
-            "maxLength": 2048,
-            "format": "uri"
-          },
-          "redirectUri": {
-            "type": "string",
-            "maxLength": 2048,
-            "format": "uri"
-          },
-          "xml": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 65536
-          }
-        },
-        "required": [
-          "entityId",
-          "redirectUri",
-          "xml"
-        ],
-        "additionalProperties": false
-      },
       "FederationOrganizationCreate": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "type": "object",
@@ -14883,6 +14856,33 @@
             "additionalProperties": false
           }
         ]
+      },
+      "SamlMetadata": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "entityId": {
+            "type": "string",
+            "maxLength": 2048,
+            "format": "uri"
+          },
+          "redirectUri": {
+            "type": "string",
+            "maxLength": 2048,
+            "format": "uri"
+          },
+          "xml": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 65536
+          }
+        },
+        "required": [
+          "entityId",
+          "redirectUri",
+          "xml"
+        ],
+        "additionalProperties": false
       },
       "FederationTestStart": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",

@@ -1,230 +1,177 @@
+import { Controller, Req, UseInterceptors } from '@nestjs/common';
 import {
-  federationScope,
-  federationCommand,
-  type FederationManagementRequest,
-  type FederationCommandScope,
-} from './request.js';
-import {
-  Body,
-  Controller,
-  Get,
-  Post,
-  Put,
-  Param,
-  Req,
-  UseGuards,
-  Header,
-  HttpCode,
-  UseInterceptors,
-} from '@nestjs/common';
-import {
-  federationOrganizationCreateSchema,
-  federationWorkspaceLinkSchema,
-  federationDomainCreateSchema,
-  federationRevisionCommandSchema,
-  federationEnforcementSchema,
-  federationProviderCreateSchema,
-  federationProviderUpdateSchema,
-  workspaceIdentifierSchema,
-} from '@pertexo/contracts';
-import {
-  SessionAuthenticationGuard,
-  CsrfProtectionGuard,
-  WorkspaceManageGuard,
-  WorkspaceMemberReadGuard,
-} from '../../../workspaces/index.js';
+  federationRoutes as routes,
+  type RouteInput,
+} from '@pertexo/contracts/server';
 import { withRequestOperationSignal } from '../../../platform/http/index.js';
-import { RateLimit } from '../../../platform/rate-limit/metadata.js';
-import { FederationManagementService } from './service.js';
 import { domainErrors } from '../../../platform/http/problems/interceptor.js';
 import { resourceFailure } from '../../../problems/context/normalize.js';
+import { In, Route } from '../../../workspaces/http/route.js';
+import {
+  federationCommand,
+  federationScope,
+  type FederationCommandScope,
+  type FederationManagementRequest,
+} from './request.js';
+import { FederationManagementService } from './service.js';
 
 type Request = FederationManagementRequest;
 @UseInterceptors(domainErrors(resourceFailure))
-@Controller('v1/workspaces/:workspaceId/sso')
-@UseGuards(SessionAuthenticationGuard)
-@RateLimit('authenticated_read')
+@Controller()
 export class FederationManagementController {
   constructor(private readonly service: FederationManagementService) {}
   private command<T>(
     request: Request,
-    workspace: unknown,
+    input: Pick<RouteInput<typeof routes.create>, 'params' | 'idempotencyKey'>,
     work: (scope: FederationCommandScope) => Promise<T>,
   ) {
-    return federationCommand(request, workspace, (scope) => {
-      this.service.requireConfigured();
-      return work(scope);
-    });
+    return federationCommand(
+      request,
+      {
+        workspaceId: input.params.workspaceId,
+        idempotencyKey: input.idempotencyKey,
+      },
+      (scope) => {
+        this.service.requireConfigured();
+        return work(scope);
+      },
+    );
   }
-  @Get()
-  @UseGuards(WorkspaceMemberReadGuard)
-  @Header('Cache-Control', 'private, no-store')
-  settings(@Req() request: Request, @Param('workspaceId') workspace: unknown) {
+  @Route(routes.settings)
+  settings(
+    @Req() request: Request,
+    @In() { params }: RouteInput<typeof routes.settings>,
+  ) {
     return withRequestOperationSignal(request, (signal) =>
-      this.service.settings({ ...federationScope(request, workspace), signal }),
-    );
-  }
-  @Post('organization')
-  @HttpCode(200)
-  @UseGuards(WorkspaceManageGuard, CsrfProtectionGuard)
-  @RateLimit('ordinary_mutation')
-  create(
-    @Req() request: Request,
-    @Param('workspaceId') workspace: unknown,
-    @Body() raw: unknown,
-  ) {
-    const input = federationOrganizationCreateSchema.parse(raw);
-    return this.command(request, workspace, (scope) =>
-      this.service.store.createOrganization({ ...scope, ...input }),
-    );
-  }
-  @Post('workspaces')
-  @HttpCode(200)
-  @UseGuards(WorkspaceManageGuard, CsrfProtectionGuard)
-  @RateLimit('ordinary_mutation')
-  link(
-    @Req() request: Request,
-    @Param('workspaceId') workspace: unknown,
-    @Body() raw: unknown,
-  ) {
-    const input = federationWorkspaceLinkSchema.parse(raw);
-    return this.command(request, workspace, (scope) =>
-      this.service.store.linkWorkspace({
-        ...scope,
-        targetWorkspaceId: input.workspaceId,
-        defaultRole: input.defaultRole,
-        expectedRevision: input.expectedRevision,
+      this.service.settings({
+        ...federationScope(request, params.workspaceId),
+        signal,
       }),
     );
   }
-  @Post('domains')
-  @HttpCode(200)
-  @UseGuards(WorkspaceManageGuard, CsrfProtectionGuard)
-  @RateLimit('ordinary_mutation')
+  @Route(routes.create)
+  create(
+    @Req() request: Request,
+    @In() input: RouteInput<typeof routes.create>,
+  ) {
+    return this.command(request, input, (scope) =>
+      this.service.store.createOrganization({ ...scope, ...input.body }),
+    );
+  }
+  @Route(routes.link)
+  link(@Req() request: Request, @In() input: RouteInput<typeof routes.link>) {
+    return this.command(request, input, (scope) =>
+      this.service.store.linkWorkspace({
+        ...scope,
+        targetWorkspaceId: input.body.workspaceId,
+        defaultRole: input.body.defaultRole,
+        expectedRevision: input.body.expectedRevision,
+      }),
+    );
+  }
+  @Route(routes.domain)
   domain(
     @Req() request: Request,
-    @Param('workspaceId') workspace: unknown,
-    @Body() raw: unknown,
+    @In() input: RouteInput<typeof routes.domain>,
   ) {
-    const input = federationDomainCreateSchema.parse(raw);
-    return this.command(request, workspace, (scope) =>
-      this.service.store.createDomain({ ...scope, ...input }),
+    return this.command(request, input, (scope) =>
+      this.service.store.createDomain({ ...scope, ...input.body }),
     );
   }
-  @Post('domains/:domainId/verify')
-  @HttpCode(200)
-  @UseGuards(WorkspaceManageGuard, CsrfProtectionGuard)
-  @RateLimit('ordinary_mutation')
+  @Route(routes.verify)
   verify(
     @Req() request: Request,
-    @Param('workspaceId') workspace: unknown,
-    @Param('domainId') domain: unknown,
-    @Body() raw: unknown,
+    @In() input: RouteInput<typeof routes.verify>,
   ) {
-    const input = federationRevisionCommandSchema.parse(raw),
-      domainId = workspaceIdentifierSchema.parse(domain);
-    return this.command(request, workspace, (scope) =>
-      this.service.verifyDomain({ ...scope, ...input, domainId }),
+    return this.command(request, input, (scope) =>
+      this.service.verifyDomain({
+        ...scope,
+        ...input.body,
+        domainId: input.params.domainId,
+      }),
     );
   }
-  @Post('domains/:domainId/renew')
-  @HttpCode(200)
-  @UseGuards(WorkspaceManageGuard, CsrfProtectionGuard)
-  @RateLimit('ordinary_mutation')
-  renew(
-    @Req() request: Request,
-    @Param('workspaceId') workspace: unknown,
-    @Param('domainId') domain: unknown,
-    @Body() raw: unknown,
-  ) {
-    const input = federationRevisionCommandSchema.parse(raw),
-      domainId = workspaceIdentifierSchema.parse(domain);
-    return this.command(request, workspace, (scope) =>
-      this.service.store.renewDomainChallenge({ ...scope, ...input, domainId }),
+  @Route(routes.renew)
+  renew(@Req() request: Request, @In() input: RouteInput<typeof routes.renew>) {
+    return this.command(request, input, (scope) =>
+      this.service.store.renewDomainChallenge({
+        ...scope,
+        ...input.body,
+        domainId: input.params.domainId,
+      }),
     );
   }
-  @Post('domains/:domainId/remove')
-  @HttpCode(200)
-  @UseGuards(WorkspaceManageGuard, CsrfProtectionGuard)
-  @RateLimit('ordinary_mutation')
+  @Route(routes.removeDomain)
   removeDomain(
     @Req() request: Request,
-    @Param('workspaceId') workspace: unknown,
-    @Param('domainId') domain: unknown,
-    @Body() raw: unknown,
+    @In() input: RouteInput<typeof routes.removeDomain>,
   ) {
-    const input = federationRevisionCommandSchema.parse(raw),
-      domainId = workspaceIdentifierSchema.parse(domain);
-    return this.command(request, workspace, (scope) =>
-      this.service.store.removeDomain({ ...scope, ...input, domainId }),
+    return this.command(request, input, (scope) =>
+      this.service.store.removeDomain({
+        ...scope,
+        ...input.body,
+        domainId: input.params.domainId,
+      }),
     );
   }
-  @Put('domains/:domainId/enforcement')
-  @UseGuards(WorkspaceManageGuard, CsrfProtectionGuard)
-  @RateLimit('ordinary_mutation')
+  @Route(routes.enforce)
   enforce(
     @Req() request: Request,
-    @Param('workspaceId') workspace: unknown,
-    @Param('domainId') domain: unknown,
-    @Body() raw: unknown,
+    @In() input: RouteInput<typeof routes.enforce>,
   ) {
-    const input = federationEnforcementSchema.parse(raw),
-      domainId = workspaceIdentifierSchema.parse(domain);
-    return this.command(request, workspace, (scope) =>
-      this.service.store.configureEnforcement({ ...scope, ...input, domainId }),
+    return this.command(request, input, (scope) =>
+      this.service.store.configureEnforcement({
+        ...scope,
+        ...input.body,
+        domainId: input.params.domainId,
+      }),
     );
   }
-  @Post('providers')
-  @HttpCode(200)
-  @UseGuards(WorkspaceManageGuard, CsrfProtectionGuard)
-  @RateLimit('ordinary_mutation')
+  @Route(routes.provider)
   provider(
     @Req() request: Request,
-    @Param('workspaceId') workspace: unknown,
-    @Body() raw: unknown,
+    @In() input: RouteInput<typeof routes.provider>,
   ) {
-    const input = federationProviderCreateSchema.parse(raw);
-    return this.command(request, workspace, (scope) =>
-      this.service.createProvider({ ...scope, ...input }),
+    return this.command(request, input, (scope) =>
+      this.service.createProvider({ ...scope, ...input.body }),
     );
   }
-  @Put('providers/:providerId')
-  @UseGuards(WorkspaceManageGuard, CsrfProtectionGuard)
-  @RateLimit('ordinary_mutation')
+  @Route(routes.updateProvider)
   updateProvider(
     @Req() request: Request,
-    @Param('workspaceId') workspace: unknown,
-    @Param('providerId') provider: unknown,
-    @Body() raw: unknown,
+    @In() input: RouteInput<typeof routes.updateProvider>,
   ) {
-    const input = federationProviderUpdateSchema.parse(raw),
-      providerId = workspaceIdentifierSchema.parse(provider);
-    return this.command(request, workspace, (scope) =>
-      this.service.updateProvider({ ...scope, ...input, providerId }),
+    return this.command(request, input, (scope) =>
+      this.service.updateProvider({
+        ...scope,
+        ...input.body,
+        providerId: input.params.providerId,
+      }),
     );
   }
-  @Get('saml/metadata')
-  @UseGuards(WorkspaceMemberReadGuard)
-  @Header('Cache-Control', 'private, no-store')
-  metadata(@Req() request: Request, @Param('workspaceId') workspace: unknown) {
+  @Route(routes.metadata)
+  metadata(
+    @Req() request: Request,
+    @In() { params }: RouteInput<typeof routes.metadata>,
+  ) {
     return withRequestOperationSignal(request, (signal) =>
-      this.service.metadata({ ...federationScope(request, workspace), signal }),
+      this.service.metadata({
+        ...federationScope(request, params.workspaceId),
+        signal,
+      }),
     );
   }
-  @Post('providers/:providerId/remove')
-  @HttpCode(200)
-  @UseGuards(WorkspaceManageGuard, CsrfProtectionGuard)
-  @RateLimit('ordinary_mutation')
+  @Route(routes.removeProvider)
   removeProvider(
     @Req() request: Request,
-    @Param('workspaceId') workspace: unknown,
-    @Param('providerId') provider: unknown,
-    @Body() raw: unknown,
+    @In() input: RouteInput<typeof routes.removeProvider>,
   ) {
-    const input = federationRevisionCommandSchema.parse(raw),
-      providerId = workspaceIdentifierSchema.parse(provider);
-    return this.command(request, workspace, (scope) =>
-      this.service.store.removeProvider({ ...scope, ...input, providerId }),
+    return this.command(request, input, (scope) =>
+      this.service.store.removeProvider({
+        ...scope,
+        ...input.body,
+        providerId: input.params.providerId,
+      }),
     );
   }
 }

@@ -91,7 +91,12 @@ export function useSamlApi(
       `/v1/workspaces/${workspaceId}/sso${path}`,
       { browser: owner, payload, headers: { 'idempotency-key': key } },
     );
-    expect(response.statusCode, response.payload).toBe(200);
+    expect(response.statusCode, response.payload).toBe(
+      method === 'POST' &&
+        ['/organization', '/domains', '/providers'].includes(path)
+        ? 201
+        : 200,
+    );
     return federationSettingsSchema.parse(response.json());
   }
   async function setup(enabled = true) {
