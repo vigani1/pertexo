@@ -2,7 +2,7 @@ import { createDecipheriv } from 'node:crypto';
 
 import { describe, expect, it } from 'vitest';
 
-import { authenticationMailAssociatedData } from '../../src/mail/payload.js';
+import { authenticationMailAssociatedData } from '../../src/mail/mail-associated-data.js';
 
 /**
  * Sealed by the envelope and associated-data code at 8aa533c1c~1, the commit

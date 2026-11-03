@@ -1,12 +1,12 @@
-import { createResendClient, type ResendApiResult } from '../email/client.js';
+import { createResendClient, type ResendApiResult } from './client.js';
 import { createNodeSecureHttpClient } from '../http/transport/node.js';
 import type { SecureHttpClient } from '../http/secure.js';
 import type {
   SystemMailClient,
   SystemMailConfig,
   SystemMailFailure,
-} from './contracts.js';
-import { createSmtpClient } from './smtp.js';
+} from '../system-mail/system-mail.js';
+import { createSmtpClient } from '../system-mail/smtp.js';
 
 export function createSystemMailClient(
   config: SystemMailConfig,

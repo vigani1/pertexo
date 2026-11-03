@@ -175,8 +175,8 @@ export {
   SYSTEM_MAIL_FAILURE_GUIDANCE,
   systemMailFailureCode,
   systemMailFailureInstruction,
-} from './system-mail/contracts.js';
-export { createSystemMailClient } from './system-mail/client.js';
+} from './system-mail/system-mail.js';
+export { createSystemMailClient } from './email/system-mail.js';
 export { parseSystemMailConfig } from './system-mail/config.js';
 export type {
   SystemMailFailure,
@@ -184,7 +184,7 @@ export type {
   SystemMailConfig,
   SystemMailMessage,
   SystemMailResult,
-} from './system-mail/contracts.js';
+} from './system-mail/system-mail.js';
 
 export {
   sealNoticeUnsubscribe,
