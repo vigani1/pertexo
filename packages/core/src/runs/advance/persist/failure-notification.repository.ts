@@ -125,8 +125,9 @@ async function readPrimaryFailure(
     if (
       input.plan.checkpoint.runStatus !== 'timed_out' &&
       !(
-        input.plan.checkpoint.runStatus === 'failed' &&
-        terminalEvent.reasonCode?.startsWith('callable_result_')
+        ['failed', 'outcome_unknown'].includes(
+          input.plan.checkpoint.runStatus,
+        ) && terminalEvent.reasonCode !== undefined
       )
     )
       throw new CoordinatorRunStateCorruptError();
