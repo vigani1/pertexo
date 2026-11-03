@@ -24,7 +24,7 @@ import type { ApiClient } from '@/lib/api/client';
 import {
   errorWorkflowQuery,
   errorTargetsQuery,
-} from '../../data/error-workflow/queries';
+} from '../../data/error-workflow/error-workflow.queries';
 import { useErrorWorkflowCommand } from '../../data/error-workflow/use-command';
 import { visibleSettingsData } from '../../model/settings-query';
 import { settingsReadFailure } from '../settings-read-failure';

@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { accessibleWorkspaceSchema } from '@pertexo/contracts';
 import { createQueryClient } from '@/app/query-client';
 import { WorkflowTemplateOrigin } from '@/features/workflows/components/templates/origin';
-import { workflowTemplateOriginKey } from '@/features/workflows/data/origin/queries';
+import { workflowTemplateOriginKey } from '@/features/workflows/data/origin/workflow-template-origin.queries';
 import { workflowKeys } from '@/features/workflows/data/workflows.queries';
 import { createApiClient } from '@/lib/api/client';
 import { ApiError } from '@/lib/api/error';

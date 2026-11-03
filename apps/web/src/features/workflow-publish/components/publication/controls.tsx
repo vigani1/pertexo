@@ -13,8 +13,8 @@ import { SuitePublishNotice } from '../test-suites/publish-notice';
 import { PublishButton } from './publish-button';
 import { PublishDialog } from './publish-dialog';
 import { latestVersionQueryOptions } from '../../data/workflow-publish.queries';
-import { reviewOverviewOptions } from '../../data/reviews/queries';
-import type { ReviewScope } from '../../data/reviews/api';
+import { reviewOverviewOptions } from '../../data/reviews/publication-review.queries';
+import type { ReviewScope } from '../../data/reviews/publication-review.api';
 import type {
   PublicationReceipt,
   WorkflowPublication,

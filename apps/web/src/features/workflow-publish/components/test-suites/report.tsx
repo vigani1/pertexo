@@ -2,9 +2,9 @@ import { canonicalJson } from '@pertexo/workflow-model';
 import { useQuery } from '@tanstack/react-query';
 import { QueryView } from '@/components/patterns/states/query-view';
 import { Notice } from '@/components/ui/notice';
-import type { WorkflowTestScope } from '../../data/workflow-tests/api';
-import type { getCaseReport } from '../../data/test-suites/api';
-import { suiteReportQueryOptions } from '../../data/test-suites/queries';
+import type { WorkflowTestScope } from '../../data/workflow-tests/workflow-tests.api';
+import type { getCaseReport } from '../../data/test-suites/workflow-test-suites.api';
+import { suiteReportQueryOptions } from '../../data/test-suites/workflow-test-suites.queries';
 export function TestCaseReport({
   scope,
   suiteId,

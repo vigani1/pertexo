@@ -11,8 +11,8 @@ import {
   ConfirmationFooter,
   ConfirmationDetails,
 } from '@/components/patterns/actions/confirm-dialog';
-import type { SampleScope } from '../../data/samples/api';
-import { stepSampleQueryOptions } from '../../data/samples/queries';
+import type { SampleScope } from '../../data/samples/step-samples.api';
+import { stepSampleQueryOptions } from '../../data/samples/step-samples.queries';
 import { useSampleCommand } from '../samples/use-command';
 export function CapturedEvent({
   scope,

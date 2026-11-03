@@ -1,4 +1,4 @@
-import { workflowTemplateOriginKey } from '@/features/workflows/data/origin/queries';
+import { workflowTemplateOriginKey } from '@/features/workflows/data/origin/workflow-template-origin.queries';
 
 import { workflowKeys } from '@/features/workflows/data/workflows.queries';
 

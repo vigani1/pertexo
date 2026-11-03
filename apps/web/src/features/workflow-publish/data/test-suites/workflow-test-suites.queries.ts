@@ -1,6 +1,10 @@
 import { queryOptions } from '@tanstack/react-query';
-import type { WorkflowTestScope } from '../workflow-tests/api';
-import { getSuite, getCaseReport, listSuites } from './api';
+import type { WorkflowTestScope } from '../workflow-tests/workflow-tests.api';
+import {
+  getSuite,
+  getCaseReport,
+  listSuites,
+} from './workflow-test-suites.api';
 export function suitesKey(scope: WorkflowTestScope) {
   return [
     'identity',

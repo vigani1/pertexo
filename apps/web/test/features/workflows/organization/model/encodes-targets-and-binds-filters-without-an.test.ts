@@ -8,13 +8,13 @@ import {
   getWorkflowTagAssignmentsPage,
   getWorkflowTagsPage,
   sendWorkflowOrganizationCommand,
-} from '../../../../../src/features/workflows/data/organization/api';
+} from '../../../../../src/features/workflows/data/organization/workflow-organization.api';
 
 import {
   workflowOrganizationInfiniteQueryOptions,
   workflowOrganizationKeys,
   workflowOrganizationProjectionQueryOptions,
-} from '../../../../../src/features/workflows/data/organization/queries';
+} from '../../../../../src/features/workflows/data/organization/workflow-organization.queries';
 
 import { freezeWorkflowOrganizationAttempt } from '../../../../../src/features/workflows/model/organization/requests';
 

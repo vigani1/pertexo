@@ -3,7 +3,7 @@ import type { PreviewRunSummary, StepSampleMetadata } from '@pertexo/contracts';
 import { PinIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/ui/notice';
-import type { SampleScope } from '../../data/samples/api';
+import type { SampleScope } from '../../data/samples/step-samples.api';
 import type { SampleDialogSource } from '../../model/testing/samples';
 import { SampleSummary } from './summary';
 import { SampleActions } from './actions';

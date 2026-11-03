@@ -22,11 +22,11 @@ import {
   getInputCase,
   sendInputCaseCommand,
   type InputCaseCommand,
-} from '../data/input-cases/api';
+} from '../data/input-cases/workflow-input-cases.api';
 import {
   inputCasesKey,
   inputCasesQueryOptions,
-} from '../data/input-cases/queries';
+} from '../data/input-cases/workflow-input-cases.queries';
 
 function denied(cause: unknown) {
   return (

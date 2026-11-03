@@ -1,4 +1,4 @@
-export { stepSamplesQueryOptions } from './data/samples/queries';
+export { stepSamplesQueryOptions } from './data/samples/step-samples.queries';
 export { PinRecordedOutputButton } from './components/samples/controls';
 export { currentSampleState, sampleStateLabel } from './model/testing/samples';
 export {

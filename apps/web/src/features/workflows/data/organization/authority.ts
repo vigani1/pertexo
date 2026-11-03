@@ -27,7 +27,7 @@ import { isAccessLost } from '@/lib/api/error-copy';
 import type { ApiClient } from '@/lib/api/client';
 import { workspaceReadScope } from '@/lib/api/workspace-scope';
 import { workflowKeys } from '../workflows.queries';
-import { workflowOrganizationKeys } from './queries';
+import { workflowOrganizationKeys } from './workflow-organization.queries';
 
 export type RequiredRole = 'member' | 'editor' | 'admin';
 

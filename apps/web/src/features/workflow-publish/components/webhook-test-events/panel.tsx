@@ -8,7 +8,7 @@ import { Notice } from '@/components/ui/notice';
 import { Status } from '@/components/ui/status';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { useListenerClock } from './use-clock';
-import type { SampleScope } from '../../data/samples/api';
+import type { SampleScope } from '../../data/samples/step-samples.api';
 import { useWebhookListener } from './use-listener';
 import { ListenerAuthentication } from './authentication';
 import { ListenerCredentials } from './credentials';

@@ -1,8 +1,8 @@
 import { resetReadMocks } from './setup';
 
-import { getWorkflowOrganizationPage } from '@/features/workflows/data/organization/api';
+import { getWorkflowOrganizationPage } from '@/features/workflows/data/organization/workflow-organization.api';
 
-import { workflowOrganizationKeys } from '@/features/workflows/data/organization/queries';
+import { workflowOrganizationKeys } from '@/features/workflows/data/organization/workflow-organization.queries';
 
 import { act, screen, waitFor } from '@testing-library/react';
 
@@ -12,13 +12,16 @@ import { userId, workspaceId } from '../../list/fixtures';
 
 import { deferred, page, ready, setup } from './fixture';
 
-vi.mock('@/features/workflows/data/organization/api', async (original) => ({
-  ...(await original<object>()),
-  getWorkflowOrganizationPage: vi.fn(),
-  getWorkflowFolders: vi.fn(),
-  getWorkflowTagsPage: vi.fn(),
-  sendWorkflowOrganizationCommand: vi.fn(),
-}));
+vi.mock(
+  '@/features/workflows/data/organization/workflow-organization.api',
+  async (original) => ({
+    ...(await original<object>()),
+    getWorkflowOrganizationPage: vi.fn(),
+    getWorkflowFolders: vi.fn(),
+    getWorkflowTagsPage: vi.fn(),
+    sendWorkflowOrganizationCommand: vi.fn(),
+  }),
+);
 
 vi.mock('@/features/auth/session/identity.public', async (original) => ({
   ...(await original<object>()),

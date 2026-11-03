@@ -17,8 +17,8 @@ import { useRetainedCommand } from '@/lib/api/commands/use-retained';
 import {
   decidePublicationReview,
   type ReviewScope,
-} from '../../data/reviews/api';
-import { publicationReviewKeys } from '../../data/reviews/queries';
+} from '../../data/reviews/publication-review.api';
+import { publicationReviewKeys } from '../../data/reviews/publication-review.queries';
 export function ReviewDecision({
   scope,
   request,

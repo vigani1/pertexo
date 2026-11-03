@@ -4,7 +4,7 @@ import { getAllAccessibleWorkspaces } from '@/features/workspaces/queries.public
 import { ApiError } from '@/lib/api/error';
 import type { ApiClient } from '@/lib/api/client';
 import { workflowKeys } from '../workflows.queries';
-import { readWorkflowTemplateOrigin } from './api';
+import { readWorkflowTemplateOrigin } from './workflow-template-origin.api';
 
 export const workflowTemplateOriginKey = (
   userId: string,

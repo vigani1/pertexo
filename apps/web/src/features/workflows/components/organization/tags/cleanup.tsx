@@ -12,7 +12,7 @@ import { Notice } from '@/components/ui/notice';
 import { QueryView } from '@/components/patterns/states/query-view';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { LoadMore } from '@/components/patterns/lists/load-more';
-import { workflowTagAssignmentsInfiniteQueryOptions } from '../../../data/organization/queries';
+import { workflowTagAssignmentsInfiniteQueryOptions } from '../../../data/organization/workflow-organization.queries';
 import type { WorkflowOrganizationAttempt } from '../../../model/organization/requests';
 import {
   OrganizationCommandFeedback,

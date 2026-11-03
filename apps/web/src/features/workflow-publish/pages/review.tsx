@@ -6,8 +6,8 @@ import { QueryView } from '@/components/patterns/states/query-view';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Status } from '@/components/ui/status';
 import { formatDateTime } from '@/lib/format/time';
-import { publicationReviewOptions } from '../data/reviews/queries';
-import type { ReviewScope } from '../data/reviews/api';
+import { publicationReviewOptions } from '../data/reviews/publication-review.queries';
+import type { ReviewScope } from '../data/reviews/publication-review.api';
 import { ReviewCandidate } from '../components/reviews/candidate';
 import { ReviewDecision } from '../components/reviews/decision';
 export function PublicationReviewPage({

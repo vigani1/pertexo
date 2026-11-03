@@ -6,8 +6,8 @@ import {
   type CommandKey,
 } from '@/lib/api/commands/command-retry';
 import type { PublicationReview } from '@pertexo/contracts';
-import { requestPublicationReview } from '../reviews/api';
-import { publicationReviewKeys } from '../reviews/queries';
+import { requestPublicationReview } from '../reviews/publication-review.api';
+import { publicationReviewKeys } from '../reviews/publication-review.queries';
 import { useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import type { ApiClient } from '@/lib/api/client';

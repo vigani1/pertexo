@@ -3,7 +3,7 @@ import type { ApiClient } from '@/lib/api/client';
 import {
   workflowFoldersQueryOptions,
   workflowTagsInfiniteQueryOptions,
-} from '../../data/organization/queries';
+} from '../../data/organization/workflow-organization.queries';
 import {
   isOrganizationReadDenied,
   useOrganizationReadLifetime,

@@ -2,11 +2,11 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { workflowRunQueryOptions } from '@/features/workflow-runs/queries.public';
 import { isActiveRunStatus } from '@/features/workflow-runs/labels.public';
-import type { WorkflowTestScope } from '../data/workflow-tests/api';
+import type { WorkflowTestScope } from '../data/workflow-tests/workflow-tests.api';
 import {
   workflowTestsQueryOptions,
   workflowTestQueryOptions,
-} from '../data/workflow-tests/queries';
+} from '../data/workflow-tests/workflow-tests.queries';
 
 export function useTestHistory({
   scope,

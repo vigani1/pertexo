@@ -9,4 +9,4 @@ export {
   workflowListQueryOptions,
   workflowNameSearchQueryOptions,
   workflowOrganizationKeys,
-} from './data/organization/queries';
+} from './data/organization/workflow-organization.queries';

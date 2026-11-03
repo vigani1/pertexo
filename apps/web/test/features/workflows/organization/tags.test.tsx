@@ -1,4 +1,4 @@
-import { workflowOrganizationKeys } from '@/features/workflows/data/organization/queries';
+import { workflowOrganizationKeys } from '@/features/workflows/data/organization/workflow-organization.queries';
 
 import { act, screen, waitFor, within } from '@testing-library/react';
 

@@ -1,6 +1,6 @@
 import { Suspense } from 'react';
 import { lazyPiece } from '@/components/patterns/app-update/lazy';
-import type { SampleScope } from '../../data/samples/api';
+import type { SampleScope } from '../../data/samples/step-samples.api';
 const Panel = lazyPiece(() =>
   import('./panel').then((module) => module.WebhookTestEventPanel),
 );

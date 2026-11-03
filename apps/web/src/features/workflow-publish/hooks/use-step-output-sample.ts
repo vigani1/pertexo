@@ -5,9 +5,9 @@ import {
   stepRunsQueryOptions,
   workflowRunQueryOptions,
 } from '@/features/workflow-runs/queries.public';
-import type { SampleScope } from '../data/samples/api';
-import { stepSampleQueryOptions } from '../data/samples/queries';
-import { workflowTestsQueryOptions } from '../data/workflow-tests/queries';
+import type { SampleScope } from '../data/samples/step-samples.api';
+import { stepSampleQueryOptions } from '../data/samples/step-samples.queries';
+import { workflowTestsQueryOptions } from '../data/workflow-tests/workflow-tests.queries';
 
 const RECENT_RUNS = 5;
 

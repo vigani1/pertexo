@@ -3,7 +3,7 @@ import {
   getWorkflowTest,
   listWorkflowTests,
   type WorkflowTestScope,
-} from './api';
+} from './workflow-tests.api';
 export function workflowTestsKey(
   scope: Pick<WorkflowTestScope, 'userId' | 'workspaceId' | 'workflowId'>,
 ) {

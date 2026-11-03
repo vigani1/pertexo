@@ -15,7 +15,7 @@ import { ProgressButton } from '@/components/ui/progress-button';
 import { useFieldValidation } from '@/components/ui/use-field-validation';
 import { useNotifications } from '@/components/ui/use-notifications';
 import type { useInputCases } from '../../hooks/use-input-cases';
-import type { InputCaseCommand } from '../../data/input-cases/api';
+import type { InputCaseCommand } from '../../data/input-cases/workflow-input-cases.api';
 
 type CaseCommands = Pick<
   ReturnType<typeof useInputCases>,

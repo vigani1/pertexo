@@ -3,7 +3,7 @@ import {
   webhookTestEventSnapshotSchema,
   type WebhookAuthentication,
 } from '@pertexo/contracts';
-import type { SampleScope } from '../samples/api';
+import type { SampleScope } from '../samples/step-samples.api';
 function path(scope: SampleScope, nodeId: string, id?: string): `/v1${string}` {
   const root =
     `/v1/workspaces/${encodeURIComponent(scope.workspaceId)}/workflows/${encodeURIComponent(scope.workflowId)}/draft/nodes/${encodeURIComponent(nodeId)}/webhook-test-events` as const;

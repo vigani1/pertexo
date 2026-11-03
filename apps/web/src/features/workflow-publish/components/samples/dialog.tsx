@@ -13,8 +13,8 @@ import {
 } from '@/components/ui/dialog';
 import { Notice } from '@/components/ui/notice';
 import { ProgressButton } from '@/components/ui/progress-button';
-import type { SampleScope } from '../../data/samples/api';
-import { stepSampleQueryOptions } from '../../data/samples/queries';
+import type { SampleScope } from '../../data/samples/step-samples.api';
+import { stepSampleQueryOptions } from '../../data/samples/step-samples.queries';
 import { useSampleCommand } from './use-command';
 export function PinSampleDialog({
   scope,

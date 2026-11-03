@@ -2,8 +2,8 @@ import { useCallback, useEffect, useRef } from 'react';
 import type { QueryClient } from '@tanstack/react-query';
 import type { ApiClient } from '@/lib/api/client';
 import { watchWorkspaceReadDenial } from '@/lib/api/read-denial';
-import type { InputCaseCommand } from '../data/input-cases/api';
-import { inputCasesKey } from '../data/input-cases/queries';
+import type { InputCaseCommand } from '../data/input-cases/workflow-input-cases.api';
+import { inputCasesKey } from '../data/input-cases/workflow-input-cases.queries';
 
 function evictCases(cache: QueryClient, key: ReturnType<typeof inputCasesKey>) {
   void cache.cancelQueries({ queryKey: key });

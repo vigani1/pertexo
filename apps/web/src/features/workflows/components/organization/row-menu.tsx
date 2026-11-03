@@ -7,8 +7,8 @@ import { DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { WorkflowRowMenu } from '../list/workflow-row-menu';
 import type { WorkflowRowActions } from '../list/workflow-row-actions';
 import type { ApiClient } from '@/lib/api/client';
-import { setWorkflowFavorite } from '../../data/organization/api';
-import { workflowOrganizationKeys } from '../../data/organization/queries';
+import { setWorkflowFavorite } from '../../data/organization/workflow-organization.api';
+import { workflowOrganizationKeys } from '../../data/organization/workflow-organization.queries';
 
 /** The mutation survives the popup closing so its result has one feedback owner. */
 export function WorkflowOrganizationRowMenu({

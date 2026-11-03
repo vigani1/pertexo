@@ -1,5 +1,9 @@
 import { queryOptions } from '@tanstack/react-query';
-import { getStepSample, listStepSamples, type SampleScope } from './api';
+import {
+  getStepSample,
+  listStepSamples,
+  type SampleScope,
+} from './step-samples.api';
 export function stepSamplesKey(scope: SampleScope) {
   return [
     'identity',
