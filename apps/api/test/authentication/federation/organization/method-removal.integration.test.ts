@@ -61,6 +61,7 @@ describe.runIf(betterAuthIntegrationEnabled)(
       'disabled',
       'removed',
       'wrong-domain',
+      'unverified-domain',
       'unconfigured-social',
       'inactive-directory',
     ] as const)(
@@ -79,12 +80,27 @@ describe.runIf(betterAuthIntegrationEnabled)(
             .query('delete from app.auth_providers where id=$1', [
               f.providerId,
             ]);
-        if (alternative === 'wrong-domain')
+        if (alternative === 'unverified-domain')
           await api
             .database()
             .query('update app.auth_domains set verified_at=null where id=$1', [
               f.domainId,
             ]);
+        if (alternative === 'wrong-domain') {
+          const foreign = await api.setup();
+          await api
+            .database()
+            .query(
+              "delete from app.auth_accounts where user_id=$1 and provider_id<>'credential'",
+              [f.userId],
+            );
+          await api
+            .database()
+            .query(
+              'insert into app.auth_accounts(id,user_id,provider_id,account_id) values($1,$2,$3,$4)',
+              [randomUUID(), f.userId, foreign.providerId, randomUUID()],
+            );
+        }
         if (alternative === 'unconfigured-social') {
           await api
             .database()
