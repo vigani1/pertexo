@@ -228,14 +228,14 @@ describe('workflow automatic pause controls', () => {
     ]);
     expect(screen.getByText('Schedules and webhooks are paused')).toBeVisible();
   });
-  it('labels and links the recorded pause evidence as the latest failed run', async () => {
+  it('labels and links pause evidence accurately for both historical and current rows', async () => {
     installQueries();
     mockServer.use(
       http.get(`${workflowApi}/auto-pause`, () => HttpResponse.json(paused)),
     );
     renderApp(path);
     const link = await screen.findByRole('link', {
-      name: /^Latest failed run$/u,
+      name: /^Run that triggered the pause$/u,
     });
     expect(link).toHaveAttribute(
       'href',

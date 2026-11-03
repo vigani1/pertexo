@@ -66,7 +66,7 @@ function PausedStateNotice({
             params={{ workspaceId, runId: settings.pausedLastRunId }}
             className="inline-link"
           >
-            Latest failed run
+            Run that triggered the pause
           </Link>
         </p>
       )}

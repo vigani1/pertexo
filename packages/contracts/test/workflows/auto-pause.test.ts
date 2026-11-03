@@ -29,6 +29,13 @@ const settings = {
 } as const;
 
 describe('automatic workflow pause contracts', () => {
+  it('documents current and historical pause evidence in the API schema', () => {
+    expect(
+      workflowAutoPauseSettingsSchema.shape.pausedLastRunId.description,
+    ).toBe(
+      'Run that triggered the pause: the last counted failed triggered run; older rows hold the run that reached the failure threshold.',
+    );
+  });
   it('matches bigint ordering at every decimal-prefix boundary in runtime and generated clients', () => {
     const maximum = '9223372036854775807';
     const validate = new Ajv2020({ strict: false }).compile(
