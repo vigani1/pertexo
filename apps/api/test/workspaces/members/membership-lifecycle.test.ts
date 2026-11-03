@@ -8,7 +8,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { IdentityError } from '../../../src/identity/index.js';
 import {
-  DatabaseIdentityWorkspaceAdapter,
+  createIdentityWorkspaceAdapter,
   WorkspaceMembershipController,
   WorkspaceMembershipLifecycleUseCase,
   type IdentitySessionAuthority,
@@ -223,7 +223,7 @@ describe('membership lifecycle commands (ADR 047)', () => {
 
   it('passes each command to the database unchanged', async () => {
     const store = persistence();
-    const adapter = new DatabaseIdentityWorkspaceAdapter(
+    const adapter = createIdentityWorkspaceAdapter(
       store as unknown as IdentityWorkspaceStore,
     );
     const member = {

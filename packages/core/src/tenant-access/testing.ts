@@ -6,7 +6,6 @@ export {
 export { WorkspaceAccessDeniedError } from '../shared/workspace-access.errors.js';
 export {
   IdentityConflictError,
-  IdentityNotFoundError,
   WorkspaceLifecycleConflictError,
   WorkspaceMemberRoleCommandConflictError,
   WorkspaceMemberRemovalCommandConflictError,

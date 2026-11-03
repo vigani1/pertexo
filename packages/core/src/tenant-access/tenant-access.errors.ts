@@ -13,10 +13,6 @@ export class IdentityConflictError extends Error {
   }
 }
 
-export class IdentityNotFoundError extends Error {
-  public override readonly name = 'IdentityNotFoundError';
-}
-
 export type WorkspaceRenameCommandConflictReason =
   'actor_inactive' | 'workspace_inactive' | 'revision_conflict';
 

@@ -4,9 +4,7 @@ import type {
   CreateWorkspaceInvitationInput,
   InvitationAcceptanceIntentRecord,
   ResolveInvitationAcceptanceInput,
-  InvitationAcceptanceResult,
   UserRecord,
-  WorkspaceMemberRecord,
   WorkspaceRenameResult,
   SealedInvitationToken as StoredInvitationToken,
 } from '@pertexo/core/tenant-access';
@@ -84,7 +82,6 @@ export type InvitationAcceptanceIntentPersistenceRecord =
   InvitationAcceptanceIntentRecord;
 export type InvitationAcceptanceResolvePersistenceInput =
   ResolveInvitationAcceptanceInput;
-export type InvitationAcceptancePersistenceResult = InvitationAcceptanceResult;
 
 export interface InvitationTokenProtector {
   seal(
@@ -94,8 +91,6 @@ export interface InvitationTokenProtector {
 }
 
 export type UserProfilePersistenceRecord = UserRecord;
-
-export type WorkspaceMemberPersistenceRecord = WorkspaceMemberRecord;
 
 export type WorkspacePersistenceRecord = Pick<
   Awaited<ReturnType<IdentityWorkspaceStore['createWorkspaceWithOwner']>>,

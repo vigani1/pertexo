@@ -2,13 +2,15 @@ import { describe, expect, it, vi } from 'vitest';
 
 import type { IdentityWorkspaceStore } from '@pertexo/core/testing';
 
-import { DatabaseIdentityWorkspaceAdapter } from '../../src/workspaces/index.js';
+import { createIdentityWorkspaceAdapter } from '../../src/workspaces/index.js';
 
 const actorId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const workspaceId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 
-function adapterWith(database: object): DatabaseIdentityWorkspaceAdapter {
-  return new DatabaseIdentityWorkspaceAdapter(
+function adapterWith(
+  database: object,
+): ReturnType<typeof createIdentityWorkspaceAdapter> {
+  return createIdentityWorkspaceAdapter(
     database as unknown as IdentityWorkspaceStore,
   );
 }
