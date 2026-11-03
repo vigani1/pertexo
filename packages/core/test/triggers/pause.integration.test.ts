@@ -548,6 +548,92 @@ describe('workflow trigger pause (ADR 056)', () => {
     expect(await streak(optedOut.workspaceId, optedOut.workflowId)).toBe(12);
   });
 
+  it('bounds disabled failure storage and fold reads after thousands of failures', async () => {
+    const { workspaceId, workflowId } = await seed();
+    await asAdmin('create extension if not exists pg_stat_statements');
+    await asAdmin(
+      'update app.workflows set auto_pause_enabled=false where id=$1',
+      [workflowId],
+    );
+    const reads = async () => {
+      const [row] = await asAdmin<{ blocks: number }>(
+        `select coalesce(sum(shared_blks_hit+shared_blks_read),0)::int blocks
+         from pg_stat_statements where dbid=(select oid from pg_database where datname=current_database())
+         and query like 'select%workflow_trigger_failures%'`,
+      );
+      return row?.blocks ?? 0;
+    };
+    const samples: number[] = [];
+    for (let batch = 0; batch < 10; batch++) {
+      await asAdmin(
+        `with tenant as (select set_config('app.workspace_id',$1::text,true)), runs as (
+         insert into app.workflow_runs(id,workspace_id,workflow_id,workflow_version_id,trigger_type,status)
+         select gen_random_uuid(),$1::uuid,$2::uuid,gen_random_uuid(),'schedule','failed'
+         from tenant cross join generate_series(1,500) returning id)
+         insert into app.workflow_trigger_outcomes(id,workspace_id,workflow_id,run_id,counts_as_failure,ended_at)
+         select gen_random_uuid(),$1::uuid,$2::uuid,id,true,'2026-10-01'::timestamptz from runs`,
+        [workspaceId, workflowId],
+      );
+      // Exclude reclaimable MVCC tuples; measure live evidence, not vacuum scheduling.
+      await asAdmin('vacuum (analyze) app.workflow_trigger_failures');
+      const measuredFold = createWorkflowTriggerPauseFoldStore({
+        connectionString: maintenanceUrl,
+        max: 1,
+      });
+      const before = await reads();
+      try {
+        expect(await measuredFold.foldPending(1000)).toEqual([]);
+      } finally {
+        await measuredFold.close();
+      }
+      // Closing the connection flushes its pg_stat_statements counters.
+      samples.push((await reads()) - before);
+    }
+    const retention = createRetentionStore({
+      connectionString: maintenanceUrl,
+      max: 1,
+    });
+    try {
+      await retention.enforce();
+    } finally {
+      await retention.close();
+    }
+    const [retained] = await asAdmin<{ count: number }>(
+      'select count(*)::int count from app.workflow_trigger_failures where workflow_id=$1',
+      [workflowId],
+    );
+    expect(retained?.count).toBe(100);
+    // Buffer reads measure the real fold's ledger queries, independent of wall-clock noise.
+    expect(Math.max(...samples)).toBeLessThanOrEqual(32);
+    expect(await pending(workspaceId)).toBe(0);
+    expect(await pauseAudits(workspaceId)).toEqual([]);
+  });
+
+  it('retains only the newest maximum-threshold evidence and preserves late success splits', async () => {
+    const { workspaceId, workflowId } = await seed();
+    const runs = await endMany(workspaceId, workflowId, 'failed', 150);
+    expect(await drain()).toHaveLength(1);
+    const positions = await asAdmin<{ run_id: string; ended_at: string }>(
+      `select run_id,to_char(ended_at at time zone 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"') ended_at
+       from app.workflow_trigger_failures where workflow_id=$1 order by ended_at,id`,
+      [workflowId],
+    );
+    expect(positions.map((row) => row.run_id)).toEqual(runs.slice(-100));
+    expect((await pauseState(workspaceId, workflowId))?.last_run).toBe(runs[9]);
+    await end(workspaceId, workflowId, 'succeeded', {
+      endedAt: new Date(
+        Date.parse(positions[50]?.ended_at ?? '') + 500,
+      ).toISOString(),
+    });
+    await drain();
+    expect(await streak(workspaceId, workflowId)).toBe(49);
+    const remaining = await asAdmin<{ run_id: string }>(
+      'select run_id from app.workflow_trigger_failures where workflow_id=$1 order by ended_at,id',
+      [workflowId],
+    );
+    expect(remaining.map((row) => row.run_id)).toEqual(runs.slice(-49));
+  });
+
   it('leaves an archived workflow unpaused', async () => {
     const { workspaceId, workflowId } = await seed();
     await asAdmin(
