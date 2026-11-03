@@ -1,3 +1,4 @@
+import * as schemas from '@pertexo/contracts';
 import type { Role } from '@pertexo/policy';
 import { randomUUID } from 'node:crypto';
 import { describe, expect, it, vi } from 'vitest';
@@ -106,13 +107,13 @@ describe('workflow organization read interface', () => {
     const result = await f.reads.list({
       ...f.input,
       signal,
-      query: {
+      query: schemas.workflowOrganizationListQuerySchema.parse({
         query: '  Ops  ',
         view: 'active',
         tagId: f.tag.id.toUpperCase(),
         favoritesOnly: 'true',
         limit: '1',
-      },
+      }),
     });
     expect(f.reader.listWorkflows).toHaveBeenCalledWith({
       workspaceId: f.input.routeWorkspaceId,
@@ -128,7 +129,9 @@ describe('workflow organization read interface', () => {
     expect(Object.keys(result.items[0] ?? {})).not.toContain('organization');
     const projected = await f.reads.list({
       ...f.input,
-      query: { include: 'organization' },
+      query: schemas.workflowOrganizationListQuerySchema.parse({
+        include: 'organization',
+      }),
     });
     expect(projected.items[0]).toMatchObject({
       organization: f.item.organization,
@@ -139,21 +142,21 @@ describe('workflow organization read interface', () => {
     const f = fixture();
     const page = await f.reads.list({
       ...f.input,
-      query: {
+      query: schemas.workflowOrganizationListQuerySchema.parse({
         query: '  Ops  ',
         view: 'all',
         include: 'organization',
         limit: 1,
-      },
+      }),
     });
     await f.reads.list({
       ...f.input,
-      query: {
+      query: schemas.workflowOrganizationListQuerySchema.parse({
         query: 'Ops',
         include: 'organization',
         limit: 100,
         after: page.nextCursor,
-      },
+      }),
     });
     expect(f.reader.listWorkflows.mock.calls.at(-1)?.[0]).toMatchObject({
       after: f.position,
@@ -172,12 +175,12 @@ describe('workflow organization read interface', () => {
       await expect(
         f.reads.list({
           ...f.input,
-          query: {
+          query: schemas.workflowOrganizationListQuerySchema.parse({
             query: 'Ops',
             include: 'organization',
             after: page.nextCursor,
             ...changed,
-          },
+          }),
         }),
       ).rejects.toBeInstanceOf(InvalidWorkflowCursorError);
     }
@@ -196,11 +199,11 @@ describe('workflow organization read interface', () => {
       f.reads.list({
         ...f.input,
         actor,
-        query: {
+        query: schemas.workflowOrganizationListQuerySchema.parse({
           query: 'Ops',
           include: 'organization',
           after: page.nextCursor,
-        },
+        }),
       }),
     ).rejects.toBeInstanceOf(InvalidWorkflowCursorError);
   });
@@ -209,13 +212,18 @@ describe('workflow organization read interface', () => {
     const f = fixture();
     const page = await f.reads.list({
       ...f.input,
-      query: { include: 'organization' },
+      query: schemas.workflowOrganizationListQuerySchema.parse({
+        include: 'organization',
+      }),
     });
     f.authorization.findAccess.mockResolvedValue(undefined);
     await expect(
       f.reads.list({
         ...f.input,
-        query: { include: 'organization', after: page.nextCursor },
+        query: schemas.workflowOrganizationListQuerySchema.parse({
+          include: 'organization',
+          after: page.nextCursor,
+        }),
       }),
     ).rejects.toBeInstanceOf(AuthorizationError);
     expect(f.reader.listWorkflows).toHaveBeenCalledTimes(1);
@@ -223,10 +231,16 @@ describe('workflow organization read interface', () => {
 
   it('separates vocabulary and assignment cursor purposes and selected tag identity', async () => {
     const f = fixture('admin');
-    const page = await f.reads.listTags({ ...f.input, query: { limit: 1 } });
+    const page = await f.reads.listTags({
+      ...f.input,
+      query: schemas.workflowTagListQuerySchema.parse({ limit: 1 }),
+    });
     await f.reads.listTags({
       ...f.input,
-      query: { after: page.nextCursor, limit: 2 },
+      query: schemas.workflowTagListQuerySchema.parse({
+        after: page.nextCursor,
+        limit: 2,
+      }),
     });
     expect(f.tags.listTags.mock.calls.at(-1)?.[0]).toMatchObject({
       afterId: f.tag.id,
@@ -236,19 +250,23 @@ describe('workflow organization read interface', () => {
       f.reads.listTagAssignments({
         ...f.input,
         tagId: f.tag.id,
-        query: { after: page.nextCursor },
+        query: schemas.workflowTagListQuerySchema.parse({
+          after: page.nextCursor,
+        }),
       }),
     ).rejects.toBeInstanceOf(InvalidWorkflowCursorError);
     const assignments = await f.reads.listTagAssignments({
       ...f.input,
       tagId: f.tag.id,
-      query: {},
+      query: schemas.workflowTagListQuerySchema.parse({}),
     });
     await expect(
       f.reads.listTagAssignments({
         ...f.input,
         tagId: randomUUID(),
-        query: { after: assignments.nextCursor },
+        query: schemas.workflowTagListQuerySchema.parse({
+          after: assignments.nextCursor,
+        }),
       }),
     ).rejects.toBeInstanceOf(InvalidWorkflowCursorError);
   });
@@ -257,9 +275,16 @@ describe('workflow organization read interface', () => {
     'allows %s vocabulary reads but fences administrative assignment discovery',
     async (role) => {
       const f = fixture(role);
-      await f.reads.listTags({ ...f.input, query: {} });
+      await f.reads.listTags({
+        ...f.input,
+        query: schemas.workflowTagListQuerySchema.parse({}),
+      });
       await expect(
-        f.reads.listTagAssignments({ ...f.input, tagId: f.tag.id, query: {} }),
+        f.reads.listTagAssignments({
+          ...f.input,
+          tagId: f.tag.id,
+          query: schemas.workflowTagListQuerySchema.parse({}),
+        }),
       ).rejects.toMatchObject({ code: 'auth.forbidden' });
       expect(f.tags.listTagAssignments).not.toHaveBeenCalled();
     },
@@ -271,7 +296,9 @@ describe('workflow organization read interface', () => {
       await f.reads.get({
         ...f.input,
         workflowId: f.item.workflow.id,
-        query: { include: 'organization' },
+        query: schemas.workflowGetQuerySchema.parse({
+          include: 'organization',
+        }),
       }),
     ).toMatchObject({ organization: f.item.organization });
     expect(f.origin.getWorkflowWithTemplateOrigin).not.toHaveBeenCalled();
@@ -279,7 +306,9 @@ describe('workflow organization read interface', () => {
       await f.reads.get({
         ...f.input,
         workflowId: f.item.workflow.id,
-        query: { include: 'templateOrigin,organization' },
+        query: schemas.workflowGetQuerySchema.parse({
+          include: 'templateOrigin,organization',
+        }),
       }),
     ).toMatchObject({
       templateOrigin: null,
@@ -297,7 +326,9 @@ describe('workflow organization read interface', () => {
     const input = {
       ...f.input,
       workflowId: f.item.workflow.id,
-      query: { include: 'templateOrigin,organization' },
+      query: schemas.workflowGetQuerySchema.parse({
+        include: 'templateOrigin,organization',
+      }),
     };
     await expect(reads.get(input)).rejects.toBeInstanceOf(
       WorkflowTemplateOriginUnavailableError,
@@ -308,25 +339,14 @@ describe('workflow organization read interface', () => {
     );
     f.reader.getWorkflow.mockResolvedValue(null);
     await expect(
-      f.reads.get({ ...input, query: { include: 'organization' } }),
+      f.reads.get({
+        ...input,
+        query: schemas.workflowGetQuerySchema.parse({
+          include: 'organization',
+        }),
+      }),
     ).rejects.toBeInstanceOf(WorkflowNotFoundError);
   });
-
-  it.each([
-    { actorId: randomUUID() },
-    { favoritesOnly: 'false' },
-    { include: 'organization,templateOrigin' },
-    { query: '表'.repeat(43) },
-  ])(
-    'rejects invalid/extra transport fields before reading: %j',
-    async (query) => {
-      const f = fixture();
-      await expect(f.reads.list({ ...f.input, query })).rejects.toBeInstanceOf(
-        z.ZodError,
-      );
-      expect(f.reader.listWorkflows).not.toHaveBeenCalled();
-    },
-  );
 
   it('rejects private extra response properties and propagates unexpected database failures', async () => {
     const f = fixture();
@@ -340,11 +360,21 @@ describe('workflow organization read interface', () => {
       nextCursor: null,
     });
     await expect(
-      f.reads.list({ ...f.input, query: { include: 'organization' } }),
+      f.reads.list({
+        ...f.input,
+        query: schemas.workflowOrganizationListQuerySchema.parse({
+          include: 'organization',
+        }),
+      }),
     ).rejects.toBeInstanceOf(z.ZodError);
     const failure = new Error('unexpected database failure');
     f.reader.listWorkflows.mockRejectedValue(failure);
-    await expect(f.reads.list({ ...f.input, query: {} })).rejects.toBe(failure);
+    await expect(
+      f.reads.list({
+        ...f.input,
+        query: schemas.workflowOrganizationListQuerySchema.parse({}),
+      }),
+    ).rejects.toBe(failure);
   });
 
   it('does not read for an aborted operation or publish after a late abort', async () => {
@@ -352,7 +382,11 @@ describe('workflow organization read interface', () => {
       controller = new AbortController();
     controller.abort();
     await expect(
-      f.reads.list({ ...f.input, signal: controller.signal, query: {} }),
+      f.reads.list({
+        ...f.input,
+        signal: controller.signal,
+        query: schemas.workflowOrganizationListQuerySchema.parse({}),
+      }),
     ).rejects.toHaveProperty('name', 'AbortError');
     expect(f.reader.listWorkflows).not.toHaveBeenCalled();
     const late = new AbortController();
@@ -361,7 +395,11 @@ describe('workflow organization read interface', () => {
       return Promise.resolve({ items: [f.item], nextCursor: null });
     });
     await expect(
-      f.reads.list({ ...f.input, signal: late.signal, query: {} }),
+      f.reads.list({
+        ...f.input,
+        signal: late.signal,
+        query: schemas.workflowOrganizationListQuerySchema.parse({}),
+      }),
     ).rejects.toHaveProperty('name', 'AbortError');
   });
 });

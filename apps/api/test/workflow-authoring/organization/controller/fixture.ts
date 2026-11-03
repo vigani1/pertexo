@@ -34,7 +34,7 @@ import {
   ProblemDetailsFilter,
 } from '../../../../src/platform/http/index.js';
 
-import { WORKFLOW_AUTHORING_AUTHORIZATION } from '../../../../src/workflow-authoring/tokens.js';
+import { WORKSPACE_AUTHORIZATION } from '../../../../src/workspaces/tokens.js';
 import type { WorkflowAuthoringRequest } from '../../../../src/workflow-authoring/types.js';
 
 export const workspaceId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
@@ -183,7 +183,7 @@ export async function httpFixture(role: Role = 'owner') {
   const module = await Test.createTestingModule({
     controllers: [WorkflowOrganizationController],
     providers: [
-      { provide: WORKFLOW_AUTHORING_AUTHORIZATION, useValue: f.authorization },
+      { provide: WORKSPACE_AUTHORIZATION, useValue: f.authorization },
       { provide: RequestContextStore, useValue: contexts },
       { provide: WorkflowOrganizationCommandsUseCase, useValue: f.commands },
       { provide: WorkflowOrganizationReadsUseCase, useValue: f.reads },

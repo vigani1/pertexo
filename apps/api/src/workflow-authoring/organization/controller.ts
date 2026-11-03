@@ -1,196 +1,123 @@
+import { Controller, Req, UseInterceptors } from '@nestjs/common';
 import {
-  Body,
-  Controller,
-  Get,
-  Header,
-  HttpCode,
-  Param,
-  Post,
-  Put,
-  Query,
-  Req,
-  UseGuards,
-  UseInterceptors,
-} from '@nestjs/common';
-import {
-  workflowTagWorkspaceParamsSchema,
-  workflowTagParamsSchema,
-  workflowIdParamSchema,
-} from '@pertexo/contracts';
-import {
-  SessionAuthenticationGuard,
-  CsrfProtectionGuard,
-} from '../../workspaces/index.js';
-import { RateLimit } from '../../platform/rate-limit/metadata.js';
-import {
-  WorkflowParticipantGuard,
-  WorkflowReadGuard,
-  WorkflowUpdateGuard,
-} from '../http/guards.js';
-import type { WorkflowAuthoringRequest } from '../types.js';
-import { WorkflowOrganizationCommandsUseCase } from './commands.js';
-import { WorkflowOrganizationReadsUseCase } from './reads.js';
-import {
-  withWorkflowOrganizationRequest,
-  withWorkflowOrganizationCommand,
-} from './http.js';
+  organizationRoutes as routes,
+  type RouteInput,
+} from '@pertexo/contracts/server';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
 import { authoringFailure } from '../../problems/context/normalize.js';
+import { In, Route } from '../../workspaces/http/route.js';
+import type { WorkflowAuthoringRequest } from '../types.js';
+import { WorkflowOrganizationCommandsUseCase } from './commands.js';
+import { withWorkflowOrganizationRequest } from './http.js';
+import { WorkflowOrganizationReadsUseCase } from './reads.js';
 
 @UseInterceptors(domainErrors(authoringFailure))
-@Controller('v1/workspaces/:workspaceId')
-@RateLimit('authenticated_read')
+@Controller()
 export class WorkflowOrganizationController {
   public constructor(
     private readonly commands: WorkflowOrganizationCommandsUseCase,
     private readonly reads: WorkflowOrganizationReadsUseCase,
   ) {}
 
-  @Get('workflow-tags')
-  @Header('Cache-Control', 'private, no-store')
-  @UseGuards(SessionAuthenticationGuard, WorkflowReadGuard)
+  @Route(routes.listTags)
   public listTags(
     @Req() request: WorkflowAuthoringRequest,
-    @Param() params: unknown,
-    @Query() query: unknown,
+    @In() { params, query }: RouteInput<typeof routes.listTags>,
   ) {
-    const { workspaceId } = workflowTagWorkspaceParamsSchema.parse(params);
+    const { workspaceId } = params;
     return withWorkflowOrganizationRequest(request, workspaceId, (input) =>
       this.reads.listTags({
         ...input,
-        query: query ?? {},
+        query: query,
       }),
     );
   }
 
-  @Post('workflow-tags')
-  @Header('Cache-Control', 'private, no-store')
-  @RateLimit('ordinary_mutation')
-  @HttpCode(201)
-  @UseGuards(
-    SessionAuthenticationGuard,
-    WorkflowParticipantGuard,
-    CsrfProtectionGuard,
-  )
+  @Route(routes.createTag)
   public createTag(
     @Req() request: WorkflowAuthoringRequest,
-    @Param() params: unknown,
-    @Body() body: unknown,
+    @In() { params, body, idempotencyKey }: RouteInput<typeof routes.createTag>,
   ) {
-    const { workspaceId } = workflowTagWorkspaceParamsSchema.parse(params);
-    return withWorkflowOrganizationCommand(request, workspaceId, (input) =>
+    const { workspaceId } = params;
+    return withWorkflowOrganizationRequest(request, workspaceId, (input) =>
       this.commands.createTag({
         ...input,
+        idempotencyKey,
         request: body,
       }),
     );
   }
 
-  @Post('workflow-tags/:tagId/rename')
-  @Header('Cache-Control', 'private, no-store')
-  @RateLimit('ordinary_mutation')
-  @HttpCode(200)
-  @UseGuards(
-    SessionAuthenticationGuard,
-    WorkflowParticipantGuard,
-    CsrfProtectionGuard,
-  )
+  @Route(routes.renameTag)
   public renameTag(
     @Req() request: WorkflowAuthoringRequest,
-    @Param() params: unknown,
-    @Body() body: unknown,
+    @In() { params, body, idempotencyKey }: RouteInput<typeof routes.renameTag>,
   ) {
-    const { workspaceId, tagId } = workflowTagParamsSchema.parse(params);
-    return withWorkflowOrganizationCommand(request, workspaceId, (input) =>
+    const { workspaceId, tagId } = params;
+    return withWorkflowOrganizationRequest(request, workspaceId, (input) =>
       this.commands.renameTag({
         ...input,
+        idempotencyKey,
         tagId,
         request: body,
       }),
     );
   }
 
-  @Post('workflow-tags/:tagId/delete')
-  @Header('Cache-Control', 'private, no-store')
-  @RateLimit('ordinary_mutation')
-  @HttpCode(200)
-  @UseGuards(
-    SessionAuthenticationGuard,
-    WorkflowParticipantGuard,
-    CsrfProtectionGuard,
-  )
+  @Route(routes.deleteTag)
   public deleteTag(
     @Req() request: WorkflowAuthoringRequest,
-    @Param() params: unknown,
-    @Body() body: unknown,
+    @In() { params, body, idempotencyKey }: RouteInput<typeof routes.deleteTag>,
   ) {
-    const { workspaceId, tagId } = workflowTagParamsSchema.parse(params);
-    return withWorkflowOrganizationCommand(request, workspaceId, (input) =>
+    const { workspaceId, tagId } = params;
+    return withWorkflowOrganizationRequest(request, workspaceId, (input) =>
       this.commands.deleteTag({
         ...input,
+        idempotencyKey,
         tagId,
         request: body,
       }),
     );
   }
 
-  @Get('workflow-tags/:tagId/workflows')
-  @Header('Cache-Control', 'private, no-store')
-  @UseGuards(SessionAuthenticationGuard, WorkflowReadGuard)
+  @Route(routes.assignments)
   public assignments(
     @Req() request: WorkflowAuthoringRequest,
-    @Param() params: unknown,
-    @Query() query: unknown,
+    @In() { params, query }: RouteInput<typeof routes.assignments>,
   ) {
-    const { workspaceId, tagId } = workflowTagParamsSchema.parse(params);
+    const { workspaceId, tagId } = params;
     return withWorkflowOrganizationRequest(request, workspaceId, (input) =>
       this.reads.listTagAssignments({
         ...input,
         tagId,
-        query: query ?? {},
+        query: query,
       }),
     );
   }
 
-  @Post('workflows/:workflowId/tags')
-  @Header('Cache-Control', 'private, no-store')
-  @RateLimit('ordinary_mutation')
-  @HttpCode(200)
-  @UseGuards(
-    SessionAuthenticationGuard,
-    WorkflowUpdateGuard,
-    CsrfProtectionGuard,
-  )
+  @Route(routes.replaceTags)
   public replaceTags(
     @Req() request: WorkflowAuthoringRequest,
-    @Param() params: unknown,
-    @Body() body: unknown,
+    @In()
+    { params, body, idempotencyKey }: RouteInput<typeof routes.replaceTags>,
   ) {
-    const { workspaceId, workflowId } = workflowIdParamSchema.parse(params);
-    return withWorkflowOrganizationCommand(request, workspaceId, (input) =>
+    const { workspaceId, workflowId } = params;
+    return withWorkflowOrganizationRequest(request, workspaceId, (input) =>
       this.commands.replaceTags({
         ...input,
+        idempotencyKey,
         workflowId,
         request: body,
       }),
     );
   }
 
-  @Put('workflows/:workflowId/favorite')
-  @Header('Cache-Control', 'private, no-store')
-  @RateLimit('ordinary_mutation')
-  @HttpCode(200)
-  @UseGuards(
-    SessionAuthenticationGuard,
-    WorkflowParticipantGuard,
-    CsrfProtectionGuard,
-  )
+  @Route(routes.favorite)
   public favorite(
     @Req() request: WorkflowAuthoringRequest,
-    @Param() params: unknown,
-    @Body() body: unknown,
+    @In() { params, body }: RouteInput<typeof routes.favorite>,
   ) {
-    const { workspaceId, workflowId } = workflowIdParamSchema.parse(params);
+    const { workspaceId, workflowId } = params;
     return withWorkflowOrganizationRequest(request, workspaceId, (input) =>
       this.commands.setFavorite({
         ...input,

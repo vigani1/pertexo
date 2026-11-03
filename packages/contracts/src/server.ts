@@ -59,3 +59,5 @@ export { lifecycleRoutes } from './routes/workflows/lifecycle.js';
 export { versionRoutes } from './routes/workflows/versions.js';
 
 export { collaborationRoutes } from './routes/workflows/collaboration.js';
+
+export { organizationRoutes } from './routes/workflows/organization.js';

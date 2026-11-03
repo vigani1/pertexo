@@ -1,13 +1,14 @@
-import { createHash } from 'node:crypto';
-import {
+import type {
+  workflowGetQuerySchema,
   workflowOrganizationListQuerySchema,
+  workflowTagListQuerySchema,
+} from '@pertexo/contracts';
+import {
+  workflowCombinedOrganizationProjectionResponseSchema,
   workflowOrganizationListResponseSchema,
   workflowOrganizationProjectionResponseSchema,
-  workflowCombinedOrganizationProjectionResponseSchema,
-  workflowGetQuerySchema,
-  workflowTagListQuerySchema,
-  workflowTagListResponseSchema,
   workflowTagAssignmentsResponseSchema,
+  workflowTagListResponseSchema,
 } from '@pertexo/contracts';
 import {
   WorkflowNotFoundError,
@@ -15,26 +16,29 @@ import {
   type WorkflowOrganizationReadStore,
   type WorkflowTagStore,
 } from '@pertexo/core/authoring';
+import { createHash } from 'node:crypto';
+import type { z } from 'zod';
 import type { WorkspaceAuthorizationSource } from '../../authorization/index.js';
-import type { WorkflowAuthoringPersistence } from '../ports.js';
+import { parseRequestInput } from '../../platform/http/request-input.js';
 import {
-  decodeOrganizationPageCursor,
-  decodeWorkflowOrganizationCursor,
-  encodeOrganizationPageCursor,
-  encodeWorkflowOrganizationCursor,
-} from './cursors.js';
+  serializeWorkflowList,
+  serializeWorkflowSummary,
+} from '../http/serializers.js';
+import type { WorkflowAuthoringPersistence } from '../ports.js';
 import {
   authorizeWorkflowOrganization,
   workflowOrganizationContext,
   type WorkflowOrganizationInput,
 } from './authority.js';
 import {
-  serializeWorkflowList,
-  serializeWorkflowSummary,
-} from '../http/serializers.js';
-import { parseRequestInput } from '../../platform/http/request-input.js';
+  decodeOrganizationPageCursor,
+  decodeWorkflowOrganizationCursor,
+  encodeOrganizationPageCursor,
+  encodeWorkflowOrganizationCursor,
+} from './cursors.js';
 
-type QueryInput = WorkflowOrganizationInput & Readonly<{ query: unknown }>;
+type QueryInput<Request = unknown> = WorkflowOrganizationInput &
+  Readonly<{ query: Request }>;
 
 /** Owns normalized organization filters and purpose-bound continuations. */
 export class WorkflowOrganizationReadsUseCase {
@@ -54,14 +58,13 @@ export class WorkflowOrganizationReadsUseCase {
     > = {},
   ) {}
 
-  public async list(input: QueryInput) {
+  public async list(
+    input: QueryInput<z.output<typeof workflowOrganizationListQuerySchema>>,
+  ) {
     await authorizeWorkflowOrganization(input, this.authorization, 'read', {
       reading: true,
     });
-    const query = parseRequestInput(
-      workflowOrganizationListQuerySchema,
-      input.query,
-    );
+    const query = input.query;
     const context = workflowOrganizationContext(input);
     const filters = {
       ...(query.query === undefined ? {} : { query: query.query }),
@@ -117,11 +120,14 @@ export class WorkflowOrganizationReadsUseCase {
     });
   }
 
-  public async get(input: QueryInput & Readonly<{ workflowId: string }>) {
+  public async get(
+    input: QueryInput<z.output<typeof workflowGetQuerySchema>> &
+      Readonly<{ workflowId: string }>,
+  ) {
     await authorizeWorkflowOrganization(input, this.authorization, 'read', {
       reading: true,
     });
-    const query = parseRequestInput(workflowGetQuerySchema, input.query);
+    const query = input.query;
     if (
       query.include !== 'organization' &&
       query.include !== 'templateOrigin,organization'
@@ -164,11 +170,13 @@ export class WorkflowOrganizationReadsUseCase {
     });
   }
 
-  public async listTags(input: QueryInput) {
+  public async listTags(
+    input: QueryInput<z.output<typeof workflowTagListQuerySchema>>,
+  ) {
     await authorizeWorkflowOrganization(input, this.authorization, 'read', {
       reading: true,
     });
-    const query = parseRequestInput(workflowTagListQuerySchema, input.query);
+    const query = input.query;
     const context = workflowOrganizationContext(input);
     const cursorContext = {
       purpose: 'tags' as const,
@@ -196,12 +204,13 @@ export class WorkflowOrganizationReadsUseCase {
   }
 
   public async listTagAssignments(
-    input: QueryInput & Readonly<{ tagId: string }>,
+    input: QueryInput<z.output<typeof workflowTagListQuerySchema>> &
+      Readonly<{ tagId: string }>,
   ) {
     await authorizeWorkflowOrganization(input, this.authorization, 'admin', {
       reading: true,
     });
-    const query = parseRequestInput(workflowTagListQuerySchema, input.query);
+    const query = input.query;
     const context = workflowOrganizationContext(input);
     const cursorContext = {
       purpose: 'tag-assignments' as const,
