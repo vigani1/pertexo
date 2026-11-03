@@ -12,7 +12,7 @@ import {
   rethrowQueryFailure,
 } from '@pertexo/database/primitives';
 import type { WorkflowTestSuitePreparation } from '@pertexo/contracts';
-import { type Role } from '@pertexo/policy';
+import type { Role } from '@pertexo/policy';
 import {
   canonicalJson,
   DEFAULT_TEST_EXPECTATIONS,
