@@ -243,6 +243,18 @@ describe.runIf(betterAuthIntegrationEnabled)(
         browser: world.browser,
       });
       expect(session.statusCode).toBe(401);
+
+      // This suite shares one owner's active token limit.
+      const revoked = await api.send(
+        'POST',
+        `${world.base}/api-tokens/${created.token.id}/revoke`,
+        {
+          browser: world.browser,
+          headers: { 'idempotency-key': randomUUID() },
+          payload: {},
+        },
+      );
+      expect(revoked.statusCode, revoked.payload).toBe(200);
     });
 
     it('asks for credentials with none, or with a revoked or made-up token', async () => {
