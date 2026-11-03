@@ -6,13 +6,14 @@
   "sideEffects": false,
   "exports": {
     ".": {
-      "types": "./dist/authorization-policy.d.ts",
-      "default": "./dist/authorization-policy.js"
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
     }
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "test": "vitest run",
     "typecheck": "tsc -p tsconfig.test.json --noEmit"
-  }
+  },
+  "types": "./dist/index.d.ts"
 }
