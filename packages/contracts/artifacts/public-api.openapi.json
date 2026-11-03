@@ -7466,6 +7466,7 @@
               "workspace.member_removal_conflict",
               "workspace.member_directory_managed",
               "workspace.member_status_conflict",
+              "workspace.recovery_owner_ineligible",
               "workspace.invitation_conflict",
               "workspace.invitation_proof_expired",
               "workspace.invitation_revision_conflict",

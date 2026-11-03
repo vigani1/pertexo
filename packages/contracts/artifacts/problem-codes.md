@@ -146,4 +146,5 @@ Generated from the problem manifest; run `pnpm contracts:generate`. Branch on th
 | `workspace.member_role_transition_conflict` | 409 | Workspace member role transition conflict |
 | `workspace.member_status_conflict` | 409 | Workspace member status conflict |
 | `workspace.quota_exceeded` | 429 | Workspace quota exceeded |
+| `workspace.recovery_owner_ineligible` | 409 | Recovery account required for ownership transfer |
 | `workspace.revision_conflict` | 412 | Workspace revision conflict |

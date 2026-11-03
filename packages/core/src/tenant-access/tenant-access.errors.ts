@@ -93,6 +93,7 @@ export type WorkspaceMembershipCommandConflictReason =
   | 'owner_target'
   | 'owner_departure'
   | 'command_forbidden'
+  | 'recovery_owner_ineligible'
   | 'revision_conflict';
 
 export class WorkspaceMembershipCommandConflictError extends Error {

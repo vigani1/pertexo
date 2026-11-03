@@ -71,6 +71,7 @@ export const API_PROBLEM_CODES = [
   'workspace.member_removal_conflict',
   'workspace.member_directory_managed',
   'workspace.member_status_conflict',
+  'workspace.recovery_owner_ineligible',
   'workspace.invitation_conflict',
   'workspace.invitation_proof_expired',
   'workspace.invitation_revision_conflict',
@@ -472,6 +473,12 @@ const apiProblemDetails = {
     status: 409,
     title: 'Workspace member status conflict',
     severity: 'warn',
+    exposeDetail: true,
+  },
+  'workspace.recovery_owner_ineligible': {
+    status: 409,
+    title: 'Recovery account required for ownership transfer',
+    severity: 'info',
     exposeDetail: true,
   },
   'workspace.invitation_conflict': {
