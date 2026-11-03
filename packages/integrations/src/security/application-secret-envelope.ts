@@ -6,6 +6,9 @@ import {
   validateApplicationKeyRing,
 } from './key-ring.js';
 
+const NONCE_BYTES = 12;
+const AUTH_TAG_BYTES = 16;
+
 const sealedSchema = z
   .object({
     ciphertext: z.string().min(1).max(16_384),
@@ -41,8 +44,10 @@ export function createApplicationSecretEnvelope(
     seal: (plaintext, associatedData) => {
       assertBounded(plaintext, 12_288);
       assertBounded(associatedData, 512);
-      const nonce = randomBytes(12);
-      const cipher = createCipheriv('aes-256-gcm', currentKey, nonce);
+      const nonce = randomBytes(NONCE_BYTES);
+      const cipher = createCipheriv('aes-256-gcm', currentKey, nonce, {
+        authTagLength: AUTH_TAG_BYTES,
+      });
       cipher.setAAD(Buffer.from(associatedData, 'utf8'));
       const input = Buffer.from(plaintext, 'utf8');
       try {
@@ -71,7 +76,16 @@ export function createApplicationSecretEnvelope(
       const tag = Buffer.from(sealed.tag, 'base64url');
       const ciphertext = Buffer.from(sealed.ciphertext, 'base64url');
       try {
-        const decipher = createDecipheriv('aes-256-gcm', key, nonce);
+        if (
+          nonce.byteLength !== NONCE_BYTES ||
+          tag.byteLength !== AUTH_TAG_BYTES
+        )
+          throw new TypeError(
+            'Application secret envelope nonce or authentication tag is invalid',
+          );
+        const decipher = createDecipheriv('aes-256-gcm', key, nonce, {
+          authTagLength: AUTH_TAG_BYTES,
+        });
         decipher.setAAD(Buffer.from(associatedData, 'utf8'));
         decipher.setAuthTag(tag);
         const plaintext = Buffer.concat([
