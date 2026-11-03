@@ -284,12 +284,12 @@ describe('workflow trigger pause (ADR 056)', () => {
     const runs = await endMany(workspaceId, workflowId, 'failed', 12);
     const decisions = await drain();
     expect(decisions).toEqual([
-      { workspaceId, workflowId, consecutiveFailures: 10 },
+      { workspaceId, workflowId, consecutiveFailures: 12 },
     ]);
     expect(await pauseState(workspaceId, workflowId)).toEqual({
       state: 'paused',
-      failures: 10,
-      last_run: runs[9],
+      failures: 12,
+      last_run: runs[11],
       revision: '2',
     });
     expect(await streak(workspaceId, workflowId)).toBe(12);
@@ -300,9 +300,9 @@ describe('workflow trigger pause (ADR 056)', () => {
         target_id: workflowId,
         metadata: {
           reason: 'consecutive_failures',
-          failures: 10,
+          failures: 12,
           threshold: 10,
-          lastRunId: runs[9],
+          lastRunId: runs[11],
         },
       },
     ]);
@@ -570,6 +570,54 @@ describe('workflow trigger pause (ADR 056)', () => {
     expect(await streak(optedOut.workspaceId, optedOut.workflowId)).toBe(12);
   });
 
+  it.each([false, true])(
+    'records the latest failed run after compaction with a late success=%s',
+    async (lateSuccess) => {
+      const { workspaceId, workflowId } = await seed();
+      await asAdmin(
+        'update app.workflows set auto_pause_enabled=false where id=$1',
+        [workflowId],
+      );
+      const base = Date.parse('2026-10-01T00:00:00.000Z');
+      for (let n = 1; n <= 150; n++)
+        await end(workspaceId, workflowId, 'failed', {
+          endedAt: new Date(base + n * 1000).toISOString(),
+        });
+      expect(await drain()).toEqual([]);
+      if (lateSuccess) {
+        await end(workspaceId, workflowId, 'succeeded', {
+          endedAt: new Date(base + 25_500).toISOString(),
+        });
+        expect(await drain()).toEqual([]);
+      }
+      await asAdmin(
+        'update app.workflows set auto_pause_enabled=true,auto_pause_threshold=10 where id=$1',
+        [workflowId],
+      );
+      const latest = await end(workspaceId, workflowId, 'failed', {
+        endedAt: new Date(base + 151_000).toISOString(),
+      });
+      await drain();
+      expect(await pauseState(workspaceId, workflowId)).toEqual({
+        state: 'paused',
+        failures: 100,
+        last_run: latest,
+        revision: '2',
+      });
+      expect(await pauseAudits(workspaceId)).toEqual([
+        {
+          target_id: workflowId,
+          metadata: {
+            reason: 'consecutive_failures',
+            failures: 100,
+            threshold: 10,
+            lastRunId: latest,
+          },
+        },
+      ]);
+    },
+  );
+
   it('bounds disabled failure storage and fold reads after thousands of failures', async () => {
     const { workspaceId, workflowId } = await seed();
     await asAdmin('create extension if not exists pg_stat_statements');
@@ -639,7 +687,9 @@ describe('workflow trigger pause (ADR 056)', () => {
       [workflowId],
     );
     expect(positions.map((row) => row.run_id)).toEqual(runs.slice(-100));
-    expect((await pauseState(workspaceId, workflowId))?.last_run).toBe(runs[9]);
+    expect((await pauseState(workspaceId, workflowId))?.last_run).toBe(
+      runs[149],
+    );
     await end(workspaceId, workflowId, 'succeeded', {
       endedAt: new Date(
         Date.parse(positions[50]?.ended_at ?? '') + 500,

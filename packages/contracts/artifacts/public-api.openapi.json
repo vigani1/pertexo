@@ -16781,7 +16781,8 @@
               {
                 "type": "null"
               }
-            ]
+            ],
+            "description": "Latest failed triggered run counted when the workflow was paused."
           }
         },
         "required": [
@@ -16924,7 +16925,8 @@
                   {
                     "type": "null"
                   }
-                ]
+                ],
+                "description": "Latest failed triggered run counted when the workflow was paused."
               }
             },
             "required": [

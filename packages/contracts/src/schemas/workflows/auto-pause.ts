@@ -53,7 +53,12 @@ export const workflowAutoPauseSettingsSchema = z
       .positive()
       .max(Number.MAX_SAFE_INTEGER)
       .nullable(),
-    pausedLastRunId: z.uuid().nullable(),
+    pausedLastRunId: z
+      .uuid()
+      .nullable()
+      .describe(
+        'Latest failed triggered run counted when the workflow was paused.',
+      ),
   })
   .strict();
 

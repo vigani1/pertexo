@@ -1,3 +1,4 @@
+import { Link } from '@tanstack/react-router';
 import type {
   AccessibleWorkspace,
   WorkflowAutoPauseSettings,
@@ -15,12 +16,14 @@ import { QueryView } from '@/components/patterns/states/query-view';
 import { settingsReadFailure } from './settings-read-failure';
 
 function PausedStateNotice({
+  workspaceId,
   settings,
   canResume,
   pending,
   disabled,
   onResume,
 }: Readonly<{
+  workspaceId: string;
   settings: WorkflowAutoPauseSettings | undefined;
   canResume: boolean;
   pending: boolean;
@@ -56,6 +59,17 @@ function PausedStateNotice({
         a row{time} Manual runs and replays still work. Resume leaves triggers
         you turned off unchanged.
       </p>
+      {settings.pausedLastRunId === null ? null : (
+        <p className="mt-1">
+          <Link
+            to="/w/$workspaceId/runs/$runId"
+            params={{ workspaceId, runId: settings.pausedLastRunId }}
+            className="inline-link"
+          >
+            Latest failed run
+          </Link>
+        </p>
+      )}
       {canResume ? null : (
         <p className="mt-1">A workflow editor can resume these triggers.</p>
       )}
@@ -150,6 +164,7 @@ export function WorkflowPausedBanner({
         />
       ) : null}
       <PausedStateNotice
+        workspaceId={workspace.id}
         settings={settings}
         canResume={canResume}
         pending={command.pending}

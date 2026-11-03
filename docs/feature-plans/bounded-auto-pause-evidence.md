@@ -6,9 +6,12 @@ Fix PR #655's unbounded failure ledger while preserving B1 completion ordering.
   folding. Keep at most the newest 100 eligible failure positions per workflow.
   A success that removes a retained position also supersedes every older,
   discarded position, so late arrival still yields exact evidence below 100.
-- Evaluate each bounded batch before compaction to preserve its threshold-crossing
-  run. Saturate the internal positioned streak at 100; preserve opaque legacy
-  carry, recorded pauses, audits, and success/resume fences.
+- A pause and its audit record the latest failed triggered run counted in the
+  streak and the current streak count, as ADR 056 requires. Retained positions
+  cannot identify a historical first crossing. Saturate the internal positioned
+  streak at 100; preserve opaque legacy carry, recorded pauses, audits, and
+  success/resume fences. The API's `pausedLastRunId` and the screen's
+  “Latest failed run” link describe this same evidence.
 - Disabled workflows retain the same bounded evidence, so enabling auto-pause
   preserves their streak and applies the setting at the next evaluation.
 - Generate a forward migration after 0089 to compact existing ledgers and update
