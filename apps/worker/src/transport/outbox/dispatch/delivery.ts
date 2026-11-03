@@ -1,3 +1,4 @@
+import { ZodError } from 'zod';
 import { canonicalOutboxPayloadChecksum } from '@pertexo/core/outbox';
 import type { LeasedOutboxEvent } from '@pertexo/core/outbox';
 import type { TransportErrorClass, TransportJob } from '@pertexo/observability';
@@ -98,4 +99,26 @@ export function errorCode(error: unknown): string {
     return 'outbox.invalid_contract';
   }
   return 'queue.publish_failed';
+}
+
+/** Queue contracts contain fixed field names; omit messages, unknown keys and values. */
+export function publicationRefusalDiagnostics(
+  error: unknown,
+): Readonly<Record<string, unknown>> {
+  if (error instanceof OutboxContractError && error.cause instanceof ZodError)
+    return {
+      validationIssues: error.cause.issues.map((issue) => ({
+        field: issue.path.join('.') || 'payload',
+        code: issue.code,
+      })),
+    };
+  return {
+    reason:
+      error instanceof OutboxPayloadChecksumError
+        ? 'checksum_mismatch'
+        : error instanceof OutboxContractError &&
+            error.cause instanceof TypeError
+          ? 'payload_not_object'
+          : 'unsupported_queue_job',
+  };
 }
