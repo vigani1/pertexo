@@ -53,7 +53,7 @@ export const promotionRoutes = {
     method: 'put',
     path: `${ROOT}/settings`,
     params: workspaceParams,
-    access: updating,
+    access: session('workspace:manage'),
     rateLimit: 'ordinary_mutation',
     idempotent: true,
     cacheControl: noStore,
