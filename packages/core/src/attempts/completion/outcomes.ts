@@ -242,7 +242,7 @@ async function commitTerminal(
   await appendAttemptEvent(client, {
     workspaceId: input.lease.workspaceId,
     runId: input.lease.runId,
-    type: `node.${input.outcome.status}`,
+    type: `node.${fields.durableStatus}`,
     payload: {
       nodeRunId: input.lease.nodeRunId,
       attemptId: input.lease.attemptId,
