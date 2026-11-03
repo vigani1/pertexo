@@ -2,7 +2,10 @@ import { and, eq, inArray, sql, type SQL } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { AnyPgColumn } from 'drizzle-orm/pg-core';
 import type { PoolClient } from 'pg';
-import { ACTIVE_WORKSPACE_STATUSES } from '@pertexo/policy';
+import {
+  ACTIVE_WORKSPACE_STATUSES,
+  MAX_AUTO_PAUSE_THRESHOLD,
+} from '@pertexo/policy';
 import {
   workflowFailureStreaks as streaks,
   workflowTriggerOutcomes as outcomes,
@@ -210,31 +213,16 @@ async function applyOrderedOutcomes(
   client: PoolClient,
   scope: Readonly<{ workspaceId: string; workflowId: string }>,
   prior: StreakHistory,
-  batch: Readonly<{ outcomes: readonly TriggerOutcome[]; threshold: number }>,
+  batch: Readonly<{
+    outcomes: readonly TriggerOutcome[];
+    threshold: number;
+  }>,
 ) {
   const { outcomes: eligible, threshold } = batch;
   const db = drizzle(client);
   const { workspaceId, workflowId } = scope;
   const success = advanceSuccessWatermark(prior.success, eligible);
   const legacyFailures = success === null ? prior.legacyFailures : 0;
-  const additions = eligible.filter(
-    (outcome) =>
-      outcome.countsAsFailure &&
-      (success === null || compareCompletions(outcome, success) > 0),
-  );
-  if (additions.length > 0)
-    await db
-      .insert(failures)
-      .values(
-        additions.map(({ id, runId, endedAt }) => ({
-          ...scope,
-          id,
-          runId,
-          endedAt,
-        })),
-      )
-      .onConflictDoNothing()
-      .catch(rethrowQueryFailure);
   await db
     .update(streaks)
     .set({
@@ -259,35 +247,64 @@ async function applyOrderedOutcomes(
       ? undefined
       : sql`(${failures.endedAt},${failures.id})>(${success.endedAt}::timestamptz,${success.id}::uuid)`,
   );
-  const [count] = await db
-    .select({ value: sql<number>`count(*)::integer` })
-    .from(failures)
-    .where(retained)
-    .catch(rethrowQueryFailure);
-  // Only the threshold's first positions and the latest position need to cross
-  // the wire; the durable suffix can be longer than a fold's batch.
-  const firstFailures = await db
-    .select({ runId: failures.runId })
-    .from(failures)
-    .where(retained)
-    .orderBy(failures.endedAt, failures.id)
-    .limit(threshold)
-    .catch(rethrowQueryFailure);
-  const [latestFailure] = await db
+  const positioned: TriggerOutcome[] = await db
     .select({
       id: failures.id,
       runId: failures.runId,
       endedAt: completionTime(failures.endedAt),
+      countsAsFailure: sql<boolean>`true`,
     })
     .from(failures)
     .where(retained)
     .orderBy(sql`${failures.endedAt} desc`, sql`${failures.id} desc`)
-    .limit(1)
+    .limit(MAX_AUTO_PAUSE_THRESHOLD)
     .catch(rethrowQueryFailure);
+  const additions = eligible.filter(
+    (outcome) =>
+      outcome.countsAsFailure &&
+      (success === null || compareCompletions(outcome, success) > 0),
+  );
+  const ordered = [...positioned, ...additions].sort(compareCompletions);
+  // Evaluate before compaction so a burst records the actual threshold-crossing
+  // run, rather than a later representative from the retained suffix.
+  const evidence = pauseEvidence(legacyFailures, ordered, threshold);
+  const kept = ordered.slice(-MAX_AUTO_PAUSE_THRESHOLD);
+  const first = kept[0];
+  await db
+    .delete(failures)
+    .where(
+      and(
+        eq(failures.workspaceId, workspaceId),
+        eq(failures.workflowId, workflowId),
+        first === undefined
+          ? undefined
+          : sql`(${failures.endedAt},${failures.id})<(${first.endedAt}::timestamptz,${first.id}::uuid)`,
+      ),
+    )
+    .catch(rethrowQueryFailure);
+  const newIds = new Set(additions.map(({ id }) => id));
+  const inserts = kept.filter(({ id }) => newIds.has(id));
+  if (inserts.length > 0)
+    await db
+      .insert(failures)
+      .values(
+        inserts.map(({ id, runId, endedAt }) => ({
+          ...scope,
+          id,
+          runId,
+          endedAt,
+        })),
+      )
+      .onConflictDoNothing()
+      .catch(rethrowQueryFailure);
+  const latestFailure = ordered.at(-1);
   const latestSuccess =
     success === null ? undefined : eligible.find(({ id }) => id === success.id);
   const last = latestFailure ?? latestSuccess;
-  const consecutiveFailures = legacyFailures + (count?.value ?? 0);
+  const consecutiveFailures = Math.max(
+    legacyFailures,
+    Math.min(MAX_AUTO_PAUSE_THRESHOLD, legacyFailures + ordered.length),
+  );
   await db
     .update(streaks)
     .set({
@@ -303,7 +320,7 @@ async function applyOrderedOutcomes(
       ),
     )
     .catch(rethrowQueryFailure);
-  return pauseEvidence(legacyFailures, firstFailures, threshold);
+  return evidence;
 }
 
 function completionTime<T extends AnyPgColumn>(

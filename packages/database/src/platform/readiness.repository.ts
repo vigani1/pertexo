@@ -4,7 +4,7 @@ import { QueryBuilder } from 'drizzle-orm/pg-core';
 import type { Pool } from 'pg';
 
 export const EXPECTED_MIGRATION_HEAD =
-  '0089_expose_unconfirmed_invitation_delivery.sql';
+  '0090_bound_trigger_failure_evidence.sql';
 const MINIMUM_POSTGRES_MAJOR = 18;
 
 /**

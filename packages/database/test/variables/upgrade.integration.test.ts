@@ -190,6 +190,7 @@ it('backfills current and retained historical sets, fixed empty sets and purged 
         '0087_remove_trigger_outcome_fold.sql',
         '0088_repair_existing_workspace_capacity.sql',
         '0089_expose_unconfirmed_invitation_delivery.sql',
+        '0090_bound_trigger_failure_evidence.sql',
       ]);
       expect(
         (

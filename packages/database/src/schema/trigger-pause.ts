@@ -160,7 +160,7 @@ export const workflowFailureStreaks = appSchema.table(
   ],
 );
 
-/** Failure positions remain until a success or resume makes them irrelevant. */
+/** The newest maximum-threshold failure positions, independent of run retention. */
 export const workflowTriggerFailures = appSchema.table(
   'workflow_trigger_failures',
   {
