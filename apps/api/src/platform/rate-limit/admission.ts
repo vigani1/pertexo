@@ -105,6 +105,6 @@ export class HttpRateLimitAdmission {
           details: { retryAfterSeconds: outcome.retryAfterSeconds },
         }),
       );
-    return outcome.kind === 'admitted' ? outcome.quota : undefined;
+    return outcome.quota;
   }
 }
