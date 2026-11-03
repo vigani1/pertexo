@@ -1,0 +1,10 @@
+# The public spec is held to what the internal documents aren't: a reader needs all of this.
+extends:
+  - recommended
+
+rules:
+  no-unused-components: off
+  operation-summary: error
+  operation-operationId: error
+  operation-4xx-response: error
+  security-defined: error

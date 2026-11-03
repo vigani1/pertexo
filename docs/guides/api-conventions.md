@@ -5,7 +5,8 @@ to use it with a token; this page says what stays the same.
 
 ## What's stable
 
-Routes that accept an API token are the public API. Every other route under `/v1` serves
+Routes that accept an API token are the public API, described by `GET /v1/openapi.json`,
+which any OpenAPI viewer or client generator can read. Every other route under `/v1` serves
 the web app and can change with it, so don't script against it.
 
 On public routes:

@@ -82,7 +82,7 @@ retry or arbitrary endpoint passthrough.
 Paths below are relative to `/v1/workspaces/$WORKSPACE_ID`. Exactly one Bearer
 Authorization header authenticates supported calls; do not mix cookies with it.
 The server enforces scopes, validation, rate limits and preconditions shared with
-the browser. Request bodies use [the current contracts](../../packages/contracts/src/schemas).
+the browser. Request and response bodies are in the server's own spec, `GET /v1/openapi.json`.
 
 | CLI after `pnpm cli` | HTTP | Token scope |
 | --- | --- | --- |

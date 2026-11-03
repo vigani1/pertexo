@@ -20,6 +20,7 @@ import {
   WORKSPACE_DATABASE,
 } from './platform/database/module.js';
 import { LiveController } from './platform/health/live.controller.js';
+import { PublicApiController } from './platform/http/public-api.controller.js';
 import {
   API_READINESS_LOGGER,
   API_RUNTIME_READINESS,
@@ -55,7 +56,7 @@ export type ApiModuleDependencies = ApiRuntimeSet &
   }>;
 
 @Module({
-  controllers: [LiveController, ReadyController],
+  controllers: [LiveController, ReadyController, PublicApiController],
   imports: [ApiLifecycleModule],
 })
 // Nest requires a class as the root module passed to the application factory.
@@ -134,7 +135,7 @@ export class AppModule {
         HttpPlatformModule.register(httpErrorLogger, APPLICATION_ERROR_MAPPERS),
         admissionModule,
       ],
-      controllers: [LiveController, ReadyController],
+      controllers: [LiveController, ReadyController, PublicApiController],
       providers: [
         {
           provide: Symbol('API_RESOURCE_OWNERS'),

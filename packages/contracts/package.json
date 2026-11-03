@@ -17,7 +17,7 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "contracts:check": "tsx scripts/generate-artifacts.ts --check && redocly lint artifacts/*.openapi.json --config redocly.yaml --format stylish",
+    "contracts:check": "tsx scripts/generate-artifacts.ts --check && redocly lint artifacts/*.openapi.json --config redocly.yaml --format stylish && redocly lint artifacts/public-api.openapi.json --config redocly.public.yaml --format stylish",
     "contracts:generate": "tsx scripts/generate-artifacts.ts --write",
     "test": "vitest run",
     "typecheck": "tsc -p tsconfig.test.json --noEmit"

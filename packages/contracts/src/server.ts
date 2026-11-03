@@ -2,6 +2,7 @@
 // imported. The API serves them and `contracts:generate` writes them out.
 export { artifactTransferOpenApiDocument } from './openapi/execution/artifact-transfer.js';
 export { CONTRACT_ARTIFACTS } from './openapi/generated-artifacts.js';
+export { publicOpenApiDocument } from './openapi/public.js';
 export { catalogOpenApiDocument } from './openapi/catalog.js';
 export { connectionsOpenApiDocument } from './openapi/connections.js';
 export { identityWorkspaceOpenApiDocument } from './openapi/identity/workspaces.js';

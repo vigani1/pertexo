@@ -10,6 +10,8 @@ const PUBLIC_ROUTES = new Set([
   'GET /health/ready',
   'OPTIONS /hooks/{endpointKey}',
   'OPTIONS /hooks/{endpointKey}/test',
+  // The public API's own spec.
+  'GET /v1/openapi.json',
   // The provider returns here; the state in the query is the credential.
   'GET /v1/connections/oauth2/callback',
   // A public form's capability is its authority.
@@ -27,6 +29,7 @@ const PUBLIC_ROUTES = new Set([
   'POST /v1/notifications/unsubscribe/one-click',
 ]);
 const UNDOCUMENTED = new Set([
+  'GET /v1/openapi.json',
   'GET /health/live',
   'GET /health/ready',
   'OPTIONS /hooks/{endpointKey}',

@@ -1,3 +1,4 @@
+import { publicOpenApiDocument } from './public.js';
 import { API_PROBLEM_MANIFEST } from '../errors/api-problem.js';
 import { connectionsOpenApiDocument } from './connections.js';
 import { catalogOpenApiDocument } from './catalog.js';
@@ -46,6 +47,10 @@ function problemCatalog(): string {
 
 export const CONTRACT_ARTIFACTS = Object.freeze([
   Object.freeze({ fileName: 'problem-codes.md', content: problemCatalog() }),
+  Object.freeze({
+    fileName: 'public-api.openapi.json',
+    content: `${JSON.stringify(publicOpenApiDocument, undefined, 2)}\n`,
+  }),
   ...CONTRACT_DOMAINS.map(([domain, openapi]) =>
     Object.freeze({
       fileName: `${domain}.openapi.json`,
