@@ -1,3 +1,4 @@
+import { ArtifactMetadataNotFoundError } from '@pertexo/core/artifacts';
 import { toProblem } from '../../problems/registry.js';
 import { hasHttpStatus } from '../../platform/http/problems/status.js';
 import { randomUUID } from 'node:crypto';
@@ -59,6 +60,8 @@ export function registerCallbackIngress(
         hasHttpStatus(error, 413)
       ) {
         await problem(reply, 'webhook.payload_too_large', requestId);
+      } else if (error instanceof ArtifactMetadataNotFoundError) {
+        await problem(reply, 'request.invalid', requestId);
       } else if (error instanceof CallbackResponseError) {
         await problem(reply, toProblem(error).code, requestId);
       } else {

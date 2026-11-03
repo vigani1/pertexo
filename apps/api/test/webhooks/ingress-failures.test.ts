@@ -1,3 +1,4 @@
+import { ArtifactMetadataNotFoundError } from '@pertexo/core/artifacts';
 import {
   EventCoordinationUnavailableError,
   WebhookIntakeBusyError,
@@ -26,6 +27,18 @@ function logger() {
 // not only a rising `unavailable` counter.
 describe('webhook ingress failures', () => {
   const { setup, setupPreflight } = createIngressFixture();
+
+  it('refuses an unauthorized artifact as invalid input without promising a retry', async () => {
+    const { application } = setup({
+      reference: undefined,
+      acceptanceError: new ArtifactMetadataNotFoundError(),
+      logger: logger(),
+    });
+    const response = await application.inject(request('{}', currentSecret));
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toMatchObject({ code: 'request.invalid' });
+    expect(response.headers['retry-after']).toBeUndefined();
+  });
 
   it('answers an unexpected acceptance failure with a safe 503', async () => {
     const failure = new Error('connection terminated unexpectedly');

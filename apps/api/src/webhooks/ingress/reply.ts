@@ -1,3 +1,4 @@
+import { ArtifactMetadataNotFoundError } from '@pertexo/core/artifacts';
 import { API_PROBLEM_MANIFEST } from '@pertexo/contracts';
 import type { ApiProblemCode } from '@pertexo/contracts';
 import {
@@ -61,6 +62,7 @@ export async function rejectAcceptance(
     return;
   }
   if (
+    error instanceof ArtifactMetadataNotFoundError ||
     error instanceof CallableInputInvalidError ||
     error instanceof StoredExecutionValueInvalidError
   ) {
