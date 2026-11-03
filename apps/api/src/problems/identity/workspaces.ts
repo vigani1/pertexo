@@ -103,8 +103,7 @@ export const identityProblems = [
       });
     if (error.reason === 'delivery_unresolved')
       return applicationError('workspace.invitation_delivery_unavailable', {
-        safeDetail:
-          'The prior delivery outcome must be reconciled before resending.',
+        safeDetail: error.message,
       });
     if (
       error.reason === 'duplicate_pending' ||

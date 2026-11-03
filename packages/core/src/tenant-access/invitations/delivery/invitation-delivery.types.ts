@@ -26,7 +26,7 @@ export type MarkInvitationDeliveryDispatchingInput = DeliveryAttempt &
 export type RetryInvitationDeliveryInput = DeliveryAttempt;
 export type CompleteInvitationDeliveryInput = DeliveryAttempt &
   Readonly<{
-    status: 'submitted' | 'failed';
+    status: 'submitted' | 'failed' | 'unknown';
     providerReference?: string;
     failureCode?: string;
   }>;

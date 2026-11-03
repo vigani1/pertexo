@@ -11220,7 +11220,8 @@
                     "queued",
                     "submitted",
                     "failed",
-                    "canceled"
+                    "canceled",
+                    "unknown"
                   ]
                 },
                 "expiresAt": {
@@ -11343,7 +11344,8 @@
                   "queued",
                   "submitted",
                   "failed",
-                  "canceled"
+                  "canceled",
+                  "unknown"
                 ]
               },
               "expiresAt": {

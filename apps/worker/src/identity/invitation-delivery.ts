@@ -70,7 +70,15 @@ export function createWorkspaceInvitationDeliveryHandler(
       signal: context.signal,
     });
     if (claim.kind === 'terminal' || context.signal.aborted) return;
-    if (claim.recoveredUnknown && !dependencies.email.deduplicates) return;
+    if (claim.recoveredUnknown && !dependencies.email.deduplicates) {
+      await dependencies.store.complete({
+        ...identity,
+        status: 'unknown',
+        failureCode: 'delivery.outcome_unknown',
+        signal: context.signal,
+      });
+      return;
+    }
     const associatedData = `pertexo/workspace-invitation/${identity.workspaceId}/${identity.invitationId}/${identity.deliveryAttemptId}`;
     const token = dependencies.envelope.open(claim.sealedToken, associatedData);
     const invitationUrl = new URL('/invitations/accept', origin);
@@ -103,7 +111,15 @@ export function createWorkspaceInvitationDeliveryHandler(
       },
     });
     if (!dependencies.email.deduplicates) {
-      if (result.kind === 'unknown') return;
+      if (result.kind === 'unknown') {
+        await dependencies.store.complete({
+          ...identity,
+          status: 'unknown',
+          failureCode: 'delivery.outcome_unknown',
+          signal: context.signal,
+        });
+        return;
+      }
       // Only the copy that marked it may hand it back: another copy of this job may
       // be sending it right now, and `queued` would let a third send it again.
       if (result.kind === 'retryable' && dispatch.held) {

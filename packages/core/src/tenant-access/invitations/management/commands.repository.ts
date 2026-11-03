@@ -230,7 +230,9 @@ async function requireSettledDelivery(
   )
     throw new WorkspaceInvitationCommandConflictError(
       'delivery_unresolved',
-      'The prior delivery outcome must be reconciled before resending',
+      delivery[0].status === 'unknown'
+        ? 'Email delivery could not be confirmed. Revoke this invitation and create a new one to send another link.'
+        : 'The last email is still being delivered. Wait a minute before sending a new link.',
     );
 }
 

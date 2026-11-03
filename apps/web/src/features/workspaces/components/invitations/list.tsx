@@ -41,6 +41,9 @@ function InvitationRow({
           {invitation.email}
         </p>
         <MembershipThread state={invitationThreadState(invitation.status)} />
+        {delivery.guidance === undefined ? null : (
+          <p className="mt-1 text-xs text-warning">{delivery.guidance}</p>
+        )}
         <p className="text-xs text-muted-foreground sm:hidden">
           {ROLE_NAMES[invitation.role]} · {status.label}
         </p>
@@ -75,7 +78,9 @@ function InvitationRow({
           <DropdownMenuContent>
             <DropdownMenuGroup>
               <DropdownMenuItem
-                disabled={!issuanceAvailable}
+                disabled={
+                  !issuanceAvailable || invitation.deliveryStatus === 'unknown'
+                }
                 onClick={() => {
                   onAction(invitation, 'resend');
                 }}
