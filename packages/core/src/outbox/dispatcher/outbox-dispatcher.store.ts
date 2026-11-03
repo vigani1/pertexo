@@ -13,7 +13,7 @@ import {
 } from '@pertexo/database/primitives';
 import { claimOutboxBatch } from './claim.js';
 import type { ClaimOutboxBatchInput } from './outbox-dispatcher.types.js';
-import type { ReleaseInput } from './input.js';
+import type { ReleaseInput } from './outbox-dispatcher.types.js';
 import type {
   OutboxDispatcherDatabase,
   ObserveOutboxBacklogInput,
