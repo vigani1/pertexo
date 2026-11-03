@@ -19,5 +19,6 @@ export type {
   RouteDeclaration,
   RouteInput,
 } from './routes/define.js';
+export { catalogRoutes } from './routes/catalog.js';
 export { dataTableRoutes } from './routes/identity/data-tables.js';
 export { variableRoutes } from './routes/identity/variables.js';

@@ -1,34 +1,26 @@
-import { Controller, Get, Query, UseGuards } from '@nestjs/common';
-import { catalogQuerySchema } from '@pertexo/contracts';
+import { Controller } from '@nestjs/common';
+import { catalogRoutes as routes } from '@pertexo/contracts/server';
 
-import { SessionAuthenticationGuard } from '../workspaces/index.js';
-import { RateLimit } from '../platform/rate-limit/metadata.js';
+import { Route } from '../workspaces/http/route.js';
 import {
   ListIntegrationsUseCase,
   ListNodeDefinitionsUseCase,
 } from './use-cases.js';
-import { parseRequestInput } from '../platform/http/request-input.js';
 
-@Controller('v1')
+@Controller()
 export class CatalogController {
   public constructor(
     private readonly listNodeDefinitionsUseCase: ListNodeDefinitionsUseCase,
     private readonly listIntegrationsUseCase: ListIntegrationsUseCase,
   ) {}
 
-  @Get('node-definitions')
-  @RateLimit('authenticated_read')
-  @UseGuards(SessionAuthenticationGuard)
-  public listNodeDefinitions(@Query() query: unknown = {}) {
-    parseRequestInput(catalogQuerySchema, query ?? {});
+  @Route(routes.nodeDefinitions)
+  public listNodeDefinitions() {
     return this.listNodeDefinitionsUseCase.execute();
   }
 
-  @Get('integrations')
-  @RateLimit('authenticated_read')
-  @UseGuards(SessionAuthenticationGuard)
-  public listIntegrations(@Query() query: unknown = {}) {
-    parseRequestInput(catalogQuerySchema, query ?? {});
+  @Route(routes.integrations)
+  public listIntegrations() {
     return this.listIntegrationsUseCase.execute();
   }
 }

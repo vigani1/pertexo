@@ -1,3 +1,4 @@
+import { catalogRoutes } from '@pertexo/contracts/server';
 import { Reflector } from '@nestjs/core';
 import { GUARDS_METADATA } from '@nestjs/common/constants.js';
 import { describe, expect, it } from 'vitest';
@@ -87,13 +88,13 @@ describe('catalog controller public seam', () => {
   });
 
   it('rejects unsupported query fields instead of accepting arbitrary filters', () => {
-    const useCases = createCatalogUseCases();
-    const controller = new CatalogController(
-      useCases.listNodeDefinitions,
-      useCases.listIntegrations,
-    );
-    expect(() => controller.listNodeDefinitions({ sort: 'key' })).toThrow();
-    expect(() => controller.listIntegrations({ provider: 'http' })).toThrow();
+    // The route parses its declared query before the handler runs.
+    expect(
+      catalogRoutes.nodeDefinitions.query.safeParse({ sort: 'key' }).success,
+    ).toBe(false);
+    expect(
+      catalogRoutes.integrations.query.safeParse({ provider: 'http' }).success,
+    ).toBe(false);
   });
 
   it('keeps both routes authenticated and read-rate-limited', () => {

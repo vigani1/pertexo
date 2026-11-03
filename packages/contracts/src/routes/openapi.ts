@@ -20,7 +20,9 @@ import {
   type RouteMethod,
 } from './define.js';
 
-type OperationsByMethod = Partial<Record<RouteMethod, unknown>>;
+type OperationsByMethod = Partial<
+  Record<RouteMethod, ReturnType<typeof operation>>
+>;
 
 /** The `paths` object for routes, in declaration order. */
 export function routePaths(
@@ -62,17 +64,7 @@ function operation(route: AnyRoute) {
       ? {}
       : { description: route.description }),
     ...security(route.access),
-    parameters: [
-      ...routePathParameters(route.path).map((name) =>
-        pathParameter(
-          name,
-          jsonSchema(requiredShapeField(route.params, name), 'input'),
-        ),
-      ),
-      ...csrfParameter(route),
-      ...(route.idempotent === true ? [idempotencyHeaderParameter()] : []),
-      ...queryParameters(route),
-    ],
+    ...parameters(route),
     ...requestBody(route),
     responses: {
       [String(route.success.status)]:
@@ -82,6 +74,21 @@ function operation(route: AnyRoute) {
       ...route.problems,
     },
   };
+}
+
+function parameters(route: AnyRoute) {
+  const all = [
+    ...routePathParameters(route.path).map((name) =>
+      pathParameter(
+        name,
+        jsonSchema(requiredShapeField(route.params, name), 'input'),
+      ),
+    ),
+    ...csrfParameter(route),
+    ...(route.idempotent === true ? [idempotencyHeaderParameter()] : []),
+    ...queryParameters(route),
+  ];
+  return all.length === 0 ? {} : { parameters: all };
 }
 
 function requestBody({ body, requestDocument }: AnyRoute) {

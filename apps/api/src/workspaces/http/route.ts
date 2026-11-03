@@ -45,8 +45,8 @@ const METHOD_DECORATORS = {
 
 /**
  * Registers a handler from its declaration: method, path, status, limit, sign-in,
- * the coarse capability check and CSRF. A controller adds only what isn't a route
- * fact, and takes the parsed input with `@In()`.
+ * the coarse capability check, CSRF, its input and its answer. A controller adds only
+ * what isn't a route fact, and takes the parsed input with `@In()`.
  */
 export function Route(route: AnyRoute): MethodDecorator {
   return applyDecorators(
@@ -55,43 +55,47 @@ export function Route(route: AnyRoute): MethodDecorator {
     HttpCode(route.success.status),
     RateLimit(route.rateLimit),
     UseGuards(...routeGuards(route)),
-    ...('body' in route.success
-      ? [UseInterceptors(RouteResponseInterceptor)]
-      : []),
+    UseInterceptors(RouteContractInterceptor),
     ...(route.cacheControl === undefined
       ? []
       : [Header('Cache-Control', route.cacheControl)]),
   );
 }
 
-/** A handler's declared input, parsed; a failure here is always the caller's. */
+/** A handler's declared input, already parsed before it ran. */
 export const In = createParamDecorator(
-  (_data: unknown, context: ExecutionContext): unknown => {
-    const route = declaredRoute(context);
-    const request = context
-      .switchToHttp()
-      .getRequest<IdentityWorkspaceRequest & RouteInputSource>();
-    return {
-      params: parseDeclared(route.params, request.params),
-      query: parseDeclared(route.query, request.query),
-      // A route that documents its own request body, such as a form post, reads it itself.
-      body:
-        route.requestDocument === undefined
-          ? parseDeclared(route.body?.schema, request.body)
-          : undefined,
-      idempotencyKey:
-        route.idempotent === true
-          ? requestIdempotencyKey(request.headers ?? {})
-          : undefined,
-    };
-  },
+  (_data: unknown, context: ExecutionContext): unknown =>
+    parsedInputs.get(context.switchToHttp().getRequest<object>()),
 );
 
-type RouteInputSource = Readonly<{
-  params?: unknown;
-  query?: unknown;
-  body?: unknown;
+const parsedInputs = new WeakMap<object, RouteInputValues>();
+
+type RouteInputValues = Readonly<{
+  params: unknown;
+  query: unknown;
+  body: unknown;
+  idempotencyKey: string | undefined;
 }>;
+
+type RouteInputSource = IdentityWorkspaceRequest &
+  Readonly<{ params?: unknown; query?: unknown; body?: unknown }>;
+
+/** Every declared input parses, whether or not the handler reads it; a failure is the caller's. */
+function parseInputs(route: AnyRoute, request: RouteInputSource) {
+  return {
+    params: parseDeclared(route.params, request.params),
+    query: parseDeclared(route.query, request.query ?? {}),
+    // A route that documents its own request body, such as a form post, reads it itself.
+    body:
+      route.requestDocument === undefined
+        ? parseDeclared(route.body?.schema, request.body)
+        : undefined,
+    idempotencyKey:
+      route.idempotent === true
+        ? requestIdempotencyKey(request.headers ?? {})
+        : undefined,
+  };
+}
 
 function parseDeclared(schema: z.ZodType | undefined, value: unknown): unknown {
   return schema === undefined ? undefined : parseRequestInput(schema, value);
@@ -106,12 +110,16 @@ class RouteResponseContractError extends Error {
   public override readonly name = 'RouteResponseContractError';
 }
 
-class RouteResponseInterceptor implements NestInterceptor {
+/** Parses the declared input before the handler, and checks the answer after it. */
+class RouteContractInterceptor implements NestInterceptor {
   public intercept(
     context: ExecutionContext,
     next: CallHandler,
   ): Observable<unknown> {
-    const { success } = declaredRoute(context);
+    const route = declaredRoute(context);
+    const request = context.switchToHttp().getRequest<RouteInputSource>();
+    parsedInputs.set(request, parseInputs(route, request));
+    const { success } = route;
     if (!('body' in success)) return next.handle();
     const { body, status } = success;
     return next.handle().pipe(
