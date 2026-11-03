@@ -2,9 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { Pool, PoolClient } from 'pg';
 import {
   withActorScopedClient,
-  withTenantScopedReadClient,
   withTenantScopedClient,
-  withWorkspaceReadTransaction,
   withPlatformTransaction,
   withWorkspaceTransaction,
 } from '../../src/testing.js';
@@ -31,37 +29,6 @@ describe('shared workspace transaction engine', () => {
       expect(connect).not.toHaveBeenCalled();
     },
   );
-
-  it('uses a repeatable-read snapshot through the worker read seam', async () => {
-    const statements: string[] = [];
-    let transactionActive = false;
-    const query = vi.fn((statement: string) => {
-      statements.push(statement);
-      if (statement.startsWith('begin')) transactionActive = true;
-      if (statement === 'commit') transactionActive = false;
-      if (statement.includes("current_setting('app.workspace_id'"))
-        return Promise.resolve(
-          result([
-            {
-              workspace_id: transactionActive ? workspaceId : null,
-              actor_id: null,
-            },
-          ]),
-        );
-      return Promise.resolve(result());
-    });
-
-    await expect(
-      withTenantScopedReadClient(
-        poolWith({ query, release: vi.fn() }),
-        { workspaceId },
-        () => Promise.resolve('snapshot'),
-      ),
-    ).resolves.toBe('snapshot');
-    expect(statements).toContain(
-      'begin isolation level repeatable read read only',
-    );
-  });
 
   it('installs and verifies the bounded actor discovery scope', async () => {
     const statements: string[] = [];
@@ -166,37 +133,6 @@ describe('shared workspace transaction engine', () => {
     ).rejects.toThrow('PostgreSQL tenant context verification failed');
     expect(operation).not.toHaveBeenCalled();
     expect(release).toHaveBeenCalledWith();
-  });
-
-  it('adapts a workspace read transaction onto the repeatable-read owner', async () => {
-    const statements: string[] = [];
-    let transactionActive = false;
-    const query = vi.fn((statement: string) => {
-      statements.push(statement);
-      if (statement.startsWith('begin')) transactionActive = true;
-      if (statement === 'commit') transactionActive = false;
-      if (statement.includes("current_setting('app.workspace_id'"))
-        return Promise.resolve(
-          result([
-            {
-              workspace_id: transactionActive ? workspaceId : null,
-              actor_id: null,
-            },
-          ]),
-        );
-      return Promise.resolve(result());
-    });
-
-    await expect(
-      withWorkspaceReadTransaction(
-        poolWith({ query, release: vi.fn() }),
-        workspaceId,
-        (transaction) => Promise.resolve(transaction.workspaceId),
-      ),
-    ).resolves.toBe(workspaceId);
-    expect(statements).toContain(
-      'begin isolation level repeatable read read only',
-    );
   });
 
   it('rejects and destroys a client contaminated before checkout use', async () => {

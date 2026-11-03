@@ -1,5 +1,4 @@
-import { ROLES, hasCapability } from '@pertexo/policy';
-import { API_TOKEN_SCOPES } from '@pertexo/workflow-model';
+import { ROLES } from '@pertexo/policy';
 import { describe, expect, it } from 'vitest';
 
 import { isActiveMemberManager } from '../../../src/tenant-access/members/manager.js';
@@ -66,10 +65,77 @@ describe('availableApiTokenScopes', () => {
     expect(scopes).not.toContain('run:cancel');
   });
 
-  it.each(ROLES)('offers a %s exactly the scopes its role can do', (role) => {
-    expect(availableApiTokenScopes(role)).toEqual(
-      API_TOKEN_SCOPES.filter((scope) => hasCapability(role, scope)),
-    );
+  it.each([
+    [
+      'owner',
+      [
+        'workflow:read',
+        'workflow:create',
+        'workflow:update',
+        'workflow:publish',
+        'run:read',
+        'run:read-data',
+        'run:start',
+        'run:cancel',
+        'connection:read',
+        'workspace:read',
+        'variable:manage',
+      ],
+    ],
+    [
+      'admin',
+      [
+        'workflow:read',
+        'workflow:create',
+        'workflow:update',
+        'workflow:publish',
+        'run:read',
+        'run:read-data',
+        'run:start',
+        'run:cancel',
+        'connection:read',
+        'workspace:read',
+        'variable:manage',
+      ],
+    ],
+    [
+      'builder',
+      [
+        'workflow:read',
+        'workflow:create',
+        'workflow:update',
+        'workflow:publish',
+        'run:read',
+        'run:read-data',
+        'run:start',
+        'connection:read',
+        'workspace:read',
+      ],
+    ],
+    [
+      'operator',
+      [
+        'workflow:read',
+        'run:read',
+        'run:read-data',
+        'run:start',
+        'run:cancel',
+        'connection:read',
+        'workspace:read',
+      ],
+    ],
+    [
+      'viewer',
+      [
+        'workflow:read',
+        'run:read',
+        'run:read-data',
+        'connection:read',
+        'workspace:read',
+      ],
+    ],
+  ] as const)('offers a %s its explicit product scopes', (role, scopes) => {
+    expect(availableApiTokenScopes(role)).toEqual(scopes);
   });
 
   it('never offers a role more than the owner has', () => {

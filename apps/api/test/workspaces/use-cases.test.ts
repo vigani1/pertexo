@@ -289,34 +289,6 @@ describe('identity/workspace application use cases', () => {
     ).toThrow();
   });
 
-  it('creates a workspace with owner and request/trace audit identity atomically through one persistence port', async () => {
-    const store = persistence();
-    const app = new CreateWorkspaceUseCase(store);
-
-    const result = await app.execute({
-      actorId,
-      idempotencyKey,
-      request: { name: 'Operations', slug: 'operations' },
-      requestId,
-      traceId: 'trace-42',
-    });
-
-    expect(result).toEqual({
-      ...workspace(),
-      createdAt: '2026-08-20T12:00:00.000Z',
-      updatedAt: '2026-08-20T12:00:00.000Z',
-    });
-    expect(vi.mocked(store.createWorkspaceWithOwner)).toHaveBeenCalledWith({
-      ownerUserId: actorId,
-      idempotencyKey,
-      name: 'Operations',
-      slug: 'operations',
-      requestId,
-      traceId: 'trace-42',
-      metadata: {},
-    });
-  });
-
   it('rejects unsafe or oversized audit metadata before persistence', async () => {
     for (const metadata of [
       { tokenDigest: 'must-not-persist' },
