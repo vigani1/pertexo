@@ -183,6 +183,91 @@ describe.runIf(betterAuthIntegrationEnabled)(
       }
     });
 
+    it('invalidates issuance held in flight when the password method is removed', async () => {
+      const { email, browser, userId } = await account();
+      const method = (
+        await api
+          .database()
+          .query<{ id: string }>(
+            "select id from app.auth_accounts where user_id=$1 and provider_id='credential'",
+            [userId],
+          )
+      ).rows[0];
+      await api
+        .database()
+        .query(
+          "insert into app.auth_accounts(id,user_id,account_id,provider_id) values($1,$2,$3,'google')",
+          [randomUUID(), userId, randomUUID()],
+        );
+      const barrier = await databaseBarrier(api.database());
+      await api.database()
+        .query(`create function public.hold_unlink_reset() returns trigger language plpgsql as $$
+      begin if NEW.identifier like 'reset-password:%' then perform pg_advisory_xact_lock(2700,3); end if; return NEW; end $$;
+      create trigger hold_unlink_reset before insert on app.auth_verifications for each row execute function public.hold_unlink_reset()`);
+      let issuing: ReturnType<typeof requestReset> | undefined;
+      let removing: ReturnType<typeof api.send> | undefined;
+      try {
+        await barrier.holder.query('select pg_advisory_xact_lock(2700,3)');
+        issuing = requestReset(email);
+        await waitForDatabaseBlock(
+          api.database(),
+          barrier.pid,
+          'auth_verifications',
+        );
+        let removed = false;
+        removing = api
+          .send('POST', '/v1/auth/account-security/methods/unlink', {
+            browser,
+            payload: { methodId: method?.id },
+          })
+          .finally(() => {
+            removed = true;
+          });
+        await expect
+          .poll(
+            async () =>
+              removed ||
+              Number(
+                (
+                  await api
+                    .database()
+                    .query<{ n: number }>(
+                      "select count(*)::int n from pg_stat_activity where datname=current_database() and wait_event_type='Lock'",
+                    )
+                ).rows[0]?.n,
+              ) >= 2,
+          )
+          .toBe(true);
+        await barrier.holder.query('commit');
+        expect((await issuing).statusCode).toBe(200);
+        const unlinked = await removing;
+        expect(unlinked.statusCode, unlinked.payload).toBe(200);
+        expect(await proofCount(userId)).toBe(0);
+        const token =
+          api.mailedLink(email, 'password_reset').pathname.split('/').at(-1) ??
+          '';
+        expect((await reset(token)).statusCode).toBe(400);
+        expect(
+          (
+            await api
+              .database()
+              .query(
+                "select id from app.auth_accounts where user_id=$1 and provider_id='credential'",
+                [userId],
+              )
+          ).rows,
+        ).toEqual([]);
+      } finally {
+        await barrier.close();
+        await Promise.allSettled([issuing, removing]);
+        await api
+          .database()
+          .query(
+            'drop trigger hold_unlink_reset on app.auth_verifications; drop function public.hold_unlink_reset()',
+          );
+      }
+    });
+
     it('never revives an old reset link after password removal and replacement setup', async () => {
       const { email, browser, userId } = await account();
       await requestReset(email);
