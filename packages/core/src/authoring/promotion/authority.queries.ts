@@ -10,7 +10,7 @@ import type { WorkspaceScopeRunner } from '@pertexo/database/primitives';
 import {
   rolesForCapability,
   type AuthorizationCapability,
-} from '@pertexo/workflow-model';
+} from '@pertexo/policy';
 import { lockWorkflowAuthoringAuthority } from '../workflows/authority.js';
 import { WorkflowPromotionError } from './errors.js';
 import type { PromotionScope } from './contract.js';

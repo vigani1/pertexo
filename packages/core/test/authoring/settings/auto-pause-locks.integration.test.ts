@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { BROWSABLE_WORKSPACE_STATUSES } from '@pertexo/workflow-model';
+import { BROWSABLE_WORKSPACE_STATUSES } from '@pertexo/policy';
 import { Pool } from 'pg';
 import { afterEach, beforeAll, expect, it, vi } from 'vitest';
 import { lockWorkspace } from '../../../src/authoring/settings/auto-pause/state.queries.js';

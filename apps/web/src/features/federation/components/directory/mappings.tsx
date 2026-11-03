@@ -1,5 +1,5 @@
 import { MappingRows } from './mapping-rows';
-import type { DelegatedRole } from '@pertexo/workflow-model';
+import type { DelegatedRole } from '@pertexo/policy';
 import { Status } from '@/components/ui/status';
 import { useId, useState } from 'react';
 import {

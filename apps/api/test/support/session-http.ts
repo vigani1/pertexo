@@ -13,7 +13,7 @@ import {
   type NestFastifyApplication,
 } from '@nestjs/platform-fastify';
 import { Test } from '@nestjs/testing';
-import type { Role } from '@pertexo/workflow-model';
+import type { Role } from '@pertexo/policy';
 import { vi } from 'vitest';
 
 import { APPLICATION_ERROR_MAPPERS } from '../../src/application-errors.js';

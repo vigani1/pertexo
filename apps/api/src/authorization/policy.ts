@@ -1,1 +1,1 @@
-export { capabilitiesForRole, hasCapability } from '@pertexo/workflow-model';
+export { capabilitiesForRole, hasCapability } from '@pertexo/policy';

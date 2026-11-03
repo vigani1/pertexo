@@ -1,4 +1,4 @@
-import { isAdministrativeRole } from '@pertexo/workflow-model';
+import { isAdministrativeRole } from '@pertexo/policy';
 import { useCallback, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import type { AccessibleWorkspace } from '@pertexo/contracts';

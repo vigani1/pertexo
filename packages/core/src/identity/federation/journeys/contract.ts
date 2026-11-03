@@ -1,4 +1,4 @@
-import type { Role } from '@pertexo/workflow-model';
+import type { Role } from '@pertexo/policy';
 
 import type { OidcConfiguration, SamlConfiguration } from '@pertexo/contracts';
 export type OrganizationProvider = Readonly<{

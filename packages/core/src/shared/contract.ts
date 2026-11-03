@@ -1,5 +1,5 @@
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
-import type { AuthorizationCapability, Role } from '@pertexo/workflow-model';
+import type { AuthorizationCapability, Role } from '@pertexo/policy';
 
 export type ResourceActor = Readonly<{
   workspaceId: string;

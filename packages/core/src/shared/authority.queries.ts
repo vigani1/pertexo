@@ -14,7 +14,7 @@ import {
   ACTIVE_WORKSPACE_STATUSES,
   BROWSABLE_WORKSPACE_STATUSES,
   type Role,
-} from '@pertexo/workflow-model';
+} from '@pertexo/policy';
 import type { ResourceActor } from './contract.js';
 import { WorkspaceAccessDeniedError } from './errors.js';
 

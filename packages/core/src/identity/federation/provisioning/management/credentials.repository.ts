@@ -7,7 +7,7 @@ import {
   credentialSelection,
 } from './credentials.queries.js';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
-import { ACTIVE_WORKSPACE_STATUSES } from '@pertexo/workflow-model';
+import { ACTIVE_WORKSPACE_STATUSES } from '@pertexo/policy';
 import { createHash, randomBytes } from 'node:crypto';
 import type { Pool } from 'pg';
 

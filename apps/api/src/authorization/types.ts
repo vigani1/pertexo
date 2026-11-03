@@ -7,7 +7,7 @@ import {
   UNPURGED_WORKSPACE_STATUSES,
   type AuthorizationCapability,
   type Role,
-} from '@pertexo/workflow-model';
+} from '@pertexo/policy';
 
 export {
   AUTHORIZATION_CAPABILITIES,

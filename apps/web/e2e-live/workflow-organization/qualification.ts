@@ -2,7 +2,7 @@ import {
   workflowOrganizationBulkRequestSchema,
   workflowOrganizationBulkResponseSchema,
 } from '@pertexo/contracts';
-import type { DelegatedRole } from '@pertexo/workflow-model';
+import type { DelegatedRole } from '@pertexo/policy';
 import {
   expect,
   type APIRequestContext,

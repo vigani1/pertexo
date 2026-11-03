@@ -7,7 +7,7 @@ import { workflowScopeSql } from '../../shared/scope.queries.js';
 import {
   rolesForCapability,
   type AuthorizationCapability,
-} from '@pertexo/workflow-model';
+} from '@pertexo/policy';
 import type { WorkspaceNoticeKind } from '@pertexo/contracts';
 import {
   workspaceMemberships,

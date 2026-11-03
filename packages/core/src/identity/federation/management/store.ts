@@ -8,7 +8,7 @@ import {
   BROWSABLE_WORKSPACE_STATUSES,
   type Role,
   type WorkspaceStatusList,
-} from '@pertexo/workflow-model';
+} from '@pertexo/policy';
 import type { PoolClient } from 'pg';
 
 import {

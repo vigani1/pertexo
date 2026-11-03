@@ -10,11 +10,7 @@ import {
 import { alias, QueryBuilder } from 'drizzle-orm/pg-core';
 import { connections, connectionShares } from '@pertexo/database/schema';
 import type { PoolClient } from 'pg';
-import {
-  hasCapability,
-  rolesForCapability,
-  type Role,
-} from '@pertexo/workflow-model';
+import { hasCapability, rolesForCapability, type Role } from '@pertexo/policy';
 import { WorkspaceAccessDeniedError } from '../../../shared/errors.js';
 import { readWorkspaceAuthority } from '../../../shared/authority.queries.js';
 import type { ResourceActor } from '../../../shared/contract.js';

@@ -1,5 +1,5 @@
 import { requireReadableReceipt } from '../../shared/receipts.js';
-import { ACTIVE_WORKSPACE_STATUSES } from '@pertexo/workflow-model';
+import { ACTIVE_WORKSPACE_STATUSES } from '@pertexo/policy';
 import { writePromotedDraft } from './writes/persist-candidate.js';
 import type { WorkspaceScopeRunner } from '@pertexo/database/primitives';
 import {

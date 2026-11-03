@@ -1,5 +1,5 @@
 import { QueryView } from '@/components/patterns/states/query-view';
-import { isAdministrativeRole } from '@pertexo/workflow-model';
+import { isAdministrativeRole } from '@pertexo/policy';
 import { useState } from 'react';
 import { ArrowLeftIcon } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';

@@ -1,7 +1,7 @@
 import { randomBytes } from 'node:crypto';
 
 import { expect } from 'vitest';
-import type { Role } from '@pertexo/workflow-model';
+import type { Role } from '@pertexo/policy';
 
 import {
   createInput,

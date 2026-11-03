@@ -1,4 +1,4 @@
-import type { Role } from '@pertexo/workflow-model';
+import type { Role } from '@pertexo/policy';
 import { toProblem } from '../../../src/problems/registry.js';
 import { authoringFailure } from '../../../src/problems/context/normalize.js';
 import { expect, it, vi } from 'vitest';

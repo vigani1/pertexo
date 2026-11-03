@@ -1,6 +1,6 @@
 import type { PoolClient } from 'pg';
 import { beforeAll, expect } from 'vitest';
-import type { Role } from '@pertexo/workflow-model';
+import type { Role } from '@pertexo/policy';
 
 import {
   ConnectionNotFoundError,

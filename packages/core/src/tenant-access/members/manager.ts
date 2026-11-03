@@ -1,4 +1,4 @@
-import { isAdministrativeRole, type Role } from '@pertexo/workflow-model';
+import { isAdministrativeRole, type Role } from '@pertexo/policy';
 
 /** An owner or admin whose membership and user are both active. */
 export function isActiveMemberManager<

@@ -20,10 +20,8 @@ import {
   withWorkspaceScope,
 } from '@pertexo/database/primitives';
 import { directorySessionAllowed } from '../provisioning/session.queries.js';
-import {
-  AUTHENTICATION_PROVIDERS,
-  UNPURGED_WORKSPACE_STATUSES,
-} from '@pertexo/workflow-model';
+import { UNPURGED_WORKSPACE_STATUSES } from '@pertexo/policy';
+import { AUTHENTICATION_PROVIDERS } from '@pertexo/workflow-model';
 import type { Pool, PoolClient } from 'pg';
 import { withPlatformTransaction } from '@pertexo/database/platform';
 import {

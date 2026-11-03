@@ -3,7 +3,7 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import { workflows } from '@pertexo/database/schema';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import type { PoolClient } from 'pg';
-import { BROWSABLE_WORKSPACE_STATUSES } from '@pertexo/workflow-model';
+import { BROWSABLE_WORKSPACE_STATUSES } from '@pertexo/policy';
 import type { AuthoringAccess } from '../workflows/access.js';
 import { WorkflowNotFoundError } from '../workflows/errors.js';
 import type { CollaborationScope } from './contract.js';

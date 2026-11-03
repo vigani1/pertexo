@@ -1,5 +1,5 @@
 import type { DirectoryMembershipSource } from '@pertexo/contracts';
-import type { DelegatedRole, Role } from '@pertexo/workflow-model';
+import type { DelegatedRole, Role } from '@pertexo/policy';
 import type { WorkspaceLifecycleOperation } from '../lifecycle/deletion/contract.js';
 import type {
   users,

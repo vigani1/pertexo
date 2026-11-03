@@ -1,4 +1,4 @@
-import { ALL_WORKSPACE_STATUSES } from '@pertexo/workflow-model';
+import { ALL_WORKSPACE_STATUSES } from '@pertexo/policy';
 import type { Pool } from 'pg';
 
 import { withWorkspaceAccess } from '../../shared/workspace-access.js';

@@ -5,7 +5,7 @@ import {
   rolesForCapability,
   type AuthorizationCapability,
   type Role,
-} from '@pertexo/workflow-model';
+} from '@pertexo/policy';
 import type { SampleScope } from '../../authoring/step-samples/contract.js';
 import { lockWorkflowAuthoringAuthority } from '../../authoring/workflows/authority.js';
 import { WorkflowNotFoundError } from '../../authoring/workflows/errors.js';

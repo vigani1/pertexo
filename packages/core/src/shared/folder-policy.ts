@@ -1,5 +1,5 @@
-import { ADMINISTRATIVE_ROLES } from '@pertexo/workflow-model';
-import { hasCapability, type Role } from '@pertexo/workflow-model';
+import { ADMINISTRATIVE_ROLES } from '@pertexo/policy';
+import { hasCapability, type Role } from '@pertexo/policy';
 import type {
   FolderAccess,
   FolderFact,

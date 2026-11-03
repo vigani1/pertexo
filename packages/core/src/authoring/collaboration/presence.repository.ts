@@ -7,7 +7,7 @@ import {
 } from '@pertexo/database/schema';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { COLLABORATION_LIMITS } from '@pertexo/workflow-model';
-import { rolesForCapability } from '@pertexo/workflow-model';
+import { rolesForCapability } from '@pertexo/policy';
 import type { WorkflowPresence } from '@pertexo/contracts';
 import type { PoolClient } from 'pg';
 import type { EnterCollaboration } from './authority.queries.js';

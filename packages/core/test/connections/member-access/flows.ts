@@ -1,5 +1,5 @@
 import { expect } from 'vitest';
-import type { Role } from '@pertexo/workflow-model';
+import type { Role } from '@pertexo/policy';
 
 import {
   CONNECTION_AUTH_TYPE,

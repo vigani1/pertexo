@@ -1,7 +1,7 @@
 import type { Pool } from 'pg';
 import { updateMembership } from './records.repository.js';
 
-import { canRemoveWorkspaceMember } from '@pertexo/workflow-model';
+import { canRemoveWorkspaceMember } from '@pertexo/policy';
 import type {
   RemoveWorkspaceMemberInput,
   WorkspaceMemberRemovalResult,

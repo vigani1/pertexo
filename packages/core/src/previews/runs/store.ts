@@ -3,7 +3,7 @@ import {
   type WorkspaceTransaction,
 } from '@pertexo/database/primitives';
 import { databaseSchema } from '@pertexo/database/schema';
-import { ACTIVE_WORKSPACE_STATUSES, type Role } from '@pertexo/workflow-model';
+import { ACTIVE_WORKSPACE_STATUSES, type Role } from '@pertexo/policy';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { Pool } from 'pg';
 import { withWorkspaceAccess } from '../../shared/workspace-access.js';

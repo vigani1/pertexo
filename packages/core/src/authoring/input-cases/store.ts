@@ -3,7 +3,7 @@ import {
   acquireDatabasePool,
   type DatabaseRuntime,
 } from '@pertexo/database/platform';
-import { BROWSABLE_WORKSPACE_STATUSES } from '@pertexo/workflow-model';
+import { BROWSABLE_WORKSPACE_STATUSES } from '@pertexo/policy';
 import { createAuthoringAccess } from '../workflows/access.js';
 import type {
   CaseTransaction,

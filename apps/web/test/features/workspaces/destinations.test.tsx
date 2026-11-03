@@ -1,5 +1,5 @@
 import type { AccessibleWorkspace } from '@pertexo/contracts';
-import { capabilitiesForRole } from '@pertexo/workflow-model';
+import { capabilitiesForRole } from '@pertexo/policy';
 import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { HttpResponse, http } from 'msw';

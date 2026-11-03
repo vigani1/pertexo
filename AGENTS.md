@@ -48,14 +48,14 @@
 ## Code conventions
 
 - Dependencies run `apps -> core -> secrets -> database`, and
-  `core -> database, workflow-engine, workflow-model`; only applications depend on
+  `core -> database, workflow-engine, workflow-model, policy`; only applications depend on
   `core`, and only applications and `core` on `secrets`
   ([ADR 091](docs/adr/091-core-layer.md)).
 - A core flow opens its transaction through `withWorkspaceAccess`
   (`core/src/shared/`), which checks authority inside it and hands the flow the
   role it found. Keep a flow's lock order; if a flow doesn't fit the helper, stop
   and report.
-- Workspace status lists are the named constants in `workflow-model` (`ACTIVE_`,
+- Workspace status lists are the named constants in `policy` (`ACTIVE_`,
   `BROWSABLE_`, `UNPURGED_`, `ALL_WORKSPACE_STATUSES`), and a flow names its list
   once, at that helper. Replace a literal only with a constant holding the same
   values.

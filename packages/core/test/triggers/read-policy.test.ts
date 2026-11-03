@@ -1,10 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  ROLES,
-  WORKFLOW_EDITOR_ROLES,
-  hasCapability,
-} from '@pertexo/workflow-model';
+import { ROLES, WORKFLOW_EDITOR_ROLES, hasCapability } from '@pertexo/policy';
 
 describe('trigger read policy', () => {
   it('keeps schedule metadata readable by every role', () => {

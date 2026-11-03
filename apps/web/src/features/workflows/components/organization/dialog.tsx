@@ -1,5 +1,5 @@
 import { DialogFooter } from '@/components/ui/dialog';
-import { isAdministrativeRole } from '@pertexo/workflow-model';
+import { isAdministrativeRole } from '@pertexo/policy';
 import { AudienceMoveReview } from './folders/audience-review';
 import type { AccessibleWorkspace } from '@pertexo/contracts';
 import { Button } from '@/components/ui/button';

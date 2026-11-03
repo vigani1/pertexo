@@ -11,7 +11,7 @@ import type { PoolClient } from 'pg';
 import { canonicalJson } from '@pertexo/workflow-model';
 import { WorkflowNotFoundError } from '../../authoring/workflows/errors.js';
 import { lockWorkflowAuthoringAuthority } from '../../authoring/workflows/authority.js';
-import { rolesForCapability } from '@pertexo/workflow-model';
+import { rolesForCapability } from '@pertexo/policy';
 import {
   WorkspaceRunQuotaExceededError,
   WorkspaceRunAdmissionDeniedError,

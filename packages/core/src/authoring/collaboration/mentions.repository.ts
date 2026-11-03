@@ -8,7 +8,7 @@ import {
 } from '@pertexo/database/schema';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import type { PoolClient } from 'pg';
-import { hasCapability } from '@pertexo/workflow-model';
+import { hasCapability } from '@pertexo/policy';
 import { generatePersistedId } from '@pertexo/database/platform';
 import { WorkflowCollaborationError } from './errors.js';
 import type { CollaborationScope } from './contract.js';

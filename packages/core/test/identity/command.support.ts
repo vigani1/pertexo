@@ -1,5 +1,5 @@
 import { createTestUser } from '../support/user.js';
-import type { Role } from '@pertexo/workflow-model';
+import type { Role } from '@pertexo/policy';
 import { randomUUID } from 'node:crypto';
 
 import { Pool } from 'pg';

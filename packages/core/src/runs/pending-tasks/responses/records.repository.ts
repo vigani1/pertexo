@@ -26,7 +26,7 @@ import {
   taskContextSchema,
   taskExpiryChoice,
 } from '@pertexo/workflow-model';
-import type { Role } from '@pertexo/workflow-model';
+import type { Role } from '@pertexo/policy';
 import { PendingTaskNotFoundError } from './errors.js';
 import type { PendingTaskScope } from './contract.js';
 

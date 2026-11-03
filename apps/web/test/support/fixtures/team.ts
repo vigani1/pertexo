@@ -1,5 +1,5 @@
 import { createUserFixture, createWorkspaceFixture } from './identity';
-import type { Role } from '@pertexo/workflow-model';
+import type { Role } from '@pertexo/policy';
 import { HttpResponse, http } from 'msw';
 import { screen, within } from '@testing-library/react';
 

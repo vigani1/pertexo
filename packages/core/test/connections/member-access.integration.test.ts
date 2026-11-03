@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ROLES } from '@pertexo/workflow-model';
+import { ROLES } from '@pertexo/policy';
 
 import {
   ConnectionNotFoundError,

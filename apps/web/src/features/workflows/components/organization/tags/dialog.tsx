@@ -1,4 +1,4 @@
-import { isAdministrativeRole } from '@pertexo/workflow-model';
+import { isAdministrativeRole } from '@pertexo/policy';
 import { useState } from 'react';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import type { AccessibleWorkspace, WorkflowTag } from '@pertexo/contracts';

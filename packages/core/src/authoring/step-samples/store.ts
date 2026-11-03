@@ -7,10 +7,7 @@ import {
   sampleMetadataProjection,
   sampleProjection,
 } from './records.repository.js';
-import {
-  BROWSABLE_WORKSPACE_STATUSES,
-  hasCapability,
-} from '@pertexo/workflow-model';
+import { BROWSABLE_WORKSPACE_STATUSES, hasCapability } from '@pertexo/policy';
 import type { AuthoringAccess } from '../workflows/access.js';
 import { WorkflowNotFoundError } from '../workflows/errors.js';
 import {
