@@ -8,7 +8,7 @@ import { createWorkspaceDatabase } from '../../../src/database.js';
 import type { WorkspaceDatabase } from '../../../src/database.js';
 import { migrateDatabase } from '../../../src/migrations.js';
 
-import { rlsProbeRecords } from '../../../src/schema.js';
+import { idempotencyRecords, workflowTags } from '../../../src/schema.js';
 import { createDisposableDatabaseFixture } from '../../../src/testing/postgres/disposable-database.js';
 
 const adminUrl =
@@ -116,18 +116,46 @@ export async function beforeAllFixture1() {
       ownerRole: 'pertexo_owner',
     }),
   );
+  const actorId = randomUUID();
+  await databaseAdminPool.query(
+    "insert into app.users(id,email,display_name) values($1,$2,'RLS owner')",
+    [actorId, `${actorId}@rls.test`],
+  );
+  for (const workspaceId of [workspaceA, workspaceB])
+    await databaseAdminPool.query(
+      "insert into app.workspaces(id,name,slug,created_by) values($1,'RLS fixture',$2,$3)",
+      [workspaceId, `rls-${workspaceId}`, actorId],
+    );
   await database.withWorkspace(workspaceA, async ({ db, workspaceId }) => {
-    await db.insert(rlsProbeRecords).values({
+    await db
+      .insert(workflowTags)
+      .values({ id: recordA, workspaceId, key: 'workspace-a' });
+    await db.insert(idempotencyRecords).values({
       id: recordA,
       workspaceId,
-      label: 'workspace-a',
+      scope: 'workspace-a',
+      operation: 'rls.test',
+      keyHash: 'a'.repeat(64),
+      requestHash: 'b'.repeat(64),
+      status: 'completed',
+      resourceId: randomUUID(),
+      resultRef: {},
     });
   });
   await database.withWorkspace(workspaceB, async ({ db, workspaceId }) => {
-    await db.insert(rlsProbeRecords).values({
+    await db
+      .insert(workflowTags)
+      .values({ id: recordB, workspaceId, key: 'workspace-b' });
+    await db.insert(idempotencyRecords).values({
       id: recordB,
       workspaceId,
-      label: 'workspace-b',
+      scope: 'workspace-b',
+      operation: 'rls.test',
+      keyHash: 'a'.repeat(64),
+      requestHash: 'b'.repeat(64),
+      status: 'completed',
+      resourceId: randomUUID(),
+      resultRef: {},
     });
   });
 }

@@ -77,7 +77,7 @@ describe('tenant-scoped transaction hygiene', () => {
         async (scoped) => {
           expect(await backendId(scoped)).toBe(backend);
           await scoped.query(
-            'insert into app.rls_probe_records(id,workspace_id,label) values($1,$2,$3)',
+            "insert into app.idempotency_records(id,workspace_id,operation,scope,key_hash,request_hash,status,resource_id,result_ref) values($1,$2,'rls.test',$3,repeat('a',64),repeat('b',64),'completed',$1,'{}')",
             [recordA, workspaceA, 'A'],
           );
         },
@@ -91,10 +91,10 @@ describe('tenant-scoped transaction hygiene', () => {
         { workspaceId: workspaceB },
         async (scoped) => {
           expect(
-            (await scoped.query('select id from app.rls_probe_records')).rows,
+            (await scoped.query('select id from app.idempotency_records')).rows,
           ).toEqual([]);
           await scoped.query(
-            'insert into app.rls_probe_records(id,workspace_id,label) values($1,$2,$3)',
+            "insert into app.idempotency_records(id,workspace_id,operation,scope,key_hash,request_hash,status,resource_id,result_ref) values($1,$2,'rls.test',$3,repeat('a',64),repeat('b',64),'completed',$1,'{}')",
             [recordB, workspaceB, 'B'],
           );
         },
@@ -104,12 +104,12 @@ describe('tenant-scoped transaction hygiene', () => {
         { workspaceId: workspaceA },
         async (scoped) => {
           expect(
-            (await scoped.query('select id from app.rls_probe_records')).rows,
+            (await scoped.query('select id from app.idempotency_records')).rows,
           ).toEqual([{ id: recordA }]);
         },
       );
       expect(
-        (await client.query('select id from app.rls_probe_records')).rows,
+        (await client.query('select id from app.idempotency_records')).rows,
       ).toEqual([]);
       expect(await currentSettings(client)).toEqual({
         workspaceId: null,
@@ -129,7 +129,7 @@ describe('tenant-scoped transaction hygiene', () => {
           { workspaceId: workspaceA },
           (scoped) =>
             scoped.query(
-              'insert into app.rls_probe_records(id,workspace_id,label) values($1,$2,$3)',
+              "insert into app.idempotency_records(id,workspace_id,operation,scope,key_hash,request_hash,status,resource_id,result_ref) values($1,$2,'rls.test',$3,repeat('a',64),repeat('b',64),'completed',$1,'{}')",
               [recordA, workspaceA, 'rollback'],
             ),
         );
@@ -138,7 +138,7 @@ describe('tenant-scoped transaction hygiene', () => {
           { workspaceId: workspaceB },
           (scoped) =>
             scoped.query(
-              'insert into app.rls_probe_records(id,workspace_id,label) values($1,$2,$3)',
+              "insert into app.idempotency_records(id,workspace_id,operation,scope,key_hash,request_hash,status,resource_id,result_ref) values($1,$2,'rls.test',$3,repeat('a',64),repeat('b',64),'completed',$1,'{}')",
               [randomUUID(), workspaceA, 'refused'],
             ),
         );
@@ -151,7 +151,7 @@ describe('tenant-scoped transaction hygiene', () => {
         expect(
           (
             await client.query(
-              'select id from app.rls_probe_records where id=$1',
+              'select id from app.idempotency_records where id=$1',
               [recordA],
             )
           ).rows,
