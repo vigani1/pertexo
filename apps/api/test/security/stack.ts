@@ -1,3 +1,4 @@
+import { SECURITY_REDIS_DATABASES } from '../support/real-stack/redis-databases.js';
 import { spawn, type ChildProcess } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { createServer } from 'node:net';
@@ -88,7 +89,6 @@ function databaseUrl(base: string, name: string): string {
 // Files run in parallel and rate-limit counters and queues can't be prefixed,
 // so each stack leases a whole Redis database that nothing else in the suite
 // uses. The compose project owns this Redis alone.
-const REDIS_DATABASES = [5, 6, 7, 8, 9];
 const LEASE_SECONDS = 900;
 
 async function leaseRedisDatabase(owner: string): Promise<{
@@ -99,7 +99,7 @@ async function leaseRedisDatabase(owner: string): Promise<{
   const deadline = Date.now() + 240_000;
   try {
     while (Date.now() < deadline) {
-      for (const database of REDIS_DATABASES) {
+      for (const database of SECURITY_REDIS_DATABASES) {
         const lease = `pertexo:test:security-stack:${String(database)}`;
         const taken = await coordinator.set(
           lease,
