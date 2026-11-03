@@ -163,3 +163,5 @@ export type {} from './pending-tasks/responses/records.repository.js';
 export type {} from './queries/entitlement-effect.js';
 export type {} from './stalled/overdue.repository.js';
 export type {} from './values/retention.js';
+
+export { isStoredDataError } from '../shared/stored-values.js';

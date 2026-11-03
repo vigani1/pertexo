@@ -1,8 +1,9 @@
+import { canonicalOutboxPayloadChecksum } from '@pertexo/core/outbox';
 import {
   NodeAttemptDeliveryMismatchError,
   NodeAttemptStateCorruptError,
 } from '@pertexo/core/attempts';
-import type { RunFailureStore } from '@pertexo/core/runs';
+import { isStoredDataError, type RunFailureStore } from '@pertexo/core/runs';
 
 import {
   InvalidQueueDeliveryError,
@@ -23,8 +24,6 @@ import {
 
 /** Shown on the run: its stored state can never produce this attempt. */
 const UNADVANCEABLE_RUN_CODE = 'execution.run_state_invalid';
-/** A few tries first, so a state that only looked wrong can't end a healthy run. */
-const UNADVANCEABLE_AFTER_DELIVERIES = 4;
 
 export function queueHandler(
   handler: NodeAttemptHandler,
@@ -56,23 +55,26 @@ export function queueHandler(
       const stateRefused =
         delivery.name === JOB_NAME.executeNodeAttempt &&
         (error instanceof NodeAttemptStateCorruptError ||
-          error instanceof NodeAttemptHandlerStateError);
-      if (
-        stateRefused &&
-        delivery.transport.attemptsMade + 1 < UNADVANCEABLE_AFTER_DELIVERIES
-      )
-        throw error;
+          error instanceof NodeAttemptHandlerStateError ||
+          isStoredDataError(error));
       if (stateRefused)
         await runFailures.failUnadvanceable({
           workspaceId: delivery.data.workspaceId,
           runId: delivery.data.runId,
           safeErrorCode: UNADVANCEABLE_RUN_CODE,
+          attemptDelivery: {
+            ...delivery.data,
+            delivery: {
+              outboxEventId: delivery.data.outboxEventId,
+              payloadChecksum: canonicalOutboxPayloadChecksum(delivery.data),
+            },
+          },
           signal: context.signal,
         });
       if (
         error instanceof NodeAttemptDeliveryMismatchError ||
         error instanceof NodeAttemptStateCorruptError ||
-        error instanceof NodeAttemptHandlerStateError
+        stateRefused
       )
         throw unrecoverableQueueError(
           error instanceof NodeAttemptHandlerStateError

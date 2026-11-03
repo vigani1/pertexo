@@ -1,3 +1,9 @@
+import {
+  validateDelivery,
+  claimReceipt,
+  completeReceipt,
+} from '../../attempts/completion/receipts.repository.js';
+import type { NodeAttemptDeliveryIdentity } from '../../attempts/node-attempt.js';
 import { persistConsumedCalls } from '../calls/persist.repository.js';
 import { persistConsumedTasks } from '../pending-tasks/lifecycle/persist.repository.js';
 import { TERMINAL_NODE_FIELDS } from './persist/settlement.repository.js';
@@ -27,6 +33,7 @@ export type FailUnadvanceableInput = Readonly<{
   safeErrorCode: string;
   /** The advance that found the run unadvanceable, whose slot binding ends here. */
   delivery?: CoordinatorAdvanceDelivery;
+  attemptDelivery?: NodeAttemptDeliveryIdentity;
   signal: AbortSignal;
 }>;
 
@@ -98,6 +105,20 @@ export function failUnadvanceableRun(
         (await claimCoordinatorReceipt(client, workspaceId, delivery)) === 'new'
       )
         await completeCoordinatorReceipt(client, workspaceId, delivery);
+      if (input.attemptDelivery !== undefined) {
+        await validateDelivery(client, input.attemptDelivery);
+        const receipt = await claimReceipt(
+          client,
+          workspaceId,
+          input.attemptDelivery.delivery,
+        );
+        if (receipt !== 'completed')
+          await completeReceipt(
+            client,
+            workspaceId,
+            input.attemptDelivery.delivery,
+          );
+      }
       return status;
     },
   );
