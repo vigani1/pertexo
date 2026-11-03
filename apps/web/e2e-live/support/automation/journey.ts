@@ -78,8 +78,8 @@ export async function qualifyAutomationCli(page: Page, workspaceId: string) {
       .fill('Live CLI runner');
     for (const name of [
       'Read workflows',
-      'Import workflows',
-      'Publish workflows',
+      'Create workflows',
+      'Publish and control workflows',
       'Read runs',
       'Start runs',
       'Cancel runs',
