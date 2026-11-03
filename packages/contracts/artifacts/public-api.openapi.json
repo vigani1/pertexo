@@ -32,6 +32,14 @@
       "description": "Start, read and cancel runs"
     },
     {
+      "name": "Data tables",
+      "description": "Read and write workspace tables and rows"
+    },
+    {
+      "name": "Variables",
+      "description": "Manage non-secret workspace configuration and find its references"
+    },
+    {
       "name": "Triggers",
       "description": "Observe deliveries and schedules and control published triggers"
     }
@@ -322,6 +330,1574 @@
           "request.rate_limited",
           "request.rate_limit_unavailable",
           "api_token.unavailable"
+        ]
+      }
+    },
+    "/v1/workspaces/{workspaceId}/variables": {
+      "get": {
+        "operationId": "getWorkspaceVariables",
+        "x-pertexo-api-token-scopes": [
+          "workspace:read"
+        ],
+        "security": [
+          {
+            "apiToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workspaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Non-secret current workspace values",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceVariablesResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session required",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "CSRF refused",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Workspace unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Variables or workflow references changed",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected failure",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Token authentication or request admission unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Read non-secret workspace variables",
+        "tags": [
+          "Variables"
+        ],
+        "x-pertexo-problem-codes": [
+          "request.invalid",
+          "auth.unauthenticated",
+          "auth.token_scope_required",
+          "auth.forbidden",
+          "resource.not_found",
+          "request.rate_limited",
+          "request.rate_limit_unavailable",
+          "api_token.unavailable"
+        ]
+      },
+      "put": {
+        "operationId": "replaceWorkspaceVariables",
+        "x-pertexo-api-token-scopes": [
+          "variable:manage"
+        ],
+        "security": [
+          {
+            "apiToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workspaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^[\\x21-\\x2b\\x2d-\\x7e]+$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkspaceVariablesRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Recorded revision, without copying values into the command receipt",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceVariablesCommandResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session required",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "CSRF refused",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Workspace unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Variables or workflow references changed",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected failure",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Token authentication or request admission unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Replace workspace variables",
+        "tags": [
+          "Variables"
+        ],
+        "x-pertexo-problem-codes": [
+          "request.invalid",
+          "auth.unauthenticated",
+          "auth.token_scope_required",
+          "auth.forbidden",
+          "resource.not_found",
+          "request.rate_limited",
+          "request.rate_limit_unavailable",
+          "api_token.unavailable",
+          "request.idempotency_conflict",
+          "variables.changed"
+        ]
+      }
+    },
+    "/v1/workspaces/{workspaceId}/variables/usage": {
+      "get": {
+        "operationId": "listWorkspaceVariableReferences",
+        "x-pertexo-api-token-scopes": [
+          "workspace:read",
+          "workflow:read"
+        ],
+        "security": [
+          {
+            "apiToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workspaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "name",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "pattern": "^[A-Z][A-Z0-9_]{0,63}$"
+            }
+          },
+          {
+            "name": "after",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1024,
+              "pattern": "^[A-Za-z0-9_-]+$"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "One bounded page, spanning workflows while its budgets last; follow the cursor to the end before declaring a name unused",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceVariableUsageResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session required",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "CSRF refused",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Workspace unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Variables or workflow references changed",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected failure",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Token authentication or request admission unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Find variable references",
+        "tags": [
+          "Variables"
+        ],
+        "x-pertexo-problem-codes": [
+          "request.invalid",
+          "auth.unauthenticated",
+          "auth.token_scope_required",
+          "auth.forbidden",
+          "resource.not_found",
+          "request.rate_limited",
+          "request.rate_limit_unavailable",
+          "api_token.unavailable",
+          "variables.usage_changed"
+        ]
+      }
+    },
+    "/v1/workspaces/{workspaceId}/data-tables": {
+      "get": {
+        "operationId": "listDataTables",
+        "x-pertexo-api-token-scopes": [
+          "workspace:read"
+        ],
+        "security": [
+          {
+            "apiToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workspaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Workspace data tables",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DataTablesResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid values or bounded query",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session required",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed or CSRF refused",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Workspace or table unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Revision, unique key or quota conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected failure",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Token authentication or request admission unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        },
+        "summary": "List workspace tables",
+        "tags": [
+          "Data tables"
+        ],
+        "x-pertexo-problem-codes": [
+          "request.invalid",
+          "auth.unauthenticated",
+          "auth.token_scope_required",
+          "auth.forbidden",
+          "resource.not_found",
+          "request.rate_limited",
+          "request.rate_limit_unavailable",
+          "api_token.unavailable"
+        ]
+      },
+      "post": {
+        "operationId": "createDataTable",
+        "x-pertexo-api-token-scopes": [
+          "workflow:update"
+        ],
+        "security": [
+          {
+            "apiToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workspaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^[\\x21-\\x2b\\x2d-\\x7e]+$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DataTableCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Workspace data tables",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DataTableCreated"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid values or bounded query",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session required",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed or CSRF refused",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Workspace or table unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Revision, unique key or quota conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected failure",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Token authentication or request admission unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Create a table",
+        "tags": [
+          "Data tables"
+        ],
+        "x-pertexo-problem-codes": [
+          "request.invalid",
+          "auth.unauthenticated",
+          "auth.token_scope_required",
+          "auth.forbidden",
+          "resource.not_found",
+          "request.rate_limited",
+          "request.rate_limit_unavailable",
+          "api_token.unavailable",
+          "request.idempotency_conflict",
+          "data_table.conflict",
+          "data_table.key_conflict",
+          "data_table.quota_exceeded"
+        ]
+      }
+    },
+    "/v1/workspaces/{workspaceId}/data-tables/{tableId}": {
+      "delete": {
+        "operationId": "removeDataTable",
+        "x-pertexo-api-token-scopes": [
+          "workflow:update"
+        ],
+        "security": [
+          {
+            "apiToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workspaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "tableId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^[\\x21-\\x2b\\x2d-\\x7e]+$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DataTableRemove"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Workspace data tables",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DataTableRemoved"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid values or bounded query",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session required",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed or CSRF refused",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Workspace or table unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Revision, unique key or quota conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected failure",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Token authentication or request admission unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Remove a table",
+        "tags": [
+          "Data tables"
+        ],
+        "x-pertexo-problem-codes": [
+          "request.invalid",
+          "auth.unauthenticated",
+          "auth.token_scope_required",
+          "auth.forbidden",
+          "resource.not_found",
+          "request.rate_limited",
+          "request.rate_limit_unavailable",
+          "api_token.unavailable",
+          "request.idempotency_conflict",
+          "data_table.conflict"
+        ]
+      }
+    },
+    "/v1/workspaces/{workspaceId}/data-tables/{tableId}/schema": {
+      "put": {
+        "operationId": "editDataTableSchema",
+        "x-pertexo-api-token-scopes": [
+          "workflow:update"
+        ],
+        "security": [
+          {
+            "apiToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workspaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "tableId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^[\\x21-\\x2b\\x2d-\\x7e]+$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DataTableSchemaEdit"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Workspace data tables",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DataTableSchemaEdited"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid values or bounded query",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session required",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed or CSRF refused",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Workspace or table unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Revision, unique key or quota conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected failure",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Token authentication or request admission unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Change table columns",
+        "tags": [
+          "Data tables"
+        ],
+        "x-pertexo-problem-codes": [
+          "request.invalid",
+          "auth.unauthenticated",
+          "auth.token_scope_required",
+          "auth.forbidden",
+          "resource.not_found",
+          "request.rate_limited",
+          "request.rate_limit_unavailable",
+          "api_token.unavailable",
+          "request.idempotency_conflict",
+          "data_table.conflict",
+          "data_table.quota_exceeded"
+        ]
+      }
+    },
+    "/v1/workspaces/{workspaceId}/data-tables/{tableId}/rows/query": {
+      "post": {
+        "operationId": "findDataTableRows",
+        "x-pertexo-api-token-scopes": [
+          "workspace:read"
+        ],
+        "security": [
+          {
+            "apiToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workspaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "tableId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DataTableQuery"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Workspace data tables",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DataTableResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid values or bounded query",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session required",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed or CSRF refused",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Workspace or table unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Revision, unique key or quota conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected failure",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Token authentication or request admission unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Query table rows",
+        "tags": [
+          "Data tables"
+        ],
+        "x-pertexo-problem-codes": [
+          "request.invalid",
+          "auth.unauthenticated",
+          "auth.token_scope_required",
+          "auth.forbidden",
+          "resource.not_found",
+          "request.rate_limited",
+          "request.rate_limit_unavailable",
+          "api_token.unavailable"
+        ]
+      }
+    },
+    "/v1/workspaces/{workspaceId}/data-tables/{tableId}/rows": {
+      "post": {
+        "operationId": "writeDataTableRows",
+        "x-pertexo-api-token-scopes": [
+          "workflow:update"
+        ],
+        "security": [
+          {
+            "apiToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workspaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "tableId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^[\\x21-\\x2b\\x2d-\\x7e]+$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DataTableWrite"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Workspace data tables",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DataTableWriteReceipt"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid values or bounded query",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session required",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed or CSRF refused",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Workspace or table unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Revision, unique key or quota conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected failure",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Token authentication or request admission unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Write table rows",
+        "tags": [
+          "Data tables"
+        ],
+        "x-pertexo-problem-codes": [
+          "request.invalid",
+          "auth.unauthenticated",
+          "auth.token_scope_required",
+          "auth.forbidden",
+          "resource.not_found",
+          "request.rate_limited",
+          "request.rate_limit_unavailable",
+          "api_token.unavailable",
+          "request.idempotency_conflict",
+          "data_table.conflict",
+          "data_table.key_conflict",
+          "data_table.quota_exceeded"
+        ]
+      }
+    },
+    "/v1/workspaces/{workspaceId}/data-tables/{tableId}/import": {
+      "post": {
+        "operationId": "importDataTableCsv",
+        "x-pertexo-api-token-scopes": [
+          "workflow:update"
+        ],
+        "security": [
+          {
+            "apiToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workspaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "tableId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^[\\x21-\\x2b\\x2d-\\x7e]+$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DataTableImport"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Workspace data tables",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DataTableImported"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid values or bounded query",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session required",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed or CSRF refused",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Workspace or table unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Revision, unique key or quota conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected failure",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Token authentication or request admission unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Import table rows from CSV",
+        "tags": [
+          "Data tables"
+        ],
+        "x-pertexo-problem-codes": [
+          "request.invalid",
+          "auth.unauthenticated",
+          "auth.token_scope_required",
+          "auth.forbidden",
+          "resource.not_found",
+          "request.rate_limited",
+          "request.rate_limit_unavailable",
+          "api_token.unavailable",
+          "request.idempotency_conflict",
+          "data_table.conflict",
+          "data_table.key_conflict",
+          "data_table.quota_exceeded"
         ]
       }
     },
@@ -1967,6 +3543,415 @@
           "api_token.unavailable",
           "request.idempotency_conflict",
           "workflow.pause_conflict"
+        ]
+      }
+    },
+    "/v1/workspaces/{workspaceId}/workflow-tags": {
+      "get": {
+        "operationId": "listWorkflowTags",
+        "x-pertexo-api-token-scopes": [
+          "workflow:read"
+        ],
+        "description": "Current workflow:read in an active workspace. Bounded vocabulary page in ascending UUID order, no total count. Every continuation rechecks current authority.",
+        "security": [
+          {
+            "apiToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workspaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 100
+                },
+                {
+                  "type": "string",
+                  "pattern": "^(?:[1-9]|[1-9][0-9]|100)(?![\\s\\S])"
+                }
+              ]
+            }
+          },
+          {
+            "name": "after",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512,
+              "pattern": "^[A-Za-z0-9_-]+(?![\\s\\S])"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Vocabulary page in ascending UUID order",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowTagListResponse"
+                }
+              }
+            },
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "private, no-store"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthenticated"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "429": {
+            "description": "Request rate limit reached",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/Unexpected"
+          },
+          "503": {
+            "description": "Workflow organization or request admission is unavailable; no empty metadata is inferred",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        },
+        "summary": "List shared workflow tags",
+        "tags": [
+          "Workflows"
+        ],
+        "x-pertexo-problem-codes": [
+          "request.invalid",
+          "auth.unauthenticated",
+          "auth.token_scope_required",
+          "auth.forbidden",
+          "resource.not_found",
+          "request.rate_limited",
+          "request.rate_limit_unavailable",
+          "api_token.unavailable"
+        ]
+      }
+    },
+    "/v1/workspaces/{workspaceId}/workflow-tags/{tagId}/workflows": {
+      "get": {
+        "operationId": "listWorkflowTagAssignments",
+        "x-pertexo-api-token-scopes": [
+          "workflow:read"
+        ],
+        "description": "Current owner/admin; authoritative assignment discovery including archived workflows in ascending workflow UUID order, no total count. Missing/foreign tags return generic not-found, unlike a workflow-list tag filter which returns a scoped empty page.",
+        "security": [
+          {
+            "apiToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workspaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "tagId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 100
+                },
+                {
+                  "type": "string",
+                  "pattern": "^(?:[1-9]|[1-9][0-9]|100)(?![\\s\\S])"
+                }
+              ]
+            }
+          },
+          {
+            "name": "after",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512,
+              "pattern": "^[A-Za-z0-9_-]+(?![\\s\\S])"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Assignment page in ascending workflow UUID order",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowTagAssignmentsResponse"
+                }
+              }
+            },
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "private, no-store"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthenticated"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "429": {
+            "description": "Request rate limit reached",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/Unexpected"
+          },
+          "503": {
+            "description": "Workflow organization or request admission is unavailable; no empty metadata is inferred",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        },
+        "summary": "List workflows assigned to a tag",
+        "tags": [
+          "Workflows"
+        ],
+        "x-pertexo-problem-codes": [
+          "request.invalid",
+          "auth.unauthenticated",
+          "auth.token_scope_required",
+          "auth.forbidden",
+          "resource.not_found",
+          "request.rate_limited",
+          "request.rate_limit_unavailable",
+          "api_token.unavailable"
+        ]
+      }
+    },
+    "/v1/workspaces/{workspaceId}/workflows/{workflowId}/tags": {
+      "post": {
+        "operationId": "replaceWorkflowTags",
+        "x-pertexo-api-token-scopes": [
+          "workflow:update"
+        ],
+        "description": "Current workflow:update in an active workspace and active workflow. Replace at most 16 unique shared tag IDs at the independent organization revision. A new accepted no-op advances once; exact authorized replay does not. Does not change graph, name, lifecycle or updated ordering.",
+        "security": [
+          {
+            "apiToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workspaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "workflowId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^[\\x21-\\x2b\\x2d-\\x7e]+$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkflowTagReplaceRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Original replacement metadata and replay marker",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowTagReplaceResponse"
+                }
+              }
+            },
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "private, no-store"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthenticated"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "description": "Known organization, revision, idempotency or lifecycle conflict; retain uncertain commands for explicit exact recovery",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Request rate limit reached",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/Unexpected"
+          },
+          "503": {
+            "description": "Workflow organization or request admission is unavailable; no empty metadata is inferred",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Replace a workflow’s tags",
+        "tags": [
+          "Workflows"
+        ],
+        "x-pertexo-problem-codes": [
+          "request.invalid",
+          "auth.unauthenticated",
+          "auth.token_scope_required",
+          "auth.forbidden",
+          "resource.not_found",
+          "request.rate_limited",
+          "request.rate_limit_unavailable",
+          "api_token.unavailable",
+          "request.idempotency_conflict",
+          "workflow.organization_revision_conflict"
         ]
       }
     },
@@ -6674,7 +8659,7 @@
           },
           "scopes": {
             "minItems": 1,
-            "maxItems": 9,
+            "maxItems": 11,
             "type": "array",
             "items": {
               "type": "string",
@@ -6687,7 +8672,9 @@
                 "run:read-data",
                 "run:start",
                 "run:cancel",
-                "connection:read"
+                "connection:read",
+                "workspace:read",
+                "variable:manage"
               ]
             }
           },
@@ -6703,6 +8690,1827 @@
           "name",
           "scopes",
           "expiresAt"
+        ],
+        "additionalProperties": false
+      },
+      "WorkspaceVariablesResponse": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "readOnly": true,
+        "type": "object",
+        "properties": {
+          "revision": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 2147483647
+          },
+          "values": {
+            "readOnly": true,
+            "type": "object",
+            "propertyNames": {
+              "type": "string",
+              "pattern": "^[A-Z][A-Z0-9_]{0,63}$"
+            },
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 4096
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "boolean"
+                }
+              ]
+            }
+          },
+          "descriptions": {
+            "default": {},
+            "readOnly": true,
+            "type": "object",
+            "propertyNames": {
+              "type": "string",
+              "pattern": "^[A-Z][A-Z0-9_]{0,63}$"
+            },
+            "additionalProperties": {
+              "type": "string",
+              "maxLength": 500
+            }
+          }
+        },
+        "required": [
+          "revision",
+          "values",
+          "descriptions"
+        ],
+        "additionalProperties": false
+      },
+      "WorkspaceVariablesRequest": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "expectedRevision": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 2147483646
+          },
+          "values": {
+            "readOnly": true,
+            "type": "object",
+            "propertyNames": {
+              "type": "string",
+              "pattern": "^[A-Z][A-Z0-9_]{0,63}$"
+            },
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 4096
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "boolean"
+                }
+              ]
+            }
+          },
+          "descriptions": {
+            "readOnly": true,
+            "type": "object",
+            "propertyNames": {
+              "type": "string",
+              "pattern": "^[A-Z][A-Z0-9_]{0,63}$"
+            },
+            "additionalProperties": {
+              "type": "string",
+              "maxLength": 500
+            }
+          }
+        },
+        "required": [
+          "expectedRevision",
+          "values"
+        ],
+        "additionalProperties": false
+      },
+      "WorkspaceVariablesCommandResponse": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "revision": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "changed": {
+            "type": "boolean"
+          },
+          "replayed": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "revision",
+          "changed",
+          "replayed"
+        ],
+        "additionalProperties": false
+      },
+      "WorkspaceVariableUsageResponse": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "items": {
+            "maxItems": 100,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{64}$"
+                },
+                "workflowId": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                },
+                "workflowName": {
+                  "type": "string",
+                  "maxLength": 160
+                },
+                "archived": {
+                  "type": "boolean"
+                },
+                "stage": {
+                  "type": "string",
+                  "enum": [
+                    "draft",
+                    "published"
+                  ]
+                },
+                "nodeId": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "maxLength": 128
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "label": {
+                  "type": "string",
+                  "maxLength": 160
+                },
+                "input": {
+                  "type": "string",
+                  "maxLength": 128
+                },
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "direct",
+                    "dynamic"
+                  ]
+                }
+              },
+              "required": [
+                "id",
+                "workflowId",
+                "workflowName",
+                "archived",
+                "stage",
+                "nodeId",
+                "label",
+                "input",
+                "kind"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "nextCursor": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 1024
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "incomplete": {
+            "type": "boolean"
+          },
+          "checkedWorkflows": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "totalWorkflows": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "items",
+          "nextCursor",
+          "incomplete",
+          "checkedWorkflows",
+          "totalWorkflows"
+        ],
+        "additionalProperties": false
+      },
+      "DataTablesResponse": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "tables": {
+            "maxItems": 100,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9](?:[A-Za-z0-9 _-]{0,62}[A-Za-z0-9_-])?$"
+                },
+                "columns": {
+                  "minItems": 1,
+                  "maxItems": 50,
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "name": {
+                        "type": "string",
+                        "pattern": "^[A-Za-z][A-Za-z0-9_]{0,63}$"
+                      },
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "text",
+                          "number",
+                          "boolean",
+                          "date",
+                          "json"
+                        ]
+                      },
+                      "required": {
+                        "default": false,
+                        "type": "boolean"
+                      },
+                      "id": {
+                        "type": "string",
+                        "pattern": "^[A-Za-z][A-Za-z0-9_]{0,63}$"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "type",
+                      "required",
+                      "id"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "keyColumn": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "pattern": "^[A-Za-z][A-Za-z0-9_]{0,63}$"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "id": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                },
+                "hasRemovedColumns": {
+                  "type": "boolean"
+                },
+                "rowCount": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "storedBytes": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "revision": {
+                  "type": "integer",
+                  "exclusiveMinimum": 0,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "name",
+                "columns",
+                "keyColumn",
+                "id",
+                "hasRemovedColumns",
+                "rowCount",
+                "storedBytes",
+                "revision"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "quotas": {
+            "type": "object",
+            "properties": {
+              "tableLimit": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 100
+              },
+              "columnLimit": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 50
+              },
+              "rowLimit": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 100000
+              },
+              "byteLimit": {
+                "type": "integer",
+                "minimum": 65536,
+                "maximum": 1073741824
+              },
+              "tableCount": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "storedBytes": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "tableLimit",
+              "columnLimit",
+              "rowLimit",
+              "byteLimit",
+              "tableCount",
+              "storedBytes"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "tables",
+          "quotas"
+        ],
+        "additionalProperties": false
+      },
+      "DataTableCreate": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9](?:[A-Za-z0-9 _-]{0,62}[A-Za-z0-9_-])?$"
+          },
+          "columns": {
+            "minItems": 1,
+            "maxItems": 50,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z][A-Za-z0-9_]{0,63}$"
+                },
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "text",
+                    "number",
+                    "boolean",
+                    "date",
+                    "json"
+                  ]
+                },
+                "required": {
+                  "default": false,
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "name",
+                "type"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "keyColumn": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[A-Za-z][A-Za-z0-9_]{0,63}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "name",
+          "columns"
+        ],
+        "additionalProperties": false
+      },
+      "DataTableCreated": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "additionalProperties": false
+      },
+      "DataTableRemove": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "expectedRevision": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "expectedRevision"
+        ],
+        "additionalProperties": false
+      },
+      "DataTableRemoved": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "removed": {
+            "type": "boolean",
+            "const": true
+          }
+        },
+        "required": [
+          "removed"
+        ],
+        "additionalProperties": false
+      },
+      "DataTableSchemaEdit": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "expectedRevision": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          },
+          "change": {
+            "oneOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "operation": {
+                    "type": "string",
+                    "const": "add_column"
+                  },
+                  "column": {
+                    "type": "object",
+                    "properties": {
+                      "name": {
+                        "type": "string",
+                        "pattern": "^[A-Za-z][A-Za-z0-9_]{0,63}$"
+                      },
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "text",
+                          "number",
+                          "boolean",
+                          "date",
+                          "json"
+                        ]
+                      },
+                      "required": {
+                        "default": false,
+                        "type": "boolean"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "type"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "defaultValue": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "null"
+                      },
+                      {
+                        "type": "array",
+                        "items": {
+                          "$ref": "#/components/schemas/DataTableSchemaEdit"
+                        }
+                      },
+                      {
+                        "type": "object",
+                        "propertyNames": {
+                          "type": "string"
+                        },
+                        "additionalProperties": {
+                          "$ref": "#/components/schemas/DataTableSchemaEdit"
+                        }
+                      }
+                    ],
+                    "description": "Runtime validation checks JSON depth (32), members (8,000) and bytes (64 KiB) before recursive parsing."
+                  }
+                },
+                "required": [
+                  "operation",
+                  "column"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "operation": {
+                    "type": "string",
+                    "const": "rename_column"
+                  },
+                  "columnId": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z][A-Za-z0-9_]{0,63}$"
+                  },
+                  "name": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z][A-Za-z0-9_]{0,63}$"
+                  }
+                },
+                "required": [
+                  "operation",
+                  "columnId",
+                  "name"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "operation": {
+                    "type": "string",
+                    "const": "remove_column"
+                  },
+                  "columnId": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z][A-Za-z0-9_]{0,63}$"
+                  },
+                  "confirm": {
+                    "type": "boolean",
+                    "const": true
+                  }
+                },
+                "required": [
+                  "operation",
+                  "columnId",
+                  "confirm"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "operation": {
+                    "type": "string",
+                    "const": "set_key"
+                  },
+                  "columnId": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^[A-Za-z][A-Za-z0-9_]{0,63}$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "operation",
+                  "columnId"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          }
+        },
+        "required": [
+          "expectedRevision",
+          "change"
+        ],
+        "additionalProperties": false
+      },
+      "DataTableSchemaEdited": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "revision": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "revision"
+        ],
+        "additionalProperties": false
+      },
+      "DataTableQuery": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "filters": {
+            "default": [],
+            "maxItems": 10,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "column": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z][A-Za-z0-9_]{0,63}$"
+                },
+                "operator": {
+                  "type": "string",
+                  "enum": [
+                    "equals",
+                    "not_equals",
+                    "contains",
+                    "greater_than",
+                    "less_than"
+                  ]
+                },
+                "value": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "boolean"
+                    },
+                    {
+                      "type": "null"
+                    },
+                    {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/DataTableQuery"
+                      }
+                    },
+                    {
+                      "type": "object",
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "additionalProperties": {
+                        "$ref": "#/components/schemas/DataTableQuery"
+                      }
+                    }
+                  ],
+                  "description": "Runtime validation checks JSON depth (32), members (8,000) and bytes (64 KiB) before recursive parsing."
+                }
+              },
+              "required": [
+                "column",
+                "operator",
+                "value"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "sort": {
+            "type": "object",
+            "properties": {
+              "column": {
+                "type": "string",
+                "pattern": "^[A-Za-z][A-Za-z0-9_]{0,63}$"
+              },
+              "direction": {
+                "type": "string",
+                "enum": [
+                  "asc",
+                  "desc"
+                ]
+              }
+            },
+            "required": [
+              "column",
+              "direction"
+            ],
+            "additionalProperties": false
+          },
+          "limit": {
+            "default": 100,
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1000
+          },
+          "offset": {
+            "default": 0,
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100000
+          }
+        },
+        "additionalProperties": false
+      },
+      "DataTableResult": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "rows": {
+            "maxItems": 1000,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                },
+                "revision": {
+                  "type": "integer",
+                  "exclusiveMinimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "values": {
+                  "type": "object",
+                  "propertyNames": {
+                    "type": "string"
+                  },
+                  "additionalProperties": {
+                    "$ref": "#/components/schemas/DataTableResult/properties/rows/items/properties/values/$defs/__schema0"
+                  },
+                  "$defs": {
+                    "__schema0": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "number"
+                        },
+                        {
+                          "type": "boolean"
+                        },
+                        {
+                          "type": "null"
+                        },
+                        {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/DataTableResult/properties/rows/items/properties/values/$defs/__schema0"
+                          }
+                        },
+                        {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {
+                            "$ref": "#/components/schemas/DataTableResult/properties/rows/items/properties/values/$defs/__schema0"
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "description": "Runtime validation checks JSON depth (32), members (8,000) and bytes (64 KiB) before recursive parsing."
+                }
+              },
+              "required": [
+                "id",
+                "revision",
+                "values"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "affected": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "hasMore": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "rows",
+          "affected",
+          "hasMore"
+        ],
+        "additionalProperties": false,
+        "$defs": {
+          "__schema0": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/DataTableResult/$defs/__schema0"
+                }
+              },
+              {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/DataTableResult/$defs/__schema0"
+                }
+              }
+            ]
+          }
+        }
+      },
+      "DataTableWrite": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "anyOf": [
+          {
+            "type": "object",
+            "properties": {
+              "command": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "operation": {
+                        "type": "string",
+                        "const": "insert"
+                      },
+                      "table": {
+                        "type": "string",
+                        "pattern": "^[A-Za-z0-9](?:[A-Za-z0-9 _-]{0,62}[A-Za-z0-9_-])?$"
+                      },
+                      "values": {
+                        "type": "object",
+                        "propertyNames": {
+                          "type": "string"
+                        },
+                        "additionalProperties": {
+                          "$ref": "#/components/schemas/DataTableWrite/anyOf/0/properties/command/oneOf/0/properties/values/$defs/__schema0"
+                        },
+                        "$defs": {
+                          "__schema0": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "boolean"
+                              },
+                              {
+                                "type": "null"
+                              },
+                              {
+                                "type": "array",
+                                "items": {
+                                  "$ref": "#/components/schemas/DataTableWrite/anyOf/0/properties/command/oneOf/0/properties/values/$defs/__schema0"
+                                }
+                              },
+                              {
+                                "type": "object",
+                                "propertyNames": {
+                                  "type": "string"
+                                },
+                                "additionalProperties": {
+                                  "$ref": "#/components/schemas/DataTableWrite/anyOf/0/properties/command/oneOf/0/properties/values/$defs/__schema0"
+                                }
+                              }
+                            ]
+                          }
+                        },
+                        "description": "Runtime validation checks JSON depth (32), members (8,000) and bytes (64 KiB) before recursive parsing."
+                      }
+                    },
+                    "required": [
+                      "operation",
+                      "table",
+                      "values"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "operation": {
+                        "type": "string",
+                        "const": "upsert"
+                      },
+                      "table": {
+                        "type": "string",
+                        "pattern": "^[A-Za-z0-9](?:[A-Za-z0-9 _-]{0,62}[A-Za-z0-9_-])?$"
+                      },
+                      "values": {
+                        "type": "object",
+                        "propertyNames": {
+                          "type": "string"
+                        },
+                        "additionalProperties": {
+                          "$ref": "#/components/schemas/DataTableWrite/anyOf/0/properties/command/oneOf/1/properties/values/$defs/__schema0"
+                        },
+                        "$defs": {
+                          "__schema0": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "boolean"
+                              },
+                              {
+                                "type": "null"
+                              },
+                              {
+                                "type": "array",
+                                "items": {
+                                  "$ref": "#/components/schemas/DataTableWrite/anyOf/0/properties/command/oneOf/1/properties/values/$defs/__schema0"
+                                }
+                              },
+                              {
+                                "type": "object",
+                                "propertyNames": {
+                                  "type": "string"
+                                },
+                                "additionalProperties": {
+                                  "$ref": "#/components/schemas/DataTableWrite/anyOf/0/properties/command/oneOf/1/properties/values/$defs/__schema0"
+                                }
+                              }
+                            ]
+                          }
+                        },
+                        "description": "Runtime validation checks JSON depth (32), members (8,000) and bytes (64 KiB) before recursive parsing."
+                      }
+                    },
+                    "required": [
+                      "operation",
+                      "table",
+                      "values"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "operation": {
+                        "type": "string",
+                        "const": "update"
+                      },
+                      "table": {
+                        "type": "string",
+                        "pattern": "^[A-Za-z0-9](?:[A-Za-z0-9 _-]{0,62}[A-Za-z0-9_-])?$"
+                      },
+                      "query": {
+                        "type": "object",
+                        "properties": {
+                          "filters": {
+                            "default": [],
+                            "maxItems": 10,
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "column": {
+                                  "type": "string",
+                                  "pattern": "^[A-Za-z][A-Za-z0-9_]{0,63}$"
+                                },
+                                "operator": {
+                                  "type": "string",
+                                  "enum": [
+                                    "equals",
+                                    "not_equals",
+                                    "contains",
+                                    "greater_than",
+                                    "less_than"
+                                  ]
+                                },
+                                "value": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "number"
+                                    },
+                                    {
+                                      "type": "boolean"
+                                    },
+                                    {
+                                      "type": "null"
+                                    },
+                                    {
+                                      "type": "array",
+                                      "items": {
+                                        "$ref": "#/components/schemas/DataTableWrite"
+                                      }
+                                    },
+                                    {
+                                      "type": "object",
+                                      "propertyNames": {
+                                        "type": "string"
+                                      },
+                                      "additionalProperties": {
+                                        "$ref": "#/components/schemas/DataTableWrite"
+                                      }
+                                    }
+                                  ],
+                                  "description": "Runtime validation checks JSON depth (32), members (8,000) and bytes (64 KiB) before recursive parsing."
+                                }
+                              },
+                              "required": [
+                                "column",
+                                "operator",
+                                "value"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "sort": {
+                            "type": "object",
+                            "properties": {
+                              "column": {
+                                "type": "string",
+                                "pattern": "^[A-Za-z][A-Za-z0-9_]{0,63}$"
+                              },
+                              "direction": {
+                                "type": "string",
+                                "enum": [
+                                  "asc",
+                                  "desc"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "column",
+                              "direction"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "limit": {
+                            "default": 100,
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 1000
+                          },
+                          "offset": {
+                            "default": 0,
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 100000
+                          }
+                        },
+                        "additionalProperties": false
+                      },
+                      "values": {
+                        "type": "object",
+                        "propertyNames": {
+                          "type": "string"
+                        },
+                        "additionalProperties": {
+                          "$ref": "#/components/schemas/DataTableWrite/anyOf/0/properties/command/oneOf/2/properties/values/$defs/__schema0"
+                        },
+                        "$defs": {
+                          "__schema0": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "boolean"
+                              },
+                              {
+                                "type": "null"
+                              },
+                              {
+                                "type": "array",
+                                "items": {
+                                  "$ref": "#/components/schemas/DataTableWrite/anyOf/0/properties/command/oneOf/2/properties/values/$defs/__schema0"
+                                }
+                              },
+                              {
+                                "type": "object",
+                                "propertyNames": {
+                                  "type": "string"
+                                },
+                                "additionalProperties": {
+                                  "$ref": "#/components/schemas/DataTableWrite/anyOf/0/properties/command/oneOf/2/properties/values/$defs/__schema0"
+                                }
+                              }
+                            ]
+                          }
+                        },
+                        "description": "Runtime validation checks JSON depth (32), members (8,000) and bytes (64 KiB) before recursive parsing."
+                      }
+                    },
+                    "required": [
+                      "operation",
+                      "table",
+                      "query",
+                      "values"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "operation": {
+                        "type": "string",
+                        "const": "delete"
+                      },
+                      "table": {
+                        "type": "string",
+                        "pattern": "^[A-Za-z0-9](?:[A-Za-z0-9 _-]{0,62}[A-Za-z0-9_-])?$"
+                      },
+                      "query": {
+                        "type": "object",
+                        "properties": {
+                          "filters": {
+                            "default": [],
+                            "maxItems": 10,
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "column": {
+                                  "type": "string",
+                                  "pattern": "^[A-Za-z][A-Za-z0-9_]{0,63}$"
+                                },
+                                "operator": {
+                                  "type": "string",
+                                  "enum": [
+                                    "equals",
+                                    "not_equals",
+                                    "contains",
+                                    "greater_than",
+                                    "less_than"
+                                  ]
+                                },
+                                "value": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "number"
+                                    },
+                                    {
+                                      "type": "boolean"
+                                    },
+                                    {
+                                      "type": "null"
+                                    },
+                                    {
+                                      "type": "array",
+                                      "items": {
+                                        "$ref": "#/components/schemas/DataTableWrite"
+                                      }
+                                    },
+                                    {
+                                      "type": "object",
+                                      "propertyNames": {
+                                        "type": "string"
+                                      },
+                                      "additionalProperties": {
+                                        "$ref": "#/components/schemas/DataTableWrite"
+                                      }
+                                    }
+                                  ],
+                                  "description": "Runtime validation checks JSON depth (32), members (8,000) and bytes (64 KiB) before recursive parsing."
+                                }
+                              },
+                              "required": [
+                                "column",
+                                "operator",
+                                "value"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "sort": {
+                            "type": "object",
+                            "properties": {
+                              "column": {
+                                "type": "string",
+                                "pattern": "^[A-Za-z][A-Za-z0-9_]{0,63}$"
+                              },
+                              "direction": {
+                                "type": "string",
+                                "enum": [
+                                  "asc",
+                                  "desc"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "column",
+                              "direction"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "limit": {
+                            "default": 100,
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 1000
+                          },
+                          "offset": {
+                            "default": 0,
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 100000
+                          }
+                        },
+                        "additionalProperties": false
+                      }
+                    },
+                    "required": [
+                      "operation",
+                      "table",
+                      "query"
+                    ],
+                    "additionalProperties": false
+                  }
+                ]
+              }
+            },
+            "required": [
+              "command"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "command": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "operation": {
+                        "type": "string",
+                        "const": "insert"
+                      },
+                      "table": {
+                        "type": "string",
+                        "pattern": "^[A-Za-z0-9](?:[A-Za-z0-9 _-]{0,62}[A-Za-z0-9_-])?$"
+                      },
+                      "values": {
+                        "type": "object",
+                        "propertyNames": {
+                          "type": "string"
+                        },
+                        "additionalProperties": {
+                          "$ref": "#/components/schemas/DataTableWrite/anyOf/1/properties/command/oneOf/0/properties/values/$defs/__schema0"
+                        },
+                        "$defs": {
+                          "__schema0": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "boolean"
+                              },
+                              {
+                                "type": "null"
+                              },
+                              {
+                                "type": "array",
+                                "items": {
+                                  "$ref": "#/components/schemas/DataTableWrite/anyOf/1/properties/command/oneOf/0/properties/values/$defs/__schema0"
+                                }
+                              },
+                              {
+                                "type": "object",
+                                "propertyNames": {
+                                  "type": "string"
+                                },
+                                "additionalProperties": {
+                                  "$ref": "#/components/schemas/DataTableWrite/anyOf/1/properties/command/oneOf/0/properties/values/$defs/__schema0"
+                                }
+                              }
+                            ]
+                          }
+                        },
+                        "description": "Runtime validation checks JSON depth (32), members (8,000) and bytes (64 KiB) before recursive parsing."
+                      }
+                    },
+                    "required": [
+                      "operation",
+                      "table",
+                      "values"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "operation": {
+                        "type": "string",
+                        "const": "upsert"
+                      },
+                      "table": {
+                        "type": "string",
+                        "pattern": "^[A-Za-z0-9](?:[A-Za-z0-9 _-]{0,62}[A-Za-z0-9_-])?$"
+                      },
+                      "values": {
+                        "type": "object",
+                        "propertyNames": {
+                          "type": "string"
+                        },
+                        "additionalProperties": {
+                          "$ref": "#/components/schemas/DataTableWrite/anyOf/1/properties/command/oneOf/1/properties/values/$defs/__schema0"
+                        },
+                        "$defs": {
+                          "__schema0": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "boolean"
+                              },
+                              {
+                                "type": "null"
+                              },
+                              {
+                                "type": "array",
+                                "items": {
+                                  "$ref": "#/components/schemas/DataTableWrite/anyOf/1/properties/command/oneOf/1/properties/values/$defs/__schema0"
+                                }
+                              },
+                              {
+                                "type": "object",
+                                "propertyNames": {
+                                  "type": "string"
+                                },
+                                "additionalProperties": {
+                                  "$ref": "#/components/schemas/DataTableWrite/anyOf/1/properties/command/oneOf/1/properties/values/$defs/__schema0"
+                                }
+                              }
+                            ]
+                          }
+                        },
+                        "description": "Runtime validation checks JSON depth (32), members (8,000) and bytes (64 KiB) before recursive parsing."
+                      }
+                    },
+                    "required": [
+                      "operation",
+                      "table",
+                      "values"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "operation": {
+                        "type": "string",
+                        "const": "update"
+                      },
+                      "table": {
+                        "type": "string",
+                        "pattern": "^[A-Za-z0-9](?:[A-Za-z0-9 _-]{0,62}[A-Za-z0-9_-])?$"
+                      },
+                      "query": {
+                        "type": "object",
+                        "properties": {
+                          "filters": {
+                            "default": [],
+                            "maxItems": 10,
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "column": {
+                                  "type": "string",
+                                  "pattern": "^[A-Za-z][A-Za-z0-9_]{0,63}$"
+                                },
+                                "operator": {
+                                  "type": "string",
+                                  "enum": [
+                                    "equals",
+                                    "not_equals",
+                                    "contains",
+                                    "greater_than",
+                                    "less_than"
+                                  ]
+                                },
+                                "value": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "number"
+                                    },
+                                    {
+                                      "type": "boolean"
+                                    },
+                                    {
+                                      "type": "null"
+                                    },
+                                    {
+                                      "type": "array",
+                                      "items": {
+                                        "$ref": "#/components/schemas/DataTableWrite"
+                                      }
+                                    },
+                                    {
+                                      "type": "object",
+                                      "propertyNames": {
+                                        "type": "string"
+                                      },
+                                      "additionalProperties": {
+                                        "$ref": "#/components/schemas/DataTableWrite"
+                                      }
+                                    }
+                                  ],
+                                  "description": "Runtime validation checks JSON depth (32), members (8,000) and bytes (64 KiB) before recursive parsing."
+                                }
+                              },
+                              "required": [
+                                "column",
+                                "operator",
+                                "value"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "sort": {
+                            "type": "object",
+                            "properties": {
+                              "column": {
+                                "type": "string",
+                                "pattern": "^[A-Za-z][A-Za-z0-9_]{0,63}$"
+                              },
+                              "direction": {
+                                "type": "string",
+                                "enum": [
+                                  "asc",
+                                  "desc"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "column",
+                              "direction"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "limit": {
+                            "default": 100,
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 1000
+                          },
+                          "offset": {
+                            "default": 0,
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 100000
+                          }
+                        },
+                        "additionalProperties": false
+                      },
+                      "values": {
+                        "type": "object",
+                        "propertyNames": {
+                          "type": "string"
+                        },
+                        "additionalProperties": {
+                          "$ref": "#/components/schemas/DataTableWrite/anyOf/1/properties/command/oneOf/2/properties/values/$defs/__schema0"
+                        },
+                        "$defs": {
+                          "__schema0": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "boolean"
+                              },
+                              {
+                                "type": "null"
+                              },
+                              {
+                                "type": "array",
+                                "items": {
+                                  "$ref": "#/components/schemas/DataTableWrite/anyOf/1/properties/command/oneOf/2/properties/values/$defs/__schema0"
+                                }
+                              },
+                              {
+                                "type": "object",
+                                "propertyNames": {
+                                  "type": "string"
+                                },
+                                "additionalProperties": {
+                                  "$ref": "#/components/schemas/DataTableWrite/anyOf/1/properties/command/oneOf/2/properties/values/$defs/__schema0"
+                                }
+                              }
+                            ]
+                          }
+                        },
+                        "description": "Runtime validation checks JSON depth (32), members (8,000) and bytes (64 KiB) before recursive parsing."
+                      }
+                    },
+                    "required": [
+                      "operation",
+                      "table",
+                      "query",
+                      "values"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "operation": {
+                        "type": "string",
+                        "const": "delete"
+                      },
+                      "table": {
+                        "type": "string",
+                        "pattern": "^[A-Za-z0-9](?:[A-Za-z0-9 _-]{0,62}[A-Za-z0-9_-])?$"
+                      },
+                      "query": {
+                        "type": "object",
+                        "properties": {
+                          "filters": {
+                            "default": [],
+                            "maxItems": 10,
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "column": {
+                                  "type": "string",
+                                  "pattern": "^[A-Za-z][A-Za-z0-9_]{0,63}$"
+                                },
+                                "operator": {
+                                  "type": "string",
+                                  "enum": [
+                                    "equals",
+                                    "not_equals",
+                                    "contains",
+                                    "greater_than",
+                                    "less_than"
+                                  ]
+                                },
+                                "value": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "number"
+                                    },
+                                    {
+                                      "type": "boolean"
+                                    },
+                                    {
+                                      "type": "null"
+                                    },
+                                    {
+                                      "type": "array",
+                                      "items": {
+                                        "$ref": "#/components/schemas/DataTableWrite"
+                                      }
+                                    },
+                                    {
+                                      "type": "object",
+                                      "propertyNames": {
+                                        "type": "string"
+                                      },
+                                      "additionalProperties": {
+                                        "$ref": "#/components/schemas/DataTableWrite"
+                                      }
+                                    }
+                                  ],
+                                  "description": "Runtime validation checks JSON depth (32), members (8,000) and bytes (64 KiB) before recursive parsing."
+                                }
+                              },
+                              "required": [
+                                "column",
+                                "operator",
+                                "value"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "sort": {
+                            "type": "object",
+                            "properties": {
+                              "column": {
+                                "type": "string",
+                                "pattern": "^[A-Za-z][A-Za-z0-9_]{0,63}$"
+                              },
+                              "direction": {
+                                "type": "string",
+                                "enum": [
+                                  "asc",
+                                  "desc"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "column",
+                              "direction"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "limit": {
+                            "default": 100,
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 1000
+                          },
+                          "offset": {
+                            "default": 0,
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 100000
+                          }
+                        },
+                        "additionalProperties": false
+                      }
+                    },
+                    "required": [
+                      "operation",
+                      "table",
+                      "query"
+                    ],
+                    "additionalProperties": false
+                  }
+                ]
+              },
+              "rowId": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "expectedRevision": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "command",
+              "rowId",
+              "expectedRevision"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      },
+      "DataTableWriteReceipt": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "rows": {
+            "maxItems": 1,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                },
+                "revision": {
+                  "type": "integer",
+                  "exclusiveMinimum": 0,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "id",
+                "revision"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "affected": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "rows",
+          "affected"
+        ],
+        "additionalProperties": false
+      },
+      "DataTableImport": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "csv": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1048576
+          }
+        },
+        "required": [
+          "csv"
+        ],
+        "additionalProperties": false
+      },
+      "DataTableImported": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "affected": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 1000
+          }
+        },
+        "required": [
+          "affected"
         ],
         "additionalProperties": false
       },
@@ -13323,6 +17131,201 @@
           "code",
           "requestId",
           "currentPauseRevision"
+        ],
+        "additionalProperties": false
+      },
+      "WorkflowTagListResponse": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "items": {
+            "maxItems": 100,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "minLength": 36,
+                  "maxLength": 36,
+                  "allOf": [
+                    {
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    {
+                      "pattern": "^[0-9a-f-]+(?![\\s\\S])"
+                    }
+                  ]
+                },
+                "key": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 32,
+                  "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$(?![\\s\\S])"
+                },
+                "revision": {
+                  "type": "integer",
+                  "exclusiveMinimum": 0,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "id",
+                "key",
+                "revision"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "nextCursor": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 512,
+                "pattern": "^[A-Za-z0-9_-]+(?![\\s\\S])"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "items",
+          "nextCursor"
+        ],
+        "additionalProperties": false
+      },
+      "WorkflowTagAssignmentsResponse": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "items": {
+            "maxItems": 100,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "workflowId": {
+                  "type": "string",
+                  "minLength": 36,
+                  "maxLength": 36,
+                  "allOf": [
+                    {
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    {
+                      "pattern": "^[0-9a-f-]+(?![\\s\\S])"
+                    }
+                  ]
+                },
+                "organizationRevision": {
+                  "type": "integer",
+                  "exclusiveMinimum": 0,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "workflowId",
+                "organizationRevision"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "nextCursor": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 512,
+                "pattern": "^[A-Za-z0-9_-]+(?![\\s\\S])"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "items",
+          "nextCursor"
+        ],
+        "additionalProperties": false
+      },
+      "WorkflowTagReplaceRequest": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "tagIds": {
+            "maxItems": 16,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          "expectedOrganizationRevision": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "tagIds",
+          "expectedOrganizationRevision"
+        ],
+        "additionalProperties": false
+      },
+      "WorkflowTagReplaceResponse": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "workflowId": {
+            "type": "string",
+            "minLength": 36,
+            "maxLength": 36,
+            "allOf": [
+              {
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              {
+                "pattern": "^[0-9a-f-]+(?![\\s\\S])"
+              }
+            ]
+          },
+          "organizationRevision": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          },
+          "tagIds": {
+            "maxItems": 16,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 36,
+              "maxLength": 36,
+              "allOf": [
+                {
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                },
+                {
+                  "pattern": "^[0-9a-f-]+(?![\\s\\S])"
+                }
+              ]
+            }
+          },
+          "replayed": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "workflowId",
+          "organizationRevision",
+          "tagIds",
+          "replayed"
         ],
         "additionalProperties": false
       },

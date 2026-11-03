@@ -553,9 +553,15 @@
     "/v1/workspaces/{workspaceId}/variables": {
       "get": {
         "operationId": "getWorkspaceVariables",
+        "x-pertexo-api-token-scopes": [
+          "workspace:read"
+        ],
         "security": [
           {
             "cookieSession": []
+          },
+          {
+            "apiToken": []
           }
         ],
         "parameters": [
@@ -651,14 +657,30 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Token authentication or request admission unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
           }
         }
       },
       "put": {
         "operationId": "replaceWorkspaceVariables",
+        "x-pertexo-api-token-scopes": [
+          "variable:manage"
+        ],
         "security": [
           {
             "cookieSession": []
+          },
+          {
+            "apiToken": []
           }
         ],
         "parameters": [
@@ -676,13 +698,14 @@
           {
             "name": "x-csrf-token",
             "in": "header",
-            "required": true,
+            "required": false,
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
               "minLength": 16,
               "maxLength": 256
-            }
+            },
+            "description": "Required with cookie sessions. Bearer API tokens do not use CSRF."
           },
           {
             "name": "Idempotency-Key",
@@ -787,6 +810,16 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Token authentication or request admission unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
           }
         }
       }
@@ -794,9 +827,16 @@
     "/v1/workspaces/{workspaceId}/variables/usage": {
       "get": {
         "operationId": "listWorkspaceVariableReferences",
+        "x-pertexo-api-token-scopes": [
+          "workspace:read",
+          "workflow:read"
+        ],
         "security": [
           {
             "cookieSession": []
+          },
+          {
+            "apiToken": []
           }
         ],
         "parameters": [
@@ -926,6 +966,16 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Token authentication or request admission unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
           }
         }
       }
@@ -933,9 +983,15 @@
     "/v1/workspaces/{workspaceId}/data-tables": {
       "get": {
         "operationId": "listDataTables",
+        "x-pertexo-api-token-scopes": [
+          "workspace:read"
+        ],
         "security": [
           {
             "cookieSession": []
+          },
+          {
+            "apiToken": []
           }
         ],
         "parameters": [
@@ -1031,14 +1087,30 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Token authentication or request admission unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
           }
         }
       },
       "post": {
         "operationId": "createDataTable",
+        "x-pertexo-api-token-scopes": [
+          "workflow:update"
+        ],
         "security": [
           {
             "cookieSession": []
+          },
+          {
+            "apiToken": []
           }
         ],
         "parameters": [
@@ -1056,13 +1128,14 @@
           {
             "name": "x-csrf-token",
             "in": "header",
-            "required": true,
+            "required": false,
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
               "minLength": 16,
               "maxLength": 256
-            }
+            },
+            "description": "Required with cookie sessions. Bearer API tokens do not use CSRF."
           },
           {
             "name": "Idempotency-Key",
@@ -1160,6 +1233,16 @@
           },
           "500": {
             "description": "Unexpected failure",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Token authentication or request admission unavailable",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -1312,9 +1395,15 @@
     "/v1/workspaces/{workspaceId}/data-tables/{tableId}": {
       "delete": {
         "operationId": "removeDataTable",
+        "x-pertexo-api-token-scopes": [
+          "workflow:update"
+        ],
         "security": [
           {
             "cookieSession": []
+          },
+          {
+            "apiToken": []
           }
         ],
         "parameters": [
@@ -1343,13 +1432,14 @@
           {
             "name": "x-csrf-token",
             "in": "header",
-            "required": true,
+            "required": false,
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
               "minLength": 16,
               "maxLength": 256
-            }
+            },
+            "description": "Required with cookie sessions. Bearer API tokens do not use CSRF."
           },
           {
             "name": "Idempotency-Key",
@@ -1454,6 +1544,16 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Token authentication or request admission unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
           }
         }
       }
@@ -1461,9 +1561,15 @@
     "/v1/workspaces/{workspaceId}/data-tables/{tableId}/schema": {
       "put": {
         "operationId": "editDataTableSchema",
+        "x-pertexo-api-token-scopes": [
+          "workflow:update"
+        ],
         "security": [
           {
             "cookieSession": []
+          },
+          {
+            "apiToken": []
           }
         ],
         "parameters": [
@@ -1492,13 +1598,14 @@
           {
             "name": "x-csrf-token",
             "in": "header",
-            "required": true,
+            "required": false,
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
               "minLength": 16,
               "maxLength": 256
-            }
+            },
+            "description": "Required with cookie sessions. Bearer API tokens do not use CSRF."
           },
           {
             "name": "Idempotency-Key",
@@ -1596,6 +1703,16 @@
           },
           "500": {
             "description": "Unexpected failure",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Token authentication or request admission unavailable",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -1769,9 +1886,15 @@
     "/v1/workspaces/{workspaceId}/data-tables/{tableId}/rows/query": {
       "post": {
         "operationId": "findDataTableRows",
+        "x-pertexo-api-token-scopes": [
+          "workspace:read"
+        ],
         "security": [
           {
             "cookieSession": []
+          },
+          {
+            "apiToken": []
           }
         ],
         "parameters": [
@@ -1800,13 +1923,14 @@
           {
             "name": "x-csrf-token",
             "in": "header",
-            "required": true,
+            "required": false,
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
               "minLength": 16,
               "maxLength": 256
-            }
+            },
+            "description": "Required with cookie sessions. Bearer API tokens do not use CSRF."
           }
         ],
         "requestBody": {
@@ -1899,6 +2023,16 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Token authentication or request admission unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
           }
         }
       }
@@ -1906,9 +2040,15 @@
     "/v1/workspaces/{workspaceId}/data-tables/{tableId}/rows": {
       "post": {
         "operationId": "writeDataTableRows",
+        "x-pertexo-api-token-scopes": [
+          "workflow:update"
+        ],
         "security": [
           {
             "cookieSession": []
+          },
+          {
+            "apiToken": []
           }
         ],
         "parameters": [
@@ -1937,13 +2077,14 @@
           {
             "name": "x-csrf-token",
             "in": "header",
-            "required": true,
+            "required": false,
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
               "minLength": 16,
               "maxLength": 256
-            }
+            },
+            "description": "Required with cookie sessions. Bearer API tokens do not use CSRF."
           },
           {
             "name": "Idempotency-Key",
@@ -2048,6 +2189,16 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Token authentication or request admission unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
           }
         }
       }
@@ -2055,9 +2206,15 @@
     "/v1/workspaces/{workspaceId}/data-tables/{tableId}/import": {
       "post": {
         "operationId": "importDataTableCsv",
+        "x-pertexo-api-token-scopes": [
+          "workflow:update"
+        ],
         "security": [
           {
             "cookieSession": []
+          },
+          {
+            "apiToken": []
           }
         ],
         "parameters": [
@@ -2086,13 +2243,14 @@
           {
             "name": "x-csrf-token",
             "in": "header",
-            "required": true,
+            "required": false,
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
               "minLength": 16,
               "maxLength": 256
-            }
+            },
+            "description": "Required with cookie sessions. Bearer API tokens do not use CSRF."
           },
           {
             "name": "Idempotency-Key",
@@ -2190,6 +2348,16 @@
           },
           "500": {
             "description": "Unexpected failure",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Token authentication or request admission unavailable",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -8957,7 +9125,7 @@
             "type": "boolean"
           },
           "availableScopes": {
-            "maxItems": 9,
+            "maxItems": 11,
             "type": "array",
             "items": {
               "type": "string",
@@ -8970,7 +9138,9 @@
                 "run:read-data",
                 "run:start",
                 "run:cancel",
-                "connection:read"
+                "connection:read",
+                "workspace:read",
+                "variable:manage"
               ]
             }
           },
@@ -8999,7 +9169,7 @@
                     },
                     "scopes": {
                       "minItems": 1,
-                      "maxItems": 9,
+                      "maxItems": 11,
                       "type": "array",
                       "items": {
                         "type": "string",
@@ -9012,7 +9182,9 @@
                           "run:read-data",
                           "run:start",
                           "run:cancel",
-                          "connection:read"
+                          "connection:read",
+                          "workspace:read",
+                          "variable:manage"
                         ]
                       }
                     },
@@ -9081,7 +9253,7 @@
                     },
                     "scopes": {
                       "minItems": 1,
-                      "maxItems": 9,
+                      "maxItems": 11,
                       "type": "array",
                       "items": {
                         "type": "string",
@@ -9094,7 +9266,9 @@
                           "run:read-data",
                           "run:start",
                           "run:cancel",
-                          "connection:read"
+                          "connection:read",
+                          "workspace:read",
+                          "variable:manage"
                         ]
                       }
                     },
@@ -9181,7 +9355,7 @@
           },
           "scopes": {
             "minItems": 1,
-            "maxItems": 9,
+            "maxItems": 11,
             "type": "array",
             "items": {
               "type": "string",
@@ -9194,7 +9368,9 @@
                 "run:read-data",
                 "run:start",
                 "run:cancel",
-                "connection:read"
+                "connection:read",
+                "workspace:read",
+                "variable:manage"
               ]
             }
           },
@@ -9239,7 +9415,7 @@
                       },
                       "scopes": {
                         "minItems": 1,
-                        "maxItems": 9,
+                        "maxItems": 11,
                         "type": "array",
                         "items": {
                           "type": "string",
@@ -9252,7 +9428,9 @@
                             "run:read-data",
                             "run:start",
                             "run:cancel",
-                            "connection:read"
+                            "connection:read",
+                            "workspace:read",
+                            "variable:manage"
                           ]
                         }
                       },
@@ -9321,7 +9499,7 @@
                       },
                       "scopes": {
                         "minItems": 1,
-                        "maxItems": 9,
+                        "maxItems": 11,
                         "type": "array",
                         "items": {
                           "type": "string",
@@ -9334,7 +9512,9 @@
                             "run:read-data",
                             "run:start",
                             "run:cancel",
-                            "connection:read"
+                            "connection:read",
+                            "workspace:read",
+                            "variable:manage"
                           ]
                         }
                       },
@@ -9428,7 +9608,7 @@
                       },
                       "scopes": {
                         "minItems": 1,
-                        "maxItems": 9,
+                        "maxItems": 11,
                         "type": "array",
                         "items": {
                           "type": "string",
@@ -9441,7 +9621,9 @@
                             "run:read-data",
                             "run:start",
                             "run:cancel",
-                            "connection:read"
+                            "connection:read",
+                            "workspace:read",
+                            "variable:manage"
                           ]
                         }
                       },
@@ -9510,7 +9692,7 @@
                       },
                       "scopes": {
                         "minItems": 1,
-                        "maxItems": 9,
+                        "maxItems": 11,
                         "type": "array",
                         "items": {
                           "type": "string",
@@ -9523,7 +9705,9 @@
                             "run:read-data",
                             "run:start",
                             "run:cancel",
-                            "connection:read"
+                            "connection:read",
+                            "workspace:read",
+                            "variable:manage"
                           ]
                         }
                       },
@@ -9621,7 +9805,7 @@
                   },
                   "scopes": {
                     "minItems": 1,
-                    "maxItems": 9,
+                    "maxItems": 11,
                     "type": "array",
                     "items": {
                       "type": "string",
@@ -9634,7 +9818,9 @@
                         "run:read-data",
                         "run:start",
                         "run:cancel",
-                        "connection:read"
+                        "connection:read",
+                        "workspace:read",
+                        "variable:manage"
                       ]
                     }
                   },
@@ -9703,7 +9889,7 @@
                   },
                   "scopes": {
                     "minItems": 1,
-                    "maxItems": 9,
+                    "maxItems": 11,
                     "type": "array",
                     "items": {
                       "type": "string",
@@ -9716,7 +9902,9 @@
                         "run:read-data",
                         "run:start",
                         "run:cancel",
-                        "connection:read"
+                        "connection:read",
+                        "workspace:read",
+                        "variable:manage"
                       ]
                     }
                   },
@@ -9800,7 +9988,7 @@
           },
           "scopes": {
             "minItems": 1,
-            "maxItems": 9,
+            "maxItems": 11,
             "type": "array",
             "items": {
               "type": "string",
@@ -9813,7 +10001,9 @@
                 "run:read-data",
                 "run:start",
                 "run:cancel",
-                "connection:read"
+                "connection:read",
+                "workspace:read",
+                "variable:manage"
               ]
             }
           },

@@ -136,6 +136,7 @@ it('upgrades a populated standalone test without changing its source identity or
       '0076_pending_task_limit.sql',
       '0077_run_data_token_scope.sql',
       '0078_workflow_update_token_scope.sql',
+      '0079_workspace_data_token_scopes.sql',
     ]);
     expect(
       (

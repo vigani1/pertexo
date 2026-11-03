@@ -554,6 +554,13 @@
       "when": 1793672318993,
       "tag": "0078_workflow_update_token_scope",
       "breakpoints": true
+    },
+    {
+      "idx": 79,
+      "version": "7",
+      "when": 1793688140975,
+      "tag": "0079_workspace_data_token_scopes",
+      "breakpoints": true
     }
   ]
 }

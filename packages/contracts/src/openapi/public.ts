@@ -151,6 +151,15 @@ function buildPublicDocument() {
       },
       { name: 'Runs', description: 'Start, read and cancel runs' },
       {
+        name: 'Data tables',
+        description: 'Read and write workspace tables and rows',
+      },
+      {
+        name: 'Variables',
+        description:
+          'Manage non-secret workspace configuration and find its references',
+      },
+      {
         name: 'Triggers',
         description:
           'Observe deliveries and schedules and control published triggers',

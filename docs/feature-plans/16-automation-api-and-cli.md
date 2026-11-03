@@ -15,8 +15,11 @@ Include token creation/list/revocation, workflow list/read/draft/version listing
 run start/list/read/cancel, portable export/import preview/apply, publication,
 and an HTTP CLI for those operations. Imports retain F05's exact reviewed-source,
 connection-binding, checksum and precondition rules. Exclude credential/account/
-team administration, editor mutations, recovery/replay, triggers, streaming events
-and internal operator commands.
+team administration, recovery/replay, streaming events and internal operator
+commands. The Step 5 expansion includes blank workflow creation and draft saves,
+lifecycle and automatic-pause controls, published trigger observation and
+provisioning, workspace data tables, variables and workflow tag assignments.
+It adds no CLI commands; scripts can call the documented HTTP operations.
 
 No service accounts, OAuth server, JWTs, SDK package, CLI profile format, new role,
 service, external dependency or CI job. Keep seams for later requirements
@@ -50,9 +53,14 @@ owners, not new parallel facades.
 
 Active members manage only their own tokens. Available scopes are limited to
 capabilities currently held. No administrator impersonation or new token role.
-Reuse capability names: `workflow:read`, `workflow:create`, `workflow:publish`,
-`run:read`, `run:start`, `run:cancel`, `connection:read`. The last only permits
-explicit import binding resolution; it does not expose connection routes/secrets.
+Reuse capability names: `workflow:read`, `workflow:create`, `workflow:update`,
+`workflow:publish`, `run:read`, `run:read-data`, `run:start`, `run:cancel`,
+`connection:read`, `workspace:read` and `variable:manage`. Connection reads expose
+only metadata and authorized import binding resolution, never credentials.
+Workspace reads permit table definitions/rows and non-secret variables. Variable
+reference discovery additionally requires `workflow:read`; replacement requires
+`variable:manage`. Table and tag writes retain `workflow:update` and their
+existing resource/role fences.
 Starting a published workflow retains its existing authority to execute pinned
 connections. Scopes do not imply each other; examples state prerequisites and
 shared use cases enforce each capability they need. Run workflow-name projections also require workflow:read on the token. Current
@@ -130,10 +138,33 @@ Existing paths under `/v1/workspaces/:workspaceId`, existing contracts:
 | GET workflows, workflow, draft, versions | workflow:read | workflow-authoring/http |
 | POST workflow/export | workflow:read | workflow-authoring/portability |
 | POST workflows/import/preview, import | workflow:create; connection:read with bindings | workflow-authoring/portability |
-| POST workflow/publish | workflow:publish | workflow-authoring/http |
+| POST workflows; PUT workflow/draft | workflow:create; workflow:update respectively | workflow-authoring/http |
+| POST workflow/publish, archive, restore, resume | workflow:publish | workflow-authoring |
+| GET/PUT workflow/auto-pause | workflow:read; workflow:update respectively | workflow-authoring/settings |
+| GET connections, connection | connection:read | connections |
+| GET published webhook triggers/deliveries; POST webhook/provision | workflow:read; workflow:update respectively | webhooks/management |
+| GET schedules, occurrences, next-runs; POST schedule preview | workflow:read | schedules |
+| POST schedule enable/disable | workflow:update | schedules |
+| GET data-tables; POST table/rows/query | workspace:read | data-tables |
+| POST data-tables, table/rows, table/import; PUT table/schema; DELETE table | workflow:update | data-tables |
+| GET variables | workspace:read | workspace-variables |
+| PUT variables | variable:manage | workspace-variables |
+| GET variables/usage | workspace:read and workflow:read | workspace-variables |
+| GET workflow-tags, tag/workflows; POST workflow/tags | workflow:read; workflow:update respectively | workflow-authoring/organization |
 | POST workflow/runs | run:start | workflow-runs/http |
 | GET runs, run | run:read | workflow-runs/http |
+| GET run/input, node-run/input, node-run/output | run:read-data | workflow-runs/http |
 | POST run/cancel | run:cancel | workflow-runs/http |
+
+The public spec now contains 47 operations, including token identity at
+`GET /v1/token`. The 27 Step 5 additions retain existing paths, success statuses,
+preconditions, input bounds and rate classes. Native-form CSV export, table
+quota configuration, shared tag vocabulary administration, personal favorites,
+webhook rotation/authentication and draft test listeners remain cookie-only.
+They are separate governance, browser or credential-management actions, outside
+this automation slice. Creation advertises all 11 scopes only when the member's
+current role permits them; migration 0079 extends the stored allowlist without
+changing existing grants.
 
 Add browser-only GET/POST `api-tokens` and POST `api-tokens/:tokenId/revoke`.
 Sanitized public schemas cover metadata/status, scopes and creation outcomes.

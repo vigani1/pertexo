@@ -1,3 +1,5 @@
+import { commandCredential } from '../authorization/credentials.js';
+import { projectAuthenticatedWorkspaceContext } from '../workspaces/request/authenticated-context.js';
 import { CsvExportAdmission } from '../platform/http/csv/admission.js';
 import type { FastifyRequest, FastifyReply } from 'fastify';
 import { decodeTableExportRequest } from './export/request.js';
@@ -7,10 +9,7 @@ import {
   dataTableRoutes as routes,
   type RouteInput,
 } from '@pertexo/contracts/server';
-import {
-  CsrfProtectionGuard,
-  authenticatedSession,
-} from '../workspaces/index.js';
+import { CsrfProtectionGuard } from '../workspaces/index.js';
 import { In, Route } from '../workspaces/http/route.js';
 import type { IdentityWorkspaceRequest } from '../workspaces/types.js';
 import { withRequestOperationSignal } from '../platform/http/index.js';
@@ -179,8 +178,13 @@ export class DataTablesController {
 }
 
 function scope(request: Request, params: Readonly<{ workspaceId: string }>) {
+  const { actor } = projectAuthenticatedWorkspaceContext(
+    request,
+    params.workspaceId,
+  );
   return {
     workspaceId: params.workspaceId,
-    actorId: authenticatedSession(request).userId,
+    actorId: actor.actorId,
+    ...commandCredential(actor),
   };
 }

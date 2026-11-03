@@ -20,12 +20,14 @@ export const SCOPE_COPY: Readonly<
       'Create a blank workflow, or preview an import and create its unpublished copy.',
   },
   'workflow:update': {
-    label: 'Edit workflow drafts',
-    description: 'Save a draft over the exact version you read.',
+    label: 'Edit workflows and tables',
+    description:
+      'Save drafts, update pause settings and tags, control schedules, provision webhooks, and write table columns and rows.',
   },
   'workflow:publish': {
-    label: 'Publish workflows',
-    description: 'Publish the exact saved draft you reviewed.',
+    label: 'Publish and control workflows',
+    description:
+      'Publish a reviewed draft, archive or restore a workflow, and resume automatic triggers.',
   },
   'run:read': {
     label: 'Read runs',
@@ -43,6 +45,16 @@ export const SCOPE_COPY: Readonly<
   'run:cancel': {
     label: 'Cancel runs',
     description: 'Request cancellation of a run.',
+  },
+  'workspace:read': {
+    label: 'Read workspace data',
+    description:
+      'Read table definitions and rows, and non-secret workspace variables.',
+  },
+  'variable:manage': {
+    label: 'Edit workspace variables',
+    description:
+      'Replace non-secret workspace variables at the revision you read.',
   },
   'connection:read': {
     label: 'Read connections',

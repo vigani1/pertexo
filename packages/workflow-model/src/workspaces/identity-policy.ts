@@ -34,6 +34,8 @@ export const API_TOKEN_SCOPES = [
   'run:start',
   'run:cancel',
   'connection:read',
+  'workspace:read',
+  'variable:manage',
 ] as const;
 
 export const API_TOKEN_DEFAULT_LIFETIME_DAYS = 30;

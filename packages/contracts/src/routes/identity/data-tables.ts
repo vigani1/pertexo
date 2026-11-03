@@ -15,7 +15,7 @@ const workspace = z.object({ workspaceId: workspaceIdentifierSchema });
 const table = workspace.extend({ tableId: workspaceIdentifierSchema });
 
 const reading: RouteAccess = {
-  auth: 'session',
+  auth: 'session_or_token',
   capabilities: [
     {
       name: 'workspace:read',
@@ -25,7 +25,7 @@ const reading: RouteAccess = {
   ],
 };
 const managing: RouteAccess = {
-  auth: 'session',
+  auth: 'session_or_token',
   capabilities: [
     {
       name: 'workflow:update',
@@ -85,7 +85,7 @@ export const dataTableRoutes = {
     method: 'put',
     path: `${ROOT}/limits`,
     params: workspace,
-    access: managing,
+    access: { ...managing, auth: 'session' },
     rateLimit: 'ordinary_mutation',
     idempotent: true,
     body: projected('DataTableLimits', schemas.dataTableLimitsSchema),
@@ -124,7 +124,7 @@ export const dataTableRoutes = {
     method: 'post',
     path: `${TABLE}/export`,
     params: table,
-    access: { ...reading, csrf: 'header_or_body' },
+    access: { ...reading, auth: 'session', csrf: 'header_or_body' },
     rateLimit: 'data_table_export',
     description:
       'Streams the complete filtered CSV in row creation order. Interrupted transfers are aborted. Native forms supply query JSON and csrfToken as URL-encoded fields.',

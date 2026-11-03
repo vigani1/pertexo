@@ -245,7 +245,7 @@ test('bounds long names and announces each scope once on a phone', async ({
   ).toHaveAccessibleDescription('List, inspect and export saved workflows.');
   await page.getByLabel('Token name', { exact: true }).fill('Phone runner');
   await page
-    .getByRole('checkbox', { name: 'Resolve connection bindings', exact: true })
+    .getByRole('checkbox', { name: 'Read connections', exact: true })
     .check();
   await page.getByLabel('Expires in (days)', { exact: true }).fill('365');
   await page

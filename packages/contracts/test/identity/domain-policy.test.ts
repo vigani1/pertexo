@@ -54,6 +54,8 @@ it('keeps authoring and identity policy limits unchanged at the transport bounda
     'run:start',
     'run:cancel',
     'connection:read',
+    'workspace:read',
+    'variable:manage',
   ]);
 });
 

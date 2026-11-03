@@ -43,7 +43,7 @@ export const organizationRoutes = {
     method: 'get',
     path: '/v1/workspaces/{workspaceId}/workflow-tags',
     params: workspaceParams,
-    access: reading,
+    access: { ...reading, auth: 'session_or_token' },
     rateLimit: 'authenticated_read',
     description:
       'Current workflow:read in an active workspace. Bounded vocabulary page in ascending UUID order, no total count. Every continuation rechecks current authority.',
@@ -163,7 +163,7 @@ export const organizationRoutes = {
     method: 'get',
     path: '/v1/workspaces/{workspaceId}/workflow-tags/{tagId}/workflows',
     params: organization.workflowTagParamsSchema,
-    access: reading,
+    access: { ...reading, auth: 'session_or_token' },
     rateLimit: 'authenticated_read',
     description:
       'Current owner/admin; authoritative assignment discovery including archived workflows in ascending workflow UUID order, no total count. Missing/foreign tags return generic not-found, unlike a workflow-list tag filter which returns a scoped empty page.',
@@ -190,7 +190,7 @@ export const organizationRoutes = {
     method: 'post',
     path: '/v1/workspaces/{workspaceId}/workflows/{workflowId}/tags',
     params: workflowIdParamSchema,
-    access: updating,
+    access: { ...updating, auth: 'session_or_token' },
     rateLimit: 'ordinary_mutation',
     description:
       'Current workflow:update in an active workspace and active workflow. Replace at most 16 unique shared tag IDs at the independent organization revision. A new accepted no-op advances once; exact authorized replay does not. Does not change graph, name, lifecycle or updated ordering.',

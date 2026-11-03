@@ -10,6 +10,7 @@ export type ReplaceWorkspaceVariablesInput = WorkspaceActor &
   WorkspaceVariablesRequest &
   Readonly<{
     idempotencyKey: string;
+    commandCredentialId?: string;
     requestId?: string;
     traceId?: string;
   }>;

@@ -11,7 +11,10 @@ import type { PoolClient } from 'pg';
 import type { z } from 'zod';
 import { requireReadableReceipt } from '../../shared/receipts.js';
 
-import { generatePersistedId } from '@pertexo/database/platform';
+import {
+  generatePersistedId,
+  credentialCommandScope,
+} from '@pertexo/database/platform';
 import type { OrganizationActor } from './session.js';
 
 /** The record a command changed, for the audit log. */
@@ -62,7 +65,10 @@ export async function runOrganizationCommand<T>(
   const identity = {
     workspaceId: scope.workspaceId,
     operation: command.operation,
-    scope: `${scope.actorId}:${command.target ?? 'new'}`,
+    scope: credentialCommandScope(
+      `${scope.actorId}:${command.target ?? 'new'}`,
+      scope.commandCredentialId,
+    ),
     idempotencyKey: command.idempotencyKey,
   };
   const stored = await claimCommand(client, {

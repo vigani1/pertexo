@@ -1,3 +1,4 @@
+import { credentialCommandScope } from '@pertexo/database/platform';
 import {
   appendAuditFact,
   claimCommand,
@@ -29,7 +30,7 @@ export async function runTableCommand<T extends object>(
 ): Promise<T> {
   const identity = {
     workspaceId: input.workspaceId,
-    scope: input.actorId,
+    scope: credentialCommandScope(input.actorId, input.commandCredentialId),
     operation,
     idempotencyKey: input.idempotencyKey,
   };

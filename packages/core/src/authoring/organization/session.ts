@@ -19,6 +19,7 @@ import { readAsNotVisible } from '../workflows/access.js';
 export type OrganizationScope = Readonly<{
   workspaceId: string;
   actorId: string;
+  commandCredentialId?: string;
 }>;
 export type OrganizationRequestScope = OrganizationScope &
   Readonly<{ signal?: AbortSignal }>;
@@ -40,7 +41,14 @@ export function createOrganizationSession(
   ): Promise<T> {
     const { workspaceId, actorId } = input;
     return withWorkspaceAccess(lease.pool, input, access, (client, role) =>
-      work(client, { workspaceId, actorId, role }),
+      work(client, {
+        workspaceId,
+        actorId,
+        role,
+        ...(input.commandCredentialId === undefined
+          ? {}
+          : { commandCredentialId: input.commandCredentialId }),
+      }),
     );
   }
   return Object.freeze({
