@@ -235,8 +235,7 @@ describe('workflow automatic pause controls', () => {
     );
     renderApp(path);
     const link = await screen.findByRole('link', {
-      name: 'Latest failed run',
-      exact: true,
+      name: /^Latest failed run$/u,
     });
     expect(link).toHaveAttribute(
       'href',
