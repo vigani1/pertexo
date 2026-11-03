@@ -1,3 +1,4 @@
+import { invalidatePasswordResetProofs } from './password-reset.repository.js';
 import { hasSignInMethodCapacity } from './federation/accounts/limits.queries.js';
 import {
   prepareSessionChange,
@@ -89,6 +90,7 @@ export async function changePasswordAndRevokeSessions(
         updatedAt: sql`clock_timestamp()`,
       })
       .where(eq(authAccounts.id, credential.id));
+    await invalidatePasswordResetProofs(client, input.userId);
     await applySessionChange(client, input.userId, sessionChange);
     await recordIdentitySecurityFact(client, input.userId, 'password.changed');
     return 'changed';
@@ -155,21 +157,33 @@ export async function resetPasswordAndRevokeSessions(
 ): Promise<'reset' | 'invalid'> {
   return withPlatformTransaction(pool, async (client) => {
     const db = drizzle(client, { schema: databaseSchema });
-    const [proof] = await db
-      .select()
+    const [owner] = await db
+      .select({ id: authVerifications.id, userId: authVerifications.value })
       .from(authVerifications)
       .where(eq(authVerifications.identifier, `reset-password:${input.token}`))
       .orderBy(desc(authVerifications.createdAt), asc(authVerifications.id))
-      .limit(1)
-      .for('update');
-    if (proof === undefined || proof.expiresAt.getTime() <= Date.now())
-      return 'invalid';
+      .limit(1);
+    if (owner === undefined) return 'invalid';
+    // Every reset and credential change locks the user before any reset proof.
     const [user] = await db
       .select()
       .from(users)
-      .where(eq(users.id, proof.value))
+      .where(sql`${users.id}::text=${owner.userId}`)
       .for('update');
     if (user?.status !== 'active') return 'invalid';
+    const [proof] = await db
+      .select()
+      .from(authVerifications)
+      .where(
+        and(
+          eq(authVerifications.id, owner.id),
+          eq(authVerifications.identifier, `reset-password:${input.token}`),
+          eq(authVerifications.value, user.id),
+        ),
+      )
+      .for('update');
+    if (proof === undefined || proof.expiresAt.getTime() <= Date.now())
+      return 'invalid';
     const [credential] = await db
       .select()
       .from(authAccounts)
@@ -186,9 +200,7 @@ export async function resetPasswordAndRevokeSessions(
       .set({ password: input.passwordHash, updatedAt: sql`clock_timestamp()` })
       .where(eq(authAccounts.id, credential.id));
     await db.delete(authSessions).where(eq(authSessions.userId, proof.value));
-    await db
-      .delete(authVerifications)
-      .where(eq(authVerifications.id, proof.id));
+    await invalidatePasswordResetProofs(client, user.id);
     await recordIdentitySecurityFact(client, proof.value, 'password.reset');
     return 'reset';
   }).catch(rethrowQueryFailure);

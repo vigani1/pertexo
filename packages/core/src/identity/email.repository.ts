@@ -1,3 +1,4 @@
+import { invalidatePasswordResetProofs } from './password-reset.repository.js';
 import { canonicalEmail } from '@pertexo/workflow-model';
 import { canonicalEmailSql } from './canonical-email.js';
 import { readIdentityEmailChangeEligibility } from './federation/sessions/authority.repository.js';
@@ -216,6 +217,7 @@ async function consumeProof(
           updatedAt: sql`clock_timestamp()`,
         })
         .where(eq(users.id, userId));
+      await invalidatePasswordResetProofs(client, userId);
       await recordIdentitySecurityFact(client, userId, 'email.change_verified');
       outcome = proof.purpose;
       break;
