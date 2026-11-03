@@ -561,6 +561,10 @@ export async function startOAuth2StandIn({
   };
 
   const server = createServer((request, response) => {
+    if (request.url === '/network-failure') {
+      request.socket.destroy();
+      return;
+    }
     openResponses.add(response);
     response.on('close', () => openResponses.delete(response));
     void (async () => {

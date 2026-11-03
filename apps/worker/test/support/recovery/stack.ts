@@ -95,6 +95,8 @@ export type Stack = Readonly<{
 }>;
 
 export type StackOptions = Readonly<{
+  /** Separate serving fixtures may run beside the legacy recovery lane. */
+  redisDatabase?: number;
   /** Extra settings for the API and the worker. */
   environment?: Readonly<Record<string, string>>;
   /** Extra settings only the worker may have, such as mail delivery. */
@@ -119,9 +121,10 @@ export async function startStack(
   options: StackOptions = {},
 ): Promise<Stack> {
   const databaseName = `pertexo_test_recovery_${name.replaceAll('-', '_')}_${randomUUID().slice(0, 8)}`;
+  const redisDatabase = options.redisDatabase ?? REDIS_DATABASE;
   const redisNamespace = createRedisTestNamespace(
     composeUrls.redis,
-    REDIS_DATABASE,
+    redisDatabase,
     'worker-recovery',
   );
   await redisNamespace.acquire();
@@ -178,7 +181,7 @@ export async function startStack(
     } finally {
       await admin.end();
     }
-    await redisCommand(REDIS_DATABASE, 'FLUSHDB');
+    await redisCommand(redisDatabase, 'FLUSHDB');
     await redisNamespace.close();
   };
 
@@ -228,7 +231,7 @@ export async function startStack(
       return created;
     },
     async flushRedis() {
-      const reply = await redisCommand(REDIS_DATABASE, 'FLUSHDB');
+      const reply = await redisCommand(redisDatabase, 'FLUSHDB');
       if (reply !== 'OK') throw new Error(`FLUSHDB answered ${reply}`);
     },
     operator(environment) {
@@ -241,7 +244,7 @@ export async function startStack(
         ...environment,
       });
     },
-    redisDatabase: REDIS_DATABASE,
+    redisDatabase,
     redisUrl: redisNamespace.redisUrl,
     sink,
     async sql<Row extends QueryResultRow>(
