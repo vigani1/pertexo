@@ -1,53 +1,39 @@
-import {
-  Body,
-  Controller,
-  Get,
-  Header,
-  HttpCode,
-  Param,
-  Post,
-  Req,
-  UseInterceptors,
-} from '@nestjs/common';
+import { Controller, Req, UseInterceptors } from '@nestjs/common';
 import type { FastifyRequest } from 'fastify';
 import {
-  publicFormParamsSchema,
-  formCapabilitySchema,
-  formSubmissionRequestSchema,
-} from '@pertexo/contracts';
-import { firstRequestHeader } from '../platform/http/request-headers.js';
-import {
-  requestIdempotencyKey,
-  withRequestOperationSignal,
-} from '../platform/http/index.js';
+  formRoutes as routes,
+  type RouteInput,
+} from '@pertexo/contracts/server';
+import { In, Route } from '../workspaces/http/route.js';
+import { withRequestOperationSignal } from '../platform/http/index.js';
 import type { AbortableRequest } from '../platform/http/request-operation-signal.js';
-import { RateLimit } from '../platform/rate-limit/metadata.js';
 import { HttpRateLimitAdmission } from '../platform/rate-limit/admission.js';
 import { FormService } from './service.js';
-import { optionalUploadSession } from '../artifacts/form-uploads/session.js';
 import { domainErrors } from '../platform/http/problems/interceptor.js';
 import { formFailure } from '../problems/context/normalize.js';
-import { parseRequestInput } from '../platform/http/request-input.js';
 
 type PublicRequest = FastifyRequest & AbortableRequest;
+
+/** Anyone with the link: the capability in the header stands in for a session. */
 @UseInterceptors(domainErrors(formFailure))
-@Controller('v1/forms/:publicId')
-@RateLimit('form_read')
+@Controller()
 export class PublicFormsController {
   constructor(
     private readonly forms: FormService,
     private readonly limits: HttpRateLimitAdmission,
   ) {}
-  @Get()
-  @Header('Cache-Control', 'no-store')
-  @Header('Referrer-Policy', 'no-referrer')
-  read(@Req() request: PublicRequest, @Param() params: unknown) {
-    const { publicId } = publicFormParamsSchema.parse(params);
-    const capability = formCapabilitySchema.parse(
-      firstRequestHeader(request.headers, 'x-pertexo-form-key'),
-    );
+
+  @Route(routes.publicRead)
+  read(
+    @Req() request: PublicRequest,
+    @In() { params, headers }: RouteInput<typeof routes.publicRead>,
+  ) {
     return withRequestOperationSignal(request, async (signal) => {
-      const grant = await this.forms.discover({ publicId, capability, signal });
+      const grant = await this.forms.discover({
+        publicId: params.publicId,
+        capability: headers['x-pertexo-form-key'],
+        signal,
+      });
       return this.forms.read(
         {
           workspaceId: grant.workspaceId,
@@ -58,24 +44,25 @@ export class PublicFormsController {
       );
     });
   }
-  @Post('submit')
-  @HttpCode(200)
-  @Header('Cache-Control', 'no-store')
-  @Header('Referrer-Policy', 'no-referrer')
-  @RateLimit('form_submission')
+
+  @Route(routes.publicSubmit)
   submit(
     @Req() request: PublicRequest,
-    @Param() params: unknown,
-    @Body() body: unknown,
+    @In()
+    {
+      params,
+      body,
+      idempotencyKey,
+      headers,
+    }: RouteInput<typeof routes.publicSubmit>,
   ) {
-    const { publicId } = publicFormParamsSchema.parse(params);
-    const capability = formCapabilitySchema.parse(
-      firstRequestHeader(request.headers, 'x-pertexo-form-key'),
-    );
-    const input = parseRequestInput(formSubmissionRequestSchema, body);
-    const idempotencyKey = requestIdempotencyKey(request.headers);
+    const uploadSession = headers['x-pertexo-form-session'];
     return withRequestOperationSignal(request, async (signal) => {
-      const grant = await this.forms.discover({ publicId, capability, signal });
+      const grant = await this.forms.discover({
+        publicId: params.publicId,
+        capability: headers['x-pertexo-form-key'],
+        signal,
+      });
       await this.limits.admit('form_workspace_submission', {
         workspaceId: grant.workspaceId,
       });
@@ -83,8 +70,8 @@ export class PublicFormsController {
         {
           workspaceId: grant.workspaceId,
           workflowId: grant.workflowId,
-          ...input,
-          ...optionalUploadSession(request.headers),
+          ...body,
+          ...(uploadSession === undefined ? {} : { uploadSession }),
           idempotencyKey,
           signal,
         },

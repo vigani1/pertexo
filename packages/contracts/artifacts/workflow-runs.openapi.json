@@ -541,7 +541,6 @@
             "name": "workspaceId",
             "in": "path",
             "required": true,
-            "description": "Workspace identifier",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
@@ -553,7 +552,6 @@
             "name": "workflowId",
             "in": "path",
             "required": true,
-            "description": "Workflow identifier",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
@@ -562,28 +560,37 @@
             }
           },
           {
-            "in": "query",
             "name": "limit",
+            "in": "query",
+            "required": false,
             "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "default": 25,
               "type": "integer",
               "minimum": 1,
               "maximum": 100
             }
           },
           {
-            "in": "query",
             "name": "before",
+            "in": "query",
+            "required": false,
             "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
-              "format": "date-time"
+              "format": "date-time",
+              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
             }
           },
           {
-            "in": "query",
             "name": "beforeId",
+            "in": "query",
+            "required": false,
             "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
-              "format": "uuid"
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
             }
           }
         ],
@@ -652,7 +659,6 @@
             "name": "workspaceId",
             "in": "path",
             "required": true,
-            "description": "Workspace identifier",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
@@ -664,7 +670,6 @@
             "name": "workflowId",
             "in": "path",
             "required": true,
-            "description": "Workflow identifier",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
@@ -738,7 +743,6 @@
             "name": "workspaceId",
             "in": "path",
             "required": true,
-            "description": "Workspace identifier",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
@@ -750,7 +754,6 @@
             "name": "workflowId",
             "in": "path",
             "required": true,
-            "description": "Workflow identifier",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
@@ -779,6 +782,17 @@
               "minLength": 1,
               "maxLength": 128,
               "pattern": "^[\\x21-\\x2b\\x2d-\\x7e]+$"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-pertexo-form-session",
+            "required": false,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{43}$",
+              "description": "Random token for one response. A submission can use only uploads begun with the same token."
             }
           }
         ],
@@ -857,7 +871,6 @@
             "name": "workspaceId",
             "in": "path",
             "required": true,
-            "description": "Workspace identifier",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
@@ -869,7 +882,6 @@
             "name": "workflowId",
             "in": "path",
             "required": true,
-            "description": "Workflow identifier",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
@@ -941,7 +953,6 @@
             "name": "workspaceId",
             "in": "path",
             "required": true,
-            "description": "Workspace identifier",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
@@ -953,7 +964,6 @@
             "name": "workflowId",
             "in": "path",
             "required": true,
-            "description": "Workflow identifier",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
@@ -1056,7 +1066,6 @@
             "name": "publicId",
             "in": "path",
             "required": true,
-            "description": "Opaque public form identity",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
@@ -1070,8 +1079,10 @@
             "required": true,
             "description": "Capability from the link fragment; session cookies grant no public access.",
             "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
-              "pattern": "^[A-Za-z0-9_-]{43}$"
+              "pattern": "^[A-Za-z0-9_-]{43}$",
+              "description": "Capability from the link fragment; session cookies grant no public access."
             }
           }
         ],
@@ -1136,22 +1147,11 @@
             "name": "publicId",
             "in": "path",
             "required": true,
-            "description": "Opaque public form identity",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
               "format": "uuid",
               "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-            }
-          },
-          {
-            "in": "header",
-            "name": "x-pertexo-form-key",
-            "required": true,
-            "description": "Capability from the link fragment; session cookies grant no public access.",
-            "schema": {
-              "type": "string",
-              "pattern": "^[A-Za-z0-9_-]{43}$"
             }
           },
           {
@@ -1164,6 +1164,29 @@
               "minLength": 1,
               "maxLength": 128,
               "pattern": "^[\\x21-\\x2b\\x2d-\\x7e]+$"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-pertexo-form-session",
+            "required": false,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{43}$",
+              "description": "Random token for one response. A submission can use only uploads begun with the same token."
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-pertexo-form-key",
+            "required": true,
+            "description": "Capability from the link fragment; session cookies grant no public access.",
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{43}$",
+              "description": "Capability from the link fragment; session cookies grant no public access."
             }
           }
         ],
@@ -1238,32 +1261,11 @@
             "name": "publicId",
             "in": "path",
             "required": true,
-            "description": "Opaque public form identity",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
               "format": "uuid",
               "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-            }
-          },
-          {
-            "in": "header",
-            "name": "x-pertexo-form-key",
-            "required": true,
-            "description": "Capability from the public link fragment.",
-            "schema": {
-              "type": "string",
-              "pattern": "^[A-Za-z0-9_-]{43}$"
-            }
-          },
-          {
-            "in": "header",
-            "name": "x-pertexo-form-session",
-            "required": true,
-            "description": "Random token for one response. A submission can use only uploads begun with the same token.",
-            "schema": {
-              "type": "string",
-              "pattern": "^[A-Za-z0-9_-]{43}$"
             }
           },
           {
@@ -1276,6 +1278,30 @@
               "minLength": 1,
               "maxLength": 128,
               "pattern": "^[\\x21-\\x2b\\x2d-\\x7e]+$"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-pertexo-form-session",
+            "required": true,
+            "description": "Random token for one response. A submission can use only uploads begun with the same token.",
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{43}$",
+              "description": "Random token for one response. A submission can use only uploads begun with the same token."
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-pertexo-form-key",
+            "required": true,
+            "description": "Capability from the link fragment; session cookies grant no public access.",
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{43}$",
+              "description": "Capability from the link fragment; session cookies grant no public access."
             }
           }
         ],
@@ -1367,7 +1393,6 @@
             "name": "publicId",
             "in": "path",
             "required": true,
-            "description": "Opaque public form identity",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
@@ -1376,20 +1401,9 @@
             }
           },
           {
-            "in": "header",
-            "name": "x-pertexo-form-key",
-            "required": true,
-            "description": "Capability from the public link fragment.",
-            "schema": {
-              "type": "string",
-              "pattern": "^[A-Za-z0-9_-]{43}$"
-            }
-          },
-          {
             "name": "uploadId",
             "in": "path",
             "required": true,
-            "description": "Upload (file) identifier",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
@@ -1403,8 +1417,22 @@
             "required": true,
             "description": "Random token for one response. A submission can use only uploads begun with the same token.",
             "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
-              "pattern": "^[A-Za-z0-9_-]{43}$"
+              "pattern": "^[A-Za-z0-9_-]{43}$",
+              "description": "Random token for one response. A submission can use only uploads begun with the same token."
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-pertexo-form-key",
+            "required": true,
+            "description": "Capability from the link fragment; session cookies grant no public access.",
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{43}$",
+              "description": "Capability from the link fragment; session cookies grant no public access."
             }
           }
         ],
@@ -1500,7 +1528,6 @@
             "name": "workspaceId",
             "in": "path",
             "required": true,
-            "description": "Workspace identifier",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
@@ -1512,7 +1539,6 @@
             "name": "workflowId",
             "in": "path",
             "required": true,
-            "description": "Workflow identifier",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
@@ -1532,16 +1558,6 @@
             }
           },
           {
-            "in": "header",
-            "name": "x-pertexo-form-session",
-            "required": true,
-            "description": "Random token for one response. A submission can use only uploads begun with the same token.",
-            "schema": {
-              "type": "string",
-              "pattern": "^[A-Za-z0-9_-]{43}$"
-            }
-          },
-          {
             "name": "Idempotency-Key",
             "in": "header",
             "required": true,
@@ -1551,6 +1567,18 @@
               "minLength": 1,
               "maxLength": 128,
               "pattern": "^[\\x21-\\x2b\\x2d-\\x7e]+$"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-pertexo-form-session",
+            "required": true,
+            "description": "Random token for one response. A submission can use only uploads begun with the same token.",
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{43}$",
+              "description": "Random token for one response. A submission can use only uploads begun with the same token."
             }
           }
         ],
@@ -1646,7 +1674,6 @@
             "name": "workspaceId",
             "in": "path",
             "required": true,
-            "description": "Workspace identifier",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
@@ -1658,7 +1685,17 @@
             "name": "workflowId",
             "in": "path",
             "required": true,
-            "description": "Workflow identifier",
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "uploadId",
+            "in": "path",
+            "required": true,
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
@@ -1678,25 +1715,15 @@
             }
           },
           {
-            "name": "uploadId",
-            "in": "path",
-            "required": true,
-            "description": "Upload (file) identifier",
-            "schema": {
-              "$schema": "https://json-schema.org/draft/2020-12/schema",
-              "type": "string",
-              "format": "uuid",
-              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-            }
-          },
-          {
             "in": "header",
             "name": "x-pertexo-form-session",
             "required": true,
             "description": "Random token for one response. A submission can use only uploads begun with the same token.",
             "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
-              "pattern": "^[A-Za-z0-9_-]{43}$"
+              "pattern": "^[A-Za-z0-9_-]{43}$",
+              "description": "Random token for one response. A submission can use only uploads begun with the same token."
             }
           }
         ],
@@ -1792,7 +1819,6 @@
             "name": "workspaceId",
             "in": "path",
             "required": true,
-            "description": "Workspace identifier",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
@@ -1804,7 +1830,6 @@
             "name": "taskId",
             "in": "path",
             "required": true,
-            "description": "Pending task identifier",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
@@ -1824,16 +1849,6 @@
             }
           },
           {
-            "in": "header",
-            "name": "x-pertexo-form-session",
-            "required": true,
-            "description": "Random token for one response. A submission can use only uploads begun with the same token.",
-            "schema": {
-              "type": "string",
-              "pattern": "^[A-Za-z0-9_-]{43}$"
-            }
-          },
-          {
             "name": "Idempotency-Key",
             "in": "header",
             "required": true,
@@ -1843,6 +1858,18 @@
               "minLength": 1,
               "maxLength": 128,
               "pattern": "^[\\x21-\\x2b\\x2d-\\x7e]+$"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-pertexo-form-session",
+            "required": true,
+            "description": "Random token for one response. A submission can use only uploads begun with the same token.",
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{43}$",
+              "description": "Random token for one response. A submission can use only uploads begun with the same token."
             }
           }
         ],
@@ -1938,7 +1965,6 @@
             "name": "workspaceId",
             "in": "path",
             "required": true,
-            "description": "Workspace identifier",
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
@@ -1950,7 +1976,17 @@
             "name": "taskId",
             "in": "path",
             "required": true,
-            "description": "Pending task identifier",
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "uploadId",
+            "in": "path",
+            "required": true,
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
@@ -1970,25 +2006,15 @@
             }
           },
           {
-            "name": "uploadId",
-            "in": "path",
-            "required": true,
-            "description": "Upload (file) identifier",
-            "schema": {
-              "$schema": "https://json-schema.org/draft/2020-12/schema",
-              "type": "string",
-              "format": "uuid",
-              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-            }
-          },
-          {
             "in": "header",
             "name": "x-pertexo-form-session",
             "required": true,
             "description": "Random token for one response. A submission can use only uploads begun with the same token.",
             "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
-              "pattern": "^[A-Za-z0-9_-]{43}$"
+              "pattern": "^[A-Za-z0-9_-]{43}$",
+              "description": "Random token for one response. A submission can use only uploads begun with the same token."
             }
           }
         ],
@@ -8216,6 +8242,90 @@
           }
         ]
       },
+      "FormAccess": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "access": {
+            "type": "string",
+            "enum": [
+              "members",
+              "public"
+            ]
+          },
+          "publicId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "access",
+          "publicId",
+          "revision"
+        ],
+        "additionalProperties": false
+      },
+      "FormAccessRequest": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "access": {
+                "type": "string",
+                "const": "members"
+              },
+              "expectedRevision": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "access",
+              "expectedRevision"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "access": {
+                "type": "string",
+                "const": "public"
+              },
+              "expectedRevision": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "capability": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9_-]{43}$"
+              }
+            },
+            "required": [
+              "access",
+              "expectedRevision",
+              "capability"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      },
       "PublicFormSubmissionResponse": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "anyOf": [
@@ -8347,90 +8457,6 @@
           }
         ]
       },
-      "FormAccess": {
-        "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "type": "object",
-        "properties": {
-          "access": {
-            "type": "string",
-            "enum": [
-              "members",
-              "public"
-            ]
-          },
-          "publicId": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "uuid",
-                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "revision": {
-            "type": "integer",
-            "minimum": 0,
-            "maximum": 9007199254740991
-          }
-        },
-        "required": [
-          "access",
-          "publicId",
-          "revision"
-        ],
-        "additionalProperties": false
-      },
-      "FormAccessRequest": {
-        "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "oneOf": [
-          {
-            "type": "object",
-            "properties": {
-              "access": {
-                "type": "string",
-                "const": "members"
-              },
-              "expectedRevision": {
-                "type": "integer",
-                "minimum": 0,
-                "maximum": 9007199254740991
-              }
-            },
-            "required": [
-              "access",
-              "expectedRevision"
-            ],
-            "additionalProperties": false
-          },
-          {
-            "type": "object",
-            "properties": {
-              "access": {
-                "type": "string",
-                "const": "public"
-              },
-              "expectedRevision": {
-                "type": "integer",
-                "minimum": 0,
-                "maximum": 9007199254740991
-              },
-              "capability": {
-                "type": "string",
-                "pattern": "^[A-Za-z0-9_-]{43}$"
-              }
-            },
-            "required": [
-              "access",
-              "expectedRevision",
-              "capability"
-            ],
-            "additionalProperties": false
-          }
-        ]
-      },
       "FormUploadRequest": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "type": "object",
@@ -8467,44 +8493,6 @@
           "byteLength",
           "sha256"
         ],
-        "additionalProperties": false
-      },
-      "TaskUploadRequest": {
-        "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "type": "object",
-        "properties": {
-          "fieldId": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 64
-          },
-          "filename": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 1024
-          },
-          "byteLength": {
-            "type": "integer",
-            "minimum": 0,
-            "maximum": 10485760
-          },
-          "sha256": {
-            "type": "string",
-            "pattern": "^[a-f0-9]{64}$"
-          }
-        },
-        "required": [
-          "fieldId",
-          "filename",
-          "byteLength",
-          "sha256"
-        ],
-        "additionalProperties": false
-      },
-      "FormFinalizeUploadRequest": {
-        "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "type": "object",
-        "properties": {},
         "additionalProperties": false
       },
       "FormUploadResponse": {
@@ -8605,6 +8593,12 @@
         ],
         "additionalProperties": false
       },
+      "FormFinalizeUploadRequest": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      },
       "FormUpload": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "type": "object",
@@ -8649,6 +8643,38 @@
           "mediaType",
           "status",
           "expiresAt"
+        ],
+        "additionalProperties": false
+      },
+      "TaskUploadRequest": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "fieldId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          },
+          "filename": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1024
+          },
+          "byteLength": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 10485760
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        },
+        "required": [
+          "fieldId",
+          "filename",
+          "byteLength",
+          "sha256"
         ],
         "additionalProperties": false
       },

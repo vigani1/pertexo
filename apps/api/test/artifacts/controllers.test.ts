@@ -109,11 +109,7 @@ function controller() {
 }
 
 /** What the route hands a handler once its declared input has parsed. */
-function input(
-  params: object,
-  body?: unknown,
-  idempotencyKey?: string,
-) {
+function input(params: object, body?: unknown, idempotencyKey?: string) {
   return {
     params,
     query: undefined as never,

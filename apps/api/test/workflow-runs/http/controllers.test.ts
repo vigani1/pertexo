@@ -14,23 +14,10 @@ import {
 } from './controllers/fixture.js';
 import { ApiDrainState } from '../../../src/platform/health/drain-state.js';
 import type { workflowRunRoutes as routes } from '@pertexo/contracts/server';
-import type { RouteInput } from '@pertexo/contracts/server';
-
-/** What the route hands a handler once its declared input has parsed. */
-function input<Route>(
-  values: Partial<RouteInput<Route>> & Pick<RouteInput<Route>, 'params'>,
-): RouteInput<Route> {
-  return {
-    query: {},
-    body: undefined,
-    idempotencyKey: undefined,
-    headers: undefined,
-    ...values,
-  } as RouteInput<Route>;
-}
+import { routeInput } from '../../support/route-input.js';
 
 const events = (lastEventId?: string) =>
-  input<typeof routes.events>({
+  routeInput<typeof routes.events>({
     params: { workspaceId, runId },
     headers: lastEventId === undefined ? {} : { 'last-event-id': lastEventId },
   });
@@ -40,14 +27,17 @@ describe('workflow runs controller', () => {
     const fixture = controller();
     await fixture.instance.getRunStatistics(
       request(),
-      input<typeof routes.statistics>({
+      routeInput<typeof routes.statistics>({
         params: { workspaceId },
         query: { window: '7d', breakdown: 'workflow' },
       }),
     );
     await fixture.instance.getRunStatistics(
       request(),
-      input<typeof routes.statistics>({ params: { workspaceId }, query: {} }),
+      routeInput<typeof routes.statistics>({
+        params: { workspaceId },
+        query: {},
+      }),
     );
     expect(fixture.statistics.execute).toHaveBeenNthCalledWith(1, {
       actor: expect.objectContaining({ actorId, workspaceId }) as unknown,
@@ -64,7 +54,7 @@ describe('workflow runs controller', () => {
     const fixture = controller();
     await fixture.instance.startRun(
       request({ 'idempotency-key': 'session-context' }),
-      input<typeof routes.start>({
+      routeInput<typeof routes.start>({
         params: { workspaceId, workflowId },
         body: {},
         idempotencyKey: 'session-context',
@@ -100,7 +90,7 @@ describe('workflow runs controller', () => {
         ...request({ 'idempotency-key': 'guard-context' }),
         authorizedWorkspace,
       },
-      input<typeof routes.start>({
+      routeInput<typeof routes.start>({
         params: { workspaceId, workflowId },
         body: {},
         idempotencyKey: 'guard-context',
@@ -163,7 +153,7 @@ describe('workflow runs controller', () => {
         'idempotency-key': 'run-start-42',
         traceparent: '00-11111111111111111111111111111111-2222222222222222-01',
       }),
-      input<typeof routes.start>({
+      routeInput<typeof routes.start>({
         params: { workspaceId, workflowId },
         body: { input: { customerId: 'customer-42' } },
         idempotencyKey: 'run-start-42',
@@ -190,7 +180,7 @@ describe('workflow runs controller', () => {
         'x-csrf-token': 'csrf-token-42',
         traceparent: '00-11111111111111111111111111111111-2222222222222222-01',
       }),
-      input<typeof routes.replay>({
+      routeInput<typeof routes.replay>({
         params: { workspaceId, runId },
         body: {
           workflowVersionId,
@@ -428,7 +418,7 @@ describe('workflow runs controller', () => {
       request({
         traceparent: '00-11111111111111111111111111111111-2222222222222222-01',
       }),
-      input<typeof routes.cancel>({
+      routeInput<typeof routes.cancel>({
         params: { workspaceId, runId },
         body: { reason: 'operator request' },
       }),

@@ -56,14 +56,11 @@ export {
 
 export { type PendingTaskSubmitRequest } from './schemas/execution/pending-tasks.js';
 export {
-  formParamsSchema,
   publicFormParamsSchema,
   formCapabilitySchema,
   formSchemaResponseSchema,
-  formSubmissionRequestSchema,
   formSubmissionResponseSchema,
   formAccessSchema,
-  formAccessRequestSchema,
   type FormSchemaResponse,
   type FormSubmissionRequest,
   type FormSubmissionResponse,
@@ -72,14 +69,6 @@ export {
 } from './schemas/forms/requests.js';
 export { publicFormSubmissionResponseSchema } from './schemas/forms/requests.js';
 export {
-  formUploadSessionSchema,
-  formUploadRequestSchema,
-  taskUploadRequestSchema,
-  formFinalizeUploadRequestSchema,
-  publicFormUploadParamsSchema,
-  memberFormUploadParamsSchema,
-  taskUploadsParamsSchema,
-  taskUploadParamsSchema,
   formUploadSchema,
   formUploadResponseSchema,
   type FormUploadMetadata,
@@ -172,7 +161,6 @@ export {
 
 export {
   coordinatedEventHistorySchema,
-  coordinatedEventHistoryQuerySchema,
   type CoordinatedEvent,
   type CoordinatedEventHistory,
 } from './schemas/forms/coordination.js';

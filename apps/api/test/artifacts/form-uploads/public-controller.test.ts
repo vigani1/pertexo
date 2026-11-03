@@ -1,7 +1,9 @@
 import { randomUUID } from 'node:crypto';
 import { describe, expect, it, vi } from 'vitest';
 import type { FastifyRequest } from 'fastify';
+import type { formUploadRoutes as routes } from '@pertexo/contracts/server';
 import { PublicFormUploadsController } from '../../../src/artifacts/form-uploads/public.controller.js';
+import { routeInput } from '../../support/route-input.js';
 import type { FormUploadService } from '../../../src/artifacts/form-uploads/service.js';
 import type { HttpRateLimitAdmission } from '../../../src/platform/rate-limit/admission.js';
 
@@ -13,21 +15,23 @@ const grant = {
   nodeId: 'form',
   capabilityHash: 'c'.repeat(64),
 };
-const request = {
-  ip: '203.0.113.7',
-  headers: {
-    'x-pertexo-form-key': 'K'.repeat(43),
-    'x-pertexo-form-session': 'S'.repeat(43),
-    'idempotency-key': 'begin-1',
-  },
-} as unknown as FastifyRequest;
-const body = {
-  versionId: randomUUID(),
-  fieldId: 'invoice',
-  filename: 'invoice.pdf',
-  byteLength: 4,
-  sha256: 'a'.repeat(64),
+const request = { ip: '203.0.113.7', headers: {} } as unknown as FastifyRequest;
+const headers = {
+  'x-pertexo-form-key': 'K'.repeat(43),
+  'x-pertexo-form-session': 'S'.repeat(43),
 };
+const begin = routeInput<typeof routes.publicBegin>({
+  params: { publicId },
+  body: {
+    versionId: randomUUID(),
+    fieldId: 'invoice',
+    filename: 'invoice.pdf',
+    byteLength: 4,
+    sha256: 'a'.repeat(64),
+  },
+  idempotencyKey: 'begin-1',
+  headers,
+});
 
 function setup(admit = vi.fn().mockResolvedValue(undefined)) {
   const uploads = {
@@ -45,11 +49,14 @@ function setup(admit = vi.fn().mockResolvedValue(undefined)) {
 describe('public form uploads', () => {
   it('spends the upload budget per client, link and workspace before each step', async () => {
     const { uploads, admit, controller } = setup();
-    await controller.begin(request, { publicId }, body);
+    await controller.begin(request, begin);
     await controller.finalize(
       request,
-      { publicId, uploadId: randomUUID() },
-      {},
+      routeInput<typeof routes.publicFinalize>({
+        params: { publicId, uploadId: randomUUID() },
+        body: {},
+        headers,
+      }),
     );
     expect(admit).toHaveBeenCalledTimes(2);
     expect(admit).toHaveBeenCalledWith('form_upload', {
@@ -69,9 +76,7 @@ describe('public form uploads', () => {
   it('stops before any upload work once the budget is spent', async () => {
     const limited = new Error('rate limited');
     const { uploads, controller } = setup(vi.fn().mockRejectedValue(limited));
-    await expect(controller.begin(request, { publicId }, body)).rejects.toBe(
-      limited,
-    );
+    await expect(controller.begin(request, begin)).rejects.toBe(limited);
     expect(uploads.begin).not.toHaveBeenCalled();
   });
 });
