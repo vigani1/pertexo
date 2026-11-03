@@ -81,3 +81,7 @@ export type ArtifactUploadResponse = z.output<
 export type ArtifactDownloadResponse = z.output<
   typeof artifactDownloadResponseSchema
 >;
+
+export type ArtifactUploadRequest = z.output<
+  typeof artifactUploadRequestSchema
+>;

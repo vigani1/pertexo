@@ -1,172 +1,109 @@
+import { Controller, Req, UseInterceptors } from '@nestjs/common';
 import {
-  Body,
-  Controller,
-  Get,
-  Header,
-  HttpCode,
-  Param,
-  Post,
-  Req,
-  UseGuards,
-  UseInterceptors,
-} from '@nestjs/common';
-import {
-  artifactParamsSchema,
-  artifactWorkspaceParamsSchema,
-} from '@pertexo/contracts';
+  artifactRoutes as routes,
+  type RouteInput,
+} from '@pertexo/contracts/server';
 
-import {
-  CsrfProtectionGuard,
-  SessionAuthenticationGuard,
-} from '../workspaces/index.js';
 import {
   optionalAuthorizedWorkspace,
   projectAuthenticatedWorkspaceContext,
 } from '../workspaces/request/authenticated-context.js';
-import { RateLimit } from '../platform/rate-limit/metadata.js';
+import { In, Route } from '../workspaces/http/route.js';
 import {
-  requestIdempotencyKey,
   withRequestOperationSignal,
   applicationError,
   throwApplicationError,
 } from '../platform/http/index.js';
+import type { AbortableRequest } from '../platform/http/request-operation-signal.js';
 import type { IdentityWorkspaceRequest } from '../workspaces/types.js';
-import { ArtifactReadGuard, ArtifactUploadGuard } from './guards.js';
 import { ArtifactService } from './service.js';
 import { domainErrors } from '../platform/http/problems/interceptor.js';
 import { artifactFailure } from '../problems/context/normalize.js';
 
-type ArtifactRequest = IdentityWorkspaceRequest & {
-  raw?: Readonly<{
-    destroyed?: boolean;
-    once(event: 'aborted', listener: () => void): unknown;
-    off(event: 'aborted', listener: () => void): unknown;
-    socket?: Readonly<{
-      destroyed?: boolean;
-      once(event: 'close', listener: () => void): unknown;
-      off(event: 'close', listener: () => void): unknown;
-    }>;
-  }>;
-};
+type ArtifactRequest = IdentityWorkspaceRequest & AbortableRequest;
 
 @UseInterceptors(domainErrors(artifactFailure))
-@Controller('v1/workspaces/:workspaceId/artifacts')
-@RateLimit('ordinary_mutation')
+@Controller()
 export class ArtifactsController {
   public constructor(private readonly artifacts: ArtifactService) {}
 
-  @Post('uploads')
-  @HttpCode(201)
-  @RateLimit('ordinary_mutation')
-  @UseGuards(
-    SessionAuthenticationGuard,
-    ArtifactUploadGuard,
-    CsrfProtectionGuard,
-  )
-  @Header('Cache-Control', 'no-store')
+  @Route(routes.beginUpload)
   public beginUpload(
     @Req() request: ArtifactRequest,
-    @Param() params: unknown,
-    @Body() body: unknown,
+    @In()
+    { params, body, idempotencyKey }: RouteInput<typeof routes.beginUpload>,
   ) {
-    const route = artifactWorkspaceParamsSchema.parse(params);
     return withRequestOperationSignal(request, (signal) =>
       this.artifacts.beginUpload({
-        actor: actorFrom(request, route.workspaceId),
-        ...authorizedInput(request),
-        idempotencyKey: requestIdempotencyKey(request.headers),
+        ...operation(request, params.workspaceId),
+        idempotencyKey,
         request: body,
-        routeWorkspaceId: route.workspaceId,
         signal,
       }),
     );
   }
 
-  @Post(':artifactId/finalize')
-  @HttpCode(200)
-  @RateLimit('ordinary_mutation')
-  @UseGuards(
-    SessionAuthenticationGuard,
-    ArtifactUploadGuard,
-    CsrfProtectionGuard,
-  )
-  @Header('Cache-Control', 'no-store')
+  @Route(routes.finalizeUpload)
   public finalizeUpload(
     @Req() request: ArtifactRequest,
-    @Param() params: unknown,
-    @Body() body: unknown,
+    @In() { params }: RouteInput<typeof routes.finalizeUpload>,
   ) {
-    const route = artifactParamsSchema.parse(params);
     return withRequestOperationSignal(request, (signal) =>
       this.artifacts.finalizeUpload({
-        actor: actorFrom(request, route.workspaceId),
-        ...authorizedInput(request),
-        artifactId: route.artifactId,
-        request: body,
-        routeWorkspaceId: route.workspaceId,
+        ...operation(request, params.workspaceId),
+        artifactId: params.artifactId,
         signal,
       }),
     );
   }
 
-  @Get(':artifactId')
-  @RateLimit('authenticated_read')
-  @UseGuards(SessionAuthenticationGuard, ArtifactReadGuard)
-  @Header('Cache-Control', 'no-store')
+  @Route(routes.metadata)
   public getMetadata(
     @Req() request: ArtifactRequest,
-    @Param() params: unknown,
+    @In() { params }: RouteInput<typeof routes.metadata>,
   ) {
-    const route = artifactParamsSchema.parse(params);
     return this.artifacts.getMetadata({
-      actor: actorFrom(request, route.workspaceId),
-      ...authorizedInput(request),
-      artifactId: route.artifactId,
-      routeWorkspaceId: route.workspaceId,
+      ...operation(request, params.workspaceId),
+      artifactId: params.artifactId,
     });
   }
 
-  @Get(':artifactId/download')
-  @RateLimit('authenticated_read')
-  @UseGuards(SessionAuthenticationGuard, ArtifactReadGuard)
-  @Header('Cache-Control', 'no-store')
+  @Route(routes.beginDownload)
   public beginDownload(
     @Req() request: ArtifactRequest,
-    @Param() params: unknown,
+    @In() { params }: RouteInput<typeof routes.beginDownload>,
   ) {
-    const route = artifactParamsSchema.parse(params);
     return withRequestOperationSignal(request, (signal) =>
       this.artifacts.beginDownload({
-        actor: actorFrom(request, route.workspaceId),
-        ...authorizedInput(request),
-        artifactId: route.artifactId,
-        routeWorkspaceId: route.workspaceId,
+        ...operation(request, params.workspaceId),
+        artifactId: params.artifactId,
         signal,
       }),
     );
   }
 }
 
+/** The same routes when no store is configured: each says why it can't work. */
 @UseInterceptors(domainErrors(artifactFailure))
-@Controller('v1/workspaces/:workspaceId/artifacts')
+@Controller()
 export class UnconfiguredArtifactsController {
-  @Post(['uploads', ':artifactId/finalize'])
-  @RateLimit('ordinary_mutation')
-  @UseGuards(
-    SessionAuthenticationGuard,
-    ArtifactUploadGuard,
-    CsrfProtectionGuard,
-  )
-  @Header('Cache-Control', 'no-store')
-  public upload(): never {
+  @Route(routes.beginUpload)
+  public beginUpload(): never {
     return unavailableStorage();
   }
 
-  @Get([':artifactId', ':artifactId/download'])
-  @RateLimit('authenticated_read')
-  @UseGuards(SessionAuthenticationGuard, ArtifactReadGuard)
-  @Header('Cache-Control', 'no-store')
-  public read(): never {
+  @Route(routes.finalizeUpload)
+  public finalizeUpload(): never {
+    return unavailableStorage();
+  }
+
+  @Route(routes.metadata)
+  public getMetadata(): never {
+    return unavailableStorage();
+  }
+
+  @Route(routes.beginDownload)
+  public beginDownload(): never {
     return unavailableStorage();
   }
 }
@@ -180,12 +117,10 @@ function unavailableStorage(): never {
   );
 }
 
-function actorFrom(request: ArtifactRequest, workspaceId: string) {
-  return projectAuthenticatedWorkspaceContext(request, workspaceId).actor;
-}
-
-function authorizedInput(request: ArtifactRequest): Readonly<{
-  authorizedWorkspace?: NonNullable<ArtifactRequest['authorizedWorkspace']>;
-}> {
-  return optionalAuthorizedWorkspace(request);
+function operation(request: ArtifactRequest, workspaceId: string) {
+  return {
+    actor: projectAuthenticatedWorkspaceContext(request, workspaceId).actor,
+    ...optionalAuthorizedWorkspace(request),
+    routeWorkspaceId: workspaceId,
+  };
 }

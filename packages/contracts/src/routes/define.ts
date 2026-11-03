@@ -76,6 +76,8 @@ type JsonSuccess<Response extends z.ZodType> = Readonly<{
   status: number;
   description: string;
   body: NamedSchema<Response>;
+  /** Documented response headers, by name. */
+  headers?: Readonly<Record<string, unknown>>;
 }>;
 /** Anything else, such as a CSV stream, which the handler writes itself. */
 type DocumentedSuccess = Readonly<{
