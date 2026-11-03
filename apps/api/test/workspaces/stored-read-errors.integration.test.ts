@@ -160,6 +160,51 @@ describe.runIf(betterAuthIntegrationEnabled)(
       }
     });
 
+    it('reports damaged stored recovery branch context as a safe server failure', async () => {
+      const [node] = (
+        await api
+          .database()
+          .query<{ id: string; branch_context: unknown }>(
+            'select id,branch_context from app.node_runs where workflow_run_id=$1 limit 1',
+            [world.runId],
+          )
+      ).rows;
+      if (node === undefined) throw new Error('Recovery node missing');
+      await api
+        .database()
+        .query(
+          "with tenant as materialized (select set_config('app.workspace_id',$2,true)) update app.workflow_runs set status='failed',completed_at=clock_timestamp() from tenant where id=$1",
+          [world.runId, world.workspaceId],
+        );
+      const url = `/v1/workspaces/${world.workspaceId}/runs/${world.runId}/recovery`;
+      try {
+        expect((await api.send('GET', url, { browser })).statusCode).toBe(200);
+        await api
+          .database()
+          .query('update app.node_runs set branch_context=$2 where id=$1', [
+            node.id,
+            JSON.stringify({ private: 'stored-only-canary' }),
+          ]);
+        const response = await api.send('GET', url, { browser });
+        expectProblem(response, 500, 'internal.unexpected');
+        expect(response.json()).not.toHaveProperty('errors');
+        expect(response.payload).not.toContain('stored-only-canary');
+      } finally {
+        await api
+          .database()
+          .query('update app.node_runs set branch_context=$2 where id=$1', [
+            node.id,
+            JSON.stringify(node.branch_context),
+          ]);
+        await api
+          .database()
+          .query(
+            "with tenant as materialized (select set_config('app.workspace_id',$2,true)) update app.workflow_runs set status='queued',completed_at=null from tenant where id=$1",
+            [world.runId, world.workspaceId],
+          );
+      }
+    });
+
     it('retains a 400 for an invalid caller task query', async () => {
       expectProblem(
         await api.send(

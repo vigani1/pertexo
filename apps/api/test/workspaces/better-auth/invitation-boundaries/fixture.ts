@@ -107,7 +107,7 @@ export function invitationApi(suite: string) {
           expectedRevision: journey.invitationRevision,
         },
       });
-    return { ...world, recipient, invitation, bound, journey, complete };
+    return { ...world, recipient, invitation, bound, journey, csrf, complete };
   }
   return { ...api, person, team, invite, resolve, ready };
 }
