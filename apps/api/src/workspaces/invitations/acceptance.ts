@@ -60,7 +60,10 @@ export class InvitationAcceptanceUseCase {
       binding?: string;
     }>
   > {
-    const { token } = invitationAcceptanceResolveRequestSchema.parse(raw);
+    const { token } = parseRequestInput(
+      invitationAcceptanceResolveRequestSchema,
+      raw,
+    );
     const parsed = parseToken(token);
     if (parsed === null)
       return Object.freeze({ journey: { state: 'unavailable' as const } });
