@@ -1,3 +1,4 @@
+import { samlTransportAvailable } from '../federation/protocol/saml/configuration.js';
 import {
   needsSecurityTransaction,
   securityTransaction,
@@ -97,6 +98,16 @@ export function createBetterAuthRuntime(
     config.signUpMode,
   );
   const signUp = new SignUpAvailability(pool, config.signUpMode);
+  const availableOrganizationProtocols: ('oidc' | 'saml')[] = [];
+  if (config.federation !== undefined) {
+    availableOrganizationProtocols.push('oidc');
+    if (
+      samlTransportAvailable(config.baseUrl, {
+        secureCookies: config.secureCookies,
+      })
+    )
+      availableOrganizationProtocols.push('saml');
+  }
   const authOptions = {
     pool,
     baseUrl: config.baseUrl,
@@ -109,6 +120,7 @@ export function createBetterAuthRuntime(
     ...(config.socialProviders === undefined
       ? {}
       : { socialProviders: config.socialProviders }),
+    availableOrganizationProtocols,
     availableLinkProviders:
       config.linkProviderGateway?.available ??
       configuredSocialProviders(config.socialProviders),

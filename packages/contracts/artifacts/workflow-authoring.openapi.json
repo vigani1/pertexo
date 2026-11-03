@@ -12925,6 +12925,7 @@
               "auth.email_not_verified",
               "auth.sso_required",
               "auth.two_factor_locked",
+              "auth.last_method",
               "auth.method_limit",
               "auth.recovery_required",
               "auth.organization_email_managed",
