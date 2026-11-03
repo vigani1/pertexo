@@ -1,3 +1,4 @@
+import { createCipheriv } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import { createApplicationSecretEnvelope } from '@pertexo/secrets/server';
 import {
@@ -59,4 +60,49 @@ describe('scoped unsubscribe capability', () => {
       ),
     ).toBeNull();
   });
+  it.each([
+    ['tag', 4],
+    ['tag', 12],
+    ['tag', 17],
+    ['nonce', 8],
+    ['nonce', 13],
+  ] as const)(
+    'refuses public unsubscribe tokens carrying a %s of %s bytes',
+    (field, bytes) => {
+      const token = sealNoticeUnsubscribe(envelope, claims);
+      const sealed = JSON.parse(
+        Buffer.from(token, 'base64url').toString('utf8'),
+      ) as Record<string, string>;
+      const original = Buffer.from(sealed[field] ?? '', 'base64url');
+      sealed[field] = Buffer.concat([original, Buffer.alloc(bytes)])
+        .subarray(0, bytes)
+        .toString('base64url');
+      const damaged = Buffer.from(JSON.stringify(sealed)).toString('base64url');
+      expect(openNoticeUnsubscribe(envelope, damaged, now)).toBeNull();
+      expect(openNoticeUnsubscribe(envelope, token, now)).toEqual(claims);
+    },
+  );
+  it.each([8, 11, 13, 16])(
+    'refuses an authenticated public capability with a %s-byte nonce',
+    (bytes) => {
+      const nonce = Buffer.alloc(bytes, 7);
+      const cipher = createCipheriv('aes-256-gcm', Buffer.alloc(32, 1), nonce, {
+        authTagLength: 16,
+      });
+      cipher.setAAD(Buffer.from('pertexo/notice-unsubscribe'));
+      const ciphertext = Buffer.concat([
+        cipher.update(JSON.stringify(claims)),
+        cipher.final(),
+      ]);
+      const token = Buffer.from(
+        JSON.stringify({
+          keyVersion: 'v1',
+          nonce: nonce.toString('base64url'),
+          tag: cipher.getAuthTag().toString('base64url'),
+          ciphertext: ciphertext.toString('base64url'),
+        }),
+      ).toString('base64url');
+      expect(openNoticeUnsubscribe(envelope, token, now)).toBeNull();
+    },
+  );
 });
