@@ -47,6 +47,7 @@ it('keeps authoring and identity policy limits unchanged at the transport bounda
   expect(API_TOKEN_SCOPES).toEqual([
     'workflow:read',
     'workflow:create',
+    'workflow:update',
     'workflow:publish',
     'run:read',
     'run:read-data',
