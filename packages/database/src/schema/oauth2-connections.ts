@@ -2,7 +2,6 @@ import { sql } from 'drizzle-orm';
 import {
   boolean,
   check,
-  customType,
   foreignKey,
   jsonb,
   primaryKey,
@@ -16,11 +15,7 @@ import {
 
 import { workspaceMemberships } from './foundation.js';
 import { connectionSecretVersions } from './connections.js';
-import { appSchema } from './namespace.js';
-
-const bytea = customType<{ data: Buffer; driverData: Buffer }>({
-  dataType: () => 'bytea',
-});
+import { appSchema, bytea } from './namespace.js';
 
 /** A client's settings never change: new settings are a new secret version. */
 export const connectionOAuth2Clients = appSchema.table(
