@@ -104,12 +104,8 @@ const webhookDeliveryReplayCheckSchema = z.enum([
   'stale_timestamp',
   'not_checked',
 ]);
-export const webhookDeliveryCursorSchema = z.string().min(1).max(512);
-export const webhookDeliveryPageLimitSchema = z.coerce
-  .number()
-  .int()
-  .min(1)
-  .max(100);
+const webhookDeliveryCursorSchema = z.string().min(1).max(512);
+const webhookDeliveryPageLimitSchema = z.coerce.number().int().min(1).max(100);
 export const webhookDeliveryListQuerySchema = z
   .object({
     limit: webhookDeliveryPageLimitSchema.optional(),

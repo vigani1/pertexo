@@ -1,42 +1,6 @@
-import { projectContractSchema } from '../schema-projection.js';
-import {
-  webhookTestEventStartSchema,
-  webhookTestEventStartedSchema,
-  webhookTestEventSnapshotSchema,
-} from '../../schemas/triggers/webhooks.js';
-import {
-  csrfHeaderParameter,
-  jsonRequest,
-  jsonResponse,
-  jsonSchema,
-  pathParameter,
-  responseReference,
-  simpleUuidPathParameter,
-} from '../primitives.js';
-export const testEventSchemas = {
-  WebhookTestEventStart: jsonSchema(webhookTestEventStartSchema, 'input'),
-  WebhookTestEventStarted: jsonSchema(webhookTestEventStartedSchema, 'output'),
-  WebhookTestEventSnapshot: projectContractSchema(
-    'WebhookTestEventSnapshot',
-    webhookTestEventSnapshotSchema,
-    'output',
-  ),
-};
-const security = [{ cookieSession: [] }] as const;
-const parameters = [
-  simpleUuidPathParameter('workspaceId'),
-  simpleUuidPathParameter('workflowId'),
-  pathParameter('nodeId', { type: 'string', minLength: 1, maxLength: 64 }),
-];
-const problems = {
-  '400': responseReference('BadRequest'),
-  '401': responseReference('Unauthenticated'),
-  '403': responseReference('Forbidden'),
-  '404': responseReference('NotFound'),
-  '409': responseReference('Conflict'),
-  '429': responseReference('RateLimited'),
-  '500': responseReference('Unexpected'),
-};
+import { pathParameter, responseReference } from '../primitives.js';
+
+/** Capture through a draft's temporary test URL, outside Nest; the listener's own routes are declared. */
 const ingress = {
   parameters: [
     pathParameter('endpointKey', {
@@ -67,50 +31,6 @@ const ingress = {
   },
 };
 export const testEventPaths = {
-  '/v1/workspaces/{workspaceId}/workflows/{workflowId}/draft/nodes/{nodeId}/webhook-test-events':
-    {
-      post: {
-        operationId: 'listenForWebhookTestEvent',
-        security,
-        parameters: [...parameters, csrfHeaderParameter('X-CSRF-Token')],
-        requestBody: jsonRequest('WebhookTestEventStart'),
-        responses: {
-          '200': jsonResponse(
-            'Temporary test URL and credentials, no-store',
-            'WebhookTestEventStarted',
-          ),
-          ...problems,
-        },
-      },
-    },
-  '/v1/workspaces/{workspaceId}/workflows/{workflowId}/draft/nodes/{nodeId}/webhook-test-events/{id}':
-    {
-      get: {
-        operationId: 'readWebhookTestEvent',
-        security,
-        parameters: [...parameters, simpleUuidPathParameter('id')],
-        responses: {
-          '200': jsonResponse(
-            'Private temporary test capture, no-store',
-            'WebhookTestEventSnapshot',
-          ),
-          ...problems,
-        },
-      },
-      delete: {
-        operationId: 'stopWebhookTestEvent',
-        security,
-        parameters: [
-          ...parameters,
-          simpleUuidPathParameter('id'),
-          csrfHeaderParameter('X-CSRF-Token'),
-        ],
-        responses: {
-          '204': { description: 'Listener and capture removed' },
-          ...problems,
-        },
-      },
-    },
   '/hooks/{endpointKey}/test': {
     get: { ...ingress, operationId: 'captureWebhookTestGet' },
     post: {

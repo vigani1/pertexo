@@ -1,94 +1,61 @@
+import { Controller, Req, UseInterceptors } from '@nestjs/common';
 import {
-  Body,
-  Controller,
-  Delete,
-  Get,
-  HttpCode,
-  Param,
-  Post,
-  Req,
-  Res,
-  UseGuards,
-  UseInterceptors,
-} from '@nestjs/common';
-import type { FastifyRequest, FastifyReply } from 'fastify';
-import { z } from 'zod';
-import { webhookTestEventStartSchema } from '@pertexo/contracts';
-import {
-  SessionAuthenticationGuard,
-  CsrfProtectionGuard,
-  authenticatedSession,
-} from '../../workspaces/index.js';
+  webhookRoutes as routes,
+  type RouteInput,
+} from '@pertexo/contracts/server';
+import { authenticatedSession } from '../../workspaces/index.js';
+import { In, Route } from '../../workspaces/http/route.js';
 import type { IdentityWorkspaceRequest } from '../../workspaces/types.js';
 import { withRequestOperationSignal } from '../../platform/http/index.js';
-import { RateLimit } from '../../platform/rate-limit/metadata.js';
-import { WebhookUpdateGuard } from '../management/guards.js';
+import type { AbortableRequest } from '../../platform/http/request-operation-signal.js';
 import { WebhookTestEventService } from './service.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
 import { authoringFailure } from '../../problems/context/normalize.js';
-import { parseRequestInput } from '../../platform/http/request-input.js';
 
-const scope = {
-  workspaceId: z.uuid(),
-  workflowId: z.uuid(),
-  nodeId: z.string().min(1).max(64),
-};
-const route = z.object(scope).strict();
-const sessionRoute = z.object({ ...scope, id: z.uuid() }).strict();
+type Request = IdentityWorkspaceRequest & AbortableRequest;
+
 @UseInterceptors(domainErrors(authoringFailure))
-@Controller(
-  'v1/workspaces/:workspaceId/workflows/:workflowId/draft/nodes/:nodeId/webhook-test-events',
-)
-@UseGuards(SessionAuthenticationGuard, WebhookUpdateGuard)
+@Controller()
 export class WebhookTestEventController {
   constructor(private readonly service: WebhookTestEventService) {}
-  @Post()
-  @HttpCode(200)
-  @RateLimit('trigger_mutation')
-  @UseGuards(CsrfProtectionGuard)
+
+  @Route(routes.startTest)
   start(
-    @Req() request: IdentityWorkspaceRequest & Pick<FastifyRequest, 'raw'>,
-    @Param() params: unknown,
-    @Body() body: unknown,
-    @Res({ passthrough: true }) reply: FastifyReply,
+    @Req() request: Request,
+    @In() { params, body }: RouteInput<typeof routes.startTest>,
   ) {
-    reply.header('cache-control', 'no-store');
-    const input = {
-      ...route.parse(params),
-      ...parseRequestInput(webhookTestEventStartSchema, body),
-      actorId: authenticatedSession(request).userId,
-    };
     return withRequestOperationSignal(request, (signal) =>
-      this.service.start({ ...input, signal }),
-    );
-  }
-  @Get(':id')
-  @RateLimit('authenticated_read')
-  get(
-    @Req() request: IdentityWorkspaceRequest & Pick<FastifyRequest, 'raw'>,
-    @Param() params: unknown,
-    @Res({ passthrough: true }) reply: FastifyReply,
-  ) {
-    reply.header('cache-control', 'no-store');
-    return withRequestOperationSignal(request, (signal) =>
-      this.service.get({
-        ...sessionRoute.parse(params),
+      this.service.start({
+        ...params,
+        ...body,
         actorId: authenticatedSession(request).userId,
         signal,
       }),
     );
   }
-  @Delete(':id')
-  @HttpCode(204)
-  @RateLimit('trigger_mutation')
-  @UseGuards(CsrfProtectionGuard)
+
+  @Route(routes.readTest)
+  get(
+    @Req() request: Request,
+    @In() { params }: RouteInput<typeof routes.readTest>,
+  ) {
+    return withRequestOperationSignal(request, (signal) =>
+      this.service.get({
+        ...params,
+        actorId: authenticatedSession(request).userId,
+        signal,
+      }),
+    );
+  }
+
+  @Route(routes.stopTest)
   stop(
-    @Req() request: IdentityWorkspaceRequest & Pick<FastifyRequest, 'raw'>,
-    @Param() params: unknown,
+    @Req() request: Request,
+    @In() { params }: RouteInput<typeof routes.stopTest>,
   ) {
     return withRequestOperationSignal(request, (signal) =>
       this.service.stop({
-        ...sessionRoute.parse(params),
+        ...params,
         actorId: authenticatedSession(request).userId,
         signal,
       }),

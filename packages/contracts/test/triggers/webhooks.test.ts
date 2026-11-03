@@ -193,7 +193,7 @@ describe('webhook public contracts', () => {
             expect.arrayContaining([
               expect.objectContaining({
                 in: 'header',
-                name: 'X-CSRF-Token',
+                name: 'x-csrf-token',
                 required: true,
               }),
             ]),

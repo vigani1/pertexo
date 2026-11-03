@@ -24,5 +24,6 @@ export { scheduleRoutes } from './routes/triggers/schedules.js';
 export { artifactRoutes } from './routes/execution/artifacts.js';
 export { notificationPreferenceRoutes } from './routes/identity/notification-preferences.js';
 export { inboxRoutes } from './routes/identity/inbox.js';
+export { webhookRoutes } from './routes/triggers/webhooks.js';
 export { dataTableRoutes } from './routes/identity/data-tables.js';
 export { variableRoutes } from './routes/identity/variables.js';
