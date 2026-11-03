@@ -1,12 +1,15 @@
+import type { z } from 'zod';
+import type {
+  workflowInputCaseCreateRequestSchema,
+  workflowInputCaseUpdateRequestSchema,
+  workflowInputCaseQuerySchema,
+} from '@pertexo/contracts';
 import {
   createWorkflowInputCaseTag,
   parseWorkflowInputCaseTag,
-  workflowInputCaseCreateRequestSchema,
-  workflowInputCaseUpdateRequestSchema,
   workflowInputCaseCommandResponseSchema,
   workflowInputCaseListResponseSchema,
   workflowInputCaseResponseSchema,
-  workflowInputCaseQuerySchema,
 } from '@pertexo/contracts';
 import type {
   WorkflowInputCaseStore,
@@ -17,10 +20,7 @@ import {
   type WorkspaceAuthorizationSource,
   BROWSABLE_WORKSPACE_STATUSES,
 } from '../../authorization/index.js';
-import {
-  applicationError,
-  parseRequestInput,
-} from '../../platform/http/index.js';
+import { applicationError } from '../../platform/http/index.js';
 import type { WorkflowApplicationInput } from '../ports.js';
 import { WorkflowHeaderError } from '../http/preconditions.js';
 import { decodeInputCaseCursor, encodeInputCaseCursor } from './cursor.js';
@@ -29,7 +29,10 @@ type ReadInput = WorkflowApplicationInput &
   Readonly<{ workflowId: string; signal?: AbortSignal }>;
 type CaseInput = ReadInput & Readonly<{ caseId: string }>;
 type CommandInput = ReadInput &
-  Readonly<{ request: unknown; idempotencyKey: string }>;
+  Readonly<{
+    request: z.output<typeof workflowInputCaseCreateRequestSchema>;
+    idempotencyKey: string;
+  }>;
 type CaseCommandInput = CaseInput &
   Readonly<{ idempotencyKey: string; representationTag: string }>;
 
@@ -39,9 +42,12 @@ export class WorkflowInputCasesUseCase {
     private readonly persistence: WorkflowInputCaseStore,
     private readonly authorization: WorkspaceAuthorizationSource,
   ) {}
-  public async list(input: ReadInput & Readonly<{ query: unknown }>) {
+  public async list(
+    input: ReadInput &
+      Readonly<{ query: z.output<typeof workflowInputCaseQuerySchema> }>,
+  ) {
     await this.authorize(input, 'workflow:read');
-    const query = parseRequestInput(workflowInputCaseQuerySchema, input.query);
+    const { query } = input;
     const context = this.context(input);
     const result = await this.persistence.listCases({
       ...context,
@@ -73,10 +79,7 @@ export class WorkflowInputCasesUseCase {
   }
   public async create(input: CommandInput) {
     await this.authorize(input, 'workflow:update');
-    const { expectations, ...request } = parseRequestInput(
-      workflowInputCaseCreateRequestSchema,
-      input.request,
-    );
+    const { expectations, ...request } = input.request;
     return workflowInputCaseCommandResponseSchema.parse(
       await this.persistence.createCase({
         ...this.commandContext(input),
@@ -86,17 +89,17 @@ export class WorkflowInputCasesUseCase {
     );
   }
   public async update(
-    input: CaseCommandInput & Readonly<{ request: unknown }>,
+    input: CaseCommandInput &
+      Readonly<{
+        request: z.output<typeof workflowInputCaseUpdateRequestSchema>;
+      }>,
   ) {
     await this.authorize(input, 'workflow:update');
     const expectedRevision = expectedCaseRevision(
       input.representationTag,
       input.caseId,
     );
-    const { expectations, ...request } = parseRequestInput(
-      workflowInputCaseUpdateRequestSchema,
-      input.request,
-    );
+    const { expectations, ...request } = input.request;
     return workflowInputCaseCommandResponseSchema.parse(
       await this.persistence.updateCase({
         ...this.commandContext(input),

@@ -102,6 +102,7 @@ function parameters(route: AnyRoute) {
     ),
     ...csrfParameter(route),
     ...idempotencyParameter(route),
+    ...preconditionParameter(route),
     ...queryParameters(route),
     ...headerParameters(route),
   ];
@@ -115,6 +116,19 @@ function idempotencyParameter({ idempotent }: AnyRoute) {
     {
       ...idempotencyHeaderParameter({ required: false }),
       description: `Required when ${idempotent.when}`,
+    },
+  ];
+}
+
+function preconditionParameter({ precondition }: AnyRoute) {
+  if (precondition === undefined) return [];
+  return [
+    {
+      name: 'If-Match',
+      in: 'header',
+      required: true,
+      description: precondition.description,
+      schema: jsonSchema(precondition.schema, 'input'),
     },
   ];
 }

@@ -125,6 +125,11 @@ export type RouteDeclaration<
    * JSON. Its handler parses the body, so `@In` leaves it alone.
    */
   requestDocument?: Readonly<Record<string, unknown>>;
+  /**
+   * A strong `If-Match` the handler checks itself, so a missing one answers 428
+   * and a stale one 412, not a generic 400. Documented as a required header.
+   */
+  precondition?: Readonly<{ description: string; schema: z.ZodType }>;
   success: JsonSuccess<Response> | DocumentedSuccess;
   /**
    * Answers the handler may choose instead, by setting the status, such as 202 when
