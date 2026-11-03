@@ -13,3 +13,4 @@ export type {} from './facts.repository.js';
 export type {} from './folder-policy.js';
 export type {} from './receipts.js';
 export type {} from './scope.repository.js';
+export type {} from './stored-values.js';

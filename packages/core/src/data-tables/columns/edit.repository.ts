@@ -16,10 +16,8 @@ import { and, eq, gt, sql } from 'drizzle-orm';
 import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { alias } from 'drizzle-orm/pg-core';
 import type { PoolClient } from 'pg';
-import {
-  decodeStoredValue,
-  generatePersistedId,
-} from '@pertexo/database/platform';
+import { generatePersistedId } from '@pertexo/database/platform';
+import { decodeStoredValue } from '../../shared/stored-values.js';
 import {
   workspaceDataTableQuotas as quotas,
   workspaceDataTableRows as tableRows,

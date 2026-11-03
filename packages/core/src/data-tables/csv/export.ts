@@ -1,4 +1,4 @@
-import { decodeStoredValue } from '@pertexo/database/platform';
+import { decodeStoredValue } from '../../shared/stored-values.js';
 import type {
   DataTableDefinition,
   DataTableExportQuery,

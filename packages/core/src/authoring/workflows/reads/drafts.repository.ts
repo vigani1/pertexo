@@ -2,7 +2,7 @@ import { and, eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { dataTableReferenceIssues } from '../../../data-tables/columns/references.repository.js';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
-import { decodeStoredValue } from '@pertexo/database/platform';
+import { decodeStoredValue } from '../../../shared/stored-values.js';
 import {
   workflowDrafts,
   workflowVersions,

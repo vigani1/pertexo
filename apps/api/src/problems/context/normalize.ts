@@ -1,8 +1,6 @@
 import { WorkspaceAccessDeniedError } from '@pertexo/core/tenant-access';
-import {
-  IdempotencyConflictError,
-  isStoredDataError,
-} from '@pertexo/database/platform';
+import { IdempotencyConflictError } from '@pertexo/database/platform';
+import { isStoredDataError } from '@pertexo/core/authoring';
 import { ArtifactMetadataNotFoundError } from '@pertexo/core/artifacts';
 import {
   WorkflowRunNotExecutableError,

@@ -15,7 +15,6 @@ export type {
 } from './pool/database-pool.runtime.js';
 export { generatePersistedId } from './persisted-id.js';
 export { isTransientDatabaseFailure } from './query-errors.js';
-export { decodeStoredValue, isStoredDataError } from './stored-values.js';
 export {
   IdempotencyConflictError,
   credentialCommandScope,
