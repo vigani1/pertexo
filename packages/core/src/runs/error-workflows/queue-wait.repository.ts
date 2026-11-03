@@ -10,7 +10,7 @@ import {
 } from '@pertexo/database/primitives';
 import type { PoolClient } from 'pg';
 import { generatePersistedId } from '@pertexo/database/platform';
-import { ErrorWorkflowDeliveryMismatchError } from './errors.js';
+import { ErrorWorkflowDeliveryMismatchError } from './error-workflow.errors.js';
 import type { ErrorWorkflowDeliveryInput } from './error-workflow-delivery.types.js';
 
 const waitSeconds = 15 * 60;

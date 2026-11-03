@@ -15,7 +15,7 @@ import {
   ArtifactApiConflictError,
   ArtifactUploadDeadlineError,
   ArtifactApiUnavailableError,
-} from '../../artifacts/errors.js';
+} from '../../artifacts/artifact-api.errors.js';
 import { applicationError } from '../../platform/http/index.js';
 
 export const artifactProblems = [

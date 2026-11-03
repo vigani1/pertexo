@@ -6,7 +6,7 @@ import {
   workflowTriggers,
   workspaces,
 } from '@pertexo/database/schema';
-import { WorkflowAlreadyRunningError } from '../../../runs/commands/acceptance/errors.js';
+import { WorkflowAlreadyRunningError } from '../../../runs/commands/acceptance/run-admission.errors.js';
 import { recordWorkflowTriggerSkip } from '../../skips.repository.js';
 import type { InitialCheckpointFactory } from '../../../runs/commands/initial-checkpoint.js';
 import { createHash } from 'node:crypto';
@@ -15,7 +15,7 @@ import { and, eq, inArray, sql } from 'drizzle-orm';
 import { generatePersistedId } from '@pertexo/database/platform';
 
 import { acceptWorkflowRun } from '../../../runs/commands/acceptance/accept.js';
-import { WorkspaceRunQuotaExceededError } from '../../../runs/commands/acceptance/errors.js';
+import { WorkspaceRunQuotaExceededError } from '../../../runs/commands/acceptance/run-admission.errors.js';
 import { scheduleOccurrenceDisposition } from '../misfire.js';
 import {
   parsePersistedScheduleRecurrence,
@@ -31,7 +31,7 @@ import {
   withWorkspaceTransaction,
   type WorkspaceTransaction,
 } from '@pertexo/database/primitives';
-import { ScheduleClaimLostError } from '../errors.js';
+import { ScheduleClaimLostError } from '../schedule-trigger.errors.js';
 import type {
   ClaimRetirement,
   ScheduleClaim,

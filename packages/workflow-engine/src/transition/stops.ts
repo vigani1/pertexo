@@ -1,4 +1,4 @@
-import { WorkflowEngineError } from '../errors.js';
+import { WorkflowEngineError } from '../workflow-engine.errors.js';
 import { compareOrdinal } from '@pertexo/workflow-model';
 import { sameIterationPath } from '../scope.js';
 import { completeLoopIteration } from './scheduling/loops.js';

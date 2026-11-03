@@ -3,7 +3,7 @@ import type {
   WorkflowTestCommand,
   WorkflowTestPreparation,
 } from './workflow-test.types.js';
-import { WorkflowTestError } from './errors.js';
+import { WorkflowTestError } from './workflow-test.errors.js';
 
 /** A test of one step at a time, however long the workflow itself may run. */
 const TEST_RUN_MAX_DURATION_MS = 5 * 60 * 1_000;

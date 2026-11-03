@@ -21,7 +21,7 @@ import {
 } from '@pertexo/database/schema';
 
 import { lockWorkspaceRow } from '../../shared/authority.repository.js';
-import { DirectoryManagedMembershipError } from '../errors.js';
+import { DirectoryManagedMembershipError } from '../tenant-access.errors.js';
 import { requireReadableReceipt } from '../../shared/receipts.js';
 
 /*

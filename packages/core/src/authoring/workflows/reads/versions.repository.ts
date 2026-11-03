@@ -2,7 +2,7 @@ import { and, desc, eq, lt } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { workflows, workflowVersions } from '@pertexo/database/schema';
-import { WorkflowNotFoundError } from '../errors.js';
+import { WorkflowNotFoundError } from '../workflow-authoring.errors.js';
 
 import {
   projectVersion,

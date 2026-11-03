@@ -12,7 +12,7 @@ import type {
   ConnectionReadPersistence,
   ConnectionSecretEncryptionPort,
 } from '../ports.js';
-import { OAuth2EndpointRefusedError } from '../oauth2/errors.js';
+import { OAuth2EndpointRefusedError } from '../oauth2/oauth2-endpoint.errors.js';
 import { oauth2RedirectUri } from '../oauth2/start-authorization.js';
 import { decodeConnectionCursor, encodeConnectionCursor } from '../cursor.js';
 import {

@@ -22,7 +22,7 @@ import { readRecoveryEvidence } from './recovery/evidence.repository.js';
 import {
   WorkflowRunNotFoundError,
   WorkflowPublishedVersionConflictError,
-} from './errors.js';
+} from './workflow-run.errors.js';
 import { replayWorkflowRunInTransaction } from './commands/replay-run.js';
 import {
   readWorkflowRunListPage,

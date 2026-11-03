@@ -16,7 +16,7 @@ import {
   ArtifactApiUnavailableError,
   ArtifactUploadDeadlineError,
   ArtifactUploadTooLargeError,
-} from './errors.js';
+} from './artifact-api.errors.js';
 import type { ArtifactRecord } from './ports.js';
 import type { ArtifactStore } from './store-port.js';
 

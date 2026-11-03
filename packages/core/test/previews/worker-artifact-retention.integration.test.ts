@@ -7,7 +7,7 @@ import {
   artifactStorageKey,
   createPendingPreviewArtifact,
 } from '../../src/artifacts/records.repository.js';
-import { ArtifactLifecycleConflictError } from '../../src/artifacts/errors.js';
+import { ArtifactLifecycleConflictError } from '../../src/artifacts/artifact.errors.js';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
 import { completePreviewAttempt } from '../../src/previews/attempts/complete.js';
 import { PREVIEW_STATUS } from '../../src/previews/state.js';

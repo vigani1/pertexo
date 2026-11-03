@@ -13,7 +13,7 @@ import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import type { Pool, PoolClient } from 'pg';
 import { generatePersistedId } from '@pertexo/database/platform';
 import { withDirectoryTransaction } from '../authority.repository.js';
-import { DirectoryError } from '../errors.js';
+import { DirectoryError } from '../directory.errors.js';
 import type {
   DirectoryPrincipal,
   DirectoryUserValues,

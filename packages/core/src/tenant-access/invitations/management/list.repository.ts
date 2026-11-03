@@ -7,9 +7,9 @@ import { workspaceInvitations as invitations } from '@pertexo/database/schema';
 
 import { expireWorkspaceInvitations } from '../expiration.repository.js';
 
-import { WorkspaceAccessDeniedError } from '../../../shared/errors.js';
+import { WorkspaceAccessDeniedError } from '../../../shared/workspace-access.errors.js';
 import { withWorkspaceAccess } from '../../../shared/workspace-access.js';
-import { WorkspaceInvitationCommandConflictError } from '../../errors.js';
+import { WorkspaceInvitationCommandConflictError } from '../../tenant-access.errors.js';
 import { DEFAULT_PAGE_LIMIT } from '../../state.js';
 import type {
   ListWorkspaceInvitationsInput,

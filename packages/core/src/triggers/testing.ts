@@ -2,7 +2,7 @@ export { createWorkflowTriggerReconciliationStore } from './reconciliation/workf
 export {
   WorkflowTriggerReconciliationMismatchError,
   WorkflowTriggerStalePublicationError,
-} from './reconciliation/errors.js';
+} from './reconciliation/trigger-reconciliation.errors.js';
 export type { WorkflowTriggerHealth } from './reconciliation/trigger-reconciliation.types.js';
 export type { WorkflowTriggerReconciliationStore } from './reconciliation/workflow-trigger-reconciliation.store.js';
 export {
@@ -17,7 +17,7 @@ export {
   WebhookTriggerIdempotencyConflictError,
   WebhookTriggerNotFoundError,
   WebhookWorkflowPausedError,
-} from './webhooks/errors.js';
+} from './webhooks/webhook-trigger.errors.js';
 export {
   type AcceptVerifiedWebhookDeliveryInput,
   type SealedWebhookTriggerSecret,
@@ -40,9 +40,9 @@ export {
   createScheduleTriggerScanner,
   type ScheduleTriggerScanner,
 } from './schedules/scanner.js';
-export { ScheduleClaimLostError } from './schedules/errors.js';
+export { ScheduleClaimLostError } from './schedules/schedule-trigger.errors.js';
 export type { ScanDueSchedulesResult } from './schedules/scanning/schedule-scanning.types.js';
-export { ScheduleTriggerError } from './schedules/errors.js';
+export { ScheduleTriggerError } from './schedules/schedule-trigger.errors.js';
 export type {
   ScheduleFireTimes,
   ScheduleOccurrencePage,

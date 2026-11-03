@@ -26,7 +26,7 @@ import {
   workflowId,
   emailGraph,
 } from './use-case/fixture.js';
-import { NodeTestInvalidError } from '../../src/node-testing/errors.js';
+import { NodeTestInvalidError } from '../../src/node-testing/node-test.errors.js';
 import { nodeTestingPreview } from './fixture.js';
 
 describe('node test application use case', () => {

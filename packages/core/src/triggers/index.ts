@@ -1,7 +1,7 @@
 // Authoring, artifacts and runs use these directly (ADR 091).
 export type {} from './forms/form-admission.types.js';
 export type {} from './forms/discover.repository.js';
-export type {} from './forms/errors.js';
+export type {} from './forms/form.errors.js';
 export type {} from './forms/publication.repository.js';
 export type {} from './forms/form-versions.repository.js';
 export type {} from './pause/outcomes.repository.js';
@@ -12,7 +12,7 @@ export {
   createScheduleTriggerStore,
   type ScheduleTriggerStore,
 } from './schedules/schedule-trigger.store.js';
-export { ScheduleTriggerError } from './schedules/errors.js';
+export { ScheduleTriggerError } from './schedules/schedule-trigger.errors.js';
 export type { ScheduleTriggerRecord } from './schedules/management/schedule-management.types.js';
 export type {
   ScheduleFireTimes,
@@ -33,7 +33,7 @@ export {
   WebhookTriggerNotFoundError,
   WebhookTriggerStateError,
   WebhookWorkflowPausedError,
-} from './webhooks/errors.js';
+} from './webhooks/webhook-trigger.errors.js';
 export type { WebhookVerificationReference } from './webhooks/runtime/webhook-runtime.types.js';
 export type {
   RejectedWebhookDelivery,
@@ -54,7 +54,7 @@ export {
 export {
   WorkflowTriggerReconciliationMismatchError,
   WorkflowTriggerStalePublicationError,
-} from './reconciliation/errors.js';
+} from './reconciliation/trigger-reconciliation.errors.js';
 export {
   createWorkflowTriggerPauseFoldStore,
   type WorkflowTriggerPauseFoldStore,
@@ -65,7 +65,7 @@ export {
   FormUnavailableError,
   FormChangedError,
   FormAccessConflictError,
-} from './forms/errors.js';
+} from './forms/form.errors.js';
 export type { PublicFormGrant } from './forms/form-admission.types.js';
 
 export {
@@ -82,13 +82,13 @@ export {
   createTriggerEventScanner,
   type TriggerEventScanner,
 } from './coordination/scanner.repository.js';
-export { EventCoordinationUnavailableError } from './coordination/errors.js';
+export { EventCoordinationUnavailableError } from './coordination/event-coordination.errors.js';
 
 export {
   createWebhookTestEventStore,
   type WebhookTestEventStore,
 } from './webhooks/test-events/webhook-test-event.store.js';
-export { WebhookTestEventError } from './webhooks/test-events/errors.js';
+export { WebhookTestEventError } from './webhooks/test-events/webhook-test-event.errors.js';
 export type {
   TestEventReference,
   TestEventScope,

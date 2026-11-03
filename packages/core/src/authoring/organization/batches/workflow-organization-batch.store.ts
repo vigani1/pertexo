@@ -11,7 +11,7 @@ import type {
 } from '@pertexo/database/platform';
 import { claimCommand, completeCommand } from '@pertexo/database/primitives';
 import { runOrganizationCommand } from '../run-command.js';
-import { WorkflowOrganizationValidationError } from '../errors.js';
+import { WorkflowOrganizationValidationError } from '../workflow-organization.errors.js';
 import {
   checkOrganizationReplay,
   organizeWorkflow,

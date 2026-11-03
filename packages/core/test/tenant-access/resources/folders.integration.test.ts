@@ -25,10 +25,10 @@ import {
   otherWorkspaceId,
   apiPool,
 } from '../../support/workflow-authoring.js';
-import { WorkflowNotFoundError } from '../../../src/authoring/workflows/errors.js';
+import { WorkflowNotFoundError } from '../../../src/authoring/workflows/workflow-authoring.errors.js';
 import { workflowDraftRepresentationTag } from '@pertexo/workflow-model/server';
 import { createArtifactUploadStore } from '../../../src/artifacts/uploads/artifact-upload.store.js';
-import { ArtifactMetadataNotFoundError } from '../../../src/artifacts/errors.js';
+import { ArtifactMetadataNotFoundError } from '../../../src/artifacts/artifact.errors.js';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
 import { connectionScope } from '../../../src/tenant-access/resources/connections/scope.js';
 import { inspectPromotionCallDependencies } from '../../../src/authoring/promotion/preparation/calls.repository.js';

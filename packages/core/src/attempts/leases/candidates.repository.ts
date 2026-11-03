@@ -5,7 +5,7 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
 import { nodeRuns, nodeAttempts, workflowRuns } from '@pertexo/database/schema';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
-import { NodeAttemptStateCorruptError } from '../errors.js';
+import { NodeAttemptStateCorruptError } from '../node-attempt.errors.js';
 
 export async function lockClaimCandidate(
   client: PoolClient,

@@ -13,7 +13,7 @@ import { canonicalJson } from '@pertexo/workflow-model';
 
 import { generatePersistedId } from '@pertexo/database/platform';
 
-import { WorkflowNotFoundError } from '../../workflows/errors.js';
+import { WorkflowNotFoundError } from '../../workflows/workflow-authoring.errors.js';
 import type {
   CaseTransaction,
   CreateInputCaseInput,

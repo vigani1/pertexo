@@ -33,7 +33,7 @@ import { withWorkspaceAccess } from '../../../shared/workspace-access.js';
 import { readAsNotVisible } from '../../workflows/access.js';
 import { workflowScopeSql } from '../../../shared/scope.repository.js';
 import { workflowActions } from '../../../tenant-access/resources/workflows.repository.js';
-import { WorkflowNotFoundError } from '../../workflows/errors.js';
+import { WorkflowNotFoundError } from '../../workflows/workflow-authoring.errors.js';
 import type { WorkflowRecord } from '../../workflows/representation/workflow-record.types.js';
 import { workflowProjection } from '../../workflows/representation/workflow-representations.repository.js';
 

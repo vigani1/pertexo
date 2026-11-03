@@ -3,7 +3,7 @@ import type { PoolClient } from 'pg';
 import { rolesForCapability } from '@pertexo/policy';
 import { lockWorkflowAuthoringAuthority } from '../../../authoring/workflows/authority.js';
 import { sampleDraft } from '../../../authoring/step-samples/records.repository.js';
-import { WebhookTestEventError } from './errors.js';
+import { WebhookTestEventError } from './webhook-test-event.errors.js';
 import type { TestEventScope } from './webhook-test-event.types.js';
 
 /**

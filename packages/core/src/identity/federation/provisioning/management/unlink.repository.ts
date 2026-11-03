@@ -26,7 +26,7 @@ import {
   lockDirectoryOrganization,
   lockDirectoryParticipants,
 } from '../authority.repository.js';
-import { DirectoryError } from '../errors.js';
+import { DirectoryError } from '../directory.errors.js';
 import { DIRECTORY_LIMITS } from '@pertexo/workflow-model';
 import type { UnlinkWorkspaceInput } from '../directory-provisioning.types.js';
 import { detachDirectoryMemberships } from './detach.repository.js';

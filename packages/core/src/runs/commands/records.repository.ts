@@ -20,7 +20,7 @@ import { and, eq } from 'drizzle-orm';
 
 import { acceptWorkflowRun } from './acceptance/accept.js';
 import type { AcceptWorkflowRunInput } from './acceptance/run-acceptance.types.js';
-import { WorkflowRunNotFoundError } from '../errors.js';
+import { WorkflowRunNotFoundError } from '../workflow-run.errors.js';
 
 export type WorkflowRunRecord = Readonly<WorkflowRunRow>;
 

@@ -5,7 +5,7 @@ import {
 } from '@pertexo/workflow-model/server';
 import { describe, expect, it } from 'vitest';
 
-import { WorkflowEngineError } from '../../../src/errors.js';
+import { WorkflowEngineError } from '../../../src/workflow-engine.errors.js';
 import { resolveMappedNodeInput } from '../../../src/attempt/mapping.js';
 
 function refusing(

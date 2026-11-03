@@ -13,7 +13,7 @@ import { projectDirectoryMemberships } from '../provisioning/projection.reposito
 import type { Pool, PoolClient } from 'pg';
 import type { FederationSettings } from '@pertexo/contracts';
 import { generatePersistedId } from '@pertexo/database/platform';
-import { FederationConflictError } from './errors.js';
+import { FederationConflictError } from './federation-management.errors.js';
 import {
   organizationForWorkspace,
   recordFederationAudit,

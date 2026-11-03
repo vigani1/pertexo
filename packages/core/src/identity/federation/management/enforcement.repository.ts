@@ -16,7 +16,7 @@ import {
 } from '@pertexo/database/primitives';
 import type { Pool, PoolClient } from 'pg';
 import type { FederationSettings } from '@pertexo/contracts';
-import { FederationConflictError } from './errors.js';
+import { FederationConflictError } from './federation-management.errors.js';
 import { recordFederationAudit } from './authority.repository.js';
 import {
   advanceOrganization,

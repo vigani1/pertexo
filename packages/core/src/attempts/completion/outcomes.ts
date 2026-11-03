@@ -14,7 +14,7 @@ import type { PoolClient } from 'pg';
 import {
   NodeAttemptReconciliationRequiredError,
   NodeAttemptStateCorruptError,
-} from '../errors.js';
+} from '../node-attempt.errors.js';
 import type {
   CompleteAttemptInput,
   CompleteNodeAttemptResult,

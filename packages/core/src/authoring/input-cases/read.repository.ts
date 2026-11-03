@@ -11,7 +11,7 @@ import {
   workflowInputCases,
 } from '@pertexo/database/schema';
 
-import { WorkflowNotFoundError } from '../workflows/errors.js';
+import { WorkflowNotFoundError } from '../workflows/workflow-authoring.errors.js';
 import type {
   CaseTransaction,
   GetInputCaseInput,

@@ -10,7 +10,7 @@ import {
 import type { PoolClient } from 'pg';
 import { describe, expect, it } from 'vitest';
 
-import { ArtifactMetadataNotFoundError } from '../../src/artifacts/errors.js';
+import { ArtifactMetadataNotFoundError } from '../../src/artifacts/artifact.errors.js';
 import {
   artifactStorageKey,
   createPendingPreviewArtifact,

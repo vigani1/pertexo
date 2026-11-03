@@ -16,7 +16,7 @@ import type { SaveWorkflowDraftInput } from '../workflow-commands.types.js';
 import {
   WorkflowNotFoundError,
   WorkflowRevisionConflictError,
-} from '../errors.js';
+} from '../workflow-authoring.errors.js';
 import type { WorkflowDraftRecord } from '../representation/workflow-record.types.js';
 import { draftRepresentationTag } from '../representation/tag.js';
 import { requirePlaceableDefinitionAdditions } from '../placement.js';

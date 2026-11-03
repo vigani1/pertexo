@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import { describe, expect, it } from 'vitest';
 
-import { WebhookTriggerNotFoundError } from '../../../src/triggers/webhooks/errors.js';
+import { WebhookTriggerNotFoundError } from '../../../src/triggers/webhooks/webhook-trigger.errors.js';
 import { sqlStates } from '../webhooks/ingress/lock-holder.js';
 import {
   actorId,

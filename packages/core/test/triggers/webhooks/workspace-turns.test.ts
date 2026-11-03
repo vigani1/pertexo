@@ -2,7 +2,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 
 import { describe, expect, it } from 'vitest';
 
-import { WebhookIntakeBusyError } from '../../../src/triggers/webhooks/errors.js';
+import { WebhookIntakeBusyError } from '../../../src/triggers/webhooks/webhook-trigger.errors.js';
 import { createWorkspaceTurns } from '../../../src/triggers/webhooks/runtime/workspace-turns.js';
 
 function gate() {

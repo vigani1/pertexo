@@ -42,7 +42,7 @@ import {
 import {
   NodeAttemptStateCorruptError as NodeAttemptStateCorruptError2,
   NodeAttemptStateCorruptError as NodeAttemptStateCorruptError3,
-} from '../../../src/attempts/errors.js';
+} from '../../../src/attempts/node-attempt.errors.js';
 
 describe('durable revision-fenced Slack run health (ADR059)', () => {
   it('names a send through a connection its version never published, so the worker reports it as a mismatch', async () => {

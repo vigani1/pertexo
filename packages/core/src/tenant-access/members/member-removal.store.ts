@@ -6,7 +6,7 @@ import type {
   RemoveWorkspaceMemberInput,
   WorkspaceMemberRemovalResult,
 } from '../tenant-access.types.js';
-import { WorkspaceMemberRemovalCommandConflictError } from '../errors.js';
+import { WorkspaceMemberRemovalCommandConflictError } from '../tenant-access.errors.js';
 import { memberReceipt } from '../../shared/receipts.js';
 import { revokeUserSessions } from '../users/sessions.repository.js';
 import {

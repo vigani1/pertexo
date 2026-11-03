@@ -20,7 +20,10 @@ import {
   type ExpressionEvaluator,
 } from '@pertexo/workflow-model/server';
 
-import { PreviewMappingSourceError, WorkflowEngineError } from '../errors.js';
+import {
+  PreviewMappingSourceError,
+  WorkflowEngineError,
+} from '../workflow-engine.errors.js';
 
 import type { WorkflowExecutableNode } from '../compilation/foundation.js';
 import { normalizeBoundedEngineValue } from '../compilation/executable.validation.js';

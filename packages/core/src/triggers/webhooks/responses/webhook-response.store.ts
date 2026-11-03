@@ -17,7 +17,7 @@ import {
   type DatabaseRuntime,
 } from '@pertexo/database/platform';
 import type { DatabaseConfig } from '@pertexo/database/platform';
-import { NodeAttemptReconciliationRequiredError } from '../../../attempts/errors.js';
+import { NodeAttemptReconciliationRequiredError } from '../../../attempts/node-attempt.errors.js';
 import type { NodeWebhookResponseReceipt } from '@pertexo/node-sdk';
 import type { WriteWebhookResponse } from './webhook-response.types.js';
 

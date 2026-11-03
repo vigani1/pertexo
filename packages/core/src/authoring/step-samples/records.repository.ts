@@ -16,9 +16,9 @@ import {
   parseWorkflowGraphDraft,
   stepSampleBindings,
 } from '@pertexo/workflow-model';
-import { WorkflowNotFoundError } from '../workflows/errors.js';
+import { WorkflowNotFoundError } from '../workflows/workflow-authoring.errors.js';
 import { collectArtifactReferences } from '../../artifacts/references/locks.repository.js';
-import { WorkflowStepSampleError } from './errors.js';
+import { WorkflowStepSampleError } from './step-sample.errors.js';
 import type {
   SampleMetadata,
   SampleMetadataRow,

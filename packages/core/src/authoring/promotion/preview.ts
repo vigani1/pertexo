@@ -6,7 +6,7 @@ import type {
 } from '@pertexo/contracts';
 import type { WorkspaceScopeRunner } from '@pertexo/database/primitives';
 import { linkedPromotionTarget } from './authority.repository.js';
-import { WorkflowPromotionError } from './errors.js';
+import { WorkflowPromotionError } from './workflow-promotion.errors.js';
 import type {
   PromotionContext,
   PromotionScope,

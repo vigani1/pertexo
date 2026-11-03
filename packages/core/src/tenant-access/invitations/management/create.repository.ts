@@ -10,7 +10,7 @@ import { workspaceInvitations as invitations } from '@pertexo/database/schema';
 
 import { generatePersistedId } from '@pertexo/database/platform';
 
-import { WorkspaceInvitationCommandConflictError } from '../../errors.js';
+import { WorkspaceInvitationCommandConflictError } from '../../tenant-access.errors.js';
 
 import { canInviteWorkspaceRole } from '@pertexo/policy';
 import { canonicalEmail } from '@pertexo/workflow-model';

@@ -2,8 +2,8 @@ import { randomUUID } from 'node:crypto';
 
 import { describe, expect, it } from 'vitest';
 
-import { PendingTaskDecisionError } from '../../../src/runs/pending-tasks/responses/errors.js';
-import { WorkspaceAccessDeniedError } from '../../../src/shared/errors.js';
+import { PendingTaskDecisionError } from '../../../src/runs/pending-tasks/responses/pending-task.errors.js';
+import { WorkspaceAccessDeniedError } from '../../../src/shared/workspace-access.errors.js';
 import { admin, store, taskFixture, userId } from './fixtures.js';
 
 type Fixture = Awaited<ReturnType<typeof taskFixture>>;

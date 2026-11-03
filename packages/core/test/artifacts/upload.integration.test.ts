@@ -28,7 +28,7 @@ import {
   ArtifactUploadIdempotencyConflictError,
   ArtifactUploadNotFoundError,
   ArtifactUploadConflictError,
-} from '../../src/artifacts/uploads/errors.js';
+} from '../../src/artifacts/uploads/artifact-upload.errors.js';
 import { randomUUID, createHash } from 'node:crypto';
 import type { Role } from '@pertexo/policy';
 import { canonicalOutboxPayloadChecksum } from '@pertexo/database/primitives';

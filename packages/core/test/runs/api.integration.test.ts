@@ -42,13 +42,13 @@ import { Pool, type QueryResult } from 'pg';
 import {
   IdempotencyRequestConflictError,
   WorkspaceRunAdmissionDeniedError,
-} from '../../src/runs/commands/acceptance/errors.js';
+} from '../../src/runs/commands/acceptance/run-admission.errors.js';
 import {
   WorkflowPublishedVersionConflictError,
   WorkflowRunReadCapacityError,
   WorkflowRunNotFoundError,
   WorkflowRunNotExecutableError,
-} from '../../src/runs/errors.js';
+} from '../../src/runs/workflow-run.errors.js';
 import { enforceRetention } from '../support/retention.js';
 import { WORKFLOW_GRAPH_LIMITS } from '@pertexo/workflow-model';
 import { randomUUID } from 'node:crypto';

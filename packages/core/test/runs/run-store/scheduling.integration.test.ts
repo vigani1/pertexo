@@ -37,7 +37,7 @@ import {
   closeFailureNotificationFixture,
   assertRetrySchedule,
 } from './scheduling/fixture.js';
-import { FailureNotificationStateError } from '../../../src/notifications/errors.js';
+import { FailureNotificationStateError } from '../../../src/notifications/failure-notification.errors.js';
 
 describe('Coordinator scheduling and notification invariants', () => {
   it('defers queued coordination durably until an active entitlement slot is free', async () => {

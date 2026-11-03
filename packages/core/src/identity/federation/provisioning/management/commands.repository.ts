@@ -35,7 +35,7 @@ import type {
   FederationCommand,
   FederationScope,
 } from '../../management/federation-management.types.js';
-import { DirectoryError } from '../errors.js';
+import { DirectoryError } from '../directory.errors.js';
 import {
   directoryWorkspaces,
   lockDirectoryOrganization,

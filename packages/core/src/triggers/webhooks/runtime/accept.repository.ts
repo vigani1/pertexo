@@ -1,5 +1,5 @@
 import { lockWorkspaceRunAdmission } from '../../../runs/admission-locks.repository.js';
-import { WorkflowAlreadyRunningError } from '../../../runs/commands/acceptance/errors.js';
+import { WorkflowAlreadyRunningError } from '../../../runs/commands/acceptance/run-admission.errors.js';
 import { webhookTriggerReplayRecords as replays } from '@pertexo/database/schema';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 import { lockEventCoordination } from '../../coordination/keys.repository.js';

@@ -13,7 +13,7 @@ import {
   FormUnavailableError,
   FormChangedError,
   FormAccessConflictError,
-} from '../../../src/triggers/forms/errors.js';
+} from '../../../src/triggers/forms/form.errors.js';
 import { admin } from '../../lifecycle/calls/fixtures.js';
 import { createWorkflowRunDatabase } from '../../../src/runs/workflow-run.store.js';
 import { RunRequiresFormError } from '../../../src/runs/commands/acceptance/forms.repository.js';

@@ -3,7 +3,7 @@ import type {
   NodeAttemptRunStore,
   NodeAttemptStoredInputs,
 } from '../attempts/node-attempt.js';
-import { NodeAttemptStateCorruptError } from '../attempts/errors.js';
+import { NodeAttemptStateCorruptError } from '../attempts/node-attempt.errors.js';
 import {
   loopIterationOrdinal,
   NODE_ATTEMPT_INPUT_LIMITS,

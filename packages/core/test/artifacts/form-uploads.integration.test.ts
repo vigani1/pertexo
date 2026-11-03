@@ -27,13 +27,13 @@ import {
   ArtifactUploadNotFoundError,
   ArtifactQuotaExceededError,
   ArtifactUploadIdempotencyConflictError,
-} from '../../src/artifacts/uploads/errors.js';
+} from '../../src/artifacts/uploads/artifact-upload.errors.js';
 import {
   FormChangedError,
   FormUnavailableError,
-} from '../../src/triggers/forms/errors.js';
-import { FormUploadLimitError } from '../../src/artifacts/form-uploads/errors.js';
-import { PendingTaskDecisionError } from '../../src/runs/pending-tasks/responses/errors.js';
+} from '../../src/triggers/forms/form.errors.js';
+import { FormUploadLimitError } from '../../src/artifacts/form-uploads/form-upload.errors.js';
+import { PendingTaskDecisionError } from '../../src/runs/pending-tasks/responses/pending-task.errors.js';
 import { taskFixture, store as tasks } from '../runs/pending-tasks/fixtures.js';
 import { userId, apiUrl } from '../lifecycle/retention.support.js';
 import { parseDatabaseConfig } from '@pertexo/database/platform';

@@ -20,7 +20,7 @@ import {
   type Role,
 } from '@pertexo/policy';
 import type { AuthoringAccess } from '../workflows/access.js';
-import { WorkflowNotFoundError } from '../workflows/errors.js';
+import { WorkflowNotFoundError } from '../workflows/workflow-authoring.errors.js';
 import type {
   DecideReviewInput,
   ReadReviewInput,

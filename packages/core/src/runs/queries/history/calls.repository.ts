@@ -2,7 +2,7 @@ import { workflowCalls, workflowRuns } from '@pertexo/database/schema';
 import { alias } from 'drizzle-orm/pg-core';
 import { WORKFLOW_GRAPH_LIMITS } from '@pertexo/workflow-model';
 import { and, eq, exists, or, sql } from 'drizzle-orm';
-import { WorkflowRunReadCapacityError } from '../../errors.js';
+import { WorkflowRunReadCapacityError } from '../../workflow-run.errors.js';
 import type { ResourceTransaction } from '../../../shared/folder-access.types.js';
 import { workflowScopeSql } from '../../../shared/scope.repository.js';
 

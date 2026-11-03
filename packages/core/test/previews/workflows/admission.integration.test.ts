@@ -25,8 +25,8 @@ import {
   enforceTestRetention,
   purgeTestWorkspace,
 } from '../../support/workflow-authoring.js';
-import { WorkflowNotFoundError } from '../../../src/authoring/workflows/errors.js';
-import { WorkflowRunNotExecutableError } from '../../../src/runs/errors.js';
+import { WorkflowNotFoundError } from '../../../src/authoring/workflows/workflow-authoring.errors.js';
+import { WorkflowRunNotExecutableError } from '../../../src/runs/workflow-run.errors.js';
 import { lockReplaySource } from '../../../src/runs/commands/replay-run.js';
 import { CORE_NODE_CATALOG } from '@pertexo/nodes-core';
 import {

@@ -1,5 +1,5 @@
 import type { WorkflowCheckpoint } from '../workflow-execution.js';
-import { WorkflowEngineError } from '../errors.js';
+import { WorkflowEngineError } from '../workflow-engine.errors.js';
 import { assertBoundedCheckpointJson, assertCheckpoint } from './fields.js';
 import { parseCheckpointRecord } from './record.js';
 import { assertPersistedWorkflowVersionId } from './identity.js';

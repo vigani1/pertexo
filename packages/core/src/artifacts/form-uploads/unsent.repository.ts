@@ -4,7 +4,7 @@ import type { PoolClient } from 'pg';
 import { FORM_FILE_LIMITS } from '@pertexo/workflow-model';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { artifacts, formUploads } from '@pertexo/database/schema';
-import { FormUploadLimitError } from './errors.js';
+import { FormUploadLimitError } from './form-upload.errors.js';
 
 /**
  * Anyone with a public link can upload without ever sending the form, so those

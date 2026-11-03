@@ -8,7 +8,7 @@ import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { workflowTriggers, triggerSchedules } from '@pertexo/database/schema';
 
 import { publishedVersionOf } from '../../reconciliation/health.repository.js';
-import { ScheduleTriggerError } from '../errors.js';
+import { ScheduleTriggerError } from '../schedule-trigger.errors.js';
 import {
   parsePersistedScheduleRecurrence,
   resolveScheduleObservation,

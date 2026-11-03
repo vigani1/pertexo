@@ -21,7 +21,7 @@ import {
 
 import { RUN_SUMMARY_RETENTION_SQL } from '../../../runs/data-policy.js';
 import type { AuthoringAccess, WorkflowActor } from '../../workflows/access.js';
-import { WorkflowNotFoundError } from '../../workflows/errors.js';
+import { WorkflowNotFoundError } from '../../workflows/workflow-authoring.errors.js';
 
 const RECENT_SKIPS_SHOWN = 20;
 

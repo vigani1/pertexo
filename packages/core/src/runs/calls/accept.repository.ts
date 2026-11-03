@@ -28,11 +28,11 @@ import {
 import {
   WorkspaceRunAdmissionDeniedError,
   WorkspaceRunQuotaExceededError,
-} from '../commands/acceptance/errors.js';
+} from '../commands/acceptance/run-admission.errors.js';
 import type { InitialCheckpointFactory } from '../commands/initial-checkpoint.js';
 import { findLockedReplayVersion } from '../commands/replay-run.js';
 import type { PublishedWorkflow } from '../queries/execution/workflow-execution.types.js';
-import { WorkflowCallRefusedError } from './errors.js';
+import { WorkflowCallRefusedError } from './workflow-call.errors.js';
 import { wakeWorkflowRun } from '../wakeups/advance.repository.js';
 
 /** All target prerequisites precede the parent and the counter stays last. */

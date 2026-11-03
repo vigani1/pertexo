@@ -46,7 +46,7 @@ export {
   type NodeExecutorFailureKind,
   type NodeExecutorFailureOutcome,
   type ServiceResponseFacts,
-} from './execution/errors.js';
+} from './execution/node-execution.errors.js';
 export { describeNodeRefusal } from './execution/refusal.js';
 export {
   canonicalizeBoundedJson,

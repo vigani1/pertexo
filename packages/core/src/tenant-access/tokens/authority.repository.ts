@@ -9,7 +9,7 @@ import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import type { PoolClient } from 'pg';
 
 import type { Role } from '@pertexo/policy';
-import { ApiTokenPolicyError } from './errors.js';
+import { ApiTokenPolicyError } from './api-token.errors.js';
 import type { ApiTokenOwner } from './api-token.types.js';
 import { tokenOwnerMayAct } from './policy.js';
 

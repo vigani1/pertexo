@@ -16,7 +16,7 @@ import { z } from 'zod';
 import {
   FailureNotificationDestinationError,
   type FailureNotificationDestinationErrorCode,
-} from './errors.js';
+} from './notification-destination.errors.js';
 
 /* Idempotency and audit steps shared by the destination commands and the workflow policy. */
 

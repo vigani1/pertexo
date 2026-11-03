@@ -17,7 +17,7 @@ import type {
   RevokeWorkspaceInvitationInput,
   WorkspaceInvitationCommandResult,
 } from '../../tenant-access.types.js';
-import { WorkspaceInvitationCommandConflictError } from '../../errors.js';
+import { WorkspaceInvitationCommandConflictError } from '../../tenant-access.errors.js';
 import { cancelOpenInvitationDeliveries } from '../delivery-cancellation.repository.js';
 import { expireWorkspaceInvitations } from '../expiration.repository.js';
 import { supersedeOpenIntents } from '../open-intents.repository.js';

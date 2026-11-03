@@ -12,7 +12,7 @@ import { FOLDER_DEPTH_LIMIT } from '../../limits.js';
 import { FOLDER_LIMIT } from '../../../../shared/folder-policy.js';
 
 import { runOrganizationCommand } from '../../run-command.js';
-import { WorkflowFolderConflictError } from '../../errors.js';
+import { WorkflowFolderConflictError } from '../../workflow-organization.errors.js';
 
 import type { createOrganizationSession } from '../../session.js';
 import type {

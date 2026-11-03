@@ -26,7 +26,7 @@ import {
   purgeTestWorkspace,
 } from '../support/workflow-authoring.js';
 import { withTenantScopedReadClient } from '@pertexo/database/primitives';
-import { WorkspaceAccessDeniedError } from '../../src/shared/errors.js';
+import { WorkspaceAccessDeniedError } from '../../src/shared/workspace-access.errors.js';
 
 // Plan 14: the workspace byte limit counts stored cell JSON (UTF-8 bytes) and
 // accepts 64 KiB as its smallest value.

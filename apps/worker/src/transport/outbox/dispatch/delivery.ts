@@ -12,7 +12,10 @@ import {
 import { transportJobForName } from '../../job.js';
 
 import { TransportOperationTimeoutError } from '../operation-deadline.js';
-import { OutboxPayloadChecksumError, OutboxContractError } from './errors.js';
+import {
+  OutboxPayloadChecksumError,
+  OutboxContractError,
+} from './outbox-dispatch.errors.js';
 
 export function transportJobName(jobName: string): TransportJob | undefined {
   return Object.values<string>(JOB_NAME).includes(jobName)

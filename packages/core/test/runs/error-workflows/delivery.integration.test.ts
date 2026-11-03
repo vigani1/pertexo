@@ -6,7 +6,7 @@ import {
   WorkflowErrorSettingsConflictError,
   WorkflowErrorTargetUnavailableError,
 } from '../../../src/authoring/settings/error-workflow/workflow-error.store.js';
-import { WorkflowNotFoundError } from '../../../src/authoring/workflows/errors.js';
+import { WorkflowNotFoundError } from '../../../src/authoring/workflows/workflow-authoring.errors.js';
 import {
   userId,
   maintenanceUrl,
@@ -24,7 +24,7 @@ import {
   fullQueue,
   cancelQueuedRun,
 } from './delivery/fixture.js';
-import { ErrorWorkflowDeliveryMismatchError } from '../../../src/runs/error-workflows/errors.js';
+import { ErrorWorkflowDeliveryMismatchError } from '../../../src/runs/error-workflows/error-workflow.errors.js';
 import { acceptWorkflowRun } from '../../../src/runs/commands/acceptance/accept.js';
 import {
   withWorkspaceTransaction,

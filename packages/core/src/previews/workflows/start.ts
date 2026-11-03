@@ -14,7 +14,7 @@ import {
 } from './admit.js';
 import { requireTestCapability } from './access.js';
 import type { WorkflowTestCommand } from './workflow-test.types.js';
-import { WorkflowTestError } from './errors.js';
+import { WorkflowTestError } from './workflow-test.errors.js';
 import {
   assertEffectsAcknowledged,
   sameTestSamples,

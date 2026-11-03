@@ -14,7 +14,7 @@ import { requireConnectionBindings } from '../../tenant-access/resources/connect
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
 import { generatePersistedId } from '@pertexo/database/platform';
-import { PublicationReviewError } from './errors.js';
+import { PublicationReviewError } from './publication-review.errors.js';
 import type {
   RequestReviewInput,
   ReviewDependencies,

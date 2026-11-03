@@ -11,7 +11,7 @@ import type { PoolClient } from 'pg';
 import { z } from 'zod';
 import { workflowTriggers, triggerSchedules } from '@pertexo/database/schema';
 
-import { ScheduleTriggerError } from '../errors.js';
+import { ScheduleTriggerError } from '../schedule-trigger.errors.js';
 
 import type {
   ScheduleCommandIdentity,

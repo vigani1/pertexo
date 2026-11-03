@@ -15,7 +15,7 @@ import { refreshWorkflowActivation } from '../../reconciliation/health.repositor
 import {
   WebhookTriggerNotFoundError,
   WebhookTriggerStateError,
-} from '../errors.js';
+} from '../webhook-trigger.errors.js';
 
 import { command } from './commands.js';
 import {

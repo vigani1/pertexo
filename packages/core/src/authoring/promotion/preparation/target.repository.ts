@@ -16,7 +16,7 @@ import { workflowDefinitionCatalogFingerprint } from '@pertexo/workflow-model/se
 
 import { readTablesByNames } from '../../../data-tables/table-lookups.repository.js';
 
-import { WorkflowPromotionError } from '../errors.js';
+import { WorkflowPromotionError } from '../workflow-promotion.errors.js';
 import type {
   PromotionContext,
   PromotionScope,

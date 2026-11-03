@@ -1,5 +1,5 @@
 import type { PoolClient } from 'pg';
-import { WorkspaceAccessDeniedError } from '../../shared/errors.js';
+import { WorkspaceAccessDeniedError } from '../../shared/workspace-access.errors.js';
 import {
   BROWSABLE_WORKSPACE_STATUSES,
   rolesForCapability,

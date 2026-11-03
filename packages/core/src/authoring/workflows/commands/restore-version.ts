@@ -20,7 +20,7 @@ import type { RestoreWorkflowVersionInput } from '../workflow-commands.types.js'
 import {
   WorkflowNotFoundError,
   WorkflowRevisionConflictError,
-} from '../errors.js';
+} from '../workflow-authoring.errors.js';
 import { requirePlaceableDefinitionAdditions } from '../placement.js';
 import { draftRepresentationTag } from '../representation/tag.js';
 import { lockActiveWorkflow, lockDraft } from './locks.repository.js';

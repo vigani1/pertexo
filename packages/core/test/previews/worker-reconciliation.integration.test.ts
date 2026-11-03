@@ -19,7 +19,7 @@ import { heartbeatPreviewLease } from '../../src/previews/attempts/heartbeat.js'
 import {
   PreviewAttemptStateError,
   PreviewDeliveryMismatchError,
-} from '../../src/previews/errors.js';
+} from '../../src/previews/preview.errors.js';
 import { waitForDatabaseTime } from './worker-reconciliation/fixture.js';
 
 describe('preview worker lease reconciliation', () => {

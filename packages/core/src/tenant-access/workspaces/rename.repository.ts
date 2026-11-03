@@ -15,7 +15,7 @@ import type {
   RenameWorkspaceInput,
   WorkspaceRenameResult,
 } from '../tenant-access.types.js';
-import { WorkspaceRenameCommandConflictError } from '../errors.js';
+import { WorkspaceRenameCommandConflictError } from '../tenant-access.errors.js';
 import { readLockedMembers } from '../members/commands.repository.js';
 import {
   renameReceipt,

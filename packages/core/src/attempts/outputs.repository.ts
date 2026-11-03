@@ -11,7 +11,7 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import { nodeRuns, nodeAttempts } from '@pertexo/database/schema';
 import type { Pool } from 'pg';
 
-import { NodeAttemptStateCorruptError } from './errors.js';
+import { NodeAttemptStateCorruptError } from './node-attempt.errors.js';
 import type {
   NodeAttemptLoopDeclaration,
   NodeAttemptStoredOutput,

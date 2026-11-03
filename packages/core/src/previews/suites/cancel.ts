@@ -12,9 +12,9 @@ import {
 } from '@pertexo/database/schema';
 import type { Role } from '@pertexo/policy';
 import { cancelInTransaction } from '../../runs/commands/cancel-run.js';
-import { WorkflowRunNotFoundError } from '../../runs/errors.js';
+import { WorkflowRunNotFoundError } from '../../runs/workflow-run.errors.js';
 import { requireTestStopAuthority } from '../workflows/access.js';
-import { WorkflowTestError } from '../workflows/errors.js';
+import { WorkflowTestError } from '../workflows/workflow-test.errors.js';
 import { skipPendingCases } from './cases.repository.js';
 import type { WorkflowTestSuiteInput } from './workflow-test-suite.types.js';
 

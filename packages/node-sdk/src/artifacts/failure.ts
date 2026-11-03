@@ -1,5 +1,5 @@
 import { describeFileInputFailure } from './describe-failure.js';
-import { NodeExecutorFailure } from '../execution/errors.js';
+import { NodeExecutorFailure } from '../execution/node-execution.errors.js';
 import {
   fileInputDiagnosticSchema,
   FILE_INPUT_ERROR_CODE,

@@ -29,7 +29,7 @@ import {
   PreviewIdempotencyConflictError,
   PreviewAdmissionDeniedError,
   PriorPreviewInputUnavailableError,
-} from '../../src/previews/errors.js';
+} from '../../src/previews/preview.errors.js';
 import {
   auditEvents,
   outboxEvents,

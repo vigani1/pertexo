@@ -21,7 +21,7 @@ import {
   requirePromotionAuthority,
   lockPromotionWorkspaces,
 } from './authority.repository.js';
-import { WorkflowPromotionError } from './errors.js';
+import { WorkflowPromotionError } from './workflow-promotion.errors.js';
 import type {
   ApplyPromotionInput,
   PromotionContext,

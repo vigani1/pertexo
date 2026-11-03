@@ -8,7 +8,7 @@ import {
   type WorkspaceAccess,
   type WorkspaceActor,
 } from '../../shared/workspace-access.js';
-import { WorkspaceAccessDeniedError } from '../../shared/errors.js';
+import { WorkspaceAccessDeniedError } from '../../shared/workspace-access.errors.js';
 import { workflowAccessible } from '../../tenant-access/resources/workflows.repository.js';
 import {
   ACTIVE_WORKSPACE_STATUSES,
@@ -18,7 +18,7 @@ import {
   type WorkspaceStatusList,
 } from '@pertexo/policy';
 import type { Pool, PoolClient } from 'pg';
-import { WorkflowNotFoundError } from './errors.js';
+import { WorkflowNotFoundError } from './workflow-authoring.errors.js';
 
 export type WorkflowRef = Readonly<{
   workspaceId: string;

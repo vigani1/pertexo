@@ -9,7 +9,7 @@ import {
   rethrowQueryFailure,
   parseWorkspaceId,
 } from '@pertexo/database/primitives';
-import { WorkflowAlreadyRunningError } from '../commands/acceptance/errors.js';
+import { WorkflowAlreadyRunningError } from '../commands/acceptance/run-admission.errors.js';
 import { recordWorkflowTriggerSkip } from '../../triggers/skips.repository.js';
 import { createHash } from 'node:crypto';
 import { drizzle } from 'drizzle-orm/node-postgres';
@@ -28,13 +28,13 @@ import {
 import {
   WorkspaceRunAdmissionDeniedError,
   WorkspaceRunQuotaExceededError,
-} from '../commands/acceptance/errors.js';
+} from '../commands/acceptance/run-admission.errors.js';
 import { findPublishedWorkflow } from '../queries/execution/published.repository.js';
 import type { InitialCheckpointFactory } from '../commands/initial-checkpoint.js';
 import {
   ErrorWorkflowDeliveryMismatchError,
   ErrorWorkflowVersionUnavailableError,
-} from './errors.js';
+} from './error-workflow.errors.js';
 import type { ErrorWorkflowDeliveryInput } from './error-workflow-delivery.types.js';
 import { deferErrorWorkflowForQueue } from './queue-wait.repository.js';
 

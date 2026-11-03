@@ -8,7 +8,7 @@ import type {
   DiscoverFormInput,
   PublicFormGrant,
 } from './form-admission.types.js';
-import { FormUnavailableError } from './errors.js';
+import { FormUnavailableError } from './form.errors.js';
 
 /** No member behind this one either: it turns a link into a grant. */
 export async function discoverPublicForm(

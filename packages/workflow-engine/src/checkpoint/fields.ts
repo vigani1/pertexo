@@ -16,7 +16,7 @@ import {
 
 import { invocationKey } from '../transition/scheduling/loops.js';
 import { compareOrdinal } from '@pertexo/workflow-model';
-import { WorkflowEngineError } from '../errors.js';
+import { WorkflowEngineError } from '../workflow-engine.errors.js';
 import { assertCanonicalTimestamp } from './identity.js';
 import { isInteger, assertCheckpoint, assertExactKeys } from './admission.js';
 

@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { Pool } from 'pg';
 import { createWebhookResponseStore } from '../../../src/triggers/webhooks/responses/webhook-response.store.js';
 import { createWebhookTriggerStore } from '../../../src/triggers/webhooks/webhook-trigger.store.js';
-import { NodeAttemptReconciliationRequiredError } from '../../../src/attempts/errors.js';
+import { NodeAttemptReconciliationRequiredError } from '../../../src/attempts/node-attempt.errors.js';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
 import { RETENTION_RULES } from '../../../src/lifecycle/retention/rules.js';
 import { purgeWorkspace } from '../../support/workspace-purge.js';

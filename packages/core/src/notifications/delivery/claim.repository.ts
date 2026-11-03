@@ -21,7 +21,7 @@ import type {
   FailureNotificationClaimResult,
   FailureNotificationDelivery,
 } from '../failure-notification.types.js';
-import { FailureNotificationStateError } from '../errors.js';
+import { FailureNotificationStateError } from '../failure-notification.errors.js';
 import { auditFailureNotification as audit } from './evidence.repository.js';
 
 export function claimDelivery(

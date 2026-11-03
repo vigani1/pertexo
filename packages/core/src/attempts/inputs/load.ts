@@ -17,7 +17,7 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import { readVariableSetValues } from '../../variables/values.repository.js';
 import { workflowNodeFailureValueSchema } from '@pertexo/workflow-model';
 import type { Pool, PoolClient } from 'pg';
-import { NodeAttemptStateCorruptError } from '../errors.js';
+import { NodeAttemptStateCorruptError } from '../node-attempt.errors.js';
 import type {
   NodeAttemptStoredInputs,
   LoadInputsInput,

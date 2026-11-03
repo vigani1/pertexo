@@ -28,7 +28,7 @@ import type {
   CreateWorkflowInput,
   CreateWorkflowResult,
 } from '../workflow-commands.types.js';
-import { WorkflowNotFoundError } from '../errors.js';
+import { WorkflowNotFoundError } from '../workflow-authoring.errors.js';
 import { requirePlaceableDefinitionAdditions } from '../placement.js';
 import {
   draftProjection,

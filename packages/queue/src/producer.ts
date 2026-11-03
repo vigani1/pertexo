@@ -22,7 +22,7 @@ import type {
   QueueMap,
 } from './publication/queue-producer.types.js';
 import { parseProducerOptions } from './publication/configuration.js';
-import { QueueNotReadyError } from './publication/errors.js';
+import { QueueNotReadyError } from './publication/queue-producer.errors.js';
 
 export {
   type QueueProducerOptions,
@@ -34,7 +34,7 @@ export {
 export {
   QueueConfigurationError,
   QueueNotReadyError,
-} from './publication/errors.js';
+} from './publication/queue-producer.errors.js';
 export { jobIdForOutboxEvent } from './jobs/job-id.js';
 function createQueues(redis: Redis): QueueMap {
   return {

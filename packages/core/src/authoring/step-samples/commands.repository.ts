@@ -13,7 +13,7 @@ import { z } from 'zod';
 import { generatePersistedId } from '@pertexo/database/platform';
 import { sampleProjection, sampleDraft } from './records.repository.js';
 import { captureSampleSource } from './source.repository.js';
-import { WorkflowStepSampleError } from './errors.js';
+import { WorkflowStepSampleError } from './step-sample.errors.js';
 import type {
   SampleCommand,
   SampleResult,

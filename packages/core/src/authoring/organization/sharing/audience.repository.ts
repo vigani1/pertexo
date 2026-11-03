@@ -23,8 +23,8 @@ import {
   removesFolderRestriction,
 } from '../../../shared/folder-policy.js';
 import { workflowScopeSql } from '../../../shared/scope.repository.js';
-import { WorkflowNotFoundError } from '../../workflows/errors.js';
-import { WorkflowFolderConflictError } from '../errors.js';
+import { WorkflowNotFoundError } from '../../workflows/workflow-authoring.errors.js';
+import { WorkflowFolderConflictError } from '../workflow-organization.errors.js';
 import type { OrganizationActor } from '../session.js';
 import { FOLDER_LIMIT } from '../../../shared/folder-policy.js';
 

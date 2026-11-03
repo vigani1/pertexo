@@ -2,8 +2,8 @@ import { randomUUID } from 'node:crypto';
 
 import { describe, expect, it } from 'vitest';
 
-import { WorkflowNotFoundError } from '../../../src/authoring/workflows/errors.js';
-import { WebhookIngressRateLimitExceededError } from '../../../src/triggers/webhooks/errors.js';
+import { WorkflowNotFoundError } from '../../../src/authoring/workflows/workflow-authoring.errors.js';
+import { WebhookIngressRateLimitExceededError } from '../../../src/triggers/webhooks/webhook-trigger.errors.js';
 import {
   actorId,
   createWebhookScenario,

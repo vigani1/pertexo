@@ -1,6 +1,6 @@
 import { constants } from 'node:fs';
 import { open } from 'node:fs/promises';
-import { AutomationCommandError } from './errors.js';
+import { AutomationCommandError } from './automation-command.errors.js';
 
 export const MAX_COMMAND_BYTES = 2 * 1_024 * 1_024;
 

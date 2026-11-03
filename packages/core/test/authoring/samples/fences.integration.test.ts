@@ -14,8 +14,8 @@ import {
   waitForPostgresLock,
 } from '../../support/workflow-authoring.js';
 import { fixture, paste, testIntent } from './support.js';
-import { PreviewAdmissionDeniedError } from '../../../src/previews/errors.js';
-import { WorkflowNotFoundError } from '../../../src/authoring/workflows/errors.js';
+import { PreviewAdmissionDeniedError } from '../../../src/previews/preview.errors.js';
+import { WorkflowNotFoundError } from '../../../src/authoring/workflows/workflow-authoring.errors.js';
 
 describe('pinned sample admission fences', () => {
   it('rechecks authority for reads, writes and accepted-test receipts', async () => {

@@ -19,12 +19,15 @@ export {
   reconstructReadySet,
   WORKFLOW_CHECKPOINT_LIMITS,
 } from './checkpoint/create-and-parse.js';
-export { PreviewMappingSourceError, WorkflowEngineError } from './errors.js';
+export {
+  PreviewMappingSourceError,
+  WorkflowEngineError,
+} from './workflow-engine.errors.js';
 export {
   settleCallableResult,
   type CallableResultDecision,
 } from './transition/settle-result.js';
-export type { EngineErrorCode } from './errors.js';
+export type { EngineErrorCode } from './workflow-engine.errors.js';
 export {
   parseWorkflowExecutable,
   verifyWorkflowExecutable,

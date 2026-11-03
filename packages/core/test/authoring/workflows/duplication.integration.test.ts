@@ -36,7 +36,7 @@ import {
   purgeTestWorkspace,
 } from '../../support/workflow-authoring.js';
 import { source, command, facts, commandFacts } from './duplication/fixture.js';
-import { WorkflowDefinitionPlacementError } from '../../../src/authoring/workflows/errors.js';
+import { WorkflowDefinitionPlacementError } from '../../../src/authoring/workflows/workflow-authoring.errors.js';
 
 describe('same-workspace workflow duplication through the runtime database role', () => {
   it('replays a completed command before catalog admission while new copies cannot grandfather removed definitions', async () => {

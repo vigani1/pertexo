@@ -20,7 +20,7 @@ export {
   createFederationManagementStore,
   type FederationManagementStore,
 } from './federation/management/federation-management.store.js';
-export { FederationConflictError } from './federation/management/errors.js';
+export { FederationConflictError } from './federation/management/federation-management.errors.js';
 export {
   createDirectoryStore,
   type DirectoryStore,
@@ -35,7 +35,7 @@ export type {
   DirectoryUserProfile,
   DirectoryUserValues,
 } from './federation/provisioning/directory-provisioning.types.js';
-export { DirectoryError } from './federation/provisioning/errors.js';
+export { DirectoryError } from './federation/provisioning/directory.errors.js';
 export {
   createTwoFactorRecoveryStore,
   type TwoFactorRecoveryStore,

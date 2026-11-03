@@ -15,7 +15,7 @@ import type {
 import {
   WorkflowNameRevisionConflictError,
   WorkflowNotFoundError,
-} from '../errors.js';
+} from '../workflow-authoring.errors.js';
 import {
   claimWorkflowCommand,
   completeWorkflowCommand,

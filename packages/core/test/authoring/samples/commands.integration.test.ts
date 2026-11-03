@@ -14,7 +14,7 @@ import {
   identity,
   purgeTestWorkspace,
 } from '../../support/workflow-authoring.js';
-import { WorkflowNotFoundError } from '../../../src/authoring/workflows/errors.js';
+import { WorkflowNotFoundError } from '../../../src/authoring/workflows/workflow-authoring.errors.js';
 
 describe('shared draft step samples', () => {
   it('copies bounded JSON, lists metadata without values, and keeps payload out of receipts/audits', async () => {

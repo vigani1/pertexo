@@ -3,7 +3,7 @@ import {
   validateWorkflowGraph,
 } from '@pertexo/workflow-model';
 
-import { WorkflowEngineError } from '../../src/errors.js';
+import { WorkflowEngineError } from '../../src/workflow-engine.errors.js';
 import type { SchedulerState } from '../../src/transition/scheduling/readiness.js';
 
 export type SchedulerGraph = SchedulerState;

@@ -1,4 +1,4 @@
-import { WebhookIntakeBusyError } from '../errors.js';
+import { WebhookIntakeBusyError } from '../webhook-trigger.errors.js';
 
 interface Line {
   /** Turns running now. A finishing turn hands its place to the next in line. */

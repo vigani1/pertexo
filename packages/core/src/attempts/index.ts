@@ -5,7 +5,7 @@ export {
   NodeAttemptDispatchBindingMismatchError,
   NodeAttemptOutputInvalidError,
   NodeAttemptStateCorruptError,
-} from './errors.js';
+} from './node-attempt.errors.js';
 export type {
   NodeAttemptLease,
   NodeAttemptLoopDeclaration,

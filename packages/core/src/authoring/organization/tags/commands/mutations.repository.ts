@@ -11,7 +11,7 @@ import {
 
 import { runOrganizationCommand } from '../../run-command.js';
 import type { OrganizationScope } from '../../session.js';
-import { WorkflowTagConflictError } from '../../errors.js';
+import { WorkflowTagConflictError } from '../../workflow-organization.errors.js';
 
 import { TAG_DELETE_WORKFLOW_LIMIT, TAG_LIMIT } from '../../limits.js';
 import type { createOrganizationSession } from '../../session.js';

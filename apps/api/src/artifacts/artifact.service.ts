@@ -14,7 +14,7 @@ import {
   ArtifactApiConflictError,
   ArtifactApiNotFoundError,
   ArtifactUploadDeadlineError,
-} from './errors.js';
+} from './artifact-api.errors.js';
 import {
   assertUploadSize,
   signArtifactUpload,

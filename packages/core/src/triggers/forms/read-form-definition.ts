@@ -1,5 +1,5 @@
 import { formConfigSchema, workflowGraphSchema } from '@pertexo/workflow-model';
-import { FormUnavailableError } from './errors.js';
+import { FormUnavailableError } from './form.errors.js';
 
 export function readFormDefinition(graph_json: unknown) {
   const graph = workflowGraphSchema.parse(graph_json);

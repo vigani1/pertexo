@@ -26,7 +26,7 @@ import type {
   WorkflowCommentList,
   WorkspacePeoplePage,
 } from '@pertexo/contracts';
-import { WorkflowNotFoundError } from '../workflows/errors.js';
+import { WorkflowNotFoundError } from '../workflows/workflow-authoring.errors.js';
 import { readWorkspacePeople } from '../../tenant-access/members/discovery.repository.js';
 import { projectCommentThread } from './comment-threads.repository.js';
 import type { EnterCollaboration } from './authority.repository.js';

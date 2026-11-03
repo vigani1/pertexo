@@ -16,7 +16,7 @@ import {
   type Role,
 } from '@pertexo/policy';
 import type { ResourceActor } from './folder-access.types.js';
-import { WorkspaceAccessDeniedError } from './errors.js';
+import { WorkspaceAccessDeniedError } from './workspace-access.errors.js';
 
 /** Ordered current authority fence shared by workspace commands. Call only inside the same tenant transaction as the protected work. */
 async function workspaceAuthority(

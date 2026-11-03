@@ -18,7 +18,7 @@ import {
   DeliveryMismatch,
   NodeAttemptDeliveryMismatchError,
   NodeAttemptStateCorruptError,
-} from '../errors.js';
+} from '../node-attempt.errors.js';
 import { attemptJobPayloadSchema } from '../validation/delivery.js';
 import type {
   NodeAttemptDelivery,

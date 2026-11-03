@@ -8,10 +8,10 @@ import {
 } from '@pertexo/policy';
 import type { SampleScope } from '../../authoring/step-samples/step-sample.types.js';
 import { lockWorkflowAuthoringAuthority } from '../../authoring/workflows/authority.js';
-import { WorkflowNotFoundError } from '../../authoring/workflows/errors.js';
+import { WorkflowNotFoundError } from '../../authoring/workflows/workflow-authoring.errors.js';
 import { readFolderScope } from '../../shared/facts.repository.js';
 import { withWorkspaceAccess } from '../../shared/workspace-access.js';
-import { WorkspaceAccessDeniedError } from '../../shared/errors.js';
+import { WorkspaceAccessDeniedError } from '../../shared/workspace-access.errors.js';
 import type { WorkflowResourceCapability } from '../../shared/folder-access.types.js';
 import { workflowAccessible } from '../../tenant-access/resources/workflows.repository.js';
 

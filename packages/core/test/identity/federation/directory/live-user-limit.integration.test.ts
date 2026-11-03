@@ -6,7 +6,7 @@ import {
   withDirectoryTransaction,
 } from '../../../../src/identity/federation/provisioning/authority.repository.js';
 import type { DirectoryUserValues } from '../../../../src/identity/federation/provisioning/directory-provisioning.types.js';
-import { DirectoryError } from '../../../../src/identity/federation/provisioning/errors.js';
+import { DirectoryError } from '../../../../src/identity/federation/provisioning/directory.errors.js';
 import { unlinkDirectoryWorkspace } from '../../../../src/identity/federation/provisioning/management/unlink.repository.js';
 import { projectDirectoryMemberships } from '../../../../src/identity/federation/provisioning/projection.repository.js';
 import {

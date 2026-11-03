@@ -7,7 +7,7 @@ export {
   ArtifactUploadConflictError,
   ArtifactUploadIdempotencyConflictError,
   ArtifactUploadNotFoundError,
-} from './uploads/errors.js';
+} from './uploads/artifact-upload.errors.js';
 export {
   ARTIFACT_UPLOAD_PENDING_MS,
   type ArtifactUploadActor,
@@ -22,7 +22,7 @@ export {
   createFormUploadStore,
   type FormUploadStore,
 } from './form-uploads/form-upload.store.js';
-export { FormUploadLimitError } from './form-uploads/errors.js';
+export { FormUploadLimitError } from './form-uploads/form-upload.errors.js';
 export type {
   FormUpload,
   FormUploadTarget,
@@ -39,7 +39,7 @@ export {
   type ArtifactCapacityObservation,
 } from './capacity.repository.js';
 export { requireNodeArtifactReference } from './references/locks.repository.js';
-export { ArtifactMetadataNotFoundError } from './errors.js';
+export { ArtifactMetadataNotFoundError } from './artifact.errors.js';
 
 // Authoring, previews, runs and triggers use these directly (ADR 091).
 export type {} from './references/access.repository.js';

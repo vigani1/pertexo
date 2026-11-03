@@ -16,7 +16,7 @@ import {
   WorkflowPortabilityCompatibilityConflictError,
   WorkflowPortabilityValidationError,
   WorkflowPortabilityReviewConflictError,
-} from '../../../src/authoring/workflows/errors.js';
+} from '../../../src/authoring/workflows/workflow-authoring.errors.js';
 import { workflowImportCommandDigest } from '../../../src/authoring/portability/workflow-portability.store.js';
 import {
   actorId,

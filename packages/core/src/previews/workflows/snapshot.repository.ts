@@ -16,7 +16,7 @@ import type { AuthoringCatalogs } from '../../authoring/workflows/catalogs.js';
 import type { SampleScope } from '../../authoring/step-samples/step-sample.types.js';
 
 import { readDatabaseClock } from '../clock.repository.js';
-import { WorkflowTestError } from './errors.js';
+import { WorkflowTestError } from './workflow-test.errors.js';
 
 export async function loadTestSnapshot(
   client: PoolClient,

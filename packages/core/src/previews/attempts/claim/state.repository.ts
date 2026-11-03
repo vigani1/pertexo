@@ -10,7 +10,7 @@ import { readVariableSetValues } from '../../../variables/values.repository.js';
 import { executableNodeSchema } from '../../executable-node.js';
 
 import type { PreviewAttemptLease } from '../../preview.types.js';
-import { PreviewAttemptStateError } from '../../errors.js';
+import { PreviewAttemptStateError } from '../../preview.errors.js';
 import { previewPairConsistent } from '../../state.js';
 
 export async function loadPreviewLease(

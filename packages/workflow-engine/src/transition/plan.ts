@@ -2,7 +2,7 @@ import {
   parseCheckpoint,
   reconstructReadySet,
 } from '../checkpoint/create-and-parse.js';
-import { WorkflowEngineError } from '../errors.js';
+import { WorkflowEngineError } from '../workflow-engine.errors.js';
 import { pruneFinishedIterations } from './prune.js';
 import { deriveReadyNodes } from './scheduling/readiness.js';
 import { compareOrdinal } from '@pertexo/workflow-model';

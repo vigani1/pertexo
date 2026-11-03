@@ -21,7 +21,7 @@ import type {
   CompleteInvitationAcceptanceInput,
   InvitationAcceptanceResult,
 } from '../../tenant-access.types.js';
-import { InvitationAcceptanceConflictError } from '../../errors.js';
+import { InvitationAcceptanceConflictError } from '../../tenant-access.errors.js';
 import {
   acceptanceReceiptSchema,
   recordAcceptedInvitation,

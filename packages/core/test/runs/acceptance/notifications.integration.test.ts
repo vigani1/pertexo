@@ -23,7 +23,7 @@ import { sql } from 'drizzle-orm';
 import { Pool } from 'pg';
 import { acceptWorkflowRun } from '../../../src/runs/commands/acceptance/accept.js';
 import { hasPostgresConstraint } from './notifications/fixture.js';
-import { WorkspaceRunAdmissionDeniedError } from '../../../src/runs/commands/acceptance/errors.js';
+import { WorkspaceRunAdmissionDeniedError } from '../../../src/runs/commands/acceptance/run-admission.errors.js';
 
 installExecutionAcceptanceFixture();
 describe('workflow run notification pinning', () => {

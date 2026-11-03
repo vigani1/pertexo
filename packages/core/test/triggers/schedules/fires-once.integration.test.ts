@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
-import { ScheduleClaimLostError } from '../../../src/triggers/schedules/errors.js';
+import { ScheduleClaimLostError } from '../../../src/triggers/schedules/schedule-trigger.errors.js';
 import { createScheduleTriggerTestEnvironment } from '../../support/schedule-triggers.js';
 
 const schedule = createScheduleTriggerTestEnvironment({ scannerCount: 2 });

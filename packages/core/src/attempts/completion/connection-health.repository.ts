@@ -13,7 +13,7 @@ import {
 import { serializeStoredExecutionJsonValue } from '../../runs/values/stored-execution.js';
 import type { PoolClient } from 'pg';
 import { generatePersistedId } from '@pertexo/database/platform';
-import { NodeAttemptStateCorruptError } from '../errors.js';
+import { NodeAttemptStateCorruptError } from '../node-attempt.errors.js';
 
 /** Completion replay compares evidence; absence is a meaningful identity too. */
 export async function assertConnectionHealthReplay(

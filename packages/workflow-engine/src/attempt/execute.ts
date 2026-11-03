@@ -2,7 +2,7 @@ import { resolveAttemptCallbacks } from './callbacks.js';
 
 import type { NodeExecutionResult } from '@pertexo/node-sdk/server';
 
-import { WorkflowEngineError } from '../errors.js';
+import { WorkflowEngineError } from '../workflow-engine.errors.js';
 
 import { assertAuthenticExecutableIdentity } from '../compilation/foundation.js';
 import { normalizeBoundedEngineValue } from '../compilation/executable.validation.js';

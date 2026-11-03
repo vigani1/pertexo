@@ -41,7 +41,7 @@ export {
   type WorkflowCallConfig,
 } from './flow/callable/invocation.js';
 export type { WorkflowCallPin } from './flow/callable/dependencies.js';
-export { CallableInputInvalidError } from './flow/callable/errors.js';
+export { CallableInputInvalidError } from './flow/callable/callable-input.errors.js';
 export {
   callableTypeStructuralSchema,
   callableTypeIssues,

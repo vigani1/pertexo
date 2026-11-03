@@ -16,12 +16,12 @@ import { workflowAccessible } from '../../tenant-access/resources/workflows.repo
 import type { PoolClient } from 'pg';
 import type { Role } from '@pertexo/policy';
 
-import { WorkflowNotFoundError } from '../workflows/errors.js';
+import { WorkflowNotFoundError } from '../workflows/workflow-authoring.errors.js';
 import type { OrganizationActor } from './session.js';
 import {
   WorkflowFolderConflictError,
   WorkflowTagConflictError,
-} from './errors.js';
+} from './workflow-organization.errors.js';
 
 export type OrganizationChange =
   | Readonly<{

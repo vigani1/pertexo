@@ -12,8 +12,8 @@ import {
   parseWorkflowGraphDraft,
 } from '@pertexo/workflow-model';
 import { generatePersistedId } from '@pertexo/database/platform';
-import { WorkflowNotFoundError } from '../workflows/errors.js';
-import { WorkflowCollaborationError } from './errors.js';
+import { WorkflowNotFoundError } from '../workflows/workflow-authoring.errors.js';
+import { WorkflowCollaborationError } from './workflow-collaboration.errors.js';
 import type { WorkflowCommentCommandResult } from '@pertexo/contracts';
 import type { EnterCollaboration } from './authority.repository.js';
 import type {

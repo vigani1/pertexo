@@ -1,7 +1,7 @@
 import type { QueryClient } from '@tanstack/react-query';
 import type { ApiClient } from '@/lib/api/client';
 import { logoutSession } from '../../data/auth.api';
-import { isUnauthenticated } from './errors';
+import { isUnauthenticated } from './session.errors';
 import { publishSessionChange } from './sync';
 
 export async function endBrowserSession(

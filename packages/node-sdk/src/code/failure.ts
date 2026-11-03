@@ -1,4 +1,4 @@
-import { NodeExecutorFailure } from '../execution/errors.js';
+import { NodeExecutorFailure } from '../execution/node-execution.errors.js';
 import type {
   CodeDiagnostics,
   CodeErrorCode,

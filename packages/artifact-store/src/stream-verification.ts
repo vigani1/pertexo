@@ -6,7 +6,7 @@ import type { TransformCallback, Readable } from 'node:stream';
 import {
   ArtifactInputIntegrityError,
   ArtifactIntegrityError,
-} from './errors.js';
+} from './artifact-store.errors.js';
 import type { ArtifactMetadata } from './artifact.store.js';
 
 class VerifyingTransform extends Transform {

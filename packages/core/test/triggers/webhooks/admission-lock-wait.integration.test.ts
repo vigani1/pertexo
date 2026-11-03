@@ -5,7 +5,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   WebhookDeliveryIneligibleError,
   WebhookWorkflowPausedError,
-} from '../../../src/triggers/webhooks/errors.js';
+} from '../../../src/triggers/webhooks/webhook-trigger.errors.js';
 import {
   actorId,
   afterAllFixture2,

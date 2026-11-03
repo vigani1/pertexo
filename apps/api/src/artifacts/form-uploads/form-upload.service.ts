@@ -13,7 +13,7 @@ import {
 import {
   ArtifactApiConflictError,
   ArtifactUploadDeadlineError,
-} from '../errors.js';
+} from '../artifact-api.errors.js';
 import type { FormUploadStore } from '../ports.js';
 import type { ArtifactStore } from '../store-port.js';
 import {

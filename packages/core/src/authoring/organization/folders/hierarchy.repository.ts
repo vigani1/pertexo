@@ -6,9 +6,9 @@ import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { FOLDER_DEPTH_LIMIT } from '../limits.js';
 import type { PoolClient } from 'pg';
 
-import { WorkflowNotFoundError } from '../../workflows/errors.js';
+import { WorkflowNotFoundError } from '../../workflows/workflow-authoring.errors.js';
 
-import { WorkflowFolderConflictError } from '../errors.js';
+import { WorkflowFolderConflictError } from '../workflow-organization.errors.js';
 
 import type { WorkflowFolderRecord } from './workflow-folder.types.js';
 import { nameKey } from './input.js';

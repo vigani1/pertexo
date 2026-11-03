@@ -23,7 +23,10 @@ import {
 } from '../../../../platform/rate-limit/admission.js';
 import { createRateLimitMetricRecorder } from '../../../../platform/rate-limit/metrics.js';
 import { dispatchDirectoryRequest } from './dispatch.js';
-import { directoryFailure, sendDirectoryError } from './errors.js';
+import {
+  directoryFailure,
+  sendDirectoryError,
+} from './directory-http.errors.js';
 
 const parameters = z.object({
   organizationId: z.uuid(),
