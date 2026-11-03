@@ -74,14 +74,12 @@ it('closes persisted tasks and prepared callbacks and durably requests child can
     [f.runId],
   );
   expect(tasks.rows).toEqual(
-    [taskId, callbackId]
-      .sort()
-      .map((id) => ({
-        id,
-        status: 'canceled',
-        consumed_at: expect.any(Date),
-        completed_at: expect.any(Date),
-      })),
+    [taskId, callbackId].sort().map((id) => ({
+      id,
+      status: 'canceled',
+      consumed_at: expect.any(Date) as unknown,
+      completed_at: expect.any(Date) as unknown,
+    })),
   );
   const calls = await query(
     'select status,consumed_at,cancel_requested_at from app.workflow_calls where id=$1',
@@ -90,8 +88,8 @@ it('closes persisted tasks and prepared callbacks and durably requests child can
   expect(calls.rows).toEqual([
     {
       status: 'accepted',
-      consumed_at: expect.any(Date),
-      cancel_requested_at: expect.any(Date),
+      consumed_at: expect.any(Date) as unknown,
+      cancel_requested_at: expect.any(Date) as unknown,
     },
   ]);
   const wakeup = await query(
@@ -106,7 +104,7 @@ it('closes persisted tasks and prepared callbacks and durably requests child can
         [f.runId],
       )
     ).rows,
-  ).toEqual([{ status: 'failed', completed_at: expect.any(Date) }]);
+  ).toEqual([{ status: 'failed', completed_at: expect.any(Date) as unknown }]);
   expect(
     (
       await query(
@@ -114,7 +112,7 @@ it('closes persisted tasks and prepared callbacks and durably requests child can
         [f.delivery.outboxEventId],
       )
     ).rows,
-  ).toEqual([{ completed_at: expect.any(Date) }]);
+  ).toEqual([{ completed_at: expect.any(Date) as unknown }]);
   expect(
     (
       await query(

@@ -25,7 +25,7 @@ it.each(['human_task', 'workflow_call', 'for_each_barrier'] as const)(
         resume_at: null,
         retry_due_at: null,
         due_wakeup_at: null,
-        completed_at: expect.any(Date),
+        completed_at: expect.any(Date) as unknown,
       },
     ]);
     const run = await query(
@@ -33,7 +33,7 @@ it.each(['human_task', 'workflow_call', 'for_each_barrier'] as const)(
       [f.runId],
     );
     expect(run.rows).toEqual([
-      { status: 'failed', completed_at: expect.any(Date) },
+      { status: 'failed', completed_at: expect.any(Date) as unknown },
     ]);
   },
 );
