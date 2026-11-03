@@ -13,8 +13,6 @@ import {
   responseReference,
   simpleUuidPathParameter,
 } from '../primitives.js';
-const root =
-  '/v1/workspaces/:workspaceId/workflows/:workflowId/draft/nodes/:nodeId/webhook-test-events';
 export const testEventSchemas = {
   WebhookTestEventStart: jsonSchema(webhookTestEventStartSchema, 'input'),
   WebhookTestEventStarted: jsonSchema(webhookTestEventStartedSchema, 'output'),

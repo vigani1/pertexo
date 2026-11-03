@@ -17,19 +17,8 @@ import {
   workspaceMemberRoleChangeRequestSchema,
 } from '../../src/schemas/identity/workspaces.js';
 import { identityWorkspaceOpenApiDocument } from '../../src/server.js';
-import { manifestProblemResponse } from '../../src/openapi/primitives.js';
 
 describe('identity and problem public contracts', () => {
-  it('fails closed for mismatched canonical problem metadata', () => {
-    expect(() => manifestProblemResponse(500, 'auth.unauthenticated')).toThrow(
-      'status does not match',
-    );
-    expect(manifestProblemResponse(401, 'auth.unauthenticated')).toMatchObject({
-      'x-pertexo-code': 'auth.unauthenticated',
-      'x-pertexo-status': 401,
-    });
-  });
-
   it('maps every problem code exactly once to immutable HTTP metadata', () => {
     expect(Object.keys(API_PROBLEM_MANIFEST)).toEqual(API_PROBLEM_CODES);
     for (const code of API_PROBLEM_CODES) {

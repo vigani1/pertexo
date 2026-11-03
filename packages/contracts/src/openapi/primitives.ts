@@ -1,7 +1,5 @@
 import { z } from 'zod';
 
-import { API_PROBLEM_MANIFEST } from '../errors/api-problem.js';
-import type { ApiProblemCode } from '../errors/api-problem.js';
 import {
   csrfTokenSchema,
   idempotencyKeySchema,
@@ -43,19 +41,6 @@ export function problemResponse(description: string) {
     content: {
       'application/problem+json': { schema: schemaReference('ApiProblem') },
     },
-  } as const;
-}
-
-export function manifestProblemResponse(status: number, code: ApiProblemCode) {
-  const definition = API_PROBLEM_MANIFEST[code];
-  if (definition.status !== status)
-    throw new Error('Problem status does not match its manifest');
-  return {
-    description: definition.title,
-    content: { 'application/problem+json': { schema: { type: 'object' } } },
-    'x-pertexo-code': code,
-    'x-pertexo-status': definition.status,
-    'x-pertexo-type': definition.type,
   } as const;
 }
 
