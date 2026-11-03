@@ -2,7 +2,14 @@ import type { ApiProblemCode } from '../errors/api-problem.js';
 
 type PublicOperation = Readonly<{
   summary: string;
-  tag: 'Tokens' | 'Workflows' | 'Connections' | 'Runs' | 'Triggers';
+  tag:
+    | 'Tokens'
+    | 'Workflows'
+    | 'Connections'
+    | 'Runs'
+    | 'Triggers'
+    | 'Data tables'
+    | 'Variables';
   scopes: readonly string[];
   /** Beyond what every token route can answer. */
   problems?: readonly ApiProblemCode[];
@@ -180,6 +187,101 @@ export const PUBLIC_OPERATIONS: Readonly<Record<string, PublicOperation>> = {
     tag: 'Triggers',
     scopes: ['workflow:update'],
     problems: ['request.idempotency_conflict'],
+  },
+  listDataTables: {
+    summary: 'List workspace tables',
+    tag: 'Data tables',
+    scopes: ['workspace:read'],
+  },
+  createDataTable: {
+    summary: 'Create a table',
+    tag: 'Data tables',
+    scopes: ['workflow:update'],
+    problems: [
+      'request.idempotency_conflict',
+      'data_table.conflict',
+      'data_table.key_conflict',
+      'data_table.quota_exceeded',
+    ],
+  },
+  removeDataTable: {
+    summary: 'Remove a table',
+    tag: 'Data tables',
+    scopes: ['workflow:update'],
+    problems: ['request.idempotency_conflict', 'data_table.conflict'],
+  },
+  editDataTableSchema: {
+    summary: 'Change table columns',
+    tag: 'Data tables',
+    scopes: ['workflow:update'],
+    problems: [
+      'request.idempotency_conflict',
+      'data_table.conflict',
+      'data_table.quota_exceeded',
+    ],
+  },
+  findDataTableRows: {
+    summary: 'Query table rows',
+    tag: 'Data tables',
+    scopes: ['workspace:read'],
+  },
+  writeDataTableRows: {
+    summary: 'Write table rows',
+    tag: 'Data tables',
+    scopes: ['workflow:update'],
+    problems: [
+      'request.idempotency_conflict',
+      'data_table.conflict',
+      'data_table.key_conflict',
+      'data_table.quota_exceeded',
+    ],
+  },
+  importDataTableCsv: {
+    summary: 'Import table rows from CSV',
+    tag: 'Data tables',
+    scopes: ['workflow:update'],
+    problems: [
+      'request.idempotency_conflict',
+      'data_table.conflict',
+      'data_table.key_conflict',
+      'data_table.quota_exceeded',
+    ],
+  },
+  getWorkspaceVariables: {
+    summary: 'Read non-secret workspace variables',
+    tag: 'Variables',
+    scopes: ['workspace:read'],
+  },
+  replaceWorkspaceVariables: {
+    summary: 'Replace workspace variables',
+    tag: 'Variables',
+    scopes: ['variable:manage'],
+    problems: ['request.idempotency_conflict', 'variables.changed'],
+  },
+  listWorkspaceVariableReferences: {
+    summary: 'Find variable references',
+    tag: 'Variables',
+    scopes: ['workspace:read', 'workflow:read'],
+    problems: ['variables.usage_changed'],
+  },
+  listWorkflowTags: {
+    summary: 'List shared workflow tags',
+    tag: 'Workflows',
+    scopes: ['workflow:read'],
+  },
+  listWorkflowTagAssignments: {
+    summary: 'List workflows assigned to a tag',
+    tag: 'Workflows',
+    scopes: ['workflow:read'],
+  },
+  replaceWorkflowTags: {
+    summary: 'Replace a workflow’s tags',
+    tag: 'Workflows',
+    scopes: ['workflow:update'],
+    problems: [
+      'request.idempotency_conflict',
+      'workflow.organization_revision_conflict',
+    ],
   },
   listConnections: {
     summary: 'List connections',

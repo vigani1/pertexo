@@ -1,0 +1,2 @@
+ALTER TABLE "app"."api_tokens" DROP CONSTRAINT "api_tokens_scopes_valid";--> statement-breakpoint
+ALTER TABLE "app"."api_tokens" ADD CONSTRAINT "api_tokens_scopes_valid" CHECK (jsonb_typeof(scopes) = 'array' and jsonb_array_length(scopes) between 1 and 11 and scopes <@ '["workflow:read","workflow:create","workflow:update","workflow:publish","run:read","run:read-data","run:start","run:cancel","connection:read","workspace:read","variable:manage"]'::jsonb);

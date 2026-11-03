@@ -17,7 +17,7 @@ import type { WorkspaceActor } from '../shared/workspace-access.js';
 export type { DataTableDefinition } from '@pertexo/contracts';
 export type DataTableQuotas = DataTablesResponse['quotas'];
 export type DataTableMutation = WorkspaceActor &
-  Readonly<{ idempotencyKey: string }>;
+  Readonly<{ idempotencyKey: string; commandCredentialId?: string }>;
 export type DataTableWriteCommand = Exclude<
   DataTableCommand,
   { operation: 'find' }

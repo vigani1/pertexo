@@ -6577,10 +6577,16 @@
     "/v1/workspaces/{workspaceId}/workflow-tags": {
       "get": {
         "operationId": "listWorkflowTags",
+        "x-pertexo-api-token-scopes": [
+          "workflow:read"
+        ],
         "description": "Current workflow:read in an active workspace. Bounded vocabulary page in ascending UUID order, no total count. Every continuation rechecks current authority.",
         "security": [
           {
             "cookieSession": []
+          },
+          {
+            "apiToken": []
           }
         ],
         "parameters": [
@@ -7077,10 +7083,16 @@
     "/v1/workspaces/{workspaceId}/workflow-tags/{tagId}/workflows": {
       "get": {
         "operationId": "listWorkflowTagAssignments",
+        "x-pertexo-api-token-scopes": [
+          "workflow:read"
+        ],
         "description": "Current owner/admin; authoritative assignment discovery including archived workflows in ascending workflow UUID order, no total count. Missing/foreign tags return generic not-found, unlike a workflow-list tag filter which returns a scoped empty page.",
         "security": [
           {
             "cookieSession": []
+          },
+          {
+            "apiToken": []
           }
         ],
         "parameters": [
@@ -7199,10 +7211,16 @@
     "/v1/workspaces/{workspaceId}/workflows/{workflowId}/tags": {
       "post": {
         "operationId": "replaceWorkflowTags",
+        "x-pertexo-api-token-scopes": [
+          "workflow:update"
+        ],
         "description": "Current workflow:update in an active workspace and active workflow. Replace at most 16 unique shared tag IDs at the independent organization revision. A new accepted no-op advances once; exact authorized replay does not. Does not change graph, name, lifecycle or updated ordering.",
         "security": [
           {
             "cookieSession": []
+          },
+          {
+            "apiToken": []
           }
         ],
         "parameters": [
@@ -7231,13 +7249,14 @@
           {
             "name": "x-csrf-token",
             "in": "header",
-            "required": true,
+            "required": false,
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
               "minLength": 16,
               "maxLength": 256
-            }
+            },
+            "description": "Required with cookie sessions. Bearer API tokens do not use CSRF."
           },
           {
             "name": "Idempotency-Key",

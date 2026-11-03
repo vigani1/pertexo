@@ -1,3 +1,4 @@
+import { credentialCommandScope } from '@pertexo/database/platform';
 import type { WorkspaceVariablesCommandResponse } from '@pertexo/contracts';
 import {
   appendAuditFact,
@@ -33,7 +34,7 @@ export async function replaceWorkspaceVariables(
 ): Promise<WorkspaceVariablesCommandResponse> {
   const command = {
     workspaceId: input.workspaceId,
-    scope: input.actorId,
+    scope: credentialCommandScope(input.actorId, input.commandCredentialId),
     operation: 'workspace.variables.replace',
     idempotencyKey: input.idempotencyKey,
   };

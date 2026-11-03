@@ -1,3 +1,4 @@
+import { AutomationAuthenticationGuard } from '../../../../src/authentication/automation/guard.js';
 import type { Role } from '@pertexo/policy';
 import 'reflect-metadata';
 import { APPLICATION_ERROR_MAPPERS } from '../../../../src/application-errors.js';
@@ -177,6 +178,24 @@ const applications: NestFastifyApplication[] = [];
 export async function httpFixture(role: Role = 'owner') {
   const f = fixture(role);
   const contexts = new RequestContextStore();
+  const sessions = {
+    canActivate(context: ExecutionContext) {
+      const request = context
+        .switchToHttp()
+        .getRequest<WorkflowAuthoringRequest>();
+      if (request.headers?.['x-test-anonymous'] === 'true')
+        return throwApplicationError(applicationError('auth.unauthenticated'));
+      Object.assign(request, {
+        identitySession: {
+          userId: actorId,
+          sessionId,
+          expiresAt: new Date('2099-01-01T00:00:00Z'),
+          clientMetadata: {},
+        },
+      });
+      return true;
+    },
+  };
   const module = await Test.createTestingModule({
     controllers: [WorkflowOrganizationController],
     providers: [
@@ -187,26 +206,9 @@ export async function httpFixture(role: Role = 'owner') {
     ],
   })
     .overrideGuard(SessionAuthenticationGuard)
-    .useValue({
-      canActivate(context: ExecutionContext) {
-        const request = context
-          .switchToHttp()
-          .getRequest<WorkflowAuthoringRequest>();
-        if (request.headers?.['x-test-anonymous'] === 'true')
-          return throwApplicationError(
-            applicationError('auth.unauthenticated'),
-          );
-        Object.assign(request, {
-          identitySession: {
-            userId: actorId,
-            sessionId,
-            expiresAt: new Date('2099-01-01T00:00:00Z'),
-            clientMetadata: {},
-          },
-        });
-        return true;
-      },
-    })
+    .useValue(sessions)
+    .overrideGuard(AutomationAuthenticationGuard)
+    .useValue(sessions)
     .overrideGuard(CsrfProtectionGuard)
     .useValue(new CsrfProtectionGuard(new DoubleSubmitCsrfPolicy()))
     .compile();

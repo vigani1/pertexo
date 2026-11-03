@@ -65,14 +65,26 @@ describe('organization HTTP manifest and generated structural contracts', () => 
         string,
         OperationShape,
       ][]) {
-        expect(operation.security).toEqual([{ cookieSession: [] }]);
+        const token =
+          (path === '/v1/workspaces/{workspaceId}/workflow-tags' &&
+            method === 'get') ||
+          path.endsWith('/workflow-tags/{tagId}/workflows') ||
+          path.endsWith('/workflows/{workflowId}/tags');
+        expect(operation.security).toEqual(
+          token
+            ? [{ cookieSession: [] }, { apiToken: [] }]
+            : [{ cookieSession: [] }],
+        );
         const headers = operation.parameters.filter(
           (parameter) => parameter.in === 'header',
         );
         expect(headers.map((parameter) => parameter.name)).toEqual(
           expectedCommandHeaders(method, path),
         );
-        expect(headers.every((header) => header.required)).toBe(true);
+        for (const header of headers)
+          expect(header.required).toBe(
+            header.name === 'x-csrf-token' ? !token : true,
+          );
         const success =
           '201' in operation.responses
             ? operation.responses['201']

@@ -42,7 +42,7 @@ export const variableRoutes = {
     operationId: 'getWorkspaceVariables',
     method: 'get',
     path: VARIABLES_PATH,
-    access: { auth: 'session', capabilities: [reading] },
+    access: { auth: 'session_or_token', capabilities: [reading] },
     rateLimit: 'authenticated_read',
     success: {
       status: 200,
@@ -59,7 +59,7 @@ export const variableRoutes = {
     method: 'put',
     path: VARIABLES_PATH,
     access: {
-      auth: 'session',
+      auth: 'session_or_token',
       capabilities: [
         {
           name: 'variable:manage',
@@ -86,7 +86,10 @@ export const variableRoutes = {
     operationId: 'listWorkspaceVariableReferences',
     method: 'get',
     path: `${VARIABLES_PATH}/usage`,
-    access: { auth: 'session', capabilities: [reading] },
+    access: {
+      auth: 'session_or_token',
+      capabilities: [reading, { ...reading, name: 'workflow:read' }],
+    },
     rateLimit: 'authenticated_read',
     query: workspaceVariableUsageQuerySchema,
     success: {

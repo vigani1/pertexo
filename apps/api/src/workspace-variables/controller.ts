@@ -1,6 +1,7 @@
 import { Controller, Req, UseInterceptors } from '@nestjs/common';
 import { variableRoutes, type RouteInput } from '@pertexo/contracts/server';
-import { authenticatedSession } from '../workspaces/index.js';
+import { commandCredential } from '../authorization/credentials.js';
+import { projectAuthenticatedWorkspaceContext } from '../workspaces/request/authenticated-context.js';
 import { In, Route } from '../workspaces/http/route.js';
 import type { IdentityWorkspaceRequest } from '../workspaces/types.js';
 import { authenticatedRequestIdentifiers } from '../workspaces/request/authenticated-context.js';
@@ -23,7 +24,10 @@ export class WorkspaceVariablesController {
     return withRequestOperationSignal(request, (signal) =>
       this.variables.read({
         workspaceId: params.workspaceId,
-        actorId: authenticatedSession(request).userId,
+        actorId: projectAuthenticatedWorkspaceContext(
+          request,
+          params.workspaceId,
+        ).actor.actorId,
         signal,
       }),
     );
@@ -36,7 +40,10 @@ export class WorkspaceVariablesController {
     return withRequestOperationSignal(request, (signal) =>
       this.variables.usage({
         workspaceId: params.workspaceId,
-        actorId: authenticatedSession(request).userId,
+        actorId: projectAuthenticatedWorkspaceContext(
+          request,
+          params.workspaceId,
+        ).actor.actorId,
         ...query,
         signal,
       }),
@@ -48,10 +55,15 @@ export class WorkspaceVariablesController {
     @In()
     { params, body, idempotencyKey }: RouteInput<typeof variableRoutes.replace>,
   ) {
+    const { actor } = projectAuthenticatedWorkspaceContext(
+      request,
+      params.workspaceId,
+    );
     return withRequestOperationSignal(request, (signal) =>
       this.variables.replace({
         workspaceId: params.workspaceId,
-        actorId: authenticatedSession(request).userId,
+        actorId: actor.actorId,
+        ...commandCredential(actor),
         ...body,
         idempotencyKey,
         ...authenticatedRequestIdentifiers(request),

@@ -1,3 +1,4 @@
+import { commandCredential } from '../../authorization/credentials.js';
 import {
   AuthorizationError,
   authorizeWorkspaceOperation,
@@ -51,6 +52,7 @@ export function workflowOrganizationContext(input: WorkflowOrganizationInput) {
   return {
     workspaceId: input.routeWorkspaceId,
     actorId: input.actor.actorId,
+    ...commandCredential(input.actor),
     ...(input.signal === undefined ? {} : { signal: input.signal }),
   };
 }
