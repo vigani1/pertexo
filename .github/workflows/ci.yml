@@ -162,6 +162,7 @@ jobs:
               @pertexo/templates --filter @pertexo/workflow-engine --filter
               @pertexo/workflow-model --filter @pertexo/policy --filter
               @pertexo/artifact-store --filter @pertexo/database
+          # Worker tests also cover provider/security composition; packages stay independent.
           - group: apps
             filter: >-
               --filter @pertexo/api --filter @pertexo/worker --filter

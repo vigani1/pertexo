@@ -82,6 +82,13 @@ outages remain distinct. Raw SMTP replies, provider message text, mail content,
 credentials and link tokens are never part of these diagnostics. Invitation
 rejections store the same codes; retry errors carry the same safe guidance.
 
+A queued message whose encryption key is missing logs `system_mail.key_unavailable`
+with its `keyVersion`. The worker stays ready and workflows continue. Only the
+affected mail waits, encrypted, and retries without consuming delivery attempts
+until its existing expiry. Restore that exact version in `AUTH_MAIL_PREVIOUS_KEYS`
+and restart the worker; retained mail can then send. Keep the current mail key
+configured and valid.
+
 Repair the named SMTP setting or Resend credential/domain before requesting new
 mail after a permanent refusal. Temporary failures retry within the message's
 existing validity window. For unknown SMTP outcomes, establish acceptance with
