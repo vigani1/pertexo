@@ -23,7 +23,7 @@ import {
 import { openNoticeUnsubscribe } from '@pertexo/core/inbox';
 import { Pool } from 'pg';
 import { SMTPServer } from 'smtp-server';
-import { createSystemMailDeliveryHandler } from '../../src/mail/delivery.js';
+import { createSystemMailDeliveryHandler } from '@pertexo/secrets/server';
 import {
   createNoticePreferencesStore,
   createNoticeMailStore,

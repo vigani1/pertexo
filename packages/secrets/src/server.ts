@@ -153,3 +153,8 @@ export {
   isAllowedPrivateAddress,
   normalizeUrlHostname,
 } from './outbound-http/transport/address-policy.js';
+
+export {
+  createSystemMailDeliveryHandler,
+  type SystemMailDeliveryHandler,
+} from './mail/deliver-system-mail.js';

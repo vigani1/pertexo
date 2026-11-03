@@ -21,7 +21,7 @@ import type {
 } from '@pertexo/observability';
 
 import type { WorkerConfig } from './config/worker.js';
-import { createSystemMailDeliveryHandler } from './mail/delivery.js';
+import { createSystemMailDeliveryHandler } from '@pertexo/secrets/server';
 import {
   SYSTEM_MAIL_RUNTIME,
   createSystemMailRuntime,

@@ -4,7 +4,7 @@ import {
   createPollingRuntime,
   type PollingRuntime,
 } from '../runtime/polling.js';
-import type { SystemMailDeliveryHandler } from './delivery.js';
+import type { SystemMailDeliveryHandler } from '@pertexo/secrets/server';
 
 export type SystemMailRuntime = PollingRuntime;
 
