@@ -126,6 +126,7 @@ export async function setupPasswordAndRevokeSessions(
       userId: input.userId,
       password: input.passwordHash,
     });
+    await invalidatePasswordResetProofs(client, input.userId);
     await applySessionChange(client, input.userId, sessionChange);
     await recordIdentitySecurityFact(
       client,
@@ -257,6 +258,13 @@ export async function unlinkMethodAndRevokeSessions(
       )
       .returning({ id: authAccounts.id });
     if (removed.length !== 1) return 'not_found';
+    if (
+      accounts.some(
+        (account) =>
+          account.id === input.methodId && account.providerId === 'credential',
+      )
+    )
+      await invalidatePasswordResetProofs(client, input.userId);
     await applySessionChange(client, input.userId, sessionChange);
     await recordIdentitySecurityFact(client, input.userId, 'method.unlinked');
     return 'unlinked';
