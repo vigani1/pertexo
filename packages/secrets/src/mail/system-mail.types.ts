@@ -46,7 +46,7 @@ export type SystemMailSettlement = Readonly<{
         retryAt?: undefined;
       }>
     | Readonly<{
-        outcome: 'retry';
+        outcome: 'retry' | 'payload_unavailable';
         retryAt: Date;
         providerReference?: undefined;
       }>

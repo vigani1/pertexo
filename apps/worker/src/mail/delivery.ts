@@ -105,11 +105,24 @@ async function deliverClaim(
     claim.id,
     claim.expiresAt,
   );
-  const message = payload.parse(
-    JSON.parse(
-      dependencies.envelope.open(claim.sealedPayload, associatedData),
-    ) as unknown,
-  );
+  let message: z.output<typeof payload>;
+  try {
+    message = payload.parse(
+      JSON.parse(
+        dependencies.envelope.open(claim.sealedPayload, associatedData),
+      ) as unknown,
+    );
+  } catch {
+    await dependencies.store.settle({
+      ...claimIdentity(claim),
+      outcome: 'payload_unavailable',
+      failureCode: 'delivery.payload_unavailable',
+      retryAt: new Date(now().getTime() + 60_000),
+    });
+    throw new Error(
+      'Cannot open queued system mail. Restore AUTH_MAIL_KEY and AUTH_MAIL_PREVIOUS_KEYS, or repair the queued payload, then restart the worker. Mail is retained until expiry.',
+    );
+  }
   let result: SystemMailResult;
   const authorization = { superseded: false };
   try {

@@ -5,6 +5,7 @@ import {
 } from '@pertexo/database/platform';
 import {
   claimMail,
+  findUnavailableMailKey,
   insertSystemMail,
   settleMail,
 } from './deliveries.repository.js';
@@ -49,4 +50,23 @@ export function createSystemMailDeliveryStore(
     settle: (input: SystemMailSettlement) => settleMail(lease.pool, input),
     close: (): Promise<void> => lease.close(),
   });
+}
+
+/** Startup refuses missing retained mail keys before any delivery can be claimed. */
+export async function verifySystemMailKeys(
+  config: DatabaseConfig,
+  availableVersions: readonly string[],
+): Promise<void> {
+  const lease = acquireDatabasePool(config, undefined, { role: 'maintenance' });
+  try {
+    if (
+      (await findUnavailableMailKey(lease.pool, availableVersions)) !==
+      undefined
+    )
+      throw new Error(
+        'Queued system mail needs an unavailable AUTH_MAIL_KEY version. Restore its AUTH_MAIL_PREVIOUS_KEYS entry before starting the worker.',
+      );
+  } finally {
+    await lease.close();
+  }
 }
