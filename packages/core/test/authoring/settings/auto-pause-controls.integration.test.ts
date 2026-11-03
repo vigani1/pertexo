@@ -89,6 +89,56 @@ describe('workflow auto pause operational controls', () => {
     ).toBe(1);
   });
 
+  it('keeps maximum-threshold evidence while disabled and uses it when enabled again', async () => {
+    const scope = await seed();
+    await controls().updateWorkflowSettings({
+      ...scope,
+      enabled: false,
+      thresholdOverride: 100,
+      expectedSettingsRevision: 1,
+      idempotencyKey: randomUUID(),
+    });
+    for (let i = 0; i < 150; i++)
+      await outcome(
+        scope,
+        new Date(Date.now() + 1000 + i * 1000).toISOString(),
+      );
+    expect(await fold.foldPending(1000)).toEqual([]);
+    expect(await failures(scope)).toBe(100);
+    expect(
+      (
+        await admin.query(
+          'select count(*)::int count from app.workflow_trigger_failures where workflow_id=$1',
+          [scope.workflowId],
+        )
+      ).rows,
+    ).toEqual([{ count: 100 }]);
+    await controls().updateWorkflowSettings({
+      ...scope,
+      enabled: true,
+      thresholdOverride: 100,
+      expectedSettingsRevision: 2,
+      idempotencyKey: randomUUID(),
+    });
+    // Settings do not pause retroactively, but the next evaluation uses the existing streak.
+    expect((await controls().readWorkflowSettings(scope)).pauseState).toBe(
+      'none',
+    );
+    await outcome(scope, new Date(Date.now() + 200_000).toISOString());
+    expect(await fold.foldPending(1000)).toEqual([
+      {
+        workspaceId: scope.workspaceId,
+        workflowId: scope.workflowId,
+        consecutiveFailures: 100,
+      },
+    ]);
+    expect(await failures(scope)).toBe(100);
+    expect(await auditCount(scope, 'workflow.triggers_paused')).toBe(1);
+    expect(
+      await auditCount(scope, 'workflow.auto_pause_settings_changed'),
+    ).toBe(2);
+  });
+
   it('resumes atomically, discards old pending outcomes, counts new endings and replays the accepted snapshot', async () => {
     const scope = await seed();
     await pause(scope);
