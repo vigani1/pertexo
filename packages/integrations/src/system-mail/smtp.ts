@@ -6,6 +6,7 @@ import type {
   SystemMailConfig,
   SystemMailMessage,
   SystemMailResult,
+  SystemMailFailure,
 } from './contracts.js';
 
 export function createSmtpClient(
@@ -21,7 +22,8 @@ async function send(
   config: Extract<SystemMailConfig, { mode: 'smtp' }>,
   message: SystemMailMessage,
 ): Promise<SystemMailResult> {
-  if (message.signal?.aborted) return { kind: 'retryable' };
+  if (message.signal?.aborted)
+    return { kind: 'retryable', failure: { category: 'cancelled' } };
   const reference = `<${createHash('sha256').update(message.idempotencyKey).digest('hex')}@${message.fromEmail.slice(message.fromEmail.lastIndexOf('@') + 1)}>`;
   const bytes = await new MailComposer({
     from: { address: message.fromEmail, name: '' },
@@ -71,16 +73,26 @@ async function send(
       };
       const failure = (error?: SMTPConnection.SMTPError) => {
         const code = error?.responseCode;
+        const detail = smtpFailure(error);
         if (code !== undefined && code >= 500 && code < 600)
-          finish({ kind: 'failed' });
+          finish({ kind: 'failed', failure: detail });
         else if (code !== undefined && code >= 400 && code < 500)
-          finish({ kind: 'retryable' });
-        else finish({ kind: dispatching ? 'unknown' : 'retryable' });
+          finish({ kind: 'retryable', failure: detail });
+        else
+          finish({
+            kind: dispatching ? 'unknown' : 'retryable',
+            failure: detail,
+          });
       };
       const aborted = () => {
-        failure();
+        finish({
+          kind: dispatching ? 'unknown' : 'retryable',
+          failure: { category: 'cancelled' },
+        });
       };
-      const deadline = setTimeout(aborted, message.timeoutMillis);
+      const deadline = setTimeout(() => {
+        failure();
+      }, message.timeoutMillis);
       message.signal?.addEventListener('abort', aborted, { once: true });
       connection.on('error', failure);
       connection.on('end', () => {
@@ -102,7 +114,10 @@ async function send(
           );
         } catch {
           // A failed durable mark must not start a network side effect.
-          finish({ kind: dispatching ? 'unknown' : 'retryable' });
+          finish({
+            kind: dispatching ? 'unknown' : 'retryable',
+            failure: { category: 'dispatch_refused' },
+          });
         }
       };
       connection.connect(() => {
@@ -120,4 +135,35 @@ async function send(
   } finally {
     bytes.fill(0);
   }
+}
+
+function smtpFailure(
+  error: SMTPConnection.SMTPError | undefined,
+): SystemMailFailure {
+  let category: SystemMailFailure['category'] = 'network';
+  if (error?.code === 'EAUTH') category = 'authentication';
+  else if (
+    error?.command === 'STARTTLS' ||
+    error?.code === 'ETLS' ||
+    new Set([
+      'DEPTH_ZERO_SELF_SIGNED_CERT',
+      'SELF_SIGNED_CERT_IN_CHAIN',
+      'UNABLE_TO_VERIFY_LEAF_SIGNATURE',
+      'UNABLE_TO_GET_ISSUER_CERT_LOCALLY',
+      'CERT_HAS_EXPIRED',
+      'CERT_NOT_YET_VALID',
+      'ERR_TLS_CERT_ALTNAME_INVALID',
+    ]).has(error?.originalCode ?? '')
+  )
+    category = 'tls';
+  else if (error?.command === 'MAIL FROM') category = 'sender_rejected';
+  else if (error?.command === 'RCPT TO') category = 'recipient_rejected';
+  else if (error?.responseCode !== undefined) category = 'provider_rejected';
+  const status = error?.responseCode;
+  return {
+    category,
+    ...(status !== undefined && status >= 400 && status < 600
+      ? { status }
+      : {}),
+  };
 }

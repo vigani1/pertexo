@@ -2,6 +2,8 @@ import type { WorkspaceInvitationDeliveryStore } from '@pertexo/core/tenant-acce
 import { createWorkspaceInvitationDeliveryStore } from '@pertexo/core/tenant-access';
 import {
   createApplicationSecretEnvelope,
+  systemMailFailureCode,
+  SYSTEM_MAIL_FAILURE_GUIDANCE,
   createSystemMailClient,
 } from '@pertexo/integrations/server';
 import type {
@@ -115,7 +117,7 @@ export function createWorkspaceInvitationDeliveryHandler(
         await dependencies.store.complete({
           ...identity,
           status: 'unknown',
-          failureCode: 'delivery.outcome_unknown',
+          failureCode: systemMailFailureCode(result.failure),
           signal: context.signal,
         });
         return;
@@ -176,12 +178,14 @@ async function settleResult(
     await store.complete({
       ...identity,
       status: 'failed',
-      failureCode: 'delivery.provider_rejected',
+      failureCode: systemMailFailureCode(result.failure),
       signal,
     });
     return;
   }
   // SMTP reaches this point only after definite nonacceptance; Resend can
   // repeat its provider-idempotent command after an uncertain response.
-  throw new Error('Workspace invitation delivery requires retry');
+  throw new Error(
+    `Workspace invitation delivery requires retry: ${systemMailFailureCode(result.failure)}. ${SYSTEM_MAIL_FAILURE_GUIDANCE[result.failure.category]}`,
+  );
 }

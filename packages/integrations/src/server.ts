@@ -170,9 +170,15 @@ export {
   StoredKeyVerificationError,
 } from './credentials/verify-stored-keys.js';
 
+export {
+  SYSTEM_MAIL_FAILURE_GUIDANCE,
+  systemMailFailureCode,
+  systemMailFailureInstruction,
+} from './system-mail/contracts.js';
 export { createSystemMailClient } from './system-mail/client.js';
 export { parseSystemMailConfig } from './system-mail/config.js';
 export type {
+  SystemMailFailure,
   SystemMailClient,
   SystemMailConfig,
   SystemMailMessage,

@@ -71,3 +71,19 @@ and redacts tokens/headers in runtime errors. Keep that route and filter when
 customizing the proxy; nginx request/error logs must not see its query token.
 Configure the external relay to DKIM-sign both unsubscribe headers. See the
 [notification guide](../guides/notifications.md#mail-operator-requirements).
+
+### Delivery diagnostics and recovery
+
+Worker logs report `system_mail.delivery_failed` with an allowlisted category,
+a numeric provider status when available, and a safe recovery instruction.
+The queue's `failure_code` stores `delivery.<category>[.<status>]`. Authentication,
+sender authorization, recipient rejection, TLS, network, rate limits and provider
+outages remain distinct. Raw SMTP replies, provider message text, mail content,
+credentials and link tokens are never part of these diagnostics. Invitation
+rejections store the same codes; retry errors carry the same safe guidance.
+
+Repair the named SMTP setting or Resend credential/domain before requesting new
+mail after a permanent refusal. Temporary failures retry within the message's
+existing validity window. For unknown SMTP outcomes, establish acceptance with
+the provider before requesting another message; the worker never resends blindly.
+
