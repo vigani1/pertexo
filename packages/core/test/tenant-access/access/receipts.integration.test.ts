@@ -101,7 +101,6 @@ describe('an exact retry', () => {
             ...target,
             tokenDigest: randomUUID().replaceAll('-', '').repeat(2),
             sealedToken: create.sealedToken,
-            expiresAt: new Date(Date.now() + 60_000),
           }),
       }[operation];
       const first = operation === 'create' ? created : await command();

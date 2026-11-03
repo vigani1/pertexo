@@ -120,7 +120,6 @@ describe('identity/workspace persistence', () => {
       intentId,
       bindingDigest,
       csrfDigest: invitationTokenDigest(randomUUID()),
-      expiresAt: new Date(Date.now() + 15 * 60_000),
     });
     await identityDatabase.recordInvitationAcceptanceProof({
       workspaceId: workspace.id,
@@ -1942,7 +1941,6 @@ describe('identity/workspace persistence', () => {
         intentId,
         bindingDigest,
         csrfDigest: createHash('sha256').update(randomUUID()).digest('hex'),
-        expiresAt: new Date(Date.now() + 15 * 60_000),
       }),
     ).resolves.toBeNull();
 
@@ -1965,7 +1963,6 @@ describe('identity/workspace persistence', () => {
         intentId,
         bindingDigest,
         csrfDigest: createHash('sha256').update(randomUUID()).digest('hex'),
-        expiresAt: new Date(Date.now() + 15 * 60_000),
       }),
     ).resolves.toMatchObject({ status: 'pending', invitationRevision: 1 });
     await tenantDatabase.withWorkspace(
@@ -1989,7 +1986,6 @@ describe('identity/workspace persistence', () => {
       tokenDigest: createHash('sha256').update('new-secret').digest('hex'),
       sealedToken: testSealedToken(),
       deliveryAttemptId: randomUUID(),
-      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60_000),
     });
     await expect(
       identityDatabase.readInvitationAcceptance(
@@ -2035,7 +2031,6 @@ describe('identity/workspace persistence', () => {
       csrfDigest: createHash('sha256')
         .update(`csrf:${oldIntentId}`)
         .digest('hex'),
-      expiresAt: new Date(Date.now() + 15 * 60_000),
     });
     await identityDatabase.resolveInvitationAcceptance({
       workspaceId: invitationWorkspace.id,
@@ -2046,7 +2041,7 @@ describe('identity/workspace persistence', () => {
       csrfDigest: createHash('sha256')
         .update(`csrf:${newIntentId}`)
         .digest('hex'),
-      expiresAt: new Date(Date.now() + 15 * 60_000),
+
       priorBinding: {
         workspaceId: invitationWorkspace.id,
         intentId: oldIntentId,
@@ -2118,7 +2113,6 @@ describe('identity/workspace persistence', () => {
       intentId: priorIntentId,
       bindingDigest: priorBindingDigest,
       csrfDigest: createHash('sha256').update(randomUUID()).digest('hex'),
-      expiresAt: new Date(Date.now() + 15 * 60_000),
     });
     const targetTokenDigest = createHash('sha256')
       .update(randomUUID())
@@ -2226,7 +2220,6 @@ describe('identity/workspace persistence', () => {
       tokenDigest: refreshedTokenDigest,
       sealedToken: testSealedToken(),
       deliveryAttemptId: randomUUID(),
-      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60_000),
     });
     await expect(
       identityDatabase.resolveInvitationAcceptance({
@@ -2271,7 +2264,6 @@ describe('identity/workspace persistence', () => {
       intentId: oldIntentId,
       bindingDigest: oldBinding,
       csrfDigest: createHash('sha256').update(randomUUID()).digest('hex'),
-      expiresAt: new Date(Date.now() + 15 * 60_000),
     });
     await tenantDatabase.withWorkspace(
       invitationWorkspace.id,
@@ -2297,7 +2289,6 @@ describe('identity/workspace persistence', () => {
       tokenDigest: newTokenDigest,
       sealedToken: testSealedToken(),
       deliveryAttemptId: randomUUID(),
-      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60_000),
     });
 
     await expect(
@@ -2308,7 +2299,7 @@ describe('identity/workspace persistence', () => {
         intentId: randomUUID(),
         bindingDigest: createHash('sha256').update(randomUUID()).digest('hex'),
         csrfDigest: createHash('sha256').update(randomUUID()).digest('hex'),
-        expiresAt: new Date(Date.now() + 15 * 60_000),
+
         priorBinding: {
           workspaceId: invitationWorkspace.id,
           intentId: oldIntentId,
@@ -2405,7 +2396,7 @@ describe('identity/workspace persistence', () => {
         intentId: randomUUID(),
         bindingDigest: createHash('sha256').update(randomUUID()).digest('hex'),
         csrfDigest: createHash('sha256').update(randomUUID()).digest('hex'),
-        expiresAt: new Date(Date.now() + 15 * 60_000),
+
         priorBinding: commandB.priorBinding,
       }),
     ).resolves.toBeNull();
@@ -2427,7 +2418,7 @@ describe('identity/workspace persistence', () => {
         intentId: randomUUID(),
         bindingDigest: createHash('sha256').update(randomUUID()).digest('hex'),
         csrfDigest: createHash('sha256').update(randomUUID()).digest('hex'),
-        expiresAt: new Date(Date.now() + 15 * 60_000),
+
         priorBinding: commandB.priorBinding,
       }),
     ).resolves.toBeNull();
@@ -2572,7 +2563,6 @@ describe('identity/workspace persistence', () => {
       intentId: completedIntentId,
       bindingDigest: completedBinding,
       csrfDigest: createHash('sha256').update(randomUUID()).digest('hex'),
-      expiresAt: new Date(Date.now() + 15 * 60_000),
     });
     await identityDatabase.recordInvitationAcceptanceProof({
       workspaceId: invitationWorkspace.id,
@@ -2618,7 +2608,7 @@ describe('identity/workspace persistence', () => {
         intentId: randomUUID(),
         bindingDigest: createHash('sha256').update(randomUUID()).digest('hex'),
         csrfDigest: createHash('sha256').update(randomUUID()).digest('hex'),
-        expiresAt: new Date(Date.now() + 15 * 60_000),
+
         priorBinding: {
           workspaceId: invitationWorkspace.id,
           intentId: completedIntentId,
@@ -2760,7 +2750,7 @@ describe('identity/workspace persistence', () => {
         intentId: randomUUID(),
         bindingDigest: createHash('sha256').update(randomUUID()).digest('hex'),
         csrfDigest: createHash('sha256').update(randomUUID()).digest('hex'),
-        expiresAt: new Date(Date.now() + 15 * 60_000),
+
         priorBinding: successorIntent.priorBinding,
       }),
     ).resolves.toBeNull();
@@ -2823,7 +2813,6 @@ describe('identity/workspace persistence', () => {
       intentId: priorIntentId,
       bindingDigest: priorBindingDigest,
       csrfDigest: createHash('sha256').update(randomUUID()).digest('hex'),
-      expiresAt: new Date(Date.now() + 15 * 60_000),
     });
     const targetIntentId = randomUUID();
     const targetBindingDigest = createHash('sha256')
@@ -2836,7 +2825,7 @@ describe('identity/workspace persistence', () => {
       intentId: targetIntentId,
       bindingDigest: targetBindingDigest,
       csrfDigest: createHash('sha256').update(randomUUID()).digest('hex'),
-      expiresAt: new Date(Date.now() + 15 * 60_000),
+
       priorBinding: {
         workspaceId: priorWorkspace.id,
         intentId: priorIntentId,
@@ -2922,7 +2911,6 @@ describe('identity/workspace persistence', () => {
       intentId: oldIntentId,
       bindingDigest: oldBinding,
       csrfDigest: createHash('sha256').update(randomUUID()).digest('hex'),
-      expiresAt: new Date(Date.now() + 15 * 60_000),
     });
     const owner = new Pool({ connectionString: migrationUrl, max: 1 });
     try {
@@ -2954,7 +2942,7 @@ describe('identity/workspace persistence', () => {
         intentId: randomUUID(),
         bindingDigest: createHash('sha256').update(randomUUID()).digest('hex'),
         csrfDigest: createHash('sha256').update(randomUUID()).digest('hex'),
-        expiresAt: new Date(Date.now() + 15 * 60_000),
+
         priorBinding: {
           workspaceId: invitationWorkspace.id,
           intentId: oldIntentId,
@@ -2993,7 +2981,6 @@ describe('identity/workspace persistence', () => {
       intentId: oldIntentId,
       bindingDigest: oldBinding,
       csrfDigest: createHash('sha256').update(randomUUID()).digest('hex'),
-      expiresAt: new Date(Date.now() + 15 * 60_000),
     });
     const replacementWorkspace =
       await identityDatabase.createWorkspaceWithOwner({
@@ -3112,7 +3099,6 @@ describe('identity/workspace persistence', () => {
         tokenDigest: createHash('sha256').update('new-secret').digest('hex'),
         sealedToken: testSealedToken(),
         deliveryAttemptId: randomUUID(),
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60_000),
       }),
     ).rejects.toMatchObject({ reason: 'delivery_unresolved' });
     await tenantDatabase.withWorkspace(
@@ -3348,7 +3334,6 @@ describe('identity/workspace persistence', () => {
       intentId: oldIntentId,
       bindingDigest: invitationTokenDigest(randomUUID()),
       csrfDigest: invitationTokenDigest(randomUUID()),
-      expiresAt: new Date(Date.now() + 15 * 60_000),
     });
     await tenantDatabase.withWorkspace(
       invitationWorkspace.id,
@@ -3432,7 +3417,6 @@ describe('identity/workspace persistence', () => {
         intentId,
         bindingDigest: invitationTokenDigest(randomUUID()),
         csrfDigest: invitationTokenDigest(randomUUID()),
-        expiresAt: new Date(Date.now() + 15 * 60_000),
       });
       await tenantDatabase.withWorkspace(
         invitationWorkspace.id,
@@ -3525,7 +3509,6 @@ describe('identity/workspace persistence', () => {
         intentId,
         bindingDigest: invitationTokenDigest(randomUUID()),
         csrfDigest: invitationTokenDigest(randomUUID()),
-        expiresAt: new Date(Date.now() + 15 * 60_000),
       });
       await tenantDatabase.withWorkspace(workspace.id, async ({ db }) => {
         await db.execute(sql`
@@ -3600,7 +3583,6 @@ describe('identity/workspace persistence', () => {
       intentId,
       bindingDigest,
       csrfDigest: invitationTokenDigest(randomUUID()),
-      expiresAt: new Date(Date.now() + 15 * 60_000),
     });
     await identityDatabase.recordInvitationAcceptanceProof({
       workspaceId: workspace.id,
@@ -3686,7 +3668,6 @@ describe('identity/workspace persistence', () => {
       intentId,
       bindingDigest: invitationTokenDigest(randomUUID()),
       csrfDigest: invitationTokenDigest(randomUUID()),
-      expiresAt: new Date(Date.now() + 15 * 60_000),
     });
     await tenantDatabase.withWorkspace(
       invitationWorkspace.id,
@@ -3706,7 +3687,6 @@ describe('identity/workspace persistence', () => {
         intentId: randomUUID(),
         bindingDigest: invitationTokenDigest(randomUUID()),
         csrfDigest: invitationTokenDigest(randomUUID()),
-        expiresAt: new Date(Date.now() + 15 * 60_000),
       }),
     ).resolves.toBeNull();
     await tenantDatabase.withWorkspace(
@@ -3778,7 +3758,6 @@ describe('identity/workspace persistence', () => {
       intentId,
       bindingDigest,
       csrfDigest: createHash('sha256').update(randomUUID()).digest('hex'),
-      expiresAt: new Date(Date.now() + 15 * 60_000),
     });
     await identityDatabase.recordInvitationAcceptanceProof({
       workspaceId: invitationWorkspace.id,
@@ -3922,7 +3901,6 @@ describe('identity/workspace persistence', () => {
       intentId,
       bindingDigest,
       csrfDigest: createHash('sha256').update(randomUUID()).digest('hex'),
-      expiresAt: new Date(Date.now() + 15 * 60_000),
     });
 
     await expect(
@@ -3989,7 +3967,6 @@ describe('identity/workspace persistence', () => {
       intentId,
       bindingDigest,
       csrfDigest: createHash('sha256').update(randomUUID()).digest('hex'),
-      expiresAt: new Date(Date.now() + 15 * 60_000),
     });
     await identityDatabase.recordInvitationAcceptanceProof({
       workspaceId: invitationWorkspace.id,
@@ -4095,7 +4072,6 @@ describe('identity/workspace persistence', () => {
       intentId,
       bindingDigest,
       csrfDigest: createHash('sha256').update(randomUUID()).digest('hex'),
-      expiresAt: new Date(Date.now() + 15 * 60_000),
     });
     await identityDatabase.recordInvitationAcceptanceProof({
       workspaceId: invitationWorkspace.id,
@@ -4163,7 +4139,6 @@ describe('identity/workspace persistence', () => {
       intentId,
       bindingDigest,
       csrfDigest: createHash('sha256').update(randomUUID()).digest('hex'),
-      expiresAt: new Date(Date.now() + 15 * 60_000),
     });
     await identityDatabase.recordInvitationAcceptanceProof({
       workspaceId: invitationWorkspace.id,

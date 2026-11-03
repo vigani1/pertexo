@@ -9,7 +9,6 @@ import {
 import {
   digestSha256Hex,
   encodeBase64Url,
-  type IdentityClock,
   type IdentityCrypto,
 } from '../../identity/index.js';
 import type { ActorContext } from '../../authorization/index.js';
@@ -33,8 +32,6 @@ import {
   type WorkspaceInvitationsResponse,
 } from '../workspace-transport.js';
 
-const INVITATION_TTL_MILLIS = 7 * 24 * 60 * 60 * 1_000;
-
 type InvitationPersistence = Required<
   Pick<
     IdentityWorkspacePersistence,
@@ -50,7 +47,6 @@ export class WorkspaceInvitationManagementUseCase {
     private readonly persistence: InvitationPersistence,
     private readonly tokens: InvitationTokenProtector | undefined,
     private readonly crypto: IdentityCrypto,
-    private readonly clock: IdentityClock,
   ) {}
 
   public async list(
@@ -104,7 +100,6 @@ export class WorkspaceInvitationManagementUseCase {
         token.value,
         associatedData(input.routeWorkspaceId, invitationId, deliveryAttemptId),
       ),
-      expiresAt: new Date(this.clock.now().getTime() + INVITATION_TTL_MILLIS),
       idempotencyKey: input.idempotencyKey,
       ...(input.requestId === undefined ? {} : { requestId: input.requestId }),
       ...(input.traceId === undefined ? {} : { traceId: input.traceId }),
@@ -160,7 +155,6 @@ export class WorkspaceInvitationManagementUseCase {
             deliveryAttemptId,
           ),
         ),
-        expiresAt: new Date(this.clock.now().getTime() + INVITATION_TTL_MILLIS),
       });
     }
     return workspaceInvitationCommandResponseSchema.parse({

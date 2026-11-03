@@ -1,3 +1,4 @@
+import { INVITATION_TTL_MILLIS, readInvitationTime } from '../deadlines.js';
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { Pool } from 'pg';
@@ -43,8 +44,6 @@ export async function createWorkspaceInvitation(
   const role = raw.role;
   const tokenDigest = raw.tokenDigest;
   const sealed = raw.sealedToken;
-  if (!(raw.expiresAt instanceof Date) || raw.expiresAt.getTime() <= Date.now())
-    throw new Error('Invitation expiry must be in the future');
   return withTenantScopedClient(
     pool,
     { workspaceId, actorId: actorUserId },
@@ -109,7 +108,10 @@ export async function createWorkspaceInvitation(
             tokenDigest,
             deliveryStatus: 'queued',
             createdBy: actorUserId,
-            expiresAt: raw.expiresAt,
+            expiresAt: new Date(
+              (await readInvitationTime(client)).getTime() +
+                INVITATION_TTL_MILLIS,
+            ),
           })
           .returning(invitationSelection)
           .catch(rethrowQueryFailure);

@@ -58,7 +58,6 @@ function open(workspaceId: string, invitationId: string, tokenDigest: string) {
       intentId,
       bindingDigest,
       csrfDigest: digest(randomUUID()),
-      expiresAt: new Date(Date.now() + 15 * 60_000),
     }),
   };
 }
@@ -149,7 +148,6 @@ describe('a link that has gone stale', () => {
       idempotencyKey: randomUUID(),
       tokenDigest: replacement,
       sealedToken: invitation(workspaceId, owner).sealedToken,
-      expiresAt: new Date(Date.now() + 60_000),
     });
     expect(
       await open(workspaceId, invitationId, tokenDigest).opened,
@@ -362,7 +360,6 @@ describe('ending an invitation', () => {
         idempotencyKey: key,
         tokenDigest: digest(randomUUID()),
         sealedToken: invitation(workspaceId, owner).sealedToken,
-        expiresAt: new Date(Date.now() + 60_000),
       });
     await expect(resend()).rejects.toMatchObject({
       reason: 'delivery_unresolved',

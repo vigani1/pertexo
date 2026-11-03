@@ -1,3 +1,4 @@
+import { InvitationAcceptanceConflictError } from '@pertexo/core/tenant-access';
 import { createHash } from 'node:crypto';
 
 import { describe, expect, it, vi } from 'vitest';
@@ -129,10 +130,19 @@ describe('invitation acceptance under the active session authority', () => {
     ],
   ])('refuses %s', async (_case, stale, failure) => {
     const { acceptance, recordInvitationAcceptanceProof } = useCase();
+    if ('reason' in failure)
+      recordInvitationAcceptanceProof.mockRejectedValue(
+        new InvitationAcceptanceConflictError(
+          'proof_expired',
+          'Sign in again before verifying the invitation',
+        ),
+      );
     await expect(
       acceptance.recordSessionProof({ binding, csrfToken, evidence: stale }),
     ).rejects.toMatchObject(failure);
-    expect(recordInvitationAcceptanceProof).not.toHaveBeenCalled();
+    if ('reason' in failure)
+      expect(recordInvitationAcceptanceProof).toHaveBeenCalledOnce();
+    else expect(recordInvitationAcceptanceProof).not.toHaveBeenCalled();
   });
 
   it('fails closed on a wrong CSRF token and a vanished intent', async () => {

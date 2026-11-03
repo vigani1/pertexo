@@ -435,7 +435,10 @@ export {
   connectionReferenceIds,
 } from './authoring/bindings.js';
 
-export { decideInvitationAcceptance } from './workspaces/invitation-acceptance.js';
+export {
+  decideInvitationAcceptance,
+  INVITATION_PROOF_TTL_MILLIS,
+} from './workspaces/invitation-acceptance.js';
 
 export { publicationReviewDecision } from './authoring/reviews/decision.js';
 export { requiresPublicationReviewer } from './workspaces/governance.js';

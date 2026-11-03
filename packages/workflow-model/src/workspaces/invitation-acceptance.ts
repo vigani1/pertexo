@@ -1,3 +1,5 @@
+export const INVITATION_PROOF_TTL_MILLIS = 5 * 60_000;
+
 export type InvitationAcceptanceRefusal =
   | 'member_inactive'
   | 'expired'
@@ -78,7 +80,7 @@ export function decideInvitationAcceptance<
     intent.status !== 'verified' ||
     intent.verifiedUserId !== actorUserId ||
     intent.verifiedAt === null ||
-    now.getTime() - intent.verifiedAt.getTime() > 5 * 60_000;
+    now.getTime() - intent.verifiedAt.getTime() > INVITATION_PROOF_TTL_MILLIS;
   if (verificationUnavailable)
     return {
       allowed: false,

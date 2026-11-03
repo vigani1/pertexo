@@ -74,7 +74,6 @@ describe('workspace invitation use cases', () => {
       },
       { seal },
       nodeIdentityCrypto,
-      { now: () => now },
     );
 
     const response = await useCase.create({

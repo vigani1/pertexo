@@ -1425,7 +1425,6 @@ describe('Better Auth on PostgreSQL', () => {
           tag: 'tag',
           keyVersion: 'test-v1',
         },
-        expiresAt: new Date(Date.now() + 60 * 60_000),
       });
       const intentId = randomUUID();
       const bindingDigest = sha256Hex(randomUUID());
@@ -1436,7 +1435,6 @@ describe('Better Auth on PostgreSQL', () => {
         intentId,
         bindingDigest,
         csrfDigest: sha256Hex(randomUUID()),
-        expiresAt: new Date(Date.now() + 15 * 60_000),
       });
       await identity.recordInvitationAcceptanceProof({
         workspaceId: workspace.id,
