@@ -9,7 +9,7 @@ import {
   queryParameter,
 } from '../primitives.js';
 import * as directory from '../../schemas/identity/federation/directory.js';
-export function directoryContractSchemas(target: 'client' | 'openapi') {
+export function directoryContractSchemas() {
   return Object.fromEntries(
     (
       [
@@ -37,7 +37,7 @@ export function directoryContractSchemas(target: 'client' | 'openapi') {
       ] as const
     ).map(([name, schema, io]) => [
       name,
-      projectContractSchema(name, schema, io, target),
+      projectContractSchema(name, schema, io),
     ]),
   );
 }

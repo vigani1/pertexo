@@ -12,10 +12,7 @@ import {
   workflowInputCaseListResponseSchema,
   workflowInputCaseTagSchema,
 } from '../../src/schemas/workflows/input-cases.js';
-import {
-  workflowAuthoringOpenApiDocument,
-  workflowAuthoringClientContract,
-} from '../../src/server.js';
+import { workflowAuthoringOpenApiDocument } from '../../src/server.js';
 import { API_PROBLEM_MANIFEST } from '../../src/errors/api-problem.js';
 
 const caseId = '11111111-1111-4111-8111-111111111111';
@@ -224,7 +221,7 @@ describe('bounded version-contextual input case contracts', () => {
     });
     expect(item.get.responses['200'].headers.ETag.required).toBe(true);
     expect(collection.get.description).toContain('Loading never starts a run');
-    expect(workflowAuthoringClientContract.schemas).toHaveProperty(
+    expect(workflowAuthoringOpenApiDocument.components.schemas).toHaveProperty(
       'WorkflowInputCaseCreateRequest',
     );
     expect(

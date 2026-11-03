@@ -32,9 +32,6 @@ const schemas = Object.freeze({
     'output',
   ),
 });
-export const artifactTransferClientContract = Object.freeze({
-  schemas,
-});
 const responses = Object.freeze({
   BadRequest: problemResponse('Invalid artifact request'),
   Unauthenticated: problemResponse('Authentication required'),

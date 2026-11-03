@@ -7,10 +7,7 @@ import {
   nodeValidationResponseSchema,
   previewRunResponseSchema,
 } from '../../src/schemas/execution/node-testing.js';
-import {
-  nodeTestingClientContract,
-  nodeTestingOpenApiDocument,
-} from '../../src/server.js';
+import { nodeTestingOpenApiDocument } from '../../src/server.js';
 
 function nestedArray(depth: number): unknown {
   let value: unknown = null;
@@ -318,7 +315,8 @@ describe('node-testing public contracts', () => {
       '/v1/workspaces/{workspaceId}/workflows/{workflowId}/draft/nodes/{nodeId}/test',
       '/v1/workspaces/{workspaceId}/previews/{previewRunId}',
     ]);
-    const projected = nodeTestingClientContract.schemas.NodeTestRequest as {
+    const projected = nodeTestingOpenApiDocument.components.schemas
+      .NodeTestRequest as {
       oneOf: readonly { properties: Readonly<Record<string, unknown>> }[];
     };
     const sampleInput = projected.oneOf[0]?.properties.sampleInput;

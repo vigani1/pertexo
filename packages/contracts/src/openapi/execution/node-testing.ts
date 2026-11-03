@@ -32,61 +32,45 @@ import {
 } from '../../schemas/execution/node-testing.js';
 import { projectContractSchema } from '../schema-projection.js';
 
-function contractSchemas(target: 'client' | 'openapi') {
+function contractSchemas() {
   return Object.freeze({
-    ...stepSampleContractSchemas(target),
-    ...workflowTestContractSchemas(target),
-    ...workflowTestSuiteContractSchemas(target),
-    ApiProblem: projectContractSchema(
-      'ApiProblem',
-      apiProblemSchema,
-      'output',
-      target,
-    ),
+    ...stepSampleContractSchemas(),
+    ...workflowTestContractSchemas(),
+    ...workflowTestSuiteContractSchemas(),
+    ApiProblem: projectContractSchema('ApiProblem', apiProblemSchema, 'output'),
     NodeTestRequest: projectContractSchema(
       'NodeTestRequest',
       nodeTestRequestSchema,
       'input',
-      target,
     ),
     NodeSideEffectDisclosure: projectContractSchema(
       'NodeSideEffectDisclosure',
       nodeSideEffectDisclosureSchema,
       'output',
-      target,
     ),
     NodeValidationResponse: projectContractSchema(
       'NodeValidationResponse',
       nodeValidationResponseSchema,
       'output',
-      target,
     ),
     NodeTestExecuteAcceptedResponse: projectContractSchema(
       'NodeTestExecuteAcceptedResponse',
       nodeTestExecuteAcceptedResponseSchema,
       'output',
-      target,
     ),
     PreviewRunSummary: projectContractSchema(
       'PreviewRunSummary',
       previewRunSummarySchema,
       'output',
-      target,
     ),
     PreviewRunResponse: projectContractSchema(
       'PreviewRunResponse',
       previewRunResponseSchema,
       'output',
-      target,
     ),
   });
 }
-const clientSchemas = contractSchemas('client');
-const openApiSchemas = contractSchemas('openapi');
-
-export const nodeTestingClientContract = Object.freeze({
-  schemas: clientSchemas,
-});
+const openApiSchemas = contractSchemas();
 
 const problemResponses = Object.freeze({
   BadRequest: problemResponse('Invalid request'),

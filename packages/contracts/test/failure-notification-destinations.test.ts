@@ -7,10 +7,7 @@ import {
   failureNotificationDestinationListResponseSchema,
   workflowFailureNotificationPolicyResponseSchema,
 } from '../src/schemas/failure-notification-destinations.js';
-import {
-  connectionsClientContract,
-  connectionsOpenApiDocument,
-} from '../src/server.js';
+import { connectionsOpenApiDocument } from '../src/server.js';
 
 describe('failure notification destination contracts', () => {
   it('accepts only the canonical Slack and normalized email configurations', () => {
@@ -107,7 +104,7 @@ describe('failure notification destination contracts', () => {
     );
     expect(policy.put.responses).toHaveProperty('204');
     expect(policy.delete.responses).toHaveProperty('204');
-    expect(connectionsClientContract.schemas).toHaveProperty(
+    expect(connectionsOpenApiDocument.components.schemas).toHaveProperty(
       'FailureNotificationDestinationResponse',
     );
   });
@@ -159,7 +156,7 @@ describe('failure notification destination contracts', () => {
     expect(read.responses['200'].content['application/json'].schema).toEqual({
       $ref: '#/components/schemas/WorkflowFailureNotificationPolicyResponse',
     });
-    expect(connectionsClientContract.schemas).toHaveProperty(
+    expect(connectionsOpenApiDocument.components.schemas).toHaveProperty(
       'WorkflowFailureNotificationPolicyResponse',
     );
   });

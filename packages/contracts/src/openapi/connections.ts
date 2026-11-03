@@ -124,10 +124,6 @@ const schemas = Object.freeze({
   ),
 });
 
-export const connectionsClientContract = Object.freeze({
-  schemas,
-});
-
 const problemResponses = Object.freeze({
   BadRequest: problemResponse('Invalid request'),
   Unauthenticated: problemResponse('Authentication required'),

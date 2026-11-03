@@ -1,9 +1,5 @@
-import { callbackRoutes, callbackPaths } from './callbacks.js';
-import {
-  testEventRoutes,
-  testEventSchemas,
-  testEventPaths,
-} from './test-events.js';
+import { callbackPaths } from './callbacks.js';
+import { testEventSchemas, testEventPaths } from './test-events.js';
 import { webhookAuthenticationSchema } from '@pertexo/workflow-model';
 import { apiProblemSchema } from '../../errors/api-problem.js';
 import {
@@ -83,48 +79,6 @@ const responses = Object.freeze({
   RateLimited: problemResponse('Rate limited'),
   Unavailable: problemResponse('Service unavailable'),
   Unexpected: problemResponse('Unexpected server error'),
-});
-
-export const webhooksClientContract = Object.freeze({
-  routes: Object.freeze([
-    ...testEventRoutes,
-    ...callbackRoutes,
-    {
-      method: 'GET',
-      path: '/v1/workspaces/:workspaceId/workflows/:workflowId/triggers',
-    },
-    {
-      method: 'GET',
-      path: '/v1/workspaces/:workspaceId/workflows/:workflowId/triggers/:triggerId/webhook/deliveries',
-    },
-    {
-      method: 'POST',
-      path: '/v1/workspaces/:workspaceId/workflows/:workflowId/triggers/:triggerId/webhook/provision',
-      requiredHeaders: ['Idempotency-Key', 'X-CSRF-Token'],
-    },
-    {
-      method: 'POST',
-      path: '/v1/workspaces/:workspaceId/workflows/:workflowId/triggers/:triggerId/webhook/rotate-endpoint',
-      requiredHeaders: ['Idempotency-Key', 'X-CSRF-Token'],
-    },
-    {
-      method: 'POST',
-      path: '/v1/workspaces/:workspaceId/workflows/:workflowId/triggers/:triggerId/webhook/rotate-secret',
-      requiredHeaders: ['Idempotency-Key', 'X-CSRF-Token'],
-    },
-    {
-      method: 'POST',
-      path: '/v1/workspaces/:workspaceId/workflows/:workflowId/triggers/:triggerId/webhook/authentication',
-      requiredHeaders: ['Idempotency-Key', 'X-CSRF-Token'],
-    },
-    { method: 'OPTIONS', path: '/hooks/:endpointKey' },
-    { method: 'GET', path: '/hooks/:endpointKey' },
-    {
-      method: 'POST',
-      path: '/hooks/:endpointKey',
-      maximumBodyBytes: 262_144,
-    },
-  ]),
 });
 
 const managementPath = {

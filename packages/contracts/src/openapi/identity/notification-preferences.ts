@@ -233,35 +233,3 @@ export const notificationPreferencePaths = {
     },
   },
 };
-export const notificationPreferenceRoutes = [
-  { method: 'GET', path: '/v1/notifications/unsubscribe/one-click' },
-  { method: 'POST', path: '/v1/notifications/unsubscribe/one-click' },
-  {
-    method: 'GET',
-    path: '/v1/workspaces/:workspaceId/notifications/preferences',
-  },
-  {
-    method: 'PUT',
-    path: '/v1/workspaces/:workspaceId/notifications/preferences',
-    requiredHeaders: ['X-CSRF-Token', 'Idempotency-Key'],
-  },
-  {
-    method: 'PUT',
-    path: '/v1/workspaces/:workspaceId/notifications/defaults',
-    requiredHeaders: ['X-CSRF-Token', 'Idempotency-Key'],
-  },
-  {
-    method: 'GET',
-    path: '/v1/workspaces/:workspaceId/notifications/subjects/:subjectKind/:subjectId',
-  },
-  {
-    method: 'PUT',
-    path: '/v1/workspaces/:workspaceId/notifications/subjects/:subjectKind/:subjectId',
-    requiredHeaders: ['X-CSRF-Token', 'Idempotency-Key'],
-  },
-  {
-    method: 'POST',
-    path: '/v1/notifications/unsubscribe',
-    requiredHeaders: ['X-Pertexo-Unsubscribe-Key'],
-  },
-] as const;

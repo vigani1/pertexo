@@ -12,10 +12,7 @@ import {
   workflowValidationIssueSchema,
   workflowValidateResponseSchema,
 } from '../../src/schemas/workflows/authoring.js';
-import {
-  workflowAuthoringClientContract,
-  workflowAuthoringOpenApiDocument,
-} from '../../src/server.js';
+import { workflowAuthoringOpenApiDocument } from '../../src/server.js';
 
 describe('workflow-authoring public contracts', () => {
   it('requires an explicit current-publication comparison and rejects malformed metadata', () => {
@@ -245,7 +242,7 @@ describe('workflow-authoring public contracts', () => {
       ),
     ).toContain('order');
     expect(
-      workflowAuthoringClientContract.schemas.WorkflowDraftResponse,
+      workflowAuthoringOpenApiDocument.components.schemas.WorkflowDraftResponse,
     ).toBeDefined();
 
     const conflict = {

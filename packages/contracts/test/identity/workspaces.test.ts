@@ -16,10 +16,7 @@ import {
   workspaceInvitationCreateRequestSchema,
   workspaceMemberRoleChangeRequestSchema,
 } from '../../src/schemas/identity/workspaces.js';
-import {
-  identityWorkspaceClientContract,
-  identityWorkspaceOpenApiDocument,
-} from '../../src/server.js';
+import { identityWorkspaceOpenApiDocument } from '../../src/server.js';
 import { manifestProblemResponse } from '../../src/openapi/primitives.js';
 
 describe('identity and problem public contracts', () => {
@@ -112,7 +109,9 @@ describe('identity and problem public contracts', () => {
   });
 
   it('shares ApiProblem across client schemas and error responses', () => {
-    expect(identityWorkspaceClientContract.schemas.ApiProblem).toBeDefined();
+    expect(
+      identityWorkspaceOpenApiDocument.components.schemas.ApiProblem,
+    ).toBeDefined();
     for (const response of Object.values(
       identityWorkspaceOpenApiDocument.components.responses,
     ))

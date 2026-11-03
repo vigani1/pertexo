@@ -8,7 +8,7 @@ import {
   idempotencyHeaderParameter,
   problemResponse,
 } from '../primitives.js';
-export function dataTableContractSchemas(target: 'client' | 'openapi') {
+export function dataTableContractSchemas() {
   const definitions = [
     ['DataTablesResponse', schemas.dataTablesResponseSchema, 'output'],
     ['DataTableSchemaEdit', schemas.dataTableSchemaEditSchema, 'input'],
@@ -30,7 +30,7 @@ export function dataTableContractSchemas(target: 'client' | 'openapi') {
   return Object.fromEntries(
     definitions.map(([name, schema, io]) => [
       name,
-      projectContractSchema(name, schema, io, target),
+      projectContractSchema(name, schema, io),
     ]),
   );
 }

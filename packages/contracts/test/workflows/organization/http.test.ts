@@ -11,10 +11,7 @@ import {
 } from '../../../src/errors/api-problem.js';
 import { WORKFLOW_ORGANIZATION_PROBLEM_CODES } from '../../../src/errors/workflows/organization.js';
 import { workflowOrganizationContractPaths } from '../../../src/openapi/workflows/organization.js';
-import {
-  workflowAuthoringClientContract,
-  workflowAuthoringOpenApiDocument,
-} from '../../../src/server.js';
+import { workflowAuthoringOpenApiDocument } from '../../../src/server.js';
 
 const id = workflowProjectionId;
 const workflow = workflowProjection('Visible workflow');
@@ -170,7 +167,7 @@ describe('organization HTTP manifest and generated structural contracts', () => 
     expect(
       get.responses['200'].content['application/json'].schema.oneOf,
     ).toHaveLength(4);
-    const defaults = workflowAuthoringClientContract.schemas;
+    const defaults = workflowAuthoringOpenApiDocument.components.schemas;
     expect(defaults.WorkflowSummaryResponse).toMatchObject({
       additionalProperties: false,
       required: ['workflow'],

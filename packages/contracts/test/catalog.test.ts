@@ -1,9 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  catalogClientContract,
-  catalogOpenApiDocument,
-} from '../src/server.js';
+import { catalogOpenApiDocument } from '../src/server.js';
 import {
   catalogQuerySchema,
   catalogLimits,
@@ -59,7 +56,9 @@ describe('catalog discovery contracts', () => {
     expect(catalogQuerySchema.safeParse({ filter: 'arbitrary' }).success).toBe(
       false,
     );
-    expect(catalogClientContract.schemas.CatalogQuery).toMatchObject({
+    expect(
+      catalogOpenApiDocument.components.schemas.CatalogQuery,
+    ).toMatchObject({
       additionalProperties: false,
     });
     for (const path of Object.values(catalogOpenApiDocument.paths)) {

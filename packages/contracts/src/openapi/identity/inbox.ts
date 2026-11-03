@@ -1,6 +1,5 @@
 import {
   notificationPreferencePaths,
-  notificationPreferenceRoutes,
   notificationPreferenceSchemas,
 } from './notification-preferences.js';
 import { apiProblemSchema } from '../../errors/api-problem.js';
@@ -84,31 +83,6 @@ const commandProblems = {
 } as const;
 
 /** ADR 055: failure threads read on demand, with private read state. */
-export const workspaceInboxClientContract = Object.freeze({
-  routes: Object.freeze([
-    ...notificationPreferenceRoutes,
-    { method: 'GET', path: '/v1/workspaces/:workspaceId/notifications' },
-    {
-      method: 'GET',
-      path: '/v1/workspaces/:workspaceId/notifications/summary',
-    },
-    {
-      method: 'POST',
-      path: '/v1/workspaces/:workspaceId/notifications/:threadId/read',
-      requiredHeaders: ['X-CSRF-Token'],
-    },
-    {
-      method: 'POST',
-      path: '/v1/workspaces/:workspaceId/notifications/read-all',
-      requiredHeaders: ['X-CSRF-Token'],
-    },
-    {
-      method: 'GET',
-      path: '/v1/workspaces/:workspaceId/notifications/events',
-      events: ['inbox.ready', 'inbox.changed'],
-    },
-  ]),
-});
 export const workspaceInboxOpenApiDocument = Object.freeze({
   openapi: '3.1.0',
   info: { title: 'Pertexo Workspace Inbox API', version: '2.0.0' },

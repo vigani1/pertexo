@@ -11,10 +11,7 @@ import {
   workflowResumeRequestSchema,
   workspaceAutoPauseSettingsRequestSchema,
 } from '../../src/index.js';
-import {
-  workflowAuthoringClientContract,
-  workflowAuthoringOpenApiDocument,
-} from '../../src/server.js';
+import { workflowAuthoringOpenApiDocument } from '../../src/server.js';
 import { API_PROBLEM_MANIFEST } from '../../src/errors/api-problem.js';
 
 const settings = {
@@ -35,7 +32,7 @@ describe('automatic workflow pause contracts', () => {
   it('matches bigint ordering at every decimal-prefix boundary in runtime and generated clients', () => {
     const maximum = '9223372036854775807';
     const validate = new Ajv2020({ strict: false }).compile(
-      workflowAuthoringClientContract.schemas.WorkflowResumeRequest,
+      workflowAuthoringOpenApiDocument.components.schemas.WorkflowResumeRequest,
     );
     for (let index = 0; index < maximum.length; index++) {
       for (let digit = 0; digit <= 9; digit++) {
@@ -53,7 +50,7 @@ describe('automatic workflow pause contracts', () => {
   });
   it('preserves bigint revisions without number coercion in runtime and generated clients', () => {
     const projection =
-      workflowAuthoringClientContract.schemas.WorkflowResumeRequest;
+      workflowAuthoringOpenApiDocument.components.schemas.WorkflowResumeRequest;
     const validate = new Ajv2020({ strict: false }).compile(projection);
     for (const revision of ['1', '9007199254740993', '9223372036854775807']) {
       expect(workflowPauseRevisionSchema.parse(revision)).toBe(revision);

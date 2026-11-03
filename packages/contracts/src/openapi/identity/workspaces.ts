@@ -132,23 +132,13 @@ const schemas = Object.freeze({
   ...authenticationContractSchemas,
 });
 
-const clientSchemas = {
-  ...schemas,
-  ...dataTableContractSchemas('client'),
-  ...governanceContractSchemas('client'),
-  ...federationContractSchemas('client'),
-  ...directoryContractSchemas('client'),
-};
 const openApiSchemas = {
   ...schemas,
-  ...dataTableContractSchemas('openapi'),
-  ...governanceContractSchemas('openapi'),
-  ...federationContractSchemas('openapi'),
-  ...directoryContractSchemas('openapi'),
+  ...dataTableContractSchemas(),
+  ...governanceContractSchemas(),
+  ...federationContractSchemas(),
+  ...directoryContractSchemas(),
 };
-export const identityWorkspaceClientContract = Object.freeze({
-  schemas: clientSchemas,
-});
 
 const problemResponses = Object.freeze({
   BadRequest: problemResponse('Invalid request'),
