@@ -1,11 +1,13 @@
 import {
   createNodeSecureHttpClient,
   createResendSystemMailClient,
-  createSmtpClient,
   type SecureHttpClient,
+} from '@pertexo/integrations/server';
+import {
+  createSmtpClient,
   type SystemMailClient,
   type SystemMailConfig,
-} from '@pertexo/integrations/server';
+} from '@pertexo/secrets/server';
 
 /** The worker selects the install's transport; provider code only receives its client. */
 export function createSystemMailClient(

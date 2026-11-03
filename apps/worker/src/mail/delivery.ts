@@ -4,17 +4,17 @@ import type {
   SystemMailDeliveryClaim,
   SystemMailDeliveryStore,
 } from '@pertexo/secrets/server';
+import { ApplicationSecretKeyUnavailableError } from '@pertexo/integrations/server';
 import {
-  ApplicationSecretKeyUnavailableError,
   systemMailFailureInstruction,
   systemMailFailureCode,
-} from '@pertexo/integrations/server';
+} from '@pertexo/secrets/server';
+import type { ApplicationSecretEnvelope } from '@pertexo/integrations/server';
 import type {
   SystemMailFailure,
-  ApplicationSecretEnvelope,
   SystemMailResult,
   SystemMailClient,
-} from '@pertexo/integrations/server';
+} from '@pertexo/secrets/server';
 
 const payload = z
   .object({

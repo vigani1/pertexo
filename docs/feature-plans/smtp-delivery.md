@@ -69,7 +69,7 @@ absent; partial settings cannot silently fall back to Resend.
 
 ## Files and responsibilities
 
-`packages/integrations/src/system-mail/` holds at most four files:
+`packages/secrets/src/mail/` owns generic delivery configuration, SMTP and diagnostics. The Resend adapter lives in `packages/integrations/src/email/system-mail.ts`, and the worker selects the transport:
 
 - `contracts.ts`: typed immutable message, result and transport config.
   Results are `submitted`, `retryable`, `failed`, or `unknown`; no raw provider
