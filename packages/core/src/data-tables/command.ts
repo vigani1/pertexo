@@ -5,8 +5,10 @@ import {
   completeCommand,
 } from '@pertexo/database/primitives';
 import type { PoolClient } from 'pg';
+import type { z } from 'zod';
 
 import type { DataTableMutation } from './contract.js';
+import { requireReadableReceipt } from '../shared/receipts.js';
 
 type TableCommand<T extends object> = Readonly<{
   operation: string;
@@ -19,6 +21,7 @@ type TableCommand<T extends object> = Readonly<{
       }>)
     | null;
   request: unknown;
+  receipt: z.ZodType<T>;
   work: () => Promise<T>;
 }>;
 
@@ -26,7 +29,7 @@ type TableCommand<T extends object> = Readonly<{
 export async function runTableCommand<T extends object>(
   client: PoolClient,
   input: DataTableMutation,
-  { operation, audit, request, work }: TableCommand<T>,
+  { operation, audit, request, receipt, work }: TableCommand<T>,
 ): Promise<T> {
   const identity = {
     workspaceId: input.workspaceId,
@@ -39,7 +42,10 @@ export async function runTableCommand<T extends object>(
     resourceId: input.workspaceId,
     request,
   });
-  if (prior !== null) return prior;
+  if (prior !== null) {
+    requireReadableReceipt(receipt, prior);
+    return prior;
+  }
   const result = await work();
   if (audit !== null)
     await appendAuditFact(client, {

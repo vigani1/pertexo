@@ -2,6 +2,10 @@ import { DataTableError } from '@pertexo/node-sdk';
 import type { PoolClient } from 'pg';
 
 import { runTableCommand } from '../command.js';
+import {
+  importedTableRowsReceipt,
+  writtenTableRowsReceipt,
+} from '../receipts.js';
 import type { ImportRowsInput, WriteRowsInput } from '../contract.js';
 import { readQuotas, requireTable } from '../definitions.queries.js';
 import { insertTableBatch, mutateRows } from './mutate.repository.js';
@@ -10,6 +14,7 @@ export function writeTableRows(client: PoolClient, input: WriteRowsInput) {
   // HTTP receipts retain identities/counts only; row payloads follow table access.
   return runTableCommand(client, input, {
     operation: 'data.tables.rows.write',
+    receipt: writtenTableRowsReceipt,
     audit: (result) => ({
       targetType: 'data_table',
       targetId: input.tableId,
@@ -62,6 +67,7 @@ export function writeTableRows(client: PoolClient, input: WriteRowsInput) {
 export function importTableRows(client: PoolClient, input: ImportRowsInput) {
   return runTableCommand(client, input, {
     operation: 'data.tables.rows.import',
+    receipt: importedTableRowsReceipt,
     audit: (result) => ({
       targetType: 'data_table',
       targetId: input.tableId,

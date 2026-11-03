@@ -16,10 +16,16 @@ import type {
   RemoveTableInput,
 } from './contract.js';
 import { readQuotas, requireTable } from './definitions.queries.js';
+import {
+  configuredTablesReceipt,
+  createdTableReceipt,
+  removedTableReceipt,
+} from './receipts.js';
 
 export function createTable(client: PoolClient, input: CreateTableInput) {
   return runTableCommand(client, input, {
     operation: 'data.tables.create',
+    receipt: createdTableReceipt,
     audit: (result) => ({
       targetType: 'data_table',
       targetId: result.id,
@@ -79,6 +85,7 @@ export function createTable(client: PoolClient, input: CreateTableInput) {
 export function removeTable(client: PoolClient, input: RemoveTableInput) {
   return runTableCommand(client, input, {
     operation: 'data.tables.remove',
+    receipt: removedTableReceipt,
     audit: () => ({ targetType: 'data_table', targetId: input.tableId }),
     request: {
       tableId: input.tableId,
@@ -132,6 +139,7 @@ export function configureTables(
   };
   return runTableCommand(client, input, {
     operation: 'data.tables.configure',
+    receipt: configuredTablesReceipt,
     audit: () => ({
       targetType: 'workspace',
       targetId: input.workspaceId,

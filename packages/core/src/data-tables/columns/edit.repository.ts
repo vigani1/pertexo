@@ -25,6 +25,7 @@ import {
   workspaceDataTables as tables,
 } from '@pertexo/database/schema';
 import { runTableCommand } from '../command.js';
+import { editedTableSchemaReceipt } from '../receipts.js';
 import type {
   DataTableDefinition,
   DataTableQuotas,
@@ -39,6 +40,7 @@ const REWRITE_BATCH_ROWS = 64;
 export function editSchema(client: PoolClient, input: EditTableSchemaInput) {
   return runTableCommand(client, input, {
     operation: 'data.tables.schema.edit',
+    receipt: editedTableSchemaReceipt,
     audit: null,
     request: {
       tableId: input.tableId,
