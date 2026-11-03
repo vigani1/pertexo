@@ -29,13 +29,13 @@ import { createIdentityWorkspaceInvitationStore } from './invitations/identity-w
 import { createIdentityWorkspaceMembershipLifecycleStore } from './members/membership-lifecycle.store.js';
 import { createMemberships } from './members/records.repository.js';
 import { createIdentityWorkspaceMemberRemovalStore } from './members/member-removal.store.js';
-import { createIdentityWorkspaceMemberStore } from './members/reads.repository.js';
+import { createIdentityWorkspaceMemberStore } from './members/workspace-members.store.js';
 import { createIdentityWorkspaceRoleCommandStore } from './members/member-roles.store.js';
 import {
   throwIdentityDatabaseConflict,
   throwWorkspaceLifecycleError,
 } from './conflicts.js';
-import { createIdentityWorkspaceProfileStore } from './users/profile.repository.js';
+import { createIdentityWorkspaceProfileStore } from './users/user-profile.store.js';
 import { createUserStore } from './users/user.store.js';
 import {
   claimWorkspaceCreationCommand,
@@ -47,7 +47,7 @@ import {
   workspaceRecord,
   workspaceSelection,
 } from './workspaces/projection.js';
-import { createIdentityWorkspaceRenameStore } from './workspaces/rename.repository.js';
+import { createIdentityWorkspaceRenameStore } from './workspaces/workspace-rename.store.js';
 
 export type IdentityWorkspaceStore = ReturnType<
   typeof createIdentityWorkspaceStore

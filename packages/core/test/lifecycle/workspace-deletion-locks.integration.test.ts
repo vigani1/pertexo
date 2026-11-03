@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { createIdentityWorkspaceRenameStore } from '../../src/tenant-access/workspaces/rename.repository.js';
+import { createIdentityWorkspaceRenameStore } from '../../src/tenant-access/workspaces/workspace-rename.store.js';
 import {
   afterAllFixture2,
   apiUrlFor as apiUrl,
