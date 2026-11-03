@@ -61,7 +61,10 @@ const lifecycleChange = (description: string) => ({
 });
 
 /** A command on one existing member (ADR 037, 042 and 047). */
-function memberCommand<Body extends z.ZodType>({
+function memberCommand<
+  Body extends z.ZodType,
+  const Path extends `/${string}`,
+>({
   operationId,
   path,
   access,
@@ -69,7 +72,7 @@ function memberCommand<Body extends z.ZodType>({
   answer,
 }: Readonly<{
   operationId: string;
-  path: `/${string}`;
+  path: Path;
   access: RouteAccess;
   body: NamedSchema<Body>;
   answer: Readonly<{ description: string; body: NamedSchema }>;

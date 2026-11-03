@@ -40,10 +40,10 @@ export const problems = (...statuses: readonly string[]) =>
 export const readProblems = problems('400', '401', '403', '404', '500');
 
 /** Authoring schemas are recursive enough to need the shared projection. */
-export function projected<Schema extends z.ZodType>(
-  name: string,
+export function projected<Schema extends z.ZodType, const Name extends string>(
+  name: Name,
   schema: Schema,
-): NamedSchema<Schema> {
+): NamedSchema<Schema, Name> {
   return named(name, schema, { projected: true });
 }
 
