@@ -7,7 +7,7 @@ import type {
   SystemMailMessage,
   SystemMailResult,
   SystemMailFailure,
-} from './contracts.js';
+} from './system-mail.js';
 
 export function createSmtpClient(
   config: Extract<SystemMailConfig, { mode: 'smtp' }>,

@@ -1,6 +1,6 @@
 import { isIP } from 'node:net';
 import { z } from 'zod';
-import type { SystemMailConfig } from './contracts.js';
+import type { SystemMailConfig } from './system-mail.js';
 
 const hostname = z
   .string()

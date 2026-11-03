@@ -14,4 +14,4 @@ export type {
   SystemMailInput,
   SystemMailPurpose,
 } from './mail/system-mail.types.js';
-export { authenticationMailAssociatedData } from './mail/payload.js';
+export { authenticationMailAssociatedData } from './mail/mail-associated-data.js';
