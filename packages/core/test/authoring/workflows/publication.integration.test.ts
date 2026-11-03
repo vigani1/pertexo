@@ -21,9 +21,7 @@ import {
   CONNECTION_AUTH_TYPE,
   apiPool,
   createConnectionStore,
-  createWorkflowIntegrationUsageStore,
   finishTransactionClient,
-  otherWorkspaceId,
 } from '../../support/workflow-authoring.js';
 import { testExecutableCompiler } from '../../../src/authoring/test-executable-compiler.js';
 import { recordBenchmarkOperation } from './publication/fixture.js';
@@ -669,13 +667,10 @@ describe('workflow publication projections', () => {
     }
   });
 
-  it('transactionally rebuilds derived integration usage and serves bounded impact queries', async () => {
+  it('stores publication integration usage and transactionally rebuilds missing rows', async () => {
     const connectionId = randomUUID();
     const secretVersionId = randomUUID();
     const connectionDatabase = createConnectionStore(
-      parseDatabaseConfig({ connectionString: apiUrl, max: 2 }),
-    );
-    const usageDatabase = createWorkflowIntegrationUsageStore(
       parseDatabaseConfig({ connectionString: apiUrl, max: 2 }),
     );
     const usageCatalog = Object.freeze({
@@ -788,56 +783,30 @@ describe('workflow publication projections', () => {
         additionalVersionIds.push(additionalPublication.version.id);
       }
 
-      const providerImpactIds: string[] = [];
-      let providerAfter:
-        | Readonly<{ workflowVersionId: string; connectionId: string }>
-        | undefined;
-      do {
-        const page = await usageDatabase.findProviderOperationImpact({
-          workspaceId,
+      const expectedUsage = [published.version.id, ...additionalVersionIds]
+        .toSorted()
+        .map((workflowVersionId) => ({
+          workflowVersionId,
           providerKey: 'http',
           operationKey: 'request',
-          limit: 1,
-          ...(providerAfter === undefined ? {} : { after: providerAfter }),
-        });
-        providerImpactIds.push(
-          ...page.items.map(({ workflowVersionId }) => workflowVersionId),
-        );
-        providerAfter = page.nextCursor;
-      } while (providerAfter !== undefined);
-      expect(providerImpactIds.toSorted()).toEqual(
-        [published.version.id, ...additionalVersionIds].toSorted(),
-      );
-
-      const connectionImpactIds: string[] = [];
-      let connectionAfter:
-        | Readonly<{
-            workflowVersionId: string;
-            providerKey: string;
-            operationKey: string;
-          }>
-        | undefined;
-      do {
-        const page = await usageDatabase.findConnectionImpact({
+          connectionId,
+        }));
+      const readUsage = () =>
+        queryAsOwner<{
+          workflowVersionId: string;
+          providerKey: string;
+          operationKey: string;
+          connectionId: string;
+        }>(
+          `select workflow_version_id as "workflowVersionId", provider_key as "providerKey",
+          operation_key as "operationKey", connection_id as "connectionId"
+         from app.workflow_integration_usage
+         where workspace_id=$1 and connection_id=$2
+         order by workflow_version_id, provider_key, operation_key`,
+          [workspaceId, connectionId],
           workspaceId,
-          connectionId,
-          limit: 1,
-          ...(connectionAfter === undefined ? {} : { after: connectionAfter }),
-        });
-        connectionImpactIds.push(
-          ...page.items.map(({ workflowVersionId }) => workflowVersionId),
         );
-        connectionAfter = page.nextCursor;
-      } while (connectionAfter !== undefined);
-      expect(connectionImpactIds.toSorted()).toEqual(
-        [published.version.id, ...additionalVersionIds].toSorted(),
-      );
-      await expect(
-        usageDatabase.findConnectionImpact({
-          workspaceId: otherWorkspaceId,
-          connectionId,
-        }),
-      ).resolves.toEqual({ items: [] });
+      expect(await readUsage()).toEqual(expectedUsage);
 
       const client = await apiPool.connect();
       let transactionOpen = false;
@@ -894,22 +863,9 @@ describe('workflow publication projections', () => {
         reused: true,
         version: { id: published.version.id, graphJson: graph },
       });
-      const rebuiltImpact = await usageDatabase.findConnectionImpact({
-        workspaceId,
-        connectionId,
-      });
-      expect(rebuiltImpact.items).toContainEqual(
-        expect.objectContaining({
-          workflowVersionId: published.version.id,
-          connectionId,
-        }),
-      );
+      expect(await readUsage()).toEqual(expectedUsage);
     } finally {
-      await Promise.all([
-        connectionDatabase.close(),
-        usageDatabase.close(),
-        usageAuthoring.close(),
-      ]);
+      await Promise.all([connectionDatabase.close(), usageAuthoring.close()]);
     }
   });
 

@@ -1,5 +1,3 @@
-import type { workflowIntegrationUsage } from '@pertexo/database/schema';
-
 // Projection joins workflows and versions with aggregated operation keys.
 export type ConnectionUsageRecord = Readonly<{
   workflowId: string;
@@ -24,33 +22,4 @@ export type ListConnectionUsageInput = Readonly<{
   connectionId: string;
   limit?: number;
   after?: ConnectionUsageCursor;
-}>;
-
-export type WorkflowIntegrationImpactRecord = Pick<
-  typeof workflowIntegrationUsage.$inferSelect,
-  'workflowVersionId' | 'providerKey' | 'operationKey' | 'connectionId'
->;
-
-export type WorkflowIntegrationImpactPage = Readonly<{
-  items: readonly WorkflowIntegrationImpactRecord[];
-  nextCursor?: WorkflowIntegrationImpactRecord;
-}>;
-
-export type FindProviderOperationImpactInput = Readonly<{
-  workspaceId: string;
-  providerKey: string;
-  operationKey: string;
-  limit?: number;
-  after?: Readonly<{ workflowVersionId: string; connectionId: string }>;
-}>;
-
-export type FindConnectionImpactInput = Readonly<{
-  workspaceId: string;
-  connectionId: string;
-  limit?: number;
-  after?: Readonly<{
-    workflowVersionId: string;
-    providerKey: string;
-    operationKey: string;
-  }>;
 }>;
