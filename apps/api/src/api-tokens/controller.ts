@@ -1,19 +1,18 @@
 import {
-  Body,
   Controller,
   Get,
-  HttpCode,
   Inject,
-  Param,
-  Post,
-  Query,
   Req,
   Res,
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
 import { apiTokenInfoResponseSchema } from '@pertexo/contracts';
-import { z } from 'zod';
+import {
+  apiTokenRoutes as routes,
+  type RouteInput,
+} from '@pertexo/contracts/server';
+import { In, Route } from '../workspaces/http/route.js';
 import { AutomationAuthenticationGuard } from '../authentication/automation/guard.js';
 import { SESSION_AUTHORITY } from '../workspaces/tokens.js';
 import type { IdentitySessionAuthority } from '../workspaces/ports.js';
@@ -23,16 +22,11 @@ import type {
 } from '../workspaces/types.js';
 import {
   authenticatedSession,
-  CsrfProtectionGuard,
   requireSignInEvidence,
-  SessionAuthenticationGuard,
-  WorkspaceMemberBrowseGuard,
-  WorkspaceMembershipGuard,
 } from '../workspaces/http/guards.js';
 import { authenticatedRequestIdentifiers } from '../workspaces/request/authenticated-context.js';
 import {
   applicationError,
-  requestIdempotencyKey,
   throwApplicationError,
 } from '../platform/http/index.js';
 import { RateLimit } from '../platform/rate-limit/metadata.js';
@@ -40,75 +34,48 @@ import { ApiTokenManagement } from './use-cases.js';
 import { domainErrors } from '../platform/http/problems/interceptor.js';
 import { workspaceFailure } from '../problems/context/normalize.js';
 
-const workspaceParams = z.object({ workspaceId: z.uuid() }).strict();
-const tokenParams = workspaceParams.extend({ tokenId: z.uuid() }).strict();
-
 @UseInterceptors(domainErrors(workspaceFailure))
-@Controller('v1/workspaces/:workspaceId/api-tokens')
+@Controller()
 export class ApiTokenController {
   public constructor(
     private readonly management: ApiTokenManagement,
     @Inject(SESSION_AUTHORITY)
     private readonly sessions: IdentitySessionAuthority,
   ) {}
-  @Get()
-  @RateLimit('authenticated_read')
-  @UseGuards(SessionAuthenticationGuard, WorkspaceMemberBrowseGuard)
+
+  @Route(routes.list)
   public list(
     @Req() request: IdentityWorkspaceRequest,
-    @Param() params: unknown,
-    @Query() query: unknown,
-    @Res({ passthrough: true }) response: CookieResponse,
+    @In() { params, query }: RouteInput<typeof routes.list>,
   ) {
-    response.header('Cache-Control', 'private, no-store');
     return this.management.list({
-      workspaceId: workspaceParams.parse(params).workspaceId,
+      workspaceId: params.workspaceId,
       ownerUserId: authenticatedSession(request).userId,
       query,
     });
   }
-  @Post()
-  @HttpCode(201)
-  @RateLimit('ordinary_mutation')
-  @UseGuards(
-    SessionAuthenticationGuard,
-    WorkspaceMembershipGuard,
-    CsrfProtectionGuard,
-  )
+
+  @Route(routes.create)
   public async create(
     @Req() request: IdentityWorkspaceRequest,
-    @Param() params: unknown,
-    @Body() body: unknown,
-    @Res({ passthrough: true }) response: CookieResponse,
+    @In() { params, body, idempotencyKey }: RouteInput<typeof routes.create>,
   ) {
-    response.header('Cache-Control', 'private, no-store');
     const evidence = await requireSignInEvidence(request, this.sessions);
     return this.management.create({
-      ...command(request, workspaceParams.parse(params).workspaceId),
+      ...command(request, params.workspaceId, idempotencyKey),
       request: body,
       signedInAt: evidence.signedInAt,
     });
   }
-  @Post(':tokenId/revoke')
-  @HttpCode(200)
-  @RateLimit('ordinary_mutation')
-  @UseGuards(
-    SessionAuthenticationGuard,
-    WorkspaceMembershipGuard,
-    CsrfProtectionGuard,
-  )
+
+  @Route(routes.revoke)
   public revoke(
     @Req() request: IdentityWorkspaceRequest,
-    @Param() params: unknown,
-    @Body() body: unknown,
-    @Res({ passthrough: true }) response: CookieResponse,
+    @In() { params, idempotencyKey }: RouteInput<typeof routes.revoke>,
   ) {
-    response.header('Cache-Control', 'private, no-store');
-    const route = tokenParams.parse(params);
     return this.management.revoke({
-      ...command(request, route.workspaceId),
-      tokenId: route.tokenId,
-      request: body,
+      ...command(request, params.workspaceId, idempotencyKey),
+      tokenId: params.tokenId,
     });
   }
 }
@@ -137,11 +104,15 @@ export class CurrentApiTokenController {
     });
   }
 }
-function command(request: IdentityWorkspaceRequest, workspaceId: string) {
+function command(
+  request: IdentityWorkspaceRequest,
+  workspaceId: string,
+  idempotencyKey: string,
+) {
   return {
     workspaceId,
     ownerUserId: authenticatedSession(request).userId,
-    idempotencyKey: requestIdempotencyKey(request.headers),
+    idempotencyKey,
     ...authenticatedRequestIdentifiers(request),
   };
 }
