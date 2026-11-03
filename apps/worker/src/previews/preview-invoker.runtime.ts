@@ -10,7 +10,8 @@ import {
 } from '@pertexo/workflow-engine';
 import { isWorkflowCallDefinition } from '@pertexo/workflow-model';
 import { JsonataEvaluator } from '@pertexo/workflow-model/server';
-import type { createPlatformNodeRegistry } from '@pertexo/node-catalog/server';
+
+import type { createPlatformNodeRegistry } from '../providers/node-registry.js';
 import { unrecoverableQueueError } from '@pertexo/queue';
 import {
   describeNodeRefusal,

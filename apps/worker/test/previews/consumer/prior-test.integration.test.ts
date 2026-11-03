@@ -4,7 +4,8 @@ import { createPreviewAttemptRunStore } from '@pertexo/core/previews';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
 import { parseStoredExecutionValue } from '@pertexo/core/runs';
 import type { AcceptPreviewRunInput } from '@pertexo/core/testing';
-import { createPlatformNodeRegistry } from '@pertexo/node-catalog/server';
+
+import { createPlatformNodeRegistry } from '../../../src/providers/node-registry.js';
 import { createQueueProducer } from '@pertexo/queue';
 import { describe, expect, it } from 'vitest';
 

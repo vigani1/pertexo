@@ -9,8 +9,8 @@ import {
 import {
   createEmailSendNotificationExecutorRegistration,
   createResendClient,
-  type SecureHttpRequest,
-  type SecureHttpResponse,
+  type ProviderHttpRequest,
+  type ProviderHttpResponse,
 } from '../../../src/server.js';
 
 import {
@@ -104,9 +104,9 @@ describe('email.send_notification@1', () => {
     expect(state.secret.every((byte) => byte === 0)).toBe(true);
   });
   it('posts one exact bounded request to the fixed endpoint with a stable key and payload', async () => {
-    const requests: SecureHttpRequest[] = [];
+    const requests: ProviderHttpRequest[] = [];
     const execute = vi.fn(
-      async (request: SecureHttpRequest): Promise<SecureHttpResponse> => {
+      async (request: ProviderHttpRequest): Promise<ProviderHttpResponse> => {
         const bytes = inlineBytes(request.body);
         requests.push({
           ...request,

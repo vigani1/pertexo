@@ -3,10 +3,8 @@ import { randomUUID } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 
 import { encodeStoredClientSecret } from '@pertexo/core/connections';
-import {
-  newOAuth2State,
-  type SecureHttpResponse,
-} from '@pertexo/integrations/server';
+import { newOAuth2State } from '@pertexo/integrations/server';
+import type { SecureHttpResponse } from '@pertexo/secrets/server';
 
 import { FinishOAuth2AuthorizationUseCase } from '../../../src/connections/oauth2/finish-authorization.js';
 import type {

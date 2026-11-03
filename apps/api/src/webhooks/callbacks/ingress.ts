@@ -5,7 +5,7 @@ import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { CallbackResponseError } from '@pertexo/core/runs';
 import { StoredExecutionValueInvalidError } from '@pertexo/node-sdk';
 import { callbackTokenHash } from '@pertexo/secrets/server';
-import { redactText } from '@pertexo/integrations/server';
+import { redactText } from '@pertexo/secrets/server';
 import type { StructuredLogger } from '@pertexo/observability';
 import { AbuseRateLimitPolicy } from '@pertexo/rate-limit';
 import type { ApiCallbackRuntime } from '../../platform/webhooks/callback-runtime.module.js';

@@ -10,19 +10,19 @@ import {
   type JsonValue,
 } from '@pertexo/node-sdk/server';
 import { inspectJsonValue, resolveJsonPath } from '@pertexo/workflow-model';
-import { inspectSecureHttpError } from '../../http/secure-error.js';
+import { inspectProviderHttpError } from '../../providers/http-errors.js';
 import type {
-  SecureHttpClient,
-  SecureHttpRequest,
-  SecureHttpStreamingBody,
-} from '../../http/secure.js';
+  ProviderHttpClient,
+  ProviderHttpRequest,
+  ProviderHttpStreamingBody,
+} from '../../providers/http-client.js';
 import type { HttpPagination } from './http-pagination.schemas.js';
 import { hasNextPage, nextPage, setPaginationParameter } from './navigation.js';
 import { JSON_MEDIA_TYPE } from '../../http/content-type.js';
 
 type Page = Readonly<{ value: JsonValue; url: string; link?: string }>;
 async function readPage(
-  stream: SecureHttpStreamingBody,
+  stream: ProviderHttpStreamingBody,
   page: number,
 ): Promise<Page> {
   if (
@@ -65,8 +65,8 @@ async function readPage(
 }
 
 type PaginationExecutionInput = Readonly<{
-  client: Pick<SecureHttpClient, 'executeStreaming'>;
-  request: SecureHttpRequest;
+  client: Pick<ProviderHttpClient, 'executeStreaming'>;
+  request: ProviderHttpRequest;
   pagination: HttpPagination;
   inlineBytes: number;
   artifacts?: NodeArtifactRuntime;
@@ -212,7 +212,7 @@ async function fetchPage(
       },
     );
   } catch (error) {
-    const code = inspectSecureHttpError(error)?.code;
+    const code = inspectProviderHttpError(error)?.code;
     if (code === 'pagination_origin_changed')
       throw new HttpPaginationFailure('http.pagination_origin_changed', page);
     if (code === 'pagination_navigation_invalid')

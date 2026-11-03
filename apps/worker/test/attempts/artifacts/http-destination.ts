@@ -1,3 +1,4 @@
+import { provideHttpClient } from '../../../src/providers/http-client.js';
 import { observeMultipart } from './multipart-observation.js';
 import { createHash } from 'node:crypto';
 import { createServer } from 'node:http';
@@ -7,7 +8,7 @@ import {
   SecureHttpClient,
   type SecureHttpTransportRequest,
   type SecureHttpTransportResponse,
-} from '@pertexo/integrations/server';
+} from '@pertexo/secrets/server';
 
 export const artifactDestinationUrl =
   'https://artifact-owned.example.test/upload';
@@ -100,14 +101,16 @@ export async function createArtifactDestination(
   };
   return {
     authorization,
-    httpClient: new SecureHttpClient(
-      {
-        resolve: (hostname) =>
-          hostname === new URL(artifactDestinationUrl).hostname
-            ? Promise.resolve([{ address, family: 4 }])
-            : Promise.reject(new Error('Outside owned DNS')),
-      },
-      { dispatch },
+    httpClient: provideHttpClient(
+      new SecureHttpClient(
+        {
+          resolve: (hostname) =>
+            hostname === new URL(artifactDestinationUrl).hostname
+              ? Promise.resolve([{ address, family: 4 }])
+              : Promise.reject(new Error('Outside owned DNS')),
+        },
+        { dispatch },
+      ),
     ),
     observe: () => observations.map((value) => ({ ...value })),
     close: async () => {

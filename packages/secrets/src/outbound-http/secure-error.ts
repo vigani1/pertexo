@@ -1,4 +1,8 @@
-import { errorCodeIs, errorNameIs, safeInstanceOf } from './unknown-error.js';
+import {
+  errorCodeIs,
+  errorNameIs,
+  safeInstanceOf,
+} from '@pertexo/node-sdk/server';
 
 export const SECURE_HTTP_ERROR_CODE = Object.freeze({
   canceled: 'canceled',

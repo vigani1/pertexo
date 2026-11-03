@@ -6,7 +6,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   createHttpRequestExecutorRegistration,
   type HttpRequestExecutorDependencies,
-  type SecureHttpRequest,
+  type ProviderHttpRequest,
 } from '../../../src/server.js';
 import {
   connectionId,
@@ -23,7 +23,7 @@ describe('http.request@1 server executor', () => {
     const state = runtime();
     let requestBody: Uint8Array | undefined;
     const providerBody = encoder.encode('{"created":true}');
-    const dispatch = vi.fn(async (request: SecureHttpRequest) => {
+    const dispatch = vi.fn(async (request: ProviderHttpRequest) => {
       expect(request.headers).toEqual({
         accept: 'application/json',
         authorization: 'Bearer executor-secret',
@@ -112,7 +112,7 @@ describe('http.request@1 server executor', () => {
     },
   );
   it('sends run data filled into {placeholders}, keeping the configured origin', async () => {
-    let sent: SecureHttpRequest | undefined;
+    let sent: ProviderHttpRequest | undefined;
     const registration = createHttpRequestExecutorRegistration({
       httpClient: streamingHttpClient(async (request) => {
         sent = request;
@@ -151,7 +151,7 @@ describe('http.request@1 server executor', () => {
   });
   it('calls a public API without a connection, marking dispatch without a fence', async () => {
     const state = runtime();
-    let sent: SecureHttpRequest | undefined;
+    let sent: ProviderHttpRequest | undefined;
     const registration = createHttpRequestExecutorRegistration({
       httpClient: streamingHttpClient(async (request) => {
         sent = request;
@@ -244,7 +244,7 @@ describe('http.request@1 server executor', () => {
     const state = runtime();
     const providerBody = new Uint8Array(70_000).fill(7);
     const httpClient = streamingHttpClient(
-      vi.fn(async (request: SecureHttpRequest) => {
+      vi.fn(async (request: ProviderHttpRequest) => {
         await request.beforeDispatch();
         return response(providerBody);
       }),

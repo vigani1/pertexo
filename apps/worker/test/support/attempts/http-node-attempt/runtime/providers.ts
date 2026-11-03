@@ -1,8 +1,10 @@
+import { provideHttpClient } from '../../../../../src/providers/http-client.js';
 import {
   SecureHttpClient,
   type SecureHttpTransportRequest,
-} from '@pertexo/integrations/server';
-import { createPlatformNodeRegistry } from '@pertexo/node-catalog/server';
+} from '@pertexo/secrets/server';
+
+import { createPlatformNodeRegistry } from '../../../../../src/providers/node-registry.js';
 
 import type { Attributes, Meter, Span, Tracer } from '@opentelemetry/api';
 
@@ -69,28 +71,30 @@ export function createHttpProofProviders(
       return work(span);
     },
   } as unknown as Tracer;
-  const httpClient = new SecureHttpClient(
-    {
-      resolve: () =>
-        Promise.resolve([{ address: '8.8.8.8', family: 4 as const }]),
-    },
-    {
-      dispatch: async (request) => {
-        transportRequests.push(request);
-        if (options.dispatchHttp !== undefined)
-          return options.dispatchHttp(request);
-        return {
-          status: 200,
-          headers: { 'content-type': 'application/octet-stream' },
-          body: (async function* () {
-            await Promise.resolve();
-            yield new Uint8Array(35_000).fill(7);
-            yield new Uint8Array(35_000).fill(9);
-          })(),
-          close: () => undefined,
-        };
+  const httpClient = provideHttpClient(
+    new SecureHttpClient(
+      {
+        resolve: () =>
+          Promise.resolve([{ address: '8.8.8.8', family: 4 as const }]),
       },
-    },
+      {
+        dispatch: async (request) => {
+          transportRequests.push(request);
+          if (options.dispatchHttp !== undefined)
+            return options.dispatchHttp(request);
+          return {
+            status: 200,
+            headers: { 'content-type': 'application/octet-stream' },
+            body: (async function* () {
+              await Promise.resolve();
+              yield new Uint8Array(35_000).fill(7);
+              yield new Uint8Array(35_000).fill(9);
+            })(),
+            close: () => undefined,
+          };
+        },
+      },
+    ),
   );
   const registry = createPlatformNodeRegistry({
     httpRequest: { httpClient },

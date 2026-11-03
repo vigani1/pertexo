@@ -4,8 +4,8 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   createSlackClient,
   SLACK_API_ENDPOINTS,
-  type SecureHttpRequest,
-  type SecureHttpResponse,
+  type ProviderHttpRequest,
+  type ProviderHttpResponse,
 } from '../../src/server.js';
 
 const botToken = 'xoxb-123456789-secret';
@@ -16,10 +16,10 @@ function lookup(
   headers: Readonly<Record<string, string>> = {},
 ) {
   const responseBody = new TextEncoder().encode(payload);
-  const requests: SecureHttpRequest[] = [];
+  const requests: ProviderHttpRequest[] = [];
   const requestBodies: string[] = [];
   const execute = vi.fn(
-    async (request: SecureHttpRequest): Promise<SecureHttpResponse> => {
+    async (request: ProviderHttpRequest): Promise<ProviderHttpResponse> => {
       requests.push(request);
       requestBodies.push(new TextDecoder().decode(inlineBytes(request.body)));
       await request.beforeDispatch();
@@ -183,7 +183,7 @@ describe('Slack conversations.info channel lookup (ADR 046)', () => {
   it('accepts non-Latin channel names and forwards a caller signal', async () => {
     const controller = new AbortController();
     const execute = vi.fn(
-      (request: SecureHttpRequest): Promise<SecureHttpResponse> =>
+      (request: ProviderHttpRequest): Promise<ProviderHttpResponse> =>
         Promise.resolve({
           status: 200,
           headers: {},

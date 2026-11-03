@@ -26,7 +26,7 @@ import type {
   ConnectionEnvelopeEncryptionRuntime,
   ConnectionEnvelopeEncryption,
 } from '@pertexo/secrets/server';
-import type { AllowedPrivateNetwork } from '@pertexo/integrations/server';
+import type { AllowedPrivateNetwork } from '@pertexo/secrets/server';
 import type { OAuth2TokenService } from '@pertexo/core/connections';
 import type { RedisRateLimitRuntime } from '@pertexo/rate-limit';
 import type { NodeExecutionCapabilityFactories } from '../capabilities.js';

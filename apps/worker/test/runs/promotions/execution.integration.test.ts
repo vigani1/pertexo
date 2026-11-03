@@ -19,10 +19,8 @@ import {
   parseConnectionEncryptionConfig,
 } from '@pertexo/secrets/server';
 import { HTTP_REQUEST_CONNECTION_SLOT } from '@pertexo/integrations';
-import {
-  createPlatformNodeRegistry,
-  platformPortableDefinitionPolicy,
-} from '@pertexo/node-catalog/server';
+import { platformPortableDefinitionPolicy } from '@pertexo/node-catalog/server';
+import { createPlatformNodeRegistry } from '../../../src/providers/node-registry.js';
 import { buildWorkflowExecutable } from '@pertexo/workflow-engine';
 import {
   workflowCompatibilityReport,

@@ -4,11 +4,10 @@ import {
   createArtifactStore,
   parseArtifactStoreConfig,
 } from '@pertexo/artifact-store';
-import {
-  createResendClient,
-  type SecureHttpRequest,
-} from '@pertexo/integrations/server';
-import { createPlatformNodeRegistry } from '@pertexo/node-catalog/server';
+import { createResendClient } from '@pertexo/integrations/server';
+import type { SecureHttpRequest } from '@pertexo/secrets/server';
+
+import { createPlatformNodeRegistry } from '../../../src/providers/node-registry.js';
 import type {
   NodeArtifactReference,
   NodeExecutionRuntime,

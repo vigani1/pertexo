@@ -5,7 +5,10 @@ import type {
 import { z } from 'zod';
 import { parseBoundedRetryAfterMillis } from '../http/retry-after.js';
 
-import type { SecureHttpClient, SecureHttpRequest } from '../http/secure.js';
+import type {
+  ProviderHttpClient,
+  ProviderHttpRequest,
+} from '../providers/http-client.js';
 import { EMAIL_SEND_NOTIFICATION_LIMITS } from './email-send-notification.schemas.js';
 import {
   encodeMessageWithAttachments,
@@ -53,7 +56,7 @@ export type ResendClient = Readonly<{
 }>;
 
 export function createResendClient(
-  httpClient: Pick<SecureHttpClient, 'execute'>,
+  httpClient: Pick<ProviderHttpClient, 'execute'>,
 ): ResendClient {
   return Object.freeze({
     sendNotification: async (input) => {
@@ -80,7 +83,7 @@ export function createResendClient(
               spool: input.attachments.spool,
               signal: input.signal ?? new AbortController().signal,
             });
-      const request: SecureHttpRequest = {
+      const request: ProviderHttpRequest = {
         url: RESEND_API_ENDPOINT,
         method: 'POST',
         headers: Object.freeze({

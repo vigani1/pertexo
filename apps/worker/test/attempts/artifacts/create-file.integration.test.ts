@@ -9,7 +9,8 @@ import {
   createWorkspaceDatabase,
 } from '@pertexo/database/testing';
 import { createHttpRequestExecutorRegistration } from '@pertexo/integrations/server';
-import { createPlatformNodeRegistry } from '@pertexo/node-catalog/server';
+
+import { createPlatformNodeRegistry } from '../../../src/providers/node-registry.js';
 import type {
   NodeArtifactReference,
   NodeExecutionRuntime,

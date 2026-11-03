@@ -158,6 +158,15 @@ function directionViolations(file, specifier) {
       `${file}: only applications and core depend on secrets (apps -> core -> secrets -> database)`,
     );
   if (
+    file.startsWith('packages/secrets/') &&
+    (specifier === '@pertexo/integrations' ||
+      specifier.startsWith('@pertexo/integrations/') ||
+      reachesPackageCode(file, specifier, 'integrations'))
+  )
+    violations.push(
+      `${file}: secrets owns security infrastructure; applications compose provider clients from integrations`,
+    );
+  if (
     reachesDatabaseCode(file, specifier) &&
     !file.startsWith('packages/core/') &&
     !file.startsWith('packages/database/') &&
@@ -185,6 +194,22 @@ function sourceViolations(file, specifier) {
   if (/^@pertexo\/[^/]+\/testing$/u.test(specifier))
     violations.push(
       `${file}: ${specifier} holds test flows and fixtures; production code can't load it`,
+    );
+  if (
+    file.startsWith('packages/integrations/src/') &&
+    [
+      'node:http',
+      'node:https',
+      'node:dns',
+      'node:dns/promises',
+      'node:tls',
+      '@aws-sdk/client-kms',
+      '@smithy/node-http-handler',
+      'nodemailer',
+    ].includes(specifier)
+  )
+    violations.push(
+      `${file}: provider code receives network and secret implementations from applications; ${specifier} belongs in secrets`,
     );
   const [, workspaceName] = file.split('/');
   if (

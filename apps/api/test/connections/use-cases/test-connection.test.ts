@@ -18,7 +18,7 @@ import {
   sealed,
 } from './test-connection/fixture.js';
 import { ConnectionSecretEncryptionError } from '@pertexo/secrets/server';
-import type { SecureHttpRequest } from '@pertexo/integrations/server';
+import type { SecureHttpRequest } from '@pertexo/secrets/server';
 
 describe('connection testing security and cleanup regressions', () => {
   it.each([

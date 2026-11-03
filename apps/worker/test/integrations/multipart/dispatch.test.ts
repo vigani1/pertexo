@@ -1,9 +1,10 @@
-import { httpConnections } from '../support/http-execution.js';
+import { provideHttpClient } from '../../../src/providers/http-client.js';
+import { httpConnections } from '../../../../../packages/integrations/test/support/http-execution.js';
 import {
   emptyArtifactRuntime,
   spoolBytes,
   sourceBytes,
-} from '../support/artifact-runtime.js';
+} from '../../../../../packages/integrations/test/support/artifact-runtime.js';
 import {
   NodeExecutorFailure,
   type NodeVerifiedByteSource,
@@ -18,13 +19,13 @@ import {
 import {
   HTTP_REQUEST_MANIFEST,
   HTTP_REQUEST_DEFINITION_REGISTRATION,
-} from '../../src/index.js';
+} from '../../../../../packages/integrations/src/index.js';
+import { createHttpRequestExecutorRegistration } from '@pertexo/integrations/server';
 import {
-  createHttpRequestExecutorRegistration,
   SecureHttpClient,
   SecureHttpError,
   SECURE_HTTP_ERROR_CODE,
-} from '../../src/server.js';
+} from '@pertexo/secrets/server';
 const key = 'part_11111111-1111-4111-8111-111111111111';
 const connectionId = '22222222-2222-4222-8222-222222222222';
 function fixture(
@@ -65,7 +66,7 @@ function fixture(
     .fn()
     .mockRejectedValue(new Error('Transport must not run'));
   const executor = createHttpRequestExecutorRegistration({
-    httpClient: { executeStreaming },
+    httpClient: { redactText: (value: string) => value, executeStreaming },
   });
   const config = {
     method: 'POST',
@@ -89,6 +90,7 @@ function fixture(
       ...overrides,
     });
   return {
+    redactText: (value: string) => value,
     execute,
     registration: executor,
     config,
@@ -159,35 +161,39 @@ describe('multipart dispatch outcomes', () => {
     async (failure) => {
       const state = fixture({ authorization: 'Bearer owned' });
       let ownedBody: NodeVerifiedByteSource | Uint8Array | undefined;
-      const client = new SecureHttpClient(
-        { resolve: () => Promise.resolve([{ address: '8.8.8.8', family: 4 }]) },
-        {
-          dispatch: async (request) => {
-            ownedBody = request.body;
-            if (request.body === undefined) throw new Error('Body missing');
-            expect(
-              (await sourceBytes(request.body)).toString('utf8'),
-            ).toContain('hello');
-            if (failure === 'network loss')
-              return Promise.reject(
-                new SecureHttpError(
-                  SECURE_HTTP_ERROR_CODE.networkFailed,
-                  'ambiguous',
-                  { possiblyDispatched: true },
-                ),
-              );
-            return Promise.resolve({
-              status: 503,
-              headers: { 'content-type': 'text/plain' },
-              body: (async function* () {
-                yield await Promise.resolve(
-                  new TextEncoder().encode('Unavailable'),
-                );
-              })(),
-              close: () => Promise.resolve(),
-            });
+      const client = provideHttpClient(
+        new SecureHttpClient(
+          {
+            resolve: () => Promise.resolve([{ address: '8.8.8.8', family: 4 }]),
           },
-        },
+          {
+            dispatch: async (request) => {
+              ownedBody = request.body;
+              if (request.body === undefined) throw new Error('Body missing');
+              expect(
+                (await sourceBytes(request.body)).toString('utf8'),
+              ).toContain('hello');
+              if (failure === 'network loss')
+                return Promise.reject(
+                  new SecureHttpError(
+                    SECURE_HTTP_ERROR_CODE.networkFailed,
+                    'ambiguous',
+                    { possiblyDispatched: true },
+                  ),
+                );
+              return Promise.resolve({
+                status: 503,
+                headers: { 'content-type': 'text/plain' },
+                body: (async function* () {
+                  yield await Promise.resolve(
+                    new TextEncoder().encode('Unavailable'),
+                  );
+                })(),
+                close: () => Promise.resolve(),
+              });
+            },
+          },
+        ),
       );
       await expect(
         createHttpRequestExecutorRegistration({ httpClient: client }).execute({
@@ -272,20 +278,22 @@ describe('multipart size feedback through registry validation', () => {
 
 it('keeps an effectful request unknown if file cleanup fails after a successful dispatch, and still wipes credentials', async () => {
   const state = fixture({ authorization: 'Bearer owned' });
-  const client = new SecureHttpClient(
-    { resolve: () => Promise.resolve([{ address: '8.8.8.8', family: 4 }]) },
-    {
-      dispatch: () =>
-        Promise.resolve({
-          status: 204,
-          headers: {},
-          body: (async function* () {
-            await Promise.resolve();
-            yield new Uint8Array();
-          })(),
-          close: () => undefined,
-        }),
-    },
+  const client = provideHttpClient(
+    new SecureHttpClient(
+      { resolve: () => Promise.resolve([{ address: '8.8.8.8', family: 4 }]) },
+      {
+        dispatch: () =>
+          Promise.resolve({
+            status: 204,
+            headers: {},
+            body: (async function* () {
+              await Promise.resolve();
+              yield new Uint8Array();
+            })(),
+            close: () => undefined,
+          }),
+      },
+    ),
   );
   state.executeStreaming.mockImplementation(
     client.executeStreaming.bind(client),

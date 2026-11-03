@@ -765,9 +765,15 @@ importers:
       '@aws-sdk/client-kms':
         specifier: 3.1152.0
         version: 3.1152.0
+      '@pertexo/contracts':
+        specifier: workspace:*
+        version: link:../contracts
       '@pertexo/database':
         specifier: workspace:*
         version: link:../database
+      '@pertexo/node-sdk':
+        specifier: workspace:*
+        version: link:../node-sdk
       '@pertexo/workflow-model':
         specifier: workspace:*
         version: link:../workflow-model

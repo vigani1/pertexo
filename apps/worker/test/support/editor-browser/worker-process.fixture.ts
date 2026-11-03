@@ -6,7 +6,7 @@ import { createOutboxDispatcherDatabase } from '@pertexo/core/outbox';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
 import { createQueueProducer, JOB_NAME } from '@pertexo/queue';
 
-import { createPlatformNodeRegistry } from '@pertexo/node-catalog/server';
+import { createPlatformNodeRegistry } from '../../../src/providers/node-registry.js';
 
 import type { createCuratedTemplateQualificationTransports } from '../curated-templates/controlled-transports.js';
 

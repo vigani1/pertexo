@@ -3,10 +3,10 @@ import {
   NodeExecutorFailure,
 } from '@pertexo/node-sdk/server';
 
-import { SECURE_HTTP_ERROR_CODE } from '../http/secure.js';
+import { PROVIDER_HTTP_ERROR_CODE } from '../providers/http-errors.js';
 import { providerFailure } from '../providers/failure.js';
-import { inspectSecureHttpError } from '../http/secure-error.js';
-import { safeInstanceOf } from '../http/unknown-error.js';
+import { inspectProviderHttpError } from '../providers/http-errors.js';
+import { safeInstanceOf } from '@pertexo/node-sdk/server';
 import type { ResendApiResult } from './client.js';
 
 export class EmailSendNotificationExecutorError extends NodeExecutorFailure {
@@ -79,26 +79,26 @@ export function classifySendError(
     return unresolved
       ? failure('outcome_unknown', 'provider', { possiblyDispatched: true })
       : error;
-  const secureError = inspectSecureHttpError(error);
+  const secureError = inspectProviderHttpError(error);
   if (secureError === undefined)
     return unresolved
       ? failure('outcome_unknown', 'provider', { possiblyDispatched: true })
       : failure('retry', 'network', { possiblyDispatched: true });
-  if (secureError.code === SECURE_HTTP_ERROR_CODE.dispatchBindingMismatch)
+  if (secureError.code === PROVIDER_HTTP_ERROR_CODE.dispatchBindingMismatch)
     return dispatchIdentityFailure(runtime, 'configuration');
-  if (secureError.code === SECURE_HTTP_ERROR_CODE.connectionFenceFailed)
+  if (secureError.code === PROVIDER_HTTP_ERROR_CODE.connectionFenceFailed)
     return dispatchIdentityFailure(runtime, 'authentication');
-  if (secureError.code === SECURE_HTTP_ERROR_CODE.canceled)
+  if (secureError.code === PROVIDER_HTTP_ERROR_CODE.canceled)
     return failure('canceled', 'canceled', {
       possiblyDispatched: secureError.possiblyDispatched,
     });
   if (unresolved)
     return failure('outcome_unknown', 'provider', { possiblyDispatched: true });
-  if (secureError.code === SECURE_HTTP_ERROR_CODE.dispatchEvidenceFailed)
+  if (secureError.code === PROVIDER_HTTP_ERROR_CODE.dispatchEvidenceFailed)
     return failure('retry', 'provider', { possiblyDispatched: false });
   return failure(
     'retry',
-    secureError.code === SECURE_HTTP_ERROR_CODE.timedOut
+    secureError.code === PROVIDER_HTTP_ERROR_CODE.timedOut
       ? 'timeout'
       : 'network',
     { possiblyDispatched: secureError.possiblyDispatched },

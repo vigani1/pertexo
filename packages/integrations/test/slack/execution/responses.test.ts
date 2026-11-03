@@ -4,8 +4,8 @@ import { describe, expect, it, vi } from 'vitest';
 
 import {
   createSlackClient,
-  type SecureHttpRequest,
-  type SecureHttpResponse,
+  type ProviderHttpRequest,
+  type ProviderHttpResponse,
 } from '../../../src/server.js';
 
 describe('slack.send_message@1', () => {
@@ -47,7 +47,7 @@ describe('slack.send_message@1', () => {
   it('uses only the fixed endpoint, one bounded request, no redirects, and inaccessible unfurls', async () => {
     let requestBody: Uint8Array | undefined;
     const execute = vi.fn(
-      async (request: SecureHttpRequest): Promise<SecureHttpResponse> => {
+      async (request: ProviderHttpRequest): Promise<ProviderHttpResponse> => {
         const bytes = inlineBytes(request.body);
         requestBody = bytes === undefined ? undefined : new Uint8Array(bytes);
         expect(request).toMatchObject({
@@ -99,7 +99,7 @@ describe('slack.send_message@1', () => {
   });
   it('bounds Retry-After and performs fixed auth.test without a caller URL', async () => {
     const execute = vi.fn(
-      (request: SecureHttpRequest): Promise<SecureHttpResponse> =>
+      (request: ProviderHttpRequest): Promise<ProviderHttpResponse> =>
         Promise.resolve({
           status: 429,
           headers: { 'retry-after': '999999999' },

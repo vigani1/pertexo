@@ -1,7 +1,7 @@
 import { createServer } from 'node:http';
 
 import { afterEach, describe, expect, it } from 'vitest';
-import { assertPublicAddress } from '../../src/http/transport/address-policy.js';
+import { assertPublicAddress } from '../../src/outbound-http/transport/address-policy.js';
 import { NodeHttpTransport } from '../../src/server.js';
 import { encoder, decoder } from '../support/http-client.js';
 describe('public network address policy', () => {

@@ -11,7 +11,8 @@ import {
 } from '@pertexo/database/testing';
 import { createPagedFileSource } from './pages-source.fixture.js';
 import { createHttpRequestExecutorRegistration } from '@pertexo/integrations/server';
-import { createPlatformNodeRegistry } from '@pertexo/node-catalog/server';
+
+import { createPlatformNodeRegistry } from '../../../src/providers/node-registry.js';
 import { filePageBundleSchema, FILE_PAGE_LIMITS } from '@pertexo/node-sdk';
 import type {
   NodeArtifactReference,

@@ -268,7 +268,7 @@ it('does not call the HTTP service or dispatch fence when EOF verification fails
   const beforeDispatch = vi.fn();
   const executeStreaming = vi.fn();
   const executor = createHttpRequestExecutorRegistration({
-    httpClient: { executeStreaming },
+    httpClient: { redactText: (value: string) => value, executeStreaming },
   });
   await expect(
     executor.execute({

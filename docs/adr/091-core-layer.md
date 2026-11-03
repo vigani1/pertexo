@@ -36,9 +36,10 @@ own transaction (`inbox` notice batches, `identity` email proofs, two-factor
 recovery) and the insert has to share that transaction. `secrets` may not use `core`,
 and `database` may not use `secrets`, even from tests: a module check, a project
 reference check and lint refuse them. Its one entry point is `@pertexo/secrets/server`.
-It holds system mail storage and the encryption key inventory; the rest of what the
-target design names for it (key rings, safe HTTP, the mail client) is still in
-`integrations`.
+It holds cryptography, key rings and verification, safe outbound HTTP, and durable
+system mail. Applications inject those implementations into the provider ports in
+`integrations`; provider protocol clients and step execution stay there. Connection
+token lifecycle and storage belong to `core/connections`.
 
 **One authority helper.** A core flow opens its transaction through
 `withWorkspaceAccess` in `core/src/shared/`, which installs the workspace scope,
@@ -56,7 +57,7 @@ flow names its list once, at the helper, so two reads can't disagree.
 | `@pertexo/core/<area>`, Node only | Applications | One area's door, so the imports record who uses what |
 | `@pertexo/core/testing` | Tests | Test flows, which production must not be able to load |
 | `@pertexo/database/schema`, `/primitives` | `core`, `secrets` | Tables and helpers; `/primitives` shrinks to the list above once the areas have moved |
-| `@pertexo/secrets/server`, Node only | Applications, `core` | System mail storage and the encryption key inventory |
+| `@pertexo/secrets/server`, Node only | Applications, `core` | Cryptography, key custody, safe outbound HTTP and durable system mail |
 | `@pertexo/database/testing` | Tests | Fixtures |
 | `@pertexo/database/<area>` | Applications, until that area moves | Removed as part of the move |
 

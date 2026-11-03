@@ -21,7 +21,7 @@ import {
 import {
   parseAllowedPrivateNetworks,
   type SecureHttpAddressPolicy,
-} from '@pertexo/integrations/server';
+} from '@pertexo/secrets/server';
 import {
   parseSystemMailDeliveryConfig,
   type SystemMailDeliveryConfig,

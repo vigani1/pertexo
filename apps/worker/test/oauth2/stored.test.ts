@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import type { SecureHttpResponse } from '@pertexo/integrations/server';
+import type { SecureHttpResponse } from '@pertexo/secrets/server';
 import { ConnectionSecretEncryptionError } from '@pertexo/secrets/server';
 import {
   decodeStoredClientSecret,

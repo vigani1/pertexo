@@ -8,11 +8,11 @@ import {
 
 import { parseBoundedRetryAfterMillis } from '../http/retry-after.js';
 import {
-  SECURE_HTTP_ERROR_CODE,
-  inspectSecureHttpError,
-  type SecureHttpErrorCode,
-} from '../http/secure-error.js';
-import type { SecureHttpClient } from '../http/secure.js';
+  PROVIDER_HTTP_ERROR_CODE,
+  inspectProviderHttpError,
+  type ProviderHttpErrorCode,
+} from '../providers/http-errors.js';
+import type { ProviderHttpClient } from '../providers/http-client.js';
 
 const TOKEN_REQUEST_TIMEOUT_MILLIS = 15_000;
 const MAXIMUM_RESPONSE_BYTES = 65_536;
@@ -43,11 +43,11 @@ const TEMPORARY = new Set(['server_error', 'temporarily_unavailable']);
 export const isTemporaryOAuth2Error = (error: string): boolean =>
   TEMPORARY.has(error);
 /** The service answered, or the address is wrong: another try won't help. */
-const UNUSABLE_FAILURES: ReadonlySet<SecureHttpErrorCode> = new Set([
-  SECURE_HTTP_ERROR_CODE.redirectRejected,
-  SECURE_HTTP_ERROR_CODE.responseTooLarge,
-  SECURE_HTTP_ERROR_CODE.responseEncodingRejected,
-  SECURE_HTTP_ERROR_CODE.invalidRequest,
+const UNUSABLE_FAILURES: ReadonlySet<ProviderHttpErrorCode> = new Set([
+  PROVIDER_HTTP_ERROR_CODE.redirectRejected,
+  PROVIDER_HTTP_ERROR_CODE.responseTooLarge,
+  PROVIDER_HTTP_ERROR_CODE.responseEncodingRejected,
+  PROVIDER_HTTP_ERROR_CODE.invalidRequest,
 ]);
 
 export type OAuth2TokenRequest =
@@ -237,9 +237,9 @@ function classifyAnswer(
 }
 
 function classifyFailure(error: unknown): OAuth2TokenAnswer {
-  const code = inspectSecureHttpError(error)?.code;
+  const code = inspectProviderHttpError(error)?.code;
   if (code === undefined) throw error;
-  if (code === SECURE_HTTP_ERROR_CODE.ssrfBlocked)
+  if (code === PROVIDER_HTTP_ERROR_CODE.ssrfBlocked)
     return Object.freeze({ kind: 'address_blocked' });
   return UNUSABLE_FAILURES.has(code) ? INVALID : UNAVAILABLE;
 }
@@ -249,7 +249,7 @@ function classifyFailure(error: unknown): OAuth2TokenAnswer {
  * consumed code or a rotated token must not be lost to a closed tab or canceled step.
  */
 export async function requestOAuth2Token(
-  client: Pick<SecureHttpClient, 'execute'>,
+  client: Pick<ProviderHttpClient, 'execute'>,
   settings: OAuth2ClientSettings,
   clientSecret: string,
   request: OAuth2TokenRequest,

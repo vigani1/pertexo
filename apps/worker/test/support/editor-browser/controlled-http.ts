@@ -1,3 +1,4 @@
+import { provideHttpClient } from '../../../src/providers/http-client.js';
 import {
   createServer,
   request,
@@ -10,7 +11,7 @@ import {
   SecureHttpClient,
   type SecureHttpTransportRequest,
   type SecureHttpTransportResponse,
-} from '@pertexo/integrations/server';
+} from '@pertexo/secrets/server';
 
 export const controlledActionUrl =
   'https://pertexo-controlled-action.example.test/effect';
@@ -270,16 +271,18 @@ export function createEditorControlledHttpTarget(
       outgoing.end(input.body);
     });
   };
-  const httpClient = new SecureHttpClient(
-    {
-      resolve: (hostname) =>
-        hostname === logicalHost
-          ? Promise.resolve([
-              { address: publicTestAddress, family: 4 as const },
-            ])
-          : Promise.reject(new Error('Owned HTTP hostname rejected')),
-    },
-    { dispatch },
+  const httpClient = provideHttpClient(
+    new SecureHttpClient(
+      {
+        resolve: (hostname) =>
+          hostname === logicalHost
+            ? Promise.resolve([
+                { address: publicTestAddress, family: 4 as const },
+              ])
+            : Promise.reject(new Error('Owned HTTP hostname rejected')),
+      },
+      { dispatch },
+    ),
   );
   return {
     httpClient,

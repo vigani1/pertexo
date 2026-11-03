@@ -1,7 +1,11 @@
 import { MAXIMUM_RETRY_DELAY_MILLIS } from '@pertexo/node-sdk/server';
 
 import { parseBoundedRetryAfterMillis } from './retry-after.js';
-import { SECURE_HTTP_ERROR_CODE, type SecureHttpError } from './secure.js';
+
+import {
+  PROVIDER_HTTP_ERROR_CODE,
+  type ProviderHttpError,
+} from '../providers/http-errors.js';
 
 export const HTTP_SIDE_EFFECT_CLASS = Object.freeze({
   idempotentWithKey: 'idempotent_with_key',
@@ -79,13 +83,16 @@ export function classifySecureHttpResponse(
 }
 
 export function classifySecureHttpError(
-  error: SecureHttpError,
+  error: Pick<
+    ProviderHttpError,
+    'code' | 'classification' | 'possiblyDispatched'
+  >,
   sideEffectClass: HttpSideEffectClass,
   { providerKeyPresent }: Readonly<{ providerKeyPresent: boolean }>,
 ): HttpOutcomeDecision {
   if (!validPolicy(sideEffectClass, { providerKeyPresent }))
     return failed('configuration');
-  if (error.code === SECURE_HTTP_ERROR_CODE.canceled)
+  if (error.code === PROVIDER_HTTP_ERROR_CODE.canceled)
     return sideEffectClass === 'unsafe' && error.possiblyDispatched
       ? Object.freeze({ kind: 'outcome_unknown', errorKind: 'provider' })
       : Object.freeze({ kind: 'canceled', errorKind: 'canceled' });
@@ -96,7 +103,7 @@ export function classifySecureHttpError(
       sideEffectClass,
       { providerKeyPresent },
     );
-  if (error.code === SECURE_HTTP_ERROR_CODE.dispatchEvidenceFailed)
+  if (error.code === PROVIDER_HTTP_ERROR_CODE.dispatchEvidenceFailed)
     return error.possiblyDispatched
       ? retryDefinite('provider', sideEffectClass, {
           providerKeyPresent,
@@ -104,7 +111,7 @@ export function classifySecureHttpError(
       : retry('provider', sideEffectClass, {
           providerKeyPresent,
         });
-  if (error.code === SECURE_HTTP_ERROR_CODE.dnsFailed)
+  if (error.code === PROVIDER_HTTP_ERROR_CODE.dnsFailed)
     return error.possiblyDispatched
       ? retryDefinite(errorKind, sideEffectClass, {
           providerKeyPresent,
@@ -114,15 +121,15 @@ export function classifySecureHttpError(
         });
   if (
     !error.possiblyDispatched &&
-    (error.code === SECURE_HTTP_ERROR_CODE.networkFailed ||
-      error.code === SECURE_HTTP_ERROR_CODE.timedOut)
+    (error.code === PROVIDER_HTTP_ERROR_CODE.networkFailed ||
+      error.code === PROVIDER_HTTP_ERROR_CODE.timedOut)
   )
     return retry(errorKind, sideEffectClass, {
       providerKeyPresent,
     });
   if (
-    (error.code === SECURE_HTTP_ERROR_CODE.networkFailed ||
-      error.code === SECURE_HTTP_ERROR_CODE.timedOut) &&
+    (error.code === PROVIDER_HTTP_ERROR_CODE.networkFailed ||
+      error.code === PROVIDER_HTTP_ERROR_CODE.timedOut) &&
     error.possiblyDispatched
   )
     return retryDefinite(errorKind, sideEffectClass, {
@@ -192,26 +199,31 @@ function failed(errorKind: HttpExecutionErrorKind): HttpOutcomeDecision {
   return Object.freeze({ kind: 'failed', errorKind });
 }
 
-function secureErrorKind(error: SecureHttpError): HttpExecutionErrorKind {
+function secureErrorKind(
+  error: Pick<
+    ProviderHttpError,
+    'code' | 'classification' | 'possiblyDispatched'
+  >,
+): HttpExecutionErrorKind {
   switch (error.code) {
-    case SECURE_HTTP_ERROR_CODE.canceled:
+    case PROVIDER_HTTP_ERROR_CODE.canceled:
       return 'canceled';
-    case SECURE_HTTP_ERROR_CODE.dnsFailed:
-    case SECURE_HTTP_ERROR_CODE.networkFailed:
+    case PROVIDER_HTTP_ERROR_CODE.dnsFailed:
+    case PROVIDER_HTTP_ERROR_CODE.networkFailed:
       return 'network';
-    case SECURE_HTTP_ERROR_CODE.timedOut:
+    case PROVIDER_HTTP_ERROR_CODE.timedOut:
       return 'timeout';
-    case SECURE_HTTP_ERROR_CODE.dispatchEvidenceFailed:
+    case PROVIDER_HTTP_ERROR_CODE.dispatchEvidenceFailed:
       return 'internal';
-    case SECURE_HTTP_ERROR_CODE.connectionFenceFailed:
-    case SECURE_HTTP_ERROR_CODE.dispatchBindingMismatch:
-    case SECURE_HTTP_ERROR_CODE.invalidRequest:
-    case SECURE_HTTP_ERROR_CODE.paginationOriginChanged:
-    case SECURE_HTTP_ERROR_CODE.paginationNavigationInvalid:
-    case SECURE_HTTP_ERROR_CODE.redirectRejected:
-    case SECURE_HTTP_ERROR_CODE.responseEncodingRejected:
-    case SECURE_HTTP_ERROR_CODE.responseTooLarge:
-    case SECURE_HTTP_ERROR_CODE.ssrfBlocked:
+    case PROVIDER_HTTP_ERROR_CODE.connectionFenceFailed:
+    case PROVIDER_HTTP_ERROR_CODE.dispatchBindingMismatch:
+    case PROVIDER_HTTP_ERROR_CODE.invalidRequest:
+    case PROVIDER_HTTP_ERROR_CODE.paginationOriginChanged:
+    case PROVIDER_HTTP_ERROR_CODE.paginationNavigationInvalid:
+    case PROVIDER_HTTP_ERROR_CODE.redirectRejected:
+    case PROVIDER_HTTP_ERROR_CODE.responseEncodingRejected:
+    case PROVIDER_HTTP_ERROR_CODE.responseTooLarge:
+    case PROVIDER_HTTP_ERROR_CODE.ssrfBlocked:
       return 'configuration';
     default:
       return unreachable(error.code);

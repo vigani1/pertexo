@@ -1,12 +1,13 @@
+import { ProviderHttpError as SecureHttpError } from '@pertexo/integrations/server';
+import { provideHttpClient } from '../../../../src/providers/http-client.js';
 import { describe, expect, it, vi } from 'vitest';
 
+import { createHttpRequestExecutorRegistration } from '@pertexo/integrations/server';
 import {
-  createHttpRequestExecutorRegistration,
   SECURE_HTTP_ERROR_CODE,
   SecureHttpClient,
-  SecureHttpError,
   type SecureHttpTransportResponse,
-} from '../../../src/server.js';
+} from '@pertexo/secrets/server';
 import {
   encoder,
   config,
@@ -14,7 +15,7 @@ import {
   invocation,
   response,
   streamingHttpClient,
-} from '../../support/http-execution.js';
+} from '../../../../../../packages/integrations/test/support/http-execution.js';
 describe('http.request@1 server executor', () => {
   it('truthfully classifies unsafe ambiguity and pre-dispatch network failure', async () => {
     const ambiguousState = runtime();
@@ -87,11 +88,13 @@ describe('http.request@1 server executor', () => {
         body: stream,
         close: vi.fn(),
       };
-      const httpClient = new SecureHttpClient(
-        {
-          resolve: () => Promise.resolve([{ address: '8.8.8.8', family: 4 }]),
-        },
-        { dispatch: () => Promise.resolve(providerResponse) },
+      const httpClient = provideHttpClient(
+        new SecureHttpClient(
+          {
+            resolve: () => Promise.resolve([{ address: '8.8.8.8', family: 4 }]),
+          },
+          { dispatch: () => Promise.resolve(providerResponse) },
+        ),
       );
 
       await expect(

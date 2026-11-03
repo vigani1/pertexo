@@ -3,15 +3,12 @@ export { validateRegisteredCuratedTemplateSetup } from './curated-template-polic
 
 import {
   createHttpRequestExecutorRegistration,
-  createNodeSecureHttpClient,
   type HttpRequestExecutorDependencies,
   type HttpRequestExecutorTelemetry,
-  createSlackClient,
   createSlackSendMessageExecutorRegistration,
   type SlackSendMessageExecutorDependencies,
   type SlackSendMessageExecutorTelemetry,
   createEmailSendNotificationExecutorRegistration,
-  createResendClient,
   type EmailSendNotificationExecutorDependencies,
   type EmailSendNotificationExecutorTelemetry,
 } from '@pertexo/integrations/server';
@@ -30,27 +27,19 @@ import { CORE_NODE_EXECUTOR_REGISTRATIONS } from '@pertexo/nodes-core/server';
 export { resolvePlatformNodeDefinition };
 
 export type PlatformNodeRegistryDependencies = Readonly<{
-  httpRequest?: HttpRequestExecutorDependencies;
+  httpRequest: HttpRequestExecutorDependencies;
   httpRequestTelemetry?: HttpRequestExecutorTelemetry;
-  slackSendMessage?: SlackSendMessageExecutorDependencies;
+  slackSendMessage: SlackSendMessageExecutorDependencies;
   slackSendMessageTelemetry?: SlackSendMessageExecutorTelemetry;
-  emailSendNotification?: EmailSendNotificationExecutorDependencies;
+  emailSendNotification: EmailSendNotificationExecutorDependencies;
   emailSendNotificationTelemetry?: EmailSendNotificationExecutorTelemetry;
 }>;
 
 /** The executing registry for the platform catalog; provider clients can be injected. */
 export function createPlatformNodeRegistry(
-  dependencies: PlatformNodeRegistryDependencies = {},
+  dependencies: PlatformNodeRegistryDependencies,
 ): NodeRegistry {
-  const httpRequest = dependencies.httpRequest ?? {
-    httpClient: createNodeSecureHttpClient(),
-  };
-  const slackSendMessage = dependencies.slackSendMessage ?? {
-    client: createSlackClient(createNodeSecureHttpClient()),
-  };
-  const emailSendNotification = dependencies.emailSendNotification ?? {
-    client: createResendClient(createNodeSecureHttpClient()),
-  };
+  const { httpRequest, slackSendMessage, emailSendNotification } = dependencies;
   const executors: readonly NodeExecutorRegistration[] = [
     ...CORE_NODE_EXECUTOR_REGISTRATIONS,
     createHttpRequestExecutorRegistration({

@@ -8,29 +8,29 @@ import {
 } from '@pertexo/node-sdk/server';
 
 import {
-  SECURE_HTTP_ERROR_CODE,
-  SecureHttpError,
-  secureHttpPreDispatchError,
-} from './http/secure.js';
+  PROVIDER_HTTP_ERROR_CODE,
+  ProviderHttpError,
+  providerHttpPreDispatchError,
+} from './providers/http-errors.js';
 import {
   errorCodeIs,
   errorNameIs,
   safeInstanceOf,
-} from './http/unknown-error.js';
+} from '@pertexo/node-sdk/server';
 
 function dispatchEvidenceErrorCode(
   error: unknown,
 ):
-  | typeof SECURE_HTTP_ERROR_CODE.connectionFenceFailed
-  | typeof SECURE_HTTP_ERROR_CODE.dispatchBindingMismatch
-  | typeof SECURE_HTTP_ERROR_CODE.dispatchEvidenceFailed {
+  | typeof PROVIDER_HTTP_ERROR_CODE.connectionFenceFailed
+  | typeof PROVIDER_HTTP_ERROR_CODE.dispatchBindingMismatch
+  | typeof PROVIDER_HTTP_ERROR_CODE.dispatchEvidenceFailed {
   if (!safeInstanceOf(error, NodeDispatchEvidenceError))
-    return SECURE_HTTP_ERROR_CODE.dispatchEvidenceFailed;
+    return PROVIDER_HTTP_ERROR_CODE.dispatchEvidenceFailed;
   if (errorCodeIs(error, 'provider_dispatch_binding_mismatch'))
-    return SECURE_HTTP_ERROR_CODE.dispatchBindingMismatch;
+    return PROVIDER_HTTP_ERROR_CODE.dispatchBindingMismatch;
   if (errorCodeIs(error, 'provider_connection_fence_failed'))
-    return SECURE_HTTP_ERROR_CODE.connectionFenceFailed;
-  return SECURE_HTTP_ERROR_CODE.dispatchEvidenceFailed;
+    return PROVIDER_HTTP_ERROR_CODE.connectionFenceFailed;
+  return PROVIDER_HTTP_ERROR_CODE.dispatchEvidenceFailed;
 }
 
 export function createProviderBeforeDispatch(input: {
@@ -53,17 +53,17 @@ export function createProviderBeforeDispatch(input: {
       });
     } catch (error: unknown) {
       if (safeInstanceOf(error, ProviderCredentialInvalidError))
-        throw secureHttpPreDispatchError(
-          SECURE_HTTP_ERROR_CODE.connectionFenceFailed,
+        throw providerHttpPreDispatchError(
+          PROVIDER_HTTP_ERROR_CODE.connectionFenceFailed,
         );
       if (input.signal.aborted || errorNameIs(error, 'AbortError'))
-        throw new SecureHttpError(
-          SECURE_HTTP_ERROR_CODE.canceled,
+        throw new ProviderHttpError(
+          PROVIDER_HTTP_ERROR_CODE.canceled,
           'definite_failure',
           { possiblyDispatched: false },
         );
-      throw secureHttpPreDispatchError(
-        SECURE_HTTP_ERROR_CODE.dispatchEvidenceFailed,
+      throw providerHttpPreDispatchError(
+        PROVIDER_HTTP_ERROR_CODE.dispatchEvidenceFailed,
       );
     }
     try {
@@ -83,7 +83,7 @@ export function createProviderBeforeDispatch(input: {
           .digest('hex')}`,
       });
     } catch (error: unknown) {
-      throw secureHttpPreDispatchError(dispatchEvidenceErrorCode(error));
+      throw providerHttpPreDispatchError(dispatchEvidenceErrorCode(error));
     }
   };
 }
@@ -96,7 +96,7 @@ export function createUnauthenticatedBeforeDispatch(
     try {
       await runtime.beforeDispatch();
     } catch (error: unknown) {
-      throw secureHttpPreDispatchError(dispatchEvidenceErrorCode(error));
+      throw providerHttpPreDispatchError(dispatchEvidenceErrorCode(error));
     }
   };
 }

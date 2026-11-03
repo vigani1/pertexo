@@ -14,7 +14,7 @@ import { isIP } from 'node:net';
 import {
   parseAllowedPrivateNetworks,
   type AllowedPrivateNetwork,
-} from '@pertexo/integrations/server';
+} from '@pertexo/secrets/server';
 import {
   parseConnectionEncryptionConfig,
   type SelfManagedConnectionEncryptionConfig,

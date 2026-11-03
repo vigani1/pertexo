@@ -1,3 +1,4 @@
+import { ProviderHttpError } from '@pertexo/integrations/server';
 import type {
   ResendApiResult,
   SlackApiResult,
@@ -6,7 +7,7 @@ import { ConnectionSecretEncryptionError } from '@pertexo/secrets/server';
 import {
   SECURE_HTTP_ERROR_CODE,
   SecureHttpError,
-} from '@pertexo/integrations/server';
+} from '@pertexo/secrets/server';
 import type { FailureNotificationDeliveryResult } from '@pertexo/workflow-model';
 
 import type { DeliveryInput } from './transport.js';
@@ -21,7 +22,7 @@ export function localFailure(
       safeErrorCode: 'delivery.credential_unavailable',
       possiblyDispatched: false,
     };
-  if (error instanceof SecureHttpError) {
+  if (error instanceof SecureHttpError || error instanceof ProviderHttpError) {
     if (error.possiblyDispatched)
       return {
         kind: provider === 'slack' ? 'outcome_unknown' : 'retry',

@@ -88,3 +88,11 @@ export type {
   NodeCallbackTarget,
   NodeCallbackBindings,
 } from './callbacks/node-callback.types.js';
+
+export {
+  safeInstanceOf,
+  errorNameIs,
+  errorCodeIs,
+  safeNumberProperty,
+  normalizeUnknownError,
+} from './execution/unknown-error.js';

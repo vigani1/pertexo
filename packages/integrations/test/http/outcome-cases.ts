@@ -1,6 +1,6 @@
 import type {
   HttpSideEffectClass,
-  SecureHttpErrorCode,
+  ProviderHttpErrorCode,
 } from '../../src/server.js';
 
 export const CLASSES = [
@@ -46,7 +46,7 @@ export const RESPONSE_CASES: readonly (readonly [status: number, ...Row])[] = [
 ];
 
 type ErrorCase = readonly [
-  code: SecureHttpErrorCode,
+  code: ProviderHttpErrorCode,
   classification: 'ambiguous' | 'definite_failure',
   possiblyDispatched: boolean,
   ...Row,
@@ -74,7 +74,7 @@ const REFUSAL_CODES = [
   'response_encoding_rejected',
   'response_too_large',
   'ssrf_blocked',
-] as const satisfies readonly SecureHttpErrorCode[];
+] as const satisfies readonly ProviderHttpErrorCode[];
 
 export const ERROR_CASES: readonly ErrorCase[] = [
   ['canceled', 'definite_failure', false, 'canceled', 'canceled', 'canceled'],

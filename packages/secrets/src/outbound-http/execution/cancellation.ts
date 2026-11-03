@@ -7,7 +7,7 @@ import {
   isTimeoutError,
 } from '../secure-error.js';
 
-import { normalizeUnknownError } from '../unknown-error.js';
+import { normalizeUnknownError } from '@pertexo/node-sdk/server';
 import type {
   SecureHttpFailureStage,
   DispatchFailureContext,

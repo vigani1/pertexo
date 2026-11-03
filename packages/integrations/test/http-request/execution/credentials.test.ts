@@ -7,10 +7,10 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   createHttpRequestExecutorRegistration,
   HttpRequestExecutorError,
-  SECURE_HTTP_ERROR_CODE,
-  SecureHttpError,
-  type SecureHttpResponse,
-  type SecureHttpRequest,
+  PROVIDER_HTTP_ERROR_CODE,
+  ProviderHttpError,
+  type ProviderHttpResponse,
+  type ProviderHttpRequest,
 } from '../../../src/server.js';
 import {
   connectionId,
@@ -30,7 +30,7 @@ describe('http.request@1 server executor', () => {
       },
     });
     const noLimitedDispatch =
-      vi.fn<(request: SecureHttpRequest) => Promise<SecureHttpResponse>>();
+      vi.fn<(request: ProviderHttpRequest) => Promise<ProviderHttpResponse>>();
     await expect(
       createHttpRequestExecutorRegistration({
         httpClient: streamingHttpClient(noLimitedDispatch),
@@ -51,7 +51,7 @@ describe('http.request@1 server executor', () => {
       },
     });
     const neverCalled =
-      vi.fn<(request: SecureHttpRequest) => Promise<SecureHttpResponse>>();
+      vi.fn<(request: ProviderHttpRequest) => Promise<ProviderHttpResponse>>();
     await expect(
       createHttpRequestExecutorRegistration({
         httpClient: streamingHttpClient(neverCalled),
@@ -68,10 +68,12 @@ describe('http.request@1 server executor', () => {
     const transportState = runtime();
     await expect(
       createHttpRequestExecutorRegistration({
-        httpClient: streamingHttpClient(async (request: SecureHttpRequest) => {
-          await request.beforeDispatch();
-          throw new Error('provider-secret');
-        }),
+        httpClient: streamingHttpClient(
+          async (request: ProviderHttpRequest) => {
+            await request.beforeDispatch();
+            throw new Error('provider-secret');
+          },
+        ),
       }).execute(invocation(transportState.value)),
     ).rejects.toEqual(
       new HttpRequestExecutorError(
@@ -82,7 +84,7 @@ describe('http.request@1 server executor', () => {
   });
   it('rejects a mismatched resolved HTTP connection identity', async () => {
     const neverCalled =
-      vi.fn<(request: SecureHttpRequest) => Promise<SecureHttpResponse>>();
+      vi.fn<(request: ProviderHttpRequest) => Promise<ProviderHttpResponse>>();
     const mismatchedConnection = runtime({
       connections: {
         assertCurrent: () => Promise.resolve(),
@@ -111,8 +113,8 @@ describe('http.request@1 server executor', () => {
       createHttpRequestExecutorRegistration({
         httpClient: streamingHttpClient(() =>
           Promise.reject(
-            new SecureHttpError(
-              SECURE_HTTP_ERROR_CODE.dispatchBindingMismatch,
+            new ProviderHttpError(
+              PROVIDER_HTTP_ERROR_CODE.dispatchBindingMismatch,
               'definite_failure',
               { possiblyDispatched: false },
             ),
@@ -132,10 +134,12 @@ describe('http.request@1 server executor', () => {
     });
     await expect(
       createHttpRequestExecutorRegistration({
-        httpClient: streamingHttpClient(async (request: SecureHttpRequest) => {
-          await request.beforeDispatch();
-          return response(new Uint8Array(70_000));
-        }),
+        httpClient: streamingHttpClient(
+          async (request: ProviderHttpRequest) => {
+            await request.beforeDispatch();
+            return response(new Uint8Array(70_000));
+          },
+        ),
       }).execute(invocation(artifactState.value)),
     ).rejects.toMatchObject({
       decision: { kind: 'outcome_unknown', errorKind: 'provider' },
@@ -148,10 +152,12 @@ describe('http.request@1 server executor', () => {
       noArtifactState.value;
     await expect(
       createHttpRequestExecutorRegistration({
-        httpClient: streamingHttpClient(async (request: SecureHttpRequest) => {
-          await request.beforeDispatch();
-          return response(new Uint8Array(70_000));
-        }),
+        httpClient: streamingHttpClient(
+          async (request: ProviderHttpRequest) => {
+            await request.beforeDispatch();
+            return response(new Uint8Array(70_000));
+          },
+        ),
       }).execute(invocation(runtimeWithoutArtifacts)),
     ).rejects.toEqual(
       new HttpRequestExecutorError(
@@ -163,7 +169,7 @@ describe('http.request@1 server executor', () => {
   it('uses the binary default media type for an untyped large response', async () => {
     const defaultMediaType = runtime();
     await createHttpRequestExecutorRegistration({
-      httpClient: streamingHttpClient(async (request: SecureHttpRequest) => {
+      httpClient: streamingHttpClient(async (request: ProviderHttpRequest) => {
         await request.beforeDispatch();
         return {
           ...response(new Uint8Array(70_000)),
@@ -189,6 +195,7 @@ describe('http.request@1 server executor', () => {
     await expect(
       createHttpRequestExecutorRegistration({
         httpClient: {
+          redactText: (value: string) => value,
           executeStreaming: async (request) => {
             await request.beforeDispatch();
             // Deliberately model an untrusted adapter rejection.
@@ -231,7 +238,10 @@ describe('http.request@1 server executor', () => {
 
       await expect(
         createHttpRequestExecutorRegistration({
-          httpClient: { executeStreaming },
+          httpClient: {
+            redactText: (value: string) => value,
+            executeStreaming,
+          },
         }).execute(invocation(state.value)),
       ).rejects.toMatchObject({
         decision: expected,

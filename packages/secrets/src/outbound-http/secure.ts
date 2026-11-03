@@ -1,6 +1,5 @@
 import {
   SECURE_HTTP_ERROR_CODE,
-  SecureHttpError,
   failure,
   inspectSecureHttpError,
 } from './secure-error.js';
@@ -58,17 +57,6 @@ export {
   type SecureHttpTransportResponse,
   type SecureHttpTransport,
 } from './execution/secure-http.js';
-export function secureHttpPreDispatchError(
-  code:
-    | typeof SECURE_HTTP_ERROR_CODE.connectionFenceFailed
-    | typeof SECURE_HTTP_ERROR_CODE.dispatchBindingMismatch
-    | typeof SECURE_HTTP_ERROR_CODE.dispatchEvidenceFailed,
-): SecureHttpError {
-  return new SecureHttpError(code, 'definite_failure', {
-    possiblyDispatched: false,
-  });
-}
-
 export class SecureHttpClient {
   public constructor(
     private readonly resolver: SecureHttpResolver,

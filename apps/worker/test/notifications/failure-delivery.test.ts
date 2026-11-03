@@ -3,9 +3,8 @@ import { ConnectionSecretEncryptionError } from '@pertexo/secrets/server';
 import {
   SECURE_HTTP_ERROR_CODE,
   SecureHttpError,
-  type ResendClient,
-  type SlackClient,
-} from '@pertexo/integrations/server';
+} from '@pertexo/secrets/server';
+import type { ResendClient, SlackClient } from '@pertexo/integrations/server';
 import { createProviderFailureNotificationDelivery } from '../../src/notifications/failure-delivery.js';
 import {
   identity,

@@ -1,7 +1,10 @@
 import { z } from 'zod';
 import { parseBoundedRetryAfterMillis } from '../http/retry-after.js';
 
-import type { SecureHttpClient, SecureHttpRequest } from '../http/secure.js';
+import type {
+  ProviderHttpClient,
+  ProviderHttpRequest,
+} from '../providers/http-client.js';
 import {
   SLACK_SEND_MESSAGE_LIMITS,
   slackChannelIdSchema,
@@ -98,7 +101,7 @@ export type SlackClient = Readonly<{
 const JSON_CONTENT_TYPE = 'application/json; charset=utf-8';
 
 export function createSlackClient(
-  httpClient: Pick<SecureHttpClient, 'execute'>,
+  httpClient: Pick<ProviderHttpClient, 'execute'>,
 ): SlackClient {
   const execute = async <Envelope extends SlackEnvelope>({
     endpoint,
@@ -118,7 +121,7 @@ export function createSlackClient(
       beforeDispatch: () => Promise<void>;
     }>;
   }>): Promise<SlackEnvelopeResult<Envelope>> => {
-    const request: SecureHttpRequest = {
+    const request: ProviderHttpRequest = {
       url: endpoint,
       method: 'POST',
       headers: Object.freeze({

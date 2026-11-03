@@ -3,7 +3,7 @@ import {
   type ServiceResponseFacts,
 } from '@pertexo/node-sdk/server';
 import type { HttpOutcomeDecision } from '../../http/outcome-policy.js';
-import type { SecureHttpClient } from '../../http/secure.js';
+import type { ProviderHttpClient } from '../../providers/http-client.js';
 
 import type { HttpRequestOutput } from '../http-request.schemas.js';
 
@@ -40,7 +40,7 @@ export class HttpRequestExecutorError extends NodeExecutorFailure {
 }
 
 export type HttpRequestExecutorDependencies = Readonly<{
-  httpClient: Pick<SecureHttpClient, 'executeStreaming'>;
+  httpClient: Pick<ProviderHttpClient, 'executeStreaming' | 'redactText'>;
   telemetry?: HttpRequestExecutorTelemetry;
 }>;
 

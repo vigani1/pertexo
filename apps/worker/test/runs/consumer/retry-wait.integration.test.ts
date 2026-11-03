@@ -39,7 +39,8 @@ import {
   testNodeAttemptRuntime,
 } from '../../support/runtime-factories.js';
 import { randomUUID } from 'node:crypto';
-import { createPlatformNodeRegistry } from '@pertexo/node-catalog/server';
+
+import { createPlatformNodeRegistry } from '../../../src/providers/node-registry.js';
 import { createCoordinatorRuntime } from '../../../src/runs/coordinator.runtime.js';
 import {
   acceptWaitRun,

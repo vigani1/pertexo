@@ -7,11 +7,9 @@ import {
   type NodeExecutionRuntime,
   type NodeArtifactRuntime,
 } from '@pertexo/node-sdk/server';
-import {
-  createHttpRequestExecutorRegistration,
-  createNodeSecureHttpClient,
-  parseAllowedPrivateNetworks,
-} from '../../src/server.js';
+import { createHttpRequestExecutorRegistration } from '@pertexo/integrations/server';
+import { parseAllowedPrivateNetworks } from '@pertexo/secrets/server';
+import { createNodeProviderHttpClient } from '../../../src/providers/http-client.js';
 
 it.each(['GET', 'POST'] as const)(
   'classifies a failed %s response-file write without retrying an unsafe effect',
@@ -63,7 +61,7 @@ it.each(['GET', 'POST'] as const)(
         artifacts: { write },
       };
       const executor = createHttpRequestExecutorRegistration({
-        httpClient: createNodeSecureHttpClient({
+        httpClient: createNodeProviderHttpClient({
           allowedPrivateNetworks: parseAllowedPrivateNetworks('127.0.0.1/32'),
         }),
       });

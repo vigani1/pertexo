@@ -3,12 +3,11 @@ import { createHash, randomUUID } from 'node:crypto';
 import { expect } from 'vitest';
 
 import type { createPagedFileSource } from '../pages-source.fixture.js';
-import {
-  createNodeSecureHttpClient,
-  parseAllowedPrivateNetworks,
-  createHttpRequestExecutorRegistration,
-} from '@pertexo/integrations/server';
-import type { createPlatformNodeRegistry } from '@pertexo/node-catalog/server';
+import { parseAllowedPrivateNetworks } from '@pertexo/secrets/server';
+import { createNodeProviderHttpClient } from '../../../../src/providers/http-client.js';
+import { createHttpRequestExecutorRegistration } from '@pertexo/integrations/server';
+
+import type { createPlatformNodeRegistry } from '../../../../src/providers/node-registry.js';
 import { filePageBundleSchema } from '@pertexo/node-sdk';
 import type {
   NodeArtifactReference,
@@ -33,7 +32,7 @@ export async function assertPagedHttpSource(
   const { pagedSource, runtime, signal, execute } = input;
   const httpConnectionId = randomUUID();
   const httpOutput = await createHttpRequestExecutorRegistration({
-    httpClient: createNodeSecureHttpClient({
+    httpClient: createNodeProviderHttpClient({
       allowedPrivateNetworks: parseAllowedPrivateNetworks('127.0.0.1/32'),
     }),
   }).execute({

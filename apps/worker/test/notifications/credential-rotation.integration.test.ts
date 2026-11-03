@@ -7,7 +7,7 @@ import { JOB_NAME } from '@pertexo/queue';
 import {
   SECURE_HTTP_ERROR_CODE,
   SecureHttpError,
-} from '@pertexo/integrations/server';
+} from '@pertexo/secrets/server';
 import { Pool } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 

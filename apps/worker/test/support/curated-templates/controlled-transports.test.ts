@@ -4,10 +4,8 @@ import {
   ConnectionEnvelopeEncryption,
   type ConnectionSecretContext,
 } from '@pertexo/secrets/server';
-import {
-  classifySecureHttpResponse,
-  type SecureHttpRequest,
-} from '@pertexo/integrations/server';
+import { classifySecureHttpResponse } from '@pertexo/integrations/server';
+import type { SecureHttpRequest } from '@pertexo/secrets/server';
 import {
   CURATED_TEMPLATE_FIXTURE,
   createCuratedTemplateEnvelopeContext,

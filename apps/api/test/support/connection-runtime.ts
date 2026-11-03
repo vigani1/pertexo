@@ -1,8 +1,9 @@
 import { createConnectionStore } from '@pertexo/core/connections';
 import { createNotificationDestinationStore } from '@pertexo/core/notifications';
 import type { DatabaseConfig } from '@pertexo/database/platform';
+
+import { createNodeProviderHttpClient } from '../../src/platform/connections/http-client.js';
 import {
-  createNodeSecureHttpClient,
   createResendClient,
   createSlackClient,
 } from '@pertexo/integrations/server';
@@ -42,7 +43,7 @@ export function createFixtureConnectionRuntime(
 ): ApiConnectionRuntime {
   const database = createConnectionStore(databaseConfig);
   const destinations = createNotificationDestinationStore(databaseConfig);
-  const httpClient = services.http ?? createNodeSecureHttpClient();
+  const httpClient = services.http ?? createNodeProviderHttpClient();
   return Object.freeze({
     dependencies: Object.freeze({
       applicationSecret,

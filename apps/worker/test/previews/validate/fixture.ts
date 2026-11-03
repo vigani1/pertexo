@@ -1,7 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import { createPreviewAttemptRunStore } from '@pertexo/core/previews';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
-import { createPlatformNodeRegistry } from '@pertexo/node-catalog/server';
+
+import { createPlatformNodeRegistry } from '../../../src/providers/node-registry.js';
 
 import { describe, vi } from 'vitest';
 

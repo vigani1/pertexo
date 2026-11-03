@@ -3,8 +3,8 @@ import { describe, expect, it } from 'vitest';
 import {
   classifySecureHttpError,
   classifySecureHttpResponse,
-  SECURE_HTTP_ERROR_CODE,
-  SecureHttpError,
+  PROVIDER_HTTP_ERROR_CODE,
+  ProviderHttpError,
 } from '../../src/server.js';
 import {
   CLASSES,
@@ -41,7 +41,7 @@ describe('ADR 007 HTTP outcome policy', () => {
     });
     expect(
       classifySecureHttpError(
-        new SecureHttpError('network_failed', 'ambiguous', {
+        new ProviderHttpError('network_failed', 'ambiguous', {
           possiblyDispatched: true,
         }),
         'idempotent_with_key',
@@ -63,7 +63,7 @@ describe('ADR 007 HTTP outcome policy', () => {
     });
     expect(
       classifySecureHttpError(
-        new SecureHttpError('timed_out', 'ambiguous', {
+        new ProviderHttpError('timed_out', 'ambiguous', {
           possiblyDispatched: true,
         }),
         'unsafe',
@@ -72,7 +72,7 @@ describe('ADR 007 HTTP outcome policy', () => {
     ).toEqual({ kind: 'outcome_unknown', errorKind: 'timeout' });
     expect(
       classifySecureHttpError(
-        new SecureHttpError('canceled', 'definite_failure', {
+        new ProviderHttpError('canceled', 'definite_failure', {
           possiblyDispatched: true,
         }),
         'unsafe',
@@ -95,7 +95,7 @@ describe('ADR 007 HTTP outcome policy', () => {
     ).toEqual({ kind: 'failed', errorKind: 'configuration' });
     expect(
       classifySecureHttpError(
-        new SecureHttpError('network_failed', 'definite_failure', {
+        new ProviderHttpError('network_failed', 'definite_failure', {
           possiblyDispatched: false,
         }),
         'idempotent_with_key',
@@ -104,7 +104,7 @@ describe('ADR 007 HTTP outcome policy', () => {
     ).toEqual({ kind: 'failed', errorKind: 'configuration' });
     expect(
       classifySecureHttpError(
-        new SecureHttpError('response_too_large', 'definite_failure', {
+        new ProviderHttpError('response_too_large', 'definite_failure', {
           possiblyDispatched: true,
         }),
         'unsafe',
@@ -116,7 +116,7 @@ describe('ADR 007 HTTP outcome policy', () => {
   it('maps a pre-dispatch provider-runtime outage into the immutable retry policy', () => {
     expect(
       classifySecureHttpError(
-        new SecureHttpError('dispatch_evidence_failed', 'definite_failure', {
+        new ProviderHttpError('dispatch_evidence_failed', 'definite_failure', {
           possiblyDispatched: false,
         }),
         'unsafe',
@@ -138,7 +138,7 @@ describe('ADR 007 HTTP outcome policy', () => {
     });
     expect(
       classifySecureHttpError(
-        new SecureHttpError('canceled', 'definite_failure', {
+        new ProviderHttpError('canceled', 'definite_failure', {
           possiblyDispatched: false,
         }),
         'safe',
@@ -147,7 +147,7 @@ describe('ADR 007 HTTP outcome policy', () => {
     ).toEqual({ kind: 'canceled', errorKind: 'canceled' });
     expect(
       classifySecureHttpError(
-        new SecureHttpError('dns_failed', 'definite_failure', {
+        new ProviderHttpError('dns_failed', 'definite_failure', {
           possiblyDispatched: false,
         }),
         'safe',
@@ -160,7 +160,7 @@ describe('ADR 007 HTTP outcome policy', () => {
     });
     expect(
       classifySecureHttpError(
-        new SecureHttpError('dns_failed', 'definite_failure', {
+        new ProviderHttpError('dns_failed', 'definite_failure', {
           possiblyDispatched: false,
         }),
         'unsafe',
@@ -174,7 +174,7 @@ describe('ADR 007 HTTP outcome policy', () => {
   });
 
   it('uses only the closed stable secure HTTP error vocabulary', () => {
-    expect(Object.values(SECURE_HTTP_ERROR_CODE)).toContain(
+    expect(Object.values(PROVIDER_HTTP_ERROR_CODE)).toContain(
       'response_encoding_rejected',
     );
   });
@@ -197,10 +197,10 @@ describe('ADR 007 HTTP outcome policy', () => {
 
   it('has a decision for every secure-client error code', () => {
     expect(new Set(ERROR_CASES.map(([code]) => code))).toEqual(
-      new Set(Object.values(SECURE_HTTP_ERROR_CODE)),
+      new Set(Object.values(PROVIDER_HTTP_ERROR_CODE)),
     );
     expect(ERROR_CASES).toHaveLength(
-      Object.values(SECURE_HTTP_ERROR_CODE).length * 4,
+      Object.values(PROVIDER_HTTP_ERROR_CODE).length * 4,
     );
   });
 
@@ -211,7 +211,7 @@ describe('ADR 007 HTTP outcome policy', () => {
         expect({
           sideEffectClass,
           decision: classifySecureHttpError(
-            new SecureHttpError(code, classification, { possiblyDispatched }),
+            new ProviderHttpError(code, classification, { possiblyDispatched }),
             sideEffectClass,
             { providerKeyPresent: sideEffectClass === 'idempotent_with_key' },
           ),

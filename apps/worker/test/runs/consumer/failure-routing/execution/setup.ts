@@ -3,7 +3,8 @@ import { randomUUID } from 'node:crypto';
 import { createWorkflowRunDatabase } from '@pertexo/core/runs';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
 import { PLATFORM_NODE_CATALOG } from '@pertexo/node-catalog';
-import { createPlatformNodeRegistry } from '@pertexo/node-catalog/server';
+
+import { createPlatformNodeRegistry } from '../../../../../src/providers/node-registry.js';
 
 import { composeExecutableCatalog } from '@pertexo/workflow-engine';
 

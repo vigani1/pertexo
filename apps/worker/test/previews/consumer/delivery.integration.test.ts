@@ -3,7 +3,8 @@ import { createPreviewAttemptRunStore } from '@pertexo/core/previews';
 
 import { parseDatabaseConfig } from '@pertexo/database/testing';
 import { parseStoredExecutionValue } from '@pertexo/core/runs';
-import { createPlatformNodeRegistry } from '@pertexo/node-catalog/server';
+
+import { createPlatformNodeRegistry } from '../../../src/providers/node-registry.js';
 import { describe, expect, it } from 'vitest';
 
 import { createNodeAttemptRuntime } from '../../../src/attempts/delivery/node-attempt.runtime.js';

@@ -79,7 +79,10 @@ describe('HTTP artifact request bodies', () => {
       const state = runtime({
         artifacts: { openVerified: read, write: vi.fn() },
       });
-      const httpClient = { executeStreaming: vi.fn() };
+      const httpClient = {
+        redactText: (value: string) => value,
+        executeStreaming: vi.fn(),
+      };
       await expect(
         createHttpRequestExecutorRegistration({ httpClient }).execute(
           invocation(state.value, {
@@ -100,7 +103,10 @@ describe('HTTP artifact request bodies', () => {
         possiblyDispatched: false,
       }),
     );
-    const httpClient = { executeStreaming: vi.fn() };
+    const httpClient = {
+      redactText: (value: string) => value,
+      executeStreaming: vi.fn(),
+    };
     for (const unresolved of [false, true]) {
       const state = runtime({
         artifacts: { openVerified: read, write: vi.fn() },

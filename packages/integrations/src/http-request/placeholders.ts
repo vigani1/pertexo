@@ -1,4 +1,4 @@
-import { isSerializableHttpHeaderValue } from '../http/header-value.js';
+import { isSupportedHttpFieldValue as isSerializableHttpHeaderValue } from '@pertexo/contracts';
 
 /** `{orderId}` in the address after its origin, or in a header value. */
 const PLACEHOLDER = /\{([A-Za-z][A-Za-z0-9_]{0,63})\}/gu;

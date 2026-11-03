@@ -7,8 +7,8 @@ import { ConnectionSecretEncryptionError } from '@pertexo/secrets/server';
 import {
   SECURE_HTTP_ERROR_CODE,
   SecureHttpError,
-  type SlackChannelLookupResult,
-} from '@pertexo/integrations/server';
+} from '@pertexo/secrets/server';
+import type { SlackChannelLookupResult } from '@pertexo/integrations/server';
 import { describe, expect, it, vi } from 'vitest';
 
 import type {

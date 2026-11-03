@@ -1,3 +1,4 @@
+import { provideHttpClient } from '../../../../src/providers/http-client.js';
 import { createNodeCatalog } from '@pertexo/node-sdk';
 import {
   createNodeRegistry,
@@ -10,17 +11,19 @@ import {
   HTTP_REQUEST_CONNECTION_SLOT,
   HTTP_REQUEST_DEFINITION_REGISTRATION,
   HTTP_REQUEST_MANIFEST,
-} from '../../../src/index.js';
+} from '../../../../../../packages/integrations/src/index.js';
 import {
   createHttpRequestExecutorRegistration,
-  SecureHttpClient,
   type HttpRequestExecutorDependencies,
+} from '@pertexo/integrations/server';
+import {
+  SecureHttpClient,
   type SecureHttpRequest,
-} from '../../../src/server.js';
+} from '@pertexo/secrets/server';
 import {
   httpRequestConfigSchema,
   httpRequestInputSchema,
-} from '../../../src/http-request/http-request.schemas.js';
+} from '../../../../../../packages/integrations/src/http-request/http-request.schemas.js';
 import {
   connectionId,
   encoder,
@@ -30,7 +33,7 @@ import {
   invocation,
   response,
   streamingHttpClient,
-} from '../../support/http-execution.js';
+} from '../../../../../../packages/integrations/test/support/http-execution.js';
 describe('http.request@1 server executor', () => {
   it.each(['resolve', 'fence'] as const)(
     'preserves an earlier uncertain dispatch across a transient %s outage',
@@ -93,12 +96,14 @@ describe('http.request@1 server executor', () => {
       };
       const dispatch = vi.fn();
       const registration = createHttpRequestExecutorRegistration({
-        httpClient: new SecureHttpClient(
-          {
-            resolve: () =>
-              Promise.resolve([{ address: '8.8.8.8', family: 4 as const }]),
-          },
-          { dispatch },
+        httpClient: provideHttpClient(
+          new SecureHttpClient(
+            {
+              resolve: () =>
+                Promise.resolve([{ address: '8.8.8.8', family: 4 as const }]),
+            },
+            { dispatch },
+          ),
         ),
       });
 
@@ -141,6 +146,7 @@ describe('http.request@1 server executor', () => {
       const state = runtime();
       let executeStreamingCalls = 0;
       const httpClient: HttpRequestExecutorDependencies['httpClient'] = {
+        redactText: (value: string) => value,
         executeStreaming: () => {
           executeStreamingCalls += 1;
           return Promise.reject(new Error('unexpected HTTP execution'));

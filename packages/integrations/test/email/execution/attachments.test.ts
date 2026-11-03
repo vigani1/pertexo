@@ -8,7 +8,7 @@ import {
 import {
   createEmailSendNotificationExecutorRegistration,
   createResendClient,
-  type SecureHttpRequest,
+  type ProviderHttpRequest,
 } from '../../../src/server.js';
 import {
   sourceBytes,
@@ -61,7 +61,7 @@ function artifacts(
 
 function resend() {
   const bodies: Buffer[] = [];
-  const execute = vi.fn(async (request: SecureHttpRequest) => {
+  const execute = vi.fn(async (request: ProviderHttpRequest) => {
     if (request.body === undefined) throw new Error('Expected a body');
     bodies.push(await sourceBytes(request.body));
     await request.beforeDispatch();

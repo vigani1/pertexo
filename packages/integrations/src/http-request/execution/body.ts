@@ -8,9 +8,9 @@ import {
   canonicalizeBoundedJson,
 } from '@pertexo/node-sdk/server';
 import type { HttpOutcomeDecision } from '../../http/outcome-policy.js';
-import type { SecureHttpClient } from '../../http/secure.js';
+import type { ProviderHttpClient } from '../../providers/http-client.js';
 
-import { safeInstanceOf } from '../../http/unknown-error.js';
+import { safeInstanceOf } from '@pertexo/node-sdk/server';
 
 import { HttpRequestExecutorError } from './http-request-execution.js';
 
@@ -204,7 +204,7 @@ export async function consumeResponseBody(
     inlineLimit: number;
     maxBytes: number;
     response: Parameters<
-      Parameters<SecureHttpClient['executeStreaming']>[1]
+      Parameters<ProviderHttpClient['executeStreaming']>[1]
     >[0];
     repeatable: boolean;
   }>,
@@ -275,7 +275,9 @@ export async function releaseHttpMaterial(
 function finishInlineBody(
   buffered: readonly Uint8Array[],
   byteLength: number,
-  response: Parameters<Parameters<SecureHttpClient['executeStreaming']>[1]>[0],
+  response: Parameters<
+    Parameters<ProviderHttpClient['executeStreaming']>[1]
+  >[0],
 ) {
   const bytes = concatenate(buffered, byteLength);
   try {

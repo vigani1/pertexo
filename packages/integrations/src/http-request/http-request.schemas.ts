@@ -14,7 +14,7 @@ import {
   httpMultipartInputKeySchema,
   httpMultipartValueSchema,
 } from './multipart/http-multipart.schemas.js';
-import { isSerializableHttpHeaderValue } from '../http/header-value.js';
+import { isSupportedHttpFieldValue as isSerializableHttpHeaderValue } from '@pertexo/contracts';
 import { HTTP_PLACEHOLDER_NAME, httpTemplateProblem } from './placeholders.js';
 
 const MAX_URL_BYTES = 2_048;

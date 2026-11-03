@@ -3,12 +3,11 @@ import { createServer } from 'node:http';
 import { createHmac } from 'node:crypto';
 import { once } from 'node:events';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { createPlatformNodeRegistry } from '@pertexo/node-catalog/server';
+
+import { createPlatformNodeRegistry } from '../../../../src/providers/node-registry.js';
 import { callbackTokenHash } from '@pertexo/secrets/server';
-import {
-  createNodeSecureHttpClient,
-  parseAllowedPrivateNetworks,
-} from '@pertexo/integrations/server';
+import { parseAllowedPrivateNetworks } from '@pertexo/secrets/server';
+import { createNodeProviderHttpClient } from '../../../../src/providers/http-client.js';
 import {
   callbackWaitConfigSchema,
   callbackMappingExpression,
@@ -180,7 +179,7 @@ describe.runIf(fixture.enabled)(
         const workers = await runtime(
           createPlatformNodeRegistry({
             httpRequest: {
-              httpClient: createNodeSecureHttpClient({
+              httpClient: createNodeProviderHttpClient({
                 allowedPrivateNetworks:
                   parseAllowedPrivateNetworks('127.0.0.1/32'),
               }),

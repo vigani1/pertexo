@@ -22,6 +22,7 @@ describe('http.request@1 server executor', () => {
     let reads = 0;
     const registration = createHttpRequestExecutorRegistration({
       httpClient: {
+        redactText: (value: string) => value,
         executeStreaming: async (request, consume) => {
           await request.beforeDispatch();
           const body = await consume({
@@ -79,6 +80,7 @@ describe('http.request@1 server executor', () => {
     const state = runtime({ artifacts: { write } });
     const registration = createHttpRequestExecutorRegistration({
       httpClient: {
+        redactText: (value: string) => value,
         executeStreaming: async (request, consume) => {
           await request.beforeDispatch();
           const body = await consume({
@@ -125,6 +127,7 @@ describe('http.request@1 server executor', () => {
     });
     const registration = createHttpRequestExecutorRegistration({
       httpClient: {
+        redactText: (value: string) => value,
         executeStreaming: async (request, consume) => {
           await request.beforeDispatch();
           const body = await consume({
@@ -179,6 +182,7 @@ describe('http.request@1 server executor', () => {
       let reads = 0;
       const registration = createHttpRequestExecutorRegistration({
         httpClient: {
+          redactText: (value: string) => value,
           executeStreaming: async (request, consume) => {
             await request.beforeDispatch();
             const body = await consume({

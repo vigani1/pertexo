@@ -1,7 +1,8 @@
 import { createFailureNotificationStore } from '@pertexo/core/notifications';
 import { createConnectionEnvelopeEncryption } from '@pertexo/secrets/server';
+
+import { createNodeProviderHttpClient } from '../providers/http-client.js';
 import {
-  createNodeSecureHttpClient,
   createResendClient,
   createSlackClient,
 } from '@pertexo/integrations/server';
@@ -17,7 +18,7 @@ export const failureNotificationFactories = Object.freeze({
 export const failureNotificationDeliveryFactories = Object.freeze({
   store: createFailureNotificationStore,
   encryption: createConnectionEnvelopeEncryption,
-  httpClient: createNodeSecureHttpClient,
+  httpClient: createNodeProviderHttpClient,
   slack: createSlackClient,
   email: createResendClient,
   create: createProviderFailureNotificationDelivery,

@@ -32,7 +32,7 @@ import { ConnectionSecretEncryptionError } from '@pertexo/secrets/server';
 import {
   SECURE_HTTP_ERROR_CODE,
   SecureHttpError,
-} from '@pertexo/integrations/server';
+} from '@pertexo/secrets/server';
 
 describe('connections real Nest HTTP stack', () => {
   afterEach(cleanConnectionsRealNestHTTPStackFixture);
