@@ -1,38 +1,21 @@
+import { WorkflowTagConflictError } from '@pertexo/core/authoring';
+import { EventEmitter } from 'node:events';
 import 'reflect-metadata';
 import { afterEach, describe, expect, it } from 'vitest';
-import {
-  cleanAppsApiTestWorkflowAuthoringOrganizationControllerTestTsFixture,
-  workspaceId,
-  actorId,
-  tagId,
-  headers,
-  prefix,
-  routes,
-  httpFixture,
-  sessionId,
-  tagResult,
-  fixture,
-} from './controller/fixture.js';
-import {
-  GUARDS_METADATA,
-  HEADERS_METADATA,
-  HTTP_CODE_METADATA,
-  METHOD_METADATA,
-  PATH_METADATA,
-} from '@nestjs/common/constants.js';
-import { WorkflowTagConflictError } from '@pertexo/core/authoring';
 import { WorkflowOrganizationController } from '../../../src/workflow-authoring/organization/controller.js';
 import {
-  WorkflowParticipantGuard,
-  WorkflowReadGuard,
-  WorkflowUpdateGuard,
-} from '../../../src/workflow-authoring/http/guards.js';
-import {
-  SessionAuthenticationGuard,
-  CsrfProtectionGuard,
-} from '../../../src/workspaces/index.js';
-import { RATE_LIMIT_METADATA } from '../../../src/platform/rate-limit/metadata.js';
-import { EventEmitter } from 'node:events';
+  actorId,
+  cleanAppsApiTestWorkflowAuthoringOrganizationControllerTestTsFixture,
+  fixture,
+  headers,
+  httpFixture,
+  prefix,
+  routes,
+  sessionId,
+  tagId,
+  tagResult,
+  workspaceId,
+} from './controller/fixture.js';
 
 function deniedRouteStatus(name: string) {
   return name === 'replaceTags' ? 404 : 403;
@@ -40,46 +23,6 @@ function deniedRouteStatus(name: string) {
 
 afterEach(cleanAppsApiTestWorkflowAuthoringOrganizationControllerTestTsFixture);
 describe('organization controller registered HTTP seam (fake session and persistence)', () => {
-  it.each(routes)(
-    'registers $method $path with guards, rate class and private cache metadata',
-    (route) => {
-      // Metadata inspection never invokes the unbound controller method.
-      // eslint-disable-next-line @typescript-eslint/unbound-method
-      const handler = WorkflowOrganizationController.prototype[route.name];
-      expect(Reflect.getMetadata(PATH_METADATA, handler)).toBe(route.path);
-      expect(Reflect.getMetadata(METHOD_METADATA, handler)).toBe(
-        { GET: 0, POST: 1, PUT: 2 }[route.method],
-      );
-      expect(Reflect.getMetadata(HEADERS_METADATA, handler)).toEqual([
-        { name: 'Cache-Control', value: 'private, no-store' },
-      ]);
-      expect(Reflect.getMetadata(GUARDS_METADATA, handler)).toEqual([
-        SessionAuthenticationGuard,
-        ...(route.name === 'replaceTags' ? [WorkflowUpdateGuard] : []),
-        ...(route.name !== 'replaceTags' && route.method === 'GET'
-          ? [WorkflowReadGuard]
-          : []),
-        ...(route.name !== 'replaceTags' && route.method !== 'GET'
-          ? [WorkflowParticipantGuard]
-          : []),
-        ...(route.method === 'GET' ? [] : [CsrfProtectionGuard]),
-      ]);
-      expect(
-        Reflect.getMetadata(RATE_LIMIT_METADATA, handler) ??
-          Reflect.getMetadata(
-            RATE_LIMIT_METADATA,
-            WorkflowOrganizationController,
-          ),
-      ).toBe(
-        route.method === 'GET' ? 'authenticated_read' : 'ordinary_mutation',
-      );
-      if (route.method !== 'GET')
-        expect(Reflect.getMetadata(HTTP_CODE_METADATA, handler)).toBe(
-          route.status,
-        );
-    },
-  );
-
   it.each(routes)(
     'serves exact $method $path and private no-store success',
     async (route) => {
@@ -105,6 +48,32 @@ describe('organization controller registered HTTP seam (fake session and persist
       ];
       expect(calls).toHaveLength(1);
       expect(calls[0]?.[0]).toMatchObject({ workspaceId, actorId });
+    },
+  );
+
+  it.each(routes.filter((route) => route.body !== undefined))(
+    'refuses malformed and private $name input through HTTP',
+    async (route) => {
+      const f = await httpFixture();
+      for (const payload of [
+        {},
+        ...[
+          { actorId },
+          { workspaceId },
+          { generation: tagId },
+          { proof: {} },
+          { idempotencyKey: 'body-key' },
+        ].map((extra) => ({ ...route.body, ...extra })),
+      ]) {
+        const reply = await f.app.inject({
+          method: route.method,
+          url: prefix + route.suffix,
+          headers,
+          payload,
+        });
+        expect(reply.statusCode).toBe(400);
+        expect(reply.json()).toHaveProperty('errors');
+      }
     },
   );
 
@@ -298,8 +267,13 @@ describe('organization controller registered HTTP seam (fake session and persist
     await expect(
       new WorkflowOrganizationController(f.commands, f.reads).createTag(
         request,
-        { workspaceId },
-        { key: 'release' },
+        {
+          params: { workspaceId },
+          body: { key: 'release' },
+          idempotencyKey: 'one-command',
+          query: {},
+          headers: undefined,
+        },
       ),
     ).rejects.toMatchObject({ name: 'AbortError' });
     expect(signal?.aborted).toBe(true);

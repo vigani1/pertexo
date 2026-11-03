@@ -1,3 +1,4 @@
+import { organizationRoutes } from '@pertexo/contracts/server';
 import type { Role } from '@pertexo/policy';
 import { describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
@@ -127,13 +128,50 @@ function persistence(
   return method === 'setFavorite' ? f.favorites.setFavorite : f.tags[method];
 }
 
+// Build the parsed input a real HTTP caller now supplies to these use cases.
+function invoke(
+  f: ReturnType<typeof fixture>,
+  method: (typeof cases)[number]['method'],
+  input: typeof base & { request: unknown; signal?: AbortSignal },
+) {
+  switch (method) {
+    case 'createTag':
+      return f.commands.createTag({
+        ...input,
+        request: organizationRoutes.createTag.body.schema.parse(input.request),
+      });
+    case 'renameTag':
+      return f.commands.renameTag({
+        ...input,
+        request: organizationRoutes.renameTag.body.schema.parse(input.request),
+      });
+    case 'deleteTag':
+      return f.commands.deleteTag({
+        ...input,
+        request: organizationRoutes.deleteTag.body.schema.parse(input.request),
+      });
+    case 'replaceTags':
+      return f.commands.replaceTags({
+        ...input,
+        request: organizationRoutes.replaceTags.body.schema.parse(
+          input.request,
+        ),
+      });
+    case 'setFavorite':
+      return f.commands.setFavorite({
+        ...input,
+        request: organizationRoutes.favorite.body.schema.parse(input.request),
+      });
+  }
+}
+
 describe('workflow organization commands', () => {
   it.each(cases)(
     'passes exact canonical scoped $method command and receipt',
     async ({ method, request, expected, result }) => {
       const f = fixture();
       const signal = new AbortController().signal;
-      expect(await f.commands[method]({ ...base, request, signal })).toEqual(
+      expect(await invoke(f, method, { ...base, request, signal })).toEqual(
         result,
       );
       // Setting a favorite is idempotent by itself and takes no key.
@@ -159,7 +197,7 @@ describe('workflow organization commands', () => {
     async (role) => {
       const f = fixture(role);
       for (const c of cases.slice(0, 3))
-        await f.commands[c.method]({ ...base, request: c.request });
+        await invoke(f, c.method, { ...base, request: c.request });
       expect(f.tags.createTag).toHaveBeenCalledOnce();
       expect(f.tags.renameTag).toHaveBeenCalledOnce();
       expect(f.tags.deleteTag).toHaveBeenCalledOnce();
@@ -172,7 +210,7 @@ describe('workflow organization commands', () => {
       const f = fixture(role);
       for (const c of cases.slice(0, 3)) {
         await expect(
-          f.commands[c.method]({ ...base, request: c.request }),
+          invoke(f, c.method, { ...base, request: c.request }),
         ).rejects.toBeInstanceOf(AuthorizationError);
         expect(persistence(f, c.method)).not.toHaveBeenCalled();
       }
@@ -181,44 +219,20 @@ describe('workflow organization commands', () => {
 
   it('admits builder assignments and viewer personal favorites, but denies viewer assignments', async () => {
     const builder = fixture('builder');
-    await builder.commands.replaceTags({ ...base, request: cases[3].request });
+    await builder.commands.replaceTags({
+      ...base,
+      request: { ...cases[3].request, tagIds: [...cases[3].request.tagIds] },
+    });
     const viewer = fixture('viewer');
     await viewer.commands.setFavorite({ ...base, request: cases[4].request });
     await expect(
-      viewer.commands.replaceTags({ ...base, request: cases[3].request }),
+      viewer.commands.replaceTags({
+        ...base,
+        request: { ...cases[3].request, tagIds: [...cases[3].request.tagIds] },
+      }),
     ).rejects.toBeInstanceOf(AuthorizationError);
     expect(viewer.tags.replaceTags).not.toHaveBeenCalled();
   });
-
-  it.each(cases)(
-    'rejects private or extra $method body properties',
-    async ({ method, request }) => {
-      for (const extra of [
-        { actorId },
-        { workspaceId },
-        { generation: tagId },
-        { proof: {} },
-        { idempotencyKey: 'body-key' },
-      ]) {
-        const f = fixture();
-        await expect(
-          f.commands[method]({ ...base, request: { ...request, ...extra } }),
-        ).rejects.toBeInstanceOf(z.ZodError);
-        expect(persistence(f, method)).not.toHaveBeenCalled();
-      }
-    },
-  );
-
-  it.each(cases)(
-    'rejects malformed $method bodies before persistence',
-    async ({ method }) => {
-      const f = fixture();
-      await expect(
-        f.commands[method]({ ...base, request: {} }),
-      ).rejects.toBeInstanceOf(z.ZodError);
-      expect(persistence(f, method)).not.toHaveBeenCalled();
-    },
-  );
 
   it.each(cases)(
     'validates $method response privacy',
@@ -231,7 +245,7 @@ describe('workflow organization commands', () => {
         proof: {},
       });
       await expect(
-        f.commands[method]({ ...base, request }),
+        invoke(f, method, { ...base, request }),
       ).rejects.toBeInstanceOf(z.ZodError);
       expect(persistence(f, method)).toHaveBeenCalledOnce();
     },
@@ -243,7 +257,7 @@ describe('workflow organization commands', () => {
       const f = fixture();
       persistence(f, method).mockResolvedValueOnce({ replayed: true });
       await expect(
-        f.commands[method]({ ...base, request }),
+        invoke(f, method, { ...base, request }),
       ).rejects.toBeInstanceOf(z.ZodError);
     },
   );
@@ -257,7 +271,7 @@ describe('workflow organization commands', () => {
       ]) {
         const f = fixture();
         persistence(f, method).mockRejectedValueOnce(error);
-        await expect(f.commands[method]({ ...base, request })).rejects.toBe(
+        await expect(invoke(f, method, { ...base, request })).rejects.toBe(
           error,
         );
         expect(persistence(f, method)).toHaveBeenCalledOnce();
@@ -273,7 +287,7 @@ describe('workflow organization commands', () => {
       const reason = new Error('aborted');
       scope.abort(reason);
       await expect(
-        f.commands[method]({ ...base, request, signal: scope.signal }),
+        invoke(f, method, { ...base, request, signal: scope.signal }),
       ).rejects.toBe(reason);
       expect(f.authorization.findAccess).not.toHaveBeenCalled();
       expect(persistence(f, method)).not.toHaveBeenCalled();
@@ -304,7 +318,7 @@ describe('workflow organization commands', () => {
             return Promise.resolve(result);
           });
         await expect(
-          f.commands[method]({ ...base, request, signal: scope.signal }),
+          invoke(f, method, { ...base, request, signal: scope.signal }),
         ).rejects.toBe(reason);
         expect(persistence(f, method)).toHaveBeenCalledTimes(
           phase === 'authority' ? 0 : 1,
@@ -318,7 +332,7 @@ describe('workflow organization commands', () => {
     async ({ method, request }) => {
       const f = fixture();
       await expect(
-        f.commands[method]({ ...base, routeWorkspaceId: otherTagId, request }),
+        invoke(f, method, { ...base, routeWorkspaceId: otherTagId, request }),
       ).rejects.toBeInstanceOf(AuthorizationError);
       expect(persistence(f, method)).not.toHaveBeenCalled();
       f.authorization.findAccess.mockResolvedValueOnce({
@@ -329,7 +343,7 @@ describe('workflow organization commands', () => {
         workspaceStatus: 'suspended',
       });
       await expect(
-        f.commands[method]({ ...base, request }),
+        invoke(f, method, { ...base, request }),
       ).rejects.toBeInstanceOf(AuthorizationError);
       expect(persistence(f, method)).not.toHaveBeenCalled();
     },

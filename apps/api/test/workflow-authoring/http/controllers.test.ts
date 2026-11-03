@@ -311,6 +311,14 @@ describe('workflow authoring HTTP contract', () => {
   ])('refuses malformed list input %j', async (query) => {
     expect((await harness.send('GET', url, { query })).statusCode).toBe(400);
   });
+  it.each([
+    { actorId: 'private' },
+    { favoritesOnly: 'false' },
+    { include: 'templateOrigin' },
+    { query: '表'.repeat(43) },
+  ])('refuses invalid organization list input %j', async (query) => {
+    expect((await harness.send('GET', url, { query })).statusCode).toBe(400);
+  });
   it('refuses invalid route ids and graph fields', async () => {
     expect(
       (

@@ -1,4 +1,6 @@
 import type { z } from 'zod';
+import { routePaths, routeSchemas } from '../../routes/openapi.js';
+import { organizationRoutes } from '../../routes/workflows/organization.js';
 import {
   workflowCombinedOrganizationProjectionResponseSchema,
   workflowGetQuerySchema,
@@ -37,46 +39,7 @@ const definitions = {
     'output',
   ],
   WorkflowTagListQuery: [organization.workflowTagListQuerySchema, 'input'],
-  WorkflowTagListResponse: [
-    organization.workflowTagListResponseSchema,
-    'output',
-  ],
-  WorkflowTagCreateRequest: [
-    organization.workflowTagCreateRequestSchema,
-    'input',
-  ],
-  WorkflowTagCreateResponse: [
-    organization.workflowTagCreateResponseSchema,
-    'output',
-  ],
-  WorkflowTagRenameRequest: [
-    organization.workflowTagRenameRequestSchema,
-    'input',
-  ],
-  WorkflowTagRenameResponse: [
-    organization.workflowTagRenameResponseSchema,
-    'output',
-  ],
-  WorkflowTagDeleteRequest: [
-    organization.workflowTagDeleteRequestSchema,
-    'input',
-  ],
-  WorkflowTagDeleteResponse: [
-    organization.workflowTagDeleteResponseSchema,
-    'output',
-  ],
-  WorkflowTagAssignmentsResponse: [
-    organization.workflowTagAssignmentsResponseSchema,
-    'output',
-  ],
-  WorkflowTagReplaceRequest: [
-    organization.workflowTagReplaceRequestSchema,
-    'input',
-  ],
-  WorkflowTagReplaceResponse: [
-    organization.workflowTagReplaceResponseSchema,
-    'output',
-  ],
+
   WorkflowTagCleanupDetachRequest: [
     organization.workflowTagCleanupDetachRequestSchema,
     'input',
@@ -85,14 +48,7 @@ const definitions = {
     organization.workflowTagCleanupDetachResponseSchema,
     'output',
   ],
-  WorkflowFavoriteRequest: [
-    organization.workflowFavoriteRequestSchema,
-    'input',
-  ],
-  WorkflowFavoriteResponse: [
-    organization.workflowFavoriteResponseSchema,
-    'output',
-  ],
+
   WorkflowOrganizationListQuery: [workflowOrganizationListQuerySchema, 'input'],
   WorkflowOrganizationListResponse: [
     workflowOrganizationListResponseSchema,
@@ -166,30 +122,27 @@ export function workflowOrganizationContractSchemas<Projected>(
     io: 'input' | 'output',
   ) => Projected,
 ) {
-  return Object.fromEntries(
-    Object.entries(definitions).map(([name, [schema, io]]) => [
-      name,
-      project(name, schema, io),
-    ]),
-  ) as Record<keyof typeof definitions, Projected>;
+  return {
+    ...routeSchemas(Object.values(organizationRoutes)),
+    ...(Object.fromEntries(
+      Object.entries(definitions).map(([name, [schema, io]]) => [
+        name,
+        project(name, schema, io),
+      ]),
+    ) as Record<keyof typeof definitions, Projected>),
+  };
 }
 
 const workspaceParameters = [
   uuidPathParameter('workspaceId', 'Workspace identifier'),
 ];
-const tagParameters = [
-  ...workspaceParameters,
-  uuidPathParameter('tagId', 'Tag identifier'),
-];
+
 const workflowParameters = [
   ...workspaceParameters,
   uuidPathParameter('workflowId', 'Workflow identifier'),
 ];
 const commandHeaders = [csrfHeaderParameter(), idempotencyHeaderParameter()];
-const pageParameters = [
-  queryParameter('limit', organization.workflowTagListQuerySchema.shape.limit),
-  queryParameter('after', organization.workflowTagListQuerySchema.shape.after),
-];
+
 const privateHeaders = {
   'Cache-Control': {
     required: true,
@@ -253,37 +206,8 @@ function folderCommand({
 }
 
 export const workflowOrganizationContractPaths = {
-  '/v1/workspaces/{workspaceId}/workflow-tags': {
-    get: {
-      operationId: 'listWorkflowTags',
-      description:
-        'Current workflow:read in an active workspace. Bounded vocabulary page in ascending UUID order, no total count. Every continuation rechecks current authority.',
-      security: [{ cookieSession: [] }],
-      parameters: [...workspaceParameters, ...pageParameters],
-      responses: {
-        '200': privateResponse(
-          'Vocabulary page in ascending UUID order',
-          'WorkflowTagListResponse',
-        ),
-        ...readProblems,
-      },
-    },
-    post: {
-      operationId: 'createWorkflowTag',
-      description:
-        'Current owner/admin in an active workspace. Normalize the bounded ASCII key; create shared vocabulary. Exact authorized receipt replay precedes writer policy and does not represent current state.',
-      security: [{ cookieSession: [] }],
-      parameters: [...workspaceParameters, ...commandHeaders],
-      requestBody: jsonRequest('WorkflowTagCreateRequest'),
-      responses: {
-        '201': privateResponse(
-          'Original created tag and replay marker',
-          'WorkflowTagCreateResponse',
-        ),
-        ...commandProblems,
-      },
-    },
-  },
+  ...routePaths(Object.values(organizationRoutes)),
+
   '/v1/workspaces/{workspaceId}/workflow-tags/cleanup/detach': {
     post: {
       operationId: 'detachWorkflowTagAssignments',
@@ -301,90 +225,7 @@ export const workflowOrganizationContractPaths = {
       },
     },
   },
-  '/v1/workspaces/{workspaceId}/workflow-tags/{tagId}/rename': {
-    post: {
-      operationId: 'renameWorkflowTag',
-      description:
-        'Current owner/admin; revision-checked vocabulary rename preserves tag identity and assignments. Exact authorized replay returns historical committed metadata.',
-      security: [{ cookieSession: [] }],
-      parameters: [...tagParameters, ...commandHeaders],
-      requestBody: jsonRequest('WorkflowTagRenameRequest'),
-      responses: {
-        '200': privateResponse(
-          'Original renamed tag and replay marker',
-          'WorkflowTagRenameResponse',
-        ),
-        ...commandProblems,
-      },
-    },
-  },
-  '/v1/workspaces/{workspaceId}/workflow-tags/{tagId}/delete': {
-    post: {
-      operationId: 'deleteWorkflowTag',
-      description:
-        'Current owner/admin; atomic revision-checked deletion detaches at most 50 assignments, including archived workflows. A 51st assignment causes workflow.tag_delete_overflow and zero changes. Explicit cleanup followed by a fresh confirmed delete is required; never implicitly detach all.',
-      security: [{ cookieSession: [] }],
-      parameters: [...tagParameters, ...commandHeaders],
-      requestBody: jsonRequest('WorkflowTagDeleteRequest'),
-      responses: {
-        '200': privateResponse(
-          'Original deletion metadata and replay marker',
-          'WorkflowTagDeleteResponse',
-        ),
-        ...commandProblems,
-      },
-    },
-  },
-  '/v1/workspaces/{workspaceId}/workflow-tags/{tagId}/workflows': {
-    get: {
-      operationId: 'listWorkflowTagAssignments',
-      description:
-        'Current owner/admin; authoritative assignment discovery including archived workflows in ascending workflow UUID order, no total count. Missing/foreign tags return generic not-found, unlike a workflow-list tag filter which returns a scoped empty page.',
-      security: [{ cookieSession: [] }],
-      parameters: [...tagParameters, ...pageParameters],
-      responses: {
-        '200': privateResponse(
-          'Assignment page in ascending workflow UUID order',
-          'WorkflowTagAssignmentsResponse',
-        ),
-        ...readProblems,
-      },
-    },
-  },
-  '/v1/workspaces/{workspaceId}/workflows/{workflowId}/tags': {
-    post: {
-      operationId: 'replaceWorkflowTags',
-      description:
-        'Current workflow:update in an active workspace and active workflow. Replace at most 16 unique shared tag IDs at the independent organization revision. A new accepted no-op advances once; exact authorized replay does not. Does not change graph, name, lifecycle or updated ordering.',
-      security: [{ cookieSession: [] }],
-      parameters: [...workflowParameters, ...commandHeaders],
-      requestBody: jsonRequest('WorkflowTagReplaceRequest'),
-      responses: {
-        '200': privateResponse(
-          'Original replacement metadata and replay marker',
-          'WorkflowTagReplaceResponse',
-        ),
-        ...commandProblems,
-      },
-    },
-  },
-  '/v1/workspaces/{workspaceId}/workflows/{workflowId}/favorite': {
-    put: {
-      operationId: 'setWorkflowFavorite',
-      description:
-        "Current workflow:read including viewers, active workspace; archived workflows allowed. Marks or unmarks the workflow as one of the actor's private favorites. Asking for the current state changes nothing, so a retry is safe without an idempotency key.",
-      security: [{ cookieSession: [] }],
-      parameters: [...workflowParameters, csrfHeaderParameter()],
-      requestBody: jsonRequest('WorkflowFavoriteRequest'),
-      responses: {
-        '200': privateResponse(
-          "The actor's favorite state",
-          'WorkflowFavoriteResponse',
-        ),
-        ...readProblems,
-      },
-    },
-  },
+
   '/v1/workspaces/{workspaceId}/workflow-folders': {
     get: {
       operationId: 'listWorkflowFolders',

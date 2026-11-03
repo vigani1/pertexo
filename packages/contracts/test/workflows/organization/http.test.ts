@@ -34,23 +34,27 @@ describe('organization HTTP manifest and generated structural contracts', () => 
       Object.keys(methods).map((method) => `${method.toUpperCase()} ${path}`),
     );
     expect(
-      operations.filter(
-        (operation) =>
-          !operation.includes('workflow-folders') &&
-          !operation.endsWith('/folder') &&
-          !operation.endsWith('/organization/bulk') &&
-          !operation.endsWith('/resource-sharing-principals'),
-      ),
-    ).toEqual([
-      'GET /v1/workspaces/{workspaceId}/workflow-tags',
-      'POST /v1/workspaces/{workspaceId}/workflow-tags',
-      'POST /v1/workspaces/{workspaceId}/workflow-tags/cleanup/detach',
-      'POST /v1/workspaces/{workspaceId}/workflow-tags/{tagId}/rename',
-      'POST /v1/workspaces/{workspaceId}/workflow-tags/{tagId}/delete',
-      'GET /v1/workspaces/{workspaceId}/workflow-tags/{tagId}/workflows',
-      'POST /v1/workspaces/{workspaceId}/workflows/{workflowId}/tags',
-      'PUT /v1/workspaces/{workspaceId}/workflows/{workflowId}/favorite',
-    ]);
+      operations
+        .filter(
+          (operation) =>
+            !operation.includes('workflow-folders') &&
+            !operation.endsWith('/folder') &&
+            !operation.endsWith('/organization/bulk') &&
+            !operation.endsWith('/resource-sharing-principals'),
+        )
+        .toSorted(),
+    ).toEqual(
+      [
+        'GET /v1/workspaces/{workspaceId}/workflow-tags',
+        'POST /v1/workspaces/{workspaceId}/workflow-tags',
+        'POST /v1/workspaces/{workspaceId}/workflow-tags/cleanup/detach',
+        'POST /v1/workspaces/{workspaceId}/workflow-tags/{tagId}/rename',
+        'POST /v1/workspaces/{workspaceId}/workflow-tags/{tagId}/delete',
+        'GET /v1/workspaces/{workspaceId}/workflow-tags/{tagId}/workflows',
+        'POST /v1/workspaces/{workspaceId}/workflows/{workflowId}/tags',
+        'PUT /v1/workspaces/{workspaceId}/workflows/{workflowId}/favorite',
+      ].toSorted(),
+    );
   });
 
   it('requires authenticated CSRF and idempotency command headers and private no-store responses', () => {
