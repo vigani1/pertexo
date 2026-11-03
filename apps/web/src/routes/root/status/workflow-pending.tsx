@@ -4,7 +4,7 @@ import {
   WorkflowHubBar,
   type WorkflowHubTab,
 } from '@/features/workflows/hub.public';
-import { cachedWorkflowSummary } from '@/features/workflows/queries.public';
+import { cachedWorkflowSummary } from '@/features/workflows/workflows-queries.public';
 
 import { PagePending } from './pending';
 

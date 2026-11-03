@@ -14,11 +14,11 @@ import {
   type InboxArrivalAnchor,
 } from '@/features/inbox/arrival.public';
 import { useInboxLive } from '@/features/inbox/live.public';
-import { inboxSummaryQueryOptions } from '@/features/inbox/queries.public';
-import { liveRunCountQueryOptions } from '@/features/workflow-runs/queries.public';
+import { inboxSummaryQueryOptions } from '@/features/inbox/inbox-queries.public';
+import { liveRunCountQueryOptions } from '@/features/workflow-runs/workflow-runs-queries.public';
 import { rememberLastWorkspace } from '@/features/workspaces/last.public';
 import { WorkspaceShell } from '@/features/workspaces/public';
-import { accessibleWorkspacesQueryOptions } from '@/features/workspaces/queries.public';
+import { accessibleWorkspacesQueryOptions } from '@/features/workspaces/workspaces-queries.public';
 import { useShellCrumbs, type Crumb } from '../../root/breadcrumbs';
 import { CommandPaletteContext } from './command-palette-context';
 import { useLogout } from '../../auth/use-logout';

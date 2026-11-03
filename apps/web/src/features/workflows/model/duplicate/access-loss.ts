@@ -3,7 +3,7 @@ import {
   assertSessionIdentity,
   isSessionIdentityChangedError,
 } from '@/features/auth/session/identity.public';
-import { getAllAccessibleWorkspaces } from '@/features/workspaces/queries.public';
+import { getAllAccessibleWorkspaces } from '@/features/workspaces/workspaces-queries.public';
 import { isApiError } from '@/lib/api/error';
 import type { ApiClient } from '@/lib/api/client';
 import { watchWorkspaceReadDenial } from '@/lib/api/read-denial';

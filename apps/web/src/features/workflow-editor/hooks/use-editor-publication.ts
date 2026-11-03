@@ -9,11 +9,11 @@ import {
   useWorkflowCommandSession,
   useAutoValidation,
 } from '@/features/workflow-publish/public';
-import { workflowRunKeys } from '@/features/workflow-runs/queries.public';
+import { workflowRunKeys } from '@/features/workflow-runs/workflow-runs-queries.public';
 import {
   workflowKeys,
   workflowOrganizationKeys,
-} from '@/features/workflows/queries.public';
+} from '@/features/workflows/workflows-queries.public';
 import { useEditorStore, useEditorStoreApi } from '../model/state/context';
 import { workflowConnectionIssues } from '../model/connection-issues';
 import { workflowPlaceholderIssues } from '../model/inspector/http-body';

@@ -28,7 +28,7 @@ import {
   connectionSlotKey,
   optionalConnectionSlots,
 } from '../../model/portability';
-import { authoringCatalogQueryOptions } from '@/features/catalog/queries.public';
+import { authoringCatalogQueryOptions } from '@/features/catalog/catalog-queries.public';
 import { usePortabilityLifetime } from './use-lifetime';
 import { useWorkflowImportCommand } from '../../data/portability/mutations';
 import {

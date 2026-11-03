@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/react-router';
-import { promotionSearch } from '@/features/workflow-promotions/search.public';
+import { promotionSearch } from '@/features/workflow-promotions/workflow-promotions-search.public';
 import type { WorkflowVersionResponse } from '@pertexo/contracts';
 import {
   CopyIcon,

@@ -19,7 +19,7 @@ import {
 import {
   workflowNameSearchQueryOptions,
   workflowsInfiniteQueryOptions,
-} from '@/features/workflows/queries.public';
+} from '@/features/workflows/workflows-queries.public';
 import {
   Dialog,
   DialogContent,

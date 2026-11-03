@@ -17,11 +17,11 @@ import {
   assertSessionIdentity,
   isSessionIdentityChangedError,
 } from '@/features/auth/session/identity.public';
-import { currentUserQueryKey } from '@/features/auth/session/queries.public';
+import { currentUserQueryKey } from '@/features/auth/session/auth-session-queries.public';
 import {
   getAllAccessibleWorkspaces,
   workspaceKeys,
-} from '@/features/workspaces/queries.public';
+} from '@/features/workspaces/workspaces-queries.public';
 import { isApiError } from '@/lib/api/error';
 import { isAccessLost } from '@/lib/api/error-copy';
 import type { ApiClient } from '@/lib/api/client';

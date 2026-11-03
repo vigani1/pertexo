@@ -8,7 +8,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { Link, useLoaderData, useNavigate } from '@tanstack/react-router';
 import { buttonVariants } from '@/components/ui/button-variants';
 import { WorkflowEditorPage } from '@/features/workflow-editor/public';
-import { workflowSettingsKeys } from '@/features/workflow-settings/queries.public';
+import { workflowSettingsKeys } from '@/features/workflow-settings/workflow-settings-queries.public';
 import { WorkflowPausedBanner } from '@/features/workflow-settings/auto-pause.public';
 import { ResourceNotFound } from '../root/status/pages';
 import { useWorkflowHubScope } from './hub/scope';

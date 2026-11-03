@@ -5,7 +5,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { mockServer } from '../../support/mock-server';
 import { renderApp } from '../../support/render-app';
-import { workflowRunKeys } from '@/features/workflow-runs/queries.public';
+import { workflowRunKeys } from '@/features/workflow-runs/workflow-runs-queries.public';
 import {
   apiBase,
   fixtureIds,

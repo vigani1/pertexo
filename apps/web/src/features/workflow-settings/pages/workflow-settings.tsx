@@ -6,7 +6,7 @@ import type {
   UserProfileResponse,
 } from '@pertexo/contracts';
 import { useQuery } from '@tanstack/react-query';
-import { workflowSummaryQueryOptions } from '@/features/workflows/queries.public';
+import { workflowSummaryQueryOptions } from '@/features/workflows/workflows-queries.public';
 import type { ApiClient } from '@/lib/api/client';
 import { FailureAlertsSection } from '../components/settings/failure-alerts-section';
 import { IdentitySection } from '../components/settings/identity-section';

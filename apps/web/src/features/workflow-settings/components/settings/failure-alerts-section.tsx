@@ -15,7 +15,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useNotifications } from '@/components/ui/use-notifications';
-import { connectionDiscoveryQueryOptions } from '@/features/connections/queries.public';
+import { connectionDiscoveryQueryOptions } from '@/features/connections/connections-queries.public';
 import {
   destinationChannels,
   useSlackChannelNames,
@@ -24,7 +24,7 @@ import {
 import {
   failureNotificationDestinationsQueryOptions,
   type FailureNotificationDestinationList,
-} from '@/features/failure-notifications/queries.public';
+} from '@/features/failure-notifications/failure-notifications-queries.public';
 import type { ApiClient } from '@/lib/api/client';
 import { describeDestination } from '../../model/destination-label';
 import { useFailureNotificationCommands } from '../../data/mutations/use-notification-commands';

@@ -6,7 +6,7 @@ import type { ApiClient } from '@/lib/api/client';
 import {
   currentUserQueryOptions,
   isUnauthenticated,
-} from '@/features/auth/session/queries.public';
+} from '@/features/auth/session/auth-session-queries.public';
 import {
   allowlistedReturnPath,
   returnToSearch,
@@ -86,7 +86,7 @@ export async function findCurrentUser(context: RouterContext) {
 export async function loadWorkspaces(context: RouterContext, userId: string) {
   try {
     const { accessibleWorkspacesQueryOptions } =
-      await import('@/features/workspaces/queries.public');
+      await import('@/features/workspaces/workspaces-queries.public');
     return await context.queryClient.query(
       accessibleWorkspacesQueryOptions(context.apiClient, userId),
     );
@@ -136,11 +136,11 @@ export function authoringPrefetches(
 ): readonly Promise<unknown>[] {
   const { apiClient, queryClient } = context;
   return [
-    import('@/features/catalog/queries.public').then(
+    import('@/features/catalog/catalog-queries.public').then(
       ({ authoringCatalogQueryOptions }) =>
         queryClient.query(authoringCatalogQueryOptions(apiClient, userId)),
     ),
-    import('@/features/connections/queries.public').then(
+    import('@/features/connections/connections-queries.public').then(
       ({ editorConnectionsQueryOptions }) =>
         queryClient.query(
           editorConnectionsQueryOptions(apiClient, userId, workspaceId),

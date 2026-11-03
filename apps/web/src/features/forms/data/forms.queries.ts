@@ -1,4 +1,4 @@
-import { workflowKeys } from '@/features/workflows/queries.public';
+import { workflowKeys } from '@/features/workflows/workflows-queries.public';
 import type { CoordinatedEventHistory } from '@pertexo/contracts';
 import { infiniteQueryOptions, queryOptions } from '@tanstack/react-query';
 import {

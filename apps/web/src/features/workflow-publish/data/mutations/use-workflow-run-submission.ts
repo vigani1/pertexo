@@ -6,7 +6,7 @@ import {
   type RunIntent,
 } from '@/features/workflow-runs/commands.public';
 import type { ApiClient } from '@/lib/api/client';
-import { getAllAccessibleWorkspaces } from '@/features/workspaces/queries.public';
+import { getAllAccessibleWorkspaces } from '@/features/workspaces/workspaces-queries.public';
 import { ApiError, isApiError } from '@/lib/api/error';
 import {
   canResend,

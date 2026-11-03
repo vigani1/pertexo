@@ -4,7 +4,7 @@ import type { WorkflowRunStatisticsWindow } from '@pertexo/contracts';
 import {
   loomStatisticsQueryOptions,
   workflowRunKeys,
-} from '@/features/workflow-runs/queries.public';
+} from '@/features/workflow-runs/workflow-runs-queries.public';
 import type { ApiClient } from '@/lib/api/client';
 import { getUsageCapacity, getUsageTrends } from './usage.api';
 import { forgetDeniedSnapshots } from '../model/usage-access';

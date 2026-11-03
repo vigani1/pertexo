@@ -1,7 +1,7 @@
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import type { AccessibleWorkspace } from '@pertexo/contracts';
-import { tasksQueryOptions } from '@/features/pending-tasks/queries.public';
+import { tasksQueryOptions } from '@/features/pending-tasks/pending-tasks-queries.public';
 import type { ApiClient } from '@/lib/api/client';
 import { inboxSummaryQueryOptions } from '../data/inbox.queries';
 

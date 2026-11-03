@@ -1,11 +1,11 @@
-import { parseCollaborationSearch } from '@/features/workflow-collaboration/search.public';
+import { parseCollaborationSearch } from '@/features/workflow-collaboration/workflow-collaboration-search.public';
 import { createRoute } from '@tanstack/react-router';
 import { lazyPiece, lazyRoute } from '@/components/patterns/app-update/lazy';
 import { workflowIdentifierSchema } from '@pertexo/contracts';
 import {
   filtersFromSearch,
   sanitizeWorkflowRunSearch,
-} from '@/features/workflow-runs/search.public';
+} from '@/features/workflow-runs/workflow-runs-search.public';
 
 import { pageTitle } from '../../root/page-title';
 import {
@@ -39,7 +39,7 @@ export const workflowHubRoute = createRoute({
   // inside the workspace shell instead of the hub.
   loader: async ({ context }) => {
     const { workflowSummaryQueryOptions } =
-      await import('@/features/workflows/queries.public');
+      await import('@/features/workflows/workflows-queries.public');
 
     const { apiClient, queryClient, user, workspace, workflowId } = context;
     if (workflowId === null) return { found: false };
@@ -92,7 +92,7 @@ export const workflowRunsRoute = createRoute({
   loaderDeps: ({ search }) => filtersFromSearch(search),
   loader: async ({ context, deps }) => {
     const { workflowRunsInfiniteQueryOptions } =
-      await import('@/features/workflow-runs/queries.public');
+      await import('@/features/workflow-runs/workflow-runs-queries.public');
 
     const { apiClient, queryClient, user, workspace, workflowId } = context;
     if (workflowId === null || !workspace.capabilities.includes('run:read'))
@@ -121,7 +121,8 @@ export const workflowTriggersRoute = createRoute({
       scheduleTriggersQueryOptions,
       webhookTriggersQueryOptions,
       workflowVersionsQueryOptions,
-    } = await import('@/features/workflow-settings/queries.public');
+    } =
+      await import('@/features/workflow-settings/workflow-settings-queries.public');
 
     const { apiClient, queryClient, user, workspace, workflowId } = context;
     if (workflowId === null) return;
@@ -169,7 +170,7 @@ export const workflowVersionsRoute = createRoute({
   path: 'versions',
   loader: async ({ context }) => {
     const { workflowVersionsQueryOptions } =
-      await import('@/features/workflow-settings/queries.public');
+      await import('@/features/workflow-settings/workflow-settings-queries.public');
 
     const { apiClient, queryClient, user, workspace, workflowId } = context;
     if (workflowId === null) return;
@@ -203,10 +204,10 @@ export const workflowSettingsRoute = createRoute({
       { workflowDraftQueryOptions },
       { stepHealthQueryOptions },
     ] = await Promise.all([
-      import('@/features/failure-notifications/queries.public'),
-      import('@/features/workflow-settings/queries.public'),
+      import('@/features/failure-notifications/failure-notifications-queries.public'),
+      import('@/features/workflow-settings/workflow-settings-queries.public'),
       import('@/features/workflow-editor/draft.public'),
-      import('@/features/workflow-runs/queries.public'),
+      import('@/features/workflow-runs/workflow-runs-queries.public'),
     ]);
 
     const { apiClient, queryClient, user, workspace, workflowId } = context;

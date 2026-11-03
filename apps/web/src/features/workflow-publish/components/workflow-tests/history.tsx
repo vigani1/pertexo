@@ -18,7 +18,7 @@ import {
   describeRunStatus,
   isActiveRunStatus,
 } from '@/features/workflow-runs/labels.public';
-import { useRunEvents } from '@/features/workflow-runs/queries.public';
+import { useRunEvents } from '@/features/workflow-runs/workflow-runs-queries.public';
 import type { WorkflowTests } from '../../hooks/use-workflow-tests';
 
 /**

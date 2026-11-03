@@ -7,7 +7,7 @@ import { RunLoom } from '@/features/workflow-runs/loom.public';
 import {
   loomStatisticsQueryOptions,
   runLoomQueryOptions,
-} from '@/features/workflow-runs/queries.public';
+} from '@/features/workflow-runs/workflow-runs-queries.public';
 import type { ApiClient } from '@/lib/api/client';
 import { HomeBlockBody } from './home-block';
 import { queryBlockState } from '../model/home-block-state';

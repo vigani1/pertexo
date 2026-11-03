@@ -1,4 +1,4 @@
-import { authoringCatalogQueryOptions } from '@/features/catalog/queries.public';
+import { authoringCatalogQueryOptions } from '@/features/catalog/catalog-queries.public';
 import type { WorkflowGraphContract } from '@pertexo/contracts';
 import { act, fireEvent, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';

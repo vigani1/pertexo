@@ -1,4 +1,4 @@
-import { editorConnectionsQueryOptions } from '@/features/connections/queries.public';
+import { editorConnectionsQueryOptions } from '@/features/connections/connections-queries.public';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { HttpResponse, http } from 'msw';

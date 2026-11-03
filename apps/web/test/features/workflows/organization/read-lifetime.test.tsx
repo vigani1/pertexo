@@ -65,10 +65,13 @@ vi.mock('@/features/auth/session/identity.public', async (original) => ({
   assertSessionIdentity: vi.fn(),
 }));
 
-vi.mock('@/features/workspaces/queries.public', async (original) => ({
-  ...(await original<object>()),
-  getAllAccessibleWorkspaces: vi.fn(),
-}));
+vi.mock(
+  '@/features/workspaces/workspaces-queries.public',
+  async (original) => ({
+    ...(await original<object>()),
+    getAllAccessibleWorkspaces: vi.fn(),
+  }),
+);
 
 beforeEach(resetReadMocks);
 

@@ -11,7 +11,7 @@ import {
 import {
   fitsRequirement,
   isUsableConnection,
-} from '@/features/connections/queries.public';
+} from '@/features/connections/connections-queries.public';
 import { AddConnectionContext } from '../../../model/add-connection-context';
 import type { NodeFormApi } from '../../../model/inspector/node-form';
 import { ChoiceSelect } from './choice-select';

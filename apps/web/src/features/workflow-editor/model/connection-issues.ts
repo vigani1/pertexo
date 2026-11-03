@@ -7,7 +7,7 @@ import { describeConnectionRequirement } from '@/features/catalog/presentation.p
 import {
   fitsRequirement,
   isUsableConnection,
-} from '@/features/connections/queries.public';
+} from '@/features/connections/connections-queries.public';
 import type { WorkflowIssue } from '@/features/workflow-publish/public';
 import { findDefinition } from './graph/adapter';
 import type { GraphLevel } from './graph/scopes';

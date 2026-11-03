@@ -20,7 +20,7 @@ import { FieldDescription, LabelledField } from '@/components/ui/field';
 import { Notice } from '@/components/ui/notice';
 import { LoadMore } from '@/components/patterns/lists/load-more';
 import { QueryView } from '@/components/patterns/states/query-view';
-import { workflowsInfiniteQueryOptions } from '@/features/workflows/queries.public';
+import { workflowsInfiniteQueryOptions } from '@/features/workflows/workflows-queries.public';
 import {
   callTargetVersionsQueryOptions,
   callPinnedVersionQueryOptions,

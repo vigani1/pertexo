@@ -1,6 +1,6 @@
 import { readPortableWorkflowFile } from '@/features/workflows/model/portability';
 
-import { workflowKeys } from '@/features/workflows/queries.public';
+import { workflowKeys } from '@/features/workflows/workflows-queries.public';
 
 import { ApiError } from '@/lib/api/error';
 

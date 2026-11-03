@@ -3,7 +3,7 @@ import { useEffect, useEffectEvent } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { CURATED_WORKFLOW_TEMPLATES } from '@pertexo/templates';
 import { Button } from '@/components/ui/button';
-import { authoringCatalogQueryOptions } from '@/features/catalog/queries.public';
+import { authoringCatalogQueryOptions } from '@/features/catalog/catalog-queries.public';
 import type { ApiClient } from '@/lib/api/client';
 import { cn } from '@/lib/class-names';
 import {

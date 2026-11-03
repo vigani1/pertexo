@@ -13,7 +13,7 @@ import { describeCommandError } from '@/lib/api/error-copy';
 import { commandAutoPause, type AutoPauseCommand } from '../auto-pause.api';
 import { autoPauseKeys } from '../auto-pause.queries';
 import { settingsCommandError } from './settings-command';
-import { accessibleWorkspacesQueryOptions } from '@/features/workspaces/queries.public';
+import { accessibleWorkspacesQueryOptions } from '@/features/workspaces/workspaces-queries.public';
 
 /** Keep the entire request, including its original revision, for an exact retry. */
 export function useAutoPauseCommand(

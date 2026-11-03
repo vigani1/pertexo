@@ -4,7 +4,7 @@ import type {
   WorkflowPromotionSettings,
   WorkflowPromotionTarget,
 } from '@pertexo/contracts';
-import { accessibleWorkspacesQueryOptions } from '@/features/workspaces/queries.public';
+import { accessibleWorkspacesQueryOptions } from '@/features/workspaces/workspaces-queries.public';
 import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/ui/notice';
 import { QueryView } from '@/components/patterns/states/query-view';

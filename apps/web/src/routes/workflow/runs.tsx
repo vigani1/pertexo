@@ -1,6 +1,6 @@
 import { useNavigate, useSearch } from '@tanstack/react-router';
 import { WorkflowRunsPage } from '@/features/workflow-runs/public';
-import { sanitizeWorkflowRunSearch } from '@/features/workflow-runs/queries.public';
+import { sanitizeWorkflowRunSearch } from '@/features/workflow-runs/workflow-runs-queries.public';
 import { WorkflowHubTabFrame } from './hub/frame';
 import { useWorkflowHubScope } from './hub/scope';
 

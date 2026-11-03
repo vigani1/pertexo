@@ -7,7 +7,7 @@ import {
 import {
   workflowRunQueryOptions,
   workflowRunVersionQueryOptions,
-} from '@/features/workflow-runs/queries.public';
+} from '@/features/workflow-runs/workflow-runs-queries.public';
 import type { ApiClient } from '@/lib/api/client';
 
 /**

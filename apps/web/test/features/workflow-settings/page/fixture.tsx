@@ -1,4 +1,4 @@
-import { workflowKeys } from '@/features/workflows/queries.public';
+import { workflowKeys } from '@/features/workflows/workflows-queries.public';
 import { screen } from '@testing-library/react';
 import { userId, workflowId, workspaceId } from '../fixtures';
 export const settingsPath = `/w/${workspaceId}/workflows/${workflowId}/settings`;

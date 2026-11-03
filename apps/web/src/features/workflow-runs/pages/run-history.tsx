@@ -14,7 +14,7 @@ import {
 import {
   workflowsInfiniteQueryOptions,
   workflowSummaryQueryOptions,
-} from '@/features/workflows/queries.public';
+} from '@/features/workflows/workflows-queries.public';
 import type { ApiClient } from '@/lib/api/client';
 import { LiveRunCounts } from '../components/run-count';
 import { RunFilters } from '../components/run-filters/controls';

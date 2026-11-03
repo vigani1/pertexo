@@ -1,7 +1,7 @@
 import type { AccessibleWorkspace } from '@pertexo/contracts';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
-import { attentionRunsQueryOptions } from '@/features/workflow-runs/queries.public';
-import { workflowsInfiniteQueryOptions } from '@/features/workflows/queries.public';
+import { attentionRunsQueryOptions } from '@/features/workflow-runs/workflow-runs-queries.public';
+import { workflowsInfiniteQueryOptions } from '@/features/workflows/workflows-queries.public';
 import type { ApiClient } from '@/lib/api/client';
 import {
   connectionAttentionItems,

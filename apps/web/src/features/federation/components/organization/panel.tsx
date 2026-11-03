@@ -1,6 +1,6 @@
 import { Link } from '@tanstack/react-router';
 import type { AccessibleWorkspace } from '@pertexo/contracts';
-import type { FederationSection } from '../../search.public';
+import type { FederationSection } from '../../federation-search.public';
 import { DirectoryPanel } from '../directory/panel';
 import { FEDERATION_LIMITS, type FederationSettings } from '@pertexo/contracts';
 import { SettingsSection } from '@/components/patterns/settings/section';

@@ -1,16 +1,16 @@
 import { holdsCapability } from '@/features/workspaces/availability.public';
-import { parsePromotionSearch } from '@/features/workflow-promotions/search.public';
-import { parseFederationSearch } from '@/features/federation/search.public';
-import { parseAuditSearch } from '@/features/governance/search.public';
-import { parseUsageTrendsSearch } from '@/features/usage/search.public';
+import { parsePromotionSearch } from '@/features/workflow-promotions/workflow-promotions-search.public';
+import { parseFederationSearch } from '@/features/federation/federation-search.public';
+import { parseAuditSearch } from '@/features/governance/governance-search.public';
+import { parseUsageTrendsSearch } from '@/features/usage/usage-search.public';
 import { createRoute } from '@tanstack/react-router';
 import { lazyRoute } from '@/components/patterns/app-update/lazy';
 
 import { pageTitle } from '../../root/page-title';
-import { parseUsageSearch } from '@/features/usage/search.public';
+import { parseUsageSearch } from '@/features/usage/usage-search.public';
 import { warmPrefetches } from '../../root/route-context';
 import { workspaceShellRoute } from '../routes';
-import { parseAlertsSearch } from '@/features/failure-notifications/search.public';
+import { parseAlertsSearch } from '@/features/failure-notifications/failure-notifications-search.public';
 
 /** Pathless layout: every Settings page beside the Settings rail. */
 export const settingsHubRoute = createRoute({
@@ -29,8 +29,8 @@ export const alertsRoute = createRoute({
       { connectionDiscoveryQueryOptions },
       { failureNotificationDestinationsQueryOptions },
     ] = await Promise.all([
-      import('@/features/connections/queries.public'),
-      import('@/features/failure-notifications/queries.public'),
+      import('@/features/connections/connections-queries.public'),
+      import('@/features/failure-notifications/failure-notifications-queries.public'),
     ]);
 
     const { apiClient, queryClient, user, workspace } = context;
