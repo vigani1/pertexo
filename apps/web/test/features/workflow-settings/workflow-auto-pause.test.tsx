@@ -228,6 +228,22 @@ describe('workflow automatic pause controls', () => {
     ]);
     expect(screen.getByText('Schedules and webhooks are paused')).toBeVisible();
   });
+  it('labels and links the recorded pause evidence as the latest failed run', async () => {
+    installQueries();
+    mockServer.use(
+      http.get(`${workflowApi}/auto-pause`, () => HttpResponse.json(paused)),
+    );
+    renderApp(path);
+    const link = await screen.findByRole('link', {
+      name: 'Latest failed run',
+      exact: true,
+    });
+    expect(link).toHaveAttribute(
+      'href',
+      expect.stringContaining(`/runs/${String(paused.pausedLastRunId)}`),
+    );
+  });
+
   it('resumes with exact bigint revision and key, then reads current authority rather than a receipt', async () => {
     installQueries();
     let current = paused;

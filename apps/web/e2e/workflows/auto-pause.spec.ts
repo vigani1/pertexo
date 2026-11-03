@@ -131,6 +131,13 @@ test('workflow auto-pause settings preserve conflict edits and exact retries; Re
   );
   await page.goto(`${editorUrl}/settings`);
   await expect(
+    page.getByRole('link', { name: 'Latest failed run', exact: true }),
+  ).toHaveAttribute(
+    'href',
+    `/w/${workspaceId}/runs/${String(paused.pausedLastRunId)}`,
+  );
+
+  await expect(
     page.getByText('Schedules and webhooks are paused'),
   ).toBeVisible();
   const autoPause = page.getByRole('region', { name: 'Automatic pause' });

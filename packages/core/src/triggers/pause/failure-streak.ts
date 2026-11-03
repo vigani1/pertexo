@@ -28,16 +28,13 @@ export function advanceSuccessWatermark(
   return success;
 }
 
+/** ADR 056 records the current streak and its latest counted failure. */
 export function pauseEvidence(
-  legacyFailures: number,
-  failures: readonly Readonly<{ runId: string }>[],
+  consecutiveFailures: number,
+  latestFailure: Readonly<{ runId: string }> | undefined,
   threshold: number,
 ): Readonly<{ runId: string; failures: number }> | null {
-  const reached = failures[Math.max(0, threshold - legacyFailures - 1)];
-  return reached === undefined
+  return latestFailure === undefined || consecutiveFailures < threshold
     ? null
-    : {
-        runId: reached.runId,
-        failures: Math.max(threshold, legacyFailures + 1),
-      };
+    : { runId: latestFailure.runId, failures: consecutiveFailures };
 }

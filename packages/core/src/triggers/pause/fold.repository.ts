@@ -310,9 +310,6 @@ async function applyOrderedOutcomes(
       (success === null || compareCompletions(outcome, success) > 0),
   );
   const ordered = [...positioned, ...additions].sort(compareCompletions);
-  // Evaluate before compaction so a burst records the actual threshold-crossing
-  // run, rather than a later representative from the retained suffix.
-  const evidence = pauseEvidence(legacyFailures, ordered, threshold);
   const kept = ordered.slice(-MAX_AUTO_PAUSE_THRESHOLD);
   const first = kept[0];
   await db
@@ -366,7 +363,7 @@ async function applyOrderedOutcomes(
       ),
     )
     .catch(rethrowQueryFailure);
-  return evidence;
+  return pauseEvidence(consecutiveFailures, latestFailure, threshold);
 }
 
 function completionTime<T extends AnyPgColumn>(
