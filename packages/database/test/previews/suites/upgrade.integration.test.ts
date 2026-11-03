@@ -141,6 +141,7 @@ it('upgrades a populated standalone test without changing its source identity or
       '0081_serialize_capacity_provisioning.sql',
       '0082_complete_trigger_pause_state.sql',
       '0083_remove_test_probe.sql',
+      '0084_remove_redundant_rls_policies.sql',
     ]);
     expect(
       (

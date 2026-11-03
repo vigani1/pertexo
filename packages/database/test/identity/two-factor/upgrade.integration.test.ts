@@ -96,6 +96,7 @@ it('upgrades password accounts with two-factor off, isolated auth grants and cas
       '0081_serialize_capacity_provisioning.sql',
       '0082_complete_trigger_pause_state.sql',
       '0083_remove_test_probe.sql',
+      '0084_remove_redundant_rls_policies.sql',
     ]);
     expect(
       (
