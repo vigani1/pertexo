@@ -76,6 +76,7 @@ describe('@pertexo/secrets/server as a built package', () => {
       'createSystemMailDeliveryStore',
       'createSystemMailEnqueueStore',
       'insertSystemMail',
+      'verifySystemMailKeys',
     ]);
   });
 
@@ -138,6 +139,7 @@ describe('@pertexo/secrets/server as a built package', () => {
       'createSystemMailDeliveryStore',
       'createSystemMailEnqueueStore',
       'insertSystemMail',
+      'verifySystemMailKeys',
     ])
       expect(names).not.toContain(moved);
   });
