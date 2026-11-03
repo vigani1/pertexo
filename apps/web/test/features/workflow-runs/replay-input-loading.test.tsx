@@ -133,9 +133,17 @@ describe('Replay while the run’s input is still loading', () => {
 
   const sent = (input: unknown) => ({ workflowVersionId, input });
 
-  it('sends what was typed, with the input still on its way', async () => {
+  it('waits for the saved input before editing and sends its replacement', async () => {
     const { event, dialog, router } = await openWhileLoading();
     const typed = '{"order":"B-2"}';
+    const field = dialog.getByLabelText(LABEL);
+    expect(field).toBeDisabled();
+    await event.type(field, 'must not enter');
+    expect(field).toHaveValue('{}');
+    answerInput();
+    await waitFor(() => {
+      expect(field).toBeEnabled();
+    });
 
     fireEvent.change(dialog.getByLabelText(LABEL), {
       target: { value: typed },
@@ -148,16 +156,16 @@ describe('Replay while the run’s input is still loading', () => {
     answerInput();
   });
 
-  it('keeps what was typed when the input arrives, and sends that', async () => {
+  it('keeps what was typed after the input arrives, and sends that', async () => {
     const { event, dialog, router, queryClient } = await openWhileLoading();
     const typed = '{"order":"B-2"}';
-    fireEvent.change(dialog.getByLabelText(LABEL), {
-      target: { value: typed },
-    });
 
     answerInput();
     await waitFor(() => {
       expect(queryClient.isFetching()).toBe(0);
+    });
+    fireEvent.change(dialog.getByLabelText(LABEL), {
+      target: { value: typed },
     });
 
     expect(dialog.getByLabelText(LABEL)).toHaveValue(typed);
@@ -166,25 +174,29 @@ describe('Replay while the run’s input is still loading', () => {
     expect(bodies).toEqual([sent({ order: 'B-2' })]);
   });
 
-  it('keeps what is being typed a keystroke at a time as the input arrives', async () => {
+  it('keeps keystroke edits after the saved input has loaded', async () => {
     const { event, dialog, queryClient } = await openWhileLoading();
     const field = dialog.getByLabelText(LABEL);
-    await event.clear(field);
-    await event.type(field, '12');
-
+    expect(field).toBeDisabled();
     answerInput();
     await waitFor(() => {
       expect(queryClient.isFetching()).toBe(0);
     });
+    await event.clear(field);
+    await event.type(field, '12');
     await event.type(field, '3');
 
     expect(field).toHaveValue('123');
   });
 
-  // The request is on its way: an input turning up can't change it or stop it.
-  it('finishes a replay already sent when the input arrives under it', async () => {
+  // Once submission starts, editing stays disabled until acceptance.
+  it('finishes a replay sent after input loading with editing disabled', async () => {
     replayAnswer = held();
     const { event, dialog, router, queryClient } = await openWhileLoading();
+    answerInput();
+    await waitFor(() => {
+      expect(dialog.getByLabelText(LABEL)).toBeEnabled();
+    });
     fireEvent.change(dialog.getByLabelText(LABEL), {
       target: { value: '{"order":"B-2"}' },
     });
@@ -193,7 +205,7 @@ describe('Replay while the run’s input is still loading', () => {
       expect(bodies).toHaveLength(1);
     });
 
-    answerInput();
+    expect(dialog.getByLabelText(LABEL)).toBeDisabled();
     await waitFor(() => {
       expect(queryClient.isFetching()).toBe(0);
     });
