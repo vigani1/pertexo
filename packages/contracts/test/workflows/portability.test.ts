@@ -132,9 +132,10 @@ describe('portable workflow public HTTP contract', () => {
       publicOpenApiDocument,
     ]) {
       for (const suffix of ['/import/preview', '/import']) {
-        const operation =
-          document.paths[`/v1/workspaces/{workspaceId}/workflows${suffix}`]
-            ?.post;
+        const operation = Object.entries(document.paths).find(
+          ([path]) =>
+            path === `/v1/workspaces/{workspaceId}/workflows${suffix}`,
+        )?.[1].post;
         expect(operation).toHaveProperty('x-pertexo-api-token-scopes', [
           'workflow:create',
         ]);
