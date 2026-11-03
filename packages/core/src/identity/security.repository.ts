@@ -172,7 +172,7 @@ export async function resetPasswordAndRevokeSessions(
     const [user] = await db
       .select()
       .from(users)
-      .where(sql`${users.id}::text=${owner.userId}`)
+      .where(eq(users.id, owner.userId))
       .for('update');
     if (user?.status !== 'active') return 'invalid';
     const [proof] = await db
@@ -186,8 +186,7 @@ export async function resetPasswordAndRevokeSessions(
         ),
       )
       .for('update');
-    if (proof === undefined || proof.expiresAt.getTime() <= Date.now())
-      return 'invalid';
+    if (proof === undefined) return 'invalid';
     const [credential] = await db
       .select()
       .from(authAccounts)
@@ -199,6 +198,14 @@ export async function resetPasswordAndRevokeSessions(
       )
       .for('update');
     if (credential === undefined) return 'invalid';
+    // Read database time only after every lock wait, immediately before mutation.
+    const [deadline] = await db
+      .select({
+        usable: sql<boolean>`${authVerifications.expiresAt}>clock_timestamp()`,
+      })
+      .from(authVerifications)
+      .where(eq(authVerifications.id, proof.id));
+    if (!deadline?.usable) return 'invalid';
     await db
       .update(authAccounts)
       .set({ password: input.passwordHash, updatedAt: sql`clock_timestamp()` })
