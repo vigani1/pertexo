@@ -37,12 +37,9 @@ export async function releaseFailedPublication(
         ? { disposition: 'fail' as const }
         : {
             disposition: 'retry' as const,
-            retryAt: new Date(
-              Date.now() +
-                publicationRetryDelay(
-                  options.retryDelayMillis,
-                  event.publishAttempts,
-                ),
+            retryDelayMillis: publicationRetryDelay(
+              options.retryDelayMillis,
+              event.publishAttempts,
             ),
           }),
     }),

@@ -27,7 +27,7 @@ export type ReleaseInput = Readonly<{
   errorCode: string;
 }> &
   (
-    | Readonly<{ disposition: 'retry'; retryAt: Date }>
+    | Readonly<{ disposition: 'retry'; retryDelayMillis: number }>
     | Readonly<{ disposition: 'fail' }>
   );
 

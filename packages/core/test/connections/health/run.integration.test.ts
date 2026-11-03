@@ -561,7 +561,7 @@ describe('durable revision-fenced Slack run health (ADR059)', () => {
           leaseToken: event.leaseToken,
           errorCode: 'queue.publish_failed',
           disposition: 'retry',
-          retryAt: new Date(0),
+          retryDelayMillis: 0,
         }),
       ).resolves.toBe('retry_scheduled');
     };
