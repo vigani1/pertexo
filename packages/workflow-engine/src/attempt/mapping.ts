@@ -23,7 +23,7 @@ import {
 import { PreviewMappingSourceError, WorkflowEngineError } from '../errors.js';
 
 import type { WorkflowExecutableNode } from '../compilation/foundation.js';
-import { normalizeBoundedEngineValue } from '../compilation/validation.js';
+import { normalizeBoundedEngineValue } from '../compilation/executable.validation.js';
 
 import { operationError, record } from '../operation-values.js';
 

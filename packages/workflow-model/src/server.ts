@@ -36,4 +36,4 @@ export type { CallbackReference } from './flow/callbacks/references.js';
 export {
   callbackReferenceIssue,
   hasCallbackMapping,
-} from './flow/callbacks/validation.js';
+} from './flow/callbacks/callback-references.validation.js';

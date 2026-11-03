@@ -1,7 +1,7 @@
 import { formDeclarationIssues } from '../../triggers/forms/publication.js';
 import { inspectJsonValue } from '../../values/json/canonical.js';
 import { callableDeclarationIssues } from '../../flow/callable/validate-declaration.js';
-import { inspectWorkflowFailureRoutes } from '../../flow/failure-routing/validation.js';
+import { inspectWorkflowFailureRoutes } from '../../flow/failure-routing/failure-routes.validation.js';
 import {
   WORKFLOW_VALIDATION_MAX_ISSUES,
   type WorkflowGraph,

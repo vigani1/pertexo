@@ -1,6 +1,6 @@
 import { utf8ByteLength } from '../../values/text.js';
 import { supportsExpressionMappings } from '../../values/mapping/policy.js';
-import { callbackReferenceIssue } from '../../flow/callbacks/validation.js';
+import { callbackReferenceIssue } from '../../flow/callbacks/callback-references.validation.js';
 import {
   eventCoordinationPolicySchema,
   isEventCoordinationTrigger,

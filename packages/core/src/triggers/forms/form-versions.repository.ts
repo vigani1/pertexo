@@ -10,7 +10,7 @@ import {
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { rolesForCapability } from '@pertexo/policy';
 import { authorizeWorkflowResource } from '../../tenant-access/resources/authority.js';
-import { readFormDefinition } from './definition.js';
+import { readFormDefinition } from './read-form-definition.js';
 import type { PoolClient } from 'pg';
 import { FormUnavailableError } from './errors.js';
 import type { FormScope, PublicFormGrant } from './form-admission.types.js';

@@ -13,7 +13,7 @@ import { generatePersistedId } from '@pertexo/database/platform';
 
 import { WorkflowAlreadyRunningError } from '../../runs/commands/acceptance/errors.js';
 import { recordWorkflowTriggerSkip } from '../skips.repository.js';
-import { readFormDefinition } from './definition.js';
+import { readFormDefinition } from './read-form-definition.js';
 import { createHash } from 'node:crypto';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';

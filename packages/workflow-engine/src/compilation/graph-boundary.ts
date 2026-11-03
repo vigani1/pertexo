@@ -28,7 +28,7 @@ import {
   parseSideEffectClass,
   record,
   sideEffectClass,
-} from './validation.js';
+} from './executable.validation.js';
 
 export interface RawExecutableNode {
   readonly raw: Record<string, unknown>;

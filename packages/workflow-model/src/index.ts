@@ -17,7 +17,7 @@ export {
   inspectWorkflowFailureRoutes,
   type FailureRoutingGraph,
   type WorkflowFailureRoutes,
-} from './flow/failure-routing/validation.js';
+} from './flow/failure-routing/failure-routes.validation.js';
 export {
   isRoutableExecutorFailure,
   workflowNodeFailureValueSchema,
@@ -369,7 +369,7 @@ export { supportsExpressionMappings } from './values/mapping/policy.js';
 export {
   callbackTargetNodes,
   callbackMappingExpression,
-} from './flow/callbacks/validation.js';
+} from './flow/callbacks/callback-references.validation.js';
 
 export { remapCallbackReferences } from './flow/callbacks/references.js';
 

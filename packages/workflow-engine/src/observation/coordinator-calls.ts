@@ -13,7 +13,7 @@ import type {
 } from '../compilation/foundation.js';
 import { findExecutableNodeContext } from '../compilation/graph.js';
 import { configuredScopedOutputPorts } from '../transition/scheduling/readiness.js';
-import { normalizeBoundedEngineJson } from '../compilation/validation.js';
+import { normalizeBoundedEngineJson } from '../compilation/executable.validation.js';
 import { exactKeys, operationError, record } from '../operation-values.js';
 import type {
   WorkflowCallIntent,

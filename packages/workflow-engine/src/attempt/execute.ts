@@ -5,7 +5,7 @@ import type { NodeExecutionResult } from '@pertexo/node-sdk/server';
 import { WorkflowEngineError } from '../errors.js';
 
 import { assertAuthenticExecutableIdentity } from '../compilation/foundation.js';
-import { normalizeBoundedEngineValue } from '../compilation/validation.js';
+import { normalizeBoundedEngineValue } from '../compilation/executable.validation.js';
 
 import { operationError } from '../operation-values.js';
 

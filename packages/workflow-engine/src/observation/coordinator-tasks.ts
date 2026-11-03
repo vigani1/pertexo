@@ -18,7 +18,7 @@ import type {
   ExecutionNode,
 } from '../compilation/foundation.js';
 import { findExecutableNodeContext } from '../compilation/graph.js';
-import { normalizeBoundedEngineJson } from '../compilation/validation.js';
+import { normalizeBoundedEngineJson } from '../compilation/executable.validation.js';
 import { exactKeys, operationError, record } from '../operation-values.js';
 import { parseBranchPath, parseIterationPath } from '../checkpoint/fields.js';
 import {

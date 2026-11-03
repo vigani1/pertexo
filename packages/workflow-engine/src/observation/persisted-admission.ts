@@ -4,7 +4,7 @@ import {
   WORKFLOW_OBSERVATION_WINDOW_LIMITS,
 } from '@pertexo/workflow-model';
 
-import { normalizeBoundedEngineJson } from '../compilation/validation.js';
+import { normalizeBoundedEngineJson } from '../compilation/executable.validation.js';
 import { operationError } from '../operation-values.js';
 
 /** Facts come from our own PostgreSQL rows: JSON, so only its shape needs checking. */

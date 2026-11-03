@@ -34,7 +34,7 @@ import type { NodeTestingPersistence } from './ports.js';
 import {
   prepareNodeValidation,
   type PreparedNodePreview,
-} from './validation.js';
+} from './prepare-node-validation.js';
 import { previewAcceptanceResponse } from './previews/response.js';
 import {
   validationInputFields,
