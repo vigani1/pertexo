@@ -32,10 +32,7 @@ type LockedCoordinatorRow = Awaited<
 >[number]['run'];
 export type CoordinatorCommitRow = Omit<
   LockedCoordinatorRow,
-  | 'scheduler_state'
-  | 'next_event_sequence'
-  | 'checkpoint_deadline_expired'
-  | 'deadline_at'
+  'scheduler_state' | 'deadline_at'
 > &
   Readonly<{ has_human_child?: boolean; human_resume_deferred?: boolean }>;
 export type PendingCoordinatorFailure = Awaited<
@@ -64,6 +61,10 @@ export async function loadRunForAdvance(
   const selected = locked[0];
   if (selected === undefined) return Object.freeze({ kind: 'not_found' });
   let row: LockedCoordinatorRow & CoordinatorCommitRow = selected.run;
+  const stored = coordinatorCheckpointFieldsSchema.safeParse(
+    row.scheduler_state,
+  );
+  if (!stored.success) throw new CoordinatorRunStateCorruptError();
   const taskOutcomes = row.has_unconsumed_tasks
     ? await readPendingTaskFacts(client, workspaceId, runId)
     : [];
@@ -85,9 +86,7 @@ export async function loadRunForAdvance(
   // A run's version is immutable; one that is gone went with its run.
   const version = projectExecutionSource(selected.version ?? undefined);
   if (version === null) return Object.freeze({ kind: 'not_found' });
-  const firstSequence = row.next_event_sequence;
-  if (firstSequence === null || firstSequence < 1)
-    throw new CoordinatorRunStateCorruptError();
+  const firstSequence = stored.data.nextEventSequence;
 
   // Facts appended after this point belong to the next advance delivery.
   const capacity = await persistedFactCapacity(
@@ -120,7 +119,7 @@ export async function loadRunForAdvance(
   const deadlineExpired =
     deadlineAt !== null &&
     row.deadline_expired &&
-    !(row.checkpoint_deadline_expired ?? false);
+    !(stored.data.deadlineExpired ?? false);
   if (deadlineExpired)
     observations.push({
       kind: 'deadline_expired',
@@ -128,7 +127,10 @@ export async function loadRunForAdvance(
     });
   // Only invocations already waiting in the stored checkpoint can come due;
   // a wait recorded by a new fact comes due on the next advance.
-  const waitingKeys = waitingInvocationKeys(row.scheduler_state);
+  const waitingKeys = stored.data.invocations.flatMap(
+    ({ invocationKey, status }) =>
+      status === 'waiting' ? [invocationKey] : [],
+  );
   const due =
     waitingKeys.length === 0
       ? []
@@ -178,20 +180,14 @@ export async function loadRunForAdvance(
   });
 }
 
-const storedInvocationsSchema = z.object({
+// The loader owns these fields; the engine parses the full scheduler afterwards.
+const coordinatorCheckpointFieldsSchema = z.object({
+  nextEventSequence: z.number().int().positive().max(2_147_483_647),
+  deadlineExpired: z.boolean().optional(),
   invocations: z.array(
     z.object({ invocationKey: z.string(), status: z.string() }),
   ),
 });
-
-/** Just what this needs of the checkpoint, which the engine parses in full afterwards. */
-function waitingInvocationKeys(schedulerState: unknown): readonly string[] {
-  const stored = storedInvocationsSchema.safeParse(schedulerState);
-  if (!stored.success) throw new CoordinatorRunStateCorruptError();
-  return stored.data.invocations.flatMap(({ invocationKey, status }) =>
-    status === 'waiting' ? [invocationKey] : [],
-  );
-}
 
 /** A run parked on a person or a timer has given its slot back, and so has a parent lending it. */
 function holdsExecutionSlot(
