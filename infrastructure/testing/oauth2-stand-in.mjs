@@ -580,6 +580,7 @@ export async function startOAuth2StandIn({
         body,
       };
       if (!url.pathname.startsWith('/control/')) requests.push(record);
+      if (url.pathname === '/connection-timeout') return;
       if (url.pathname === '/token' && record.method === 'POST')
         await handleToken(record, response);
       else if (url.pathname === '/authorize') {

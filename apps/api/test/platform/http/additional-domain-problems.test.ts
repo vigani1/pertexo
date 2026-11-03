@@ -9,8 +9,14 @@ import { HttpPlatformModule } from '../../../src/platform/http/index.js';
 import { InvalidWorkspaceMemberCursorError } from '../../../src/workspaces/cursor.js';
 import { InvalidAuthenticatedWorkspaceContextError } from '../../../src/workspaces/request/authenticated-context-error.js';
 
+import { workspaceFailure } from '../../../src/problems/context/normalize.js';
+
 const failure = { current: new Error() };
 class FailureController {
+  workspaceFail(): never {
+    throw workspaceFailure(failure.current);
+  }
+
   fail(): never {
     throw failure.current;
   }
@@ -23,6 +29,17 @@ const descriptor = Object.getOwnPropertyDescriptor(
 );
 if (descriptor === undefined) throw new Error('Missing fixture route');
 Get()(FailureController.prototype, 'fail', descriptor);
+const workspaceDescriptor = Object.getOwnPropertyDescriptor(
+  FailureController.prototype,
+  'workspaceFail',
+);
+if (workspaceDescriptor === undefined)
+  throw new Error('Missing workspace failure route');
+Get('workspace')(
+  FailureController.prototype,
+  'workspaceFail',
+  workspaceDescriptor,
+);
 
 async function application() {
   const module = await Test.createTestingModule({
@@ -49,6 +66,23 @@ describe('remaining domain translations over HTTP', () => {
   afterAll(async () => {
     await api.app.close();
   });
+  it('keeps an unrelated workspace TypeError as a safe server failure over HTTP', async () => {
+    failure.current = new TypeError('private workspace implementation canary');
+    const response = await api.server.inject({
+      method: 'GET',
+      url: '/domain-failure/workspace',
+    });
+    expect(response.statusCode).toBe(500);
+    expect(response.json()).toMatchObject({
+      code: 'internal.unexpected',
+      status: 500,
+    });
+    expect(response.json()).not.toHaveProperty('errors');
+    expect(response.payload).not.toContain(
+      'private workspace implementation canary',
+    );
+  });
+
   it.each([
     [
       new PreviewIdempotencyConflictError(),
