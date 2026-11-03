@@ -39,7 +39,10 @@ export async function ownerTransaction<T>(
   }
 }
 
-export async function fixture(shape: 'literal' | 'multipart') {
+export async function fixture(
+  shape: 'literal' | 'multipart',
+  purpose = 'user-upload',
+) {
   const workflowId = randomUUID();
   const versionId = randomUUID();
   const artifactId = randomUUID();
@@ -89,12 +92,13 @@ export async function fixture(shape: 'literal' | 'multipart') {
       [workflowId, workspaceId, JSON.stringify(EMPTY_WORKFLOW_GRAPH), userId],
     );
     await client.query(
-      "insert into app.artifacts(id,workspace_id,purpose,storage_key,media_type,byte_length,sha256,status,expires_at,finalized_at) values($1,$2,'user-upload',$3,'application/octet-stream',4,$4,'available',clock_timestamp()-interval '1 hour',clock_timestamp()-interval '31 days')",
+      "insert into app.artifacts(id,workspace_id,purpose,storage_key,media_type,byte_length,sha256,status,expires_at,finalized_at) values($1,$2,$5,$3,'application/octet-stream',4,$4,'available',clock_timestamp()-interval '1 hour',clock_timestamp()-interval '31 days')",
       [
         artifactId,
         workspaceId,
         `workspaces/${workspaceId}/artifacts/${artifactId}`,
         reference.sha256,
+        purpose,
       ],
     );
   });
