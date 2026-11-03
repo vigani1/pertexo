@@ -1,6 +1,6 @@
 import type { CallbackStore } from '@pertexo/core/runs';
 import { verifyWebhookSignature } from '@pertexo/integrations/server';
-import { type CallbackTokenKeys } from '@pertexo/secrets/server';
+import type { CallbackTokenKeys } from '@pertexo/secrets/server';
 import type { FastifyRequest } from 'fastify';
 import { verifyWebhookHeaderSecret } from '../authentication/header-secret.js';
 import {

@@ -8,7 +8,7 @@ import {
   isOAuth2HostAllowed,
   OAuth2TokenFailure,
 } from '@pertexo/integrations/server';
-import { type OAuth2GrantLossActor } from '@pertexo/core/connections';
+import type { OAuth2GrantLossActor } from '@pertexo/core/connections';
 
 import type { ConnectionOAuth2Dependencies } from '../../ports.js';
 import {

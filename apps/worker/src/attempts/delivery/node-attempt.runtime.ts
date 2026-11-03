@@ -30,7 +30,7 @@ import {
   createNodeSecureHttpClient,
   type SecureHttpAddressPolicy,
 } from '@pertexo/integrations/server';
-import { type ConnectionEnvelopeEncryptionConfig } from '@pertexo/secrets/server';
+import type { ConnectionEnvelopeEncryptionConfig } from '@pertexo/secrets/server';
 import { JsonataEvaluator } from '@pertexo/workflow-model/server';
 import {
   createNodeAttemptExecutionEngine,
