@@ -70,14 +70,21 @@ describe('@pertexo/secrets/server as a built package', () => {
       console.log(JSON.stringify(Object.keys(entry).sort()));
     `);
 
-    expect(names).toEqual([
-      'authenticationMailAssociatedData',
-      'createEncryptionKeyRepository',
-      'createSystemMailDeliveryStore',
-      'createSystemMailEnqueueStore',
-      'insertSystemMail',
-      'verifySystemMailKeys',
-    ]);
+    expect(names).toEqual(
+      [
+        'authenticationMailAssociatedData',
+        'createEncryptionKeyRepository',
+        'createSystemMailDeliveryStore',
+        'createSystemMailEnqueueStore',
+        'insertSystemMail',
+        'verifySystemMailKeys',
+        'createSmtpClient',
+        'parseSystemMailConfig',
+        'SYSTEM_MAIL_FAILURE_GUIDANCE',
+        'systemMailFailureCode',
+        'systemMailFailureInstruction',
+      ].sort(),
+    );
   });
 
   it('has no root entry point', async () => {

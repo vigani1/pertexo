@@ -614,19 +614,9 @@ importers:
       form-data:
         specifier: 4.0.6
         version: 4.0.6
-      nodemailer:
-        specifier: 10.1.4
-        version: 10.1.4
       zod:
         specifier: 4.6.7
         version: 4.6.7
-    devDependencies:
-      '@types/nodemailer':
-        specifier: 8.0.2
-        version: 8.0.2
-      smtp-server:
-        specifier: 3.21.1
-        version: 3.21.1
 
   packages/node-catalog:
     dependencies:
@@ -787,13 +777,25 @@ importers:
       drizzle-orm:
         specifier: 0.45.4
         version: 0.45.4(@opentelemetry/api@1.9.1)(@types/pg@8.23.1)(kysely@0.29.6)(pg@8.23.1)
+      nodemailer:
+        specifier: 10.1.4
+        version: 10.1.4
       pg:
         specifier: 8.23.1
         version: 8.23.1
+      zod:
+        specifier: 4.6.7
+        version: 4.6.7
     devDependencies:
+      '@types/nodemailer':
+        specifier: 8.0.2
+        version: 8.0.2
       '@types/pg':
         specifier: 8.23.1
         version: 8.23.1
+      smtp-server:
+        specifier: 3.21.1
+        version: 3.21.1
 
   packages/templates:
     dependencies:

@@ -15,3 +15,18 @@ export type {
   SystemMailPurpose,
 } from './mail/system-mail.types.js';
 export { authenticationMailAssociatedData } from './mail/mail-associated-data.js';
+
+export { createSmtpClient } from './mail/smtp.js';
+export { parseSystemMailConfig } from './mail/config.js';
+export {
+  SYSTEM_MAIL_FAILURE_GUIDANCE,
+  systemMailFailureCode,
+  systemMailFailureInstruction,
+} from './mail/system-mail.js';
+export type {
+  SystemMailFailure,
+  SystemMailClient,
+  SystemMailConfig,
+  SystemMailMessage,
+  SystemMailResult,
+} from './mail/system-mail.js';

@@ -8,12 +8,12 @@ import {
   type SMTPServerAuthenticationResponse,
 } from 'smtp-server';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createSmtpClient } from '../../src/system-mail/smtp.js';
-import { parseSystemMailConfig } from '../../src/system-mail/config.js';
+import { createSmtpClient } from '../../src/mail/smtp.js';
+import { parseSystemMailConfig } from '../../src/mail/config.js';
 import type {
   SystemMailConfig,
   SystemMailMessage,
-} from '../../src/system-mail/system-mail.js';
+} from '../../src/mail/system-mail.js';
 
 // This key and certificate are public fixtures, trusted only within these tests.
 const key = readFileSync(new URL('./localhost.key', import.meta.url));

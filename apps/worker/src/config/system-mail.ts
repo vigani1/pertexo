@@ -2,11 +2,13 @@ import { z } from 'zod';
 
 import {
   applicationKeyVersionSchema,
-  parseSystemMailConfig,
-  type SystemMailConfig,
   parseApplicationPreviousKeys,
   type ApplicationKeyRing,
 } from '@pertexo/integrations/server';
+import {
+  parseSystemMailConfig,
+  type SystemMailConfig,
+} from '@pertexo/secrets/server';
 
 export type SystemMailDeliveryConfig = Readonly<{
   delivery: SystemMailConfig;

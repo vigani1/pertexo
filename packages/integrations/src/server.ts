@@ -171,20 +171,7 @@ export {
   StoredKeyVerificationError,
 } from './credentials/verify-stored-keys.js';
 
-export {
-  SYSTEM_MAIL_FAILURE_GUIDANCE,
-  systemMailFailureCode,
-  systemMailFailureInstruction,
-} from './system-mail/system-mail.js';
 export { createResendSystemMailClient } from './email/system-mail.js';
-export { parseSystemMailConfig } from './system-mail/config.js';
-export type {
-  SystemMailFailure,
-  SystemMailClient,
-  SystemMailConfig,
-  SystemMailMessage,
-  SystemMailResult,
-} from './system-mail/system-mail.js';
 
 export {
   sealNoticeUnsubscribe,
@@ -206,5 +193,3 @@ export {
 } from './callbacks/keys.js';
 
 export { verifyCallbackTokenKeys } from './callbacks/verify.js';
-
-export { createSmtpClient } from './system-mail/smtp.js';

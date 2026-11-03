@@ -1,6 +1,7 @@
 import { createSystemMailClient } from '../../src/mail/system-mail-client.js';
 import type { WorkspaceInvitationDeliveryStore } from '@pertexo/core/tenant-access';
-import type { SystemMailClient } from '@pertexo/integrations/server';
+
+import type { SystemMailClient } from '@pertexo/secrets/server';
 import { JOB_NAME, type QueueHandlerContext } from '@pertexo/queue';
 import { describe, expect, it, vi } from 'vitest';
 
