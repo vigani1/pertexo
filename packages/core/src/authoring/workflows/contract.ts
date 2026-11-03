@@ -65,6 +65,8 @@ export type CreateWorkflowInput = Readonly<{
   name: string;
   emptyGraph: WorkflowGraph;
   idempotencyKey: string;
+  /** A token's receipts are its own, so a session can't replay one, or the reverse. */
+  commandCredentialId?: string;
   requestId?: string;
   traceId?: string;
 }>;

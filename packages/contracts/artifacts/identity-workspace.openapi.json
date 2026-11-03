@@ -8784,13 +8784,14 @@
           },
           "scopes": {
             "minItems": 1,
-            "maxItems": 8,
+            "maxItems": 9,
             "type": "array",
             "items": {
               "type": "string",
               "enum": [
                 "workflow:read",
                 "workflow:create",
+                "workflow:update",
                 "workflow:publish",
                 "run:read",
                 "run:read-data",
@@ -8841,13 +8842,14 @@
                       },
                       "scopes": {
                         "minItems": 1,
-                        "maxItems": 8,
+                        "maxItems": 9,
                         "type": "array",
                         "items": {
                           "type": "string",
                           "enum": [
                             "workflow:read",
                             "workflow:create",
+                            "workflow:update",
                             "workflow:publish",
                             "run:read",
                             "run:read-data",
@@ -8922,13 +8924,14 @@
                       },
                       "scopes": {
                         "minItems": 1,
-                        "maxItems": 8,
+                        "maxItems": 9,
                         "type": "array",
                         "items": {
                           "type": "string",
                           "enum": [
                             "workflow:read",
                             "workflow:create",
+                            "workflow:update",
                             "workflow:publish",
                             "run:read",
                             "run:read-data",
@@ -9028,13 +9031,14 @@
                       },
                       "scopes": {
                         "minItems": 1,
-                        "maxItems": 8,
+                        "maxItems": 9,
                         "type": "array",
                         "items": {
                           "type": "string",
                           "enum": [
                             "workflow:read",
                             "workflow:create",
+                            "workflow:update",
                             "workflow:publish",
                             "run:read",
                             "run:read-data",
@@ -9109,13 +9113,14 @@
                       },
                       "scopes": {
                         "minItems": 1,
-                        "maxItems": 8,
+                        "maxItems": 9,
                         "type": "array",
                         "items": {
                           "type": "string",
                           "enum": [
                             "workflow:read",
                             "workflow:create",
+                            "workflow:update",
                             "workflow:publish",
                             "run:read",
                             "run:read-data",
@@ -9208,13 +9213,14 @@
           },
           "scopes": {
             "minItems": 1,
-            "maxItems": 8,
+            "maxItems": 9,
             "type": "array",
             "items": {
               "type": "string",
               "enum": [
                 "workflow:read",
                 "workflow:create",
+                "workflow:update",
                 "workflow:publish",
                 "run:read",
                 "run:read-data",
@@ -9247,13 +9253,14 @@
             "type": "boolean"
           },
           "availableScopes": {
-            "maxItems": 8,
+            "maxItems": 9,
             "type": "array",
             "items": {
               "type": "string",
               "enum": [
                 "workflow:read",
                 "workflow:create",
+                "workflow:update",
                 "workflow:publish",
                 "run:read",
                 "run:read-data",
@@ -9288,13 +9295,14 @@
                     },
                     "scopes": {
                       "minItems": 1,
-                      "maxItems": 8,
+                      "maxItems": 9,
                       "type": "array",
                       "items": {
                         "type": "string",
                         "enum": [
                           "workflow:read",
                           "workflow:create",
+                          "workflow:update",
                           "workflow:publish",
                           "run:read",
                           "run:read-data",
@@ -9369,13 +9377,14 @@
                     },
                     "scopes": {
                       "minItems": 1,
-                      "maxItems": 8,
+                      "maxItems": 9,
                       "type": "array",
                       "items": {
                         "type": "string",
                         "enum": [
                           "workflow:read",
                           "workflow:create",
+                          "workflow:update",
                           "workflow:publish",
                           "run:read",
                           "run:read-data",
@@ -9488,13 +9497,14 @@
                   },
                   "scopes": {
                     "minItems": 1,
-                    "maxItems": 8,
+                    "maxItems": 9,
                     "type": "array",
                     "items": {
                       "type": "string",
                       "enum": [
                         "workflow:read",
                         "workflow:create",
+                        "workflow:update",
                         "workflow:publish",
                         "run:read",
                         "run:read-data",
@@ -9569,13 +9579,14 @@
                   },
                   "scopes": {
                     "minItems": 1,
-                    "maxItems": 8,
+                    "maxItems": 9,
                     "type": "array",
                     "items": {
                       "type": "string",
                       "enum": [
                         "workflow:read",
                         "workflow:create",
+                        "workflow:update",
                         "workflow:publish",
                         "run:read",
                         "run:read-data",

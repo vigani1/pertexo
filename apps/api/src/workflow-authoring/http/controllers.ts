@@ -126,7 +126,7 @@ export class WorkflowAuthoringController {
   @RateLimit('ordinary_mutation')
   @HttpCode(201)
   @UseGuards(
-    SessionAuthenticationGuard,
+    AutomationAuthenticationGuard,
     WorkflowCreateGuard,
     CsrfProtectionGuard,
   )
@@ -209,7 +209,7 @@ export class WorkflowAuthoringController {
   @Put(':workflowId/draft')
   @RateLimit('ordinary_mutation')
   @UseGuards(
-    SessionAuthenticationGuard,
+    AutomationAuthenticationGuard,
     WorkflowUpdateGuard,
     CsrfProtectionGuard,
   )

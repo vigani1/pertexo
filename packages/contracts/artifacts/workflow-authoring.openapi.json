@@ -809,9 +809,15 @@
       },
       "post": {
         "operationId": "createWorkflow",
+        "x-pertexo-api-token-scopes": [
+          "workflow:create"
+        ],
         "security": [
           {
             "cookieSession": []
+          },
+          {
+            "apiToken": []
           }
         ],
         "parameters": [
@@ -830,13 +836,14 @@
           {
             "name": "x-csrf-token",
             "in": "header",
-            "required": true,
+            "required": false,
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
               "minLength": 16,
               "maxLength": 256
-            }
+            },
+            "description": "Required with cookie sessions. Bearer API tokens do not use CSRF."
           },
           {
             "name": "Idempotency-Key",
@@ -1137,9 +1144,15 @@
       },
       "put": {
         "operationId": "saveWorkflowDraft",
+        "x-pertexo-api-token-scopes": [
+          "workflow:update"
+        ],
         "security": [
           {
             "cookieSession": []
+          },
+          {
+            "apiToken": []
           }
         ],
         "parameters": [
@@ -1170,13 +1183,14 @@
           {
             "name": "x-csrf-token",
             "in": "header",
-            "required": true,
+            "required": false,
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
               "minLength": 16,
               "maxLength": 256
-            }
+            },
+            "description": "Required with cookie sessions. Bearer API tokens do not use CSRF."
           },
           {
             "name": "If-Match",
