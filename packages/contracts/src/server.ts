@@ -57,3 +57,5 @@ export { authoringRoutes } from './routes/workflows/authoring.js';
 export { lifecycleRoutes } from './routes/workflows/lifecycle.js';
 
 export { versionRoutes } from './routes/workflows/versions.js';
+
+export { collaborationRoutes } from './routes/workflows/collaboration.js';
