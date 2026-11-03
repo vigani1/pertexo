@@ -36,6 +36,7 @@ import {
 } from '../types.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
 import { authoringFailure } from '../../problems/context/normalize.js';
+import { parseRequestInput } from '../../platform/http/request-input.js';
 @UseInterceptors(domainErrors(authoringFailure))
 @Controller('v1/workspaces/:workspaceId/workflows')
 @RateLimit('authenticated_read')
@@ -81,7 +82,7 @@ export class WorkflowVersionsController {
     @Query() query: unknown,
   ) {
     const route = workflowParams(params);
-    const input = workflowVersionsQuerySchema.parse(query ?? {});
+    const input = parseRequestInput(workflowVersionsQuerySchema, query ?? {});
     const context = requestContext(request, route.workspaceId);
     return this.listVersions.execute({
       ...context,

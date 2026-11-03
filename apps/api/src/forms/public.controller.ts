@@ -27,6 +27,7 @@ import { FormService } from './service.js';
 import { optionalUploadSession } from '../artifacts/form-uploads/session.js';
 import { domainErrors } from '../platform/http/problems/interceptor.js';
 import { formFailure } from '../problems/context/normalize.js';
+import { parseRequestInput } from '../platform/http/request-input.js';
 
 type PublicRequest = FastifyRequest & AbortableRequest;
 @UseInterceptors(domainErrors(formFailure))
@@ -71,7 +72,7 @@ export class PublicFormsController {
     const capability = formCapabilitySchema.parse(
       firstRequestHeader(request.headers, 'x-pertexo-form-key'),
     );
-    const input = formSubmissionRequestSchema.parse(body);
+    const input = parseRequestInput(formSubmissionRequestSchema, body);
     const idempotencyKey = requestIdempotencyKey(request.headers);
     return withRequestOperationSignal(request, async (signal) => {
       const grant = await this.forms.discover({ publicId, capability, signal });

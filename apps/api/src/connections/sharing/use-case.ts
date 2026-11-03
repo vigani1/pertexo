@@ -8,6 +8,7 @@ import {
   NOOP_CONNECTION_TELEMETRY,
   type ConnectionTelemetry,
 } from '../telemetry.js';
+import { parseRequestInput } from '../../platform/http/request-input.js';
 
 type SharingInput = ConnectionCommandInput & Readonly<{ connectionId: string }>;
 export class ConnectionSharingUseCases {
@@ -37,7 +38,10 @@ export class ConnectionSharingUseCases {
       CONNECTION_OPERATION.sharingUpdate,
       async () => {
         await authorizeConnectionOperation(input, this.authorization);
-        const request = connectionSharingRequestSchema.parse(input.request);
+        const request = parseRequestInput(
+          connectionSharingRequestSchema,
+          input.request,
+        );
         return this.persistence.replaceConnectionSharing({
           workspaceId: input.routeWorkspaceId,
           actorId: input.actor.actorId,

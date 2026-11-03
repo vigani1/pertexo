@@ -32,6 +32,7 @@ import {
   connectionRotateSecretRequestSchema,
   type ConnectionResponse,
 } from '../types.js';
+import { parseRequestInput } from '../../platform/http/request-input.js';
 
 export { TestConnectionUseCase } from './test-connection.js';
 export type { TestConnectionCommand } from './test-connection.js';
@@ -170,7 +171,10 @@ export class CreateConnectionUseCase {
   public execute(input: CreateConnectionCommand): Promise<ConnectionResponse> {
     return this.telemetry.measure(CONNECTION_OPERATION.create, async () => {
       await authorizeConnectionOperation(input, this.authorization);
-      const request = connectionCreateRequestSchema.parse(input.request);
+      const request = parseRequestInput(
+        connectionCreateRequestSchema,
+        input.request,
+      );
       if (request.credential.type === 'oauth2')
         assertOAuth2Endpoints(request.credential, this.oauth2);
       const requestHash = hashRequest(
@@ -263,7 +267,10 @@ export class RotateConnectionSecretUseCase {
   ): Promise<ConnectionResponse> {
     return this.telemetry.measure(CONNECTION_OPERATION.rotate, async () => {
       await authorizeConnectionOperation(input, this.authorization);
-      const request = connectionRotateSecretRequestSchema.parse(input.request);
+      const request = parseRequestInput(
+        connectionRotateSecretRequestSchema,
+        input.request,
+      );
       if (request.credential.type === 'oauth2')
         assertOAuth2Endpoints(request.credential, this.oauth2);
       const secretVersionId = generatePersistedId();

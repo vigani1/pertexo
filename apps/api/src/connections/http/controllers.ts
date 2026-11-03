@@ -45,6 +45,7 @@ import {
 } from '../types.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
 import { connectionFailure } from '../../problems/context/normalize.js';
+import { parseRequestInput } from '../../platform/http/request-input.js';
 
 @UseInterceptors(domainErrors(connectionFailure))
 @Controller('v1/workspaces/:workspaceId/connections')
@@ -71,7 +72,7 @@ export class ConnectionsController {
     @Query() query: unknown,
   ) {
     const { workspaceId } = workspaceParams(params);
-    const input = connectionListQuerySchema.parse(query ?? {});
+    const input = parseRequestInput(connectionListQuerySchema, query ?? {});
     const context = projectAuthenticatedWorkspaceContext(request, workspaceId);
     return this.listConnections.execute({
       ...context,

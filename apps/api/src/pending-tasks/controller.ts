@@ -62,7 +62,7 @@ export class PendingTasksController {
     @Query() query: unknown,
   ) {
     const { workspaceId } = workspaceParams.parse(params);
-    const input = pendingTaskListQuerySchema.parse(query ?? {});
+    const input = parseRequestInput(pendingTaskListQuerySchema, query ?? {});
     return withRequestOperationSignal(request, (signal) =>
       this.tasks.list({
         workspaceId,
@@ -81,7 +81,7 @@ export class PendingTasksController {
     @Query() query: unknown,
   ) {
     const { workspaceId } = workspaceParams.parse(params);
-    const input = approvalAudienceQuerySchema.parse(query ?? {});
+    const input = parseRequestInput(approvalAudienceQuerySchema, query ?? {});
     return withRequestOperationSignal(request, (signal) =>
       this.tasks.audience({
         workspaceId,

@@ -13,6 +13,7 @@ import {
   workspaceMemberRemovalResponseSchema,
   type WorkspaceMemberRemovalResponse,
 } from '../types.js';
+import { parseRequestInput } from '../../platform/http/request-input.js';
 
 type WorkspaceMemberRemovalPersistence = Required<
   Pick<IdentityWorkspacePersistence, 'removeWorkspaceMember'>
@@ -31,7 +32,8 @@ export class RemoveWorkspaceMemberUseCase {
     return this.telemetry.measure(
       IDENTITY_WORKSPACE_OPERATION.workspaceMemberRemoval,
       async () => {
-        const request = workspaceMemberRemovalRequestSchema.parse(
+        const request = parseRequestInput(
+          workspaceMemberRemovalRequestSchema,
           input.request,
         );
         const result = await this.persistence.removeWorkspaceMember({

@@ -29,6 +29,7 @@ import { NodeTestingUpdateGuard } from './guards.js';
 import { GetPreviewRunUseCase, TestWorkflowNodeUseCase } from './use-case.js';
 import { domainErrors } from '../platform/http/problems/interceptor.js';
 import { nodeTestingFailure } from '../problems/context/normalize.js';
+import { parseRequestInput } from '../platform/http/request-input.js';
 
 interface StatusResponse {
   status(code: number): unknown;
@@ -79,7 +80,7 @@ export class NodeTestingController {
     @Res({ passthrough: true }) response: StatusResponse,
   ) {
     const route = nodeTestParamsSchema.parse(params);
-    const command = nodeTestRequestSchema.parse(body);
+    const command = parseRequestInput(nodeTestRequestSchema, body);
     const idempotencyKey =
       command.mode === 'test_execute'
         ? requestIdempotencyKey(request.headers)

@@ -90,7 +90,10 @@ export class WorkflowAuthoringController {
     @Res({ passthrough: true }) response?: WorkflowResponse,
   ) {
     const { workspaceId } = workspaceParams(params);
-    const input = workflowOrganizationListQuerySchema.parse(query ?? {});
+    const input = parseRequestInput(
+      workflowOrganizationListQuerySchema,
+      query ?? {},
+    );
     const hasOrganizationFilters =
       input.query !== undefined ||
       input.view !== undefined ||
@@ -153,7 +156,7 @@ export class WorkflowAuthoringController {
     @Res({ passthrough: true }) response?: WorkflowResponse,
   ) {
     const route = workflowParams(params);
-    const projection = workflowGetQuerySchema.parse(query ?? {});
+    const projection = parseRequestInput(workflowGetQuerySchema, query ?? {});
     if (projection.include !== undefined)
       response?.header('Cache-Control', 'private, no-store');
     if (

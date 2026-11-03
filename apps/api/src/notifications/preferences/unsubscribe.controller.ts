@@ -15,6 +15,7 @@ import type { FastifyRequest } from 'fastify';
 import { firstRequestHeader } from '../../platform/http/request-headers.js';
 import { RateLimit } from '../../platform/rate-limit/metadata.js';
 import { NoticePreferencesService } from './service.js';
+import { parseRequestInput } from '../../platform/http/request-input.js';
 @Controller('v1/notifications/unsubscribe')
 @RateLimit('notice_unsubscribe')
 export class NoticeUnsubscribeController {
@@ -22,13 +23,13 @@ export class NoticeUnsubscribeController {
   @Post('one-click')
   @HttpCode(200)
   oneClick(@Query() query: unknown) {
-    const { token } = noticeOneClickQuerySchema.parse(query);
+    const { token } = parseRequestInput(noticeOneClickQuerySchema, query);
     return this.preferences.unsubscribe(token);
   }
   @Get('one-click')
   @Redirect(undefined, 303)
   confirm(@Query() query: unknown) {
-    const { token } = noticeOneClickQuerySchema.parse(query);
+    const { token } = parseRequestInput(noticeOneClickQuerySchema, query);
     return { url: `/notifications/unsubscribe#${encodeURIComponent(token)}` };
   }
   @Post()

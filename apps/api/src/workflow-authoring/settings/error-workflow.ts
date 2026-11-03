@@ -27,7 +27,10 @@ export class WorkflowErrorUseCase {
   ) {}
   public async targets(input: ReadInput & Readonly<{ request: unknown }>) {
     await this.authorize(input, 'workflow:update');
-    const request = workflowErrorTargetsQuerySchema.parse(input.request);
+    const request = parseRequestInput(
+      workflowErrorTargetsQuerySchema,
+      input.request,
+    );
     return workflowErrorTargetsPageSchema.parse(
       await this.persistence.listTargets({
         ...this.context(input),

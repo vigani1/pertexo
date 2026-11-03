@@ -32,6 +32,7 @@ import { NotificationChangeGuard, NotificationReadGuard } from '../guards.js';
 import { NoticePreferencesService } from './service.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
 import { inboxFailure } from '../../problems/context/normalize.js';
+import { parseRequestInput } from '../../platform/http/request-input.js';
 
 type Request = IdentityWorkspaceRequest & AbortableRequest;
 @UseInterceptors(domainErrors(inboxFailure))
@@ -62,7 +63,7 @@ export class NoticePreferencesController {
     @Body() body: unknown,
   ) {
     const workspaceId = workspaceIdentifierSchema.parse(workspace);
-    const input = noticePreferencesRequestSchema.parse(body);
+    const input = parseRequestInput(noticePreferencesRequestSchema, body);
     const idempotencyKey = requestIdempotencyKey(request.headers);
     return withRequestOperationSignal(request, (signal) =>
       this.preferences.replace({
@@ -84,7 +85,7 @@ export class NoticePreferencesController {
     @Body() body: unknown,
   ) {
     const workspaceId = workspaceIdentifierSchema.parse(workspace);
-    const input = noticeDefaultsRequestSchema.parse(body);
+    const input = parseRequestInput(noticeDefaultsRequestSchema, body);
     const idempotencyKey = requestIdempotencyKey(request.headers);
     return withRequestOperationSignal(request, (signal) =>
       this.preferences.replaceDefaults({
@@ -118,7 +119,7 @@ export class NoticePreferencesController {
     @Body() body: unknown,
   ) {
     const route = noticeSubjectParamsSchema.parse(params);
-    const input = noticeSubscriptionRequestSchema.parse(body);
+    const input = parseRequestInput(noticeSubscriptionRequestSchema, body);
     const idempotencyKey = requestIdempotencyKey(request.headers);
     return withRequestOperationSignal(request, (signal) =>
       this.preferences.replaceSubscription({

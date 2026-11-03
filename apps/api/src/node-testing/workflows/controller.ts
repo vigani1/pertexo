@@ -31,6 +31,7 @@ import { NodeTestingUpdateGuard } from '../guards.js';
 import { WorkflowTestsUseCase } from './use-case.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
 import { nodeTestingFailure } from '../../problems/context/normalize.js';
+import { parseRequestInput } from '../../platform/http/request-input.js';
 
 type Request = IdentityWorkspaceRequest & AbortableRequest;
 @UseInterceptors(domainErrors(nodeTestingFailure))
@@ -107,7 +108,7 @@ export class WorkflowTestsController {
     @Param() params: unknown,
     @Body() body: unknown,
   ) {
-    workflowTestCancelRequestSchema.parse(body);
+    parseRequestInput(workflowTestCancelRequestSchema, body);
     const route = workflowTestParamsSchema.parse(params);
     return withRequestOperationSignal(request, (signal) =>
       this.tests.cancel({

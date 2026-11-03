@@ -32,6 +32,7 @@ import { WebhookReadGuard, WebhookUpdateGuard } from './guards.js';
 import { WebhookManagementService } from './service.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
 import { authoringFailure } from '../../problems/context/normalize.js';
+import { parseRequestInput } from '../../platform/http/request-input.js';
 
 const routeShape = { workspaceId: z.uuid(), workflowId: z.uuid() };
 const routeSchema = z.object(routeShape).strict().readonly();
@@ -77,7 +78,7 @@ export class WebhookManagementController {
     @Query() query: unknown,
   ) {
     const route = commandRouteSchema.parse(params);
-    const page = webhookDeliveryListQuerySchema.parse(query ?? {});
+    const page = parseRequestInput(webhookDeliveryListQuerySchema, query ?? {});
     return this.service.listDeliveries({
       workspaceId: route.workspaceId,
       workflowId: route.workflowId,
@@ -100,7 +101,7 @@ export class WebhookManagementController {
     @Param() params: unknown,
     @Body() body?: unknown,
   ) {
-    noBodySchema.parse(body ?? {});
+    parseRequestInput(noBodySchema, body ?? {});
     return this.command('provision', request, params);
   }
 
@@ -117,7 +118,7 @@ export class WebhookManagementController {
     @Body() body: unknown,
   ) {
     const route = commandRouteSchema.parse(params);
-    const authentication = webhookAuthenticationSchema.parse(body);
+    const authentication = parseRequestInput(webhookAuthenticationSchema, body);
     return withRequestOperationSignal(request, (signal) =>
       this.service.configureAuthentication({
         ...route,
@@ -141,7 +142,7 @@ export class WebhookManagementController {
     @Param() params: unknown,
     @Body() body?: unknown,
   ) {
-    noBodySchema.parse(body ?? {});
+    parseRequestInput(noBodySchema, body ?? {});
     return this.command('rotateEndpoint', request, params);
   }
 
@@ -157,7 +158,7 @@ export class WebhookManagementController {
     @Param() params: unknown,
     @Body() body: unknown,
   ) {
-    const input = webhookRotateSecretRequestSchema.parse(body);
+    const input = parseRequestInput(webhookRotateSecretRequestSchema, body);
     return this.command('rotateSecret', request, params, input.endpointKey);
   }
 

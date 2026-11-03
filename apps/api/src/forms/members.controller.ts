@@ -40,6 +40,7 @@ import { FormService } from './service.js';
 import { optionalUploadSession } from '../artifacts/form-uploads/session.js';
 import { domainErrors } from '../platform/http/problems/interceptor.js';
 import { memberFormFailure } from '../problems/context/normalize.js';
+import { parseRequestInput } from '../platform/http/request-input.js';
 
 type FormRequest = IdentityWorkspaceRequest & AbortableRequest;
 @UseInterceptors(domainErrors(memberFormFailure))
@@ -72,7 +73,7 @@ export class MemberFormsController {
     @Body() body: unknown,
   ) {
     const scope = formParamsSchema.parse(params);
-    const input = formSubmissionRequestSchema.parse(body);
+    const input = parseRequestInput(formSubmissionRequestSchema, body);
     const idempotencyKey = requestIdempotencyKey(request.headers);
     return withRequestOperationSignal(request, (signal) =>
       this.forms.submit({
@@ -95,7 +96,7 @@ export class MemberFormsController {
     @Query() query: unknown,
   ) {
     const scope = formParamsSchema.parse(params);
-    const input = coordinatedEventHistoryQuerySchema.parse(query);
+    const input = parseRequestInput(coordinatedEventHistoryQuerySchema, query);
     return withRequestOperationSignal(request, (signal) =>
       this.forms.history({
         ...scope,
@@ -129,7 +130,7 @@ export class MemberFormsController {
     @Body() body: unknown,
   ) {
     const scope = formParamsSchema.parse(params);
-    const input = formAccessRequestSchema.parse(body);
+    const input = parseRequestInput(formAccessRequestSchema, body);
     const idempotencyKey = requestIdempotencyKey(request.headers);
     return withRequestOperationSignal(request, (signal) =>
       this.forms.setAccess({

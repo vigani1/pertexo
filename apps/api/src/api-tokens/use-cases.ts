@@ -17,6 +17,7 @@ import {
   applicationError,
   throwApplicationError,
 } from '../platform/http/index.js';
+import { parseRequestInput } from '../platform/http/request-input.js';
 
 export class ApiTokenManagement {
   private readonly enabled: boolean;
@@ -31,7 +32,7 @@ export class ApiTokenManagement {
   public async list(
     input: ApiTokenOwner & { query: unknown },
   ): Promise<ApiTokenListResponse> {
-    const query = apiTokenListQuerySchema.parse(input.query);
+    const query = parseRequestInput(apiTokenListQuerySchema, input.query);
     return apiTokenListResponseSchema.parse({
       ...(await this.database.list({
         ...input,
@@ -50,7 +51,10 @@ export class ApiTokenManagement {
           safeDetail: 'Automation tokens are disabled on this server.',
         }),
       );
-    const request = apiTokenCreateRequestSchema.parse(input.request);
+    const request = parseRequestInput(
+      apiTokenCreateRequestSchema,
+      input.request,
+    );
     assertRecentSignIn(input.signedInAt, this.clock.now());
     return apiTokenCreateResponseSchema.parse(
       await this.database.create({ ...input, ...request }),
@@ -59,7 +63,7 @@ export class ApiTokenManagement {
   public async revoke(
     input: ApiTokenCommand & { tokenId: string; request: unknown },
   ) {
-    apiTokenRevokeRequestSchema.parse(input.request);
+    parseRequestInput(apiTokenRevokeRequestSchema, input.request);
     return apiTokenRevokeResponseSchema.parse(
       await this.database.revoke(input),
     );

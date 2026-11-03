@@ -13,6 +13,7 @@ import {
   workflowTestScope,
   type WorkflowTestUseCaseInput,
 } from '../workflows/authorization.js';
+import { parseRequestInput } from '../../platform/http/request-input.js';
 export class WorkflowTestSuitesUseCase {
   constructor(
     private readonly store: WorkflowTestSuiteStore,
@@ -61,7 +62,10 @@ export class WorkflowTestSuitesUseCase {
     return workflowTestSuiteAcceptedSchema.parse(
       await this.store.start({
         ...workflowTestScope(input),
-        request: workflowTestSuiteStartRequestSchema.parse(input.request),
+        request: parseRequestInput(
+          workflowTestSuiteStartRequestSchema,
+          input.request,
+        ),
         idempotencyKey: input.idempotencyKey,
       }),
     );

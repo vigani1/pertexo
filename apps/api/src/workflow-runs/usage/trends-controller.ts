@@ -25,6 +25,7 @@ import {
 import { GetUsageTrendsUseCase } from './trends.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
 import { runFailure } from '../../problems/context/normalize.js';
+import { parseRequestInput } from '../../platform/http/request-input.js';
 
 @UseInterceptors(domainErrors(runFailure))
 @Controller('v1/workspaces/:workspaceId')
@@ -40,7 +41,7 @@ export class UsageTrendsController {
     @Query() query: unknown,
   ) {
     const route = workflowRunListParamsSchema.parse(params);
-    const { period = '30d' } = usageTrendsQuerySchema.parse(query);
+    const { period = '30d' } = parseRequestInput(usageTrendsQuerySchema, query);
     return withRequestOperationSignal(request, (signal) =>
       this.trends.execute({
         actor: actorFrom(request, route.workspaceId),

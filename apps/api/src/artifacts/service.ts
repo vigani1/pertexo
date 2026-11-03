@@ -30,6 +30,7 @@ import type {
   ArtifactRecord,
   ArtifactServiceContext,
 } from './ports.js';
+import { parseRequestInput } from '../platform/http/request-input.js';
 
 const DOWNLOAD_TTL_SECONDS = 60;
 
@@ -68,7 +69,10 @@ export class ArtifactService {
       'artifact:upload',
       input.authorizedWorkspace,
     );
-    const metadata = artifactUploadRequestSchema.parse(input.request);
+    const metadata = parseRequestInput(
+      artifactUploadRequestSchema,
+      input.request,
+    );
     assertUploadSize(metadata.byteLength, this.options.maxObjectBytes);
     let created: Awaited<
       ReturnType<ArtifactDependencies['database']['beginUpload']>
@@ -116,7 +120,7 @@ export class ArtifactService {
   ): Promise<ArtifactMetadataResponse> {
     const identity = this.identity(input.routeWorkspaceId, input.artifactId);
     await this.authorize(input, 'artifact:upload', input.authorizedWorkspace);
-    artifactFinalizeRequestSchema.parse(input.request);
+    parseRequestInput(artifactFinalizeRequestSchema, input.request);
     let artifact: ArtifactRecord | null;
     try {
       artifact = await this.dependencies.database.getForUpload({

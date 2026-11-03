@@ -26,6 +26,7 @@ import { WebhookUpdateGuard } from '../management/guards.js';
 import { WebhookTestEventService } from './service.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
 import { authoringFailure } from '../../problems/context/normalize.js';
+import { parseRequestInput } from '../../platform/http/request-input.js';
 
 const scope = {
   workspaceId: z.uuid(),
@@ -54,7 +55,7 @@ export class WebhookTestEventController {
     reply.header('cache-control', 'no-store');
     const input = {
       ...route.parse(params),
-      ...webhookTestEventStartSchema.parse(body),
+      ...parseRequestInput(webhookTestEventStartSchema, body),
       actorId: authenticatedSession(request).userId,
     };
     return withRequestOperationSignal(request, (signal) =>

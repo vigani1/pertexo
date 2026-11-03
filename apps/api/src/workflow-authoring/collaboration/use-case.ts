@@ -43,7 +43,7 @@ export class WorkflowCollaborationUseCase {
     return workflowCommentListSchema.parse(
       await this.store.list({
         ...(await this.scope(input, BROWSABLE_WORKSPACE_STATUSES)),
-        ...workflowCommentListQuerySchema.parse(input.query),
+        ...parseRequestInput(workflowCommentListQuerySchema, input.query),
       }),
     );
   }
@@ -52,7 +52,7 @@ export class WorkflowCollaborationUseCase {
       await this.store.read({
         ...(await this.scope(input, BROWSABLE_WORKSPACE_STATUSES)),
         threadId: input.threadId,
-        ...workflowCommentDetailQuerySchema.parse(input.query),
+        ...parseRequestInput(workflowCommentDetailQuerySchema, input.query),
       }),
     );
   }
@@ -60,7 +60,7 @@ export class WorkflowCollaborationUseCase {
     return workspacePeoplePageSchema.parse(
       await this.store.people({
         ...(await this.scope(input, BROWSABLE_WORKSPACE_STATUSES)),
-        ...workspacePeopleQuerySchema.parse(input.query),
+        ...parseRequestInput(workspacePeopleQuerySchema, input.query),
       }),
     );
   }
@@ -119,7 +119,7 @@ export class WorkflowCollaborationUseCase {
     return workflowPresenceSchema.parse(
       await this.store.presence({
         ...(await this.scope(input, BROWSABLE_WORKSPACE_STATUSES)),
-        ...workflowPresenceQuerySchema.parse(input.query),
+        ...parseRequestInput(workflowPresenceQuerySchema, input.query),
       }),
     );
   }

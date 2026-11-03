@@ -33,7 +33,7 @@ import {
   type ConnectionTelemetry,
 } from '../telemetry.js';
 import {
-  connectionTestRequestSchema,
+  connectionTestRequestSchema as requestSchema,
   type ConnectionTestResponse,
 } from '../types.js';
 import { decodeCredential } from './testing/credentials.js';
@@ -45,14 +45,13 @@ import {
 } from './testing/outcomes.js';
 import { oauth2RedirectUri } from '../oauth2/start-authorization.js';
 import { oauth2TestActor, testOAuth2Connection } from './testing/oauth2.js';
+import { parseRequestInput } from '../../platform/http/request-input.js';
 
 const CONNECTION_TEST_TIMEOUT_MILLIS = 15_000;
 const CONNECTION_TEST_MAXIMUM_REDIRECTS = 3;
 const CONNECTION_TEST_MAXIMUM_RESPONSE_BYTES = 65_536;
 
-type ParsedConnectionTestRequest = ReturnType<
-  typeof connectionTestRequestSchema.parse
->;
+type ParsedConnectionTestRequest = ReturnType<typeof requestSchema.parse>;
 
 type DecodedConnectionCredential = ReturnType<typeof decodeCredential>;
 
@@ -145,7 +144,7 @@ export class TestConnectionUseCase {
         this.authorization,
         destination === undefined ? 'connection:use' : 'connection:manage',
       );
-      const request = connectionTestRequestSchema.parse(input.request);
+      const request = parseRequestInput(requestSchema, input.request);
       const expectedProviderKey =
         'url' in request ? 'http' : request.providerKey;
       const requestHash = hashRequest(

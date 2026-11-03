@@ -16,6 +16,7 @@ import {
 } from '../../authorization/index.js';
 import type { WorkspaceAuthorizationSource } from '../../workspaces/ports.js';
 import type { NodeTestUseCaseInput } from '../use-case.js';
+import { parseRequestInput } from '../../platform/http/request-input.js';
 
 type ReadInput = Pick<
   NodeTestUseCaseInput,
@@ -54,14 +55,20 @@ export class StepSamplesUseCase {
   }
   async put(input: CommandInput) {
     await this.authorize(input, { write: true });
-    const request = stepSampleWriteRequestSchema.parse(input.request);
+    const request = parseRequestInput(
+      stepSampleWriteRequestSchema,
+      input.request,
+    );
     return stepSampleCommandResponseSchema.parse(
       await this.store.put({ ...this.command(input), ...request }),
     );
   }
   async remove(input: CommandInput) {
     await this.authorize(input, { write: true });
-    const request = stepSampleDeleteRequestSchema.parse(input.request);
+    const request = parseRequestInput(
+      stepSampleDeleteRequestSchema,
+      input.request,
+    );
     return stepSampleCommandResponseSchema.parse(
       await this.store.remove({ ...this.command(input), ...request }),
     );

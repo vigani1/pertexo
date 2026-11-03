@@ -37,6 +37,7 @@ import {
 import { ScheduleManagementService } from './service.js';
 import { domainErrors } from '../platform/http/problems/interceptor.js';
 import { authoringFailure } from '../problems/context/normalize.js';
+import { parseRequestInput } from '../platform/http/request-input.js';
 
 const routeShape = { workspaceId: z.uuid(), workflowId: z.uuid() };
 const routeSchema = z.object(routeShape).strict().readonly();
@@ -72,7 +73,10 @@ export class ScheduleManagementController {
     @Query() query: unknown,
   ) {
     const route = triggerRouteSchema.parse(params);
-    const page = scheduleOccurrenceListQuerySchema.parse(query ?? {});
+    const page = parseRequestInput(
+      scheduleOccurrenceListQuerySchema,
+      query ?? {},
+    );
     return this.service.listOccurrences({
       ...route,
       actorId: authenticatedSession(request).userId,
@@ -90,7 +94,10 @@ export class ScheduleManagementController {
     @Query() query: unknown,
   ) {
     const route = triggerRouteSchema.parse(params);
-    const { count } = scheduleNextRunsQuerySchema.parse(query ?? {});
+    const { count } = parseRequestInput(
+      scheduleNextRunsQuerySchema,
+      query ?? {},
+    );
     return this.service.nextRuns({
       ...route,
       actorId: authenticatedSession(request).userId,
@@ -113,7 +120,7 @@ export class ScheduleManagementController {
     @Body() body: unknown,
   ) {
     const route = routeSchema.parse(params);
-    const input = schedulePreviewRequestSchema.parse(body);
+    const input = parseRequestInput(schedulePreviewRequestSchema, body);
     return this.service.previewRuns({
       ...route,
       actorId: authenticatedSession(request).userId,
@@ -173,7 +180,7 @@ export class ScheduleManagementController {
     params: unknown;
     body: unknown;
   }>) {
-    scheduleManagementCommandRequestSchema.parse(body);
+    parseRequestInput(scheduleManagementCommandRequestSchema, body);
     const route = triggerRouteSchema.parse(params);
     const traceId = traceIdentifier(request);
     return this.service.setEnabled(
