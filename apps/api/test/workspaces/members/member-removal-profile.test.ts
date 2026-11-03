@@ -9,7 +9,7 @@ import { toProblem } from '../../../src/problems/registry.js';
 
 import type { workspaceRoutes as routes } from '@pertexo/contracts/server';
 import {
-  DatabaseIdentityWorkspaceAdapter,
+  createIdentityWorkspaceAdapter,
   ListWorkspaceMembersUseCase,
   RemoveWorkspaceMemberUseCase,
   WorkspaceMembersController,
@@ -135,7 +135,7 @@ describe('member removal and self profile commands', () => {
         replayed: true,
       }),
     } as unknown as IdentityWorkspaceStore;
-    const adapter = new DatabaseIdentityWorkspaceAdapter(database);
+    const adapter = createIdentityWorkspaceAdapter(database);
     const removal = {
       workspaceId,
       actorUserId: actorId,

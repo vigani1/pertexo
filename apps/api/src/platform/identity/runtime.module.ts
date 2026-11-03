@@ -33,7 +33,7 @@ import {
   type BetterAuthRuntime,
 } from '../../authentication/index.js';
 import {
-  DatabaseIdentityWorkspaceAdapter,
+  createIdentityWorkspaceAdapter,
   IdentityWorkspaceModule,
   createIdentityWorkspaceTelemetry,
   type IdentityWorkspaceTelemetry,
@@ -115,7 +115,7 @@ export async function createApiIdentityRuntime(
         secureCookies: config.session.secureCookie,
       },
     );
-    const persistence = new DatabaseIdentityWorkspaceAdapter(identityDatabase);
+    const persistence = createIdentityWorkspaceAdapter(identityDatabase);
     const betterAuth = composeBetterAuthRuntime({
       config,
       databaseConfig,
@@ -165,7 +165,7 @@ function productionIdentityTelemetry(): IdentityWorkspaceTelemetry {
 function identityDependencies(
   input: Readonly<{
     config: ApiIdentityConfig;
-    persistence: DatabaseIdentityWorkspaceAdapter;
+    persistence: ReturnType<typeof createIdentityWorkspaceAdapter>;
     invitationEncryption: ApplicationSecretEnvelope | undefined;
     telemetry: IdentityWorkspaceTelemetry;
     betterAuth: BetterAuthRuntime;
