@@ -1,3 +1,4 @@
+import { MAX_AUTO_PAUSE_THRESHOLD } from '@pertexo/policy';
 import { z } from 'zod';
 
 const revision = z.number().int().positive().max(2_147_483_647);
@@ -7,7 +8,7 @@ const pauseRevision = z
   .regex(/^[1-9][0-9]{0,18}$/u)
   .refine((value) => BigInt(value) <= 9_223_372_036_854_775_807n);
 
-const threshold = z.number().int().min(3).max(100);
+const threshold = z.number().int().min(3).max(MAX_AUTO_PAUSE_THRESHOLD);
 
 /** What an exact retry replays; a settings command writes these whole. */
 export const workflowSettings = z

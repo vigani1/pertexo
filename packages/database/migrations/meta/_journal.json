@@ -631,6 +631,13 @@
       "when": 1793718963302,
       "tag": "0089_expose_unconfirmed_invitation_delivery",
       "breakpoints": true
+    },
+    {
+      "idx": 90,
+      "version": "7",
+      "when": 1793734137206,
+      "tag": "0090_bound_trigger_failure_evidence",
+      "breakpoints": true
     }
   ]
 }
