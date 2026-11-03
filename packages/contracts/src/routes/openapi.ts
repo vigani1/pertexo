@@ -102,7 +102,10 @@ function parameters(route: AnyRoute) {
 
 function requestBody({ body, requestDocument }: AnyRoute) {
   if (requestDocument !== undefined) return { requestBody: requestDocument };
-  return body === undefined ? {} : { requestBody: jsonRequest(body.name) };
+  if (body === undefined) return {};
+  // A body the schema can do without, such as an empty settings object, is optional.
+  const required = !body.schema.safeParse(undefined).success;
+  return { requestBody: { ...jsonRequest(body.name), required } };
 }
 
 function tokenScopes(access: RouteAccess) {
