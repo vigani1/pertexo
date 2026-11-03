@@ -11,7 +11,6 @@ import {
   type IdentityWorkspaceSpan,
   type IdentityWorkspaceTracer,
 } from '../../src/workspaces/index.js';
-import type { IdentityWorkspacePersistence } from '../../src/workspaces/ports.js';
 
 describe('identity/workspace telemetry', () => {
   it('records successful use-case metrics and traces with fixed-cardinality attributes only', async () => {
@@ -267,7 +266,7 @@ function telemetryFixture(nowValues: readonly number[]) {
   };
 }
 
-function workspacePersistence(): IdentityWorkspacePersistence {
+function workspacePersistence() {
   return {
     findUserById: vi.fn(),
     listAccessibleWorkspaces: vi.fn(),

@@ -16,8 +16,9 @@ import {
   type UserProfileUpdateResponse,
 } from '../workspace-transport.js';
 
-type ProfilePersistence = Required<
-  Pick<IdentityWorkspacePersistence, 'updateUserProfile'>
+type ProfilePersistence = Pick<
+  IdentityWorkspacePersistence,
+  'updateUserProfile'
 >;
 
 /** The self-profile projection: no credentials, sessions or provider data. */

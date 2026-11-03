@@ -1,3 +1,4 @@
+import { unusedWorkspacePersistence } from '../../support/identity-workspace.fixture.js';
 import { ApiTokenAuthentication } from '../../../src/authentication/automation/authority.js';
 import { NestFactory } from '@nestjs/core';
 import { FastifyAdapter } from '@nestjs/platform-fastify';
@@ -71,6 +72,7 @@ const identityDependencies: IdentityWorkspaceDependencies = {
     session: { secureCookie: false },
   },
   persistence: {
+    ...unusedWorkspacePersistence(),
     findUserById: () => Promise.resolve(null),
     listAccessibleWorkspaces: () => Promise.resolve({ items: [] }),
     listWorkspaceMembers: () => Promise.resolve({ items: [] }),

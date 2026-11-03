@@ -36,41 +36,36 @@ export type IdentityWorkspaceConfig = Readonly<{
   }>;
 }>;
 
-/** Optional commands keep test fakes narrow; persisted shapes have one owner. */
+/** Application composition supplies every command; use cases select their own subset. */
 export type IdentityWorkspacePersistence = Pick<
   IdentityWorkspaceStore,
   | 'findUserById'
   | 'listWorkspaceMembers'
   | 'changeWorkspaceMemberRole'
   | 'listAccessibleWorkspaces'
+  | 'removeWorkspaceMember'
+  | 'leaveWorkspace'
+  | 'suspendWorkspaceMember'
+  | 'reactivateWorkspaceMember'
+  | 'transferWorkspaceOwnership'
+  | 'updateUserProfile'
+  | 'listWorkspaceInvitations'
+  | 'createWorkspaceInvitation'
+  | 'resendWorkspaceInvitation'
+  | 'revokeWorkspaceInvitation'
+  | 'resolveInvitationAcceptance'
+  | 'readInvitationAcceptance'
+  | 'recordInvitationAcceptanceProof'
+  | 'completeInvitationAcceptance'
+  | 'abandonInvitationAcceptance'
 > &
-  Partial<
-    Pick<
-      IdentityWorkspaceStore,
-      | 'removeWorkspaceMember'
-      | 'leaveWorkspace'
-      | 'suspendWorkspaceMember'
-      | 'reactivateWorkspaceMember'
-      | 'transferWorkspaceOwnership'
-      | 'updateUserProfile'
-      | 'listWorkspaceInvitations'
-      | 'createWorkspaceInvitation'
-      | 'resendWorkspaceInvitation'
-      | 'revokeWorkspaceInvitation'
-      | 'resolveInvitationAcceptance'
-      | 'readInvitationAcceptance'
-      | 'recordInvitationAcceptanceProof'
-      | 'completeInvitationAcceptance'
-      | 'abandonInvitationAcceptance'
-    >
-  > &
   Readonly<{
     createWorkspaceWithOwner(
       input: Parameters<
         IdentityWorkspaceStore['createWorkspaceWithOwner']
       >[0] & { idempotencyKey: string },
     ): Promise<WorkspacePersistenceRecord>;
-    renameWorkspace?(
+    renameWorkspace(
       input: Parameters<IdentityWorkspaceStore['renameWorkspace']>[0],
     ): Promise<WorkspaceRenamePersistenceResult>;
     requestWorkspaceLifecycleOperation(

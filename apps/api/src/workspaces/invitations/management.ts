@@ -32,14 +32,12 @@ import {
   type WorkspaceInvitationsResponse,
 } from '../workspace-transport.js';
 
-type InvitationPersistence = Required<
-  Pick<
-    IdentityWorkspacePersistence,
-    | 'listWorkspaceInvitations'
-    | 'createWorkspaceInvitation'
-    | 'resendWorkspaceInvitation'
-    | 'revokeWorkspaceInvitation'
-  >
+type InvitationPersistence = Pick<
+  IdentityWorkspacePersistence,
+  | 'listWorkspaceInvitations'
+  | 'createWorkspaceInvitation'
+  | 'resendWorkspaceInvitation'
+  | 'revokeWorkspaceInvitation'
 >;
 
 export class WorkspaceInvitationManagementUseCase {

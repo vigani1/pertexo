@@ -1,3 +1,4 @@
+import { unusedWorkspacePersistence } from './identity-workspace.fixture.js';
 import { DEFAULT_INSTANCE_LIMITS } from '@pertexo/core/runs';
 import { stubFederationService, stubDirectoryStore } from './federation.js';
 import { DEFAULT_CODE_SETTINGS } from '@pertexo/node-sdk';
@@ -183,6 +184,7 @@ export function createStubIdentityRuntime(
     dependencies: {
       config: { publicWebOrigin: 'https://app.example.test' },
       persistence: {
+        ...unusedWorkspacePersistence(),
         findUserById: () => Promise.resolve(null),
         listAccessibleWorkspaces: () => Promise.resolve({ items: [] }),
         listWorkspaceMembers: () => Promise.resolve({ items: [] }),

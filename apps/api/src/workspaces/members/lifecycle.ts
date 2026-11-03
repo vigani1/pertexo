@@ -25,14 +25,12 @@ import {
   type WorkspaceOwnershipTransferResponse,
 } from '../workspace-transport.js';
 
-type MembershipLifecyclePersistence = Required<
-  Pick<
-    IdentityWorkspacePersistence,
-    | 'leaveWorkspace'
-    | 'suspendWorkspaceMember'
-    | 'reactivateWorkspaceMember'
-    | 'transferWorkspaceOwnership'
-  >
+type MembershipLifecyclePersistence = Pick<
+  IdentityWorkspacePersistence,
+  | 'leaveWorkspace'
+  | 'suspendWorkspaceMember'
+  | 'reactivateWorkspaceMember'
+  | 'transferWorkspaceOwnership'
 >;
 
 type StatusCommand = WorkspaceMemberCommandInput<

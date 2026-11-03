@@ -11,9 +11,7 @@ import {
 } from '../workspace-transport.js';
 import type { WorkspaceRenameRequest } from '@pertexo/contracts';
 
-type RenamePersistence = Required<
-  Pick<IdentityWorkspacePersistence, 'renameWorkspace'>
->;
+type RenamePersistence = Pick<IdentityWorkspacePersistence, 'renameWorkspace'>;
 
 export class RenameWorkspaceUseCase {
   public constructor(
