@@ -1,126 +1,91 @@
-import { requestIdempotencyKey } from '../../../../platform/http/idempotency-key.js';
+import { Controller, Inject, Req, UseInterceptors } from '@nestjs/common';
 import {
-  federationScope,
-  federationCommand,
-  type FederationManagementRequest,
-} from '../../management/request.js';
-import {
-  Body,
-  Inject,
-  Controller,
-  Get,
-  Post,
-  Put,
-  Param,
-  Query,
-  Req,
-  UseGuards,
-  Header,
-  HttpCode,
-  UseInterceptors,
-} from '@nestjs/common';
-import {
-  directoryAdoptionQuerySchema,
-  directoryCredentialCreateSchema,
-  directoryRevisionSchema,
-  directoryMappingsSchema,
-  directoryAdoptSchema,
-  directoryPeopleQuerySchema,
-  workspaceIdentifierSchema,
-} from '@pertexo/contracts';
-import {
-  SessionAuthenticationGuard,
-  CsrfProtectionGuard,
-  WorkspaceManageGuard,
-  WorkspaceMemberReadGuard,
-} from '../../../../workspaces/index.js';
-import { withRequestOperationSignal } from '../../../../platform/http/index.js';
-import { RateLimit } from '../../../../platform/rate-limit/metadata.js';
+  directoryRoutes as routes,
+  type RouteInput,
+} from '@pertexo/contracts/server';
 import type { DirectoryStore } from '@pertexo/core/identity';
-import { DIRECTORY_STORE } from './tokens.js';
+import { withRequestOperationSignal } from '../../../../platform/http/index.js';
 import { domainErrors } from '../../../../platform/http/problems/interceptor.js';
 import { resourceFailure } from '../../../../problems/context/normalize.js';
+import { In, Route } from '../../../../workspaces/http/route.js';
+import {
+  federationCommand,
+  federationScope,
+  type FederationManagementRequest,
+} from '../../management/request.js';
+import { DIRECTORY_STORE } from './tokens.js';
 
 type Request = FederationManagementRequest;
 @UseInterceptors(domainErrors(resourceFailure))
-@Controller('v1/workspaces/:workspaceId/sso/directory')
-@UseGuards(SessionAuthenticationGuard)
-@RateLimit('authenticated_read')
+@Controller()
 export class DirectoryManagementController {
   constructor(
     @Inject(DIRECTORY_STORE) private readonly service: DirectoryStore,
   ) {}
-  @Header('Cache-Control', 'private, no-store')
-  @Get()
-  @UseGuards(WorkspaceMemberReadGuard)
-  settings(@Req() request: Request, @Param('workspaceId') workspace: unknown) {
+  @Route(routes.settings)
+  settings(
+    @Req() request: Request,
+    @In() { params }: RouteInput<typeof routes.settings>,
+  ) {
     return withRequestOperationSignal(request, (signal) =>
       this.service.settings({
-        ...federationScope(request, workspaceIdentifierSchema.parse(workspace)),
+        ...federationScope(request, params.workspaceId),
         signal,
       }),
     );
   }
-  @Header('Cache-Control', 'private, no-store')
-  @Get('people')
-  @UseGuards(WorkspaceMemberReadGuard)
+  @Route(routes.people)
   people(
     @Req() request: Request,
-    @Param('workspaceId') workspace: unknown,
-    @Query() raw: unknown,
+    @In() { params, query }: RouteInput<typeof routes.people>,
   ) {
-    const query = directoryPeopleQuerySchema.parse(raw);
     return withRequestOperationSignal(request, (signal) =>
       this.service.people(
         {
-          ...federationScope(
-            request,
-            workspaceIdentifierSchema.parse(workspace),
-          ),
+          ...federationScope(request, params.workspaceId),
           signal,
         },
         query,
       ),
     );
   }
-  @Header('Cache-Control', 'private, no-store')
-  @Post('credentials')
-  @HttpCode(200)
-  @UseGuards(WorkspaceManageGuard, CsrfProtectionGuard)
-  @RateLimit('ordinary_mutation')
+  @Route(routes.createCredential)
   createCredential(
     @Req() request: Request,
-    @Param('workspaceId') workspace: unknown,
-    @Body() raw: unknown,
+    @In()
+    {
+      params,
+      body,
+      idempotencyKey,
+    }: RouteInput<typeof routes.createCredential>,
   ) {
-    const input = directoryCredentialCreateSchema.parse(raw);
+    const input = body;
     return federationCommand(
       request,
       {
-        workspaceId: workspaceIdentifierSchema.parse(workspace),
-        idempotencyKey: requestIdempotencyKey(request.headers),
+        workspaceId: params.workspaceId,
+        idempotencyKey: idempotencyKey,
       },
       (scope) => this.service.createCredential({ ...scope, ...input }),
     );
   }
-  @Header('Cache-Control', 'private, no-store')
-  @Post('credentials/:credentialId/revoke')
-  @HttpCode(200)
-  @UseGuards(WorkspaceManageGuard, CsrfProtectionGuard)
-  @RateLimit('ordinary_mutation')
+  @Route(routes.revokeCredential)
   revokeCredential(
     @Req() request: Request,
-    @Param('workspaceId') workspace: unknown,
-    @Param('credentialId') rawId: unknown,
-    @Body() raw: unknown,
+    @In()
+    {
+      params,
+      body,
+      idempotencyKey,
+    }: RouteInput<typeof routes.revokeCredential>,
   ) {
-    const input = directoryRevisionSchema.parse(raw),
-      credentialId = workspaceIdentifierSchema.parse(rawId);
+    const input = body,
+      credentialId = params.credentialId;
     return federationCommand(
       request,
       {
-        workspaceId: workspaceIdentifierSchema.parse(workspace),
-        idempotencyKey: requestIdempotencyKey(request.headers),
+        workspaceId: params.workspaceId,
+        idempotencyKey: idempotencyKey,
       },
       async (scope) => {
         await this.service.revokeCredential({
@@ -132,21 +97,17 @@ export class DirectoryManagementController {
       },
     );
   }
-  @Header('Cache-Control', 'private, no-store')
-  @Put('mappings')
-  @UseGuards(WorkspaceManageGuard, CsrfProtectionGuard)
-  @RateLimit('ordinary_mutation')
+  @Route(routes.mappings)
   mappings(
     @Req() request: Request,
-    @Param('workspaceId') workspace: unknown,
-    @Body() raw: unknown,
+    @In() { params, body, idempotencyKey }: RouteInput<typeof routes.mappings>,
   ) {
-    const input = directoryMappingsSchema.parse(raw);
+    const input = body;
     return federationCommand(
       request,
       {
-        workspaceId: workspaceIdentifierSchema.parse(workspace),
-        idempotencyKey: requestIdempotencyKey(request.headers),
+        workspaceId: params.workspaceId,
+        idempotencyKey: idempotencyKey,
       },
       async (scope) => {
         await this.service.replaceMappings({ ...scope, ...input });
@@ -154,44 +115,32 @@ export class DirectoryManagementController {
       },
     );
   }
-  @Header('Cache-Control', 'private, no-store')
-  @Get('adoption')
-  @UseGuards(WorkspaceManageGuard)
+  @Route(routes.adoption)
   adoption(
     @Req() request: Request,
-    @Param('workspaceId') workspace: unknown,
-    @Query() raw: unknown,
+    @In() { params, query }: RouteInput<typeof routes.adoption>,
   ) {
-    const query = directoryAdoptionQuerySchema.parse(raw);
     return withRequestOperationSignal(request, (signal) =>
       this.service.adoption(
         {
-          ...federationScope(
-            request,
-            workspaceIdentifierSchema.parse(workspace),
-          ),
+          ...federationScope(request, params.workspaceId),
           signal,
         },
         query,
       ),
     );
   }
-  @Header('Cache-Control', 'private, no-store')
-  @Post('adopt')
-  @HttpCode(200)
-  @UseGuards(WorkspaceManageGuard, CsrfProtectionGuard)
-  @RateLimit('ordinary_mutation')
+  @Route(routes.adopt)
   adopt(
     @Req() request: Request,
-    @Param('workspaceId') workspace: unknown,
-    @Body() raw: unknown,
+    @In() { params, body, idempotencyKey }: RouteInput<typeof routes.adopt>,
   ) {
-    const input = directoryAdoptSchema.parse(raw);
+    const input = body;
     return federationCommand(
       request,
       {
-        workspaceId: workspaceIdentifierSchema.parse(workspace),
-        idempotencyKey: requestIdempotencyKey(request.headers),
+        workspaceId: params.workspaceId,
+        idempotencyKey: idempotencyKey,
       },
       async (scope) => {
         await this.service.adopt({ ...scope, ...input });
@@ -199,24 +148,18 @@ export class DirectoryManagementController {
       },
     );
   }
-  @Header('Cache-Control', 'private, no-store')
-  @Post('workspaces/:targetWorkspaceId/unlink')
-  @HttpCode(200)
-  @UseGuards(WorkspaceManageGuard, CsrfProtectionGuard)
-  @RateLimit('ordinary_mutation')
+  @Route(routes.unlink)
   unlink(
     @Req() request: Request,
-    @Param('workspaceId') workspace: unknown,
-    @Param('targetWorkspaceId') rawId: unknown,
-    @Body() raw: unknown,
+    @In() { params, body, idempotencyKey }: RouteInput<typeof routes.unlink>,
   ) {
-    const input = directoryRevisionSchema.parse(raw),
-      targetWorkspaceId = workspaceIdentifierSchema.parse(rawId);
+    const input = body,
+      targetWorkspaceId = params.targetWorkspaceId;
     return federationCommand(
       request,
       {
-        workspaceId: workspaceIdentifierSchema.parse(workspace),
-        idempotencyKey: requestIdempotencyKey(request.headers),
+        workspaceId: params.workspaceId,
+        idempotencyKey: idempotencyKey,
       },
       async (scope) => {
         await this.service.unlink({

@@ -6203,7 +6203,7 @@
           }
         },
         "responses": {
-          "200": {
+          "201": {
             "description": "Safe directory metadata",
             "content": {
               "application/json": {
@@ -14996,98 +14996,6 @@
         ],
         "additionalProperties": false
       },
-      "DirectoryAdoptionPreview": {
-        "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "oneOf": [
-          {
-            "type": "object",
-            "properties": {
-              "eligible": {
-                "type": "boolean",
-                "const": false
-              },
-              "reason": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "eligible",
-              "reason"
-            ],
-            "additionalProperties": false
-          },
-          {
-            "type": "object",
-            "properties": {
-              "eligible": {
-                "type": "boolean",
-                "const": true
-              },
-              "displayName": {
-                "type": "string"
-              },
-              "currentRole": {
-                "type": "string"
-              },
-              "command": {
-                "type": "object",
-                "properties": {
-                  "targetWorkspaceId": {
-                    "type": "string",
-                    "format": "uuid",
-                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-                  },
-                  "expectedRevision": {
-                    "type": "integer",
-                    "exclusiveMinimum": 0,
-                    "maximum": 2147483647
-                  },
-                  "directoryUserId": {
-                    "type": "string",
-                    "format": "uuid",
-                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-                  },
-                  "directoryRevision": {
-                    "type": "integer",
-                    "exclusiveMinimum": 0,
-                    "maximum": 2147483647
-                  },
-                  "membershipRevision": {
-                    "type": "integer",
-                    "exclusiveMinimum": 0,
-                    "maximum": 2147483647
-                  },
-                  "role": {
-                    "type": "string",
-                    "enum": [
-                      "admin",
-                      "builder",
-                      "operator",
-                      "viewer"
-                    ]
-                  }
-                },
-                "required": [
-                  "targetWorkspaceId",
-                  "expectedRevision",
-                  "directoryUserId",
-                  "directoryRevision",
-                  "membershipRevision",
-                  "role"
-                ],
-                "additionalProperties": false
-              }
-            },
-            "required": [
-              "eligible",
-              "displayName",
-              "currentRole",
-              "command"
-            ],
-            "additionalProperties": false
-          }
-        ]
-      },
       "DirectorySettings": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "type": "object",
@@ -15520,6 +15428,20 @@
         ],
         "additionalProperties": false
       },
+      "DirectoryChanged": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "changed": {
+            "type": "boolean",
+            "const": true
+          }
+        },
+        "required": [
+          "changed"
+        ],
+        "additionalProperties": false
+      },
       "DirectoryMappings": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "type": "object",
@@ -15576,6 +15498,98 @@
         ],
         "additionalProperties": false
       },
+      "DirectoryAdoptionPreview": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "eligible": {
+                "type": "boolean",
+                "const": false
+              },
+              "reason": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "eligible",
+              "reason"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "eligible": {
+                "type": "boolean",
+                "const": true
+              },
+              "displayName": {
+                "type": "string"
+              },
+              "currentRole": {
+                "type": "string"
+              },
+              "command": {
+                "type": "object",
+                "properties": {
+                  "targetWorkspaceId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "expectedRevision": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0,
+                    "maximum": 2147483647
+                  },
+                  "directoryUserId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "directoryRevision": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0,
+                    "maximum": 2147483647
+                  },
+                  "membershipRevision": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0,
+                    "maximum": 2147483647
+                  },
+                  "role": {
+                    "type": "string",
+                    "enum": [
+                      "admin",
+                      "builder",
+                      "operator",
+                      "viewer"
+                    ]
+                  }
+                },
+                "required": [
+                  "targetWorkspaceId",
+                  "expectedRevision",
+                  "directoryUserId",
+                  "directoryRevision",
+                  "membershipRevision",
+                  "role"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "eligible",
+              "displayName",
+              "currentRole",
+              "command"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      },
       "DirectoryAdopt": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "type": "object",
@@ -15622,20 +15636,6 @@
           "directoryRevision",
           "membershipRevision",
           "role"
-        ],
-        "additionalProperties": false
-      },
-      "DirectoryChanged": {
-        "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "type": "object",
-        "properties": {
-          "changed": {
-            "type": "boolean",
-            "const": true
-          }
-        },
-        "required": [
-          "changed"
         ],
         "additionalProperties": false
       }

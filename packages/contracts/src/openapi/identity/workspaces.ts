@@ -1,3 +1,4 @@
+import type { RoutePaths } from '../../routes/openapi.js';
 import {
   directoryContractSchemas,
   directoryContractPaths,
@@ -58,7 +59,7 @@ const openApiSchemas = {
   ...routeSchemas(Object.values(dataTableRoutes)),
   ...governanceContractSchemas(),
   ...federationContractSchemas(),
-  ...directoryContractSchemas(),
+  ...directoryContractSchemas,
 };
 
 const problemResponses = Object.freeze({
@@ -72,23 +73,36 @@ const problemResponses = Object.freeze({
   Unexpected: problemResponse('Unexpected server error'),
 });
 
+type DeclaredIdentityRoute =
+  | (typeof variableRoutes)[keyof typeof variableRoutes]
+  | (typeof dataTableRoutes)[keyof typeof dataTableRoutes]
+  | (typeof workspaceRoutes)[keyof typeof workspaceRoutes];
+type IdentityPaths = RoutePaths<readonly DeclaredIdentityRoute[]> &
+  typeof apiTokenContractPaths &
+  typeof governanceContractPaths &
+  typeof authenticationContractPaths &
+  typeof federationContractPaths &
+  typeof directoryContractPaths &
+  typeof workspaceInvitationContractPaths;
+const paths: IdentityPaths = {
+  ...apiTokenContractPaths,
+  ...routePaths(Object.values(variableRoutes)),
+  ...routePaths(Object.values(dataTableRoutes)),
+  ...governanceContractPaths,
+  ...authenticationContractPaths,
+  ...federationContractPaths,
+  ...directoryContractPaths,
+  ...routePaths(Object.values(workspaceRoutes)),
+  ...workspaceInvitationContractPaths,
+};
+
 export const identityWorkspaceOpenApiDocument = Object.freeze({
   openapi: '3.1.0',
   info: {
     title: 'Pertexo Identity and Workspace API',
     version: '1.0.0',
   },
-  paths: {
-    ...apiTokenContractPaths,
-    ...routePaths(Object.values(variableRoutes)),
-    ...routePaths(Object.values(dataTableRoutes)),
-    ...governanceContractPaths,
-    ...authenticationContractPaths,
-    ...federationContractPaths,
-    ...directoryContractPaths,
-    ...routePaths(Object.values(workspaceRoutes)),
-    ...workspaceInvitationContractPaths,
-  },
+  paths,
   components: {
     ...authenticatedComponents(openApiSchemas, problemResponses, {
       automation: true,
