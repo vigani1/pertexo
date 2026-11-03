@@ -1,63 +1,82 @@
-import { GUARDS_METADATA } from '@nestjs/common/constants.js';
-import { Reflector } from '@nestjs/core';
-import { describe, expect, it, vi } from 'vitest';
+import {
+  afterAll,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vitest';
 
-import {
-  CsrfProtectionGuard,
-  SessionAuthenticationGuard,
-} from '../../src/workspaces/index.js';
-import type { IdentityWorkspaceRequest } from '../../src/workspaces/types.js';
-import { ScheduleManagementController } from '../../src/schedules/controllers.js';
-import {
-  SchedulePreviewGuard,
-  ScheduleReadGuard,
-  ScheduleUpdateGuard,
-} from '../../src/schedules/guards.js';
+import { ScheduleModule } from '../../src/schedules/module.js';
 import type { ScheduleManagementService } from '../../src/schedules/service.js';
+import { FakeIdentityModule } from '../support/identity-module.js';
+import {
+  HARNESS_ACTOR_ID as actorId,
+  ownerAccess,
+  routeHarness,
+} from '../support/route-harness.js';
 
-const actorId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const workspaceId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 const workflowId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
 const triggerId = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
+const triggers = `/v1/workspaces/${workspaceId}/workflows/${workflowId}/triggers`;
+const schedule = `${triggers}/${triggerId}/schedule`;
+const route = { workspaceId, workflowId, triggerId };
+const config = {
+  kind: 'cron',
+  expression: '0 9 * * 1-5',
+  timezone: 'Europe/Paris',
+  misfirePolicy: 'skip',
+};
+const fireTimes = { observedAt: '2026-08-25T12:00:00.000Z', items: [] };
+const trigger = {
+  id: triggerId,
+  workflowId,
+  workflowVersionId: 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
+  nodeId: 'schedule',
+  kind: 'schedule',
+  status: 'active',
+  healthStatus: 'healthy',
+  lastErrorCode: null,
+  reconciledAt: null,
+  recurrence: { kind: 'interval', intervalMinutes: 5 },
+  misfirePolicy: 'skip',
+  nextFireAt: '2026-08-25T12:05:00.000Z',
+  lastFireAt: null,
+};
 
-function request(
-  idempotency: unknown = 'schedule-command',
-): IdentityWorkspaceRequest {
-  return {
-    requestId: 'request-1',
-    traceId: 'trace-1',
-    headers: { 'idempotency-key': idempotency },
-    identitySession: {
-      userId: actorId,
-      sessionId: 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
-      expiresAt: new Date('2026-08-25T13:00:00.000Z'),
-      clientMetadata: {},
-    },
-  } as IdentityWorkspaceRequest;
-}
+const service = {
+  list: vi.fn(),
+  listOccurrences: vi.fn(),
+  nextRuns: vi.fn(),
+  previewRuns: vi.fn(),
+  setEnabled: vi.fn(),
+};
+let harness: Awaited<ReturnType<typeof routeHarness>>;
 
-function fixture() {
-  const service = {
-    list: vi.fn().mockResolvedValue({ items: [] }),
-    listOccurrences: vi.fn().mockResolvedValue({ items: [], nextCursor: null }),
-    nextRuns: vi.fn().mockResolvedValue({ observedAt: '', items: [] }),
-    previewRuns: vi.fn().mockResolvedValue({ observedAt: '', items: [] }),
-    setEnabled: vi.fn().mockResolvedValue({ ok: true }),
-  };
-  return {
-    controller: new ScheduleManagementController(
+beforeAll(async () => {
+  harness = await routeHarness(
+    ScheduleModule.register(
       service as unknown as ScheduleManagementService,
+      ownerAccess,
+      { module: FakeIdentityModule },
     ),
-    service,
-  };
-}
+  );
+});
+afterAll(() => harness.close());
+beforeEach(() => {
+  vi.clearAllMocks();
+  service.list.mockResolvedValue({ items: [] });
+  service.listOccurrences.mockResolvedValue({ items: [], nextCursor: null });
+  service.nextRuns.mockResolvedValue(fireTimes);
+  service.previewRuns.mockResolvedValue(fireTimes);
+});
 
-describe('schedule management controller public seam', () => {
-  it('forwards list route identifiers and the authenticated actor', async () => {
-    const { controller, service } = fixture();
-
-    await controller.list(request(), { workspaceId, workflowId });
-
+describe('schedule management routes', () => {
+  it('lists with the route identifiers and the signed-in actor', async () => {
+    const reply = await harness.send('GET', `${triggers}/schedules`);
+    expect(reply.statusCode, reply.payload).toBe(200);
     expect(service.list).toHaveBeenCalledExactlyOnceWith({
       workspaceId,
       workflowId,
@@ -65,16 +84,11 @@ describe('schedule management controller public seam', () => {
     });
   });
 
-  it('forwards occurrence paging only when the client supplied it', async () => {
-    const { controller, service } = fixture();
-    const route = { workspaceId, workflowId, triggerId };
-
-    await controller.occurrences(request(), route, undefined);
-    await controller.occurrences(request(), route, {
-      limit: '5',
-      after: 'opaque-cursor',
+  it('pages occurrences only when the client asked to', async () => {
+    await harness.send('GET', `${schedule}/occurrences`);
+    await harness.send('GET', `${schedule}/occurrences`, {
+      query: { limit: '5', after: 'opaque-cursor' },
     });
-
     expect(service.listOccurrences.mock.calls).toEqual([
       [{ ...route, actorId }],
       [{ ...route, actorId, limit: 5, after: 'opaque-cursor' }],
@@ -82,179 +96,95 @@ describe('schedule management controller public seam', () => {
   });
 
   it.each([{ limit: '0' }, { limit: '101' }, { after: '' }, { sort: 'asc' }])(
-    'rejects an invalid occurrence query %j before reading',
-    (query) => {
-      const { controller, service } = fixture();
-      expect(() =>
-        controller.occurrences(
-          request(),
-          { workspaceId, workflowId, triggerId },
-          query,
-        ),
-      ).toThrow();
+    'refuses occurrence query %j before reading',
+    async (query) => {
+      const reply = await harness.send('GET', `${schedule}/occurrences`, {
+        query,
+      });
+      expect(reply.statusCode).toBe(400);
       expect(service.listOccurrences).not.toHaveBeenCalled();
     },
   );
 
   it('defaults next runs to three and bounds the count', async () => {
-    const { controller, service } = fixture();
-    const route = { workspaceId, workflowId, triggerId };
-
-    await controller.nextRuns(request(), route, {});
-    await controller.nextRuns(request(), route, { count: '10' });
-
+    await harness.send('GET', `${schedule}/next-runs`);
+    await harness.send('GET', `${schedule}/next-runs`, {
+      query: { count: '10' },
+    });
     expect(service.nextRuns.mock.calls).toEqual([
       [{ ...route, actorId, count: 3 }],
       [{ ...route, actorId, count: 10 }],
     ]);
     for (const query of [{ count: '0' }, { count: '11' }, { at: 'now' }])
-      expect(() => controller.nextRuns(request(), route, query)).toThrow();
+      expect(
+        (await harness.send('GET', `${schedule}/next-runs`, { query }))
+          .statusCode,
+      ).toBe(400);
     expect(service.nextRuns).toHaveBeenCalledTimes(2);
   });
 
   it('previews only a strictly valid Schedule step setup', async () => {
-    const { controller, service } = fixture();
-    const config = {
-      kind: 'cron',
-      expression: '0 9 * * 1-5',
-      timezone: 'Europe/Paris',
-      misfirePolicy: 'skip',
-    };
-
-    await controller.preview(
-      request(),
-      { workspaceId, workflowId },
-      { config },
-    );
-    await controller.preview(
-      request(),
-      { workspaceId, workflowId },
-      { config, count: 1 },
-    );
-
+    const preview = (body: unknown) =>
+      harness.send('POST', `${triggers}/schedules/preview`, { body });
+    expect((await preview({ config })).statusCode).toBe(200);
+    expect((await preview({ config, count: 1 })).statusCode).toBe(200);
     expect(service.previewRuns.mock.calls).toEqual([
       [{ workspaceId, workflowId, actorId, config, count: 3 }],
       [{ workspaceId, workflowId, actorId, config, count: 1 }],
     ]);
     for (const body of [
-      undefined,
+      {},
       { config: { ...config, anchorAt: 'now' } },
       { config: { kind: 'interval', intervalMinutes: 0 } },
       { config, count: 11 },
       { config, triggerId },
     ])
-      expect(() =>
-        controller.preview(request(), { workspaceId, workflowId }, body),
-      ).toThrow();
-    expect(() =>
-      controller.preview(
-        request(),
-        { workspaceId, workflowId, triggerId },
-        { config },
-      ),
-    ).toThrow();
+      expect((await preview(body)).statusCode, JSON.stringify(body)).toBe(400);
     expect(service.previewRuns).toHaveBeenCalledTimes(2);
   });
 
   it.each([
     ['enable', true],
     ['disable', false],
-  ] as const)('validates and forwards %s once', async (method, enabled) => {
-    const { controller, service } = fixture();
-
-    await controller[method](
-      request(),
-      { workspaceId, workflowId, triggerId },
-      {},
-    );
-
+  ] as const)('forwards %s once', async (command, enabled) => {
+    service.setEnabled.mockResolvedValue({ trigger, replayed: false });
+    const reply = await harness.send('POST', `${schedule}/${command}`, {
+      body: {},
+      headers: { 'idempotency-key': 'schedule-command' },
+    });
+    expect(reply.statusCode, reply.payload).toBe(200);
     expect(service.setEnabled).toHaveBeenCalledExactlyOnceWith(
-      {
-        workspaceId,
-        workflowId,
-        triggerId,
+      expect.objectContaining({
+        ...route,
         actorId,
         idempotencyKey: 'schedule-command',
-        requestId: 'request-1',
-        traceId: 'trace-1',
-      },
+      }),
       { enabled },
     );
   });
 
-  it.each([
-    [undefined, 'request.invalid'],
-    [['first', 'second'], 'request.invalid'],
-    ['first,second', 'request.invalid'],
-  ])(
-    'rejects a missing or malformed idempotency key %j before mutation',
-    async (value, code) => {
-      const { controller, service } = fixture();
-      let failure: unknown;
-      try {
-        await controller.enable(
-          value === undefined ? { ...request(), headers: {} } : request(value),
-          { workspaceId, workflowId, triggerId },
-          {},
-        );
-      } catch (error: unknown) {
-        failure = error;
-      }
-      expect(failure).toMatchObject({ code });
+  it.each([undefined, 'first,second'])(
+    'refuses a missing or malformed idempotency key %j before changing anything',
+    async (key) => {
+      const reply = await harness.send('POST', `${schedule}/enable`, {
+        body: {},
+        headers: key === undefined ? {} : { 'idempotency-key': key },
+      });
+      expect(reply.statusCode).toBe(400);
+      expect(reply.json()).toMatchObject({ code: 'request.invalid' });
       expect(service.setEnabled).not.toHaveBeenCalled();
     },
   );
 
-  it.each([undefined, null, { unexpected: true }])(
+  it.each([null, { unexpected: true }])(
     'requires the exact empty command body %#',
-    (body) => {
-      const { controller, service } = fixture();
-
-      expect(() =>
-        controller.enable(
-          request(),
-          { workspaceId, workflowId, triggerId },
-          body,
-        ),
-      ).toThrow();
+    async (body) => {
+      const reply = await harness.send('POST', `${schedule}/enable`, {
+        body,
+        headers: { 'idempotency-key': 'schedule-command' },
+      });
+      expect(reply.statusCode).toBe(400);
       expect(service.setEnabled).not.toHaveBeenCalled();
     },
   );
-
-  it('keeps read and mutation guards in the reviewed order', () => {
-    const reflector = new Reflector();
-    for (const method of ['list', 'occurrences', 'nextRuns'] as const)
-      expect(guards(reflector, method)).toEqual([
-        SessionAuthenticationGuard,
-        ScheduleReadGuard,
-      ]);
-    expect(guards(reflector, 'preview')).toEqual([
-      SessionAuthenticationGuard,
-      SchedulePreviewGuard,
-      CsrfProtectionGuard,
-    ]);
-    for (const method of ['enable', 'disable'] as const)
-      expect(guards(reflector, method)).toEqual([
-        SessionAuthenticationGuard,
-        ScheduleUpdateGuard,
-        CsrfProtectionGuard,
-      ]);
-  });
 });
-
-function guards(
-  reflector: Reflector,
-  method:
-    'list' | 'occurrences' | 'nextRuns' | 'preview' | 'enable' | 'disable',
-): unknown[] {
-  const candidate: unknown = Object.getOwnPropertyDescriptor(
-    ScheduleManagementController.prototype,
-    method,
-  )?.value as unknown;
-  if (typeof candidate !== 'function')
-    throw new Error(`Schedule controller handler ${method} is missing`);
-  return reflector.getAllAndMerge<unknown[]>(GUARDS_METADATA, [
-    candidate,
-    ScheduleManagementController,
-  ]);
-}

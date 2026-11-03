@@ -180,15 +180,15 @@ describe('schedule public contracts', () => {
         );
         expect(operation.responses).toHaveProperty('403');
         if (method !== 'get')
-          expect(operation.parameters).toEqual(
-            expect.arrayContaining([
-              expect.objectContaining({
-                in: 'header',
-                name: 'X-CSRF-Token',
-                required: true,
-              }),
-            ]),
-          );
+          // Header names don't depend on case.
+          expect(
+            operation.parameters?.some(
+              (parameter) =>
+                parameter.in === 'header' &&
+                String(parameter.name).toLowerCase() === 'x-csrf-token' &&
+                parameter.required,
+            ),
+          ).toBe(true);
       }
   });
 });

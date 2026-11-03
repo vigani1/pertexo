@@ -1,197 +1,103 @@
+import { Controller, Req, UseInterceptors } from '@nestjs/common';
+import { SCHEDULE_FIRE_TIME_DEFAULT_COUNT } from '@pertexo/contracts';
 import {
-  Body,
-  Controller,
-  Get,
-  HttpCode,
-  Param,
-  Post,
-  Query,
-  Req,
-  UseGuards,
-  UseInterceptors,
-} from '@nestjs/common';
-import {
-  SCHEDULE_FIRE_TIME_DEFAULT_COUNT,
-  scheduleManagementCommandRequestSchema,
-  scheduleNextRunsQuerySchema,
-  scheduleOccurrenceListQuerySchema,
-  schedulePreviewRequestSchema,
-} from '@pertexo/contracts';
-import { z } from 'zod';
+  scheduleRoutes as routes,
+  type RouteInput,
+} from '@pertexo/contracts/server';
 
 import {
-  CsrfProtectionGuard,
-  SessionAuthenticationGuard,
   authenticatedSession,
   requestIdentifier,
   traceIdentifier,
 } from '../workspaces/index.js';
+import { In, Route } from '../workspaces/http/route.js';
 import type { IdentityWorkspaceRequest } from '../workspaces/types.js';
-import { RateLimit } from '../platform/rate-limit/metadata.js';
-import { requestIdempotencyKey } from '../platform/http/index.js';
-import {
-  SchedulePreviewGuard,
-  ScheduleReadGuard,
-  ScheduleUpdateGuard,
-} from './guards.js';
 import { ScheduleManagementService } from './service.js';
 import { domainErrors } from '../platform/http/problems/interceptor.js';
 import { authoringFailure } from '../problems/context/normalize.js';
-import { parseRequestInput } from '../platform/http/request-input.js';
 
-const routeShape = { workspaceId: z.uuid(), workflowId: z.uuid() };
-const routeSchema = z.object(routeShape).strict().readonly();
-const triggerRouteSchema = z
-  .object({ ...routeShape, triggerId: z.uuid() })
-  .strict()
-  .readonly();
 type Request = IdentityWorkspaceRequest;
+type TriggerCommand = RouteInput<typeof routes.enable>;
 
 @UseInterceptors(domainErrors(authoringFailure))
-@Controller('v1/workspaces/:workspaceId/workflows/:workflowId/triggers')
-@RateLimit('trigger_mutation')
+@Controller()
 export class ScheduleManagementController {
   public constructor(private readonly service: ScheduleManagementService) {}
 
-  @Get('schedules')
-  @RateLimit('authenticated_read')
-  @UseGuards(SessionAuthenticationGuard, ScheduleReadGuard)
-  public list(@Req() request: Request, @Param() params: unknown) {
-    const route = routeSchema.parse(params);
+  @Route(routes.list)
+  public list(
+    @Req() request: Request,
+    @In() { params }: RouteInput<typeof routes.list>,
+  ) {
     return this.service.list({
-      ...route,
+      ...params,
       actorId: authenticatedSession(request).userId,
     });
   }
 
-  @Get(':triggerId/schedule/occurrences')
-  @RateLimit('authenticated_read')
-  @UseGuards(SessionAuthenticationGuard, ScheduleReadGuard)
+  @Route(routes.occurrences)
   public occurrences(
     @Req() request: Request,
-    @Param() params: unknown,
-    @Query() query: unknown,
+    @In() { params, query }: RouteInput<typeof routes.occurrences>,
   ) {
-    const route = triggerRouteSchema.parse(params);
-    const page = parseRequestInput(
-      scheduleOccurrenceListQuerySchema,
-      query ?? {},
-    );
     return this.service.listOccurrences({
-      ...route,
+      ...params,
       actorId: authenticatedSession(request).userId,
-      ...(page.limit === undefined ? {} : { limit: page.limit }),
-      ...(page.after === undefined ? {} : { after: page.after }),
+      ...(query.limit === undefined ? {} : { limit: query.limit }),
+      ...(query.after === undefined ? {} : { after: query.after }),
     });
   }
 
-  @Get(':triggerId/schedule/next-runs')
-  @RateLimit('authenticated_read')
-  @UseGuards(SessionAuthenticationGuard, ScheduleReadGuard)
+  @Route(routes.nextRuns)
   public nextRuns(
     @Req() request: Request,
-    @Param() params: unknown,
-    @Query() query: unknown,
+    @In() { params, query }: RouteInput<typeof routes.nextRuns>,
   ) {
-    const route = triggerRouteSchema.parse(params);
-    const { count } = parseRequestInput(
-      scheduleNextRunsQuerySchema,
-      query ?? {},
-    );
     return this.service.nextRuns({
-      ...route,
+      ...params,
       actorId: authenticatedSession(request).userId,
-      count: count ?? SCHEDULE_FIRE_TIME_DEFAULT_COUNT,
+      count: query.count ?? SCHEDULE_FIRE_TIME_DEFAULT_COUNT,
     });
   }
 
-  /** Side-effect free, but computed per request like draft validation. */
-  @Post('schedules/preview')
-  @HttpCode(200)
-  @RateLimit('workflow_compile')
-  @UseGuards(
-    SessionAuthenticationGuard,
-    SchedulePreviewGuard,
-    CsrfProtectionGuard,
-  )
+  @Route(routes.preview)
   public preview(
     @Req() request: Request,
-    @Param() params: unknown,
-    @Body() body: unknown,
+    @In() { params, body }: RouteInput<typeof routes.preview>,
   ) {
-    const route = routeSchema.parse(params);
-    const input = parseRequestInput(schedulePreviewRequestSchema, body);
     return this.service.previewRuns({
-      ...route,
+      ...params,
       actorId: authenticatedSession(request).userId,
-      config: input.config,
-      count: input.count ?? SCHEDULE_FIRE_TIME_DEFAULT_COUNT,
+      config: body.config,
+      count: body.count ?? SCHEDULE_FIRE_TIME_DEFAULT_COUNT,
     });
   }
 
-  @Post(':triggerId/schedule/enable')
-  @HttpCode(200)
-  @UseGuards(
-    SessionAuthenticationGuard,
-    ScheduleUpdateGuard,
-    CsrfProtectionGuard,
-  )
-  public enable(
-    @Req() request: Request,
-    @Param() params: unknown,
-    @Body() body: unknown,
+  @Route(routes.enable)
+  public enable(@Req() request: Request, @In() input: TriggerCommand) {
+    return this.setEnabled(request, input, true);
+  }
+
+  @Route(routes.disable)
+  public disable(@Req() request: Request, @In() input: TriggerCommand) {
+    return this.setEnabled(request, input, false);
+  }
+
+  private setEnabled(
+    request: Request,
+    { params, idempotencyKey }: TriggerCommand,
+    enabled: boolean,
   ) {
-    return this.command({
-      enabled: true,
-      request: request,
-      params: params,
-      body: body,
-    });
-  }
-
-  @Post(':triggerId/schedule/disable')
-  @HttpCode(200)
-  @UseGuards(
-    SessionAuthenticationGuard,
-    ScheduleUpdateGuard,
-    CsrfProtectionGuard,
-  )
-  public disable(
-    @Req() request: Request,
-    @Param() params: unknown,
-    @Body() body: unknown,
-  ) {
-    return this.command({
-      enabled: false,
-      request: request,
-      params: params,
-      body: body,
-    });
-  }
-
-  private command({
-    enabled,
-    request,
-    params,
-    body,
-  }: Readonly<{
-    enabled: boolean;
-    request: Request;
-    params: unknown;
-    body: unknown;
-  }>) {
-    parseRequestInput(scheduleManagementCommandRequestSchema, body);
-    const route = triggerRouteSchema.parse(params);
     const traceId = traceIdentifier(request);
     return this.service.setEnabled(
       {
-        ...route,
+        ...params,
         actorId: authenticatedSession(request).userId,
-        idempotencyKey: requestIdempotencyKey(request.headers),
+        idempotencyKey,
         requestId: requestIdentifier(request),
         ...(traceId === undefined ? {} : { traceId }),
       },
-      { enabled: enabled },
+      { enabled },
     );
   }
 }
