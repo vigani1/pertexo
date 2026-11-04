@@ -439,3 +439,23 @@ workflow author, so list only services you mean to expose to workflows.
 `pnpm dev` starts the development-only separate-process runner, which is weaker
 than the deployed container and must not be used for untrusted production code.
 The runtime and isolation decision is [ADR 082](../adr/082-isolated-code-tasks.md).
+
+### Outbound HTTP credential masking
+
+HTTP response data passes through credential masking before retention. This
+includes retained response headers, inline text, parsed JSON, artifact bytes and
+error excerpts. Logs and traces omit response contents and status text; they keep
+method, status code, host and service correlation. No response-data path is exempt.
+
+Masking covers admitted credential values literally, JSON escapes (including
+Unicode escapes and strings nested inside strings, through **four successive
+JSON-string decoding layers**), percent encoding, and base64 Basic credentials
+(including their decoded username/password representation). Declared character
+sets are decoded before scanning, including UTF-16; retained text uses UTF-8.
+Unsupported or invalid declared character encodings refuse the response instead
+of retaining unscanned bytes. Raw and retained byte limits still apply.
+
+As with secret masking in CI systems, this is a bounded guarantee, not a promise
+to recognize arbitrary transformations. Hashes, encryption, custom encodings and
+more than four JSON-string escaping layers are not covered. A service must not
+return credentials in those forms if the response will be retained.
