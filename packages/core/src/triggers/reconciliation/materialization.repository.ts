@@ -1,9 +1,10 @@
 import { decodeStoredValue } from '../../shared/stored-values.js';
-import { and, eq, exists, ne, sql } from 'drizzle-orm';
+import { and, desc, eq, exists, ne, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import {
   workflowTriggers,
+  workflowVersions,
   webhookTriggerEndpoints as endpoints,
   triggerSchedules as schedules,
 } from '@pertexo/database/schema';
@@ -52,7 +53,6 @@ export async function reconcileActiveWorkflowTriggers(
   client: PoolClient,
   scope: ReconciliationScope,
 ): Promise<void> {
-  await retirePreviousResources(client, scope);
   const observation = await drizzle(client)
     .execute<{ observedAt: string }>(sql`select clock_timestamp() "observedAt"`)
     .catch(rethrowQueryFailure);
@@ -65,6 +65,7 @@ export async function reconcileActiveWorkflowTriggers(
       row,
       observedAt: new Date(observedAt),
     });
+  await retirePreviousResources(client, scope);
   await applyResourceDispositions(client, scope);
 }
 
@@ -130,6 +131,9 @@ function readDesiredSchedules(
   return drizzle(client)
     .select({
       id: trigger.id,
+      nodeId: trigger.nodeId,
+      workflowId: trigger.workflowId,
+      versionId: trigger.workflowVersionId,
       desiredConfig: trigger.desiredConfig,
       configFingerprint: trigger.configFingerprint,
       persistedFingerprint: schedules.configFingerprint,
@@ -164,11 +168,31 @@ async function materializeSchedule(
     desiredScheduleConfig(row.desiredConfig),
   );
   if (row.persistedFingerprint === null) {
-    const nextAt = resolveScheduleObservation(
-      desired.recurrence,
-      observedAt,
-      observedAt,
-    ).nextAt;
+    const predecessor = alias(schedules, 'predecessor');
+    const [previous] = await drizzle(client)
+      .select({ schedule: predecessor })
+      .from(predecessor)
+      .innerJoin(
+        workflowTriggers,
+        eq(workflowTriggers.id, predecessor.triggerId),
+      )
+      .innerJoin(
+        workflowVersions,
+        eq(workflowVersions.id, workflowTriggers.workflowVersionId),
+      )
+      .where(
+        and(
+          eq(predecessor.workspaceId, workspaceId),
+          eq(workflowTriggers.workflowId, row.workflowId),
+          eq(workflowTriggers.nodeId, row.nodeId),
+          ne(workflowTriggers.workflowVersionId, row.versionId),
+        ),
+      )
+      .orderBy(desc(workflowVersions.versionNumber))
+      .limit(1)
+      .for('update', { of: predecessor })
+      .catch(rethrowQueryFailure);
+    const prior = previous?.schedule;
     await drizzle(client)
       .insert(schedules)
       .values({
@@ -189,8 +213,7 @@ async function materializeSchedule(
             : null,
         misfirePolicy: desired.misfirePolicy,
         configFingerprint: row.configFingerprint,
-        anchorAt: observedAt,
-        nextFireAt: nextAt,
+        ...scheduleOperationalState(prior, desired.recurrence, observedAt),
       })
       .catch(rethrowQueryFailure);
   } else if (row.persistedFingerprint !== row.configFingerprint) {
@@ -198,6 +221,42 @@ async function materializeSchedule(
       'Materialized schedule configuration does not match its immutable trigger',
     );
   }
+}
+
+function scheduleOperationalState(
+  prior: typeof schedules.$inferSelect | undefined,
+  recurrence: ScheduleRecurrence,
+  observedAt: Date,
+) {
+  const unchanged =
+    prior !== undefined &&
+    (recurrence.kind === 'interval'
+      ? prior.recurrenceKind === 'interval' &&
+        prior.intervalMinutes === recurrence.intervalMinutes
+      : prior.recurrenceKind === 'cron' &&
+        prior.cronExpression === recurrence.expression &&
+        prior.timezone === recurrence.timezone);
+  if (unchanged)
+    return {
+      status: prior.status,
+      anchorAt: prior.anchorAt,
+      nextFireAt: prior.nextFireAt,
+      lastFireAt: prior.lastFireAt,
+      admissionDeferredUntil: prior.admissionDeferredUntil,
+      healthStatus: prior.healthStatus,
+      lastErrorCode: prior.lastErrorCode,
+    };
+  const disabled = prior?.status === 'disabled';
+  return {
+    status: disabled ? 'disabled' : 'enabled',
+    anchorAt: observedAt,
+    nextFireAt: resolveScheduleObservation(recurrence, observedAt, observedAt)
+      .nextAt,
+    lastFireAt: null,
+    admissionDeferredUntil: null,
+    healthStatus: disabled ? 'disabled' : 'healthy',
+    lastErrorCode: null,
+  };
 }
 
 async function applyResourceDispositions(

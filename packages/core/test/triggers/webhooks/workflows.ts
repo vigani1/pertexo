@@ -20,6 +20,7 @@ import { workflowTriggerIds, deliverReconciliation } from './reconciliation.js';
 export async function publishTriggerWorkflow(
   graphDisabled = false,
   responseConfig: Record<string, unknown> = {},
+  intervalMinutes = 15,
 ) {
   const created = await authoring.createWorkflow({
     actorId,
@@ -28,7 +29,7 @@ export async function publishTriggerWorkflow(
     emptyGraph: { settings: {}, nodes: [], edges: [] },
     idempotencyKey: randomUUID(),
   });
-  const graph = triggerGraph(15, graphDisabled);
+  const graph = triggerGraph(intervalMinutes, graphDisabled);
   const webhookNode = graph.nodes.find(
     (node) => node.definition.key === 'core.webhook',
   );
@@ -89,6 +90,7 @@ export async function publishTriggerWorkflow(
 
 export async function publishNextTriggerWorkflowVersion(
   workflowIdInput: string,
+  intervalMinutes = 30,
 ) {
   const currentDraft = await authoring.getDraft(
     workspaceId,
@@ -96,6 +98,9 @@ export async function publishNextTriggerWorkflowVersion(
     actorId,
   );
   if (currentDraft === null) throw new Error('Workflow draft is missing');
+  const graph = triggerGraph(intervalMinutes);
+  for (const node of graph.nodes)
+    node.position = { ...node.position, x: currentDraft.revision };
   const draft = await authoring.saveDraft({
     actorId,
     workspaceId,
@@ -107,7 +112,7 @@ export async function publishNextTriggerWorkflowVersion(
       compatibilityFingerprint: currentDraft.compatibility.fingerprint,
     }),
     expectedRevision: currentDraft.revision,
-    graphJson: triggerGraph(30),
+    graphJson: graph,
   });
   const representationTag = workflowDraftRepresentationTag({
     workflowId: workflowIdInput,
