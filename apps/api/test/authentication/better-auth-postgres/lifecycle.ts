@@ -1,3 +1,4 @@
+import { silent } from '../../support/better-auth/api/environment.js';
 import { migrateDatabase } from '@pertexo/database/testing';
 import { Pool } from 'pg';
 
@@ -29,6 +30,7 @@ export async function prepareBetterAuthPostgresIntegrationTestTs() {
     ownerRole: 'pertexo_owner',
   });
   runtime = createBetterAuthRuntime({
+    logger: silent,
     signUpMode: 'open',
     baseUrl: 'http://pertexo.test',
     secret: 'postgres-integration-secret-with-at-least-32-characters',

@@ -1,3 +1,5 @@
+import type { StructuredLogger } from '@pertexo/observability';
+import { AuthenticationDiagnostics } from './diagnostics.js';
 import { samlTransportAvailable } from '../federation/protocol/saml/configuration.js';
 import {
   needsSecurityTransaction,
@@ -40,6 +42,7 @@ import { SocialSignIn } from '../federation/social.js';
 import { landProviderFormCallback } from '../journeys/form-callback.js';
 
 export type BetterAuthRuntimeConfig = Readonly<{
+  logger: StructuredLogger;
   baseUrl: string;
   secret: string;
   database: Readonly<{
@@ -107,7 +110,9 @@ export function createBetterAuthRuntime(
     )
       availableOrganizationProtocols.push('saml');
   }
+  const diagnostics = new AuthenticationDiagnostics(config.logger);
   const authOptions = {
+    diagnostics,
     pool,
     baseUrl: config.baseUrl,
     secret: config.secret,
@@ -183,26 +188,29 @@ export function createBetterAuthRuntime(
   let closePromise: Promise<void> | undefined;
   return Object.freeze({
     auth: Object.freeze({
-      handler: async (request: Request): Promise<Response> => {
-        const owned =
-          (await landProviderFormCallback(request)) ??
-          (await social.handle(request)) ??
-          (await federation.handle(request)) ??
-          (await linking.handle(request)) ??
-          (await emailProofs.handle(request)) ??
-          (await refuseClosedSignUp(request, signUp));
-        if (owned !== undefined) return owned;
-        const returnTo = await emailProofs.signUpReturnPath(request);
-        const response = needsSecurityTransaction(request)
-          ? await securityTransaction(pool, (transaction, afterCommit) =>
-              transactions.run({ client: transaction, afterCommit }, () =>
-                securityAuth.handler(request),
-              ),
-            )
-          : await auth.handler(request);
-        await emailProofs.issueAfterSignUp(request, response, returnTo);
-        return response;
-      },
+      handler: (request: Request): Promise<Response> =>
+        diagnostics.run(request, async () => {
+          const owned =
+            (await landProviderFormCallback(request)) ??
+            (await social.handle(request)) ??
+            (await federation.handle(request)) ??
+            (await linking.handle(request)) ??
+            (await emailProofs.handle(request)) ??
+            (await refuseClosedSignUp(request, signUp));
+          if (owned !== undefined) return owned;
+          const returnTo = await emailProofs.signUpReturnPath(request);
+          const response = await diagnostics.response(async () =>
+            needsSecurityTransaction(request)
+              ? await securityTransaction(pool, (transaction, afterCommit) =>
+                  transactions.run({ client: transaction, afterCommit }, () =>
+                    securityAuth.handler(request),
+                  ),
+                )
+              : await auth.handler(request),
+          );
+          await emailProofs.issueAfterSignUp(request, response, returnTo);
+          return response;
+        }),
     }),
     sessions,
     signUp,

@@ -178,6 +178,7 @@ async function createFixture(): Promise<FixtureResourceOwner> {
           },
         },
         apiConfig,
+        { logger },
       ),
       (runtime) => runtime.close(),
     );

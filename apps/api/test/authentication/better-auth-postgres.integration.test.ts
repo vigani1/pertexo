@@ -1,3 +1,4 @@
+import { silent } from '../support/better-auth/api/environment.js';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   prepareBetterAuthPostgresIntegrationTestTs,
@@ -652,6 +653,7 @@ describe('Better Auth on PostgreSQL', () => {
       ownerRole: 'pertexo_owner',
     });
     const durable = createBetterAuthRuntime({
+      logger: silent,
       signUpMode: 'open',
       baseUrl: 'http://pertexo.test',
       secret: 'durable-proof-integration-secret-at-least-32-characters',

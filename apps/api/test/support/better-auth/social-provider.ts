@@ -16,6 +16,7 @@ export function useSocialProviderGateway(gateway: SocialProviderGateway) {
           throw new Error('Fixture mail is required');
         const config = input.config;
         configuration = {
+          logger: input.logger,
           baseUrl: config.publicWebOrigin,
           secret: config.betterAuth.secret,
           database: input.databaseConfig,

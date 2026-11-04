@@ -58,6 +58,7 @@ export async function createWorkflowLifecycleApiFixture(): Promise<WorkflowLifec
       await createApiIdentityRuntime(
         identityConfig,
         workflowLifecycleDatabaseConfig,
+        { logger },
       ),
       (runtime) => runtime.close(),
     );

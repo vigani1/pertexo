@@ -1,3 +1,4 @@
+import { silent } from '../support/better-auth/api/environment.js';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
@@ -66,6 +67,7 @@ function compose(
     databaseConfig,
     runtime: undefined,
     authenticationMail: undefined,
+    logger: silent,
     acquire: (resource) => {
       acquired.push(resource);
       return resource;

@@ -1,3 +1,5 @@
+import { silent } from '../../support/better-auth/api/environment.js';
+import { AuthenticationDiagnostics } from '../../../src/authentication/better-auth/diagnostics.js';
 import { generateKeyPairSync, sign } from 'node:crypto';
 import { Pool } from 'pg';
 import { afterAll, afterEach, describe, expect, it, vi } from 'vitest';
@@ -48,6 +50,7 @@ function idToken(overrides: Readonly<Record<string, unknown>> = {}) {
 }
 async function fixture() {
   const auth = createPertexoBetterAuth({
+    diagnostics: new AuthenticationDiagnostics(silent),
     pool,
     baseUrl: 'https://app.example',
     secret: 'provider-proof-with-more-than-32-characters',

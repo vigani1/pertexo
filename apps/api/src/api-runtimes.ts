@@ -1,3 +1,4 @@
+import type { StructuredLogger } from '@pertexo/observability';
 import { createApiCallbackRuntime } from './platform/webhooks/callback-runtime.module.js';
 import {
   createDatabaseRuntime,
@@ -53,6 +54,7 @@ export async function acquireApiRuntimes(
             config.identity,
             databaseRuntime,
             runtimes,
+            logger,
           );
     runtimes.callbackRuntime = await createApiCallbackRuntime(
       config,
@@ -119,10 +121,12 @@ async function acquireIdentityWorkflows(
   identity: NonNullable<ApiConfig['identity']>,
   databaseRuntime: DatabaseRuntime,
   runtimes: ApiRuntimeResources,
+  logger: StructuredLogger,
 ): Promise<ApiIdentityRuntime> {
   const identityRuntime = (runtimes.identityRuntime =
     await createApiIdentityRuntime(identity, config.database, {
       runtime: databaseRuntime,
+      logger,
     }));
   runtimes.workflowRuntime = await createApiWorkflowRuntime(
     config.database,

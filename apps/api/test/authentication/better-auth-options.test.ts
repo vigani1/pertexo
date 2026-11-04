@@ -1,3 +1,5 @@
+import { silent } from '../support/better-auth/api/environment.js';
+import { AuthenticationDiagnostics } from '../../src/authentication/better-auth/diagnostics.js';
 import { Pool } from 'pg';
 import { afterAll, describe, expect, it } from 'vitest';
 
@@ -17,6 +19,7 @@ describe('Better Auth session cookie', () => {
     'keeps the name the guards read when secure=%s',
     async (secureCookies) => {
       const auth = createPertexoBetterAuth({
+        diagnostics: new AuthenticationDiagnostics(silent),
         pool,
         baseUrl: secureCookies
           ? 'https://app.example.test'

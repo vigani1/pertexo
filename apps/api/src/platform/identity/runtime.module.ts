@@ -1,3 +1,4 @@
+import type { StructuredLogger } from '@pertexo/observability';
 import { DirectoryManagementModule } from '../../authentication/federation/provisioning/management/directory-management.module.js';
 import {
   createIdentityWorkspaceStore,
@@ -63,10 +64,12 @@ export async function createApiIdentityRuntime(
   {
     runtime,
     authenticationMail,
+    logger,
   }: Readonly<{
+    logger: StructuredLogger;
     runtime?: DatabaseRuntime;
     authenticationMail?: AuthenticationMail;
-  }> = {},
+  }>,
 ): Promise<ApiIdentityRuntime> {
   const invitationEncryption =
     config.invitationTokenEncryption === undefined
@@ -117,6 +120,7 @@ export async function createApiIdentityRuntime(
     );
     const persistence = createIdentityWorkspaceAdapter(identityDatabase);
     const betterAuth = composeBetterAuthRuntime({
+      logger,
       config,
       databaseConfig,
       runtime,

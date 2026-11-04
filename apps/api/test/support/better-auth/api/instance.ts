@@ -132,6 +132,7 @@ export function useBetterAuthRealApi(
     identityRuntime = owner.acquire(
       'identity runtime',
       await createApiIdentityRuntime(identity, databaseConfig, {
+        logger: options.logger ?? silent,
         authenticationMail: options.authenticationMail?.(mail) ?? mail,
       }),
       (runtime) => runtime.close(),
@@ -311,7 +312,7 @@ export function useBetterAuthRealApi(
           : { federationEncryption: encryption }),
       },
       databaseConfig,
-      { authenticationMail: mail },
+      { authenticationMail: mail, logger: options.logger ?? silent },
     );
     return owner.acquire('peer identity runtime', peer, (runtime) =>
       runtime.close(),
