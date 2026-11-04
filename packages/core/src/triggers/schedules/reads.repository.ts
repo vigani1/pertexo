@@ -1,3 +1,7 @@
+import {
+  scheduleCanFire,
+  scheduleStandingColumns,
+} from './schedule-standing.js';
 import { decodeStoredValue } from '../../shared/stored-values.js';
 import { and, desc, eq, sql, type SQLWrapper } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
@@ -6,6 +10,7 @@ import { BROWSABLE_WORKSPACE_STATUSES } from '@pertexo/policy';
 import {
   workflowTriggers as triggers,
   workflows,
+  workspaces,
   triggerScheduleOccurrences as occurrences,
   triggerSchedules as schedules,
 } from '@pertexo/database/schema';
@@ -120,10 +125,7 @@ async function readScheduleState(client: PoolClient, read: TriggerRead) {
       anchor_at: schedules.anchorAt,
       next_fire_at: schedules.nextFireAt,
       observed_at: sql<Date>`clock_timestamp()`.mapWith(schedules.createdAt),
-      fires: sql<
-        boolean | null
-      >`(${schedules.status}='enabled' and ${triggers.status}='active' and ${workflows.lifecycleStatus}='active'
-      and ${workflows.activationStatus} in ('active','degraded') and ${workflows.publishedVersionId}=${triggers.workflowVersionId})`,
+      ...scheduleStandingColumns,
     })
     .from(schedules)
     .innerJoin(
@@ -140,6 +142,7 @@ async function readScheduleState(client: PoolClient, read: TriggerRead) {
         eq(workflows.id, triggers.workflowId),
       ),
     )
+    .innerJoin(workspaces, eq(workspaces.id, triggers.workspaceId))
     .where(
       and(
         eq(schedules.workspaceId, read.workspaceId),
@@ -171,7 +174,7 @@ function projectPersistedSchedule(
 ): ScheduleFireTimes {
   const observedAt = row.observed_at;
   // A schedule the scanner would not claim has no upcoming fire times.
-  if (!(row.fires ?? false))
+  if (!scheduleCanFire(row))
     return Object.freeze({ observedAt, items: Object.freeze([]) });
   const nextFireAt = row.next_fire_at;
   const recurrence = decodeStoredValue(() =>
