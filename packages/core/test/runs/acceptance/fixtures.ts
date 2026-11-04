@@ -22,7 +22,6 @@ export {
 } from './fixture/base.js';
 export {
   createNotificationFixture,
-  insertDirectPinnedRun,
   setFixtureStatus,
   setNotificationPolicy,
 } from './fixture/notifications.js';

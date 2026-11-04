@@ -1,3 +1,7 @@
+import {
+  assertRunStartNotCanceled,
+  startsRunExecution,
+} from '../queued-run-admission.repository.js';
 import { persistCallIntents } from '../../calls/intents.repository.js';
 import {
   persistTaskIntents,
@@ -60,11 +64,9 @@ export async function saveRunTransition(
     plan.checkpoint.workflowVersionId !== row.workflow_version_id
   )
     throw new CoordinatorRunStateCorruptError();
-  const startsRun =
-    row.status === 'queued' &&
-    (plan.checkpoint.runStatus === 'running' ||
-      plan.checkpoint.runStatus === 'waiting');
+  const startsRun = startsRunExecution(row.status, plan.checkpoint.runStatus);
   if (startsRun) {
+    assertRunStartNotCanceled(row.cancel_requested_at);
     const deferred = await deferCoordinatorForActiveCapacity(client, {
       workspaceId,
       runId,

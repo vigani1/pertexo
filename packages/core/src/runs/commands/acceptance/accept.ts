@@ -1,3 +1,4 @@
+import { lockWorkspaceExecutionCounter } from '../../admission-locks.repository.js';
 import { utf8ByteLength } from '@pertexo/workflow-model';
 import { requireRunTableReferences } from '../../../data-tables/columns/references.repository.js';
 import { requireWorkflowConcurrency } from './concurrency.repository.js';
@@ -201,6 +202,13 @@ async function insertAcceptedWorkflowRun(
     );
     if (parsed.triggerType !== 'test')
       await requireRunTableReferences(transaction, parsed.workflowVersionId);
+    // Calls/tests skip workflow concurrency, but still serialize workspace
+    // capacity before the final standing check and the SQL capacity write.
+    await lockWorkspaceExecutionCounter(
+      transaction.db,
+      transaction.workspaceId,
+    );
+    await assertWorkspaceAcceptsNewRuns(transaction);
     insertedRuns = await transaction.db
       .insert(workflowRuns)
       .values(acceptedWorkflowRunValues(transaction, parsed, state))

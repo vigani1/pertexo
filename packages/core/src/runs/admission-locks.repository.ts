@@ -1,4 +1,5 @@
 import { sql } from 'drizzle-orm';
+import { workspaces } from '@pertexo/database/schema';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 
@@ -40,10 +41,19 @@ export async function activeCapacityAvailable(
     runId: string;
   }>,
 ): Promise<boolean> {
+  // Callers already hold the workspace fence. Acquiring current-entitlement
+  // locks here would invert them with a resuming run's pinned-version locks.
+  const standing = await db
+    .execute<{ status: string }>(
+      sql`select ${workspaces.status} status from ${workspaces}
+    where ${workspaces.id}=${input.workspaceId}::uuid`,
+    )
+    .catch(rethrowQueryFailure);
+  const status = standing.rows[0]?.status;
   const capacity = await db
     .execute<{ available: boolean }>(
       sql`select app.workflow_run_active_capacity_available(${input.workspaceId},${input.entitlementVersion},${input.runId}) available`,
     )
     .catch(rethrowQueryFailure);
-  return capacity.rows[0]?.available ?? false;
+  return status === 'active' && (capacity.rows[0]?.available ?? false);
 }

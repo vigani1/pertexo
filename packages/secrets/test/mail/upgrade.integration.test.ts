@@ -172,6 +172,7 @@ it('preserves mail identities through the rename and old messages through subseq
       '0097_error_workflow_delivery_repair.sql',
       '0098_stuck_work_candidate_pages.sql',
       '0099_notification_recovery_storage.sql',
+      '0100_core_run_admission.sql',
     ]);
     const after = await catalog('app.system_mail_deliveries');
     expect(after.relation).toEqual(before.relation);
