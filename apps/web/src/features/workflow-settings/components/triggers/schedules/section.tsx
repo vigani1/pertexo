@@ -81,13 +81,15 @@ export function SchedulesSection({
             else setPausing(trigger);
           }}
           nextRuns={
-            <ScheduleNextRuns
-              apiClient={apiClient}
-              userId={userId}
-              workspaceId={workspaceId}
-              workflowId={workflowId}
-              trigger={trigger}
-            />
+            trigger.recurrence === null ? undefined : (
+              <ScheduleNextRuns
+                apiClient={apiClient}
+                userId={userId}
+                workspaceId={workspaceId}
+                workflowId={workflowId}
+                trigger={trigger}
+              />
+            )
           }
           history={
             <ScheduleOccurrences

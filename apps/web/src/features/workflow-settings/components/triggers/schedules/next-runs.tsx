@@ -56,7 +56,7 @@ export function ScheduleNextRuns({
           <ScheduleRunTimes
             label="Next runs"
             times={data.items.map(({ scheduledAt }) => scheduledAt)}
-            {...(trigger.recurrence.kind === 'cron'
+            {...(trigger.recurrence?.kind === 'cron'
               ? { timezone: trigger.recurrence.timezone }
               : {})}
           />

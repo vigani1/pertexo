@@ -41,7 +41,7 @@ export const scheduleTriggerHealthSchema = z
     healthStatus: scheduleTriggerHealthStatusSchema,
     lastErrorCode: z.string().max(128).nullable(),
     reconciledAt: z.iso.datetime().nullable(),
-    recurrence: scheduleRecurrenceSummarySchema,
+    recurrence: scheduleRecurrenceSummarySchema.nullable(),
     misfirePolicy: z.enum(['catch_up_once', 'skip']),
     nextFireAt: z.iso.datetime(),
     lastFireAt: z.iso.datetime().nullable(),

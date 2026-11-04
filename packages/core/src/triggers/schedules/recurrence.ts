@@ -95,6 +95,18 @@ export function parsePersistedScheduleRecurrence(
   );
 }
 
+/** Health reads can expose the repair state without exposing malformed config. */
+export function readPersistedScheduleRecurrence(
+  row: PersistedScheduleRecurrenceRow,
+): ScheduleRecurrence | null {
+  try {
+    return parsePersistedScheduleRecurrence(row);
+  } catch (error) {
+    if (error instanceof TypeError) return null;
+    throw error;
+  }
+}
+
 function cronParser(
   recurrence: Extract<ScheduleRecurrence, { kind: 'cron' }>,
   currentDate: Date,
