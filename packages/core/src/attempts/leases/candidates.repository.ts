@@ -1,5 +1,6 @@
+import { priorProviderDispatchUnresolved } from '../dispatch/uncertainty.repository.js';
 import type { NodeAttemptDeliveryIdentity } from '../node-attempt.js';
-import { and, eq, exists, lt, sql } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
@@ -51,19 +52,6 @@ export async function lockClaimCandidate(
   if (runRow === undefined) throw new NodeAttemptStateCorruptError();
   const attempt = alias(nodeAttempts, 'attempt');
   const node = alias(nodeRuns, 'node');
-  const prior = alias(nodeAttempts, 'prior');
-  const unresolved = db
-    .select({ one: sql`1` })
-    .from(prior)
-    .where(
-      and(
-        eq(prior.workspaceId, attempt.workspaceId),
-        eq(prior.nodeRunId, attempt.nodeRunId),
-        lt(prior.attemptNumber, attempt.attemptNumber),
-        eq(prior.executorPossiblyDispatched, true),
-        eq(prior.retryDecision, 'retry'),
-      ),
-    );
   const locked = await db
     .select({
       attemptNumber: attempt.attemptNumber,
@@ -77,7 +65,7 @@ export async function lockClaimCandidate(
       sideEffectClass: attempt.sideEffectClass,
       providerIdempotencyKey: attempt.providerIdempotencyKey,
       providerDispatchBinding: node.providerDispatchBinding,
-      providerDispatchUnresolved: sql<boolean>`(${attempt.dispatchMarkedAt} is not null or ${exists(unresolved)})`,
+      providerDispatchUnresolved: sql<boolean>`(${attempt.dispatchMarkedAt} is not null or ${priorProviderDispatchUnresolved(attempt)})`,
     })
     .from(attempt)
     .innerJoin(
