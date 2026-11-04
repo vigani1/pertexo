@@ -39,6 +39,7 @@ type PertexoBetterAuthInput = Readonly<{
  * outside Pertexo's transactional account-security endpoints.
  */
 const DISABLED_NATIVE_PATHS = Object.freeze([
+  '/sign-out',
   '/get-session',
   '/get-access-token',
   '/refresh-token',

@@ -98,11 +98,7 @@ export class BetterAuthSessionService {
   }
 
   public async revoke(cookieValue: string): Promise<void> {
-    try {
-      await this.runtime.sessions.revoke(cookieValue);
-    } catch {
-      throw new IdentityError('identity.session_invalid');
-    }
+    await this.runtime.sessions.revoke(cookieValue);
   }
 
   private async writeCookies(

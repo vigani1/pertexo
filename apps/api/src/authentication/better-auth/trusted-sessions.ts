@@ -1,4 +1,7 @@
-import { isAuthenticationSessionAllowed } from '@pertexo/core/identity';
+import {
+  isAuthenticationSessionAllowed,
+  revokeAuthenticationSession,
+} from '@pertexo/core/identity';
 import type { Pool } from 'pg';
 
 import type { PertexoBetterAuth } from './options.js';
@@ -90,11 +93,15 @@ export function createTrustedSessions(
       });
     },
     revoke: async (cookieValue: string) => {
-      await auth.api.signOut({ headers: sessionHeaders(cookieValue) });
+      const session = await auth.api.getSession({
+        headers: sessionHeaders(cookieValue),
+        query: { disableCookieCache: true },
+      });
+      if (session !== null)
+        await revokeAuthenticationSession(pool, session.session.token);
     },
     revokeToken: async (token: string) => {
-      const context = await auth.$context;
-      await context.internalAdapter.deleteSession(token);
+      await revokeAuthenticationSession(pool, token);
     },
     evidence: async (cookieValue: string) => {
       const session = await auth.api.getSession({
