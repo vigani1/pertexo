@@ -15,7 +15,7 @@ import {
 import { FormUnavailableError } from '../../triggers/forms/form.errors.js';
 import { lockWorkspaceAuthority } from '../../shared/authority.repository.js';
 import { readFolderScope } from '../../shared/facts.repository.js';
-import { readTaskRow } from '../../runs/pending-tasks/responses/pending-task-records.repository.js';
+import { readTaskUploadTarget } from '../../runs/pending-tasks/responses/pending-task-records.repository.js';
 import {
   PendingTaskDecisionError,
   PendingTaskNotFoundError,
@@ -83,7 +83,7 @@ async function loadInputRequest(
     target.actorId,
     rolesForCapability('run:read'),
   );
-  const row = await readTaskRow(client, target, {
+  const row = await readTaskUploadTarget(client, target, {
     role,
     resources: await readFolderScope(client, target, role),
   });

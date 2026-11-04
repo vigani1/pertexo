@@ -1,6 +1,6 @@
 import { decodeStoredValue } from '../../../shared/stored-values.js';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import { alias } from 'drizzle-orm/pg-core';
+import { alias, type PgSelect } from 'drizzle-orm/pg-core';
 import {
   nodeRuns,
   workflows,
@@ -37,6 +37,10 @@ import {
   pendingTaskAudienceSql,
   pendingTaskBlockedSql,
 } from './eligibility.repository.js';
+const node = nodeRuns,
+  decider = alias(users, 'decider');
+type TaskReadAccess = Readonly<{ role: Role; resources: FolderScope }>;
+
 export type TaskRow = Awaited<ReturnType<typeof taskQuery>>[number];
 export function projectTask(row: TaskRow): PendingTaskDetail {
   const captured =
@@ -116,18 +120,10 @@ export async function readTaskRow(
     role,
     resources,
     locking = false,
-  }: Readonly<{
-    role: Role;
-    resources: FolderScope;
-    locking?: boolean | undefined;
-  }>,
+  }: TaskReadAccess & Readonly<{ locking?: boolean | undefined }>,
 ): Promise<TaskRow> {
   const query = taskQuery(client, { actorId: input.actorId, role }).where(
-    and(
-      eq(task.workspaceId, input.workspaceId),
-      eq(task.id, input.taskId),
-      workflowScopeSql(resources, sql`${run.workflowId}`),
-    ),
+    visibleTaskSql(input, resources),
   );
   const [row] = await (
     locking ? query.for('update', { of: task }) : query
@@ -216,41 +212,40 @@ function taskQuery(
   client: PoolClient,
   input: Readonly<{ actorId: string; role: Role }>,
 ) {
-  const node = nodeRuns,
-    decider = alias(users, 'decider');
   // The ordinary-task kind/state checks and inner node join guarantee these narrower fields.
-  return drizzle(client)
-    .select({
-      id: task.id,
-      workspace_id: task.workspaceId,
-      run_id: task.runId,
-      workflow_version_id: task.workflowVersionId,
-      node_run_id: sql<string>`${task.nodeRunId}`,
-      invocation_key: task.invocationKey,
-      node_id: node.nodeId,
-      // A person answering shouldn't read a step's id. A test run's version isn't published, so it has no name here.
-      step_name: sql<
-        string | null
-      >`(select left(nullif(btrim(graph_node.value->>'label'),''),200) from ${workflowVersions} version cross join lateral (${workflowGraphStepSql(sql`version.graph_json`, sql`${node.nodeId}`)}) graph_node where version.workspace_id=${task.workspaceId} and version.id=${task.workflowVersionId})`,
-      branch_context: sql<
-        Readonly<{ iterationPath?: PendingTaskDetail['iterationPath'] }>
-      >`${node.branchContext}`,
-      workflow_id: run.workflowId,
-      workflow_name: workflows.name,
-      kind: sql<'approval' | 'input_request'>`${task.kind}`,
-      config: task.config,
-      context: task.context,
-      status: sql<PendingTaskDetail['status']>`${task.status}`,
-      output_ref: task.outputRef,
-      decided_by_name: decider.displayName,
-      created_at: task.createdAt,
-      expires_at: sql<Date>`${task.expiresAt}`.mapWith(task.expiresAt),
-      completed_at: task.completedAt,
-      blocked_reason: sql<
-        PendingTaskDetail['blockedReason']
-      >`${pendingTaskBlockedSql(sql`${input.actorId}::uuid`, sql`${input.role}::text`)}`,
-    })
-    .from(task)
+  return taskOwnershipQuery(
+    drizzle(client)
+      .select({
+        ...taskEligibilitySelection(input),
+        workspace_id: task.workspaceId,
+        run_id: task.runId,
+        workflow_version_id: task.workflowVersionId,
+        node_run_id: sql<string>`${task.nodeRunId}`,
+        invocation_key: task.invocationKey,
+        node_id: node.nodeId,
+        // A person answering shouldn't read a step's id. A test run's version isn't published, so it has no name here.
+        step_name: sql<
+          string | null
+        >`(select left(nullif(btrim(graph_node.value->>'label'),''),200) from ${workflowVersions} version cross join lateral (${workflowGraphStepSql(sql`version.graph_json`, sql`${node.nodeId}`)}) graph_node where version.workspace_id=${task.workspaceId} and version.id=${task.workflowVersionId})`,
+        branch_context: sql<
+          Readonly<{ iterationPath?: PendingTaskDetail['iterationPath'] }>
+        >`${node.branchContext}`,
+        workflow_name: workflows.name,
+        context: task.context,
+        status: sql<PendingTaskDetail['status']>`${task.status}`,
+        output_ref: task.outputRef,
+        decided_by_name: decider.displayName,
+        created_at: task.createdAt,
+        expires_at: sql<Date>`${task.expiresAt}`.mapWith(task.expiresAt),
+        completed_at: task.completedAt,
+      })
+      .from(task)
+      .$dynamic(),
+  );
+}
+
+function taskOwnershipQuery<Query extends PgSelect>(query: Query) {
+  return query
     .innerJoin(
       run,
       and(
@@ -277,4 +272,50 @@ function taskQuery(
       ),
     )
     .leftJoin(decider, eq(decider.id, task.decidedBy));
+}
+
+/** Upload binding needs captured fields and eligibility, never retained details or graph labels. */
+export async function readTaskUploadTarget(
+  client: PoolClient,
+  input: PendingTaskScope & Readonly<{ taskId: string }>,
+  access: TaskReadAccess,
+) {
+  const [row] = await taskOwnershipQuery(
+    drizzle(client)
+      .select(
+        taskEligibilitySelection({ actorId: input.actorId, role: access.role }),
+      )
+      .from(task)
+      .$dynamic(),
+  )
+    .where(visibleTaskSql(input, access.resources))
+    .catch(rethrowQueryFailure);
+  if (row === undefined)
+    throw new PendingTaskNotFoundError('Task is not visible.');
+  return row;
+}
+
+function visibleTaskSql(
+  input: PendingTaskScope & Readonly<{ taskId: string }>,
+  resources: FolderScope,
+) {
+  return and(
+    eq(task.workspaceId, input.workspaceId),
+    eq(task.id, input.taskId),
+    workflowScopeSql(resources, sql`${run.workflowId}`),
+  );
+}
+
+function taskEligibilitySelection(
+  input: Readonly<{ actorId: string; role: Role }>,
+) {
+  return {
+    id: task.id,
+    workflow_id: run.workflowId,
+    kind: sql<'approval' | 'input_request'>`${task.kind}`,
+    config: task.config,
+    blocked_reason: sql<
+      PendingTaskDetail['blockedReason']
+    >`${pendingTaskBlockedSql(sql`${input.actorId}::uuid`, sql`${input.role}::text`)}`,
+  };
 }
