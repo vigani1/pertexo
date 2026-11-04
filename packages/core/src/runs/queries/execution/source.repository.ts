@@ -125,18 +125,16 @@ export function createWorkflowExecutionReader(
                 eq(workflowTestSnapshots.id, input.workflowVersionId),
               ),
             );
-          const sample = pin?.sample;
-          if (sample === undefined || sample === null)
-            throw new Error('Frozen test sample is unavailable');
-          const output = decodeStoredValue(() =>
-            parseStoredExecutionValue(sample.outputRef),
-          );
-          if (output.kind !== 'inline')
-            throw new Error('Frozen test sample is unavailable');
-          return {
-            ...projection,
-            testSample: { sampleId: sample.sampleId, output: output.value },
-          };
+          const testSample = decodeStoredValue(() => {
+            const sample = pin?.sample;
+            if (sample === undefined || sample === null)
+              throw new Error('Frozen test sample is unavailable');
+            const output = parseStoredExecutionValue(sample.outputRef);
+            if (output.kind !== 'inline')
+              throw new Error('Frozen test sample is unavailable');
+            return { sampleId: sample.sampleId, output: output.value };
+          });
+          return { ...projection, testSample };
         },
         input.signal === undefined ? {} : { signal: input.signal },
       ),
