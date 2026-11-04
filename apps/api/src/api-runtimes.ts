@@ -53,8 +53,7 @@ export async function acquireApiRuntimes(
             config,
             config.identity,
             databaseRuntime,
-            runtimes,
-            logger,
+            { runtimes, logger },
           );
     runtimes.callbackRuntime = await createApiCallbackRuntime(
       config,
@@ -120,8 +119,13 @@ async function acquireIdentityWorkflows(
   config: ApiConfig,
   identity: NonNullable<ApiConfig['identity']>,
   databaseRuntime: DatabaseRuntime,
-  runtimes: ApiRuntimeResources,
-  logger: StructuredLogger,
+  {
+    runtimes,
+    logger,
+  }: Readonly<{
+    runtimes: ApiRuntimeResources;
+    logger: StructuredLogger;
+  }>,
 ): Promise<ApiIdentityRuntime> {
   const identityRuntime = (runtimes.identityRuntime =
     await createApiIdentityRuntime(identity, config.database, {
