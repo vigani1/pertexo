@@ -1,3 +1,4 @@
+import { StartupSettingError } from '@pertexo/observability';
 import {
   parseCallbackKeyConfig,
   type CallbackKeyConfig,
@@ -70,7 +71,7 @@ function artifactStoreConfig(
 ): ArtifactStoreConfig {
   const parsed = parseArtifactStoreConfig(environment);
   if (deployed && new URL(parsed.endpoint).protocol !== 'https:')
-    throw new Error('HTTPS artifact store endpoint is required when deployed');
+    throw new StartupSettingError('ARTIFACT_STORE_ENDPOINT', 'https_required');
   return parsed;
 }
 
@@ -101,8 +102,9 @@ export function parseWorkerConfig(
           (deployed ? undefined : path.resolve('.pertexo/worker-scratch')),
       }).ARTIFACT_SCRATCH_DIRECTORY;
     if (!path.isAbsolute(artifactScratchDirectory))
-      throw new Error(
-        'ARTIFACT_SCRATCH_DIRECTORY must be an absolute private disk-backed directory',
+      throw new StartupSettingError(
+        'ARTIFACT_SCRATCH_DIRECTORY',
+        'absolute_private_directory_required',
       );
     const invitationDelivery = parseInvitationDeliveryConfig(raw, {
       deployed: deployed,
@@ -111,7 +113,10 @@ export function parseWorkerConfig(
       deployed: deployed,
     });
     if (deployed && connectionEncryption === undefined)
-      throw new Error('A deployed worker requires connection encryption');
+      throw new StartupSettingError(
+        'CONNECTION_ENCRYPTION_MODE',
+        'required_when_deployed',
+      );
     return Object.freeze({
       ...result.data,
       ...(callbacks === undefined ? {} : { callbacks }),
@@ -122,11 +127,7 @@ export function parseWorkerConfig(
       }),
       codeRunner: {
         settings: parseCodeSettings(raw),
-        socketPath: codeRunnerSocketPath({
-          configured: raw.CODE_RUNNER_SOCKET,
-          hardened: deployed,
-          uid: process.getuid?.() ?? 'local',
-        }),
+        socketPath: workerCodeRunnerSocket(raw.CODE_RUNNER_SOCKET, deployed),
         requireHardened: deployed,
       },
       ...(connectionEncryption === undefined ? {} : { connectionEncryption }),
@@ -149,5 +150,21 @@ export function parseWorkerConfig(
     });
   } catch (error: unknown) {
     throw new Error('Invalid worker configuration', { cause: error });
+  }
+}
+
+function workerCodeRunnerSocket(
+  configured: string | undefined,
+  hardened: boolean,
+): string {
+  const uid = process.getuid?.() ?? 'local';
+  try {
+    return codeRunnerSocketPath({ configured, hardened, uid });
+  } catch (error) {
+    throw new StartupSettingError(
+      'CODE_RUNNER_SOCKET',
+      'unix_socket_path_required',
+      { cause: error },
+    );
   }
 }

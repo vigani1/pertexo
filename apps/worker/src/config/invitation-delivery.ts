@@ -1,3 +1,4 @@
+import { StartupSettingError } from '@pertexo/observability';
 import { z } from 'zod';
 
 import {
@@ -67,9 +68,9 @@ export function parseInvitationDeliveryConfig(
     });
   const url = new URL(parsed.webOrigin);
   if (url.pathname !== '/' || url.search !== '' || url.hash !== '')
-    throw new Error('PUBLIC_WEB_ORIGIN must be an origin without a path');
+    throw new StartupSettingError('PUBLIC_WEB_ORIGIN', 'http_origin_required');
   if (deployed && url.protocol !== 'https:')
-    throw new Error('HTTPS public web origin is required when deployed');
+    throw new StartupSettingError('PUBLIC_WEB_ORIGIN', 'https_required');
   const previous = parseApplicationPreviousKeys(parsed.previous);
   return Object.freeze({
     delivery: parseSystemMailConfig(environment, {

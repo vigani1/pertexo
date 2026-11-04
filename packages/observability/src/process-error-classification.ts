@@ -1,3 +1,7 @@
+import {
+  StartupSettingError,
+  describeStartupSettingError,
+} from './startup-setting.errors.js';
 import { z } from 'zod';
 
 const SYSTEM_ERROR_CODES = new Set([
@@ -54,6 +58,8 @@ const MAX_CAUSE_LENGTH = 2_000;
 
 function causeChain(error: unknown, depth: number): readonly string[] {
   if (depth >= MAX_CAUSE_DEPTH) return [];
+  if (error instanceof StartupSettingError)
+    return [describeStartupSettingError(error)];
   const issues = settingsIssues(error);
   // Settings are named with what is wrong; a schema's message can quote the
   // rejected value, which may be a secret, so it never reaches a log.

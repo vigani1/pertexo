@@ -21,3 +21,5 @@ export {
   databaseClientEnvironmentSchema,
   clientDatabaseConfig,
 } from './lifecycle/database-config.js';
+
+export { StartupSettingError } from './startup-setting.errors.js';
