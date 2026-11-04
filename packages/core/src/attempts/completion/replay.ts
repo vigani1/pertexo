@@ -10,7 +10,7 @@ import {
 } from '../node-attempt.js';
 import { completeReceipt } from './receipts.repository.js';
 
-import { serializeStoredExecutionValue } from '../../runs/values/stored-execution.js';
+import { serializeStoredExecutionValue } from '../../shared/stored-execution.js';
 import { assertConnectionHealthReplay } from './connection-health.repository.js';
 import type {
   CompletionReceiptRow,

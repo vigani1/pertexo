@@ -1,4 +1,4 @@
-import { lockWorkspaceRunAdmission } from '../admission-locks.repository.js';
+import { lockWorkspaceRunAdmission } from '../../shared/workspace-fence.repository.js';
 import { outboxEvents, inboxReceipts } from '@pertexo/database/schema';
 import { and, eq, isNull, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';

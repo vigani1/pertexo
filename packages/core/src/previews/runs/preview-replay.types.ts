@@ -1,5 +1,5 @@
 import type { CodeDiagnostics } from '@pertexo/node-sdk';
-import type { parseStoredExecutionValue } from '../../runs/values/stored-execution.js';
+import type { parseStoredExecutionValue } from '../../shared/stored-execution.js';
 import type {
   PreviewDryRun,
   PreviewSideEffectClass,

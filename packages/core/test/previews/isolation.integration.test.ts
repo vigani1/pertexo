@@ -19,7 +19,7 @@ import {
   lockExecutionArtifactReferences,
   requireNodeArtifactReference,
 } from '../../src/artifacts/references/locks.repository.js';
-import { serializeStoredExecutionValue } from '../../src/runs/values/stored-execution.js';
+import { serializeStoredExecutionValue } from '../../src/shared/stored-execution.js';
 import {
   acceptFixture,
   actorUserId,

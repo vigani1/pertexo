@@ -13,7 +13,7 @@ import {
   change,
   asOwner,
 } from './workspace-deletion/fixture.js';
-import { IdempotencyRequestConflictError } from '../../src/runs/commands/acceptance/run-admission.errors.js';
+import { IdempotencyRequestConflictError } from '../../src/shared/command-receipt.errors.js';
 import { WorkspaceLifecycleConflictError } from '../../src/tenant-access/tenant-access.errors.js';
 
 beforeAll(beforeAllFixture1, 120_000);

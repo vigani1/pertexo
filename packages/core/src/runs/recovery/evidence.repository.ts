@@ -24,7 +24,7 @@ import type {
 import { branchContextSchema } from '../../attempts/validation/shared.js';
 import { StoredExecutionValueInvalidError } from '@pertexo/node-sdk';
 import type { StoredExecutionValue } from '@pertexo/database/schema';
-import { parseStoredExecutionValue } from '../values/stored-execution.js';
+import { parseStoredExecutionValue } from '../../shared/stored-execution.js';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 import {
   WorkflowRunNotExecutableError,

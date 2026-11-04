@@ -39,10 +39,8 @@ import {
   explainDocument,
 } from '../support/postgres/query-plan.js';
 import { Pool, type QueryResult } from 'pg';
-import {
-  IdempotencyRequestConflictError,
-  WorkspaceRunAdmissionDeniedError,
-} from '../../src/runs/commands/acceptance/run-admission.errors.js';
+import { WorkspaceRunAdmissionDeniedError } from '../../src/runs/commands/acceptance/run-admission.errors.js';
+import { IdempotencyRequestConflictError } from '../../src/shared/command-receipt.errors.js';
 import {
   WorkflowPublishedVersionConflictError,
   WorkflowRunReadCapacityError,

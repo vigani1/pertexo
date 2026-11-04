@@ -35,7 +35,7 @@ import { createWorkflowAuthoringStore } from '../../../src/authoring/workflows/w
 import { WorkflowNotFoundError } from '../../../src/authoring/workflows/workflow-authoring.errors.js';
 import { setVariableSet } from '../../support/variable-sets.js';
 import { createRetentionStore } from '../../../src/lifecycle/retention/retention.store.js';
-import { serializeStoredExecutionValue } from '../../../src/runs/values/stored-execution.js';
+import { serializeStoredExecutionValue } from '../../../src/shared/stored-execution.js';
 
 beforeAll(beforeAllFixture1);
 afterAll(afterAllFixture2);

@@ -1,4 +1,4 @@
-import { lockWorkspaceRunAdmission } from '../../runs/admission-locks.repository.js';
+import { lockWorkspaceRunAdmission } from '../../shared/workspace-fence.repository.js';
 import {
   withTenantScopedClient,
   withTenantScopedReadClient,

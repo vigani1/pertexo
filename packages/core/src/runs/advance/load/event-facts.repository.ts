@@ -7,7 +7,7 @@ import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import {
   parseStoredExecutionValue,
   storedExecutionValuesEqual,
-} from '../../values/stored-execution.js';
+} from '../../../shared/stored-execution.js';
 import type { PoolClient } from 'pg';
 
 import { CoordinatorRunStateCorruptError } from '../../state-errors.js';

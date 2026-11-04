@@ -9,7 +9,7 @@ import {
 } from '@pertexo/database/schema';
 import { workflowGraphStepSql } from '../../queries/execution/graph-step.js';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
-import { parseStoredExecutionValue } from '../../values/stored-execution.js';
+import { parseStoredExecutionValue } from '../../../shared/stored-execution.js';
 import { and, eq, desc, inArray, lt, or, sql } from 'drizzle-orm';
 import type { FolderScope } from '../../../shared/folder-access.types.js';
 import { workflowScopeSql } from '../../../shared/scope.repository.js';

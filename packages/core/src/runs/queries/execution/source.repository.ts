@@ -10,7 +10,7 @@ import {
 } from '@pertexo/database/schema';
 import type { FrozenWorkflowTestPins } from '@pertexo/database/schema';
 import { withWorkspaceReadTransaction } from '@pertexo/database/primitives';
-import { parseStoredExecutionValue } from '../../values/stored-execution.js';
+import { parseStoredExecutionValue } from '../../../shared/stored-execution.js';
 
 import {
   acquireDatabasePool,

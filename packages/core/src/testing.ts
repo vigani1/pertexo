@@ -128,11 +128,13 @@ export {
   type IdempotencyStatus,
 } from '@pertexo/database/primitives';
 export {
-  IdempotencyRecordCorruptError,
-  IdempotencyRequestConflictError,
   WorkspaceRunAdmissionDeniedError,
   WorkspaceRunQuotaExceededError,
 } from './runs/commands/acceptance/run-admission.errors.js';
+export {
+  IdempotencyRecordCorruptError,
+  IdempotencyRequestConflictError,
+} from './shared/command-receipt.errors.js';
 export { createPreviewRunStore } from './previews/runs/preview-run.store.js';
 export { claimPreviewDelivery } from './previews/attempts/claim.js';
 export { markPreviewDispatched } from './previews/attempts/mark-dispatched.js';

@@ -26,7 +26,7 @@ import {
 } from '../../runs/commands/acceptance/run-admission.errors.js';
 import { WorkflowAlreadyRunningError } from '../../runs/commands/acceptance/run-admission.errors.js';
 import type { InitialCheckpointFactory } from '../../runs/commands/initial-checkpoint.js';
-import { parseStoredExecutionValue } from '../../runs/values/stored-execution.js';
+import { parseStoredExecutionValue } from '../../shared/stored-execution.js';
 import { recordWorkflowTriggerSkip } from '../skips.repository.js';
 import { finishCoordinatedEvent } from './events.repository.js';
 import {

@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { parseStoredExecutionValue } from '../../../src/runs/values/stored-execution.js';
+import { parseStoredExecutionValue } from '../../src/shared/stored-execution.js';
 import {
   STORED_EXECUTION_VALUE_LIMITS,
   StoredExecutionValueInvalidError,
