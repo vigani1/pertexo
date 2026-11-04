@@ -131,14 +131,18 @@ async function readDatabaseTime(client: PoolClient): Promise<string> {
   return new Date(rows[0]?.now ?? Number.NaN).toISOString();
 }
 
-/** Returns whether a possibly dispatched unsafe step was among them. */
+/** Close physical work while preserving the current durable outcome, even before consumption. */
 async function closeOpenWork(
   client: PoolClient,
   input: Readonly<{ workspaceId: string; runId: string }>,
 ): Promise<boolean> {
   const db = drizzle(client);
   const nodes = await db
-    .select({ id: nodeRuns.id })
+    .select({
+      id: nodeRuns.id,
+      status: nodeRuns.status,
+      currentAttemptId: nodeRuns.currentAttemptId,
+    })
     .from(nodeRuns)
     .where(
       and(
@@ -148,45 +152,109 @@ async function closeOpenWork(
     )
     .for('update')
     .catch(rethrowQueryFailure);
-  const nodeIds = nodes.map(({ id }) => id);
+  const nodeIds = nodes.map((node) => node.id);
   if (nodeIds.length === 0) return false;
-  const closed = await db
-    .update(nodeAttempts)
-    .set({
-      status: sql`case when ${nodeAttempts.dispatchMarkedAt} is not null and ${nodeAttempts.sideEffectClass}='unsafe' then 'outcome_unknown' else 'canceled' end`,
-      leaseOwner: null,
-      leaseExpiresAt: null,
-      completedAt: sql`clock_timestamp()`,
-      updatedAt: sql`clock_timestamp()`,
+  const attempts = await db
+    .select({
+      id: nodeAttempts.id,
+      status: nodeAttempts.status,
+      sideEffectClass: nodeAttempts.sideEffectClass,
+      dispatchMarkedAt: nodeAttempts.dispatchMarkedAt,
+      executorFailureKind: nodeAttempts.executorFailureKind,
     })
+    .from(nodeAttempts)
     .where(
       and(
         eq(nodeAttempts.workspaceId, input.workspaceId),
         inArray(nodeAttempts.nodeRunId, nodeIds),
-        inArray(nodeAttempts.status, OPEN_STATUSES),
       ),
     )
-    .returning({
-      status: nodeAttempts.status,
-      nodeRunId: nodeAttempts.nodeRunId,
-    })
+    .for('update')
     .catch(rethrowQueryFailure);
-  const unknownNodes = closed
-    .filter(({ status }) => status === 'outcome_unknown')
-    .map(({ nodeRunId }) => nodeRunId);
-  await db
-    .update(nodeRuns)
-    .set({
-      status: sql`case when ${nodeRuns.id} in ${unknownNodes.length === 0 ? sql`(null::uuid)` : unknownNodes} then 'outcome_unknown' else 'canceled' end`,
-      ...TERMINAL_NODE_FIELDS,
-    })
-    .where(
-      and(
-        eq(nodeRuns.workspaceId, input.workspaceId),
-        inArray(nodeRuns.id, nodeIds),
-        inArray(nodeRuns.status, OPEN_STATUSES),
-      ),
+  const newlyUnknown = new Set(
+    attempts
+      .filter(
+        (attempt) =>
+          OPEN_STATUSES.some((status) => status === attempt.status) &&
+          attempt.sideEffectClass === 'unsafe' &&
+          attempt.dispatchMarkedAt !== null,
+      )
+      .map((attempt) => attempt.id),
+  );
+  for (const status of ['canceled', 'outcome_unknown'] as const) {
+    const ids = attempts
+      .filter(
+        (attempt) =>
+          OPEN_STATUSES.some((open) => open === attempt.status) &&
+          newlyUnknown.has(attempt.id) === (status === 'outcome_unknown'),
+      )
+      .map((attempt) => attempt.id);
+    if (ids.length === 0) continue;
+    await db
+      .update(nodeAttempts)
+      .set({
+        status,
+        leaseOwner: null,
+        leaseExpiresAt: null,
+        completedAt: sql`clock_timestamp()`,
+        updatedAt: sql`clock_timestamp()`,
+      })
+      .where(
+        and(
+          eq(nodeAttempts.workspaceId, input.workspaceId),
+          inArray(nodeAttempts.id, ids),
+        ),
+      )
+      .catch(rethrowQueryFailure);
+  }
+  const byId = new Map(attempts.map((attempt) => [attempt.id, attempt]));
+  type TerminalStatus =
+    'succeeded' | 'failed' | 'canceled' | 'timed_out' | 'outcome_unknown';
+  const groups = new Map<TerminalStatus, string[]>();
+  let uncertain = nodes.some((node) => node.status === 'outcome_unknown');
+  for (const node of nodes) {
+    if (!OPEN_STATUSES.some((status) => status === node.status)) continue;
+    const current =
+      node.currentAttemptId === null
+        ? undefined
+        : byId.get(node.currentAttemptId);
+    let status: TerminalStatus = 'canceled';
+    if (
+      current?.status === 'outcome_unknown' ||
+      current?.executorFailureKind === 'outcome_unknown' ||
+      (current !== undefined && newlyUnknown.has(current.id))
     )
-    .catch(rethrowQueryFailure);
-  return unknownNodes.length > 0;
+      status = 'outcome_unknown';
+    else if (current?.status === 'failed') status = 'failed';
+    else if (current?.status === 'timed_out' || current?.status === 'canceled')
+      status = current.status;
+    // A succeeded wait attempt leaves unfinished logical work; a running node carries its result.
+    else if (current?.status === 'succeeded' && node.status === 'running')
+      status = 'succeeded';
+    uncertain ||= status === 'outcome_unknown';
+    const ids = groups.get(status) ?? [];
+    ids.push(node.id);
+    groups.set(status, ids);
+  }
+  for (const [status, ids] of groups)
+    await db
+      .update(nodeRuns)
+      .set({
+        status,
+        ...TERMINAL_NODE_FIELDS,
+        ...(status === 'succeeded'
+          ? {
+              outputRef: sql`(select output_ref from app.node_attempts where workspace_id=${input.workspaceId} and id=${nodeRuns.currentAttemptId})`,
+            }
+          : {}),
+        safeErrorCode: sql`coalesce(${nodeRuns.safeErrorCode},(select safe_error_code from app.node_attempts where workspace_id=${input.workspaceId} and id=${nodeRuns.currentAttemptId}))`,
+      })
+      .where(
+        and(
+          eq(nodeRuns.workspaceId, input.workspaceId),
+          inArray(nodeRuns.id, ids),
+        ),
+      )
+      .catch(rethrowQueryFailure);
+  return uncertain;
 }
