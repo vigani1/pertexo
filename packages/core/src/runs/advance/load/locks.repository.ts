@@ -1,3 +1,4 @@
+import { TERMINAL_RUN_STATUSES } from '../../statuses.js';
 import { CoordinatorRunStateCorruptError } from '../../state-errors.js';
 import { and, asc, eq, exists, isNull, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
@@ -115,10 +116,13 @@ export async function lockRunForAdvance(
   runId: string,
 ) {
   const rows = await lockRunForSettlement(client, workspaceId, runId);
-  return rows.map((row) => {
+  return rows.flatMap((row) => {
     const revision = row.run.revision;
-    if (revision === null) throw new CoordinatorRunStateCorruptError(null);
-    return { ...row, run: { ...row.run, revision } };
+    if (revision === null) {
+      if (TERMINAL_RUN_STATUSES.has(row.run.status)) return [];
+      throw new CoordinatorRunStateCorruptError(null);
+    }
+    return [{ ...row, run: { ...row.run, revision } }];
   });
 }
 
