@@ -6,6 +6,7 @@ import {
   afterAllFixture2,
   createWebhookScenario,
   ownerQuery,
+  apiQuery,
   workspaceId,
   hash,
   checkpointFactory,
@@ -17,6 +18,7 @@ afterAll(afterAllFixture2);
 
 it('refuses external artifact descriptors outside the webhook workflow before creating a run', async () => {
   const scenario = await createWebhookScenario();
+  const other = await createWebhookScenario();
   const artifactId = randomUUID();
   const file = {
     kind: 'artifact',
@@ -33,6 +35,17 @@ it('refuses external artifact descriptors outside the webhook workflow before cr
       `workspaces/${workspaceId}/artifacts/${artifactId}`,
       file.mediaType,
       file.sha256,
+    ],
+  );
+  await apiQuery(
+    `insert into app.workflow_runs(id,workspace_id,workflow_id,workflow_version_id,trigger_type,status,completed_at,input_ref,input_ref_expires_at)
+    values($1,$2,$3,$4,'api','succeeded',clock_timestamp(),$5::json,clock_timestamp()+interval '1 day')`,
+    [
+      randomUUID(),
+      workspaceId,
+      other.verification.workflowId,
+      other.verification.workflowVersionId,
+      JSON.stringify({ kind: 'inline', value: { file } }),
     ],
   );
   await expect(

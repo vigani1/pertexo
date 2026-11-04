@@ -323,6 +323,32 @@ it('refuses callback artifact descriptors outside its workflow without saving a 
     ],
     workspaceId,
   );
+  const otherWorkflowId = crypto.randomUUID();
+  const otherVersionId = crypto.randomUUID();
+  await queryAsOwner(
+    `with source as (
+      select workflow.*,run.workflow_version_id from app.workflows workflow
+      join app.workflow_runs run on run.workflow_id=workflow.id where run.id=$3
+    ), new_workflow as (
+      insert into app.workflows(id,workspace_id,name,created_by)
+      select $1,workspace_id,'Other callback file owner',created_by from source
+    ) insert into app.workflow_versions(id,workspace_id,workflow_id,version_number,graph_json,checksum,executable_json,published_by)
+      select $2,version.workspace_id,$1,1,version.graph_json,version.checksum,version.executable_json,version.published_by
+      from app.workflow_versions version join source on source.workflow_version_id=version.id`,
+    [otherWorkflowId, otherVersionId, scope.runId],
+    workspaceId,
+  );
+  await executionQuery(
+    `insert into app.workflow_runs(id,workspace_id,workflow_id,workflow_version_id,trigger_type,status,completed_at,input_ref,input_ref_expires_at)
+    values($1,$2,$3,$4,'api','succeeded',clock_timestamp(),$5::json,clock_timestamp()+interval '1 day')`,
+    [
+      crypto.randomUUID(),
+      workspaceId,
+      otherWorkflowId,
+      otherVersionId,
+      JSON.stringify({ kind: 'inline', value: { file } }),
+    ],
+  );
   await expect(
     callbacks.respond({
       callback,
