@@ -21,6 +21,7 @@ export function assertPublicAddress(address: string): 4 | 6 {
   if (family === 4) {
     const value = ipv4Number(address);
     if (
+      isMetadataAddress(4, ipv4Words(address)) ||
       BLOCKED_IPV4_PREFIXES.some(([network, prefix]) =>
         matchesIpv4Prefix(value, ipv4Number(network), prefix),
       )
@@ -31,7 +32,8 @@ export function assertPublicAddress(address: string): 4 | 6 {
   if (family === 6) {
     const words = ipv6Words(address);
     const first = words[0] ?? 0;
-    if ((first & 0xe000) !== 0x2000) throw new Error('blocked address');
+    if (isMetadataAddress(6, words) || (first & 0xe000) !== 0x2000)
+      throw new Error('blocked address');
     if (
       BLOCKED_IPV6_PREFIXES.some(({ network, prefix }) =>
         matchesIpv6Prefix(words, network, prefix),
@@ -126,18 +128,31 @@ export type AllowedPrivateNetwork = Readonly<{
   prefix: number;
 }>;
 
-// Cloud metadata services hand out credentials; no allowlist reaches them.
+// Cloud metadata and host credential services cannot be exposed to workflow authors.
 const METADATA_NETWORKS = Object.freeze([
-  Object.freeze({
+  ...(
+    [
+      ['169.254.0.0', 16],
+      ['100.100.100.200', 32],
+      ['168.63.129.16', 32],
+    ] as const
+  ).map(([address, prefix]) => ({
     family: 4 as const,
-    words: ipv4Words('169.254.0.0'),
-    prefix: 16,
-  }),
-  Object.freeze({
+    words: ipv4Words(address),
+    prefix,
+  })),
+  ...(
+    [
+      ['fd00:ec2::', 32],
+      ['fd20:ce::254', 128],
+      ['fe80::a9fe:a9fe', 128],
+      ['fd00:a9fe:a9fe::1', 128],
+    ] as const
+  ).map(([address, prefix]) => ({
     family: 6 as const,
-    words: ipv6Words('fd00:ec2::'),
-    prefix: 32,
-  }),
+    words: ipv6Words(address),
+    prefix,
+  })),
 ]);
 
 function ipv4Words(address: string): readonly number[] {

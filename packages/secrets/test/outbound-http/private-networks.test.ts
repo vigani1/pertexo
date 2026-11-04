@@ -127,3 +127,78 @@ describe('operator-allowed private networks', () => {
     expect(dispatch).toHaveBeenCalledOnce();
   });
 });
+
+const metadataEndpoints = [
+  [
+    'AWS, GCP, Azure, Oracle, DigitalOcean, Hetzner and OpenStack IPv4',
+    '169.254.169.254',
+  ],
+  ['Alibaba', '100.100.100.200'],
+  ['Azure WireServer', '168.63.129.16'],
+  ['AWS IPv6', 'fd00:ec2::254'],
+  ['GCP IPv6', 'fd20:ce::254'],
+  ['OpenStack IPv6', 'fe80::a9fe:a9fe'],
+  ['Akamai/Linode IPv6', 'fd00:a9fe:a9fe::1'],
+  ['GKE metadata proxy', '169.254.169.252'],
+  ['EKS Pod Identity', '169.254.170.23'],
+  ['EKS Pod Identity IPv6', 'fd00:ec2::23'],
+  ['Kubernetes link-local', '169.254.1.1'],
+  ['Alibaba mapped IPv4', '::ffff:100.100.100.200'],
+  ['Alibaba compatible IPv4', '::100.100.100.200'],
+  ['Alibaba translated IPv4', '::ffff:0:100.100.100.200'],
+  ['Alibaba NAT64', '64:ff9b::6464:64c8'],
+  ['Alibaba local NAT64', '64:ff9b:1::6464:64c8'],
+  ['Alibaba 6to4', '2002:6464:64c8::'],
+] as const;
+
+it.each(metadataEndpoints)(
+  'blocks %s before transport, including under the broadest operator allowlist',
+  async (_provider, address) => {
+    for (const allowed of [undefined, '0.0.0.0/0,::/0']) {
+      const allowlist = parseAllowedPrivateNetworks(allowed);
+      expect(isAllowedPrivateAddress(address, allowlist)).toBe(false);
+      const dispatch = vi.fn(() =>
+        Promise.resolve({
+          status: 200,
+          headers: {},
+          body: (async function* () {
+            await Promise.resolve();
+            yield new Uint8Array();
+          })(),
+          close: () => undefined,
+        }),
+      );
+      const http = new SecureHttpClient(
+        {
+          resolve: () =>
+            Promise.resolve([
+              { address, family: address.includes(':') ? 6 : 4 },
+            ]),
+        },
+        { dispatch },
+        undefined,
+        { allowedPrivateNetworks: allowlist },
+      );
+      await expect(
+        http.execute(call('https://metadata.example.test/')),
+      ).rejects.toMatchObject({
+        code: 'ssrf_blocked',
+        possiblyDispatched: false,
+      });
+      expect(dispatch).not.toHaveBeenCalled();
+    }
+  },
+);
+
+it('keeps explicitly allowed services beside the metadata endpoints reachable', () => {
+  const allowlist = parseAllowedPrivateNetworks('0.0.0.0/0,::/0');
+  for (const address of [
+    '100.100.100.199',
+    '100.100.100.201',
+    '168.63.129.15',
+    'fd20:ce::253',
+    'fe80::1',
+    'fd00:a9fe:a9fe::2',
+  ])
+    expect(isAllowedPrivateAddress(address, allowlist)).toBe(true);
+});

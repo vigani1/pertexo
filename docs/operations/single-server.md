@@ -398,10 +398,23 @@ HTTP Request steps reach only public addresses unless
 `HTTP_ALLOWED_PRIVATE_NETWORKS` lists CIDRs on your own network, such as
 `10.0.0.0/8,192.168.1.20/32`. The worker reads it at startup and refuses a
 malformed entry. Inside those networks plain `http` is allowed; elsewhere a
-request must use `https`. Cloud metadata addresses (`169.254.0.0/16`,
-`fd00:ec2::/32`) stay blocked whatever the list says. Loopback passes only when
-listed, and anything listed is reachable by every workflow author, so list
-only services you mean to expose to workflows.
+request must use `https`. Cloud metadata and host credential endpoints stay
+blocked whatever the list says, including IPv4 embedded in IPv6:
+
+| Provider or service | Protected addresses |
+| --- | --- |
+| [AWS](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/retrieve-iid.html), [GCP](https://docs.cloud.google.com/compute/docs/metadata/overview), [Azure IMDS](https://learn.microsoft.com/en-us/azure/virtual-machines/instance-metadata-service), [Oracle](https://docs.oracle.com/en-us/iaas/Content/Compute/Tasks/gettingmetadata.htm), [DigitalOcean](https://docs.digitalocean.com/products/droplets/how-to/access-metadata/), [Hetzner](https://docs.hetzner.cloud/reference/cloud), [OpenStack](https://docs.openstack.org/nova/latest/admin/metadata-service.html) | `169.254.169.254`, covered by the protected `169.254.0.0/16` range |
+| [Alibaba](https://www.alibabacloud.com/help/en/ens/instance-metadata) | `100.100.100.200` |
+| [Azure WireServer](https://learn.microsoft.com/en-us/azure/virtual-network/what-is-ip-address-168-63-129-16) | `168.63.129.16` (host platform service, separate from IMDS) |
+| AWS IPv6 and [EKS Pod Identity](https://docs.aws.amazon.com/eks/latest/userguide/pod-identities.html) | `fd00:ec2::254`, `fd00:ec2::23`, covered by `fd00:ec2::/32`; `169.254.170.23` is covered by the IPv4 range |
+| GCP IPv6 | `fd20:ce::254` |
+| OpenStack IPv6 | `fe80::a9fe:a9fe` |
+| [Akamai/Linode IPv6](https://techdocs.akamai.com/cloud-computing/docs/access-the-metadata-service-api) | `fd00:a9fe:a9fe::1` |
+| Kubernetes link-local metadata proxies, including [GKE](https://docs.cloud.google.com/kubernetes-engine/docs/concepts/workload-identity) | All of `169.254.0.0/16`, including `169.254.169.252` |
+
+These restrictions apply to workflow HTTP requests, not host DNS or guest agents.
+Loopback passes only when listed, and anything listed is reachable by every
+workflow author, so list only services you mean to expose to workflows.
 
 `pnpm dev` starts the development-only separate-process runner, which is weaker
 than the deployed container and must not be used for untrusted production code.
