@@ -105,7 +105,9 @@ export async function lockArtifactReferences(
 ): Promise<void> {
   const references = collectArtifactReferences(value);
   if (references.length === 0) return;
-  const ids = [...new Set(references.map((ref) => ref.artifactId))].sort();
+  const ids = [
+    ...new Set(references.map((ref) => ref.artifactId.toLowerCase())),
+  ].sort();
   const result = await referenceRows(drizzle(client))
     .where(
       and(
@@ -156,7 +158,9 @@ async function lockExecutionReferences(
   references: readonly NodeArtifactReference[],
   previewRunId?: string,
 ): Promise<void> {
-  const ids = [...new Set(references.map((ref) => ref.artifactId))].sort();
+  const ids = [
+    ...new Set(references.map((ref) => ref.artifactId.toLowerCase())),
+  ].sort();
   const db = transaction.db;
   const producer = alias(previewRuns, 'producer');
   const consumer = alias(previewRuns, 'consumer');
@@ -212,7 +216,11 @@ export async function lockActorArtifactReferences(
 ): Promise<void> {
   const references = collectArtifactReferences(value);
   if (references.length === 0) return;
-  const ids = [...new Set(references.map((reference) => reference.artifactId))];
+  const ids = [
+    ...new Set(
+      references.map((reference) => reference.artifactId.toLowerCase()),
+    ),
+  ];
   const visible = await visibleTransactionArtifactIds(
     transaction,
     { workspaceId: transaction.workspaceId, actorId },
@@ -231,7 +239,9 @@ export async function lockWorkflowArtifactReferences(
   const references = collectArtifactReferences(value);
   if (references.length === 0) return;
   const ids = [
-    ...new Set(references.map((reference) => reference.artifactId)),
+    ...new Set(
+      references.map((reference) => reference.artifactId.toLowerCase()),
+    ),
   ].sort();
   const rows = await referenceRows(db)
     .where(
