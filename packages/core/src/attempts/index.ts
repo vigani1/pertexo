@@ -28,3 +28,5 @@ export type {} from './completion/attempt-completion.repository.js';
 export type {} from './leases/claim-refusal.repository.js';
 
 export type {} from './dispatch/uncertainty.repository.js';
+
+export type {} from './attempt-reconciliation.repository.js';

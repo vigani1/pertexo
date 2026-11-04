@@ -12,7 +12,7 @@ import {
 } from '@pertexo/database/schema';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 import { withoutNulls, type OperatorDecision } from './decision.js';
-import { enqueue } from './enqueue.js';
+import { enqueue } from '../../outbox/enqueue-delivery.repository.js';
 
 /** Asks a worker to reconcile a published workflow's triggers again. */
 export async function retryTriggerReconciliation(

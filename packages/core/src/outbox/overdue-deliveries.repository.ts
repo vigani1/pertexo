@@ -4,7 +4,7 @@ import type { Pool } from 'pg';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { inboxReceipts, outboxEvents } from '@pertexo/database/schema';
 import { DELIVERY_CONSUMER } from './delivery-consumers.js';
-import { REPAIRABLE_DELIVERY_JOB_NAMES } from './dispatcher/outbox-dispatcher.store.js';
+import { REPAIRABLE_DELIVERY_JOB_NAMES } from './delivery-consumers.js';
 
 /** About a day of redeliveries, once the delay reaches its ceiling. */
 const MAXIMUM_REDELIVERIES = 30;

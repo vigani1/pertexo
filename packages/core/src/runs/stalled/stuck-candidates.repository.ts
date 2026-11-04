@@ -7,7 +7,7 @@ import {
   stalledPublicationEligible,
 } from './stalled-eligibility.repository.js';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
-import { RUN_DELIVERY_JOB_NAMES } from '../../outbox/dispatcher/outbox-dispatcher.store.js';
+import { RUN_DELIVERY_JOB_NAMES } from '../../outbox/delivery-consumers.js';
 import type {
   StuckWorkCursor,
   StuckWorkPosition,

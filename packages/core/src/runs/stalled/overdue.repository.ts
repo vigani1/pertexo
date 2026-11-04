@@ -7,7 +7,7 @@ import {
   workflowRuns,
   outboxEvents,
 } from '@pertexo/database/schema';
-import { RUN_DELIVERY_JOB_NAMES } from '../../outbox/dispatcher/outbox-dispatcher.store.js';
+import { RUN_DELIVERY_JOB_NAMES } from '../../outbox/delivery-consumers.js';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import {
   stalledRunEligible,

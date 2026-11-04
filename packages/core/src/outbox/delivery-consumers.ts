@@ -15,3 +15,15 @@ export const DELIVERY_CONSUMER = Object.freeze({
   'replay-workflow-run': 'operator-run-replay',
   'start-error-workflow': 'error-workflow',
 } as const);
+
+/** The job kinds a stranded run depends on, and which can be rebuilt from it. */
+export const RUN_DELIVERY_JOB_NAMES = [
+  'advance-workflow-run',
+  'execute-node-attempt',
+] as const;
+
+/** Owners other than runs reconcile their own failed delivery identity. */
+export const REPAIRABLE_DELIVERY_JOB_NAMES = [
+  ...RUN_DELIVERY_JOB_NAMES,
+  'start-error-workflow',
+] as const;
