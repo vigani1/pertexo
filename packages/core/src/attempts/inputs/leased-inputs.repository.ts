@@ -39,7 +39,7 @@ export async function readLeasedInputs(client: PoolClient, { lease }: Input) {
         eq(nodeAttempts.nodeRunId, nodeRuns.id),
       ),
     )
-    .innerJoin(
+    .leftJoin(
       runCheckpoints,
       and(
         eq(runCheckpoints.workspaceId, workflowRuns.workspaceId),

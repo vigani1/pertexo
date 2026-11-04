@@ -1,3 +1,4 @@
+import { isCurrentAttemptLease } from './attempt-completion.repository.js';
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { nodeRuns, nodeAttempts, outboxEvents } from '@pertexo/database/schema';
@@ -75,16 +76,10 @@ function assertActiveLease(
   row: LockedAttemptRow,
   receipt: CompletionReceiptRow,
 ): void {
-  const staleAttemptLease =
-    row.attemptStatus !== 'running' ||
-    !row.currentAttempt ||
-    row.nodeStatus !== 'running' ||
-    row.leaseOwner !== input.lease.workerId ||
-    row.fenceToken !== input.lease.fenceToken ||
-    row.leaseExpiresAt === null ||
-    !row.leaseValid ||
-    receipt.completedAt !== null;
-  if (staleAttemptLease) {
+  if (
+    !isCurrentAttemptLease(input.lease, row) ||
+    receipt.completedAt !== null
+  ) {
     throw new NodeAttemptReconciliationRequiredError();
   }
 }

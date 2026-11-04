@@ -18,7 +18,10 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import { readVariableSetValues } from '../../variables/values.repository.js';
 import { workflowNodeFailureValueSchema } from '@pertexo/workflow-model';
 import type { Pool, PoolClient } from 'pg';
-import { NodeAttemptStateCorruptError } from '../node-attempt.errors.js';
+import {
+  NodeAttemptReconciliationRequiredError,
+  NodeAttemptStateCorruptError,
+} from '../node-attempt.errors.js';
 import type {
   NodeAttemptStoredInputs,
   LoadInputsInput,
@@ -91,7 +94,7 @@ export async function loadNodeAttemptInputs(
     async (client) => {
       const current = await readLeasedInputs(client, input);
       const row = current[0];
-      if (row === undefined) throw new NodeAttemptStateCorruptError();
+      if (row === undefined) throw new NodeAttemptReconciliationRequiredError();
       let runInput: unknown = null;
       if (row.inputRef !== null) {
         const stored = decodeStoredValue(() =>
