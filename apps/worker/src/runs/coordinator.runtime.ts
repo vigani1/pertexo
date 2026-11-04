@@ -138,6 +138,10 @@ function queueHandler(
           workspaceId: delivery.data.workspaceId,
           runId: delivery.data.runId,
           safeErrorCode: UNADVANCEABLE_RUN_CODE,
+          ...(error instanceof CoordinatorRunStateCorruptError &&
+          error.revision !== undefined
+            ? { expectedRevision: error.revision }
+            : {}),
           delivery: {
             outboxEventId: delivery.data.outboxEventId,
             payloadChecksum: canonicalOutboxPayloadChecksum(delivery.data),
