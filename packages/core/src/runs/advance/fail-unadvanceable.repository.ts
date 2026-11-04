@@ -7,7 +7,11 @@ import {
   claimReceipt,
   completeReceipt,
 } from '../../attempts/completion/receipts.repository.js';
-import type { NodeAttemptLease } from '../../attempts/node-attempt.js';
+import { isCurrentClaimRefusal } from '../../attempts/leases/claim-refusal.repository.js';
+import type {
+  NodeAttemptClaimRefusal,
+  NodeAttemptLease,
+} from '../../attempts/node-attempt.js';
 import { persistConsumedCalls } from '../calls/persist.repository.js';
 import { persistConsumedTasks } from '../pending-tasks/lifecycle/persist.repository.js';
 import { TERMINAL_NODE_FIELDS } from './persist/settlement.repository.js';
@@ -46,6 +50,7 @@ export type FailUnadvanceableInput = Readonly<{
   /** The advance that found the run unadvanceable, whose slot binding ends here. */
   delivery?: CoordinatorAdvanceDelivery;
   attemptLease?: NodeAttemptLease;
+  claimRefusal?: NodeAttemptClaimRefusal;
   signal: AbortSignal;
 }>;
 
@@ -90,23 +95,14 @@ export function failUnadvanceableRun(
           'duplicate'
       )
         return 'stale';
-      if (input.attemptLease !== undefined) {
-        const lease = input.attemptLease;
-        if (
-          lease.workspaceId !== workspaceId ||
-          lease.runId !== runId ||
-          lease.workflowVersionId !== run.workflow_version_id
-        )
-          return 'stale';
-        await validateDelivery(client, lease);
-        const [attempt] = await lockCompletionAttempt(client, { lease });
-        if (!isCurrentAttemptLease(lease, attempt)) return 'stale';
-        if (
-          (await claimReceipt(client, workspaceId, lease.delivery)) ===
-          'completed'
-        )
-          return 'stale';
-      }
+      if (
+        !(await claimEmergencyAttemptReceipt(
+          client,
+          input,
+          run.workflow_version_id,
+        ))
+      )
+        return 'stale';
 
       if (run.revision === null)
         await drizzle(client)
@@ -167,6 +163,8 @@ export function failUnadvanceableRun(
         await completeCoordinatorReceipt(client, workspaceId, delivery);
       if (input.attemptLease !== undefined)
         await completeReceipt(client, workspaceId, input.attemptLease.delivery);
+      if (input.claimRefusal !== undefined)
+        await completeReceipt(client, workspaceId, input.claimRefusal.delivery);
       return status;
     },
   ).catch((error: unknown) => {
@@ -340,4 +338,45 @@ function emergencyNodeStatus(
   if (current.status === 'succeeded' && nodeStatus === 'running')
     return 'succeeded';
   return 'canceled';
+}
+
+/** Match the authority that observed the failure before ending any attempt work. */
+async function claimEmergencyAttemptReceipt(
+  client: PoolClient,
+  input: FailUnadvanceableInput,
+  workflowVersionId: string,
+): Promise<boolean> {
+  const { workspaceId, runId } = input;
+  if (input.attemptLease !== undefined) {
+    const lease = input.attemptLease;
+    if (
+      lease.workspaceId !== workspaceId ||
+      lease.runId !== runId ||
+      lease.workflowVersionId !== workflowVersionId
+    )
+      return false;
+    await validateDelivery(client, lease);
+    const [attempt] = await lockCompletionAttempt(client, { lease });
+    if (!isCurrentAttemptLease(lease, attempt)) return false;
+    if (
+      (await claimReceipt(client, workspaceId, lease.delivery)) === 'completed'
+    )
+      return false;
+  }
+
+  if (input.claimRefusal !== undefined) {
+    const report = input.claimRefusal;
+    if (
+      report.workspaceId !== workspaceId ||
+      report.runId !== runId ||
+      !(await isCurrentClaimRefusal(client, report))
+    )
+      return false;
+    if (
+      (await claimReceipt(client, workspaceId, report.delivery)) === 'completed'
+    )
+      return false;
+  }
+
+  return true;
 }

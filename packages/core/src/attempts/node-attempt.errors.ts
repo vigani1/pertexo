@@ -1,3 +1,4 @@
+import type { NodeAttemptClaimRefusal } from './node-attempt.js';
 export class NodeAttemptDeliveryMismatchError extends Error {
   public override readonly name = 'NodeAttemptDeliveryMismatchError';
   public constructor() {
@@ -30,8 +31,11 @@ export class NodeAttemptConnectionFenceError extends Error {
 
 export class NodeAttemptStateCorruptError extends Error {
   public override readonly name = 'NodeAttemptStateCorruptError';
-  public constructor() {
-    super('Persisted node attempt state is invalid');
+  public constructor(
+    readonly claimRefusal?: NodeAttemptClaimRefusal,
+    options?: ErrorOptions,
+  ) {
+    super('Persisted node attempt state is invalid', options);
   }
 }
 

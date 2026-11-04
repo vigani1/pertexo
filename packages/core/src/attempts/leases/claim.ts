@@ -13,7 +13,8 @@ import {
   DeliveryMismatch,
   NodeAttemptStateCorruptError,
 } from '../node-attempt.errors.js';
-import { branchContextSchema } from '../validation/shared.js';
+import { readyClaimScope } from './claim-refusal.repository.js';
+import type { branchContextSchema } from '../validation/shared.js';
 import {
   SETTLED_ATTEMPT_STATUSES,
   type ClaimDeliveryInput,
@@ -54,18 +55,25 @@ export async function claimNodeAttemptDelivery(
         // recovery, so a repeat of this job has nothing left to do either way.
         if (row.attemptStatus === 'running')
           return Object.freeze({ kind: 'duplicate' as const });
-        if (row.attemptStatus !== 'ready' || row.nodeStatus !== 'ready')
-          throw new NodeAttemptStateCorruptError();
-
-        // Already-admitted work needs a lease to commit its control outcome.
-        // The handler reads durable cancellation/deadline state before execution.
-        const branchContext =
-          row.branchContext === null
-            ? undefined
-            : branchContextSchema.safeParse(row.branchContext);
-        if (branchContext !== undefined && !branchContext.success)
-          throw new NodeAttemptStateCorruptError();
-        const scope = branchContext?.data ?? {};
+        let scope;
+        try {
+          scope = readyClaimScope(row);
+        } catch (error) {
+          if (error instanceof NodeAttemptStateCorruptError)
+            throw new NodeAttemptStateCorruptError(
+              {
+                workspaceId: input.workspaceId,
+                runId: input.runId,
+                nodeRunId: input.nodeRunId,
+                attemptId: input.attemptId,
+                delivery: input.delivery,
+                checkpointRevision: runRow.checkpointRevision,
+                fenceToken: row.fenceToken,
+              },
+              { cause: error },
+            );
+          throw error;
+        }
 
         const claimed = await drizzle(client)
           .update(nodeAttempts)

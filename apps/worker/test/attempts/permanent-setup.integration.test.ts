@@ -22,7 +22,12 @@ beforeAll(prepareHttpIntegrationTestTsFixture);
 beforeEach(resetHttpIntegrationTestTsFixture);
 
 describeIntegration('Permanent attempt setup failures', () => {
-  it.each(['checkpoint', 'missing-node'] as const)(
+  it.each([
+    'checkpoint',
+    'missing-node',
+    'branch-context',
+    'claim-state',
+  ] as const)(
     'ends a %s failure before dispatch rather than cycling fresh recovered deliveries',
     async (damage) => {
       if (fixtureEncryption === undefined)
@@ -43,17 +48,23 @@ describeIntegration('Permanent attempt setup failures', () => {
       );
       try {
         const scenario = await admitProviderScenario(runtime, 'slack');
-        await withOwner((client) =>
-          damage === 'checkpoint'
-            ? client.query(
-                'update app.run_checkpoints set scheduler_state=$2 where workflow_run_id=$1',
-                [scenario.accepted.runId, { corrupt: true }],
-              )
-            : client.query(
-                "update app.node_runs set node_id='missing-node' where id=$1",
-                [scenario.attempt.node_run_id],
-              ),
-        );
+        await withOwner((client) => {
+          if (damage === 'checkpoint')
+            return client.query(
+              'update app.run_checkpoints set scheduler_state=$2 where workflow_run_id=$1',
+              [scenario.accepted.runId, { corrupt: true }],
+            );
+          const statements = {
+            'missing-node':
+              "update app.node_runs set node_id='missing-node' where id=$1",
+            'branch-context': `update app.node_runs set branch_context='{"bad":"stored"}'::jsonb where id=$1`,
+            'claim-state':
+              "update app.node_runs set status='running' where id=$1",
+          };
+          return client.query(statements[damage], [
+            scenario.attempt.node_run_id,
+          ]);
+        });
         const published = await runtime.producer.publish(
           attemptJob(scenario.accepted.runId, scenario.attempt),
         );

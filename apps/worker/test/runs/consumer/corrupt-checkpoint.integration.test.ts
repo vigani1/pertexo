@@ -52,11 +52,16 @@ describe.runIf(f.enabled)(
     }, 60_000);
     afterAll(f.restoreServicesAndClose);
 
-    it.each(['nextEventSequence', 'deadlineExpired', 'missing'])(
+    it.each(['nextEventSequence', 'deadlineExpired', 'missing', 'capacity'])(
       'ends a run with damaged %s after bounded real worker retries',
       async (field) => {
         const accepted = await acceptRun();
-        if (field === 'missing')
+        if (field === 'capacity')
+          await f.ownerQuery(
+            `insert into app.run_events(workspace_id,workflow_run_id,sequence,type,payload) select $1,$2,n,'run.cancel_requested','{}'::jsonb from generate_series(2,10002) n`,
+            [f.workspaceId, accepted.runId],
+          );
+        else if (field === 'missing')
           await f.ownerQuery(
             'delete from app.run_checkpoints where workflow_run_id=$1',
             [accepted.runId],

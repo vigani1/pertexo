@@ -75,5 +75,6 @@ export type RunAdvanceResult =
       revision: number;
     }>
   | Readonly<{
-      kind: 'not_found' | 'capacity_exceeded';
-    }>;
+      kind: 'not_found';
+    }>
+  | Readonly<{ kind: 'capacity_exceeded'; revision: number }>;

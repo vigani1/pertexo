@@ -25,7 +25,10 @@ export type CoordinatorHandlerStateErrorCode =
 export class CoordinatorHandlerStateError extends Error {
   public override readonly name = 'CoordinatorHandlerStateError';
 
-  public constructor(readonly code: CoordinatorHandlerStateErrorCode) {
+  public constructor(
+    readonly code: CoordinatorHandlerStateErrorCode,
+    readonly revision?: number,
+  ) {
     super(`Coordinator delivery cannot advance: ${code}`);
   }
 }
@@ -84,6 +87,8 @@ export function createCoordinatorHandler(
           : { traceparent: delivery.data.traceparent }),
         signal: context.signal,
       });
+      if (result.kind === 'capacity_exceeded')
+        throw new CoordinatorHandlerStateError(result.kind, result.revision);
       if (!('revision' in result))
         throw new CoordinatorHandlerStateError(result.kind);
       if (result.kind === 'committed') {
