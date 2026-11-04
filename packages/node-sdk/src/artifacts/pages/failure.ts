@@ -1,5 +1,15 @@
 import { NodeExecutorFailure } from '../../execution/node-execution.errors.js';
 
+export const FILE_PAGES_ERROR_CODE = Object.freeze({
+  storage: 'file.pages_storage',
+  record: 'file.pages_record',
+  text: 'file.pages_text',
+  bytes: 'file.pages_bytes',
+  items: 'file.pages_items',
+  pages: 'file.pages_pages',
+  descriptor: 'file.pages_descriptor',
+} as const);
+
 const messages = {
   storage:
     'File storage is unavailable. Ask the instance owner to configure it before saving items as pages.',
@@ -20,7 +30,7 @@ export function refuseFilePages(reason: keyof typeof messages): never {
     kind: 'failed',
     errorKind: 'configuration',
     possiblyDispatched: false,
-    safeErrorCode: `file.pages_${reason}`,
+    safeErrorCode: FILE_PAGES_ERROR_CODE[reason],
     errorSummary: messages[reason],
   });
 }

@@ -10,12 +10,37 @@ import {
   type JsonValue,
 } from '@pertexo/node-sdk/server';
 
-export function refuseUtility(code: string, summary: string): never {
+export const UTILITY_ERROR_CODE = Object.freeze({
+  invalid_data: 'utility.invalid_data',
+  text_fields: 'utility.text_fields',
+  result_text: 'utility.result_text',
+  result_too_large: 'utility.result_too_large',
+  too_many_items: 'utility.too_many_items',
+  xml_name: 'utility.xml_name',
+  xml_data: 'utility.xml_data',
+  xml_input: 'utility.xml_input',
+  xml_root: 'utility.xml_root',
+  xml_malformed: 'utility.xml_malformed',
+  xml_dtd: 'utility.xml_dtd',
+  xml_depth: 'utility.xml_depth',
+  xml_size: 'utility.xml_size',
+  html_selector: 'utility.html_selector',
+  html_depth: 'utility.html_depth',
+  html_size: 'utility.html_size',
+  crypto_input: 'utility.crypto_input',
+  hmac_connection: 'utility.hmac_connection',
+  hmac_unavailable: 'utility.hmac_unavailable',
+} as const);
+
+export function refuseUtility(
+  code: keyof typeof UTILITY_ERROR_CODE,
+  summary: string,
+): never {
   throw new NodeExecutorFailure({
     kind: 'failed',
     errorKind: 'configuration',
     possiblyDispatched: false,
-    safeErrorCode: `utility.${code}`,
+    safeErrorCode: UTILITY_ERROR_CODE[code],
     errorSummary: summary,
   });
 }

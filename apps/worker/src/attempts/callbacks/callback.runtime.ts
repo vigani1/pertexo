@@ -1,3 +1,4 @@
+import { CALLBACK_ERROR_CODE } from '@pertexo/node-sdk/server';
 import { callbackWaitConfigSchema } from '@pertexo/workflow-model';
 import { CallbackCapacityError, type CallbackStore } from '@pertexo/core/runs';
 import {
@@ -26,7 +27,7 @@ export function createCallbackRuntime(
           kind: 'failed',
           errorKind: 'configuration',
           possiblyDispatched: false,
-          safeErrorCode: 'execution.configuration',
+          safeErrorCode: CALLBACK_ERROR_CODE.configuration,
           errorSummary:
             'Use Test workflow to try a live callback. Single-step previews never issue callback credentials.',
         });
@@ -76,7 +77,7 @@ export function createCallbackRuntime(
             kind: 'failed',
             errorKind: 'configuration',
             possiblyDispatched: false,
-            safeErrorCode: 'execution.configuration',
+            safeErrorCode: CALLBACK_ERROR_CODE.configuration,
             errorSummary: error.message,
           });
         if (signal.aborted) throw signal.reason;
@@ -84,7 +85,7 @@ export function createCallbackRuntime(
           kind: 'retry',
           errorKind: 'network',
           possiblyDispatched: false,
-          safeErrorCode: 'execution.network',
+          safeErrorCode: CALLBACK_ERROR_CODE.network,
           errorSummary:
             'The callback could not be prepared. Check the callback key configuration and database availability.',
         });

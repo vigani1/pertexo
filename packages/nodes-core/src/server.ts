@@ -17,3 +17,6 @@ export function createCoreNodeRegistry(): NodeRegistry {
     executors: CORE_NODE_EXECUTOR_REGISTRATIONS,
   });
 }
+
+export { UTILITY_ERROR_CODE } from './data/utilities/result.js';
+export { FILE_CREATION_ERROR_CODE } from './data/create-file/failure.js';

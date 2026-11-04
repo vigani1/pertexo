@@ -2,6 +2,12 @@ import { FILE_TRANSFER_NO_PROGRESS_MILLIS } from '@pertexo/node-sdk';
 import { pipeline, Transform, Readable } from 'node:stream';
 import { NodeExecutorFailure } from '@pertexo/node-sdk/server';
 import { ArtifactSourceCleanupError } from './consume.js';
+export const FILE_TRANSFER_ERROR_CODE = Object.freeze({
+  deadline: 'execution.file_deadline',
+  progressTimeout: 'execution.file_progress_timeout',
+  io: 'execution.file_scratch_io',
+} as const);
+
 function timedOut({
   deadline,
 }: Readonly<{ deadline: boolean }>): NodeExecutorFailure {
@@ -10,8 +16,8 @@ function timedOut({
     errorKind: 'timeout',
     possiblyDispatched: false,
     safeErrorCode: deadline
-      ? 'execution.file_deadline'
-      : 'execution.file_progress_timeout',
+      ? FILE_TRANSFER_ERROR_CODE.deadline
+      : FILE_TRANSFER_ERROR_CODE.progressTimeout,
     errorSummary: deadline
       ? 'The execution deadline expired during the file transfer.'
       : 'The file transfer made no byte progress for 60 seconds. Check storage or the receiving service before retrying.',
@@ -108,7 +114,7 @@ export function withByteProgress(
       kind: 'retry',
       errorKind: 'internal',
       possiblyDispatched: false,
-      safeErrorCode: 'execution.file_scratch_io',
+      safeErrorCode: FILE_TRANSFER_ERROR_CODE.io,
       errorSummary:
         'File bytes could not be read. Check worker storage before retrying.',
     });

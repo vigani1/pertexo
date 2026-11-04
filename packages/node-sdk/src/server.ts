@@ -96,3 +96,6 @@ export {
   safeNumberProperty,
   normalizeUnknownError,
 } from './execution/unknown-error.js';
+
+export { FILE_PAGES_ERROR_CODE } from './artifacts/pages/failure.js';
+export { CALLBACK_ERROR_CODE } from './callbacks/failure.js';

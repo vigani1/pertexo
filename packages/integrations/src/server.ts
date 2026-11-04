@@ -85,3 +85,7 @@ export {
   PROVIDER_HTTP_ERROR_CODE,
 } from './providers/http.errors.js';
 export type { ProviderHttpErrorCode } from './providers/http.errors.js';
+
+export { EMAIL_ATTACHMENT_ERROR_CODES } from './email/attachments/plan.js';
+export { HTTP_PAGINATION_FAILURES } from './http-request/pagination/failure.js';
+export { HTTP_OAUTH2_FAILURES } from './http-request/execution/oauth2-failure.js';

@@ -1,6 +1,6 @@
 import { NodeExecutorFailure } from '@pertexo/node-sdk/server';
 
-const descriptions = {
+export const HTTP_PAGINATION_FAILURES = {
   'http.pagination_origin_changed':
     'The next page points to another origin. Pagination can only follow the original service.',
   'http.pagination_too_large':
@@ -15,7 +15,7 @@ const descriptions = {
 export class HttpPaginationFailure extends NodeExecutorFailure {
   public override readonly name = 'HttpPaginationFailure';
   public constructor(
-    public readonly code: keyof typeof descriptions,
+    public readonly code: keyof typeof HTTP_PAGINATION_FAILURES,
     public readonly page: number,
   ) {
     super({
@@ -26,12 +26,12 @@ export class HttpPaginationFailure extends NodeExecutorFailure {
           : 'provider',
       possiblyDispatched: false,
       safeErrorCode: code,
-      errorSummary: `Page ${String(page)}: ${descriptions[code]}`,
+      errorSummary: `Page ${String(page)}: ${HTTP_PAGINATION_FAILURES[code]}`,
     });
     if (!Number.isInteger(page) || page < 1 || page > 100)
       throw new TypeError('Invalid pagination page');
   }
   public get summary(): string {
-    return `Page ${String(this.page)}: ${descriptions[this.code]}`;
+    return `Page ${String(this.page)}: ${HTTP_PAGINATION_FAILURES[this.code]}`;
   }
 }

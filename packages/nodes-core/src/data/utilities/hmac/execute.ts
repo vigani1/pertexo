@@ -6,7 +6,7 @@ import {
   ProviderExecutionRateLimitError,
   type NodeExecutionInvocation,
 } from '@pertexo/node-sdk/server';
-import { refuseUtility } from '../result.js';
+import { refuseUtility, UTILITY_ERROR_CODE } from '../result.js';
 import type { HmacConfig } from './hmac.schemas.js';
 
 export async function signHmac(
@@ -70,7 +70,7 @@ export async function signHmac(
         ...(error instanceof ProviderExecutionRateLimitError
           ? { minimumRetryDelayMillis: error.retryAfterSeconds * 1000 }
           : {}),
-        safeErrorCode: 'utility.hmac_unavailable',
+        safeErrorCode: UTILITY_ERROR_CODE.hmac_unavailable,
         errorSummary: 'The signing key could not be read. Try again shortly.',
       });
     }

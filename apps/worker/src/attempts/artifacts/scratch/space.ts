@@ -1,4 +1,4 @@
-import { ArtifactTransfer } from './progress.js';
+import { ArtifactTransfer, FILE_TRANSFER_ERROR_CODE } from './progress.js';
 import {
   consumeArtifactChunks,
   ArtifactSourceCleanupError,
@@ -17,6 +17,13 @@ import {
 import path from 'node:path';
 import { NodeExecutorFailure } from '@pertexo/node-sdk/server';
 
+export const FILE_SCRATCH_ERROR_CODE = Object.freeze({
+  full: 'execution.file_scratch_full',
+  io: FILE_TRANSFER_ERROR_CODE.io,
+  cleanup: 'execution.file_scratch_cleanup',
+  size: 'execution.file_size',
+} as const);
+
 const ATTEMPT_BYTES = 20 * 1024 * 1024;
 const WORKER_BYTES = 1024 * 1024 * 1024;
 const HEADROOM_BYTES = 64 * 1024 * 1024;
@@ -27,7 +34,7 @@ function unavailable(reason: 'full' | 'io' | 'cleanup'): NodeExecutorFailure {
     kind: 'retry',
     errorKind: 'internal',
     possiblyDispatched: false,
-    safeErrorCode: `execution.file_scratch_${reason}`,
+    safeErrorCode: FILE_SCRATCH_ERROR_CODE[reason],
     errorSummary:
       reason === 'full'
         ? 'File scratch space is temporarily full. Retry after other file steps finish.'
@@ -224,7 +231,7 @@ export class ArtifactScratchSpace {
                 kind: 'failed',
                 errorKind: 'configuration',
                 possiblyDispatched: false,
-                safeErrorCode: 'execution.file_size',
+                safeErrorCode: FILE_SCRATCH_ERROR_CODE.size,
                 errorSummary:
                   'The file is too large. Split it into smaller files.',
               });

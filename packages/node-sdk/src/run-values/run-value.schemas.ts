@@ -1,6 +1,12 @@
 import { z } from 'zod';
 import { storedExecutionJsonStringBytes } from '../values/stored-json.js';
 
+export const RUN_VALUES_ERROR_CODE = Object.freeze({
+  limit: 'run.values_limit',
+  attemptExpired: 'run.values_attempt_expired',
+  unavailable: 'run.values_unavailable',
+} as const);
+
 export const RUN_VALUE_LIMITS = Object.freeze({
   pairs: 10,
   keyCharacters: 50,
