@@ -53,6 +53,11 @@ describe('the waiting steps an advance looks up', () => {
       }),
     });
     const otherRunId = await insertRun({});
+    const expected: {
+      kind: 'due_at';
+      invocationKey: string;
+      occurredAt: string;
+    }[] = [];
     await asAdmin(async (client) => {
       for (const [nodeId, kind, minutes, owner] of [
         ['due', 'node_wait', -1, runId],
@@ -61,29 +66,27 @@ describe('the waiting steps an advance looks up', () => {
         ['not-in-checkpoint', 'node_wait', -3, runId],
         ['foreign', 'node_wait', -4, otherRunId],
       ] as const) {
-        await client.query(
+        const stored = await client.query<{ due_at: Date }>(
           `insert into app.node_runs(id,workspace_id,workflow_run_id,node_id,invocation_key,branch_context,status,side_effect_class,wait_kind,resume_at,retry_due_at)
           values($1,$2,$3,$4,$5,'{}','waiting','safe',$6::varchar,
             case when $6::varchar='node_wait' then clock_timestamp()+($7::int*interval '1 minute') end,
-            case when $6::varchar='retry_backoff' then clock_timestamp()+($7::int*interval '1 minute') end)`,
+            case when $6::varchar='retry_backoff' then clock_timestamp()+($7::int*interval '1 minute') end) returning coalesce(resume_at,retry_due_at) due_at`,
           [randomUUID(), workspaceA, owner, nodeId, key(nodeId), kind, minutes],
         );
+        if (nodeId === 'due' || nodeId === 'retry') {
+          const row = stored.rows[0];
+          if (row === undefined) throw new Error('Waiting row not stored');
+          expected.push({
+            kind: 'due_at',
+            invocationKey: key(nodeId),
+            occurredAt: row.due_at.toISOString(),
+          });
+        }
       }
     });
     const result = await load(runId);
     expect(result).toMatchObject({ kind: 'ready' });
     if (result.kind !== 'ready') throw new Error('Waiting run unavailable');
-    expect(result.state.observations).toEqual([
-      {
-        kind: 'due_at',
-        invocationKey: key('due'),
-        occurredAt: expect.any(String),
-      },
-      {
-        kind: 'due_at',
-        invocationKey: key('retry'),
-        occurredAt: expect.any(String),
-      },
-    ]);
+    expect(result.state.observations).toEqual(expected);
   });
 });
