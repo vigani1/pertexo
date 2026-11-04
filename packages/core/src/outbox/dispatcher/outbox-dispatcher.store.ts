@@ -37,7 +37,12 @@ export const RUN_DELIVERY_JOB_NAMES = [
   'execute-node-attempt',
 ] as const;
 
-const runDeliveryJob = sql`${outboxEvents.jobName} in ${RUN_DELIVERY_JOB_NAMES}`;
+/** Owners other than runs reconcile their own failed delivery identity. */
+export const REPAIRABLE_DELIVERY_JOB_NAMES = [
+  ...RUN_DELIVERY_JOB_NAMES,
+  'start-error-workflow',
+] as const;
+const repairableDeliveryJob = sql`${outboxEvents.jobName} in ${REPAIRABLE_DELIVERY_JOB_NAMES}`;
 
 /** A queue under real load delivers well inside this; past it, the job is presumed lost. */
 const DELIVERY_CONFIRMATION_SECONDS = 60;
@@ -93,7 +98,7 @@ async function releaseOrFail(
       ? {
           failedAt: sql`clock_timestamp()`,
           // A run must not wait on a row that can never publish.
-          deliveryDueAt: sql`case when ${runDeliveryJob} then clock_timestamp() end`,
+          deliveryDueAt: sql`case when ${repairableDeliveryJob} then clock_timestamp() end`,
         }
       : {
           availableAt: sql`clock_timestamp() + ${input.retryDelayMillis}::double precision * interval '1 millisecond'`,

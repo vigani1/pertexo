@@ -154,6 +154,7 @@ it('upgrades a populated standalone test without changing its source identity or
       '0094_webhook_ingress_counter_storage.sql',
       '0095_public_form_lookup_standing.sql',
       '0096_schedule_retirement_state.sql',
+      '0097_error_workflow_delivery_repair.sql',
     ]);
     expect(
       (

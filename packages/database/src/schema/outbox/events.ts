@@ -90,6 +90,11 @@ export const outboxEvents = appSchema.table(
       'outbox_events_terminal_state_exclusive',
       sql`(NOT ((published_at IS NOT NULL) AND (failed_at IS NOT NULL)))`,
     ),
+    index('outbox_events_error_workflow_repair_idx')
+      .on(table.deliveryDueAt, table.id)
+      .where(
+        sql`(job_name='start-error-workflow' AND failed_at IS NOT NULL AND delivery_due_at IS NOT NULL)`,
+      ),
     index('outbox_events_delivery_due_idx')
       .on(table.deliveryDueAt, table.id)
       .where(sql`(delivery_due_at IS NOT NULL)`),

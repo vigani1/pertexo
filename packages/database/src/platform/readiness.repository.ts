@@ -3,7 +3,8 @@ import { sql } from 'drizzle-orm';
 import { QueryBuilder } from 'drizzle-orm/pg-core';
 import type { Pool } from 'pg';
 
-export const EXPECTED_MIGRATION_HEAD = '0096_schedule_retirement_state.sql';
+export const EXPECTED_MIGRATION_HEAD =
+  '0097_error_workflow_delivery_repair.sql';
 const MINIMUM_POSTGRES_MAJOR = 18;
 
 /**
