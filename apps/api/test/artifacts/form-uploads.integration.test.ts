@@ -118,7 +118,20 @@ async function publicForm() {
       headers: headers(),
       payload: {},
     });
-  return { workflowId, versionId, publicId, begin, finalize };
+  const submit = (uploadId: string, suppliedSession: string | null = session) =>
+    fixture.application.inject({
+      method: 'POST',
+      url: `/v1/forms/${publicId}/submit`,
+      headers: {
+        'x-pertexo-form-key': capability,
+        'idempotency-key': randomUUID(),
+        ...(suppliedSession === null
+          ? {}
+          : { 'x-pertexo-form-session': suppliedSession }),
+      },
+      payload: { versionId, values: { invoice: [uploadId] } },
+    });
+  return { workflowId, versionId, publicId, begin, finalize, submit };
 }
 
 integrationDescribe('form uploads over HTTP and object storage', () => {
@@ -153,6 +166,37 @@ integrationDescribe('form uploads over HTTP and object storage', () => {
     });
     // Repeating finalize is idempotent.
     expect((await form.finalize(reservation.upload.id)).statusCode).toBe(200);
+    expect((await form.submit(reservation.upload.id, null)).statusCode).toBe(
+      400,
+    );
+    expect((await form.submit(reservation.upload.id, token())).statusCode).toBe(
+      400,
+    );
+    const submitted = await form.submit(reservation.upload.id);
+    expect(submitted.statusCode, submitted.payload).toBe(200);
+    expect(submitted.json()).not.toHaveProperty('runId');
+    const runs = await fixture.withOwner(
+      async (client) =>
+        (
+          await client.query<{ trigger_type: string; input_ref: unknown }>(
+            'select trigger_type,input_ref from app.workflow_runs where workflow_id=$1',
+            [form.workflowId],
+          )
+        ).rows,
+    );
+    expect(runs).toHaveLength(1);
+    expect(runs[0]).toMatchObject({
+      trigger_type: 'form',
+      input_ref: {
+        value: {
+          values: {
+            invoice: [
+              { file: { kind: 'artifact', artifactId: reservation.upload.id } },
+            ],
+          },
+        },
+      },
+    });
   });
 
   it('refuses bytes that are not the type their name claims and keeps them unusable', async () => {
