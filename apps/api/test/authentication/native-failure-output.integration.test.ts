@@ -10,10 +10,22 @@ import {
   redisUrl,
 } from '../support/better-auth/api/environment.js';
 
-function resetInProcess(databaseUrl: string, email: string) {
+function resetInProcess(
+  databaseUrl: string,
+  email: string,
+  extra: Readonly<{
+    mode?: 'session_lookup' | 'sign_up';
+    cookie?: string;
+  }> = {},
+) {
   const child = fork(
     fileURLToPath(
-      new URL('./native-failure-process.fixture.ts', import.meta.url),
+      new URL(
+        extra.mode === undefined
+          ? './native-failure-process.fixture.ts'
+          : './session-failure-process.fixture.ts',
+        import.meta.url,
+      ),
     ),
     {
       execArgv: ['--import', 'tsx'],
@@ -50,7 +62,7 @@ function resetInProcess(databaseUrl: string, email: string) {
       clearTimeout(timer);
       resolve({ code, stdout, stderr, response });
     });
-    child.send({ databaseUrl, redisUrl, email });
+    child.send({ databaseUrl, redisUrl, email, ...extra });
   });
 }
 
@@ -64,6 +76,99 @@ describe.runIf(betterAuthIntegrationEnabled)(
         return Promise.resolve();
       },
     });
+
+    it.each(['session_lookup', 'sign_up'] as const)(
+      'keeps %s storage failures out of process output and retains request correlation',
+      async (mode) => {
+        const email = `private-${mode}@example.test`;
+        let cookie: string | undefined;
+        if (mode === 'session_lookup') {
+          await api.signUp(email, '/login?verified=true');
+          cookie = (await api.signIn(email)).cookie;
+          const healthy = await resetInProcess(databaseUrl, email, {
+            mode,
+            cookie,
+          });
+          expect(healthy.code).toBe(0);
+          expect(healthy.response).toMatchObject({ status: 200 });
+          await api.database()
+            .query(`create function public.reject_native_user(value text) returns boolean language plpgsql as $$ begin raise exception 'private-session-database: %', value; end $$;
+          alter table app.users enable row level security;
+          create policy reject_native_user on app.users for select to pertexo_app using(public.reject_native_user(email))`);
+        } else {
+          await api.database()
+            .query(`create function public.reject_native_user_insert() returns trigger language plpgsql as $$ begin raise exception 'private-user-database: %', new.email; end $$;
+          create trigger reject_native_user_insert before insert on app.users for each row execute function public.reject_native_user_insert()`);
+        }
+        let result: Awaited<ReturnType<typeof resetInProcess>>;
+        try {
+          result = await resetInProcess(databaseUrl, email, {
+            mode,
+            ...(cookie === undefined ? {} : { cookie }),
+          });
+        } finally {
+          if (mode === 'session_lookup')
+            await api
+              .database()
+              .query(
+                'drop policy reject_native_user on app.users; alter table app.users disable row level security; drop function public.reject_native_user(text)',
+              );
+          else
+            await api
+              .database()
+              .query(
+                'drop trigger reject_native_user_insert on app.users; drop function public.reject_native_user_insert()',
+              );
+        }
+        expect(result.code).toBe(0);
+        expect(result.response).toMatchObject({
+          status: mode === 'session_lookup' ? 500 : 400,
+          body: {
+            code:
+              mode === 'session_lookup'
+                ? 'internal.unexpected'
+                : 'request.invalid',
+            requestId: expect.any(String) as unknown,
+          },
+          requestId: expect.any(String) as unknown,
+        });
+        const requestId = (result.response as { requestId: string }).requestId;
+        for (const text of [
+          result.stdout,
+          result.stderr,
+          JSON.stringify(result.response),
+        ])
+          for (const privateValue of [
+            email,
+            'private-session-database',
+            'private-user-database',
+            'DrizzleQueryError',
+            'params:',
+            'select *',
+            'insert into',
+          ])
+            expect(text).not.toContain(privateValue);
+        const records = (result.stdout + result.stderr)
+          .trim()
+          .split('\n')
+          .filter(Boolean)
+          .map((line) => JSON.parse(line) as Record<string, unknown>);
+        expect(
+          records.some(
+            (record) => record.requestId === requestId && record.level === 50,
+          ),
+        ).toBe(true);
+        if (mode === 'sign_up')
+          expect(
+            records.filter(
+              (record) => record.event === 'authentication.failed',
+            ),
+          ).toMatchObject([
+            { flow: 'sign_up', reason: 'internal_failure', requestId },
+          ]);
+      },
+      30000,
+    );
 
     it('keeps storage parameters and reset proofs out of stdout, stderr and HTTP, with one correlated safe diagnostic', async () => {
       const email = 'private-reset-owner@example.test';
