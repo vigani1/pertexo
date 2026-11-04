@@ -96,3 +96,4 @@ export type {
   TestEventScope,
 } from './webhooks/test-events/webhook-test-event.types.js';
 export type {} from './schedules/schedule-run-input.schemas.js';
+export { DEFAULT_WEBHOOK_ENDPOINT_BURST_LIMIT } from './webhooks/ingress-limits.js';

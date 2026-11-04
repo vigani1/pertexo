@@ -119,7 +119,7 @@ export type {
   CallbackIdentity,
 } from './pending-tasks/callbacks/callback.types.js';
 export type { CallbackStore } from './pending-tasks/callbacks/callback.store.js';
-export { DEFAULT_INSTANCE_LIMITS } from './instance-limits.js';
+export { DEFAULT_RUN_CAPACITY_LIMITS } from './run-capacity-limits.js';
 export {
   parseStoredExecutionValue,
   prepareStoredExecutionValue,
