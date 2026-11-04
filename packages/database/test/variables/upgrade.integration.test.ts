@@ -196,6 +196,7 @@ it('backfills current and retained historical sets, fixed empty sets and purged 
         '0093_schedule_retirement_storage.sql',
         '0094_webhook_ingress_counter_storage.sql',
         '0095_public_form_lookup_standing.sql',
+        '0096_schedule_retirement_state.sql',
       ]);
       expect(
         (

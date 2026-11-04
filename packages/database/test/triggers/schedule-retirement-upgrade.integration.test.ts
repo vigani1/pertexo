@@ -40,6 +40,10 @@ it('preserves populated schedules on upgrade and stores caller-chosen retirement
         'owner',$4,clock_timestamp(),clock_timestamp()+interval '5 minutes')`,
       [triggerId, workspaceId, `trigger:sha256:${'b'.repeat(64)}`, token],
     );
+    await admin.query(
+      'update app.workflows set published_version_id=$1 where id=$2',
+      [versionId, workflowId],
+    );
     const state = async () =>
       (
         await admin.query<{ state: Record<string, unknown> }>(
@@ -47,7 +51,8 @@ it('preserves populated schedules on upgrade and stores caller-chosen retirement
           [triggerId],
         )
       ).rows[0];
-    const before = await state();
+    const seeded = await state();
+    const before = { state: { ...seeded?.state, retired_at: null } };
     await upgrade();
     expect(await state()).toEqual(before);
     const client = await admin.connect();

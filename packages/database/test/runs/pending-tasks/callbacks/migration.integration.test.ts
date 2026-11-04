@@ -141,6 +141,7 @@ it('upgrades populated human tasks without changing their decisions or context',
       '0093_schedule_retirement_storage.sql',
       '0094_webhook_ingress_counter_storage.sql',
       '0095_public_form_lookup_standing.sql',
+      '0096_schedule_retirement_state.sql',
     ]);
     const after = (
       await owner.query<Record<string, unknown>>(
