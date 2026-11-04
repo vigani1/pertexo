@@ -12,6 +12,7 @@ import {
   type NodeExecutionRuntime,
 } from '@pertexo/node-sdk/server';
 import { provideHttpClient } from '../../src/providers/http-client.js';
+import type { ProviderHttpClient } from '@pertexo/integrations/server';
 import { createPlatformNodeRegistry } from '../../src/providers/node-registry.js';
 import { executorFailureCompletion } from '../../src/attempts/delivery/executor-failure.js';
 
@@ -28,11 +29,12 @@ const encodings = [
   'basic',
   'basic-password',
 ] as const;
-type Encoding = (typeof encodings)[number] | 'mixed';
+type Encoding = (typeof encodings)[number] | 'mixed' | 'ascii';
 const encode = (value: string, encoding: Encoding): string => {
   switch (encoding) {
     case 'json':
       return value;
+    case 'ascii':
     case 'mixed':
       return value;
     case 'unicode':
@@ -85,6 +87,8 @@ const server = createServer((incoming, response) => {
     body = json
       .split(JSON.stringify(echoed))
       .join(JSON.stringify(echoed).replaceAll('p', '\\u0070'));
+  else if (encoding === 'ascii')
+    body = json.replaceAll('é', '\\u00e9').replaceAll('ÿ', '\\u00ff');
 
   // Each escape or multibyte sequence crosses stream writes.
   for (const byte of Buffer.from(body)) response.write(Buffer.from([byte]));
@@ -113,7 +117,8 @@ it.each([
       (mode) => ({ encoding, mode }),
     ),
   ),
-  ...['inline', 'pagination', 'page-artifact'].map((mode) => ({
+  ...['artifact'].map((mode) => ({ encoding: 'ascii' as const, mode })),
+  ...['inline', 'artifact', 'pagination', 'page-artifact'].map((mode) => ({
     encoding: 'mixed' as const,
     mode,
   })),
@@ -125,7 +130,7 @@ it.each([
         ? 'Basic ' + Buffer.from('user:' + credential).toString('base64')
         : credential;
     const stored: Buffer[] = [];
-    const httpClient = provideHttpClient(
+    const client = provideHttpClient(
       new SecureHttpClient(
         {
           resolve: () => Promise.resolve([{ address: '127.0.0.1', family: 4 }]),
@@ -135,6 +140,19 @@ it.each([
         { allowedPrivateNetworks: parseAllowedPrivateNetworks('127.0.0.1/32') },
       ),
     );
+    const httpClient: ProviderHttpClient = {
+      ...client,
+      executeStreaming: (request, consume) =>
+        client.executeStreaming(request, (response) =>
+          consume({
+            ...response,
+            body: (async function* () {
+              for await (const chunk of response.body)
+                for (const byte of chunk) yield Uint8Array.of(byte);
+            })(),
+          }),
+        ),
+    };
     const runtime: NodeExecutionRuntime = {
       workspaceId: connectionId,
       runId: connectionId,
@@ -249,6 +267,17 @@ it.each([
         expect(result.output).toMatchObject({
           items: [{ credential: '[Redacted]' }],
         });
+      if (mode === 'artifact') {
+        const decoded: unknown = JSON.parse(
+          Buffer.concat(stored).toString('utf8'),
+        );
+        expect(decoded).toMatchObject({
+          credential: '[Redacted]',
+          '[Redacted]': 'key echo',
+          items: [{ credential: '[Redacted]' }],
+        });
+        expect(JSON.stringify(decoded)).not.toContain(credential);
+      }
       if (mode === 'artifact' || mode === 'page-artifact')
         expect(stored.length).toBeGreaterThan(0);
     }
