@@ -16,3 +16,5 @@ export type {} from './dispatcher/outbox-dispatcher.types.js';
 export type {} from './dispatcher/outbox-dispatcher.store.js';
 export type {} from './overdue-deliveries.repository.js';
 export type {} from './retention.js';
+
+export type {} from './enqueue-delivery.repository.js';

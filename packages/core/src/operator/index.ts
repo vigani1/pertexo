@@ -28,4 +28,4 @@ export {
 
 // Stalled-work recovery settles attempts the same way (ADR 091: import these directly).
 export type {} from './handlers/attempts.repository.js';
-export type {} from './handlers/enqueue.js';
+export type {} from '../outbox/enqueue-delivery.repository.js';
