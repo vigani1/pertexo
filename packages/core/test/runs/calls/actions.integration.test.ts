@@ -1,3 +1,10 @@
+import { CORE_NODE_CATALOG } from '@pertexo/nodes-core';
+import {
+  buildWorkflowExecutable,
+  composeExecutableCatalog,
+} from '@pertexo/workflow-engine';
+import { advanceRun } from '../../../src/runs/advance/advance-run.js';
+import { graph } from '../engine/support/workflow.fixture.js';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   beforeAllFixture1,
@@ -30,6 +37,69 @@ import {
 beforeAll(beforeAllFixture1);
 afterAll(afterAllFixture2);
 describe('ordinary run acceptance as a durable Call action', () => {
+  it('persists the real non-callable refusal without accepting a child', async () => {
+    const catalog = composeExecutableCatalog(CORE_NODE_CATALOG);
+    const published = buildWorkflowExecutable({ catalog, graph: graph() });
+    const fixture = await pending(false, {
+      ...published,
+      parent: (target) => {
+        const base = graph();
+        return buildWorkflowExecutable({
+          catalog,
+          graph: {
+            ...base,
+            nodes: [
+              base.nodes[0]!,
+              {
+                ...base.nodes[0]!,
+                id: 'call',
+                definition: { key: 'core.call', version: 1 },
+                config: { target },
+                inputMappings: { input: { kind: 'run_input', path: '$' } },
+              },
+              {
+                ...base.nodes[1]!,
+                inputMappings: {
+                  result: { kind: 'node_output', nodeId: 'call', path: '$' },
+                },
+              },
+            ],
+            edges: [
+              {
+                id: 'manual-call',
+                source: { nodeId: 'manual', port: 'out' },
+                target: { nodeId: 'call', port: 'in' },
+              },
+              {
+                id: 'call-terminate',
+                source: { nodeId: 'call', port: 'out' },
+                target: { nodeId: 'terminate', port: 'in' },
+              },
+            ],
+          },
+        });
+      },
+    });
+    await advanceRun(
+      { runs, calls, verification: { catalog }, maximumAdmissions: 1 },
+      fixture.input,
+    );
+    expect(await outcome(fixture.parentRunId)).toMatchObject({
+      status: 'refused',
+      safe_error_code: 'call_target_not_callable',
+      child_run_id: null,
+      slot_lent: false,
+    });
+    expect(
+      (
+        await admin.query(
+          'select id from app.workflow_runs where workflow_id=$1',
+          [fixture.childWorkflowId],
+        )
+      ).rows,
+    ).toEqual([]);
+  });
+
   it.each(['request', 'settlement'] as const)(
     'does not spawn after an opposing parent cancellation %s commits',
     async (kind) => {

@@ -122,6 +122,42 @@ describe('ADR 057 current capacity authority', () => {
     });
   });
 
+  it('preserves stored bigint bytes above 2^53 and selects only the authorized workspace counter', async () => {
+    for (const [workspace, bytes] of [
+      [busyWorkspace, '9007199254740993'],
+      [quietWorkspace, '17'],
+    ] as const) {
+      await inWorkspace('owner', workspace, {
+        text: `insert into app.workspace_artifact_capacity(workspace_id,charged_bytes,charged_count,byte_limit,artifact_count_limit)
+          values($1,$2::bigint,2,9223372036854775807,0)`,
+        values: [workspace, bytes],
+      });
+    }
+    const result = await runs.usageCapacity({
+      workspaceId: busyWorkspace,
+      actorId: person,
+    });
+    expect(result.artifacts).toEqual({
+      chargedBytes: '9007199254740993',
+      byteLimit: '9223372036854775807',
+      chargedCount: 2,
+      artifactCountLimit: 0,
+      source: 'stored',
+    });
+    expect(result.asOf).toMatch(/\.\d{6}Z$/u);
+    expect(
+      (
+        await runs.usageCapacity({
+          workspaceId: quietWorkspace,
+          actorId: person,
+        })
+      ).artifacts.chargedBytes,
+    ).toBe('17');
+    await expect(
+      runs.usageCapacity({ workspaceId: busyWorkspace, actorId: randomUUID() }),
+    ).rejects.toBeInstanceOf(WorkspaceAccessDeniedError);
+  });
+
   it('counts active reservations without double counting queued runs or other tenants', async () => {
     await addRuns(busyWorkspace, intake, {
       status: 'running',

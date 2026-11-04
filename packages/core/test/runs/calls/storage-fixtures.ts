@@ -12,9 +12,24 @@ import {
 } from '../../lifecycle/calls/fixtures.js';
 import { randomUUID } from '../../lifecycle/retention.support.js';
 
-export async function declarationFixture(value: unknown = { declared: true }) {
+export async function declarationFixture(
+  value: unknown = { declared: true },
+  published?: Readonly<{
+    envelope: unknown;
+    checksum: string;
+    parent?: NonNullable<
+      Parameters<typeof createFamily>[0]
+    >['parentExecutable'];
+  }>,
+) {
   const family = await createFamily({
-    executableJson: { graph: { nodes: [] } },
+    executableJson: published?.envelope ?? { graph: { nodes: [] } },
+    ...(published === undefined
+      ? {}
+      : { executableChecksum: published.checksum }),
+    ...(published?.parent === undefined
+      ? {}
+      : { parentExecutable: published.parent }),
   });
   await admin.query('delete from app.workflow_calls where id=$1', [
     family.callId,
@@ -121,7 +136,7 @@ export async function declarationFixture(value: unknown = { declared: true }) {
         target: {
           workflowId: family.childWorkflowId,
           workflowVersionId: family.childVersionId,
-          executableChecksum: checksum,
+          executableChecksum: published?.checksum ?? checksum,
         },
         input: { kind: 'inline', attemptId },
       },
