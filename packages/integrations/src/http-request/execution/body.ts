@@ -1,3 +1,4 @@
+import { redactResponseJsonStream } from './response-json-stream.js';
 import { redactResponseJson } from './response-json.js';
 import { Buffer } from 'node:buffer';
 
@@ -243,10 +244,14 @@ export async function consumeResponseBody(
       buffered.push(chunk);
       byteLength += chunk.byteLength;
       if (byteLength > inlineLimit) {
+        const body = continueBody(buffered, iterator, () => {
+          bodyOwnership.cleanupStarted = true;
+        });
+        const json =
+          response.bodyEncoding === 'utf8' &&
+          JSON_MEDIA_TYPE.test(response.headers['content-type'] ?? '');
         return await writeArtifact(artifacts, {
-          body: continueBody(buffered, iterator, () => {
-            bodyOwnership.cleanupStarted = true;
-          }),
+          body: json ? redactResponseJsonStream(body, redact, maxBytes) : body,
           mediaType:
             response.headers['content-type'] ?? 'application/octet-stream',
           maxBytes,
