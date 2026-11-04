@@ -1,3 +1,4 @@
+import { NodeAttemptHandlerStateError } from '../../src/attempts/delivery/handler-state-error.js';
 import { describe, expect, it, vi } from 'vitest';
 import type {
   NodeAttemptLease,
@@ -177,7 +178,7 @@ describe('node attempt execution engine', () => {
       catalog: catalog,
     });
 
-    expect(() =>
+    const prepare = () =>
       engine.prepare({
         projection,
         lease: {
@@ -188,8 +189,11 @@ describe('node attempt execution engine', () => {
             nodeId: 'missing',
           }),
         },
-      }),
-    ).toThrow('not in workflow');
+      });
+    expect(prepare).toThrow(NodeAttemptHandlerStateError);
+    expect(prepare).toThrow(
+      expect.objectContaining({ code: 'workflow_node_missing' }),
+    );
   });
 
   it.each([
