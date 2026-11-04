@@ -44,21 +44,24 @@ describe('ordinary run acceptance as a durable Call action', () => {
       ...published,
       parent: (target) => {
         const base = graph();
+        const [manual, terminate] = base.nodes;
+        if (manual === undefined || terminate === undefined)
+          throw new Error('Incomplete Call fixture');
         return buildWorkflowExecutable({
           catalog,
           graph: {
             ...base,
             nodes: [
-              base.nodes[0]!,
+              manual,
               {
-                ...base.nodes[0]!,
+                ...manual,
                 id: 'call',
                 definition: { key: 'core.call', version: 1 },
                 config: { target },
                 inputMappings: { input: { kind: 'run_input', path: '$' } },
               },
               {
-                ...base.nodes[1]!,
+                ...terminate,
                 inputMappings: {
                   result: { kind: 'node_output', nodeId: 'call', path: '$' },
                 },

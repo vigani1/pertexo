@@ -68,14 +68,15 @@ export async function createFamily(
        values($1,$2,'Call retention',$3)`,
       [workflowId, workspaceId, userId],
     );
-    const parent =
-      workflowId === parentWorkflowId
-        ? input.parentExecutable?.({
-            workflowId: childWorkflowId,
-            workflowVersionId: childVersionId,
-            executableChecksum: input.executableChecksum ?? checksum,
-          })
-        : undefined;
+    const executable = familyExecutable(
+      input,
+      workflowId === parentWorkflowId,
+      {
+        workflowId: childWorkflowId,
+        workflowVersionId: childVersionId,
+        executableChecksum: input.executableChecksum ?? checksum,
+      },
+    );
     await admin.query(
       `insert into app.workflow_versions
        (id,workspace_id,workflow_id,version_number,graph_json,executable_json,checksum,published_by)
@@ -84,9 +85,9 @@ export async function createFamily(
         versionId,
         workspaceId,
         workflowId,
-        parent?.checksum ?? input.executableChecksum ?? checksum,
+        executable.checksum,
         userId,
-        JSON.stringify(parent?.envelope ?? input.executableJson ?? {}),
+        JSON.stringify(executable.envelope),
       ],
     );
   }
@@ -222,4 +223,22 @@ export async function insertHint(workspaceId: string, runId: string) {
     ],
   );
   return outboxEventId;
+}
+
+function familyExecutable(
+  input: NonNullable<Parameters<typeof createFamily>[0]>,
+  isParent: boolean,
+  target: Readonly<{
+    workflowId: string;
+    workflowVersionId: string;
+    executableChecksum: string;
+  }>,
+) {
+  const parent = isParent ? input.parentExecutable?.(target) : undefined;
+  return (
+    parent ?? {
+      checksum: input.executableChecksum ?? checksum,
+      envelope: input.executableJson ?? {},
+    }
+  );
 }

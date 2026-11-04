@@ -44,12 +44,15 @@ describe('persisted upstream input populations', () => {
       });
       const nodeIds = Array.from(
         { length: population },
-        (_, index) => `upstream-${index}`,
+        (_, index) => `upstream-${String(index)}`,
       );
       await saveOutputs(lease.runId, nodeIds, 0);
       await saveOutputs(
         lease.runId,
-        Array.from({ length: 2_000 }, (_, index) => `retained-${index}`),
+        Array.from(
+          { length: 2_000 },
+          (_, index) => `retained-${String(index)}`,
+        ),
         10_000,
       );
       const foreignRun = await insertRun({});
