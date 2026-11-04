@@ -1,4 +1,4 @@
-import { StartupSettingError } from '@pertexo/observability';
+import { StartupSettingError } from '@pertexo/observability/startup';
 import { z } from 'zod';
 
 import {
