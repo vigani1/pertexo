@@ -5,11 +5,7 @@ import type {
   TestEventScope,
 } from '@pertexo/core/triggers';
 
-import {
-  webhookTestEventStartedSchema,
-  webhookTestEventSnapshotSchema,
-  type WebhookAuthentication,
-} from '@pertexo/contracts';
+import type { WebhookAuthentication } from '@pertexo/contracts';
 import type { WebhookTriggerEnvelopeEncryption } from '@pertexo/secrets/server';
 
 export class WebhookTestEventService {
@@ -39,7 +35,7 @@ export class WebhookTestEventService {
         endpointKeyHash: createHash('sha256').update(key).digest('hex'),
         secret: { ...sealed, id },
       });
-      return webhookTestEventStartedSchema.parse({
+      return {
         id,
         path: `/hooks/${key}/test`,
         ...result,
@@ -47,13 +43,13 @@ export class WebhookTestEventService {
         ...(input.authentication.mode === 'secret_url'
           ? {}
           : { signingSecret }),
-      });
+      };
     } finally {
       secret.fill(0);
     }
   }
-  async get(input: TestEventScope & { id: string }) {
-    return webhookTestEventSnapshotSchema.parse(await this.store.get(input));
+  get(input: TestEventScope & { id: string }) {
+    return this.store.get(input);
   }
   stop(input: TestEventScope & { id: string }) {
     return this.store.stop(input);

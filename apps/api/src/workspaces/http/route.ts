@@ -1,3 +1,4 @@
+import { responseProjection } from './response-projection.js';
 import {
   applyDecorators,
   createParamDecorator,
@@ -178,7 +179,11 @@ function checkedAnswer(
       `A ${String(status)} response isn't declared`,
     );
   if (!('body' in answer)) return value;
-  const checked = answer.body.schema.safeParse(value);
+  const schema =
+    process.env.NODE_ENV === 'production'
+      ? responseProjection(answer.body.schema)
+      : answer.body.schema;
+  const checked = schema.safeParse(value);
   if (checked.success) return checked.data;
   throw new RouteResponseContractError(
     `A ${String(status)} response didn't match ${answer.body.name}`,
