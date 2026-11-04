@@ -38,7 +38,7 @@ export type FailUnadvanceableInput = Readonly<{
   workspaceId: string;
   runId: string;
   safeErrorCode: string;
-  expectedRevision?: number | null;
+  expectedRevision: number | null | undefined;
   /** The advance that found the run unadvanceable, whose slot binding ends here. */
   delivery?: CoordinatorAdvanceDelivery;
   attemptDelivery?: NodeAttemptDeliveryIdentity;
@@ -79,13 +79,7 @@ export function failUnadvanceableRun(
           runId,
           delivery,
         );
-      if (
-        run.revision !== null &&
-        ((input.expectedRevision !== undefined &&
-          input.expectedRevision !== run.revision) ||
-          (delivery !== undefined && input.expectedRevision === undefined))
-      )
-        return 'stale';
+      if (isStaleEmergencyReport(run.revision, input)) return 'stale';
       if (
         delivery !== undefined &&
         (await claimCoordinatorReceipt(client, workspaceId, delivery)) ===
@@ -181,6 +175,17 @@ export function failUnadvanceableRun(
   });
 }
 
+/** A missing checkpoint is re-established corruption; other reports need their observed revision. */
+function isStaleEmergencyReport(
+  revision: number | null,
+  input: FailUnadvanceableInput,
+): boolean {
+  if (revision === null) return false;
+  return (
+    input.expectedRevision === undefined || input.expectedRevision !== revision
+  );
+}
+
 async function readDatabaseTime(client: PoolClient): Promise<string> {
   const { rows } = await drizzle(client)
     .execute<{ now: string }>(sql`select clock_timestamp() now`)
@@ -265,8 +270,6 @@ async function closeOpenWork(
       .catch(rethrowQueryFailure);
   }
   const byId = new Map(attempts.map((attempt) => [attempt.id, attempt]));
-  type TerminalStatus =
-    'succeeded' | 'failed' | 'canceled' | 'timed_out' | 'outcome_unknown';
   const groups = new Map<TerminalStatus, string[]>();
   let uncertain = nodes.some((node) => node.status === 'outcome_unknown');
   for (const node of nodes) {
@@ -275,19 +278,7 @@ async function closeOpenWork(
       node.currentAttemptId === null
         ? undefined
         : byId.get(node.currentAttemptId);
-    let status: TerminalStatus = 'canceled';
-    if (
-      current?.status === 'outcome_unknown' ||
-      current?.executorFailureKind === 'outcome_unknown' ||
-      (current !== undefined && newlyUnknown.has(current.id))
-    )
-      status = 'outcome_unknown';
-    else if (current?.status === 'failed') status = 'failed';
-    else if (current?.status === 'timed_out' || current?.status === 'canceled')
-      status = current.status;
-    // A succeeded wait attempt leaves unfinished logical work; a running node carries its result.
-    else if (current?.status === 'succeeded' && node.status === 'running')
-      status = 'succeeded';
+    const status = emergencyNodeStatus(node.status, current, newlyUnknown);
     uncertain ||= status === 'outcome_unknown';
     const ids = groups.get(status) ?? [];
     ids.push(node.id);
@@ -314,4 +305,33 @@ async function closeOpenWork(
       )
       .catch(rethrowQueryFailure);
   return uncertain;
+}
+
+type TerminalStatus =
+  'succeeded' | 'failed' | 'canceled' | 'timed_out' | 'outcome_unknown';
+
+function emergencyNodeStatus(
+  nodeStatus: typeof nodeRuns.$inferSelect.status,
+  current:
+    | Pick<
+        typeof nodeAttempts.$inferSelect,
+        'id' | 'status' | 'executorFailureKind'
+      >
+    | undefined,
+  newlyUnknown: ReadonlySet<string>,
+): TerminalStatus {
+  if (current === undefined) return 'canceled';
+  if (
+    current.status === 'outcome_unknown' ||
+    current.executorFailureKind === 'outcome_unknown' ||
+    newlyUnknown.has(current.id)
+  )
+    return 'outcome_unknown';
+  if (current.status === 'failed') return 'failed';
+  if (current.status === 'timed_out' || current.status === 'canceled')
+    return current.status;
+  // A succeeded wait attempt leaves unfinished logical work; a running node carries its result.
+  if (current.status === 'succeeded' && nodeStatus === 'running')
+    return 'succeeded';
+  return 'canceled';
 }

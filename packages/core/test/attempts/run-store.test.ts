@@ -35,6 +35,7 @@ const lease = {
   delivery,
   fenceToken: 1,
   invocationKey: `${identity.workflowVersionId}|node|b:|i:`,
+  checkpointRevision: 0,
   leaseExpiresAt: new Date(Date.now() + 60_000),
   nodeId: 'node',
   nodeRunId: identity.nodeRunId,

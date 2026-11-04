@@ -3,7 +3,12 @@ import { and, eq, exists, lt, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
-import { nodeRuns, nodeAttempts, workflowRuns } from '@pertexo/database/schema';
+import {
+  nodeRuns,
+  nodeAttempts,
+  workflowRuns,
+  runCheckpoints,
+} from '@pertexo/database/schema';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { NodeAttemptStateCorruptError } from '../node-attempt.errors.js';
 
@@ -95,5 +100,18 @@ export async function lockClaimCandidate(
     .catch(rethrowQueryFailure);
   const row = locked[0];
   if (row === undefined) throw new NodeAttemptStateCorruptError();
-  return { row, runRow };
+  const [checkpoint] = await db
+    .select({ revision: runCheckpoints.revision })
+    .from(runCheckpoints)
+    .where(
+      and(
+        eq(runCheckpoints.workspaceId, input.workspaceId),
+        eq(runCheckpoints.workflowRunId, input.runId),
+      ),
+    )
+    .catch(rethrowQueryFailure);
+  return {
+    row,
+    runRow: { ...runRow, checkpointRevision: checkpoint?.revision ?? null },
+  };
 }

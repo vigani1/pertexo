@@ -1,3 +1,8 @@
+import { Pool } from 'pg';
+import { afterAll } from 'vitest';
+import { databaseUrl, workerBaseUrl } from '../fixtures.js';
+import { failUnadvanceableRun } from '../../../../src/runs/advance/fail-unadvanceable.repository.js';
+import { claimDispatchAttempt } from '../node-attempts/fixture.js';
 import { expect, it } from 'vitest';
 import { asAdmin, rawStore, workspaceA } from '../fixtures.js';
 import { emergencyRun, query } from './emergency.fixture.js';
@@ -73,4 +78,53 @@ it('verifies authoritative delivery identity before changing emergency state', a
       )
     ).rows,
   ).toEqual([{ receipts: 0 }]);
+});
+
+const attemptsPool = new Pool({
+  connectionString: databaseUrl(workerBaseUrl),
+  max: 1,
+});
+afterAll(() => attemptsPool.end());
+it('refuses an unbound attempt emergency report rather than ending repaired work', async () => {
+  const lease = await claimDispatchAttempt('unbound-emergency');
+  await asAdmin((client) =>
+    client.query(
+      'update app.run_checkpoints set revision=revision+1 where workflow_run_id=$1',
+      [lease.runId],
+    ),
+  );
+  const before = await snapshot(lease.runId);
+  expect(
+    await failUnadvanceableRun(attemptsPool, {
+      workspaceId: workspaceA,
+      runId: lease.runId,
+      attemptDelivery: {
+        workspaceId: workspaceA,
+        runId: lease.runId,
+        nodeRunId: lease.nodeRunId,
+        attemptId: lease.attemptId,
+        delivery: lease.delivery,
+      },
+      expectedRevision: undefined,
+      safeErrorCode: 'execution.run_state_invalid',
+      signal: new AbortController().signal,
+    }),
+  ).toBe('stale');
+  expect(
+    await failUnadvanceableRun(attemptsPool, {
+      workspaceId: workspaceA,
+      runId: lease.runId,
+      expectedRevision: lease.checkpointRevision,
+      attemptDelivery: {
+        workspaceId: workspaceA,
+        runId: lease.runId,
+        nodeRunId: lease.nodeRunId,
+        attemptId: lease.attemptId,
+        delivery: lease.delivery,
+      },
+      safeErrorCode: 'execution.run_state_invalid',
+      signal: new AbortController().signal,
+    }),
+  ).toBe('stale');
+  expect(await snapshot(lease.runId)).toEqual(before);
 });

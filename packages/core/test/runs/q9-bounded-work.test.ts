@@ -82,6 +82,7 @@ function lease(
     sideEffectClass: 'safe' as const,
     workerId: 'q9-bounded-probe',
     fenceToken: 1,
+    checkpointRevision: 0,
     leaseExpiresAt: new Date(Date.now() + 60_000),
     delivery: {
       outboxEventId: randomUUID(),

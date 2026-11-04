@@ -62,6 +62,10 @@ export function queueHandler(
           workspaceId: delivery.data.workspaceId,
           runId: delivery.data.runId,
           safeErrorCode: UNADVANCEABLE_RUN_CODE,
+          expectedRevision:
+            error instanceof NodeAttemptHandlerStateError
+              ? error.revision
+              : undefined,
           attemptDelivery: {
             ...delivery.data,
             delivery: {

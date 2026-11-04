@@ -494,6 +494,7 @@ describe('Coordinator For Each persistence invariants', () => {
       sideEffectClass: 'safe' as const,
       workerId: 'attempt-worker-loop',
       fenceToken: 1,
+      checkpointRevision: 0,
       leaseExpiresAt: new Date(Date.now() + 3_600_000),
       delivery: {
         outboxEventId: randomUUID(),
