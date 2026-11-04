@@ -83,6 +83,7 @@ describe('the clock on a run’s history', () => {
           workspaceId: workspaceA,
           runId,
           safeErrorCode: 'run.unadvanceable',
+          expectedRevision: 0,
           signal,
         }),
       ).resolves.toBe('failed');

@@ -248,6 +248,7 @@ describe('writing to a run after its details were purged', () => {
         workspaceId: workspaceA,
         runId: lease.runId,
         safeErrorCode: 'coordinator.checkpoint_invalid',
+        expectedRevision: undefined,
         signal,
       }),
     ).resolves.toBe('not_active');

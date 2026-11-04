@@ -17,6 +17,8 @@ export type NodeAttemptLease = Readonly<{
   workspaceId: string;
   runId: string;
   workflowVersionId: string;
+  /** Checkpoint revision observed under the run lock at claim. */
+  checkpointRevision: number | null;
   nodeRunId: string;
   attemptId: string;
   attemptNumber: number;

@@ -73,6 +73,7 @@ export function lease(): NodeAttemptLease {
     sideEffectClass: 'safe',
     workerId: 'worker-1',
     fenceToken: 1,
+    checkpointRevision: 0,
     leaseExpiresAt: new Date('2026-08-21T00:01:00.000Z'),
     delivery: {
       outboxEventId: OUTBOX_EVENT_ID,

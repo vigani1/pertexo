@@ -159,6 +159,7 @@ function claimedAttemptLease(
     workspaceId: input.workspaceId,
     runId: input.runId,
     workflowVersionId: runRow.workflowVersionId,
+    checkpointRevision: runRow.checkpointRevision,
     nodeRunId: input.nodeRunId,
     attemptId: input.attemptId,
     attemptNumber: row.attemptNumber,
