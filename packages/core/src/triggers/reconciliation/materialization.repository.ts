@@ -1,10 +1,9 @@
 import { decodeStoredValue } from '../../shared/stored-values.js';
-import { and, desc, eq, exists, ne, sql } from 'drizzle-orm';
+import { and, desc, eq, exists, isNull, ne, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import {
   workflowTriggers,
-  workflowVersions,
   webhookTriggerEndpoints as endpoints,
   triggerSchedules as schedules,
 } from '@pertexo/database/schema';
@@ -105,8 +104,7 @@ async function retirePreviousResources(
   await db
     .update(schedules)
     .set({
-      status: 'disabled',
-      healthStatus: 'disabled',
+      retiredAt: sql`clock_timestamp()`,
       leaseOwner: null,
       leaseToken: null,
       leaseAcquiredAt: null,
@@ -117,7 +115,7 @@ async function retirePreviousResources(
       and(
         eq(schedules.workspaceId, workspaceId),
         exists(oldSchedule),
-        ne(schedules.status, 'disabled'),
+        isNull(schedules.retiredAt),
       ),
     )
     .catch(rethrowQueryFailure);
@@ -167,60 +165,69 @@ async function materializeSchedule(
   const desired = decodeStoredValue(() =>
     desiredScheduleConfig(row.desiredConfig),
   );
-  if (row.persistedFingerprint === null) {
-    const predecessor = alias(schedules, 'predecessor');
-    const [previous] = await drizzle(client)
-      .select({ schedule: predecessor })
-      .from(predecessor)
-      .innerJoin(
-        workflowTriggers,
-        eq(workflowTriggers.id, predecessor.triggerId),
-      )
-      .innerJoin(
-        workflowVersions,
-        eq(workflowVersions.id, workflowTriggers.workflowVersionId),
-      )
-      .where(
-        and(
-          eq(predecessor.workspaceId, workspaceId),
-          eq(workflowTriggers.workflowId, row.workflowId),
-          eq(workflowTriggers.nodeId, row.nodeId),
-          ne(workflowTriggers.workflowVersionId, row.versionId),
-        ),
-      )
-      .orderBy(desc(workflowVersions.versionNumber))
-      .limit(1)
-      .for('update', { of: predecessor })
-      .catch(rethrowQueryFailure);
-    const prior = previous?.schedule;
-    await drizzle(client)
-      .insert(schedules)
-      .values({
-        triggerId: row.id,
-        workspaceId,
-        recurrenceKind: desired.recurrence.kind,
-        cronExpression:
-          desired.recurrence.kind === 'cron'
-            ? desired.recurrence.expression
-            : null,
-        timezone:
-          desired.recurrence.kind === 'cron'
-            ? desired.recurrence.timezone
-            : null,
-        intervalMinutes:
-          desired.recurrence.kind === 'interval'
-            ? desired.recurrence.intervalMinutes
-            : null,
-        misfirePolicy: desired.misfirePolicy,
-        configFingerprint: row.configFingerprint,
-        ...scheduleOperationalState(prior, desired.recurrence, observedAt),
-      })
-      .catch(rethrowQueryFailure);
-  } else if (row.persistedFingerprint !== row.configFingerprint) {
+  if (
+    row.persistedFingerprint !== null &&
+    row.persistedFingerprint !== row.configFingerprint
+  )
     throw new WorkflowTriggerReconciliationMismatchError(
       'Materialized schedule configuration does not match its immutable trigger',
     );
-  }
+  const predecessor = alias(schedules, 'predecessor');
+  const [previous] = await drizzle(client)
+    .select({ schedule: predecessor })
+    .from(predecessor)
+    .innerJoin(workflowTriggers, eq(workflowTriggers.id, predecessor.triggerId))
+    .where(
+      and(
+        eq(predecessor.workspaceId, workspaceId),
+        eq(workflowTriggers.workflowId, row.workflowId),
+        eq(workflowTriggers.nodeId, row.nodeId),
+      ),
+    )
+    .orderBy(
+      sql`${predecessor.retiredAt} desc nulls first`,
+      desc(predecessor.createdAt),
+    )
+    .limit(1)
+    .for('update', { of: predecessor })
+    .catch(rethrowQueryFailure);
+  const prior = previous?.schedule;
+  // Reconciliation of the serving instance must not reset its cursor or lease.
+  if (prior?.triggerId === row.id && prior.retiredAt === null) return;
+  await drizzle(client)
+    .insert(schedules)
+    .values({
+      triggerId: row.id,
+      workspaceId,
+      recurrenceKind: desired.recurrence.kind,
+      cronExpression:
+        desired.recurrence.kind === 'cron'
+          ? desired.recurrence.expression
+          : null,
+      timezone:
+        desired.recurrence.kind === 'cron' ? desired.recurrence.timezone : null,
+      intervalMinutes:
+        desired.recurrence.kind === 'interval'
+          ? desired.recurrence.intervalMinutes
+          : null,
+      misfirePolicy: desired.misfirePolicy,
+      configFingerprint: row.configFingerprint,
+      ...scheduleOperationalState(prior, desired.recurrence, observedAt),
+      retiredAt: null,
+    })
+    .onConflictDoUpdate({
+      target: schedules.triggerId,
+      set: {
+        ...scheduleOperationalState(prior, desired.recurrence, observedAt),
+        retiredAt: null,
+        leaseOwner: null,
+        leaseToken: null,
+        leaseAcquiredAt: null,
+        leaseExpiresAt: null,
+        updatedAt: sql`clock_timestamp()`,
+      },
+    })
+    .catch(rethrowQueryFailure);
 }
 
 function scheduleOperationalState(

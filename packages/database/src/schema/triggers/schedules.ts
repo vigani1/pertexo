@@ -44,6 +44,7 @@ export const triggerSchedules = appSchema.table(
       .$type<'enabled' | 'disabled'>()
       .notNull()
       .default(sql`'enabled'::character varying`),
+    retiredAt: timestamp('retired_at', { withTimezone: true, mode: 'date' }),
     healthStatus: varchar('health_status', { length: 32 })
       .$type<ScheduleTriggerRecord['healthStatus']>()
       .notNull()

@@ -3,7 +3,7 @@ import { sql } from 'drizzle-orm';
 import { QueryBuilder } from 'drizzle-orm/pg-core';
 import type { Pool } from 'pg';
 
-export const EXPECTED_MIGRATION_HEAD = '0095_public_form_lookup_standing.sql';
+export const EXPECTED_MIGRATION_HEAD = '0096_schedule_retirement_state.sql';
 const MINIMUM_POSTGRES_MAJOR = 18;
 
 /**
