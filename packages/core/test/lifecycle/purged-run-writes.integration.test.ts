@@ -247,7 +247,7 @@ describe('writing to a run after its details were purged', () => {
       failUnadvanceableRun(worker, {
         workspaceId: workspaceA,
         runId: lease.runId,
-        safeErrorCode: 'coordinator.checkpoint_invalid',
+        safeErrorCode: 'execution.run_state_invalid',
         expectedRevision: undefined,
         signal,
       }),

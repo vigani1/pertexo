@@ -17377,6 +17377,26 @@
                     "outcome_unknown"
                   ]
                 },
+                "failureReasonCode": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "enum": [
+                        "execution.run_state_invalid",
+                        "execution.checkpoint_missing",
+                        "callable_result_missing",
+                        "callable_result_variable_missing",
+                        "callable_result_ambiguous",
+                        "callable_result_invalid",
+                        "callable_result_timed_out",
+                        "callable_result_bounds"
+                      ]
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
                 "triggerType": {
                   "type": "string",
                   "enum": [
@@ -17771,6 +17791,26 @@
                   "outcome_unknown"
                 ]
               },
+              "failureReasonCode": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "enum": [
+                      "execution.run_state_invalid",
+                      "execution.checkpoint_missing",
+                      "callable_result_missing",
+                      "callable_result_variable_missing",
+                      "callable_result_ambiguous",
+                      "callable_result_invalid",
+                      "callable_result_timed_out",
+                      "callable_result_bounds"
+                    ]
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
               "triggerType": {
                 "type": "string",
                 "enum": [
@@ -18008,6 +18048,26 @@
                   "canceled",
                   "timed_out",
                   "outcome_unknown"
+                ]
+              },
+              "failureReasonCode": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "enum": [
+                      "execution.run_state_invalid",
+                      "execution.checkpoint_missing",
+                      "callable_result_missing",
+                      "callable_result_variable_missing",
+                      "callable_result_ambiguous",
+                      "callable_result_invalid",
+                      "callable_result_timed_out",
+                      "callable_result_bounds"
+                    ]
+                  },
+                  {
+                    "type": "null"
+                  }
                 ]
               },
               "triggerType": {
@@ -19021,6 +19081,26 @@
                   "canceled",
                   "timed_out",
                   "outcome_unknown"
+                ]
+              },
+              "failureReasonCode": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "enum": [
+                      "execution.run_state_invalid",
+                      "execution.checkpoint_missing",
+                      "callable_result_missing",
+                      "callable_result_variable_missing",
+                      "callable_result_ambiguous",
+                      "callable_result_invalid",
+                      "callable_result_timed_out",
+                      "callable_result_bounds"
+                    ]
+                  },
+                  {
+                    "type": "null"
+                  }
                 ]
               },
               "triggerType": {

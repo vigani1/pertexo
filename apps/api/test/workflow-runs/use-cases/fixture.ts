@@ -61,12 +61,19 @@ export function run() {
   };
 }
 
+export function readRun() {
+  return { ...run(), replaySourceRunId: null, failureReasonCode: null };
+}
+export function listRun() {
+  return { ...readRun(), failedStep: null };
+}
+
 export function persistence() {
   const store = runPersistenceSpies();
   store.start.mockResolvedValue({ run: run(), replayed: false });
   store.replay.mockResolvedValue({ run: run(), replayed: false });
-  store.get.mockResolvedValue({ run: run(), nodes: [] });
-  store.list.mockResolvedValue({ items: [run()] });
+  store.get.mockResolvedValue({ run: readRun(), nodes: [] });
+  store.list.mockResolvedValue({ items: [listRun()] });
   store.cancel.mockResolvedValue({ run: run(), alreadyRequested: false });
   store.readInput.mockResolvedValue({ kind: 'expired' });
   store.readNodeRunOutput.mockResolvedValue(undefined);

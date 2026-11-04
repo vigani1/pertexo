@@ -23,7 +23,8 @@ import {
   runId,
   actor,
   authorization,
-  run,
+  readRun,
+  listRun,
   persistence,
   sessionId,
   workflowVersionId,
@@ -51,7 +52,7 @@ function tokenActor(scopes: readonly ApiTokenScope[]) {
 describe('workflow run application seams', () => {
   it('passes an exact run-value pair through paging without changing other filters', async () => {
     const fixture = persistence();
-    fixture.list.mockResolvedValue({ items: [run()] });
+    fixture.list.mockResolvedValue({ items: [listRun()] });
     await new ListWorkflowRunsUseCase(fixture.store, authorization()).execute({
       actor,
       routeWorkspaceId: workspaceId,
@@ -77,7 +78,7 @@ describe('workflow run application seams', () => {
     const fixture = persistence();
     fixture.list
       .mockResolvedValueOnce({
-        items: [run()],
+        items: [listRun()],
         nextCursor: {
           createdAt: '2026-08-21T12:00:00.000123Z',
           id: runId,
@@ -137,7 +138,7 @@ describe('workflow run application seams', () => {
     const fixture = persistence();
     fixture.list
       .mockResolvedValueOnce({
-        items: [run()],
+        items: [listRun()],
         nextCursor: {
           createdAt: '2026-08-21T12:00:00.000123Z',
           id: runId,
@@ -189,7 +190,7 @@ describe('workflow run application seams', () => {
       fixture.get.mockImplementation((input) =>
         Promise.resolve({
           run: {
-            ...run(),
+            ...readRun(),
             workflowName: input.includeWorkflowName ? 'Operations' : null,
           },
           nodes: [],
@@ -199,7 +200,7 @@ describe('workflow run application seams', () => {
         Promise.resolve({
           items: [
             {
-              ...run(),
+              ...listRun(),
               workflowName: input.includeWorkflowName ? 'Operations' : null,
             },
           ],
@@ -780,7 +781,7 @@ describe('workflow run application seams', () => {
     const fixture = persistence();
     fixture.get.mockResolvedValue({
       run: {
-        ...run(),
+        ...readRun(),
         startedAt: now,
         completedAt: now,
         deadlineAt: now,

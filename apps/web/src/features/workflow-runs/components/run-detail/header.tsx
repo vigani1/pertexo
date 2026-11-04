@@ -285,7 +285,7 @@ export function RunHeader({
       <RunDetailActions
         compact={compact}
         recoveryAction={
-          canReplayRun ? (
+          canReplayRun && run.failureReasonCode == null ? (
             <RunRecoveryAction
               key={`${userId}:${workspace.id}:${run.id}`}
               apiClient={apiClient}

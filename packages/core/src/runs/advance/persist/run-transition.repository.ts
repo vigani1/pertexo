@@ -124,7 +124,10 @@ export async function persistCoordinatorRunTransition(
       name.startsWith('run.') && TERMINAL_RUN_STATUSES.has(name.slice(4)),
   )?.occurredAt;
   const runFailure = plan.events.find(
-    ({ name }) => name === 'run.failed',
+    ({ name }) =>
+      name === 'run.failed' ||
+      name === 'run.timed_out' ||
+      name === 'run.outcome_unknown',
   )?.reasonCode;
   await drizzle(client)
     .update(workflowRuns)

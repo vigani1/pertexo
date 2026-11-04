@@ -1,3 +1,4 @@
+import { RunFailureNotice } from '../components/run-detail/failure-notice';
 import { PhoneFailureNotice } from '../components/run-detail/execution-history';
 import { RunBusinessValues } from '../components/run-detail/business-values';
 import { RunVariables } from '../components/run-detail/variables';
@@ -156,6 +157,7 @@ export function RunDetailPage(props: RunDetailPageProps) {
             delivery={snapshot.errorWorkflow}
             workspaceId={workspace.id}
           />
+          <RunFailureNotice snapshot={snapshot} />
           <RunBusinessValues values={run.runValues} />
           <RunVariables
             scope={{

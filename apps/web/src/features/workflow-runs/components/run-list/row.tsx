@@ -73,7 +73,7 @@ export function RunRow({
   });
   const layout = RUN_ROW_LAYOUT[variant];
   const inWorkflow = variant === 'workflow';
-  const failure = describeListedFailure(run.failedStep);
+  const failure = describeListedFailure(run.failedStep, run.failureReasonCode);
   return (
     <li
       data-slot="run-row"
@@ -132,11 +132,16 @@ export function RunRow({
           className={cn('relative z-10 md:row-start-1', layout.id)}
         />
       </div>
-      {failure.step === undefined ? null : (
+      {failure.step === undefined && failure.reason === undefined ? null : (
         // Where it went wrong, so the list answers "why" without a click.
         <p className="col-span-2 row-start-4 min-w-0 truncate text-xs text-muted-foreground md:col-start-2 md:col-end-[-1] md:row-start-2 md:-mt-1">
-          at <span className="text-foreground">{failure.step}</span>
-          {failure.reason === undefined ? null : ` · ${failure.reason}`}
+          {failure.step === undefined ? null : (
+            <>
+              at <span className="text-foreground">{failure.step}</span>
+              {failure.reason === undefined ? null : ' · '}
+            </>
+          )}
+          {failure.reason}
         </p>
       )}
       <RunAdmissionBlockers

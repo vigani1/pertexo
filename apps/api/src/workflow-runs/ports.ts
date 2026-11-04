@@ -10,21 +10,11 @@ type StoredReadModel = NonNullable<
 export type WorkflowRunRecord = Awaited<
   ReturnType<WorkflowRunDatabase['start']>
 >['run'];
-/** Fakes can omit lineage that their scenario does not exercise. */
-export type WorkflowRunReadRecord = Omit<
-  StoredReadModel['run'],
-  'replaySourceRunId'
-> &
-  Partial<Pick<StoredReadModel['run'], 'replaySourceRunId'>>;
-export type WorkflowRunListRecord = WorkflowRunReadRecord &
-  Partial<
-    Pick<
-      Awaited<ReturnType<WorkflowRunDatabase['list']>>['items'][number],
-      'failedStep'
-    >
-  >;
-export type WorkflowRunReadModel = Omit<StoredReadModel, 'run'> &
-  Readonly<{ run: WorkflowRunReadRecord }>;
+export type WorkflowRunReadRecord = StoredReadModel['run'];
+export type WorkflowRunListRecord = Awaited<
+  ReturnType<WorkflowRunDatabase['list']>
+>['items'][number];
+export type WorkflowRunReadModel = StoredReadModel;
 export type WorkflowRunListPosition = NonNullable<
   Parameters<WorkflowRunDatabase['list']>[0]['after']
 >;

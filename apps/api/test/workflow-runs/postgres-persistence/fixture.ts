@@ -103,11 +103,18 @@ export function databaseWith(overrides: Partial<WorkflowRunDatabase> = {}) {
         replayed: false,
       }),
     get: vi.fn<NonNullable<WorkflowRunDatabase['get']>>().mockResolvedValue({
-      run: { ...run(), replaySourceRunId: null },
+      run: { ...run(), replaySourceRunId: null, failureReasonCode: null },
       nodes: [],
     }),
     list: vi.fn<NonNullable<WorkflowRunDatabase['list']>>().mockResolvedValue({
-      items: [{ ...run(), replaySourceRunId: null, failedStep: null }],
+      items: [
+        {
+          ...run(),
+          replaySourceRunId: null,
+          failureReasonCode: null,
+          failedStep: null,
+        },
+      ],
     }),
     readVariables: () => Promise.resolve({ revision: 0, values: {} }),
     readInput: vi

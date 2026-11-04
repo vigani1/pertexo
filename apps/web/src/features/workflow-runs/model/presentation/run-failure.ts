@@ -1,3 +1,4 @@
+import { describeRunFailureReason } from './run-failure-reason';
 import type {
   WorkflowGraphContract,
   WorkflowRunFailedStep,
@@ -26,6 +27,8 @@ export function describeRunFailure(
   const failing = snapshot.nodes
     .filter((node) => FAILED_STEP_STATUSES.has(node.status))
     .at(-1);
+  const runReason = describeRunFailureReason(snapshot.run.failureReasonCode);
+  if (runReason !== undefined) return { reason: runReason };
   if (failing === undefined) return {};
   const node = graph?.nodes.find(
     (candidate) => candidate.id === failing.nodeId,
@@ -41,7 +44,10 @@ export function describeRunFailure(
 /** The same, from the step a run list names for an unsuccessful run. */
 export function describeListedFailure(
   failedStep: WorkflowRunFailedStep | null | undefined,
+  runFailureCode?: string | null,
 ): RunFailure {
+  const runReason = describeRunFailureReason(runFailureCode);
+  if (runReason !== undefined) return { reason: runReason };
   if (failedStep === null || failedStep === undefined) return {};
   const step = failureStepName(
     failedStep.label?.trim(),

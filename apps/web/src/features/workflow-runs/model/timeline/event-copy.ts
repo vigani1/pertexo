@@ -1,3 +1,4 @@
+import { describeRunFailureReason } from '../presentation/run-failure-reason';
 import type { WorkflowRunEvent } from '@pertexo/contracts';
 import type { StatusTone } from '@/components/ui/status';
 import { formatClock, formatDurationMs } from '@/lib/format/time';
@@ -89,6 +90,15 @@ const dynamicSentences: Readonly<
 };
 
 function describeSentence(event: WorkflowRunEvent): string {
+  if (
+    event.type === 'run.failed' ||
+    event.type === 'run.timed_out' ||
+    event.type === 'run.outcome_unknown'
+  ) {
+    const reason = describeRunFailureReason(event.payload.reasonCode);
+    if (reason !== undefined)
+      return `${fixedSentences[event.type] ?? 'Run ended'} · ${reason}`;
+  }
   if (event.type === 'node.succeeded') {
     if (event.payload.reasonCode === 'callback.received')
       return 'resumed after callback';
