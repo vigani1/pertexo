@@ -164,6 +164,10 @@ it('preserves mail identities through the rename and old messages through subseq
       '0089_expose_unconfirmed_invitation_delivery.sql',
       '0090_bound_trigger_failure_evidence.sql',
       '0091_pending_trigger_success_order.sql',
+      '0092_coordinated_event_retry_evidence.sql',
+      '0093_schedule_retirement_storage.sql',
+      '0094_webhook_ingress_counter_storage.sql',
+      '0095_public_form_lookup_standing.sql',
     ]);
     const after = await catalog('app.system_mail_deliveries');
     expect(after.relation).toEqual(before.relation);
