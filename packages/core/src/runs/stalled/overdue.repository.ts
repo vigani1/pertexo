@@ -1,53 +1,37 @@
-import {
-  and,
-  desc,
-  eq,
-  inArray,
-  isNotNull,
-  isNull,
-  lte,
-  min,
-  notExists,
-  or,
-  sql,
-} from 'drizzle-orm';
+import { and, eq, inArray, lte, min, or, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import {
   nodeAttempts,
   nodeRuns,
   workflowRuns,
-  inboxReceipts,
   outboxEvents,
 } from '@pertexo/database/schema';
 import { RUN_DELIVERY_JOB_NAMES } from '../../outbox/dispatcher/outbox-dispatcher.store.js';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
-import { coordinatorConsumerName } from '../advance/receipts.repository.js';
-import type { StuckWork } from './stalled-work.types.js';
-
-const ACTIVE_STATUSES = ['running', 'waiting'] as const;
-
-/** An unpublished run job this overdue means the dispatcher can't reach Redis. */
-const UNPUBLISHED_GRACE = sql`interval '60 seconds'`;
+import {
+  stalledRunEligible,
+  stalledLeaseEligible,
+  stalledPublicationEligible,
+  stalledDeliveryUnconfirmed,
+  UNPUBLISHED_RUN_JOB_GRACE,
+} from './stalled-eligibility.repository.js';
 
 /**
- * The moment each active run's next step passed its time, for one run or all.
- * This is the single definition of "stalled"; the run read and the operator list
- * both read it. Anything here is also what the scanner is about to act on, so a
+ * The moment each active run's next step passed its time, for one run.
+ * Shares eligibility with the paged operator list. The scanner acts on this
+ * work, so a
  * row that lingers means no worker is acting. A run stuck on an attempt's job
  * carries the job's attempt as its aggregate, hence the two joins.
  */
 function overdueRunSteps(
   db: Pick<NodePgDatabase, 'select'>,
-  scope: Readonly<{ workspaceId: string; runId: string }> | undefined,
+  scope: Readonly<{ workspaceId: string; runId: string }>,
 ) {
-  const inScope =
-    scope === undefined
-      ? undefined
-      : and(
-          eq(workflowRuns.workspaceId, scope.workspaceId),
-          eq(workflowRuns.id, scope.runId),
-        );
+  const inScope = and(
+    eq(workflowRuns.workspaceId, scope.workspaceId),
+    eq(workflowRuns.id, scope.runId),
+  );
   const attempt = alias(nodeAttempts, 'attempt');
   const node = alias(nodeRuns, 'node');
   const expiredLeases = db
@@ -74,9 +58,8 @@ function overdueRunSteps(
     )
     .where(
       and(
-        eq(attempt.status, 'running'),
-        lte(attempt.leaseExpiresAt, sql`clock_timestamp()`),
-        inArray(workflowRuns.status, ACTIVE_STATUSES),
+        stalledLeaseEligible(attempt, sql`clock_timestamp()`),
+        stalledRunEligible(workflowRuns.status),
         inScope,
       ),
     );
@@ -90,7 +73,7 @@ function overdueRunSteps(
       runId: workflowRuns.id,
       status: workflowRuns.status,
       since:
-        sql<Date>`coalesce(${event.deliveryDueAt},${event.availableAt}+${UNPUBLISHED_GRACE})`.as(
+        sql<Date>`coalesce(${event.deliveryDueAt},${event.availableAt}+${UNPUBLISHED_RUN_JOB_GRACE})`.as(
           'since',
         ),
     })
@@ -123,35 +106,11 @@ function overdueRunSteps(
         or(
           and(
             lte(event.deliveryDueAt, sql`clock_timestamp()`),
-            // A due row the scan hasn't cleared yet says nothing by itself: an
-            // attempt's job only matters while it is ready, and an advance's
-            // until its consumer confirms it.
-            or(
-              eq(eventAttempt.status, 'ready'),
-              and(
-                eq(event.jobName, 'advance-workflow-run'),
-                notExists(
-                  db
-                    .select({ one: sql`1` })
-                    .from(inboxReceipts)
-                    .where(
-                      and(
-                        eq(inboxReceipts.consumerName, coordinatorConsumerName),
-                        eq(inboxReceipts.messageId, event.id),
-                        isNotNull(inboxReceipts.completedAt),
-                      ),
-                    ),
-                ),
-              ),
-            ),
+            stalledDeliveryUnconfirmed(db, event, eventAttempt.status),
           ),
-          and(
-            isNull(event.publishedAt),
-            isNull(event.failedAt),
-            lte(event.availableAt, sql`clock_timestamp()-${UNPUBLISHED_GRACE}`),
-          ),
+          stalledPublicationEligible(event, sql`clock_timestamp()`),
         ),
-        inArray(workflowRuns.status, ACTIVE_STATUSES),
+        stalledRunEligible(workflowRuns.status),
         inScope,
       ),
     );
@@ -171,47 +130,4 @@ export async function readRunStalledSince(
   return row?.since === null || row?.since === undefined
     ? undefined
     : new Date(row.since);
-}
-
-const STUCK_LIST_LIMIT = 200;
-
-/** Every stuck run and failed outbox event, across workspaces, for the operator. */
-export async function readStuckWork(
-  db: Pick<NodePgDatabase, 'select'>,
-): Promise<StuckWork> {
-  const overdue = overdueRunSteps(db, undefined);
-  const runs = await db
-    .select({
-      workspaceId: overdue.workspaceId,
-      runId: overdue.runId,
-      status: overdue.status,
-      since: min(overdue.since),
-    })
-    .from(overdue)
-    .groupBy(overdue.workspaceId, overdue.runId, overdue.status)
-    .orderBy(min(overdue.since))
-    .limit(STUCK_LIST_LIMIT)
-    .catch(rethrowQueryFailure);
-  const failed = await db
-    .select({
-      workspaceId: outboxEvents.workspaceId,
-      outboxEventId: outboxEvents.id,
-      jobName: outboxEvents.jobName,
-      aggregateId: outboxEvents.aggregateId,
-      failedAt: outboxEvents.failedAt,
-      lastErrorCode: outboxEvents.lastErrorCode,
-    })
-    .from(outboxEvents)
-    .where(isNotNull(outboxEvents.failedAt))
-    .orderBy(desc(outboxEvents.failedAt))
-    .limit(STUCK_LIST_LIMIT)
-    .catch(rethrowQueryFailure);
-  return Object.freeze({
-    runs: runs.flatMap((run) =>
-      run.since === null ? [] : [{ ...run, since: new Date(run.since) }],
-    ),
-    failedOutboxEvents: failed.flatMap((event) =>
-      event.failedAt === null ? [] : [{ ...event, failedAt: event.failedAt }],
-    ),
-  });
 }

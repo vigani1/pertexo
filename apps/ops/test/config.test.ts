@@ -30,6 +30,17 @@ function validOutboxEnvironment(): Record<string, string | undefined> {
 }
 
 describe('operator command config', () => {
+  it('passes a returned stuck-work cursor to the read command', () => {
+    expect(
+      parseOperatorCommandConfig({
+        DATABASE_MAINTENANCE_URL:
+          'postgresql://pertexo_maintenance:secret@localhost:5432/pertexo',
+        OPERATOR_COMMAND_TYPE: 'stuck-work.list',
+        OPERATOR_CURSOR: 'returned-page-position',
+      }).command,
+    ).toEqual({ type: 'stuck-work.list', cursor: 'returned-page-position' });
+  });
+
   it('requires bounded explicit command identity, actor, reason, and dry-run', () => {
     const commandId = randomUUID();
     const outboxEventId = randomUUID();
