@@ -52,14 +52,20 @@ describe.runIf(f.enabled)(
     }, 60_000);
     afterAll(f.restoreServicesAndClose);
 
-    it.each(['nextEventSequence', 'deadlineExpired'])(
+    it.each(['nextEventSequence', 'deadlineExpired', 'missing'])(
       'ends a run with damaged %s after bounded real worker retries',
       async (field) => {
         const accepted = await acceptRun();
-        await f.ownerQuery(
-          "update app.run_checkpoints set scheduler_state=jsonb_set(scheduler_state,array[$2],to_jsonb('broken'::text)) where workflow_run_id=$1",
-          [accepted.runId, field],
-        );
+        if (field === 'missing')
+          await f.ownerQuery(
+            'delete from app.run_checkpoints where workflow_run_id=$1',
+            [accepted.runId],
+          );
+        else
+          await f.ownerQuery(
+            "update app.run_checkpoints set scheduler_state=jsonb_set(scheduler_state,array[$2],to_jsonb('broken'::text)) where workflow_run_id=$1",
+            [accepted.runId, field],
+          );
         const runtime = await createCoordinatorRuntime({
           database: parseDatabaseConfig({
             connectionString: f.databaseUrl(f.workerUrl),
@@ -109,7 +115,10 @@ describe.runIf(f.enabled)(
             {
               status: 'failed',
               completed_at: expect.any(Date) as unknown,
-              error_summary: 'execution.run_state_invalid',
+              error_summary:
+                field === 'missing'
+                  ? 'execution.checkpoint_missing'
+                  : 'execution.run_state_invalid',
             },
           ]);
           expect(

@@ -1,3 +1,4 @@
+import { CoordinatorRunStateCorruptError } from '../../state-errors.js';
 import { and, asc, eq, exists, isNull, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { alias } from 'drizzle-orm/pg-core';
@@ -12,7 +13,7 @@ import {
 import { EXECUTION_SOURCE_SQL } from '../../queries/execution/source.repository.js';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 
-export function lockRunForAdvance(
+export async function lockRunForSettlement(
   client: PoolClient,
   workspaceId: string,
   runId: string,
@@ -20,6 +21,24 @@ export function lockRunForAdvance(
   const db = drizzle(client),
     run = alias(workflowRuns, 'run'),
     checkpoint = alias(runCheckpoints, 'checkpoint');
+  const found = await db
+    .select({ id: run.id })
+    .from(run)
+    .where(and(eq(run.workspaceId, workspaceId), eq(run.id, runId)))
+    .for('no key update')
+    .catch(rethrowQueryFailure);
+  if (found.length === 0) return [];
+  await db
+    .select({ id: checkpoint.workflowRunId })
+    .from(checkpoint)
+    .where(
+      and(
+        eq(checkpoint.workspaceId, workspaceId),
+        eq(checkpoint.workflowRunId, runId),
+      ),
+    )
+    .for('no key update')
+    .catch(rethrowQueryFailure);
   const tasks = db
     .select({ one: sql`1` })
     .from(pendingRunTasks)
@@ -35,7 +54,7 @@ export function lockRunForAdvance(
       run: {
         revision: checkpoint.revision,
         scheduler_state: checkpoint.schedulerState,
-        workflow_version_id: checkpoint.workflowVersionId,
+        workflow_version_id: run.workflowVersionId,
         status: run.status,
         cancel_requested_at: run.cancelRequestedAt,
         workflow_id: run.workflowId,
@@ -70,7 +89,7 @@ export function lockRunForAdvance(
       },
     })
     .from(run)
-    .innerJoin(
+    .leftJoin(
       checkpoint,
       and(
         eq(checkpoint.workspaceId, run.workspaceId),
@@ -86,8 +105,21 @@ export function lockRunForAdvance(
       ),
     )
     .where(and(eq(run.workspaceId, workspaceId), eq(run.id, runId)))
-    .for('no key update', { of: [run, checkpoint] })
     .catch(rethrowQueryFailure);
+}
+
+/** Normal advance requires a checkpoint; emergency settlement can recover its absence. */
+export async function lockRunForAdvance(
+  client: PoolClient,
+  workspaceId: string,
+  runId: string,
+) {
+  const rows = await lockRunForSettlement(client, workspaceId, runId);
+  return rows.map((row) => {
+    const revision = row.run.revision;
+    if (revision === null) throw new CoordinatorRunStateCorruptError(null);
+    return { ...row, run: { ...row.run, revision } };
+  });
 }
 
 export function readPendingFailures(

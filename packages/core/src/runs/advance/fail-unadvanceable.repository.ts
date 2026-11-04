@@ -14,9 +14,13 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import type { Pool, PoolClient } from 'pg';
 import { appendAttemptEvent } from '../../attempts/events.repository.js';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
-import { nodeAttempts, nodeRuns } from '@pertexo/database/schema';
+import {
+  nodeAttempts,
+  nodeRuns,
+  runCheckpoints,
+} from '@pertexo/database/schema';
 import type { CoordinatorAdvanceDelivery } from './run-advance.types.js';
-import { lockRunForAdvance } from './load/locks.repository.js';
+import { lockRunForSettlement } from './load/locks.repository.js';
 import { persistCoordinatorRunTransition } from './persist/run-transition.repository.js';
 import type { RunTransitionPlan } from './plan.js';
 import {
@@ -50,19 +54,24 @@ export function failUnadvanceableRun(
   pool: Pool,
   input: FailUnadvanceableInput,
 ): Promise<'failed' | 'outcome_unknown' | 'not_active' | 'stale'> {
-  const { workspaceId, runId, safeErrorCode, signal, delivery } = input;
+  const { workspaceId, runId, signal, delivery } = input;
   return withCoordinatorWriteClient(
     pool,
     workspaceId,
     signal,
     async (client) => {
-      const [selected] = await lockRunForAdvance(client, workspaceId, runId);
+      const [selected] = await lockRunForSettlement(client, workspaceId, runId);
       if (
         selected === undefined ||
         TERMINAL_RUN_STATUSES.has(selected.run.status)
       )
         return 'not_active';
       const { run } = selected;
+      const revision = run.revision ?? 0;
+      const safeErrorCode =
+        run.revision === null
+          ? 'execution.checkpoint_missing'
+          : input.safeErrorCode;
       if (delivery !== undefined)
         await validateAuthoritativeAdvanceDelivery(
           client,
@@ -71,9 +80,10 @@ export function failUnadvanceableRun(
           delivery,
         );
       if (
-        (input.expectedRevision !== undefined &&
+        run.revision !== null &&
+        ((input.expectedRevision !== undefined &&
           input.expectedRevision !== run.revision) ||
-        (delivery !== undefined && input.expectedRevision === undefined)
+          (delivery !== undefined && input.expectedRevision === undefined))
       )
         return 'stale';
       if (
@@ -94,6 +104,20 @@ export function failUnadvanceableRun(
           return 'stale';
       }
 
+      if (run.revision === null)
+        await drizzle(client)
+          .insert(runCheckpoints)
+          .values({
+            workspaceId,
+            workflowRunId: runId,
+            workflowVersionId: run.workflow_version_id,
+            revision,
+            schedulerState: createCheckpoint({
+              workflowVersionId: run.workflow_version_id,
+              iterationBudget: 0,
+            }),
+          })
+          .catch(rethrowQueryFailure);
       const status = (await closeOpenWork(client, input))
         ? 'outcome_unknown'
         : 'failed';
@@ -106,7 +130,7 @@ export function failUnadvanceableRun(
       });
       const occurredAt = await readDatabaseTime(client);
       const plan: RunTransitionPlan = {
-        expectedRevision: run.revision,
+        expectedRevision: revision,
         expectedNextEventSequence: sequence,
         consumedThroughEventSequence: sequence,
         checkpoint: {
@@ -115,7 +139,7 @@ export function failUnadvanceableRun(
             iterationBudget: 0,
             nextEventSequence: sequence + 1,
           }),
-          revision: run.revision + 1,
+          revision: revision + 1,
           runStatus: status,
         },
         events: [
@@ -130,7 +154,7 @@ export function failUnadvanceableRun(
         authoritativeCancellation: run.cancel_requested_at !== null,
         hadWaitingStep: false,
         plan,
-        row: run,
+        row: { ...run, revision },
         runId,
         workflowVersionId: run.workflow_version_id,
         workspaceId,
