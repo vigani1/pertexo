@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { IdempotencyRequestConflictError } from '../../src/runs/commands/acceptance/run-admission.errors.js';
+import { IdempotencyRequestConflictError } from '../../src/shared/command-receipt.errors.js';
 
 import {
   afterAllFixture2,

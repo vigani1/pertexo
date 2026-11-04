@@ -5,7 +5,7 @@ import {
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { nodeRuns, nodeAttempts } from '@pertexo/database/schema';
-import { appendAttemptEvent } from '../events.repository.js';
+import { appendAttemptEvent } from '../../runs/queries/history/attempt-events.repository.js';
 import { lockClaimCandidate } from './candidates.repository.js';
 import type { Pool } from 'pg';
 import type { z } from 'zod';

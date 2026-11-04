@@ -8,7 +8,7 @@ import {
 import {
   appendLockedRunEvent,
   type RunEventType,
-} from '../runs/queries/history/events.repository.js';
+} from './events.repository.js';
 
 /** Adapt the attempt transaction's client to the shared locked-run event writer. */
 export function appendAttemptEvent(

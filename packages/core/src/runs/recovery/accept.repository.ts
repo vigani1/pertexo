@@ -1,9 +1,9 @@
-import { lockWorkspaceRunAdmission } from '../admission-locks.repository.js';
+import { lockWorkspaceRunAdmission } from '../../shared/workspace-fence.repository.js';
 import { copyRecoveryRunValues } from '../values/rows.repository.js';
 import { sql } from 'drizzle-orm';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 import { generatePersistedId } from '@pertexo/database/platform';
-import { prepareStoredExecutionValue } from '../values/stored-execution.js';
+import { prepareStoredExecutionValue } from '../../shared/stored-execution.js';
 import { nodeRuns, runEvents } from '@pertexo/database/schema';
 import { readRecoveryEvidence } from './evidence.repository.js';
 import { WorkflowRecoveryUnavailableError } from './workflow-recovery.errors.js';

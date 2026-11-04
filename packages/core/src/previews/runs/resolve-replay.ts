@@ -6,7 +6,7 @@ import type {
 
 import type { Role } from '@pertexo/policy';
 import { and, eq, gt } from 'drizzle-orm';
-import { parseStoredExecutionValue } from '../../runs/values/stored-execution.js';
+import { parseStoredExecutionValue } from '../../shared/stored-execution.js';
 
 import { PreviewAcceptanceCorruptError } from '../preview.errors.js';
 import { previewWorkflowVisible } from './acceptance/admission.repository.js';

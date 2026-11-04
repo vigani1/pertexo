@@ -1,5 +1,5 @@
 import { postgresFailure } from '@pertexo/database/primitives';
-import { IdempotencyRequestConflictError } from '../runs/commands/acceptance/run-admission.errors.js';
+import { IdempotencyRequestConflictError } from '../shared/command-receipt.errors.js';
 import {
   IdentityConflictError,
   WorkspaceLifecycleConflictError,

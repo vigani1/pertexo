@@ -10,7 +10,7 @@ import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import {
   parseStoredExecutionValue,
   serializeStoredExecutionValue,
-} from '../../runs/values/stored-execution.js';
+} from '../../shared/stored-execution.js';
 import type { WorkflowGraph } from '@pertexo/workflow-model';
 import type { PoolClient } from 'pg';
 import {

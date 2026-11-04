@@ -5,7 +5,7 @@ import {
   serializeStoredExecutionJsonValue,
   serializeStoredExecutionValue,
   storedExecutionValuesEqual,
-} from '../../../src/runs/values/stored-execution.js';
+} from '../../src/shared/stored-execution.js';
 import {
   STORED_EXECUTION_VALUE_LIMITS,
   StoredExecutionValueInvalidError,
@@ -13,7 +13,7 @@ import {
 import {
   canonicalJsonOracle,
   seededJsonCases,
-} from './stored-execution/fixture.js';
+} from './stored-execution.fixture.js';
 import { randomUUID } from 'node:crypto';
 
 describe('StoredExecutionValue', () => {

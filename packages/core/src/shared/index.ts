@@ -14,3 +14,6 @@ export type {} from './folder-policy.js';
 export type {} from './receipts.js';
 export type {} from './scope.repository.js';
 export type {} from './stored-values.js';
+export type {} from './stored-execution.js';
+export type {} from './workspace-fence.repository.js';
+export type {} from './command-receipt.errors.js';

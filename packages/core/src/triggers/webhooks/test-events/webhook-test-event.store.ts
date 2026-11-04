@@ -5,7 +5,7 @@ import { webhookTestEvents as listeners } from '@pertexo/database/schema';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { appendAuditFact } from '../../../governance/audit/facts.js';
 import { ACTIVE_WORKSPACE_STATUSES } from '@pertexo/policy';
-import { parseStoredExecutionValue } from '../../../runs/values/stored-execution.js';
+import { parseStoredExecutionValue } from '../../../shared/stored-execution.js';
 import type { Pool, PoolClient } from 'pg';
 
 import type { DatabaseConfig } from '@pertexo/database/platform';

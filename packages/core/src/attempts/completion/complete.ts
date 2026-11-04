@@ -1,6 +1,6 @@
-import { lockWorkspaceRunAdmission } from '../../runs/admission-locks.repository.js';
+import { lockWorkspaceRunAdmission } from '../../shared/workspace-fence.repository.js';
 import { withTenantScopedClient } from '@pertexo/database/primitives';
-import { serializeStoredExecutionValue } from '../../runs/values/stored-execution.js';
+import { serializeStoredExecutionValue } from '../../shared/stored-execution.js';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import {
   lockCompletionReceipt,

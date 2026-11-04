@@ -11,7 +11,7 @@ import {
   outboxEvents,
   runErrorWorkflowIntents,
 } from '@pertexo/database/schema';
-import { lockWorkspaceRunAdmission } from '../admission-locks.repository.js';
+import { lockWorkspaceRunAdmission } from '../../shared/workspace-fence.repository.js';
 import type { StalledWorkRecovery } from '../stalled/stalled-work.types.js';
 
 /** A failed delivery remains due until its owning intent is reconciled. */

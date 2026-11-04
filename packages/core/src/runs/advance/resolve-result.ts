@@ -1,4 +1,4 @@
-import { prepareStoredExecutionValue } from '../values/stored-execution.js';
+import { prepareStoredExecutionValue } from '../../shared/stored-execution.js';
 import {
   STORED_EXECUTION_VALUE_LIMITS,
   StoredExecutionValueInvalidError,

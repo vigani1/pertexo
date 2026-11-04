@@ -12,7 +12,7 @@ import {
 import { workflowRuns, pendingRunTasks } from '@pertexo/database/schema';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { ACTIVE_RUN_STATUSES } from '../../statuses.js';
-import { serializeStoredExecutionValue } from '../../values/stored-execution.js';
+import { serializeStoredExecutionValue } from '../../../shared/stored-execution.js';
 
 /**
  * Database time decides expiry. A task whose step continues on Timed out

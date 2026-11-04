@@ -4,7 +4,7 @@ import { createHash } from 'node:crypto';
 import type { PoolClient } from 'pg';
 import { outboxEvents } from '@pertexo/database/schema';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
-import { serializeStoredExecutionJsonValue } from '../../../runs/values/stored-execution.js';
+import { serializeStoredExecutionJsonValue } from '../../../shared/stored-execution.js';
 
 export async function assertInvitationDeliveryIdentity(
   client: PoolClient,

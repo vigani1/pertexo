@@ -1,7 +1,7 @@
 import {
   parseStoredExecutionValue,
   serializeStoredExecutionValue,
-} from '../runs/values/stored-execution.js';
+} from '../shared/stored-execution.js';
 import type { StoredExecutionValue } from '@pertexo/database/schema';
 
 export function isValidStoredExecutionOutput(
