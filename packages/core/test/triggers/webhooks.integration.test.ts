@@ -66,7 +66,7 @@ import { ScheduleTriggerError } from '../../src/triggers/schedules/schedule-trig
 import { isScheduleClaimEligible } from '../../src/triggers/schedules/scanning/occurrences.repository.js';
 import { waitForBlockedBy } from '../support/postgres/lock-coordination.js';
 import type { WebhookDeliveryPosition } from '../../src/triggers/webhooks/webhook-delivery.types.js';
-import { createTriggerEventScanner } from '../../src/triggers/coordination/scanner.repository.js';
+import { createTriggerEventScanner } from '../../src/triggers/coordination/event-scanner.store.js';
 import { setTimeout as delay } from 'node:timers/promises';
 import { holdAdmissionRow } from './webhooks/ingress/hold-admission-row.js';
 import { Pool } from 'pg';
