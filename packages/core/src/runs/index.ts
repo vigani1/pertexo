@@ -52,8 +52,8 @@ export {
 export type { WakeupScanner } from './wakeups/scanners.js';
 export { createPublishedWorkflowReader } from './queries/execution/published.repository.js';
 
-export { createRunFailureStore } from './advance/failure-store.js';
-export type { RunFailureStore } from './advance/failure-store.js';
+export { createRunFailureStore } from './advance/failure.store.js';
+export type { RunFailureStore } from './advance/failure.store.js';
 export { createStalledWorkStore } from './stalled/stalled-work.store.js';
 export type {
   FailedOutboxEvent,
@@ -150,7 +150,6 @@ export { recoveryPreparation } from './recovery/prepare.js';
 
 // Other areas import these files directly (ADR 091); the door gains nothing.
 export type {} from './admission-locks.repository.js';
-export type {} from './advance/plan.js';
 export type {} from './commands/acceptance/accept.js';
 export type {} from './commands/acceptance/replay.repository.js';
 export type {} from './commands/cancel-run.js';

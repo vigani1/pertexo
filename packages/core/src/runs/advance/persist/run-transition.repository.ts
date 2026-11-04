@@ -19,7 +19,7 @@ import type { PoolClient } from 'pg';
 import { CoordinatorRunStateCorruptError } from '../../state-errors.js';
 import type { CoordinatorCommitRow } from '../load/state.repository.js';
 import { canonicalTimestamp } from '../load/fact-admission.js';
-import { scheduleRunInputSchema } from '../plan.js';
+import { scheduleRunInputSchema } from '../../../triggers/schedules/schedule-run-input.schemas.js';
 import type { WorkflowTransitionPlan } from '@pertexo/workflow-engine';
 import { persistFailureNotificationIntent } from './failure-notification.repository.js';
 import { persistWorkspaceInboxEvent } from '../../../inbox/folding/events.repository.js';
