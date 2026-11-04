@@ -1,5 +1,5 @@
 import { GetUsageTrendsUseCase } from './usage/trends.js';
-import { UsageTrendsController } from './usage/trends-controller.js';
+import { UsageTrendsController } from './usage/usage-trends.controller.js';
 import {
   GetRunRecoveryUseCase,
   RecoverRunUseCase,
@@ -32,7 +32,7 @@ import {
 } from './run-data/run-data.service.js';
 import { GetWorkflowRunStatisticsUseCase } from './statistics.js';
 import { GetUsageCapacityUseCase } from './usage/capacity.js';
-import { UsageCapacityController } from './usage/capacity-controller.js';
+import { UsageCapacityController } from './usage/usage-capacity.controller.js';
 import { WORKSPACE_AUTHORIZATION } from '../workspaces/tokens.js';
 import {
   CancelWorkflowRunUseCase,
