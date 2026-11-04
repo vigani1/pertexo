@@ -708,6 +708,13 @@
       "when": 1793776245140,
       "tag": "0100_core_run_admission",
       "breakpoints": true
+    },
+    {
+      "idx": 101,
+      "version": "7",
+      "when": 1793786366423,
+      "tag": "0101_restore_timer_capacity_triggers",
+      "breakpoints": true
     }
   ]
 }

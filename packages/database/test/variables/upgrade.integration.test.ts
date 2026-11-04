@@ -201,6 +201,7 @@ it('backfills current and retained historical sets, fixed empty sets and purged 
         '0098_stuck_work_candidate_pages.sql',
         '0099_notification_recovery_storage.sql',
         '0100_core_run_admission.sql',
+        '0101_restore_timer_capacity_triggers.sql',
       ]);
       expect(
         (
