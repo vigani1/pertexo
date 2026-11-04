@@ -5,7 +5,6 @@ import {
   withOwner,
   workerQuery,
   waitFor,
-  workflowVersionId,
   workspaceId,
 } from '../support/attempts/http-node-attempt.js';
 import {
@@ -14,6 +13,7 @@ import {
   resetHttpIntegrationTestTsFixture,
   fixtureEncryption,
   admitProviderScenario,
+  advanceScenario,
   attemptJob,
   closeProofRuntime,
 } from './http/http.fixture.js';
@@ -23,8 +23,8 @@ installHttpNodeAttemptFixture();
 beforeAll(prepareHttpIntegrationTestTsFixture);
 beforeEach(resetHttpIntegrationTestTsFixture);
 describeIntegration('Frozen sample setup through the production reader', () => {
-  it.each(['missing', 'non-inline', 'invalid-snapshot'] as const)(
-    'ends an admitted test after %s stored sample or snapshot damage',
+  it.each(['healthy', 'missing', 'non-inline', 'invalid-snapshot'] as const)(
+    'preserves healthy frozen work and settles %s stored sample or snapshot state',
     async (shape) => {
       if (fixtureEncryption === undefined) throw new Error('Missing fixture');
       let providerCalls = 0;
@@ -51,16 +51,24 @@ describeIntegration('Frozen sample setup through the production reader', () => {
                 provider: {
                   sampleId: randomUUID(),
                   outputRef:
-                    shape === 'invalid-snapshot'
+                    shape !== 'non-inline'
                       ? { kind: 'inline', value: { validSample: true } }
                       : { kind: 'artifact', artifactId: randomUUID() },
                 },
               };
         await withOwner(async (client) => {
+          // Use this run's graph: an unrelated graph can hide sample errors as a missing node.
+          const original = await client.query<{ workflow_version_id: string }>(
+            'select workflow_version_id from app.workflow_runs where id=$1',
+            [scenario.accepted.runId],
+          );
+          const sourceVersionId = original.rows[0]?.workflow_version_id;
+          if (sourceVersionId === undefined)
+            throw new Error('Missing source version');
           await client.query(
             `insert into app.workflow_test_snapshots(id,workflow_id,workspace_id,draft_revision,graph_json,checksum,executable_json,dispositions,pins,expires_at)
           select $1,workflow_id,workspace_id,1,graph_json,checksum,executable_json,'{"provider":"pinned"}'::jsonb,$3::json,clock_timestamp()+interval '1 day' from app.workflow_versions where id=$2`,
-            [snapshotId, workflowVersionId, JSON.stringify(pins)],
+            [snapshotId, sourceVersionId, JSON.stringify(pins)],
           );
           if (shape === 'invalid-snapshot')
             await client.query(
@@ -68,8 +76,18 @@ describeIntegration('Frozen sample setup through the production reader', () => {
               [snapshotId],
             );
           await client.query(
-            'with moved as (update app.workflow_runs set workflow_version_id=$2 where id=$1 returning id) update app.run_checkpoints set workflow_version_id=$2 where workflow_run_id in (select id from moved)',
-            [scenario.accepted.runId, snapshotId],
+            `with moved as (update app.workflow_runs set workflow_version_id=$2,trigger_type='test' where id=$1 returning id)
+            update app.run_checkpoints set workflow_version_id=$2,
+            scheduler_state=replace(scheduler_state::text,$3::text,$2::text)::jsonb where workflow_run_id in (select id from moved)`,
+            [scenario.accepted.runId, snapshotId, sourceVersionId],
+          );
+          await client.query(
+            'update app.node_runs set invocation_key=replace(invocation_key,$2,$3) where workflow_run_id=$1',
+            [scenario.accepted.runId, sourceVersionId, snapshotId],
+          );
+          await client.query(
+            'update app.run_events set payload=replace(payload::text,$2,$3)::jsonb where workflow_run_id=$1',
+            [scenario.accepted.runId, sourceVersionId, snapshotId],
           );
         });
         const publication = await runtime.producer.publish(
@@ -84,6 +102,22 @@ describeIntegration('Frozen sample setup through the production reader', () => {
           () => job.getState(),
           (state) => state === 'failed' || state === 'completed',
         );
+        if (shape === 'healthy') {
+          expect(
+            await workerQuery(
+              'select output_ref from app.node_attempts where id=$1',
+              [scenario.attempt.attempt_id],
+            ),
+          ).toEqual([
+            { output_ref: { kind: 'inline', value: { validSample: true } } },
+          ]);
+          await advanceScenario(
+            runtime,
+            scenario.accepted.runId,
+            scenario.coordinatorOutboxes,
+            'Settle healthy frozen sample',
+          );
+        }
         expect(
           await workerQuery(
             'select status,error_summary,completed_at is not null as completed from app.workflow_runs where id=$1',
@@ -91,8 +125,9 @@ describeIntegration('Frozen sample setup through the production reader', () => {
           ),
         ).toEqual([
           {
-            status: 'failed',
-            error_summary: 'execution.run_state_invalid',
+            status: shape === 'healthy' ? 'succeeded' : 'failed',
+            error_summary:
+              shape === 'healthy' ? null : 'execution.run_state_invalid',
             completed: true,
           },
         ]);
@@ -101,7 +136,12 @@ describeIntegration('Frozen sample setup through the production reader', () => {
             'select status,dispatch_marked_at from app.node_attempts where id=$1',
             [scenario.attempt.attempt_id],
           ),
-        ).toEqual([{ status: 'canceled', dispatch_marked_at: null }]);
+        ).toEqual([
+          {
+            status: shape === 'healthy' ? 'succeeded' : 'canceled',
+            dispatch_marked_at: null,
+          },
+        ]);
         expect(
           await workerQuery(
             'select completed_at is not null as completed from app.inbox_receipts where message_id=$1',
