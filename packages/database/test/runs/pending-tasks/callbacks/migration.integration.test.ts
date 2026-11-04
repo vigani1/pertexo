@@ -144,6 +144,7 @@ it('upgrades populated human tasks without changing their decisions or context',
       '0096_schedule_retirement_state.sql',
       '0097_error_workflow_delivery_repair.sql',
       '0098_stuck_work_candidate_pages.sql',
+      '0099_notification_recovery_storage.sql',
     ]);
     const after = (
       await owner.query<Record<string, unknown>>(

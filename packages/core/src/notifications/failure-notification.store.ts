@@ -1,11 +1,9 @@
 import {
   acquireDatabasePool,
-  withPlatformTransaction,
   type DatabaseConfig,
   type DatabaseRuntime,
 } from '@pertexo/database/platform';
-import { sql } from 'drizzle-orm';
-import { drizzle } from 'drizzle-orm/node-postgres';
+import { recoverFailureNotifications } from './delivery/recovery.repository.js';
 
 import type {
   ClaimDeliveryInput,
@@ -38,16 +36,7 @@ export function createFailureNotificationStore(
       loadDestination(pool, input),
     fenceDispatch: (input: FenceDispatchInput) => fenceDispatch(pool, input),
     recoverDue: (limit: number, maxAttempts: number, signal?: AbortSignal) =>
-      withPlatformTransaction(
-        pool,
-        async (client) => {
-          const result = await drizzle(client).execute<{ recovered: number }>(
-            sql`select app.recover_due_run_failure_notifications(${limit},${maxAttempts}) as recovered`,
-          );
-          return result.rows[0]?.recovered ?? 0;
-        },
-        signal === undefined ? {} : { signal },
-      ),
+      recoverFailureNotifications(pool, limit, maxAttempts, signal),
     close: () => lease.close(),
   });
 }
