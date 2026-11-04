@@ -8,8 +8,8 @@ import { createScheduleTriggerTestEnvironment } from '../../support/schedule-tri
  * ADR 049 against PostgreSQL time: a `skip` schedule admits its greatest due
  * occurrence when the scanner observes it within the on-time window, records
  * it skipped when later, and `catch_up_once` is unchanged. Exact boundaries
- * and DST instants need a controlled clock and are unit-tested in
- * `schedule-trigger-scanner.test.ts`.
+ * and DST instants are covered with the real resolver and policy in
+ * `misfire.test.ts`.
  */
 const schedule = createScheduleTriggerTestEnvironment();
 const { checkpointFactory, ownerQuery, versionId, workflowId, workspaceId } =
