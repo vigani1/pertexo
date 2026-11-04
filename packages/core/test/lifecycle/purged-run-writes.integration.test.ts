@@ -26,8 +26,8 @@ import {
   ownedDeliveryStore,
   workerBaseUrl,
   workspaceA,
-} from '../runs/run-store/fixtures.js';
-import { claimDispatchAttempt } from '../runs/run-store/node-attempts/fixture.js';
+} from '../runs/run-store/run-store.fixture.js';
+import { claimDispatchAttempt } from '../runs/run-store/node-attempts.fixture.js';
 
 const maintenanceBaseUrl =
   process.env.DATABASE_MAINTENANCE_URL ??

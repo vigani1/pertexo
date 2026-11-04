@@ -11,7 +11,7 @@ import { JOB_NAME } from '@pertexo/queue';
 import { OutboxDispatcher } from '../../src/transport/outbox/dispatch/outbox-dispatcher.runtime.js';
 import { WorkerDrainState } from '../../src/runtime/shutdown/drain-state.js';
 import { transportMetrics } from '../support/transport/metrics.js';
-import { boundaries } from './outbox-dispatcher/fixture.js';
+import { boundaries } from './outbox-dispatcher/outbox-dispatcher.fixture.js';
 import {
   describeIntegration,
   prepareWorkerPostgreSQLRedisTransportProofFixture,
@@ -19,7 +19,7 @@ import {
   apiDatabase,
   dispatcherUrl,
   workspaceId,
-} from './dispatch/fixture.js';
+} from './dispatch.fixture.js';
 
 describeIntegration('Permanent publication diagnostics', () => {
   beforeAll(prepareWorkerPostgreSQLRedisTransportProofFixture);

@@ -11,7 +11,7 @@ import {
   frame,
   runId,
   nestedAggregateErrors,
-} from './sse-transport/fixture.js';
+} from './sse-transport.fixture.js';
 import { EventEmitter, getEventListeners } from 'node:events';
 import { writeSseFrames } from '../../../src/workflow-runs/events/sse-transport.js';
 import {

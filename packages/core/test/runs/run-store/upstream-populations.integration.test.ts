@@ -7,8 +7,8 @@ import {
   randomUUID,
   versionA,
   workspaceA,
-} from './fixtures.js';
-import { claimDispatchAttempt } from './node-attempts/fixture.js';
+} from './run-store.fixture.js';
+import { claimDispatchAttempt } from './node-attempts.fixture.js';
 
 async function saveOutputs(
   runId: string,

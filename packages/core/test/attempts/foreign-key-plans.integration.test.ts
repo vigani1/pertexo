@@ -3,8 +3,11 @@ import { randomUUID } from 'node:crypto';
 import { Client } from 'pg';
 import { beforeAll, describe, expect, it } from 'vitest';
 
-import { claimDispatchAttempt } from '../runs/run-store/node-attempts/fixture.js';
-import { adminBaseUrl, databaseUrl } from '../runs/run-store/fixtures.js';
+import { claimDispatchAttempt } from '../runs/run-store/node-attempts.fixture.js';
+import {
+  adminBaseUrl,
+  databaseUrl,
+} from '../runs/run-store/run-store.fixture.js';
 
 /** Enough that the planner sees a scan of a workspace's steps as a real cost. */
 const STEPS = 5_000;

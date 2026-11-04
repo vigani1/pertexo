@@ -2,7 +2,7 @@ import type { WebhookTriggerStore } from '@pertexo/core/testing';
 
 import { vi } from 'vitest';
 
-import type { AcceptInput } from './contract.js';
+import type { AcceptInput } from './webhook-ingress.types.js';
 
 export const acceptedInputs = (
   database: Pick<WebhookTriggerStore, 'acceptVerifiedDelivery'>,

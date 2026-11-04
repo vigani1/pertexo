@@ -18,7 +18,7 @@ import {
   waitForJob,
   dependencyEvidence,
   type ProofMeasurements,
-} from './dispatch.resilience/fixture.js';
+} from './dispatch.resilience/dispatch-resilience.fixture.js';
 import { randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { performance } from 'node:perf_hooks';

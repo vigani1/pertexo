@@ -1,7 +1,7 @@
 import { expect } from 'vitest';
 
-import { workerQuery, workspaceId } from '../fixture.js';
-import type { ForEachPhaseContext } from './contract.js';
+import { workerQuery, workspaceId } from '../for-each-cancellation.fixture.js';
+import type { ForEachPhaseContext } from './for-each-scenario.types.js';
 
 export async function assertStructuredLoopChildren(
   context: Pick<ForEachPhaseContext, 'accepted' | 'structuredKind'>,

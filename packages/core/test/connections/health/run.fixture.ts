@@ -6,7 +6,7 @@ import {
   nodeAttemptStore,
   workerBaseUrl,
   workspaceA,
-} from '../../runs/run-store/fixtures.js';
+} from '../../runs/run-store/run-store.fixture.js';
 
 export {
   actorId,

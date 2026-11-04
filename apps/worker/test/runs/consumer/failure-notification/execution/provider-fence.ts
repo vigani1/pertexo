@@ -8,11 +8,11 @@ import {
 import { expect } from 'vitest';
 import { createProviderFailureNotificationDelivery } from '../../../../../src/notifications/failure-delivery.js';
 
-import { workerQuery, workspaceId } from '../fixture.js';
+import { workerQuery, workspaceId } from '../failure-notification.fixture.js';
 import type {
   FailureNotificationScenario,
   FailureProofStore,
-} from './contract.js';
+} from './failure-notification-execution.types.js';
 
 export async function assertProviderFenceDrain(
   scenario: FailureNotificationScenario,

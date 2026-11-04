@@ -14,7 +14,7 @@ import {
   workerQuery,
   workflowId,
   workspaceId,
-} from '../fixture.js';
+} from '../failure-notification.fixture.js';
 
 export async function seedFailureNotificationProof() {
   const destinationId = randomUUID();

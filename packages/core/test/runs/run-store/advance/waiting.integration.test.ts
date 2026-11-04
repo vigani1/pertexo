@@ -9,7 +9,7 @@ import {
   workspaceA,
   versionA,
   randomUUID,
-} from '../fixtures.js';
+} from '../run-store.fixture.js';
 
 describe('the waiting steps an advance looks up', () => {
   const load = (runId: string) =>

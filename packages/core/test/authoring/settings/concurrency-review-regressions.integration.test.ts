@@ -8,7 +8,7 @@ import {
   workflowVersionId,
   workspaceA,
   workspaceB,
-} from '../../runs/acceptance/fixtures.js';
+} from '../../runs/acceptance/run-acceptance.fixture.js';
 import { randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
 import { parseDatabaseConfig } from '@pertexo/database/platform';

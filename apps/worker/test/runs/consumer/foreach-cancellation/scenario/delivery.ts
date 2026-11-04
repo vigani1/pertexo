@@ -2,11 +2,15 @@ import { JOB_NAME } from '@pertexo/queue';
 
 import { expect } from 'vitest';
 import { waitForCoordinatorOutbox } from '../../../../support/coordinator/runs.js';
-import { waitFor, workerQuery, workspaceId } from '../fixture.js';
+import {
+  waitFor,
+  workerQuery,
+  workspaceId,
+} from '../for-each-cancellation.fixture.js';
 import type {
   AcceptedForEachScenario,
   ForEachScenarioContext,
-} from './contract.js';
+} from './for-each-scenario.types.js';
 
 export function createForEachDelivery(
   context: Pick<

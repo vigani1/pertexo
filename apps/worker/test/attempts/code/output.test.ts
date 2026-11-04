@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { STORED_EXECUTION_VALUE_LIMITS } from '@pertexo/node-sdk';
-import { retainCodeOutput } from '../../../src/attempts/code/output.js';
+import { retainCodeOutput } from '../../../src/attempts/code/retain-code-output.js';
 const succeeded = (output: string) => ({
   kind: 'succeeded' as const,
   output,

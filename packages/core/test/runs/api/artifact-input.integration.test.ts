@@ -18,7 +18,7 @@ import {
   beforeAllFixture1,
   afterAllFixture2,
   apiQuery,
-} from './fixture.js';
+} from './runs-api.fixture.js';
 
 beforeAll(beforeAllFixture1, 60_000);
 beforeEach(resetFixture);

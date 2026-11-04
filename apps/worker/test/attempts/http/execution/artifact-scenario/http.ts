@@ -14,7 +14,7 @@ import {
   workspaceId,
 } from '../../../../support/attempts/http-node-attempt.js';
 
-import { readAttemptRedeliverySnapshot } from '../../fixture.js';
+import { readAttemptRedeliverySnapshot } from '../../http.fixture.js';
 import type { ArtifactScenario } from './context.js';
 
 export type HttpEvidence = Awaited<

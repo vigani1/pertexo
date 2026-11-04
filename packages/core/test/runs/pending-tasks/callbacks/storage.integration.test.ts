@@ -12,7 +12,7 @@ import {
   otherWorkspaceId,
   apiPool,
   queryAsOwner,
-} from './fixtures.js';
+} from './callbacks.fixture.js';
 import {
   withTenantScopedClient,
   withWorkspaceTransaction,

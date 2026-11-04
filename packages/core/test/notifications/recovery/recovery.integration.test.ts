@@ -8,7 +8,7 @@ import {
   parseDatabaseConfig,
   workerBaseUrl,
   workspaceA,
-} from '../../runs/run-store/fixtures.js';
+} from '../../runs/run-store/run-store.fixture.js';
 import {
   noticeFacts,
   seedNotice,

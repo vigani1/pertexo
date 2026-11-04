@@ -21,8 +21,8 @@ import {
   parseDatabaseConfig,
   workerBaseUrl,
   workspaceA,
-} from '../fixtures.js';
-import { signal } from './support.js';
+} from '../run-store.fixture.js';
+import { signal } from './coordinator-advance.fixture.js';
 
 const HOUR = 3_600_000;
 

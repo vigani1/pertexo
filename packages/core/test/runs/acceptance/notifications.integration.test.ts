@@ -15,12 +15,12 @@ import {
   expectAcceptanceRecordCounts,
   lockManualFixtureStart,
   migrationUrl,
-} from './fixtures.js';
+} from './run-acceptance.fixture.js';
 import { randomUUID, createHash } from 'node:crypto';
 import { sql } from 'drizzle-orm';
 import { Pool } from 'pg';
 import { acceptWorkflowRun } from '../../../src/runs/commands/acceptance/accept.js';
-import { hasPostgresConstraint } from './notifications/fixture.js';
+import { hasPostgresConstraint } from './acceptance-notifications.fixture.js';
 import { WorkspaceRunAdmissionDeniedError } from '../../../src/runs/commands/acceptance/run-admission.errors.js';
 
 installExecutionAcceptanceFixture();

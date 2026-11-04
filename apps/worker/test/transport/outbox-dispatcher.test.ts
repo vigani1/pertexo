@@ -10,7 +10,7 @@ import {
   createDispatcher,
   indexedEvent,
   checksum,
-} from './outbox-dispatcher/fixture.js';
+} from './outbox-dispatcher/outbox-dispatcher.fixture.js';
 import { transportMetrics } from '../support/transport/metrics.js';
 import { JOB_NAME, type QueueJob, type QueueProducer } from '@pertexo/queue';
 import { OutboxDispatcher } from '../../src/transport/outbox/dispatch/outbox-dispatcher.runtime.js';

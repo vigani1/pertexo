@@ -27,7 +27,7 @@ import {
   workerBaseUrl,
   workspaceA,
   workflowA,
-} from '../fixtures.js';
+} from '../run-store.fixture.js';
 
 const applicationName = `queued-standing-${randomUUID()}`;
 const url = new URL(databaseUrl(workerBaseUrl));

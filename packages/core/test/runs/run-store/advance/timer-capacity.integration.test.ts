@@ -15,7 +15,7 @@ import {
   versionA,
   workerBaseUrl,
   workspaceA,
-} from '../fixtures.js';
+} from '../run-store.fixture.js';
 
 it('refreshes stored capacity when the real timer helpers park and resume without a status change', async () => {
   const invocationKey = `${versionA}|timer|b:|i:`;

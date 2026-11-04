@@ -15,7 +15,7 @@ import {
   advanceScenario,
   closeProofRuntime,
   publishAndWaitForCompletion,
-} from './http/fixture.js';
+} from './http/http.fixture.js';
 import { createHttpNodeAttemptProofRuntime } from '../support/attempts/http-node-attempt.runtime.js';
 
 installHttpNodeAttemptFixture();

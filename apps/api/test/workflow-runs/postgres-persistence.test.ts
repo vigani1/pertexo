@@ -31,7 +31,7 @@ import {
   forEachExecutable,
   parallelExecutable,
   projection,
-} from './postgres-persistence/fixture.js';
+} from './postgres-persistence/postgres-persistence.fixture.js';
 import { workflowNode } from '../support/workflow-node.js';
 import {
   buildWorkflowExecutable,

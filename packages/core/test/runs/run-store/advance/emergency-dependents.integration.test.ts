@@ -11,7 +11,7 @@ import {
   workspaceA,
   workflowA,
   versionA,
-} from '../fixtures.js';
+} from '../run-store.fixture.js';
 import { emergencyRun, query } from './emergency.fixture.js';
 
 it('closes persisted tasks and prepared callbacks and durably requests child cancellation despite a lost checkpoint', async () => {

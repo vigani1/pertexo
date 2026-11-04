@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { JOB_NAME } from '@pertexo/queue';
 import { OutboxDispatcher } from '../../src/transport/outbox/dispatch/outbox-dispatcher.runtime.js';
 import { WorkerDrainState } from '../../src/runtime/shutdown/drain-state.js';
-import { boundaries } from './outbox-dispatcher/fixture.js';
+import { boundaries } from './outbox-dispatcher/outbox-dispatcher.fixture.js';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
 import { afterAll, beforeAll, expect, it, vi } from 'vitest';
 import { Pool } from 'pg';
@@ -16,7 +16,7 @@ import {
   insertRunEvent,
   dispatcherUrl,
   claimEventAcrossFairRounds,
-} from './dispatch/fixture.js';
+} from './dispatch.fixture.js';
 
 describeIntegration('Publication retry database clock', () => {
   beforeAll(prepareWorkerPostgreSQLRedisTransportProofFixture);

@@ -16,7 +16,7 @@ import {
   expireLease,
   operator,
   operatorReplica,
-} from './persistence/fixture.js';
+} from './outbox-persistence.fixture.js';
 import { randomUUID } from 'node:crypto';
 import { count, eq, sql } from 'drizzle-orm';
 import { insertOutboxEvent } from '@pertexo/database/primitives';
@@ -29,7 +29,7 @@ import {
   readQ11DatabaseIdentity,
   recordQ11Operation,
   waitForQ11OverlapBarrier,
-} from '../support/q11-benchmark.js';
+} from '../support/parallel-run-barrier.js';
 import {
   parseDatabaseConfig,
   createWorkspaceDatabase,

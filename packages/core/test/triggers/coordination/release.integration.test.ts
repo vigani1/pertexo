@@ -10,7 +10,7 @@ import {
   config,
   checkpointFactory,
   finishRuns,
-} from './fixtures.js';
+} from './triggers-coordination.fixture.js';
 it('debounces to the latest complete input, clears replaced payloads and preserves original replay receipts', async () => {
   const f = await fixture({ mode: 'debounce', key, quietSeconds: 3600 });
   const first = await f.submit('same', 'first', 'retry');

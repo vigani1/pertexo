@@ -16,7 +16,7 @@ import {
   CoordinatorRunStateCorruptError,
   ownedDeliveryStore,
   nodeAttemptStore,
-} from './fixtures.js';
+} from './run-store.fixture.js';
 import { createDatabaseRuntime } from '@pertexo/database/platform';
 
 describe('Coordinator CAS and transition invariants', () => {

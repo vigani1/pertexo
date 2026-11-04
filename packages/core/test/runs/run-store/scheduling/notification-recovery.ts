@@ -1,7 +1,7 @@
 import { expect } from 'vitest';
 
-import type { createFailureNotificationStore } from '../fixtures.js';
-import { asRuntime, workerBaseUrl, workspaceA } from '../fixtures.js';
+import type { createFailureNotificationStore } from '../run-store.fixture.js';
+import { asRuntime, workerBaseUrl, workspaceA } from '../run-store.fixture.js';
 
 export async function assertRetrySchedule(
   deliveryStore: ReturnType<typeof createFailureNotificationStore>,

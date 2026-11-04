@@ -3,7 +3,7 @@ import {
   restoreServicesAndClose,
   setup,
   describeIntegration,
-} from './failure-notification/fixture.js';
+} from './failure-notification/failure-notification.fixture.js';
 import { seedFailureNotificationProof } from './failure-notification/execution/seed.js';
 import { qualifyNotificationFences } from './failure-notification/execution/fences.js';
 import { qualifyRecoveredNotificationDelivery } from './failure-notification/execution/delivery.js';

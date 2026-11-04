@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { admin, store, taskFixture, sync } from './fixtures.js';
+import { admin, store, taskFixture, sync } from './pending-tasks.fixture.js';
 import { retention } from '../../lifecycle/retention.support.js';
 it('retains expired input during human waiting and cascades decided task history with run details', async () => {
   const f = await taskFixture();

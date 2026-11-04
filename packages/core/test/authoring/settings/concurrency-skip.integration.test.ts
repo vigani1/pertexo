@@ -9,7 +9,7 @@ import {
   installExecutionAcceptanceFixture,
   workspaceA,
   workflowId,
-} from '../../runs/acceptance/fixtures.js';
+} from '../../runs/acceptance/run-acceptance.fixture.js';
 import {
   acceptRun,
   claimRuns,

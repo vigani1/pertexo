@@ -1,6 +1,9 @@
 import type { CoordinatedEvent } from '@pertexo/contracts';
 import type { HTTP_STATUS } from './delivery.js';
-import type { REPLAY_CHECKS, SIGNATURE_CHECKS } from './input.js';
+import type {
+  REPLAY_CHECKS,
+  SIGNATURE_CHECKS,
+} from './webhook-verification.js';
 
 export type WebhookDeliveryOutcome = keyof typeof HTTP_STATUS;
 

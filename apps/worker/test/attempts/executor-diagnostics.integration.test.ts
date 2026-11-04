@@ -29,7 +29,7 @@ import {
   admitProviderScenario,
   advanceScenario,
   closeProofRuntime,
-} from './http/fixture.js';
+} from './http/http.fixture.js';
 import { createHttpNodeAttemptProofRuntime } from '../support/attempts/http-node-attempt.runtime.js';
 
 installHttpNodeAttemptFixture();

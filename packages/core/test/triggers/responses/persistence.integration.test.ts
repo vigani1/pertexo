@@ -21,8 +21,8 @@ import {
   insertRun,
   waitForApplicationLocks,
   randomUUID,
-} from '../../runs/run-store/fixtures.js';
-import { responseFixture, response } from './support.js';
+} from '../../runs/run-store/run-store.fixture.js';
+import { responseFixture, response } from './triggers-responses.fixture.js';
 const signal = new AbortController().signal;
 const config = parseDatabaseConfig({
   connectionString: databaseUrl(workerBaseUrl),

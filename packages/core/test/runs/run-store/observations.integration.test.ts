@@ -15,7 +15,7 @@ import {
   workflowB,
   workspaceA,
   workspaceB,
-} from './fixtures.js';
+} from './run-store.fixture.js';
 import { generatePersistedId } from '@pertexo/database/platform';
 import {
   seedAvailableArtifact,
@@ -23,7 +23,7 @@ import {
   observedCoordinatorStore,
   observedKinds,
   hasConstraint,
-} from './observations/fixture.js';
+} from './observations.fixture.js';
 
 describe('Coordinator observation integrity invariants', () => {
   it.each([{}, { graph: {} }])(

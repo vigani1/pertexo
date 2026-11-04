@@ -20,7 +20,7 @@ import {
   testDelivery,
   workerBaseUrl,
   workspaceA,
-} from '../runs/run-store/fixtures.js';
+} from '../runs/run-store/run-store.fixture.js';
 
 export const signal = () => new AbortController().signal;
 export const OCCURRED_AT = '2026-11-01T12:00:00.000Z';

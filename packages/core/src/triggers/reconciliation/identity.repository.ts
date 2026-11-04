@@ -10,7 +10,7 @@ import {
 import { outboxEvents } from '@pertexo/database/schema';
 import type { ReconcileWorkflowTriggersInput } from './trigger-reconciliation.types.js';
 import { WorkflowTriggerReconciliationMismatchError } from './trigger-reconciliation.errors.js';
-import { reconciliationPayloadSchema } from './input.js';
+import { reconciliationPayloadSchema } from './reconciliation-payload.schemas.js';
 
 type ReconciliationEvent = Readonly<{
   payload: z.output<typeof reconciliationPayloadSchema>;

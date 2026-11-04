@@ -4,7 +4,7 @@ import {
   asAdmin,
   rawStore,
   workspaceA,
-} from '../fixtures.js';
+} from '../run-store.fixture.js';
 import { emergencyRun, query } from './emergency.fixture.js';
 
 it.each([

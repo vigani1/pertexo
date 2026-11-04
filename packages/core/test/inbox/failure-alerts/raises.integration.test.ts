@@ -18,7 +18,7 @@ import {
   asAdmin,
   randomUUID,
   workspaceA,
-} from '../../runs/run-store/fixtures.js';
+} from '../../runs/run-store/run-store.fixture.js';
 import {
   anotherRun,
   appConfig,

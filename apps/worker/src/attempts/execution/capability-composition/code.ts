@@ -1,4 +1,4 @@
-import { retainCodeOutput } from '../../code/output.js';
+import { retainCodeOutput } from '../../code/retain-code-output.js';
 
 import { CODE_LIMITS } from '@pertexo/node-sdk';
 

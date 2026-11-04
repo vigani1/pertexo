@@ -22,7 +22,7 @@ import {
   claim,
   release,
   waitBlocked,
-} from './auto-pause-lag/fixture.js';
+} from './auto-pause-lag.fixture.js';
 import { randomUUID } from 'node:crypto';
 
 beforeAll(beforeAllFixture1, 60_000);

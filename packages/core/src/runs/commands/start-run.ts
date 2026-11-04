@@ -17,8 +17,8 @@ import {
 import {
   acceptWorkflowRunWithAudit,
   readWorkflowRunRecord,
-} from './records.repository.js';
-import type { WorkflowRunRecord } from './records.repository.js';
+} from './workflow-run-records.repository.js';
+import type { WorkflowRunRecord } from './workflow-run-records.repository.js';
 import type { StartPublishedWorkflowRunInput } from './run-commands.types.js';
 
 export async function startInTransaction(

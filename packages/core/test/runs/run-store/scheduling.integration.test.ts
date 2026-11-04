@@ -26,7 +26,7 @@ import {
   actorId,
   apiBaseUrl,
   notificationConnectionId,
-} from './fixtures.js';
+} from './run-store.fixture.js';
 import { ZodError } from 'zod';
 import {
   predecessorFailureNotificationContextV1Schema,
@@ -36,7 +36,7 @@ import {
   createTestFailureNotificationStore,
   closeFailureNotificationFixture,
   assertRetrySchedule,
-} from './scheduling/fixture.js';
+} from './scheduling/scheduling.fixture.js';
 import { FailureNotificationStateError } from '../../../src/notifications/failure-notification.errors.js';
 
 describe('Coordinator scheduling and notification invariants', () => {

@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { expect, it } from 'vitest';
 import { createFamily } from '../../lifecycle/calls/fixtures.js';
-import { admin, pool } from './fixtures.js';
+import { admin, pool } from './pending-tasks.fixture.js';
 import { withTenantScopedClient } from '@pertexo/database/primitives';
 import { synchronizeHumanWait } from '../../../src/runs/pending-tasks/lifecycle/time-capacity.repository.js';
 

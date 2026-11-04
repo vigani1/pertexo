@@ -16,7 +16,7 @@ import {
   publishGraph,
   accept,
   runtime,
-} from '../calls/fixtures.js';
+} from '../calls/calls.fixture.js';
 
 describe.runIf(fixture.enabled)(
   'error-workflow capacity waiting through real transport',

@@ -4,7 +4,10 @@ import { createFormUploadStore } from '../../../src/artifacts/form-uploads/form-
 import type { FormUploadTarget } from '../../../src/artifacts/form-uploads/form-upload.types.js';
 import { admin } from '../../lifecycle/calls/fixtures.js';
 import { apiUrl } from '../../lifecycle/retention.support.js';
-import { fixture, store } from '../../triggers/forms/admission/fixture.js';
+import {
+  fixture,
+  store,
+} from '../../triggers/forms/admission/admission.fixture.js';
 
 export { admin, store };
 export let uploads: ReturnType<typeof createFormUploadStore>;

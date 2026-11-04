@@ -8,8 +8,8 @@ import {
   node,
   publishGraph,
   runtime,
-} from '../../calls/fixtures.js';
-import { callbackResources } from './fixtures.js';
+} from '../../calls/calls.fixture.js';
+import { callbackResources } from './callbacks.fixture.js';
 
 const callbacks = {
   origin: 'https://example.test',

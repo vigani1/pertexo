@@ -21,7 +21,7 @@ import {
   createStalledWorkStore,
   type StalledWorkStore,
 } from '../../../src/runs/index.js';
-import { claimDispatchAttempt } from '../run-store/node-attempts/fixture.js';
+import { claimDispatchAttempt } from '../run-store/node-attempts.fixture.js';
 import {
   asAdmin,
   canonicalOutboxPayloadChecksum,
@@ -29,7 +29,7 @@ import {
   insertRun,
   parseDatabaseConfig,
   workspaceA,
-} from '../run-store/fixtures.js';
+} from '../run-store/run-store.fixture.js';
 
 const maintenanceUrl =
   process.env.DATABASE_MAINTENANCE_URL ??

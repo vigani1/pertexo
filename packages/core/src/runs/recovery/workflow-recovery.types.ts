@@ -9,7 +9,7 @@ import type {
   RecoveryValues,
 } from '@pertexo/workflow-engine';
 import type { PublishedWorkflow } from '../queries/execution/workflow-execution.types.js';
-import type { WorkflowRunRecord } from '../commands/records.repository.js';
+import type { WorkflowRunRecord } from '../commands/workflow-run-records.repository.js';
 
 export type WorkflowRecoverySummary = Readonly<{
   targetNodeRunId: string;

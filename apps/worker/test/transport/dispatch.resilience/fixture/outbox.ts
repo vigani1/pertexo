@@ -16,7 +16,7 @@ import type { WorkerDrainState } from '../../../../src/runtime/shutdown/drain-st
 import { OutboxDispatcher } from '../../../../src/transport/outbox/dispatch/outbox-dispatcher.runtime.js';
 
 import { localApiUrl, localDispatcherUrl, redisUrl } from './environment.js';
-import type { OutboxProofState } from './contract.js';
+import type { OutboxProofState } from './dispatch-resilience.types.js';
 import { dispatcherPool } from './database.js';
 
 export async function insertProofEvent(

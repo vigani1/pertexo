@@ -4,7 +4,7 @@ import { createCoordinatorRuntime } from '../../../../../dist/runs/coordinator.r
 
 import { coordinatorFixture as fixture } from '../../../../support/coordinator/consumer.js';
 
-import type { RoutingScenario } from './contract.js';
+import type { RoutingScenario } from './failure-routing-execution.types.js';
 import type { openRoutedRun } from './pending.js';
 
 export async function resumeHandledRun(

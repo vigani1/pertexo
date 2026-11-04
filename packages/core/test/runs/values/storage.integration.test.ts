@@ -25,7 +25,7 @@ import {
   queryAsOwner,
   executionQuery,
   purgeTestWorkspace,
-} from './fixtures.js';
+} from './runs-values.fixture.js';
 it('repeats and replaces exact pairs, preserving empty and case-sensitive values', async () => {
   const scope = await running();
   await store.save({ ...scope, values: { orderId: ' A-1042 ', empty: '' } });

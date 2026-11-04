@@ -7,7 +7,7 @@ import {
   workspaceId,
   hash,
   prepared,
-} from './fixtures.js';
+} from './callbacks.fixture.js';
 
 async function inventory(signal: AbortSignal) {
   const probes = [];

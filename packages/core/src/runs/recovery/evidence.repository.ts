@@ -21,7 +21,7 @@ import type {
   RecoveryRefused,
   RecoveryValues,
 } from '@pertexo/workflow-engine';
-import { branchContextSchema } from '../../attempts/validation/shared.js';
+import { branchContextSchema } from '../../attempts/validation/attempt-scope.schemas.js';
 import { StoredExecutionValueInvalidError } from '@pertexo/node-sdk';
 import type { StoredExecutionValue } from '@pertexo/database/schema';
 import { parseStoredExecutionValue } from '../../shared/stored-execution.js';
@@ -30,7 +30,7 @@ import {
   WorkflowRunNotExecutableError,
   WorkflowRunNotFoundError,
 } from '../workflow-run.errors.js';
-import { readWorkflowRunRecord } from '../commands/records.repository.js';
+import { readWorkflowRunRecord } from '../commands/workflow-run-records.repository.js';
 import { lockReplaySource, lockReplayVersion } from '../commands/replay-run.js';
 import type {
   WorkflowRecoveryMetadata,

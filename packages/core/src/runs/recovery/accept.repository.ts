@@ -15,7 +15,7 @@ import { readWorkflowRunAcceptanceReplay } from '../commands/acceptance/replay.r
 import {
   insertWorkflowRunAudit,
   requireWorkflowRunRecord,
-} from '../commands/records.repository.js';
+} from '../commands/workflow-run-records.repository.js';
 import { lockRunAcceptanceCommand } from '../commands/acceptance/lock.repository.js';
 import type { RecoverPublishedWorkflowRunInput } from '../commands/run-commands.types.js';
 

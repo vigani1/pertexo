@@ -15,7 +15,7 @@ import {
   authoringOptions,
   workspaceId,
   registerResource,
-} from '../fixture.js';
+} from '../schedule-scenario.fixture.js';
 
 export async function seedScheduleQualification() {
   const identity = registerResource(createIdentityWorkspaceStore(apiConfig));

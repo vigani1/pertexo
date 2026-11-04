@@ -22,7 +22,7 @@ import {
 import {
   toWorkflowRunReadRecord,
   type WorkflowRunReadRecord,
-} from '../../commands/records.repository.js';
+} from '../../commands/workflow-run-records.repository.js';
 
 /** Outcomes a step can explain; a canceled run explains itself. */
 const EXPLAINED_BY_A_STEP: ReadonlySet<string> = new Set(UNSUCCESSFUL_STATUSES);

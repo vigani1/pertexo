@@ -16,7 +16,7 @@ import {
   type OwnedChild,
   type ChildStage,
   type StartableChild,
-} from './foreach-cancellation/fixture.js';
+} from './foreach-cancellation/for-each-cancellation.fixture.js';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { createQueueProducer, QUEUE_NAME } from '@pertexo/queue';

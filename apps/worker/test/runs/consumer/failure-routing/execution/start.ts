@@ -12,7 +12,7 @@ import { WorkerDrainState } from '../../../../../dist/runtime/shutdown/drain-sta
 import { OutboxDispatcher } from '../../../../../dist/transport/outbox/dispatch/outbox-dispatcher.runtime.js';
 import { coordinatorFixture as fixture } from '../../../../support/coordinator/consumer.js';
 
-import type { RoutingBase } from './contract.js';
+import type { RoutingBase } from './failure-routing-execution.types.js';
 import { testNodeAttemptRuntime } from '../../../../support/runtime-factories.js';
 
 export async function startRoutingWorkers(scenario: RoutingBase) {

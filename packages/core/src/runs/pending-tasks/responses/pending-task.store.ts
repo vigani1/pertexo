@@ -15,7 +15,11 @@ import {
 } from '@pertexo/policy';
 import { respondToTask } from './respond.repository.js';
 import { inspectAudience } from './inspect-audience.repository.js';
-import { listTasks, projectTask, readTaskRow } from './records.repository.js';
+import {
+  listTasks,
+  projectTask,
+  readTaskRow,
+} from './pending-task-records.repository.js';
 import type {
   PendingTaskDecision,
   PendingTaskRead,

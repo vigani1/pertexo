@@ -2,7 +2,7 @@ import type { PoolClient } from 'pg';
 import type { z } from 'zod';
 import type { NodeAttemptClaimRefusal } from '../node-attempt.js';
 import { NodeAttemptStateCorruptError } from '../node-attempt.errors.js';
-import { branchContextSchema } from '../validation/shared.js';
+import { branchContextSchema } from '../validation/attempt-scope.schemas.js';
 import { lockClaimCandidate } from './candidates.repository.js';
 import { validateDelivery } from '../completion/receipts.repository.js';
 

@@ -15,7 +15,7 @@ import {
   secret,
   webhook,
   workspaceId,
-} from './fixture.js';
+} from './webhooks.fixture.js';
 import {
   acceptedScenario,
   closePools,

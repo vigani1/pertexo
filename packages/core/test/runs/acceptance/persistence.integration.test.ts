@@ -10,7 +10,7 @@ import {
   migrationUrl,
   otherRequestHash,
   workspaceCreatorId,
-} from './fixtures.js';
+} from './run-acceptance.fixture.js';
 import { randomUUID } from 'node:crypto';
 import { count, eq } from 'drizzle-orm';
 import {

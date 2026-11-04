@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { asAdmin, rawStore, workspaceA } from '../fixtures.js';
+import { asAdmin, rawStore, workspaceA } from '../run-store.fixture.js';
 import { emergencyRun, query } from './emergency.fixture.js';
 
 it('settles an active run whose checkpoint is missing, with its specific safe reason and a terminal checkpoint', async () => {

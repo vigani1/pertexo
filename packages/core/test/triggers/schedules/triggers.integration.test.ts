@@ -14,7 +14,7 @@ import {
   notificationDestinationId,
   notificationSecretVersionId,
   triggerId,
-} from './triggers/fixture.js';
+} from './scheduled-trigger.fixture.js';
 import { randomUUID, createHash } from 'node:crypto';
 import {
   canonicalOutboxPayloadChecksum,

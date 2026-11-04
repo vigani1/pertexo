@@ -17,8 +17,8 @@ import { ACTIVE_RUN_STATUSES } from '../statuses.js';
 import {
   insertWorkflowRunAudit,
   readWorkflowRunRecord,
-} from './records.repository.js';
-import type { WorkflowRunRecord } from './records.repository.js';
+} from './workflow-run-records.repository.js';
+import type { WorkflowRunRecord } from './workflow-run-records.repository.js';
 import type { CancelWorkflowRunInput } from './run-commands.types.js';
 
 /**

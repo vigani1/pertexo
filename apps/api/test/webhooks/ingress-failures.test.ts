@@ -8,7 +8,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 
 import { describe, expect, it, vi } from 'vitest';
 
-import { createIngressFixture } from './ingress/fixture.js';
+import { createIngressFixture } from './ingress/webhook-ingress.fixture.js';
 import { currentSecret, endpointKey } from './ingress/environment.js';
 import { request } from './ingress/requests.js';
 

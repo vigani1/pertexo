@@ -11,12 +11,12 @@ import {
   randomUUID,
   workerBaseUrl,
   workspaceA,
-} from '../runs/run-store/fixtures.js';
+} from '../runs/run-store/run-store.fixture.js';
 import {
   commitPinnedFailureNotificationRun,
   createTestFailureNotificationStore,
   failureNotificationIdentity,
-} from '../runs/run-store/scheduling/fixture.js';
+} from '../runs/run-store/scheduling/scheduling.fixture.js';
 
 // An idempotent send keeps retrying while attempts remain, so two settle it on the retry.
 const MAX_ATTEMPTS = 2;
