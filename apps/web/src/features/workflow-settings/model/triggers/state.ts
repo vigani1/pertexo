@@ -51,6 +51,7 @@ export function describeTriggerRepair(
       return 'The published trigger configuration cannot be read. Review the trigger settings and publish again.';
     case 'trigger.reconciliation_failed':
       return 'Pertexo could not apply the published triggers. It will retry. If this continues, contact your operator.';
+    case null:
     default:
       return undefined;
   }
