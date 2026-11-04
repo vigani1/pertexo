@@ -1,4 +1,4 @@
-import type { LiveRunEventSource } from '../../../workflow-runs/events/index.js';
+import type { LiveRunEventSource } from '../../../workflow-runs/events/stream.js';
 
 import type {
   ApiWorkflowRuntime,

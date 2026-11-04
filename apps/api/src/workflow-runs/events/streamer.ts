@@ -8,7 +8,7 @@ import {
   streamRunEventFrames,
   type LiveRunEventSource,
   type PersistedRunEventReader,
-} from './index.js';
+} from './stream.js';
 import type { SseRunEventFrame } from './stream.js';
 import type {
   WorkflowRunEventFrame,

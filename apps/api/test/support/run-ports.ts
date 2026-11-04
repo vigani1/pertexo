@@ -1,8 +1,6 @@
 import { vi } from 'vitest';
-import type {
-  WorkflowRunPersistence,
-  WorkflowRunsDependencies,
-} from '../../src/workflow-runs/index.js';
+import type { WorkflowRunPersistence } from '../../src/workflow-runs/ports.js';
+import type { WorkflowRunsDependencies } from '../../src/workflow-runs/workflow-runs.module.js';
 
 export function runPorts() {
   const persistence = {

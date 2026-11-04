@@ -18,7 +18,7 @@ import {
   type IdentitySessionAuthority,
 } from '../../src/workspaces/index.js';
 import { createActorContext } from '../../src/authorization/index.js';
-import { StreamRunEventsUseCase } from '../../src/workflow-runs/index.js';
+import { StreamRunEventsUseCase } from '../../src/workflow-runs/events/authorized.js';
 import {
   mutationHeaders,
   sessionCookies,

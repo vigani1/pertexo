@@ -139,9 +139,6 @@ export type PendingTaskListResponse = z.output<
 export type PendingTaskDecisionRequest = z.output<
   typeof pendingTaskDecisionRequestSchema
 >;
-export type ApprovalAudienceQuery = z.output<
-  typeof approvalAudienceQuerySchema
->;
 
 export const approvalAudienceInspectionRequestSchema = z
   .object({ audience: taskAudienceSchema })

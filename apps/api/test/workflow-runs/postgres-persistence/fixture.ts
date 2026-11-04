@@ -59,7 +59,7 @@ export function run() {
   };
 }
 
-export function statisticsRecord() {
+function statisticsRecord() {
   const byStatus = {
     queued: 1,
     running: 2,

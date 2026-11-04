@@ -21,7 +21,7 @@ import type {
   WorkflowRunPersistence,
 } from './ports.js';
 
-import type { RunEventNotificationPublisher } from './events/index.js';
+import type { RunEventNotificationPublisher } from '@pertexo/queue';
 
 export type PostgresWorkflowRunPersistence = Readonly<{
   persistence: WorkflowRunPersistence;
@@ -37,8 +37,7 @@ export function createPostgresWorkflowRunPersistence(
   const catalog = composeExecutableCatalog(PLATFORM_NODE_CATALOG);
   const database = databaseInput ?? createWorkflowRunDatabase(config, runtime);
   const persistence: WorkflowRunPersistence = Object.freeze({
-    canRead: (input: Parameters<WorkflowRunPersistence['canRead']>[0]) =>
-      database.canRead(input),
+    canRead: database.canRead,
     recovery: async (
       input: Parameters<WorkflowRunPersistence['recovery']>[0],
     ) => {
@@ -62,66 +61,22 @@ export function createPostgresWorkflowRunPersistence(
         });
       return result;
     },
-    usageTrends: async (
-      input: Parameters<WorkflowRunPersistence['usageTrends']>[0],
-    ) => {
-      return await database.usageTrends(input);
-    },
-    usageCapacity: async (
-      input: Parameters<WorkflowRunPersistence['usageCapacity']>[0],
-    ) => {
-      return await database.usageCapacity(input);
-    },
+    usageTrends: database.usageTrends,
+    usageCapacity: database.usageCapacity,
     start: (input: StartWorkflowRunCommand) =>
       executeAcceptance(database, input, catalog, notifications),
     replay: (input: ReplayWorkflowRunCommand) =>
       executeAcceptance(database, input, catalog, notifications),
-    get: async (input: Parameters<WorkflowRunPersistence['get']>[0]) => {
-      return await database.get(input);
-    },
-    list: async (input: Parameters<WorkflowRunPersistence['list']>[0]) => {
-      return await database.list(input);
-    },
-    readVariables: async (
-      input: Parameters<WorkflowRunPersistence['readVariables']>[0],
-    ) => {
-      return await database.readVariables(input);
-    },
-    readInput: async (
-      input: Parameters<WorkflowRunPersistence['readInput']>[0],
-    ) => {
-      return await database.readInput(input);
-    },
-    readNodeRunDiagnostics: async (
-      input: Parameters<WorkflowRunPersistence['readNodeRunDiagnostics']>[0],
-    ) => {
-      return await database.readNodeRunDiagnostics(input);
-    },
-    readNodeRunOutput: async (
-      input: Parameters<WorkflowRunPersistence['readNodeRunOutput']>[0],
-    ) => {
-      return await database.readNodeRunOutput(input);
-    },
-    readNodeRunInput: async (
-      input: Parameters<WorkflowRunPersistence['readNodeRunInput']>[0],
-    ) => {
-      return await database.readNodeRunInput(input);
-    },
-    stepHealth: async (
-      input: Parameters<WorkflowRunPersistence['stepHealth']>[0],
-    ) => {
-      return await database.stepHealth(input);
-    },
-    stepRuns: async (
-      input: Parameters<WorkflowRunPersistence['stepRuns']>[0],
-    ) => {
-      return await database.stepRuns(input);
-    },
-    statistics: async (
-      input: Parameters<WorkflowRunPersistence['statistics']>[0],
-    ) => {
-      return await database.statistics(input);
-    },
+    get: database.get,
+    list: database.list,
+    readVariables: database.readVariables,
+    readInput: database.readInput,
+    readNodeRunDiagnostics: database.readNodeRunDiagnostics,
+    readNodeRunOutput: database.readNodeRunOutput,
+    readNodeRunInput: database.readNodeRunInput,
+    stepHealth: database.stepHealth,
+    stepRuns: database.stepRuns,
+    statistics: database.statistics,
     cancel: async (input: CancelWorkflowRunCommand) => {
       const result = await database.cancel(input);
       if (result.eventSequence !== null)
