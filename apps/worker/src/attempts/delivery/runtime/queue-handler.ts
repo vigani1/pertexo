@@ -61,14 +61,7 @@ export function queueHandler(
           workspaceId: delivery.data.workspaceId,
           runId: delivery.data.runId,
           safeErrorCode: UNADVANCEABLE_RUN_CODE,
-          expectedRevision:
-            error instanceof NodeAttemptHandlerStateError
-              ? error.lease?.checkpointRevision
-              : undefined,
-          ...(error instanceof NodeAttemptHandlerStateError &&
-          error.lease !== undefined
-            ? { attemptLease: error.lease }
-            : {}),
+          ...emergencyAttemptAuthority(error),
           signal: context.signal,
         });
       if (
@@ -84,4 +77,22 @@ export function queueHandler(
       throw mapPreviewHandlerError(error);
     }
   };
+}
+
+/** A failed setup owns a lease or a still-corrupt unclaimed fence. */
+function emergencyAttemptAuthority(error: unknown) {
+  if (error instanceof NodeAttemptHandlerStateError)
+    return {
+      expectedRevision: error.lease?.checkpointRevision,
+      ...(error.lease === undefined ? {} : { attemptLease: error.lease }),
+    };
+  if (
+    error instanceof NodeAttemptStateCorruptError &&
+    error.claimRefusal !== undefined
+  )
+    return {
+      expectedRevision: error.claimRefusal.checkpointRevision,
+      claimRefusal: error.claimRefusal,
+    };
+  return { expectedRevision: undefined };
 }

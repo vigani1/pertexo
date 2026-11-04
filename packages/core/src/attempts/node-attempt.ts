@@ -140,6 +140,12 @@ export type NodeAttemptDeliveryIdentity = Pick<
   'workspaceId' | 'runId' | 'nodeRunId' | 'attemptId' | 'delivery'
 >;
 
+export type NodeAttemptClaimRefusal = NodeAttemptDeliveryIdentity &
+  Readonly<{
+    checkpointRevision: number | null;
+    fenceToken: number;
+  }>;
+
 export type LoadInputsInput = Readonly<{
   lease: NodeAttemptLease;
   sourceFailure?: Readonly<{ nodeId: string; invocationKey: string }>;

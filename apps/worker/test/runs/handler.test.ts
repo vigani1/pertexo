@@ -113,10 +113,18 @@ describe('coordinator handler', () => {
   it.each(['not_found', 'capacity_exceeded'] as const)(
     'fails the delivery for a run that cannot advance: %s',
     async (kind) => {
-      const { handler } = handlerWith(vi.fn().mockResolvedValue({ kind }));
+      const { handler } = handlerWith(
+        vi.fn().mockResolvedValue({
+          kind,
+          ...(kind === 'capacity_exceeded' ? { revision: 4 } : {}),
+        }),
+      );
 
       await expect(handler.handle(delivery(), context())).rejects.toEqual(
-        new CoordinatorHandlerStateError(kind),
+        new CoordinatorHandlerStateError(
+          kind,
+          kind === 'capacity_exceeded' ? 4 : undefined,
+        ),
       );
     },
   );

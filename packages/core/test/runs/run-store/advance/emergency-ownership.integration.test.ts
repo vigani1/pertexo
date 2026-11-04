@@ -7,6 +7,8 @@ import {
   workspaceA,
 } from '../fixtures.js';
 import { claimDispatchAttempt } from '../node-attempts/fixture.js';
+import { nodeAttemptStore } from '../fixtures.js';
+import { NodeAttemptStateCorruptError } from '../../../../src/attempts/node-attempt.errors.js';
 import { query } from './emergency.fixture.js';
 import { failUnadvanceableRun } from '../../../../src/runs/advance/fail-unadvanceable.repository.js';
 
@@ -54,3 +56,61 @@ async function ownershipSnapshot(runId: string) {
     )
   ).rows;
 }
+
+it.each(['repaired', 'replaced', 'advanced'] as const)(
+  'refuses a claim-time corruption report after its state was %s',
+  async (change) => {
+    const lease = await claimDispatchAttempt(`claim-refusal-${change}`);
+    await asAdmin(async (client) => {
+      await client.query(
+        "update app.node_attempts set status='ready',lease_owner=null,lease_expires_at=null where id=$1",
+        [lease.attemptId],
+      );
+      await client.query(
+        `update app.node_runs set status='ready',branch_context='{"bad":"stored"}'::jsonb where id=$1`,
+        [lease.nodeRunId],
+      );
+    });
+    const refused: unknown = await nodeAttemptStore
+      .claimDelivery({
+        ...lease,
+        leaseDurationSeconds: 30,
+        signal: AbortSignal.timeout(10000),
+      })
+      .catch((error: unknown) => error);
+    if (
+      !(refused instanceof NodeAttemptStateCorruptError) ||
+      refused.claimRefusal === undefined
+    )
+      throw new Error('Expected a bound claim refusal');
+    await asAdmin(async (client) => {
+      if (change === 'repaired')
+        await client.query(
+          "update app.node_runs set branch_context='{}'::jsonb where id=$1",
+          [lease.nodeRunId],
+        );
+      else if (change === 'replaced')
+        await client.query(
+          'update app.node_attempts set fence_token=fence_token+1 where id=$1',
+          [lease.attemptId],
+        );
+      else
+        await client.query(
+          'update app.run_checkpoints set revision=revision+1 where workflow_run_id=$1',
+          [lease.runId],
+        );
+    });
+    const before = await ownershipSnapshot(lease.runId);
+    expect(
+      await failUnadvanceableRun(pool, {
+        workspaceId: workspaceA,
+        runId: lease.runId,
+        expectedRevision: refused.claimRefusal.checkpointRevision,
+        claimRefusal: refused.claimRefusal,
+        safeErrorCode: 'execution.run_state_invalid',
+        signal: AbortSignal.timeout(10000),
+      }),
+    ).toBe('stale');
+    expect(await ownershipSnapshot(lease.runId)).toEqual(before);
+  },
+);

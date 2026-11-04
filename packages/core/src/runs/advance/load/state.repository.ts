@@ -41,7 +41,8 @@ export type PendingCoordinatorFailure = Awaited<
 >[number];
 
 export type LoadedRunAdvance =
-  | Readonly<{ kind: 'not_found' | 'capacity_exceeded' }>
+  | Readonly<{ kind: 'not_found' }>
+  | Readonly<{ kind: 'capacity_exceeded'; revision: number }>
   | Readonly<{
       kind: 'loaded';
       row: CoordinatorCommitRow;
@@ -116,7 +117,7 @@ async function loadLockedRunState(
     firstSequence,
   );
   if (capacity.count > maximumPersistedFacts)
-    return Object.freeze({ kind: 'capacity_exceeded' });
+    return Object.freeze({ kind: 'capacity_exceeded', revision: row.revision });
   const facts = await readPersistedFacts(client, {
     count: capacity.count,
     firstSequence,

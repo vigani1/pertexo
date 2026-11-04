@@ -139,7 +139,8 @@ function queueHandler(
           runId: delivery.data.runId,
           safeErrorCode: UNADVANCEABLE_RUN_CODE,
           expectedRevision:
-            error instanceof CoordinatorRunStateCorruptError
+            error instanceof CoordinatorRunStateCorruptError ||
+            error instanceof CoordinatorHandlerStateError
               ? error.revision
               : undefined,
           delivery: {
