@@ -1,3 +1,4 @@
+import { withPlatformTransaction } from '@pertexo/database/platform';
 import type { WebhookAuthentication } from '@pertexo/contracts';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import {
@@ -95,16 +96,38 @@ export async function consumeWebhookIngressLimit(
   endpointKeyHashInput: string,
   burstLimit: number,
 ): Promise<void> {
-  const result = await drizzle(pool)
-    .execute<{ allowed: boolean; retry_after_seconds: number }>(
-      sql`select * from app.consume_webhook_ingress_limit(${endpointKeyHashInput}::char(64),${burstLimit}::integer)`,
-    )
-    .catch(rethrowQueryFailure);
-  const decision = result.rows[0];
-  if (decision === undefined)
-    throw new Error('Webhook ingress decision is unavailable');
-  if (!decision.allowed)
-    throw new WebhookIngressRateLimitExceededError(
-      decision.retry_after_seconds,
-    );
+  const retryAfter = await withPlatformTransaction(pool, async (client) => {
+    const db = drizzle(client);
+    const result = await db
+      .execute<{
+        bucket_started_at: string;
+        request_count: number;
+        observed_at: string;
+        created: boolean;
+      }>(
+        sql`select * from app.lock_webhook_ingress_counter(${endpointKeyHashInput}::char(64))`,
+      )
+      .catch(rethrowQueryFailure);
+    const counter = result.rows[0];
+    if (counter === undefined) return 1;
+    const remainingMillis =
+      Date.parse(counter.bucket_started_at) +
+      60_000 -
+      Date.parse(counter.observed_at);
+    const reset = counter.created || remainingMillis <= 0;
+    if (!reset && counter.request_count >= burstLimit)
+      return Math.max(1, Math.min(60, Math.ceil(remainingMillis / 1_000)));
+    const window = reset ? counter.observed_at : counter.bucket_started_at;
+    const changed = await db
+      .execute<{ stored: boolean }>(
+        sql`select app.store_webhook_ingress_counter(
+      ${endpointKeyHashInput}::char(64),${counter.bucket_started_at}::timestamptz,${counter.request_count},${reset},${window}::timestamptz) stored`,
+      )
+      .catch(rethrowQueryFailure);
+    if (changed.rows[0]?.stored !== true)
+      throw new Error('Webhook ingress counter ownership changed');
+    return 0;
+  });
+  if (retryAfter > 0)
+    throw new WebhookIngressRateLimitExceededError(retryAfter);
 }
