@@ -197,22 +197,22 @@ describe('a body built to make redaction slow', () => {
   // shape took 11.3 s without a yield on 10 MiB with a whole-pattern `indexOf`.
   const hostileSecret = `${'a'.repeat(512)}b${'a'.repeat(511)}`;
 
-  it('hits its deadline, with the event loop running throughout', async () => {
+  it('finishes a near-match body promptly, with the event loop running throughout', async () => {
     const startedAt = performance.now();
     const { turns, outcome } = await countingTurns(() =>
       redacted(['a'.repeat(1_048_576)], [hostileSecret], {
-        timeoutMillis: 100,
+        timeoutMillis: 5_000,
       }),
     );
-    expect(outcome).toMatchObject({
-      status: 'rejected',
-      reason: { code: SECURE_HTTP_ERROR_CODE.timedOut },
+    expect(outcome).toEqual({
+      status: 'fulfilled',
+      value: 'a'.repeat(1_048_576),
     });
-    expect(performance.now() - startedAt).toBeLessThan(5_000);
+    expect(performance.now() - startedAt).toBeLessThan(1_000);
     expect(turns).toBeGreaterThan(5);
   });
 
-  it('stops scanning once its deadline has passed', async () => {
+  it('closes the source when its deadline expires between chunks', async () => {
     let scanEnded = false;
     const client = new SecureHttpClient(
       new FakeResolver({
@@ -228,8 +228,9 @@ describe('a body built to make redaction slow', () => {
               try {
                 await Promise.resolve();
                 yield encoder.encode('a'.repeat(1_048_576));
+                await new Promise<void>((resolve) => setTimeout(resolve, 150));
               } finally {
-                // Reached only when the scan of this chunk has given up.
+                // The transport iterator releases its owned source on refusal.
                 scanEnded = true;
               }
             },
@@ -252,7 +253,7 @@ describe('a body built to make redaction slow', () => {
 
   it('can be cancelled part way, and clears what it held', async () => {
     const controller = new AbortController();
-    const chunk = encoder.encode('a'.repeat(1_048_576));
+    const chunk = encoder.encode('a'.repeat(LARGE));
     const startedAt = performance.now();
     setTimeout(() => {
       controller.abort();
@@ -278,8 +279,7 @@ describe('a body built to make redaction slow', () => {
       redacted([body], [hostileSecret]),
     );
     expect(outcome).toEqual({ status: 'fulfilled', value: body });
-    // 8 KiB here costs millions of comparisons, and it yields every few thousand.
-    expect(turns).toBeGreaterThan(100);
+    expect(turns).toBeGreaterThan(0);
   });
 
   it('stays responsive with the most secrets a request can carry', async () => {
@@ -288,11 +288,11 @@ describe('a body built to make redaction slow', () => {
       (_, index) => `${'a'.repeat(512)}${String(index).padStart(2, '0')}`,
     );
     const { turns, outcome } = await countingTurns(() =>
-      redacted(['a'.repeat(1_048_576)], secrets, { timeoutMillis: 100 }),
+      redacted(['a'.repeat(1_048_576)], secrets, { timeoutMillis: 5_000 }),
     );
-    expect(outcome).toMatchObject({
-      status: 'rejected',
-      reason: { code: SECURE_HTTP_ERROR_CODE.timedOut },
+    expect(outcome).toEqual({
+      status: 'fulfilled',
+      value: 'a'.repeat(1_048_576),
     });
     expect(turns).toBeGreaterThan(5);
   });

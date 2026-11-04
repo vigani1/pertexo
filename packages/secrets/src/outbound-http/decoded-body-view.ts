@@ -14,10 +14,16 @@ type EscapeSpan = Readonly<{
 }>;
 
 /** JSON escapes can appear in any textual response, including malformed JSON and plain text. */
-export function decodedBodyView(source: Buffer): DecodedBodyView | undefined {
-  if (!source.includes(92)) return undefined;
+export function decodedBodyView(
+  source: Buffer,
+  format: 'json' | 'percent' = 'json',
+): DecodedBodyView | undefined {
+  if (!source.includes(format === 'json' ? 92 : 37)) return undefined;
   const text = source.toString('latin1');
-  const escapes = /\\(?:u[0-9a-fA-F]{4}|["\\/bfnrt])/gu;
+  const escapes =
+    format === 'json'
+      ? /\\(?:u[0-9a-fA-F]{4}|["\\/bfnrt])/gu
+      : /%[0-9a-fA-F]{2}|\+/gu;
   const spans: EscapeSpan[] = [];
   const parts: Buffer[] = [];
   const decodedParts: Buffer[] = [];
@@ -34,6 +40,7 @@ export function decodedBodyView(source: Buffer): DecodedBodyView | undefined {
     let escape = match[0];
     // A surrogate pair is one decoded code point and one original byte range.
     if (
+      format === 'json' &&
       isHighSurrogate(escape) &&
       /^\\u[dD][c-fC-F][0-9a-fA-F]{2}$/u.test(
         text.slice(escapes.lastIndex, escapes.lastIndex + 6),
@@ -42,10 +49,12 @@ export function decodedBodyView(source: Buffer): DecodedBodyView | undefined {
       escape += text.slice(escapes.lastIndex, escapes.lastIndex + 6);
       escapes.lastIndex += 6;
     }
-    const decoded = Buffer.from(
-      JSON.parse('"' + escape + '"') as string,
-      'utf8',
-    );
+    const decoded =
+      format === 'percent'
+        ? Buffer.from([
+            escape === '+' ? 32 : Number.parseInt(escape.slice(1), 16),
+          ])
+        : Buffer.from(JSON.parse('"' + escape + '"') as string, 'utf8');
     decodedParts.push(decoded);
     parts.push(decoded);
     spans.push({

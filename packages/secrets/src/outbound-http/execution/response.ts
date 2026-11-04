@@ -1,5 +1,9 @@
+import { responseCharset } from '../response-charset.js';
 import { utf8ByteLength } from '@pertexo/workflow-model';
-import { redactText } from '../redact-text.js';
+import {
+  prepareResponseRedactor,
+  type ResponseRedactor,
+} from '../response-redactor.js';
 
 import { boundedRedactedBody } from '../stream-redaction.js';
 import { SECURE_HTTP_ERROR_CODE, failure } from '../secure-error.js';
@@ -45,9 +49,15 @@ export async function consumeFinalResponse<Body>(
   }>,
 ): Promise<SecureHttpResponse<Body>> {
   try {
+    const redactor = prepareResponseRedactor(request.sensitiveValues);
+    const rawContentType = normalizedHeaderValue(
+      response.headers['content-type'] ?? '',
+    );
+    const charset = responseCharset(rawContentType);
     const selectedHeaders = selectResponseHeaders(
       response.headers,
-      request.sensitiveValues,
+      redactor,
+      charset,
     );
     const contentEncoding = response.headers['content-encoding'];
     if (
@@ -60,7 +70,7 @@ export async function consumeFinalResponse<Body>(
       });
     const textual = isTextualContentType(selectedHeaders['content-type'] ?? '');
     const bodyEncoding = textual ? ('utf8' as const) : ('base64' as const);
-    const finalUrl = safeFinalUrl(state.url);
+    const finalUrl = redactor.text(safeFinalUrl(state.url));
     const body = await raceWithSignal(
       consume(
         Object.freeze({
@@ -78,6 +88,8 @@ export async function consumeFinalResponse<Body>(
             signal: executionSignal,
             sensitiveValues: request.sensitiveValues,
             deadline,
+            redactor,
+            ...(charset === undefined ? {} : { charset }),
           }),
           cancelSource: () => {
             response.close();
@@ -124,14 +136,24 @@ export async function collectBody(
 
 function selectResponseHeaders(
   headers: SecureHttpTransportResponse['headers'],
-  sensitiveValues: readonly string[],
+  redactor: ResponseRedactor,
+  charset: string | undefined,
 ): Readonly<Record<string, string>> {
   const selected: Record<string, string> = {};
   for (const [rawName, rawValue] of Object.entries(headers)) {
     const name = rawName.toLowerCase();
     if (!safeResponseHeaders.has(name) || rawValue === undefined) continue;
     const value = typeof rawValue === 'string' ? rawValue : rawValue.join(', ');
-    selected[name] = redactText(value, sensitiveValues).slice(0, 2_048);
+    selected[name] = redactor
+      .text(
+        name === 'content-type' && charset !== undefined
+          ? value.replace(
+              /(;\s*charset\s*=\s*)(?:"[^"]+"|[^;\s]+)/iu,
+              '$1utf-8',
+            )
+          : value,
+      )
+      .slice(0, 2_048);
   }
   return Object.freeze(selected);
 }
