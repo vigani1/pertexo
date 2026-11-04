@@ -4,7 +4,7 @@ import { QueryBuilder } from 'drizzle-orm/pg-core';
 import type { Pool } from 'pg';
 
 export const EXPECTED_MIGRATION_HEAD =
-  '0101_restore_timer_capacity_triggers.sql';
+  '0102_reconcile_timer_capacity_counters.sql';
 const MINIMUM_POSTGRES_MAJOR = 18;
 
 /**

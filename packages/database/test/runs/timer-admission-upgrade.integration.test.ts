@@ -14,6 +14,7 @@ async function upgradedTimers(
     parkedId: string;
     counts: () => Promise<readonly { stored: number; actual: number }[]>;
   }) => Promise<void>,
+  drift?: 'park' | 'resume',
 ) {
   await withUpgradeDatabase(100, async ({ admin, config, upgrade }) => {
     const { ownerId, workspaceId, workflowId } = await seedWorkflow(admin);
@@ -99,6 +100,25 @@ async function upgradedTimers(
           );
         }
       });
+      if (drift !== undefined) {
+        await scoped((client) =>
+          client.query(
+            'update app.workflow_runs set timed_wait_started_at=case when $2 then clock_timestamp() end where id=$1',
+            [drift === 'park' ? activeId : parkedId, drift === 'park'],
+          ),
+        );
+        await upgrade(101);
+        const stale = await scoped((client) =>
+          client.query<{ stored: number; actual: number }>(
+            `select counter.active_runs stored,slots.active_runs actual from app.workspace_execution_admission_counters counter
+           cross join lateral app.workflow_run_slot_counts(counter.workspace_id) slots where counter.workspace_id=$1`,
+            [workspaceId],
+          ),
+        );
+        expect(stale.rows).toEqual([
+          { stored: 1, actual: drift === 'park' ? 0 : 2 },
+        ]);
+      }
       const retained = async () => {
         const data: unknown[] = [];
         for (const table of [
@@ -106,7 +126,9 @@ async function upgradedTimers(
           'node_runs',
           'run_checkpoints',
           'run_events',
-          'workspace_execution_admission_counters',
+          ...(drift === undefined
+            ? ['workspace_execution_admission_counters']
+            : []),
         ])
           data.push(
             (
@@ -133,7 +155,10 @@ async function upgradedTimers(
               )
             ).rows,
         );
-      expect(await counts()).toEqual([{ stored: 1, actual: 1 }]);
+      let expected = 1;
+      if (drift === 'park') expected = 0;
+      if (drift === 'resume') expected = 2;
+      expect(await counts()).toEqual([{ stored: expected, actual: expected }]);
       await work({ scoped, activeId, parkedId, counts });
     } finally {
       await app.end();
@@ -211,3 +236,14 @@ it('rejects a timer-only resume past capacity after a populated upgrade, then re
     expect(await counts()).toEqual([{ stored: 1, actual: 1 }]);
   });
 }, 60000);
+
+it.each(['park', 'resume'] as const)(
+  'recomputes counters already damaged by timer-only %s under 0100 without changing durable run evidence',
+  async (drift) => {
+    await upgradedTimers(async ({ counts }) => {
+      const expected = drift === 'park' ? 0 : 2;
+      expect(await counts()).toEqual([{ stored: expected, actual: expected }]);
+    }, drift);
+  },
+  60_000,
+);
