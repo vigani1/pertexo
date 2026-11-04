@@ -40,6 +40,7 @@ type AuthenticationRateLimits = Readonly<
 const rateLimitPolicy = new AbuseRateLimitPolicy();
 
 const BLOCKED_BROWSER_AUTH_PATHS = new Set([
+  '/v1/auth/sign-out',
   '/v1/auth/get-session',
   '/v1/auth/get-access-token',
   '/v1/auth/refresh-token',

@@ -46,3 +46,4 @@ export type { TwoFactorRecoveryResult } from './two-factor/two-factor-recovery.t
 export type {} from './federation/provisioning/management/detach.repository.js';
 export type {} from './federation/sessions/policy.js';
 export type {} from './federation/sessions/recovery.repository.js';
+export { revokeAuthenticationSession } from './federation/sessions/revocation.repository.js';
