@@ -52,7 +52,6 @@ export type {
 export {
   parseScheduleRecurrence,
   resolveScheduleObservation,
-  SCHEDULE_CRON_PARSER_VERSION,
   type ScheduleObservation,
   type ScheduleRecurrence,
 } from './schedules/recurrence.js';

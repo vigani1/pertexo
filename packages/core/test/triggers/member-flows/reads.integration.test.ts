@@ -65,7 +65,10 @@ describe('a workspace that is not active', () => {
       const scenario = await createWebhookScenario();
       try {
         await setWorkspaceStatus('suspended');
-        expect(await read(scenario, actorId)).toEqual(expected(scenario));
+        // Metadata stays readable while suspended; an inactive workspace has no upcoming fires.
+        expect(await read(scenario, actorId)).toEqual(
+          name === 'next fire times' ? 0 : expected(scenario),
+        );
         await reopenWorkspace();
         await setWorkspaceStatus('pending_deletion');
         await expect(read(scenario, actorId)).rejects.toBeInstanceOf(
