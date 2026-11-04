@@ -1395,7 +1395,7 @@ describe('generic webhook database seam', () => {
     });
   });
 
-  it('rolls back replay, run, delivery, and outbox after post-replay failure', async () => {
+  it('rolls back actual replay, run and outbox writes when delivery persistence fails', async () => {
     const { resources, verification } = await createWebhookScenario();
     const durableCounts = () =>
       ownerQuery<{
@@ -1412,29 +1412,63 @@ describe('generic webhook database seam', () => {
           (select count(*)::int from app.workflow_runs
             where workspace_id=$1 and workflow_id=$3) runs,
           (select count(*)::int from app.outbox_events
-            where workspace_id=$1 and aggregate_type='workflow_run'
+            where workspace_id=$1 and aggregate_type='workflow-run'
               and aggregate_id in (select id from app.workflow_runs
                 where workspace_id=$1 and workflow_id=$3)) outbox_events`,
         [workspaceId, resources.endpointId, verification.workflowId],
       ).then((result) => result.rows[0]);
+    const input = {
+      verification,
+      verifiedSecretVersionId: verification.currentSecret.id,
+      requestFingerprint: hash('post-write-rollback'),
+      idempotencyKeyHash: hash('post-write-key'),
+      runInput: webhookRunInput(
+        verification.runInputMode,
+        post({ event: 'post-write-rollback' }),
+      ),
+      bodyBytes: 64,
+      checkpointFactory,
+    };
+    await acceptWebhook({
+      ...input,
+      idempotencyKeyHash: hash('positive-control-key'),
+    });
     const before = await durableCounts();
-    const failure = new Error('checkpoint construction failed after replay');
-    await expect(
-      acceptWebhook({
-        verification,
-        verifiedSecretVersionId: verification.currentSecret.id,
-        requestFingerprint: hash('post-replay-rollback'),
-        runInput: webhookRunInput(
-          verification.runInputMode,
-          post({ event: 'post-replay-rollback' }),
-        ),
-        bodyBytes: 64,
-        checkpointFactory: () => {
-          throw failure;
-        },
-      }),
-    ).rejects.toBe(failure);
+    expect(before).toEqual({
+      deliveries: 1,
+      replay_records: 1,
+      runs: 1,
+      outbox_events: 1,
+    });
+    await ownerQuery(`create function public.reject_webhook_commit() returns trigger language plpgsql as $$
+      begin
+        if not exists(select 1 from app.webhook_trigger_replay_records where delivery_id=new.id)
+          or not exists(select 1 from app.workflow_runs where id=new.workflow_run_id)
+          or not exists(select 1 from app.outbox_events where aggregate_type='workflow-run' and aggregate_id=new.workflow_run_id)
+        then raise exception 'Rollback test did not reach its writes'; end if;
+        raise exception 'Forced post-write rollback';
+      end $$;
+      create trigger reject_webhook_commit before insert on app.webhook_trigger_deliveries
+      for each row execute function public.reject_webhook_commit()`);
+    try {
+      await expect(acceptWebhook(input)).rejects.toMatchObject({
+        cause: { code: 'P0001', message: 'Forced post-write rollback' },
+      });
+    } finally {
+      await ownerQuery(
+        'drop trigger reject_webhook_commit on app.webhook_trigger_deliveries; drop function public.reject_webhook_commit()',
+      );
+    }
     await expect(durableCounts()).resolves.toEqual(before);
+    const accepted = await acceptWebhook(input);
+    const replayed = await acceptWebhook(input);
+    expect(replayed).toMatchObject({ runId: accepted.runId, replayed: true });
+    await expect(durableCounts()).resolves.toEqual({
+      deliveries: 3,
+      replay_records: 2,
+      runs: 2,
+      outbox_events: 2,
+    });
   });
 
   it('keeps graph-disabled trigger nodes externally materialized for execution-time skipping', async () => {
