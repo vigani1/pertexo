@@ -262,7 +262,8 @@ function cookiePolicy({
   validateSchema,
 }: Readonly<{ secureCookies: boolean; validateSchema: boolean }>) {
   return {
-    database: { generateId: () => randomUUID(), validateSchema },
+    // The pinned Kysely adapter supports joins; its emulation catch writes raw errors to console.
+    database: { generateId: () => randomUUID(), validateSchema, joins: true },
     cookiePrefix: 'pertexo-auth',
     // A `__Secure-` name prefix would rename `pertexo_session`, which the
     // guards, the CSRF bridge and session lookup read by name; HTTPS
