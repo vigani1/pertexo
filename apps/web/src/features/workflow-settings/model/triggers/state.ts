@@ -38,3 +38,20 @@ export function describeTriggerState(trigger: TriggerHealth): TriggerState {
       return { tone: 'failure', label: 'Error' };
   }
 }
+
+export function describeTriggerRepair(
+  trigger: Pick<
+    ScheduleTriggerHealthResponse | WebhookTriggerHealthResponse,
+    'status' | 'lastErrorCode'
+  >,
+): string | undefined {
+  if (trigger.status === 'disabled') return undefined;
+  switch (trigger.lastErrorCode) {
+    case 'trigger.configuration_invalid':
+      return 'The published trigger configuration cannot be read. Review the trigger settings and publish again.';
+    case 'trigger.reconciliation_failed':
+      return 'Pertexo could not apply the published triggers. It will retry. If this continues, contact your operator.';
+    default:
+      return undefined;
+  }
+}

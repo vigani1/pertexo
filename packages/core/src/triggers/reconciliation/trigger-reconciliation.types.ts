@@ -30,7 +30,7 @@ export type RecordReconciliationFailureInput = Readonly<{
   workspaceId: string;
   workflowId: string;
   publishedVersionId: string;
-  reason: string;
+  error: unknown;
 }>;
 
 export type WorkflowTriggerProjection = Readonly<{

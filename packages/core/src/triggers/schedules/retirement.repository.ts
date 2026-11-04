@@ -20,19 +20,45 @@ export async function retireScheduleClaim(
   await withPlatformTransaction(
     pool,
     async (client) => {
-      if (retirement.kind === 'defer') {
+      if (retirement.kind === 'release') {
         await drizzle(client)
           .execute(
-            sql`select app.defer_trigger_schedule_claim(${claim.trigger_id},${claim.lease_token},${retirement.retryAfterSeconds})`,
+            sql`select app.release_trigger_schedule_claim(${claim.trigger_id},${claim.lease_token})`,
           )
           .catch(rethrowQueryFailure);
         return;
       }
+      const retrySeconds =
+        retirement.kind === 'defer' ? retirement.retryAfterSeconds : 60;
+      if (
+        !Number.isInteger(retrySeconds) ||
+        retrySeconds < 1 ||
+        retrySeconds > 300
+      )
+        throw new RangeError('Invalid schedule admission backoff');
+      const reason =
+        retirement.kind === 'defer'
+          ? 'schedule.admission_throttled'
+          : retirement.reason;
+      const health =
+        retirement.kind === 'fail' &&
+        retirement.reason !== 'schedule.scan_failed'
+          ? 'unhealthy'
+          : 'degraded';
+      const observation = await drizzle(client)
+        .execute<{ observed_at: string }>(
+          sql`select clock_timestamp() observed_at`,
+        )
+        .catch(rethrowQueryFailure);
+      const observed = observation.rows[0]?.observed_at;
+      if (observed === undefined)
+        throw new Error('Schedule retirement database time is unavailable');
+      const retryAt = new Date(
+        new Date(observed).getTime() + retrySeconds * 1_000,
+      );
       await drizzle(client)
         .execute(
-          retirement.kind === 'fail'
-            ? sql`select app.fail_trigger_schedule_claim(${claim.trigger_id},${claim.lease_token})`
-            : sql`select app.release_trigger_schedule_claim(${claim.trigger_id},${claim.lease_token})`,
+          sql`select app.store_trigger_schedule_retirement(${claim.trigger_id},${claim.lease_token},${health},${reason},${retryAt})`,
         )
         .catch(rethrowQueryFailure);
     },

@@ -1,3 +1,4 @@
+import { reconciliationFailureReason } from '../trigger-failure.js';
 import { and, eq, inArray, not, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { Pool, PoolClient } from 'pg';
@@ -204,7 +205,7 @@ async function recordTriggerReconciliationFailure(
     async (client) => {
       const workflowId = input.workflowId;
       const versionId = input.publishedVersionId;
-      const reason = input.reason;
+      const reason = reconciliationFailureReason(input.error);
       const db = drizzle(client);
       const authority = await db
         .select({ id: workflows.id })

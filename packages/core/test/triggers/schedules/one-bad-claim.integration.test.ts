@@ -349,7 +349,8 @@ describe('a schedule that cannot fire', () => {
     const [first, second] = [await createWorkspace(), await createWorkspace()];
     const broken = await dueSchedule(first, '3 hours');
     const healthy = await dueSchedule(second, '2 hours');
-    const signature = 'app.fail_trigger_schedule_claim(uuid, uuid)';
+    const signature =
+      'app.store_trigger_schedule_retirement(uuid,uuid,text,text,timestamptz)';
     await ownerQuery(`revoke execute on function ${signature} from public`, []);
     await ownerQuery(
       `revoke execute on function ${signature} from pertexo_app`,

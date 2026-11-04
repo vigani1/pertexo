@@ -1,3 +1,4 @@
+import type { ScheduleFailureReason } from '../../trigger-failure.js';
 import type { claimSchema } from './input.js';
 
 import type { InitialCheckpointFactory } from '../../../runs/commands/initial-checkpoint.js';
@@ -48,4 +49,5 @@ export type ScannerResources = Readonly<{
 
 export type ClaimRetirement =
   | Readonly<{ kind: 'defer'; retryAfterSeconds: number }>
-  | Readonly<{ kind: 'fail' | 'release' }>;
+  | Readonly<{ kind: 'fail'; reason: ScheduleFailureReason }>
+  | Readonly<{ kind: 'release' }>;

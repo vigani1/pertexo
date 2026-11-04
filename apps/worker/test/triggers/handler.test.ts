@@ -116,7 +116,7 @@ describe('trigger reconciliation handler', () => {
       workspaceId: WORKSPACE_ID,
       workflowId: WORKFLOW_ID,
       publishedVersionId: VERSION_ID,
-      reason: 'trigger.reconciliation_failed',
+      error: outage,
     });
   });
 
