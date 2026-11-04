@@ -1,3 +1,7 @@
+import {
+  isExecutionAreaFile,
+  isExecutionAreaEntry,
+} from './execution-area-rules.mjs';
 import console from 'node:console';
 import { lstat, readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
@@ -34,6 +38,33 @@ const reserved = new Set([
   'helpers',
   'common',
 ]);
+const vagueExecutionSubjects = new Set([
+  'contract',
+  'types',
+  'utils',
+  'helpers',
+  'common',
+  'misc',
+  'data',
+  'manager',
+  'handler',
+  'service',
+  'shared',
+  'base',
+  'store',
+  'input',
+  'output',
+  'commands',
+  'errors',
+  'runtime',
+  'fixture',
+  'fixtures',
+  'support',
+  'records',
+  'reads',
+  'state',
+  'index',
+]);
 const excluded = new Set(['node_modules', 'dist', 'coverage', '.git']);
 const roots = ['src', 'test', 'e2e', 'e2e-live'];
 
@@ -55,6 +86,14 @@ export function validateFileName(file, text) {
         'FN001',
         `Directory "${segment}" must use ${production ? 'kebab-case' : 'dot-separated kebab-case words'}.`,
       );
+  if (isExecutionAreaFile(file)) {
+    const subject = stem.split('.')[0];
+    if (vagueExecutionSubjects.has(subject) && !isExecutionAreaEntry(file))
+      report(
+        'FN008',
+        'Execution modules and fixtures name their concrete subject.',
+      );
+  }
   if (!production) return diagnostics;
   if (reserved.has(stem))
     report('FN002', 'Name the specific subject of this production module.');
