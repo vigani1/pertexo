@@ -1,3 +1,4 @@
+import type { PendingTaskOperations } from '../../../pending-tasks/pending-task.service.js';
 import type { GovernanceStore } from '@pertexo/core/governance';
 
 import type { DataTablesStore } from '@pertexo/core/data-tables';
@@ -31,7 +32,7 @@ export type ApiWorkflowRuntime = Readonly<{
   dependencies: WorkflowAuthoringDependencies;
   nodeTestingDependencies?: NodeTestingDependencies;
   runDependencies: WorkflowRunsDependencies;
-  pendingTasks?: PendingTaskStore;
+  pendingTasks?: PendingTaskOperations;
   forms?: FormStore;
   variables?: WorkspaceVariablesStore;
   dataTables?: DataTablesStore;

@@ -1,5 +1,5 @@
 import { Module, type DynamicModule } from '@nestjs/common';
-import type { PendingTaskStore } from '@pertexo/core/runs';
+import type { PendingTaskOperations } from './pending-task.service.js';
 import type { WorkspaceAuthorizationSource } from '../workspaces/ports.js';
 import { PendingTasksController } from './pending-tasks.controller.js';
 import { PendingTaskService } from './pending-task.service.js';
@@ -9,7 +9,7 @@ import { WORKSPACE_AUTHORIZATION } from '../workspaces/tokens.js';
 // eslint-disable-next-line @typescript-eslint/no-extraneous-class
 export class PendingTasksModule {
   static register(
-    store: PendingTaskStore,
+    store: PendingTaskOperations,
     authorization: WorkspaceAuthorizationSource,
     identityModule: DynamicModule,
   ): DynamicModule {

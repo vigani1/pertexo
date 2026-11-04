@@ -1,3 +1,5 @@
+import { readWorkspacePeople } from './discovery.repository.js';
+import type { WorkspaceActor } from '../../shared/workspace-access.js';
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { Pool } from 'pg';
@@ -250,6 +252,20 @@ async function listWorkspaceMembers(
 
 export function createIdentityWorkspaceMemberStore(pool: Pool) {
   return Object.freeze({
+    listWorkspacePeople: (
+      input: WorkspaceActor &
+        Readonly<{ q: string; after?: string | undefined }>,
+    ) =>
+      withWorkspaceAccess(
+        pool,
+        input,
+        {
+          mode: 'read',
+          capability: 'workflow:update',
+          statuses: BROWSABLE_WORKSPACE_STATUSES,
+        },
+        (client) => readWorkspacePeople(client, input),
+      ),
     listAccessibleWorkspaces: (
       actorId: string,
       input?: ListAccessibleWorkspacesInput,

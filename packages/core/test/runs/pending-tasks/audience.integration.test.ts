@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
 import { WorkspaceAccessDeniedError } from '../../../src/shared/workspace-access.errors.js';
-import { admin, store, taskFixture, userId } from './fixtures.js';
+import { admin, store, taskFixture, userId, people } from './fixtures.js';
 
 it('inspects the entire current audience independent of member pagination and search', async () => {
   const f = await taskFixture();
@@ -9,7 +9,7 @@ it('inspects the entire current audience independent of member pagination and se
     `with people as (insert into app.users(id,email,display_name) select gen_random_uuid(),'audience-'||gen_random_uuid()||'@example.test','Audience member' from generate_series(1,60) returning id) insert into app.workspace_memberships(workspace_id,user_id,role,status) select $1,id,'admin','active' from people`,
     [f.workspaceId],
   );
-  expect((await store.audience({ ...scope, q: '' })).items).toHaveLength(50);
+  expect((await people({ ...scope, q: '' })).items).toHaveLength(50);
   expect(
     await store.inspectAudience({
       ...scope,

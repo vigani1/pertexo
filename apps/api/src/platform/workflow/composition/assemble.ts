@@ -43,7 +43,10 @@ export function assembleWorkflowRuntime({
   let closePromise: Promise<void> | undefined;
 
   return Object.freeze({
-    pendingTasks,
+    pendingTasks: Object.freeze({
+      ...pendingTasks,
+      audience: identityRuntime.people,
+    }),
     forms,
     variables: metadataRuntime.variables,
     dataTables: metadataRuntime.dataTables,

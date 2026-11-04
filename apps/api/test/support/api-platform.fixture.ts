@@ -181,6 +181,7 @@ export function createStubIdentityRuntime(
     signInEvidence: notUsed,
   };
   return Object.freeze({
+    people: notUsed,
     dependencies: {
       config: { publicWebOrigin: 'https://app.example.test' },
       persistence: {
