@@ -1,10 +1,18 @@
+import { appendAuditFacts } from '../../governance/audit/facts.js';
+import {
+  appendLockedRunEvents,
+  RUN_EVENT_TYPE,
+} from '../queries/history/events.repository.js';
 import { lockWorkspaceRunAdmission } from '../admission-locks.repository.js';
 import { workflowRuns } from '@pertexo/database/schema';
-import { and, asc, eq, inArray, isNull } from 'drizzle-orm';
+import { and, asc, eq, inArray, isNull, sql } from 'drizzle-orm';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 import { requestWorkflowRunCancellation } from './request-cancellation.js';
 import { WorkflowRunNotFoundError } from '../workflow-run.errors.js';
-import { enqueueAdvance } from '../wakeups/advance.repository.js';
+import {
+  enqueueAdvance,
+  enqueueAdvances,
+} from '../wakeups/advance.repository.js';
 import { ACTIVE_RUN_STATUSES } from '../statuses.js';
 import {
   insertWorkflowRunAudit,
@@ -21,6 +29,7 @@ export async function requestActiveRunCancellations(
   transaction: WorkspaceTransaction,
   input: Readonly<{ actorId: string; reason: string }>,
 ): Promise<number> {
+  await lockWorkspaceRunAdmission(transaction.db, transaction.workspaceId);
   const active = await transaction.db
     .select({ id: workflowRuns.id })
     .from(workflowRuns)
@@ -33,13 +42,43 @@ export async function requestActiveRunCancellations(
     )
     .orderBy(asc(workflowRuns.id))
     .for('update');
-  for (const { id } of active)
-    await cancelInTransaction(transaction, {
-      actorId: input.actorId,
-      workspaceId: transaction.workspaceId,
-      runId: id,
-      reason: input.reason,
+  // Bound SQL parameters and temporary rows without splitting the lifecycle commit.
+  for (let offset = 0; offset < active.length; offset += 500) {
+    const ids = active.slice(offset, offset + 500).map((row) => row.id);
+    await transaction.db
+      .update(workflowRuns)
+      .set({
+        cancelRequestedAt: sql`clock_timestamp()`,
+        cancelRequestedBy: input.actorId,
+        cancelReason: input.reason,
+        updatedAt: sql`clock_timestamp()`,
+      })
+      .where(
+        and(
+          eq(workflowRuns.workspaceId, transaction.workspaceId),
+          inArray(workflowRuns.id, ids),
+        ),
+      );
+    await appendLockedRunEvents(transaction, ids, {
+      type: RUN_EVENT_TYPE.cancelRequested,
+      payload: { actor: input.actorId, reason: input.reason },
     });
+    await enqueueAdvances(transaction.db, {
+      workspaceId: transaction.workspaceId,
+      runIds: ids,
+    });
+    await appendAuditFacts(
+      transaction,
+      ids.map((runId) => ({
+        workspaceId: transaction.workspaceId,
+        actorId: input.actorId,
+        action: 'workflow.run.cancel_requested',
+        targetType: 'workflow_run',
+        targetId: runId,
+        metadata: { reasonProvided: true },
+      })),
+    );
+  }
   return active.length;
 }
 
