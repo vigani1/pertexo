@@ -51,7 +51,6 @@ export {
   type PendingTaskListQuery,
   type PendingTaskListResponse,
   type PendingTaskDecisionRequest,
-  type ApprovalAudienceQuery,
 } from './schemas/execution/pending-tasks.js';
 
 export { type PendingTaskSubmitRequest } from './schemas/execution/pending-tasks.js';

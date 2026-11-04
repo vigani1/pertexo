@@ -17,12 +17,10 @@ import {
 } from '@pertexo/database/testing';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import {
-  createPostgresRunEventReader,
-  RedisRunEventPublisher,
-  RedisRunEventSource,
-  streamRunEventFrames,
-} from '../../../src/workflow-runs/events/index.js';
+import { createPostgresRunEventReader } from '../../../src/workflow-runs/events/postgres-reader.js';
+import { RedisRunEventNotificationPublisher as RedisRunEventPublisher } from '@pertexo/queue';
+import { RedisRunEventSource } from '../../../src/workflow-runs/events/redis-source.js';
+import { streamRunEventFrames } from '../../../src/workflow-runs/events/stream.js';
 import {
   FixtureResourceOwner,
   rethrowFixtureSetupFailure,

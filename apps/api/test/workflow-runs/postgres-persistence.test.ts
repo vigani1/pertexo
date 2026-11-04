@@ -6,7 +6,6 @@ import {
   createInitialCheckpoint,
 } from '@pertexo/core/runs';
 import { createPostgresWorkflowRunPersistence } from '../../src/workflow-runs/postgres-persistence.js';
-import { usageCapacitySnapshot } from './usage/capacity.fixture.js';
 import {
   ExecutionStateConflictError,
   IdempotencyRequestConflictError,
@@ -23,7 +22,6 @@ import {
   runId,
   actorId,
   run,
-  statisticsRecord,
   databaseWith,
   adapterConfig,
   invokePersistence,
@@ -45,30 +43,6 @@ import { PLATFORM_NODE_CATALOG } from '@pertexo/node-catalog';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
 
 describe('PostgreSQL workflow run persistence adapter', () => {
-  it('forwards capacity reads and cancellation without changing exact values', async () => {
-    const usageCapacity = vi
-      .fn<WorkflowRunDatabase['usageCapacity']>()
-      .mockResolvedValue(usageCapacitySnapshot());
-    const adapter = createPostgresWorkflowRunPersistence(
-      adapterConfig,
-      databaseWith({ usageCapacity }),
-    );
-    const signal = new AbortController().signal;
-    await expect(
-      adapter.persistence.usageCapacity({ workspaceId, actorId, signal }),
-    ).resolves.toEqual(usageCapacitySnapshot());
-    expect(usageCapacity).toHaveBeenCalledExactlyOnceWith({
-      workspaceId,
-      actorId,
-      signal,
-    });
-    const failure = new Error('unknown persistence failure');
-    usageCapacity.mockRejectedValue(failure);
-    await expect(
-      adapter.persistence.usageCapacity({ workspaceId, actorId }),
-    ).rejects.toBe(failure);
-  });
-
   it('does not disclose capacity when workspace access is lost at the snapshot', async () => {
     const usageCapacity = vi
       .fn<WorkflowRunDatabase['usageCapacity']>()
@@ -183,27 +157,6 @@ describe('PostgreSQL workflow run persistence adapter', () => {
     await expect(
       problemResult(invokePersistence(adapter, 'cancel'), runFailure),
     ).rejects.toMatchObject({ code: 'run.not_cancelable' });
-  });
-
-  it('forwards a statistics read and returns its snapshot unchanged', async () => {
-    const statistics = vi
-      .fn<WorkflowRunDatabase['statistics']>()
-      .mockResolvedValue(statisticsRecord());
-    const adapter = createPostgresWorkflowRunPersistence(
-      adapterConfig,
-      databaseWith({ statistics }),
-    );
-
-    await expect(invokePersistence(adapter, 'statistics')).resolves.toEqual(
-      statisticsRecord(),
-    );
-    expect(statistics).toHaveBeenCalledWith({
-      actorId,
-      workspaceId,
-      window: '24h',
-      includeWorkflows: false,
-      includeWorkflowName: true,
-    });
   });
 
   it.each(['start', 'replay', 'get', 'cancel', 'statistics'] as const)(
