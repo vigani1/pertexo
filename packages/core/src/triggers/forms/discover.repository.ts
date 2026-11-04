@@ -1,3 +1,4 @@
+import { publicFormIsAvailable } from './public-form-standing.js';
 import { sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
@@ -15,20 +16,26 @@ export async function discoverPublicForm(
   pool: Pool,
   input: DiscoverFormInput,
 ): Promise<PublicFormGrant> {
+  const digest = capabilityHash(input.capability);
   const result = await drizzle(pool)
     .execute<{
       workspaceId: string;
       workflowId: string;
       nodeId: string;
+      access: string;
+      workspaceStatus: string;
     }>(
-      sql`select workspace_id "workspaceId",workflow_id "workflowId",node_id "nodeId" from app.lookup_public_form(${input.publicId},${capabilityHash(input.capability)})`,
+      sql`select workspace_id "workspaceId",workflow_id "workflowId",node_id "nodeId",access,workspace_status "workspaceStatus" from app.lookup_public_form(${input.publicId},${digest})`,
     )
     .catch(rethrowQueryFailure);
   const row = result.rows[0];
-  if (row === undefined) throw new FormUnavailableError();
+  if (row === undefined || !publicFormIsAvailable(row))
+    throw new FormUnavailableError();
   return {
-    ...row,
+    workspaceId: row.workspaceId,
+    workflowId: row.workflowId,
+    nodeId: row.nodeId,
     publicId: input.publicId,
-    capabilityHash: capabilityHash(input.capability),
+    capabilityHash: digest,
   };
 }

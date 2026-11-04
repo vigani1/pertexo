@@ -3,7 +3,7 @@ import { sql } from 'drizzle-orm';
 import { QueryBuilder } from 'drizzle-orm/pg-core';
 import type { Pool } from 'pg';
 
-export const EXPECTED_MIGRATION_HEAD = '0094_webhook_ingress_counter_storage.sql';
+export const EXPECTED_MIGRATION_HEAD = '0095_public_form_lookup_standing.sql';
 const MINIMUM_POSTGRES_MAJOR = 18;
 
 /**
