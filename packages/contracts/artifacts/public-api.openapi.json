@@ -23392,7 +23392,8 @@
                             "concurrency_limit",
                             "workflow_unavailable",
                             "publication_changed",
-                            "endpoint_disabled"
+                            "endpoint_disabled",
+                            "release_failed"
                           ]
                         },
                         {
