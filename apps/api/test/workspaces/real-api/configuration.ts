@@ -1,4 +1,4 @@
-import { DEFAULT_INSTANCE_LIMITS } from '@pertexo/core/runs';
+import { DEFAULT_INSTANCE_LIMITS } from '../../../src/platform/config/instance-limits.js';
 import { DEFAULT_CODE_SETTINGS } from '@pertexo/node-sdk';
 
 import type { ApiConfig } from '../../../src/platform/config/api.js';

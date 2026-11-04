@@ -8,7 +8,7 @@ import type {
   DatabaseConfig,
 } from '@pertexo/database/platform';
 import { acquireDatabasePool } from '@pertexo/database/platform';
-import { DEFAULT_INSTANCE_LIMITS } from '../../runs/instance-limits.js';
+import { DEFAULT_WEBHOOK_ENDPOINT_BURST_LIMIT } from './ingress-limits.js';
 import type { WebhookResponseScope } from './responses/webhook-response.types.js';
 import { readWebhookResponse } from './responses/webhook-responses.repository.js';
 
@@ -56,7 +56,7 @@ export function createWebhookTriggerStore(
   config: DatabaseConfig,
   runtime?: DatabaseRuntime,
   {
-    burstLimit = DEFAULT_INSTANCE_LIMITS.webhookEndpointBurstLimit,
+    burstLimit = DEFAULT_WEBHOOK_ENDPOINT_BURST_LIMIT,
   }: Readonly<{ burstLimit?: number }> = {},
 ) {
   const lease = acquireDatabasePool(config, runtime);
