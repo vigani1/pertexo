@@ -71,6 +71,7 @@ test('builds a schedule with a sentence preview and saves the step’s own confi
     edges: [],
     settings: {},
   });
+  await page.route('**/v1/**', (route) => route.fulfill({ status: 404 }));
   await addCsrfCookie(context);
   await installEditorRoutes(page, remote, {
     definitions: [scheduleDefinition],

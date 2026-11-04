@@ -102,8 +102,10 @@ export function ScheduleCard({
         ) : null}
       </header>
       <p className="font-heading text-xl leading-snug font-semibold tracking-[-0.02em]">
-        {describeRecurrence(trigger.recurrence)}
-        {trigger.recurrence.kind === 'cron' ? (
+        {trigger.recurrence === null
+          ? 'Schedule needs repair'
+          : describeRecurrence(trigger.recurrence)}
+        {trigger.recurrence?.kind === 'cron' ? (
           <span className="ml-2 font-mono text-xs font-normal tracking-normal text-subtle-foreground">
             {trigger.recurrence.timezone}
           </span>

@@ -12,6 +12,7 @@ import { publishedVersionOf } from '../../reconciliation/health.repository.js';
 import { ScheduleTriggerError } from '../schedule-trigger.errors.js';
 import {
   parsePersistedScheduleRecurrence,
+  readPersistedScheduleRecurrence,
   resolveScheduleObservation,
 } from '../recurrence.js';
 
@@ -61,11 +62,16 @@ function scheduleRecord({
   recurrenceFields,
   ...row
 }: Awaited<ReturnType<typeof scheduleQuery>>[number]): ScheduleTriggerRecord {
+  const recurrence = readPersistedScheduleRecurrence(recurrenceFields);
   return {
     ...row,
-    recurrence: decodeStoredValue(() =>
-      parsePersistedScheduleRecurrence(recurrenceFields),
-    ),
+    recurrence,
+    ...(recurrence === null
+      ? ({
+          healthStatus: 'unhealthy',
+          lastErrorCode: 'schedule.recurrence_invalid',
+        } as const)
+      : {}),
   };
 }
 export function parseStoredScheduleTrigger(

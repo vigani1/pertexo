@@ -2,7 +2,6 @@ import {
   scheduleCanFire,
   scheduleStandingColumns,
 } from './schedule-standing.js';
-import { decodeStoredValue } from '../../shared/stored-values.js';
 import { and, desc, eq, sql, type SQLWrapper } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
@@ -29,7 +28,7 @@ import type { Pool, PoolClient } from 'pg';
 import { withWorkflowAccess } from '../workflow-access.js';
 import { ScheduleTriggerError } from './schedule-trigger.errors.js';
 import {
-  parsePersistedScheduleRecurrence,
+  readPersistedScheduleRecurrence,
   projectScheduleOccurrences,
 } from './recurrence.js';
 
@@ -177,9 +176,9 @@ function projectPersistedSchedule(
   if (!scheduleCanFire(row))
     return Object.freeze({ observedAt, items: Object.freeze([]) });
   const nextFireAt = row.next_fire_at;
-  const recurrence = decodeStoredValue(() =>
-    parsePersistedScheduleRecurrence(row),
-  );
+  const recurrence = readPersistedScheduleRecurrence(row);
+  if (recurrence === null)
+    return Object.freeze({ observedAt, items: Object.freeze([]) });
   // The persisted next fire comes first, even while it waits for a scanner;
   // after it, each instant is what the scanner persists when it claims.
   const later =

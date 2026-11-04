@@ -78,5 +78,28 @@ describe('schedule failures that need repair', () => {
     );
     await expect(scan()).rejects.toThrow('Invalid schedule recurrence');
     await expectHealth('schedule.recurrence_invalid');
+    const health = await schedule.schedules.list({
+      actorId: schedule.actorId,
+      workspaceId: schedule.workspaceId,
+      workflowId,
+    });
+    expect(health).toHaveLength(2);
+    expect(health.find((row) => row.id === triggerId)).toMatchObject({
+      recurrence: null,
+      healthStatus: 'unhealthy',
+      lastErrorCode: 'schedule.recurrence_invalid',
+    });
+    expect(
+      await schedule.schedules.nextFireTimes({
+        actorId: schedule.actorId,
+        workspaceId: schedule.workspaceId,
+        workflowId,
+        triggerId,
+        count: 3,
+      }),
+    ).toMatchObject({ items: [] });
+    expect(health.find((row) => row.id === skipTriggerId)).toMatchObject({
+      recurrence: { kind: 'interval' },
+    });
   });
 });

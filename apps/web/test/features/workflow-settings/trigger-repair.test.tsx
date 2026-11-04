@@ -23,7 +23,15 @@ it.each([
       http.get(`${workflowApi}/triggers/schedules`, () =>
         HttpResponse.json({
           items: [
-            { ...schedule, healthStatus: 'unhealthy', lastErrorCode: code },
+            {
+              ...schedule,
+              recurrence:
+                code === 'schedule.recurrence_invalid'
+                  ? null
+                  : schedule.recurrence,
+              healthStatus: 'unhealthy',
+              lastErrorCode: code,
+            },
           ],
         }),
       ),

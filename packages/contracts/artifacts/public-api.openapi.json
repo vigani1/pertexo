@@ -22594,50 +22594,57 @@
                   ]
                 },
                 "recurrence": {
-                  "oneOf": [
+                  "anyOf": [
                     {
-                      "type": "object",
-                      "properties": {
-                        "kind": {
-                          "type": "string",
-                          "const": "cron"
+                      "oneOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "kind": {
+                              "type": "string",
+                              "const": "cron"
+                            },
+                            "expression": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 256
+                            },
+                            "timezone": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 128
+                            }
+                          },
+                          "required": [
+                            "kind",
+                            "expression",
+                            "timezone"
+                          ],
+                          "additionalProperties": false
                         },
-                        "expression": {
-                          "type": "string",
-                          "minLength": 1,
-                          "maxLength": 256
-                        },
-                        "timezone": {
-                          "type": "string",
-                          "minLength": 1,
-                          "maxLength": 128
+                        {
+                          "type": "object",
+                          "properties": {
+                            "kind": {
+                              "type": "string",
+                              "const": "interval"
+                            },
+                            "intervalMinutes": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 43200
+                            }
+                          },
+                          "required": [
+                            "kind",
+                            "intervalMinutes"
+                          ],
+                          "additionalProperties": false
                         }
-                      },
-                      "required": [
-                        "kind",
-                        "expression",
-                        "timezone"
-                      ],
-                      "additionalProperties": false
+                      ]
                     },
                     {
-                      "type": "object",
-                      "properties": {
-                        "kind": {
-                          "type": "string",
-                          "const": "interval"
-                        },
-                        "intervalMinutes": {
-                          "type": "integer",
-                          "minimum": 1,
-                          "maximum": 43200
-                        }
-                      },
-                      "required": [
-                        "kind",
-                        "intervalMinutes"
-                      ],
-                      "additionalProperties": false
+                      "type": "null"
                     }
                   ]
                 },
@@ -22963,50 +22970,57 @@
                 ]
               },
               "recurrence": {
-                "oneOf": [
+                "anyOf": [
                   {
-                    "type": "object",
-                    "properties": {
-                      "kind": {
-                        "type": "string",
-                        "const": "cron"
+                    "oneOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "type": "string",
+                            "const": "cron"
+                          },
+                          "expression": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 256
+                          },
+                          "timezone": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 128
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "expression",
+                          "timezone"
+                        ],
+                        "additionalProperties": false
                       },
-                      "expression": {
-                        "type": "string",
-                        "minLength": 1,
-                        "maxLength": 256
-                      },
-                      "timezone": {
-                        "type": "string",
-                        "minLength": 1,
-                        "maxLength": 128
+                      {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "type": "string",
+                            "const": "interval"
+                          },
+                          "intervalMinutes": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 43200
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "intervalMinutes"
+                        ],
+                        "additionalProperties": false
                       }
-                    },
-                    "required": [
-                      "kind",
-                      "expression",
-                      "timezone"
-                    ],
-                    "additionalProperties": false
+                    ]
                   },
                   {
-                    "type": "object",
-                    "properties": {
-                      "kind": {
-                        "type": "string",
-                        "const": "interval"
-                      },
-                      "intervalMinutes": {
-                        "type": "integer",
-                        "minimum": 1,
-                        "maximum": 43200
-                      }
-                    },
-                    "required": [
-                      "kind",
-                      "intervalMinutes"
-                    ],
-                    "additionalProperties": false
+                    "type": "null"
                   }
                 ]
               },

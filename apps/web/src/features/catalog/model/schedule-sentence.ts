@@ -5,7 +5,7 @@ import { FORMAT_LOCALE } from '@/lib/format/locale';
 // step presentation so the editor's builder and the published trigger cards
 // say the same thing.
 
-type Recurrence = ScheduleTriggerHealthResponse['recurrence'];
+type Recurrence = NonNullable<ScheduleTriggerHealthResponse['recurrence']>;
 
 const DAY_NAMES = [
   'Sunday',
