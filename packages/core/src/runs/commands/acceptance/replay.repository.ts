@@ -2,7 +2,7 @@ import type { WorkflowRunAcceptanceReplayInput } from './run-acceptance.types.js
 import { and, eq } from 'drizzle-orm';
 import { idempotencyRecords, workflowRuns } from '@pertexo/database/schema';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
-import { resultRefSchema } from './receipt.js';
+import { resultRefSchema } from './acceptance-receipt.schemas.js';
 import { IDEMPOTENCY_STATUS } from '@pertexo/database/primitives';
 import type { AcceptedWorkflowRun } from './run-acceptance.types.js';
 import {
