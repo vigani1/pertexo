@@ -21,6 +21,9 @@ import { persistCoordinatorRunTransition } from './persist/run-transition.reposi
 import type { RunTransitionPlan } from './plan.js';
 import {
   claimCoordinatorReceipt,
+  validateAuthoritativeAdvanceDelivery,
+  DeliveryMismatch,
+  auditCoordinatorDeliveryMismatch,
   completeCoordinatorReceipt,
 } from './receipts.repository.js';
 import { withCoordinatorWriteClient } from './coordinator-transaction.js';
@@ -31,6 +34,7 @@ export type FailUnadvanceableInput = Readonly<{
   workspaceId: string;
   runId: string;
   safeErrorCode: string;
+  expectedRevision?: number | null;
   /** The advance that found the run unadvanceable, whose slot binding ends here. */
   delivery?: CoordinatorAdvanceDelivery;
   attemptDelivery?: NodeAttemptDeliveryIdentity;
@@ -45,7 +49,7 @@ export type FailUnadvanceableInput = Readonly<{
 export function failUnadvanceableRun(
   pool: Pool,
   input: FailUnadvanceableInput,
-): Promise<'failed' | 'outcome_unknown' | 'not_active'> {
+): Promise<'failed' | 'outcome_unknown' | 'not_active' | 'stale'> {
   const { workspaceId, runId, safeErrorCode, signal, delivery } = input;
   return withCoordinatorWriteClient(
     pool,
@@ -59,6 +63,37 @@ export function failUnadvanceableRun(
       )
         return 'not_active';
       const { run } = selected;
+      if (delivery !== undefined)
+        await validateAuthoritativeAdvanceDelivery(
+          client,
+          workspaceId,
+          runId,
+          delivery,
+        );
+      if (
+        (input.expectedRevision !== undefined &&
+          input.expectedRevision !== run.revision) ||
+        (delivery !== undefined && input.expectedRevision === undefined)
+      )
+        return 'stale';
+      if (
+        delivery !== undefined &&
+        (await claimCoordinatorReceipt(client, workspaceId, delivery)) ===
+          'duplicate'
+      )
+        return 'stale';
+      if (input.attemptDelivery !== undefined) {
+        await validateDelivery(client, input.attemptDelivery);
+        if (
+          (await claimReceipt(
+            client,
+            workspaceId,
+            input.attemptDelivery.delivery,
+          )) === 'completed'
+        )
+          return 'stale';
+      }
+
       const status = (await closeOpenWork(client, input))
         ? 'outcome_unknown'
         : 'failed';
@@ -100,28 +135,26 @@ export function failUnadvanceableRun(
         workflowVersionId: run.workflow_version_id,
         workspaceId,
       });
-      if (
-        delivery !== undefined &&
-        (await claimCoordinatorReceipt(client, workspaceId, delivery)) === 'new'
-      )
+      if (delivery !== undefined)
         await completeCoordinatorReceipt(client, workspaceId, delivery);
-      if (input.attemptDelivery !== undefined) {
-        await validateDelivery(client, input.attemptDelivery);
-        const receipt = await claimReceipt(
+      if (input.attemptDelivery !== undefined)
+        await completeReceipt(
           client,
           workspaceId,
           input.attemptDelivery.delivery,
         );
-        if (receipt !== 'completed')
-          await completeReceipt(
-            client,
-            workspaceId,
-            input.attemptDelivery.delivery,
-          );
-      }
       return status;
     },
-  );
+  ).catch((error: unknown) => {
+    if (error instanceof DeliveryMismatch && delivery !== undefined)
+      return auditCoordinatorDeliveryMismatch(
+        pool,
+        workspaceId,
+        delivery,
+        signal,
+      );
+    throw error;
+  });
 }
 
 async function readDatabaseTime(client: PoolClient): Promise<string> {

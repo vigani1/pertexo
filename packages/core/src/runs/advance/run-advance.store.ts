@@ -1,3 +1,6 @@
+import { isStoredDataError } from '../../shared/stored-values.js';
+import { WorkflowEngineError } from '@pertexo/workflow-engine';
+import { CoordinatorRunStateCorruptError } from '../state-errors.js';
 import type { Pool } from 'pg';
 import type { DatabaseConfig } from '@pertexo/database/platform';
 import {
@@ -39,6 +42,7 @@ async function advance(
   const runId = input.runId;
   const delivery = input.delivery;
   const { signal, traceparent } = input;
+  let failedRevision: number | undefined;
   try {
     return await withCoordinatorWriteClient(
       pool,
@@ -56,6 +60,7 @@ async function advance(
           runId,
         });
         if (loaded.kind !== 'loaded') return loaded;
+        failedRevision = loaded.row.revision;
         assertCoordinatorNotAborted(signal);
         const decision = await decide(loaded.state);
         assertCoordinatorNotAborted(signal);
@@ -90,6 +95,16 @@ async function advance(
         delivery,
         signal,
       );
+    if (
+      failedRevision !== undefined &&
+      (error instanceof CoordinatorRunStateCorruptError ||
+        isStoredDataError(error) ||
+        (error instanceof WorkflowEngineError &&
+          error.code !== 'attempt_aborted'))
+    )
+      throw new CoordinatorRunStateCorruptError(failedRevision, {
+        cause: error,
+      });
     throw error;
   }
 }

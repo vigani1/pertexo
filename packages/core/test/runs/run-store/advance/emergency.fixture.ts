@@ -41,12 +41,13 @@ export async function emergencyRun(notify = true) {
   return {
     runId,
     delivery,
-    fail: () =>
+    fail: (reportedDelivery = delivery) =>
       failUnadvanceableRun(pool, {
         workspaceId: workspaceA,
         runId,
-        delivery,
+        delivery: reportedDelivery,
         safeErrorCode,
+        expectedRevision: 0,
         signal: new AbortController().signal,
       }),
   };

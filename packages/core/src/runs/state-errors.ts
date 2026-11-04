@@ -12,8 +12,11 @@ export class RunEventGapError extends ExecutionStateConflictError {
 
 export class CoordinatorRunStateCorruptError extends Error {
   public override readonly name = 'CoordinatorRunStateCorruptError';
-  public constructor() {
-    super('Persisted coordinator run state is invalid');
+  public constructor(
+    public readonly revision?: number | null,
+    options?: ErrorOptions,
+  ) {
+    super('Persisted coordinator run state is invalid', options);
   }
 }
 
