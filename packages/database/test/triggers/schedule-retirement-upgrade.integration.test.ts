@@ -22,9 +22,11 @@ it('preserves populated schedules on upgrade and stores caller-chosen retirement
         ownerId,
       ],
     );
+    // A populated batch exposes independent wall-clock samples that can cross
+    // a microsecond boundary and exceed the maximum lease before the upgrade.
     await admin.query(
       `insert into app.workflow_triggers(id,workspace_id,workflow_id,workflow_version_id,node_id,kind,status,desired_config,config_fingerprint)
-      values($1,$2,$3,$4,'schedule','schedule','active','{}',$5)`,
+      select case when n=1 then $1::uuid else gen_random_uuid() end,$2,$3,$4,'schedule-'||n,'schedule','active','{}',$5 from generate_series(1,500) n`,
       [
         triggerId,
         workspaceId,
@@ -34,12 +36,24 @@ it('preserves populated schedules on upgrade and stores caller-chosen retirement
       ],
     );
     await admin.query(
-      `insert into app.trigger_schedules(trigger_id,workspace_id,recurrence_kind,interval_minutes,misfire_policy,config_fingerprint,
+      `with observed as materialized (select clock_timestamp() at)
+      insert into app.trigger_schedules(trigger_id,workspace_id,recurrence_kind,interval_minutes,misfire_policy,config_fingerprint,
       anchor_at,next_fire_at,lease_owner,lease_token,lease_acquired_at,lease_expires_at)
-      values($1,$2,'interval',60,'catch_up_once',$3,clock_timestamp()-interval '2 hours',clock_timestamp()-interval '1 hour',
-        'owner',$4,clock_timestamp(),clock_timestamp()+interval '5 minutes')`,
+      select id,$2,'interval',60,'catch_up_once',$3,observed.at-interval '2 hours',observed.at-interval '1 hour',
+        'owner',case when id=$1 then $4::uuid else gen_random_uuid() end,observed.at,observed.at+interval '5 minutes'
+      from app.workflow_triggers cross join observed where workspace_id=$2`,
       [triggerId, workspaceId, `trigger:sha256:${'b'.repeat(64)}`, token],
     );
+    expect(
+      (
+        await admin.query(
+          `select count(*)::int leases,
+      bool_and(lease_expires_at=lease_acquired_at+interval '5 minutes') exact_window
+      from app.trigger_schedules where workspace_id=$1`,
+          [workspaceId],
+        )
+      ).rows,
+    ).toEqual([{ leases: 500, exact_window: true }]);
     await admin.query(
       'update app.workflows set published_version_id=$1 where id=$2',
       [versionId, workflowId],
