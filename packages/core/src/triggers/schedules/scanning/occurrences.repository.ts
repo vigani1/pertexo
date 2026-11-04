@@ -1,3 +1,7 @@
+import {
+  scheduleCanFire,
+  scheduleStandingColumns,
+} from '../schedule-standing.js';
 import { scheduleFailureReason } from '../../trigger-failure.js';
 import { decodeStoredValue } from '../../../shared/stored-values.js';
 import {
@@ -12,7 +16,7 @@ import { WorkflowAlreadyRunningError } from '../../../runs/commands/acceptance/r
 import { recordWorkflowTriggerSkip } from '../../skips.repository.js';
 import type { InitialCheckpointFactory } from '../../../runs/commands/initial-checkpoint.js';
 import { createHash } from 'node:crypto';
-import { and, eq, inArray, sql } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 
 import { generatePersistedId } from '@pertexo/database/platform';
 
@@ -53,7 +57,7 @@ export async function isScheduleClaimEligible(
   claim: Readonly<{ trigger_id: string; lease_token: string }>,
 ): Promise<boolean> {
   const eligible = await transaction.db
-    .select({ one: sql`1` })
+    .select(scheduleStandingColumns)
     .from(schedules)
     .innerJoin(workflowTriggers, eq(workflowTriggers.id, schedules.triggerId))
     .innerJoin(workflows, eq(workflows.id, workflowTriggers.workflowId))
@@ -63,15 +67,9 @@ export async function isScheduleClaimEligible(
         eq(schedules.triggerId, claim.trigger_id),
         eq(schedules.leaseToken, claim.lease_token),
         sql`${schedules.leaseExpiresAt}>clock_timestamp()`,
-        eq(schedules.status, 'enabled'),
-        eq(workflowTriggers.status, 'active'),
-        eq(workflows.lifecycleStatus, 'active'),
-        inArray(workflows.activationStatus, ['active', 'degraded']),
-        eq(workflows.publishedVersionId, workflowTriggers.workflowVersionId),
-        eq(workspaces.status, 'active'),
       ),
     );
-  return eligible.length === 1;
+  return eligible[0] !== undefined && scheduleCanFire(eligible[0]);
 }
 
 /**
