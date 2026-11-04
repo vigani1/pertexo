@@ -32,6 +32,14 @@ export async function createFamily(
     childQueued?: boolean;
     workspaceId?: string;
     executableJson?: unknown;
+    executableChecksum?: string;
+    parentExecutable?: (
+      target: Readonly<{
+        workflowId: string;
+        workflowVersionId: string;
+        executableChecksum: string;
+      }>,
+    ) => Readonly<{ checksum: string; envelope: unknown }>;
   }> = {},
 ) {
   const workspaceId = input.workspaceId ?? randomUUID();
@@ -60,6 +68,14 @@ export async function createFamily(
        values($1,$2,'Call retention',$3)`,
       [workflowId, workspaceId, userId],
     );
+    const parent =
+      workflowId === parentWorkflowId
+        ? input.parentExecutable?.({
+            workflowId: childWorkflowId,
+            workflowVersionId: childVersionId,
+            executableChecksum: input.executableChecksum ?? checksum,
+          })
+        : undefined;
     await admin.query(
       `insert into app.workflow_versions
        (id,workspace_id,workflow_id,version_number,graph_json,executable_json,checksum,published_by)
@@ -68,9 +84,9 @@ export async function createFamily(
         versionId,
         workspaceId,
         workflowId,
-        checksum,
+        parent?.checksum ?? input.executableChecksum ?? checksum,
         userId,
-        JSON.stringify(input.executableJson ?? {}),
+        JSON.stringify(parent?.envelope ?? input.executableJson ?? {}),
       ],
     );
   }
@@ -126,7 +142,7 @@ export async function createFamily(
       parentRunId,
       childWorkflowId,
       childVersionId,
-      checksum,
+      input.executableChecksum ?? checksum,
       inline({ input: childRunId }),
       'a'.repeat(64),
       input.childDays === undefined ? 'accepted' : 'succeeded',

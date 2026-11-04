@@ -20,8 +20,11 @@ export let calls: ReturnType<typeof createWorkflowCallStore>;
 
 export let maintenance: Pool;
 
-export async function pending(keepExistingChild = false) {
-  const fixture = await declarationFixture();
+export async function pending(
+  keepExistingChild = false,
+  published?: Parameters<typeof declarationFixture>[1],
+) {
+  const fixture = await declarationFixture(undefined, published);
   if (!keepExistingChild)
     await admin.query('delete from app.workflow_runs where id=$1', [
       fixture.childRunId,
