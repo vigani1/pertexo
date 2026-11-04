@@ -1,3 +1,4 @@
+import { publicFormIsAvailable } from './public-form-standing.js';
 import { and, eq, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { drizzle } from 'drizzle-orm/node-postgres';
@@ -36,21 +37,14 @@ export async function authorizeForm(
       throw new FormUnavailableError();
     const form = alias(workflowForms, 'form');
     const query = drizzle(client)
-      .select({ one: sql`1` })
+      .select({ access: form.access, workspaceStatus: workspaces.status })
       .from(form)
-      .innerJoin(
-        workspaces,
-        and(
-          eq(workspaces.id, form.workspaceId),
-          eq(workspaces.status, 'active'),
-        ),
-      )
+      .innerJoin(workspaces, eq(workspaces.id, form.workspaceId))
       .where(
         and(
           eq(form.workspaceId, input.workspaceId),
           eq(form.workflowId, input.workflowId),
           eq(form.publicId, grant.publicId),
-          eq(form.access, 'public'),
           eq(form.capabilityHash, grant.capabilityHash),
           eq(form.nodeId, grant.nodeId),
         ),
@@ -58,7 +52,9 @@ export async function authorizeForm(
     const current = await (
       write ? query.for('share', { of: form }) : query
     ).catch(rethrowQueryFailure);
-    if (current.length !== 1) throw new FormUnavailableError();
+    const standing = current[0];
+    if (standing === undefined || !publicFormIsAvailable(standing))
+      throw new FormUnavailableError();
   } else {
     if (input.actorId === undefined) throw new FormUnavailableError();
     if (
