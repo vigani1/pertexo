@@ -15,6 +15,30 @@ export function optionalIdempotencyKey(
     : null;
 }
 
-export function sha256(value: string | Uint8Array): string {
+function sha256(value: string | Uint8Array): string {
   return createHash('sha256').update(value).digest('hex');
+}
+
+/** Keep the stored request identity compatible with existing replay receipts. */
+export function webhookRequestFingerprint(
+  input: Readonly<{
+    endpointId: string;
+    method: 'GET' | 'POST';
+    body: Uint8Array;
+    mediaType: string;
+    query: string;
+  }>,
+): string {
+  return sha256(
+    input.method === 'GET'
+      ? `${input.endpointId}\0GET\0${sha256(input.query)}`
+      : `${input.endpointId}\0${sha256(input.body)}\0${input.mediaType}${input.query === '' ? '' : `\0${sha256(input.query)}`}`,
+  );
+}
+
+export function webhookEndpointKeyHash(key: string): string {
+  return createHash('sha256').update(key).digest('hex');
+}
+export function webhookReplayKeyHash(key: string): string {
+  return createHash('sha256').update(key).digest('hex');
 }

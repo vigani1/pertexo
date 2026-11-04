@@ -13,7 +13,7 @@ import type {
   PreparedWebhookRequest,
   IngressReferences,
 } from './webhook-ingress.types.js';
-import { sha256 } from './fingerprint.js';
+import { webhookEndpointKeyHash } from './fingerprint.js';
 
 export async function preflightVerification(
   dependencies: Pick<WebhookIngressDependencies, 'database' | 'testEvents'>,
@@ -22,8 +22,11 @@ export async function preflightVerification(
 ) {
   if (!/^[A-Za-z0-9_-]{43}$/u.test(key)) return null;
   if (testEvent)
-    return (await dependencies.testEvents?.resolve(sha256(key))) ?? null;
-  return dependencies.database.resolveVerification(sha256(key));
+    return (
+      (await dependencies.testEvents?.resolve(webhookEndpointKeyHash(key))) ??
+      null
+    );
+  return dependencies.database.resolveVerification(webhookEndpointKeyHash(key));
 }
 
 export async function resolveIngressReference(
@@ -40,9 +43,13 @@ export async function resolveIngressReference(
   const { dependencies, testEvent, telemetry } = options;
   const productionReference = testEvent
     ? null
-    : await dependencies.database.resolveVerification(sha256(endpointKey));
+    : await dependencies.database.resolveVerification(
+        webhookEndpointKeyHash(endpointKey),
+      );
   const verification = testEvent
-    ? ((await dependencies.testEvents?.resolve(sha256(endpointKey))) ?? null)
+    ? ((await dependencies.testEvents?.resolve(
+        webhookEndpointKeyHash(endpointKey),
+      )) ?? null)
     : productionReference;
   if (verification === null) {
     await authenticationFailed(reply, requestId, telemetry);
