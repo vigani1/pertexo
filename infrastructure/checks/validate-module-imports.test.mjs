@@ -658,3 +658,41 @@ test("a core area doesn't import the entry points above it", () => {
     [],
   );
 });
+
+test('execution areas refuse removed accidental dependencies even when a file is public', () => {
+  for (const [from, to] of [
+    ['runs', 'operator'],
+    ['runs', 'tenant-access'],
+    ['connections', 'runs'],
+    ['notifications', 'runs'],
+    ['outbox', 'runs'],
+    ['tenant-access', 'runs'],
+  ]) {
+    for (const declaration of ['import { a }', 'import type { A }']) {
+      const errors = validateModuleImports({
+        [`packages/core/src/${from}/operation.ts`]: `${declaration} from '../${to}/public.js';`,
+        [`packages/core/src/${to}/index.ts`]:
+          "export type {} from './public.js';",
+        [`packages/core/src/${to}/public.ts`]:
+          'export const a = 1; export type A = number;',
+      });
+      assert.match(
+        errors.join('\n'),
+        /execution-area dependency is not allowed/u,
+        `${from} -> ${to}`,
+      );
+    }
+  }
+});
+
+test('execution areas keep legitimate transaction and execution-source dependencies', () => {
+  assert.deepEqual(
+    validateModuleImports({
+      'packages/core/src/attempts/operation.ts':
+        "import type { A } from '../runs/public.js';",
+      'packages/core/src/runs/index.ts': "export type {} from './public.js';",
+      'packages/core/src/runs/public.ts': 'export type A = number;',
+    }),
+    [],
+  );
+});
