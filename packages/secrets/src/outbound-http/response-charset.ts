@@ -15,29 +15,24 @@ export async function* decodedResponseChunks(
 ): AsyncGenerator<Uint8Array> {
   let decoder: TextDecoder | undefined;
   let first = true;
-  try {
-    for await (const chunk of chunks) {
-      try {
-        if (first) {
-          first = false;
-          decoder = createDecoder(charset, chunk);
-        }
-        yield decoder === undefined
-          ? Buffer.from(chunk)
-          : Buffer.from(decoder.decode(chunk, { stream: true }));
-      } finally {
-        chunk.fill(0);
+  for await (const chunk of chunks) {
+    try {
+      if (first) {
+        first = false;
+        decoder = requireDecodableText(() => createDecoder(charset, chunk));
       }
+      const current = decoder;
+      yield current === undefined
+        ? Buffer.from(chunk)
+        : Buffer.from(
+            requireDecodableText(() => current.decode(chunk, { stream: true })),
+          );
+    } finally {
+      chunk.fill(0);
     }
-    if (decoder !== undefined) yield Buffer.from(decoder.decode());
-  } catch (error: unknown) {
-    if (error instanceof TypeError || error instanceof RangeError)
-      throw failure(SECURE_HTTP_ERROR_CODE.responseEncodingRejected, {
-        possiblyDispatched: true,
-        ambiguous: false,
-      });
-    throw error;
   }
+  if (decoder !== undefined)
+    yield Buffer.from(requireDecodableText(() => decoder.decode()));
 }
 
 function createDecoder(
@@ -52,4 +47,18 @@ function createDecoder(
   return encoding === undefined
     ? undefined
     : new TextDecoder(encoding, { fatal: true });
+}
+
+/** Only codec refusals belong here; a source failure remains a transport failure. */
+function requireDecodableText<T>(decode: () => T): T {
+  try {
+    return decode();
+  } catch (error: unknown) {
+    if (error instanceof TypeError || error instanceof RangeError)
+      throw failure(SECURE_HTTP_ERROR_CODE.responseEncodingRejected, {
+        possiblyDispatched: true,
+        ambiguous: false,
+      });
+    throw error;
+  }
 }

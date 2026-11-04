@@ -1,7 +1,7 @@
 import { isSupportedHttpFieldValue } from '@pertexo/contracts';
 
 /** Common service echo representations, bounded by the admitted credential size. */
-export function sensitiveRepresentations(
+function sensitiveRepresentations(
   values: readonly string[],
 ): readonly string[] {
   const representations = new Set<string>();

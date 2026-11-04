@@ -71,3 +71,26 @@ it.each([
     expect(bytes.every((byte) => byte === 0)).toBe(true);
   },
 );
+
+it('preserves transport failures rather than classifying them as charset refusals', async () => {
+  const retained: Uint8Array[] = [];
+  const operation = async () => {
+    for await (const chunk of boundedRedactedBody(
+      (async function* () {
+        await Promise.resolve();
+        yield Buffer.from('partial response');
+        throw new TypeError('synthetic transport failure');
+      })(),
+      {
+        limit: 100,
+        charset: 'utf-16le',
+        sensitiveValues: [],
+        signal: new AbortController().signal,
+        deadline: performance.now() + 1_000,
+      },
+    ))
+      retained.push(chunk);
+  };
+  await expect(operation()).rejects.toMatchObject({ code: 'network_failed' });
+  expect(retained).toEqual([]);
+});
