@@ -16,7 +16,7 @@ import {
   PendingTaskDecisionError,
   PendingTaskNotFoundError,
 } from '../../../src/runs/pending-tasks/responses/pending-task.errors.js';
-import { admin, store, taskFixture, userId, pool } from './fixtures.js';
+import { admin, store, taskFixture, userId, people, pool } from './fixtures.js';
 
 describe('current authority and atomic human decisions', () => {
   it('admits a named viewer without granting the team directory; refuses the starter', async () => {
@@ -39,7 +39,7 @@ describe('current authority and atomic human decisions', () => {
         idempotencyKey: 'starter',
       }),
     ).rejects.toMatchObject({ reason: 'starter' });
-    await expect(store.audience({ ...f.scope, q: '' })).rejects.toBeInstanceOf(
+    await expect(people({ ...f.scope, q: '' })).rejects.toBeInstanceOf(
       WorkspaceAccessDeniedError,
     );
     const result = await store.decide({

@@ -7,10 +7,8 @@ import {
   RUN_EVENT_TYPE,
 } from '../runs/queries/history/events.repository.js';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
-import {
-  enqueue,
-  enqueueAdvance,
-} from '../outbox/enqueue-delivery.repository.js';
+import { enqueue } from '../outbox/enqueue-delivery.repository.js';
+import { enqueueAdvance } from '../runs/wakeups/advance.repository.js';
 
 /** Where a settlement came from, kept on the attempt and in its event. */
 export type AttemptSettlementSource =
@@ -120,7 +118,10 @@ export async function settleExpiredAttempt(
         reconciliation: true,
       },
     });
-    outboxEventId = await enqueueAdvance(transaction, attempt.runId);
+    outboxEventId = await enqueueAdvance(transaction.db, {
+      workspaceId: transaction.workspaceId,
+      runId: attempt.runId,
+    });
   }
   return outboxEventId === undefined
     ? Object.freeze({ outcome })

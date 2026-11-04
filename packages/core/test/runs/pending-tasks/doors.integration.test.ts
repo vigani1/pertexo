@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 
 import { PendingTaskDecisionError } from '../../../src/runs/pending-tasks/responses/pending-task.errors.js';
 import { WorkspaceAccessDeniedError } from '../../../src/shared/workspace-access.errors.js';
-import { admin, store, taskFixture, userId } from './fixtures.js';
+import { admin, store, taskFixture, userId, people } from './fixtures.js';
 
 type Fixture = Awaited<ReturnType<typeof taskFixture>>;
 type Status = 'active' | 'suspended' | 'pending_deletion';
@@ -62,7 +62,7 @@ describe('which workspace statuses each door of a task opens on', () => {
     list: (f: Fixture) =>
       store.list({ ...scopeOf(f), status: 'pending' } as never),
     read: (f: Fixture) => store.read(f.scope),
-    audience: (f: Fixture) => store.audience({ ...scopeOf(f), q: '' }),
+    audience: (f: Fixture) => people({ ...scopeOf(f), q: '' }),
   };
 
   // A suspended workspace stays browsable, and pending work stays readable there.
@@ -151,7 +151,7 @@ describe('who a task’s doors open for', () => {
       const actorId = role === 'owner' ? userId : await memberAs(f, role);
       const scope = { workspaceId: f.workspaceId, actorId };
 
-      await expect(store.audience({ ...scope, q: '' })).resolves.toBeDefined();
+      await expect(people({ ...scope, q: '' })).resolves.toBeDefined();
       await expect(
         store.inspectAudience({ ...scope, audience: AUDIENCE }),
       ).resolves.toBeDefined();
@@ -168,7 +168,7 @@ describe('who a task’s doors open for', () => {
         actorId: await memberAs(f, role),
       };
 
-      await expect(store.audience({ ...scope, q: '' })).rejects.toBeInstanceOf(
+      await expect(people({ ...scope, q: '' })).rejects.toBeInstanceOf(
         WorkspaceAccessDeniedError,
       );
       await expect(
@@ -189,7 +189,7 @@ describe('who a task’s doors open for', () => {
     for (const door of [
       () => store.list({ ...scope, status: 'pending' } as never),
       () => store.read({ ...f.scope, actorId: outsider }),
-      () => store.audience({ ...scope, q: '' }),
+      () => people({ ...scope, q: '' }),
       () => store.inspectAudience({ ...scope, audience: AUDIENCE }),
       () => decide(f, outsider),
     ])

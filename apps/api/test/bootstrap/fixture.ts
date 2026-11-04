@@ -102,6 +102,7 @@ export function identityRuntime(
   };
   return Object.freeze({
     dependencies: identityDependencies,
+    people: notUsed,
     federation: stubFederationService(),
     directory: stubDirectoryStore(),
     automation: {

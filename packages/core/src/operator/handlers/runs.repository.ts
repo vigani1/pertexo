@@ -8,7 +8,7 @@ import {
 import { requestWorkflowRunCancellation } from '../../runs/commands/request-cancellation.js';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 import { withoutNulls, type OperatorDecision } from './decision.js';
-import { enqueueAdvance } from '../../outbox/enqueue-delivery.repository.js';
+import { enqueueAdvance } from '../../runs/wakeups/advance.repository.js';
 
 /** Due nodes one resume marks; the result says when more remain. */
 const RESUME_PAGE = 100;
@@ -113,7 +113,10 @@ export async function resumeDueWork(
         updatedAt: sql`clock_timestamp()`,
       })
       .where(checkpointIsDue(transaction.workspaceId, runId));
-    outboxEventId = await enqueueAdvance(transaction, runId);
+    outboxEventId = await enqueueAdvance(transaction.db, {
+      workspaceId: transaction.workspaceId,
+      runId,
+    });
   }
   return {
     outcome,
@@ -160,7 +163,10 @@ export async function cancelRun(
       reason: input.reason,
       runId: input.runId,
     }));
-    outboxEventId = await enqueueAdvance(transaction, input.runId);
+    outboxEventId = await enqueueAdvance(transaction.db, {
+      workspaceId: transaction.workspaceId,
+      runId: input.runId,
+    });
   }
   return {
     outcome,
