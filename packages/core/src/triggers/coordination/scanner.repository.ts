@@ -12,7 +12,10 @@ import {
   type DatabaseRuntime,
 } from '@pertexo/database/platform';
 import type { DatabaseConfig } from '@pertexo/database/platform';
-import { releaseCoordinatedEvent } from './release.repository.js';
+import {
+  releaseCoordinatedEvent,
+  restFailedCoordinatedEvent,
+} from './release.repository.js';
 
 export type TriggerEventScanner = ReturnType<typeof createTriggerEventScanner>;
 
@@ -60,6 +63,19 @@ export function createTriggerEventScanner(
           result[outcome]++;
         } catch (error) {
           failures.push(error);
+          if (!input.signal?.aborted) {
+            try {
+              await withWorkspaceTransaction(
+                lease.pool,
+                row.workspace_id,
+                (transaction) =>
+                  restFailedCoordinatedEvent(transaction, row.event_id),
+                { signal: AbortSignal.timeout(5_000) },
+              );
+            } catch (retirementError) {
+              failures.push(retirementError);
+            }
+          }
         }
       }
       if (failures.length > 0)

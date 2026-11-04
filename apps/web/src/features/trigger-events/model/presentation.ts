@@ -19,6 +19,8 @@ const reasons: Record<EventCoordinationReason, string> = {
   workflow_unavailable: 'The workflow or workspace stopped accepting events.',
   publication_changed:
     'The published version changed before this event started.',
+  release_failed:
+    'Pertexo could not start this event. It will retry shortly. Contact your operator if it keeps happening.',
   endpoint_disabled: 'The webhook endpoint stopped accepting events.',
 };
 export function describeCoordinatedEvent(

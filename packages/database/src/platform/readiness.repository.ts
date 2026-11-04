@@ -3,7 +3,8 @@ import { sql } from 'drizzle-orm';
 import { QueryBuilder } from 'drizzle-orm/pg-core';
 import type { Pool } from 'pg';
 
-export const EXPECTED_MIGRATION_HEAD = '0091_pending_trigger_success_order.sql';
+export const EXPECTED_MIGRATION_HEAD =
+  '0092_coordinated_event_retry_evidence.sql';
 const MINIMUM_POSTGRES_MAJOR = 18;
 
 /**

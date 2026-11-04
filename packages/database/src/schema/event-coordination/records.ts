@@ -137,7 +137,7 @@ export const triggerCoordinatedEvents = appSchema.table(
     }).onDelete('restrict'),
     check(
       'trigger_coordinated_events_kind',
-      sql`source in ('webhook','form') and mode in ('deduplicate','debounce','throttle') and initial_outcome in ('accepted','skipped','deduplicated','debounced','throttled','refused') and initial_status in ('pending','started','skipped','refused') and status in ('pending','started','skipped','coalesced','refused') and (reason is null or reason in ('duplicate_key','newer_event','throttle_limit','invalid_key','coordination_full','coordination_timeout','queue_full','concurrency_limit','workflow_unavailable','publication_changed','endpoint_disabled')) and version_number>0`,
+      sql`source in ('webhook','form') and mode in ('deduplicate','debounce','throttle') and initial_outcome in ('accepted','skipped','deduplicated','debounced','throttled','refused') and initial_status in ('pending','started','skipped','refused') and status in ('pending','started','skipped','coalesced','refused') and (reason is null or reason in ('duplicate_key','newer_event','throttle_limit','invalid_key','coordination_full','coordination_timeout','queue_full','concurrency_limit','workflow_unavailable','publication_changed','endpoint_disabled','release_failed')) and version_number>0`,
     ),
     check(
       'trigger_coordinated_events_state',

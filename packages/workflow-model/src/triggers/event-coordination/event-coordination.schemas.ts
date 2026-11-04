@@ -81,6 +81,7 @@ export const eventCoordinationReasonSchema = z.enum([
   'workflow_unavailable',
   'publication_changed',
   'endpoint_disabled',
+  'release_failed',
 ]);
 export const eventCoordinationReceiptSchema = z
   .object({
