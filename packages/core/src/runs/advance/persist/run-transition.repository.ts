@@ -1,3 +1,4 @@
+import { assertRunStartDeadline } from '../queued-run-admission.repository.js';
 import { decodeStoredValue } from '../../../shared/stored-values.js';
 import { TERMINAL_RUN_STATUSES } from '../../statuses.js';
 import { releaseSlotDuringTimedWait } from '../timed-wait-slot.repository.js';
@@ -129,6 +130,12 @@ export async function persistCoordinatorRunTransition(
       name === 'run.timed_out' ||
       name === 'run.outcome_unknown',
   )?.reasonCode;
+  await assertRunStartDeadline(client, {
+    workspaceId,
+    runId,
+    currentStatus: row.status,
+    nextStatus: plan.checkpoint.runStatus,
+  });
   await drizzle(client)
     .update(workflowRuns)
     .set({

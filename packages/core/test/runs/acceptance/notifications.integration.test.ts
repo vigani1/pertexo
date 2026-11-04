@@ -5,8 +5,6 @@ import {
   apiDatabase,
   apiUrl,
   createNotificationFixture,
-  hasPostgresCode,
-  insertDirectPinnedRun,
   setFixtureStatus,
   setNotificationPolicy,
   waitForDatabaseLock,
@@ -27,17 +25,15 @@ import { WorkspaceRunAdmissionDeniedError } from '../../../src/runs/commands/acc
 
 installExecutionAcceptanceFixture();
 describe('workflow run notification pinning', () => {
-  it('rejects runs in a suspended workspace and malformed pins by constraint', async () => {
+  it('refuses suspended-workspace admission through core and malformed pins by constraint', async () => {
     const valid = await createNotificationFixture();
-    const validPin = {
-      destinationId: valid.destinationId,
-      secretVersionId: valid.secretVersionId,
-      sideEffectClass: 'idempotent_with_key' as const,
-    };
     await setFixtureStatus('workspaces', workspaceA, 'suspended');
-    await expect(insertDirectPinnedRun(validPin)).rejects.toSatisfy(
-      hasPostgresCode('PTA01'),
-    );
+    await expect(
+      apiDatabase.withWorkspace(workspaceA, (tx) =>
+        acceptWorkflowRun(tx, acceptanceInput()),
+      ),
+    ).rejects.toBeInstanceOf(WorkspaceRunAdmissionDeniedError);
+    await expectAcceptanceRecordCounts(0);
     await setFixtureStatus('workspaces', workspaceA, 'active');
 
     for (const config of [

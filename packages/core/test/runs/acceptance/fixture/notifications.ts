@@ -1,5 +1,4 @@
 import { randomUUID } from 'node:crypto';
-import { sql } from 'drizzle-orm';
 import { Pool, type PoolClient } from 'pg';
 
 import { generatePersistedId } from '@pertexo/database/platform';
@@ -9,9 +8,7 @@ import {
   apiUrl,
   workspaceA,
   workflowId,
-  workflowVersionId,
   workspaceCreatorId,
-  apiDatabase,
 } from './base.js';
 
 export async function createNotificationFixture(
@@ -115,32 +112,6 @@ export async function createNotificationFixture(
     client?.release();
     await pool.end();
   }
-}
-
-export async function insertDirectPinnedRun(
-  pin: Readonly<{
-    destinationId: string;
-    secretVersionId: string;
-    sideEffectClass: 'idempotent_with_key' | 'unsafe';
-  }>,
-): Promise<void> {
-  await apiDatabase.withWorkspace(workspaceA, ({ db }) =>
-    db
-      .execute(
-        sql`
-      insert into app.workflow_runs (
-        id,workspace_id,workflow_id,workflow_version_id,trigger_type,status,
-        failure_notification_destination_id,
-        failure_notification_destination_config_version,
-        failure_notification_side_effect_class,
-        failure_notification_connection_secret_version_id
-      ) values (${randomUUID()},${workspaceA},${workflowId},${workflowVersionId},
-        'api','queued',${pin.destinationId},1,${pin.sideEffectClass},
-        ${pin.secretVersionId})
-    `,
-      )
-      .then(() => undefined),
-  );
 }
 
 export async function setFixtureStatus(

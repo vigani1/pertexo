@@ -11,8 +11,8 @@ export type EntitlementPolicyState =
 
 /**
  * Whether an entitlement version is in effect at `clock`. Every reader uses this
- * so they agree with the admission trigger, which keeps its own copy in SQL
- * (`concurrency-admission/agrees-on-entitlement-effect` holds the two together).
+ * alongside core admission. The admission standing matrix checks this SQL
+ * projection against the TypeScript decision at the same database instant.
  */
 export function entitlementInEffect(
   version: EntitlementVersion,
@@ -27,4 +27,20 @@ export function entitlementPolicyState(
   clock: SQL,
 ): SQL<EntitlementPolicyState> {
   return sql`case when ${version.status}<>'active' then 'suspended' when ${version.effectiveAt}>${clock} then 'not_yet_effective' when ${version.expiresAt}<=${clock} then 'expired' else 'active' end`;
+}
+
+/** Standing at an already observed database instant, without performing a read. */
+export function entitlementPolicyStateAt(
+  version: Readonly<{
+    status: string;
+    effectiveAt: number;
+    expiresAt: number | null;
+  }>,
+  observedAt: number,
+): EntitlementPolicyState {
+  if (version.status !== 'active') return 'suspended';
+  if (version.effectiveAt > observedAt) return 'not_yet_effective';
+  if (version.expiresAt !== null && version.expiresAt <= observedAt)
+    return 'expired';
+  return 'active';
 }
