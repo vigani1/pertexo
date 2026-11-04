@@ -243,7 +243,7 @@ describe('createStructuredLogger', () => {
     expect(JSON.stringify(capture.records[0]).length).toBeLessThan(15_000);
   });
 
-  it('serializes errors with their causes', () => {
+  it('keeps bounded error-cause structure without generic text', () => {
     const capture = captureDestination();
     const logger = createStructuredLogger(testConfig(), capture.destination);
     const cause = new Error('database unavailable');
@@ -256,8 +256,8 @@ describe('createStructuredLogger', () => {
 
     expect(capture.records[0]).toMatchObject({
       err: {
-        cause: { message: 'database unavailable', type: 'Error' },
-        message: 'request aborted',
+        cause: { message: '[Redacted]', type: 'Error' },
+        message: '[Redacted]',
         type: 'Error',
       },
       event: 'request.failed',
@@ -312,7 +312,7 @@ describe('createStructuredLogger', () => {
     expect(serialized).not.toContain(secretPrefix);
   });
 
-  it('applies the same text bound to error messages and stacks', () => {
+  it('drops oversized error messages and stacks', () => {
     const capture = captureDestination();
     const logger = createStructuredLogger(testConfig(), capture.destination);
     const oversized = `${'safe context '.repeat(2_000)}Bearer secret-after-boundary`;
@@ -322,12 +322,12 @@ describe('createStructuredLogger', () => {
     logger.error('provider.failed', {}, error);
 
     const serialized = JSON.stringify(capture.records[0]);
-    expect(serialized).toContain('[Truncated]');
+    expect(serialized).not.toContain('[Truncated]');
     expect(serialized).not.toContain('secret-after-boundary');
-    expect(serialized.length).toBeLessThan(40_000);
+    expect(serialized.length).toBeLessThan(2_000);
   });
 
-  it('redacts and bounds error names at every cause depth', () => {
+  it('uses a fixed error type at every cause depth', () => {
     const capture = captureDestination();
     const logger = createStructuredLogger(testConfig(), capture.destination);
     const cause = new Error('nested failure');
@@ -341,8 +341,8 @@ describe('createStructuredLogger', () => {
     expect(serialized).not.toContain('top-level-name-secret');
     expect(serialized).not.toContain('nested-name-secret');
     expect(serialized).toContain('[Redacted]');
-    expect(serialized).toContain('[Truncated]');
-    expect(serialized.length).toBeLessThan(40_000);
+    expect(serialized).not.toContain('[Truncated]');
+    expect(serialized.length).toBeLessThan(2_000);
   });
 
   it('correlates records with the active valid span', () => {

@@ -883,7 +883,7 @@ describe('RFC 9457 problem details filter', () => {
       severity: 'warn',
       actorId: 'actor-1',
       workspaceId: '11111111-1111-4111-8111-111111111111',
-      instance: '/v1/workflows/workflow-1',
+      route: 'unmatched',
       cause: undefined,
     });
   });
@@ -1042,9 +1042,7 @@ describe('RFC 9457 problem details filter', () => {
 
     expect(response.body).not.toHaveProperty('instance');
     expect(logger.log).toHaveBeenCalledWith(
-      // Vitest's asymmetric matcher is intentionally dynamic at this boundary.
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-      expect.not.objectContaining({ instance: expect.anything() }),
+      expect.objectContaining({ route: 'unmatched' }),
     );
   });
 

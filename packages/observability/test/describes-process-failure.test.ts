@@ -13,18 +13,18 @@ describe('describing why a process could not run', () => {
       new Error('Invalid worker configuration', { cause: parsed.error }),
     );
 
-    expect(described).toContain('Invalid worker configuration');
+    expect(described).not.toContain('Invalid worker configuration');
     expect(described).toContain('DATABASE_URL');
     expect(described).toContain('REDIS_URL');
     expect(described).not.toContain('do-not-print-me');
   });
 
-  it('keeps the whole chain of causes', () => {
+  it('keeps cause depth without trusting generic messages', () => {
     expect(
       describeProcessFailure(
         new Error('Could not start', { cause: new Error('Redis refused') }),
       ),
-    ).toBe('Could not start: Redis refused');
+    ).toBe('[Redacted]: [Redacted]');
   });
 
   it('reads through an aggregate', () => {
@@ -32,7 +32,7 @@ describe('describing why a process could not run', () => {
       describeProcessFailure(
         new AggregateError([new Error('first'), new Error('second')], 'many'),
       ),
-    ).toBe('first: second');
+    ).toBe('[Redacted]: [Redacted]');
   });
 
   it('cuts a password out of a connection string in a message', () => {
@@ -94,7 +94,8 @@ describe('describing why a process could not run', () => {
     const looped = new Error('looped');
     looped.cause = looped;
 
-    expect(describeProcessFailure(looped)).toContain('looped');
+    expect(describeProcessFailure(looped)).not.toContain('looped');
+    expect(describeProcessFailure(looped)).toContain('[Redacted]');
   });
 
   it('stays short enough for one log line', () => {
@@ -106,4 +107,19 @@ describe('describing why a process could not run', () => {
   it('has an answer for a thrown non-error', () => {
     expect(describeProcessFailure('nope')).toBe('no reason given');
   });
+});
+
+it('keeps generic process-failure text private even when no token spelling identifies it', () => {
+  const described = describeProcessFailure(
+    new Error(
+      'plain-private-text person@example.test /private/path-credential?code=query-credential',
+    ),
+  );
+  for (const value of [
+    'plain-private-text',
+    'person@example.test',
+    'path-credential',
+    'query-credential',
+  ])
+    expect(described).not.toContain(value);
 });

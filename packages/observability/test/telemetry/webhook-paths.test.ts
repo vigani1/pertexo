@@ -26,8 +26,10 @@ it('removes webhook address credentials from incoming and outgoing telemetry', (
       origin: 'https://api.example',
     } as UndiciRequest),
   ];
+  expect(values[0]?.['url.path']).toBe('unmatched');
+  expect(values[1]?.['url.path']).toBeUndefined();
+  expect(values[2]?.['url.path']).toBeUndefined();
   for (const value of values) {
-    expect(value['url.path']).toBe('/hooks/[Redacted]');
     expect(JSON.stringify(value)).not.toContain(secret);
   }
 });
@@ -44,6 +46,7 @@ it('keeps a query out of the address on a Nest span', () => {
   ).toEqual({
     'http.route': '/v1/connections/oauth2/callback',
     'url.full': '/v1/connections/oauth2/callback',
+    'url.path': '/v1/connections/oauth2/callback',
   });
   expect(sanitizeNestSpanOptions({ attributes: {} }).attributes).toEqual({});
 });

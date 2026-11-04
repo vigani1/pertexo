@@ -42,7 +42,8 @@ export type HttpErrorLogEntry = Readonly<{
   severity: ApplicationErrorCatalogEntry['severity'];
   actorId?: string;
   workspaceId?: string;
-  instance?: string;
+  /** Registered route template or the fixed unmatched label, never the request URI. */
+  route: string;
   cause: unknown;
 }>;
 

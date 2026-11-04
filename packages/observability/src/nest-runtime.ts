@@ -8,13 +8,13 @@ export class NestLoggerAdapter {
     this.logger.debug('nest.debug', this.fields(message, optional));
   }
 
-  public error(message: unknown, ...optional: unknown[]): void {
-    const normalized = this.normalize(message, optional);
+  public error(message: unknown, ..._optional: unknown[]): void {
+    const normalized = this.failure(message);
     this.logger.error('nest.error', normalized.fields, normalized.error);
   }
 
-  public fatal(message: unknown, ...optional: unknown[]): void {
-    const normalized = this.normalize(message, optional);
+  public fatal(message: unknown, ..._optional: unknown[]): void {
+    const normalized = this.failure(message);
     this.logger.fatal('nest.fatal', normalized.fields, normalized.error);
   }
 
@@ -34,10 +34,6 @@ export class NestLoggerAdapter {
     message: unknown,
     optional: readonly unknown[],
   ): Readonly<Record<string, unknown>> {
-    return this.normalize(message, optional).fields;
-  }
-
-  private normalize(message: unknown, optional: readonly unknown[]) {
     const classification = classifyNestMessage(message);
     const strings = optional.filter(
       (value): value is string => typeof value === 'string',
@@ -45,21 +41,26 @@ export class NestLoggerAdapter {
     const onlyString = strings.length === 1 ? strings[0] : undefined;
     const onlyStringIsStack =
       onlyString !== undefined && resemblesStack(onlyString);
-    const { context, stack } = classifyNestOptionalStrings(
-      strings,
-      onlyString,
-      { onlyStringIsStack: onlyStringIsStack },
-    );
+    const { context } = classifyNestOptionalStrings(strings, onlyString, {
+      onlyStringIsStack: onlyStringIsStack,
+    });
     const summary =
       typeof message === 'string' ? boundedNestText(message) : undefined;
     return {
-      fields: {
-        messageType: classification.messageType,
-        ...(summary === undefined ? {} : { summary }),
-        ...(context === undefined ? {} : { context: boundedNestText(context) }),
-      },
-      error: nestLogError(message, classification, summary, stack),
+      messageType: classification.messageType,
+      ...(summary === undefined ? {} : { summary }),
+      ...(context === undefined ? {} : { context: boundedNestText(context) }),
     };
+  }
+
+  private failure(message: unknown) {
+    const classification = classifyNestMessage(message);
+    let error: Error;
+    if (classification.inspectionFailed)
+      error = new Error('[Unserializable error]');
+    else if (classification.isError) error = message as Error;
+    else error = new Error('[Redacted]');
+    return { fields: { messageType: classification.messageType }, error };
   }
 }
 
@@ -69,31 +70,14 @@ function classifyNestOptionalStrings(
   strings: readonly string[],
   onlyString: string | undefined,
   { onlyStringIsStack }: Readonly<{ onlyStringIsStack: boolean }>,
-): Readonly<{ context?: string; stack?: string }> {
+): Readonly<{ context?: string }> {
   if (strings.length > 1) {
     const context = strings.at(-1);
-    const stack = strings.at(-2);
-    return {
-      ...(context === undefined ? {} : { context }),
-      ...(stack === undefined ? {} : { stack }),
-    };
+    return context === undefined ? {} : { context };
   }
   if (onlyString === undefined) return {};
-  if (onlyStringIsStack) return { stack: onlyString };
+  if (onlyStringIsStack) return {};
   return { context: onlyString };
-}
-
-function nestLogError(
-  message: unknown,
-  classification: NestMessageClassification,
-  summary: string | undefined,
-  stack: string | undefined,
-): Error | undefined {
-  if (classification.inspectionFailed)
-    return new Error('[Unserializable error]');
-  if (classification.isError) return message as Error;
-  if (summary === undefined || stack === undefined) return undefined;
-  return nestError(summary, stack);
 }
 
 function boundedNestText(value: string): string {
@@ -126,12 +110,6 @@ function classifyNestMessage(message: unknown): NestMessageClassification {
       messageType: 'uninspectable',
     };
   }
-}
-
-function nestError(summary: string, stack: string): Error {
-  const error = new Error(summary);
-  error.stack = boundedNestText(stack);
-  return error;
 }
 
 function resemblesStack(value: string): boolean {

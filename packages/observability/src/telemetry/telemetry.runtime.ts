@@ -14,7 +14,10 @@ import {
   defaultResource,
   resourceFromAttributes,
 } from '@opentelemetry/resources';
-import { PeriodicExportingMetricReader } from '@opentelemetry/sdk-metrics';
+import {
+  PeriodicExportingMetricReader,
+  createDenyListAttributesProcessor,
+} from '@opentelemetry/sdk-metrics';
 import { NodeSDK } from '@opentelemetry/sdk-node';
 
 import type { ObservabilityConfig } from '../config.js';
@@ -144,6 +147,15 @@ export function createOpenTelemetrySdk(
   const sdk = new NodeSDK({
     instrumentations: createNodeInstrumentations(),
     metricReaders: [metricReader],
+    views: [
+      {
+        instrumentName: 'http.*.request.duration',
+        // Automatic metrics derive this dimension from arbitrary error names/codes.
+        attributesProcessors: [
+          createDenyListAttributesProcessor(['error.type']),
+        ],
+      },
+    ],
     resource,
     traceExporter: new OTLPTraceExporter({
       headers,
