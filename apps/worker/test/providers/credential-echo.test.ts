@@ -1,3 +1,5 @@
+import type { HttpRequestOutput } from '@pertexo/integrations';
+import type { ServiceResponseFacts } from '@pertexo/node-sdk/server';
 import { createServer } from 'node:http';
 import { once } from 'node:events';
 import { createHash } from 'node:crypto';
@@ -153,19 +155,50 @@ afterAll(async () => {
 });
 
 // Retained-body paths are inventoried here; each runs through the same privacy assertion.
-const retainedBodyPaths = [
-  'inline-text',
-  'inline-json',
-  'artifact-json',
-  'artifact-text',
-  'error-excerpt',
-  'parsed-json',
-  'pagination',
-  'page-artifact',
-] as const;
+type BodyMetadata = 'kind' | 'encoding' | 'byteLength' | 'mediaType' | 'sha256';
+type BodyFields<T> = T extends { kind: infer Kind extends string }
+  ? {
+      [Field in Exclude<keyof T, BodyMetadata> & string]: Field extends 'value'
+        ? T extends { encoding: infer Encoding extends string }
+          ? `${Kind}.${Encoding}.${Field}`
+          : `${Kind}.${Field}`
+        : `${Kind}.${Field}`;
+    }[Exclude<keyof T, BodyMetadata> & string]
+  : `body.${Exclude<keyof T, BodyMetadata> & string}`;
+type ResponseMetadata =
+  | 'kind'
+  | 'status'
+  | 'headers'
+  | 'finalOrigin'
+  | 'redirectCount'
+  | 'pageCount'
+  | 'fetchedPageCount'
+  | 'itemCount'
+  | 'complete';
+type OutputFields<T> = T extends { body: infer Body }
+  ? BodyFields<Body>
+  : T extends { items: unknown }
+    ? `pagination.${Exclude<keyof T, ResponseMetadata> & string}`
+    : T extends { pages: unknown }
+      ? `pages.${Exclude<keyof T, ResponseMetadata> & string}`
+      : `output.${Exclude<keyof T, ResponseMetadata> & string}`;
+const retainedBodyPaths = {
+  'inline.utf8.value': ['inline-text', 'inline-json'],
+  'inline.base64.value': ['inline-text', 'inline-json'],
+  'inline.json': ['parsed-json'],
+  'artifact.artifactId': ['artifact-json', 'artifact-text'],
+  'error.text.excerpt': ['error-excerpt'],
+  'pagination.items': ['pagination'],
+  'pages.pages': ['page-artifact'],
+} as const satisfies Record<
+  | OutputFields<HttpRequestOutput>
+  | `error.${BodyFields<ServiceResponseFacts['body']>}`,
+  readonly string[]
+>;
+const scenarios = [...new Set(Object.values(retainedBodyPaths).flat())];
 const labels = ['application/json', 'text/plain', 'none', 'image/png'] as const;
 const matrixEncodings = [...encodings, 'mixed', 'ascii', 'literal'] as const;
-const matrix = retainedBodyPaths.flatMap((mode) =>
+const matrix = scenarios.flatMap((mode) =>
   labels.flatMap((mime) =>
     matrixEncodings.flatMap((encoding) =>
       [false, true].map((oneByte) => ({
