@@ -5,7 +5,7 @@ import {
   rawStore,
   workspaceA,
 } from '../run-store.fixture.js';
-import { emergencyRun, query } from './emergency.fixture.js';
+import { emergencyRun, query, safeErrorCode } from './emergency.fixture.js';
 
 it.each([
   { field: 'nextEventSequence', value: 'broken' },
@@ -28,12 +28,16 @@ it.each([
     expect(
       (
         await query(
-          'select status,completed_at from app.workflow_runs where id=$1',
+          'select status,completed_at,error_summary from app.workflow_runs where id=$1',
           [f.runId],
         )
       ).rows,
     ).toEqual([
-      { status: 'failed', completed_at: expect.any(Date) as unknown },
+      {
+        status: 'failed',
+        completed_at: expect.any(Date) as unknown,
+        error_summary: safeErrorCode,
+      },
     ]);
     expect(
       (
@@ -43,6 +47,15 @@ it.each([
         )
       ).rows,
     ).toEqual([{ completed_at: expect.any(Date) as unknown }]);
+    expect(
+      (
+        await query(
+          'select active_runs from app.workspace_execution_admission_counters where workspace_id=$1',
+          [workspaceA],
+        )
+      ).rows,
+    ).toEqual([{ active_runs: 0 }]);
+    await expect(f.fail()).resolves.toBe('not_active');
     expect(
       (
         await query(

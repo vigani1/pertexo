@@ -23,8 +23,8 @@ installHttpNodeAttemptFixture();
 beforeAll(prepareHttpIntegrationTestTsFixture);
 beforeEach(resetHttpIntegrationTestTsFixture);
 describeIntegration('Frozen sample setup through the production reader', () => {
-  it.each(['missing', 'non-inline'] as const)(
-    'ends an admitted test with a %s frozen sample',
+  it.each(['missing', 'non-inline', 'invalid-snapshot'] as const)(
+    'ends an admitted test after %s stored sample or snapshot damage',
     async (shape) => {
       if (fixtureEncryption === undefined) throw new Error('Missing fixture');
       let providerCalls = 0;
@@ -50,7 +50,10 @@ describeIntegration('Frozen sample setup through the production reader', () => {
             : {
                 provider: {
                   sampleId: randomUUID(),
-                  outputRef: { kind: 'artifact', artifactId: randomUUID() },
+                  outputRef:
+                    shape === 'invalid-snapshot'
+                      ? { kind: 'inline', value: { validSample: true } }
+                      : { kind: 'artifact', artifactId: randomUUID() },
                 },
               };
         await withOwner(async (client) => {
@@ -59,6 +62,11 @@ describeIntegration('Frozen sample setup through the production reader', () => {
           select $1,workflow_id,workspace_id,1,graph_json,checksum,executable_json,'{"provider":"pinned"}'::jsonb,$3::json,clock_timestamp()+interval '1 day' from app.workflow_versions where id=$2`,
             [snapshotId, workflowVersionId, JSON.stringify(pins)],
           );
+          if (shape === 'invalid-snapshot')
+            await client.query(
+              'update app.workflow_test_snapshots set executable_json=\'{"corrupt":true}\'::json where id=$1',
+              [snapshotId],
+            );
           await client.query(
             'with moved as (update app.workflow_runs set workflow_version_id=$2 where id=$1 returning id) update app.run_checkpoints set workflow_version_id=$2 where workflow_run_id in (select id from moved)',
             [scenario.accepted.runId, snapshotId],
