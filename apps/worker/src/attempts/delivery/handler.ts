@@ -127,7 +127,9 @@ async function executePreparedNodeAttempt(
         reason: dispatchAbortReason,
         delivery,
         signal: contextSignal,
-        dispatched: false,
+        dispatched: hasProviderDispatchUncertainty(lease, {
+          dispatched: false,
+        }),
         environment,
       });
     const interruption = await resolveHeartbeatInterruption(
