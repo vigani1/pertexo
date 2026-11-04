@@ -288,7 +288,7 @@ function referencesArtifact(source: OwnerValue, artifact: SQL): SQL {
       .from(
         sql`jsonb_path_query(${source.value},${ARTIFACT_DESCRIPTOR_JSON_PATH}::jsonpath) reference`,
       )
-      .where(sql`reference=to_jsonb(${artifact}::uuid::text)`),
+      .where(sql`lower(reference #>> '{}')=${artifact}::uuid::text`),
   );
 }
 /** SQL filters existing reference facts using an already-decided resource scope. */
