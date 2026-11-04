@@ -6,11 +6,11 @@ import type { PoolClient } from 'pg';
 import { CoordinatorRunStateCorruptError } from '../../../state-errors.js';
 import type { PendingCoordinatorFailure } from '../../load/state.repository.js';
 
-import type { RunTransitionPlan } from '../../plan.js';
+import type { WorkflowTransitionPlan } from '@pertexo/workflow-engine';
 
 export async function persistPendingFailureDecisions(
   client: PoolClient,
-  plan: RunTransitionPlan,
+  plan: WorkflowTransitionPlan,
   {
     pendingFailures,
     workspaceId,
@@ -86,7 +86,7 @@ export async function persistPendingFailureDecisions(
 const failureDecisions: Readonly<
   Partial<
     Record<
-      RunTransitionPlan['events'][number]['name'],
+      WorkflowTransitionPlan['events'][number]['name'],
       'retry' | typeof nodeRuns.$inferSelect.status
     >
   >
@@ -97,7 +97,9 @@ const failureDecisions: Readonly<
   'node.timed_out': 'timed_out',
   'node.outcome_unknown': 'outcome_unknown',
 };
-function failureDecision(name: RunTransitionPlan['events'][number]['name']) {
+function failureDecision(
+  name: WorkflowTransitionPlan['events'][number]['name'],
+) {
   const decision = failureDecisions[name];
   if (decision === undefined) throw new CoordinatorRunStateCorruptError();
   return decision;

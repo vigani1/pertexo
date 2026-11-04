@@ -3,10 +3,8 @@ import { count, sql } from 'drizzle-orm';
 import { Pool } from 'pg';
 import { describe, expect, it } from 'vitest';
 import { acceptWorkflowRun } from '../../../src/runs/commands/acceptance/accept.js';
-import {
-  IDEMPOTENCY_STATUS_VALUES,
-  RUN_STATUS_VALUES,
-} from '../../../src/runs/commands/acceptance/vocabulary.js';
+import { RUN_STATUSES } from '@pertexo/workflow-model';
+import { IDEMPOTENCY_STATUS_VALUES } from '@pertexo/database/primitives';
 import {
   idempotencyRecords,
   outboxEvents,
@@ -75,7 +73,7 @@ describe('workflow run persistence security and compatibility', () => {
         workspaceA,
       ]);
 
-      for (const status of RUN_STATUS_VALUES) {
+      for (const status of RUN_STATUSES) {
         await client.query(
           `
             insert into app.workflow_runs (

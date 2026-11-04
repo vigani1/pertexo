@@ -153,7 +153,6 @@ export type {} from './admission-locks.repository.js';
 export type {} from './advance/plan.js';
 export type {} from './commands/acceptance/accept.js';
 export type {} from './commands/acceptance/replay.repository.js';
-export type {} from './commands/acceptance/vocabulary.js';
 export type {} from './commands/cancel-run.js';
 export type {} from './commands/request-cancellation.js';
 export type {} from './data-policy.js';

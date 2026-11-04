@@ -13,7 +13,7 @@ import {
   IdempotencyRecordCorruptError,
   IdempotencyRequestConflictError,
 } from '../../runs/commands/acceptance/run-admission.errors.js';
-import { IDEMPOTENCY_STATUS } from '../../runs/commands/acceptance/vocabulary.js';
+import { IDEMPOTENCY_STATUS } from '@pertexo/database/primitives';
 
 import type {
   WorkspaceCreationResult as PublicWorkspaceCreationResult,

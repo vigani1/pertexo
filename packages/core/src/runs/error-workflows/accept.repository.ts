@@ -115,7 +115,7 @@ export async function acceptErrorWorkflow(
       transaction,
       candidate.target_workflow_id,
     );
-    const digest = (value: string) =>
+    const errorWorkflowAcceptanceFingerprint = (value: string) =>
       createHash('sha256').update(value).digest('hex');
     const accepted = await acceptWorkflowRun(
       transaction,
@@ -126,8 +126,8 @@ export async function acceptErrorWorkflow(
           : { validateInput: initial.validateInput }),
         operation: 'workflow.run.accept',
         scope: `workflow-error:${input.sourceRunId}`,
-        keyHash: digest(input.sourceRunId),
-        requestHash: digest(
+        keyHash: errorWorkflowAcceptanceFingerprint(input.sourceRunId),
+        requestHash: errorWorkflowAcceptanceFingerprint(
           `${input.sourceRunId}:${projection.id}:${canonicalJson(summary)}`,
         ),
         workflowId: candidate.target_workflow_id,

@@ -19,7 +19,8 @@ import type { PoolClient } from 'pg';
 import { CoordinatorRunStateCorruptError } from '../../state-errors.js';
 import type { CoordinatorCommitRow } from '../load/state.repository.js';
 import { canonicalTimestamp } from '../load/fact-admission.js';
-import { scheduleRunInputSchema, type RunTransitionPlan } from '../plan.js';
+import { scheduleRunInputSchema } from '../plan.js';
+import type { WorkflowTransitionPlan } from '@pertexo/workflow-engine';
 import { persistFailureNotificationIntent } from './failure-notification.repository.js';
 import { persistWorkspaceInboxEvent } from '../../../inbox/folding/events.repository.js';
 import { persistWorkflowTriggerOutcome } from '../../../triggers/pause/outcomes.repository.js';
@@ -29,7 +30,7 @@ import { wakeWorkflowRun } from '../../wakeups/advance.repository.js';
 async function persistDerivedContinuation(
   client: PoolClient,
   input: Readonly<{
-    plan: RunTransitionPlan;
+    plan: WorkflowTransitionPlan;
     runId: string;
     workspaceId: string;
     traceparent?: string;
@@ -52,7 +53,7 @@ async function persistDerivedContinuation(
 
 function scheduledOccurrence(
   row: CoordinatorCommitRow,
-  plan: RunTransitionPlan,
+  plan: WorkflowTransitionPlan,
 ): string | undefined {
   const startedAt = plan.events.find(
     ({ name }) => name === 'run.started',
@@ -85,7 +86,7 @@ export async function persistCoordinatorRunTransition(
   input: Readonly<{
     authoritativeCancellation: boolean;
     hadWaitingStep: boolean;
-    plan: RunTransitionPlan;
+    plan: WorkflowTransitionPlan;
     row: CoordinatorCommitRow;
     runId: string;
     traceparent?: string;

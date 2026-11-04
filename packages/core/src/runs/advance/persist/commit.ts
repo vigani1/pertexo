@@ -18,7 +18,7 @@ import type {
 } from '../run-advance.types.js';
 import { persistConsumedCalls } from '../../calls/persist.repository.js';
 import { persistCoordinatorExecutionTransitions } from './node-admissions.js';
-import type { RunTransitionPlan } from '../plan.js';
+import type { WorkflowTransitionPlan } from '@pertexo/workflow-engine';
 import {
   claimCoordinatorReceipt,
   completeCoordinatorReceipt,
@@ -41,7 +41,7 @@ export async function saveRunTransition(
   input: Readonly<{
     delivery: CoordinatorAdvanceDelivery;
     pendingFailures: readonly PendingCoordinatorFailure[];
-    plan: RunTransitionPlan;
+    plan: WorkflowTransitionPlan;
     previous: WorkflowCheckpoint;
     row: CoordinatorCommitRow;
     runId: string;

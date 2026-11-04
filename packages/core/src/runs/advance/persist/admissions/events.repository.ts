@@ -9,7 +9,7 @@ import type { PoolClient } from 'pg';
 import { CoordinatorRunStateCorruptError } from '../../../state-errors.js';
 import type { PendingCoordinatorFailure } from '../../load/state.repository.js';
 import { terminalStatus } from '../../load/event-facts.repository.js';
-import type { RunTransitionPlan } from '../../plan.js';
+import type { WorkflowTransitionPlan } from '@pertexo/workflow-engine';
 
 import type { ExecutionIdentityMap } from './execution-identity.types.js';
 
@@ -20,7 +20,11 @@ export async function loadEventExecutionIdentities(
     plan,
     workspaceId,
     runId,
-  }: Readonly<{ plan: RunTransitionPlan; workspaceId: string; runId: string }>,
+  }: Readonly<{
+    plan: WorkflowTransitionPlan;
+    workspaceId: string;
+    runId: string;
+  }>,
 ): Promise<void> {
   const missingInvocationKeys = [
     ...new Set(
@@ -71,7 +75,7 @@ export async function persistRunEvents(
   input: Readonly<{
     pendingFailures: readonly PendingCoordinatorFailure[];
     physical: ExecutionIdentityMap;
-    plan: RunTransitionPlan;
+    plan: WorkflowTransitionPlan;
     runId: string;
     workspaceId: string;
     rejectedForEachDeclarations: ReadonlySet<string>;

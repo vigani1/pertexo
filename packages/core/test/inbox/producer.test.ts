@@ -1,7 +1,7 @@
 import type { PoolClient } from 'pg';
 import { describe, expect, it, vi } from 'vitest';
 
-import type { RunTransitionPlan } from '../../src/runs/advance/plan.js';
+import type { WorkflowTransitionPlan } from '@pertexo/workflow-engine';
 import { persistWorkspaceInboxEvent } from '../../src/inbox/folding/events.repository.js';
 
 const workspaceId = '018f2d7a-1c9b-7a42-9c3e-2f5a6b7c8d90';
@@ -11,19 +11,19 @@ const runId = '018f2d7a-1c9b-7a42-9c3e-2f5a6b7c8d92';
 function plan(
   runStatus: string,
   events: readonly { name: string; sequence: number }[],
-): RunTransitionPlan {
+): WorkflowTransitionPlan {
   return {
     checkpoint: { runStatus },
     events: events.map((event) => ({
       ...event,
       occurredAt: '2026-09-28T10:01:00.000Z',
     })),
-  } as unknown as RunTransitionPlan;
+  } as unknown as WorkflowTransitionPlan;
 }
 
 async function produce(
   input: Readonly<{
-    plan: RunTransitionPlan;
+    plan: WorkflowTransitionPlan;
     cancellationRequested?: boolean;
   }>,
 ) {

@@ -23,7 +23,7 @@ import {
 import { bindCallbackTask } from '../callbacks/bind.repository.js';
 import { callbackScopeHash } from '../callbacks/scope-hash.js';
 import type { PoolClient } from 'pg';
-import type { RunTransitionPlan } from '../../advance/plan.js';
+import type { WorkflowTransitionPlan } from '@pertexo/workflow-engine';
 import { CoordinatorRunStateCorruptError } from '../../state-errors.js';
 import { generatePersistedId } from '@pertexo/database/platform';
 import { wakeWorkflowRun } from '../../wakeups/advance.repository.js';
@@ -34,7 +34,7 @@ export async function persistTaskIntents(
   input: Readonly<{
     workspaceId: string;
     runId: string;
-    plan: RunTransitionPlan;
+    plan: WorkflowTransitionPlan;
   }>,
 ): Promise<void> {
   const { workspaceId, runId, plan } = input;
@@ -99,7 +99,7 @@ export async function persistConsumedTasks(
   client: PoolClient,
   workspaceId: string,
   runId: string,
-  plan: RunTransitionPlan,
+  plan: WorkflowTransitionPlan,
 ): Promise<void> {
   const completed = new Set(
     plan.events.flatMap(({ name, invocationKey }) =>
@@ -248,7 +248,7 @@ async function insertDeclaredTask(
     workspaceId: string;
     runId: string;
     intent: Exclude<
-      NonNullable<RunTransitionPlan['taskIntents']>[number],
+      NonNullable<WorkflowTransitionPlan['taskIntents']>[number],
       { kind: 'callback' }
     >;
     status: 'canceled' | 'pending' | 'refused';

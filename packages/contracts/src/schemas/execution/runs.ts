@@ -1,5 +1,6 @@
 import {
   WORKFLOW_GRAPH_LIMITS,
+  RUN_STATUSES,
   runFailureCodeSchema,
 } from '@pertexo/workflow-model';
 import {
@@ -29,16 +30,7 @@ export const workflowRunStartParamsSchema = z
   .object({ workspaceId: z.uuid(), workflowId: z.uuid() })
   .strict();
 
-export const workflowRunStatusSchema = z.enum([
-  'queued',
-  'running',
-  'waiting',
-  'succeeded',
-  'failed',
-  'canceled',
-  'timed_out',
-  'outcome_unknown',
-]);
+export const workflowRunStatusSchema = z.enum(RUN_STATUSES);
 export const workflowNodeRunStatusSchema = z.enum([
   'pending',
   'ready',

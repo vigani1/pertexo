@@ -17,7 +17,7 @@ import { generatePersistedId } from '@pertexo/database/platform';
 import { prepareStoredExecutionValue } from '../values/stored-execution.js';
 import { STORED_EXECUTION_VALUE_LIMITS } from '@pertexo/node-sdk';
 import { CoordinatorRunStateCorruptError } from '../state-errors.js';
-import type { RunTransitionPlan } from '../advance/plan.js';
+import type { WorkflowTransitionPlan } from '@pertexo/workflow-engine';
 
 async function preparedInput(
   client: PoolClient,
@@ -77,7 +77,7 @@ export async function persistCallIntents(
   input: Readonly<{
     workspaceId: string;
     runId: string;
-    plan: RunTransitionPlan;
+    plan: WorkflowTransitionPlan;
     traceparent?: string;
   }>,
 ): Promise<void> {

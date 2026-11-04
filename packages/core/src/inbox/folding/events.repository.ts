@@ -5,7 +5,7 @@ import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import type { PoolClient } from 'pg';
 
 import { generatePersistedId } from '@pertexo/database/platform';
-import type { RunTransitionPlan } from '../../runs/advance/plan.js';
+import type { WorkflowTransitionPlan } from '@pertexo/workflow-engine';
 import { WORKSPACE_INBOX_FAILURE_KINDS } from '../threads/workspace-inbox-thread.js';
 
 const inboxKinds: ReadonlySet<string> = new Set(WORKSPACE_INBOX_FAILURE_KINDS);
@@ -23,7 +23,7 @@ export async function persistWorkspaceInboxEvent(
     workflowId: string;
     runId: string;
     cancellationRequested: boolean;
-    plan: RunTransitionPlan;
+    plan: WorkflowTransitionPlan;
   }>,
 ): Promise<void> {
   const status = input.plan.checkpoint.runStatus;

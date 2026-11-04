@@ -118,11 +118,15 @@ export type {
   FinalizeArtifactInput,
 } from './artifacts/artifact.js';
 export {
+  RUN_STATUS,
+  RUN_STATUSES,
+  type RunStatus,
+} from '@pertexo/workflow-model';
+export {
   IDEMPOTENCY_STATUS,
   IDEMPOTENCY_STATUS_VALUES,
-  RUN_STATUS,
-  RUN_STATUS_VALUES,
-} from './runs/commands/acceptance/vocabulary.js';
+  type IdempotencyStatus,
+} from '@pertexo/database/primitives';
 export {
   IdempotencyRecordCorruptError,
   IdempotencyRequestConflictError,
@@ -169,10 +173,7 @@ export type {
   AcceptWorkflowRunInput,
   WorkflowRunAcceptanceReplayInput,
 } from './runs/commands/acceptance/run-acceptance.types.js';
-export type {
-  IdempotencyStatus,
-  RunStatus,
-} from './runs/commands/acceptance/vocabulary.js';
+
 export {
   appendRunEvent,
   readRunEventsAfter,

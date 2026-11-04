@@ -5,7 +5,7 @@ import { workflowCalls, nodeRuns } from '@pertexo/database/schema';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import type { PoolClient } from 'pg';
 import { CoordinatorRunStateCorruptError } from '../state-errors.js';
-import type { RunTransitionPlan } from '../advance/plan.js';
+import type { WorkflowTransitionPlan } from '@pertexo/workflow-engine';
 import { wakeWorkflowRun } from '../wakeups/advance.repository.js';
 
 /** Child facts never take the existing parent's run or checkpoint lock. */
@@ -14,7 +14,7 @@ export async function persistCallCompletion(
   input: Readonly<{
     workspaceId: string;
     runId: string;
-    plan: RunTransitionPlan;
+    plan: WorkflowTransitionPlan;
     traceparent?: string;
   }>,
 ): Promise<void> {
@@ -66,7 +66,7 @@ export async function persistConsumedCalls(
   client: PoolClient,
   workspaceId: string,
   runId: string,
-  plan: RunTransitionPlan,
+  plan: WorkflowTransitionPlan,
 ): Promise<void> {
   const settledKeys = plan.events.flatMap(({ name, invocationKey }) =>
     invocationKey !== undefined &&
