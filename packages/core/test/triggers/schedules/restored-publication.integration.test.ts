@@ -180,3 +180,94 @@ it.each(['removed', 'webhook'] as const)(
     await expectFires(workflowId);
   },
 );
+
+it.each([false, true])(
+  'keeps an accepted enabled=%s command when restored publication reconciliation arrives later',
+  async (enabled) => {
+    const { workflowId, versionId } = await start();
+    const next = await publishNextTriggerWorkflowVersion(workflowId, 60);
+    await deliverReconciliation(workflowId, next.published.version.id, {
+      eventId: next.eventId,
+      payloadChecksum: next.eventChecksum,
+    });
+    await schedules.setEnabled({
+      workspaceId,
+      workflowId,
+      actorId,
+      triggerId: (await workflowTriggerIds(workflowId)).scheduleId,
+      enabled: !enabled,
+      idempotencyKey: randomUUID(),
+      requestHash: hash(randomUUID()),
+    });
+    const { representationTag } = await draft(workflowId);
+    await authoring.restoreWorkflowVersion({
+      workspaceId,
+      workflowId,
+      actorId,
+      versionId,
+      representationTag,
+    });
+    const restored = await authoring.publishWorkflow({
+      workspaceId,
+      workflowId,
+      actorId,
+      representationTag: (await draft(workflowId)).representationTag,
+      idempotencyKey: randomUUID(),
+      requestHash: hash(randomUUID()),
+    });
+    expect(restored.version.id).toBe(versionId);
+    const triggerId = (await workflowTriggerIds(workflowId)).scheduleId;
+    const command = {
+      workspaceId,
+      workflowId,
+      actorId,
+      triggerId,
+      enabled,
+      idempotencyKey: randomUUID(),
+      requestHash: hash(randomUUID()),
+    };
+    const accepted = await schedules.setEnabled(command);
+    const expected = enabled ? 'active' : 'disabled';
+    expect(accepted).toMatchObject({
+      trigger: { id: triggerId, status: expected },
+      replayed: false,
+    });
+    const delivery = await appendReconciliationEvent(workflowId, versionId);
+    await deliverReconciliation(workflowId, versionId, delivery);
+    await deliverReconciliation(workflowId, versionId, delivery);
+    expect(await schedules.list({ workspaceId, workflowId, actorId })).toEqual([
+      expect.objectContaining({ id: triggerId, status: expected }),
+    ]);
+    expect(await schedules.setEnabled(command)).toMatchObject({
+      ...accepted,
+      replayed: true,
+    });
+    expect(
+      (
+        await ownerQuery(
+          'select status,retired_at from app.trigger_schedules where trigger_id=$1',
+          [triggerId],
+        )
+      ).rows,
+    ).toEqual([{ status: enabled ? 'enabled' : 'disabled', retired_at: null }]);
+    expect(
+      (
+        await ownerQuery(
+          'select action from app.audit_events where workspace_id=$1 and target_id=$2 and action=$3',
+          [
+            workspaceId,
+            triggerId,
+            enabled ? 'schedule_trigger.enabled' : 'schedule_trigger.disabled',
+          ],
+        )
+      ).rows,
+    ).toEqual([
+      {
+        action: enabled
+          ? 'schedule_trigger.enabled'
+          : 'schedule_trigger.disabled',
+      },
+    ]);
+    if (enabled) await expectFires(workflowId);
+  },
+);
