@@ -9,7 +9,7 @@ import {
   versionA,
   workerBaseUrl,
   workspaceA,
-} from './fixtures.js';
+} from './run-store.fixture.js';
 
 describe('Coordinator resumed run status', () => {
   it('persists running with a newly admitted attempt after a waiting checkpoint', async () => {

@@ -15,7 +15,7 @@ import {
   initial,
   outcome,
   runs,
-} from './actions/fixture.js';
+} from './actions.fixture.js';
 import { Pool } from 'pg';
 import { createWorkflowCallStore } from '../../../src/runs/calls/workflow-call.store.js';
 import { parseDatabaseConfig } from '@pertexo/database/platform';

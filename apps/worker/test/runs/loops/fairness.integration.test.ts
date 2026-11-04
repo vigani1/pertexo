@@ -1,8 +1,17 @@
 import { createWorkflowRunDatabase } from '@pertexo/core/runs';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { accept, fixture, publishGraph, runtime } from '../calls/fixtures.js';
-import { acceptQuietWorkspace, callable, maximumLoop } from './fixtures.js';
+import {
+  accept,
+  fixture,
+  publishGraph,
+  runtime,
+} from '../calls/calls.fixture.js';
+import {
+  acceptQuietWorkspace,
+  callable,
+  maximumLoop,
+} from './loops.fixture.js';
 
 const integration = fixture.enabled ? describe : describe.skip;
 integration('maximum loops preserve ordinary run fairness', () => {

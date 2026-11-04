@@ -16,7 +16,14 @@ import {
   PendingTaskDecisionError,
   PendingTaskNotFoundError,
 } from '../../../src/runs/pending-tasks/responses/pending-task.errors.js';
-import { admin, store, taskFixture, userId, people, pool } from './fixtures.js';
+import {
+  admin,
+  store,
+  taskFixture,
+  userId,
+  people,
+  pool,
+} from './pending-tasks.fixture.js';
 
 describe('current authority and atomic human decisions', () => {
   it('admits a named viewer without granting the team directory; refuses the starter', async () => {

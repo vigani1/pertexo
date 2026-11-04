@@ -2,7 +2,7 @@ import type { OutgoingHttpHeaders } from 'node:http';
 
 import { describe, expect, it } from 'vitest';
 
-import { createIngressFixture } from '../ingress/fixture.js';
+import { createIngressFixture } from '../ingress/webhook-ingress.fixture.js';
 import { currentSecret } from '../ingress/environment.js';
 import { request } from '../ingress/requests.js';
 

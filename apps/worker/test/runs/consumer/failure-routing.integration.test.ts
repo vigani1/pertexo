@@ -1,12 +1,15 @@
 import { afterAll, beforeAll, it } from 'vitest';
 import { coordinatorFixture as fixture } from '../../support/coordinator/consumer.js';
-import { qualified, assertCleanup } from './failure-routing/fixture.js';
+import {
+  qualified,
+  assertCleanup,
+} from './failure-routing/failure-routing.fixture.js';
 import { createRoutingBase } from './failure-routing/execution/setup.js';
 import { startRoutingWorkers } from './failure-routing/execution/start.js';
 import { openRoutedRun } from './failure-routing/execution/pending.js';
 import { resumeHandledRun } from './failure-routing/execution/resume.js';
 import { assertRoutingOutcomes } from './failure-routing/execution/outcomes.js';
-import { assertDataFailureRoutes } from './failure-routing/execution/data.js';
+import { assertDataFailureRoutes } from './failure-routing/execution/failure-routing-execution-values.fixture.js';
 import { assertCallableAndRetention } from './failure-routing/execution/callable.js';
 
 qualified(

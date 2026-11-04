@@ -7,7 +7,7 @@ import type {
   TestRunStore,
 } from '../../../support/run-advance-store.js';
 
-import { rawStore, testDeliveries } from './base.js';
+import { rawStore, testDeliveries } from './run-store-database.fixture.js';
 import { workerBaseUrl } from './context.js';
 import { asRuntime } from './queries.js';
 

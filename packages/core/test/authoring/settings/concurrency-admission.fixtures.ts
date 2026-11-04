@@ -15,7 +15,7 @@ import {
   workspaceA,
   workspaceCreatorId,
   workflowId,
-} from '../../runs/acceptance/fixtures.js';
+} from '../../runs/acceptance/run-acceptance.fixture.js';
 import { enforceRetention } from '../../support/retention.js';
 import { testExecutableCompiler } from '../../../src/authoring/test-executable-compiler.js';
 

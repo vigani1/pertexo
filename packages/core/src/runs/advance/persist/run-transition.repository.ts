@@ -17,7 +17,7 @@ import { persistErrorWorkflowIntent } from '../../error-workflows/produce.reposi
 import type { PoolClient } from 'pg';
 
 import { CoordinatorRunStateCorruptError } from '../../state-errors.js';
-import type { CoordinatorCommitRow } from '../load/state.repository.js';
+import type { CoordinatorCommitRow } from '../load/coordinator-state.repository.js';
 import { canonicalTimestamp } from '../load/fact-admission.js';
 import { scheduleRunInputSchema } from '../../../triggers/schedules/schedule-run-input.schemas.js';
 import type { WorkflowTransitionPlan } from '@pertexo/workflow-engine';

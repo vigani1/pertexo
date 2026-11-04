@@ -17,7 +17,7 @@ import {
   url,
   webhook,
   workspaceId,
-} from '../fixture.js';
+} from '../webhooks.fixture.js';
 import { openTransaction, type OpenTransaction } from './lock-holder.js';
 
 export type Scenario = Awaited<ReturnType<typeof createWebhookScenario>>;

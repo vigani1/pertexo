@@ -2,7 +2,7 @@ import {
   describeIntegration,
   sha256Hex,
   sha256Base64,
-} from './artifact-reference/fixture.js';
+} from './artifact-reference.fixture.js';
 import { transportMetrics } from '../support/transport/metrics.js';
 import { createArtifactDatabaseEnvironment } from './artifacts/database.js';
 import { randomUUID, createHash } from 'node:crypto';

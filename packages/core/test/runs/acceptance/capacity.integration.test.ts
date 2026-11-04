@@ -13,7 +13,7 @@ import {
   workspaceA,
   workspaceB,
   otherRequestHash,
-} from './fixtures.js';
+} from './run-acceptance.fixture.js';
 import { createHash, randomUUID } from 'node:crypto';
 import { sql } from 'drizzle-orm';
 import { Pool } from 'pg';

@@ -10,7 +10,7 @@ import {
   asAdmin,
   parseDatabaseConfig,
   actorId,
-} from '../../runs/run-store/fixtures.js';
+} from '../../runs/run-store/run-store.fixture.js';
 import {
   applyHealthCommand,
   claimHealthAttempt,

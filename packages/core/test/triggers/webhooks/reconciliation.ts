@@ -6,7 +6,11 @@ import {
 } from '@pertexo/database/primitives';
 
 import { claimedScheduleWorkflowPaused } from '../../../src/triggers/schedules/pause.repository.js';
-import { reconciliation, workerPool, ownerQuery } from './base.js';
+import {
+  reconciliation,
+  workerPool,
+  ownerQuery,
+} from './webhooks-database.fixture.js';
 import { workspaceId } from './context.js';
 
 /** Whether a claimed schedule's workflow is paused now. */

@@ -4,7 +4,13 @@ import { describe, expect, it } from 'vitest';
 
 import { PendingTaskDecisionError } from '../../../src/runs/pending-tasks/responses/pending-task.errors.js';
 import { WorkspaceAccessDeniedError } from '../../../src/shared/workspace-access.errors.js';
-import { admin, store, taskFixture, userId, people } from './fixtures.js';
+import {
+  admin,
+  store,
+  taskFixture,
+  userId,
+  people,
+} from './pending-tasks.fixture.js';
 
 type Fixture = Awaited<ReturnType<typeof taskFixture>>;
 type Status = 'active' | 'suspended' | 'pending_deletion';

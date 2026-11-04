@@ -35,7 +35,7 @@ import {
   completeWebhookCommand,
   insertSecret,
 } from './receipts.repository.js';
-import { oneHealth } from './state.repository.js';
+import { oneHealth } from './webhook-state.repository.js';
 
 /** Finds the endpoint through its step, so a trigger row of any version addresses it. */
 function endpointOfTrigger(input: Command) {

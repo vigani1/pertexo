@@ -27,7 +27,7 @@ import {
 import {
   heartbeatCancellationHandler,
   STORED_CHECKPOINT,
-} from './outcomes/fixture.js';
+} from './attempts-outcomes.fixture.js';
 import {
   WorkflowEngineError,
   type NodeExecutionRegistry,

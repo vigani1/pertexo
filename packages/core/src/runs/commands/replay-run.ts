@@ -13,9 +13,9 @@ import {
 import {
   acceptWorkflowRunWithAudit,
   requireWorkflowRunRecord,
-} from './records.repository.js';
+} from './workflow-run-records.repository.js';
 import type { ReplayPublishedWorkflowRunInput } from './run-commands.types.js';
-import type { WorkflowRunRecord } from './records.repository.js';
+import type { WorkflowRunRecord } from './workflow-run-records.repository.js';
 
 export async function replayWorkflowRunInTransaction(
   transaction: WorkspaceTransaction,

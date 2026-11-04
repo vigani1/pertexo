@@ -10,7 +10,7 @@ import {
   testDelivery,
   workerBaseUrl,
   workspaceA,
-} from '../fixtures.js';
+} from '../run-store.fixture.js';
 
 const pool = new Pool({ connectionString: databaseUrl(workerBaseUrl), max: 2 });
 afterAll(() => pool.end());

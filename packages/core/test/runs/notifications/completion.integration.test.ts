@@ -10,7 +10,7 @@ import {
   versionA,
   workerBaseUrl,
   workspaceA,
-} from '../run-store/fixtures.js';
+} from '../run-store/run-store.fixture.js';
 
 describe('callable result failure notifications', () => {
   it.each(['manual', 'workflow_call'] as const)(

@@ -12,7 +12,7 @@ import {
   store,
   enforceTestRetention,
   purgeTestWorkspace,
-} from './fixtures.js';
+} from './triggers-coordination.fixture.js';
 it('keeps queue-full events pending without consuming tokens, admits after capacity frees and refuses visibly after 15 minutes', async () => {
   const f = await fixture({
     mode: 'throttle',

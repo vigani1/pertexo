@@ -8,10 +8,10 @@ import {
   parentGraph,
   publishGraph,
   runtime,
-} from '../../calls/fixtures.js';
+} from '../../calls/calls.fixture.js';
 import type { WorkflowGraph } from '@pertexo/workflow-model';
-import { callbackResources } from './fixtures.js';
-import { wait, reply, loop } from './capacity/fixture.js';
+import { callbackResources } from './callbacks.fixture.js';
+import { wait, reply, loop } from './callbacks-capacity.fixture.js';
 import { Queue } from 'bullmq';
 import { QUEUE_NAME } from '@pertexo/queue';
 

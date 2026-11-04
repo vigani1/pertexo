@@ -12,7 +12,7 @@ import {
   FakeRedis,
   expectNoListeners,
   sourceWithFake,
-} from './redis-source/fixture.js';
+} from './redis-source.fixture.js';
 
 function expectedSubscriptionError(outcome: string) {
   if (outcome === 'rejection') return 'connection';

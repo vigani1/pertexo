@@ -5,9 +5,9 @@ import {
   databaseUrl,
   workerBaseUrl,
   workspaceA,
-} from '../fixtures.js';
-import { claimDispatchAttempt } from '../node-attempts/fixture.js';
-import { nodeAttemptStore } from '../fixtures.js';
+} from '../run-store.fixture.js';
+import { claimDispatchAttempt } from '../node-attempts.fixture.js';
+import { nodeAttemptStore } from '../run-store.fixture.js';
 import { NodeAttemptStateCorruptError } from '../../../../src/attempts/node-attempt.errors.js';
 import { query } from './emergency.fixture.js';
 import { failUnadvanceableRun } from '../../../../src/runs/advance/fail-unadvanceable.repository.js';

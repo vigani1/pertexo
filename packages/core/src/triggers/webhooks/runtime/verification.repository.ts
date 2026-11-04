@@ -15,7 +15,7 @@ import type { Pool } from 'pg';
 
 import { WebhookIngressRateLimitExceededError } from '../webhook-trigger.errors.js';
 import { endpointTakesDeliveries } from './endpoint-rules.js';
-import { readTriggerConfig } from './state.repository.js';
+import { readTriggerConfig } from './webhook-state.repository.js';
 import type {
   StoredWebhookTriggerSecret,
   WebhookVerificationReference,

@@ -157,7 +157,7 @@ export type {} from './commands/request-cancellation.js';
 export type {} from './data-policy.js';
 export type {} from './pending-tasks/callbacks/retention.js';
 export type {} from './pending-tasks/responses/eligibility.repository.js';
-export type {} from './pending-tasks/responses/records.repository.js';
+export type {} from './pending-tasks/responses/pending-task-records.repository.js';
 export type {} from './queries/entitlement-effect.js';
 export type {} from './stalled/overdue.repository.js';
 export type {} from './values/retention.js';

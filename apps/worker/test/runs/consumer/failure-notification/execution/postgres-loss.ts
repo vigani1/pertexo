@@ -14,11 +14,11 @@ import {
   stopService,
   workerQuery,
   workspaceId,
-} from '../fixture.js';
+} from '../failure-notification.fixture.js';
 import type {
   FailureNotificationScenario,
   FailureProofStore,
-} from './contract.js';
+} from './failure-notification-execution.types.js';
 
 export async function assertPostgresLossBeforeFence(
   scenario: FailureNotificationScenario,

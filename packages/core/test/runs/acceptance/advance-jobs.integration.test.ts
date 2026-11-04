@@ -21,7 +21,7 @@ import {
   installExecutionAcceptanceFixture,
   workspaceA,
   workspaceCreatorId,
-} from './fixtures.js';
+} from './run-acceptance.fixture.js';
 
 installExecutionAcceptanceFixture();
 

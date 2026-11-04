@@ -12,7 +12,7 @@ import {
   waitForDatabaseLock,
   workflowId,
   workflowVersionId,
-} from '../../runs/acceptance/fixtures.js';
+} from '../../runs/acceptance/run-acceptance.fixture.js';
 import { randomUUID, createHash } from 'node:crypto';
 import { sql } from 'drizzle-orm';
 import { acceptWorkflowRun } from '../../../src/runs/commands/acceptance/accept.js';
@@ -28,7 +28,7 @@ import {
   withConcurrencyControls,
   reapConcurrencyReceipts,
 } from './concurrency-admission.fixtures.js';
-import { readWorkflowRunReadRecord } from '../../../src/runs/commands/records.repository.js';
+import { readWorkflowRunReadRecord } from '../../../src/runs/commands/workflow-run-records.repository.js';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
 import { createWorkflowRunDatabase } from '../../../src/runs/workflow-run.store.js';
 import { Pool } from 'pg';

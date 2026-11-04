@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { expect, it } from 'vitest';
-import { workspaceA } from '../fixtures.js';
+import { workspaceA } from '../run-store.fixture.js';
 import { emergencyRun, query } from './emergency.fixture.js';
 
 it.each(['ready', 'running', 'succeeded'] as const)(

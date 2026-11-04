@@ -17,7 +17,7 @@ import {
   waitForDatabaseLock,
   workspaceA,
   workspaceCreatorId,
-} from './fixtures.js';
+} from './run-acceptance.fixture.js';
 
 installExecutionAcceptanceFixture();
 

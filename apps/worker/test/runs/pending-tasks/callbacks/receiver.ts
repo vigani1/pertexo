@@ -1,6 +1,6 @@
 import { fork } from 'node:child_process';
 import { z } from 'zod';
-import { fixture } from '../../calls/fixtures.js';
+import { fixture } from '../../calls/calls.fixture.js';
 
 export async function startCallbackReceiver() {
   const child = fork(

@@ -11,7 +11,7 @@ import { expect } from 'vitest';
 import { issueBrowserSession } from '../support/browser-session.fixture.js';
 import { sha256 } from './fixture/encryption.js';
 import { reconciliation } from './fixture/lifecycle.js';
-import type { seedWebhook } from './fixture.js';
+import type { seedWebhook } from './direct-webhook.fixture.js';
 import {
   apiQuery,
   application,
@@ -19,7 +19,7 @@ import {
   identityRuntime,
   ownerQuery,
   sendWebhook,
-} from './fixture.js';
+} from './direct-webhook.fixture.js';
 
 export type Seeded = Awaited<ReturnType<typeof seedWebhook>>;
 type Graph = Parameters<typeof parseWorkflowGraphDraft>[0];

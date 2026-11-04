@@ -11,8 +11,8 @@ import {
   ownerQuery,
   workerQuery,
   workspaceId,
-} from '../fixture.js';
-import type { ForEachPhaseContext } from './contract.js';
+} from '../for-each-cancellation.fixture.js';
+import type { ForEachPhaseContext } from './for-each-scenario.types.js';
 import { assertStructuredLoopChildren } from './structured.js';
 
 export async function assertSerialLoopRecovery(context: ForEachPhaseContext) {

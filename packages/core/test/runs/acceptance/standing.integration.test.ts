@@ -22,7 +22,7 @@ import {
   waitForDatabaseLock,
   workspaceA,
   workflowId,
-} from './fixtures.js';
+} from './run-acceptance.fixture.js';
 
 installExecutionAcceptanceFixture();
 let version = 100;

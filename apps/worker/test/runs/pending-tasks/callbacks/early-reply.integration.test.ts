@@ -1,4 +1,4 @@
-import { callbackResources } from './fixtures.js';
+import { callbackResources } from './callbacks.fixture.js';
 import { createServer } from 'node:http';
 import { createHmac } from 'node:crypto';
 import { once } from 'node:events';
@@ -19,7 +19,7 @@ import {
   node,
   publishGraph,
   runtime,
-} from '../../calls/fixtures.js';
+} from '../../calls/calls.fixture.js';
 import { startCallbackReceiver } from './receiver.js';
 
 describe.runIf(fixture.enabled)(

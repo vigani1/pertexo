@@ -19,7 +19,7 @@ import { WorkflowRunReadCapacityError } from '../workflow-run.errors.js';
 import {
   readWorkflowRunReadRecord,
   type WorkflowRunReadRecord,
-} from '../commands/records.repository.js';
+} from '../commands/workflow-run-records.repository.js';
 
 interface GetInput {
   workspaceId: string;

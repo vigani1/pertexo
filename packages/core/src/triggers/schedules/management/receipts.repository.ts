@@ -23,7 +23,7 @@ import type {
 import {
   parseStoredScheduleTrigger,
   readSchedule,
-} from './state.repository.js';
+} from './schedule-state.repository.js';
 
 export function scheduleCommandIdentity(
   input: SetEnabledInput,

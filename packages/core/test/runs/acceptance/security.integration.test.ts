@@ -25,7 +25,7 @@ import {
   workspaceB,
   workflowId,
   workflowVersionId,
-} from './fixtures.js';
+} from './run-acceptance.fixture.js';
 
 installExecutionAcceptanceFixture();
 

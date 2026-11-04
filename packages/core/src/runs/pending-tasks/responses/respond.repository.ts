@@ -34,7 +34,7 @@ import type {
   PendingTaskDecision,
   PendingTaskSubmission,
 } from './pending-task-response.types.js';
-import { projectTask, readTaskRow } from './records.repository.js';
+import { projectTask, readTaskRow } from './pending-task-records.repository.js';
 import { resolveFormFiles } from '../../../artifacts/form-uploads/resolve.repository.js';
 import { requireReadableReceipt } from '../../../shared/receipts.js';
 import { z } from 'zod';

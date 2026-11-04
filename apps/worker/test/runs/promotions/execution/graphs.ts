@@ -4,7 +4,7 @@ import type { WorkflowGraph } from '@pertexo/workflow-model';
 
 import { controlledActionUrl } from '../../../support/editor-browser/controlled-http.js';
 
-import { node, edge } from '../../calls/fixtures.js';
+import { node, edge } from '../../calls/calls.fixture.js';
 
 export function createPromotionChildGraph(sourceConnection: string) {
   const resultType = {

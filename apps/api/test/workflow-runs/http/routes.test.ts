@@ -22,7 +22,7 @@ import {
 import { WORKSPACE_AUTHORIZATION } from '../../../src/workspaces/tokens.js';
 import { FakeIdentityModule } from '../../support/identity-module.js';
 import { ownerAccess, routeHarness } from '../../support/route-harness.js';
-import { runId, workflowId, workspaceId } from './controllers/fixture.js';
+import { runId, workflowId, workspaceId } from './controllers.fixture.js';
 
 const list = { execute: vi.fn() };
 const statistics = { execute: vi.fn() };

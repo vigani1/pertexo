@@ -10,7 +10,7 @@ import { composeExecutableCatalog } from '@pertexo/workflow-engine';
 
 import { coordinatorFixture as fixture } from '../../../../support/coordinator/consumer.js';
 import { insertCompiledWorkflow } from '../../../../support/coordinator/workflows.js';
-import { graph } from '../fixture.js';
+import { graph } from '../failure-routing.fixture.js';
 
 export async function createRoutingBase() {
   const workflowId = randomUUID(),

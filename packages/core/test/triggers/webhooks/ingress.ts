@@ -1,6 +1,6 @@
 import type { createWebhookTriggerStore } from '../../../src/triggers/webhooks/webhook-trigger.store.js';
 
-import { webhook } from './base.js';
+import { webhook } from './webhooks-database.fixture.js';
 
 export async function acceptWebhook(
   input: Parameters<

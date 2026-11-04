@@ -8,7 +8,7 @@ import {
   expireWindow,
   finishRuns,
   apiPool,
-} from './fixtures.js';
+} from './triggers-coordination.fixture.js';
 it('serializes same-key races, preserves exact transport receipts, and counts each business event once', async () => {
   const f = await fixture({ mode: 'deduplicate', key, windowSeconds: 86400 });
   const results = await Promise.all(

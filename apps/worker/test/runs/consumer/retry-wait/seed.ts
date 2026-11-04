@@ -15,7 +15,7 @@ import {
   workflowId,
   workflowVersionId,
   workspaceId,
-} from './fixture.js';
+} from './retry-wait.fixture.js';
 
 export async function seedDueWakeups() {
   const coordinatorQueue = new Queue(QUEUE_NAME.workflowCoordinator, {

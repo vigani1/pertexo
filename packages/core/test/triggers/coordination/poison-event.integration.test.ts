@@ -5,7 +5,7 @@ import {
   scanner,
   checkpointFactory,
   counts,
-} from './fixtures.js';
+} from './triggers-coordination.fixture.js';
 
 it('rests a failed discovery head with safe evidence so the next limited scan starts another key', async () => {
   const broken = await fixture({ mode: 'debounce', key, quietSeconds: 3600 });

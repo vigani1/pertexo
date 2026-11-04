@@ -16,8 +16,8 @@ import {
   workspaceA,
   createHash,
   nodeAttemptStore,
-} from './fixtures.js';
-import { recordBenchmarkOperation } from './foreach/fixture.js';
+} from './run-store.fixture.js';
+import { recordBenchmarkOperation } from './foreach.fixture.js';
 import { NodeAttemptStateCorruptError } from '../../../src/attempts/index.js';
 
 describe('Coordinator For Each persistence invariants', () => {

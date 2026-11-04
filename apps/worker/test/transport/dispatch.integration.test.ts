@@ -19,7 +19,7 @@ import {
   claimEventAcrossFairRounds,
   waitForRemovableJob,
   waitForBalancedConsumerMetrics,
-} from './dispatch/fixture.js';
+} from './dispatch.fixture.js';
 import { randomUUID } from 'node:crypto';
 import {
   insertOutboxEvent,

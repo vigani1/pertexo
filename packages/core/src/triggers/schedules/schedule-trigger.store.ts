@@ -29,11 +29,11 @@ import {
   readScheduleCommandTarget,
   readSchedules,
   scheduleHealthTransition,
-} from './management/state.repository.js';
+} from './management/schedule-state.repository.js';
 import {
   createScheduleTriggerReads,
   withScheduleReader,
-} from './reads.repository.js';
+} from './schedule-reads.repository.js';
 export type ScheduleTriggerStore = ReturnType<
   typeof createScheduleTriggerStore
 >;

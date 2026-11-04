@@ -14,7 +14,7 @@ import {
   NodeAttemptStateCorruptError,
 } from '../node-attempt.errors.js';
 import { readyClaimScope } from './claim-refusal.repository.js';
-import type { branchContextSchema } from '../validation/shared.js';
+import type { branchContextSchema } from '../validation/attempt-scope.schemas.js';
 import {
   SETTLED_ATTEMPT_STATUSES,
   type ClaimDeliveryInput,

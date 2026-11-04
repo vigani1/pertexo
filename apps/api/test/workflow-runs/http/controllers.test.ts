@@ -11,7 +11,7 @@ import {
   controller,
   workflowVersionId,
   streamController,
-} from './controllers/fixture.js';
+} from './controllers.fixture.js';
 import { ApiDrainState } from '../../../src/platform/health/drain-state.js';
 import type { workflowRunRoutes as routes } from '@pertexo/contracts/server';
 import { routeInput } from '../../support/route-input.js';

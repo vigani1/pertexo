@@ -20,7 +20,7 @@ import {
   versionA,
   workerBaseUrl,
   workspaceA,
-} from '../runs/run-store/fixtures.js';
+} from '../runs/run-store/run-store.fixture.js';
 
 async function storedAlerts(runId: string) {
   const { rows } = await asRuntime(workerBaseUrl, workspaceA, (client) =>

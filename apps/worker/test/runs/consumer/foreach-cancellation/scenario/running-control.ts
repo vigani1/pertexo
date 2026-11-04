@@ -14,8 +14,8 @@ import {
   workerQuery,
   workerUrl,
   workspaceId,
-} from '../fixture.js';
-import type { ForEachPhaseContext } from './contract.js';
+} from '../for-each-cancellation.fixture.js';
+import type { ForEachPhaseContext } from './for-each-scenario.types.js';
 
 export async function assertRunningLoopControl(context: ForEachPhaseContext) {
   const { accepted, mode, stopWorkers, eraseRedisAndRestart } = context;

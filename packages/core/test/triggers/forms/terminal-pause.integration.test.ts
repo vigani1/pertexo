@@ -14,7 +14,7 @@ import {
   fixture,
   key,
   queryAsOwner,
-} from '../coordination/fixtures.js';
+} from '../coordination/triggers-coordination.fixture.js';
 
 let runs: ReturnType<typeof createRunAdvanceStore>;
 let calls: ReturnType<typeof createWorkflowCallStore>;

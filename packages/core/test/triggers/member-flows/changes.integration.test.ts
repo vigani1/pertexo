@@ -18,7 +18,7 @@ import {
   webhook,
   workflowTriggerIds,
   workspaceId,
-} from '../webhooks/fixture.js';
+} from '../webhooks/webhooks.fixture.js';
 import {
   addMember,
   COMMANDS,
@@ -32,7 +32,7 @@ import {
   scope,
   useMemberFlows,
   writes,
-} from './fixture.js';
+} from './member-flows.fixture.js';
 
 useMemberFlows();
 

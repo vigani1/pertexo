@@ -7,7 +7,7 @@ import {
   parseDatabaseConfig,
   workerBaseUrl,
   workspaceA,
-} from '../../../runs/run-store/fixtures.js';
+} from '../../../runs/run-store/run-store.fixture.js';
 
 export async function healthCommand(lease: NodeAttemptLease) {
   const result = await asOwner(workspaceA, (client) =>

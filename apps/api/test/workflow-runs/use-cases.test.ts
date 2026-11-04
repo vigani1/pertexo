@@ -31,7 +31,7 @@ import {
   now,
   startCommand,
   replayCommand,
-} from './use-cases/fixture.js';
+} from './workflow-run-commands.fixture.js';
 import { createHash } from 'node:crypto';
 import {
   GetWorkflowNodeRunOutputUseCase,

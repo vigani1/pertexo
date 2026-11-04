@@ -14,7 +14,7 @@ import { prepareCallbackCapability } from './capability-composition/callbacks.js
 import {
   prepareRunValuesCapability,
   prepareDataTablesCapability,
-} from './capability-composition/data.js';
+} from './capability-composition/run-values-and-tables.js';
 import { prepareCodeCapability } from './capability-composition/code.js';
 import { prepareWebhookResponseCapability } from './capability-composition/responses.js';
 import { prepareConnectionCapability } from './capability-composition/connections.js';

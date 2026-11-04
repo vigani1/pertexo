@@ -1,8 +1,8 @@
 import { randomBytes, randomUUID } from 'node:crypto';
 
 import { admin } from '../../../lifecycle/calls/fixtures.js';
-import type { fixture } from './fixture.js';
-import { store } from './fixture.js';
+import type { fixture } from './admission.fixture.js';
+import { store } from './admission.fixture.js';
 
 export type Form = Awaited<ReturnType<typeof fixture>>;
 

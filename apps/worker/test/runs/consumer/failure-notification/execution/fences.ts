@@ -1,8 +1,8 @@
 import { createFailureNotificationStore } from '@pertexo/core/testing';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
 
-import { databaseUrl, workerUrl } from '../fixture.js';
-import type { FailureNotificationScenario } from './contract.js';
+import { databaseUrl, workerUrl } from '../failure-notification.fixture.js';
+import type { FailureNotificationScenario } from './failure-notification-execution.types.js';
 import { assertPostgresLossBeforeFence } from './postgres-loss.js';
 import { assertProviderFenceDrain } from './provider-fence.js';
 

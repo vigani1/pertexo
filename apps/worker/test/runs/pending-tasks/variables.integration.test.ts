@@ -21,7 +21,7 @@ import {
   accept,
   runtime,
   parentGraph,
-} from '../calls/fixtures.js';
+} from '../calls/calls.fixture.js';
 const graph = (): WorkflowGraph => ({
   settings: { maxRunDurationMs: 60000 },
   callable: {

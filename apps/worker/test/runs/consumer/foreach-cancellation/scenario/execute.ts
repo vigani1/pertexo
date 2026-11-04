@@ -3,11 +3,11 @@ import { parseCheckpoint } from '@pertexo/workflow-engine';
 import { expect } from 'vitest';
 import type { acceptStructuredForEachRun } from '../../../../support/coordinator/runs.js';
 import { waitForCoordinatorOutbox } from '../../../../support/coordinator/runs.js';
-import { workerQuery, workspaceId } from '../fixture.js';
+import { workerQuery, workspaceId } from '../for-each-cancellation.fixture.js';
 import type {
   ForEachScenarioMode,
   ForEachScenarioContext,
-} from './contract.js';
+} from './for-each-scenario.types.js';
 import { acceptScenarioRun } from './start.js';
 import { createForEachDelivery } from './delivery.js';
 import { assertSerialLoopRecovery } from './serial.js';

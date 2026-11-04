@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { Pool } from 'pg';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { createOperatorCommandStore } from '../../../src/operator/operator-command.store.js';
-import { claimDispatchAttempt } from '../run-store/node-attempts/fixture.js';
+import { claimDispatchAttempt } from '../run-store/node-attempts.fixture.js';
 import { coordinatorConsumerName } from '../../../src/runs/advance/receipts.repository.js';
 import { readStuckWork } from '../../../src/runs/stalled/stuck-work.repository.js';
 import {
@@ -11,7 +11,7 @@ import {
   insertRun,
   parseDatabaseConfig,
   workspaceA,
-} from '../run-store/fixtures.js';
+} from '../run-store/run-store.fixture.js';
 
 type QueryPlanNode = Readonly<{
   'Relation Name'?: string;

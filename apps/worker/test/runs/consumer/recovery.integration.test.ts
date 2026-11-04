@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, expect, it } from 'vitest';
 import { coordinatorFixture as fixture } from '../../support/coordinator/consumer.js';
-import { qualified, graph, closeOwned } from './recovery/fixture.js';
+import { qualified, graph, closeOwned } from './recovery/recovery.fixture.js';
 import { validateWorkflowGraph } from '@pertexo/workflow-model';
 import { createHash, randomUUID } from 'node:crypto';
 import {

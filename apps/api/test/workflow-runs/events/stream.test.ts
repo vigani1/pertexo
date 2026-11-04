@@ -20,7 +20,7 @@ import {
   OTHER_RUN_ID,
   ref,
   nextWithTimeout,
-} from './stream/fixture.js';
+} from './stream.fixture.js';
 
 describe('run event SSE reconstruction', () => {
   it.each([

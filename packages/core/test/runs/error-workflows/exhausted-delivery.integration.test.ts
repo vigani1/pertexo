@@ -11,7 +11,7 @@ import {
   delivery,
   intent,
   store,
-} from './delivery/fixture.js';
+} from './error-workflows-delivery.fixture.js';
 
 beforeAll(beforeAllFixture1);
 afterAll(afterAllFixture2);

@@ -48,7 +48,7 @@ import {
   createNodeAttemptHandler,
   type NodeAttemptExecutionEngine,
   type NodeAttemptHandler,
-} from './handler.js';
+} from './handle-node-attempt-delivery.js';
 import {
   createPreviewAttemptHandler,
   type PreviewAttemptRunStore,

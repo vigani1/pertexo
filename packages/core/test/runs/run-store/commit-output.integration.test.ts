@@ -10,7 +10,7 @@ import {
   workspaceB,
   ownedDeliveryStore,
   versionA,
-} from './fixtures.js';
+} from './run-store.fixture.js';
 import { generatePersistedId } from '@pertexo/database/platform';
 
 describe('Coordinator output commit invariants', () => {

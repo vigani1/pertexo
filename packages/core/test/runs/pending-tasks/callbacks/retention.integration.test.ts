@@ -5,9 +5,9 @@ import {
   response,
   unchanged,
   enforceTestRetention,
-} from './fixtures.js';
+} from './callbacks.fixture.js';
 import { purgeTestWorkspace } from '../../../support/workflow-authoring.js';
-import { terminal } from '../../values/fixtures.js';
+import { terminal } from '../../values/runs-values.fixture.js';
 it.each(['api', 'test'])(
   'removes prepared and early answered callbacks with %s run details while keeping live callbacks',
   async (trigger) => {

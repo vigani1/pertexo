@@ -19,11 +19,11 @@ import {
   namedDatabaseUrl,
   parseDatabaseConfig,
   workspaceA,
-} from '../../runs/run-store/fixtures.js';
+} from '../../runs/run-store/run-store.fixture.js';
 import {
   commitPinnedFailureNotificationRun,
   failureNotificationIdentity,
-} from '../../runs/run-store/scheduling/fixture.js';
+} from '../../runs/run-store/scheduling/scheduling.fixture.js';
 
 export const owner = { workspaceId: workspaceA, actorId };
 export const appConfig = () =>
