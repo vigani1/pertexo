@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 
+import { StartupSettingError } from '../src/startup.js';
 import { describeProcessFailure } from '../src/startup.js';
 
 describe('describing why a process could not run', () => {
@@ -122,4 +123,25 @@ it('keeps generic process-failure text private even when no token spelling ident
     'query-credential',
   ])
     expect(described).not.toContain(value);
+});
+
+it('admits only owned setting context and closed repair text, without traversing private causes', () => {
+  const refusal = new StartupSettingError(
+    'ARTIFACT_SCRATCH_DIRECTORY',
+    'absolute_private_directory_required',
+    { cause: new Error('private-value person@example.test') },
+  );
+  expect(describeProcessFailure(refusal)).toBe(
+    'ARTIFACT_SCRATCH_DIRECTORY: use an absolute private disk-backed directory',
+  );
+  expect(
+    describeProcessFailure(
+      new Error('ARTIFACT_SCRATCH_DIRECTORY private-value'),
+    ),
+  ).toBe('[Redacted]');
+  expect(
+    describeProcessFailure(
+      new StartupSettingError('private-value@example.test', 'https_required'),
+    ),
+  ).toBe('[Redacted]');
 });

@@ -64,7 +64,11 @@ describe('parseSystemMailDeliveryConfig', () => {
 
   it('requires authentication mail delivery in a deployed worker', () => {
     expect(() => parseSystemMailDeliveryConfig({}, { deployed: true })).toThrow(
-      'Deployed workers require system mail delivery',
+      expect.objectContaining({
+        name: 'StartupSettingError',
+        setting: 'AUTH_MAIL_KEY',
+        reason: 'required_when_deployed',
+      }),
     );
   });
 

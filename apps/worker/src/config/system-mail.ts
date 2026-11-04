@@ -1,3 +1,4 @@
+import { StartupSettingError } from '@pertexo/observability';
 import { z } from 'zod';
 
 import {
@@ -53,7 +54,7 @@ export function parseSystemMailDeliveryConfig(
 ): SystemMailDeliveryConfig | undefined {
   if (credentialNames.every((name) => environment[name] === undefined)) {
     if (deployed)
-      throw new Error('Deployed workers require system mail delivery');
+      throw new StartupSettingError('AUTH_MAIL_KEY', 'required_when_deployed');
     return undefined;
   }
   const parsed = systemMailSchema.parse({
@@ -65,9 +66,7 @@ export function parseSystemMailDeliveryConfig(
     workerId: `auth-mail:${environment.WORKER_INSTANCE_ID ?? 'worker-local'}`,
   });
   if (deployed && environment.AUTH_MAIL_FROM === undefined)
-    throw new Error(
-      'Deployed workers require AUTH_MAIL_FROM for system notifications',
-    );
+    throw new StartupSettingError('AUTH_MAIL_FROM', 'required_when_deployed');
   const noticeSender =
     environment.AUTH_MAIL_FROM === undefined
       ? undefined
@@ -86,7 +85,10 @@ export function parseSystemMailDeliveryConfig(
       (deployed && origin.protocol !== 'https:') ||
       !['http:', 'https:'].includes(origin.protocol);
     if (invalidMailOrigin)
-      throw new Error('Notification mail requires a public web origin');
+      throw new StartupSettingError(
+        'PUBLIC_WEB_ORIGIN',
+        'http_origin_required',
+      );
   }
   return Object.freeze({
     ...(noticeSender === undefined ? {} : { noticeSender }),

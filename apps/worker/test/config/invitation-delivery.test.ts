@@ -70,7 +70,13 @@ describe('parseInvitationDeliveryConfig', () => {
         },
         { deployed: false },
       ),
-    ).toThrow('PUBLIC_WEB_ORIGIN must be an origin without a path');
+    ).toThrow(
+      expect.objectContaining({
+        name: 'StartupSettingError',
+        setting: 'PUBLIC_WEB_ORIGIN',
+        reason: 'http_origin_required',
+      }),
+    );
   });
 
   it('requires an HTTPS public web origin only when deployed', () => {
@@ -85,6 +91,12 @@ describe('parseInvitationDeliveryConfig', () => {
     ).toBe('http://localhost:5173');
     expect(() =>
       parseInvitationDeliveryConfig(localEnvironment, { deployed: true }),
-    ).toThrow('HTTPS public web origin is required when deployed');
+    ).toThrow(
+      expect.objectContaining({
+        name: 'StartupSettingError',
+        setting: 'PUBLIC_WEB_ORIGIN',
+        reason: 'https_required',
+      }),
+    );
   });
 });

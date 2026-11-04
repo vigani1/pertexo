@@ -1,3 +1,4 @@
+import { requiredEnvironment } from './config/worker/fixture.js';
 import { spawn, type ChildProcess } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
@@ -111,4 +112,19 @@ describe('compiled worker main process', () => {
     // ops-08: the fatal line names what to fix, never its value.
     expect(fixture.output()).toContain('DATABASE_URL');
   }, 12_000);
+  it('logs the setting and repair for an owned startup refusal without its value', async () => {
+    const privateValue = 'relative-private-person@example.test';
+    const fixture = start(entrypointPath, {
+      ...process.env,
+      ...requiredEnvironment,
+      NODE_ENV: 'test',
+      ARTIFACT_SCRATCH_DIRECTORY: privateValue,
+    });
+    const result = await waitForExit(fixture.child, fixture.output);
+    expect(result).toEqual({ code: 1, signal: null });
+    expect(fixture.output()).toContain('"event":"worker.process_failed"');
+    expect(fixture.output()).toContain('ARTIFACT_SCRATCH_DIRECTORY');
+    expect(fixture.output()).toContain('absolute');
+    expect(fixture.output()).not.toContain(privateValue);
+  }, 12000);
 });
