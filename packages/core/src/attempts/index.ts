@@ -20,7 +20,6 @@ export type {
 // Other areas import these files directly (ADR 091); the door gains nothing.
 export type {} from './dispatch/execution-capability.types.js';
 export type {} from './dispatch/fence.repository.js';
-export type {} from '../runs/queries/history/attempt-events.repository.js';
 export type {} from './validation/attempt-scope.schemas.js';
 export type {} from './completion/receipts.repository.js';
 export type {} from './completion/attempt-completion.repository.js';
