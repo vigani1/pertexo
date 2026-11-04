@@ -1,3 +1,4 @@
+import { executionAreaDependencyAllowed } from './execution-area-rules.mjs';
 import console from 'node:console';
 import { readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
@@ -82,6 +83,8 @@ function coreAreaViolation(file, specifier, namedFiles) {
     return `core areas import the files ${targetArea}/index.ts names, never the index`;
   if (!namedFiles(targetArea).has(reached))
     return `core areas import the files ${targetArea}/index.ts names, and it doesn't name ${reached}`;
+  if (!executionAreaDependencyAllowed(area, targetArea))
+    return `execution-area dependency is not allowed: ${area} -> ${targetArea}; keep the rule with its decided owner`;
 }
 
 /** The relative files one core area's index re-exports from: its public files. */

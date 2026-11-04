@@ -255,3 +255,32 @@ test('entry imports may bind defaults and namespaces', () => {
   ])
     assert.deepEqual(check(`${source}/index.ts`, text), []);
 });
+
+for (const file of [
+  'packages/core/src/runs/advance/contract.ts',
+  'packages/core/src/attempts/validation/shared.ts',
+  'packages/core/src/triggers/schedules/store.ts',
+  'packages/core/src/outbox/dispatcher/input.ts',
+  'apps/worker/src/runs/handler.ts',
+  'apps/api/src/workflow-runs/events/index.ts',
+  'packages/core/test/triggers/schedules/fixture.ts',
+  'apps/worker/test/attempts/runtime.test.ts',
+  'apps/api/test/webhooks/ingress/contract.types.ts',
+]) {
+  test(`execution modules retain a concrete subject: ${file}`, () => {
+    assert.ok(rules(file).includes('FN008'));
+  });
+}
+
+test('execution area entry points and subject-role modules remain valid', () => {
+  for (const file of [
+    'packages/core/src/runs/index.ts',
+    'packages/core/src/attempts/index.ts',
+    'packages/core/src/triggers/index.ts',
+    'packages/core/src/outbox/index.ts',
+    'apps/worker/src/attempts/delivery/handle-node-attempt-delivery.ts',
+    'apps/api/src/pending-tasks/pending-task.service.ts',
+    'packages/core/test/runs/run-store/coordinator-advance.fixture.ts',
+  ])
+    assert.deepEqual(check(file), []);
+});
