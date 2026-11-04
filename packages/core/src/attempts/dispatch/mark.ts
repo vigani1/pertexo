@@ -5,7 +5,7 @@ import {
   rethrowQueryFailure,
 } from '@pertexo/database/primitives';
 import { publishesSlackBinding } from '@pertexo/workflow-model';
-import { and, eq, sql } from 'drizzle-orm';
+import { and, eq, sql, inArray, isNull } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import {
@@ -26,6 +26,8 @@ import {
 import type { MarkDispatchedInput } from '../node-attempt.js';
 import { isConnectionFenceCurrent } from '../../connections/runtime/credential-use.repository.js';
 
+const DISPATCHABLE_RUN_STATUSES = ['running', 'waiting'] as const;
+
 export async function markNodeAttemptDispatched(
   pool: Pool,
   input: MarkDispatchedInput,
@@ -35,24 +37,6 @@ export async function markNodeAttemptDispatched(
     { workspaceId: input.lease.workspaceId },
     async (client) => {
       await lockCapabilityExecution(client, input.lease);
-      const [control] = await drizzle(client)
-        .select({ status: workflowRuns.status, reason: runAbortReason })
-        .from(workflowRuns)
-        .where(
-          and(
-            eq(workflowRuns.workspaceId, input.lease.workspaceId),
-            eq(workflowRuns.id, input.lease.runId),
-          ),
-        )
-        .catch(rethrowQueryFailure);
-      if (
-        control === undefined ||
-        !['running', 'waiting'].includes(control.status)
-      )
-        throw new NodeAttemptReconciliationRequiredError();
-      if (control.reason !== null)
-        throw new NodeAttemptRunAbortedError(control.reason);
-
       if (input.connectionFence !== undefined) {
         const current = await isConnectionFenceCurrent(
           client,
@@ -67,7 +51,7 @@ export async function markNodeAttemptDispatched(
         if (!current) throw new NodeAttemptConnectionFenceError();
       }
       const node = alias(nodeRuns, 'node');
-      const run = alias(workflowRuns, 'run');
+      const run = workflowRuns;
       const db = drizzle(client);
       const lease = input.lease;
       const lockedNode = await db
@@ -96,6 +80,7 @@ export async function markNodeAttemptDispatched(
       const existingBinding = lockedNode[0]?.providerDispatchBinding;
       if (existingBinding === undefined)
         throw new NodeAttemptReconciliationRequiredError();
+      await assertRunDispatchControl(client, input.lease);
       const dispatchBindingChanged =
         input.providerDispatchBinding !== undefined &&
         existingBinding !== null &&
@@ -150,6 +135,8 @@ export async function markNodeAttemptDispatched(
             eq(node.invocationKey, lease.invocationKey),
             eq(node.currentAttemptId, nodeAttempts.id),
             eq(run.workflowVersionId, lease.workflowVersionId),
+            inArray(run.status, DISPATCHABLE_RUN_STATUSES),
+            isNull(runAbortReason),
           ),
         )
         .returning({
@@ -159,13 +146,39 @@ export async function markNodeAttemptDispatched(
         })
         .catch(rethrowQueryFailure);
       const dispatchedAt = result[0]?.dispatchedAt;
-      if (dispatchedAt === undefined)
+      if (dispatchedAt === undefined) {
+        await assertRunDispatchControl(client, input.lease);
         throw new NodeAttemptReconciliationRequiredError();
+      }
       await persistSlackDispatch(client, input);
       return Object.freeze({ dispatchedAt: new Date(dispatchedAt) });
     },
     { signal: input.signal },
   );
+}
+
+/** Checked after prerequisite locks and again if the marker's database-time fence refuses. */
+async function assertRunDispatchControl(
+  client: PoolClient,
+  lease: MarkDispatchedInput['lease'],
+): Promise<void> {
+  const [control] = await drizzle(client)
+    .select({ status: workflowRuns.status, reason: runAbortReason })
+    .from(workflowRuns)
+    .where(
+      and(
+        eq(workflowRuns.workspaceId, lease.workspaceId),
+        eq(workflowRuns.id, lease.runId),
+      ),
+    )
+    .catch(rethrowQueryFailure);
+  if (
+    control === undefined ||
+    !DISPATCHABLE_RUN_STATUSES.some((status) => status === control.status)
+  )
+    throw new NodeAttemptReconciliationRequiredError();
+  if (control.reason !== null)
+    throw new NodeAttemptRunAbortedError(control.reason);
 }
 
 async function persistSlackDispatch(
