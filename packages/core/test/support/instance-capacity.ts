@@ -2,7 +2,8 @@ import { Pool } from 'pg';
 import { afterAll, beforeAll } from 'vitest';
 
 import type { InstanceCapacity } from '@pertexo/database/platform';
-import { DEFAULT_INSTANCE_LIMITS } from '../../src/runs/instance-limits.js';
+import { DEFAULT_RUN_CAPACITY_LIMITS } from '../../src/runs/run-capacity-limits.js';
+import { DEFAULT_ARTIFACT_COUNT_LIMIT } from '../../src/artifacts/artifact-limits.js';
 
 async function apply(
   { activeRunLimit, queuedRunLimit, artifactCountLimit }: InstanceCapacity,
@@ -26,5 +27,13 @@ export function useInstanceCapacity(
   connectionString: string,
 ): void {
   beforeAll(() => apply(limits, connectionString));
-  afterAll(() => apply(DEFAULT_INSTANCE_LIMITS, connectionString));
+  afterAll(() =>
+    apply(
+      {
+        ...DEFAULT_RUN_CAPACITY_LIMITS,
+        artifactCountLimit: DEFAULT_ARTIFACT_COUNT_LIMIT,
+      },
+      connectionString,
+    ),
+  );
 }

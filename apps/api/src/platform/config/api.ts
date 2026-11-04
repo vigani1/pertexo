@@ -8,7 +8,7 @@ import {
   type CallbackKeyConfig,
 } from '@pertexo/secrets/server';
 import { parseCodeSettings, type CodeSettings } from '@pertexo/node-sdk';
-import { DEFAULT_INSTANCE_LIMITS } from '@pertexo/core/runs';
+import { DEFAULT_INSTANCE_LIMITS } from './instance-limits.js';
 import type { InstanceCapacity } from '@pertexo/database/platform';
 import { isIP } from 'node:net';
 import {
