@@ -1,3 +1,4 @@
+import { retireScheduleClaim } from '../../../src/triggers/schedules/retirement.repository.js';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   schedule,
@@ -362,12 +363,16 @@ describe('schedule trigger PostgreSQL slice', () => {
       ['fairness-one'],
     );
     expect(first.rows[0]?.trigger_id).toBe(oldestTriggerId);
+    const firstClaim = first.rows[0];
+    if (firstClaim === undefined) throw new Error('Due claim is missing');
     await expect(
-      schedule.worker.query(
-        'select app.defer_trigger_schedule_claim($1,$2,null)',
-        [oldestTriggerId, first.rows[0]?.lease_token],
+      retireScheduleClaim(
+        schedule.worker,
+        firstClaim,
+        { kind: 'defer', retryAfterSeconds: null as unknown as number },
+        AbortSignal.timeout(5_000),
       ),
-    ).rejects.toMatchObject({ code: '22023' });
+    ).rejects.toBeInstanceOf(RangeError);
     await expect(
       ownerQuery<{
         admission_deferred_until: Date | null;
@@ -386,9 +391,11 @@ describe('schedule trigger PostgreSQL slice', () => {
         },
       ],
     });
-    await schedule.worker.query(
-      'select app.defer_trigger_schedule_claim($1,$2,5)',
-      [oldestTriggerId, first.rows[0]?.lease_token],
+    await retireScheduleClaim(
+      schedule.worker,
+      firstClaim,
+      { kind: 'defer', retryAfterSeconds: 5 },
+      AbortSignal.timeout(5_000),
     );
     const second = await schedule.worker.query<{
       trigger_id: string;

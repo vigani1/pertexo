@@ -1,3 +1,4 @@
+import { scheduleFailureReason } from '../../trigger-failure.js';
 import { decodeStoredValue } from '../../../shared/stored-values.js';
 import {
   triggerSchedules as schedules,
@@ -274,7 +275,12 @@ export async function processScheduleClaim(
       claim.observed_at,
     );
   } catch (error: unknown) {
-    await retireClaim(resources, claim, { kind: 'fail' }, error);
+    await retireClaim(
+      resources,
+      claim,
+      { kind: 'fail', reason: 'schedule.recurrence_invalid' },
+      error,
+    );
     throw error;
   }
   if (observation.greatestDueAt === null) {
@@ -320,7 +326,12 @@ export async function processScheduleClaim(
       );
       return Object.freeze({ kind: 'deferred', lagSeconds });
     }
-    await retireClaim(resources, claim, { kind: 'fail' }, error);
+    await retireClaim(
+      resources,
+      claim,
+      { kind: 'fail', reason: scheduleFailureReason(error) },
+      error,
+    );
     // Archived or lost to another worker since the claim: nothing went wrong.
     if (error instanceof ScheduleClaimLostError)
       return Object.freeze({ kind: 'deferred', lagSeconds });

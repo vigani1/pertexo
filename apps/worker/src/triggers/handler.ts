@@ -60,7 +60,7 @@ export function createTriggerReconciliationHandler(
             workspaceId: delivery.data.workspaceId,
             workflowId: delivery.data.workflowId,
             publishedVersionId: delivery.data.publishedVersionId,
-            reason: 'trigger.reconciliation_failed',
+            error,
           });
         } catch {
           // Preserve the retryable cause when PostgreSQL cannot record health.

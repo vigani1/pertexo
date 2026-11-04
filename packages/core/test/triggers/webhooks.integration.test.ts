@@ -727,7 +727,7 @@ describe('generic webhook database seam', () => {
       workspaceId,
       workflowId: created.workflowId,
       publishedVersionId: published.version.id,
-      reason: 'provider_partial_failure',
+      error: new Error('provider_partial_failure'),
     });
     await expect(triggerFacts(created.workflowId)).resolves.toEqual(
       expect.arrayContaining([
@@ -740,7 +740,7 @@ describe('generic webhook database seam', () => {
         expect.objectContaining({
           health_status: 'unhealthy',
           kind: 'schedule',
-          last_error_code: 'provider_partial_failure',
+          last_error_code: 'trigger.reconciliation_failed',
           status: 'error',
         }),
       ]),
@@ -764,7 +764,7 @@ describe('generic webhook database seam', () => {
       workspaceId,
       workflowId: created.workflowId,
       publishedVersionId: published.version.id,
-      reason: 'provider_disabled_resource',
+      error: new Error('provider_disabled_resource'),
     });
     await expect(triggerFacts(created.workflowId)).resolves.toEqual(
       expect.arrayContaining([
@@ -797,14 +797,14 @@ describe('generic webhook database seam', () => {
       workspaceId,
       workflowId: created.workflowId,
       publishedVersionId: published.version.id,
-      reason: 'provider_global_failure',
+      error: new Error('provider_global_failure'),
     });
     await expect(triggerFacts(created.workflowId)).resolves.toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           health_status: 'unhealthy',
           kind: 'webhook',
-          last_error_code: 'provider_global_failure',
+          last_error_code: 'trigger.reconciliation_failed',
           status: 'error',
         }),
         expect.objectContaining({
@@ -833,7 +833,7 @@ describe('generic webhook database seam', () => {
       workspaceId,
       workflowId: created.workflowId,
       publishedVersionId: published.version.id,
-      reason: 'provider_archived_failure',
+      error: new Error('provider_archived_failure'),
     });
     await expect(triggerFacts(created.workflowId)).resolves.toEqual(
       expect.arrayContaining([

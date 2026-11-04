@@ -7,7 +7,10 @@ import { Button } from '@/components/ui/button';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { Status } from '@/components/ui/status';
 import { formatDateTime, formatRelativeTime } from '@/lib/format/time';
-import { describeTriggerState } from '../../../model/triggers/state';
+import {
+  describeTriggerRepair,
+  describeTriggerState,
+} from '../../../model/triggers/state';
 import {
   WEBHOOK_ACTIONS,
   type UncertainWebhookCommand,
@@ -45,6 +48,7 @@ export function WebhookCard({
     command;
 
   const state = describeTriggerState(trigger);
+  const repair = describeTriggerRepair(trigger);
   return (
     <article
       aria-label={`Webhook: ${stepName}`}
@@ -64,6 +68,7 @@ export function WebhookCard({
         </div>
         <Status tone={state.tone}>{state.label}</Status>
       </header>
+      {repair === undefined ? null : <Notice tone="warning">{repair}</Notice>}
       {/* Checking only means something once there's an endpoint. */}
       {trigger.reconciledAt === null || !trigger.endpointReady ? null : (
         <p className="font-mono text-[0.72rem] text-subtle-foreground">

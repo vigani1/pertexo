@@ -1,3 +1,4 @@
+import { describeTriggerRepair } from './state';
 import type {
   ScheduleOccurrenceResponse,
   ScheduleTriggerHealthResponse,
@@ -62,10 +63,14 @@ export function describeScheduleHold(
   switch (trigger.lastErrorCode) {
     case 'schedule.admission_throttled':
       return 'The latest run time is being held back because too many runs are waiting in this workspace. Pertexo retries it on its own.';
+    case 'schedule.recurrence_invalid':
+      return 'The schedule rule is invalid. Edit the schedule and publish again.';
+    case 'schedule.execution_incompatible':
+      return 'The published workflow cannot start with this installation. Publish it again. If this continues, ask your operator to check installed steps.';
     case 'schedule.scan_failed':
-      return 'Pertexo couldn’t start the latest run time. It will try again on its own.';
+      return 'Pertexo couldn’t start the latest run time. It will try again on its own. If this continues, contact your operator.';
     case null:
     default:
-      return undefined;
+      return describeTriggerRepair(trigger);
   }
 }

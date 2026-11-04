@@ -140,12 +140,6 @@ describe('SQL boundary integrity', () => {
     }
     await expect(
       pools.worker.query(
-        'select app.defer_trigger_schedule_claim($1,$2,null)',
-        [randomUUID(), randomUUID()],
-      ),
-    ).rejects.toSatisfy(hasCode('22023'));
-    await expect(
-      pools.worker.query(
         "select * from app.claim_due_trigger_schedules('q10-worker',1,1)",
       ),
     ).resolves.toMatchObject({ rows: [] });

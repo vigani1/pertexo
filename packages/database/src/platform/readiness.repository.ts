@@ -3,8 +3,7 @@ import { sql } from 'drizzle-orm';
 import { QueryBuilder } from 'drizzle-orm/pg-core';
 import type { Pool } from 'pg';
 
-export const EXPECTED_MIGRATION_HEAD =
-  '0092_coordinated_event_retry_evidence.sql';
+export const EXPECTED_MIGRATION_HEAD = '0093_schedule_retirement_storage.sql';
 const MINIMUM_POSTGRES_MAJOR = 18;
 
 /**
