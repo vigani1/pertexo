@@ -1,3 +1,4 @@
+import { RUN_VALUES_ERROR_CODE } from '@pertexo/node-sdk';
 import { redactCredentialFields } from '@pertexo/observability';
 import {
   ExecutionCapabilityExpiredError,
@@ -35,7 +36,7 @@ export function createRunValuesRuntime(
             kind: 'failed',
             errorKind: 'configuration',
             possiblyDispatched: false,
-            safeErrorCode: 'run.values_limit',
+            safeErrorCode: RUN_VALUES_ERROR_CODE.limit,
             errorSummary: error.message,
           });
         if (error instanceof ExecutionCapabilityExpiredError)
@@ -43,7 +44,7 @@ export function createRunValuesRuntime(
             kind: 'failed',
             errorKind: 'configuration',
             possiblyDispatched: false,
-            safeErrorCode: 'run.values_attempt_expired',
+            safeErrorCode: RUN_VALUES_ERROR_CODE.attemptExpired,
             errorSummary:
               'This attempt is no longer current. Run values were not changed.',
           });
@@ -51,7 +52,7 @@ export function createRunValuesRuntime(
           kind: 'retry',
           errorKind: 'network',
           possiblyDispatched: false,
-          safeErrorCode: 'run.values_unavailable',
+          safeErrorCode: RUN_VALUES_ERROR_CODE.unavailable,
           errorSummary:
             'Run values could not be saved. Check database availability before retrying.',
         });

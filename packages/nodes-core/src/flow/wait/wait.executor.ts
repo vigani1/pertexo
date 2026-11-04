@@ -1,3 +1,4 @@
+import { CALLBACK_ERROR_CODE } from '@pertexo/node-sdk/server';
 import type { CallbackWaitConfig } from '@pertexo/workflow-model';
 import { NodeExecutorFailure } from '@pertexo/node-sdk/server';
 import type {
@@ -18,7 +19,7 @@ export const coreWaitExecutor: NodeExecutorRegistration = Object.freeze({
         kind: 'failed',
         errorKind: 'configuration',
         possiblyDispatched: false,
-        safeErrorCode: 'execution.configuration',
+        safeErrorCode: CALLBACK_ERROR_CODE.configuration,
         errorSummary:
           'Callback waits are unavailable. Configure callback keys before running this workflow.',
       });

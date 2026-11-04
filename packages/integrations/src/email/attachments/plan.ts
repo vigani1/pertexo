@@ -13,7 +13,7 @@ import {
   sanitizeAttachmentFilename,
 } from './filename.js';
 
-const EMAIL_ATTACHMENT_ERROR_CODES = Object.freeze({
+export const EMAIL_ATTACHMENT_ERROR_CODES = Object.freeze({
   tooMany: 'email.too_many_attachments',
   tooLarge: 'email.attachments_too_large',
 });

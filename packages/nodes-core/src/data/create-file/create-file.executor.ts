@@ -8,7 +8,7 @@ import {
 import { CORE_CREATE_FILE_EXECUTOR } from './create-file.definition.js';
 import { createFileFromPages } from './pages.js';
 import { encodeFile } from './encode.js';
-import { refuseFileCreation } from './failure.js';
+import { refuseFileCreation, FILE_CREATION_ERROR_CODE } from './failure.js';
 import type {
   CoreCreateFileConfig,
   CoreCreateFileInput,
@@ -75,7 +75,7 @@ export const coreCreateFileExecutor: NodeExecutorRegistration = Object.freeze({
         kind: 'retry',
         errorKind: 'network',
         possiblyDispatched: false,
-        safeErrorCode: 'file.create_storage',
+        safeErrorCode: FILE_CREATION_ERROR_CODE.storage,
         errorSummary:
           'The file could not be saved. Check file storage availability and workspace storage usage before trying again.',
       });

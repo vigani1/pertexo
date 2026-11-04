@@ -1,3 +1,4 @@
+import { RUN_VALUES_ERROR_CODE } from '@pertexo/node-sdk';
 import {
   NodeExecutorFailure,
   type NodeExecutionInvocation,
@@ -18,7 +19,7 @@ export const coreRunValuesExecutor: NodeExecutorRegistration = Object.freeze({
         kind: 'failed',
         errorKind: 'configuration',
         possiblyDispatched: false,
-        safeErrorCode: 'run.values_unavailable',
+        safeErrorCode: RUN_VALUES_ERROR_CODE.unavailable,
         errorSummary: 'Run values require a recorded run or preview.',
       });
     signal.throwIfAborted();
