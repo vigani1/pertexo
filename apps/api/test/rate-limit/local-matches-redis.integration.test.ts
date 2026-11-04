@@ -21,9 +21,9 @@ type Step = Readonly<{
 }>;
 
 /**
- * The local limiter says it keeps "the same rule as Redis's script", and nothing
- * else holds the two together. Each sequence goes through both, and what a client
- * is told mustn't depend on whether Redis is up.
+ * Compare counters that start together under the same increment/refusal rule.
+ * Redis admissions before an outage are absent from the fallback's independent
+ * window; the outage-budget regression covers that transition.
  */
 describe.runIf(requested)('the limit kept while Redis is out', () => {
   let redis: RedisRateLimitRuntime;
