@@ -1,3 +1,4 @@
+import type { AuthenticationDiagnostics } from './diagnostics.js';
 import { createPasswordResetPlugin } from './password-reset.js';
 import { randomUUID } from 'node:crypto';
 
@@ -21,6 +22,7 @@ import {
 
 type PertexoBetterAuthInput = Readonly<{
   pool: Pool;
+  diagnostics: AuthenticationDiagnostics;
   transactions?: AuthenticationTransactions;
   baseUrl: string;
   secret: string;
@@ -69,6 +71,7 @@ const DISABLED_NATIVE_PATHS = Object.freeze([
 export function createPertexoBetterAuth(input: PertexoBetterAuthInput) {
   const { pool, emailProofs } = input;
   return betterAuth({
+    ...input.diagnostics.options,
     appName: 'Pertexo',
     baseURL: input.baseUrl,
     basePath: '/v1/auth',

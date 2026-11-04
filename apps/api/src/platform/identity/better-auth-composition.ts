@@ -1,3 +1,4 @@
+import type { StructuredLogger } from '@pertexo/observability';
 import { createSystemMailEnqueueStore } from '@pertexo/secrets/server';
 import type {
   DatabaseConfig,
@@ -26,6 +27,7 @@ export type AcquireResource = <Resource extends Readonly<{ close(): unknown }>>(
 export function composeBetterAuthRuntime(
   input: Readonly<{
     config: ApiIdentityConfig;
+    logger: StructuredLogger;
     databaseConfig: DatabaseConfig;
     runtime: DatabaseRuntime | undefined;
     authenticationMail: AuthenticationMail | undefined;
@@ -40,6 +42,7 @@ export function composeBetterAuthRuntime(
   });
   return input.acquire(
     createBetterAuthRuntime({
+      logger: input.logger,
       baseUrl: publicOrigin,
       secret: config.betterAuth.secret,
       database: input.databaseConfig,

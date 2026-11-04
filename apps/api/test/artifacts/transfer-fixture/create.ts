@@ -179,7 +179,9 @@ export async function createArtifactTransferApiFixture(): Promise<ArtifactTransf
       throw new Error('Artifact integration config is incomplete');
     const identityRuntime = resources.acquire(
       'identity runtime',
-      await createApiIdentityRuntime(config.identity, config.database),
+      await createApiIdentityRuntime(config.identity, config.database, {
+        logger: logs.logger,
+      }),
       (runtime) => runtime.close(),
     );
     const uploads = createArtifactUploadStore(config.database);

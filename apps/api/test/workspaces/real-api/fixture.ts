@@ -75,6 +75,7 @@ export function createWorkspaceApiFixture() {
       const identityRuntime = owner.acquire(
         'identity runtime',
         await createApiIdentityRuntime(identityConfig, databaseConfig, {
+          logger,
           authenticationMail: mail,
         }),
         (runtime) => runtime.close(),

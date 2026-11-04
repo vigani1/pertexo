@@ -1,3 +1,4 @@
+import { silent } from '../../../support/better-auth/api/environment.js';
 import { createBetterAuthRuntime } from '../../../../src/authentication/better-auth/better-auth.runtime.js';
 import type { SocialProviderGateway } from '../../../../src/authentication/social-provider.types.js';
 
@@ -48,6 +49,7 @@ export function createProviderLinkScenario({
     },
   };
   const linkingRuntime = createBetterAuthRuntime({
+    logger: silent,
     signUpMode: 'open',
     baseUrl: 'http://pertexo.test',
     secret: 'postgres-integration-secret-with-at-least-32-characters',

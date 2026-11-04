@@ -1,3 +1,6 @@
+import { AuthenticationDiagnostics } from '../../src/authentication/better-auth/diagnostics.js';
+import { silent } from '../support/better-auth/api/environment.js';
+import type { StructuredLogger } from '@pertexo/observability';
 import { randomUUID } from 'node:crypto';
 
 import { Pool } from 'pg';
@@ -49,6 +52,7 @@ const url = (base: string, database: string) => {
   return value.toString();
 };
 
+const logger: StructuredLogger = { ...silent };
 const pools: Pool[] = [];
 const poolFor = (database: string) => {
   const pool = new Pool({ connectionString: url(appUrl, database), max: 2 });
@@ -58,6 +62,7 @@ const poolFor = (database: string) => {
 
 function boot(database: string, security: boolean) {
   return createPertexoBetterAuth({
+    diagnostics: new AuthenticationDiagnostics(logger),
     pool: poolFor(database),
     baseUrl: 'http://127.0.0.1:5173',
     secret: 'schema-check-secret-with-at-least-32-characters',
@@ -79,9 +84,9 @@ async function logsOf(auth: ReturnType<typeof boot>): Promise<string> {
   return errorOutput();
 }
 
-let errors: MockInstance<typeof console.error>;
+let errors: MockInstance<StructuredLogger['error']>;
 const errorOutput = () =>
-  errors.mock.calls.map((call) => call.join(' ')).join('\n');
+  errors.mock.calls.map((call) => JSON.stringify(call)).join('\n');
 
 beforeAll(async () => {
   await Promise.all(fixtures.map((fixture) => fixture.create()));
@@ -104,16 +109,15 @@ afterAll(async () => {
 
 describe('the Better Auth schema check at boot', () => {
   it('reports no false error from the security instance', async () => {
-    errors = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    errors = vi.spyOn(logger, 'error').mockImplementation(() => undefined);
 
     const logs = await logsOf(boot(migrated, true));
 
-    expect(logs).not.toContain('Could not validate the database schema');
-    expect(logs).not.toContain('Security changes require');
+    expect(logs).toBe('');
   });
 
   it('never runs the check on the security instance, whatever the database', async () => {
-    errors = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    errors = vi.spyOn(logger, 'error').mockImplementation(() => undefined);
 
     const logs = await logsOf(boot(empty, true));
 
@@ -121,7 +125,7 @@ describe('the Better Auth schema check at boot', () => {
   });
 
   it('passes on the plain instance against the real schema', async () => {
-    errors = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    errors = vi.spyOn(logger, 'error').mockImplementation(() => undefined);
 
     const logs = await logsOf(boot(migrated, false));
 
@@ -129,10 +133,11 @@ describe('the Better Auth schema check at boot', () => {
   });
 
   it('still checks on the plain instance: an empty database gets reported', async () => {
-    errors = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    errors = vi.spyOn(logger, 'error').mockImplementation(() => undefined);
 
     const logs = await logsOf(boot(empty, false));
 
-    expect(logs).not.toBe('');
+    expect(logs).toContain('authentication.failed');
+    expect(logs).toContain('internal_failure');
   });
 });
