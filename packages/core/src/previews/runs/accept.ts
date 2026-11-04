@@ -4,7 +4,7 @@ import {
   insertOutboxEvent,
 } from '@pertexo/database/primitives';
 import { appendAuditFact } from '../../governance/audit/facts.js';
-import { serializeStoredExecutionValue } from '../../runs/values/stored-execution.js';
+import { serializeStoredExecutionValue } from '../../shared/stored-execution.js';
 import { requireTransactionConnectionBindings } from '../../tenant-access/resources/connections/bindings.repository.js';
 import { connectionScope } from '../../tenant-access/resources/connections/scope.js';
 

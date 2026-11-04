@@ -3,7 +3,7 @@ import type { CodeDiagnostics } from '@pertexo/node-sdk';
 import {
   parseStoredExecutionValue,
   serializeStoredExecutionValue,
-} from '../../runs/values/stored-execution.js';
+} from '../../shared/stored-execution.js';
 import { canonicalJson } from '@pertexo/workflow-model';
 import type {
   PreviewStatus,

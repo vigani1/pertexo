@@ -6,7 +6,7 @@ import { workflowScopeSql } from '../../shared/scope.repository.js';
 
 import { and, eq, gt } from 'drizzle-orm';
 
-import { parseStoredExecutionValue } from '../../runs/values/stored-execution.js';
+import { parseStoredExecutionValue } from '../../shared/stored-execution.js';
 import { previewAttempts, previewRuns } from '@pertexo/database/schema';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 import type {

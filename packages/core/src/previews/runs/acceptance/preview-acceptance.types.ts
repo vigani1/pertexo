@@ -6,7 +6,7 @@ import type {
   PreviewStatus,
 } from '../../preview.types.js';
 
-import type { parseStoredExecutionValue } from '../../../runs/values/stored-execution.js';
+import type { parseStoredExecutionValue } from '../../../shared/stored-execution.js';
 
 export type AcceptPreviewRunInput = Readonly<{
   actorUserId: string;

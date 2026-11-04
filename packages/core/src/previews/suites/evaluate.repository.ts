@@ -13,7 +13,7 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import { alias } from 'drizzle-orm/pg-core';
 import type { PoolClient } from 'pg';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
-import { parseStoredExecutionValue } from '../../runs/values/stored-execution.js';
+import { parseStoredExecutionValue } from '../../shared/stored-execution.js';
 import { testRunSql } from '../../runs/data-policy.js';
 import {
   nodeRuns,

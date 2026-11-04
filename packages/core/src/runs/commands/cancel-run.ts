@@ -3,7 +3,7 @@ import {
   appendLockedRunEvents,
   RUN_EVENT_TYPE,
 } from '../queries/history/events.repository.js';
-import { lockWorkspaceRunAdmission } from '../admission-locks.repository.js';
+import { lockWorkspaceRunAdmission } from '../../shared/workspace-fence.repository.js';
 import { workflowRuns } from '@pertexo/database/schema';
 import { and, asc, eq, inArray, isNull, sql } from 'drizzle-orm';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';

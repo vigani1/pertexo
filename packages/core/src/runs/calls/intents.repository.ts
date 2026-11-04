@@ -14,7 +14,7 @@ import { createHash } from 'node:crypto';
 import type { PoolClient } from 'pg';
 import type { WorkflowCallIntent } from '@pertexo/workflow-engine';
 import { generatePersistedId } from '@pertexo/database/platform';
-import { prepareStoredExecutionValue } from '../values/stored-execution.js';
+import { prepareStoredExecutionValue } from '../../shared/stored-execution.js';
 import { STORED_EXECUTION_VALUE_LIMITS } from '@pertexo/node-sdk';
 import { CoordinatorRunStateCorruptError } from '../state-errors.js';
 import type { WorkflowTransitionPlan } from '@pertexo/workflow-engine';

@@ -5,7 +5,7 @@ import { alias } from 'drizzle-orm/pg-core';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
-import { parseStoredExecutionValue } from '../../../runs/values/stored-execution.js';
+import { parseStoredExecutionValue } from '../../../shared/stored-execution.js';
 import { previewAttempts, previewRuns } from '@pertexo/database/schema';
 import { readVariableSetValues } from '../../../variables/values.repository.js';
 import { executableNodeSchema } from '../../executable-node.js';

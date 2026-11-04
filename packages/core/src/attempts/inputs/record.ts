@@ -2,7 +2,7 @@ import {
   withTenantScopedClient,
   rethrowQueryFailure,
 } from '@pertexo/database/primitives';
-import { serializeStoredExecutionValue } from '../../runs/values/stored-execution.js';
+import { serializeStoredExecutionValue } from '../../shared/stored-execution.js';
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { nodeRuns, nodeAttempts, workflowRuns } from '@pertexo/database/schema';

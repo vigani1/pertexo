@@ -3,7 +3,7 @@ import { and, asc, eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { workflowStepSamples } from '@pertexo/database/schema';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
-import { parseStoredExecutionValue } from '../../runs/values/stored-execution.js';
+import { parseStoredExecutionValue } from '../../shared/stored-execution.js';
 import {
   sampleMetadataProjection,
   sampleProjection,

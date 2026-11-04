@@ -8,7 +8,7 @@ import {
   pendingRunTasks,
 } from '@pertexo/database/schema';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
-import { parseStoredExecutionValue } from '../../values/stored-execution.js';
+import { parseStoredExecutionValue } from '../../../shared/stored-execution.js';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { readVariableSetValues } from '../../../variables/values.repository.js';
 import type { PoolClient } from 'pg';

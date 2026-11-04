@@ -9,7 +9,7 @@ import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import {
   parseStoredExecutionValue,
   serializeStoredExecutionJsonValue,
-} from '../../values/stored-execution.js';
+} from '../../../shared/stored-execution.js';
 import { isTestRun } from '../../data-policy.js';
 import { wakeErrorWorkflowsForCapacity } from '../../error-workflows/queue-wait.repository.js';
 import { synchronizeHumanWait } from '../../pending-tasks/lifecycle/time-capacity.repository.js';

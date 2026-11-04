@@ -6,8 +6,8 @@ import {
   rethrowQueryFailure,
   canonicalOutboxPayloadChecksum,
 } from '@pertexo/database/primitives';
-import { serializeStoredExecutionJsonValue } from '../../runs/values/stored-execution.js';
-import { appendAttemptEvent } from '../events.repository.js';
+import { serializeStoredExecutionJsonValue } from '../../shared/stored-execution.js';
+import { appendAttemptEvent } from '../../runs/queries/history/attempt-events.repository.js';
 import { canonicalJson } from '@pertexo/workflow-model';
 import { generatePersistedId } from '@pertexo/database/platform';
 import type { PoolClient } from 'pg';

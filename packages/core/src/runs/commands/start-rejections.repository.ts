@@ -1,7 +1,7 @@
 import { and, eq } from 'drizzle-orm';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 import { workflowManualStartRejections } from '@pertexo/database/schema';
-import { IdempotencyRequestConflictError } from './acceptance/run-admission.errors.js';
+import { IdempotencyRequestConflictError } from '../../shared/command-receipt.errors.js';
 
 export type ManualStartIdentity = Readonly<{
   workflowId: string;

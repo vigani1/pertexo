@@ -10,7 +10,7 @@ import {
   rethrowQueryFailure,
   canonicalOutboxPayloadChecksum,
 } from '@pertexo/database/primitives';
-import { serializeStoredExecutionJsonValue } from '../../runs/values/stored-execution.js';
+import { serializeStoredExecutionJsonValue } from '../../shared/stored-execution.js';
 import type { PoolClient } from 'pg';
 import { generatePersistedId } from '@pertexo/database/platform';
 import { NodeAttemptStateCorruptError } from '../node-attempt.errors.js';

@@ -6,7 +6,7 @@ import {
   transportSecurityAuditFacts,
 } from '@pertexo/database/schema';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
-import { serializeStoredExecutionJsonValue } from '../values/stored-execution.js';
+import { serializeStoredExecutionJsonValue } from '../../shared/stored-execution.js';
 import { createHash } from 'node:crypto';
 
 import { generatePersistedId } from '@pertexo/database/platform';

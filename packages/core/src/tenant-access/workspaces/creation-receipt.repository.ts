@@ -12,7 +12,7 @@ import { generatePersistedId } from '@pertexo/database/platform';
 import {
   IdempotencyRecordCorruptError,
   IdempotencyRequestConflictError,
-} from '../../runs/commands/acceptance/run-admission.errors.js';
+} from '../../shared/command-receipt.errors.js';
 import { IDEMPOTENCY_STATUS } from '@pertexo/database/primitives';
 
 import type {

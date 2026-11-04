@@ -5,7 +5,7 @@ import {
   withTenantScopedClient,
 } from '@pertexo/database/primitives';
 import { appendAuditFact } from '../../governance/audit/facts.js';
-import { serializeStoredExecutionJsonValue } from '../../runs/values/stored-execution.js';
+import { serializeStoredExecutionJsonValue } from '../../shared/stored-execution.js';
 import { and, desc, eq, gt, isNull, lt, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { apiTokens } from '@pertexo/database/schema';

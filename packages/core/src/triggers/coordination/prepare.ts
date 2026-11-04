@@ -8,7 +8,7 @@ import {
   resolveEventCoordinationKey,
 } from '@pertexo/workflow-model/server';
 import { createHash } from 'node:crypto';
-import { serializeWrittenJsonValue } from '../../runs/values/stored-execution.js';
+import { serializeWrittenJsonValue } from '../../shared/stored-execution.js';
 import type { PreparedEventCoordination } from './event-coordination.types.js';
 import { EventCoordinationUnavailableError } from './event-coordination.errors.js';
 /** Each ingress store owns a bounded, lazy expression pool and releases it on close. */

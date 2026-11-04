@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { storedExecutionValuesEqual } from '../../../src/runs/values/stored-execution.js';
+import { storedExecutionValuesEqual } from '../../src/shared/stored-execution.js';
 import { StoredExecutionValueInvalidError } from '@pertexo/node-sdk';
 describe('stored execution reference comparison', () => {
   it('keeps absent outputs equal only to another absent output', () => {

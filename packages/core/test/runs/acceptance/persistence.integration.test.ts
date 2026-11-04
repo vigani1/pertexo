@@ -22,7 +22,7 @@ import { acceptWorkflowRun } from '../../../src/runs/commands/acceptance/accept.
 import {
   IdempotencyRecordCorruptError,
   IdempotencyRequestConflictError,
-} from '../../../src/runs/commands/acceptance/run-admission.errors.js';
+} from '../../../src/shared/command-receipt.errors.js';
 import {
   idempotencyRecords,
   outboxEvents,

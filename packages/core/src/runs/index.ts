@@ -2,11 +2,11 @@ export { RunRequiresFormError } from './commands/acceptance/forms.repository.js'
 export { ExecutionStateConflictError } from './state-errors.js';
 export { readRunEventsAfter } from './queries/history/events.repository.js';
 export {
-  IdempotencyRequestConflictError,
   WorkspaceRunAdmissionDeniedError,
   WorkspaceRunQuotaExceededError,
   WorkflowAlreadyRunningError,
 } from './commands/acceptance/run-admission.errors.js';
+export { IdempotencyRequestConflictError } from '../shared/command-receipt.errors.js';
 export type {
   PublishedWorkflowReader,
   PublishedWorkflow,
@@ -127,7 +127,7 @@ export {
   serializeStoredExecutionValue,
   serializeWrittenJsonValue,
   storedExecutionValuesEqual,
-} from './values/stored-execution.js';
+} from '../shared/stored-execution.js';
 export type {
   StoredExecutionJsonValue,
   StoredExecutionValue,
@@ -164,3 +164,5 @@ export type {} from './values/retention.js';
 
 export { isStoredDataError } from '../shared/stored-values.js';
 export type {} from './stalled/stuck-work.repository.js';
+
+export type {} from './queries/history/attempt-events.repository.js';
