@@ -10,7 +10,10 @@ import {
   inboxReceipts,
 } from '@pertexo/database/schema';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
-import type { CompleteAttemptInput } from '../node-attempt.js';
+import type {
+  CompleteAttemptInput,
+  NodeAttemptLease,
+} from '../node-attempt.js';
 import { nodeAttemptConsumerName } from './receipts.repository.js';
 import { runAbortReason } from '../control.js';
 
@@ -55,7 +58,7 @@ export async function lockCompletionRun(
 
 export async function lockCompletionAttempt(
   client: PoolClient,
-  { lease }: CompleteAttemptInput,
+  { lease }: Pick<CompleteAttemptInput, 'lease'>,
 ) {
   const db = drizzle(client);
   const attempt = alias(nodeAttempts, 'attempt');
@@ -117,4 +120,20 @@ export async function lockCompletionAttempt(
     )
     .for('update', { of: [node, attempt] })
     .catch(rethrowQueryFailure);
+}
+
+/** Completion and emergency settlement use the same current-owner authority. */
+export function isCurrentAttemptLease(
+  lease: NodeAttemptLease,
+  row: Awaited<ReturnType<typeof lockCompletionAttempt>>[number] | undefined,
+): boolean {
+  return (
+    row?.attemptStatus === 'running' &&
+    row.currentAttempt === true &&
+    row.nodeStatus === 'running' &&
+    row.leaseOwner === lease.workerId &&
+    row.fenceToken === lease.fenceToken &&
+    row.leaseExpiresAt !== null &&
+    row.leaseValid === true
+  );
 }

@@ -85,7 +85,7 @@ const attemptsPool = new Pool({
   max: 1,
 });
 afterAll(() => attemptsPool.end());
-it('refuses an unbound attempt emergency report rather than ending repaired work', async () => {
+it('refuses unbound reports and stale attempt claims after checkpoint repair', async () => {
   const lease = await claimDispatchAttempt('unbound-emergency');
   await asAdmin((client) =>
     client.query(
@@ -98,13 +98,6 @@ it('refuses an unbound attempt emergency report rather than ending repaired work
     await failUnadvanceableRun(attemptsPool, {
       workspaceId: workspaceA,
       runId: lease.runId,
-      attemptDelivery: {
-        workspaceId: workspaceA,
-        runId: lease.runId,
-        nodeRunId: lease.nodeRunId,
-        attemptId: lease.attemptId,
-        delivery: lease.delivery,
-      },
       expectedRevision: undefined,
       safeErrorCode: 'execution.run_state_invalid',
       signal: new AbortController().signal,
@@ -115,13 +108,7 @@ it('refuses an unbound attempt emergency report rather than ending repaired work
       workspaceId: workspaceA,
       runId: lease.runId,
       expectedRevision: lease.checkpointRevision,
-      attemptDelivery: {
-        workspaceId: workspaceA,
-        runId: lease.runId,
-        nodeRunId: lease.nodeRunId,
-        attemptId: lease.attemptId,
-        delivery: lease.delivery,
-      },
+      attemptLease: lease,
       safeErrorCode: 'execution.run_state_invalid',
       signal: new AbortController().signal,
     }),

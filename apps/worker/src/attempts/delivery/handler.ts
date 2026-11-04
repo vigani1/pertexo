@@ -230,18 +230,16 @@ export function createNodeAttemptHandler(
         );
       } catch (error: unknown) {
         if (error instanceof NodeAttemptHandlerStateError)
-          throw new NodeAttemptHandlerStateError(
-            error.code,
-            claimed.lease.checkpointRevision,
-            { cause: error },
-          );
+          throw new NodeAttemptHandlerStateError(error.code, claimed.lease, {
+            cause: error,
+          });
         if (
           error instanceof NodeAttemptStateCorruptError ||
           isStoredDataError(error)
         )
           throw new NodeAttemptHandlerStateError(
             'stored_state_invalid',
-            claimed.lease.checkpointRevision,
+            claimed.lease,
             { cause: error },
           );
         throw error;

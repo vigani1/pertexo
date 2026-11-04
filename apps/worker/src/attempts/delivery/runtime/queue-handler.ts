@@ -1,4 +1,3 @@
-import { canonicalOutboxPayloadChecksum } from '@pertexo/core/outbox';
 import {
   NodeAttemptDeliveryMismatchError,
   NodeAttemptStateCorruptError,
@@ -64,15 +63,12 @@ export function queueHandler(
           safeErrorCode: UNADVANCEABLE_RUN_CODE,
           expectedRevision:
             error instanceof NodeAttemptHandlerStateError
-              ? error.revision
+              ? error.lease?.checkpointRevision
               : undefined,
-          attemptDelivery: {
-            ...delivery.data,
-            delivery: {
-              outboxEventId: delivery.data.outboxEventId,
-              payloadChecksum: canonicalOutboxPayloadChecksum(delivery.data),
-            },
-          },
+          ...(error instanceof NodeAttemptHandlerStateError &&
+          error.lease !== undefined
+            ? { attemptLease: error.lease }
+            : {}),
           signal: context.signal,
         });
       if (

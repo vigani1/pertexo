@@ -1,9 +1,13 @@
 import {
+  lockCompletionAttempt,
+  isCurrentAttemptLease,
+} from '../../attempts/completion/attempt-completion.repository.js';
+import {
   validateDelivery,
   claimReceipt,
   completeReceipt,
 } from '../../attempts/completion/receipts.repository.js';
-import type { NodeAttemptDeliveryIdentity } from '../../attempts/node-attempt.js';
+import type { NodeAttemptLease } from '../../attempts/node-attempt.js';
 import { persistConsumedCalls } from '../calls/persist.repository.js';
 import { persistConsumedTasks } from '../pending-tasks/lifecycle/persist.repository.js';
 import { TERMINAL_NODE_FIELDS } from './persist/settlement.repository.js';
@@ -41,7 +45,7 @@ export type FailUnadvanceableInput = Readonly<{
   expectedRevision: number | null | undefined;
   /** The advance that found the run unadvanceable, whose slot binding ends here. */
   delivery?: CoordinatorAdvanceDelivery;
-  attemptDelivery?: NodeAttemptDeliveryIdentity;
+  attemptLease?: NodeAttemptLease;
   signal: AbortSignal;
 }>;
 
@@ -86,14 +90,20 @@ export function failUnadvanceableRun(
           'duplicate'
       )
         return 'stale';
-      if (input.attemptDelivery !== undefined) {
-        await validateDelivery(client, input.attemptDelivery);
+      if (input.attemptLease !== undefined) {
+        const lease = input.attemptLease;
         if (
-          (await claimReceipt(
-            client,
-            workspaceId,
-            input.attemptDelivery.delivery,
-          )) === 'completed'
+          lease.workspaceId !== workspaceId ||
+          lease.runId !== runId ||
+          lease.workflowVersionId !== run.workflow_version_id
+        )
+          return 'stale';
+        await validateDelivery(client, lease);
+        const [attempt] = await lockCompletionAttempt(client, { lease });
+        if (!isCurrentAttemptLease(lease, attempt)) return 'stale';
+        if (
+          (await claimReceipt(client, workspaceId, lease.delivery)) ===
+          'completed'
         )
           return 'stale';
       }
@@ -155,12 +165,8 @@ export function failUnadvanceableRun(
       });
       if (delivery !== undefined)
         await completeCoordinatorReceipt(client, workspaceId, delivery);
-      if (input.attemptDelivery !== undefined)
-        await completeReceipt(
-          client,
-          workspaceId,
-          input.attemptDelivery.delivery,
-        );
+      if (input.attemptLease !== undefined)
+        await completeReceipt(client, workspaceId, input.attemptLease.delivery);
       return status;
     },
   ).catch((error: unknown) => {
