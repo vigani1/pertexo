@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   schedule,
-  beforeAllFixture1,
+  initializePublicationSchedules,
   actorId,
   checkpointFactory,
   ownerQuery,
@@ -10,14 +10,14 @@ import {
   skipTriggerId,
   triggerId,
   workflowId,
-} from './triggers-part-2/fixture.js';
+} from './publication-and-health/fixture.js';
 import { createHash, randomUUID } from 'node:crypto';
 import { canonicalOutboxPayloadChecksum } from '@pertexo/database/primitives';
 import { Pool } from 'pg';
 
-beforeAll(beforeAllFixture1, 60_000);
+beforeAll(initializePublicationSchedules, 60_000);
 afterAll(schedule.close);
-describe('schedule trigger PostgreSQL slice', () => {
+describe('schedule publication, health and occurrence persistence', () => {
   it('deduplicates an occurrence and preserves a saturated occurrence until capacity recovers', async () => {
     const dedupeWorkflowId = randomUUID();
     const dedupeVersionId = randomUUID();

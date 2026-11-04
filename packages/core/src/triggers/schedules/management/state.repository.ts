@@ -22,7 +22,7 @@ import type {
   ScheduleTriggerRecord,
   SetEnabledInput,
 } from './schedule-management.types.js';
-import { scheduleTriggerSchema } from './receipt.js';
+import { scheduleTriggerSchema } from './schedule-command.schemas.js';
 
 const SCHEDULE_LIST_LIMIT = 1000;
 

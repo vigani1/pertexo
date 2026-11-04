@@ -16,7 +16,7 @@ export const {
 
 export const quotaTriggerId = randomUUID();
 
-export async function beforeAllFixture1() {
+export async function initializePublicationSchedules() {
   await schedule.initialize();
   const interruptedClaim = await schedule.worker.query<{ trigger_id: string }>(
     'select * from app.claim_due_trigger_schedules($1,1,1)',

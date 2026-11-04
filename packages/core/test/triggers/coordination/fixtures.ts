@@ -13,7 +13,7 @@ import {
   type WorkflowGraph,
 } from '@pertexo/workflow-model';
 import { createFormStore } from '../../../src/triggers/forms/form.store.js';
-import { createTriggerEventScanner } from '../../../src/triggers/coordination/scanner.repository.js';
+import { createTriggerEventScanner } from '../../../src/triggers/coordination/event-scanner.store.js';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
 import {
   identity,

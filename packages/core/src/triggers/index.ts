@@ -83,7 +83,7 @@ export type {
 export {
   createTriggerEventScanner,
   type TriggerEventScanner,
-} from './coordination/scanner.repository.js';
+} from './coordination/event-scanner.store.js';
 export { EventCoordinationUnavailableError } from './coordination/event-coordination.errors.js';
 
 export {
