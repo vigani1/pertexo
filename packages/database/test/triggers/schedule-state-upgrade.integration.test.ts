@@ -9,7 +9,7 @@ it('separates retirement from the audited operational choice on populated schedu
   await withUpgradeDatabase(95, async ({ admin, upgrade }) => {
     const expected: { trigger_id: string; status: string; retired: boolean }[] =
       [];
-    for (const disabled of [false, true]) {
+    for (const intent of ['enabled', 'disabled', 'unknown'] as const) {
       const { ownerId, workspaceId, workflowId } = await seedWorkflow(admin);
       const versions = [randomUUID(), randomUUID()];
       const triggers = [randomUUID(), randomUUID()];
@@ -46,7 +46,7 @@ it('separates retirement from the audited operational choice on populated schedu
         if (triggerId === undefined) throw new Error('Missing trigger');
         expected.push({
           trigger_id: triggerId,
-          status: i === 0 && !disabled ? 'enabled' : 'disabled',
+          status: i === 0 && intent === 'enabled' ? 'enabled' : 'disabled',
           retired: i === 0,
         });
       }
@@ -54,11 +54,17 @@ it('separates retirement from the audited operational choice on populated schedu
         'update app.workflows set published_version_id=$1 where id=$2',
         [versions[1], workflowId],
       );
-      if (disabled)
+      if (intent !== 'unknown')
         await admin.query(
           `insert into app.audit_events(id,workspace_id,actor_user_id,action,target_type,target_id)
-        values($1,$2,$3,'schedule_trigger.disabled','schedule_trigger',$4)`,
-          [randomUUID(), workspaceId, ownerId, triggers[0]],
+        values($1,$2,$3,$5,'schedule_trigger',$4)`,
+          [
+            randomUUID(),
+            workspaceId,
+            ownerId,
+            triggers[0],
+            `schedule_trigger.${intent}`,
+          ],
         );
     }
     await upgrade();
