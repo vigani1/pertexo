@@ -59,8 +59,9 @@ describe.runIf(betterAuthIntegrationEnabled)(
   () => {
     let databaseUrl = '';
     const api = useBetterAuthRealApi('native_output', {
-      afterMigration: async (url) => {
+      afterMigration: (url) => {
         databaseUrl = url(apiBaseUrl);
+        return Promise.resolve();
       },
     });
 
@@ -112,7 +113,7 @@ describe.runIf(betterAuthIntegrationEnabled)(
       expect(records).toHaveLength(1);
       expect(records[0]).toEqual({
         level: 50,
-        time: expect.any(Number),
+        time: expect.any(Number) as unknown,
         environment: 'test',
         serviceName: 'api',
         serviceVersion: 'test',
@@ -120,7 +121,7 @@ describe.runIf(betterAuthIntegrationEnabled)(
         event: 'authentication.failed',
         flow: 'password_reset',
         reason: 'internal_failure',
-        requestId: expect.any(String),
+        requestId: expect.any(String) as unknown,
       });
       expect(result.response).toMatchObject({
         requestId: records[0]?.requestId,

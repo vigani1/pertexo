@@ -60,7 +60,7 @@ async function exercise(input: {
     });
     process.send?.({
       status: response.statusCode,
-      body: response.json(),
+      body: response.json<unknown>(),
       requestId: response.headers['x-request-id'],
     });
   } finally {

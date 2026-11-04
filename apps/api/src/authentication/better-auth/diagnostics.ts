@@ -9,11 +9,11 @@ const flows = new Map([
   ['/sign-up/email', 'sign_up'],
 ]);
 
-type DiagnosticScope = {
+interface DiagnosticScope {
   requestId: string;
   flow: string;
   reported: boolean;
-};
+}
 
 /** SDK messages and error arguments can contain SQL parameters and credentials. */
 export class AuthenticationDiagnostics {
