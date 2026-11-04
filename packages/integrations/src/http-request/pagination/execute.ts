@@ -1,3 +1,4 @@
+import { redactResponseJson } from '../execution/response-json.js';
 import { HttpPaginationFailure } from './failure.js';
 import timers from 'node:timers/promises';
 import {
@@ -24,6 +25,7 @@ type Page = Readonly<{ value: JsonValue; url: string; link?: string }>;
 async function readPage(
   stream: ProviderHttpStreamingBody,
   page: number,
+  redact: (text: string) => string,
 ): Promise<Page> {
   if (
     stream.navigation === undefined ||
@@ -48,7 +50,7 @@ async function readPage(
         new TextDecoder('utf-8', { fatal: true }).decode(bytes),
       );
       return {
-        value: canonicalizeBoundedJson(value),
+        value: redactResponseJson(canonicalizeBoundedJson(value), redact),
         url: stream.navigation.url,
         ...(stream.navigation.link === undefined
           ? {}
@@ -65,7 +67,7 @@ async function readPage(
 }
 
 type PaginationExecutionInput = Readonly<{
-  client: Pick<ProviderHttpClient, 'executeStreaming'>;
+  client: Pick<ProviderHttpClient, 'executeStreaming' | 'redactText'>;
   request: ProviderHttpRequest;
   pagination: HttpPagination;
   inlineBytes: number;
@@ -208,7 +210,9 @@ async function fetchPage(
       },
       async (stream) => {
         input.checkResponse(stream.status, stream.headers);
-        return readPage(stream, page);
+        return readPage(stream, page, (value) =>
+          input.client.redactText(value, request.sensitiveValues ?? []),
+        );
       },
     );
   } catch (error) {

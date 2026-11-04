@@ -145,7 +145,7 @@ async function executeWithMaterial(
     if (config.pagination !== undefined)
       return httpRequestOutputSchema.parse(
         await executePagination({
-          client,
+          client: { ...client, redactText: dependencies.httpClient.redactText },
           request,
           pagination: config.pagination,
           ...(runtime.artifacts === undefined
@@ -175,6 +175,8 @@ async function executeWithMaterial(
       );
     response = await client.executeStreaming(request, (stream) =>
       consumeResponseBody(runtime.artifacts, {
+        redact: (value) =>
+          dependencies.httpClient.redactText(value, sensitiveValues),
         inlineLimit: config.inlineResponseBytes,
         maxBytes: config.maxResponseBytes,
         response: stream,

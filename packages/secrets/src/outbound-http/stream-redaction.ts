@@ -1,3 +1,4 @@
+import { sensitiveRepresentations } from './sensitive-representations.js';
 import { setImmediate as yieldToEventLoop } from 'node:timers/promises';
 
 import { isSupportedHttpFieldValue as isSerializableHttpHeaderValue } from '@pertexo/contracts';
@@ -179,7 +180,7 @@ export async function* boundedRedactedBody(
     deadline: number;
   }>,
 ): AsyncGenerator<Uint8Array> {
-  const patterns = sensitiveValues
+  const patterns = sensitiveRepresentations(sensitiveValues)
     .flatMap((value) => {
       const text = Buffer.from(value, 'utf8');
       if (!isSerializableHttpHeaderValue(value)) return [text];

@@ -1,3 +1,4 @@
+import { redactResponseJson } from './response-json.js';
 import { Buffer } from 'node:buffer';
 
 import { JSON_MEDIA_TYPE } from '../../http/content-type.js';
@@ -23,10 +24,22 @@ const PARSED_JSON_LIMITS = Object.freeze({
 });
 
 /** A JSON response later steps can map into; absent when it doesn't fit. */
-function parsedJson(text: string): Readonly<{ json?: JsonValue }> {
+function parsedJson(
+  text: string,
+  redact: (text: string) => string,
+): Readonly<{ json?: JsonValue; redactedText?: string }> {
   try {
+    const parsed = canonicalizeBoundedJson(
+      JSON.parse(text),
+      PARSED_JSON_LIMITS,
+    );
+    const json = redactResponseJson(parsed, redact);
+    const serialized = JSON.stringify(json);
     return {
-      json: canonicalizeBoundedJson(JSON.parse(text), PARSED_JSON_LIMITS),
+      json,
+      ...(serialized === JSON.stringify(parsed)
+        ? {}
+        : { redactedText: serialized }),
     };
   } catch {
     return {};
@@ -37,6 +50,7 @@ function inlineBody(
   bytes: Uint8Array,
   preferred: 'base64' | 'utf8',
   mediaType: string | undefined,
+  redact: (text: string) => string,
 ) {
   if (preferred === 'utf8') {
     let value: string | undefined;
@@ -45,16 +59,20 @@ function inlineBody(
     } catch {
       // Invalid text is represented exactly as base64.
     }
-    if (value !== undefined)
+    if (value !== undefined) {
+      const parsed =
+        mediaType !== undefined && JSON_MEDIA_TYPE.test(mediaType)
+          ? parsedJson(value, redact)
+          : {};
+      const text = parsed.redactedText ?? value;
       return Object.freeze({
         kind: 'inline' as const,
         encoding: 'utf8' as const,
-        value,
-        byteLength: bytes.byteLength,
-        ...(mediaType !== undefined && JSON_MEDIA_TYPE.test(mediaType)
-          ? parsedJson(value)
-          : {}),
+        value: text,
+        byteLength: Buffer.byteLength(text, 'utf8'),
+        ...(parsed.json === undefined ? {} : { json: parsed.json }),
       });
+    }
   }
   return Object.freeze({
     kind: 'inline' as const,
@@ -200,7 +218,9 @@ export async function consumeResponseBody(
     maxBytes,
     response,
     repeatable,
+    redact,
   }: Readonly<{
+    redact: (text: string) => string;
     inlineLimit: number;
     maxBytes: number;
     response: Parameters<
@@ -217,7 +237,7 @@ export async function consumeResponseBody(
     for (;;) {
       const next = await iterator.next();
       if (next.done) {
-        return finishInlineBody(buffered, byteLength, response);
+        return finishInlineBody(buffered, byteLength, response, redact);
       }
       const chunk = next.value;
       buffered.push(chunk);
@@ -278,6 +298,7 @@ function finishInlineBody(
   response: Parameters<
     Parameters<ProviderHttpClient['executeStreaming']>[1]
   >[0],
+  redact: (text: string) => string,
 ) {
   const bytes = concatenate(buffered, byteLength);
   try {
@@ -285,6 +306,7 @@ function finishInlineBody(
       bytes,
       response.bodyEncoding,
       response.headers['content-type'],
+      redact,
     );
   } finally {
     bytes.fill(0);
