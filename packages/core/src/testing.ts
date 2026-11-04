@@ -259,7 +259,75 @@ export type { WorkflowRunRecord as ApiWorkflowRunRecord } from './runs/commands/
 export * from './lifecycle/testing.js';
 export * from './operator/testing.js';
 export * from './tenant-access/testing.js';
-export * from './triggers/testing.js';
+export { createWorkflowTriggerReconciliationStore } from './triggers/reconciliation/workflow-trigger-reconciliation.store.js';
+export {
+  WorkflowTriggerReconciliationMismatchError,
+  WorkflowTriggerStalePublicationError,
+} from './triggers/reconciliation/trigger-reconciliation.errors.js';
+export type { WorkflowTriggerHealth } from './triggers/reconciliation/trigger-reconciliation.types.js';
+export type { WorkflowTriggerReconciliationStore } from './triggers/reconciliation/workflow-trigger-reconciliation.store.js';
+export {
+  createWebhookTriggerStore,
+  type WebhookTriggerStore,
+} from './triggers/webhooks/webhook-trigger.store.js';
+export {
+  WebhookDeliveryIneligibleError,
+  WebhookDeliveryReplayMismatchError,
+  WebhookIngressRateLimitExceededError,
+  WebhookIntakeBusyError,
+  WebhookTriggerIdempotencyConflictError,
+  WebhookTriggerNotFoundError,
+  WebhookWorkflowPausedError,
+} from './triggers/webhooks/webhook-trigger.errors.js';
+export {
+  type AcceptVerifiedWebhookDeliveryInput,
+  type SealedWebhookTriggerSecret,
+  type WebhookVerificationReference,
+} from './triggers/webhooks/runtime/webhook-runtime.types.js';
+export type {
+  WebhookDeliveryPage,
+  WebhookDeliveryRecord,
+} from './triggers/webhooks/webhook-delivery.types.js';
+export { workflowTriggerProjection } from './triggers/reconciliation/projection.js';
+export {
+  createScheduleTriggerStore,
+  type ScheduleTriggerStore,
+} from './triggers/schedules/schedule-trigger.store.js';
+export {
+  type ScheduleTriggerCommandResult,
+  type ScheduleTriggerRecord,
+} from './triggers/schedules/management/schedule-management.types.js';
+export {
+  createScheduleTriggerScanner,
+  type ScheduleTriggerScanner,
+} from './triggers/schedules/scanner.js';
+export { ScheduleClaimLostError } from './triggers/schedules/schedule-trigger.errors.js';
+export type { ScanDueSchedulesResult } from './triggers/schedules/scanning/schedule-scanning.types.js';
+export { ScheduleTriggerError } from './triggers/schedules/schedule-trigger.errors.js';
+export type {
+  ScheduleFireTimes,
+  ScheduleOccurrencePage,
+  ScheduleOccurrencePosition,
+  ScheduleOccurrenceRecord,
+} from './triggers/schedules/schedule-occurrence.types.js';
+export {
+  parseScheduleRecurrence,
+  resolveScheduleObservation,
+  type ScheduleObservation,
+  type ScheduleRecurrence,
+} from './triggers/schedules/recurrence.js';
+export type { WorkflowTriggerProjection } from './triggers/reconciliation/trigger-reconciliation.types.js';
+
+export {
+  createWebhookResponseStore,
+  type WebhookResponseStore,
+} from './triggers/webhooks/responses/webhook-response.store.js';
+export type {
+  WebhookResponseScope,
+  WebhookResponseSnapshot,
+  WriteWebhookResponse,
+} from './triggers/webhooks/responses/webhook-response.types.js';
+
 export {
   CoordinatorDeliveryMismatchError,
   CoordinatorRunStateCorruptError,

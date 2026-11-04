@@ -16,17 +16,13 @@ import type {
 } from '@pertexo/workflow-model/server';
 import type { ApiIdentityRuntime } from '../../identity/runtime.module.js';
 import type { ApiWorkflowMetadataRuntime } from '../metadata-runtime.js';
-import type {
-  LiveRunEventSource,
-  RunEventNotificationPublisher,
-} from '../../../workflow-runs/events/index.js';
+import type { LiveRunEventSource } from '../../../workflow-runs/events/stream.js';
+import type { RunEventNotificationPublisher } from '@pertexo/queue';
 import type { WorkflowAuthoringDependencies } from '../../../workflow-authoring/index.js';
 import type { NodeTestingDependencies } from '../../../node-testing/index.js';
-import type { createPostgresWorkflowRunPersistence } from '../../../workflow-runs/index.js';
-import type {
-  WorkflowRunPersistence,
-  WorkflowRunsDependencies,
-} from '../../../workflow-runs/index.js';
+import type { createPostgresWorkflowRunPersistence } from '../../../workflow-runs/postgres-persistence.js';
+import type { WorkflowRunPersistence } from '../../../workflow-runs/ports.js';
+import type { WorkflowRunsDependencies } from '../../../workflow-runs/workflow-runs.module.js';
 
 export type ApiWorkflowRuntime = Readonly<{
   dependencies: WorkflowAuthoringDependencies;

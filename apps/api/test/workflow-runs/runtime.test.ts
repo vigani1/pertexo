@@ -35,16 +35,26 @@ vi.mock('@pertexo/workflow-model/server', async (original) => ({
     return outside.validator() as object;
   },
 }));
-vi.mock('../../src/workflow-runs/index.js', async (original) => ({
+vi.mock(
+  '../../src/workflow-runs/postgres-persistence.js',
+  async (original) => ({
+    ...(await original<object>()),
+    createPostgresWorkflowRunPersistence: outside.runs,
+  }),
+);
+vi.mock('../../src/workflow-runs/events/streamer.js', async (original) => ({
   ...(await original<object>()),
-  createPostgresWorkflowRunPersistence: outside.runs,
   createWorkflowRunEventStreamer: outside.streamer,
 }));
-vi.mock('../../src/workflow-runs/events/index.js', async (original) => ({
+vi.mock('@pertexo/queue', async (original) => ({
   ...(await original<object>()),
-  RedisRunEventPublisher: function RedisRunEventPublisher() {
-    return outside.notifications() as object;
-  },
+  RedisRunEventNotificationPublisher:
+    function RedisRunEventNotificationPublisher() {
+      return outside.notifications() as object;
+    },
+}));
+vi.mock('../../src/workflow-runs/events/redis-source.js', async (original) => ({
+  ...(await original<object>()),
   RedisRunEventSource: function RedisRunEventSource() {
     return outside.liveSource() as object;
   },

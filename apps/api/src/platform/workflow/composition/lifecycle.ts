@@ -10,9 +10,9 @@ import type {
 } from '@pertexo/workflow-model/server';
 
 import type { ApiWorkflowMetadataRuntime } from '../metadata-runtime.js';
-import type { RunEventNotificationPublisher } from '../../../workflow-runs/events/index.js';
+import type { RunEventNotificationPublisher } from '@pertexo/queue';
 
-import type { createPostgresWorkflowRunPersistence } from '../../../workflow-runs/index.js';
+import type { createPostgresWorkflowRunPersistence } from '../../../workflow-runs/postgres-persistence.js';
 
 export async function closeWorkflowResources(
   authoring: WorkflowAuthoringStore,
