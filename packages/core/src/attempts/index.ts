@@ -26,3 +26,5 @@ export type {} from './completion/receipts.repository.js';
 export type {} from './completion/attempt-completion.repository.js';
 
 export type {} from './leases/claim-refusal.repository.js';
+
+export type {} from './dispatch/uncertainty.repository.js';

@@ -1,3 +1,4 @@
+import { priorProviderDispatchUnresolved } from '../../attempts/dispatch/uncertainty.repository.js';
 import {
   lockCompletionAttempt,
   isCurrentAttemptLease,
@@ -227,6 +228,7 @@ async function closeOpenWork(
       sideEffectClass: nodeAttempts.sideEffectClass,
       dispatchMarkedAt: nodeAttempts.dispatchMarkedAt,
       executorFailureKind: nodeAttempts.executorFailureKind,
+      priorDispatchUnresolved: priorProviderDispatchUnresolved(nodeAttempts),
     })
     .from(nodeAttempts)
     .where(
@@ -242,7 +244,7 @@ async function closeOpenWork(
       .filter(
         (attempt) =>
           OPEN_STATUSES.some((status) => status === attempt.status) &&
-          attempt.sideEffectClass === 'unsafe' &&
+          attempt.sideEffectClass !== 'safe' &&
           attempt.dispatchMarkedAt !== null,
       )
       .map((attempt) => attempt.id),
@@ -317,15 +319,20 @@ type TerminalStatus =
 function emergencyNodeStatus(
   nodeStatus: typeof nodeRuns.$inferSelect.status,
   current:
-    | Pick<
+    | (Pick<
         typeof nodeAttempts.$inferSelect,
         'id' | 'status' | 'executorFailureKind'
-      >
+      > &
+        Readonly<{ priorDispatchUnresolved: boolean }>)
     | undefined,
   newlyUnknown: ReadonlySet<string>,
 ): TerminalStatus {
   if (current === undefined) return 'canceled';
+  // A confirmed success resolves the earlier keyed uncertainty.
+  if (current.status === 'succeeded')
+    return nodeStatus === 'running' ? 'succeeded' : 'canceled';
   if (
+    current.priorDispatchUnresolved ||
     current.status === 'outcome_unknown' ||
     current.executorFailureKind === 'outcome_unknown' ||
     newlyUnknown.has(current.id)
@@ -334,9 +341,6 @@ function emergencyNodeStatus(
   if (current.status === 'failed') return 'failed';
   if (current.status === 'timed_out' || current.status === 'canceled')
     return current.status;
-  // A succeeded wait attempt leaves unfinished logical work; a running node carries its result.
-  if (current.status === 'succeeded' && nodeStatus === 'running')
-    return 'succeeded';
   return 'canceled';
 }
 

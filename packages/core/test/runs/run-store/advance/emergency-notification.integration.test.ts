@@ -4,19 +4,31 @@ import { FailureNotificationContextSchema } from '@pertexo/workflow-model';
 import { workspaceA } from '../fixtures.js';
 import { emergencyRun, query, safeErrorCode } from './emergency.fixture.js';
 
-it.each(['safe', 'unsafe'] as const)(
+it.each(['safe', 'unsafe', 'idempotent_with_key'] as const)(
   'settles %s emergency work with a run-level notification, completed receipt and released capacity',
   async (sideEffectClass) => {
     const f = await emergencyRun();
     const nodeRunId = randomUUID();
     const attemptId = randomUUID();
     await query(
-      "insert into app.node_runs(id,workspace_id,workflow_run_id,node_id,invocation_key,status,side_effect_class) values($1,$2,$3,'step','step','running',$4)",
-      [nodeRunId, workspaceA, f.runId, sideEffectClass],
+      "insert into app.node_runs(id,workspace_id,workflow_run_id,node_id,invocation_key,status,side_effect_class,provider_idempotency_key) values($1,$2,$3,'step','step','running',$4,$5)",
+      [
+        nodeRunId,
+        workspaceA,
+        f.runId,
+        sideEffectClass,
+        sideEffectClass === 'idempotent_with_key' ? 'provider-key' : null,
+      ],
     );
     await query(
-      "insert into app.node_attempts(id,workspace_id,node_run_id,attempt_number,status,side_effect_class,dispatch_marked_at) values($1,$2,$3,1,'running',$4,clock_timestamp())",
-      [attemptId, workspaceA, nodeRunId, sideEffectClass],
+      "insert into app.node_attempts(id,workspace_id,node_run_id,attempt_number,status,side_effect_class,dispatch_marked_at,provider_idempotency_key) values($1,$2,$3,1,'running',$4,clock_timestamp(),$5)",
+      [
+        attemptId,
+        workspaceA,
+        nodeRunId,
+        sideEffectClass,
+        sideEffectClass === 'idempotent_with_key' ? 'provider-key' : null,
+      ],
     );
     await query(
       'update app.node_runs set current_attempt_id=$2,current_attempt_number=1 where id=$1',
@@ -26,7 +38,7 @@ it.each(['safe', 'unsafe'] as const)(
       'select active_runs from app.workspace_execution_admission_counters where workspace_id=$1',
       [workspaceA],
     );
-    const status = sideEffectClass === 'unsafe' ? 'outcome_unknown' : 'failed';
+    const status = sideEffectClass !== 'safe' ? 'outcome_unknown' : 'failed';
     await expect(f.fail()).resolves.toBe(status);
     const run = await query(
       'select status,completed_at from app.workflow_runs where id=$1',
@@ -67,7 +79,7 @@ it.each(['safe', 'unsafe'] as const)(
       [f.runId],
     );
     expect(nodes.rows).toEqual([
-      { status: sideEffectClass === 'unsafe' ? 'outcome_unknown' : 'canceled' },
+      { status: sideEffectClass !== 'safe' ? 'outcome_unknown' : 'canceled' },
     ]);
     await expect(f.fail()).resolves.toBe('not_active');
   },
