@@ -1699,7 +1699,8 @@ describe.runIf(enabled)('direct webhook HTTP integration', () => {
     const written = logs();
     // The failure was logged, so finding nothing below means something.
     expect(written).toContain('webhook.ingress_failed');
-    expect(written).toContain('forced failure');
+    // Database exception text is untrusted, just like the sender's payload.
+    expect(written).not.toContain('forced failure');
     for (const words of [
       BODY_WORDS,
       QUERY_WORDS,
