@@ -3,7 +3,8 @@ import { sql } from 'drizzle-orm';
 import { QueryBuilder } from 'drizzle-orm/pg-core';
 import type { Pool } from 'pg';
 
-export const EXPECTED_MIGRATION_HEAD = '0100_core_run_admission.sql';
+export const EXPECTED_MIGRATION_HEAD =
+  '0101_restore_timer_capacity_triggers.sql';
 const MINIMUM_POSTGRES_MAJOR = 18;
 
 /**

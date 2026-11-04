@@ -164,6 +164,7 @@ it('upgrades populated workflow threads and private read revisions without chang
       '0098_stuck_work_candidate_pages.sql',
       '0099_notification_recovery_storage.sql',
       '0100_core_run_admission.sql',
+      '0101_restore_timer_capacity_triggers.sql',
     ]);
     read = createWorkspaceInboxStore(
       parseDatabaseConfig({
