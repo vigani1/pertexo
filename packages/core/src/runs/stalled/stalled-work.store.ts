@@ -1,13 +1,18 @@
 import {
+  readFailedErrorWorkflowDeliveries,
+  replaceFailedErrorWorkflowDelivery,
+} from '../error-workflows/recovery.repository.js';
+import {
   automaticReconciliationAction,
   overdueDeliveryAction,
 } from '@pertexo/workflow-engine';
 import { and, asc, eq, inArray, isNotNull, lte, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { Pool } from 'pg';
-import type {
-  DatabaseConfig,
-  DatabaseRuntime,
+import {
+  acquireDatabasePool,
+  type DatabaseConfig,
+  type DatabaseRuntime,
 } from '@pertexo/database/platform';
 import { RUN_DELIVERY_JOB_NAMES } from '../../outbox/dispatcher/outbox-dispatcher.store.js';
 import {
@@ -19,7 +24,6 @@ import {
   settleExpiredAttempt,
 } from '../../operator/handlers/attempts.repository.js';
 import { enqueue } from '../../operator/handlers/enqueue.js';
-import { acquireDatabasePool } from '@pertexo/database/platform';
 import {
   rethrowQueryFailure,
   withWorkspaceTransaction,
@@ -41,19 +45,11 @@ import type {
 const LOCK_TIMEOUT_MILLIS = 5_000;
 const STATEMENT_TIMEOUT_MILLIS = 15_000;
 
-/**
- * Well above what a worker can consume, so confirmed rows never queue up ahead of
- * a lost job. The bound only keeps one cycle from running without end.
- */
+/** Confirmed history must not queue ahead of lost jobs; each cycle is bounded. */
 const DELIVERY_BATCH_SIZE = 1_000;
 const MAXIMUM_DELIVERY_BATCHES_PER_CYCLE = 20;
 
-/**
- * The worker's health check ends a worker whose scan hasn't settled in 5 minutes,
- * so a hung PostgreSQL has to fail the scan well before that, or an outage would
- * restart the worker. The scan's statements are small and don't need a maintenance
- * job's budget.
- */
+/** Fail a hung query before the worker's five-minute scan-health deadline. */
 export const STALLED_WORK_POOL_ROLE = 'worker';
 
 export type StalledWorkStore = ReturnType<typeof createStalledWorkStore>;
@@ -68,16 +64,11 @@ export function createStalledWorkStore(
   });
   let undatedDeliveriesChecked = false;
   return Object.freeze({
-    /**
-     * Settles a bounded batch of overdue work. One bad row never stops the rest, and
-     * neither does a stage that fails: a delivery scan that keeps throwing still lets
-     * expired leases be recovered.
-     */
+    /** Isolate row and stage failures so other stranded work can recover. */
     recoverDue: async (limit: number, signal: AbortSignal) => {
       const result = await recoverDue(lease.pool, limit, signal);
       if (undatedDeliveriesChecked) return result;
-      // After the work above, so a slow first look at the table delays nothing, and
-      // a stage of its own, so failing here doesn't lose what that work did and found.
+      // Legacy discovery must not delay or roll back ordinary recovery.
       try {
         await dateAllUndatedDeliveries(lease.pool, signal);
         undatedDeliveriesChecked = true;
@@ -131,6 +122,11 @@ async function recoverDue(pool: Pool, limit: number, signal: AbortSignal) {
     [],
     () => settleDeliveries(pool, signal),
   );
+  const failedErrorDeliveries = await stage(
+    'failed_error_workflow_deliveries',
+    [],
+    () => readFailedErrorWorkflowDeliveries(pool, limit),
+  );
   const failedRunJobs = await stage('failed_run_jobs', [], () =>
     readFailedRunJobs(pool, limit),
   );
@@ -163,6 +159,10 @@ async function recoverDue(pool: Pool, limit: number, signal: AbortSignal) {
   for (const delivery of failedRunJobs)
     await settle(delivery.workspaceId, delivery.id, (transaction) =>
       replaceFailedRunJob(transaction, delivery),
+    );
+  for (const delivery of failedErrorDeliveries)
+    await settle(delivery.workspaceId, delivery.id, (transaction) =>
+      replaceFailedErrorWorkflowDelivery(transaction, delivery),
     );
   return Object.freeze({
     recovered: Object.freeze(recovered),

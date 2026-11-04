@@ -4,7 +4,7 @@ import type { Pool } from 'pg';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { inboxReceipts, outboxEvents } from '@pertexo/database/schema';
 import { DELIVERY_CONSUMER } from './delivery-consumers.js';
-import { RUN_DELIVERY_JOB_NAMES } from './dispatcher/outbox-dispatcher.store.js';
+import { REPAIRABLE_DELIVERY_JOB_NAMES } from './dispatcher/outbox-dispatcher.store.js';
 
 /** About a day of redeliveries, once the delay reaches its ceiling. */
 const MAXIMUM_REDELIVERIES = 30;
@@ -56,7 +56,7 @@ export async function settleOverdueDeliveries(
           redeliveries = case when due.confirmed or due.exhausted then e.redeliveries else e.redeliveries + 1 end,
           -- A run must not wait on a row given up on; see the failed rows below.
           delivery_due_at = case when not due.confirmed and due.exhausted
-            and e.job_name in ${RUN_DELIVERY_JOB_NAMES} then clock_timestamp() end,
+            and e.job_name in ${REPAIRABLE_DELIVERY_JOB_NAMES} then clock_timestamp() end,
           updated_at = clock_timestamp()
           from due where e.id = due.id
         returning e.id, e.workspace_id, e.job_name, e.aggregate_id, e.redeliveries,

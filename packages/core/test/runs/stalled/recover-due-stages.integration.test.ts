@@ -41,7 +41,7 @@ type Stage = 'expired_leases' | 'overdue_deliveries' | 'failed_run_jobs';
 const STAGE_STATEMENT: Readonly<Record<Stage, RegExp>> = {
   expired_leases: /from "app"\."node_attempts"/u,
   overdue_deliveries: /with due as materialized/u,
-  failed_run_jobs: /"failed_at" is not null/u,
+  failed_run_jobs: /"job_name" in/u,
 };
 
 const STAGES = Object.keys(STAGE_STATEMENT) as readonly Stage[];
@@ -243,7 +243,10 @@ describe('a stage of the stalled-work scan that fails', () => {
     failStatement(
       pool,
       new RegExp(
-        STAGES.map((stage) => STAGE_STATEMENT[stage].source).join('|'),
+        [
+          ...STAGES.map((stage) => STAGE_STATEMENT[stage].source),
+          '"job_name" =',
+        ].join('|'),
         'u',
       ),
       failure,
@@ -251,7 +254,12 @@ describe('a stage of the stalled-work scan that fails', () => {
 
     const { stagesFailed, recovered } = await store.recoverDue(100, signal);
 
-    expect(stagesFailed.map(({ stage }) => stage)).toEqual([...STAGES]);
+    expect(stagesFailed.map(({ stage }) => stage)).toEqual([
+      'expired_leases',
+      'overdue_deliveries',
+      'failed_error_workflow_deliveries',
+      'failed_run_jobs',
+    ]);
     expect(recovered).toEqual([]);
   });
 

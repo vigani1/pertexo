@@ -35,6 +35,7 @@ export type StalledWorkStageFailure = Readonly<{
     | 'expired_leases'
     | 'overdue_deliveries'
     | 'failed_run_jobs'
+    | 'failed_error_workflow_deliveries'
     | 'undated_deliveries';
   error: unknown;
 }>;
