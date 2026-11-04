@@ -1,3 +1,8 @@
+import type { IncomingMessage, ServerResponse } from 'node:http';
+import {
+  createOpenTelemetrySdk,
+  createStructuredLogger,
+} from '@pertexo/observability';
 import type { HttpRequestOutput } from '@pertexo/integrations';
 import type { ServiceResponseFacts } from '@pertexo/node-sdk/server';
 import { createServer } from 'node:http';
@@ -36,46 +41,97 @@ const encodings = [
   'percent-upper',
   'unicode-upper',
 ] as const;
-type Encoding = (typeof encodings)[number] | 'mixed' | 'ascii' | 'literal';
+type Encoding =
+  | (typeof encodings)[number]
+  | 'mixed'
+  | 'ascii'
+  | 'literal'
+  | 'nested-2'
+  | 'nested-3'
+  | 'nested-4'
+  | 'utf16le'
+  | 'utf16be'
+  | 'windows-1252'
+  | 'percent-mixed'
+  | 'percent-partial';
 const encode = (value: string, encoding: Encoding): string => {
-  switch (encoding) {
-    case 'json':
-    case 'literal':
-      return value;
-    case 'ascii':
-    case 'mixed':
-      return value;
-    case 'unicode':
-    case 'unicode-upper':
-      return value;
-    case 'uri':
-      return encodeURI(value);
-    case 'percent-upper':
-      return [...Buffer.from(value)]
-        .map((byte) => '%' + byte.toString(16).padStart(2, '0').toUpperCase())
-        .join('');
-    case 'base64url':
-      return Buffer.from(value).toString('base64url');
-    case 'basic-token':
-      return value.slice(6);
-    case 'url':
-      return encodeURIComponent(value);
-    case 'form':
-      return new URLSearchParams({ value }).toString().slice(6);
-    case 'percent':
-      return [...Buffer.from(value)]
-        .map((byte) => '%' + byte.toString(16).padStart(2, '0'))
-        .join('');
-    case 'base64':
-      return Buffer.from(value).toString('base64');
-    case 'basic-password':
-      return Buffer.from(value.slice(6), 'base64').toString('utf8').slice(5);
-    case 'basic':
-      return Buffer.from(value.slice(6), 'base64').toString('utf8');
+  if (encoding.startsWith('nested-')) {
+    let result = value;
+    for (let depth = 1; depth < Number(encoding.at(-1)); depth += 1)
+      result = JSON.stringify({ credential: result }).replaceAll(
+        'é',
+        '\\u00e9',
+      );
+    return result;
   }
+  const transforms: Partial<Record<Encoding, (text: string) => string>> = {
+    uri: encodeURI,
+    url: encodeURIComponent,
+    'percent-upper': (text) =>
+      [...Buffer.from(text)]
+        .map((byte) => '%' + byte.toString(16).padStart(2, '0').toUpperCase())
+        .join(''),
+    'percent-mixed': (text) =>
+      [...Buffer.from(text)]
+        .map(
+          (byte, index) =>
+            '%' +
+            (index % 2 === 0
+              ? byte.toString(16).padStart(2, '0').toUpperCase()
+              : byte.toString(16).padStart(2, '0')),
+        )
+        .join(''),
+    'percent-partial': (text) => text.replaceAll('p', '%70'),
+    base64url: (text) => Buffer.from(text).toString('base64url'),
+    'basic-token': (text) => text.slice(6),
+    form: (text) => new URLSearchParams({ value: text }).toString().slice(6),
+    percent: (text) =>
+      [...Buffer.from(text)]
+        .map((byte) => '%' + byte.toString(16).padStart(2, '0'))
+        .join(''),
+    base64: (text) => Buffer.from(text).toString('base64'),
+    'basic-password': (text) =>
+      Buffer.from(text.slice(6), 'base64').toString('utf8').slice(5),
+    basic: (text) => Buffer.from(text.slice(6), 'base64').toString('utf8'),
+  };
+  return transforms[encoding]?.(value) ?? value;
 };
 let origin: string;
 const seen: string[] = [];
+const traces: unknown[] = [];
+const collector = createServer((incoming, response) => {
+  void collectTelemetry(incoming, response);
+});
+async function collectTelemetry(
+  incoming: IncomingMessage,
+  response: ServerResponse,
+): Promise<void> {
+  const parts: Buffer[] = [];
+  for await (const chunk of incoming) {
+    if (!(chunk instanceof Uint8Array))
+      throw new Error('Expected telemetry bytes');
+    parts.push(Buffer.from(chunk));
+  }
+  if (incoming.url === '/v1/traces')
+    traces.push(JSON.parse(Buffer.concat(parts).toString()) as unknown);
+  response.end('{}');
+}
+let telemetry: ReturnType<typeof createOpenTelemetrySdk>;
+const logLines: string[] = [];
+const logger = createStructuredLogger(
+  {
+    serviceName: 'credential-echo',
+    serviceVersion: 'test',
+    environment: 'test',
+    logLevel: 'info',
+    otlpHeaders: {},
+  },
+  {
+    write(line) {
+      logLines.push(line);
+    },
+  },
+);
 const server = createServer((incoming, response) => {
   const url = new URL(incoming.url ?? '/', 'http://echo.test');
   const encoding = url.searchParams.get('encoding') as Encoding;
@@ -83,8 +139,23 @@ const server = createServer((incoming, response) => {
   seen.push(header);
   const echoed = encode(header, encoding);
   response.statusCode = url.pathname === '/error' ? 400 : 200;
+  response.statusMessage = JSON.stringify(echoed)
+    .replaceAll('é', '\\u00e9')
+    .replaceAll('ÿ', '\\u00ff');
   const mime = url.searchParams.get('mime') ?? 'application/json';
   if (mime !== 'none') response.setHeader('content-type', mime);
+  response.setHeader(
+    'etag',
+    JSON.stringify(echoed)
+      .replaceAll('é', '\\u00e9')
+      .replaceAll('ÿ', '\\u00ff')
+      .replaceAll('\\"', '\\u0022'),
+  );
+  const charset = ['utf16le', 'utf16be', 'windows-1252'].includes(encoding)
+    ? encoding.replace('utf16', 'utf-16')
+    : undefined;
+  if (charset !== undefined && mime !== 'none')
+    response.setHeader('content-type', mime + '; charset=' + charset);
   const json = JSON.stringify({
     credential: echoed,
     [echoed]: 'key echo',
@@ -92,29 +163,7 @@ const server = createServer((incoming, response) => {
     padding: 'x'.repeat(100),
   });
   let body = json;
-  if (encoding === 'unicode' || encoding === 'unicode-upper')
-    body = json
-      .split(JSON.stringify(echoed))
-      .join(
-        '"' +
-          Array.from(
-            echoed,
-            (char) => '\\u' + char.charCodeAt(0).toString(16).padStart(4, '0'),
-          ).join('') +
-          '"',
-      );
-  if (encoding === 'unicode-upper')
-    body = body.replace(
-      /\\u([a-f0-9]{4})/gu,
-      (_match, hex: string) => '\\u' + hex.toUpperCase(),
-    );
-  else if (encoding === 'mixed')
-    body = json
-      .split(JSON.stringify(echoed))
-      .join(JSON.stringify(echoed).replaceAll('p', '\\u0070'));
-  else if (encoding === 'ascii')
-    body = json.replaceAll('é', '\\u00e9').replaceAll('ÿ', '\\u00ff');
-
+  body = jsonEchoBody(json, echoed, encoding);
   if (url.searchParams.get('text') === 'true')
     body =
       'before:' +
@@ -135,9 +184,32 @@ const server = createServer((incoming, response) => {
       ) +
       '"x"]}';
   }
-  response.end(body);
+  if (encoding === 'utf16le' || encoding === 'utf16be') {
+    const bytes = Buffer.from(
+      (mime === 'none' ? '\ufeff' : '') + body,
+      'utf16le',
+    );
+    response.end(encoding === 'utf16be' ? bytes.swap16() : bytes);
+  } else
+    response.end(
+      Buffer.from(body, encoding === 'windows-1252' ? 'latin1' : 'utf8'),
+    );
 });
 beforeAll(async () => {
+  collector.listen(0, '127.0.0.1');
+  await once(collector, 'listening');
+  const collectorAddress = collector.address();
+  if (collectorAddress === null || typeof collectorAddress === 'string')
+    throw new Error('Missing collector');
+  telemetry = createOpenTelemetrySdk({
+    serviceName: 'credential-echo',
+    serviceVersion: 'test',
+    environment: 'test',
+    logLevel: 'info',
+    otlpHeaders: {},
+    otlpHttpEndpoint: `http://127.0.0.1:${String(collectorAddress.port)}`,
+  });
+  telemetry.start();
   server.listen(0, '127.0.0.1');
   await once(server, 'listening');
   const address = server.address();
@@ -146,6 +218,14 @@ beforeAll(async () => {
   origin = `http://echo.example.test:${String(address.port)}`;
 });
 afterAll(async () => {
+  await telemetry.shutdown();
+  collector.close();
+  await once(collector, 'close');
+  expect(traces.length).toBeGreaterThan(0);
+  const exported = assertCredentialUnrecoverable(traces);
+  expect([...exported].join(' ')).toContain('credential-echo');
+  expect([...exported].join(' ')).toContain('GET');
+
   await new Promise<void>((resolve, reject) =>
     server.close((error) => {
       if (error === undefined) resolve();
@@ -154,50 +234,95 @@ afterAll(async () => {
   );
 });
 
-// Retained-body paths are inventoried here; each runs through the same privacy assertion.
-type BodyMetadata = 'kind' | 'encoding' | 'byteLength' | 'mediaType' | 'sha256';
+// Every retained field, including response roots and body metadata, joins this matrix.
+// Transport status text is deliberately omitted; logs/traces are checked for every case.
 type BodyFields<T> = T extends { kind: infer Kind extends string }
   ? {
-      [Field in Exclude<keyof T, BodyMetadata> & string]: Field extends 'value'
+      [Field in keyof T & string]: Field extends 'value'
         ? T extends { encoding: infer Encoding extends string }
           ? `${Kind}.${Encoding}.${Field}`
           : `${Kind}.${Field}`
         : `${Kind}.${Field}`;
-    }[Exclude<keyof T, BodyMetadata> & string]
-  : `body.${Exclude<keyof T, BodyMetadata> & string}`;
-type ResponseMetadata =
-  | 'kind'
-  | 'status'
-  | 'headers'
-  | 'finalOrigin'
-  | 'redirectCount'
-  | 'pageCount'
-  | 'fetchedPageCount'
-  | 'itemCount'
-  | 'complete';
+    }[keyof T & string]
+  : `body.${keyof T & string}`;
 type OutputFields<T> = T extends { body: infer Body }
-  ? BodyFields<Body>
+  ? BodyFields<Body> | `response.${Exclude<keyof T, 'body'> & string}`
   : T extends { items: unknown }
-    ? `pagination.${Exclude<keyof T, ResponseMetadata> & string}`
-    : T extends { pages: unknown }
-      ? `pages.${Exclude<keyof T, ResponseMetadata> & string}`
-      : `output.${Exclude<keyof T, ResponseMetadata> & string}`;
+    ? `pagination.${keyof T & string}`
+    : T extends { pages: readonly (infer Page)[] }
+      ? `pages.${keyof T & string}` | `page.${keyof Page & string}`
+      : `output.${keyof T & string}`;
 const retainedBodyPaths = {
+  'transport.statusText': ['inline-json'],
+  logs: ['inline-json'],
+  traces: ['inline-json'],
+  'response.status': ['inline-json'],
+  'response.headers': ['response-headers'],
+  'response.finalOrigin': ['inline-json'],
+  'response.redirectCount': ['inline-json'],
+  'inline.kind': ['inline-text'],
+  'inline.encoding': ['inline-text'],
+  'inline.byteLength': ['inline-text'],
   'inline.utf8.value': ['inline-text', 'inline-json'],
   'inline.base64.value': ['inline-text', 'inline-json'],
   'inline.json': ['parsed-json'],
   'artifact.artifactId': ['artifact-json', 'artifact-text'],
+  'artifact.kind': ['artifact-json'],
+  'artifact.byteLength': ['artifact-json'],
+  'artifact.mediaType': ['artifact-json'],
+  'artifact.sha256': ['artifact-json'],
+  'error.method': ['error-excerpt'],
+  'error.url': ['error-excerpt'],
+  'error.status': ['error-excerpt'],
+  'error.text.kind': ['error-excerpt'],
   'error.text.excerpt': ['error-excerpt'],
+  'error.none.kind': ['error-excerpt'],
+  'error.binary.kind': ['error-excerpt'],
+  'error.too_large.kind': ['error-excerpt'],
   'pagination.items': ['pagination'],
+  'pagination.headers': ['pagination'],
+  'pagination.status': ['pagination'],
+  'pagination.finalOrigin': ['pagination'],
+  'pagination.pageCount': ['pagination'],
+  'pagination.complete': ['pagination'],
   'pages.pages': ['page-artifact'],
+  'pages.itemCount': ['page-artifact'],
+  'pages.pageCount': ['page-artifact'],
+  'pages.fetchedPageCount': ['page-artifact'],
+  'pages.complete': ['page-artifact'],
+  'pages.status': ['page-artifact'],
+  'pages.headers': ['page-artifact'],
+  'pages.finalOrigin': ['page-artifact'],
+  'page.kind': ['page-artifact'],
+  'page.artifactId': ['page-artifact'],
+  'page.byteLength': ['page-artifact'],
+  'page.mediaType': ['page-artifact'],
+  'page.sha256': ['page-artifact'],
 } as const satisfies Record<
+  | 'transport.statusText'
+  | 'logs'
+  | 'traces'
   | OutputFields<HttpRequestOutput>
+  | `error.${Exclude<keyof ServiceResponseFacts, 'body'>}`
   | `error.${BodyFields<ServiceResponseFacts['body']>}`,
   readonly string[]
 >;
 const scenarios = [...new Set(Object.values(retainedBodyPaths).flat())];
 const labels = ['application/json', 'text/plain', 'none', 'image/png'] as const;
-const matrixEncodings = [...encodings, 'mixed', 'ascii', 'literal'] as const;
+const matrixEncodings = [
+  ...encodings,
+  'mixed',
+  'ascii',
+  'literal',
+  'nested-2',
+  'nested-3',
+  'nested-4',
+  'utf16le',
+  'utf16be',
+  'windows-1252',
+  'percent-mixed',
+  'percent-partial',
+] as const;
 const matrix = scenarios.flatMap((mode) =>
   labels.flatMap((mime) =>
     matrixEncodings.flatMap((encoding) =>
@@ -361,6 +486,7 @@ it.each([
       if (!(error instanceof NodeExecutorFailure)) throw error;
       const shown = executorFailureCompletion(error);
       assertCredentialUnrecoverable(shown);
+      logger.warn('http.response_failed', { statusCode: 400 }, error);
       if (
         mode === 'error-excerpt' &&
         (mime === 'application/json' || mime === 'text/plain')
@@ -371,6 +497,7 @@ it.each([
       );
     } else {
       const result = await operation;
+      logger.info('http.response_received', { response: result.output });
       if (projection === 'many') {
         const elapsedMs = performance.now() - started;
         console.info(
@@ -393,6 +520,16 @@ it.each([
         header,
       });
     }
+    const traced = await fetch(
+      origin.replace('echo.example.test', '127.0.0.1') +
+        '/?encoding=' +
+        encoding +
+        '&mime=' +
+        encodeURIComponent(mime),
+      { headers: { 'x-private': header } },
+    );
+    await traced.arrayBuffer();
+    assertCredentialUnrecoverable(logLines.splice(0));
     expect(seen.at(-1)).toBe(header);
   },
   30_000,
@@ -429,7 +566,8 @@ function assertRetainedOutput(
   if (
     mode === 'parsed-json' &&
     mime === 'application/json' &&
-    projection === 'normal'
+    projection === 'normal' &&
+    !encoding.startsWith('nested-')
   )
     expect(output).toMatchObject({
       body: {
@@ -445,17 +583,22 @@ function assertRetainedOutput(
     (mime !== 'application/json' || projection !== 'normal')
   )
     expect(output).not.toHaveProperty('body.json');
-  if (mode === 'pagination' && mime === 'application/json')
+  if (
+    mode === 'pagination' &&
+    mime === 'application/json' &&
+    !encoding.startsWith('nested-')
+  )
     expect(output).toMatchObject({
       items: [{ credential: '[Redacted]' }],
     });
   if (mode === 'artifact-json') {
     const decoded: unknown = JSON.parse(Buffer.concat(stored).toString('utf8'));
-    expect(decoded).toMatchObject({
-      credential: '[Redacted]',
-      '[Redacted]': 'key echo',
-      items: [{ credential: '[Redacted]' }],
-    });
+    if (!encoding.startsWith('nested-'))
+      expect(decoded).toMatchObject({
+        credential: '[Redacted]',
+        '[Redacted]': 'key echo',
+        items: [{ credential: '[Redacted]' }],
+      });
     expect(JSON.stringify(decoded)).not.toContain(credential);
   }
   if (mode.startsWith('artifact-') || mode === 'page-artifact')
@@ -470,7 +613,7 @@ function assertCredentialUnrecoverable(retained: unknown): ReadonlySet<string> {
       if (seen.has(value)) continue;
       seen.add(value);
       expect(value).not.toContain(credential);
-      if (seen.size > 200)
+      if (seen.size > 20_000)
         throw new Error('Unbounded credential recovery fixture');
       let parsed = false;
       try {
@@ -510,4 +653,36 @@ function assertCredentialUnrecoverable(retained: unknown): ReadonlySet<string> {
     }
   }
   return seen;
+}
+
+function jsonEchoBody(
+  json: string,
+  echoed: string,
+  encoding: Encoding,
+): string {
+  let body = json;
+  if (encoding === 'unicode' || encoding === 'unicode-upper')
+    body = json
+      .split(JSON.stringify(echoed))
+      .join(
+        '"' +
+          Array.from(
+            echoed,
+            (char) => '\\u' + char.charCodeAt(0).toString(16).padStart(4, '0'),
+          ).join('') +
+          '"',
+      );
+  if (encoding === 'unicode-upper')
+    body = body.replace(
+      /\\u([a-f0-9]{4})/gu,
+      (_match, hex: string) => '\\u' + hex.toUpperCase(),
+    );
+  else if (encoding === 'mixed')
+    body = json
+      .split(JSON.stringify(echoed))
+      .join(JSON.stringify(echoed).replaceAll('p', '\\u0070'));
+  else if (encoding === 'ascii')
+    body = json.replaceAll('é', '\\u00e9').replaceAll('ÿ', '\\u00ff');
+
+  return body;
 }
