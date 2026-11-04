@@ -1,7 +1,8 @@
 ALTER TABLE "app"."trigger_schedules" ADD COLUMN "retired_at" timestamp with time zone;--> statement-breakpoint
 -- Retirement is separate from the person's operational choice. Legacy
 -- retirement overwrote that choice; the latest command for the same step
--- recovers it, with enabled being the original publication default.
+-- recovers it when available. Retention can remove audits, so preserve an
+-- unknown legacy choice rather than enabling an explicitly disabled step.
 DO $$
 DECLARE workspace uuid; prior_workspace text;
 BEGIN
@@ -20,8 +21,10 @@ WITH intent AS (
 )
 UPDATE app.trigger_schedules s SET
   retired_at=coalesce(t.reconciled_at,t.updated_at),
-  status=CASE WHEN intent.action='schedule_trigger.disabled' THEN 'disabled' ELSE 'enabled' END,
-  health_status=CASE WHEN intent.action='schedule_trigger.disabled' THEN 'disabled' ELSE 'healthy' END
+  status=CASE intent.action WHEN 'schedule_trigger.enabled' THEN 'enabled'
+    WHEN 'schedule_trigger.disabled' THEN 'disabled' ELSE s.status END,
+  health_status=CASE intent.action WHEN 'schedule_trigger.enabled' THEN 'healthy'
+    WHEN 'schedule_trigger.disabled' THEN 'disabled' ELSE s.health_status END
 FROM app.workflow_triggers t
 JOIN app.workflows w ON w.workspace_id=t.workspace_id AND w.id=t.workflow_id
 LEFT JOIN intent ON intent.workspace_id=t.workspace_id
