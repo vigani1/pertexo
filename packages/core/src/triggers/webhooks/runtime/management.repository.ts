@@ -17,7 +17,7 @@ import {
   WebhookTriggerStateError,
 } from '../webhook-trigger.errors.js';
 
-import { command } from './commands.js';
+import { withTriggerManagement } from '../../management.js';
 import {
   authenticationChangeRotates,
   provisionRefusal,
@@ -55,204 +55,228 @@ export function configureWebhookAuthentication(
   pool: Pool,
   input: ConfigureWebhookAuthenticationInput,
 ): Promise<WebhookCommandResult & Readonly<{ rotated: boolean }>> {
-  return command(pool, input, async (client) => {
-    const operation = 'webhook.trigger.authentication.configure';
-    if (await claimWebhookCommand(client, input, operation))
+  return withTriggerManagement(
+    pool,
+    input,
+    () => new WebhookTriggerNotFoundError(),
+    async (client) => {
+      const operation = 'webhook.trigger.authentication.configure';
+      if (await claimWebhookCommand(client, input, operation))
+        return {
+          trigger: await oneHealth(client, input.workspaceId, input.triggerId),
+          replayed: true,
+          rotated: false,
+        };
+      const db = drizzle(client);
+      const result = await db
+        .select({ authentication: endpoints.authentication })
+        .from(endpoints)
+        .where(and(endpointOfTrigger(input), eq(endpoints.status, 'active')))
+        .for('update')
+        .catch(rethrowQueryFailure);
+      const current = result[0]?.authentication;
+      if (current === undefined) throw new WebhookTriggerNotFoundError();
+      const next = input.authentication;
+      const rotated = authenticationChangeRotates(current, next);
+      if (rotated) {
+        const secret = await insertSecret(client, input, input.secret);
+        await db
+          .update(endpoints)
+          .set({
+            authentication: next,
+            endpointKeyHash: input.endpointKeyHash,
+            currentSecretVersionId: secret.id,
+            previousSecretVersionId: null,
+            previousSecretValidUntil: null,
+            updatedAt: sql`clock_timestamp()`,
+          })
+          .where(endpointOfTrigger(input))
+          .catch(rethrowQueryFailure);
+      } else {
+        await db
+          .update(endpoints)
+          .set({ authentication: next, updatedAt: sql`clock_timestamp()` })
+          .where(endpointOfTrigger(input))
+          .catch(rethrowQueryFailure);
+      }
+      await completeWebhookCommand(client, input, operation);
       return {
         trigger: await oneHealth(client, input.workspaceId, input.triggerId),
-        replayed: true,
-        rotated: false,
+        replayed: false,
+        rotated,
       };
-    const db = drizzle(client);
-    const result = await db
-      .select({ authentication: endpoints.authentication })
-      .from(endpoints)
-      .where(and(endpointOfTrigger(input), eq(endpoints.status, 'active')))
-      .for('update')
-      .catch(rethrowQueryFailure);
-    const current = result[0]?.authentication;
-    if (current === undefined) throw new WebhookTriggerNotFoundError();
-    const next = input.authentication;
-    const rotated = authenticationChangeRotates(current, next);
-    if (rotated) {
-      const secret = await insertSecret(client, input, input.secret);
-      await db
-        .update(endpoints)
-        .set({
-          authentication: next,
-          endpointKeyHash: input.endpointKeyHash,
-          currentSecretVersionId: secret.id,
-          previousSecretVersionId: null,
-          previousSecretValidUntil: null,
-          updatedAt: sql`clock_timestamp()`,
-        })
-        .where(endpointOfTrigger(input))
-        .catch(rethrowQueryFailure);
-    } else {
-      await db
-        .update(endpoints)
-        .set({ authentication: next, updatedAt: sql`clock_timestamp()` })
-        .where(endpointOfTrigger(input))
-        .catch(rethrowQueryFailure);
-    }
-    await completeWebhookCommand(client, input, operation);
-    return {
-      trigger: await oneHealth(client, input.workspaceId, input.triggerId),
-      replayed: false,
-      rotated,
-    };
-  });
+    },
+  );
 }
 
 export function provisionWebhook(
   pool: Pool,
   input: ProvisionWebhookInput,
 ): Promise<WebhookCommandResult> {
-  return command(pool, input, async (client) => {
-    const operation = 'webhook.trigger.provision';
-    if (await claimWebhookCommand(client, input, operation))
+  return withTriggerManagement(
+    pool,
+    input,
+    () => new WebhookTriggerNotFoundError(),
+    async (client) => {
+      const operation = 'webhook.trigger.provision';
+      if (await claimWebhookCommand(client, input, operation))
+        return {
+          trigger: await oneHealth(client, input.workspaceId, input.triggerId),
+          replayed: true,
+        };
+      const db = drizzle(client);
+      const trigger = await db
+        .select({
+          workflow_id: workflowTriggers.workflowId,
+          node_id: workflowTriggers.nodeId,
+          status: workflowTriggers.status,
+        })
+        .from(workflowTriggers)
+        .where(
+          and(
+            eq(workflowTriggers.workspaceId, input.workspaceId),
+            eq(workflowTriggers.id, input.triggerId),
+            eq(workflowTriggers.kind, 'webhook'),
+          ),
+        )
+        .for('update')
+        .catch(rethrowQueryFailure);
+      const row = trigger[0];
+      if (row === undefined) throw new WebhookTriggerNotFoundError();
+      const refusal = provisionRefusal(row.status);
+      if (refusal !== undefined) throw new WebhookTriggerStateError(refusal);
+      const secret = await insertSecret(client, input, input.secret);
+      await db
+        .insert(endpoints)
+        .values({
+          id: input.endpointId,
+          workspaceId: input.workspaceId,
+          workflowId: row.workflow_id,
+          nodeId: row.node_id,
+          endpointKeyHash: input.endpointKeyHash,
+          currentSecretVersionId: secret.id,
+        })
+        .catch(rethrowQueryFailure);
+      await db
+        .update(workflowTriggers)
+        .set({
+          status: 'active',
+          healthStatus: 'healthy',
+          reconciledAt: sql`clock_timestamp()`,
+          updatedAt: sql`clock_timestamp()`,
+        })
+        .where(
+          and(
+            eq(workflowTriggers.workspaceId, input.workspaceId),
+            eq(workflowTriggers.id, input.triggerId),
+          ),
+        )
+        .catch(rethrowQueryFailure);
+      await refreshWorkflowActivation(
+        client,
+        input.workspaceId,
+        row.workflow_id,
+      );
+      await completeWebhookCommand(client, input, operation);
       return {
         trigger: await oneHealth(client, input.workspaceId, input.triggerId),
-        replayed: true,
+        replayed: false,
       };
-    const db = drizzle(client);
-    const trigger = await db
-      .select({
-        workflow_id: workflowTriggers.workflowId,
-        node_id: workflowTriggers.nodeId,
-        status: workflowTriggers.status,
-      })
-      .from(workflowTriggers)
-      .where(
-        and(
-          eq(workflowTriggers.workspaceId, input.workspaceId),
-          eq(workflowTriggers.id, input.triggerId),
-          eq(workflowTriggers.kind, 'webhook'),
-        ),
-      )
-      .for('update')
-      .catch(rethrowQueryFailure);
-    const row = trigger[0];
-    if (row === undefined) throw new WebhookTriggerNotFoundError();
-    const refusal = provisionRefusal(row.status);
-    if (refusal !== undefined) throw new WebhookTriggerStateError(refusal);
-    const secret = await insertSecret(client, input, input.secret);
-    await db
-      .insert(endpoints)
-      .values({
-        id: input.endpointId,
-        workspaceId: input.workspaceId,
-        workflowId: row.workflow_id,
-        nodeId: row.node_id,
-        endpointKeyHash: input.endpointKeyHash,
-        currentSecretVersionId: secret.id,
-      })
-      .catch(rethrowQueryFailure);
-    await db
-      .update(workflowTriggers)
-      .set({
-        status: 'active',
-        healthStatus: 'healthy',
-        reconciledAt: sql`clock_timestamp()`,
-        updatedAt: sql`clock_timestamp()`,
-      })
-      .where(
-        and(
-          eq(workflowTriggers.workspaceId, input.workspaceId),
-          eq(workflowTriggers.id, input.triggerId),
-        ),
-      )
-      .catch(rethrowQueryFailure);
-    await refreshWorkflowActivation(client, input.workspaceId, row.workflow_id);
-    await completeWebhookCommand(client, input, operation);
-    return {
-      trigger: await oneHealth(client, input.workspaceId, input.triggerId),
-      replayed: false,
-    };
-  });
+    },
+  );
 }
 
 export function rotateWebhookEndpoint(
   pool: Pool,
   input: RotateWebhookEndpointInput,
 ): Promise<WebhookCommandResult> {
-  return command(pool, input, async (client) => {
-    const operation = 'webhook.trigger.endpoint.rotate';
-    if (await claimWebhookCommand(client, input, operation))
+  return withTriggerManagement(
+    pool,
+    input,
+    () => new WebhookTriggerNotFoundError(),
+    async (client) => {
+      const operation = 'webhook.trigger.endpoint.rotate';
+      if (await claimWebhookCommand(client, input, operation))
+        return {
+          trigger: await oneHealth(client, input.workspaceId, input.triggerId),
+          replayed: true,
+        };
+      const result = await drizzle(client)
+        .update(endpoints)
+        .set({
+          endpointKeyHash: input.endpointKeyHash,
+          updatedAt: sql`clock_timestamp()`,
+        })
+        .where(and(endpointOfTrigger(input), eq(endpoints.status, 'active')))
+        .returning({ id: endpoints.id })
+        .catch(rethrowQueryFailure);
+      if (result.length !== 1) throw new WebhookTriggerNotFoundError();
+      await completeWebhookCommand(client, input, operation);
       return {
         trigger: await oneHealth(client, input.workspaceId, input.triggerId),
-        replayed: true,
+        replayed: false,
       };
-    const result = await drizzle(client)
-      .update(endpoints)
-      .set({
-        endpointKeyHash: input.endpointKeyHash,
-        updatedAt: sql`clock_timestamp()`,
-      })
-      .where(and(endpointOfTrigger(input), eq(endpoints.status, 'active')))
-      .returning({ id: endpoints.id })
-      .catch(rethrowQueryFailure);
-    if (result.length !== 1) throw new WebhookTriggerNotFoundError();
-    await completeWebhookCommand(client, input, operation);
-    return {
-      trigger: await oneHealth(client, input.workspaceId, input.triggerId),
-      replayed: false,
-    };
-  });
+    },
+  );
 }
 
 export function rotateWebhookSecret(
   pool: Pool,
   input: RotateWebhookSecretInput,
 ): Promise<WebhookCommandResult> {
-  return command(pool, input, async (client) => {
-    const operation = 'webhook.trigger.secret.rotate';
-    const keyedCommand = {
-      ...input,
-      requestHash: createHash('sha256')
-        .update(`${input.requestHash}\0${input.endpointKeyHash}`)
-        .digest('hex'),
-    };
-    if (await claimWebhookCommand(client, keyedCommand, operation))
+  return withTriggerManagement(
+    pool,
+    input,
+    () => new WebhookTriggerNotFoundError(),
+    async (client) => {
+      const operation = 'webhook.trigger.secret.rotate';
+      const keyedCommand = {
+        ...input,
+        requestHash: createHash('sha256')
+          .update(`${input.requestHash}\0${input.endpointKeyHash}`)
+          .digest('hex'),
+      };
+      if (await claimWebhookCommand(client, keyedCommand, operation))
+        return {
+          trigger: await oneHealth(client, input.workspaceId, input.triggerId),
+          replayed: true,
+        };
+      const db = drizzle(client);
+      const endpoint = await db
+        .select({
+          current_secret_version_id: endpoints.currentSecretVersionId,
+          authentication: endpoints.authentication,
+        })
+        .from(endpoints)
+        .where(
+          and(
+            endpointOfTrigger(input),
+            eq(endpoints.endpointKeyHash, input.endpointKeyHash),
+            eq(endpoints.status, 'active'),
+          ),
+        )
+        .for('update')
+        .catch(rethrowQueryFailure);
+      const row = endpoint[0];
+      if (row === undefined || row.authentication.mode === 'secret_url')
+        throw new WebhookTriggerNotFoundError();
+      const current = row.current_secret_version_id;
+      const secret = await insertSecret(client, input, input.secret);
+      await db
+        .update(endpoints)
+        .set({
+          currentSecretVersionId: secret.id,
+          previousSecretVersionId: current,
+          previousSecretValidUntil: sql`clock_timestamp()+interval '5 minutes'`,
+          updatedAt: sql`clock_timestamp()`,
+        })
+        .where(endpointOfTrigger(input))
+        .catch(rethrowQueryFailure);
+      await completeWebhookCommand(client, keyedCommand, operation);
       return {
         trigger: await oneHealth(client, input.workspaceId, input.triggerId),
-        replayed: true,
+        replayed: false,
       };
-    const db = drizzle(client);
-    const endpoint = await db
-      .select({
-        current_secret_version_id: endpoints.currentSecretVersionId,
-        authentication: endpoints.authentication,
-      })
-      .from(endpoints)
-      .where(
-        and(
-          endpointOfTrigger(input),
-          eq(endpoints.endpointKeyHash, input.endpointKeyHash),
-          eq(endpoints.status, 'active'),
-        ),
-      )
-      .for('update')
-      .catch(rethrowQueryFailure);
-    const row = endpoint[0];
-    if (row === undefined || row.authentication.mode === 'secret_url')
-      throw new WebhookTriggerNotFoundError();
-    const current = row.current_secret_version_id;
-    const secret = await insertSecret(client, input, input.secret);
-    await db
-      .update(endpoints)
-      .set({
-        currentSecretVersionId: secret.id,
-        previousSecretVersionId: current,
-        previousSecretValidUntil: sql`clock_timestamp()+interval '5 minutes'`,
-        updatedAt: sql`clock_timestamp()`,
-      })
-      .where(endpointOfTrigger(input))
-      .catch(rethrowQueryFailure);
-    await completeWebhookCommand(client, keyedCommand, operation);
-    return {
-      trigger: await oneHealth(client, input.workspaceId, input.triggerId),
-      replayed: false,
-    };
-  });
+    },
+  );
 }

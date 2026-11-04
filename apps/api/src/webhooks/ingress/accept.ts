@@ -26,7 +26,11 @@ import type {
   IngressRejectionRecorder,
   WebhookRequestData,
 } from './webhook-ingress.types.js';
-import { optionalIdempotencyKey, sha256 } from './fingerprint.js';
+import {
+  optionalIdempotencyKey,
+  webhookRequestFingerprint,
+  webhookReplayKeyHash,
+} from './fingerprint.js';
 
 /** Pending events leave on their own schedule, so this only paces the sender. */
 const COORDINATION_FULL_RETRY_SECONDS = 60;
@@ -115,11 +119,13 @@ export async function admitIngressDelivery(
     return;
   }
   const query = rawWebhookQuery(request);
-  const fingerprint = sha256(
-    method === 'GET'
-      ? `${verification.endpointId}\0GET\0${sha256(query)}`
-      : `${verification.endpointId}\0${sha256(body)}\0${mediaType}${query === '' ? '' : `\0${sha256(query)}`}`,
-  );
+  const fingerprint = webhookRequestFingerprint({
+    endpointId: verification.endpointId,
+    method,
+    body,
+    mediaType,
+    query,
+  });
   try {
     const traceparent = diagnosticTraceparent(telemetry);
     encryptionSignal.throwIfAborted();
@@ -130,7 +136,7 @@ export async function admitIngressDelivery(
       bodyBytes: body.byteLength,
       ...(idempotency === undefined
         ? {}
-        : { idempotencyKeyHash: sha256(idempotency) }),
+        : { idempotencyKeyHash: webhookReplayKeyHash(idempotency) }),
       runInput: webhookRunInput(productionReference.runInputMode, requestData),
       signal: encryptionSignal,
       checkpointFactory: dependencies.checkpointFactory,

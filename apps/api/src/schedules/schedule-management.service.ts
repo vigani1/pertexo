@@ -49,7 +49,10 @@ export class ScheduleManagementService {
   ): Promise<ScheduleOccurrenceListResponse> {
     return this.telemetry.measure('schedule.occurrences', async () => {
       const page = await this.database.listOccurrences({
-        ...triggerRead(input),
+        workspaceId: input.workspaceId,
+        actorId: input.actorId,
+        workflowId: input.workflowId,
+        triggerId: input.triggerId,
         ...(input.limit === undefined ? {} : { limit: input.limit }),
         ...(input.after === undefined
           ? {}
@@ -75,12 +78,7 @@ export class ScheduleManagementService {
     input: TriggerReadInput & Readonly<{ count: number }>,
   ): Promise<ScheduleFireTimesResponse> {
     return this.telemetry.measure('schedule.next_runs', async () => {
-      return publicFireTimes(
-        await this.database.nextFireTimes({
-          ...triggerRead(input),
-          count: input.count,
-        }),
-      );
+      return publicFireTimes(await this.database.nextFireTimes(input));
     });
   }
 
@@ -136,15 +134,6 @@ type TriggerReadInput = Readonly<{
   workflowId: string;
   triggerId: string;
 }>;
-
-function triggerRead(input: TriggerReadInput): TriggerReadInput {
-  return {
-    workspaceId: input.workspaceId,
-    actorId: input.actorId,
-    workflowId: input.workflowId,
-    triggerId: input.triggerId,
-  };
-}
 
 /** The rule alone: the misfire policy never changes when a schedule fires. */
 function recurrenceOf(config: ScheduleStepConfig) {
