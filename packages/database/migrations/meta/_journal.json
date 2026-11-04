@@ -645,6 +645,13 @@
       "when": 1793734645788,
       "tag": "0091_pending_trigger_success_order",
       "breakpoints": true
+    },
+    {
+      "idx": 92,
+      "version": "7",
+      "when": 1793734645789,
+      "tag": "0092_coordinated_event_retry_evidence",
+      "breakpoints": true
     }
   ]
 }

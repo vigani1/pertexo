@@ -227,7 +227,16 @@ function scheduleOperationalState(
   prior: typeof schedules.$inferSelect | undefined,
   recurrence: ScheduleRecurrence,
   observedAt: Date,
-) {
+): Pick<
+  typeof schedules.$inferSelect,
+  | 'status'
+  | 'anchorAt'
+  | 'nextFireAt'
+  | 'lastFireAt'
+  | 'admissionDeferredUntil'
+  | 'healthStatus'
+  | 'lastErrorCode'
+> {
   const unchanged =
     prior !== undefined &&
     (recurrence.kind === 'interval'

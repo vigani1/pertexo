@@ -267,3 +267,29 @@ async function checkPendingEventEndpoint(
 
   return { kind: 'eligible', webhookTriggerId } as const;
 }
+
+/** A failed release stays pending, but must let other discovery heads advance. */
+export async function restFailedCoordinatedEvent(
+  transaction: WorkspaceTransaction,
+  id: string,
+): Promise<void> {
+  const locked = await lockCoordinatedEvent(transaction, id);
+  if (locked === undefined) return;
+  const now = await eventDatabaseTime(transaction);
+  if (locked.event.due_at > now) return;
+  await transaction.db
+    .update(events)
+    .set({
+      dueAt: new Date(
+        Math.min(now.getTime() + 60_000, locked.event.deadline_at.getTime()),
+      ),
+      reason: 'release_failed',
+    })
+    .where(
+      and(
+        eq(events.workspaceId, transaction.workspaceId),
+        eq(events.id, id),
+        eq(events.status, 'pending'),
+      ),
+    );
+}
