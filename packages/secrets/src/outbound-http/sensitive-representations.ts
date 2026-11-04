@@ -50,3 +50,18 @@ export function sensitiveRepresentations(
   }
   return [...representations].sort((left, right) => right.length - left.length);
 }
+
+/** Prepared once for a response; wire bytes and decoded JSON escapes use these same patterns. */
+export function prepareSensitiveBytePatterns(
+  values: readonly string[],
+): readonly Uint8Array[] {
+  return sensitiveRepresentations(values)
+    .flatMap((value) => {
+      const text = Buffer.from(value, 'utf8');
+      if (!isSupportedHttpFieldValue(value)) return [text];
+      // Node sends header values as Latin-1; a service may echo decoded UTF-8 or the wire bytes.
+      const wire = Buffer.from(value, 'latin1');
+      return text.equals(wire) ? [text] : [text, wire];
+    })
+    .sort((left, right) => right.byteLength - left.byteLength);
+}

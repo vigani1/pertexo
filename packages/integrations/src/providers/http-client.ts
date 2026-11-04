@@ -33,6 +33,7 @@ export type ProviderHttpStreamingBody = Readonly<{
   navigation?: Readonly<{ url: string; link?: string }>;
   status: number;
   headers: Readonly<Record<string, string>>;
+  /** The secure client bounds and redacts bytes before any consumer retains them. */
   body: AsyncIterable<Uint8Array>;
   cancelSource?: (reason: Error) => void;
   bodyEncoding: 'base64' | 'utf8';
