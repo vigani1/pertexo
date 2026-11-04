@@ -8,7 +8,7 @@ import {
 import { requestWorkflowRunCancellation } from '../../runs/commands/request-cancellation.js';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 import { withoutNulls, type OperatorDecision } from './decision.js';
-import { enqueueAdvance } from './enqueue.js';
+import { enqueueAdvance } from '../../outbox/enqueue-delivery.repository.js';
 
 /** Due nodes one resume marks; the result says when more remain. */
 const RESUME_PAGE = 100;

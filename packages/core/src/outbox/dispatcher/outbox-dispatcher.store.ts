@@ -31,17 +31,8 @@ function currentLease(id: string, leaseToken: string) {
   );
 }
 
-/** The job kinds a stranded run depends on, and which can be rebuilt from it. */
-export const RUN_DELIVERY_JOB_NAMES = [
-  'advance-workflow-run',
-  'execute-node-attempt',
-] as const;
+import { REPAIRABLE_DELIVERY_JOB_NAMES } from '../delivery-consumers.js';
 
-/** Owners other than runs reconcile their own failed delivery identity. */
-export const REPAIRABLE_DELIVERY_JOB_NAMES = [
-  ...RUN_DELIVERY_JOB_NAMES,
-  'start-error-workflow',
-] as const;
 const repairableDeliveryJob = sql`${outboxEvents.jobName} in ${REPAIRABLE_DELIVERY_JOB_NAMES}`;
 
 /** A queue under real load delivers well inside this; past it, the job is presumed lost. */

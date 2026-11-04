@@ -14,7 +14,7 @@ import { createRetentionStore } from '../../src/lifecycle/retention/retention.st
 import { failUnadvanceableRun } from '../../src/runs/advance/fail-unadvanceable.repository.js';
 import { requestWorkflowRunCancellation } from '../../src/runs/commands/request-cancellation.js';
 import { createNodeAttemptRunStore } from '../../src/attempts/node-attempt-run.store.js';
-import { settleExpiredAttempt } from '../../src/operator/handlers/attempts.repository.js';
+import { settleExpiredAttempt } from '../../src/attempts/attempt-reconciliation.repository.js';
 import { readRecoveryEvidence } from '../../src/runs/recovery/evidence.repository.js';
 import {
   actorId,

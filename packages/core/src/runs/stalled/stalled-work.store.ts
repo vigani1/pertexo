@@ -14,7 +14,7 @@ import {
   type DatabaseConfig,
   type DatabaseRuntime,
 } from '@pertexo/database/platform';
-import { RUN_DELIVERY_JOB_NAMES } from '../../outbox/dispatcher/outbox-dispatcher.store.js';
+import { RUN_DELIVERY_JOB_NAMES } from '../../outbox/delivery-consumers.js';
 import {
   dateUndatedDeliveries,
   settleOverdueDeliveries,
@@ -22,8 +22,8 @@ import {
 import {
   readLockedAttempt,
   settleExpiredAttempt,
-} from '../../operator/handlers/attempts.repository.js';
-import { enqueue } from '../../operator/handlers/enqueue.js';
+} from '../../attempts/attempt-reconciliation.repository.js';
+import { enqueue } from '../../outbox/enqueue-delivery.repository.js';
 import {
   rethrowQueryFailure,
   withWorkspaceTransaction,
