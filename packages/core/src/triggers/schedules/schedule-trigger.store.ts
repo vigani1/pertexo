@@ -1,4 +1,5 @@
-import { sql } from 'drizzle-orm';
+import { reconcileActiveWorkflowTriggers } from '../reconciliation/materialization.repository.js';
+import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type {
   DatabaseRuntime,
@@ -6,7 +7,7 @@ import type {
 } from '@pertexo/database/platform';
 import { acquireDatabasePool } from '@pertexo/database/platform';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
-import { triggerSchedules } from '@pertexo/database/schema';
+import { triggerSchedules, workflowTriggers } from '@pertexo/database/schema';
 
 import { ScheduleTriggerError } from './schedule-trigger.errors.js';
 
@@ -60,6 +61,27 @@ export function createScheduleTriggerStore(
           const identity = scheduleCommandIdentity(input);
           const replay = await claimScheduleCommand(client, input, identity);
           if (replay !== null) return replay;
+          const [publication] = await drizzle(client)
+            .select({ versionId: workflowTriggers.workflowVersionId })
+            .from(workflowTriggers)
+            .where(
+              and(
+                eq(workflowTriggers.workspaceId, input.workspaceId),
+                eq(workflowTriggers.workflowId, identity.workflowId),
+                eq(workflowTriggers.id, identity.triggerId),
+                eq(workflowTriggers.kind, 'schedule'),
+              ),
+            )
+            .catch(rethrowQueryFailure);
+          if (publication === undefined)
+            throw new ScheduleTriggerError('not_found');
+          // Workflow authority is already locked. Complete publication before reading
+          // the command's cursor so a delayed delivery cannot replace this choice.
+          await reconcileActiveWorkflowTriggers(client, {
+            workspaceId: input.workspaceId,
+            workflowId: identity.workflowId,
+            versionId: publication.versionId,
+          });
           const target = await readScheduleCommandTarget(
             client,
             input,
