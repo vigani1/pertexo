@@ -295,6 +295,26 @@ compose logs --tail 100 api worker proxy
 For audited changes to stuck or uncertain work, use `run_ops` as described in
 [Operator commands](operator-commands.md). Never run it as the bootstrap superuser.
 
+### Redis outages and request limits
+
+Sign-in, run starts and the other API request classes with a local fallback stay
+available during a Redis outage. Their request counts start again in the fallback:
+it has no record of requests already counted by Redis. A sign-in subject that
+exhausted its Redis budget can receive another local budget (normally ten starts
+per client address per minute, also subject to the account limit). Once that local
+budget is exhausted, the process keeps refusing requests while that counter is retained
+and until its window expires.
+
+Each API process counts separately, even if several run on the same server.
+Restarting a process clears its local counts. The bounded map holds 50,000 dimension
+counters; after removing expired entries, it evicts the oldest when full, and an
+evicted subject can receive a fresh budget. The distributed limit is therefore
+weaker during an outage. Redis's own counts govern requests again after recovery.
+Worker provider-call limits and the CSV export's exclusive slot still refuse when
+their shared authority is unavailable. Accepted runs remain in PostgreSQL; restore
+Redis to resume queue delivery. The policy and decision are recorded in
+[ADR 012](../adr/012-fair-admission-backpressure-entitlements.md).
+
 ### Find stuck work
 
 Workers recover stranded runs and lost jobs of every kind by themselves, so work

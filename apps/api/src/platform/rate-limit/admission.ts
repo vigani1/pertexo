@@ -46,10 +46,9 @@ export type RateLimitOutcome =
   | Readonly<{ kind: 'limited'; retryAfterSeconds: number }>;
 
 /**
- * The one admission decision: records the metric and honours the policy's
- * failure mode. A closed policy keeps its limit in this process while Redis is out,
- * so an outage neither stops sign-in and run starts nor lifts the limit. Each
- * transport turns the outcome into its own problem shape.
+ * Closed API policies use an independent per-process budget while Redis is out.
+ * Counting starts with fallback use; earlier Redis admissions are not carried over.
+ * Each transport turns an exhausted local or Redis budget into its own problem shape.
  */
 export async function admitRateLimit(
   consumer: RateLimitConsumer,

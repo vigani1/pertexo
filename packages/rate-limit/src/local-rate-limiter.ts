@@ -13,10 +13,9 @@ interface Counter {
 }
 
 /**
- * Counts in this process while Redis can't, with the same rule as Redis's script.
- * On one server that's the same limit. With several, each counts alone, so during
- * the outage a limit is looser by at most that many times. That beats refusing
- * every sign-in, and it still stops abuse.
+ * Counts fallback requests with the same increment/refusal rule as Redis's script.
+ * Each process starts an independent window on first use, without Redis's prior count.
+ * Restarting the process or evicting a counter grants that subject a fresh budget.
  */
 export class LocalRateLimiter {
   private readonly counters = new Map<string, Counter>();

@@ -66,17 +66,17 @@ V1 endpoint classes and one-minute defaults are:
 
 | Endpoint class | Dimensions and limits | Backend failure |
 | --- | --- | --- |
-| `identity_start` | client address 10; account named in the request 20 | fail closed |
-| `identity_callback` | client address 30 | fail closed |
+| `identity_start` | client address 10; account named in the request 20 | per-process fallback |
+| `identity_callback` | client address 30 | per-process fallback |
 | `authenticated_read` | actor 600; workspace 1,200 when scoped | fail open |
-| `ordinary_mutation` | actor 120; workspace 300 when scoped | fail closed |
-| `workflow_compile` | actor 30; workspace 60 | fail closed |
-| `run_admission` | actor 60; workspace 120 | fail closed |
-| `preview_test` | actor 20; workspace 40 | fail closed |
-| `connection_mutation` | actor 30; workspace 60; connection 10 when selected | fail closed |
-| `provider_test` | actor 10; workspace 20; connection 5 | fail closed |
-| `destination_test` | actor 10; workspace 20 | fail closed |
-| `trigger_mutation` | actor 60; workspace 120 | fail closed |
+| `ordinary_mutation` | actor 120; workspace 300 when scoped | per-process fallback |
+| `workflow_compile` | actor 30; workspace 60 | per-process fallback |
+| `run_admission` | actor 60; workspace 120 | per-process fallback |
+| `preview_test` | actor 20; workspace 40 | per-process fallback |
+| `connection_mutation` | actor 30; workspace 60; connection 10 when selected | per-process fallback |
+| `provider_test` | actor 10; workspace 20; connection 5 | per-process fallback |
+| `destination_test` | actor 10; workspace 20 | per-process fallback |
+| `trigger_mutation` | actor 60; workspace 120 | per-process fallback |
 | `provider_execution` | workspace 300; connection 60 | fail closed before provider I/O |
 
 The generic webhook keeps its existing PostgreSQL-authoritative endpoint ingress
@@ -105,11 +105,25 @@ and fail-open/fail-closed policy. Raw identifiers and Redis keys are never metri
 attributes or logs.
 
 Reads fail open during limiter-backend failure to preserve safe visibility.
-Identity, mutation, preview, connection, trigger, run-admission, and provider
-execution classes fail closed because their abuse, cost, or side-effect risk is
-greater than their temporary availability. Autoscaling and WAF rules may shed
-earlier, but they are defense in depth and never replace this application
-control.
+Amended to match the owner's 2026-11-02 decision in commit `25dd4bcea`
+(`fix: keep sign-in and run starts up, and limited, while Redis is down`):
+API classes labelled `closed` use a per-process counter while Redis is unavailable.
+Refusing every such request had made a transport outage stop sign-in, webhooks
+and run starts, although accepted work remains durable in the PostgreSQL outbox.
+The fallback keeps those API operations available with a local abuse bound.
+Worker provider-execution limits still fail closed before provider I/O, and the
+CSV export's exclusive slot still refuses when its shared authority is unavailable.
+PostgreSQL capacity and accepted-run admission remain authoritative.
+
+The local budget starts when the fallback first counts a subject; it does not
+carry over requests already counted by Redis. An already-exhausted sign-in
+subject can therefore receive another local budget within the Redis window.
+Each API process counts independently, and restarting it clears its counters.
+The map holds at most 50,000 dimension counters: it removes expired counters,
+then evicts the oldest when full, so an evicted subject can receive a fresh budget.
+These are gaps in the distributed guarantee, even on a single server.
+Once Redis recovers, its own counters govern requests again.
+Autoscaling and WAF rules may shed earlier, but remain defense in depth.
 
 ## Consequences
 
