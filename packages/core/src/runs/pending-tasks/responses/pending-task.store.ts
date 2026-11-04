@@ -1,5 +1,4 @@
 import { readFolderScope } from '../../../shared/facts.repository.js';
-import { readWorkspacePeople } from '../../../tenant-access/members/discovery.repository.js';
 import type { DatabaseConfig } from '@pertexo/database/platform';
 import {
   acquireDatabasePool,
@@ -8,7 +7,6 @@ import {
 import { withWorkspaceAccess } from '../../../shared/workspace-access.js';
 import type {
   ApprovalAudienceInspectionRequest,
-  ApprovalAudienceQuery,
   PendingTaskListQuery,
 } from '@pertexo/contracts';
 import {
@@ -94,17 +92,6 @@ export function createPendingTaskStore(
           statuses: ACTIVE_WORKSPACE_STATUSES,
         },
         (client) => inspectAudience(client, input),
-      ),
-    audience: (input: PendingTaskScope & ApprovalAudienceQuery) =>
-      withWorkspaceAccess(
-        pool,
-        input,
-        {
-          mode: 'read',
-          capability: 'workflow:update',
-          statuses: BROWSABLE_WORKSPACE_STATUSES,
-        },
-        (client) => readWorkspacePeople(client, input),
       ),
   });
 }

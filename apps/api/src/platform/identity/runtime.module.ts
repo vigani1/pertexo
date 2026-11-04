@@ -1,3 +1,4 @@
+import type { IdentityWorkspaceStore } from '@pertexo/core/tenant-access';
 import type { StructuredLogger } from '@pertexo/observability';
 import { DirectoryManagementModule } from '../../authentication/federation/provisioning/management/directory-management.module.js';
 import {
@@ -45,6 +46,7 @@ import { composeBetterAuthRuntime } from './better-auth-composition.js';
 
 export type ApiIdentityRuntime = Readonly<{
   dependencies: IdentityWorkspaceDependencies;
+  people: IdentityWorkspaceStore['listWorkspacePeople'];
   betterAuth: BetterAuthRuntime;
   automation: ApiTokenDependencies;
   federation: FederationManagementService;
@@ -130,6 +132,7 @@ export async function createApiIdentityRuntime(
     let closePromise: Promise<void> | undefined;
 
     return Object.freeze({
+      people: identityDatabase.listWorkspacePeople,
       dependencies: identityDependencies({
         config,
         persistence,

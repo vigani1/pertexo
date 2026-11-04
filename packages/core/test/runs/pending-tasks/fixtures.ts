@@ -1,3 +1,4 @@
+import { createIdentityWorkspaceMemberStore } from '../../../src/tenant-access/members/workspace-members.store.js';
 import { Pool } from 'pg';
 import { beforeAll, afterAll } from 'vitest';
 import { approvalConfigSchema } from '@pertexo/workflow-model';
@@ -10,8 +11,12 @@ import { apiUrl, userId } from '../../lifecycle/retention.support.js';
 export { admin, userId };
 export let store: ReturnType<typeof createPendingTaskStore>;
 export let pool: Pool;
+export let people: ReturnType<
+  typeof createIdentityWorkspaceMemberStore
+>['listWorkspacePeople'];
 beforeAll(() => {
   pool = new Pool({ connectionString: apiUrl, max: 4 });
+  people = createIdentityWorkspaceMemberStore(pool).listWorkspacePeople;
   store = createPendingTaskStore(
     parseDatabaseConfig({ connectionString: apiUrl, max: 4 }),
   );

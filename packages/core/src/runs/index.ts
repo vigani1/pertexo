@@ -166,3 +166,5 @@ export { isStoredDataError } from '../shared/stored-values.js';
 export type {} from './stalled/stuck-work.repository.js';
 
 export type {} from './queries/history/attempt-events.repository.js';
+
+export type {} from './wakeups/advance.repository.js';

@@ -1,3 +1,5 @@
+import type { PendingTaskStore } from '@pertexo/core/runs';
+import type { IdentityWorkspaceStore } from '@pertexo/core/tenant-access';
 import {
   approvalAudiencePageSchema,
   approvalAudienceInspectionResponseSchema,
@@ -5,37 +7,38 @@ import {
   pendingTaskListResponseSchema,
   pendingTaskDecisionResponseSchema,
 } from '@pertexo/contracts';
-import type { PendingTaskStore } from '@pertexo/core/runs';
+export type PendingTaskOperations = PendingTaskStore &
+  Readonly<{ audience: IdentityWorkspaceStore['listWorkspacePeople'] }>;
 
 /** Transport contracts surround the same transaction-owned task rules. */
 export class PendingTaskService {
-  constructor(private readonly store: PendingTaskStore) {}
-  async list(input: Parameters<PendingTaskStore['list']>[0]) {
+  constructor(private readonly store: PendingTaskOperations) {}
+  async list(input: Parameters<PendingTaskOperations['list']>[0]) {
     return pendingTaskListResponseSchema.parse(await this.store.list(input));
   }
-  async read(input: Parameters<PendingTaskStore['read']>[0]) {
+  async read(input: Parameters<PendingTaskOperations['read']>[0]) {
     return pendingTaskResponseSchema.parse({
       task: await this.store.read(input),
     });
   }
-  async decide(input: Parameters<PendingTaskStore['decide']>[0]) {
+  async decide(input: Parameters<PendingTaskOperations['decide']>[0]) {
     return pendingTaskDecisionResponseSchema.parse(
       await this.store.decide(input),
     );
   }
-  async submit(input: Parameters<PendingTaskStore['submit']>[0]) {
+  async submit(input: Parameters<PendingTaskOperations['submit']>[0]) {
     return pendingTaskDecisionResponseSchema.parse(
       await this.store.submit(input),
     );
   }
   async inspectAudience(
-    input: Parameters<PendingTaskStore['inspectAudience']>[0],
+    input: Parameters<PendingTaskOperations['inspectAudience']>[0],
   ) {
     return approvalAudienceInspectionResponseSchema.parse(
       await this.store.inspectAudience(input),
     );
   }
-  async audience(input: Parameters<PendingTaskStore['audience']>[0]) {
+  async audience(input: Parameters<PendingTaskOperations['audience']>[0]) {
     return approvalAudiencePageSchema.parse(await this.store.audience(input));
   }
 }

@@ -31,14 +31,3 @@ export async function enqueue(
   });
   return id;
 }
-
-export const enqueueAdvance = (
-  transaction: WorkspaceTransaction,
-  runId: string,
-): Promise<string> =>
-  enqueue(transaction, {
-    jobName: 'advance-workflow-run',
-    aggregateType: 'workflow-run',
-    aggregateId: runId,
-    fields: { runId },
-  });
