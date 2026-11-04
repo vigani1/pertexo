@@ -9,17 +9,8 @@ import type {
   WorkflowNodeFailureValue,
 } from '@pertexo/workflow-model';
 
-export const RUN_STATUSES = [
-  'queued',
-  'running',
-  'waiting',
-  'succeeded',
-  'failed',
-  'canceled',
-  'timed_out',
-  'outcome_unknown',
-] as const;
-export type RunStatus = (typeof RUN_STATUSES)[number];
+export { RUN_STATUSES, type RunStatus } from '@pertexo/workflow-model';
+import type { RunStatus } from '@pertexo/workflow-model';
 
 export const NODE_STATUSES = [
   'pending',

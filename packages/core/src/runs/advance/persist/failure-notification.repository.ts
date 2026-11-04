@@ -22,7 +22,7 @@ import {
   FailureNotificationContextSchema,
 } from '@pertexo/workflow-model';
 import { CoordinatorRunStateCorruptError } from '../../state-errors.js';
-import type { RunTransitionPlan } from '../plan.js';
+import type { WorkflowTransitionPlan } from '@pertexo/workflow-engine';
 
 const failureNotificationNamespace = '9fe280d8-40ca-4a20-930e-1bf77e48c817';
 
@@ -40,7 +40,7 @@ export async function persistFailureNotificationIntent(
     destinationConfigVersion: number | null;
     sideEffectClass: string | null;
     cancellationRequested: boolean;
-    plan: RunTransitionPlan;
+    plan: WorkflowTransitionPlan;
     traceparent?: string;
   }>,
 ): Promise<void> {
@@ -116,8 +116,9 @@ async function readPrimaryFailure(
     primary,
     terminalEvent,
   }: Readonly<{
-    primary: RunTransitionPlan['checkpoint']['invocations'][number] | undefined;
-    terminalEvent: RunTransitionPlan['events'][number];
+    primary:
+      WorkflowTransitionPlan['checkpoint']['invocations'][number] | undefined;
+    terminalEvent: WorkflowTransitionPlan['events'][number];
   }>,
 ): Promise<Record<string, unknown>> {
   let primaryFailure: Record<string, unknown>;

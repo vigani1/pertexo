@@ -2,7 +2,7 @@ import type { PoolClient } from 'pg';
 
 import type { PendingCoordinatorFailure } from '../load/state.repository.js';
 
-import type { RunTransitionPlan } from '../plan.js';
+import type { WorkflowTransitionPlan } from '@pertexo/workflow-engine';
 
 import type { CoordinatorExecutionIdentity } from './admissions/execution-identity.types.js';
 import { persistPendingFailureDecisions } from './admissions/failure-decisions.repository.js';
@@ -18,7 +18,7 @@ export async function persistCoordinatorExecutionTransitions(
   client: PoolClient,
   input: Readonly<{
     pendingFailures: readonly PendingCoordinatorFailure[];
-    plan: RunTransitionPlan;
+    plan: WorkflowTransitionPlan;
     runId: string;
     traceparent?: string;
     workspaceId: string;

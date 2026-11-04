@@ -9,7 +9,12 @@ export {
   canonicalOutboxPayloadChecksum,
   insertOutboxEvent,
 } from './outbox/events.repository.js';
-export { type CommandIdentity } from './platform/idempotency/command-identity.types.js';
+export {
+  IDEMPOTENCY_STATUS,
+  IDEMPOTENCY_STATUS_VALUES,
+  type IdempotencyStatus,
+  type CommandIdentity,
+} from './platform/idempotency/command-identity.types.js';
 export {
   claimCommand,
   completeCommand,

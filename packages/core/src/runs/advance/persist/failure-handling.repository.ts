@@ -5,14 +5,14 @@ import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { serializeStoredExecutionJsonValue } from '../../values/stored-execution.js';
 import type { PoolClient } from 'pg';
 import { CoordinatorRunStateCorruptError } from '../../state-errors.js';
-import type { RunTransitionPlan } from '../plan.js';
+import type { WorkflowTransitionPlan } from '@pertexo/workflow-engine';
 
 /** Source evidence and disposition share the checkpoint/admission transaction. */
 export async function persistFailureHandling(
   client: PoolClient,
   workspaceId: string,
   runId: string,
-  plan: RunTransitionPlan,
+  plan: WorkflowTransitionPlan,
 ): Promise<void> {
   for (const selection of plan.failureValues ?? []) {
     const source = plan.checkpoint.invocations.find(

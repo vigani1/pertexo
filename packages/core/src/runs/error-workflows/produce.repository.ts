@@ -13,7 +13,7 @@ import {
 } from '@pertexo/database/primitives';
 import { alias } from 'drizzle-orm/pg-core';
 import type { PoolClient } from 'pg';
-import type { RunTransitionPlan } from '../advance/plan.js';
+import type { WorkflowTransitionPlan } from '@pertexo/workflow-engine';
 import { generatePersistedId } from '@pertexo/database/platform';
 import {
   errorWorkflowInput,
@@ -30,7 +30,7 @@ export async function persistErrorWorkflowIntent(
     workflowId: string;
     workflowVersionId: string;
     cancellationRequested: boolean;
-    plan: RunTransitionPlan;
+    plan: WorkflowTransitionPlan;
     traceparent?: string;
   }>,
 ): Promise<void> {

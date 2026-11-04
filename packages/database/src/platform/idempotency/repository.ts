@@ -1,3 +1,4 @@
+import { IDEMPOTENCY_STATUS } from './command-identity.types.js';
 import type { CommandIdentity } from './command-identity.types.js';
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
@@ -76,7 +77,7 @@ export async function claimCommand<Result = unknown>(
       scope: command.scope,
       keyHash,
       requestHash,
-      status: 'in_progress',
+      status: IDEMPOTENCY_STATUS.inProgress,
       resourceId: command.resourceId,
       resultRef: {},
     })
@@ -102,7 +103,7 @@ export async function claimCommand<Result = unknown>(
     .catch(rethrowQueryFailure);
   if (row === undefined) throw new Error('Command claim is missing');
   if (row.requestHash !== requestHash) throw conflict(command);
-  if (row.status === 'completed') return row.resultRef;
+  if (row.status === IDEMPOTENCY_STATUS.completed) return row.resultRef;
   // A claim completes in the transaction that made it, so any other state
   // another transaction left behind is damage, not a command to resume.
   if (inserted.length !== 1) throw new Error('Command claim is not resumable');
@@ -129,7 +130,7 @@ export async function findCommandResult<Result = unknown>(
     .catch(rethrowQueryFailure);
   if (row === undefined) return null;
   if (row.requestHash !== requestDigest(command)) throw conflict(command);
-  return row.status === 'completed' ? row.resultRef : null;
+  return row.status === IDEMPOTENCY_STATUS.completed ? row.resultRef : null;
 }
 
 /** Stores a command's result so an exact retry gets it back. */
@@ -141,7 +142,7 @@ export async function completeCommand(
   const completed = await drizzle(client)
     .update(idempotencyRecords)
     .set({
-      status: 'completed',
+      status: IDEMPOTENCY_STATUS.completed,
       resultRef: sql`${JSON.stringify(result)}::jsonb`,
       updatedAt: sql`clock_timestamp()`,
     })

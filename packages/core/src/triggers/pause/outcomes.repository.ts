@@ -9,7 +9,7 @@ import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import type { PoolClient } from 'pg';
 
 import { generatePersistedId } from '@pertexo/database/platform';
-import type { RunTransitionPlan } from '../../runs/advance/plan.js';
+import type { WorkflowTransitionPlan } from '@pertexo/workflow-engine';
 import { streakOutcome } from './outcome-rule.js';
 
 /**
@@ -28,7 +28,7 @@ export async function persistWorkflowTriggerOutcome(
     cancellationRequested: boolean;
     /** A step was on a timer or a person when time ran out: the workflow's own wait. */
     hadWaitingStep: boolean;
-    plan: RunTransitionPlan;
+    plan: WorkflowTransitionPlan;
   }>,
 ): Promise<void> {
   const status = input.plan.checkpoint.runStatus;

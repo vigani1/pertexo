@@ -11,12 +11,12 @@ import { generatePersistedId } from '@pertexo/database/platform';
 import type { PoolClient } from 'pg';
 import { CoordinatorRunStateCorruptError } from '../../../state-errors.js';
 
-import type { RunTransitionPlan } from '../../plan.js';
+import type { WorkflowTransitionPlan } from '@pertexo/workflow-engine';
 import type { ExecutionIdentityMap } from './execution-identity.types.js';
 
 export async function persistNodeAdmissions(
   client: PoolClient,
-  plan: RunTransitionPlan,
+  plan: WorkflowTransitionPlan,
   workspaceId: string,
   runId: string,
 ): Promise<ExecutionIdentityMap> {
@@ -80,7 +80,7 @@ export async function persistAttemptAdmissions(
   client: PoolClient,
   input: Readonly<{
     physical: ExecutionIdentityMap;
-    plan: RunTransitionPlan;
+    plan: WorkflowTransitionPlan;
     runId: string;
     traceparent?: string;
     workspaceId: string;
@@ -184,7 +184,7 @@ export async function persistAttemptAdmissions(
 }
 
 function admittedNodeStatus(
-  invocation: RunTransitionPlan['checkpoint']['invocations'][number],
+  invocation: WorkflowTransitionPlan['checkpoint']['invocations'][number],
 ): 'pending' | 'skipped' | 'ready' {
   if (invocation.status === 'pending') {
     return 'pending';

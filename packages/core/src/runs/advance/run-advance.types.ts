@@ -6,7 +6,7 @@ import type {
 } from '@pertexo/workflow-engine';
 import type { WorkflowExecutionProjection } from '../queries/execution/workflow-execution.types.js';
 import type { JsonValue } from '@pertexo/workflow-model';
-import type { RunTransitionPlan } from './plan.js';
+import type { WorkflowTransitionPlan } from '@pertexo/workflow-engine';
 
 export type CoordinatorAdvanceDelivery = Readonly<{
   outboxEventId: string;
@@ -48,7 +48,7 @@ export type RunAdvanceDecision =
       kind: 'transition';
       /** The stored checkpoint as the engine parsed it. */
       previous: WorkflowCheckpoint;
-      plan: RunTransitionPlan;
+      plan: WorkflowTransitionPlan;
     }>;
 
 export type RunAdvanceInput = Readonly<{

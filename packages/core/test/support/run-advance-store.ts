@@ -6,7 +6,7 @@ import type {
   DatabaseRuntime,
 } from '@pertexo/database/platform';
 import type { CoordinatorAdvanceDelivery } from '../../src/runs/advance/run-advance.types.js';
-import type { RunTransitionPlan } from '../../src/runs/advance/plan.js';
+import type { WorkflowTransitionPlan } from '@pertexo/workflow-engine';
 import { loadRunForAdvance } from '../../src/runs/advance/load/state.repository.js';
 import { createRunAdvanceStore } from '../../src/runs/advance/run-advance.store.js';
 
@@ -22,7 +22,9 @@ export type TestCommitInput = AdvanceInput &
   Readonly<{ workflowVersionId?: string; plan: unknown }>;
 
 /** Hand-written plans may omit the admission kind the engine always sets. */
-function withAdmissionKinds(plan: RunTransitionPlan): RunTransitionPlan {
+function withAdmissionKinds(
+  plan: WorkflowTransitionPlan,
+): WorkflowTransitionPlan {
   return {
     ...plan,
     attempts: plan.attempts.map((attempt) => ({
@@ -85,7 +87,7 @@ export function createTestRunStore(
         Promise.resolve({
           kind: 'transition' as const,
           previous: parseCheckpoint(state.checkpoint),
-          plan: withAdmissionKinds(input.plan as RunTransitionPlan),
+          plan: withAdmissionKinds(input.plan as WorkflowTransitionPlan),
         }),
       ),
     close: async () => {

@@ -234,7 +234,7 @@ function callRunInput(
   }>,
 ): Parameters<typeof acceptWorkflowRun>[1] {
   const { call, parentRunId } = input;
-  const digest = (value: string) =>
+  const callAcceptanceFingerprint = (value: string) =>
     createHash('sha256').update(value).digest('hex');
 
   return {
@@ -244,8 +244,8 @@ function callRunInput(
       : { validateInput: initial.validateInput }),
     operation: 'workflow.run.accept',
     scope: `workflow-call:${call.id}`,
-    keyHash: digest(call.id),
-    requestHash: digest(
+    keyHash: callAcceptanceFingerprint(call.id),
+    requestHash: callAcceptanceFingerprint(
       canonicalJson({
         callId: call.id,
         parentRunId,

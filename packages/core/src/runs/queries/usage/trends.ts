@@ -6,7 +6,7 @@ import {
   type TrendDay,
   type TrendRanking,
 } from './trends.repository.js';
-import { RUN_STATUS_VALUES } from '../../commands/acceptance/vocabulary.js';
+import { RUN_STATUSES } from '@pertexo/workflow-model';
 import type { Pool } from 'pg';
 import type { UsageTrendPeriod, UsageTrendsResponse } from '@pertexo/contracts';
 import { WorkspaceAccessDeniedError } from '../../../shared/workspace-access.errors.js';
@@ -58,7 +58,7 @@ export function readUsageTrends(
       let slowest: number | null = null;
       for (const row of daily) {
         total += row.total;
-        for (const status of RUN_STATUS_VALUES)
+        for (const status of RUN_STATUSES)
           byStatus[status] += row.by_status[status];
         measured += row.measured_runs;
         if (row.average_ms !== null) sum += row.average_ms * row.measured_runs;

@@ -7,7 +7,7 @@ import type { PoolClient } from 'pg';
 import type { WorkflowCheckpoint } from '@pertexo/workflow-engine';
 
 import { CoordinatorRunStateCorruptError } from '../../state-errors.js';
-import type { RunTransitionPlan } from '../plan.js';
+import type { WorkflowTransitionPlan } from '@pertexo/workflow-engine';
 
 /** Terminal physical nodes retain no logical control or scheduled wakeup. */
 export const TERMINAL_NODE_FIELDS = {
@@ -29,7 +29,7 @@ export async function settleRejectedForEachDeclarations(
   client: PoolClient,
   workspaceId: string,
   runId: string,
-  plan: RunTransitionPlan,
+  plan: WorkflowTransitionPlan,
 ): Promise<ReadonlySet<string>> {
   const settled = new Set<string>();
   for (const event of plan.events) {

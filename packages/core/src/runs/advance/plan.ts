@@ -1,8 +1,4 @@
-import type { WorkflowTransitionPlan } from '@pertexo/workflow-engine';
 import { z } from 'zod';
-
-/** The engine's transition, persisted as decided inside the advance transaction. */
-export type RunTransitionPlan = WorkflowTransitionPlan;
 
 export const scheduleRunInputSchema = z
   .object({

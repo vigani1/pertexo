@@ -22,18 +22,15 @@ export function createPublishedWorkflowReader(
     readForExecution: async (
       input: ReadPublishedWorkflowForExecutionInput,
     ): Promise<PublishedWorkflow | null> => {
-      const parsedInput = input;
       const transactionOptions =
-        parsedInput.signal === undefined
-          ? undefined
-          : { signal: parsedInput.signal };
+        input.signal === undefined ? undefined : { signal: input.signal };
       return withWorkspaceTransaction(
         pool,
-        parsedInput.workspaceId,
+        input.workspaceId,
         async (transaction) => {
           return findPublishedWorkflow(transaction.db, {
             workspaceId: transaction.workspaceId,
-            id: parsedInput.workflowVersionId,
+            id: input.workflowVersionId,
           });
         },
         transactionOptions,

@@ -32,7 +32,7 @@ import {
 import type { CoordinatorAdvanceDelivery } from './run-advance.types.js';
 import { lockRunForSettlement } from './load/locks.repository.js';
 import { persistCoordinatorRunTransition } from './persist/run-transition.repository.js';
-import type { RunTransitionPlan } from './plan.js';
+import type { WorkflowTransitionPlan } from '@pertexo/workflow-engine';
 import {
   claimCoordinatorReceipt,
   validateAuthoritativeAdvanceDelivery,
@@ -131,7 +131,7 @@ export function failUnadvanceableRun(
         payload: { reasonCode: safeErrorCode },
       });
       const occurredAt = await readDatabaseTime(client);
-      const plan: RunTransitionPlan = {
+      const plan: WorkflowTransitionPlan = {
         expectedRevision: revision,
         expectedNextEventSequence: sequence,
         consumedThroughEventSequence: sequence,

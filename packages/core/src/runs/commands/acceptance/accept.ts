@@ -19,7 +19,8 @@ import {
 import { resolveWorkflowFailureNotificationPolicy } from '../../../notifications/policies/admission.repository.js';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 import { prepareWorkflowRunAcceptanceInput } from './checkpoint.js';
-import { RUN_STATUS, IDEMPOTENCY_STATUS } from './vocabulary.js';
+import { IDEMPOTENCY_STATUS } from '@pertexo/database/primitives';
+import { RUN_STATUS } from '@pertexo/workflow-model';
 import type {
   AcceptWorkflowRunInput,
   AcceptedWorkflowRun,
