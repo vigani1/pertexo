@@ -19,7 +19,7 @@ import {
   hash,
   authoring,
   appendReconciliationEvent,
-} from '../webhooks/fixture.js';
+} from '../webhooks/webhooks.fixture.js';
 
 beforeAll(beforeAllFixture1, 60_000);
 afterAll(afterAllFixture2);

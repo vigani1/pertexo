@@ -47,7 +47,7 @@ import {
   type CoordinatorHandler,
   type CoordinatorHandlerDependencies,
   CoordinatorHandlerStateError,
-} from './handler.js';
+} from './handle-run-delivery.js';
 import {
   closeOwners,
   createScannerRuntime,

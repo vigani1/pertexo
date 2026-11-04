@@ -12,7 +12,7 @@ import {
   queue,
   registerResource,
   transferResource,
-} from './schedule/fixture.js';
+} from './schedule/schedule-scenario.fixture.js';
 import { canonicalOutboxPayloadChecksum } from '@pertexo/database/testing';
 import { createScheduleTriggerScanner } from '@pertexo/core/testing';
 import {
@@ -23,7 +23,7 @@ import {
 import { createCheckpoint } from '@pertexo/workflow-engine';
 import { WORKFLOW_GRAPH_LIMITS } from '@pertexo/workflow-model';
 import { seedScheduleQualification } from './schedule/execution/seed.js';
-import { startScheduleQualification } from './schedule/execution/runtime.js';
+import { startScheduleQualification } from './schedule/execution/schedule-execution-runtime.js';
 import { assertScheduleQuotaRecovery } from './schedule/execution/quota.js';
 
 describeIntegration('direct Schedule worker integration gate', () => {

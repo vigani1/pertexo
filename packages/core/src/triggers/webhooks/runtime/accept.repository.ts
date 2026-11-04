@@ -48,7 +48,7 @@ import {
   executableProjection,
   lockEligibleEndpoint,
   readTriggerConfig,
-} from './state.repository.js';
+} from './webhook-state.repository.js';
 import type { WorkspaceTurns } from './workspace-turns.js';
 
 export async function acceptVerifiedWebhookDelivery(

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { identitySchema } from './shared.js';
+import { identitySchema } from './attempt-scope.schemas.js';
 
 export const attemptJobPayloadSchema = z
   .object({

@@ -22,7 +22,7 @@ import {
   NodeAttemptDeliveryMismatchError,
   createDueNodeWakeupScanner,
   insertRun,
-} from './fixtures.js';
+} from './run-store.fixture.js';
 import {
   claimDispatchAttempt,
   storedNodeRunInput,
@@ -30,7 +30,7 @@ import {
   dispatchBinding,
   seedSlackDispatchPublication,
   admitWaitAttempt,
-} from './node-attempts/fixture.js';
+} from './node-attempts.fixture.js';
 import { NodeAttemptReconciliationRequiredError } from '../../../src/testing.js';
 import { createOperatorCommandStore } from '../../../src/operator/operator-command.store.js';
 import { isConnectionFenceCurrent } from '../../../src/connections/runtime/credential-use.repository.js';

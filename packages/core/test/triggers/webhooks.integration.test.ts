@@ -41,7 +41,7 @@ import {
   owner,
   apiQuery,
   apiConfig,
-} from './webhooks/fixture.js';
+} from './webhooks/webhooks.fixture.js';
 import { randomUUID } from 'node:crypto';
 import {
   canonicalOutboxPayloadChecksum,

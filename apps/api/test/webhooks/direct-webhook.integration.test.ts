@@ -32,7 +32,7 @@ import {
   verificationControl,
   durableCounts,
   withOneMoreDelivery,
-} from './direct-webhook/fixture.js';
+} from './direct-webhook/direct-webhook.fixture.js';
 import { qualifyWebhookTestEvents } from './test-events/qualify.js';
 import { qualifyWebhookResponseWaiting } from './responses/qualify.js';
 import { randomUUID, createHmac, randomBytes } from 'node:crypto';
@@ -69,7 +69,7 @@ import {
   deliver as deliver4,
   endpointOf,
   type Seeded as Seeded2,
-} from './direct-webhook/doors/support.js';
+} from './direct-webhook/doors.fixture.js';
 import { Writable } from 'node:stream';
 import { createStructuredLogger } from '@pertexo/observability';
 import Fastify from 'fastify';

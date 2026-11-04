@@ -9,12 +9,12 @@ import {
   edge,
   node,
   childGraph,
-} from '../calls/fixtures.js';
+} from '../calls/calls.fixture.js';
 import {
   prepareApprovalThroughRealWorkersDurableTasks,
   graph,
   deciderId,
-} from './execution/fixture.js';
+} from './pending-tasks-execution.fixture.js';
 import { randomUUID } from 'node:crypto';
 import {
   approvalConfigSchema,

@@ -2,7 +2,7 @@ import { expect } from 'vitest';
 
 import { coordinatorFixture as fixture } from '../../../../support/coordinator/consumer.js';
 
-import type { RoutingScenario } from './contract.js';
+import type { RoutingScenario } from './failure-routing-execution.types.js';
 
 export async function assertRoutingOutcomes(scenario: RoutingScenario) {
   const { control, start, wait, runs, executed } = scenario;

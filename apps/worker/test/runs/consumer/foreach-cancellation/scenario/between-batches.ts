@@ -2,8 +2,12 @@ import { parseCheckpoint } from '@pertexo/workflow-engine';
 
 import { expect } from 'vitest';
 import { cancelFixtureRun } from '../../../../support/coordinator/runs.js';
-import { waitFor, workerQuery, workspaceId } from '../fixture.js';
-import type { ForEachPhaseContext } from './contract.js';
+import {
+  waitFor,
+  workerQuery,
+  workspaceId,
+} from '../for-each-cancellation.fixture.js';
+import type { ForEachPhaseContext } from './for-each-scenario.types.js';
 
 export async function assertBetweenBatchCancellation(
   context: ForEachPhaseContext,

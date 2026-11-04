@@ -2,7 +2,7 @@ import { createHmac } from 'node:crypto';
 
 import { currentSecret, timestamp, verification } from './environment.js';
 import { acceptedInputs } from './acceptance.js';
-import type { createIngressFixture } from './fixture.js';
+import type { createIngressFixture } from './webhook-ingress.fixture.js';
 
 export function createRequestShapeFixture(
   parent: Readonly<{ setup: ReturnType<typeof createIngressFixture>['setup'] }>,

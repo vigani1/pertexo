@@ -23,7 +23,7 @@ import {
   afterAllFixture2,
   fullQueue,
   cancelQueuedRun,
-} from './delivery/fixture.js';
+} from './error-workflows-delivery.fixture.js';
 import { ErrorWorkflowDeliveryMismatchError } from '../../../src/runs/error-workflows/error-workflow.errors.js';
 import { acceptWorkflowRun } from '../../../src/runs/commands/acceptance/accept.js';
 import {

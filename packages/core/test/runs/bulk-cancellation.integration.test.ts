@@ -16,7 +16,7 @@ import {
   workspaceA,
   workflowA,
   versionA,
-} from './run-store/fixtures.js';
+} from './run-store/run-store.fixture.js';
 
 async function seedRuns(population: number) {
   await asOwner(workspaceA, (client) =>

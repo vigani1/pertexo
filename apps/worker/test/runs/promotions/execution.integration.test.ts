@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { fixture, node, edge, runtime } from '../calls/fixtures.js';
+import { fixture, node, edge, runtime } from '../calls/calls.fixture.js';
 import { createHash, randomUUID } from 'node:crypto';
 import { createWorkflowAuthoringStore } from '@pertexo/core/authoring';
 import {
@@ -34,7 +34,11 @@ import {
 import { createWorkerNodeRuntimeCapabilities } from '../../../src/attempts/execution/runtime-capabilities.js';
 import { createEditorControlledHttpTarget } from '../../support/editor-browser/controlled-http.js';
 import { runWithCleanup } from '../../support/infrastructure/test-operation.js';
-import { catalog, definitions, policies } from './execution/fixture.js';
+import {
+  catalog,
+  definitions,
+  policies,
+} from './execution/promotions-execution.fixture.js';
 import { createPromotionChildGraph } from './execution/graphs.js';
 
 describe.runIf(fixture.enabled)(

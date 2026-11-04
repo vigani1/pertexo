@@ -19,7 +19,7 @@ import {
   storedIntent,
   type Alert,
 } from './rotation.support.js';
-import { asAdmin, workspaceA } from '../runs/run-store/fixtures.js';
+import { asAdmin, workspaceA } from '../runs/run-store/run-store.fixture.js';
 
 describe.each(['email', 'slack'] as const)(
   'a %s alert after its credential rotated',

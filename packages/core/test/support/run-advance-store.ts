@@ -7,7 +7,7 @@ import type {
 } from '@pertexo/database/platform';
 import type { CoordinatorAdvanceDelivery } from '../../src/runs/advance/run-advance.types.js';
 import type { WorkflowTransitionPlan } from '@pertexo/workflow-engine';
-import { loadRunForAdvance } from '../../src/runs/advance/load/state.repository.js';
+import { loadRunForAdvance } from '../../src/runs/advance/load/coordinator-state.repository.js';
 import { createRunAdvanceStore } from '../../src/runs/advance/run-advance.store.js';
 
 type AdvanceInput = Readonly<{

@@ -11,7 +11,7 @@ import {
   ownerQuery,
   secret,
   workspaceId,
-} from '../webhooks/fixture.js';
+} from '../webhooks/webhooks.fixture.js';
 import {
   addMember,
   inspector,
@@ -21,7 +21,7 @@ import {
   useMemberFlows,
   writes,
   type Scenario,
-} from './fixture.js';
+} from './member-flows.fixture.js';
 
 useMemberFlows();
 

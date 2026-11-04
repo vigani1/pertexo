@@ -21,7 +21,7 @@ import {
   DeliveryMismatch,
   validateAuthoritativeAdvanceDelivery,
 } from './receipts.repository.js';
-import { loadRunForAdvance } from './load/state.repository.js';
+import { loadRunForAdvance } from './load/coordinator-state.repository.js';
 import {
   assertCoordinatorNotAborted,
   withCoordinatorWriteClient,

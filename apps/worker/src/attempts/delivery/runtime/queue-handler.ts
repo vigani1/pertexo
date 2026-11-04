@@ -14,7 +14,7 @@ import {
 import {
   type NodeAttemptHandler,
   NodeAttemptHandlerStateError,
-} from '../handler.js';
+} from '../handle-node-attempt-delivery.js';
 
 import {
   mapPreviewHandlerError,

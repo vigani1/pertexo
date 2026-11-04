@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
 import { inputRequestConfigSchema } from '@pertexo/workflow-model';
-import { admin, store, taskFixture, userId } from './fixtures.js';
+import { admin, store, taskFixture, userId } from './pending-tasks.fixture.js';
 it('allows the starter to submit one captured input response, without changing approval self-decision', async () => {
   const f = await taskFixture();
   await admin.query(

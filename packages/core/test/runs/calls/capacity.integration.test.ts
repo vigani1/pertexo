@@ -10,7 +10,7 @@ import {
   incomingOwner,
   application,
   scoped,
-} from './capacity/fixture.js';
+} from './calls-capacity.fixture.js';
 import {
   admin,
   createFamily,

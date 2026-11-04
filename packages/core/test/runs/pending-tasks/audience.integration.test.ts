@@ -1,6 +1,12 @@
 import { expect, it } from 'vitest';
 import { WorkspaceAccessDeniedError } from '../../../src/shared/workspace-access.errors.js';
-import { admin, store, taskFixture, userId, people } from './fixtures.js';
+import {
+  admin,
+  store,
+  taskFixture,
+  userId,
+  people,
+} from './pending-tasks.fixture.js';
 
 it('inspects the entire current audience independent of member pagination and search', async () => {
   const f = await taskFixture();

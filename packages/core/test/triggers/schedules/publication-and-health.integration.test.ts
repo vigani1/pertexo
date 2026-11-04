@@ -10,7 +10,7 @@ import {
   skipTriggerId,
   triggerId,
   workflowId,
-} from './publication-and-health/fixture.js';
+} from './publication-and-health.fixture.js';
 import { createHash, randomUUID } from 'node:crypto';
 import { canonicalOutboxPayloadChecksum } from '@pertexo/database/primitives';
 import { Pool } from 'pg';

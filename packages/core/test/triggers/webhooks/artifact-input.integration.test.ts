@@ -10,7 +10,7 @@ import {
   hash,
   checkpointFactory,
   webhook,
-} from './fixture.js';
+} from './webhooks.fixture.js';
 
 beforeAll(beforeAllFixture1, 60_000);
 afterAll(afterAllFixture2);

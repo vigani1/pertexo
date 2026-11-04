@@ -2,7 +2,7 @@ import { afterAll, beforeAll, expect, it } from 'vitest';
 import {
   afterAllFixture2,
   beforeAllFixture1,
-} from '../triggers/forms/admission/fixture.js';
+} from '../triggers/forms/admission/admission.fixture.js';
 import {
   openUploads,
   uploads,
@@ -34,7 +34,10 @@ import {
 } from '../../src/triggers/forms/form.errors.js';
 import { FormUploadLimitError } from '../../src/artifacts/form-uploads/form-upload.errors.js';
 import { PendingTaskDecisionError } from '../../src/runs/pending-tasks/responses/pending-task.errors.js';
-import { taskFixture, store as tasks } from '../runs/pending-tasks/fixtures.js';
+import {
+  taskFixture,
+  store as tasks,
+} from '../runs/pending-tasks/pending-tasks.fixture.js';
 import { userId, apiUrl } from '../lifecycle/retention.support.js';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
 import { createArtifactUploadStore } from '../../src/artifacts/uploads/artifact-upload.store.js';

@@ -24,7 +24,7 @@ import {
   resources,
   registerResource,
   transferResource,
-} from '../fixture.js';
+} from '../schedule-scenario.fixture.js';
 import type { seedScheduleQualification } from './seed.js';
 
 export async function assertScheduleQuotaRecovery(

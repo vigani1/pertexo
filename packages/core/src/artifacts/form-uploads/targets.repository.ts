@@ -15,7 +15,7 @@ import {
 import { FormUnavailableError } from '../../triggers/forms/form.errors.js';
 import { lockWorkspaceAuthority } from '../../shared/authority.repository.js';
 import { readFolderScope } from '../../shared/facts.repository.js';
-import { readTaskRow } from '../../runs/pending-tasks/responses/records.repository.js';
+import { readTaskRow } from '../../runs/pending-tasks/responses/pending-task-records.repository.js';
 import {
   PendingTaskDecisionError,
   PendingTaskNotFoundError,

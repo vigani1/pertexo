@@ -1,5 +1,5 @@
 import { restrictAcceptedWorkflows } from '../../../support/resources/sharing.js';
-import { callbackResources } from './fixtures.js';
+import { callbackResources } from './callbacks.fixture.js';
 import { randomUUID } from 'node:crypto';
 import { createWorkflowAuthoringStore } from '@pertexo/core/authoring';
 import {
@@ -24,7 +24,7 @@ import {
   node,
   publishGraph,
   runtime,
-} from '../../calls/fixtures.js';
+} from '../../calls/calls.fixture.js';
 
 function graph(handler = false): WorkflowGraph {
   return {

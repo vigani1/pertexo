@@ -4,7 +4,7 @@ import { expect } from 'vitest';
 
 import { registerWebhookIngress } from '../../../src/webhooks/ingress/register.js';
 
-import type { Fixture } from './contract.js';
+import type { Fixture } from './webhook-test-events.types.js';
 
 export async function qualifyWebhookTestEvents(f: Fixture) {
   const root = `${f.origin}/v1/workspaces/${f.scope.workspaceId}/workflows/${f.scope.workflowId}/draft/nodes/webhook/webhook-test-events`;

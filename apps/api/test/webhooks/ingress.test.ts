@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { createIngressFixture } from './ingress/fixture.js';
+import { createIngressFixture } from './ingress/webhook-ingress.fixture.js';
 import {
   createRequestShapeFixture,
   createDeliveryLogFixture,
@@ -35,7 +35,7 @@ import {
 import { createHmac, createHash } from 'node:crypto';
 import { request as sendHttpRequest } from 'node:http';
 import { deferred } from './ingress/deferred.js';
-import type { Scenario } from './ingress/contract.js';
+import type { Scenario } from './ingress/webhook-ingress.types.js';
 
 describe('generic webhook ingress', () => {
   const scopeFixture = createIngressFixture();

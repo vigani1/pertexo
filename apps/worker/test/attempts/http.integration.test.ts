@@ -34,7 +34,7 @@ import {
   createOwnedBarrier,
   prepareAmbiguousEmailRetry,
   readSourceRunHistory,
-} from './http/fixture.js';
+} from './http/http.fixture.js';
 import { createHash, randomUUID } from 'node:crypto';
 import { createHttpNodeAttemptProofRuntime } from '../support/attempts/http-node-attempt.runtime.js';
 import { runWithCleanup } from '../support/infrastructure/test-operation.js';

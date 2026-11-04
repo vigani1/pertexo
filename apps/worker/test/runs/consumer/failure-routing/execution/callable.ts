@@ -8,8 +8,8 @@ import type { WorkflowGraph } from '@pertexo/workflow-model';
 
 import { coordinatorFixture as fixture } from '../../../../support/coordinator/consumer.js';
 import { insertCompiledWorkflow } from '../../../../support/coordinator/workflows.js';
-import { graph } from '../fixture.js';
-import type { RoutingScenario } from './contract.js';
+import { graph } from '../failure-routing.fixture.js';
+import type { RoutingScenario } from './failure-routing-execution.types.js';
 import type { openRoutedRun } from './pending.js';
 
 export async function assertCallableAndRetention(

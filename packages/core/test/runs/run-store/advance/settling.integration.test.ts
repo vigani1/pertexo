@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import { CoordinatorRunStateCorruptError, asAdmin } from '../fixtures.js';
+import {
+  CoordinatorRunStateCorruptError,
+  asAdmin,
+} from '../run-store.fixture.js';
 import {
   commit,
   keysFor,
@@ -9,7 +12,7 @@ import {
   settlePlan,
   statementsDuring,
   stepRows,
-} from './support.js';
+} from './coordinator-advance.fixture.js';
 
 describe('settling steps in one statement', () => {
   // As many as a checkpoint here can hold: its stored form is limited to 10,000 members.

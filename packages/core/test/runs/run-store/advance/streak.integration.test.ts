@@ -2,9 +2,14 @@ import { randomUUID } from 'node:crypto';
 
 import { describe, expect, it } from 'vitest';
 
-import { claimDispatchAttempt } from '../node-attempts/fixture.js';
-import { asAdmin, checkpoint, insertRun } from '../fixtures.js';
-import { AT, commit, nextSequence, type Invocation } from './support.js';
+import { claimDispatchAttempt } from '../node-attempts.fixture.js';
+import { asAdmin, checkpoint, insertRun } from '../run-store.fixture.js';
+import {
+  AT,
+  commit,
+  nextSequence,
+  type Invocation,
+} from './coordinator-advance.fixture.js';
 
 describe('a timed-out run and its workflow’s failure streak', () => {
   const outcomeOf = async (runId: string) => {

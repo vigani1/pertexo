@@ -29,7 +29,7 @@ import {
   forEachGraph,
   parallelMergeGraph,
   nestedBranchGraph,
-} from './engine/fixture.js';
+} from './engine.fixture.js';
 
 import { createPlatformNodeRegistry } from '../../src/providers/node-registry.js';
 

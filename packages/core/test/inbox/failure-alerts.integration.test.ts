@@ -20,7 +20,7 @@ import {
   namedDatabaseUrl,
   parseDatabaseConfig,
   workspaceA,
-} from '../runs/run-store/fixtures.js';
+} from '../runs/run-store/run-store.fixture.js';
 
 type Scope = Readonly<{ workspaceId: string; actorId: string }>;
 

@@ -9,8 +9,8 @@ import {
   runtime,
   node,
   edge,
-} from './fixtures.js';
-import { createCallControlsFixture } from './controls/fixture.js';
+} from './calls.fixture.js';
+import { createCallControlsFixture } from './calls-controls.fixture.js';
 import { randomUUID } from 'node:crypto';
 import {
   createNodeRegistry,

@@ -22,7 +22,7 @@ import {
 import type {
   NodeAttemptExecutionEngine,
   PreparedNodeAttempt,
-} from '../delivery/handler.js';
+} from '../delivery/handle-node-attempt-delivery.js';
 import {
   type ForEachUpstream,
   type NodeAttemptInputs,

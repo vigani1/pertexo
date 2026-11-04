@@ -9,7 +9,7 @@ import {
   workerPool,
   workspaceId,
   apiConfig,
-} from './fixture.js';
+} from './webhooks.fixture.js';
 import { createWebhookTriggerStore } from '../../../src/triggers/webhooks/webhook-trigger.store.js';
 import { WebhookIngressRateLimitExceededError } from '../../../src/triggers/webhooks/webhook-trigger.errors.js';
 import { waitForBlockedBy } from '../../support/postgres/lock-coordination.js';

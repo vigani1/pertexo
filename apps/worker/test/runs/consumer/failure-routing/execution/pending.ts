@@ -8,8 +8,8 @@ import {
 
 import { coordinatorFixture as fixture } from '../../../../support/coordinator/consumer.js';
 
-import { graph } from '../fixture.js';
-import type { RoutingScenario } from './contract.js';
+import { graph } from '../failure-routing.fixture.js';
+import type { RoutingScenario } from './failure-routing-execution.types.js';
 
 export async function openRoutedRun(scenario: RoutingScenario) {
   const { start, executed, runs, workflowVersionId, catalog } = scenario;

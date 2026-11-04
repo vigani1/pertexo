@@ -6,7 +6,7 @@ import {
   seedWebhook,
   ownerQuery,
   sendWebhook,
-} from './direct-webhook/fixture.js';
+} from './direct-webhook/direct-webhook.fixture.js';
 
 beforeAll(prepareDirectWebhookHTTPIntegrationFixture, 60_000);
 afterAll(closeDirectWebhookHTTPIntegrationFixture, 30_000);

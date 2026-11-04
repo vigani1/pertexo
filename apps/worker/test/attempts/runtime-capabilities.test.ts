@@ -10,7 +10,7 @@ import {
   secretVersionId,
   artifactId,
   temporaryDirectories,
-} from './runtime-capabilities/fixture.js';
+} from './runtime-capabilities.fixture.js';
 import { createDatabaseRuntime } from '@pertexo/database/platform';
 import { RedisRateLimitRuntime } from '@pertexo/rate-limit';
 import type { ConnectionStore } from '@pertexo/core/testing';

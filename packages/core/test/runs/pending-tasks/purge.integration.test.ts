@@ -2,7 +2,7 @@ import { expect, it } from 'vitest';
 import { createWorkspacePurgeCoordinator } from '../../../src/lifecycle/purge/coordinator.js';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
 import { maintenanceUrl } from '../../lifecycle/retention.support.js';
-import { admin, taskFixture } from './fixtures.js';
+import { admin, taskFixture } from './pending-tasks.fixture.js';
 it('deletes pending human tasks with their workspace through the maintenance role', async () => {
   const f = await taskFixture();
   await admin.query(

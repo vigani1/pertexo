@@ -13,7 +13,7 @@ import {
   SERVICE_OPERATION_TIMEOUT_MS,
   redisPassword,
 } from './environment.js';
-import type { ProofMeasurements } from './contract.js';
+import type { ProofMeasurements } from './dispatch-resilience.types.js';
 import { dispatcherPool } from './database.js';
 
 const execFileAsync = promisify(execFile);

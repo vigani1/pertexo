@@ -5,7 +5,7 @@ import {
   workflowDraftRepresentationTag,
 } from '@pertexo/workflow-model/server';
 
-import { webhook, authoring, ownerQuery } from './base.js';
+import { webhook, authoring, ownerQuery } from './webhooks-database.fixture.js';
 import {
   actorId,
   workspaceId,

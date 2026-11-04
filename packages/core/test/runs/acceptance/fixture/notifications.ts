@@ -9,7 +9,7 @@ import {
   workspaceA,
   workflowId,
   workspaceCreatorId,
-} from './base.js';
+} from './run-acceptance-database.fixture.js';
 
 export async function createNotificationFixture(
   input: Readonly<{

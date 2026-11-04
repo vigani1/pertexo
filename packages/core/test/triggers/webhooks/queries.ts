@@ -1,6 +1,6 @@
 import type { QueryResultRow } from 'pg';
 
-import { readinessPool, workerPool } from './base.js';
+import { readinessPool, workerPool } from './webhooks-database.fixture.js';
 import { workspaceId } from './context.js';
 
 export async function workerQuery<Row extends QueryResultRow = QueryResultRow>(

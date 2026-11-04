@@ -6,7 +6,7 @@ import {
   submitForm,
   fixture,
   insertFormRevision,
-} from './admission/fixture.js';
+} from './admission/admission.fixture.js';
 import { randomBytes, randomUUID } from 'node:crypto';
 import { FormValuesInvalidError } from '@pertexo/workflow-model';
 import {

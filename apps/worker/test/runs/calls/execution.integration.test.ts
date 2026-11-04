@@ -9,8 +9,8 @@ import {
   runtime,
   edge,
   node,
-} from './fixtures.js';
-import { describeIntegration } from './execution/fixture.js';
+} from './calls.fixture.js';
+import { describeIntegration } from './calls-execution.fixture.js';
 import { restrictAcceptedWorkflows } from '../../support/resources/sharing.js';
 import { randomUUID } from 'node:crypto';
 import { canonicalOutboxPayloadChecksum } from '@pertexo/core/outbox';

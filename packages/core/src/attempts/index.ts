@@ -21,7 +21,7 @@ export type {
 export type {} from './dispatch/execution-capability.types.js';
 export type {} from './dispatch/fence.repository.js';
 export type {} from '../runs/queries/history/attempt-events.repository.js';
-export type {} from './validation/shared.js';
+export type {} from './validation/attempt-scope.schemas.js';
 export type {} from './completion/receipts.repository.js';
 export type {} from './completion/attempt-completion.repository.js';
 

@@ -12,7 +12,7 @@ import { expect } from 'vitest';
 
 import { coordinatorFixture as fixture } from '../../../../support/coordinator/consumer.js';
 import { insertCompiledWorkflow } from '../../../../support/coordinator/workflows.js';
-import { graph } from '../fixture.js';
+import { graph } from '../recovery.fixture.js';
 
 export async function assertDispatchedRecovery(
   input: Readonly<{

@@ -21,7 +21,7 @@ import {
   workerBaseUrl,
   workflowA,
   workspaceA,
-} from '../../../runs/run-store/fixtures.js';
+} from '../../../runs/run-store/run-store.fixture.js';
 
 export const sealedHealthSecret = (marker = 1) => ({
   kmsKeyReference: 'kms-owned-health-fixture',

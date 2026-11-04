@@ -12,7 +12,7 @@ import {
   workflowB,
   workspaceA,
   workspaceB,
-} from '../../runs/run-store/fixtures.js';
+} from '../../runs/run-store/run-store.fixture.js';
 
 export async function seedNotificationDestination() {
   const connectionId = randomUUID(),

@@ -1,10 +1,10 @@
 import { Pool } from 'pg';
 import { afterAll } from 'vitest';
-import { databaseUrl, workerBaseUrl } from '../fixtures.js';
+import { databaseUrl, workerBaseUrl } from '../run-store.fixture.js';
 import { failUnadvanceableRun } from '../../../../src/runs/advance/fail-unadvanceable.repository.js';
-import { claimDispatchAttempt } from '../node-attempts/fixture.js';
+import { claimDispatchAttempt } from '../node-attempts.fixture.js';
 import { expect, it } from 'vitest';
-import { asAdmin, rawStore, workspaceA } from '../fixtures.js';
+import { asAdmin, rawStore, workspaceA } from '../run-store.fixture.js';
 import { emergencyRun, query } from './emergency.fixture.js';
 
 async function snapshot(runId: string) {

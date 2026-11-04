@@ -1,6 +1,12 @@
 import { afterAll, beforeAll, expect, it } from 'vitest';
 import { coordinatorFixture as fixture } from '../../support/coordinator/consumer.js';
-import { qualified, node, output, links, graph } from './execution/fixture.js';
+import {
+  qualified,
+  node,
+  output,
+  links,
+  graph,
+} from './transforms-execution.fixture.js';
 import { createHash, randomUUID } from 'node:crypto';
 import {
   createWorkflowRunDatabase,

@@ -30,8 +30,8 @@ import {
   workerQuery,
   workerUrl,
   workspaceId,
-} from '../fixture.js';
-import type { FailureNotificationScenario } from './contract.js';
+} from '../failure-notification.fixture.js';
+import type { FailureNotificationScenario } from './failure-notification-execution.types.js';
 import { testMaintenanceRuntime } from '../../../../support/runtime-factories.js';
 
 export async function qualifyRecoveredNotificationDelivery(

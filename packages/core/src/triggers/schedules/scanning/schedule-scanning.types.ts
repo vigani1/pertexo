@@ -1,5 +1,5 @@
 import type { ScheduleFailureReason } from '../../trigger-failure.js';
-import type { claimSchema } from './input.js';
+import type { claimSchema } from './schedule-claim.schemas.js';
 
 import type { InitialCheckpointFactory } from '../../../runs/commands/initial-checkpoint.js';
 

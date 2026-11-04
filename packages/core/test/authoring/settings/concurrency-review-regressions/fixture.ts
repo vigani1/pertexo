@@ -15,7 +15,7 @@ import {
   workflowVersionId,
   workspaceA,
   workspaceCreatorId,
-} from '../../../runs/acceptance/fixtures.js';
+} from '../../../runs/acceptance/run-acceptance.fixture.js';
 import type { acceptRun } from '../concurrency-admission.fixtures.js';
 import { withOwner } from '../concurrency-admission.fixtures.js';
 

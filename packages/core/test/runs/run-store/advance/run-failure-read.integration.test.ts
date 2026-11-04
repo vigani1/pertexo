@@ -14,7 +14,7 @@ import {
   versionA,
   insertRun,
   ownedDeliveryStore,
-} from '../fixtures.js';
+} from '../run-store.fixture.js';
 import { emergencyRun } from './emergency.fixture.js';
 
 const reads = createWorkflowRunDatabase(

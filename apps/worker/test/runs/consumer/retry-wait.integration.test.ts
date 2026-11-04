@@ -14,7 +14,7 @@ import {
   workspaceId,
   ownerQuery,
   waitWorkflowVersionId,
-} from './retry-wait/fixture.js';
+} from './retry-wait/retry-wait.fixture.js';
 import {
   createDueNodeWakeupScanner,
   createRunAdvanceStore,
