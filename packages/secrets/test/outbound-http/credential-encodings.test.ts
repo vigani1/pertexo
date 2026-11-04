@@ -110,3 +110,46 @@ it.each(['latin1', 'utf8'] as const)(
     }
   },
 );
+
+it.each(['json', 'percent', 'base64'] as const)(
+  'redacts the %s echo of a quoted non-ASCII credential at every byte boundary',
+  async (encoding) => {
+    const secret = 'credential-"quote\\path-é-ÿ';
+    let encoded = Buffer.from(secret).toString('base64');
+    if (encoding === 'json') encoded = JSON.stringify(secret).slice(1, -1);
+    else if (encoding === 'percent') encoded = encodeURIComponent(secret);
+
+    const body = Buffer.from('before:' + encoded + ':after');
+    const splits = Array.from({ length: body.length + 1 }, (_, at) => [
+      body.subarray(0, at),
+      body.subarray(at),
+    ]);
+    splits.push(Array.from(body, (byte) => Buffer.from([byte])));
+    for (const chunks of splits) {
+      const client = new SecureHttpClient(
+        new FakeResolver({
+          'api.example.test': [{ address: '8.8.8.8', family: 4 }],
+        }),
+        new FakeTransport(() =>
+          Promise.resolve({
+            status: 200,
+            headers: {},
+            close: () => undefined,
+            body: (async function* () {
+              for (const chunk of chunks) {
+                await Promise.resolve();
+                yield Buffer.from(chunk);
+              }
+            })(),
+          }),
+        ),
+      );
+      const response = await client.execute(
+        request({ sensitiveValues: [secret] }),
+      );
+      expect(Buffer.from(response.body).toString('utf8')).toBe(
+        'before:[Redacted]:after',
+      );
+    }
+  },
+);
