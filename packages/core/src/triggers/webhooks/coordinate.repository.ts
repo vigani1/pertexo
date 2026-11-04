@@ -121,6 +121,7 @@ export async function coordinateVerifiedWebhook(
 function coordinatedDeliveryOutcome(
   result: Awaited<ReturnType<typeof coordinateEvent>>,
 ): WebhookDeliveryOutcome {
-  if ('coordinated' in result) return 'coordinated';
+  if ('coordinated' in result)
+    return asksSenderToRetry(result) ? 'rate_limited' : 'coordinated';
   return 'skipped' in result ? 'skipped' : 'accepted';
 }
