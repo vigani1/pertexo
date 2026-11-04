@@ -25,7 +25,3 @@ export {
   OperatorRunReplayMismatchError,
   OperatorRunReplayNotExecutableError,
 } from './replay/operator-replay.js';
-
-// Stalled-work recovery settles attempts the same way (ADR 091: import these directly).
-export type {} from './handlers/attempts.repository.js';
-export type {} from '../outbox/enqueue-delivery.repository.js';
