@@ -1,4 +1,37 @@
-import { redactLogText } from './logging/redaction.js';
+import { z } from 'zod';
+
+const SYSTEM_ERROR_CODES = new Set([
+  'ECONNREFUSED',
+  'ECONNRESET',
+  'EPIPE',
+  'ETIMEDOUT',
+  'ENOTFOUND',
+  'EAI_AGAIN',
+  'EHOSTUNREACH',
+  'ENETUNREACH',
+  'EADDRINUSE',
+  'EADDRNOTAVAIL',
+  'EACCES',
+  'EPERM',
+  'ENOENT',
+  'ENOSPC',
+  'EMFILE',
+  'ENFILE',
+  'ENOMEM',
+]);
+
+/** A closed machine vocabulary keeps useful failures without trusting error text. */
+export function safeSystemErrorCode(value: unknown): string | undefined {
+  try {
+    if (typeof value !== 'object' || value === null) return undefined;
+    const code: unknown = (value as { code?: unknown }).code;
+    return typeof code === 'string' && SYSTEM_ERROR_CODES.has(code)
+      ? code
+      : undefined;
+  } catch {
+    return undefined;
+  }
+}
 
 export type ProcessErrorType = 'Error' | 'NonError';
 
@@ -13,10 +46,7 @@ export function classifyProcessError(value: unknown): ProcessErrorType {
 type SettingsIssue = Readonly<{ code: string; path: readonly PropertyKey[] }>;
 
 function settingsIssues(value: unknown): readonly SettingsIssue[] | undefined {
-  if (typeof value !== 'object' || value === null || !('issues' in value))
-    return undefined;
-  const { issues } = value;
-  return Array.isArray(issues) ? (issues as SettingsIssue[]) : undefined;
+  return value instanceof z.ZodError ? value.issues : undefined;
 }
 
 const MAX_CAUSE_DEPTH = 8;
@@ -38,12 +68,14 @@ function causeChain(error: unknown, depth: number): readonly string[] {
       causeChain(entry, depth + 1),
     );
   if (!(error instanceof Error)) return [];
-  return [redactLogText(error.message), ...causeChain(error.cause, depth + 1)];
+  return [
+    safeSystemErrorCode(error) ?? '[Redacted]',
+    ...causeChain(error.cause, depth + 1),
+  ];
 }
 
 /**
- * Why a process could not run, in words safe for a log: the operator needs this
- * while the application is down, and it may be the only line they ever get.
+ * Keep typed setting issues for startup repair; generic error text is private.
  */
 export function describeProcessFailure(value: unknown): string {
   try {

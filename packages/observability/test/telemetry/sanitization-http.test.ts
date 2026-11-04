@@ -1,3 +1,4 @@
+import { node } from '@opentelemetry/sdk-node';
 import { beforeAll, describe, expect, it } from 'vitest';
 import {
   prepareConfiguredHTTPUndiciExportScenariosFixture,
@@ -11,24 +12,19 @@ import {
   FRAGMENT_SECRET,
   MALFORMED_CREDENTIAL_SECRET,
   ERROR_CODE_SECRET,
+  ERROR_NAME_SECRET,
   MULTI_USERINFO_SECRET,
   SPACED_QUERY_SECRET,
   captured,
 } from './sanitization-http/fixture.js';
 import type * as httpTypes from 'node:http';
-import {
-  SpanStatusCode,
-  SpanKind,
-  type Exception,
-  type Span,
-  type SpanStatus,
-} from '@opentelemetry/api';
+import { SpanStatusCode, SpanKind, type Exception } from '@opentelemetry/api';
 import { HttpInstrumentation } from '@opentelemetry/instrumentation-http';
 import { UndiciInstrumentation } from '@opentelemetry/instrumentation-undici';
 import { createNodeInstrumentations } from '../../src/telemetry/telemetry.runtime.js';
 
 describe('HTTP telemetry URL privacy', () => {
-  it('sanitizes exceptions and status messages through the configured HTTP hook', () => {
+  it('sanitizes finished exceptions and status through the configured HTTP hook', async () => {
     const instrumentation = createNodeInstrumentations().find(
       (candidate) => candidate instanceof HttpInstrumentation,
     );
@@ -36,66 +32,76 @@ describe('HTTP telemetry URL privacy', () => {
     if (hook === undefined) {
       throw new Error('Expected the configured HTTP request hook');
     }
-    const exceptions: Exception[] = [];
-    const statuses: SpanStatus[] = [];
-    const span = {
-      recordException: (exception: Exception) => {
-        exceptions.push(exception);
-      },
-      setStatus: (status: SpanStatus) => {
-        statuses.push(status);
-        return span;
-      },
-    } as Span;
-    hook(span, {} as never);
-    hook(span, {} as never);
-
-    const hostileException = new Proxy(Object.create(null) as object, {
-      has: () => {
-        throw new Error('hostile-exception-inspection-secret');
-      },
+    const exporter = new node.InMemorySpanExporter();
+    const provider = new node.NodeTracerProvider({
+      spanProcessors: [new node.SimpleSpanProcessor(exporter)],
     });
+    const span = provider.getTracer('privacy-test').startSpan('request');
+    try {
+      hook(span, {} as never);
+      hook(span, {} as never);
 
-    for (const exception of [
-      'string-secret',
-      null,
-      42,
-      {},
-      { code: 1.5, message: 'fractional-secret' },
-      { code: Number.POSITIVE_INFINITY, message: 'infinite-secret' },
-      { code: 2_147_483_648, message: 'range-secret' },
-      hostileException,
-    ]) {
-      span.recordException(exception as Exception);
+      const hostileException = new Proxy(Object.create(null) as object, {
+        has: () => {
+          throw new Error('hostile-exception-inspection-secret');
+        },
+      });
+
+      for (const exception of [
+        'string-secret',
+        null,
+        42,
+        {},
+        { code: 1.5, message: 'fractional-secret' },
+        { code: Number.POSITIVE_INFINITY, message: 'infinite-secret' },
+        { code: 2_147_483_648, message: 'range-secret' },
+        hostileException,
+      ]) {
+        span.recordException(exception as Exception);
+      }
+      span.recordException({ name: 'TypeError', message: 'name-secret' });
+      span.recordException({ code: 'ECONNRESET', message: 'code-secret' });
+      const customError = new Error('custom-error-secret');
+      customError.name = 'SyntheticSecretType';
+      span.recordException(customError);
+      span.setStatus({ code: SpanStatusCode.ERROR, message: 'status-secret' });
+      span.setStatus({ code: SpanStatusCode.ERROR, message: 'ETIMEDOUT' });
+      span.setAttribute('error.type', 'attribute-secret');
+      span.end();
+      const success = provider.getTracer('privacy-test').startSpan('success');
+      hook(success, {} as never);
+      success.setStatus({ code: SpanStatusCode.OK });
+      success.end();
+      await provider.forceFlush();
+
+      const [failed, succeeded] = exporter.getFinishedSpans();
+      if (failed === undefined || succeeded === undefined)
+        throw new Error('Missing finished spans');
+      expect(failed.events).toHaveLength(11);
+      expect(failed.events[0]?.attributes?.['exception.message']).toBe(
+        '[Redacted exception]',
+      );
+      expect(
+        failed.events
+          .slice(1, -1)
+          .map((event) => event.attributes?.['exception.type']),
+      ).toEqual(Array<string>(9).fill('NonError'));
+      expect(failed.events.at(-1)?.attributes?.['exception.type']).toBe(
+        'Error',
+      );
+      expect(failed.attributes['error.type']).toBe('Error');
+      expect(failed.status).toEqual({ code: SpanStatusCode.ERROR });
+      expect(succeeded.status).toEqual({ code: SpanStatusCode.OK });
+      expect(
+        JSON.stringify({
+          events: failed.events,
+          status: failed.status,
+          attributes: failed.attributes,
+        }),
+      ).not.toContain('secret');
+    } finally {
+      await provider.shutdown();
     }
-    span.recordException({ name: 'TypeError', message: 'name-secret' });
-    span.recordException({ code: 'ECONNRESET', message: 'code-secret' });
-    const customError = new Error('custom-error-secret');
-    customError.name = 'SyntheticSecretType';
-    span.recordException(customError);
-    span.setStatus({ code: SpanStatusCode.ERROR, message: 'status-secret' });
-    span.setStatus({ code: SpanStatusCode.ERROR, message: 'ETIMEDOUT' });
-    span.setStatus({ code: SpanStatusCode.OK });
-
-    expect(exceptions).toEqual([
-      '[Redacted exception]',
-      { name: 'NonError' },
-      { name: 'NonError' },
-      { name: 'NonError' },
-      { name: 'NonError' },
-      { name: 'NonError' },
-      { name: 'NonError' },
-      { name: 'NonError' },
-      { name: 'NonError' },
-      { name: 'NonError' },
-      { name: 'Error' },
-    ]);
-    expect(statuses).toEqual([
-      { code: SpanStatusCode.ERROR },
-      { code: SpanStatusCode.ERROR },
-      { code: SpanStatusCode.OK },
-    ]);
-    expect(JSON.stringify({ exceptions, statuses })).not.toContain('secret');
   });
 
   it.each(['', 'not a URL', 'ftp://user:secret@example.test'])(
@@ -124,8 +130,8 @@ describe('HTTP telemetry URL privacy', () => {
           body: null,
         }),
       ).toMatchObject({
-        'url.full': 'http://localhost/callback',
-        'url.path': '/callback',
+        'url.full': 'http://localhost',
+        'url.path': undefined,
         'url.query': undefined,
       });
     },
@@ -135,10 +141,10 @@ describe('HTTP telemetry URL privacy', () => {
     readonly options: httpTypes.RequestOptions;
     readonly expectedUrl: string;
   }>([
-    { options: {}, expectedUrl: 'http://localhost/' },
+    { options: {}, expectedUrl: 'http://localhost' },
     {
       options: { protocol: 'https:', hostname: 'example.test', port: 443 },
-      expectedUrl: 'https://example.test/',
+      expectedUrl: 'https://example.test',
     },
     {
       options: {
@@ -146,23 +152,23 @@ describe('HTTP telemetry URL privacy', () => {
         host: 'user:secret@example.test:8443',
         path: '/callback?code=secret#secret',
       },
-      expectedUrl: 'https://example.test:8443/callback',
+      expectedUrl: 'https://example.test:8443',
     },
     {
       options: { host: '[invalid', path: 'http://[invalid', port: 1.5 },
-      expectedUrl: 'http://localhost/',
+      expectedUrl: 'http://localhost',
     },
     {
       options: { hostname: '', port: 'secret' },
-      expectedUrl: 'http://localhost/',
+      expectedUrl: 'http://localhost',
     },
     {
       options: { hostname: 'example.test', port: 65_536, path: '' },
-      expectedUrl: 'http://example.test/',
+      expectedUrl: 'http://example.test',
     },
     {
       options: { hostname: 'example.test', port: '65535', path: '/ok' },
-      expectedUrl: 'http://example.test:65535/ok',
+      expectedUrl: 'http://example.test:65535',
     },
   ])(
     'exports a safe URL for boundary request options: $expectedUrl',
@@ -197,7 +203,7 @@ describe('HTTP telemetry URL privacy', () => {
         expect.objectContaining({
           'http.request.method': 'GET',
           'http.response.status_code': 200,
-          'url.path': '/http-client',
+          'url.path': 'unmatched',
         }),
       );
       expect(httpClientSpans[0]?.attributes).toEqual(
@@ -205,7 +211,7 @@ describe('HTTP telemetry URL privacy', () => {
           'http.request.method': 'GET',
           'http.response.status_code': 200,
           'server.address': '127.0.0.1',
-          'url.full': `${origin}/http-client`,
+          'url.full': origin,
         }),
       );
     });
@@ -219,7 +225,7 @@ describe('HTTP telemetry URL privacy', () => {
           'http.request.method': 'GET',
           'http.response.status_code': 503,
           'server.address': '127.0.0.1',
-          'url.full': `${origin}/undici-client`,
+          'url.full': origin,
         }),
       );
     });
@@ -237,7 +243,7 @@ describe('HTTP telemetry URL privacy', () => {
         expect.objectContaining({
           'http.request.method': 'GET',
           'server.address': '127.0.0.1',
-          'url.full': `${closedOrigin}/http-error`,
+          'url.full': closedOrigin,
         }),
       );
     });
@@ -261,7 +267,7 @@ describe('HTTP telemetry URL privacy', () => {
         expect.objectContaining({
           'http.request.method': 'GET',
           'server.address': 'example.test',
-          'url.full': `http://example.test:${portText}/http-error-hook`,
+          'url.full': `http://example.test:${portText}`,
         }),
       );
     });
@@ -279,7 +285,7 @@ describe('HTTP telemetry URL privacy', () => {
         expect.objectContaining({
           'http.request.method': 'GET',
           'server.address': '127.0.0.1',
-          'url.full': `${closedOrigin}/undici-error`,
+          'url.full': closedOrigin,
         }),
       );
     });
@@ -295,15 +301,23 @@ describe('HTTP telemetry URL privacy', () => {
       expect(malformedSpans[0]?.attributes).toEqual(
         expect.objectContaining({
           'http.request.method': 'GET',
-          'url.full': 'http://localhost/',
+          'url.full': 'http://localhost',
         }),
       );
     });
 
-    it('exports only redacted webhook paths without named-header or Bearer credentials', () => {
-      const webhooks = captured.spans.filter(
-        (span) => span.attributes['url.path'] === '/hooks/[Redacted]',
-      );
+    it('exports bounded incoming labels and host-only clients without webhook credentials', () => {
+      const webhooks = captured.webhookSpans;
+      expect(
+        webhooks
+          .filter((span) => span.kind === SpanKind.SERVER)
+          .every((span) => span.attributes['url.path'] === 'unmatched'),
+      ).toBe(true);
+      expect(
+        webhooks
+          .filter((span) => span.kind === SpanKind.CLIENT)
+          .every((span) => span.attributes['url.path'] === undefined),
+      ).toBe(true);
       expect(webhooks).toHaveLength(4);
       expect(
         webhooks.filter((span) => span.kind === SpanKind.SERVER),
@@ -326,6 +340,7 @@ describe('HTTP telemetry URL privacy', () => {
         FRAGMENT_SECRET,
         MALFORMED_CREDENTIAL_SECRET,
         ERROR_CODE_SECRET,
+        ERROR_NAME_SECRET,
         MULTI_USERINFO_SECRET,
         SPACED_QUERY_SECRET,
         'user:password@',

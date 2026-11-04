@@ -1,3 +1,4 @@
+import { safeSystemErrorCode } from '../process-error-classification.js';
 import type { LogFields } from '../logger.js';
 
 const RESERVED_FIELDS = new Set([
@@ -127,6 +128,7 @@ function boundText(value: string): string {
   return `${safeEnd < 0 ? '' : prefix.slice(0, safeEnd + 1)}${TRUNCATED}`;
 }
 
+/** Scrub credential markers in application metadata; generic errors use a closed diagnostic below. */
 export function redactLogText(value: string): string {
   return (
     redactUrlUserInfo(boundText(value))
@@ -174,32 +176,36 @@ export function redactCredentialFields(
   );
 }
 
+function errorWithoutText(message: string, cause?: Error): Error {
+  const error =
+    cause === undefined ? new Error(message) : new Error(message, { cause });
+  delete error.stack;
+  return error;
+}
+
 function sanitizeError(
   error: Error,
   depth: number,
   state: SanitizeState,
 ): Error {
   try {
-    if (state.seen.has(error)) {
-      return new Error('[Circular error]');
-    }
+    if (state.seen.has(error)) return errorWithoutText('[Circular error]');
+    if (depth >= MAX_SANITIZE_DEPTH) return errorWithoutText(TRUNCATED);
     state.seen.add(error);
-
-    const cause =
-      'cause' in error
-        ? sanitizeValue(error.cause, depth + 1, state)
-        : undefined;
-    const sanitized =
-      cause === undefined
-        ? new Error(redactLogText(error.message))
-        : new Error(redactLogText(error.message), { cause });
-    sanitized.name = redactLogText(error.name);
-    if (error.stack !== undefined) {
-      sanitized.stack = redactLogText(error.stack);
-    }
+    const cause: unknown = error.cause;
+    let sanitizedCause: Error | undefined;
+    if (cause !== undefined)
+      sanitizedCause =
+        cause instanceof Error
+          ? sanitizeError(cause, depth + 1, state)
+          : errorWithoutText(REDACTED);
+    // Generic errors can carry arbitrary provider or request data in any text field.
+    const sanitized = errorWithoutText(REDACTED, sanitizedCause);
+    const code = safeSystemErrorCode(error);
+    if (code !== undefined) Object.assign(sanitized, { code });
     return sanitized;
   } catch {
-    return new Error('[Unserializable error]');
+    return errorWithoutText('[Unserializable error]');
   }
 }
 
@@ -325,10 +331,8 @@ export function errorValue(error: unknown): Error | undefined {
   };
   try {
     if (error instanceof Error) return sanitizeError(error, 0, state);
-    return new Error('Non-Error value thrown', {
-      cause: sanitizeValue(error, 0, state),
-    });
+    return errorWithoutText('Non-Error value thrown');
   } catch {
-    return new Error('[Unserializable error]');
+    return errorWithoutText('[Unserializable error]');
   }
 }

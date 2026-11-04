@@ -18,6 +18,17 @@ alert delivery or pager routing. Metric
 writer identity and source freshness follow
 [ADR 036](../adr/036-metric-writer-identity-and-freshness.md).
 
+Incoming API spans identify the matched route template; unmatched requests use
+`unmatched`. Request-failure logs use `route`; the client's problem `instance`
+is not exported to telemetry. Outbound HTTP and Undici spans retain the destination host, method
+and status, with no URL path, query or userinfo. Use service names, trace/span IDs
+and the structured operation event to correlate failures. Generic error messages,
+stacks and arbitrary cause text are private; typed startup validation still names
+invalid settings without their values. Known system error codes remain available in
+logs; automatic HTTP duration metrics omit untrusted error names and codes.
+Authorized run details remain the place
+for input-specific diagnostics.
+
 ## Shared Triage
 
 1. Confirm the alert expression has current samples and note only bounded labels

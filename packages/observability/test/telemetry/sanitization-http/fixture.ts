@@ -25,15 +25,13 @@ export const FRAGMENT_SECRET = 'fragment-secret';
 
 export const MALFORMED_CREDENTIAL_SECRET = 'malformed-credential-secret';
 
+export const ERROR_NAME_SECRET = 'private-name-person@example.test';
+
 export const ERROR_CODE_SECRET = 'error-code-secret';
 
 export const MULTI_USERINFO_SECRET = 'opaque-userinfo-secret';
 
 export const SPACED_QUERY_SECRET = 'spaced-query-secret';
-
-type FinishedSpan = ReturnType<
-  node.InMemorySpanExporter['getFinishedSpans']
->[number];
 
 type HttpModule = typeof httpTypes;
 
@@ -101,19 +99,6 @@ function request(
   });
 }
 
-function spansFor(
-  spans: readonly FinishedSpan[],
-  kind: SpanKind,
-  path: string,
-): FinishedSpan[] {
-  return spans.filter(
-    (span) =>
-      span.kind === kind &&
-      (span.attributes['url.path'] === path ||
-        span.attributes['url.full']?.toString().endsWith(path)),
-  );
-}
-
 async function captureConfiguredHttpExport() {
   const exporter = new node.InMemorySpanExporter();
   const provider = new node.NodeTracerProvider({
@@ -158,14 +143,28 @@ async function captureConfiguredHttpExport() {
     const portText = String(port);
     const origin = `http://127.0.0.1:${portText}`;
 
+    const firstSpan = exporter.getFinishedSpans().length;
     await request(
       http,
       `http://user:password@127.0.0.1:${portText}/http-client?code=${QUERY_SECRET}&state=${STATE_SECRET}&arbitrary=${ARBITRARY_SECRET}`,
     );
+    const firstSpans = exporter.getFinishedSpans().slice(firstSpan);
+    const serverSpans = firstSpans.filter(
+      (span) => span.kind === SpanKind.SERVER,
+    );
+    const httpClientSpans = firstSpans.filter(
+      (span) => span.kind === SpanKind.CLIENT,
+    );
+    const undiciStart = exporter.getFinishedSpans().length;
     const fetchResponse = await fetch(
       `${origin}/undici-client?code=${QUERY_SECRET}&state=${STATE_SECRET}&arbitrary=${ARBITRARY_SECRET}`,
     );
     await fetchResponse.arrayBuffer();
+    const undiciClientSpans = exporter
+      .getFinishedSpans()
+      .slice(undiciStart)
+      .filter((span) => span.kind === SpanKind.CLIENT);
+    const webhookStart = exporter.getFinishedSpans().length;
     const webhookUrl = `${origin}/hooks/${WEBHOOK_PATH_SECRET}`;
     await request(http, webhookUrl, {
       headers: { 'x-webhook-secret': WEBHOOK_HEADER_SECRET },
@@ -176,18 +175,25 @@ async function captureConfiguredHttpExport() {
       })
     ).arrayBuffer();
 
+    const webhookSpans = exporter.getFinishedSpans().slice(webhookStart);
     closedServer = http.createServer();
     const closedPort = await listen(closedServer);
     await close(closedServer);
     const closedPortText = String(closedPort);
     const closedOrigin = `http://127.0.0.1:${closedPortText}`;
 
+    const httpErrorStart = exporter.getFinishedSpans().length;
     await expect(
       request(
         http,
         `http://user:password@127.0.0.1:${closedPortText}/http-error?code=${ERROR_QUERY_SECRET}&state=${STATE_SECRET}&arbitrary=${ARBITRARY_SECRET}`,
       ),
     ).rejects.toBeDefined();
+    const httpErrorSpans = exporter
+      .getFinishedSpans()
+      .slice(httpErrorStart)
+      .filter((span) => span.kind === SpanKind.CLIENT);
+    const hookErrorStart = exporter.getFinishedSpans().length;
     await expect(
       request(
         http,
@@ -199,6 +205,7 @@ async function captureConfiguredHttpExport() {
                 `lookup failed for http://user:password@${MULTI_USERINFO_SECRET}@example.test:${portText}/http-error-hook?code=${HOOK_ERROR_QUERY_SECRET} trailing=${SPACED_QUERY_SECRET}#${FRAGMENT_SECRET}`,
               ),
               {
+                name: ERROR_NAME_SECRET,
                 code: `http://user:password@${MULTI_USERINFO_SECRET}@example.test:${portText}/error?code=${ERROR_CODE_SECRET} trailing=${SPACED_QUERY_SECRET}#${FRAGMENT_SECRET}`,
               },
             );
@@ -207,11 +214,21 @@ async function captureConfiguredHttpExport() {
         },
       ),
     ).rejects.toBeDefined();
+    const hookErrorSpans = exporter
+      .getFinishedSpans()
+      .slice(hookErrorStart)
+      .filter((span) => span.kind === SpanKind.CLIENT);
+    const undiciErrorStart = exporter.getFinishedSpans().length;
     await expect(
       fetch(
         `${closedOrigin}/undici-error?code=${ERROR_QUERY_SECRET}&state=${STATE_SECRET}&arbitrary=${ARBITRARY_SECRET}`,
       ),
     ).rejects.toBeDefined();
+    const undiciErrorSpans = exporter
+      .getFinishedSpans()
+      .slice(undiciErrorStart)
+      .filter((span) => span.kind === SpanKind.CLIENT);
+    const malformedStart = exporter.getFinishedSpans().length;
     await expect(
       request(
         http,
@@ -220,21 +237,9 @@ async function captureConfiguredHttpExport() {
     ).rejects.toBeDefined();
 
     const spans = exporter.getFinishedSpans();
-    const serverSpans = spansFor(spans, SpanKind.SERVER, '/http-client');
-    const httpClientSpans = spansFor(spans, SpanKind.CLIENT, '/http-client');
-    const undiciClientSpans = spansFor(
-      spans,
-      SpanKind.CLIENT,
-      '/undici-client',
-    );
-    const httpErrorSpans = spansFor(spans, SpanKind.CLIENT, '/http-error');
-    const hookErrorSpans = spansFor(spans, SpanKind.CLIENT, '/http-error-hook');
-    const undiciErrorSpans = spansFor(spans, SpanKind.CLIENT, '/undici-error');
-    const malformedSpans = spans.filter(
-      (span) =>
-        span.kind === SpanKind.CLIENT &&
-        span.attributes['url.full'] === 'http://localhost/',
-    );
+    const malformedSpans = spans
+      .slice(malformedStart)
+      .filter((span) => span.kind === SpanKind.CLIENT);
 
     return Object.freeze({
       closedOrigin,
@@ -248,6 +253,7 @@ async function captureConfiguredHttpExport() {
       spans,
       undiciClientSpans,
       undiciErrorSpans,
+      webhookSpans,
     });
   });
   const cleanupResults = await Promise.allSettled([

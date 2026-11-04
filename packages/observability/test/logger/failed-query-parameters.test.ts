@@ -16,7 +16,7 @@ it('keeps the query and drops its parameters, however they are laid out', () => 
   expect(safe).not.toContain('second line');
 });
 
-it('keeps a failed query’s parameters out of a logged error and its cause', () => {
+it('drops generic failed-query text and parameters from errors and causes', () => {
   const capture = captureDestination();
   const logger = createStructuredLogger(testConfig(), capture.destination);
   logger.error(
@@ -31,7 +31,12 @@ it('keeps a failed query’s parameters out of a logged error and its cause', ()
     {},
     new Error(failedQuery('{"body":"private"}')),
   );
-  expect(JSON.stringify(capture.records)).toContain('Failed query');
+  expect(JSON.stringify(capture.records)).not.toContain('Failed query');
+  expect(capture.records).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({ event: 'webhook.ingress_failed' }),
+    ]),
+  );
   expect(JSON.stringify(capture.records)).not.toContain('private');
 });
 

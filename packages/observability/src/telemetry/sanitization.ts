@@ -10,19 +10,6 @@ import type { UndiciRequest } from '@opentelemetry/instrumentation-undici';
 
 const REDACTED_EXCEPTION = '[Redacted exception]';
 
-function safePath(value: unknown): string {
-  const candidate = typeof value === 'string' && value.length > 0 ? value : '/';
-
-  try {
-    return (new URL(candidate, 'http://localhost').pathname || '/').replace(
-      /(\/hooks\/)[^/]+/gu,
-      '$1[Redacted]',
-    );
-  } catch {
-    return '/';
-  }
-}
-
 function safeAuthority(
   value: unknown,
   protocol: 'http:' | 'https:' = 'http:',
@@ -99,6 +86,10 @@ export function installErrorSanitizer(span: Span): void {
   }
   sanitizedSpans.add(span);
 
+  const setAttribute = span.setAttribute.bind(span);
+  span.setAttribute = (key, value) =>
+    setAttribute(key, key === 'error.type' ? 'Error' : value);
+
   const recordException = span.recordException.bind(span);
   span.recordException = (exception, time) => {
     recordException(sanitizeException(exception), time);
@@ -118,6 +109,8 @@ function undefinedUrlAttributes(): Attributes {
     'http.target': undefined,
     'http.url': undefined,
     'url.query': undefined,
+    'url.full': undefined,
+    'url.path': undefined,
   };
 }
 
@@ -133,7 +126,7 @@ export function sanitizeIncomingHttpRequest(
     'server.address': authority.hostname,
     'server.port':
       authority.port === undefined ? undefined : Number(authority.port),
-    'url.path': safePath(request.url),
+    'url.path': 'unmatched',
   };
 }
 
@@ -150,31 +143,32 @@ export function sanitizeOutgoingHttpRequest(
 
   return {
     ...undefinedUrlAttributes(),
-    'url.full': `${origin}${safePath(request.path)}`,
-    'url.path': safePath(request.path),
+    'url.full': origin,
   };
 }
 
 export function sanitizeUndiciRequest(request: UndiciRequest): Attributes {
   return {
     ...undefinedUrlAttributes(),
-    'url.full': `${safeOrigin(request.origin)}${safePath(request.path)}`,
-    'url.path': safePath(request.path),
+    'url.full': safeOrigin(request.origin),
   };
 }
 
-/**
- * Nest's request span records the address as sent. A query can hold what a
- * request carries in the open, like an OAuth2 callback's code and state.
- */
+/** Nest supplies the registered route separately from the untrusted request address. */
 export function sanitizeNestSpanOptions(options?: SpanOptions): SpanOptions {
-  const address = options?.attributes?.['url.full'];
-  return address === undefined
-    ? (options ?? {})
-    : {
-        ...options,
-        attributes: { ...options?.attributes, 'url.full': safePath(address) },
-      };
+  if (options?.attributes?.['url.full'] === undefined) return options ?? {};
+  const route = options.attributes['http.route'];
+  const matched = typeof route === 'string' && route.length > 0;
+  return {
+    ...options,
+    attributes: {
+      ...options.attributes,
+      ...undefinedUrlAttributes(),
+      'http.route': matched ? route : undefined,
+      'url.full': matched ? route : 'unmatched',
+      'url.path': matched ? route : 'unmatched',
+    },
+  };
 }
 
 export function sanitizeHttpSpan(span: Span): void {

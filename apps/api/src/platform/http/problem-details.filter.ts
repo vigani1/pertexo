@@ -1,3 +1,4 @@
+import { routeTemplate } from '../observability/api-metrics.js';
 import { randomUUID } from 'node:crypto';
 import { projectConcurrencyConflict } from './problems/concurrency-conflict.js';
 import type { ApiProblem } from '@pertexo/contracts';
@@ -320,7 +321,7 @@ export class ProblemDetailsFilter implements ExceptionFilter {
           ...(context.workspaceId === undefined
             ? {}
             : { workspaceId: context.workspaceId }),
-          ...(instance === undefined ? {} : { instance }),
+          route: routeTemplate(request),
           cause: normalized.cause,
         });
         void Promise.resolve(logged).catch(() => undefined);

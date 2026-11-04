@@ -77,9 +77,7 @@ export class AppModule {
             ...(entry.workspaceId === undefined
               ? {}
               : { workspaceId: entry.workspaceId }),
-            ...(entry.instance === undefined
-              ? {}
-              : { instance: entry.instance }),
+            route: entry.route,
           },
           cause: entry.cause,
         });

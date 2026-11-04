@@ -17,7 +17,7 @@ describe('Nest observability runtime integration', () => {
     adapter.error(secret, 'ignored', 'WorkflowModule');
     expect(errorLog).toHaveBeenCalledWith(
       'nest.error',
-      { messageType: 'error', context: 'WorkflowModule' },
+      { messageType: 'error' },
       secret,
     );
   });
@@ -46,7 +46,7 @@ describe('Nest observability runtime integration', () => {
   );
 
   it.each(['error', 'fatal'] as const)(
-    'normalizes the documented message/stack/context %s shape',
+    'keeps the %s message/stack/context shape private',
     (level) => {
       const write = vi.fn();
       const adapter = new NestLoggerAdapter(loggerFixture({ [level]: write }));
@@ -58,12 +58,8 @@ describe('Nest observability runtime integration', () => {
 
       expect(write).toHaveBeenCalledWith(
         `nest.${level}`,
-        {
-          context: 'NestFactory',
-          messageType: 'string',
-          summary: 'Bootstrap failed',
-        },
-        expect.objectContaining({ message: 'Bootstrap failed' }),
+        { messageType: 'string' },
+        expect.objectContaining({ message: '[Redacted]' }),
       );
     },
   );
@@ -75,12 +71,12 @@ describe('Nest observability runtime integration', () => {
 
     expect(write).toHaveBeenCalledWith(
       'nest.error',
-      { messageType: 'string', summary: 'Failed' },
+      { messageType: 'string' },
       expect.any(Error),
     );
   });
 
-  it('bounds stack classification before scanning adversarial multiline input', () => {
+  it('does not scan adversarial optional error strings', () => {
     const write = vi.fn();
     const adapter = new NestLoggerAdapter(loggerFixture({ error: write }));
     const multilineContext = `${'\n'.repeat(200_000)}Error: outside bound`;
@@ -89,12 +85,8 @@ describe('Nest observability runtime integration', () => {
 
     expect(write).toHaveBeenCalledWith(
       'nest.error',
-      {
-        context: `${'\n'.repeat(1_024)}[Truncated]`,
-        messageType: 'string',
-        summary: 'Failed',
-      },
-      undefined,
+      { messageType: 'string' },
+      expect.objectContaining({ message: '[Redacted]' }),
     );
   });
 
@@ -161,7 +153,7 @@ describe('Nest observability runtime integration', () => {
     expect(prototypeChecks).toBe(1);
     expect(write).toHaveBeenCalledWith(
       'nest.error',
-      { context: 'NestFactory', messageType: 'uninspectable' },
+      { messageType: 'uninspectable' },
       expect.objectContaining({ message: '[Unserializable error]' }),
     );
     expect(JSON.stringify(write.mock.calls)).not.toContain(

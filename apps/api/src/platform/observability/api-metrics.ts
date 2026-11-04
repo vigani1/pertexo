@@ -1,4 +1,4 @@
-import { metrics, type Meter } from '@opentelemetry/api';
+import { context, trace, metrics, type Meter } from '@opentelemetry/api';
 import { API_PROBLEM_CODES } from '@pertexo/contracts';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 
@@ -57,8 +57,10 @@ function statusClass(statusCode: number): string {
   return `${String(Math.floor(statusCode / 100))}xx`;
 }
 
-function routeTemplate(request: FastifyRequest): string {
-  const route = request.routeOptions.url;
+export function routeTemplate(
+  request: Readonly<{ routeOptions?: Readonly<{ url?: unknown }> }>,
+): string {
+  const route = request.routeOptions?.url;
   return typeof route === 'string' && route.length > 0 && route.length <= 256
     ? route
     : 'unmatched';
@@ -124,6 +126,13 @@ export function registerApiMetrics(
   const responseProblemCodes = new WeakMap<FastifyRequest, string>();
 
   server.addHook('onRequest', (request, _reply, done) => {
+    const route = routeTemplate(request);
+    const span = trace.getSpan(context.active());
+    span?.setAttribute('url.path', route);
+    if (route !== 'unmatched') {
+      span?.setAttribute('http.route', route);
+      span?.updateName(`${request.method} ${route}`);
+    }
     startedAt.set(request, now());
     done();
   });
