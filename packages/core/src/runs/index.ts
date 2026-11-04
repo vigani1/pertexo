@@ -163,3 +163,4 @@ export type {} from './stalled/overdue.repository.js';
 export type {} from './values/retention.js';
 
 export { isStoredDataError } from '../shared/stored-values.js';
+export type {} from './stalled/stuck-work.repository.js';

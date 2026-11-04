@@ -1,4 +1,14 @@
-import { IDEMPOTENCY_STATUS } from './command-identity.types.js';
+export const IDEMPOTENCY_STATUS = {
+  inProgress: 'in_progress',
+  completed: 'completed',
+  failed: 'failed',
+} as const;
+
+export type IdempotencyStatus =
+  (typeof IDEMPOTENCY_STATUS)[keyof typeof IDEMPOTENCY_STATUS];
+
+export const IDEMPOTENCY_STATUS_VALUES = Object.values(IDEMPOTENCY_STATUS);
+
 import type { CommandIdentity } from './command-identity.types.js';
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
