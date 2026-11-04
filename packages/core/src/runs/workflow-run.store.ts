@@ -1,3 +1,7 @@
+import {
+  ACTIVE_WORKSPACE_STATUSES,
+  UNPURGED_WORKSPACE_STATUSES,
+} from '@pertexo/policy';
 import { lockActorArtifactReferences } from '../artifacts/references/locks.repository.js';
 import {
   requireRunAccess,
@@ -95,16 +99,21 @@ export function createWorkflowRunDatabase(
       });
     },
     recover: async (input: RecoverPublishedWorkflowRunInput) => {
-      return withRunCommand(pool, input, 'run:replay', async (transaction) => {
-        await requireRunAccess(transaction, input.sourceRunId, 'run:replay');
-        return recoverWorkflowRunInTransaction(transaction, input);
-      });
+      return withRunCommand(
+        pool,
+        input,
+        { capability: 'run:replay', statuses: ACTIVE_WORKSPACE_STATUSES },
+        async (transaction) => {
+          await requireRunAccess(transaction, input.sourceRunId, 'run:replay');
+          return recoverWorkflowRunInTransaction(transaction, input);
+        },
+      );
     },
     start: async (input: StartPublishedWorkflowRunInput) => {
       const result = await withRunCommand(
         pool,
         input,
-        'run:start',
+        { capability: 'run:start', statuses: ACTIVE_WORKSPACE_STATUSES },
         async (transaction) => {
           await requireWorkflowAccess(
             transaction,
@@ -127,15 +136,20 @@ export function createWorkflowRunDatabase(
       return result;
     },
     replay: async (input: ReplayPublishedWorkflowRunInput) => {
-      return withRunCommand(pool, input, 'run:replay', async (transaction) => {
-        await requireRunAccess(transaction, input.sourceRunId, 'run:replay');
-        await lockActorArtifactReferences(
-          transaction,
-          input.actorId,
-          input.input,
-        );
-        return replayWorkflowRunInTransaction(transaction, input);
-      });
+      return withRunCommand(
+        pool,
+        input,
+        { capability: 'run:replay', statuses: ACTIVE_WORKSPACE_STATUSES },
+        async (transaction) => {
+          await requireRunAccess(transaction, input.sourceRunId, 'run:replay');
+          await lockActorArtifactReferences(
+            transaction,
+            input.actorId,
+            input.input,
+          );
+          return replayWorkflowRunInTransaction(transaction, input);
+        },
+      );
     },
     get: (input: GetWorkflowRunInput) => readWorkflowRun(pool, input),
     list: (input: ListWorkflowRunsDatabaseInput) =>
@@ -160,10 +174,15 @@ export function createWorkflowRunDatabase(
     usageCapacity: (input: WorkspaceUsageCapacityInput) =>
       readWorkspaceUsageCapacity(pool, input),
     cancel: async (input: CancelWorkflowRunInput) => {
-      return withRunCommand(pool, input, 'run:cancel', async (transaction) => {
-        await requireRunAccess(transaction, input.runId, 'run:cancel');
-        return cancelInTransaction(transaction, input);
-      });
+      return withRunCommand(
+        pool,
+        input,
+        { capability: 'run:cancel', statuses: UNPURGED_WORKSPACE_STATUSES },
+        async (transaction) => {
+          await requireRunAccess(transaction, input.runId, 'run:cancel');
+          return cancelInTransaction(transaction, input);
+        },
+      );
     },
     close: () => lease.close(),
   });
