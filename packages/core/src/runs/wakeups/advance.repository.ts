@@ -25,32 +25,50 @@ export async function enqueueAdvance(
     delaySeconds?: number;
   }>,
 ): Promise<string> {
+  const row = advanceOutboxRow(input);
+  await db.insert(outboxEvents).values(row).catch(rethrowQueryFailure);
+  return row.id;
+}
+
+/** Batch writers retain the same durable payload and checksum as one-run wakeups. */
+export async function enqueueAdvances(
+  db: Pick<NodePgDatabase, 'insert'>,
+  input: Readonly<{ workspaceId: string; runIds: readonly string[] }>,
+): Promise<void> {
+  if (input.runIds.length === 0) return;
+  await db
+    .insert(outboxEvents)
+    .values(
+      input.runIds.map((runId) =>
+        advanceOutboxRow({ workspaceId: input.workspaceId, runId }),
+      ),
+    )
+    .catch(rethrowQueryFailure);
+}
+
+function advanceOutboxRow(input: Parameters<typeof enqueueAdvance>[1]) {
   const { workspaceId, runId, traceparent, delaySeconds } = input;
-  const outboxEventId = input.outboxEventId ?? generatePersistedId();
+  const id = input.outboxEventId ?? generatePersistedId();
   const payload = {
     workspaceId,
     runId,
-    outboxEventId,
+    outboxEventId: id,
     ...(traceparent === undefined ? {} : { traceparent }),
   };
-  await db
-    .insert(outboxEvents)
-    .values({
-      id: outboxEventId,
-      workspaceId,
-      jobName: 'advance-workflow-run',
-      aggregateType: 'workflow-run',
-      aggregateId: runId,
-      payload,
-      payloadChecksum: canonicalOutboxPayloadChecksum(payload),
-      ...(delaySeconds === undefined
-        ? {}
-        : {
-            availableAt: sql`clock_timestamp()+make_interval(secs=>${delaySeconds})`,
-          }),
-    })
-    .catch(rethrowQueryFailure);
-  return outboxEventId;
+  return {
+    id,
+    workspaceId,
+    jobName: 'advance-workflow-run',
+    aggregateType: 'workflow-run',
+    aggregateId: runId,
+    payload,
+    payloadChecksum: canonicalOutboxPayloadChecksum(payload),
+    ...(delaySeconds === undefined
+      ? {}
+      : {
+          availableAt: sql`clock_timestamp()+make_interval(secs=>${delaySeconds})`,
+        }),
+  };
 }
 
 /** Now, for work that's ready. */

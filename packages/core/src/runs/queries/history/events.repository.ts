@@ -2,7 +2,7 @@ import { decodeStoredValue } from '../../../shared/stored-values.js';
 import { runEvents, workflowRuns } from '@pertexo/database/schema';
 import { utf8ByteLength } from '@pertexo/workflow-model';
 import { retainedTestRunSql } from '../../data-policy.js';
-import { and, eq, gt, lte, sql } from 'drizzle-orm';
+import { and, desc, eq, gt, inArray, lte, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import {
   ExecutionStateConflictError,
@@ -85,31 +85,7 @@ export async function appendLockedRunEvent(
   runId: string,
   event: RunEvent,
 ): Promise<number> {
-  let normalizedPayload: unknown;
-  try {
-    normalizedPayload = JSON.parse(
-      serializeStoredExecutionJsonValue(event.payload),
-    );
-  } catch {
-    throw new ExecutionStateConflictError('execution.event_payload_invalid');
-  }
-  const invalidPayload =
-    normalizedPayload === null ||
-    typeof normalizedPayload !== 'object' ||
-    Array.isArray(normalizedPayload);
-  if (invalidPayload)
-    throw new ExecutionStateConflictError('execution.event_payload_invalid');
-
-  let serializedPayload: string;
-  try {
-    serializedPayload = serializeStoredExecutionJsonValue(normalizedPayload);
-  } catch {
-    throw new ExecutionStateConflictError('execution.event_payload_invalid');
-  }
-  if (utf8ByteLength(serializedPayload) > 4096)
-    throw new ExecutionStateConflictError(
-      'JSON value must not exceed 4096 UTF-8 bytes',
-    );
+  const serializedPayload = serializeRunEventPayload(event.payload);
 
   const next = transaction.db
     .select({
@@ -139,6 +115,74 @@ export async function appendLockedRunEvent(
   if (sequence === undefined)
     throw new Error('Run event insert returned no sequence');
   return sequence;
+}
+
+/** The caller holds every run lock, in ID order, throughout the batch. */
+export async function appendLockedRunEvents(
+  transaction: WorkspaceTransaction,
+  runIds: readonly string[],
+  event: RunEvent,
+): Promise<void> {
+  if (runIds.length === 0) return;
+  const { db, workspaceId } = transaction;
+  const payload = serializeRunEventPayload(event.payload);
+  const latest = db
+    .select({ sequence: runEvents.sequence })
+    .from(runEvents)
+    .where(
+      and(
+        eq(runEvents.workspaceId, workspaceId),
+        eq(runEvents.workflowRunId, workflowRuns.id),
+      ),
+    )
+    .orderBy(desc(runEvents.sequence))
+    .limit(1);
+  await db.insert(runEvents).select(
+    db
+      .select({
+        workspaceId: workflowRuns.workspaceId,
+        workflowRunId: workflowRuns.id,
+        sequence: sql<number>`coalesce((${latest}),0)+1`.as('sequence'),
+        type: sql<string>`${event.type}`.as('type'),
+        payload: sql`${payload}::jsonb`.as('payload'),
+        createdAt: sql<Date>`now()`.as('created_at'),
+      })
+      .from(workflowRuns)
+      .where(
+        and(
+          eq(workflowRuns.workspaceId, workspaceId),
+          inArray(workflowRuns.id, [...runIds]),
+        ),
+      ),
+  );
+}
+
+function serializeRunEventPayload(payload: unknown): string {
+  let normalizedPayload: unknown;
+  try {
+    normalizedPayload = JSON.parse(serializeStoredExecutionJsonValue(payload));
+  } catch {
+    throw new ExecutionStateConflictError('execution.event_payload_invalid');
+  }
+  const invalidPayload =
+    normalizedPayload === null ||
+    typeof normalizedPayload !== 'object' ||
+    Array.isArray(normalizedPayload);
+  if (invalidPayload)
+    throw new ExecutionStateConflictError('execution.event_payload_invalid');
+
+  let serializedPayload: string;
+  try {
+    serializedPayload = serializeStoredExecutionJsonValue(normalizedPayload);
+  } catch {
+    throw new ExecutionStateConflictError('execution.event_payload_invalid');
+  }
+  if (utf8ByteLength(serializedPayload) > 4096)
+    throw new ExecutionStateConflictError(
+      'JSON value must not exceed 4096 UTF-8 bytes',
+    );
+
+  return serializedPayload;
 }
 
 export async function appendRunEvent(
