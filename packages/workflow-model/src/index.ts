@@ -473,3 +473,10 @@ export {
   nextPersonNoticeDue,
   type NoticeSchedule,
 } from './execution/notice-schedule.js';
+
+export {
+  RUN_FAILURE_CODES,
+  runFailureCodeSchema,
+  type RunFailureCode,
+  type CallableResultFailureCode,
+} from './execution/run-failure.js';

@@ -281,6 +281,8 @@ describe('API bootstrap ownership and health', () => {
                   workflowId: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
                   workflowVersionId: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
                   status: 'running' as const,
+                  replaySourceRunId: null,
+                  failureReasonCode: null,
                   triggerType: 'manual' as const,
                   createdAt: new Date(),
                   updatedAt: new Date(),

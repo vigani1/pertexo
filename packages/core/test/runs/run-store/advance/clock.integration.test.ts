@@ -82,7 +82,7 @@ describe('the clock on a run’s history', () => {
         failUnadvanceableRun(pool, {
           workspaceId: workspaceA,
           runId,
-          safeErrorCode: 'run.unadvanceable',
+          safeErrorCode: 'execution.run_state_invalid',
           expectedRevision: 0,
           signal,
         }),

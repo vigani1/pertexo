@@ -1,3 +1,4 @@
+import type { RunFailureCode } from '@pertexo/workflow-model';
 import { priorProviderDispatchUnresolved } from '../../attempts/dispatch/uncertainty.repository.js';
 import {
   lockCompletionAttempt,
@@ -46,7 +47,7 @@ const OPEN_STATUSES = ['pending', 'ready', 'running', 'waiting'] as const;
 export type FailUnadvanceableInput = Readonly<{
   workspaceId: string;
   runId: string;
-  safeErrorCode: string;
+  safeErrorCode: RunFailureCode;
   expectedRevision: number | null | undefined;
   /** The advance that found the run unadvanceable, whose slot binding ends here. */
   delivery?: CoordinatorAdvanceDelivery;

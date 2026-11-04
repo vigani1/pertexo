@@ -1,4 +1,7 @@
-import type { JsonValue } from '@pertexo/workflow-model';
+import type {
+  JsonValue,
+  CallableResultFailureCode,
+} from '@pertexo/workflow-model';
 import { WorkflowEngineError } from '../workflow-engine.errors.js';
 import type { WorkflowTransitionPlan } from '../workflow-execution.js';
 
@@ -6,13 +9,7 @@ export type CallableResultDecision =
   | Readonly<{ kind: 'valid'; value: JsonValue }>
   | Readonly<{
       kind: 'invalid';
-      reasonCode:
-        | 'callable_result_missing'
-        | 'callable_result_variable_missing'
-        | 'callable_result_ambiguous'
-        | 'callable_result_invalid'
-        | 'callable_result_timed_out'
-        | 'callable_result_bounds';
+      reasonCode: CallableResultFailureCode;
     }>;
 
 /** Success is provisional until the declared result has passed completion validation. */

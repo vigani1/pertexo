@@ -1,4 +1,7 @@
-import { WORKFLOW_GRAPH_LIMITS } from '@pertexo/workflow-model';
+import {
+  WORKFLOW_GRAPH_LIMITS,
+  runFailureCodeSchema,
+} from '@pertexo/workflow-model';
 import {
   codeDiagnosticsSchema,
   runValueKeySchema,
@@ -126,6 +129,7 @@ export const workflowRunSummarySchema = z
     workflowId: z.uuid(),
     workflowVersionId: z.uuid(),
     status: workflowRunStatusSchema,
+    failureReasonCode: runFailureCodeSchema.nullable().optional(),
     triggerType: workflowRunTriggerTypeSchema,
     createdAt: z.iso.datetime({ offset: true }),
     updatedAt: z.iso.datetime({ offset: true }),

@@ -1,3 +1,4 @@
+import type { RunFailureCode } from '@pertexo/workflow-model';
 import type {
   AuditMetadata,
   WorkspaceTransaction,
@@ -26,6 +27,7 @@ export type WorkflowRunRecord = Readonly<WorkflowRunRow>;
 
 export type WorkflowRunReadRecord = WorkflowRunRecord &
   Readonly<{
+    failureReasonCode: RunFailureCode | null;
     hasHumanTasks?: boolean;
     runValues?: RunValues;
     /** The next step passed its time and nothing has acted on it yet. */

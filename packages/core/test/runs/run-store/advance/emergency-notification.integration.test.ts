@@ -41,11 +41,15 @@ it.each(['safe', 'unsafe', 'idempotent_with_key'] as const)(
     const status = sideEffectClass !== 'safe' ? 'outcome_unknown' : 'failed';
     await expect(f.fail()).resolves.toBe(status);
     const run = await query(
-      'select status,completed_at from app.workflow_runs where id=$1',
+      'select status,completed_at,error_summary from app.workflow_runs where id=$1',
       [f.runId],
     );
     expect(run.rows).toEqual([
-      { status, completed_at: expect.any(Date) as unknown },
+      {
+        status,
+        completed_at: expect.any(Date) as unknown,
+        error_summary: safeErrorCode,
+      },
     ]);
     const after = await query<{ active_runs: number }>(
       'select active_runs from app.workspace_execution_admission_counters where workspace_id=$1',

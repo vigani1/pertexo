@@ -6,7 +6,10 @@ import {
   workflowRunActiveAdmissions,
   workspaceExecutionEntitlementVersions,
 } from '@pertexo/database/schema';
-import { workflowRunSelection } from './workflow-runs.repository.js';
+import {
+  workflowRunSelection,
+  workflowRunFailureReason,
+} from './workflow-runs.repository.js';
 import {
   and,
   eq,
@@ -82,6 +85,7 @@ export function workflowRunReadQuery(
     .select({
       run: {
         ...workflowRunSelection,
+        failureReasonCode: workflowRunFailureReason,
         has_human_tasks: sql<boolean>`${exists(
           db
             .select({ one: sql`1` })
