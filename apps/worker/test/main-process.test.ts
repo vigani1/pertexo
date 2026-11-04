@@ -1,3 +1,4 @@
+import { requireCurrentWorkerBuild } from './support/infrastructure/worker-build.js';
 import { requiredEnvironment } from './config/worker/fixture.js';
 import { spawn, type ChildProcess } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
@@ -126,5 +127,28 @@ describe('compiled worker main process', () => {
     expect(fixture.output()).toContain('ARTIFACT_SCRATCH_DIRECTORY');
     expect(fixture.output()).toContain('absolute');
     expect(fixture.output()).not.toContain(privateValue);
+  }, 12000);
+  it('starts telemetry without a preloaded Pino warning and retains log correlation', async () => {
+    const path = fileURLToPath(
+      new URL('./startup-logging.fixture.mjs', import.meta.url),
+    );
+    requireCurrentWorkerBuild(
+      fileURLToPath(new URL('../tsconfig.json', import.meta.url)),
+      path,
+    );
+    const fixture = start(path);
+    const result = await waitForExit(fixture.child, fixture.output);
+    expect(result).toEqual({ code: 0, signal: null });
+    const line = fixture
+      .output()
+      .split('\n')
+      .find((value) => value.includes('"event":"startup.probe"'));
+    if (line === undefined) throw new Error('Startup log missing');
+    const record = JSON.parse(line) as Record<string, unknown>;
+    expect(record.traceId).toEqual(expect.stringMatching(/^[a-f0-9]{32}$/u));
+    expect(record.spanId).toEqual(expect.stringMatching(/^[a-f0-9]{16}$/u));
+    expect(fixture.output()).not.toContain(
+      'Module pino has been loaded before',
+    );
   }, 12000);
 });

@@ -1,4 +1,4 @@
-import { StartupSettingError } from '@pertexo/observability';
+import { StartupSettingError } from '@pertexo/observability/startup';
 import {
   parseCallbackKeyConfig,
   type CallbackKeyConfig,
