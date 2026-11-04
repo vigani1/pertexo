@@ -453,7 +453,19 @@ describe('schedule publication, health and occurrence persistence', () => {
         publishedVersionId: nextVersionId,
         outboxEventId,
       }),
-    ).resolves.toMatchObject([{ id: nextTriggerId, status: 'active' }]);
+    ).resolves.toMatchObject([{ id: nextTriggerId, status: 'disabled' }]);
+    const explicitlyEnabled = await schedule.schedules.setEnabled({
+      workspaceId,
+      actorId,
+      workflowId,
+      triggerId: nextTriggerId,
+      enabled: true,
+      idempotencyKey: 'enable-published-schedule',
+      requestHash: createHash('sha256')
+        .update('enable-published-schedule')
+        .digest('hex'),
+    });
+    expect(explicitlyEnabled.trigger.status).toBe('active');
     const state = await ownerQuery(
       `select old.status old_status,new.interval_minutes,
               (select count(*) from app.trigger_schedule_occurrences where trigger_id=$1) old_occurrences

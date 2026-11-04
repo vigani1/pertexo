@@ -3,8 +3,6 @@ import { CronExpressionParser } from 'cron-parser';
 import { z } from 'zod';
 import type { triggerSchedules } from '@pertexo/database/schema';
 
-export const SCHEDULE_CRON_PARSER_VERSION = '5.10.0' as const;
-
 const intervalInputSchema = z
   .object({
     kind: z.literal('interval'),

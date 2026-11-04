@@ -5,7 +5,6 @@ import {
   parsePersistedScheduleRecurrence,
   parseScheduleRecurrence,
   resolveScheduleObservation,
-  SCHEDULE_CRON_PARSER_VERSION,
 } from '../../../src/triggers/schedules/recurrence.js';
 
 describe('schedule recurrence', () => {
@@ -49,7 +48,6 @@ describe('schedule recurrence', () => {
   });
 
   it('accepts only strict five-field cron in a canonical IANA timezone', () => {
-    expect(SCHEDULE_CRON_PARSER_VERSION).toBe('5.10.0');
     expect(
       parseScheduleRecurrence({
         kind: 'cron',
