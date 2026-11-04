@@ -59,4 +59,5 @@ export type FailedOutboxEvent = Readonly<{
 export type StuckWork = Readonly<{
   runs: readonly StuckRun[];
   failedOutboxEvents: readonly FailedOutboxEvent[];
+  nextCursor: string | null;
 }>;

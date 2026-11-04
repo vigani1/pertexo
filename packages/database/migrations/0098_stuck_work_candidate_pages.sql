@@ -1,0 +1,3 @@
+CREATE INDEX "outbox_events_run_delivery_page_idx" ON "app"."outbox_events" USING btree ("delivery_due_at","id") WHERE (job_name IN ('advance-workflow-run','execute-node-attempt') AND delivery_due_at IS NOT NULL);--> statement-breakpoint
+CREATE INDEX "outbox_events_run_publication_page_idx" ON "app"."outbox_events" USING btree ("available_at","id") WHERE (job_name IN ('advance-workflow-run','execute-node-attempt') AND published_at IS NULL AND failed_at IS NULL);--> statement-breakpoint
+CREATE INDEX "outbox_events_failed_page_idx" ON "app"."outbox_events" USING btree ("failed_at","id") WHERE (failed_at IS NOT NULL);

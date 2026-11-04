@@ -86,6 +86,18 @@ Redis or Postgres is down. It changes nothing and shows every workspace:
 run_ops -e OPERATOR_COMMAND_TYPE=stuck-work.list
 ```
 
+The response is a page: up to 198 runs from bounded queue candidates, and 200 failed outbox events.
+Pass its `nextCursor` back as `OPERATOR_CURSOR` until it is `null`:
+
+```sh
+run_ops -e OPERATOR_COMMAND_TYPE=stuck-work.list -e OPERATOR_CURSOR='<nextCursor>'
+```
+
+Continue even if a page has no runs: completed delivery history can fill a candidate page. Each queue
+advances independently, so one busy run does not prevent other queues from progressing. A run can
+appear on several pages; the earliest due time on a page describes the candidates examined there.
+Start a fresh list to include work that became overdue during pagination.
+
 It prints stuck runs with the time their next step was due, and outbox events that can never publish
 or were never confirmed, with their error code (`delivery.never_confirmed` after about a day of
 redeliveries; fix the cause, then use [`outbox.redispatch`](#outboxredispatch)). Worker logs name each

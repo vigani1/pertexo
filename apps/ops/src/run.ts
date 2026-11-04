@@ -53,7 +53,7 @@ async function executeConfiguredCommand(
 ): Promise<OperatorCommandExecutionResult> {
   switch (resources.command.type) {
     case 'stuck-work.list':
-      return resources.database.listStuckWork();
+      return resources.database.listStuckWork(resources.command.cursor);
     case 'operator.status':
       return resources.database.getCommand({
         actorRef: resources.command.actorRef,

@@ -16,8 +16,9 @@ it('answers a real command from a real database', async () => {
     timeout: 30_000,
   });
 
-  expect(JSON.parse(stdout)).toEqual({
+  expect(JSON.parse(stdout)).toMatchObject({
     runs: expect.any(Array) as unknown,
     failedOutboxEvents: expect.any(Array) as unknown,
   });
+  expect(JSON.parse(stdout)).toHaveProperty('nextCursor');
 }, 40_000);

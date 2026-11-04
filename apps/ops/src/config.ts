@@ -41,6 +41,7 @@ const baseEnvironmentSchema = unscopedEnvironmentSchema.extend({
 const environmentSchema = z.discriminatedUnion('OPERATOR_COMMAND_TYPE', [
   unscopedEnvironmentSchema.extend({
     OPERATOR_COMMAND_TYPE: z.literal('stuck-work.list'),
+    OPERATOR_CURSOR: z.string().min(1).max(4096).optional(),
   }),
   baseEnvironmentSchema.extend({
     OPERATOR_COMMAND_TYPE: z.literal('outbox.redispatch'),
@@ -113,7 +114,7 @@ const environmentSchema = z.discriminatedUnion('OPERATOR_COMMAND_TYPE', [
 
 export interface OperatorCommandConfig {
   readonly command:
-    | Readonly<{ type: 'stuck-work.list' }>
+    | Readonly<{ type: 'stuck-work.list'; cursor?: string }>
     | Readonly<{
         actorRef: string;
         commandId: string;
@@ -191,7 +192,12 @@ function toOperatorCommand(
   parsed: ParsedOperatorEnvironment,
 ): OperatorCommandConfig['command'] {
   if (parsed.OPERATOR_COMMAND_TYPE === 'stuck-work.list')
-    return Object.freeze({ type: parsed.OPERATOR_COMMAND_TYPE });
+    return Object.freeze({
+      type: parsed.OPERATOR_COMMAND_TYPE,
+      ...(parsed.OPERATOR_CURSOR === undefined
+        ? {}
+        : { cursor: parsed.OPERATOR_CURSOR }),
+    });
   const auditIdentity = {
     actorRef: parsed.OPERATOR_ACTOR_REF,
     commandId: parsed.OPERATOR_COMMAND_ID,
