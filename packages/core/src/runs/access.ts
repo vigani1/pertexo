@@ -1,8 +1,8 @@
 import { workflowRuns, workflows } from '@pertexo/database/schema';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import {
-  ACTIVE_WORKSPACE_STATUSES,
   UNPURGED_WORKSPACE_STATUSES,
+  type WorkspaceStatusList,
 } from '@pertexo/policy';
 import type { Pool } from 'pg';
 import { WorkspaceAccessDeniedError } from '../shared/workspace-access.errors.js';
@@ -66,14 +66,17 @@ export async function requireWorkflowAccess(
 export async function withRunCommand<T>(
   pool: Pool,
   input: WorkspaceActor,
-  capability: WorkflowResourceCapability,
+  access: Readonly<{
+    capability: WorkflowResourceCapability;
+    statuses: WorkspaceStatusList;
+  }>,
   command: (transaction: ResourceTransaction) => Promise<T>,
 ): Promise<T> {
   try {
     return await withWorkspaceAccess(
       pool,
       input,
-      { mode: 'change', capability, statuses: ACTIVE_WORKSPACE_STATUSES },
+      { mode: 'change', ...access },
       async (client, role) =>
         command(await readResourceTransaction(client, input, role)),
     );

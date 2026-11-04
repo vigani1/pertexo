@@ -1,3 +1,4 @@
+import { UNPURGED_WORKSPACE_STATUSES } from '@pertexo/policy';
 import {
   workflowRunCancelResponseSchema,
   normalizeWorkflowRunCreatedAt,
@@ -211,11 +212,12 @@ export class CancelWorkflowRunUseCase {
   public async execute(
     input: CancelWorkflowRunInput,
   ): Promise<WorkflowRunCancelResponse> {
-    await authorize(input, 'run:cancel', this.authorization, [
-      'active',
-      'suspended',
-      'pending_deletion',
-    ]);
+    await authorize(
+      input,
+      'run:cancel',
+      this.authorization,
+      UNPURGED_WORKSPACE_STATUSES,
+    );
     const result = await this.persistence.cancel({
       actorId: input.actor.actorId,
       workspaceId: input.routeWorkspaceId,

@@ -1,3 +1,7 @@
+import {
+  ACTIVE_WORKSPACE_STATUSES,
+  UNPURGED_WORKSPACE_STATUSES,
+} from '@pertexo/policy';
 import { randomUUID } from 'node:crypto';
 
 import { Client, Pool } from 'pg';
@@ -134,26 +138,25 @@ describe('a run command someone may not make', () => {
 });
 
 describe('a run command as a workspace leaves service', () => {
-  it('goes through on an active workspace', async () => {
-    const { workspaceId, owner, operator } = await team();
-    const { runId } = await seedRun(workspaceId, owner, 'queued');
-    const cancelled = await runs.cancel({
-      workspaceId,
-      actorId: operator,
-      runId,
-      reason: 'Stop',
-    });
-    expect(cancelled.run.id).toBe(runId);
-    expect(cancelled.alreadyRequested).toBe(false);
-    expect(await cancelRequested(runId)).toBeInstanceOf(Date);
-  });
+  it.each(['active', 'suspended', 'pending_deletion'] as const)(
+    'allows cancellation on a %s workspace',
+    async (status) => {
+      const { workspaceId, owner, operator } = await team();
+      const { runId } = await seedRun(workspaceId, owner, 'queued');
+      await setStatus(workspaceId, status);
+      const cancelled = await runs.cancel({
+        workspaceId,
+        actorId: operator,
+        runId,
+        reason: 'Stop',
+      });
+      expect(cancelled.run.id).toBe(runId);
+      expect(cancelled.alreadyRequested).toBe(false);
+      expect(await cancelRequested(runId)).toBeInstanceOf(Date);
+    },
+  );
 
-  it.each<WorkspaceStatus>([
-    'suspended',
-    'pending_deletion',
-    'purging',
-    'deleted',
-  ])(
+  it.each<WorkspaceStatus>(['purging', 'deleted'])(
     'reads as a run that is not there on %s, even for its owner',
     async (status) => {
       const { workspaceId, owner } = await team();
@@ -202,7 +205,7 @@ describe('the locks a run command holds', () => {
         const command = withRunCommand(
           pool,
           { workspaceId, actorId: operator },
-          'run:cancel',
+          { capability: 'run:cancel', statuses: UNPURGED_WORKSPACE_STATUSES },
           async () => {
             entered.open();
             await finish.opened;
@@ -223,7 +226,7 @@ describe('the locks a run command holds', () => {
     },
   );
 
-  it('is refused, not admitted, once a suspension it waited on commits', async () => {
+  it('refuses an active-only start after a suspension it waited on commits', async () => {
     const { workspaceId, owner, operator } = await team();
     const { runId } = await seedRun(workspaceId, owner, 'queued');
     const waitingApplication = `run-command-waiting-${randomUUID()}`;
@@ -243,7 +246,7 @@ describe('the locks a run command holds', () => {
       const command = withRunCommand(
         waiting,
         { workspaceId, actorId: operator },
-        'run:cancel',
+        { capability: 'run:start', statuses: ACTIVE_WORKSPACE_STATUSES },
         () => Promise.resolve('admitted'),
       ).catch((error: unknown) => error);
       await waitForApplicationLock(admin, waitingApplication);
