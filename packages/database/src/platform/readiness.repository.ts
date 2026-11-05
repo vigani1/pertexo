@@ -3,8 +3,7 @@ import { sql } from 'drizzle-orm';
 import { QueryBuilder } from 'drizzle-orm/pg-core';
 import type { Pool } from 'pg';
 
-export const EXPECTED_MIGRATION_HEAD =
-  '0102_reconcile_timer_capacity_counters.sql';
+export const EXPECTED_MIGRATION_HEAD = '0103_preview_unclaimed_cleanup.sql';
 const MINIMUM_POSTGRES_MAJOR = 18;
 
 /**

@@ -43,3 +43,6 @@ export type {} from './runs/acceptance/preview-acceptance.types.js';
 
 // Lifecycle cancels undispatched previews in its deletion transaction.
 export type {} from './attempts/cancel-workspace-previews.repository.js';
+
+// Lifecycle supplies eventual cleanup when a preview delivery never claims it.
+export type {} from './attempts/expire-unclaimed-previews.repository.js';

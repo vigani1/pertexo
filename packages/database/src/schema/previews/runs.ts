@@ -206,6 +206,9 @@ export const previewRuns = appSchema.table(
       columns: [table.workspaceId, table.workflowId],
       foreignColumns: [workflows.workspaceId, workflows.id],
     }).onDelete('restrict'),
+    index('preview_runs_unfinished_deadline_idx')
+      .on(table.executionDeadlineAt, table.id)
+      .where(sql`${table.status} in ('queued','running')`),
     index('preview_runs_expiry_idx').on(table.expiresAt, table.id),
     index('preview_runs_workflow_created_idx').on(
       table.workspaceId,
