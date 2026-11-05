@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { requireReadableReceipt } from '../../shared/receipts.js';
+import { decodeStoredReceipt } from '../../shared/receipts.js';
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import {
@@ -192,9 +192,9 @@ function setPromotionTarget(
           },
         );
         if (stored !== null) {
-          requireReadableReceipt(targetReceipt, stored);
+          const result = decodeStoredReceipt(targetReceipt, stored);
           return {
-            ...stored,
+            ...result,
             replayed: true,
           };
         }

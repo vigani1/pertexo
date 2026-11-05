@@ -4,7 +4,7 @@ import { appendAuditFact } from '../../../governance/audit/facts.js';
 import type { Role } from '@pertexo/policy';
 import type { PoolClient } from 'pg';
 import type { z } from 'zod';
-import { requireReadableReceipt } from '../../../shared/receipts.js';
+import { decodeStoredReceipt } from '../../../shared/receipts.js';
 import { lockWorkflowAuthoringAuthority } from '../../workflows/authority.js';
 import type {
   AutoPauseCommandResult,
@@ -27,7 +27,7 @@ export function command<T>(
     workflowId?: string;
     roles: readonly Role[];
     request: unknown;
-    receipt: z.ZodType;
+    receipt: z.ZodType<T>;
     apply: (
       client: PoolClient,
       workspace: WorkspaceRow,
@@ -68,9 +68,9 @@ export function command<T>(
       resourceId: options.resourceId,
     });
     if (stored !== null) {
-      requireReadableReceipt(options.receipt, stored);
+      const settings = decodeStoredReceipt(options.receipt, stored);
       return Object.freeze({
-        settings: stored,
+        settings,
         replayed: true,
       });
     }

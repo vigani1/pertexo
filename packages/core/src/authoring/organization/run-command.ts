@@ -9,7 +9,7 @@ import { sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
 import type { z } from 'zod';
-import { requireReadableReceipt } from '../../shared/receipts.js';
+import { decodeStoredReceipt } from '../../shared/receipts.js';
 
 import {
   generatePersistedId,
@@ -31,9 +31,11 @@ export type OrganizationCommand<T> = Readonly<{
   idempotencyKey: string;
   request: unknown;
   /** The shape of the result this command stores, which a replay checks. */
-  receipt: z.ZodType;
+  receipt: z.ZodType<T>;
   /** Applies the change; runs under the workspace's organization lock. */
-  apply: () => Promise<Readonly<{ result: T; audit: OrganizationAudit }>>;
+  apply: () => Promise<
+    Readonly<{ result: NoInfer<T>; audit: OrganizationAudit }>
+  >;
   /** Checks that the actor may still see an earlier result of this command. */
   replay?: () => Promise<void>;
 }>;
@@ -77,9 +79,9 @@ export async function runOrganizationCommand<T>(
     resourceId: command.target ?? generatePersistedId(),
   });
   if (stored !== null) {
-    requireReadableReceipt(command.receipt, stored);
+    const result = decodeStoredReceipt(command.receipt, stored);
     await command.replay?.();
-    return { result: stored as T, replayed: true };
+    return { result, replayed: true };
   }
   await lockOrganization(client, scope.workspaceId);
   const { result, audit } = await command.apply();

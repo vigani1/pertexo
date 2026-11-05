@@ -86,6 +86,6 @@ export async function placeWorkflow(
         };
       },
     });
-    return Object.freeze({ ...placementResult.parse(result), replayed });
+    return Object.freeze({ ...result, replayed });
   });
 }

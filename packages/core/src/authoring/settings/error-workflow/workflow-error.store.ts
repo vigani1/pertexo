@@ -1,3 +1,5 @@
+import { decodeStoredReceipt } from '../../../shared/receipts.js';
+import { z } from 'zod';
 import {
   rethrowQueryFailure,
   claimCommand,
@@ -25,6 +27,14 @@ import type {
 import type { AuthoringAccess, WorkflowActor } from '../../workflows/access.js';
 import { WorkflowNotFoundError } from '../../workflows/workflow-authoring.errors.js';
 import { BROWSABLE_WORKSPACE_STATUSES } from '@pertexo/policy';
+
+/** The command output retained for exact retries. */
+const errorWorkflowReceipt = z
+  .object({
+    targetWorkflowId: z.uuid().nullable(),
+    revision: z.number().int().positive(),
+  })
+  .strict();
 
 const TARGETS_PAGE = 50;
 
@@ -208,7 +218,7 @@ async function updateErrorWorkflowSettings(
   });
   if (replay !== null)
     return {
-      settings: replay,
+      settings: decodeStoredReceipt(errorWorkflowReceipt, replay),
       replayed: true,
     };
   const policy = await readPolicy(

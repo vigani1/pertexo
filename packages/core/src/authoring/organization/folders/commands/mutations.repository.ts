@@ -255,11 +255,11 @@ export async function deleteFolder(
           )
           .catch(rethrowQueryFailure);
         return {
-          result: { folderId, deleted: true },
+          result: { folderId, deleted: true as const },
           audit: { action: 'workflow.folder.delete', targetId: folderId },
         };
       },
     });
-    return Object.freeze({ ...deleteResult.parse(result), replayed });
+    return Object.freeze({ ...result, replayed });
   });
 }

@@ -1,3 +1,4 @@
+import { decodeStoredValue } from './stored-values.js';
 import { IdempotencyConflictError } from '@pertexo/database/platform';
 import { z } from 'zod';
 
@@ -66,4 +67,12 @@ export function requireReadableReceipt(
   stored: unknown,
 ): void {
   if (!shape.safeParse(stored).success) throw new IdempotencyConflictError();
+}
+
+/** Decode command output where persisted JSON enters the application. */
+export function decodeStoredReceipt<T>(
+  shape: z.ZodType<T>,
+  stored: unknown,
+): T {
+  return decodeStoredValue(() => shape.parse(stored));
 }

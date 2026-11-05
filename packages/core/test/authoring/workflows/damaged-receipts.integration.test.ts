@@ -1,4 +1,4 @@
-import { IdempotencyConflictError } from '@pertexo/database/platform';
+import { isStoredDataError } from '../../../src/shared/stored-values.js';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
   actorId,
@@ -44,7 +44,7 @@ async function retryOverDamage<T>(operation: string, run: () => Promise<T>) {
   return run();
 }
 
-describe('a damaged receipt is refused as a conflict, not a crash', () => {
+describe('a damaged receipt is reported as stored-data corruption', () => {
   it('creating a workflow', async () => {
     const idempotencyKey = randomUUID();
     await expect(
@@ -56,7 +56,7 @@ describe('a damaged receipt is refused as a conflict, not a crash', () => {
           idempotencyKey,
         }),
       ),
-    ).rejects.toBeInstanceOf(IdempotencyConflictError);
+    ).rejects.toSatisfy(isStoredDataError);
   });
 
   it('duplicating a workflow', async () => {
@@ -78,7 +78,7 @@ describe('a damaged receipt is refused as a conflict, not a crash', () => {
           idempotencyKey,
         }),
       ),
-    ).rejects.toBeInstanceOf(IdempotencyConflictError);
+    ).rejects.toSatisfy(isStoredDataError);
   });
 
   it('publishing a workflow', async () => {
@@ -99,7 +99,7 @@ describe('a damaged receipt is refused as a conflict, not a crash', () => {
           idempotencyKey,
         }),
       ),
-    ).rejects.toBeInstanceOf(IdempotencyConflictError);
+    ).rejects.toSatisfy(isStoredDataError);
   });
 
   it('renaming and archiving a workflow', async () => {
@@ -115,7 +115,7 @@ describe('a damaged receipt is refused as a conflict, not a crash', () => {
           idempotencyKey: renameKey,
         }),
       ),
-    ).rejects.toBeInstanceOf(IdempotencyConflictError);
+    ).rejects.toSatisfy(isStoredDataError);
     const archiveKey = randomUUID();
     await expect(
       retryOverDamage('workflow.archive', () =>
@@ -127,7 +127,7 @@ describe('a damaged receipt is refused as a conflict, not a crash', () => {
           idempotencyKey: archiveKey,
         }),
       ),
-    ).rejects.toBeInstanceOf(IdempotencyConflictError);
+    ).rejects.toSatisfy(isStoredDataError);
   });
 
   it('changing auto-pause settings', async () => {
@@ -147,7 +147,7 @@ describe('a damaged receipt is refused as a conflict, not a crash', () => {
           idempotencyKey: workflowKey,
         }),
       ),
-    ).rejects.toBeInstanceOf(IdempotencyConflictError);
+    ).rejects.toSatisfy(isStoredDataError);
     const { revision } =
       await authoring.autoPause.readWorkspaceSettings(scope());
     const workspaceKey = randomUUID();
@@ -160,7 +160,7 @@ describe('a damaged receipt is refused as a conflict, not a crash', () => {
           idempotencyKey: workspaceKey,
         }),
       ),
-    ).rejects.toBeInstanceOf(IdempotencyConflictError);
+    ).rejects.toSatisfy(isStoredDataError);
   });
 
   it('importing a workflow', async () => {
@@ -168,6 +168,76 @@ describe('a damaged receipt is refused as a conflict, not a crash', () => {
     const input = command();
     await expect(
       retryOverDamage('workflow.import', () => store.importWorkflow(input)),
-    ).rejects.toBeInstanceOf(IdempotencyConflictError);
+    ).rejects.toSatisfy(isStoredDataError);
+  });
+  it('tags a receipt that names a different workflow as stored corruption', async () => {
+    const workflowId = await newWorkflow();
+    const input = {
+      ...scope(),
+      workflowId,
+      name: 'Renamed safely',
+      expectedNameRevision: 1,
+      idempotencyKey: randomUUID(),
+    };
+    await authoring.renameWorkflow(input);
+    await queryAsOwner(
+      `update app.idempotency_records set result_ref=jsonb_set(result_ref,'{workflow,id}',to_jsonb($3::text)) where workspace_id=$1 and resource_id=$2 and operation='workflow.rename'`,
+      [workspaceId, workflowId, randomUUID()],
+      workspaceId,
+    );
+    await expect(authoring.renameWorkflow(input)).rejects.toSatisfy(
+      isStoredDataError,
+    );
+  });
+
+  it('changing concurrency settings', async () => {
+    const workflowId = await newWorkflow();
+    const actor = { ...scope(), workflowId };
+    const current = await authoring.concurrency.readSettings(actor);
+    const input = {
+      ...actor,
+      limit: null,
+      expectedRevision: current.revision,
+      idempotencyKey: randomUUID(),
+    };
+    await expect(
+      retryOverDamage('workflow.concurrency', () =>
+        authoring.concurrency.updateSettings(input),
+      ),
+    ).rejects.toSatisfy(isStoredDataError);
+  });
+
+  it('changing the error workflow', async () => {
+    const workflowId = await newWorkflow();
+    const actor = { ...scope(), workflowId };
+    const current = await authoring.errorWorkflow.readSettings(actor);
+    const input = {
+      ...actor,
+      targetWorkflowId: null,
+      expectedRevision: current.revision,
+      idempotencyKey: randomUUID(),
+    };
+    await expect(
+      retryOverDamage('workflow.error.policy', () =>
+        authoring.errorWorkflow.updateSettings(input),
+      ),
+    ).rejects.toSatisfy(isStoredDataError);
+  });
+
+  it('creating a discussion', async () => {
+    const workflowId = await newWorkflow();
+    const input = {
+      ...scope(),
+      workflowId,
+      body: 'Keep this discussion',
+      stepId: null,
+      mentionUserIds: [],
+      idempotencyKey: randomUUID(),
+    };
+    await expect(
+      retryOverDamage('workflow.comment.created', () =>
+        authoring.collaboration.create(input),
+      ),
+    ).rejects.toSatisfy(isStoredDataError);
   });
 });

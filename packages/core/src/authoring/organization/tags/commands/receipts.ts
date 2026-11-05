@@ -51,7 +51,7 @@ export function tagCommand(
         };
       },
     });
-    return Object.freeze({ ...tagResult.parse(result), replayed });
+    return Object.freeze({ ...result, replayed });
   });
 }
 
@@ -97,13 +97,13 @@ export function assignmentCommand<T extends object>(
             expectedOrganizationRevision,
           });
           return {
-            result: {
+            result: schema.parse({
               workflowId,
               organizationRevision,
               ...(change.kind === 'replace_tags'
                 ? { tagIds: change.tagIds }
                 : {}),
-            },
+            }),
             audit: {
               action: `workflow.${operation}`,
               targetId: workflowId,
@@ -112,7 +112,7 @@ export function assignmentCommand<T extends object>(
           };
         },
       });
-      return Object.freeze({ ...schema.parse(result), replayed });
+      return Object.freeze({ ...result, replayed });
     },
   );
 }

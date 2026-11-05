@@ -28,12 +28,36 @@ import {
 import type { OrganizationActor } from '../session.js';
 import { runOrganizationCommand } from '../run-command.js';
 
-/** What replacing a folder's sharing stored. */
-const sharingReceipt = z.object({
-  revision: z.number(),
-  mode: z.string(),
-  grants: z.array(z.unknown()),
-});
+/** The command output retained for exact retries. */
+const sharingReceipt = z
+  .object({
+    folderId: z.uuid(),
+    revision: z.number().int().positive(),
+    mode: z.enum(['workspace', 'restricted']),
+    grants: z
+      .array(
+        z.discriminatedUnion('kind', [
+          z
+            .object({
+              kind: z.literal('member'),
+              userId: z.uuid(),
+              access: z.enum(['viewer', 'editor']),
+            })
+            .strict(),
+          z
+            .object({
+              kind: z.literal('group'),
+              organizationId: z.uuid(),
+              groupId: z.uuid(),
+              access: z.enum(['viewer', 'editor']),
+            })
+            .strict(),
+        ]),
+      )
+      .max(FOLDER_GRANT_LIMIT),
+    labels: z.record(z.uuid(), z.string()).optional(),
+  })
+  .strict();
 
 export async function readFolderSharing(
   client: PoolClient,

@@ -48,6 +48,6 @@ export function folderCommand(
         };
       },
     });
-    return Object.freeze({ ...folderResult.parse(result), replayed });
+    return Object.freeze({ ...result, replayed });
   });
 }

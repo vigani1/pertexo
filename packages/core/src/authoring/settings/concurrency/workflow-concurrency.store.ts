@@ -1,3 +1,5 @@
+import { decodeStoredReceipt } from '../../../shared/receipts.js';
+import { z } from 'zod';
 import {
   rethrowQueryFailure,
   claimCommand,
@@ -22,6 +24,24 @@ import {
 import { RUN_SUMMARY_RETENTION_SQL } from '../../../runs/data-policy.js';
 import type { AuthoringAccess, WorkflowActor } from '../../workflows/access.js';
 import { WorkflowNotFoundError } from '../../workflows/workflow-authoring.errors.js';
+
+/** The command output retained for exact retries. */
+const concurrencyReceipt = z
+  .object({
+    asOf: z.iso.datetime({ precision: 6 }),
+    limit: z.number().int().positive().nullable(),
+    revision: z.number().int().positive(),
+    workspaceActiveRunLimit: z.number().int().positive().nullable(),
+    workspacePolicyState: z.enum([
+      'active',
+      'suspended',
+      'not_yet_effective',
+      'expired',
+      'unavailable',
+    ]),
+    overflow: z.enum(['queue', 'skip']),
+  })
+  .strict();
 
 const RECENT_SKIPS_SHOWN = 20;
 
@@ -243,7 +263,7 @@ async function updateConcurrencySettings(
   });
   if (stored !== null)
     return Object.freeze({
-      settings: stored,
+      settings: decodeStoredReceipt(concurrencyReceipt, stored),
       replayed: true,
     });
   // Run grants read the limit under the workspace's admission counter.

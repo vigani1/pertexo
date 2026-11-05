@@ -1,9 +1,23 @@
+import { decodeStoredReceipt } from '../../shared/receipts.js';
+import { z } from 'zod';
 import type { PoolClient } from 'pg';
 import type { WorkflowCommentCommandResult } from '@pertexo/contracts';
 import { claimCommand, completeCommand } from '@pertexo/database/primitives';
 import { appendAuditFact } from '../../governance/audit/facts.js';
 import type { EnterCollaboration } from './authority.repository.js';
 import type { CollaborationCommand } from './workflow-collaboration.types.js';
+
+/** The command output retained for exact retries. */
+const commentReceipt = z
+  .object({
+    threadId: z.uuid(),
+    commentId: z.uuid().nullable(),
+    revision: z.number().int().positive(),
+    replayed: z.boolean(),
+    deleted: z.boolean(),
+    threadDeleted: z.boolean(),
+  })
+  .strict();
 export function runCommentCommand(
   enter: EnterCollaboration,
   input: CollaborationCommand,
@@ -33,7 +47,7 @@ export function runCommentCommand(
     });
     if (stored !== null)
       return {
-        ...stored,
+        ...decodeStoredReceipt(commentReceipt, stored),
         replayed: true,
       };
     const result = await write(client);
