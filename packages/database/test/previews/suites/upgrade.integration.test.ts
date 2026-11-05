@@ -160,6 +160,7 @@ it('upgrades a populated standalone test without changing its source identity or
       '0100_core_run_admission.sql',
       '0101_restore_timer_capacity_triggers.sql',
       '0102_reconcile_timer_capacity_counters.sql',
+      '0103_preview_unclaimed_cleanup.sql',
     ]);
     expect(
       (
