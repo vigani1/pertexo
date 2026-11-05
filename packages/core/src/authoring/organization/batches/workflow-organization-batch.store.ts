@@ -1,3 +1,4 @@
+import { decodeStoredReceipt } from '../../../shared/receipts.js';
 import {
   ACTIVE_WORKSPACE_STATUSES,
   type AuthorizationCapability,
@@ -103,6 +104,11 @@ export function createWorkflowOrganizationBatchStore(
           });
           if (stored === null)
             await completeCommand(client, identity, { admitted: true });
+          else
+            decodeStoredReceipt(
+              z.object({ admitted: z.literal(true) }),
+              stored,
+            );
           return Object.freeze({ admitted: true as const });
         },
       );
@@ -175,7 +181,7 @@ export function createWorkflowOrganizationBatchStore(
               },
             },
           );
-          const { folderId, ...parsed } = itemResult.parse(result);
+          const { folderId, ...parsed } = result;
           return Object.freeze({
             ...parsed,
             ...(folderId === undefined ? {} : { folderId }),

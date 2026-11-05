@@ -1,5 +1,4 @@
 import { decodeStoredValue } from '../../shared/stored-values.js';
-import { requireReadableReceipt } from '../../shared/receipts.js';
 import { ACTIVE_WORKSPACE_STATUSES } from '@pertexo/policy';
 import { writePromotedDraft } from './writes/persist-candidate.js';
 import type { WorkspaceScopeRunner } from '@pertexo/database/primitives';
@@ -57,7 +56,6 @@ export async function applyPromotion(
     (client) => findCommandResult(client, { ...command, request }),
   );
   if (completed !== null) {
-    requireReadableReceipt(promotionReceiptSchema, completed);
     const stored = decodeStoredValue(() =>
       promotionReceiptSchema.parse(completed),
     );
@@ -109,7 +107,6 @@ export async function applyPromotion(
         claimCommand(client, { ...command, resourceId: promotionId, request }),
     );
     if (replay !== null) {
-      requireReadableReceipt(promotionReceiptSchema, replay);
       const stored = decodeStoredValue(() =>
         promotionReceiptSchema.parse(replay),
       );

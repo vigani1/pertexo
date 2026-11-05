@@ -1,7 +1,6 @@
 import { readFolderScope } from '../../shared/facts.repository.js';
 import { requireWorkflowInScope } from '../workflows/access.js';
 import { decodeStoredValue } from '../../shared/stored-values.js';
-import { requireReadableReceipt } from '../../shared/receipts.js';
 import {
   rethrowQueryFailure,
   claimCommand,
@@ -194,7 +193,6 @@ function importPortableWorkflow(
         resourceId: destinationId,
       });
       if (stored !== null) {
-        requireReadableReceipt(importResultSchema, stored);
         const replay = decodeStoredValue(() =>
           importResultSchema.parse(stored),
         );

@@ -12,11 +12,7 @@ import {
 } from '../../support/better-auth/real-api.support.js';
 import { emptyWorkflowGraph } from '../../workspaces/real-api/graphs.js';
 
-/**
- * Core's tests stop at the store's error. These prove what the caller gets: the
- * same 409 through each flow's real route, never a 500 or a "not found" for
- * something that exists.
- */
+/** Damaged stored output is an internal failure, never invalid caller input. */
 describe.skipIf(!betterAuthIntegrationEnabled)(
   'a damaged receipt reaching a route',
   () => {
@@ -52,8 +48,8 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
       return send();
     }
 
-    function expectConflict(reply: Reply) {
-      expectProblem(reply, 409, 'request.idempotency_conflict');
+    function expectStoredFailure(reply: Reply) {
+      expectProblem(reply, 500, 'internal.unexpected');
     }
 
     async function newWorkflow() {
@@ -98,7 +94,7 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
     }, 60_000);
 
     it('creating a workflow', async () => {
-      expectConflict(
+      expectStoredFailure(
         await retryOverDamage('workflow.create', {
           method: 'POST',
           url: `${root}/workflows`,
@@ -109,7 +105,7 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
 
     it('duplicating a workflow', async () => {
       const { id, tag } = await savedWorkflow();
-      expectConflict(
+      expectStoredFailure(
         await retryOverDamage('workflow.duplicate', {
           method: 'POST',
           url: `${root}/workflows/${id}/duplicate`,
@@ -121,7 +117,7 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
 
     it('publishing a workflow', async () => {
       const { id, tag } = await savedWorkflow();
-      expectConflict(
+      expectStoredFailure(
         await retryOverDamage('workflow.publish', {
           method: 'POST',
           url: `${root}/workflows/${id}/publish`,
@@ -132,7 +128,7 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
 
     it('renaming a workflow', async () => {
       const { id } = await newWorkflow();
-      expectConflict(
+      expectStoredFailure(
         await retryOverDamage('workflow.rename', {
           method: 'POST',
           url: `${root}/workflows/${id}/rename`,
@@ -143,7 +139,7 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
 
     it('archiving a workflow', async () => {
       const { id } = await newWorkflow();
-      expectConflict(
+      expectStoredFailure(
         await retryOverDamage('workflow.archive', {
           method: 'POST',
           url: `${root}/workflows/${id}/archive`,
@@ -154,7 +150,7 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
 
     it("changing a workflow's auto-pause", async () => {
       const { id } = await newWorkflow();
-      expectConflict(
+      expectStoredFailure(
         await retryOverDamage('workflow.autopause.settings', {
           method: 'PUT',
           url: `${root}/workflows/${id}/auto-pause`,
@@ -169,7 +165,7 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
 
     it("resuming a workflow's triggers", async () => {
       const { id } = await newWorkflow();
-      expectConflict(
+      expectStoredFailure(
         await retryOverDamage('workflow.autopause.resume', {
           method: 'POST',
           url: `${root}/workflows/${id}/resume`,
@@ -183,7 +179,7 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
         browser: owner,
       });
       const { revision } = current.json<{ revision: number }>();
-      expectConflict(
+      expectStoredFailure(
         await retryOverDamage('workspace.autopause.settings', {
           method: 'PUT',
           url: `${root}/auto-pause`,
@@ -192,8 +188,63 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
       );
     });
 
+    it('changing concurrency settings', async () => {
+      const { id } = await newWorkflow();
+      const current = await api.send(
+        'GET',
+        `${root}/workflows/${id}/concurrency`,
+        { browser: owner },
+      );
+      expect(current.statusCode, current.payload).toBe(200);
+      expectStoredFailure(
+        await retryOverDamage('workflow.concurrency', {
+          method: 'PUT',
+          url: `${root}/workflows/${id}/concurrency`,
+          payload: {
+            limit: null,
+            expectedRevision: current.json<{ revision: number }>().revision,
+          },
+        }),
+      );
+    });
+
+    it('changing the error workflow', async () => {
+      const { id } = await newWorkflow();
+      const current = await api.send(
+        'GET',
+        `${root}/workflows/${id}/error-workflow`,
+        { browser: owner },
+      );
+      expect(current.statusCode, current.payload).toBe(200);
+      expectStoredFailure(
+        await retryOverDamage('workflow.error.policy', {
+          method: 'PUT',
+          url: `${root}/workflows/${id}/error-workflow`,
+          payload: {
+            targetWorkflowId: null,
+            expectedRevision: current.json<{ revision: number }>().revision,
+          },
+        }),
+      );
+    });
+
+    it('creating a discussion', async () => {
+      const { id } = await newWorkflow();
+      expectStoredFailure(
+        await retryOverDamage('workflow.comment.created', {
+          method: 'POST',
+          url: `${root}/workflows/${id}/comments`,
+          payload: {
+            body: 'Keep this discussion',
+            stepId: null,
+            mentionUserIds: [],
+          },
+        }),
+      );
+    });
+
     it('creating a folder', async () => {
-      expectConflict(
+      expectStoredFailure(
         await retryOverDamage('folder.create', {
           method: 'POST',
           url: `${root}/workflow-folders`,
@@ -203,7 +254,7 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
     });
 
     it('creating a tag', async () => {
-      expectConflict(
+      expectStoredFailure(
         await retryOverDamage('tag.create', {
           method: 'POST',
           url: `${root}/workflow-tags`,
@@ -243,7 +294,7 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
         },
       );
       expect(preview.statusCode, preview.payload).toBe(200);
-      expectConflict(
+      expectStoredFailure(
         await retryOverDamage('workflow.import', {
           method: 'POST',
           url: `${root}/workflows/import`,
@@ -269,7 +320,7 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
         },
       });
       expect(target.statusCode, target.payload).toBe(201);
-      expectConflict(
+      expectStoredFailure(
         await retryOverDamage('workspace.promotion.target', {
           method: 'PUT',
           url: `${root}/promotions/settings`,

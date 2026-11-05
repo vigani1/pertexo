@@ -20,7 +20,7 @@ import { lockArtifactReferences } from '../../../artifacts/references/locks.repo
 import { readFolderScope } from '../../../shared/facts.repository.js';
 import { requireWorkflowCallTargets } from '../../../tenant-access/resources/bindings.repository.js';
 import { requireConnectionBindings } from '../../../tenant-access/resources/connections/bindings.repository.js';
-import { requireReadableReceipt } from '../../../shared/receipts.js';
+import { decodeStoredReceipt } from '../../../shared/receipts.js';
 import { requireWorkflowInScope } from '../access.js';
 import { createdWorkflowReceipt } from '../receipts.repository.js';
 import type { AuthoringCatalogs } from '../catalogs.js';
@@ -79,8 +79,7 @@ export async function createWorkflow(
   });
   let createdId = workflowId;
   if (stored !== null) {
-    requireReadableReceipt(createdWorkflowReceipt, stored);
-    createdId = stored.workflowId;
+    createdId = decodeStoredReceipt(createdWorkflowReceipt, stored).workflowId;
     await requireWorkflowInScope(
       client,
       await readFolderScope(client, input, role),

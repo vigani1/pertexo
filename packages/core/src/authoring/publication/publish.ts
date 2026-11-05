@@ -61,7 +61,7 @@ import type {
   PublicationCandidateInput,
   PublicationClaim,
 } from './workflow-publication.types.js';
-import { requireReadableReceipt } from '../../shared/receipts.js';
+import { decodeStoredReceipt } from '../../shared/receipts.js';
 import { executableSchema, publicationReceipt } from './input.js';
 import {
   finalizePublication,
@@ -91,8 +91,7 @@ async function claimPublication(
   });
   if (stored === null)
     return Object.freeze({ command, replay: null, workflowId });
-  requireReadableReceipt(publicationReceipt, stored);
-  const { versionId, reused } = stored;
+  const { versionId, reused } = decodeStoredReceipt(publicationReceipt, stored);
   const [row] = await drizzle(client)
     .select(versionProjection)
     .from(workflowVersions)

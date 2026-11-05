@@ -191,7 +191,7 @@ export async function deleteTagCommand(
         requireRevision(current, request.expectedTagRevision);
         const detachedWorkflowCount = await deleteTag(client, scope, tagId);
         return {
-          result: { tagId, deleted: true, detachedWorkflowCount },
+          result: { tagId, deleted: true as const, detachedWorkflowCount },
           audit: {
             action: 'workflow.tag.delete',
             targetId: tagId,
@@ -200,7 +200,7 @@ export async function deleteTagCommand(
         };
       },
     });
-    return Object.freeze({ ...deleteResult.parse(result), replayed });
+    return Object.freeze({ ...result, replayed });
   });
 }
 
