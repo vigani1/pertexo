@@ -1,3 +1,4 @@
+import { requireActivePreviewWorkspace } from './workspace-fence.repository.js';
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { Pool } from 'pg';
@@ -27,6 +28,7 @@ export async function heartbeatPreviewLease(
     pool,
     { workspaceId: scope.workspaceId },
     async (client) => {
+      await requireActivePreviewWorkspace(client, scope.workspaceId);
       const result = await drizzle(client)
         .update(previewAttempts)
         .set({

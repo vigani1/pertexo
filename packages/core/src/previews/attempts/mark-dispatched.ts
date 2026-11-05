@@ -1,3 +1,4 @@
+import { lockWorkspaceRunAdmission } from '../../shared/workspace-fence.repository.js';
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { Pool } from 'pg';
@@ -30,6 +31,10 @@ export async function markPreviewDispatched(
     pool,
     { workspaceId: scope.workspaceId },
     async (client) => {
+      const workspaceStatus = await lockWorkspaceRunAdmission(
+        drizzle(client),
+        scope.workspaceId,
+      );
       if (scope.connectionFence !== undefined) {
         const current = await isConnectionFenceCurrent(
           client,
@@ -44,6 +49,8 @@ export async function markPreviewDispatched(
         if (!current)
           throw new PreviewAttemptStateError('connection_fence_failed');
       }
+      if (workspaceStatus !== 'active')
+        throw new PreviewAttemptStateError('workspace_unavailable');
       const db = drizzle(client);
       const ownsLiveLease = and(
         eq(previewAttempts.workspaceId, scope.workspaceId),
