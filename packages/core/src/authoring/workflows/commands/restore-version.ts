@@ -1,3 +1,7 @@
+import { canonicalJson } from '@pertexo/workflow-model';
+import type { WorkflowGraph } from '@pertexo/workflow-model';
+import type { FolderScope } from '../../../shared/folder-access.types.js';
+import { duplicateWorkflow } from './duplicate.js';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { appendAuditFact } from '../../../governance/audit/facts.js';
 import { and, eq, exists, sql } from 'drizzle-orm';
@@ -6,6 +10,7 @@ import type { PoolClient } from 'pg';
 import { lockArtifactReferences } from '../../../artifacts/references/locks.repository.js';
 import {
   workflowDrafts,
+  workflowOrganizationState,
   workflows,
   workflowVersions,
 } from '@pertexo/database/schema';
@@ -33,8 +38,10 @@ import {
 export async function restoreWorkflowVersion(
   client: PoolClient,
   input: RestoreWorkflowVersionInput,
-  { definitionCatalog, placementDefinitionCatalog }: AuthoringCatalogs,
-): Promise<WorkflowDraftRecord> {
+  catalogs: AuthoringCatalogs,
+  scope: FolderScope,
+): Promise<WorkflowDraftRecord & Readonly<{ recoveryCopyId: string | null }>> {
+  const { definitionCatalog, placementDefinitionCatalog } = catalogs;
   const workspaceId = input.workspaceId;
   const workflowId = input.workflowId;
   const versionId = input.versionId;
@@ -77,6 +84,12 @@ export async function restoreWorkflowVersion(
     workspaceId,
     sourceVersion.graphJson,
     actorId,
+  );
+  const recoveryCopyId = await preserveUnpublishedDraft(
+    client,
+    input,
+    catalogs,
+    { scope, current: currentDraft, restoredGraph: sourceVersion.graphJson },
   );
   const visible = db
     .select({ id: workflows.id })
@@ -130,7 +143,7 @@ export async function restoreWorkflowVersion(
       sourceVersionId: sourceVersion.id,
     },
   });
-  return restoredDraft;
+  return { ...restoredDraft, recoveryCopyId };
 }
 
 async function readRestorationSource(
@@ -159,4 +172,72 @@ async function readRestorationSource(
   if (sourceRow === undefined)
     throw new WorkflowNotFoundError('Workflow version is not visible');
   return projectVersion(sourceRow);
+}
+
+async function preserveUnpublishedDraft(
+  client: PoolClient,
+  input: RestoreWorkflowVersionInput,
+  catalogs: AuthoringCatalogs,
+  {
+    scope,
+    current,
+    restoredGraph,
+  }: Readonly<{
+    scope: FolderScope;
+    current: WorkflowDraftRecord;
+    restoredGraph: WorkflowGraph;
+  }>,
+): Promise<string | null> {
+  const displaced = canonicalJson(current.graphJson);
+  if (displaced === canonicalJson(restoredGraph)) return null;
+  const db = drizzle(client);
+  const [workflow] = await db
+    .select({
+      name: workflows.name,
+      publishedVersionId: workflows.publishedVersionId,
+      folderId: workflowOrganizationState.folderId,
+      date: sql<string>`to_char(transaction_timestamp() at time zone 'UTC','YYYY-MM-DD')`,
+    })
+    .from(workflows)
+    .leftJoin(
+      workflowOrganizationState,
+      and(
+        eq(workflowOrganizationState.workspaceId, workflows.workspaceId),
+        eq(workflowOrganizationState.workflowId, workflows.id),
+      ),
+    )
+    .where(
+      and(
+        eq(workflows.workspaceId, input.workspaceId),
+        eq(workflows.id, input.workflowId),
+      ),
+    )
+    .catch(rethrowQueryFailure);
+  if (workflow === undefined)
+    throw new WorkflowNotFoundError('Workflow is not visible');
+  if (workflow.publishedVersionId !== null) {
+    const published = await readRestorationSource(client, {
+      ...input,
+      versionId: workflow.publishedVersionId,
+    });
+    if (displaced === canonicalJson(published.graphJson)) return null;
+  }
+  const suffix = ` (unpublished draft, ${workflow.date})`;
+  const name =
+    workflow.name
+      .slice(0, 128 - suffix.length)
+      .replace(/[\uD800-\uDBFF]$/u, '') + suffix;
+  const copy = await duplicateWorkflow(
+    client,
+    {
+      ...input,
+      folderId: workflow.folderId,
+      name,
+      source: { kind: 'draft' },
+      idempotencyKey: `restore:${String(current.revision)}:${input.versionId}`,
+    },
+    catalogs,
+    scope,
+  );
+  return copy.workflowId;
 }

@@ -15,6 +15,9 @@ import { canonicalizeJson } from '@/lib/canonical-json';
 export type RestoreRecovery =
   'check-outcome' | 'retry-original' | 'confirm-replacement';
 
+type RestoreSuccess = Readonly<{ recoveryCopyId: string | null }>;
+type RestoreResult = RestoreSuccess | false;
+
 interface RestoreAttempt {
   version: WorkflowVersionResponse;
   expectedEtag: string;
@@ -47,28 +50,28 @@ export function useWorkflowVersionRestore({
   const pendingRef = useRef(false);
   const attemptRef = useRef<RestoreAttempt | undefined>(undefined);
 
-  async function complete() {
+  async function complete(copyId: string | null = null) {
     attemptRef.current = undefined;
     setRecovery(undefined);
     setError(undefined);
     await queryClient.invalidateQueries({
       queryKey: workflowDraftKeys.detail(userId, workspaceId, workflowId),
     });
-    return true;
+    return { recoveryCopyId: copyId };
   }
 
   function recover(
     attempt: RestoreAttempt,
     mode: RestoreRecovery,
     message: string,
-  ) {
+  ): false {
     attempt.mode = mode;
     setRecovery(mode);
     setError(message);
     return false;
   }
 
-  async function reconcile() {
+  async function reconcile(): Promise<RestoreResult> {
     const attempt = attemptRef.current;
     if (attempt === undefined) return false;
     try {
@@ -103,7 +106,9 @@ export function useWorkflowVersionRestore({
     }
   }
 
-  async function send(version: WorkflowVersionResponse): Promise<boolean> {
+  async function send(
+    version: WorkflowVersionResponse,
+  ): Promise<RestoreResult> {
     let attempt = attemptRef.current;
     if (attempt === undefined) {
       const snapshot = await getWorkflowDraft(
@@ -124,19 +129,20 @@ export function useWorkflowVersionRestore({
       if (attempt.replacementEtag === undefined) return false;
       attempt.expectedEtag = attempt.replacementEtag;
       delete attempt.replacementEtag;
-      attempt.uncertain = false;
     }
-    await restoreWorkflowVersion({
+    const restored = await restoreWorkflowVersion({
       apiClient,
       workspaceId,
       workflowId,
       versionId: attempt.version.id,
       etag: attempt.expectedEtag,
     });
-    return complete();
+    return complete(restored.recoveryCopyId);
   }
 
-  async function restore(version: WorkflowVersionResponse) {
+  async function restore(
+    version: WorkflowVersionResponse,
+  ): Promise<RestoreResult> {
     if (pendingRef.current) return false;
     pendingRef.current = true;
     setPending(true);

@@ -17,6 +17,7 @@ import type { PoolClient } from 'pg';
 import { lockArtifactReferences } from '../../../artifacts/references/locks.repository.js';
 import {
   workflowTemplateOrigins,
+  workflowOrganizationState,
   workflowDrafts,
   workflows,
   workflowVersions,
@@ -109,6 +110,7 @@ export async function duplicateWorkflow(
     ...command,
     request: {
       name: input.name,
+      ...(input.folderId === undefined ? {} : { folderId: input.folderId }),
       source: input.source,
       representationTag:
         input.source.kind === 'draft' ? input.representationTag : null,
@@ -140,6 +142,8 @@ export async function duplicateWorkflow(
   }
   if (sourceRow.lifecycle_status !== 'active')
     throw new WorkflowNotFoundError('Workflow source is not visible');
+  if (!scope.permits(input.folderId ?? null, 'workflow:create'))
+    throw new WorkflowNotFoundError('Workflow destination is not visible');
   const graph = await selectedGraph(client, input, definitionCatalog);
   requirePlaceableDefinitionAdditions(
     EMPTY_WORKFLOW_GRAPH,
@@ -180,6 +184,16 @@ async function persistDuplicate(
       createdBy: input.actorId,
     })
     .catch(rethrowQueryFailure);
+  if (input.folderId != null)
+    await db
+      .insert(workflowOrganizationState)
+      .values({
+        workspaceId: input.workspaceId,
+        workflowId: destinationId,
+        folderId: input.folderId,
+        revision: 1,
+      })
+      .catch(rethrowQueryFailure);
   await db
     .insert(workflowDrafts)
     .values({

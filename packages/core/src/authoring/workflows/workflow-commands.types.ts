@@ -76,6 +76,8 @@ export type CreateWorkflowResult = Readonly<{
   draft: WorkflowDraftRecord;
 }>;
 export type DuplicateWorkflowInput = Readonly<{
+  /** Internal destination; omitted duplicates into the workspace root. */
+  folderId?: string | null;
   workspaceId: string;
   workflowId: string;
   actorId: string;

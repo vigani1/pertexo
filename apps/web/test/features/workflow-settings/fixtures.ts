@@ -167,10 +167,15 @@ export function graphWithNode(label: string) {
   };
 }
 
-export function draftResponse(currentGraph: unknown, currentEtag: string) {
+export function draftResponse(
+  currentGraph: unknown,
+  currentEtag: string,
+  recoveryCopyId?: string | null,
+) {
   return HttpResponse.json(
     {
       workflowId,
+      ...(recoveryCopyId === undefined ? {} : { recoveryCopyId }),
       revision: draftRevision(currentEtag),
       graph: currentGraph,
       compatibility,

@@ -95,8 +95,11 @@ export function createWorkflowAuthoringStore(
         saveDraft(client, input, catalogs),
       ),
     restoreWorkflowVersion: (input: RestoreWorkflowVersionInput) =>
-      access.workflow(input, { capability: 'workflow:update' }, (client) =>
-        restoreWorkflowVersion(client, input, catalogs),
+      access.workflow(
+        input,
+        { capability: 'workflow:update' },
+        (client, scope) =>
+          restoreWorkflowVersion(client, input, catalogs, scope),
       ),
     duplicateWorkflow: (input: DuplicateWorkflowInput) =>
       access.workflow(
