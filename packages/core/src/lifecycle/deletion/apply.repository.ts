@@ -1,3 +1,4 @@
+import { cancelUndispatchedWorkspacePreviews } from '../../previews/attempts/cancel-workspace-previews.repository.js';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { appendAuditFact } from '../../governance/audit/facts.js';
 import type {
@@ -186,6 +187,7 @@ async function applyDeletionSideEffects(
     )
     .catch(rethrowQueryFailure);
   await cancelPendingInvitations(client, workspaceId);
+  await cancelUndispatchedWorkspacePreviews(client, workspaceId);
   await requestActiveRunCancellations(
     Object.freeze({
       db: drizzle(client, { schema: databaseSchema }),

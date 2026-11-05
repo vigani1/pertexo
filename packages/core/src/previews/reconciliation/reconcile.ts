@@ -1,3 +1,4 @@
+import { lockWorkspaceRunAdmission } from '../../shared/workspace-fence.repository.js';
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import type {
   PreviewDeliveryReconciliationResult,
@@ -147,6 +148,7 @@ export async function reconcilePreviewDelivery(
         pool,
         { workspaceId: scope.workspaceId },
         async (client): Promise<PreviewDeliveryReconciliationResult> => {
+          await lockWorkspaceRunAdmission(drizzle(client), input.workspaceId);
           const payload = await validatePreviewReconciliationDelivery(client, {
             attemptFenceToken: scope.attemptFenceToken,
             delivery: input.delivery,

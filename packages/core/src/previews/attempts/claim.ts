@@ -1,3 +1,4 @@
+import { requireActivePreviewWorkspace } from './workspace-fence.repository.js';
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { Pool, PoolClient } from 'pg';
@@ -119,6 +120,7 @@ export async function claimPreviewDelivery(
         pool,
         { workspaceId: input.workspaceId },
         async (client): Promise<PreviewClaimResult> => {
+          await requireActivePreviewWorkspace(client, input.workspaceId);
           await validatePreviewDelivery(client, {
             delivery: input.delivery,
             previewAttemptId: input.previewAttemptId,

@@ -1,3 +1,4 @@
+import { lockWorkspaceRunAdmission } from '../../shared/workspace-fence.repository.js';
 import type { CodeDiagnostics } from '@pertexo/node-sdk';
 import { canonicalJson } from '@pertexo/workflow-model';
 import {
@@ -116,6 +117,7 @@ export async function completePreviewAttempt(
         pool,
         { workspaceId: scope.workspaceId },
         async (client): Promise<PreviewCompletionResult> => {
+          await lockWorkspaceRunAdmission(drizzle(client), scope.workspaceId);
           await validatePreviewDelivery(client, {
             delivery: input.delivery,
             previewAttemptId: scope.previewAttemptId,
