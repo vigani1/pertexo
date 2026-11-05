@@ -2,11 +2,14 @@ import type {
   MembershipAddition,
   MembershipChange,
 } from './membership.types.js';
-import { and, eq, sql } from 'drizzle-orm';
+import { and, eq, getTableName, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import {
   workspaceMemberships,
   workflowFavorites,
+  noticePreferences,
+  noticeSubscriptions,
+  workspaceInboxReads,
 } from '@pertexo/database/schema';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { appendAuditFacts } from '../../governance/audit/facts.js';
@@ -111,14 +114,19 @@ export async function updateMemberships(
     .filter((change) => change.status === 'removed')
     .map((change) => change.userId);
   if (removed.length === 0) return;
-  // Private notice rows remain actor-fenced. This narrow storage bridge checks
-  // removal and workspace scope instead of granting cross-user read/delete access.
-  await db
-    .execute(
-      sql`select app.clear_removed_member_notices(${workspaceId},removed.user_id)
-    from unnest(${sql.param(removed)}::uuid[]) as removed(user_id)`,
-    )
-    .catch(rethrowQueryFailure);
+  // Core chooses which private state removal clears; the capability cannot read it
+  // or delete active members' rows, and keeps personal-row policies unchanged.
+  for (const table of [
+    noticePreferences,
+    noticeSubscriptions,
+    workspaceInboxReads,
+  ])
+    await db
+      .execute(
+        sql`select app.delete_removed_member_private_rows(
+      ${workspaceId},${sql.param(removed)}::uuid[],${`app.${getTableName(table)}`}::regclass)`,
+      )
+      .catch(rethrowQueryFailure);
   await removeMemberResourceGrants(client, workspaceId, removed);
   await db
     .delete(workflowFavorites)

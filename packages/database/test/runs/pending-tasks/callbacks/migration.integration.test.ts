@@ -152,6 +152,7 @@ it('upgrades populated human tasks without changing their decisions or context',
       '0104_authoring_receipt_capacity.sql',
       '0105_escaped_receipt_labels.sql',
       '0106_session_security_integrity.sql',
+      '0107_removed_member_storage_capability.sql',
     ]);
     const after = (
       await owner.query<Record<string, unknown>>(

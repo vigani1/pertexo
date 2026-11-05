@@ -1,5 +1,4 @@
 import { randomUUID } from 'node:crypto';
-import { writeFile } from 'node:fs/promises';
 import { describe, expect, it } from 'vitest';
 import { withTenantScopedClient } from '@pertexo/database/primitives';
 import { appendAuditFacts } from '../../../src/governance/audit/facts.js';
@@ -222,9 +221,8 @@ describe('batched membership side effects', () => {
       [workspaceId, ids],
     );
     expect(result).toEqual([{ members: 5000, sessions: 0, audits: 5000 }]);
-    await writeFile(
-      '/tmp/pertexo-scim-membership-batch.json',
-      JSON.stringify({ members: 5000, millis, result }),
+    process.stdout.write(
+      `MEMBERSHIP_BATCH=${JSON.stringify({ members: 5000, millis, result })}\n`,
     );
   }, 60_000);
 });
