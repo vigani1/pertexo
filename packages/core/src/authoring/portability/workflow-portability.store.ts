@@ -1,3 +1,5 @@
+import { readFolderScope } from '../../shared/facts.repository.js';
+import { requireWorkflowInScope } from '../workflows/access.js';
 import { decodeStoredValue } from '../../shared/stored-values.js';
 import { requireReadableReceipt } from '../../shared/receipts.js';
 import {
@@ -174,78 +176,92 @@ function importPortableWorkflow(
   context: PortabilityContext,
   input: ImportWorkflowInput,
 ) {
-  return context.access.member(input, CREATE_FROM_FILE, async (client) => {
-    const destinationId = generatePersistedId();
-    const commandDigest = workflowImportCommandDigest(input);
-    const command = {
-      workspaceId: input.workspaceId,
-      operation: 'workflow.import',
-      scope: credentialCommandScope(input.actorId, input.commandCredentialId),
-      idempotencyKey: input.idempotencyKey,
-    };
-    const stored = await claimCommand(client, {
-      ...command,
-      request: commandDigest,
-      resourceId: destinationId,
-    });
-    if (stored !== null) {
-      requireReadableReceipt(importResultSchema, stored);
-      const replay = decodeStoredValue(() => importResultSchema.parse(stored));
-      const destination = await drizzle(client)
-        .select({ id: workflows.id })
-        .from(workflows)
-        .where(
-          and(
-            eq(workflows.workspaceId, input.workspaceId),
-            eq(workflows.id, replay.workflowId),
-          ),
-        )
-        .for('share')
-        .catch(rethrowQueryFailure);
-      if (destination.length !== 1)
-        throw new WorkflowNotFoundError('Workflow destination is not visible');
-      return Object.freeze(replay);
-    }
-    const selection = context.catalogs;
-    if (
-      workflowDefinitionCatalogFingerprint(selection.definitionCatalog) !==
-      input.expectedCompatibilityFingerprint
-    )
-      throw new WorkflowPortabilityCompatibilityConflictError(
-        'Workflow import catalog changed; preview again',
-      );
-    let graph;
-    try {
-      const report = await inspectImport(client, input, selection);
-      if (report.hard.length !== 0)
-        throw new WorkflowPortabilityValidationError(
-          report.issues.slice(0, WORKFLOW_PORTABILITY_LIMITS.issues),
-          {
-            truncated:
-              report.issues.length > WORKFLOW_PORTABILITY_LIMITS.issues,
-          },
+  return context.access.member(
+    input,
+    CREATE_FROM_FILE,
+    async (client, role) => {
+      const destinationId = generatePersistedId();
+      const commandDigest = workflowImportCommandDigest(input);
+      const command = {
+        workspaceId: input.workspaceId,
+        operation: 'workflow.import',
+        scope: credentialCommandScope(input.actorId, input.commandCredentialId),
+        idempotencyKey: input.idempotencyKey,
+      };
+      const stored = await claimCommand(client, {
+        ...command,
+        request: commandDigest,
+        resourceId: destinationId,
+      });
+      if (stored !== null) {
+        requireReadableReceipt(importResultSchema, stored);
+        const replay = decodeStoredValue(() =>
+          importResultSchema.parse(stored),
         );
-      graph = report.graph;
-    } catch (error) {
-      portableFailure(error);
-    }
-    await requireWorkflowCallTargets(client, input, graph);
-    await requireConnectionBindings(client, input, graph);
-    await lockArtifactReferences(
-      client,
-      input.workspaceId,
-      graph,
-      input.actorId,
-    );
-    await persistImportedWorkflow(client, input, {
-      destinationId,
-      graph,
-      commandDigest,
-    });
-    const result = Object.freeze({ workflowId: destinationId });
-    await completeCommand(client, command, result);
-    return result;
-  });
+        await requireWorkflowInScope(
+          client,
+          await readFolderScope(client, input, role),
+          { workspaceId: input.workspaceId, workflowId: replay.workflowId },
+          'workflow:read',
+        );
+        const destination = await drizzle(client)
+          .select({ id: workflows.id })
+          .from(workflows)
+          .where(
+            and(
+              eq(workflows.workspaceId, input.workspaceId),
+              eq(workflows.id, replay.workflowId),
+            ),
+          )
+          .for('share')
+          .catch(rethrowQueryFailure);
+        if (destination.length !== 1)
+          throw new WorkflowNotFoundError(
+            'Workflow destination is not visible',
+          );
+        return Object.freeze(replay);
+      }
+      const selection = context.catalogs;
+      if (
+        workflowDefinitionCatalogFingerprint(selection.definitionCatalog) !==
+        input.expectedCompatibilityFingerprint
+      )
+        throw new WorkflowPortabilityCompatibilityConflictError(
+          'Workflow import catalog changed; preview again',
+        );
+      let graph;
+      try {
+        const report = await inspectImport(client, input, selection);
+        if (report.hard.length !== 0)
+          throw new WorkflowPortabilityValidationError(
+            report.issues.slice(0, WORKFLOW_PORTABILITY_LIMITS.issues),
+            {
+              truncated:
+                report.issues.length > WORKFLOW_PORTABILITY_LIMITS.issues,
+            },
+          );
+        graph = report.graph;
+      } catch (error) {
+        portableFailure(error);
+      }
+      await requireWorkflowCallTargets(client, input, graph);
+      await requireConnectionBindings(client, input, graph);
+      await lockArtifactReferences(
+        client,
+        input.workspaceId,
+        graph,
+        input.actorId,
+      );
+      await persistImportedWorkflow(client, input, {
+        destinationId,
+        graph,
+        commandDigest,
+      });
+      const result = Object.freeze({ workflowId: destinationId });
+      await completeCommand(client, command, result);
+      return result;
+    },
+  );
 }
 
 export function createWorkflowPortabilityStore(context: PortabilityContext) {
