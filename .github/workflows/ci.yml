@@ -187,7 +187,9 @@ jobs:
     needs: changes
     if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # The worker leg runs three suite shards on one runner (run-worker-suite.mjs): up
+    # to 12.5 minutes plus the build when the runner is busy. The limit catches hangs.
+    timeout-minutes: ${{ matrix.group == 'worker' && 20 || 15 }}
     strategy:
       fail-fast: false
       matrix:
