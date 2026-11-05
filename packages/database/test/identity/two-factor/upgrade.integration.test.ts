@@ -121,6 +121,7 @@ it('upgrades password accounts with two-factor off, isolated auth grants and cas
       '0106_session_security_integrity.sql',
       '0107_removed_member_storage_capability.sql',
       '0108_integration_admission_in_core.sql',
+      '0109_maintenance_private_cleanup.sql',
     ]);
     expect(
       (

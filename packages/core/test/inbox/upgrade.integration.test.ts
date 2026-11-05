@@ -166,6 +166,13 @@ it('upgrades populated workflow threads and private read revisions without chang
       '0100_core_run_admission.sql',
       '0101_restore_timer_capacity_triggers.sql',
       '0102_reconcile_timer_capacity_counters.sql',
+      '0103_preview_unclaimed_cleanup.sql',
+      '0104_authoring_receipt_capacity.sql',
+      '0105_escaped_receipt_labels.sql',
+      '0106_session_security_integrity.sql',
+      '0107_removed_member_storage_capability.sql',
+      '0108_integration_admission_in_core.sql',
+      '0109_maintenance_private_cleanup.sql',
     ]);
     read = createWorkspaceInboxStore(
       parseDatabaseConfig({

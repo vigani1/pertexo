@@ -209,6 +209,7 @@ it('backfills current and retained historical sets, fixed empty sets and purged 
         '0106_session_security_integrity.sql',
         '0107_removed_member_storage_capability.sql',
         '0108_integration_admission_in_core.sql',
+        '0109_maintenance_private_cleanup.sql',
       ]);
       expect(
         (

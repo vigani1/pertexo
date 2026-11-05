@@ -154,6 +154,7 @@ it('upgrades populated human tasks without changing their decisions or context',
       '0106_session_security_integrity.sql',
       '0107_removed_member_storage_capability.sql',
       '0108_integration_admission_in_core.sql',
+      '0109_maintenance_private_cleanup.sql',
     ]);
     const after = (
       await owner.query<Record<string, unknown>>(
