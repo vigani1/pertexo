@@ -162,6 +162,7 @@ it('upgrades a populated standalone test without changing its source identity or
       '0102_reconcile_timer_capacity_counters.sql',
       '0103_preview_unclaimed_cleanup.sql',
       '0104_authoring_receipt_capacity.sql',
+      '0105_escaped_receipt_labels.sql',
     ]);
     expect(
       (

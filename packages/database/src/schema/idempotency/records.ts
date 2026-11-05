@@ -51,9 +51,10 @@ export const idempotencyRecords = appSchema.table(
       'idempotency_records_request_hash_format',
       sql`(request_hash ~ '^[0-9a-f]{64}$'::text)`,
     ),
+    // Full sharing receipts include 100 labels, each up to 256 six-byte JSON escapes.
     check(
       'idempotency_records_result_ref_bounded',
-      sql`(octet_length((result_ref)::text) <= 131072)`,
+      sql`(octet_length((result_ref)::text) <= 196608)`,
     ),
     check(
       'idempotency_records_scope_format',
