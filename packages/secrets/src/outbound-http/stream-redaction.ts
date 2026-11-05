@@ -23,7 +23,7 @@ export async function* boundedRedactedBody(
     signal,
     sensitiveValues,
     deadline,
-    redactor = prepareResponseRedactor(sensitiveValues),
+    redactor = prepareResponseRedactor(sensitiveValues, limit),
     charset,
   }: Readonly<{
     limit: number;

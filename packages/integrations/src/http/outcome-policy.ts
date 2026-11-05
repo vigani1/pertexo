@@ -221,6 +221,7 @@ function secureErrorKind(
     case PROVIDER_HTTP_ERROR_CODE.paginationOriginChanged:
     case PROVIDER_HTTP_ERROR_CODE.paginationNavigationInvalid:
     case PROVIDER_HTTP_ERROR_CODE.redirectRejected:
+    case PROVIDER_HTTP_ERROR_CODE.responseRedactionLimit:
     case PROVIDER_HTTP_ERROR_CODE.responseEncodingRejected:
     case PROVIDER_HTTP_ERROR_CODE.responseTooLarge:
     case PROVIDER_HTTP_ERROR_CODE.ssrfBlocked:

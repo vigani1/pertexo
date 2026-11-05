@@ -184,6 +184,13 @@ const server = createServer((incoming, response) => {
       ) +
       '"x"]}';
   }
+  if (url.searchParams.get('projection') === 'work-limit') {
+    body =
+      '"' +
+      String.raw`\u0061`.repeat(Math.floor((10_485_760 - 100) / 13)) +
+      '"';
+    for (let layer = 1; layer < 4; layer += 1) body = JSON.stringify(body);
+  }
   writeEchoBody(response, url, body, { encoding, mime });
 });
 beforeAll(async () => {
@@ -344,6 +351,13 @@ const fallbacks = ['inline-json', 'parsed-json', 'error-excerpt'].flatMap(
 it.each([
   ...matrix,
   ...fallbacks,
+  ...['inline-json', 'artifact-json'].map((mode) => ({
+    mode,
+    mime: 'application/json',
+    encoding: 'literal' as const,
+    oneByte: false,
+    projection: 'work-limit',
+  })),
   ...['inline-json', 'artifact-json'].flatMap((mode) =>
     [
       '',
@@ -378,9 +392,8 @@ it.each([
 ])(
   'keeps $mode private for $mime / $encoding / oneByte=$oneByte / $projection',
   async ({ encoding, mode, mime, oneByte, projection }) => {
-    const header = encoding.startsWith('basic')
-      ? 'Basic ' + Buffer.from('user:' + credential).toString('base64')
-      : credential;
+    const { header, timeoutMillis, maxResponseBytes, inlineResponseBytes } =
+      echoRequestSettings(mode, projection, encoding);
     const stored: Buffer[] = [];
     const transport = new NodeHttpTransport();
     const client = provideHttpClient(
@@ -472,10 +485,9 @@ it.each([
           projection,
         method: 'GET',
         headers: {},
-        timeoutMillis: projection === 'many' ? 30_000 : 10_000,
-        maxRedirects: 0,
-        maxResponseBytes: projection === 'many' ? 10_485_760 : 32_768,
-        inlineResponseBytes: mode.startsWith('artifact-') ? 1 : 32_768,
+        timeoutMillis,
+        maxResponseBytes,
+        inlineResponseBytes,
         ...(paged
           ? {
               pagination: {
@@ -495,7 +507,7 @@ it.each([
       runtime,
       signal: new AbortController().signal,
     });
-    if (projection.startsWith('charset-')) {
+    if (projection.startsWith('charset-') || projection === 'work-limit') {
       const error: unknown = await operation.catch((reason: unknown) => reason);
       expect(error).toBeInstanceOf(NodeExecutorFailure);
       if (!(error instanceof NodeExecutorFailure)) throw error;
@@ -736,4 +748,26 @@ function writeEchoBody(
     response.end(
       Buffer.from(body, encoding === 'windows-1252' ? 'latin1' : 'utf8'),
     );
+}
+
+function echoRequestSettings(
+  mode: string,
+  projection: string,
+  encoding: Encoding,
+) {
+  let header = credential;
+  if (encoding.startsWith('basic'))
+    header = 'Basic ' + Buffer.from('user:' + credential).toString('base64');
+  if (projection === 'work-limit' && mode === 'inline-json')
+    header = 'a'.repeat(7990) + 'b';
+  const large = projection === 'many' || projection === 'work-limit';
+  let inlineResponseBytes = 32_768;
+  if (projection === 'work-limit') inlineResponseBytes = 262_144;
+  if (mode.startsWith('artifact-')) inlineResponseBytes = 1;
+  return {
+    header,
+    timeoutMillis: large ? 30_000 : 10_000,
+    maxResponseBytes: large ? 10_485_760 : 32_768,
+    inlineResponseBytes,
+  };
 }

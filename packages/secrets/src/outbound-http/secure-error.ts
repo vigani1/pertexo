@@ -16,6 +16,7 @@ export const SECURE_HTTP_ERROR_CODE = Object.freeze({
   paginationNavigationInvalid: 'pagination_navigation_invalid',
   redirectRejected: 'redirect_rejected',
   responseEncodingRejected: 'response_encoding_rejected',
+  responseRedactionLimit: 'response_redaction_limit',
   responseTooLarge: 'response_too_large',
   ssrfBlocked: 'ssrf_blocked',
   timedOut: 'timed_out',

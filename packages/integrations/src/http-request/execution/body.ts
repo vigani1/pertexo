@@ -1,3 +1,4 @@
+import { inspectProviderHttpError } from '../../providers/http.errors.js';
 import { Buffer } from 'node:buffer';
 
 import { JSON_MEDIA_TYPE } from '../../http/content-type.js';
@@ -105,9 +106,18 @@ async function writeArtifact(
   if (artifacts === undefined)
     throw new HttpRequestExecutorError(failure, { possiblyDispatched: true });
   let reference;
+  let sourceFailure: Readonly<{ error: unknown }> | undefined;
+  const observedBody = async function* () {
+    try {
+      yield* body;
+    } catch (error: unknown) {
+      sourceFailure = { error };
+      throw error;
+    }
+  };
   try {
     reference = await artifacts.write({
-      body,
+      body: observedBody(),
       maxBytes,
       mediaType,
       purpose: 'node-output',
@@ -115,6 +125,12 @@ async function writeArtifact(
       ...(cancelSource === undefined ? {} : { cancelSource }),
     });
   } catch (error) {
+    // Storage failure and refusal by the response source have different retry rules.
+    if (
+      sourceFailure !== undefined &&
+      inspectProviderHttpError(sourceFailure.error) !== undefined
+    )
+      throw sourceFailure.error;
     throw new HttpRequestExecutorError(failure, {
       possiblyDispatched: true,
       cause: error,
