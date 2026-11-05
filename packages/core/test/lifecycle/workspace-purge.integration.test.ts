@@ -329,6 +329,100 @@ describe('workspace purge', () => {
     ).toEqual([]);
   });
 
+  it('purges replay and recovery descendants across pages and a coordinator restart', async () => {
+    if (owner === undefined) throw new Error('Fixture not initialized');
+    const ids = await seedPurgeScenario(owner);
+    const admin = new Client({ connectionString: adminUrl });
+    await admin.connect();
+    let worker = coordinator();
+    try {
+      await admin.query("select set_config('app.workspace_id',$1,false)", [
+        ids.workspaceId,
+      ]);
+      await admin.query(
+        `insert into app.workflow_runs(
+          id,workspace_id,workflow_id,workflow_version_id,trigger_type,status,
+          replay_source_run_id,replay_command_id,completed_at)
+         select uuidv7(),$1,$2,$3,'replay','succeeded',$4,uuidv7(),clock_timestamp()
+         from generate_series(1,501)`,
+        [
+          ids.workspaceId,
+          ids.workflowId,
+          ids.publishedVersionId,
+          ids.workflowRunId,
+        ],
+      );
+      const replay = await admin.query<{ id: string }>(
+        'select id from app.workflow_runs where replay_source_run_id=$1 limit 1',
+        [ids.workflowRunId],
+      );
+      await admin.query(
+        `insert into app.workflow_runs(
+          id,workspace_id,workflow_id,workflow_version_id,trigger_type,status,
+          replay_source_run_id,replay_command_id,completed_at,
+          recovery_target_node_run_id,recovery_target_node_id,recovery_reused_count,
+          recovery_effect_risk,recovery_effects_acknowledged)
+         values(uuidv7(),$1,$2,$3,'replay','succeeded',$4,uuidv7(),clock_timestamp(),
+          $5,'node-1',1,'ordinary',false)`,
+        [
+          ids.workspaceId,
+          ids.workflowId,
+          ids.publishedVersionId,
+          replay.rows[0]?.id,
+          ids.nodeRunId,
+        ],
+      );
+      await makeWorkspaceDueForPurge(adminUrl, ids.workspaceId);
+      let restarted = false;
+      let completed = false;
+      for (let call = 0; call < 200; call += 1) {
+        const result = await worker.processNext();
+        if (
+          result.status === 'progressed' &&
+          result.step === 'workflow_runs' &&
+          !restarted
+        ) {
+          const remaining = await admin.query<{ count: number }>(
+            'select count(*)::int count from app.workflow_runs where workspace_id=$1',
+            [ids.workspaceId],
+          );
+          expect(remaining.rows[0]?.count).toBeGreaterThan(0);
+          expect(remaining.rows[0]?.count).toBeLessThan(503);
+          await worker.close();
+          worker = coordinator();
+          restarted = true;
+        }
+        if (
+          result.status === 'completed' &&
+          result.workspaceId === ids.workspaceId
+        ) {
+          completed = true;
+          break;
+        }
+      }
+      expect(restarted).toBe(true);
+      expect(completed).toBe(true);
+      expect(
+        (
+          await admin.query('select status from app.workspaces where id=$1', [
+            ids.workspaceId,
+          ])
+        ).rows,
+      ).toEqual([{ status: 'deleted' }]);
+      expect(
+        (
+          await admin.query(
+            'select id from app.workflow_runs where workspace_id=$1',
+            [ids.workspaceId],
+          )
+        ).rows,
+      ).toEqual([]);
+    } finally {
+      await worker.close();
+      await admin.end();
+    }
+  });
+
   it('waits for the recovery period before purging', async () => {
     const workspaceId = await createWorkspace();
     const admin = new Client({ connectionString: adminUrl });

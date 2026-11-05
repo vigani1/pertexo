@@ -1,6 +1,7 @@
 import {
   workflowFolders,
   previewRuns,
+  workflowRuns,
   connectionSecretVersions,
   connections,
   failureNotificationDestinationVersions,
@@ -91,6 +92,49 @@ export async function purgePreviewLeaves(
       .where(
         inArray(
           sql<string>`${previewRuns}.ctid`,
+          db.select({ ctid: page.ctid }).from(page),
+        ),
+      )
+      .returning({ one: sql`1` })
+      .catch(rethrowQueryFailure)
+  ).length;
+}
+export async function purgeRunLeaves(
+  client: PoolClient,
+  workspaceId: string,
+  pageSize: number,
+): Promise<number> {
+  const db = drizzle(client),
+    child = alias(workflowRuns, 'child');
+  const page = db.$with('page').as(
+    db
+      .select({ ctid: sql<string>`${workflowRuns}.ctid`.as('purge_ctid') })
+      .from(workflowRuns)
+      .where(
+        and(
+          eq(workflowRuns.workspaceId, workspaceId),
+          notExists(
+            db
+              .select({ one: sql`1` })
+              .from(child)
+              .where(
+                and(
+                  eq(child.workspaceId, workspaceId),
+                  eq(child.replaySourceRunId, workflowRuns.id),
+                ),
+              ),
+          ),
+        ),
+      )
+      .limit(pageSize),
+  );
+  return (
+    await db
+      .with(page)
+      .delete(workflowRuns)
+      .where(
+        inArray(
+          sql<string>`${workflowRuns}.ctid`,
           db.select({ ctid: page.ctid }).from(page),
         ),
       )
