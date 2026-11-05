@@ -3,7 +3,7 @@ import { sql } from 'drizzle-orm';
 import { QueryBuilder } from 'drizzle-orm/pg-core';
 import type { Pool } from 'pg';
 
-export const EXPECTED_MIGRATION_HEAD = '0105_escaped_receipt_labels.sql';
+export const EXPECTED_MIGRATION_HEAD = '0106_session_security_integrity.sql';
 const MINIMUM_POSTGRES_MAJOR = 18;
 
 /**
