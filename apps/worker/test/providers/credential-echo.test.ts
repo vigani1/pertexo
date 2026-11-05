@@ -358,6 +358,9 @@ it.each([
       'text/plain; charset: utf-16le',
       'text/plain; charset=\u00a0utf-16le',
       'text/plain; charset="\u00a0utf-16le"',
+      // Only HTTP SP and HTAB may surround a parameter; other whitespace is malformed.
+      'text/plain; charset=utf-16le\u00a0',
+      'text/plain; \u00a0charset=utf-16le',
     ].map((mime) => ({
       mode,
       mime,

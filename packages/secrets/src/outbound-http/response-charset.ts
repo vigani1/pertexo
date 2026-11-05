@@ -5,7 +5,15 @@ export function responseCharset(contentType: string): string | undefined {
   let charset: string | undefined;
   for (const parameter of contentTypeParameters(contentType)) {
     const name = /^[!#$%&'*+.^_`|~a-z0-9-]+/iu.exec(parameter)?.[0];
-    if (name?.toLowerCase() !== 'charset') continue;
+    if (name?.toLowerCase() !== 'charset') {
+      // A charset hidden behind non-HTTP whitespace must not be ignored as unknown.
+      if (/^\s*charset\s*[=:]/iu.test(parameter))
+        throw failure(SECURE_HTTP_ERROR_CODE.responseEncodingRejected, {
+          possiblyDispatched: true,
+          ambiguous: false,
+        });
+      continue;
+    }
     const matched =
       /^charset[\t ]*=[\t ]*(?:"([^"\\]*)"|([!#$%&'*+.^_`|~a-z0-9-]+))[\t ]*$/iu.exec(
         parameter,
@@ -99,9 +107,14 @@ function contentTypeParameters(contentType: string): readonly string[] {
     }
     if (character === '"') quoted = !quoted;
     if (character !== ';' || quoted) continue;
-    parameters.push(contentType.slice(start, index).trim());
+    parameters.push(trimHttpWhitespace(contentType.slice(start, index)));
     start = index + 1;
   }
-  parameters.push(contentType.slice(start).trim());
+  parameters.push(trimHttpWhitespace(contentType.slice(start)));
   return parameters.slice(1);
+}
+
+/** HTTP allows only SP and HTAB here; `String.trim` would hide other whitespace. */
+function trimHttpWhitespace(value: string): string {
+  return value.replace(/^[\t ]+|[\t ]+$/gu, '');
 }
