@@ -1,3 +1,7 @@
+import {
+  command as importCommand,
+  database as importDatabase,
+} from './portability/fixture.js';
 import { randomUUID } from 'node:crypto';
 
 import { parseDatabaseConfig } from '@pertexo/database/platform';
@@ -95,6 +99,21 @@ describe('a retry whose result has since moved out of the actor’s folders', ()
     await expect(authoring.createWorkflow(input)).rejects.toBeInstanceOf(
       WorkflowNotFoundError,
     );
+  });
+
+  it('reads as missing when an imported workflow moves out of sight', async () => {
+    const database = importDatabase();
+    try {
+      const input = importCommand({ actorId: builder });
+      const result = await database.importWorkflow(input);
+      await expect(database.importWorkflow(input)).resolves.toEqual(result);
+      await moveIntoFolder(result.workflowId, hiddenFolderId);
+      await expect(database.importWorkflow(input)).rejects.toBeInstanceOf(
+        WorkflowNotFoundError,
+      );
+    } finally {
+      await database.close();
+    }
   });
 
   it('reads as missing when it duplicates', async () => {
