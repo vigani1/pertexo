@@ -1,4 +1,4 @@
-import { and, asc, eq, sql } from 'drizzle-orm';
+import { and, desc, eq, lt, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { dataTableReferenceIssues } from '../../data-tables/columns/references.repository.js';
 import {
@@ -209,17 +209,31 @@ async function persistVersion(
     eq(workflowVersions.workspaceId, input.workspaceId),
     eq(workflowVersions.workflowId, workflowId),
   );
-  const retained = await db
-    .select(versionProjection)
-    .from(workflowVersions)
-    .where(and(scope, eq(workflowVersions.checksum, publication.checksum)))
-    .orderBy(asc(workflowVersions.versionNumber))
-    .catch(rethrowQueryFailure);
-  let versionRow: (typeof retained)[number] | undefined;
-  for (const row of retained) {
-    const version = projectVersion(row);
-    if (sameWorkflowNotes(version.graphJson, publication.graph))
-      versionRow = row;
+  // Newest-first pages preserve the most recent match without retaining the full history.
+  const pageSize = 16;
+  let beforeVersion: number | undefined;
+  let versionRow: Parameters<typeof projectVersion>[0] | undefined;
+  for (;;) {
+    const retained = await db
+      .select(versionProjection)
+      .from(workflowVersions)
+      .where(
+        and(
+          scope,
+          eq(workflowVersions.checksum, publication.checksum),
+          beforeVersion === undefined
+            ? undefined
+            : lt(workflowVersions.versionNumber, beforeVersion),
+        ),
+      )
+      .orderBy(desc(workflowVersions.versionNumber))
+      .limit(pageSize)
+      .catch(rethrowQueryFailure);
+    versionRow = retained.find((row) =>
+      sameWorkflowNotes(projectVersion(row).graphJson, publication.graph),
+    );
+    if (versionRow !== undefined || retained.length < pageSize) break;
+    beforeVersion = retained.at(-1)?.versionNumber;
   }
   const reused = versionRow !== undefined;
   if (!reused) {
