@@ -380,7 +380,9 @@ it.each([
               storedBytes: Buffer.concat(stored).length,
             }),
         );
-        expect(elapsedMs).toBeLessThan(1_000);
+        // A tripwire for the old 4-20 s per-string rescans, not a benchmark: shared CI
+        // runners took up to 1.3 s here, against about 0.1 s locally.
+        expect(elapsedMs).toBeLessThan(5_000);
         expect(Buffer.concat(stored).length).toBeGreaterThan(10_000_000);
       }
       assertRetainedOutput(result.output, stored, {
