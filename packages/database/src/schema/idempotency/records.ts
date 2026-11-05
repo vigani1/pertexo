@@ -53,7 +53,7 @@ export const idempotencyRecords = appSchema.table(
     ),
     check(
       'idempotency_records_result_ref_bounded',
-      sql`(octet_length((result_ref)::text) <= 4096)`,
+      sql`(octet_length((result_ref)::text) <= 131072)`,
     ),
     check(
       'idempotency_records_scope_format',

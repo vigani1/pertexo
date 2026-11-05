@@ -149,6 +149,7 @@ it('upgrades populated human tasks without changing their decisions or context',
       '0101_restore_timer_capacity_triggers.sql',
       '0102_reconcile_timer_capacity_counters.sql',
       '0103_preview_unclaimed_cleanup.sql',
+      '0104_authoring_receipt_capacity.sql',
     ]);
     const after = (
       await owner.query<Record<string, unknown>>(

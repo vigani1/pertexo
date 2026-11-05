@@ -1,3 +1,4 @@
+import { folderAudienceFingerprint } from './audience-digests.js';
 import type { PoolClient } from 'pg';
 import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
@@ -6,10 +7,7 @@ import {
   workflowOrganizationState,
   workflows,
 } from '@pertexo/database/schema';
-import {
-  rethrowQueryFailure,
-  canonicalOutboxPayloadChecksum,
-} from '@pertexo/database/primitives';
+import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import type { FolderScope } from '../../../shared/folder-access.types.js';
 import type {
   AudienceReview,
@@ -53,7 +51,7 @@ export async function reviewMoveAudience(
     return {
       id: source.id,
       requiresReview: removesFolderRestriction(original, destination),
-      token: canonicalOutboxPayloadChecksum({
+      token: folderAudienceFingerprint({
         workspaceId: actor.workspaceId,
         kind: request.kind,
         source,

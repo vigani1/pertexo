@@ -1,3 +1,4 @@
+import { folderGrantDigest } from './audience-digests.js';
 import { z } from 'zod';
 import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
@@ -9,10 +10,7 @@ import {
   authDirectoryGroups,
   authOrganizationWorkspaces,
 } from '@pertexo/database/schema';
-import {
-  rethrowQueryFailure,
-  canonicalOutboxPayloadChecksum,
-} from '@pertexo/database/primitives';
+import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import type { PoolClient } from 'pg';
 import { FOLDER_GRANT_LIMIT } from '@pertexo/workflow-model';
 import type {
@@ -253,8 +251,8 @@ export async function replaceFolderSharing(
           metadata: {
             mode: request.mode,
             principals: request.grants.length,
-            previousGrants: canonicalOutboxPayloadChecksum(current.grants),
-            grants: canonicalOutboxPayloadChecksum(request.grants),
+            previousGrants: folderGrantDigest(current.grants),
+            grants: folderGrantDigest(request.grants),
             revision: current.revision + 1,
           },
         },
