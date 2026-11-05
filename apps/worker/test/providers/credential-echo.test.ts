@@ -184,16 +184,7 @@ const server = createServer((incoming, response) => {
       ) +
       '"x"]}';
   }
-  if (encoding === 'utf16le' || encoding === 'utf16be') {
-    const bytes = Buffer.from(
-      (mime === 'none' ? '\ufeff' : '') + body,
-      'utf16le',
-    );
-    response.end(encoding === 'utf16be' ? bytes.swap16() : bytes);
-  } else
-    response.end(
-      Buffer.from(body, encoding === 'windows-1252' ? 'latin1' : 'utf8'),
-    );
+  writeEchoBody(response, url, body, { encoding, mime });
 });
 beforeAll(async () => {
   collector.listen(0, '127.0.0.1');
@@ -353,6 +344,30 @@ const fallbacks = ['inline-json', 'parsed-json', 'error-excerpt'].flatMap(
 it.each([
   ...matrix,
   ...fallbacks,
+  ...['inline-json', 'artifact-json'].flatMap((mode) =>
+    [
+      '',
+      ' ',
+      '""',
+      '"unterminated',
+      'utf-16le trailing',
+      '; charset=utf-16le',
+      'utf-8; charset=utf-16le',
+    ].map((charset) => ({
+      mode,
+      mime: 'text/plain; charset=' + charset,
+      encoding: 'literal' as const,
+      oneByte: true,
+      projection: 'charset-invalid',
+    })),
+  ),
+  ...['inline-json', 'artifact-json'].map((mode) => ({
+    mode,
+    mime: 'text/plain; charset=bogus',
+    encoding: 'literal' as const,
+    oneByte: false,
+    projection: 'charset-empty-body',
+  })),
   {
     mode: 'artifact-json',
     mime: 'application/json',
@@ -480,7 +495,21 @@ it.each([
       runtime,
       signal: new AbortController().signal,
     });
-    if (mode === 'error-excerpt' || (paged && mime !== 'application/json')) {
+    if (projection.startsWith('charset-')) {
+      const error: unknown = await operation.catch((reason: unknown) => reason);
+      expect(error).toBeInstanceOf(NodeExecutorFailure);
+      if (!(error instanceof NodeExecutorFailure)) throw error;
+      const completion = executorFailureCompletion(error);
+      expect(completion).toMatchObject({
+        status: 'executor_failure',
+        failureKind: 'failed',
+      });
+      assertCredentialUnrecoverable(completion);
+      expect(stored).toEqual([]);
+    } else if (
+      mode === 'error-excerpt' ||
+      (paged && mime !== 'application/json')
+    ) {
       const error: unknown = await operation.catch((reason: unknown) => reason);
       expect(error).toBeInstanceOf(NodeExecutorFailure);
       if (!(error instanceof NodeExecutorFailure)) throw error;
@@ -683,4 +712,28 @@ function jsonEchoBody(
     body = json.replaceAll('é', '\\u00e9').replaceAll('ÿ', '\\u00ff');
 
   return body;
+}
+
+function writeEchoBody(
+  response: ServerResponse,
+  url: URL,
+  body: string,
+  { encoding, mime }: Readonly<{ encoding: Encoding; mime: string }>,
+): void {
+  if (url.searchParams.get('projection')?.startsWith('charset-')) {
+    response.end(
+      url.searchParams.get('projection') === 'charset-empty-body'
+        ? undefined
+        : Buffer.from(body, 'utf16le'),
+    );
+  } else if (encoding === 'utf16le' || encoding === 'utf16be') {
+    const bytes = Buffer.from(
+      (mime === 'none' ? '\ufeff' : '') + body,
+      'utf16le',
+    );
+    response.end(encoding === 'utf16be' ? bytes.swap16() : bytes);
+  } else
+    response.end(
+      Buffer.from(body, encoding === 'windows-1252' ? 'latin1' : 'utf8'),
+    );
 }
