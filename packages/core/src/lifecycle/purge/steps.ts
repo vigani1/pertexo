@@ -1,6 +1,7 @@
 import {
   purgeFolderLeaves,
   purgePreviewLeaves,
+  purgeRunLeaves,
   purgeOldConnectionSecrets,
   purgeConnections,
   purgeOldDestinationVersions,
@@ -81,7 +82,6 @@ import {
   runEvents,
   runCheckpoints,
   previewAttempts,
-  workflowRuns,
   artifactLinks,
   idempotencyRecords,
   triggerScheduleOccurrences,
@@ -281,7 +281,13 @@ export const PURGE_STEPS: readonly PurgeStep[] = Object.freeze([
     workflowTriggerFailures,
     workflowManualStartRejections,
     workflowTestSnapshots,
-    workflowRuns,
+  ].map(deleteRows),
+  {
+    // Replay and recovery runs retain their source until their leaves go.
+    name: 'workflow_runs',
+    run: purgeRunLeaves,
+  },
+  ...[
     workflowIntegrationUsage,
     workflowVersionPromotions,
     workflowPromotionOrigins,
