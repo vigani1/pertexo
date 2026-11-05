@@ -1,5 +1,4 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { writeFile } from 'node:fs/promises';
 import { expect, it, vi } from 'vitest';
 import type { QueryResult } from 'pg';
 import { useIdentityCommandDatabase } from '../../command.support.js';
@@ -149,8 +148,7 @@ it('projects maximum directory fan-out atomically without per-person round trips
     sessions: 0,
     audits: 50000,
   });
-  await writeFile(
-    '/tmp/pertexo-scim-directory-fanout.json',
+  process.stdout.write(
     JSON.stringify(
       {
         users: people.length,
@@ -165,7 +163,7 @@ it('projects maximum directory fan-out atomically without per-person round trips
       },
       null,
       2,
-    ),
+    ) + '\n',
   );
   const person = people[0];
   if (person === undefined) throw new Error('Missing fixture person');
@@ -245,8 +243,7 @@ it('projects maximum directory fan-out atomically without per-person round trips
   ).toEqual([{ status: 'active', role_revision: 2, count: 10 }]);
   expect(await db.liveSessions(person.id)).toBe(0);
   expect(await db.liveSessions(unrelated.id)).toBe(1);
-  await writeFile(
-    '/tmp/pertexo-scim-directory-subset.json',
+  process.stdout.write(
     JSON.stringify(
       {
         people: people.length,
@@ -257,6 +254,6 @@ it('projects maximum directory fan-out atomically without per-person round trips
       },
       null,
       2,
-    ),
+    ) + '\n',
   );
 }, 60_000);
