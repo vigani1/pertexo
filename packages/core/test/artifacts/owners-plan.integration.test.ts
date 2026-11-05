@@ -1,5 +1,4 @@
 import { randomUUID } from 'node:crypto';
-import { writeFile } from 'node:fs/promises';
 import { expect, it } from 'vitest';
 import { sql } from 'drizzle-orm';
 import { QueryBuilder } from 'drizzle-orm/pg-core';
@@ -72,10 +71,6 @@ it('keeps a negative retained-owner lookup indexed and bounded across authored d
     );
     expect(JSON.stringify(observations[0])).toMatch(/Index (Only )?Scan/u);
     expect(Number(observations[0]?.['Execution Time'])).toBeLessThan(2_000);
-    await writeFile(
-      '/private/tmp/batch-c-review-ownership-plan.json',
-      JSON.stringify(observations),
-    );
   } finally {
     await state.close();
   }
