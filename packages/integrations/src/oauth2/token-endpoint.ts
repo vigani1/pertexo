@@ -47,6 +47,7 @@ const UNUSABLE_FAILURES: ReadonlySet<ProviderHttpErrorCode> = new Set([
   PROVIDER_HTTP_ERROR_CODE.redirectRejected,
   PROVIDER_HTTP_ERROR_CODE.responseTooLarge,
   PROVIDER_HTTP_ERROR_CODE.responseEncodingRejected,
+  PROVIDER_HTTP_ERROR_CODE.responseRedactionLimit,
   PROVIDER_HTTP_ERROR_CODE.invalidRequest,
 ]);
 

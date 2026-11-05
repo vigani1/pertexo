@@ -455,6 +455,15 @@ sets are decoded before scanning, including UTF-16; retained text uses UTF-8.
 Unsupported or invalid declared character encodings refuse the response instead
 of retaining unscanned bytes. Raw and retained byte limits still apply.
 
+Decoding has a response-wide work budget: at most eight times the configured
+response byte limit, with a 32 KiB minimum and a 1 MiB maximum. Each JSON or
+percent decoding pass charges its entire input **before** decoding, including
+buffered suffixes scanned again; retained headers share the budget. Once it is
+exhausted, the response is refused with `response_redaction_limit`, and no
+successful output or completed artifact is retained. This bounds expensive
+nested-escape work independently of response contents. Request deadlines and
+cancellation still apply. Four-layer support is subject to this work budget.
+
 As with secret masking in CI systems, this is a bounded guarantee, not a promise
 to recognize arbitrary transformations. Hashes, encryption, custom encodings and
 more than four JSON-string escaping layers are not covered. A service must not

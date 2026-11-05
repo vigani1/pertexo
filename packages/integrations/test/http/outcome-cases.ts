@@ -72,6 +72,7 @@ const REFUSAL_CODES = [
   'pagination_navigation_invalid',
   'redirect_rejected',
   'response_encoding_rejected',
+  'response_redaction_limit',
   'response_too_large',
   'ssrf_blocked',
 ] as const satisfies readonly ProviderHttpErrorCode[];

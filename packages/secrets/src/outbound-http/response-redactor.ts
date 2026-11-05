@@ -1,3 +1,4 @@
+import { SECURE_HTTP_ERROR_CODE, failure } from './secure-error.js';
 import { decodedBodyView, type DecodedBodyView } from './decoded-body-view.js';
 import { prepareSensitiveBytePatterns } from './sensitive-representations.js';
 
@@ -15,7 +16,25 @@ interface Match {
 }
 
 /** One response-scoped automaton matches every credential representation together. */
-export function prepareResponseRedactor(sensitiveValues: readonly string[]) {
+export function prepareResponseRedactor(
+  sensitiveValues: readonly string[],
+  rawByteLimit = 131_072,
+) {
+  let decodingBytesLeft = Math.min(
+    1_048_576,
+    Math.max(32_768, 8 * rawByteLimit),
+  );
+  const decode = (parent: DecodedBodyView, format: 'json' | 'percent') => {
+    if (!parent.bytes.includes(format === 'json' ? 92 : 37)) return undefined;
+    // Charge the input before allocating escape spans, including repeated suffixes.
+    if (parent.bytes.length > decodingBytesLeft)
+      throw failure(SECURE_HTTP_ERROR_CODE.responseRedactionLimit, {
+        possiblyDispatched: true,
+        ambiguous: false,
+      });
+    decodingBytesLeft -= parent.bytes.length;
+    return decodedBodyView(parent.bytes, format);
+  };
   const root = new MatchingState();
   const patterns = prepareSensitiveBytePatterns(sensitiveValues);
   let maximum = 0;
@@ -81,13 +100,13 @@ export function prepareResponseRedactor(sensitiveValues: readonly string[]) {
       let previous: DecodedBodyView = identity;
       for (let layer = 0; layer < JSON_ESCAPE_LAYERS; layer += 1) {
         const parent: DecodedBodyView = previous;
-        const decoded = decodedBodyView(parent.bytes);
+        const decoded = decode(parent, 'json');
         if (decoded === undefined) break;
         previous = originalOffsets(parent, decoded);
         views.push(previous);
       }
       for (const parent of [...views]) {
-        const decoded = decodedBodyView(parent.bytes, 'percent');
+        const decoded = decode(parent, 'percent');
         if (decoded !== undefined) views.push(originalOffsets(parent, decoded));
       }
       // Every decoding layer needs its own unfinished escape and credential suffix.
