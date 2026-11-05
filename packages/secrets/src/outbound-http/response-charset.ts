@@ -2,10 +2,25 @@ import { TextDecoder } from 'node:util';
 import { SECURE_HTTP_ERROR_CODE, failure } from './secure-error.js';
 
 export function responseCharset(contentType: string): string | undefined {
-  return /(?:^|;)\s*charset\s*=\s*(?:"([^"]+)"|([^;\s]+))/iu
-    .exec(contentType)
-    ?.slice(1)
-    .find(Boolean);
+  let charset: string | undefined;
+  for (const parameter of contentTypeParameters(contentType)) {
+    if (!/^charset(?:\s|=|$)/iu.test(parameter)) continue;
+    const matched =
+      /^charset\s*=\s*(?:"([^"\\]*)"|([!#$%&'*+.^_`|~a-z0-9-]+))\s*$/iu.exec(
+        parameter,
+      );
+    const label = (matched?.[1] ?? matched?.[2] ?? '').trim();
+    if (label.length === 0 || charset !== undefined)
+      throw failure(SECURE_HTTP_ERROR_CODE.responseEncodingRejected, {
+        possiblyDispatched: true,
+        ambiguous: false,
+      });
+    // Validate before invoking a body consumer, including for an empty body.
+    charset = requireDecodableText(
+      () => new TextDecoder(label, { fatal: true }),
+    ).encoding;
+  }
+  return charset;
 }
 
 /** Decode before masking; a declared charset never falls back to unscanned bytes. */
@@ -61,4 +76,28 @@ function requireDecodableText<T>(decode: () => T): T {
       });
     throw error;
   }
+}
+
+function contentTypeParameters(contentType: string): readonly string[] {
+  const parameters: string[] = [];
+  let quoted = false;
+  let escaped = false;
+  let start = 0;
+  for (let index = 0; index < contentType.length; index += 1) {
+    const character = contentType[index];
+    if (escaped) {
+      escaped = false;
+      continue;
+    }
+    if (quoted && character === '\\') {
+      escaped = true;
+      continue;
+    }
+    if (character === '"') quoted = !quoted;
+    if (character !== ';' || quoted) continue;
+    parameters.push(contentType.slice(start, index).trim());
+    start = index + 1;
+  }
+  parameters.push(contentType.slice(start).trim());
+  return parameters.slice(1);
 }
