@@ -757,6 +757,13 @@
       "when": 1793921041927,
       "tag": "0107_removed_member_storage_capability",
       "breakpoints": true
+    },
+    {
+      "idx": 108,
+      "version": "7",
+      "when": 1793921562060,
+      "tag": "0108_integration_admission_in_core",
+      "breakpoints": true
     }
   ]
 }

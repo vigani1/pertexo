@@ -3,8 +3,7 @@ import { sql } from 'drizzle-orm';
 import { QueryBuilder } from 'drizzle-orm/pg-core';
 import type { Pool } from 'pg';
 
-export const EXPECTED_MIGRATION_HEAD =
-  '0107_removed_member_storage_capability.sql';
+export const EXPECTED_MIGRATION_HEAD = '0108_integration_admission_in_core.sql';
 const MINIMUM_POSTGRES_MAJOR = 18;
 
 /**
