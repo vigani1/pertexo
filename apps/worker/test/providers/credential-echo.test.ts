@@ -184,6 +184,8 @@ const server = createServer((incoming, response) => {
       ) +
       '"x"]}';
   }
+  if (url.searchParams.get('projection') === 'charset-invalid-bytes')
+    body = JSON.stringify({ credential: header, padding: 'x'.repeat(100_000) });
   if (url.searchParams.get('projection') === 'work-limit') {
     body =
       '"' +
@@ -351,6 +353,26 @@ const fallbacks = ['inline-json', 'parsed-json', 'error-excerpt'].flatMap(
 it.each([
   ...matrix,
   ...fallbacks,
+  ...['inline-json', 'artifact-json'].flatMap((mode) =>
+    [
+      'text/plain; charset: utf-16le',
+      'text/plain; charset=\u00a0utf-16le',
+      'text/plain; charset="\u00a0utf-16le"',
+    ].map((mime) => ({
+      mode,
+      mime,
+      encoding: 'literal' as const,
+      oneByte: true,
+      projection: 'charset-malformed-token',
+    })),
+  ),
+  ...['inline-json', 'artifact-json'].map((mode) => ({
+    mode,
+    mime: 'text/plain; charset=utf-16le',
+    encoding: 'literal' as const,
+    oneByte: false,
+    projection: 'charset-invalid-bytes',
+  })),
   ...['inline-json', 'artifact-json'].map((mode) => ({
     mode,
     mime: 'application/json',
@@ -517,6 +539,20 @@ it.each([
         status: 'executor_failure',
         failureKind: 'failed',
       });
+      expect(completion).toMatchObject({
+        safeErrorCode:
+          projection === 'work-limit'
+            ? 'http.response_redaction_limit'
+            : 'http.response_encoding',
+      });
+      expect(completion).toHaveProperty(
+        'errorSummary',
+        expect.stringContaining(
+          projection === 'work-limit'
+            ? 'credential masking work limit'
+            : 'unsupported or invalid text encoding',
+        ),
+      );
       assertCredentialUnrecoverable(completion);
       expect(stored).toEqual([]);
     } else if (
@@ -734,10 +770,13 @@ function writeEchoBody(
   { encoding, mime }: Readonly<{ encoding: Encoding; mime: string }>,
 ): void {
   if (url.searchParams.get('projection')?.startsWith('charset-')) {
+    let bytes = Buffer.from(body, 'utf16le');
+    if (url.searchParams.get('projection') === 'charset-invalid-bytes')
+      bytes = Buffer.concat([bytes, Buffer.of(255)]);
     response.end(
       url.searchParams.get('projection') === 'charset-empty-body'
         ? undefined
-        : Buffer.from(body, 'utf16le'),
+        : bytes,
     );
   } else if (encoding === 'utf16le' || encoding === 'utf16be') {
     const bytes = Buffer.from(
@@ -761,9 +800,12 @@ function echoRequestSettings(
     header = 'Basic ' + Buffer.from('user:' + credential).toString('base64');
   if (projection === 'work-limit' && mode === 'inline-json')
     header = 'a'.repeat(7990) + 'b';
-  const large = projection === 'many' || projection === 'work-limit';
+  const large =
+    projection === 'many' ||
+    projection === 'work-limit' ||
+    projection === 'charset-invalid-bytes';
   let inlineResponseBytes = 32_768;
-  if (projection === 'work-limit') inlineResponseBytes = 262_144;
+  if (large) inlineResponseBytes = 262_144;
   if (mode.startsWith('artifact-')) inlineResponseBytes = 1;
   return {
     header,
