@@ -750,6 +750,13 @@
       "when": 1793920882267,
       "tag": "0106_session_security_integrity",
       "breakpoints": true
+    },
+    {
+      "idx": 107,
+      "version": "7",
+      "when": 1793921041927,
+      "tag": "0107_removed_member_storage_capability",
+      "breakpoints": true
     }
   ]
 }

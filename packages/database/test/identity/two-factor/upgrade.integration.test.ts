@@ -119,6 +119,7 @@ it('upgrades password accounts with two-factor off, isolated auth grants and cas
       '0104_authoring_receipt_capacity.sql',
       '0105_escaped_receipt_labels.sql',
       '0106_session_security_integrity.sql',
+      '0107_removed_member_storage_capability.sql',
     ]);
     expect(
       (
