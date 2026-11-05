@@ -317,7 +317,7 @@ function rethrowHttpError(error: unknown, context: RequestContext): never {
   if (!repeatable && (runtime.providerDispatchUnresolved ?? false))
     throw new HttpRequestExecutorError(
       Object.freeze({ kind: 'outcome_unknown', errorKind: 'provider' }),
-      { possiblyDispatched: true },
+      { possiblyDispatched: true, responseCode: secureError.code },
     );
   if (secureError.code === PROVIDER_HTTP_ERROR_CODE.connectionFenceFailed)
     throw new HttpRequestExecutorError(
@@ -330,7 +330,10 @@ function rethrowHttpError(error: unknown, context: RequestContext): never {
     classifySecureHttpError(secureError.error, sideEffect, {
       providerKeyPresent: false,
     }),
-    { possiblyDispatched: !repeatable && secureError.possiblyDispatched },
+    {
+      possiblyDispatched: !repeatable && secureError.possiblyDispatched,
+      responseCode: secureError.code,
+    },
   );
 }
 

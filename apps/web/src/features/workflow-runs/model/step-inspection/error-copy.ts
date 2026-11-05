@@ -1,3 +1,5 @@
+import { HTTP_RESPONSE_FAILURES } from '@pertexo/integrations';
+
 // A step's `safeErrorCode` as a sentence (what happened) and advice (what to
 // do). The code itself stays visible in mono beside the sentence, so support
 // can still find it; prose never shows a bare code.
@@ -56,6 +58,7 @@ const outcomeUnknown: StepErrorCopy = {
 };
 
 const knownCodes: Readonly<Record<string, StepErrorCopy>> = {
+  ...HTTP_RESPONSE_FAILURES,
   'execution.table_unavailable': {
     sentence: 'Data table storage was temporarily unavailable.',
     advice:
@@ -335,6 +338,8 @@ export function describeStepError(
 }
 
 const SHORT_REASONS: Readonly<Record<string, string>> = {
+  'http.response_encoding': 'unsupported or invalid response encoding',
+  'http.response_redaction_limit': 'response masking work limit',
   'provider.unavailable': 'service unavailable',
   'connection.provider_unavailable': 'service unavailable',
   'provider.rate_limited': 'rate limited by the service',

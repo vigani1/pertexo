@@ -1,3 +1,4 @@
+import { HTTP_RESPONSE_FAILURES } from '@pertexo/integrations';
 import {
   NodeAttemptStateCorruptError,
   type NodeAttemptRunStore,
@@ -35,6 +36,7 @@ const executorSummaryCodes = new Set<string>([
   ...Object.values(FILE_TRANSFER_ERROR_CODE),
   ...Object.keys(HTTP_PAGINATION_FAILURES),
   ...Object.keys(HTTP_OAUTH2_FAILURES),
+  ...Object.keys(HTTP_RESPONSE_FAILURES),
   FILE_INPUT_ERROR_CODE,
 ]);
 

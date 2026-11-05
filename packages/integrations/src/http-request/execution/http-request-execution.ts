@@ -1,4 +1,9 @@
 import {
+  PROVIDER_HTTP_ERROR_CODE,
+  type ProviderHttpErrorCode,
+} from '../../providers/http.errors.js';
+import { HTTP_RESPONSE_FAILURES } from '../response-failures.js';
+import {
   NodeExecutorFailure,
   type ServiceResponseFacts,
 } from '@pertexo/node-sdk/server';
@@ -17,12 +22,15 @@ export class HttpRequestExecutorError extends NodeExecutorFailure {
       possiblyDispatched,
       cause,
       serviceResponse,
+      responseCode,
     }: Readonly<{
       possiblyDispatched: boolean;
       cause?: unknown;
       serviceResponse?: ServiceResponseFacts;
+      responseCode?: ProviderHttpErrorCode;
     }>,
   ) {
+    const responseFailure = responseFailureCode(responseCode);
     if (decision.kind === 'succeeded')
       throw new TypeError('Successful HTTP outcome');
     super({
@@ -34,6 +42,12 @@ export class HttpRequestExecutorError extends NodeExecutorFailure {
         ? { minimumRetryDelayMillis: decision.minimumRetryDelayMillis }
         : {}),
       ...(serviceResponse === undefined ? {} : { serviceResponse }),
+      ...(responseFailure === undefined
+        ? {}
+        : {
+            safeErrorCode: responseFailure,
+            errorSummary: HTTP_RESPONSE_FAILURES[responseFailure].sentence,
+          }),
     });
     this.cause = cause;
   }
@@ -58,4 +72,12 @@ export function failedConfiguration(): HttpRequestExecutorError {
     Object.freeze({ kind: 'failed', errorKind: 'configuration' }),
     { possiblyDispatched: false },
   );
+}
+
+function responseFailureCode(code: ProviderHttpErrorCode | undefined) {
+  if (code === PROVIDER_HTTP_ERROR_CODE.responseEncodingRejected)
+    return 'http.response_encoding' as const;
+  if (code === PROVIDER_HTTP_ERROR_CODE.responseRedactionLimit)
+    return 'http.response_redaction_limit' as const;
+  return undefined;
 }
