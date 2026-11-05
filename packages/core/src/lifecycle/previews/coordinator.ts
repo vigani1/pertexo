@@ -1,3 +1,4 @@
+import { expireUnclaimedPreview } from '../../previews/attempts/expire-unclaimed-previews.repository.js';
 import type { PreviewRetentionProcessResult } from './preview-retention.types.js';
 import {
   optionsSchema,
@@ -168,6 +169,8 @@ async function preparePreview(
   signal: AbortSignal | undefined,
 ) {
   return inRetentionTransaction(pool, options, signal, async (client) => {
+    const expired = await expireUnclaimedPreview(client);
+    if (expired !== undefined) return expired;
     const db = drizzle(client),
       child = alias(previewRuns, 'child');
     const [preview] = await db
