@@ -486,6 +486,7 @@ it.each([
         method: 'GET',
         headers: {},
         timeoutMillis,
+        maxRedirects: 0,
         maxResponseBytes,
         inlineResponseBytes,
         ...(paged
@@ -509,7 +510,7 @@ it.each([
     });
     if (projection.startsWith('charset-') || projection === 'work-limit') {
       const error: unknown = await operation.catch((reason: unknown) => reason);
-      expect(error).toBeInstanceOf(NodeExecutorFailure);
+      expect(error, JSON.stringify(error)).toBeInstanceOf(NodeExecutorFailure);
       if (!(error instanceof NodeExecutorFailure)) throw error;
       const completion = executorFailureCompletion(error);
       expect(completion).toMatchObject({
@@ -523,7 +524,7 @@ it.each([
       (paged && mime !== 'application/json')
     ) {
       const error: unknown = await operation.catch((reason: unknown) => reason);
-      expect(error).toBeInstanceOf(NodeExecutorFailure);
+      expect(error, JSON.stringify(error)).toBeInstanceOf(NodeExecutorFailure);
       if (!(error instanceof NodeExecutorFailure)) throw error;
       const shown = executorFailureCompletion(error);
       assertCredentialUnrecoverable(shown);
