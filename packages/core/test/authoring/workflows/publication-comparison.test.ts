@@ -53,6 +53,7 @@ async function compare(
         }),
       ],
     })
+    .mockResolvedValueOnce({ rows: [] })
     .mockResolvedValueOnce({ rows: [{ setting: '30000', unit: 'ms' }] })
     .mockResolvedValueOnce({
       rows: published ? [[versionId, 3, checksum, liveGraph]] : [],
@@ -129,7 +130,7 @@ describe('current publication comparison', () => {
     });
   });
 
-  it('does not compile an invalid or unpublished draft merely to compare it', async () => {
+  it('compiles a valid unpublished draft for its check and refuses an invalid one', async () => {
     const invalid = await compare({
       ...valid,
       ok: false,
@@ -139,7 +140,8 @@ describe('current publication comparison', () => {
     expect(invalid.compiler).not.toHaveBeenCalled();
     const unpublished = await compare(valid, checksum, { published: false });
     expect(unpublished.result?.currentPublication).toBeNull();
-    expect(unpublished.compiler).not.toHaveBeenCalled();
+    expect(unpublished.result?.validation.ok).toBe(true);
+    expect(unpublished.compiler).toHaveBeenCalledOnce();
   });
   it('reads a draft the compiler refuses as not matching', async () => {
     const opened = await compare(valid, checksum, {
@@ -151,7 +153,16 @@ describe('current publication comparison', () => {
       },
     });
 
-    expect(opened.result?.validation.ok).toBe(true);
+    expect(opened.result?.validation).toMatchObject({
+      ok: false,
+      issues: [
+        {
+          code: 'invalid_graph',
+          path: '$',
+          message: 'Switch config is invalid',
+        },
+      ],
+    });
     expect(opened.result?.draft.revision).toBe(1);
     expect(opened.result?.currentPublication).toEqual({
       versionId,

@@ -157,7 +157,7 @@ export function createWorkflowAuthoringStore(
         validateDraft(
           client,
           scope,
-          { workspaceId, workflowId, signal },
+          { workspaceId, workflowId, actorId, signal },
           catalogs,
         ),
       ),

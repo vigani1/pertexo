@@ -1,6 +1,5 @@
 import { and, eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import { dataTableReferenceIssues } from '../../../data-tables/columns/references.repository.js';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { decodeStoredValue } from '../../../shared/stored-values.js';
 import {
@@ -18,36 +17,20 @@ import {
   parseWorkflowGraphDraft,
   sameWorkflowNotes,
 } from '@pertexo/workflow-model';
-import { stepSettingsIssues } from '../../publication/step-settings.js';
-import { admitWorkflowAuthoring } from '../admission.repository.js';
+import { compilePublicationGraph } from '../../publication/compile-publication.js';
 
-import {
-  parseWorkflowGraphForPublish,
-  type WorkflowDefinitionCatalog,
-} from '@pertexo/workflow-model/server';
+import type { WorkflowDefinitionCatalog } from '@pertexo/workflow-model/server';
 import type { PoolClient } from 'pg';
-import { WorkflowEngineError } from '@pertexo/workflow-engine';
 import type { FolderScope } from '../../../shared/folder-access.types.js';
 import { workflowAccessible } from '../../../tenant-access/resources/workflows.repository.js';
-import type { WorkflowRef } from '../access.js';
+import type { WorkflowActor, WorkflowRef } from '../access.js';
 import type { AuthoringCatalogs } from '../catalogs.js';
-
-type ValidationCatalogs = Pick<
-  AuthoringCatalogs,
-  | 'definitionCatalog'
-  | 'validateAuthoringGraph'
-  | 'executableCompiler'
-  | 'portableCatalog'
->;
 
 export async function validateDraft(
   client: PoolClient,
   scope: FolderScope,
-  {
-    signal,
-    ...workflow
-  }: WorkflowRef & Readonly<{ signal?: AbortSignal | undefined }>,
-  catalogs: ValidationCatalogs,
+  { signal, ...workflow }: WorkflowActor,
+  catalogs: AuthoringCatalogs,
 ) {
   const { workspaceId, workflowId } = workflow;
   if (!(await workflowAccessible(client, scope, workflow))) return null;
@@ -63,19 +46,13 @@ export async function validateDraft(
     .catch(rethrowQueryFailure);
   if (row === undefined) return null;
   const draft = projectDraft(row, catalogs.definitionCatalog);
-  let validation = await admitWorkflowAuthoring(
+  const inspected = await compilePublicationGraph(
     client,
-    catalogs.validateAuthoringGraph,
-    parseWorkflowGraphDraft(draft.graphJson),
-    signal === undefined ? {} : { signal },
+    { ...workflow, signal },
+    draft.graphJson,
+    catalogs,
   );
-  if (validation.ok) {
-    const issues = [
-      ...stepSettingsIssues(draft.graphJson, catalogs.portableCatalog),
-      ...(await dataTableReferenceIssues(client, workspaceId, draft.graphJson)),
-    ];
-    if (issues.length > 0) validation = { ...validation, ok: false, issues };
-  }
+  const { validation } = inspected;
   const [live] = await drizzle(client)
     .select({
       versionId: workflowVersions.id,
@@ -105,38 +82,14 @@ export async function validateDraft(
           matchesDraft:
             validation.ok &&
             draft.compatibility.compatible &&
-            compilesToChecksum(catalogs, draft.graphJson, live.checksum) &&
+            inspected.kind === 'ready' &&
+            inspected.publication.checksum === live.checksum &&
             sameWorkflowNotes(
               draft.graphJson,
               decodeStoredValue(() => parseWorkflowGraphDraft(live.graphJson)),
             ),
         });
   return Object.freeze({ draft, validation, currentPublication });
-}
-
-/**
- * The draft's schemas accept setups the compiler refuses. Publishing reports
- * those; here it only means the draft can't be what is published.
- */
-function compilesToChecksum(
-  { executableCompiler, definitionCatalog }: ValidationCatalogs,
-  graphJson: unknown,
-  checksum: string,
-): boolean {
-  try {
-    return (
-      executableCompiler(
-        parseWorkflowGraphForPublish(graphJson, definitionCatalog),
-      ).checksum === checksum
-    );
-  } catch (error) {
-    if (
-      error instanceof WorkflowEngineError &&
-      error.code === 'executable_invalid'
-    )
-      return false;
-    throw error;
-  }
 }
 
 export async function readDraft(
