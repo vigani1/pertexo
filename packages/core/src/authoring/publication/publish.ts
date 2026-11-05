@@ -1,41 +1,28 @@
 import { and, desc, eq, lt, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import { dataTableReferenceIssues } from '../../data-tables/columns/references.repository.js';
 import {
   rethrowQueryFailure,
   claimCommand,
   completeCommand,
 } from '@pertexo/database/primitives';
 import { workflowVersions, workspaces } from '@pertexo/database/schema';
-import { requireWorkflowCallTargets } from '../../tenant-access/resources/bindings.repository.js';
-import { lockWorkspaceVariableNames } from '../../variables/head.repository.js';
 import { recordPromotedPublication } from '../promotion/provenance.repository.js';
 import { PublicationReviewError } from '../reviews/publication-review.errors.js';
 
+import { sameWorkflowNotes } from '@pertexo/workflow-model';
 import {
-  InvalidWorkflowGraphError,
-  sameWorkflowNotes,
-} from '@pertexo/workflow-model';
-import {
-  parseWorkflowGraphForPublish,
   workflowCompatibilityReport,
   workflowDraftRepresentationTag,
 } from '@pertexo/workflow-model/server';
 import type { PoolClient } from 'pg';
 import type { z } from 'zod';
-import { lockArtifactReferences } from '../../artifacts/references/locks.repository.js';
 import type { CommandIdentity } from '@pertexo/database/primitives';
-import {
-  credentialCommandScope,
-  generatePersistedId,
-} from '@pertexo/database/platform';
-import { admitWorkflowAuthoring } from '../workflows/admission.repository.js';
+import { credentialCommandScope } from '@pertexo/database/platform';
 import {
   lockActiveWorkflow,
   lockDraft,
 } from '../workflows/commands/locks.repository.js';
 import type { AuthoringCatalogs } from '../workflows/catalogs.js';
-import { validateApprovalAudience } from './pending-tasks.repository.js';
 
 import type {
   PublishWorkflowInput,
@@ -52,17 +39,14 @@ import {
   versionProjection,
 } from '../workflows/representation/workflow-representations.repository.js';
 
-import { stepSettingsIssues } from './step-settings.js';
-import { validatePublicationCalls } from './calls.repository.js';
-import { connectionReferenceIssues } from './connections.repository.js';
-
 import type {
   CompiledPublication,
   PublicationCandidateInput,
   PublicationClaim,
 } from './workflow-publication.types.js';
 import { decodeStoredReceipt } from '../../shared/receipts.js';
-import { executableSchema, publicationReceipt } from './input.js';
+import { publicationReceipt } from './input.js';
+import { compilePublicationGraph } from './compile-publication.js';
 import {
   finalizePublication,
   persistPublicationProjections,
@@ -138,64 +122,7 @@ async function lockAndCompilePublication(
   });
   if (currentEtag !== input.representationTag)
     throw new WorkflowRevisionConflictError(draft.revision, currentEtag);
-  const validation = await admitWorkflowAuthoring(
-    client,
-    variant.validateAuthoringGraph,
-    draft.graphJson,
-    {
-      ...(input.signal === undefined ? {} : { signal: input.signal }),
-      workspaceVariableNames: await lockWorkspaceVariableNames(
-        client,
-        input.workspaceId,
-      ),
-    },
-  );
-  if (!validation.ok) throw new InvalidWorkflowGraphError(validation.issues);
-  const graph = parseWorkflowGraphForPublish(
-    draft.graphJson,
-    variant.definitionCatalog,
-  );
-  const settingsIssues = stepSettingsIssues(graph, variant.portableCatalog);
-  if (settingsIssues.length > 0)
-    throw new InvalidWorkflowGraphError(settingsIssues);
-  const tableIssues = await dataTableReferenceIssues(
-    client,
-    input.workspaceId,
-    graph,
-  );
-  if (tableIssues.length > 0) throw new InvalidWorkflowGraphError(tableIssues);
-  const connectionIssues = await connectionReferenceIssues(
-    client,
-    input,
-    graph,
-  );
-  if (connectionIssues.length > 0)
-    throw new InvalidWorkflowGraphError(connectionIssues);
-  await validateApprovalAudience(client, input.workspaceId, graph);
-  await requireWorkflowCallTargets(client, input, graph);
-  await lockArtifactReferences(client, input.workspaceId, graph, input.actorId);
-  // Injected compilers return unknown executable JSON, so this is its boundary.
-  const executable = executableSchema.parse(variant.executableCompiler(graph));
-  const versionId = generatePersistedId();
-  const { calls } = await validatePublicationCalls(
-    client,
-    {
-      workspaceId: input.workspaceId,
-      workflowId,
-      workflowVersionId: versionId,
-      executableChecksum: executable.checksum,
-    },
-    graph,
-    validation.expandedInvocations,
-  );
-  return Object.freeze({
-    versionId,
-    calls,
-    checksum: executable.checksum,
-    definitionCatalog: variant.definitionCatalog,
-    executable,
-    graph,
-  });
+  return compilePublicationGraph(client, input, draft.graphJson, variant);
 }
 
 async function persistVersion(
