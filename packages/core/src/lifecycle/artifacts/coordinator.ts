@@ -4,17 +4,7 @@ import {
   type RunArtifactRetentionCoordinatorOptions,
 } from './input.js';
 import { eraseArtifact, type RetentionArtifactStore } from './erase.js';
-import {
-  and,
-  asc,
-  eq,
-  inArray,
-  isNull,
-  lte,
-  notExists,
-  or,
-  sql,
-} from 'drizzle-orm';
+import { and, asc, eq, isNull, lte, notExists, or, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import {
   artifacts as artifactRecords,
@@ -88,10 +78,6 @@ export function createRunArtifactRetentionCoordinator(
               or(
                 and(
                   eq(artifactRecords.status, 'pending'),
-                  inArray(artifactRecords.purpose, [
-                    'user-upload',
-                    'form-upload',
-                  ]),
                   lte(artifactRecords.expiresAt, sql`clock_timestamp()`),
                 ),
                 and(
