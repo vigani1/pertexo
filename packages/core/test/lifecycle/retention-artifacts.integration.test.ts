@@ -1,3 +1,10 @@
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { databaseSchema } from '@pertexo/database/schema';
+import { parseWorkspaceId } from '@pertexo/database/primitives';
+import {
+  createPendingArtifact,
+  artifactStorageKey,
+} from '../../src/artifacts/records.repository.js';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   beforeEachFixture1,
@@ -200,6 +207,98 @@ describe('retention artifact reclamation', () => {
       chargedCount: 0,
     });
   });
+
+  it.each(['node-output', 'http-response'] as const)(
+    'reclaims an abandoned pending %s reservation across a retention restart',
+    async (purpose) => {
+      const artifactId = randomUUID();
+      await withOwnerTransaction((client) =>
+        client.query(
+          'insert into app.workspace_artifact_capacity(workspace_id) values($1) on conflict do nothing',
+          [workspaceId],
+        ),
+      );
+      const before = await readCapacity();
+      await withOwnerTransaction(async (client) => {
+        await createPendingArtifact(
+          {
+            db: drizzle(client, { schema: databaseSchema }),
+            workspaceId: parseWorkspaceId(workspaceId),
+          },
+          {
+            artifactId,
+            purpose,
+            byteLength: 10,
+            sha256: 'a'.repeat(64),
+            mediaType: 'application/octet-stream',
+            storageKey: artifactStorageKey(workspaceId, artifactId),
+            expiresAt: new Date(Date.now() + 60_000),
+          },
+        );
+        await client.query(
+          `update app.artifacts set expires_at=clock_timestamp()-interval '1 hour' where id=$1`,
+          [artifactId],
+        );
+      });
+      expect(await readCapacity()).toEqual({
+        chargedBytes: before.chargedBytes + 10,
+        chargedCount: before.chargedCount + 1,
+      });
+      let unavailable = true;
+      const objects = new Set<string>([artifactId]);
+      const store = {
+        delete: ({ artifactId: id }: ArtifactStoreInput) => {
+          if (unavailable)
+            return Promise.reject(
+              new Error('PUT/finalization residue cleanup interrupted'),
+            );
+          objects.delete(id);
+          return Promise.resolve();
+        },
+        head: ({ artifactId: id }: ArtifactStoreInput) =>
+          Promise.resolve(objects.has(id) ? {} : null),
+      };
+      const create = () =>
+        createRunArtifactRetentionCoordinator(
+          parseDatabaseConfig({ connectionString: maintenanceUrl, max: 2 }),
+          store,
+        );
+      const first = create();
+      try {
+        await expect(first.processNext()).rejects.toThrow(
+          'cleanup interrupted',
+        );
+      } finally {
+        await first.close();
+      }
+      expect(await readArtifactRetentionState(artifactId)).toEqual({
+        status: 'deleting',
+        retryScheduled: true,
+      });
+      unavailable = false;
+      await setArtifactRetryAt(artifactId, 'past');
+      const restarted = create();
+      try {
+        await expect(restarted.processNext()).resolves.toMatchObject({
+          status: 'completed',
+          artifactId,
+        });
+      } finally {
+        await restarted.close();
+      }
+      expect(objects.size).toBe(0);
+      expect(await readCapacity()).toEqual(before);
+      await withOwnerTransaction(async (client) => {
+        expect(
+          (
+            await client.query('select id from app.artifacts where id=$1', [
+              artifactId,
+            ])
+          ).rows,
+        ).toEqual([]);
+      });
+    },
+  );
 
   it('keeps an expired pending upload deleting and charged across a store failure', async () => {
     const artifactId = randomUUID();
