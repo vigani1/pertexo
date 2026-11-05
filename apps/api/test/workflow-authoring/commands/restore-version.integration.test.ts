@@ -49,6 +49,7 @@ describeIntegration('authenticated immutable version restoration', () => {
       expect(restored.statusCode, restored.body).toBe(200);
       expect(restored.headers.etag).not.toBe(tag);
       expect(restored.json()).toMatchObject({
+        recoveryCopyId: null,
         revision: original.draft.revision + 1,
         graph: original.versions[0]?.graph,
       });
@@ -79,6 +80,59 @@ describeIntegration('authenticated immutable version restoration', () => {
       expect(await fixture.readLifecycle(ids.published)).toEqual(lifecycle);
     },
   );
+
+  it('returns the recovery workflow id and serves its unpublished edits as a disabled draft', async () => {
+    const { application, workspaceId, ids } = fixture;
+    const owner = await fixture.login('owner');
+    const base = `/v1/workspaces/${workspaceId}/workflows/${ids.published}`;
+    const current = await application.inject({
+      method: 'GET',
+      url: `${base}/draft`,
+      headers: { cookie: owner.cookieHeader },
+    });
+    const graph = {
+      nodes: [],
+      edges: [],
+      settings: { maxRunDurationMs: 2_000 },
+    };
+    const saved = await application.inject({
+      method: 'PUT',
+      url: `${base}/draft`,
+      headers: mutationHeaders(owner, {
+        'if-match': String(current.headers.etag),
+      }),
+      payload: { graph },
+    });
+    expect(saved.statusCode, saved.body).toBe(200);
+    const restored = await application.inject({
+      method: 'POST',
+      url: `${base}/versions/${ids.publishedVersion}/restore`,
+      headers: mutationHeaders(owner, {
+        'if-match': String(saved.headers.etag),
+      }),
+      payload: {},
+    });
+    expect(restored.statusCode, restored.body).toBe(200);
+    const copyId = restored.json<{ recoveryCopyId: string }>().recoveryCopyId;
+    expect(copyId).toEqual(expect.any(String));
+    const copy = `/v1/workspaces/${workspaceId}/workflows/${copyId}`;
+    const draft = await application.inject({
+      method: 'GET',
+      url: `${copy}/draft`,
+      headers: { cookie: owner.cookieHeader },
+    });
+    expect(draft.statusCode, draft.body).toBe(200);
+    expect(draft.json()).toMatchObject({ graph });
+    const summary = await application.inject({
+      method: 'GET',
+      url: copy,
+      headers: { cookie: owner.cookieHeader },
+    });
+    expect(summary.statusCode, summary.body).toBe(200);
+    expect(summary.json()).toMatchObject({
+      workflow: { activationStatus: 'inactive', publishedVersionId: null },
+    });
+  });
 
   it('rejects version restoration into an archived workflow without changing lifecycle or history', async () => {
     const { application, workspaceId, ids } = fixture;

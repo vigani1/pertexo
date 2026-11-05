@@ -13,7 +13,7 @@ export const versionRoutes = {
     access: updating,
     rateLimit: 'ordinary_mutation',
     description:
-      'Copy an immutable version into the current draft with strong concurrency control. Does not publish or change workflow lifecycle. A committed retry with the old tag returns 412.',
+      'Copy an immutable version into the current draft with strong concurrency control. Preserves displaced unpublished edits as a disabled recovery workflow. Does not publish or change workflow lifecycle. A committed retry with the old tag returns 412.',
     body: projected(
       'WorkflowVersionRestoreRequest',
       schemas.workflowVersionRestoreRequestSchema,
@@ -26,8 +26,8 @@ export const versionRoutes = {
       status: 200,
       description: 'Workflow draft restored',
       body: projected(
-        'WorkflowDraftResponse',
-        schemas.workflowDraftResponseSchema,
+        'WorkflowVersionRestoreResponse',
+        schemas.workflowVersionRestoreResponseSchema,
       ),
       headers: {
         ETag: {

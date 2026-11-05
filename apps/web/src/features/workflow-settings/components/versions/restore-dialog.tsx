@@ -1,3 +1,4 @@
+import { useRouter } from '@tanstack/react-router';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { DialogClose } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -41,6 +42,7 @@ export function RestoreVersionDialog({
   onClose: () => void;
 }>) {
   const notifications = useNotifications();
+  const router = useRouter();
   const restore = useWorkflowVersionRestore({
     apiClient,
     userId,
@@ -50,10 +52,29 @@ export function RestoreVersionDialog({
   const label = `v${String(version.versionNumber)}`;
 
   async function confirm() {
-    if (!(await restore.restore(version))) return;
+    const result = await restore.restore(version);
+    if (result === false) return;
     notifications.success({
       title: `Draft restored from ${label}`,
-      description: 'Open Build to review it, then publish when ready.',
+      description:
+        result.recoveryCopyId === null ? (
+          'Open Build to review it, then publish when ready.'
+        ) : (
+          <>
+            Your unpublished changes were saved as a copy:{' '}
+            <a
+              href={
+                router.buildLocation({
+                  to: '/w/$workspaceId/workflows/$workflowId',
+                  params: { workspaceId, workflowId: result.recoveryCopyId },
+                }).href
+              }
+              className="inline-link"
+            >
+              Open copy
+            </a>
+          </>
+        ),
     });
     onClose();
   }
@@ -70,7 +91,7 @@ export function RestoreVersionDialog({
         locked: restore.pending,
       }}
       title={`Restore ${label} to the draft?`}
-      description={`Your draft will be replaced by ${label}. Published versions don’t change.`}
+      description={`Your draft will be replaced by ${label}. Published versions don’t change. Unpublished changes will be saved as a separate disabled copy in the same folder.`}
       onSubmit={confirm}
       submitDisabled={restore.pending}
       footer={

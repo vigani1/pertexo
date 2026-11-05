@@ -196,6 +196,10 @@ export const workflowDraftResponseSchema = z
     updatedAt: z.iso.datetime(),
   })
   .strict();
+export const workflowVersionRestoreResponseSchema =
+  workflowDraftResponseSchema.extend({
+    recoveryCopyId: z.uuid().nullable(),
+  });
 export const workflowDraftSaveRequestSchema = z
   .object({ graph: workflowGraphSchema })
   .strict();

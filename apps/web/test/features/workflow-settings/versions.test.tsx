@@ -172,13 +172,42 @@ describe('workflow versions tab', () => {
     ).toBeVisible();
   });
 
+  it('warns about the recovery copy and links the preserved unpublished draft after restore', async () => {
+    installQueries();
+    const copyId = '88888888-8888-4888-8888-888888888888';
+    mockServer.use(
+      restoreHandler(() => draftResponse(emptyGraph, etagB, copyId)),
+    );
+    renderApp(versionsPath);
+    const event = userEvent.setup();
+    await event.click(
+      await screen.findByRole('button', { name: 'Restore to draft' }),
+    );
+    const dialog = await screen.findByRole('dialog', {
+      name: 'Restore v1 to the draft?',
+    });
+    expect(dialog).toHaveTextContent(
+      'Unpublished changes will be saved as a separate disabled copy in the same folder.',
+    );
+    await event.click(
+      within(dialog).getByRole('button', { name: 'Restore to draft' }),
+    );
+    expect(
+      await screen.findByText('Your unpublished changes were saved as a copy:'),
+    ).toBeVisible();
+    expect(screen.getByRole('link', { name: 'Open copy' })).toHaveAttribute(
+      'href',
+      `/w/${workspaceId}/workflows/${copyId}`,
+    );
+  });
+
   it('restores a version with a freshly read draft ETag', async () => {
     installQueries();
     mockServer.use(
       http.get(`${workflowApi}/draft`, () => draftResponse(emptyGraph, etag)),
       restoreHandler((precondition) => {
         expect(precondition).toBe(etag);
-        return draftResponse(emptyGraph, etagB);
+        return draftResponse(emptyGraph, etagB, null);
       }),
     );
     renderApp(versionsPath);
@@ -248,7 +277,7 @@ describe('workflow versions tab', () => {
         expect(precondition).toBe(etagB);
         currentGraph = emptyGraph;
         currentEtag = etagC;
-        return draftResponse(currentGraph, currentEtag);
+        return draftResponse(currentGraph, currentEtag, null);
       }),
     );
     renderApp(versionsPath);

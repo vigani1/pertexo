@@ -1,6 +1,7 @@
 import {
   strongEtagSchema,
   workflowVersionRestoreRequestSchema,
+  workflowVersionRestoreResponseSchema,
   workflowVersionsResponseSchema,
   type WorkflowVersionResponse,
   type WorkflowVersionsResponse,
@@ -108,7 +109,9 @@ export function restoreWorkflowVersion({
   workflowId: string;
   versionId: string;
   etag: string;
-}>): Promise<WorkflowDraftSnapshot> {
+}>): Promise<
+  WorkflowDraftSnapshot & Readonly<{ recoveryCopyId: string | null }>
+> {
   return apiClient.request({
     path: `${versionsPath(workspaceId, workflowId)}/${encodeURIComponent(versionId)}/restore`,
     method: 'POST',
@@ -116,8 +119,14 @@ export function restoreWorkflowVersion({
     body: workflowVersionRestoreRequestSchema.parse({}),
     response: {
       kind: 'json',
-      decode: (value, metadata) =>
-        decodeWorkflowDraftSnapshot(value, metadata.header('etag')),
+      decode: (value, metadata) => {
+        const { recoveryCopyId, ...draft } =
+          workflowVersionRestoreResponseSchema.parse(value);
+        return {
+          ...decodeWorkflowDraftSnapshot(draft, metadata.header('etag')),
+          recoveryCopyId,
+        };
+      },
     },
   });
 }
