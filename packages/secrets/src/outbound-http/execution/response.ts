@@ -49,7 +49,10 @@ export async function consumeFinalResponse<Body>(
   }>,
 ): Promise<SecureHttpResponse<Body>> {
   try {
-    const redactor = prepareResponseRedactor(request.sensitiveValues);
+    const redactor = prepareResponseRedactor(
+      request.sensitiveValues,
+      request.maxResponseBytes,
+    );
     const rawContentType = normalizedHeaderValue(
       response.headers['content-type'] ?? '',
     );

@@ -84,19 +84,26 @@ export function createProviderHttpClient(
       }
     },
   });
+  const translateError = (error: unknown): unknown => {
+    const failure = security.inspectError(error);
+    return failure === undefined
+      ? error
+      : new ProviderHttpError(failure.code, failure.classification, failure);
+  };
   const execute = async <Result>(
     work: () => Promise<Result>,
   ): Promise<Result> => {
     try {
       return await work();
     } catch (error: unknown) {
-      const failure = security.inspectError(error);
-      if (failure === undefined) throw error;
-      throw new ProviderHttpError(
-        failure.code,
-        failure.classification,
-        failure,
-      );
+      throw translateError(error);
+    }
+  };
+  const responseBody = async function* (body: AsyncIterable<Uint8Array>) {
+    try {
+      yield* body;
+    } catch (error: unknown) {
+      throw translateError(error);
     }
   };
   return Object.freeze({
@@ -105,7 +112,12 @@ export function createProviderHttpClient(
     executeStreaming: <Body>(
       input: ProviderHttpRequest,
       consume: ProviderHttpBodyConsumer<Body>,
-    ) => execute(() => client.executeStreaming(request(input), consume)),
+    ) =>
+      execute(() =>
+        client.executeStreaming(request(input), (response) =>
+          consume({ ...response, body: responseBody(response.body) }),
+        ),
+      ),
     redactText: security.redactText,
   });
 }
