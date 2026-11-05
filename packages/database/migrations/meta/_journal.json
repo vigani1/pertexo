@@ -736,6 +736,13 @@
       "when": 1793919510104,
       "tag": "0104_authoring_receipt_capacity",
       "breakpoints": true
+    },
+    {
+      "idx": 105,
+      "version": "7",
+      "when": 1793920733721,
+      "tag": "0105_escaped_receipt_labels",
+      "breakpoints": true
     }
   ]
 }

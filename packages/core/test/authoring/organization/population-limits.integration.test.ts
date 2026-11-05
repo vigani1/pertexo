@@ -93,58 +93,64 @@ describe.skipIf(!organizationFixtureEnabled)(
       );
     });
 
-    it('sets and exactly replays sharing with 100 member grants and full-size display labels', async () => {
-      const { workspace, actor } = await fixture.scope();
-      const scope = { workspaceId: workspace, actorId: actor };
-      const { folder } = await stores.folders.createFolder({
-        ...scope,
-        name: 'Shared at capacity',
-        parentId: null,
-        idempotencyKey: randomUUID(),
-      });
-      const users = Array.from({ length: 100 }, () => randomUUID());
-      for (const id of users)
-        await fixture.identity.createUser({
-          id,
-          email: `${id}@population.test`,
-          displayName: '界'.repeat(256),
+    it.each([
+      { kind: 'UTF-8', label: '界'.repeat(256) },
+      { kind: 'JSON-escaped', label: '\u0001'.repeat(256) },
+    ])(
+      'sets and exactly replays sharing with 100 member grants and full-size $kind labels',
+      async ({ label }) => {
+        const { workspace, actor } = await fixture.scope();
+        const scope = { workspaceId: workspace, actorId: actor };
+        const { folder } = await stores.folders.createFolder({
+          ...scope,
+          name: 'Shared at capacity',
+          parentId: null,
+          idempotencyKey: randomUUID(),
         });
-      await fixture.transaction(fixture.owner, workspace, actor, (client) =>
-        client.query(
-          `insert into app.workspace_memberships(workspace_id,user_id,role,status) select $1,id,'viewer','active' from unnest($2::uuid[]) id`,
-          [workspace, users],
-        ),
-      );
-      const input = {
-        ...scope,
-        folderId: folder.id,
-        idempotencyKey: randomUUID(),
-        request: {
-          mode: 'restricted' as const,
-          expectedFolderRevision: folder.revision,
-          grants: users.map((userId) => ({
-            kind: 'member' as const,
-            userId,
-            access: 'viewer' as const,
-          })),
-        },
-      };
-      const saved = await stores.folders.replaceSharing(input);
-      expect(saved.grants).toHaveLength(100);
-      expect(Object.values(saved.labels ?? {})).toEqual(
-        Array.from({ length: 100 }, () => '界'.repeat(256)),
-      );
-      expect(await stores.folders.replaceSharing(input)).toEqual({
-        ...saved,
-        replayed: true,
-      });
-      const read = await stores.folders.readSharing({
-        ...scope,
-        folderId: folder.id,
-      });
-      expect(read.grants).toHaveLength(100);
-      expect(read.mode).toBe('restricted');
-    });
+        const users = Array.from({ length: 100 }, () => randomUUID());
+        for (const id of users)
+          await fixture.identity.createUser({
+            id,
+            email: `${id}@population.test`,
+            displayName: label,
+          });
+        await fixture.transaction(fixture.owner, workspace, actor, (client) =>
+          client.query(
+            `insert into app.workspace_memberships(workspace_id,user_id,role,status) select $1,id,'viewer','active' from unnest($2::uuid[]) id`,
+            [workspace, users],
+          ),
+        );
+        const input = {
+          ...scope,
+          folderId: folder.id,
+          idempotencyKey: randomUUID(),
+          request: {
+            mode: 'restricted' as const,
+            expectedFolderRevision: folder.revision,
+            grants: users.map((userId) => ({
+              kind: 'member' as const,
+              userId,
+              access: 'viewer' as const,
+            })),
+          },
+        };
+        const saved = await stores.folders.replaceSharing(input);
+        expect(saved.grants).toHaveLength(100);
+        expect(Object.values(saved.labels ?? {})).toEqual(
+          Array.from({ length: 100 }, () => label),
+        );
+        expect(await stores.folders.replaceSharing(input)).toEqual({
+          ...saved,
+          replayed: true,
+        });
+        const read = await stores.folders.readSharing({
+          ...scope,
+          folderId: folder.id,
+        });
+        expect(read.grants).toHaveLength(100);
+        expect(read.mode).toBe('restricted');
+      },
+    );
 
     it('continues refusing real outbox payloads above 4 KB', () => {
       expect(() =>
