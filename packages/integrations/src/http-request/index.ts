@@ -42,3 +42,5 @@ export {
   httpPaginationSchema,
   type HttpPagination,
 } from './pagination/http-pagination.schemas.js';
+
+export { HTTP_RESPONSE_FAILURES } from './response-failures.js';

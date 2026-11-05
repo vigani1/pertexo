@@ -4,12 +4,16 @@ import { SECURE_HTTP_ERROR_CODE, failure } from './secure-error.js';
 export function responseCharset(contentType: string): string | undefined {
   let charset: string | undefined;
   for (const parameter of contentTypeParameters(contentType)) {
-    if (!/^charset(?:\s|=|$)/iu.test(parameter)) continue;
+    const name = /^[!#$%&'*+.^_`|~a-z0-9-]+/iu.exec(parameter)?.[0];
+    if (name?.toLowerCase() !== 'charset') continue;
     const matched =
-      /^charset\s*=\s*(?:"([^"\\]*)"|([!#$%&'*+.^_`|~a-z0-9-]+))\s*$/iu.exec(
+      /^charset[\t ]*=[\t ]*(?:"([^"\\]*)"|([!#$%&'*+.^_`|~a-z0-9-]+))[\t ]*$/iu.exec(
         parameter,
       );
-    const label = (matched?.[1] ?? matched?.[2] ?? '').trim();
+    const label = (matched?.[1] ?? matched?.[2] ?? '').replace(
+      /^[\t ]+|[\t ]+$/gu,
+      '',
+    );
     if (label.length === 0 || charset !== undefined)
       throw failure(SECURE_HTTP_ERROR_CODE.responseEncodingRejected, {
         possiblyDispatched: true,

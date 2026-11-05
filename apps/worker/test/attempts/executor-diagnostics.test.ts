@@ -1,3 +1,4 @@
+import { HTTP_RESPONSE_FAILURES } from '@pertexo/integrations';
 import {
   FILE_PAGES_ERROR_CODE,
   CALLBACK_ERROR_CODE,
@@ -59,6 +60,7 @@ describe('executor diagnostic persistence boundary', () => {
     ...Object.values(FILE_TRANSFER_ERROR_CODE),
     ...Object.keys(HTTP_PAGINATION_FAILURES),
     ...Object.keys(HTTP_OAUTH2_FAILURES),
+    ...Object.keys(HTTP_RESPONSE_FAILURES),
     'file.create_size',
     'email.attachments_too_large',
     'email.too_many_attachments',
