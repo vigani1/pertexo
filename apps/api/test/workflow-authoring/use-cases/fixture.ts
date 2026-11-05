@@ -106,7 +106,9 @@ export function persistence(
   overrides: Partial<WorkflowAuthoringPersistence> = {},
 ) {
   return {
-    restoreWorkflowVersion: vi.fn().mockResolvedValue(draft({ revision: 2 })),
+    restoreWorkflowVersion: vi
+      .fn<WorkflowAuthoringPersistence['restoreWorkflowVersion']>()
+      .mockResolvedValue({ ...draft({ revision: 2 }), recoveryCopyId: null }),
     duplicateWorkflow: vi.fn().mockResolvedValue({ workflowId }),
     transitionWorkflowLifecycle: vi
       .fn()

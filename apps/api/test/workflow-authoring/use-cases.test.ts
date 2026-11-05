@@ -195,6 +195,7 @@ describe('workflow authoring application seams', () => {
       requestId: actor.requestId,
     });
     expect(result.body.revision).toBe(2);
+    expect(result.body).toMatchObject({ recoveryCopyId: null });
     expect(result.representationTag).not.toBe(representationTag);
     expect(store.getDraft).not.toHaveBeenCalled();
     expect(store.publishWorkflow).not.toHaveBeenCalled();
