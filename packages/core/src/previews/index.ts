@@ -40,3 +40,6 @@ export {
 export type {} from './runs/preview-run.store.js';
 export type {} from './runs/preview-replay.types.js';
 export type {} from './runs/acceptance/preview-acceptance.types.js';
+
+// Lifecycle cancels undispatched previews in its deletion transaction.
+export type {} from './attempts/cancel-workspace-previews.repository.js';
