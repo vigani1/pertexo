@@ -263,7 +263,10 @@ describe('snapshot validation and publication ordering', () => {
           return Promise.resolve({ rows: [draftWireRow(row)] });
         if (sql.includes('pg_settings')) return Promise.resolve(budget);
         // The accessible workflow answers; no version is published.
-        if (sql.includes('app.workflow_versions'))
+        if (
+          sql.includes('app.workflow_versions') ||
+          sql.includes('app.workspace_variables')
+        )
           return Promise.resolve({ rows: [] });
         return Promise.resolve({ rows: [[workflowId]], rowCount: 1 });
       },
@@ -289,6 +292,7 @@ describe('snapshot validation and publication ordering', () => {
     ).toHaveLength(1);
     expect(validator).toHaveBeenCalledWith(graph, {
       signal: controller.signal,
+      workspaceVariableNames: [],
     });
   });
 

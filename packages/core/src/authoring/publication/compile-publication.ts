@@ -1,5 +1,9 @@
 import type { PoolClient } from 'pg';
-import type { WorkflowGraph } from '@pertexo/workflow-model';
+import type {
+  WorkflowGraph,
+  GraphValidationResult,
+} from '@pertexo/workflow-model';
+import { WorkflowEngineError } from '@pertexo/workflow-engine';
 import { InvalidWorkflowGraphError } from '@pertexo/workflow-model';
 import { parseWorkflowGraphForPublish } from '@pertexo/workflow-model/server';
 import { generatePersistedId } from '@pertexo/database/platform';
@@ -13,19 +17,29 @@ import { validateApprovalAudience } from './pending-tasks.repository.js';
 import { stepSettingsIssues } from './step-settings.js';
 import { validatePublicationCalls } from './calls.repository.js';
 import { connectionReferenceIssues } from './connections.repository.js';
-import type {
-  CompiledPublication,
-  PublicationCandidateInput,
-} from './workflow-publication.types.js';
+import type { CompiledPublication } from './workflow-publication.types.js';
+import type { WorkflowActor } from '../workflows/access.js';
 import { executableSchema } from './input.js';
+
+type PublicationInspection =
+  | Readonly<{
+      kind: 'ready';
+      validation: Extract<GraphValidationResult, { ok: true }>;
+      publication: CompiledPublication;
+    }>
+  | Readonly<{
+      kind: 'refused';
+      validation: Extract<GraphValidationResult, { ok: false }>;
+      error: InvalidWorkflowGraphError | WorkflowEngineError;
+    }>;
 
 /** Inspect the saved graph against current resources before producing an immutable publication. */
 export async function compilePublicationGraph(
   client: PoolClient,
-  input: PublicationCandidateInput,
+  input: WorkflowActor,
   graphJson: WorkflowGraph,
   variant: AuthoringCatalogs,
-): Promise<CompiledPublication> {
+): Promise<PublicationInspection> {
   const validation = await admitWorkflowAuthoring(
     client,
     variant.validateAuthoringGraph,
@@ -38,50 +52,94 @@ export async function compilePublicationGraph(
       ),
     },
   );
-  if (!validation.ok) throw new InvalidWorkflowGraphError(validation.issues);
-  const graph = parseWorkflowGraphForPublish(
-    graphJson,
-    variant.definitionCatalog,
-  );
-  const settingsIssues = stepSettingsIssues(graph, variant.portableCatalog);
-  if (settingsIssues.length > 0)
-    throw new InvalidWorkflowGraphError(settingsIssues);
-  const tableIssues = await dataTableReferenceIssues(
-    client,
-    input.workspaceId,
-    graph,
-  );
-  if (tableIssues.length > 0) throw new InvalidWorkflowGraphError(tableIssues);
-  const connectionIssues = await connectionReferenceIssues(
-    client,
-    input,
-    graph,
-  );
-  if (connectionIssues.length > 0)
-    throw new InvalidWorkflowGraphError(connectionIssues);
-  await validateApprovalAudience(client, input.workspaceId, graph);
-  await requireWorkflowCallTargets(client, input, graph);
-  await lockArtifactReferences(client, input.workspaceId, graph, input.actorId);
-  // Injected compilers return unknown executable JSON, so this is its boundary.
-  const executable = executableSchema.parse(variant.executableCompiler(graph));
-  const versionId = generatePersistedId();
-  const { calls } = await validatePublicationCalls(
-    client,
-    {
-      workspaceId: input.workspaceId,
-      workflowId: input.workflowId,
-      workflowVersionId: versionId,
-      executableChecksum: executable.checksum,
-    },
-    graph,
-    validation.expandedInvocations,
-  );
-  return Object.freeze({
-    versionId,
-    calls,
-    checksum: executable.checksum,
-    definitionCatalog: variant.definitionCatalog,
-    executable,
-    graph,
-  });
+  if (!validation.ok)
+    return {
+      kind: 'refused',
+      validation,
+      error: new InvalidWorkflowGraphError(validation.issues),
+    };
+  try {
+    const graph = parseWorkflowGraphForPublish(
+      graphJson,
+      variant.definitionCatalog,
+    );
+    const settingsIssues = stepSettingsIssues(graph, variant.portableCatalog);
+    if (settingsIssues.length > 0)
+      throw new InvalidWorkflowGraphError(settingsIssues);
+    const tableIssues = await dataTableReferenceIssues(
+      client,
+      input.workspaceId,
+      graph,
+    );
+    if (tableIssues.length > 0)
+      throw new InvalidWorkflowGraphError(tableIssues);
+    const connectionIssues = await connectionReferenceIssues(
+      client,
+      input,
+      graph,
+    );
+    if (connectionIssues.length > 0)
+      throw new InvalidWorkflowGraphError(connectionIssues);
+    await validateApprovalAudience(client, input.workspaceId, graph);
+    await requireWorkflowCallTargets(client, input, graph);
+    await lockArtifactReferences(
+      client,
+      input.workspaceId,
+      graph,
+      input.actorId,
+    );
+    // Injected compilers return unknown executable JSON, so this is its boundary.
+    const executable = executableSchema.parse(
+      variant.executableCompiler(graph),
+    );
+    const versionId = generatePersistedId();
+    const { calls } = await validatePublicationCalls(
+      client,
+      {
+        workspaceId: input.workspaceId,
+        workflowId: input.workflowId,
+        workflowVersionId: versionId,
+        executableChecksum: executable.checksum,
+      },
+      graph,
+      validation.expandedInvocations,
+    );
+    return {
+      kind: 'ready',
+      validation,
+      publication: Object.freeze({
+        versionId,
+        calls,
+        checksum: executable.checksum,
+        definitionCatalog: variant.definitionCatalog,
+        executable,
+        graph,
+      }),
+    };
+  } catch (error) {
+    if (
+      !(error instanceof InvalidWorkflowGraphError) &&
+      !(
+        error instanceof WorkflowEngineError &&
+        error.code === 'executable_invalid'
+      )
+    )
+      throw error;
+    const issues =
+      error instanceof InvalidWorkflowGraphError
+        ? error.issues
+        : [
+            {
+              code: 'invalid_graph' as const,
+              path: '$',
+              message: error.message,
+            },
+          ];
+    // Preserve publication's specific error while the draft check presents its issues.
+    return {
+      kind: 'refused',
+      error,
+      validation: { ...validation, ok: false, issues },
+    };
+  }
 }

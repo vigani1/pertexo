@@ -122,7 +122,14 @@ async function lockAndCompilePublication(
   });
   if (currentEtag !== input.representationTag)
     throw new WorkflowRevisionConflictError(draft.revision, currentEtag);
-  return compilePublicationGraph(client, input, draft.graphJson, variant);
+  const inspected = await compilePublicationGraph(
+    client,
+    input,
+    draft.graphJson,
+    variant,
+  );
+  if (inspected.kind === 'refused') throw inspected.error;
+  return inspected.publication;
 }
 
 async function persistVersion(
