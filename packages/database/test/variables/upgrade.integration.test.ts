@@ -203,6 +203,7 @@ it('backfills current and retained historical sets, fixed empty sets and purged 
         '0100_core_run_admission.sql',
         '0101_restore_timer_capacity_triggers.sql',
         '0102_reconcile_timer_capacity_counters.sql',
+        '0103_preview_unclaimed_cleanup.sql',
       ]);
       expect(
         (
