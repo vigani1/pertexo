@@ -165,6 +165,7 @@ it('upgrades a populated standalone test without changing its source identity or
       '0105_escaped_receipt_labels.sql',
       '0106_session_security_integrity.sql',
       '0107_removed_member_storage_capability.sql',
+      '0108_integration_admission_in_core.sql',
     ]);
     expect(
       (

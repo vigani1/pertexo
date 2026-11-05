@@ -1,3 +1,5 @@
+import { lockWorkspaceRunAdmission } from '../../shared/workspace-fence.repository.js';
+import { ACTIVE_WORKSPACE_STATUSES } from '@pertexo/policy';
 import { reconciliationFailureReason } from '../trigger-failure.js';
 import { and, eq, inArray, not, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
@@ -34,6 +36,7 @@ import { deactivateArchivedWorkflowTriggers } from './activation.repository.js';
 import {
   WorkflowTriggerReconciliationMismatchError,
   WorkflowTriggerStalePublicationError,
+  WorkflowTriggerWorkspaceUnavailableError,
 } from './trigger-reconciliation.errors.js';
 import { readHealth, refreshWorkflowActivation } from './health.repository.js';
 import { reconcileActiveWorkflowTriggers } from './materialization.repository.js';
@@ -97,6 +100,10 @@ async function reconcileWorkflowTriggers(
     pool,
     { workspaceId: input.workspaceId },
     async (client) => {
+      const workspaceStatus = await lockWorkspaceRunAdmission(
+        drizzle(client),
+        input.workspaceId,
+      );
       const workflowId = input.workflowId;
       const versionId = input.publishedVersionId;
       const outboxEventId = input.outboxEventId;
@@ -153,6 +160,8 @@ async function reconcileWorkflowTriggers(
           workflowId,
         );
       } else {
+        if (!integrationsAllowed(workspaceStatus))
+          throw new WorkflowTriggerWorkspaceUnavailableError();
         await reconcileActiveWorkflowTriggers(client, {
           workspaceId: input.workspaceId,
           workflowId,
@@ -203,8 +212,14 @@ async function recordTriggerReconciliationFailure(
     pool,
     { workspaceId: input.workspaceId },
     async (client) => {
+      const workspaceStatus = await lockWorkspaceRunAdmission(
+        drizzle(client),
+        input.workspaceId,
+      );
       const workflowId = input.workflowId;
       const versionId = input.publishedVersionId;
+      // An unavailable workspace retains its stopped configuration; delivery still retries its original failure.
+      if (!integrationsAllowed(workspaceStatus)) return;
       const reason = reconciliationFailureReason(input.error);
       const db = drizzle(client);
       const authority = await db
@@ -304,4 +319,8 @@ async function recordTransportMismatch(
       messageId,
     })
     .catch(rethrowQueryFailure);
+}
+
+function integrationsAllowed(status: string | undefined): boolean {
+  return ACTIVE_WORKSPACE_STATUSES.some((allowed) => allowed === status);
 }
