@@ -94,7 +94,11 @@ const encode = (value: string, encoding: Encoding): string => {
       Buffer.from(text.slice(6), 'base64').toString('utf8').slice(5),
     basic: (text) => Buffer.from(text.slice(6), 'base64').toString('utf8'),
   };
-  return transforms[encoding]?.(value) ?? value;
+  // The encoding comes from the request URL: only call transforms defined here.
+  const transform = Object.hasOwn(transforms, encoding)
+    ? transforms[encoding]
+    : undefined;
+  return transform?.(value) ?? value;
 };
 let origin: string;
 const seen: string[] = [];
