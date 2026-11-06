@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { JsonataEvaluator } from '@pertexo/workflow-model/server';
 import { NodeExecutorFailure } from '@pertexo/node-sdk/server';
 
 import {
@@ -19,6 +20,59 @@ import {
 } from '../../support/compilation/input-resolution.js';
 
 describe('input resolution production operations', () => {
+  it('fails the step with the expression field name when a numeric result overflows', async () => {
+    const evaluator = new JsonataEvaluator();
+    try {
+      for (const field of ['total', 'ratio']) {
+        const draft = structuredClone(graph());
+        Object.assign(draft.nodes[1], {
+          inputMappings: {
+            other: { kind: 'literal', value: 'retained' },
+            [field]: {
+              kind: 'expression',
+              language: 'jsonata',
+              expression: '1 / 0',
+            },
+          },
+        });
+        await expect(
+          executeNodeAttempt({
+            runId: 'run-overflow',
+            nodeRunId: 'node-overflow',
+            attemptId: 'attempt-overflow',
+            executable: buildWorkflowExecutable({
+              graph: draft,
+              catalog: composeExecutableCatalog(nodeCatalog()),
+            }),
+            workflowVersionId: '00000000-0000-4000-8000-000000000001',
+            invocationKey: invocationKey({
+              workflowVersionId: '00000000-0000-4000-8000-000000000001',
+              nodeId: 'set',
+            }),
+            nodeId: 'set',
+            runInput: {},
+            completedNodeOutputs: completedOutputs({ manual: {} }),
+            expressionEvaluator: evaluator,
+            signal: new AbortController().signal,
+            registry: {
+              execute: () =>
+                Promise.resolve({
+                  kind: 'succeeded',
+                  output: { incorrectlyExecuted: true },
+                }),
+            },
+          }),
+        ).rejects.toMatchObject({
+          kind: 'failed',
+          safeErrorCode: 'execution.expression_failed',
+          errorSummary: `Expression for field "${field}" returned a nonfinite number. Reduce the numeric result or check for division by zero.`,
+          possiblyDispatched: false,
+        });
+      }
+    } finally {
+      await evaluator.shutdown();
+    }
+  });
   it('contains hostile registry and expression-evaluator rejections', async () => {
     const catalog = composeExecutableCatalog(nodeCatalog());
     const executable = buildWorkflowExecutable({ graph: graph(), catalog });

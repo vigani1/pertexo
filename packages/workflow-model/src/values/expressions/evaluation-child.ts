@@ -19,6 +19,8 @@ type EvaluationMessage = Readonly<{
 
 const FAILURE_MESSAGE_LENGTH = 512;
 
+class NonfiniteResultError extends Error {}
+
 function copyJsonataValue(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(copyJsonataValue);
   if (value !== null && typeof value === 'object') {
@@ -34,6 +36,8 @@ function copyJsonataValue(value: unknown): unknown {
 }
 
 function jsonOnly(_key: string, value: unknown): unknown {
+  if (typeof value === 'number' && !Number.isFinite(value))
+    throw new NonfiniteResultError();
   if (typeof value === 'function')
     throw new TypeError('The expression result is not JSON');
   return value;
@@ -64,6 +68,10 @@ async function evaluate(message: EvaluationMessage): Promise<void> {
     })) as unknown;
     process.send?.(resultMessage(value, message.outputBytes));
   } catch (caught: unknown) {
+    if (caught instanceof NonfiniteResultError) {
+      process.send?.({ kind: 'nonfinite_result' });
+      return;
+    }
     process.send?.({
       kind: 'failed',
       message:
