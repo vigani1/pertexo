@@ -259,7 +259,7 @@ it.each(['seconds', 'date'] as const)(
     expect(executorFailureCompletion(error)).toMatchObject({
       failureKind: 'failed',
       safeErrorCode: 'provider.retry_after_exceeded',
-      errorSummary: expect.stringMatching(/service.*wait longer/iu),
+      errorSummary: expect.stringMatching(/service.*wait longer/iu) as unknown,
     });
     expect(requests).toBe(1);
   },

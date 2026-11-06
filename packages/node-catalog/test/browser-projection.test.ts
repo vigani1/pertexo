@@ -100,8 +100,8 @@ it('serves human display metadata for every actual platform definition', () => {
     expect(item, item.definition.key).toHaveProperty(
       'display',
       expect.objectContaining({
-        name: expect.any(String),
-        description: expect.any(String),
+        name: expect.any(String) as unknown,
+        description: expect.any(String) as unknown,
       }),
     );
   }

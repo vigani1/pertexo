@@ -23,7 +23,7 @@ it.each([
       errorKind,
       possiblyDispatched: false,
       safeErrorCode: `slack.${error}`,
-      errorSummary: expect.stringMatching(reason),
+      errorSummary: expect.stringMatching(reason) as unknown,
     });
     if (error === 'token_expired')
       expect(state.value.observeConnectionHealth).toHaveBeenCalledWith({
@@ -36,18 +36,19 @@ it.each([429, 200])(
   'recognizes a Slack rate-limit response in HTTP %i',
   async (status) => {
     const client = createSlackClient({
-      execute: async (request) => ({
-        status,
-        headers: { 'retry-after': '3' },
-        body: new TextEncoder().encode(
-          status === 429
-            ? 'limited'
-            : JSON.stringify({ ok: false, error: 'ratelimited' }),
-        ),
-        bodyEncoding: 'utf8',
-        finalUrl: request.url,
-        redirectCount: 0,
-      }),
+      execute: (request) =>
+        Promise.resolve({
+          status,
+          headers: { 'retry-after': '3' },
+          body: new TextEncoder().encode(
+            status === 429
+              ? 'limited'
+              : JSON.stringify({ ok: false, error: 'ratelimited' }),
+          ),
+          bodyEncoding: 'utf8' as const,
+          finalUrl: request.url,
+          redirectCount: 0,
+        }),
     });
     expect(
       await client.sendMessage({
@@ -56,7 +57,7 @@ it.each([429, 200])(
         text: 'hello',
         timeoutMillis: 1000,
         signal: new AbortController().signal,
-        beforeDispatch: async () => undefined,
+        beforeDispatch: () => Promise.resolve(),
       }),
     ).toEqual({ kind: 'rate_limited', retryAfterMillis: 3000 });
   },

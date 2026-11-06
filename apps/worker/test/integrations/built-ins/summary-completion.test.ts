@@ -20,6 +20,6 @@ it('retains the built-in summary group limit as an ordinary actionable failure',
     safeErrorCode: 'list.summary_too_large',
     errorSummary: expect.stringMatching(
       /1500 groups.*limits.*smaller batches/iu,
-    ),
+    ) as unknown,
   });
 });
