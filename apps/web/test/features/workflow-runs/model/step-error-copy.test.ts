@@ -1,8 +1,6 @@
+import { shortStepError } from '@/features/workflow-runs/model/step-inspection/step-error-summary';
 import { describe, expect, it } from 'vitest';
-import {
-  describeStepError,
-  shortStepError,
-} from '@/features/workflow-runs/model/step-inspection/error-copy';
+import { describeStepError } from '@/features/workflow-runs/model/step-inspection/error-copy';
 
 const fallback = describeStepError('nothing.known');
 
