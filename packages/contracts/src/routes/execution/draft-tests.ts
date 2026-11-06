@@ -35,7 +35,7 @@ const problems = {
   '403': responseReference('Forbidden'),
   '404': responseReference('NotFound'),
   '409': responseReference('Conflict'),
-  '422': responseReference('UnprocessableEntity'),
+  '422': responseReference('NodeTestUnprocessable'),
   '500': responseReference('Unexpected'),
 };
 const suiteProblems = { ...problems, '429': problemResponse('Rate limited') };

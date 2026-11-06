@@ -3541,7 +3541,7 @@
             "$ref": "#/components/responses/Conflict"
           },
           "503": {
-            "$ref": "#/components/responses/ServiceUnavailable"
+            "$ref": "#/components/responses/IdentityServiceUnavailable"
           }
         }
       }
@@ -8463,7 +8463,7 @@
             "$ref": "#/components/responses/Unexpected"
           },
           "503": {
-            "$ref": "#/components/responses/ServiceUnavailable"
+            "$ref": "#/components/responses/IdentityServiceUnavailable"
           }
         }
       }
@@ -8573,7 +8573,7 @@
             "$ref": "#/components/responses/Unexpected"
           },
           "503": {
-            "$ref": "#/components/responses/ServiceUnavailable"
+            "$ref": "#/components/responses/IdentityServiceUnavailable"
           }
         }
       }
@@ -8683,7 +8683,7 @@
             "$ref": "#/components/responses/Unexpected"
           },
           "503": {
-            "$ref": "#/components/responses/ServiceUnavailable"
+            "$ref": "#/components/responses/IdentityServiceUnavailable"
           }
         }
       }
@@ -15906,7 +15906,7 @@
           }
         }
       },
-      "ServiceUnavailable": {
+      "IdentityServiceUnavailable": {
         "description": "Upstream service unavailable",
         "content": {
           "application/problem+json": {

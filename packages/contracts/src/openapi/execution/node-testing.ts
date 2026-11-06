@@ -26,7 +26,7 @@ const problemResponses = Object.freeze({
   Forbidden: sharedProblemResponses.Forbidden,
   NotFound: sharedProblemResponses.NotFound,
   Conflict: sharedProblemResponses.Conflict,
-  UnprocessableEntity: problemResponse('Node test input is not executable'),
+  NodeTestUnprocessable: problemResponse('Node test input is not executable'),
   Unexpected: sharedProblemResponses.Unexpected,
 });
 

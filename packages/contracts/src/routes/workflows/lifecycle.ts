@@ -194,7 +194,7 @@ export const lifecycleRoutes = {
       '404': responseReference('NotFound'),
       '409': responseReference('Conflict'),
       '412': responseReference('PreconditionFailed'),
-      '422': responseReference('UnprocessableEntity'),
+      '422': responseReference('PublicationUnprocessable'),
       '428': responseReference('PreconditionRequired'),
       '500': responseReference('Unexpected'),
     },

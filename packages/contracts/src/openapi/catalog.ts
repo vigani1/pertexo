@@ -21,7 +21,7 @@ export const catalogOpenApiDocument = Object.freeze({
       ...routeSchemas(routes),
     },
     {
-      BadRequest: problemResponse('Invalid discovery query'),
+      CatalogBadRequest: problemResponse('Invalid discovery query'),
       Unauthenticated: sharedProblemResponses.Unauthenticated,
       RateLimited: sharedProblemResponses.RateLimited,
       Unexpected: sharedProblemResponses.Unexpected,

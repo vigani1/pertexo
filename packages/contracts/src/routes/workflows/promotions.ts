@@ -21,7 +21,7 @@ const promotionProblems = {
   ...problems('400', '401', '403', '404', '409'),
   '429': responseReference('RateLimited'),
   '500': responseReference('Unexpected'),
-  '503': responseReference('Unavailable'),
+  '503': responseReference('PromotionUnavailable'),
 };
 const noStore = 'private, no-store';
 const result = (body: NamedSchema) => ({

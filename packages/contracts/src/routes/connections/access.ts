@@ -45,5 +45,5 @@ const PROBLEMS: Readonly<Record<string, unknown>> = {
   '409': responseReference('Conflict'),
   '429': responseReference('RateLimited'),
   '500': responseReference('Unexpected'),
-  '503': responseReference('ServiceUnavailable'),
+  '503': responseReference('ConnectionServiceUnavailable'),
 };

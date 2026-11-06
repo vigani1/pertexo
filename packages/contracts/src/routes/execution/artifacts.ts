@@ -42,14 +42,14 @@ const shared = {
   // A capability or a file's metadata must never sit in a cache.
   cacheControl: 'no-store',
   problems: {
-    '400': responseReference('BadRequest'),
+    '400': responseReference('ArtifactBadRequest'),
     '401': responseReference('Unauthenticated'),
     '403': responseReference('Forbidden'),
-    '404': responseReference('NotFound'),
-    '409': responseReference('Conflict'),
+    '404': responseReference('ArtifactNotFound'),
+    '409': responseReference('ArtifactConflict'),
     '413': responseReference('TooLarge'),
     '429': responseReference('QuotaExceeded'),
-    '503': responseReference('Unavailable'),
+    '503': responseReference('ArtifactStoreUnavailable'),
     '500': responseReference('Unexpected'),
   },
 } as const;

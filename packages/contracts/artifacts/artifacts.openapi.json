@@ -476,7 +476,7 @@
       }
     },
     "responses": {
-      "BadRequest": {
+      "ArtifactBadRequest": {
         "description": "Invalid artifact request",
         "content": {
           "application/problem+json": {
@@ -497,7 +497,7 @@
         }
       },
       "Forbidden": {
-        "description": "CSRF protection failed",
+        "description": "Forbidden",
         "content": {
           "application/problem+json": {
             "schema": {
@@ -506,7 +506,7 @@
           }
         }
       },
-      "NotFound": {
+      "ArtifactNotFound": {
         "description": "Artifact or workspace not found",
         "content": {
           "application/problem+json": {
@@ -516,7 +516,7 @@
           }
         }
       },
-      "Conflict": {
+      "ArtifactConflict": {
         "description": "Artifact lifecycle, metadata or idempotency conflict",
         "content": {
           "application/problem+json": {
@@ -546,7 +546,7 @@
           }
         }
       },
-      "Unavailable": {
+      "ArtifactStoreUnavailable": {
         "description": "Artifact storage is unavailable",
         "content": {
           "application/problem+json": {
@@ -651,7 +651,7 @@
             }
           },
           "400": {
-            "$ref": "#/components/responses/BadRequest"
+            "$ref": "#/components/responses/ArtifactBadRequest"
           },
           "401": {
             "$ref": "#/components/responses/Unauthenticated"
@@ -660,10 +660,10 @@
             "$ref": "#/components/responses/Forbidden"
           },
           "404": {
-            "$ref": "#/components/responses/NotFound"
+            "$ref": "#/components/responses/ArtifactNotFound"
           },
           "409": {
-            "$ref": "#/components/responses/Conflict"
+            "$ref": "#/components/responses/ArtifactConflict"
           },
           "413": {
             "$ref": "#/components/responses/TooLarge"
@@ -675,7 +675,7 @@
             "$ref": "#/components/responses/Unexpected"
           },
           "503": {
-            "$ref": "#/components/responses/Unavailable"
+            "$ref": "#/components/responses/ArtifactStoreUnavailable"
           }
         }
       }
@@ -754,7 +754,7 @@
             }
           },
           "400": {
-            "$ref": "#/components/responses/BadRequest"
+            "$ref": "#/components/responses/ArtifactBadRequest"
           },
           "401": {
             "$ref": "#/components/responses/Unauthenticated"
@@ -763,10 +763,10 @@
             "$ref": "#/components/responses/Forbidden"
           },
           "404": {
-            "$ref": "#/components/responses/NotFound"
+            "$ref": "#/components/responses/ArtifactNotFound"
           },
           "409": {
-            "$ref": "#/components/responses/Conflict"
+            "$ref": "#/components/responses/ArtifactConflict"
           },
           "413": {
             "$ref": "#/components/responses/TooLarge"
@@ -778,7 +778,7 @@
             "$ref": "#/components/responses/Unexpected"
           },
           "503": {
-            "$ref": "#/components/responses/Unavailable"
+            "$ref": "#/components/responses/ArtifactStoreUnavailable"
           }
         }
       }
@@ -836,7 +836,7 @@
             }
           },
           "400": {
-            "$ref": "#/components/responses/BadRequest"
+            "$ref": "#/components/responses/ArtifactBadRequest"
           },
           "401": {
             "$ref": "#/components/responses/Unauthenticated"
@@ -845,10 +845,10 @@
             "$ref": "#/components/responses/Forbidden"
           },
           "404": {
-            "$ref": "#/components/responses/NotFound"
+            "$ref": "#/components/responses/ArtifactNotFound"
           },
           "409": {
-            "$ref": "#/components/responses/Conflict"
+            "$ref": "#/components/responses/ArtifactConflict"
           },
           "413": {
             "$ref": "#/components/responses/TooLarge"
@@ -860,7 +860,7 @@
             "$ref": "#/components/responses/Unexpected"
           },
           "503": {
-            "$ref": "#/components/responses/Unavailable"
+            "$ref": "#/components/responses/ArtifactStoreUnavailable"
           }
         }
       }
@@ -918,7 +918,7 @@
             }
           },
           "400": {
-            "$ref": "#/components/responses/BadRequest"
+            "$ref": "#/components/responses/ArtifactBadRequest"
           },
           "401": {
             "$ref": "#/components/responses/Unauthenticated"
@@ -927,10 +927,10 @@
             "$ref": "#/components/responses/Forbidden"
           },
           "404": {
-            "$ref": "#/components/responses/NotFound"
+            "$ref": "#/components/responses/ArtifactNotFound"
           },
           "409": {
-            "$ref": "#/components/responses/Conflict"
+            "$ref": "#/components/responses/ArtifactConflict"
           },
           "413": {
             "$ref": "#/components/responses/TooLarge"
@@ -942,7 +942,7 @@
             "$ref": "#/components/responses/Unexpected"
           },
           "503": {
-            "$ref": "#/components/responses/Unavailable"
+            "$ref": "#/components/responses/ArtifactStoreUnavailable"
           }
         }
       }

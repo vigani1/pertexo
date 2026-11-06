@@ -2712,7 +2712,7 @@
             "$ref": "#/components/responses/Conflict"
           },
           "422": {
-            "$ref": "#/components/responses/UnprocessableEntity"
+            "$ref": "#/components/responses/RunUnprocessable"
           },
           "429": {
             "description": "Rate limited; see Retry-After",
@@ -3783,7 +3783,7 @@
             "$ref": "#/components/responses/Conflict"
           },
           "422": {
-            "$ref": "#/components/responses/UnprocessableEntity"
+            "$ref": "#/components/responses/RunUnprocessable"
           },
           "500": {
             "$ref": "#/components/responses/Unexpected"
@@ -13656,7 +13656,7 @@
           }
         }
       },
-      "UnprocessableEntity": {
+      "RunUnprocessable": {
         "description": "Workflow is not executable",
         "content": {
           "application/problem+json": {

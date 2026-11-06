@@ -25,7 +25,7 @@
             }
           },
           "400": {
-            "$ref": "#/components/responses/BadRequest"
+            "$ref": "#/components/responses/CatalogBadRequest"
           },
           "401": {
             "$ref": "#/components/responses/Unauthenticated"
@@ -59,7 +59,7 @@
             }
           },
           "400": {
-            "$ref": "#/components/responses/BadRequest"
+            "$ref": "#/components/responses/CatalogBadRequest"
           },
           "401": {
             "$ref": "#/components/responses/Unauthenticated"
@@ -751,7 +751,7 @@
       }
     },
     "responses": {
-      "BadRequest": {
+      "CatalogBadRequest": {
         "description": "Invalid discovery query",
         "content": {
           "application/problem+json": {

@@ -1,3 +1,7 @@
+import {
+  workflowDraftConflictResponse,
+  workflowDraftConflictSchemas,
+} from './draft-precondition.js';
 import { sharedProblemResponses } from '../problem-responses.js';
 import { apiProblemSchema } from '../../errors/api-problem.js';
 import { routePaths, routeSchemas } from '../../routes/openapi.js';
@@ -12,6 +16,7 @@ export const workflowPortabilityOpenApiDocument = Object.freeze({
   components: authenticatedComponents(
     {
       ...routeSchemas(Object.values(portabilityRoutes)),
+      ...workflowDraftConflictSchemas,
       ApiProblem: projectContractSchema(
         'ApiProblem',
         apiProblemSchema,
@@ -23,17 +28,23 @@ export const workflowPortabilityOpenApiDocument = Object.freeze({
       Unauthenticated: sharedProblemResponses.Unauthenticated,
       Forbidden: sharedProblemResponses.Forbidden,
       NotFound: sharedProblemResponses.NotFound,
-      Conflict: problemResponse(
+      PortabilityConflict: problemResponse(
         'Source, compatibility or idempotency conflict',
       ),
-      UnprocessableEntity: problemResponse('Unsafe or incompatible workflow'),
+      PortabilityUnprocessable: problemResponse(
+        'Unsafe or incompatible workflow',
+      ),
       Unexpected: sharedProblemResponses.Unexpected,
-      Unavailable: problemResponse(
+      PortabilityUnavailable: problemResponse(
         'Automation token authentication, limiter or import writer unavailable',
       ),
-      PreconditionFailed: problemResponse('Saved draft changed'),
-      PreconditionRequired: problemResponse('Draft If-Match required'),
-      PayloadTooLarge: problemResponse('Request exceeds portable byte ceiling'),
+      PreconditionFailed: workflowDraftConflictResponse,
+      PortabilityPreconditionRequired: problemResponse(
+        'Draft If-Match required',
+      ),
+      PortabilityPayloadTooLarge: problemResponse(
+        'Request exceeds portable byte ceiling',
+      ),
     },
     { automation: true },
   ),

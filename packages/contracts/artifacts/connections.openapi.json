@@ -91,7 +91,7 @@
             "$ref": "#/components/responses/Unexpected"
           },
           "503": {
-            "$ref": "#/components/responses/ServiceUnavailable"
+            "$ref": "#/components/responses/ConnectionServiceUnavailable"
           }
         }
       },
@@ -175,7 +175,7 @@
             "$ref": "#/components/responses/Unexpected"
           },
           "503": {
-            "$ref": "#/components/responses/ServiceUnavailable"
+            "$ref": "#/components/responses/ConnectionServiceUnavailable"
           }
         }
       }
@@ -523,7 +523,7 @@
             "$ref": "#/components/responses/Unexpected"
           },
           "503": {
-            "$ref": "#/components/responses/ServiceUnavailable"
+            "$ref": "#/components/responses/ConnectionServiceUnavailable"
           }
         }
       }
@@ -780,7 +780,7 @@
             "$ref": "#/components/responses/Unexpected"
           },
           "503": {
-            "$ref": "#/components/responses/ServiceUnavailable"
+            "$ref": "#/components/responses/ConnectionServiceUnavailable"
           }
         }
       }
@@ -859,7 +859,7 @@
             "$ref": "#/components/responses/Unexpected"
           },
           "503": {
-            "$ref": "#/components/responses/ServiceUnavailable"
+            "$ref": "#/components/responses/ConnectionServiceUnavailable"
           }
         }
       }
@@ -987,7 +987,7 @@
             "$ref": "#/components/responses/Unexpected"
           },
           "503": {
-            "$ref": "#/components/responses/ServiceUnavailable"
+            "$ref": "#/components/responses/ConnectionServiceUnavailable"
           }
         }
       }
@@ -1051,7 +1051,7 @@
             "$ref": "#/components/responses/Unexpected"
           },
           "503": {
-            "$ref": "#/components/responses/ServiceUnavailable"
+            "$ref": "#/components/responses/ConnectionServiceUnavailable"
           }
         }
       },
@@ -1297,7 +1297,7 @@
             "$ref": "#/components/responses/Unexpected"
           },
           "503": {
-            "$ref": "#/components/responses/ServiceUnavailable"
+            "$ref": "#/components/responses/ConnectionServiceUnavailable"
           }
         }
       }
@@ -9347,7 +9347,7 @@
           }
         }
       },
-      "ServiceUnavailable": {
+      "ConnectionServiceUnavailable": {
         "description": "Key or provider service unavailable",
         "content": {
           "application/problem+json": {

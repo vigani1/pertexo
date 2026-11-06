@@ -116,16 +116,16 @@
             "$ref": "#/components/responses/NotFound"
           },
           "409": {
-            "$ref": "#/components/responses/Conflict"
+            "$ref": "#/components/responses/PortabilityConflict"
           },
           "412": {
             "$ref": "#/components/responses/PreconditionFailed"
           },
           "422": {
-            "$ref": "#/components/responses/UnprocessableEntity"
+            "$ref": "#/components/responses/PortabilityUnprocessable"
           },
           "428": {
-            "$ref": "#/components/responses/PreconditionRequired"
+            "$ref": "#/components/responses/PortabilityPreconditionRequired"
           },
           "429": {
             "description": "Rate limited; see Retry-After",
@@ -141,7 +141,7 @@
             "$ref": "#/components/responses/Unexpected"
           },
           "503": {
-            "$ref": "#/components/responses/Unavailable"
+            "$ref": "#/components/responses/PortabilityUnavailable"
           }
         }
       }
@@ -229,13 +229,13 @@
             "$ref": "#/components/responses/NotFound"
           },
           "409": {
-            "$ref": "#/components/responses/Conflict"
+            "$ref": "#/components/responses/PortabilityConflict"
           },
           "413": {
-            "$ref": "#/components/responses/PayloadTooLarge"
+            "$ref": "#/components/responses/PortabilityPayloadTooLarge"
           },
           "422": {
-            "$ref": "#/components/responses/UnprocessableEntity"
+            "$ref": "#/components/responses/PortabilityUnprocessable"
           },
           "429": {
             "description": "Rate limited; see Retry-After",
@@ -251,7 +251,7 @@
             "$ref": "#/components/responses/Unexpected"
           },
           "503": {
-            "$ref": "#/components/responses/Unavailable"
+            "$ref": "#/components/responses/PortabilityUnavailable"
           }
         }
       }
@@ -357,13 +357,13 @@
             "$ref": "#/components/responses/NotFound"
           },
           "409": {
-            "$ref": "#/components/responses/Conflict"
+            "$ref": "#/components/responses/PortabilityConflict"
           },
           "413": {
-            "$ref": "#/components/responses/PayloadTooLarge"
+            "$ref": "#/components/responses/PortabilityPayloadTooLarge"
           },
           "422": {
-            "$ref": "#/components/responses/UnprocessableEntity"
+            "$ref": "#/components/responses/PortabilityUnprocessable"
           },
           "429": {
             "description": "Rate limited; see Retry-After",
@@ -379,7 +379,7 @@
             "$ref": "#/components/responses/Unexpected"
           },
           "503": {
-            "$ref": "#/components/responses/Unavailable"
+            "$ref": "#/components/responses/PortabilityUnavailable"
           }
         }
       }
@@ -3680,6 +3680,97 @@
         ],
         "additionalProperties": false
       },
+      "WorkflowRevisionConflictProblem": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "readOnly": true,
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          },
+          "status": {
+            "type": "number",
+            "const": 412
+          },
+          "detail": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000
+          },
+          "instance": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2048
+          },
+          "code": {
+            "type": "string",
+            "const": "workflow.revision_conflict"
+          },
+          "requestId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+          },
+          "errors": {
+            "readOnly": true,
+            "maxItems": 100,
+            "type": "array",
+            "items": {
+              "readOnly": true,
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string",
+                  "maxLength": 1024
+                },
+                "code": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128
+                },
+                "message": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 500
+                }
+              },
+              "required": [
+                "path",
+                "code",
+                "message"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "currentRevision": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          },
+          "currentEtag": {
+            "type": "string",
+            "pattern": "^\"draft\\.[A-Za-z0-9_-]{43}\"$"
+          }
+        },
+        "required": [
+          "type",
+          "title",
+          "status",
+          "code",
+          "requestId",
+          "currentRevision",
+          "currentEtag"
+        ],
+        "additionalProperties": false
+      },
       "ApiProblem": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "readOnly": true,
@@ -3950,7 +4041,7 @@
           }
         }
       },
-      "Conflict": {
+      "PortabilityConflict": {
         "description": "Source, compatibility or idempotency conflict",
         "content": {
           "application/problem+json": {
@@ -3960,7 +4051,7 @@
           }
         }
       },
-      "UnprocessableEntity": {
+      "PortabilityUnprocessable": {
         "description": "Unsafe or incompatible workflow",
         "content": {
           "application/problem+json": {
@@ -3980,7 +4071,7 @@
           }
         }
       },
-      "Unavailable": {
+      "PortabilityUnavailable": {
         "description": "Automation token authentication, limiter or import writer unavailable",
         "content": {
           "application/problem+json": {
@@ -3991,16 +4082,27 @@
         }
       },
       "PreconditionFailed": {
-        "description": "Saved draft changed",
+        "description": "The draft representation is no longer current",
+        "headers": {
+          "ETag": {
+            "description": "Strong opaque validator for this draft representation",
+            "required": true,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "pattern": "^\"draft\\.[A-Za-z0-9_-]{43}\"$"
+            }
+          }
+        },
         "content": {
           "application/problem+json": {
             "schema": {
-              "$ref": "#/components/schemas/ApiProblem"
+              "$ref": "#/components/schemas/WorkflowRevisionConflictProblem"
             }
           }
         }
       },
-      "PreconditionRequired": {
+      "PortabilityPreconditionRequired": {
         "description": "Draft If-Match required",
         "content": {
           "application/problem+json": {
@@ -4010,7 +4112,7 @@
           }
         }
       },
-      "PayloadTooLarge": {
+      "PortabilityPayloadTooLarge": {
         "description": "Request exceeds portable byte ceiling",
         "content": {
           "application/problem+json": {

@@ -13,7 +13,7 @@ const shared = {
   // Takes no query: anything sent is refused, so a typo can't look like a filter.
   query: catalogQuerySchema,
   problems: {
-    '400': responseReference('BadRequest'),
+    '400': responseReference('CatalogBadRequest'),
     '401': responseReference('Unauthenticated'),
     '429': responseReference('RateLimited'),
     '500': responseReference('Unexpected'),

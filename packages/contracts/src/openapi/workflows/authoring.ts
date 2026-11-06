@@ -110,7 +110,9 @@ const openApiSchemas = contractSchemas();
 
 const problemResponses = Object.freeze({
   BadRequest: sharedProblemResponses.BadRequest,
-  Unavailable: problemResponse('Historical template origin unavailable'),
+  PromotionUnavailable: problemResponse(
+    'Workflow promotion is temporarily unavailable',
+  ),
   ValidationUnavailable: {
     ...problemResponse('Workflow validation temporarily unavailable'),
     headers: {
@@ -140,7 +142,7 @@ const problemResponses = Object.freeze({
   Forbidden: sharedProblemResponses.Forbidden,
   NotFound: sharedProblemResponses.NotFound,
   Conflict: sharedProblemResponses.Conflict,
-  UnprocessableEntity: problemResponse('Workflow is not publishable'),
+  PublicationUnprocessable: problemResponse('Workflow is not publishable'),
   RateLimited: sharedProblemResponses.RateLimited,
   Unexpected: sharedProblemResponses.Unexpected,
 });
