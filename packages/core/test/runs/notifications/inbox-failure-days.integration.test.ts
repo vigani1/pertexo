@@ -45,12 +45,56 @@ it('records a terminal failure once, reads its daily history without scanning ru
       attempts: [],
     },
   };
+  const stored = () =>
+    asAdmin(
+      async (pool) =>
+        (
+          await pool.query<Record<string, unknown>>(
+            `select
+    (select to_jsonb(r) from app.workflow_runs r where id=$1) run,
+    (select to_jsonb(c) from app.run_checkpoints c where workflow_run_id=$1) checkpoint,
+    (select jsonb_agg(e order by sequence) from app.run_events e where workflow_run_id=$1) events,
+    (select jsonb_agg(e) from app.workspace_inbox_events e where run_id=$1) inbox,
+    (select jsonb_agg(d) from app.workspace_inbox_failure_days d where workflow_id=(select workflow_id from app.workflow_runs where id=$1)) days`,
+            [runId],
+          )
+        ).rows,
+    );
+  const before = await stored();
+  await asAdmin((pool) =>
+    pool.query(
+      "alter table app.workspace_inbox_events add constraint reject_terminal_producer check (kind <> 'failed') not valid",
+    ),
+  );
+  try {
+    await expect(ownedDeliveryStore.commitAdvancePlan(input)).rejects.toThrow();
+    expect(await stored()).toEqual(before);
+  } finally {
+    await asAdmin((pool) =>
+      pool.query(
+        'alter table app.workspace_inbox_events drop constraint reject_terminal_producer',
+      ),
+    );
+  }
   await expect(
     ownedDeliveryStore.commitAdvancePlan(input),
   ).resolves.toMatchObject({ kind: 'committed' });
   await expect(
     ownedDeliveryStore.commitAdvancePlan(input),
   ).resolves.toMatchObject({ kind: 'already_committed' });
+  await asAdmin(async (pool) => {
+    const events = await pool.query(
+      'select kind,terminal_event_sequence,occurred_at from app.workspace_inbox_events where run_id=$1',
+      [runId],
+    );
+    expect(events.rows).toEqual([
+      {
+        kind: 'failed',
+        terminal_event_sequence: '2',
+        occurred_at: new Date(occurredAt),
+      },
+    ]);
+  });
   const {
     rows: [run],
   } = await asAdmin((pool) =>
