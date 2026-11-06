@@ -13,7 +13,7 @@ import {
   row,
   budget,
   valid,
-} from './admission/fixture.js';
+} from './admission.fixture.js';
 import { admitWorkflowAuthoring } from '../../../src/authoring/workflows/admission.repository.js';
 import { authoringIdleBudgetIsSafe } from '../../../src/authoring/workflows/idle-budget.js';
 
