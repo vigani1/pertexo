@@ -1,3 +1,4 @@
+import { temporaryTestPath } from '../../../test/support/temporary-test-path';
 import { expect, test } from '../../support/fixtures';
 
 import { addStep } from '../actions';
@@ -160,7 +161,7 @@ for (const width of [375, 1280]) {
       ).toBeDisabled();
 
       await page.screenshot({
-        path: `/tmp/pertexo-245-${action}-${String(width)}.png`,
+        path: temporaryTestPath(`pertexo-245-${action}-${String(width)}.png`),
       });
       if (action === 'menu') {
         await page.getByRole('button', { name: 'Run', exact: true }).click();

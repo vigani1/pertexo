@@ -1,3 +1,4 @@
+import { temporaryTestPath } from '../../../test/support/temporary-test-path';
 import { expect, test } from '../../support/fixtures';
 import { slackConnection } from '../../../test/support/fixtures/slack-channels';
 import {
@@ -84,7 +85,7 @@ for (const width of [390, 1280]) {
       ).toBe(true);
       if (status === 'missing')
         await page.screenshot({
-          path: `/tmp/pertexo-polish-4-${String(width)}.png`,
+          path: temporaryTestPath(`pertexo-polish-4-${String(width)}.png`),
         });
     });
   }

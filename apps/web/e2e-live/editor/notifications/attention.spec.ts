@@ -1,3 +1,4 @@
+import { temporaryTestPath } from '../../../test/support/temporary-test-path';
 import {
   createWorkflowNodeFixture,
   createWorkflowEdgeFixture,
@@ -80,11 +81,15 @@ test('personal schedules survive exact retry, real failures reach Inbox and SMTP
     timeZone: 'Europe/Paris',
     hour: 9,
   });
-  await mkdir('/tmp/pertexo-notification-screenshots', { recursive: true });
+  await mkdir(temporaryTestPath('pertexo-notification-screenshots'), {
+    recursive: true,
+  });
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.screenshot({
-    path: '/tmp/pertexo-notification-screenshots/settings-1280.png',
+    path: temporaryTestPath(
+      'pertexo-notification-screenshots/settings-1280.png',
+    ),
     fullPage: true,
   });
   await personal.getByRole('combobox', { name: 'Email frequency' }).click();
@@ -171,7 +176,7 @@ test('personal schedules survive exact retry, real failures reach Inbox and SMTP
   ).toBeVisible();
   await expect(notices.getByText(/^Failed once ·/u)).toBeVisible();
   await page.screenshot({
-    path: '/tmp/pertexo-notification-screenshots/inbox-1280.png',
+    path: temporaryTestPath('pertexo-notification-screenshots/inbox-1280.png'),
     fullPage: true,
   });
   let text = '';
@@ -293,7 +298,9 @@ test('personal schedules survive exact retry, real failures reach Inbox and SMTP
     ),
   ).toBe(true);
   await page.screenshot({
-    path: '/tmp/pertexo-notification-screenshots/settings-375.png',
+    path: temporaryTestPath(
+      'pertexo-notification-screenshots/settings-375.png',
+    ),
     fullPage: true,
   });
 });

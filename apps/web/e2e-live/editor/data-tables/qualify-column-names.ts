@@ -1,3 +1,4 @@
+import { temporaryTestPath } from '../../../test/support/temporary-test-path';
 import { dataTableConfigSchema } from '@pertexo/node-sdk';
 import { expect, type Page } from '@playwright/test';
 import {
@@ -53,7 +54,7 @@ export async function qualifyColumnNames({
   await expect(review).toContainText('amount');
   await expect(review).toContainText('total');
   await page.screenshot({
-    path: `/tmp/pertexo-live-column-names-${String(width)}.png`,
+    path: temporaryTestPath(`pertexo-live-column-names-${String(width)}.png`),
   });
   await review
     .getByRole('button', { name: 'Use the new name', exact: true })

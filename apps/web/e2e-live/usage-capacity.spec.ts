@@ -1,3 +1,4 @@
+import { temporaryTestPath } from '../test/support/temporary-test-path';
 import { expect } from '@playwright/test';
 import {
   usageCapacityResponseSchema,
@@ -135,7 +136,7 @@ test('reports real current capacity and retained activity with exact drilldowns'
     ),
   ).toBe(true);
   await page.screenshot({
-    path: '/tmp/pertexo-usage-live-mobile.png',
+    path: temporaryTestPath('pertexo-usage-live-mobile.png'),
     fullPage: true,
   });
   for (const width of [1280, 375]) {
@@ -172,7 +173,7 @@ test('reports real current capacity and retained activity with exact drilldowns'
       ),
     ).toBe(true);
     await page.screenshot({
-      path: `/tmp/pertexo-f12-trends-live-${String(width)}.png`,
+      path: temporaryTestPath(`pertexo-f12-trends-live-${String(width)}.png`),
       fullPage: true,
     });
     await page.goto(`/w/${seed.workspaceId}/inbox`);
@@ -185,7 +186,7 @@ test('reports real current capacity and retained activity with exact drilldowns'
       }),
     ).toBeVisible();
     await page.screenshot({
-      path: `/tmp/pertexo-f12-warning-live-${String(width)}.png`,
+      path: temporaryTestPath(`pertexo-f12-warning-live-${String(width)}.png`),
       fullPage: true,
     });
   }

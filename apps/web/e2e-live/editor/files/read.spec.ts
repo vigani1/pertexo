@@ -1,3 +1,4 @@
+import { temporaryTestPath } from '../../../test/support/temporary-test-path';
 import { csrfHeaders } from '../../../test/support/browser/csrf';
 import { mkdir } from 'node:fs/promises';
 import { expect, type Page } from '@playwright/test';
@@ -13,7 +14,7 @@ import {
   waitForRun,
 } from '../../support/authoring/single-step';
 
-const images = '/tmp/pertexo-f04-read-screenshots';
+const images = () => temporaryTestPath('pertexo-f04-read-screenshots');
 async function upload(page: Page, buffer: Buffer) {
   await page.getByRole('tab', { name: 'Inputs', exact: true }).click();
   await page
@@ -30,7 +31,7 @@ test('uploads CSV in the editor, reads default-converted values and runs Filter 
   page,
   request,
 }) => {
-  await mkdir(images, { recursive: true });
+  await mkdir(images(), { recursive: true });
   await page.emulateMedia({ reducedMotion: 'reduce' });
   const { workspaceId } = await createOwnedHttpConnection(page, request);
   const path = await createEditorWorkflow(
@@ -51,13 +52,13 @@ test('uploads CSV in the editor, reads default-converted values and runs Filter 
     }),
   ).toBeChecked();
   await expect(page.getByText(/roughly 5,000 short rows/u)).toBeVisible();
-  await page.screenshot({ path: `${images}/setup-desktop.png` });
+  await page.screenshot({ path: `${images()}/setup-desktop.png` });
   await page.setViewportSize({ width: 375, height: 768 });
   await page
     .getByRole('navigation', { name: 'Editor panels' })
     .getByRole('button', { name: 'Step', exact: true })
     .click();
-  await page.screenshot({ path: `${images}/setup-phone.png` });
+  await page.screenshot({ path: `${images()}/setup-phone.png` });
   await upload(
     page,
     Buffer.from(
@@ -208,7 +209,7 @@ test('shows a persisted malformed-file diagnostic after reload without echoing c
   expect(await page.locator('body').innerText()).not.toContain(
     'private-redaction-sentinel',
   );
-  await page.screenshot({ path: `${images}/malformed-diagnostic.png` });
+  await page.screenshot({ path: `${images()}/malformed-diagnostic.png` });
 });
 
 test('reads an earlier HTTP response file and automatically retries only that safe step after a temporary read outage', async ({

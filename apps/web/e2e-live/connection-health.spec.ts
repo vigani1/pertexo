@@ -1,3 +1,4 @@
+import { temporaryTestPath } from '../test/support/temporary-test-path';
 import { expect } from '@playwright/test';
 import {
   connectionResponseSchema,
@@ -97,7 +98,7 @@ test('shows delivered run rejection, explicit recovery, stale-evidence fences an
     .getByText('Needs reauthorization', { exact: true })
     .scrollIntoViewIfNeeded();
   await page.screenshot({
-    path: '/tmp/pertexo-connection-health-live-desktop.png',
+    path: temporaryTestPath('pertexo-connection-health-live-desktop.png'),
   });
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(
@@ -109,7 +110,7 @@ test('shows delivered run rejection, explicit recovery, stale-evidence fences an
     ),
   ).toBe(true);
   await page.screenshot({
-    path: '/tmp/pertexo-connection-health-live-mobile.png',
+    path: temporaryTestPath('pertexo-connection-health-live-mobile.png'),
   });
 
   await lens.getByRole('button', { name: 'Test', exact: true }).focus();

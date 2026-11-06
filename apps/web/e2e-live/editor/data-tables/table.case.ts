@@ -1,3 +1,4 @@
+import { temporaryTestPath } from '../../../test/support/temporary-test-path';
 import {
   apiProblemSchema,
   dataTableResultSchema,
@@ -233,7 +234,7 @@ for (const width of [1280, 375])
       )
       .toBe(true);
     await page.screenshot({
-      path: `/tmp/pertexo-f14-${String(width)}.png`,
+      path: temporaryTestPath(`pertexo-f14-${String(width)}.png`),
       fullPage: true,
     });
     await qualifyLargeDownload(page, workspaceId);
@@ -298,7 +299,7 @@ for (const width of [1280, 375])
       .click();
     await columns.getByLabel('Column name', { exact: true }).fill('total');
     await page.screenshot({
-      path: `/tmp/pertexo-f14-columns-${String(width)}.png`,
+      path: temporaryTestPath(`pertexo-f14-columns-${String(width)}.png`),
       fullPage: true,
     });
     await columns

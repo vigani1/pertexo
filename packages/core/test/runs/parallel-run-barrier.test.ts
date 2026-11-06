@@ -23,16 +23,23 @@ function restoreEnvironment(name: keyof typeof originalEnvironment): void {
 }
 
 describe('Q11 overlap barrier', () => {
-  beforeEach(() => {
+  let directory: string | undefined;
+  beforeEach(async () => {
+    directory = await mkdtemp(
+      path.join(tmpdir(), 'pertexo-q11-configuration-'),
+    );
     process.env.PERTEXO_Q11_OPERATION_TIMING = '1';
-    process.env.PERTEXO_Q11_OVERLAP_DIRECTORY = '/tmp/q11-proof';
+    process.env.PERTEXO_Q11_OVERLAP_DIRECTORY = directory;
     process.env.PERTEXO_Q11_OVERLAP_PARTICIPANT = 'transport';
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     restoreEnvironment('directory');
     restoreEnvironment('participant');
     restoreEnvironment('timing');
+    if (directory !== undefined)
+      await rm(directory, { recursive: true, force: true });
+    directory = undefined;
   });
 
   it('rejects partial and invalid configuration', async () => {

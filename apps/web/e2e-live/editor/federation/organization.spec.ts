@@ -1,3 +1,4 @@
+import { temporaryTestPath } from '../../../test/support/temporary-test-path';
 import { randomUUID } from 'node:crypto';
 import { mkdir } from 'node:fs/promises';
 import { expect } from '@playwright/test';
@@ -108,9 +109,13 @@ for (const width of [1280, 375]) {
       .click();
     await expect(page.getByText('SSO required', { exact: true })).toBeVisible();
     await expect(page.getByRole('dialog')).toHaveCount(0);
-    await mkdir('/tmp/pertexo-organization-screenshots', { recursive: true });
+    await mkdir(temporaryTestPath('pertexo-organization-screenshots'), {
+      recursive: true,
+    });
     await page.screenshot({
-      path: `/tmp/pertexo-organization-screenshots/settings-${String(width)}.png`,
+      path: temporaryTestPath(
+        `pertexo-organization-screenshots/settings-${String(width)}.png`,
+      ),
       fullPage: true,
     });
     expect(
@@ -156,7 +161,9 @@ for (const width of [1280, 375]) {
         .getByText('Owned OIDC', { exact: true }),
     ).toBeVisible();
     await page.screenshot({
-      path: `/tmp/pertexo-organization-screenshots/account-${String(width)}.png`,
+      path: temporaryTestPath(
+        `pertexo-organization-screenshots/account-${String(width)}.png`,
+      ),
       fullPage: true,
     });
     expect(

@@ -1,3 +1,4 @@
+import { temporaryTestPath } from '../../test/support/temporary-test-path';
 import { workflowOrganizationProjectionResponseSchema } from '@pertexo/contracts';
 import { expect, type Locator, type Page } from '@playwright/test';
 export const observation: {
@@ -58,7 +59,7 @@ export async function createWorkflow(
   } catch {
     if (new URL(page.url()).pathname.startsWith(`/w/${workspaceId}/`))
       await page.screenshot({
-        path: '/tmp/pertexo-f07-creation-public.png',
+        path: temporaryTestPath('pertexo-f07-creation-public.png'),
         fullPage: true,
       });
     throw new Error('Ordinary created workflow navigation unavailable');

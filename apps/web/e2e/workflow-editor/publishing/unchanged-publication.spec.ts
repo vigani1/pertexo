@@ -1,3 +1,4 @@
+import { temporaryTestPath } from '../../../test/support/temporary-test-path';
 import { expect, test } from '../../support/fixtures';
 import {
   addCsrfCookie,
@@ -82,7 +83,7 @@ for (const width of [390, 1280]) {
     const unchanged = page.getByRole('button', { name: 'No changes since v1' });
     await expect(unchanged).toBeDisabled();
     await page.screenshot({
-      path: `/tmp/pertexo-polish-5-${String(width)}.png`,
+      path: temporaryTestPath(`pertexo-polish-5-${String(width)}.png`),
       fullPage: false,
     });
     await unchanged.press('Enter');

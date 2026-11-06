@@ -1,3 +1,4 @@
+import { temporaryTestPath } from '../../../test/support/temporary-test-path';
 import { mkdir } from 'node:fs/promises';
 import { expect, type APIRequestContext, type Page } from '@playwright/test';
 import {
@@ -95,9 +96,13 @@ export async function provisionDirectory({
   await expect(
     page.getByText('Group mappings saved.', { exact: true }),
   ).toBeVisible();
-  await mkdir('/tmp/pertexo-scim-screenshots', { recursive: true });
+  await mkdir(temporaryTestPath('pertexo-scim-screenshots'), {
+    recursive: true,
+  });
   await page.screenshot({
-    path: `/tmp/pertexo-scim-screenshots/directory-${String(width)}.png`,
+    path: temporaryTestPath(
+      `pertexo-scim-screenshots/directory-${String(width)}.png`,
+    ),
     fullPage: true,
   });
   expect(
@@ -122,7 +127,9 @@ export async function reviewProvisionedMembership(
     ),
   ).toBeVisible();
   await page.screenshot({
-    path: `/tmp/pertexo-scim-screenshots/team-${String(width)}.png`,
+    path: temporaryTestPath(
+      `pertexo-scim-screenshots/team-${String(width)}.png`,
+    ),
     fullPage: true,
   });
   expect(

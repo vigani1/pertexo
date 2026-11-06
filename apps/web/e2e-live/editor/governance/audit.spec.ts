@@ -1,3 +1,4 @@
+import { temporaryTestPath } from '../../../test/support/temporary-test-path';
 import { mkdir } from 'node:fs/promises';
 import { expect } from '@playwright/test';
 import { test } from '../../support/browser-fixture';
@@ -59,9 +60,13 @@ for (const width of [1280, 375]) {
         ),
       )
       .toBe(true);
-    await mkdir('/tmp/pertexo-audit-screenshots', { recursive: true });
+    await mkdir(temporaryTestPath('pertexo-audit-screenshots'), {
+      recursive: true,
+    });
     await page.screenshot({
-      path: `/tmp/pertexo-audit-screenshots/audit-${String(width)}.png`,
+      path: temporaryTestPath(
+        `pertexo-audit-screenshots/audit-${String(width)}.png`,
+      ),
       fullPage: true,
     });
     await page.reload();

@@ -1,3 +1,4 @@
+import { temporaryTestPath } from '../../test/support/temporary-test-path';
 import { expect, test } from '../support/fixtures';
 import {
   approvalConfigSchema,
@@ -146,7 +147,9 @@ for (const width of [1280, 375])
         .getByLabel('Expression', { exact: true })
         .scrollIntoViewIfNeeded();
       await page.screenshot({
-        path: `/tmp/pertexo-leftovers-${key}-${String(width)}.png`,
+        path: temporaryTestPath(
+          `pertexo-leftovers-${key}-${String(width)}.png`,
+        ),
         fullPage: true,
       });
       await detail

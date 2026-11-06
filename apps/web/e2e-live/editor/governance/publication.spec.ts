@@ -1,3 +1,4 @@
+import { temporaryTestPath } from '../../../test/support/temporary-test-path';
 import { createWorkflowNodeFixture } from '../../../test/support/fixtures/graph';
 import { readCsrfToken } from '../../../test/support/browser/csrf';
 import { mkdir } from 'node:fs/promises';
@@ -153,11 +154,13 @@ test('a builder requests an exact draft on a phone, an owner reviews it, and an 
     );
     expect(policy.status(), await policy.text()).toBe(200);
     expect(await policy.json()).toMatchObject({ required: true });
-    await mkdir('/tmp/pertexo-publication-review-screenshots', {
+    await mkdir(temporaryTestPath('pertexo-publication-review-screenshots'), {
       recursive: true,
     });
     await builder.screenshot({
-      path: '/tmp/pertexo-publication-review-screenshots/editor-375.png',
+      path: temporaryTestPath(
+        'pertexo-publication-review-screenshots/editor-375.png',
+      ),
       fullPage: true,
     });
     await builder
@@ -186,11 +189,13 @@ test('a builder requests an exact draft on a phone, an owner reviews it, and an 
         { exact: true },
       ),
     ).toBeVisible();
-    await mkdir('/tmp/pertexo-publication-review-screenshots', {
+    await mkdir(temporaryTestPath('pertexo-publication-review-screenshots'), {
       recursive: true,
     });
     await builder.screenshot({
-      path: '/tmp/pertexo-publication-review-screenshots/request-375.png',
+      path: temporaryTestPath(
+        'pertexo-publication-review-screenshots/request-375.png',
+      ),
       fullPage: true,
     });
     await page.setViewportSize({ width: 1280, height: 800 });
@@ -202,7 +207,9 @@ test('a builder requests an exact draft on a phone, an owner reviews it, and an 
       .getByLabel('Review comment (optional)')
       .fill('Reviewed the exact revision.');
     await page.screenshot({
-      path: '/tmp/pertexo-publication-review-screenshots/review-1280.png',
+      path: temporaryTestPath(
+        'pertexo-publication-review-screenshots/review-1280.png',
+      ),
       fullPage: true,
     });
     await page
@@ -276,7 +283,9 @@ test('a builder requests an exact draft on a phone, an owner reviews it, and an 
       )
       .toBe(true);
     await page.screenshot({
-      path: '/tmp/pertexo-publication-review-screenshots/stale-375.png',
+      path: temporaryTestPath(
+        'pertexo-publication-review-screenshots/stale-375.png',
+      ),
       fullPage: true,
     });
   } catch (error) {

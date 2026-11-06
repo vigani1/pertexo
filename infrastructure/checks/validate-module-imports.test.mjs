@@ -859,3 +859,35 @@ for (const workspace of [
     }
   });
 }
+
+test('test writes refuse fixed temporary destinations, including indirect screenshot directories', () => {
+  for (const code of [
+    "writeFile('/tmp/receipt.json', '{}')",
+    "writeFileSync('/private/tmp/receipt.json', '{}')",
+    "const images = '/tmp/screenshots'; page.screenshot({ path: `${images}/phone.png` });",
+    "mkdir(join('/tmp', 'screenshots'))",
+    "mkdtemp('/tmp/machine-specific-')",
+    "process.env.PERTEXO_Q11_OVERLAP_DIRECTORY = '/tmp/q11-proof'",
+    "import { writeFile as write } from 'node:fs/promises'; write('/tmp/result', '{}')",
+  ]) {
+    assert.match(
+      validateModuleImports({ 'apps/example/test/files.test.ts': code }).join(
+        '\n',
+      ),
+      /test-owned files use a created temporary directory/u,
+    );
+  }
+  assert.deepEqual(
+    validateModuleImports({
+      'apps/example/test/files.test.ts':
+        "const directory = await mkdtemp(join(tmpdir(), 'owned-')); await writeFile(join(directory, 'receipt.json'), '{}'); expect(parse('file:///tmp/private')).toBe(false); if (path === '/tmp/runtime-marker') return writeFile(ownedPath, data);",
+    }),
+    [],
+  );
+  assert.deepEqual(
+    validateModuleImports({
+      'apps/example/src/marker.ts': "writeFile('/tmp/runtime-marker', 'ok')",
+    }),
+    [],
+  );
+});

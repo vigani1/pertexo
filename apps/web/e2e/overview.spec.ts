@@ -1,3 +1,4 @@
+import { temporaryTestPath } from '../test/support/temporary-test-path';
 import {
   createUserFixture,
   createWorkspaceFixture,
@@ -274,7 +275,9 @@ test('opens a plotted run from a native timeline link with the keyboard', async 
   expect(bounds.y).toBeGreaterThanOrEqual(0);
   expect(bounds.y + bounds.height).toBeLessThanOrEqual(viewport.height);
   await page.screenshot({
-    path: '/tmp/pertexo-clean-lifecycles.j9etnz/loom-keyboard.png',
+    path: temporaryTestPath(
+      'pertexo-clean-lifecycles.j9etnz/loom-keyboard.png',
+    ),
   });
   await page.keyboard.press('Escape');
   await expect(preview).toBeHidden();

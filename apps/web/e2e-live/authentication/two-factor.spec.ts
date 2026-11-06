@@ -1,3 +1,4 @@
+import { temporaryTestPath } from '../../test/support/temporary-test-path';
 import { createHmac } from 'node:crypto';
 import { mkdir } from 'node:fs/promises';
 import { expect, type Page } from '@playwright/test';
@@ -115,14 +116,18 @@ test('authenticator at desktop and single-use recovery sign-in on a phone', asyn
   await expect(
     page.getByText('On · 10 recovery codes remaining'),
   ).toBeVisible();
-  await mkdir('/tmp/pertexo-two-factor-screenshots', { recursive: true });
+  await mkdir(temporaryTestPath('pertexo-two-factor-screenshots'), {
+    recursive: true,
+  });
   await page.screenshot({
-    path: '/tmp/pertexo-two-factor-screenshots/account-375.png',
+    path: temporaryTestPath('pertexo-two-factor-screenshots/account-375.png'),
     fullPage: true,
   });
   await page.setViewportSize({ width, height: 800 });
   await page.screenshot({
-    path: `/tmp/pertexo-two-factor-screenshots/account-${String(width)}.png`,
+    path: temporaryTestPath(
+      `pertexo-two-factor-screenshots/account-${String(width)}.png`,
+    ),
     fullPage: true,
   });
   expect(
@@ -136,7 +141,9 @@ test('authenticator at desktop and single-use recovery sign-in on a phone', asyn
     page.getByLabel('Authenticator code', { exact: true }),
   ).toHaveAttribute('inputmode', 'numeric');
   await page.screenshot({
-    path: `/tmp/pertexo-two-factor-screenshots/challenge-${String(width)}.png`,
+    path: temporaryTestPath(
+      `pertexo-two-factor-screenshots/challenge-${String(width)}.png`,
+    ),
     fullPage: true,
   });
   await fillOwnedHttpCredential(
@@ -149,7 +156,7 @@ test('authenticator at desktop and single-use recovery sign-in on a phone', asyn
   await signOut(page);
   await signIn(page, email);
   await page.screenshot({
-    path: '/tmp/pertexo-two-factor-screenshots/challenge-375.png',
+    path: temporaryTestPath('pertexo-two-factor-screenshots/challenge-375.png'),
     fullPage: true,
   });
   await page

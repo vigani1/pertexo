@@ -1,3 +1,4 @@
+import { temporaryTestPath } from '../../../test/support/temporary-test-path';
 import {
   webhookIngressResponseSchema,
   webhookTriggerListResponseSchema,
@@ -55,7 +56,7 @@ test('coordinates all three real signed webhook policies with visible history', 
       ),
     ).toBe(true);
     await page.screenshot({
-      path: `/tmp/pertexo-f25-${mode}-phone.png`,
+      path: temporaryTestPath(`pertexo-f25-${mode}-phone.png`),
       animations: 'disabled',
     });
     await page.setViewportSize({ width: 1280, height: 900 });
@@ -137,7 +138,7 @@ test('coordinates all three real signed webhook policies with visible history', 
         .first(),
     ).toBeVisible();
     await page.screenshot({
-      path: `/tmp/pertexo-f25-${mode}-history.png`,
+      path: temporaryTestPath(`pertexo-f25-${mode}-history.png`),
       animations: 'disabled',
     });
     await page.goto(`/w/${workspaceId}/settings/usage?window=24h`);
@@ -195,7 +196,7 @@ test('a public coordinated form shows pending without redirect and editor histor
     }),
   ).toBeVisible();
   await page.screenshot({
-    path: '/tmp/pertexo-f25-form-phone.png',
+    path: temporaryTestPath('pertexo-f25-form-phone.png'),
     animations: 'disabled',
   });
   await expect
@@ -230,7 +231,7 @@ test('a public coordinated form shows pending without redirect and editor histor
     .getByRole('heading', { name: 'Coordinated form events', exact: true })
     .scrollIntoViewIfNeeded();
   await page.screenshot({
-    path: '/tmp/pertexo-f25-form-history.png',
+    path: temporaryTestPath('pertexo-f25-form-history.png'),
     animations: 'disabled',
   });
 });

@@ -1,3 +1,4 @@
+import { temporaryTestPath } from '../../test/support/temporary-test-path';
 import { expect, test } from '../support/fixtures';
 import { openWorkflowAction } from '../workflow-editor/actions';
 import {
@@ -94,7 +95,9 @@ test('keeps a workflow copy exact through retry and postflight outages until ver
   const bounds = await dialog.boundingBox();
   expect(bounds?.x).toBeGreaterThanOrEqual(0);
   expect((bounds?.x ?? 0) + (bounds?.width ?? 0)).toBeLessThanOrEqual(390);
-  await page.screenshot({ path: '/tmp/pertexo-f05-duplicate-mobile.png' });
+  await page.screenshot({
+    path: temporaryTestPath('pertexo-f05-duplicate-mobile.png'),
+  });
   await dialog
     .getByRole('button', { name: 'Duplicate workflow', exact: true })
     .click();

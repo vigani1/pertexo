@@ -1,3 +1,4 @@
+import { temporaryTestPath } from '../test/support/temporary-test-path';
 import {
   workflowFolderCreateResponseSchema,
   workflowOrganizationBulkRequestSchema,
@@ -350,7 +351,7 @@ test('ordinary owner persists shared organization, exact recovery and private di
   });
   expect(evidence.status()).toBe(204);
   await page.screenshot({
-    path: '/tmp/pertexo-workflow-organization-live.png',
+    path: temporaryTestPath('pertexo-workflow-organization-live.png'),
     fullPage: true,
   });
   await qualifyExtended({

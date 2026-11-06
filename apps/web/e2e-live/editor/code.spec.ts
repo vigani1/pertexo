@@ -1,3 +1,4 @@
+import { temporaryTestPath } from '../../test/support/temporary-test-path';
 import { expect } from '@playwright/test';
 import {
   workflowNodeRunDiagnosticsResponseSchema,
@@ -83,7 +84,7 @@ test('browser-authored Code uses the actual worker runner and keeps diagnostics 
     .toBe(code);
   await page
     .getByRole('complementary', { name: 'Step panel', exact: true })
-    .screenshot({ path: '/tmp/pertexo-f20-code-desktop.png' });
+    .screenshot({ path: temporaryTestPath('pertexo-f20-code-desktop.png') });
   await page.getByRole('tab', { name: 'Inputs', exact: true }).click();
   await page.getByRole('button', { name: 'Add input', exact: true }).click();
   const mapping = page
@@ -223,7 +224,7 @@ test('browser-authored Code uses the actual worker runner and keeps diagnostics 
   ).toBeVisible();
   await page
     .getByRole('complementary', { name: 'Step panel', exact: true })
-    .screenshot({ path: '/tmp/pertexo-f20-code-phone.png' });
+    .screenshot({ path: temporaryTestPath('pertexo-f20-code-phone.png') });
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= window.innerWidth,

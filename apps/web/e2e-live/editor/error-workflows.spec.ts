@@ -1,3 +1,4 @@
+import { temporaryTestPath } from '../../test/support/temporary-test-path';
 import type { WorkflowGraphContract } from '@pertexo/contracts';
 import { workflowNodeRunOutputResponseSchema } from '@pertexo/contracts';
 import { isRecord, workflowErrorInputSchema } from '@pertexo/workflow-model';
@@ -172,9 +173,13 @@ test('selects a published error workflow, starts it with safe data, and follows 
   ).toBeVisible();
   await section.getByRole('button', { name: 'Change' }).click();
   await expect(picker).toContainText('Handle a workflow failure');
-  await mkdir('/tmp/pertexo-error-workflow-screenshots', { recursive: true });
+  await mkdir(temporaryTestPath('pertexo-error-workflow-screenshots'), {
+    recursive: true,
+  });
   await section.screenshot({
-    path: '/tmp/pertexo-error-workflow-screenshots/settings-desktop.png',
+    path: temporaryTestPath(
+      'pertexo-error-workflow-screenshots/settings-desktop.png',
+    ),
   });
   await page.setViewportSize({ width: 375, height: 768 });
   await picker.focus();
@@ -186,7 +191,9 @@ test('selects a published error workflow, starts it with safe data, and follows 
     ),
   ).toBe(true);
   await section.screenshot({
-    path: '/tmp/pertexo-error-workflow-screenshots/settings-phone.png',
+    path: temporaryTestPath(
+      'pertexo-error-workflow-screenshots/settings-phone.png',
+    ),
   });
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto(editor);
@@ -199,11 +206,15 @@ test('selects a published error workflow, starts it with safe data, and follows 
     .locator('[data-slot="notice"]')
     .filter({ hasText: 'Error workflow started' });
   await notice.screenshot({
-    path: '/tmp/pertexo-error-workflow-screenshots/source-desktop.png',
+    path: temporaryTestPath(
+      'pertexo-error-workflow-screenshots/source-desktop.png',
+    ),
   });
   await page.setViewportSize({ width: 375, height: 768 });
   await notice.screenshot({
-    path: '/tmp/pertexo-error-workflow-screenshots/source-phone.png',
+    path: temporaryTestPath(
+      'pertexo-error-workflow-screenshots/source-phone.png',
+    ),
   });
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.getByRole('link', { name: 'Open error run', exact: true }).click();
@@ -227,13 +238,15 @@ test('selects a published error workflow, starts it with safe data, and follows 
   expect(value.run.id).toBe(runId);
   expect(JSON.stringify(value)).not.toMatch(/sensitive-password|not-a-number/u);
   await page.screenshot({
-    path: '/tmp/pertexo-error-workflow-screenshots/run-desktop.png',
+    path: temporaryTestPath(
+      'pertexo-error-workflow-screenshots/run-desktop.png',
+    ),
   });
   await page.setViewportSize({ width: 375, height: 768 });
   await expect(
     page.getByText('workflow failure', { exact: true }),
   ).toBeVisible();
   await page.screenshot({
-    path: '/tmp/pertexo-error-workflow-screenshots/run-phone.png',
+    path: temporaryTestPath('pertexo-error-workflow-screenshots/run-phone.png'),
   });
 });

@@ -1,3 +1,4 @@
+import { temporaryTestPath } from '../../../test/support/temporary-test-path';
 import { pendingTaskListResponseSchema } from '@pertexo/contracts';
 import { expect } from '@playwright/test';
 import { randomUUID } from 'node:crypto';
@@ -173,7 +174,9 @@ test('published member and public forms start real runs; captured member input c
   });
   const publicPage = await publicContext.newPage();
   try {
-    await mkdir('/tmp/pertexo-form-screenshots', { recursive: true });
+    await mkdir(temporaryTestPath('pertexo-form-screenshots'), {
+      recursive: true,
+    });
     for (const [kind, width] of [
       ['member', 1280],
       ['public', 375],
@@ -211,7 +214,9 @@ test('published member and public forms start real runs; captured member input c
         .getByRole('checkbox', { name: 'Email', exact: true })
         .check();
       await responder.screenshot({
-        path: `/tmp/pertexo-form-screenshots/${kind}-${String(width)}-before.png`,
+        path: temporaryTestPath(
+          `pertexo-form-screenshots/${kind}-${String(width)}-before.png`,
+        ),
         fullPage: true,
       });
       const submit = responder.waitForResponse(
@@ -246,7 +251,9 @@ test('published member and public forms start real runs; captured member input c
         }),
       ).toBeVisible();
       await responder.screenshot({
-        path: `/tmp/pertexo-form-screenshots/${kind}-${String(width)}-after.png`,
+        path: temporaryTestPath(
+          `pertexo-form-screenshots/${kind}-${String(width)}-after.png`,
+        ),
         fullPage: true,
       });
       let runId = '';
@@ -296,7 +303,9 @@ test('published member and public forms start real runs; captured member input c
         .getByRole('checkbox', { name: 'Email', exact: true })
         .uncheck();
       await page.screenshot({
-        path: `/tmp/pertexo-form-screenshots/${kind}-${String(width)}-request-context.png`,
+        path: temporaryTestPath(
+          `pertexo-form-screenshots/${kind}-${String(width)}-request-context.png`,
+        ),
         fullPage: true,
       });
       await page.getByLabel('Answer', { exact: true }).fill(`${kind} answer`);

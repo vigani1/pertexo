@@ -1,3 +1,4 @@
+import { temporaryTestPath } from '../test/support/temporary-test-path';
 import { expect } from '@playwright/test';
 import { workflowConcurrencyCommandResponseSchema } from '@pertexo/contracts';
 import { test } from './support/browser-fixture';
@@ -83,7 +84,7 @@ test('sets cap one, sees the real blocked run across restart, then removes the c
       ),
     ).toBe(true);
     await page.screenshot({
-      path: `/tmp/pertexo-concurrency-skip-${String(width)}.png`,
+      path: temporaryTestPath(`pertexo-concurrency-skip-${String(width)}.png`),
       fullPage: true,
     });
   }
@@ -103,7 +104,7 @@ test('sets cap one, sees the real blocked run across restart, then removes the c
   expect((await request.post(`${origin}/released-evidence`)).ok()).toBe(true);
   await expect(concurrency.getByText(/^No limit of its own\./u)).toBeVisible();
   await page.screenshot({
-    path: '/tmp/pertexo-workflow-concurrency-live.png',
+    path: temporaryTestPath('pertexo-workflow-concurrency-live.png'),
     fullPage: true,
   });
 });

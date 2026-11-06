@@ -1,6 +1,7 @@
 import { spawn } from 'node:child_process';
 import { lstat, mkdtemp, rm } from 'node:fs/promises';
 import { join } from 'node:path';
+import { tmpdir } from 'node:os';
 import { setTimeout as delay } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
 import { DEFAULT_CODE_SETTINGS } from '@pertexo/node-sdk';
@@ -9,7 +10,7 @@ import { createWorkerNodeRuntimeCapabilities } from '../../../../src/attempts/ex
 
 /** Development/CI uses the approved separate-process path, never an evaluator stub. */
 export async function createEditorCodeRuntime(database: DatabaseConfig) {
-  const directory = await mkdtemp('/tmp/pertexo-code-browser-');
+  const directory = await mkdtemp(join(tmpdir(), 'pertexo-code-browser-'));
   const socketPath = join(directory, 'runner.sock');
   const child = spawn(
     process.execPath,

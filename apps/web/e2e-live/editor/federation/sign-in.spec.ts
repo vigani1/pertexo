@@ -1,3 +1,4 @@
+import { temporaryTestPath } from '../../../test/support/temporary-test-path';
 import { randomUUID } from 'node:crypto';
 import { mkdir } from 'node:fs/promises';
 import { expect, type Page } from '@playwright/test';
@@ -48,9 +49,13 @@ for (const width of [1280, 375]) {
       .click();
     await page.getByRole('menuitem', { name: 'Sign out', exact: true }).click();
     await expect(page).toHaveURL('/login');
-    await mkdir('/tmp/pertexo-federation-screenshots', { recursive: true });
+    await mkdir(temporaryTestPath('pertexo-federation-screenshots'), {
+      recursive: true,
+    });
     await page.screenshot({
-      path: `/tmp/pertexo-federation-screenshots/login-${String(width)}.png`,
+      path: temporaryTestPath(
+        `pertexo-federation-screenshots/login-${String(width)}.png`,
+      ),
       fullPage: true,
     });
     await providerSignIn(page, 'Google', email);
@@ -62,7 +67,9 @@ for (const width of [1280, 375]) {
     await expect(methods.getByText('Google', { exact: true })).toBeVisible();
     await expect(methods.getByText('Password', { exact: true })).toBeVisible();
     await page.screenshot({
-      path: `/tmp/pertexo-federation-screenshots/linked-${String(width)}.png`,
+      path: temporaryTestPath(
+        `pertexo-federation-screenshots/linked-${String(width)}.png`,
+      ),
       fullPage: true,
     });
     expect(
