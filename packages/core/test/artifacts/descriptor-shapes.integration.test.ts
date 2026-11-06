@@ -216,15 +216,20 @@ it('keeps deployed owner guards on the SDK-derived presence shape', async () => 
       ...definition.matchAll(
         /jsonb_path_exists\(\(?((?:old|new)\.[a-z_]+)\)?(?:::jsonb)?, '((?:''|[^'])*)'::jsonpath\)/gu,
       ),
-    ].map(
-      ([, column, guardPath]) =>
-        `${column}|${guardPath?.replaceAll("''", "'")}`,
-    );
+    ].map(([, column, guardPath]) => {
+      if (column === undefined || guardPath === undefined)
+        throw new Error('Artifact JSON guard capture unavailable');
+      return `${column}|${guardPath.replaceAll("''", "'")}`;
+    });
     const textGuards = [
       ...definition.matchAll(
         /app\.artifact_owner_text_may_reference\(((?:old|new)\.[a-z_]+)\)/gu,
       ),
-    ].map(([, column]) => `${column}|text`);
+    ].map(([, column]) => {
+      if (column === undefined)
+        throw new Error('Artifact text guard capture unavailable');
+      return `${column}|text`;
+    });
     expect(
       [...jsonGuards, ...textGuards].sort(),
       `${family}/${operation} guards`,
