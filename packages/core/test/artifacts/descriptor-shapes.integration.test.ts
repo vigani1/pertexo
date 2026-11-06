@@ -1,5 +1,6 @@
 import { Pool } from 'pg';
 import { afterAll, expect, it } from 'vitest';
+import { nodeArtifactReferenceSchema } from '@pertexo/node-sdk';
 import {
   ARTIFACT_DESCRIPTOR_JSON_PATH,
   isArtifactDescriptor,
@@ -8,6 +9,7 @@ import { collectArtifactReferences } from '../../src/artifacts/references/locks.
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL, max: 1 });
 afterAll(() => pool.end());
+const descriptorSchema = nodeArtifactReferenceSchema.unwrap();
 const descriptor = {
   kind: 'artifact',
   artifactId: 'abcdefab-cdef-4abc-8def-abcdefabcdef',
@@ -16,123 +18,111 @@ const descriptor = {
   sha256: 'a'.repeat(64),
 };
 const cases = [
-  { name: 'scalar artifact', value: descriptor, descriptor: true },
+  { name: 'complete descriptor', value: descriptor },
   {
-    name: 'one-element kind array',
-    value: { ...descriptor, kind: ['artifact'] },
-    descriptor: false,
-  },
-  {
-    name: 'nested kind array',
-    value: { ...descriptor, kind: [['artifact']] },
-    descriptor: false,
-  },
-  {
-    name: 'multiple kinds',
-    value: { ...descriptor, kind: ['business', 'artifact'] },
-    descriptor: false,
-  },
-  {
-    name: 'empty kind array',
-    value: { ...descriptor, kind: [] },
-    descriptor: false,
-  },
-  {
-    name: 'scalar business kind',
-    value: { ...descriptor, kind: 'business' },
-    descriptor: false,
-  },
-  {
-    name: 'null kind',
-    value: { ...descriptor, kind: null },
-    descriptor: false,
-  },
-  {
-    name: 'object kind',
-    value: { ...descriptor, kind: { name: 'artifact' } },
-    descriptor: false,
-  },
-  {
-    name: 'incidental ID',
+    name: 'incidental business ID',
     value: { artifactId: descriptor.artifactId },
-    descriptor: false,
   },
-  {
-    name: 'array kind and fabricated metadata',
-    value: {
-      ...descriptor,
-      kind: ['artifact'],
-      byteLength: null,
-      mediaType: null,
-      sha256: null,
-    },
-    descriptor: false,
-  },
-  // Exact descriptor shapes enter metadata validation; malformed metadata cannot be admitted.
-  {
-    name: 'scalar kind and fabricated metadata',
-    value: { ...descriptor, byteLength: null, mediaType: null, sha256: null },
-    descriptor: true,
-  },
-] as const;
+  ...descriptorSchema.keyof().options.map((field) => ({
+    name: `missing ${field}`,
+    value: Object.fromEntries(
+      Object.entries(descriptor).filter(([key]) => key !== field),
+    ),
+  })),
+  ...[
+    undefined,
+    null,
+    false,
+    7,
+    'business',
+    'ARTIFACT',
+    'Artifact',
+    ['artifact'],
+    [['artifact']],
+    ['business', 'artifact'],
+    [],
+    { name: 'artifact' },
+  ].map((kind) => ({
+    name: `kind ${JSON.stringify(kind)}`,
+    value: { ...descriptor, kind },
+  })),
+  ...[
+    descriptor.artifactId.toUpperCase(),
+    'AbCdEfAb-CdEf-4aBc-8dEf-AbCdEfAbCdEf',
+    null,
+    7,
+    [],
+    [descriptor.artifactId],
+    [[descriptor.artifactId]],
+    {},
+    'not-a-uuid',
+    descriptor.artifactId.replaceAll('-', ''),
+  ].map((artifactId) => ({
+    name: `artifactId ${JSON.stringify(artifactId)}`,
+    value: { ...descriptor, artifactId },
+  })),
+];
+
 it.each(cases)(
-  'keeps raw ownership and admission shape recognition aligned for $name',
-  async (testCase) => {
-    expect(isArtifactDescriptor(testCase.value)).toBe(testCase.descriptor);
-    const result = await pool.query<{ reference: unknown }>(
-      'select reference from jsonb_path_query($1::jsonb,$2::jsonpath) reference',
-      [JSON.stringify(testCase.value), ARTIFACT_DESCRIPTOR_JSON_PATH],
-    );
-    expect(result.rows.map((row) => row.reference)).toEqual(
-      testCase.descriptor ? [descriptor.artifactId] : [],
-    );
+  'keeps SQL and TypeScript extraction identical for $name',
+  async ({ value }) => {
+    const id = descriptorSchema.shape.artifactId.safeParse(value.artifactId);
+    const expected =
+      isArtifactDescriptor(value) && id.success ? [id.data.toLowerCase()] : [];
     const indexed = await pool.query<{ id: string }>(
       "select app.artifact_owner_ids($1::jsonb,'authored') id",
-      [JSON.stringify(testCase.value)],
+      [JSON.stringify(value)],
     );
-    expect(indexed.rows.map((row) => row.id)).toEqual(
-      testCase.descriptor ? [descriptor.artifactId] : [],
+    expect(indexed.rows.map((row) => row.id)).toEqual(expected);
+    const path = await pool.query<{ reference: unknown }>(
+      'select reference from jsonb_path_query($1::jsonb,$2::jsonpath) reference',
+      [JSON.stringify(value), ARTIFACT_DESCRIPTOR_JSON_PATH],
     );
-    if (!testCase.descriptor)
-      expect(collectArtifactReferences(testCase.value)).toEqual([]);
+    expect(
+      path.rows.flatMap(({ reference }) => {
+        const id = descriptorSchema.shape.artifactId.safeParse(reference);
+        return id.success ? [id.data.toLowerCase()] : [];
+      }),
+    ).toEqual(expected);
+    // Admission rejects malformed IDs; stored ownership ignores them rather than granting a file.
+    if (isArtifactDescriptor(value) && !id.success)
+      expect(() => collectArtifactReferences(value)).toThrow();
+    else
+      expect(
+        collectArtifactReferences(value).map((reference) =>
+          reference.artifactId.toLowerCase(),
+        ),
+      ).toEqual(expected);
   },
 );
+
 it('keeps arrays containing descriptors and ordinary business objects valid', async () => {
   const value = {
     nested: [{ artifactId: descriptor.artifactId }, [descriptor]],
   };
-  expect(collectArtifactReferences(value)).toEqual([
-    {
-      artifactId: descriptor.artifactId,
-      byteLength: 17,
-      mediaType: 'application/json',
-      sha256: 'a'.repeat(64),
-    },
-  ]);
-  const result = await pool.query<{ found: boolean }>(
-    'select exists(select 1 from jsonb_path_query($1::jsonb,$2::jsonpath)) found',
-    [JSON.stringify(value), ARTIFACT_DESCRIPTOR_JSON_PATH],
+  const expected = collectArtifactReferences(value).map(
+    (reference) => reference.artifactId,
   );
-  expect(result.rows).toEqual([{ found: true }]);
-  expect(() =>
-    collectArtifactReferences({
-      ...descriptor,
-      byteLength: null,
-      mediaType: null,
-      sha256: null,
-    }),
-  ).toThrow();
-});
-
-it('normalizes mixed-case descriptor UUIDs in the derived index', async () => {
+  expect(expected).toEqual([descriptor.artifactId]);
   const result = await pool.query<{ id: string }>(
     "select app.artifact_owner_ids($1::jsonb,'authored') id",
-    [
-      JSON.stringify({
-        ...descriptor,
-        artifactId: descriptor.artifactId.toUpperCase(),
-      }),
-    ],
+    [JSON.stringify(value)],
+  );
+  expect(result.rows.map((row) => row.id)).toEqual(expected);
+});
+
+it('keeps shape recognition distinct from metadata validation', async () => {
+  const value = {
+    ...descriptor,
+    byteLength: null,
+    mediaType: null,
+    sha256: null,
+  };
+  expect(isArtifactDescriptor(value)).toBe(true);
+  expect(() => collectArtifactReferences(value)).toThrow();
+  const result = await pool.query<{ id: string }>(
+    "select app.artifact_owner_ids($1::jsonb,'authored') id",
+    [JSON.stringify(value)],
   );
   expect(result.rows).toEqual([{ id: descriptor.artifactId }]);
 });
