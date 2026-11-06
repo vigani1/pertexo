@@ -1,5 +1,5 @@
-import { recordInboxFailureDay } from '../../../src/inbox/failure-days.repository.js';
-import { createTestUser } from '../../support/user.js';
+import { recordInboxFailureDay } from '../../src/inbox/failure-days.repository.js';
+import { createTestUser } from '../support/user.js';
 import type { Role } from '@pertexo/policy';
 import { randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
@@ -11,10 +11,10 @@ import {
   workspaceMemberships,
   createDisposableDatabaseFixture,
 } from '@pertexo/database/testing';
-import { createIdentityWorkspaceStore } from '../../../src/testing.js';
-import { createWorkspaceInboxFoldStore } from '../../../src/inbox/folding/workspace-inbox-fold.store.js';
-import { persistWorkspaceInboxEvent } from '../../../src/inbox/folding/events.repository.js';
-import { createWorkspaceInboxStore } from '../../../src/inbox/threads/workspace-inbox.store.js';
+import { createIdentityWorkspaceStore } from '../../src/testing.js';
+import { createWorkspaceInboxFoldStore } from '../../src/inbox/folding/workspace-inbox-fold.store.js';
+import { persistWorkspaceInboxEvent } from '../../src/inbox/folding/events.repository.js';
+import { createWorkspaceInboxStore } from '../../src/inbox/threads/workspace-inbox.store.js';
 
 type Kind = 'failed' | 'timed_out' | 'outcome_unknown';
 

@@ -4,7 +4,7 @@ import {
   beforeAllFixture1,
   query,
   store,
-} from './records/fixture.js';
+} from './table-records.fixture.js';
 import { randomUUID, createHash } from 'node:crypto';
 import {
   insertOrder,
@@ -16,7 +16,7 @@ import {
   addMember,
   exportCsv,
   type Actor,
-} from './rules/world.js';
+} from './table-rules.fixture.js';
 import { canonicalJson } from '@pertexo/workflow-model';
 import {
   IdempotencyConflictError,

@@ -1,7 +1,7 @@
 import { withTenantScopedClient } from '@pertexo/database/primitives';
 import type { QueryConfig } from 'pg';
 import { readVariableUsage } from '../../src/variables/usage.repository.js';
-import { pool } from './configuration/fixture.js';
+import { pool } from './variable-configuration.fixture.js';
 import { randomUUID } from 'node:crypto';
 
 import { afterAll, beforeAll, expect, it } from 'vitest';
@@ -16,7 +16,7 @@ import {
   fixture,
   scope,
   store,
-} from './configuration/fixture.js';
+} from './variable-configuration.fixture.js';
 
 beforeAll(beforeAllFixture1);
 afterAll(afterAllFixture2);

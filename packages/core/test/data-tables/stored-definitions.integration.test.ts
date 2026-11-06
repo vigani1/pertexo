@@ -17,7 +17,7 @@ import {
   table,
   insert,
   query,
-} from './records/fixture.js';
+} from './table-records.fixture.js';
 beforeAll(beforeAllFixture1);
 afterAll(afterAllFixture2);
 

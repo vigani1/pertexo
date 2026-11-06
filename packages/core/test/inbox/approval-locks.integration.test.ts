@@ -1,12 +1,12 @@
-import { readFolderScope } from '../../../src/shared/folder-access-facts.repository.js';
+import { readFolderScope } from '../../src/shared/folder-access-facts.repository.js';
 import { randomUUID } from 'node:crypto';
 import { expect, it } from 'vitest';
 import { Pool } from 'pg';
-import { apiUrl } from '../../support/workflow-authoring.js';
+import { apiUrl } from '../support/workflow-authoring.js';
 import { withTenantScopedClient } from '@pertexo/database/primitives';
-import { readAttentionFact } from '../../../src/inbox/observations/facts.repository.js';
-import { respondToTask } from '../../../src/runs/pending-tasks/responses/respond.repository.js';
-import { seedApproval, seedNoticeWorkspace } from '../notices.fixture.js';
+import { readAttentionFact } from '../../src/inbox/observations/facts.repository.js';
+import { respondToTask } from '../../src/runs/pending-tasks/responses/respond.repository.js';
+import { seedApproval, seedNoticeWorkspace } from './notices.fixture.js';
 
 it('lets an approval decision finish while its notice waits for the same run', async () => {
   const f = await seedNoticeWorkspace();

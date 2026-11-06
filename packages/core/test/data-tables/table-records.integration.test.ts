@@ -9,7 +9,7 @@ import {
   insert,
   required,
   columns,
-} from './records/fixture.js';
+} from './table-records.fixture.js';
 import { randomUUID } from 'node:crypto';
 import {
   dataTableNewColumnsSchema,

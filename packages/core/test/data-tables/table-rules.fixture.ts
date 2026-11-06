@@ -7,8 +7,8 @@ import {
   actorId,
   identity,
   queryAsOwner,
-} from '../../support/workflow-authoring.js';
-import { query, store } from '../records/fixture.js';
+} from '../support/workflow-authoring.js';
+import { query, store } from './table-records.fixture.js';
 
 export type Actor = Readonly<{ workspaceId: string; actorId: string }>;
 

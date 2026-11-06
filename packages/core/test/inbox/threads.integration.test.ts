@@ -17,7 +17,7 @@ import {
   adminUrl,
   fixture,
   maintenanceUrl,
-} from './threads/fixture.js';
+} from './workflow-threads.fixture.js';
 import { randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
 import { enforceRetention } from '../support/retention.js';

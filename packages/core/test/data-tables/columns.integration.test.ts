@@ -9,7 +9,7 @@ import {
   edit,
   rows,
   collectExport,
-} from './columns/fixture.js';
+} from './table-columns.fixture.js';
 import { randomUUID } from 'node:crypto';
 import {
   otherActorId,

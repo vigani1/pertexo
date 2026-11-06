@@ -10,7 +10,7 @@ import {
   reason,
   schedule,
   workspaceId,
-} from './commands.support.js';
+} from './operator-commands.support.js';
 
 describe('a retry from before the pass', () => {
   const sha256 = (text: string) =>
