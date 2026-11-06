@@ -36,6 +36,7 @@ export function store(kind: 'slack' | 'email') {
     recoverDue: vi.fn<NonNullable<FailureNotificationStore['recoverDue']>>(),
     close: vi.fn<NonNullable<FailureNotificationStore['close']>>(),
     loadDestination: vi.fn().mockResolvedValue({
+      configVersion: 1,
       kind,
       connectionId: '88888888-8888-4888-8888-888888888888',
       secretVersionId: identity.connectionSecretVersionId,

@@ -223,13 +223,16 @@ export const load = (alert: Alert, attemptNumber: number) =>
     signal: new AbortController().signal,
   });
 
-export const fence = (
+export const fence = async (
   alert: Alert,
   attemptNumber: number,
   deliveryBinding?: string,
+  destinationIdentity?: Awaited<ReturnType<typeof load>>,
 ) =>
   delivery.fenceDispatch({
     ...attempt(alert, attemptNumber),
+    destinationIdentity:
+      destinationIdentity ?? (await load(alert, attemptNumber)),
     ...(deliveryBinding === undefined ? {} : { deliveryBinding }),
   });
 

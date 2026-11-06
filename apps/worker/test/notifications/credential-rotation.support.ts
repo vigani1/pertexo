@@ -11,6 +11,7 @@ export const ROTATED_CIPHERTEXT = 'rotated-cipher';
 
 export function deliveryHarness(
   store: ReturnType<typeof createFailureNotificationStore>,
+  afterOpen?: () => Promise<void>,
 ) {
   const emails: { apiKey: string; toEmail: string }[] = [];
   const slackMessages: { botToken: string; channelId: string }[] = [];
@@ -29,7 +30,8 @@ export function deliveryHarness(
       store,
       workerId: 'rotation-integration-worker',
       encryption: {
-        open: (sealed) => {
+        open: async (sealed) => {
+          await afterOpen?.();
           opened.push(sealed.ciphertext);
           return Promise.resolve(
             new TextEncoder().encode(

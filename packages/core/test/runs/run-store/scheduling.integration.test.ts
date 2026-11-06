@@ -914,6 +914,11 @@ describe('Coordinator scheduling and notification invariants', () => {
       });
       await expect(
         deliveryStore.fenceDispatch({
+          destinationIdentity: {
+            configVersion: 1,
+            connectionId: notificationConnectionId,
+            secretVersionId: notificationSecretVersionId,
+          },
           workspaceId: workspaceA,
           intentId: first.intent_id,
           attemptNumber: firstReady.attemptNumber,
@@ -1289,6 +1294,11 @@ describe('Coordinator scheduling and notification invariants', () => {
     if (claimed.kind !== 'ready')
       throw new Error('Commit-uncertainty claim missing');
     await ordinaryStore.fenceDispatch({
+      destinationIdentity: {
+        configVersion: 1,
+        connectionId: notificationConnectionId,
+        secretVersionId: notificationSecretVersionId,
+      },
       workspaceId: workspaceA,
       intentId: first.intent_id,
       attemptNumber: claimed.attemptNumber,
@@ -1522,6 +1532,11 @@ describe('Coordinator scheduling and notification invariants', () => {
         );
         const disabledFence = deliveryStore
           .fenceDispatch({
+            destinationIdentity: {
+              configVersion: 2,
+              connectionId: notificationConnectionId,
+              secretVersionId: notificationSecretVersionId,
+            },
             workspaceId: workspaceA,
             intentId: first.intent_id,
             attemptNumber: ready.attemptNumber,
@@ -1556,6 +1571,11 @@ describe('Coordinator scheduling and notification invariants', () => {
       );
       await expect(
         deliveryStore.fenceDispatch({
+          destinationIdentity: {
+            configVersion: 2,
+            connectionId: notificationConnectionId,
+            secretVersionId: notificationSecretVersionId,
+          },
           workspaceId: workspaceA,
           intentId: first.intent_id,
           attemptNumber: ready.attemptNumber,
@@ -1716,6 +1736,11 @@ describe('Coordinator scheduling and notification invariants', () => {
         throw new Error('initial delivery was not claimable');
       await expect(
         deliveryStore.fenceDispatch({
+          destinationIdentity: {
+            configVersion: 1,
+            connectionId: notificationConnectionId,
+            secretVersionId: notificationSecretVersionId,
+          },
           workspaceId: workspaceA,
           intentId: first.intent_id,
           attemptNumber: firstClaim.attemptNumber,
@@ -1756,6 +1781,11 @@ describe('Coordinator scheduling and notification invariants', () => {
           );
           await expect(
             deliveryStore.fenceDispatch({
+              destinationIdentity: {
+                configVersion: 1,
+                connectionId: notificationConnectionId,
+                secretVersionId: notificationSecretVersionId,
+              },
               workspaceId: workspaceA,
               intentId: first.intent_id,
               attemptNumber: claimed.attemptNumber,
@@ -1764,6 +1794,11 @@ describe('Coordinator scheduling and notification invariants', () => {
           ).rejects.toThrow('Delivery dispatch fence failed');
           await expect(
             deliveryStore.fenceDispatch({
+              destinationIdentity: {
+                configVersion: 1,
+                connectionId: notificationConnectionId,
+                secretVersionId: notificationSecretVersionId,
+              },
               workspaceId: workspaceA,
               intentId: first.intent_id,
               attemptNumber: claimed.attemptNumber,
