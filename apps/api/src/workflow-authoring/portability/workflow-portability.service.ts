@@ -1,3 +1,7 @@
+import {
+  ACTIVE_WORKSPACE_STATUSES,
+  BROWSABLE_WORKSPACE_STATUSES,
+} from '@pertexo/policy';
 import { verifyCuratedTemplateManifest } from '@pertexo/templates';
 import {
   workflowExportRequestSchema,
@@ -64,7 +68,10 @@ class PortabilityAuthority {
       routeWorkspaceId: input.routeWorkspaceId,
       access: this.authorization,
       disclosure: 'not_found',
-      allowedWorkspaceStatuses: ['active'],
+      allowedWorkspaceStatuses:
+        capability === 'workflow:read'
+          ? BROWSABLE_WORKSPACE_STATUSES
+          : ACTIVE_WORKSPACE_STATUSES,
       ...(input.signal === undefined ? {} : { signal: input.signal }),
       ...(input.authorizedWorkspace === undefined
         ? {}

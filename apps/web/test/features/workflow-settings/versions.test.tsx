@@ -4,7 +4,10 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { mockServer } from '../../support/mock-server';
 import { renderApp } from '../../support/render-app';
+import { workspaceWith } from '../workflows/list/fixtures';
 import {
+  api,
+  summary,
   draftResponse,
   emptyGraph,
   etag,
@@ -51,6 +54,51 @@ async function openRestore() {
 }
 
 describe('workflow versions tab', () => {
+  it.each(['active', 'suspended'] as const)(
+    'reviews a retained archived version for export in a %s workspace',
+    async (status) => {
+      installQueries([]);
+      mockServer.use(
+        http.get('http://pertexo.test/v1/workspaces', () =>
+          HttpResponse.json({
+            items: [{ ...workspaceWith([]), status }],
+            nextCursor: null,
+          }),
+        ),
+        http.get(workflowApi, () =>
+          HttpResponse.json({
+            workflow: { ...summary, lifecycleStatus: 'archived' },
+          }),
+        ),
+        http.get(`${api}/workflows`, () =>
+          HttpResponse.json({ items: [], nextCursor: null }),
+        ),
+      );
+      renderApp(versionsPath);
+      const event = userEvent.setup();
+      await event.click(
+        await screen.findByRole('button', { name: 'More for v1' }),
+      );
+      await event.click(
+        await screen.findByRole('menuitem', { name: /Export/u }),
+      );
+      const dialog = await screen.findByRole('dialog', { name: /Export/u });
+      expect(
+        await within(dialog).findByLabelText('Complete saved source graph'),
+      ).toBeVisible();
+      expect(
+        within(dialog).getByText(/v1 exactly as it was published/u),
+      ).toBeVisible();
+      await event.click(within(dialog).getByRole('checkbox'));
+      expect(
+        within(dialog).getByRole('button', { name: 'Download workflow JSON' }),
+      ).toBeEnabled();
+      expect(
+        screen.queryByRole('button', { name: 'Restore to draft' }),
+      ).not.toBeInTheDocument();
+    },
+  );
+
   it('threads versions newest first, marks the live one and previews what changed', async () => {
     installQueries();
     mockServer.use(

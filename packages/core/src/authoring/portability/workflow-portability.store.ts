@@ -22,7 +22,10 @@ import {
 import { requireWorkflowCallTargets } from '../../tenant-access/resources/bindings.repository.js';
 import { requireConnectionBindings } from '../../tenant-access/resources/connections/bindings.repository.js';
 
-import { ACTIVE_WORKSPACE_STATUSES } from '@pertexo/policy';
+import {
+  ACTIVE_WORKSPACE_STATUSES,
+  BROWSABLE_WORKSPACE_STATUSES,
+} from '@pertexo/policy';
 import {
   canonicalWorkflowPortableJson,
   portableGraphDigest,
@@ -66,7 +69,7 @@ export type PortabilityContext = Readonly<{
 const READ_SOURCE = {
   mode: 'change',
   capability: 'workflow:read',
-  statuses: ACTIVE_WORKSPACE_STATUSES,
+  statuses: BROWSABLE_WORKSPACE_STATUSES,
 } as const;
 const CREATE_FROM_FILE = {
   mode: 'change',

@@ -1,3 +1,4 @@
+import { isWorkspaceBrowsable } from '@/features/workspaces/availability.public';
 import { DialogFooter } from '@/components/ui/dialog';
 import {
   useCallback,
@@ -48,7 +49,7 @@ type WorkflowExportDialogProps = Readonly<{
 export function WorkflowExportDialog(props: WorkflowExportDialogProps) {
   if (
     props.allowed === false ||
-    props.workspace.status !== 'active' ||
+    !isWorkspaceBrowsable(props.workspace) ||
     !props.workspace.capabilities.includes('workflow:read')
   )
     return (

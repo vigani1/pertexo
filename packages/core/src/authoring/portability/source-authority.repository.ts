@@ -58,7 +58,6 @@ export async function lockPortableSource(
       and(
         eq(workflows.workspaceId, input.workspaceId),
         eq(workflows.id, input.workflowId),
-        eq(workflows.lifecycleStatus, 'active'),
       ),
     )
     .for('share')
