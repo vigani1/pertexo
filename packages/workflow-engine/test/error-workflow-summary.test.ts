@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
 import { createCheckpoint } from '../src/server.js';
-import { type InvocationState } from '../src/workflow-execution.js';
+import type { InvocationState } from '../src/workflow-execution.js';
 import { errorWorkflowInput } from '../src/completion/error-workflow.js';
 const id = '12345678-1234-4234-8234-123456789abc';
 const invocation = (

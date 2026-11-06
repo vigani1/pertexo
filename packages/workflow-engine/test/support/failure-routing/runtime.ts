@@ -1,5 +1,5 @@
 import type { WorkflowGraph } from '@pertexo/workflow-model';
-import { type WorkflowTransitionPlan } from '../../../src/index.js';
+import type { WorkflowTransitionPlan } from '../../../src/index.js';
 import {
   advanceWorkflow,
   buildWorkflowExecutable,

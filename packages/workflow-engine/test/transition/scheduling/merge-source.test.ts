@@ -5,7 +5,7 @@ import {
   createCheckpoint,
   invocationKey,
 } from '../../../src/server.js';
-import { type InvocationState } from '../../../src/workflow-execution.js';
+import type { InvocationState } from '../../../src/workflow-execution.js';
 import { executionNodes } from '../../../src/compilation/foundation.js';
 import { mergeCoordinatorObservations } from '../../../src/observation/coordinator.js';
 import {

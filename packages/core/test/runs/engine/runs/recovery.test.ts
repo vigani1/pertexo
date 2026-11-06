@@ -1,5 +1,5 @@
 import { CORE_NODE_CATALOG } from '@pertexo/nodes-core';
-import { type RecoveryNode } from '@pertexo/workflow-engine';
+import type { RecoveryNode } from '@pertexo/workflow-engine';
 import {
   buildWorkflowExecutable,
   composeExecutableCatalog,

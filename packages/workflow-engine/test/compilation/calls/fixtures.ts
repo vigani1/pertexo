@@ -1,9 +1,9 @@
 import { randomUUID } from 'node:crypto';
 import type { WorkflowGraph } from '@pertexo/workflow-model';
-import {
-  type WorkflowCallOutcome,
-  type WorkflowCheckpoint,
-  type WorkflowTransitionPlan,
+import type {
+  WorkflowCallOutcome,
+  WorkflowCheckpoint,
+  WorkflowTransitionPlan,
 } from '../../../src/index.js';
 import {
   advanceWorkflow,
@@ -11,7 +11,7 @@ import {
   composeExecutableCatalog,
   createCheckpoint,
 } from '../../../src/server.js';
-import { type AdvanceWorkflowInput } from '../../../src/operations.js';
+import type { AdvanceWorkflowInput } from '../../../src/operations.js';
 import { graph, nodeCatalog } from '../../support/executable-workflow.js';
 
 export const target = {

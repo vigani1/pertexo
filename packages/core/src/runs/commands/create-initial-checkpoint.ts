@@ -1,7 +1,7 @@
 import type { InitialCheckpointFactory } from './initial-checkpoint.js';
 import type { PublishedWorkflow } from '../queries/execution/workflow-execution.types.js';
 import { STORED_EXECUTION_VALUE_LIMITS } from '@pertexo/node-sdk';
-import { type WorkflowCheckpoint } from '@pertexo/workflow-engine';
+import type { WorkflowCheckpoint } from '@pertexo/workflow-engine';
 import { createCheckpoint } from '@pertexo/workflow-engine/server';
 import {
   CallableInputInvalidError,

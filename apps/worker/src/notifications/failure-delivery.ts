@@ -4,7 +4,7 @@ import {
 } from '@pertexo/core/notifications';
 
 import { assertNever } from '@pertexo/workflow-model';
-import { type FailureNotificationDeliveryResult } from '@pertexo/contracts';
+import type { FailureNotificationDeliveryResult } from '@pertexo/contracts';
 import type { FailureNotificationDeliveryCapability } from './failure-handler.js';
 import { settleUnresolvedDelivery, canceled } from './delivery/outcomes.js';
 import {

@@ -2,7 +2,7 @@ import type { NodeManifest } from '@pertexo/node-sdk';
 import type { StepRetrySettings } from '@pertexo/workflow-model';
 import { describe, expect, it } from 'vitest';
 
-import { type WorkflowTransitionPlan } from '../../src/index.js';
+import type { WorkflowTransitionPlan } from '../../src/index.js';
 import {
   advanceWorkflow,
   buildWorkflowExecutable,

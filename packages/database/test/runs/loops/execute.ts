@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
-import {
-  type WorkflowCheckpoint,
-  type WorkflowCallOutcome,
+import type {
+  WorkflowCheckpoint,
+  WorkflowCallOutcome,
 } from '@pertexo/workflow-engine';
 import {
   advanceWorkflow,

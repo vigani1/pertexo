@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { expect } from 'vitest';
 import type { WorkflowGraph } from '@pertexo/workflow-model';
-import { type WorkflowCheckpoint } from '../../../src/index.js';
+import type { WorkflowCheckpoint } from '../../../src/index.js';
 import {
   advanceWorkflow,
   buildWorkflowExecutable,

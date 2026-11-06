@@ -4,9 +4,9 @@ import {
   approvalConfigSchema,
   type WorkflowGraph,
 } from '@pertexo/workflow-model';
-import {
-  type WorkflowCheckpoint,
-  type PendingTaskOutcome,
+import type {
+  WorkflowCheckpoint,
+  PendingTaskOutcome,
 } from '../../src/index.js';
 import {
   advanceWorkflow,
@@ -15,7 +15,7 @@ import {
   createCheckpoint,
   parseCheckpoint,
 } from '../../src/server.js';
-import { type AdvanceWorkflowInput } from '../../src/operations.js';
+import type { AdvanceWorkflowInput } from '../../src/operations.js';
 import { forEachGraph, nodeCatalog } from '../support/executable-workflow.js';
 import { completion } from '../compilation/calls/fixtures.js';
 it('retains an unfinished loop approval, prunes only its decided scope and ignores retained duplicate outcomes', async () => {

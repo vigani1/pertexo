@@ -6,7 +6,7 @@ import {
 
 import { Pool } from 'pg';
 import { expect } from 'vitest';
-import { type WorkflowTransitionPlan } from '@pertexo/workflow-engine';
+import type { WorkflowTransitionPlan } from '@pertexo/workflow-engine';
 import { createCheckpoint } from '@pertexo/workflow-engine/server';
 import { createErrorWorkflowStore } from '../../../src/runs/error-workflows/error-workflow.store.js';
 import { persistErrorWorkflowIntent } from '../../../src/runs/error-workflows/produce.repository.js';

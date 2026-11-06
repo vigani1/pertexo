@@ -1,4 +1,4 @@
-import { type WorkflowTransitionPlan } from '@pertexo/workflow-engine';
+import type { WorkflowTransitionPlan } from '@pertexo/workflow-engine';
 import {
   advanceWorkflow,
   buildWorkflowExecutable,
