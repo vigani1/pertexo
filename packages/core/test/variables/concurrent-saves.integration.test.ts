@@ -16,7 +16,7 @@ import {
   pool,
   scope,
   store,
-} from './configuration/fixture.js';
+} from './variable-configuration.fixture.js';
 
 const blockedApplication = `variable-replace-${randomUUID()}`;
 let blockedStore: ReturnType<typeof createWorkspaceVariablesStore>;

@@ -14,7 +14,7 @@ import {
   member,
   scope,
   store,
-} from './configuration/fixture.js';
+} from './variable-configuration.fixture.js';
 
 beforeAll(beforeAllFixture1);
 afterAll(afterAllFixture2);

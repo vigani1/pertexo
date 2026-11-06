@@ -13,7 +13,7 @@ import {
   noticeFacts,
   seedNotice,
   seedNotificationDestination,
-} from './fixture.js';
+} from './notification-recovery.fixture.js';
 
 const store = createFailureNotificationStore(
   parseDatabaseConfig({ connectionString: databaseUrl(workerBaseUrl), max: 4 }),

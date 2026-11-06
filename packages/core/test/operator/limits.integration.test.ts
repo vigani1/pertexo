@@ -9,7 +9,7 @@ import {
   sourceRunId,
   storedCommand,
   versionId,
-} from './commands.support.js';
+} from './operator-commands.support.js';
 
 describe('oversized operator input', () => {
   it('rejects a replay input over 64 KiB as a promise and records nothing', async () => {

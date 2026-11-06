@@ -11,7 +11,7 @@ import {
   hash,
   admit,
   snapshot,
-} from './configuration/fixture.js';
+} from './variable-configuration.fixture.js';
 import { randomUUID } from 'node:crypto';
 import { sql } from 'drizzle-orm';
 import {

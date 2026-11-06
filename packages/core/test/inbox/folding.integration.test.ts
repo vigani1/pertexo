@@ -10,7 +10,7 @@ import {
   pending,
   seed,
   threads,
-} from './threads/fixture.js';
+} from './workflow-threads.fixture.js';
 
 beforeAll(beforeAllFixture1, 60_000);
 afterAll(afterAllFixture2);

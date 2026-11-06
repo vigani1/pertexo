@@ -4,14 +4,14 @@ import {
   dataTableNewColumnsSchema,
   type DataTableQuery,
 } from '@pertexo/node-sdk';
-import { createDataTablesStore } from '../../../src/data-tables/index.js';
+import { createDataTablesStore } from '../../src/data-tables/index.js';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
 
 import {
   apiUrl,
   actorId,
   workspaceId,
-} from '../../support/workflow-authoring.js';
+} from '../support/workflow-authoring.js';
 
 export let store: ReturnType<typeof createDataTablesStore>;
 

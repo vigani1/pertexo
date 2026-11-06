@@ -25,7 +25,7 @@ import type {
   WriteRowsInput,
 } from './data-table-commands.types.js';
 import { editSchema } from './columns/edit.repository.js';
-import { exportTable } from './csv/export.js';
+import { exportTable } from './export-csv.js';
 import { listTables } from './table-lookups.repository.js';
 import {
   configureTables,

@@ -27,8 +27,13 @@ import {
   fixture,
   member,
   pool,
-} from '../../variables/configuration/fixture.js';
-import { anyMember, MODES, setStatus, withImpatientClient } from './support.js';
+} from '../../variables/variable-configuration.fixture.js';
+import {
+  anyMember,
+  MODES,
+  setStatus,
+  withImpatientClient,
+} from './workspace-access.support.js';
 
 const waitingApplication = `workspace-access-${randomUUID()}`;
 let waitingPool: Pool;

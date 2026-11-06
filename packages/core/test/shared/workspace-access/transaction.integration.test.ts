@@ -8,14 +8,14 @@ import {
   beforeAllFixture1,
   fixture,
   pool,
-} from '../../variables/configuration/fixture.js';
+} from '../../variables/variable-configuration.fixture.js';
 import {
   anyMember,
   MODES,
   RENAME,
   withImpatientClient,
   workspaceName,
-} from './support.js';
+} from './workspace-access.support.js';
 
 beforeAll(beforeAllFixture1);
 afterAll(afterAllFixture2);

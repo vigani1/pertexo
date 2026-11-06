@@ -16,7 +16,7 @@ import {
   workflowId,
   workspaceId,
   type AuditRow,
-} from './commands.support.js';
+} from './operator-commands.support.js';
 
 /** Each command against a target that isn't there, so none needs a stuck run to exist. */
 const COMMANDS = [

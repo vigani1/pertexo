@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { vi } from 'vitest';
 import { canonicalOutboxPayloadChecksum } from '@pertexo/database/primitives';
-import { createOperatorRunReplayStore } from '../../../src/operator/replay/operator-run-replay.store.js';
+import { createOperatorRunReplayStore } from '../../src/operator/replay/operator-run-replay.store.js';
 
 const mocks = vi.hoisted(() => ({
   acceptWorkflowRun: vi.fn(),
@@ -14,11 +14,11 @@ vi.mock('../../../../database/dist/database.js', () => ({
   createWorkspaceDatabase: mocks.createWorkspaceDatabase,
 }));
 
-vi.mock('../../../src/outbox/consume-message.js', () => ({
+vi.mock('../../src/outbox/consume-message.js', () => ({
   consumeInboxMessage: mocks.consumeInboxMessage,
 }));
 
-vi.mock('../../../src/runs/commands/acceptance/accept.js', () => ({
+vi.mock('../../src/runs/commands/acceptance/accept.js', () => ({
   acceptWorkflowRun: mocks.acceptWorkflowRun,
 }));
 

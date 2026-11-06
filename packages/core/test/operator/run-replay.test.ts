@@ -10,7 +10,7 @@ import {
   publishedVersion,
   storeWith,
   replayInput,
-} from './run-replay/fixture.js';
+} from './run-replay.fixture.js';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { randomUUID } from 'node:crypto';
 import {
