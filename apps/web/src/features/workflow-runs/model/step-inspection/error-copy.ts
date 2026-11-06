@@ -1,3 +1,4 @@
+import { SLACK_REJECTIONS } from '@pertexo/integrations';
 import {
   HTTP_RESPONSE_FAILURES,
   PROVIDER_RETRY_FAILURE,
@@ -61,6 +62,9 @@ const outcomeUnknown: StepErrorCopy = {
 
 const knownCodes: Readonly<Record<string, StepErrorCopy>> = {
   ...HTTP_RESPONSE_FAILURES,
+  ...Object.fromEntries(
+    Object.values(SLACK_REJECTIONS).map((policy) => [policy.code, policy]),
+  ),
   [PROVIDER_RETRY_FAILURE.code]: PROVIDER_RETRY_FAILURE,
   'execution.table_unavailable': {
     sentence: 'Data table storage was temporarily unavailable.',

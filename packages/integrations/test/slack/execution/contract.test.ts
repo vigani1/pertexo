@@ -31,12 +31,12 @@ describe('slack.send_message@1', () => {
     {
       error: 'token_expired',
       reasonCode: 'connection.slack_token_expired',
-      kind: 'outcome_unknown',
-      errorKind: 'provider',
-      possiblyDispatched: true,
+      kind: 'failed',
+      errorKind: 'authentication',
+      possiblyDispatched: false,
     },
   ] as const)(
-    'captures $error without changing the provider outcome',
+    'captures $error with its classified provider outcome',
     async ({ error, reasonCode, kind, errorKind, possiblyDispatched }) => {
       const state = runtime({ kind: 'rejected', error });
       await expect(
