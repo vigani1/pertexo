@@ -1,3 +1,4 @@
+import { ArtifactUploadNotFoundError } from '@pertexo/core/artifacts';
 import type {
   ArtifactDownloadResponse,
   ArtifactMetadataResponse,
@@ -123,7 +124,7 @@ export class ArtifactService {
     } catch (error: unknown) {
       throw storageFailure(error, 'database');
     }
-    if (artifact === null) throw new ArtifactApiNotFoundError();
+    if (artifact === null) throw new ArtifactUploadNotFoundError();
     if (artifact.status === 'available') return publicMetadata(artifact);
     if (artifact.status !== 'pending') throw new ArtifactApiConflictError();
     if (artifact.expiresAt.getTime() <= this.now().getTime())

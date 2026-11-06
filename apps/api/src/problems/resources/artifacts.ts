@@ -36,12 +36,16 @@ export const artifactProblems = [
       safeDetail: 'The idempotency key was already used for another request.',
     });
   }),
-  errorRegistration(ArtifactUploadNotFoundError, () =>
-    applicationError('resource.not_found'),
+  ...[ArtifactUploadNotFoundError, ArtifactUploadDeadlineError].map((kind) =>
+    errorRegistration(kind, () =>
+      applicationError('artifact.upload_unavailable', {
+        safeDetail:
+          'This upload expired or is no longer available. Upload the file again.',
+      }),
+    ),
   ),
   ...[
     ArtifactApiConflictError,
-    ArtifactUploadDeadlineError,
     ArtifactUploadConflictError,
     ArtifactIntegrityError,
     ArtifactNotFoundError,

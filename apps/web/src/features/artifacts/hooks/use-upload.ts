@@ -135,6 +135,11 @@ export function useUpload(apiClient: ApiClient, workspaceId: string) {
       );
       ready(finalized);
     } catch (error) {
+      if (
+        isApiError(error) &&
+        error.problem?.code === 'artifact.upload_unavailable'
+      )
+        intent.current = undefined;
       if (request.isCurrent())
         setState((previous) => ({
           ...previous,

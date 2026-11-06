@@ -80,7 +80,7 @@ describe('artifact storage problems over the artifact API', () => {
 
   it.each([
     [new ArtifactQuotaExceededError(), 429, 'workspace.quota_exceeded'],
-    [new ArtifactUploadNotFoundError(), 404, 'resource.not_found'],
+    [new ArtifactUploadNotFoundError(), 404, 'artifact.upload_unavailable'],
     [
       new ArtifactUploadIdempotencyConflictError(),
       409,

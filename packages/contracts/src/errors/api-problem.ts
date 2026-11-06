@@ -57,6 +57,7 @@ export const API_PROBLEM_CODES = [
   'request.unsupported_media_type',
   'workspace.quota_exceeded',
   'artifact.too_large',
+  'artifact.upload_unavailable',
   'artifact.conflict',
   'artifact.unavailable',
   'workspace.conflict',
@@ -388,6 +389,12 @@ const apiProblemDetails = {
   'artifact.too_large': {
     status: 413,
     title: 'File too large',
+    severity: 'info',
+    exposeDetail: true,
+  },
+  'artifact.upload_unavailable': {
+    status: 404,
+    title: 'Upload no longer available',
     severity: 'info',
     exposeDetail: true,
   },

@@ -77,6 +77,11 @@ export async function describeUpload(
 
 export function uploadFailure(error: unknown): string {
   if (isApiError(error)) {
+    if (error.problem?.code === 'artifact.upload_unavailable')
+      return (
+        error.problem.detail ??
+        'This upload is no longer available. Upload the file again.'
+      );
     if (error.problem?.code === 'artifact.too_large')
       return 'The file exceeds the server’s storage limit (up to 10 MB). Split it into smaller files and upload them separately.';
     if (error.problem?.code === 'artifact.unavailable')

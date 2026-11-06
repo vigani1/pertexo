@@ -81,3 +81,43 @@ it('lets a responder retry a file once a busy upload allowance frees up', async 
   await user.click(screen.getByRole('button', { name: 'Retry a.pdf' }));
   await screen.findByText('a.pdf attached.');
 });
+
+it('explains an expired form finalization and asks for a new upload', async () => {
+  storeAccepts();
+  const finalize = vi.fn<FormUploadTarget['finalize']>().mockRejectedValue(
+    new ApiError({
+      kind: 'problem',
+      status: 404,
+      message: 'Upload no longer available',
+      problem: apiProblemSchema.parse({
+        type: 'urn:pertexo:problem:artifact.upload_unavailable',
+        title: 'Upload no longer available',
+        status: 404,
+        code: 'artifact.upload_unavailable',
+        detail:
+          'This upload expired or is no longer available. Upload the file again.',
+        requestId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+      }),
+    }),
+  );
+  render(
+    <FormResponse
+      fields={fields}
+      uploads={target({ finalize })}
+      onSubmit={vi.fn()}
+    />,
+  );
+  await userEvent
+    .setup()
+    .upload(screen.getByLabelText('Invoice'), file('a.pdf'));
+  expect(
+    await within(
+      await screen.findByRole('list', { name: 'Invoice files' }),
+    ).findByText(
+      /This upload expired or is no longer available\. Upload the file again\./u,
+    ),
+  ).toBeVisible();
+  expect(
+    screen.queryByRole('button', { name: 'Retry a.pdf' }),
+  ).not.toBeInTheDocument();
+});

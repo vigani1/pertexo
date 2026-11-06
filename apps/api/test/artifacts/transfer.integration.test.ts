@@ -414,7 +414,7 @@ integrationDescribe('authenticated artifact transfer HTTP', () => {
       ),
       payload: {},
     });
-    expectProblem(expiredFinalize, 409);
+    expectProblem(expiredFinalize, 404, 'artifact.upload_unavailable');
     expect(await fixture.readCapacity()).toEqual(beforeExpiredFinalize);
   });
 

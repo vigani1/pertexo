@@ -1,7 +1,11 @@
-import { act, screen, waitFor } from '@testing-library/react';
+import { File as NodeFile } from 'node:buffer';
+import { webcrypto } from 'node:crypto';
+import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { HttpResponse, http } from 'msw';
-import { expect, it } from 'vitest';
+import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+beforeEach(() => vi.stubGlobal('crypto', webcrypto));
+afterEach(() => vi.unstubAllGlobals());
 import {
   taskKeys,
   taskQueryOptions,
@@ -195,4 +199,81 @@ it.each([
   renderApp(`/w/${workspaceId}/requests/${taskId}`);
   const line = await screen.findByText(new RegExp(shown));
   expect(line.closest('p')?.textContent).not.toContain(task.nodeId);
+});
+
+it('tells a task responder to upload again when finalization expires', async () => {
+  const task = {
+    ...detail('input_request'),
+    fields: [
+      {
+        id: 'invoice',
+        name: 'invoice',
+        label: 'Invoice',
+        type: 'file',
+        accept: ['documents'],
+      },
+    ],
+  };
+  const uploadId = '55555555-5555-4555-8555-555555555555';
+  const store = 'https://objects.example.test/task-file';
+  mockServer.use(
+    ...identityHandlers(ownerWorkspace),
+    http.get(`${base}/${taskId}`, () => HttpResponse.json({ task })),
+    http.post(`${base}/${taskId}/uploads`, () =>
+      HttpResponse.json({
+        upload: {
+          id: uploadId,
+          filename: 'invoice.pdf',
+          byteLength: 9,
+          mediaType: 'application/pdf',
+          status: 'pending',
+          expiresAt: new Date(Date.now() + 900_000).toISOString(),
+        },
+        transfer: {
+          method: 'PUT',
+          url: store,
+          headers: {},
+          expiresAt: new Date(Date.now() + 900_000).toISOString(),
+          expiresInSeconds: 900,
+        },
+        replayed: false,
+      }),
+    ),
+    http.put(store, () => new HttpResponse(null, { status: 200 })),
+    http.post(`${base}/${taskId}/uploads/${uploadId}/finalize`, () =>
+      HttpResponse.json(
+        {
+          type: 'urn:pertexo:problem:artifact.upload_unavailable',
+          title: 'Upload no longer available',
+          status: 404,
+          code: 'artifact.upload_unavailable',
+          detail:
+            'This upload expired or is no longer available. Upload the file again.',
+          requestId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+        },
+        {
+          status: 404,
+          headers: { 'content-type': 'application/problem+json' },
+        },
+      ),
+    ),
+  );
+  renderApp(`/w/${workspaceId}/requests/${taskId}`);
+  const field = await screen.findByLabelText('Invoice');
+  await userEvent
+    .setup()
+    .upload(
+      field,
+      new NodeFile(['%PDF-1.7\n'], 'invoice.pdf') as unknown as File,
+    );
+  expect(
+    await within(
+      await screen.findByRole('list', { name: 'Invoice files' }),
+    ).findByText(
+      /This upload expired or is no longer available\. Upload the file again\./u,
+    ),
+  ).toBeVisible();
+  expect(
+    screen.queryByRole('button', { name: 'Retry invoice.pdf' }),
+  ).not.toBeInTheDocument();
 });

@@ -9,6 +9,7 @@ Generated from the problem manifest; run `pnpm contracts:generate`. Branch on th
 | `artifact.conflict` | 409 | Artifact conflict |
 | `artifact.too_large` | 413 | File too large |
 | `artifact.unavailable` | 503 | Artifact storage unavailable |
+| `artifact.upload_unavailable` | 404 | Upload no longer available |
 | `auth.alternative_required` | 403 | Another sign-in method required |
 | `auth.authentication_changed` | 409 | Sign-in settings changed. Sign in again using your current organization policy. |
 | `auth.conflict` | 409 | Authentication change conflict |

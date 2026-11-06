@@ -373,7 +373,7 @@ describe('ArtifactService', () => {
   );
 
   it.each([
-    ['missing', null, ArtifactApiNotFoundError],
+    ['missing', null, ArtifactUploadNotFoundError],
     ['deleting', record({ status: 'deleting' }), ArtifactApiConflictError],
     ['deleted', record({ status: 'deleted' }), ArtifactApiConflictError],
   ] as const)(

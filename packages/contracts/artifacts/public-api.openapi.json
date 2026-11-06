@@ -7452,6 +7452,7 @@
               "request.unsupported_media_type",
               "workspace.quota_exceeded",
               "artifact.too_large",
+              "artifact.upload_unavailable",
               "artifact.conflict",
               "artifact.unavailable",
               "workspace.conflict",
