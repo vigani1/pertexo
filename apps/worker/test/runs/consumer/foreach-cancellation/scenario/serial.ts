@@ -26,7 +26,24 @@ export async function assertSerialLoopRecovery(context: ForEachPhaseContext) {
   } = context.delivery;
 
   let revision = 3;
-  let lastFinishedAttempt: Awaited<ReturnType<typeof execute>> | undefined;
+  const finishedAttempts: Awaited<ReturnType<typeof execute>>[] = [];
+  const readHistory = () =>
+    workerQuery<{
+      attempts: string;
+      events: string;
+      outputs: string;
+    }>(
+      `select
+                 (select count(*)::text from app.node_attempts attempt
+                   join app.node_runs node on node.id=attempt.node_run_id
+                   where node.workspace_id=$1 and node.workflow_run_id=$2) attempts,
+                 (select count(*)::text from app.run_events
+                   where workspace_id=$1 and workflow_run_id=$2) events,
+                 (select count(*)::text from app.node_runs
+                   where workspace_id=$1 and workflow_run_id=$2
+                     and output_ref is not null) outputs`,
+      [workspaceId, accepted.runId],
+    );
   for (const ordinal of [0, 1, 2]) {
     await execute('body-map', ordinal);
     await continueAfter(++revision);
@@ -34,7 +51,7 @@ export async function assertSerialLoopRecovery(context: ForEachPhaseContext) {
       structuredKind === 'nested' ? 'nested-body' : 'body-sink',
       ordinal,
     );
-    lastFinishedAttempt = finishedAttempt;
+    finishedAttempts.push(finishedAttempt);
     await continueAfter(++revision);
     if (structuredKind === 'nested') {
       const pendingContinuations = await workerQuery<{ id: string }>(
@@ -64,23 +81,6 @@ export async function assertSerialLoopRecovery(context: ForEachPhaseContext) {
     ).toBe(true);
     if (structuredKind === 'nested')
       expect(recovered.retiredIterationBudget).toBe(ordinal + 1);
-    const readHistory = () =>
-      workerQuery<{
-        attempts: string;
-        events: string;
-        outputs: string;
-      }>(
-        `select
-                 (select count(*)::text from app.node_attempts attempt
-                   join app.node_runs node on node.id=attempt.node_run_id
-                   where node.workspace_id=$1 and node.workflow_run_id=$2) attempts,
-                 (select count(*)::text from app.run_events
-                   where workspace_id=$1 and workflow_run_id=$2) events,
-                 (select count(*)::text from app.node_runs
-                   where workspace_id=$1 and workflow_run_id=$2
-                     and output_ref is not null) outputs`,
-        [workspaceId, accepted.runId],
-      );
     const history = await readHistory();
     expect(Number(history[0]?.outputs)).toBeGreaterThan(ordinal + 2);
     if (mode === 'serial_complete' && ordinal === 0) {
@@ -100,7 +100,10 @@ export async function assertSerialLoopRecovery(context: ForEachPhaseContext) {
         await retention.close();
       }
     }
-    await eraseRedisAndRestart();
+    // The primary serial case recovers a compacted mid-loop checkpoint. All
+    // variants recover their reserved batch and replay retired receipts below.
+    if (mode === 'serial_complete' && ordinal === 0)
+      await eraseRedisAndRestart();
     await executeDuplicateAttempt(finishedAttempt);
     await expect(readHistory()).resolves.toEqual(history);
   }
@@ -135,6 +138,13 @@ export async function assertSerialLoopRecovery(context: ForEachPhaseContext) {
   if (loopCompletion === undefined)
     throw new Error('Serial loop completion delivery missing');
   await eraseRedisAndRestart();
+  // Replay every retired iteration on the fresh process, including those that
+  // completed without a restart in between. Only PostgreSQL retains their truth.
+  const finishedHistory = await readHistory();
+  for (const finished of finishedAttempts) {
+    await executeDuplicateAttempt(finished);
+    await expect(readHistory()).resolves.toEqual(finishedHistory);
+  }
   // Redelivery after Redis loss must replay the receipt, not enqueue
   // another continuation or move the checkpoint a second time.
   await publishCoordinator(loopCompletion, revision);
@@ -197,6 +207,7 @@ export async function assertSerialLoopRecovery(context: ForEachPhaseContext) {
         checkpoints: '0',
       },
     ]);
+    const lastFinishedAttempt = finishedAttempts.at(-1);
     if (lastFinishedAttempt === undefined)
       throw new Error('finished iteration attempt missing');
     await eraseRedisAndRestart();
