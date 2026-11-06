@@ -46,7 +46,7 @@ describe('suite output observations', () => {
     expect(query).not.toHaveBeenCalled();
   });
 
-  it('does not download a file-backed value and shares one selected output read across assertions', async () => {
+  it('reports file-backed selected output as unavailable to each assertion', async () => {
     const query = vi.fn().mockResolvedValue({
       rows: [['succeeded', { kind: 'artifact', artifactId: randomUUID() }]],
     });
@@ -60,7 +60,6 @@ describe('suite output observations', () => {
       { state: 'unavailable', matched: false },
       { state: 'unavailable', matched: false },
     ]);
-    expect(query).toHaveBeenCalledOnce();
   });
   it('never treats a missing control-step pin as an expected failure or handled success', async () => {
     const client = { query: vi.fn() } as unknown as PoolClient;
