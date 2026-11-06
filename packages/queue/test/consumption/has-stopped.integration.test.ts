@@ -131,49 +131,73 @@ describeIntegration('whether a real queue consumer has stopped', () => {
 
   // An outage is no reason to restart anything: BullMQ picks up where it left off,
   // and the health check would otherwise end a worker Redis had let down.
-  it('has not stopped through a Redis outage, and fetches again after it', async () => {
+  it('has not stopped through repeated Redis outages and recovers readiness with delivery', async () => {
     const redis = await createCuttableRedis(direct);
-    const delivered = Promise.withResolvers<undefined>();
+    let deliveries = 0;
     const connectionErrors = { count: 0 };
     const opened = open(
       redis.url,
       () => {
-        delivered.resolve(undefined);
+        deliveries += 1;
         return Promise.resolve();
       },
       connectionErrors,
     );
-    await opened.waitUntilReady();
-
-    await redis.cut();
-    // Several failed reconnects, so this reads a consumer that has met the outage.
-    await vi.waitFor(
-      () => {
-        expect(connectionErrors.count).toBeGreaterThanOrEqual(3);
-        expect(opened.isReady()).toBe(false);
-      },
-      { timeout: 30_000, interval: 20 },
-    );
-    expect(opened.hasStopped()).toBe(false);
-
-    await redis.restore();
-    const producer = createQueueProducer({ redisUrl: direct.toString() });
     try {
-      await producer.waitUntilReady();
-      await producer.publish({
-        name: JOB_NAME.deliverWorkspaceInvitation,
-        data: {
-          workspaceId: randomUUID(),
-          invitationId: randomUUID(),
-          deliveryAttemptId: randomUUID(),
-          outboxEventId: randomUUID(),
+      await opened.waitUntilReady();
+      expect(opened.isReady()).toBe(true);
+      await redis.cut();
+      await vi.waitFor(
+        () => {
+          expect(connectionErrors.count).toBeGreaterThanOrEqual(3);
+          expect(opened.isReady()).toBe(false);
         },
+        { timeout: 30_000, interval: 20 },
+      );
+      expect(opened.hasStopped()).toBe(false);
+      await redis.restore();
+      const producer = createQueueProducer({ redisUrl: direct.toString() });
+      try {
+        await producer.waitUntilReady();
+        await producer.publish({
+          name: JOB_NAME.deliverWorkspaceInvitation,
+          data: {
+            workspaceId: randomUUID(),
+            invitationId: randomUUID(),
+            deliveryAttemptId: randomUUID(),
+            outboxEventId: randomUUID(),
+          },
+        });
+        await vi.waitFor(() => { expect(deliveries).toBe(1); }, { timeout: 30_000 });
+      } finally {
+        await producer.close();
+      }
+      await vi.waitFor(() => { expect(opened.isReady()).toBe(true); });
+      expect(opened.hasStopped()).toBe(false);
+      const previousErrors = connectionErrors.count;
+      await redis.cut();
+      await vi.waitFor(
+        () => {
+          expect(connectionErrors.count).toBeGreaterThan(previousErrors);
+          expect(opened.isReady()).toBe(false);
+        },
+        { timeout: 30_000 },
+      );
+      expect(opened.hasStopped()).toBe(false);
+      await redis.restore();
+      await vi.waitFor(() => { expect(opened.isReady()).toBe(true); }, {
+        timeout: 30_000,
       });
-      await delivered.promise;
+      await opened.close();
+      expect(opened.isReady()).toBe(false);
+      expect(opened.hasStopped()).toBe(false);
     } finally {
-      await producer.close();
+      try {
+        await opened.close();
+      } finally {
+        await redis.cut();
+      }
     }
-    expect(opened.hasStopped()).toBe(false);
   }, 60_000);
 
   it('has not stopped once it has been closed', async () => {

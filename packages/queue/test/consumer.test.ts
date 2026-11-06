@@ -448,13 +448,12 @@ describe('BullMQ queue consumer', () => {
     await consumer.waitUntilReady();
     expect(consumer.isReady()).toBe(true);
 
-    for (const listener of mocks.workerListeners.get('error') ?? []) {
-      listener(new Error('redis unavailable'));
-    }
+    mocks.redisClient.status = 'reconnecting';
     expect(consumer.isReady()).toBe(false);
-    for (const listener of mocks.workerListeners.get('ready') ?? []) {
-      listener();
-    }
+    mocks.redisClient.status = 'ready';
+    mocks.blockingRedisClient.status = 'reconnecting';
+    expect(consumer.isReady()).toBe(false);
+    mocks.blockingRedisClient.status = 'ready';
     expect(consumer.isReady()).toBe(true);
 
     const result = await consumer.close();

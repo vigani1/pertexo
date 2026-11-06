@@ -47,7 +47,8 @@ export class BullMqQueueConsumer implements QueueConsumer {
   private readonly traceRunner: QueueTraceRunner | undefined;
   private readonly worker: Worker<unknown, void>;
   private lifecycle: 'open' | 'draining' | 'closed' = 'open';
-  private ready = false;
+  private initialized = false;
+  private blockingRedis: Readonly<{ status: string }> | undefined;
   private closePromise: Promise<QueueConsumerCloseResult> | undefined;
 
   public constructor(options: QueueConsumerOptions) {
@@ -92,6 +93,15 @@ export class BullMqQueueConsumer implements QueueConsumer {
       throw error;
     }
 
+    // BullMQ emits Worker 'ready' only once. Read both current client statuses
+    // through its public Redis backend so reconnects need no caller readiness poll.
+    void this.worker.getBackend().blockingClient?.then(
+      (client) => {
+        this.blockingRedis = client;
+      },
+      () => undefined, // The worker's error event reports initialization failures.
+    );
+
     this.worker.on('ready', () => {
       notifyRedisConnectionEvent(
         this.redisTelemetry,
@@ -99,7 +109,7 @@ export class BullMqQueueConsumer implements QueueConsumer {
         'ready',
       );
       if (this.lifecycle === 'open') {
-        this.ready = true;
+        this.initialized = true;
         notifyConsumerObserver(() => {
           this.observer?.consumerLifecycle?.({
             event: 'ready',
@@ -108,22 +118,16 @@ export class BullMqQueueConsumer implements QueueConsumer {
         });
       }
     });
-    this.worker.on('error', () => {
-      notifyRedisConnectionEvent(
-        this.redisTelemetry,
-        'queue_consumer',
-        'error',
-      );
-      this.ready = false;
-    });
-    this.worker.on('closed', () => {
-      notifyRedisConnectionEvent(
-        this.redisTelemetry,
-        'queue_consumer',
-        'close',
-      );
-      this.ready = false;
-    });
+    for (const event of ['error', 'closed'] as const) {
+      this.worker.on(event, () => {
+        notifyRedisConnectionEvent(
+          this.redisTelemetry,
+          'queue_consumer',
+          event === 'error' ? 'error' : 'close',
+        );
+        if (event === 'closed') this.initialized = false;
+      });
+    }
     this.worker.on('stalled', () => {
       notifyConsumerObserver(() => {
         this.observer?.jobStalled?.({ queueName: parsed.queueName });
@@ -134,7 +138,9 @@ export class BullMqQueueConsumer implements QueueConsumer {
   public isReady(): boolean {
     return (
       this.lifecycle === 'open' &&
-      this.ready &&
+      this.initialized &&
+      this.redis.status === 'ready' &&
+      this.blockingRedis?.status === 'ready' &&
       this.worker.isRunning() &&
       !this.worker.isPaused()
     );
@@ -163,7 +169,7 @@ export class BullMqQueueConsumer implements QueueConsumer {
       throw new QueueConsumerNotReadyError();
     }
 
-    this.ready = true;
+    this.initialized = true;
     if (!this.isReady()) {
       throw new QueueConsumerNotReadyError();
     }
@@ -368,17 +374,17 @@ export class BullMqQueueConsumer implements QueueConsumer {
       return { abortedJobs: 0, forced: false };
     }
     this.lifecycle = 'draining';
-    this.ready = false;
+    this.initialized = false;
     const deadline = Date.now() + this.drainTimeoutMs;
     let forced = await this.pauseForDrain(deadline);
     if (!forced) forced = !(await this.waitForActiveExecutions(deadline));
     const abortedJobs = forced ? this.abortActiveExecutions() : 0;
     const workerClosed = await this.closeWorker({
-      forced: forced,
-      deadline: deadline,
+      forced,
+      deadline,
     });
     if (!workerClosed) forced = true;
-    if (!(await this.closeRedis({ workerClosed: workerClosed }))) forced = true;
+    if (!(await this.closeRedis({ workerClosed }))) forced = true;
     this.lifecycle = 'closed';
     notifyConsumerObserver(() => {
       this.observer?.consumerLifecycle?.({
