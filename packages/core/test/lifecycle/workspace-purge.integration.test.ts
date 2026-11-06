@@ -312,6 +312,41 @@ describe('workspace purge', () => {
     }
   }, 30_000);
 
+  it('purges failure-day projections with their workflows and preserves other workspaces', async () => {
+    if (owner === undefined) throw new Error('Owner pool unavailable');
+    const purged = await seedPurgeScenario(owner),
+      kept = await seedPurgeScenario(owner);
+    const inspector = new Pool({ connectionString: adminUrl, max: 1 });
+    try {
+      await inspector.query(
+        `insert into app.workspace_inbox_failure_days(workspace_id,workflow_id,day,count)
+        values($1,$2,current_date,1),($3,$4,current_date,2)`,
+        [
+          purged.workspaceId,
+          purged.workflowId,
+          kept.workspaceId,
+          kept.workflowId,
+        ],
+      );
+      await purgeWorkspace({
+        adminUrl,
+        maintenanceUrl,
+        workspaceId: purged.workspaceId,
+        pageSize: 3,
+      });
+      expect(
+        (
+          await inspector.query(
+            'select workspace_id,count::text from app.workspace_inbox_failure_days where workspace_id=any($1::uuid[])',
+            [[purged.workspaceId, kept.workspaceId]],
+          )
+        ).rows,
+      ).toEqual([{ workspace_id: kept.workspaceId, count: '2' }]);
+    } finally {
+      await inspector.end();
+    }
+  });
+
   it('names every workspace table as purged or kept', async () => {
     if (owner === undefined) throw new Error('Owner pool unavailable');
     const tables = await owner.query<{ name: string }>(

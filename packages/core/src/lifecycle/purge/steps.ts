@@ -143,9 +143,10 @@ export const PURGE_PRESERVED_TABLES = Object.freeze([
   'transport_security_audit_facts',
 ]);
 
-/** Derived rows disappear with their JSON owners through storage index maintenance. */
+/** Derived rows disappear with their owners through cascades or storage index maintenance. */
 export const PURGE_DERIVED_TABLES = Object.freeze([
   'artifact_owner_references',
+  'workspace_inbox_failure_days',
 ]);
 
 /**
