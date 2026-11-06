@@ -126,20 +126,17 @@ export async function compilePublicationGraph(
       )
     )
       throw error;
-    const issues =
-      error instanceof InvalidWorkflowGraphError
-        ? error.issues
-        : [
-            {
-              code: 'invalid_graph' as const,
-              path: '$',
-              message: error.message,
-            },
-          ];
+    let graphError: InvalidWorkflowGraphError | undefined;
+    if (error instanceof InvalidWorkflowGraphError) graphError = error;
+    else if (error.cause instanceof InvalidWorkflowGraphError)
+      graphError = error.cause;
+    const issues = graphError?.issues ?? [
+      { code: 'invalid_graph' as const, path: '$', message: error.message },
+    ];
     // Preserve publication's specific error while the draft check presents its issues.
     return {
       kind: 'refused',
-      error,
+      error: graphError ?? error,
       validation: { ...validation, ok: false, issues },
     };
   }

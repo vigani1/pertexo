@@ -1,3 +1,4 @@
+import { assertExecutablePersistenceCapacity } from './persistence-capacity.js';
 import {
   inspectExpression,
   callbackReferenceIssue,
@@ -144,11 +145,13 @@ export function buildWorkflowExecutable(input: {
   const normalizedEnvelope = freezeExecutable(
     parseBoundary({ envelope, catalog }),
   ) as VerifiedWorkflowExecutable;
-  return registerExecutableIdentity(
+  const compiled = registerExecutableIdentity(
     Object.freeze({
       envelope: normalizedEnvelope,
       checksum: computeWorkflowExecutableChecksum(normalizedEnvelope),
     }),
     catalog,
   );
+  assertExecutablePersistenceCapacity(compiled, catalog);
+  return compiled;
 }

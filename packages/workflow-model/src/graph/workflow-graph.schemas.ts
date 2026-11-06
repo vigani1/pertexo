@@ -99,6 +99,7 @@ export const WORKFLOW_GRAPH_CONTRACT_LIMITS = Object.freeze({
   edges: 4_000,
   graphBytes: 1_048_576,
   identifierLength: 64,
+  invocationKeyLength: 256,
   maxLoopIterations: 4_998,
   maxTotalLoopIterations: 5_000,
   maxExpandedInvocations: 5_000,

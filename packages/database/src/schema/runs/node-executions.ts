@@ -1,3 +1,4 @@
+import { WORKFLOW_GRAPH_CONTRACT_LIMITS } from '@pertexo/workflow-model';
 import type {
   StoredExecutionValue,
   NodeAttemptLease,
@@ -32,7 +33,9 @@ export const nodeRuns = appSchema.table(
     workspaceId: uuid('workspace_id').notNull(),
     workflowRunId: uuid('workflow_run_id').notNull(),
     nodeId: varchar('node_id', { length: 128 }).notNull(),
-    invocationKey: varchar('invocation_key', { length: 256 }).notNull(),
+    invocationKey: varchar('invocation_key', {
+      length: WORKFLOW_GRAPH_CONTRACT_LIMITS.invocationKeyLength,
+    }).notNull(),
     branchContext: jsonb('branch_context')
       .notNull()
       .default(sql`'{}'::jsonb`),

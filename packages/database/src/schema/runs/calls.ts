@@ -1,3 +1,4 @@
+import { WORKFLOW_GRAPH_CONTRACT_LIMITS } from '@pertexo/workflow-model';
 import type { WorkflowCallOutcome } from '@pertexo/workflow-engine';
 import { sql } from 'drizzle-orm';
 import {
@@ -25,7 +26,9 @@ export const workflowCalls = appSchema.table(
     id: uuid('id').primaryKey(),
     workspaceId: uuid('workspace_id').notNull(),
     parentRunId: uuid('parent_run_id').notNull(),
-    invocationKey: varchar('invocation_key', { length: 256 }).notNull(),
+    invocationKey: varchar('invocation_key', {
+      length: WORKFLOW_GRAPH_CONTRACT_LIMITS.invocationKeyLength,
+    }).notNull(),
     targetWorkflowId: uuid('target_workflow_id').notNull(),
     targetVersionId: uuid('target_version_id').notNull(),
     targetChecksum: varchar('target_checksum', { length: 77 }).notNull(),

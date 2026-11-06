@@ -17,7 +17,9 @@ const maximumMaterialIdentityBytes =
   JSON.stringify({
     sequence: 2_147_483_647,
     attemptId: '0'.repeat(36),
-    invocationKey: String.fromCharCode(0).repeat(256),
+    invocationKey: String.fromCharCode(0).repeat(
+      WORKFLOW_GRAPH_CONTRACT_LIMITS.invocationKeyLength,
+    ),
     value: null,
   }).length - 'null'.length;
 const COORDINATOR_COMPLETION_OUTPUT_LIMITS = Object.freeze({
