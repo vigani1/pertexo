@@ -36,6 +36,11 @@ export function parseBoundedXml(value: string, signal: AbortSignal) {
             'xml_size',
             'The XML has too many nodes or attributes. Split the document.',
           );
+        if (name.startsWith('?') && name !== '?xml')
+          refuseUtility(
+            'xml_input',
+            'XML processing instructions are not supported. Remove them; a standard XML declaration is allowed.',
+          );
         if (name.toLowerCase() === '!doctype')
           refuseUtility(
             'xml_dtd',

@@ -74,7 +74,7 @@ export const UTILITY_DEFINITIONS = Object.freeze([
     inputSchema: xmlInputSchema,
     outputSchema: xmlOutputSchema,
     semantics: [
-      'XML data conversion preserves strings, namespace prefixes, @_ attributes, #text and repeated sibling arrays. No DTD, external entities or processing instructions. At most 48 nested tags and 8000 elements/attributes.',
+      'XML data conversion preserves strings, namespace prefixes, @_ attributes, #text and repeated sibling arrays. No DTD, external entities or processing instructions; a standard XML declaration is allowed. At most 48 nested tags and 8000 elements/attributes.',
     ],
   }),
   defineUtility({

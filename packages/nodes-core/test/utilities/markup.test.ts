@@ -342,10 +342,7 @@ describe('bounded markup conversion', () => {
       ),
     ).toMatchObject({ output: { items: ['x'], matchCount: 1 } });
   });
-  it('bounds processing instructions and repeated XML collections', async () => {
-    await expect(
-      run('xml', { operation: 'parse' }, '<?p x?>'.repeat(8_001) + '<r/>'),
-    ).rejects.toMatchObject({ safeErrorCode: 'utility.xml_size' });
+  it('bounds repeated XML collections', async () => {
     await expect(
       run('xml', { operation: 'parse' }, '<r>' + '<i/>'.repeat(4_999) + '</r>'),
     ).rejects.toMatchObject({ safeErrorCode: 'utility.too_many_items' });
@@ -357,4 +354,31 @@ describe('bounded markup conversion', () => {
       ),
     ).rejects.toMatchObject({ safeErrorCode: 'utility.too_many_items' });
   });
+});
+
+it.each([
+  '<?secret processing?><root>ok</root>',
+  '<root><?secret processing?>ok</root>',
+  '<root>ok</root><?secret processing?>',
+])(
+  'refuses XML processing instructions rather than dropping them',
+  async (text) => {
+    await expect(
+      run('xml', { operation: 'parse' }, text),
+    ).rejects.toMatchObject({
+      safeErrorCode: 'utility.xml_input',
+      errorSummary: expect.stringMatching(
+        /processing instructions.*not supported/iu,
+      ),
+    });
+  },
+);
+it('keeps a standard XML declaration separate from processing instructions', async () => {
+  expect(
+    await run(
+      'xml',
+      { operation: 'parse' },
+      '<?xml version="1.0" encoding="UTF-8"?><root>ok</root>',
+    ),
+  ).toMatchObject({ kind: 'succeeded', output: { value: { root: 'ok' } } });
 });
