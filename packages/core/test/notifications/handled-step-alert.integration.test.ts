@@ -1,5 +1,5 @@
 import { settleCallableResult } from '@pertexo/workflow-engine';
-import { FailureNotificationContextSchema } from '@pertexo/workflow-model';
+import { FailureNotificationContextSchema } from '@pertexo/contracts';
 import { describe, expect, it } from 'vitest';
 
 import {

@@ -1,4 +1,4 @@
-import type { FailureNotificationDestinationConfig } from '@pertexo/workflow-model';
+import type { FailureNotificationDestinationConfig } from '@pertexo/contracts';
 import {
   eligibleNotificationConnection,
   eligibleNotificationDestination,

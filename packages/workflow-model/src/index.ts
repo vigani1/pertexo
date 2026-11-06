@@ -58,16 +58,6 @@ export {
   isSafeExecutorErrorCode,
 } from './execution/attempt-failure.js';
 export {
-  FAILURE_NOTIFICATION_CONTEXT_MAX_BYTES,
-  FAILURE_NOTIFICATION_DESTINATION_LIST_LIMIT,
-  FailureNotificationContextSchema,
-  FailureNotificationDeliveryResultSchema,
-  FailureNotificationDestinationConfigSchema,
-  type FailureNotificationContext,
-  type FailureNotificationDeliveryResult,
-  type FailureNotificationDestinationConfig,
-} from './execution/failure-notification.js';
-export {
   EMPTY_WORKFLOW_GRAPH,
   WORKFLOW_EXECUTION_LIMITS,
   WORKFLOW_GRAPH_CONTRACT_LIMITS,

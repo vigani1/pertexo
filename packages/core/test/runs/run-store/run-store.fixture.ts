@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { Pool } from 'pg';
 
-import { FailureNotificationContextSchema } from '@pertexo/workflow-model';
+import { FailureNotificationContextSchema } from '@pertexo/contracts';
 
 import {
   canonicalOutboxPayloadChecksum,

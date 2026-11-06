@@ -3,7 +3,7 @@ import {
   FAILURE_NOTIFICATION_DESTINATION_LIST_LIMIT,
   type FailureNotificationDestinationConfig,
   FailureNotificationDestinationConfigSchema,
-} from '@pertexo/workflow-model';
+} from './failure-notification.js';
 
 const failureNotificationDestinationKindSchema = z.enum(['slack', 'email']);
 const failureNotificationDestinationStatusSchema = z.enum([

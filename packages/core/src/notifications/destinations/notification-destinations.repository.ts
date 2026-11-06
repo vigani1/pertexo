@@ -1,4 +1,4 @@
-import type { FailureNotificationDestinationConfig } from '@pertexo/workflow-model';
+import type { FailureNotificationDestinationConfig } from '@pertexo/contracts';
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';

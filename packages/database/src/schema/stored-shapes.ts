@@ -4,8 +4,8 @@
 import type {
   ConnectionAuthType,
   ConnectionStatus,
-  FailureNotificationDestinationConfig,
 } from '@pertexo/workflow-model';
+import type { FailureNotificationDestinationConfig } from '@pertexo/contracts';
 
 type SideEffectClass = 'safe' | 'idempotent_with_key' | 'unsafe';
 
