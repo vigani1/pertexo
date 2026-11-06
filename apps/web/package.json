@@ -28,6 +28,7 @@
     "@pertexo/contracts": "workspace:*",
     "@pertexo/integrations": "workspace:*",
     "@pertexo/node-sdk": "workspace:*",
+    "@pertexo/nodes-core": "workspace:*",
     "@pertexo/policy": "workspace:*",
     "@pertexo/templates": "workspace:*",
     "@pertexo/workflow-model": "workspace:*",

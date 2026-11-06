@@ -267,6 +267,9 @@ importers:
       '@pertexo/node-sdk':
         specifier: workspace:*
         version: link:../../packages/node-sdk
+      '@pertexo/nodes-core':
+        specifier: workspace:*
+        version: link:../../packages/nodes-core
       '@pertexo/policy':
         specifier: workspace:*
         version: link:../../packages/policy
