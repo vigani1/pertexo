@@ -62,15 +62,21 @@ export function uploadFailure(
       retryable: true,
     };
   const code = error.problem?.code;
+  const detail = error.problem?.detail;
+  if (code === 'artifact.upload_unavailable')
+    return {
+      message:
+        detail ?? 'This upload is no longer available. Upload the file again.',
+      retryable: false,
+    };
   if (code !== undefined && SERVER_WORDS.has(code))
     return {
-      message: error.problem?.detail ?? 'This file can’t be attached here.',
+      message: detail ?? 'This file can’t be attached here.',
       retryable: false,
     };
   if (code === 'form.upload_busy')
     return {
-      message:
-        error.problem?.detail ?? 'Too many uploads right now. Retry soon.',
+      message: detail ?? 'Too many uploads right now. Retry soon.',
       retryable: true,
     };
   if (code === 'form.changed')

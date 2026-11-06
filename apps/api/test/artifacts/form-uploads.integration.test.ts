@@ -344,4 +344,24 @@ integrationDescribe('form uploads over HTTP and object storage', () => {
       });
     }
   });
+  it('gives expired and missing form finalizations the same safe upload-again message', async () => {
+    const form = await publicForm();
+    const bytes = new TextEncoder().encode('%PDF-1.7\n');
+    const begun = await form.begin({
+      filename: 'invoice.pdf',
+      byteLength: bytes.byteLength,
+      sha256: digest(bytes),
+    });
+    expect(begun.statusCode, begun.payload).toBe(201);
+    const reservation = parseResponse(begun, formUploadResponseSchema);
+    await fixture.expireArtifact(reservation.upload.id);
+    for (const id of [reservation.upload.id, randomUUID()]) {
+      const refused = await form.finalize(id);
+      expectProblem(refused, 404, 'artifact.upload_unavailable');
+      expect(refused.json()).toMatchObject({
+        detail:
+          'This upload expired or is no longer available. Upload the file again.',
+      });
+    }
+  });
 });

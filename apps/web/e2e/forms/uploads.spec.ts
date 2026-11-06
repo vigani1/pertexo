@@ -307,3 +307,48 @@ for (const scheme of ['light', 'dark'] as const)
       });
     }
   });
+
+for (const width of [1280, 375]) {
+  test(`explains expired finalization and fresh upload at ${String(width)}px`, async ({
+    page,
+  }, info) => {
+    await page.setViewportSize({ width, height: 900 });
+    await installUploadRoutes(page);
+    await page.route(`**/v1/forms/${publicId}/uploads/*/finalize`, (route) =>
+      route.fulfill({
+        status: 404,
+        contentType: 'application/problem+json',
+        json: {
+          type: 'urn:pertexo:problem:artifact.upload_unavailable',
+          title: 'Upload no longer available',
+          status: 404,
+          code: 'artifact.upload_unavailable',
+          detail:
+            'This upload expired or is no longer available. Upload the file again.',
+          requestId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+        },
+      }),
+    );
+    await page.goto(`/forms/${publicId}#${capability}`);
+    await page
+      .getByLabel('Invoice', { exact: true })
+      .setInputFiles(pdf('invoice.pdf'));
+    await expect(
+      page.getByRole('list', { name: 'Invoice files' }),
+    ).toContainText(
+      'This upload expired or is no longer available. Upload the file again.',
+    );
+    await expect(
+      page.getByRole('button', { name: 'Retry invoice.pdf' }),
+    ).toHaveCount(0);
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true);
+    await page.screenshot({
+      path: info.outputPath('expired-upload.png'),
+      fullPage: true,
+    });
+  });
+}

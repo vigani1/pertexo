@@ -151,3 +151,51 @@ it('locks destination consent during the contract check and cancels late inserti
   });
   expect(change).not.toHaveBeenCalled();
 });
+
+it('explains an expired finalization and keeps the workflow file input unchanged', async () => {
+  setup();
+  mockServer.use(
+    http.post(
+      'http://pertexo.test/v1/workspaces/:workspaceId/artifacts/:artifactId/finalize',
+      () =>
+        HttpResponse.json(
+          {
+            type: 'urn:pertexo:problem:artifact.upload_unavailable',
+            title: 'Upload no longer available',
+            status: 404,
+            code: 'artifact.upload_unavailable',
+            detail:
+              'This upload expired or is no longer available. Upload the file again.',
+            requestId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+          },
+          {
+            status: 404,
+            headers: { 'content-type': 'application/problem+json' },
+          },
+        ),
+    ),
+  );
+  const change = vi.fn();
+  render(
+    <FilePropertyUpload
+      scope={scope}
+      workflowId={workflowId}
+      versionId={versionId}
+      input="{}"
+      disabled={false}
+      onChange={change}
+    />,
+  );
+  const user = userEvent.setup();
+  await user.click(screen.getByRole('button', { name: 'Upload file' }));
+  await user.upload(screen.getByLabelText('File', { exact: true }), file());
+  expect(
+    await screen.findByText(
+      'This upload expired or is no longer available. Upload the file again.',
+    ),
+  ).toBeVisible();
+  expect(
+    screen.queryByRole('button', { name: 'Check and retry same file' }),
+  ).not.toBeInTheDocument();
+  expect(change).not.toHaveBeenCalled();
+});
