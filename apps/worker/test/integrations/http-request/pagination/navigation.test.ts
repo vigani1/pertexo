@@ -70,7 +70,7 @@ describe('HTTP pagination through the real secure transport and registry', () =>
       expect(result.output).toMatchObject({
         items: [1],
         pageCount: 1,
-        complete: true,
+        complete: next !== '?page=1',
       });
       expect(count).toBe(1);
     },
@@ -88,7 +88,10 @@ describe('HTTP pagination through the real secure transport and registry', () =>
         cursorPath: '$.next',
         parameter: 'cursor',
       }).run();
-      expect(result.output).toMatchObject({ pageCount: 1, complete: true });
+      expect(result.output).toMatchObject({
+        pageCount: 1,
+        complete: next !== 'same',
+      });
       expect(count).toBe(1);
     },
   );

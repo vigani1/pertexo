@@ -116,7 +116,7 @@ matches [n8n's HTTP Request pagination](https://docs.n8n.io/build/code-in-n8n/co
     do not re-inspect all earlier items at each page. Append items without spreading
     them into call arguments. F45 (bigger
     data) lifts this later. It never silently returns partial data except
-    through `complete: false`.
+    through `complete: false`. Repeated links/cursors also stop with `complete: false`, preserving the collected items in inline and page-file outputs.
 11. **Time.** `timeoutMillis` applies to each page. Validation refuses a
     setup whose worst case (`maxPages × (timeoutMillis + delay)`) can't fit
     the remaining enclosing run or single-step preview deadline, checked before

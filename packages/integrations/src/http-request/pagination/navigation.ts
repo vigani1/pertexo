@@ -56,7 +56,7 @@ export function nextPage(
     page: number;
     seen: Set<string>;
   }>,
-): string | undefined {
+): { kind: 'next'; url: string } | { kind: 'exhausted' | 'cycle' } {
   const { pagination, first, current, page, seen } = input;
   let target: string | undefined;
   let identity: string;
@@ -65,7 +65,7 @@ export function nextPage(
       pagination.source.kind === 'body'
         ? scalar(at(current.value, pagination.source.path), page)
         : nextLink(current.link, page);
-    if (link === undefined) return undefined;
+    if (link === undefined) return { kind: 'exhausted' };
     try {
       target = new URL(link, current.url).toString();
     } catch {
@@ -81,7 +81,7 @@ export function nextPage(
       const cursor = scalar(at(current.value, pagination.cursorPath), page, {
         numeric: true,
       });
-      if (cursor === undefined) return undefined;
+      if (cursor === undefined) return { kind: 'exhausted' };
       setPaginationParameter(url, pagination.parameter, cursor);
       identity = cursor;
     } else {
@@ -103,9 +103,9 @@ export function nextPage(
     utf8ByteLength(target) > 2048;
   if (unsafeTarget)
     throw new HttpPaginationFailure('http.pagination_invalid_navigation', page);
-  if (seen.has(identity)) return undefined;
+  if (seen.has(identity)) return { kind: 'cycle' };
   seen.add(identity);
-  return target;
+  return { kind: 'next', url: target };
 }
 
 function nextPageValue(
