@@ -11,7 +11,7 @@ import { previewAttempts } from '@pertexo/database/schema';
 import { isConnectionFenceCurrent } from '../../connections/runtime/credential-use.repository.js';
 import { PreviewAttemptStateError } from '../preview.errors.js';
 import type { MarkPreviewDispatchedInput } from './preview-attempt.types.js';
-import { optionsFor } from '../input.js';
+import { optionsFor } from '../transaction-options.js';
 
 export async function markPreviewDispatched(
   pool: Pool,

@@ -1,3 +1,4 @@
+import type { WorkflowRef } from '../../shared/workflow-actor.js';
 import { workflowTemplateOriginSchema } from '@pertexo/workflow-model';
 import { and, eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
@@ -17,7 +18,7 @@ import {
 import { WorkflowTemplateOriginUnavailableError } from '../workflows/workflow-authoring.errors.js';
 import type { PoolClient } from 'pg';
 import type { FolderScope } from '../../shared/folder-access.types.js';
-import type { WorkflowRef } from '../workflows/access.js';
+
 import { workflowProjection } from '../workflows/representation/workflow-representations.repository.js';
 
 /** One scoped statement keeps summary and immutable origin in the same snapshot. */

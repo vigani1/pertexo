@@ -1,3 +1,7 @@
+import type {
+  WorkflowActor,
+  WorkflowRef,
+} from '../../shared/workflow-actor.js';
 import { readFolderScope } from '../../shared/facts.repository.js';
 import type {
   FolderScope,
@@ -19,12 +23,6 @@ import {
 } from '@pertexo/policy';
 import type { Pool, PoolClient } from 'pg';
 import { WorkflowNotFoundError } from './workflow-authoring.errors.js';
-
-export type WorkflowRef = Readonly<{
-  workspaceId: string;
-  workflowId: string;
-}>;
-export type WorkflowActor = WorkspaceActor & Readonly<{ workflowId: string }>;
 
 /** Someone without access learns nothing: a denial reads as a missing workflow. */
 export function readAsNotVisible(error: unknown): never {

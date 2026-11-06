@@ -1,3 +1,4 @@
+import type { WorkflowActor } from '../../shared/workflow-actor.js';
 import type { PoolClient } from 'pg';
 import type {
   WorkflowGraph,
@@ -18,7 +19,7 @@ import { stepSettingsIssues } from './step-settings.js';
 import { validatePublicationCalls } from './calls.repository.js';
 import { connectionReferenceIssues } from './connections.repository.js';
 import type { CompiledPublication } from './workflow-publication.types.js';
-import type { WorkflowActor } from '../workflows/access.js';
+
 import { executableSchema } from './input.js';
 
 type PublicationInspection =

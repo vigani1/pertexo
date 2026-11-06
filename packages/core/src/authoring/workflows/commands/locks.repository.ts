@@ -1,9 +1,10 @@
+import type { WorkflowRef } from '../../../shared/workflow-actor.js';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { workflowDrafts, workflows } from '@pertexo/database/schema';
 import { and, eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
-import type { WorkflowRef } from '../access.js';
+
 import { WorkflowNotFoundError } from '../workflow-authoring.errors.js';
 import { draftProjection } from '../representation/workflow-representations.repository.js';
 

@@ -1,3 +1,4 @@
+import type { WorkflowActor } from '../../../shared/workflow-actor.js';
 import { decodeStoredReceipt } from '../../../shared/receipts.js';
 import { z } from 'zod';
 import {
@@ -22,7 +23,7 @@ import {
 } from '@pertexo/database/schema';
 
 import { RUN_SUMMARY_RETENTION_SQL } from '../../../runs/data-policy.js';
-import type { AuthoringAccess, WorkflowActor } from '../../workflows/access.js';
+import type { AuthoringAccess } from '../../workflows/access.js';
 import { WorkflowNotFoundError } from '../../workflows/workflow-authoring.errors.js';
 
 /** The command output retained for exact retries. */

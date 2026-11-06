@@ -13,7 +13,7 @@ import type {
 } from './preview-attempt.types.js';
 
 import { PreviewAttemptStateError } from '../preview.errors.js';
-import { optionsFor } from '../input.js';
+import { optionsFor } from '../transaction-options.js';
 
 export async function heartbeatPreviewLease(
   pool: Pool,
