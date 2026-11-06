@@ -8,7 +8,7 @@ import { PLATFORM_NODE_CATALOG } from '@pertexo/node-catalog';
 
 import { createPlatformNodeRegistry } from '../../../src/providers/node-registry.js';
 import { NodeExecutorFailure } from '@pertexo/node-sdk/server';
-import { createQueueProducer, JOB_NAME } from '@pertexo/queue';
+import { createQueueProducer, JOB_NAME } from '@pertexo/queue/server';
 import { composeExecutableCatalog } from '@pertexo/workflow-engine/server';
 import {
   workflowErrorInputSchema,

@@ -3,7 +3,7 @@ import { isStoredDataError } from '@pertexo/core/shared';
 import {
   ArtifactIntegrityError,
   ArtifactNotFoundError,
-} from '@pertexo/artifact-store';
+} from '@pertexo/artifact-store/server';
 import {
   ArtifactQuotaExceededError,
   ArtifactUploadConflictError,

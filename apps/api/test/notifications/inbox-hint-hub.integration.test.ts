@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import { RedisWorkspaceInboxHintPublisher } from '@pertexo/queue';
+import { RedisWorkspaceInboxHintPublisher } from '@pertexo/queue/server';
 import { afterAll, describe, expect, it, vi } from 'vitest';
 
 import {

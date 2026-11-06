@@ -6,7 +6,7 @@ import type { WorkspaceDatabase } from '@pertexo/database/testing';
 import type {
   StructuredLogger,
   TelemetryLifecycle,
-} from '@pertexo/observability';
+} from '@pertexo/observability/server';
 import { vi } from 'vitest';
 
 import type { BetterAuthRuntime } from '../../src/authentication/index.js';

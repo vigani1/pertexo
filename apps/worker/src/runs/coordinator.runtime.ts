@@ -25,7 +25,7 @@ import { PLATFORM_NODE_CATALOG } from '@pertexo/node-catalog';
 import {
   createQueueTraceRunner,
   type StructuredLogger,
-} from '@pertexo/observability';
+} from '@pertexo/observability/server';
 import {
   createQueueConsumer,
   InvalidQueueDeliveryError,
@@ -37,7 +37,7 @@ import {
   type QueueJobHandler,
   type RunEventNotificationPublisher,
   unrecoverableQueueError,
-} from '@pertexo/queue';
+} from '@pertexo/queue/server';
 import { composeExecutableCatalog } from '@pertexo/workflow-engine/server';
 import { JsonataEvaluator } from '@pertexo/workflow-model/server';
 

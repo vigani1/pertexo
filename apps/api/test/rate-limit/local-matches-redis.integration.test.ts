@@ -1,7 +1,10 @@
 import { randomUUID } from 'node:crypto';
 
-import { LocalRateLimiter, RedisRateLimitRuntime } from '@pertexo/rate-limit';
-import type { RateLimitDecision } from '@pertexo/rate-limit';
+import {
+  LocalRateLimiter,
+  RedisRateLimitRuntime,
+} from '@pertexo/rate-limit/server';
+import type { RateLimitDecision } from '@pertexo/rate-limit/server';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { assertIntegrationGateConfigured } from '../support/integration-gate.js';

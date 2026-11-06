@@ -5,7 +5,7 @@ import {
   DistributedRateLimiter,
   LocalRateLimiter,
   type RateLimitDecision,
-} from '@pertexo/rate-limit';
+} from '@pertexo/rate-limit/server';
 
 describe.runIf(process.env.REDIS_RATE_LIMIT_INTEGRATION === 'true')(
   'remaining budgets from real Lua and local admission',

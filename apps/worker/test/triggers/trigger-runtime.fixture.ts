@@ -2,9 +2,12 @@ import type {
   ScheduleTriggerScanner,
   WorkflowTriggerReconciliationStore,
 } from '@pertexo/core/testing';
-import type { QueueConsumer, QueueConsumerOptions } from '@pertexo/queue';
+import type {
+  QueueConsumer,
+  QueueConsumerOptions,
+} from '@pertexo/queue/server';
 import { vi } from 'vitest';
-import type { StructuredLogger } from '@pertexo/observability';
+import type { StructuredLogger } from '@pertexo/observability/server';
 
 export function dependencies() {
   const consumer = {

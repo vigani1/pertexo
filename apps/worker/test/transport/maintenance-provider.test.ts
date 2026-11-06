@@ -1,6 +1,6 @@
 import type { FailureNotificationStore } from '@pertexo/core/notifications';
 import type { AwsConnectionEnvelopeEncryptionRuntime } from '@pertexo/secrets/server';
-import type { QueueConsumerObserver } from '@pertexo/queue';
+import type { QueueConsumerObserver } from '@pertexo/queue/server';
 import { describe, expect, it, vi } from 'vitest';
 
 import { parseWorkerConfig } from '../../src/config/worker.js';

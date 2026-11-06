@@ -46,7 +46,7 @@ vi.mock('../../src/workflow-runs/events/streamer.js', async (original) => ({
   ...(await original<object>()),
   createWorkflowRunEventStreamer: outside.streamer,
 }));
-vi.mock('@pertexo/queue', async (original) => ({
+vi.mock('@pertexo/queue/server', async (original) => ({
   ...(await original<object>()),
   RedisRunEventNotificationPublisher:
     function RedisRunEventNotificationPublisher() {

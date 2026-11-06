@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { RedisRateLimitRuntime } from '@pertexo/rate-limit';
+import { RedisRateLimitRuntime } from '@pertexo/rate-limit/server';
 
 import {
   createTestApiApplication,

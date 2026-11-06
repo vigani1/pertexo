@@ -4,7 +4,11 @@ import type {
   ScheduleTriggerScanner,
   WorkflowTriggerReconciliationStore,
 } from '@pertexo/core/testing';
-import { createQueueProducer, JOB_NAME, QUEUE_NAME } from '@pertexo/queue';
+import {
+  createQueueProducer,
+  JOB_NAME,
+  QUEUE_NAME,
+} from '@pertexo/queue/server';
 import { Queue } from 'bullmq';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 

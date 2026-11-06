@@ -1,5 +1,5 @@
 import type { WorkflowExecutionReader } from '@pertexo/core/runs';
-import type { RunEventNotificationPublisher } from '@pertexo/queue';
+import type { RunEventNotificationPublisher } from '@pertexo/queue/server';
 import type { NodeExecutionRegistry } from '@pertexo/workflow-engine/server';
 
 import {

@@ -7,7 +7,7 @@ import { RateLimitModule } from '../../../src/platform/rate-limit/rate-limit.mod
 import type { RateLimitConsumer } from '../../../src/platform/rate-limit/admission.js';
 
 import type { WebhookTriggerStore } from '@pertexo/core/testing';
-import type { StructuredLogger } from '@pertexo/observability';
+import type { StructuredLogger } from '@pertexo/observability/server';
 
 import type { WebhookTriggerEnvelopeEncryption } from '@pertexo/secrets/server';
 import Fastify from 'fastify';

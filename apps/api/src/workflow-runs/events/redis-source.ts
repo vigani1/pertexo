@@ -2,17 +2,17 @@ import { Buffer } from 'node:buffer';
 import { performance } from 'node:perf_hooks';
 
 import { Redis } from 'ioredis';
-import { runEventChannel } from '@pertexo/queue';
-export { runEventChannel } from '@pertexo/queue';
+import { runEventChannel } from '@pertexo/queue/server';
+export { runEventChannel } from '@pertexo/queue/server';
 import type {
   RedisOperation,
   RedisOperationErrorClass,
   RedisTelemetryObserver,
-} from '@pertexo/queue';
+} from '@pertexo/queue/server';
 import {
   createProductionRedisTelemetryObserver,
   normalizeRedisEndpoint,
-} from '@pertexo/queue';
+} from '@pertexo/queue/server';
 import { z } from 'zod';
 
 import {

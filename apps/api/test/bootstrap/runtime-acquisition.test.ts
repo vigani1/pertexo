@@ -22,7 +22,7 @@ vi.mock('@pertexo/database/platform', async (original) => ({
   createDatabaseRuntime: created.databaseRuntime,
   createWorkspaceDatabase: created.database,
 }));
-vi.mock('@pertexo/rate-limit', async (original) => ({
+vi.mock('@pertexo/rate-limit/server', async (original) => ({
   ...(await original<object>()),
   RedisRateLimitRuntime: function RedisRateLimitRuntime() {
     return created.rateLimit() as object;

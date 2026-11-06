@@ -30,7 +30,7 @@ import {
   type QueueConsumer,
   type QueueConsumerOptions,
   type RunEventNotificationPublisher,
-} from '@pertexo/queue';
+} from '@pertexo/queue/server';
 import type { NodeExecutionRegistry } from '@pertexo/workflow-engine/server';
 
 describe('node-attempt runtime', () => {

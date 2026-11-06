@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { parseArtifactStoreConfig } from '@pertexo/artifact-store';
+import { parseArtifactStoreConfig } from '@pertexo/artifact-store/server';
 import { describe, expect, it } from 'vitest';
 
 import {

@@ -2,7 +2,7 @@ import type { AuthenticationMail } from '../../../../src/authentication/mail/del
 
 import type { ApiIdentityConfig } from '../../../../src/platform/config/identity.js';
 
-import type { StructuredLogger } from '@pertexo/observability';
+import type { StructuredLogger } from '@pertexo/observability/server';
 
 import type { createApiApplication } from '../../../../src/app.js';
 import type { ApiConfig } from '../../../../src/platform/config/api.js';

@@ -1,4 +1,4 @@
-import type { StructuredLogger } from '@pertexo/observability';
+import type { StructuredLogger } from '@pertexo/observability/server';
 import { AuthenticationDiagnostics } from './diagnostics.js';
 import { samlTransportAvailable } from '../federation/protocol/saml/configuration.js';
 import {

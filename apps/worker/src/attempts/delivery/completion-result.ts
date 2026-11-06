@@ -1,5 +1,5 @@
 import type { NodeAttemptLease } from '@pertexo/core/attempts';
-import type { RunEventNotificationPublisher } from '@pertexo/queue';
+import type { RunEventNotificationPublisher } from '@pertexo/queue/server';
 
 /** Completion remains authoritative even when its realtime resync hint fails. */
 export async function completionResult(

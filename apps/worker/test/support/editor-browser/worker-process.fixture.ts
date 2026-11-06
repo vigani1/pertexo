@@ -4,7 +4,7 @@ import { createEditorPreview } from './previews.js';
 import { createHash, randomUUID } from 'node:crypto';
 import { createOutboxDispatcherDatabase } from '@pertexo/core/outbox';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
-import { createQueueProducer, JOB_NAME } from '@pertexo/queue';
+import { createQueueProducer, JOB_NAME } from '@pertexo/queue/server';
 
 import { createPlatformNodeRegistry } from '../../../src/providers/node-registry.js';
 
@@ -17,7 +17,7 @@ import {
   type TriggerRuntime,
 } from '../../../src/triggers/trigger.runtime.js';
 import { OutboxDispatcher } from '../../../src/transport/outbox/dispatch/outbox-dispatcher.runtime.js';
-import { createTransportMetrics } from '@pertexo/observability';
+import { createTransportMetrics } from '@pertexo/observability/server';
 
 import { EditorBrowserWorkerShutdownError } from './cleanup.js';
 import {

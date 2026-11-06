@@ -1,4 +1,4 @@
-import type { TransportMetrics } from '@pertexo/observability';
+import type { TransportMetrics } from '@pertexo/observability/server';
 import { vi } from 'vitest';
 
 export function transportMetrics() {

@@ -5,8 +5,8 @@ import {
   type LeasedOutboxEvent,
 } from '@pertexo/core/outbox';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
-import { createQueueProducer, JOB_NAME } from '@pertexo/queue';
-import { createTransportMetrics } from '@pertexo/observability';
+import { createQueueProducer, JOB_NAME } from '@pertexo/queue/server';
+import { createTransportMetrics } from '@pertexo/observability/server';
 
 import { createMaintenanceRuntime } from '../../../src/maintenance/maintenance.runtime.js';
 import { OutboxDispatcher } from '../../../src/transport/outbox/dispatch/outbox-dispatcher.runtime.js';

@@ -6,7 +6,7 @@ import {
 } from 'node:net';
 
 import { Redis } from 'ioredis';
-import { RedisRateLimitRuntime } from '@pertexo/rate-limit';
+import { RedisRateLimitRuntime } from '@pertexo/rate-limit/server';
 
 export type RedisRateLimitFixture = Readonly<{
   control: Redis;

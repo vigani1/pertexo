@@ -9,7 +9,11 @@ import {
   parseDatabaseConfig,
   parseMigrationConfig,
 } from '@pertexo/database/testing';
-import { JOB_NAME, type QueueJob, type QueueProducer } from '@pertexo/queue';
+import {
+  JOB_NAME,
+  type QueueJob,
+  type QueueProducer,
+} from '@pertexo/queue/server';
 import { Client } from 'pg';
 import {
   afterAll,

@@ -9,7 +9,7 @@ import {
   createQueueConsumer,
   QUEUE_NAME,
   unrecoverableQueueError,
-} from '@pertexo/queue';
+} from '@pertexo/queue/server';
 import { Queue } from 'bullmq';
 import { sql } from 'drizzle-orm';
 import { beforeAll, afterAll, describe, expect, it } from 'vitest';

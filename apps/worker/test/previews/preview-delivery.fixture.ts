@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import { jobIdForOutboxEvent } from '@pertexo/queue';
+import { jobIdForOutboxEvent } from '@pertexo/queue/server';
 
 import type {
   PreviewAttemptLease,

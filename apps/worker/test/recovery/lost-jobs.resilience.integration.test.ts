@@ -1,4 +1,4 @@
-import { QUEUE_NAME } from '@pertexo/queue';
+import { QUEUE_NAME } from '@pertexo/queue/server';
 import { Queue } from 'bullmq';
 import { afterAll, beforeAll, expect, it } from 'vitest';
 

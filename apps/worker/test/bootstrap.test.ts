@@ -8,7 +8,7 @@ import {
   logger,
   dependencies,
 } from './bootstrap/fixture.js';
-import type { TelemetryLifecycle } from '@pertexo/observability';
+import type { TelemetryLifecycle } from '@pertexo/observability/server';
 import { WorkerDrainState } from '../src/runtime/shutdown/drain-state.js';
 
 describe('worker application bootstrap', () => {

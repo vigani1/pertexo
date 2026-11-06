@@ -2,8 +2,8 @@ import { fileURLToPath } from 'node:url';
 
 export const workerResolve = {
   alias: {
-    '@pertexo/queue': fileURLToPath(
-      new URL('../../packages/queue/src/index.ts', import.meta.url),
+    '@pertexo/queue/server': fileURLToPath(
+      new URL('../../packages/queue/src/server.ts', import.meta.url),
     ),
   },
 } as const;

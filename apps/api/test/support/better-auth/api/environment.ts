@@ -1,7 +1,7 @@
 import type {
   StructuredLogger,
   TelemetryLifecycle,
-} from '@pertexo/observability';
+} from '@pertexo/observability/server';
 
 /*
  * The whole API with Better Auth as the only session authority and no legacy

@@ -1,4 +1,4 @@
-import { measureOperation } from '@pertexo/observability';
+import { measureOperation } from '@pertexo/observability/server';
 import {
   context,
   metrics,

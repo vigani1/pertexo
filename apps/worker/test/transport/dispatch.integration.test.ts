@@ -32,7 +32,7 @@ import {
   QUEUE_NAME,
   createQueueProducer,
   type QueueJobHandler,
-} from '@pertexo/queue';
+} from '@pertexo/queue/server';
 import { Queue } from 'bullmq';
 import { eq, sql } from 'drizzle-orm';
 import {
@@ -47,7 +47,7 @@ import {
   createOutboxDispatcherDatabase,
   InboxReceiptUnavailableError,
 } from '@pertexo/core/testing';
-import { createQueueTraceRunner } from '@pertexo/observability';
+import { createQueueTraceRunner } from '@pertexo/observability/server';
 import { createQueueMetricsObserver } from '../../src/transport/metrics-adapter.js';
 
 describeIntegration(

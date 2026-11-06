@@ -1,7 +1,11 @@
 import { expect, it, vi } from 'vitest';
 import { CoordinatorRunStateCorruptError } from '@pertexo/core/testing';
 import { WorkflowEngineError } from '@pertexo/workflow-engine/server';
-import { JOB_NAME, QUEUE_NAME, type createQueueConsumer } from '@pertexo/queue';
+import {
+  JOB_NAME,
+  QUEUE_NAME,
+  type createQueueConsumer,
+} from '@pertexo/queue/server';
 import {
   curatedCoordinatorFailure,
   curatedCoordinatorConsumerFactory,

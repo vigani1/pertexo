@@ -3,7 +3,11 @@ import { randomUUID } from 'node:crypto';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
 
 import { createPlatformNodeRegistry } from '../../../src/providers/node-registry.js';
-import { createQueueProducer, JOB_NAME, QUEUE_NAME } from '@pertexo/queue';
+import {
+  createQueueProducer,
+  JOB_NAME,
+  QUEUE_NAME,
+} from '@pertexo/queue/server';
 import { invocationKey } from '@pertexo/workflow-engine/server';
 import { Queue } from 'bullmq';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';

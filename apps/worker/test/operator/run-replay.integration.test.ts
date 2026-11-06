@@ -5,7 +5,7 @@ import { acceptManualFixtureRun } from '../support/attempts/manual-start.js';
 import { createHash, randomUUID } from 'node:crypto';
 import { createOperatorCommandStore } from '@pertexo/core/operator';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
-import { JOB_NAME } from '@pertexo/queue';
+import { JOB_NAME } from '@pertexo/queue/server';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   createDatabaseOperatorRunReplayStore,

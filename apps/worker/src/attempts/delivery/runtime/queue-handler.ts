@@ -10,7 +10,7 @@ import {
   JOB_NAME,
   type QueueJobHandler,
   unrecoverableQueueError,
-} from '@pertexo/queue';
+} from '@pertexo/queue/server';
 
 import {
   type NodeAttemptHandler,

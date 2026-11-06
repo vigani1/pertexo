@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import type { StructuredLogger } from '@pertexo/observability';
+import type { StructuredLogger } from '@pertexo/observability/server';
 import type { TelemetryLifecycle } from '@pertexo/observability/startup';
 import pg from 'pg';
 import { describe, expect, it, vi } from 'vitest';

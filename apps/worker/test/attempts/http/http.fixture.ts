@@ -1,5 +1,5 @@
-import { JOB_NAME } from '@pertexo/queue';
-import type { QueueProducer } from '@pertexo/queue';
+import { JOB_NAME } from '@pertexo/queue/server';
+import type { QueueProducer } from '@pertexo/queue/server';
 
 import type { Queue } from 'bullmq';
 import { describe } from 'vitest';

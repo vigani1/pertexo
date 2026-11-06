@@ -14,7 +14,7 @@ import {
   parseQueueJob,
   type QueueDelivery,
   type QueueHandlerContext,
-} from '@pertexo/queue';
+} from '@pertexo/queue/server';
 import { invitationKeys } from '../../support/better-auth/real-api.support.js';
 import type { FixtureResourceOwner } from '../harness/resource-owner.js';
 

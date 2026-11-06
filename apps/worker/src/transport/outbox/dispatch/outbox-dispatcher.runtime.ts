@@ -10,13 +10,13 @@ import {
   type StructuredLogger,
   type TransportJob,
   type TransportMetrics,
-} from '@pertexo/observability';
+} from '@pertexo/observability/server';
 import {
   JOB_NAME,
   QUEUE_FOR_JOB,
   type JobName,
   type QueueProducer,
-} from '@pertexo/queue';
+} from '@pertexo/queue/server';
 import type { WorkerDrainState } from '../../../runtime/shutdown/drain-state.js';
 import { transportJobForName } from '../../job.js';
 import { OutboxPublicationSettlements } from '../publication-settlements.js';

@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   createArtifactStore,
   parseArtifactStoreConfig,
-} from '@pertexo/artifact-store';
+} from '@pertexo/artifact-store/server';
 
 import { createPlatformNodeRegistry } from '../../../src/providers/node-registry.js';
 import { filePageBundleSchema } from '@pertexo/node-sdk';

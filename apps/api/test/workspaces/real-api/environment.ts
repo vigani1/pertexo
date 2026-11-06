@@ -3,7 +3,7 @@ import { parseDatabaseConfig } from '@pertexo/database/testing';
 import type {
   StructuredLogger,
   TelemetryLifecycle,
-} from '@pertexo/observability';
+} from '@pertexo/observability/server';
 
 const apiUrl = process.env.DATABASE_URL;
 

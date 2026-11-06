@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   createArtifactStore,
   parseArtifactStoreConfig,
-} from '@pertexo/artifact-store';
+} from '@pertexo/artifact-store/server';
 import { createResendClient } from '@pertexo/integrations/server';
 import type { SecureHttpRequest } from '@pertexo/secrets/server';
 

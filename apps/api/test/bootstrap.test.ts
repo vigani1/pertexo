@@ -19,7 +19,7 @@ import { ReadyController } from '../src/platform/health/ready.controller.js';
 import { request as httpRequest } from 'node:http';
 import type { ApiWorkflowRuntime } from '../src/platform/workflow/runtime.module.js';
 import { createStubApiWorkflowRuntime } from './support/api-platform.fixture.js';
-import type { TelemetryLifecycle } from '@pertexo/observability';
+import type { TelemetryLifecycle } from '@pertexo/observability/server';
 import type { ApiWebhookRuntime } from '../src/platform/webhooks/runtime.module.js';
 import type { WebhookManagementService } from '../src/webhooks/management/webhook-management.service.js';
 import { EMPTY_WORKFLOW_GRAPH } from '@pertexo/workflow-model';

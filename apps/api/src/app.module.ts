@@ -5,7 +5,7 @@ import { Module } from '@nestjs/common';
 import type {
   StructuredLogger,
   TelemetryLifecycle,
-} from '@pertexo/observability';
+} from '@pertexo/observability/server';
 
 import type { WorkspaceDatabase } from '@pertexo/database/platform';
 

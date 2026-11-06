@@ -2,7 +2,7 @@ import type {
   WorkspaceInboxChange,
   WorkspaceInboxFoldStore,
 } from '@pertexo/core/inbox';
-import type { WorkspaceInboxHintPublisher } from '@pertexo/queue';
+import type { WorkspaceInboxHintPublisher } from '@pertexo/queue/server';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { createWorkspaceInboxRuntime } from '../../src/notifications/inbox-runtime.js';

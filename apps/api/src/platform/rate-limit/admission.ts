@@ -1,4 +1,7 @@
-import { AbuseRateLimitPolicy, LocalRateLimiter } from '@pertexo/rate-limit';
+import {
+  AbuseRateLimitPolicy,
+  LocalRateLimiter,
+} from '@pertexo/rate-limit/server';
 import type {
   DistributedRateLimitResult,
   RateLimitQuota,
@@ -6,7 +9,7 @@ import type {
   RateLimitFailureMode,
   RateLimitDimensionKind,
   RateLimitSubject,
-} from '@pertexo/rate-limit';
+} from '@pertexo/rate-limit/server';
 import {
   applicationError,
   throwApplicationError,

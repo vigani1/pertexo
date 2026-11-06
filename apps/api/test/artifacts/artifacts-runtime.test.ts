@@ -12,7 +12,7 @@ const outside = vi.hoisted(() => ({
   formUploads: vi.fn(),
 }));
 
-vi.mock('@pertexo/artifact-store', async (original) => ({
+vi.mock('@pertexo/artifact-store/server', async (original) => ({
   ...(await original<object>()),
   createArtifactStore: outside.store,
 }));

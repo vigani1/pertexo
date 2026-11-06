@@ -5,7 +5,11 @@ import {
   parseDatabaseConfig,
 } from '@pertexo/database/testing';
 import { createOutboxDispatcherDatabase } from '@pertexo/core/testing';
-import { createQueueProducer, JOB_NAME, parseQueueJob } from '@pertexo/queue';
+import {
+  createQueueProducer,
+  JOB_NAME,
+  parseQueueJob,
+} from '@pertexo/queue/server';
 import { describe, expect, it } from 'vitest';
 
 import { createMaintenanceRuntime } from '../../../src/maintenance/maintenance.runtime.js';

@@ -21,7 +21,7 @@ import type {
   WorkflowRunPersistence,
 } from './ports.js';
 
-import type { RunEventNotificationPublisher } from '@pertexo/queue';
+import type { RunEventNotificationPublisher } from '@pertexo/queue/server';
 
 export type PostgresWorkflowRunPersistence = Readonly<{
   persistence: WorkflowRunPersistence;

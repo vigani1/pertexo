@@ -4,7 +4,7 @@ import type {
   BeforeApplicationShutdown,
   OnApplicationBootstrap,
 } from '@nestjs/common';
-import type { StructuredLogger } from '@pertexo/observability';
+import type { StructuredLogger } from '@pertexo/observability/server';
 
 import type { WorkerDrainState } from '../shutdown/drain-state.js';
 

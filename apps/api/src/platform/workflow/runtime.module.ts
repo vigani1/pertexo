@@ -29,7 +29,7 @@ import {
 import type { ApiIdentityRuntime } from '../identity/runtime.module.js';
 import { createApiWorkflowMetadataRuntime } from './metadata-runtime.js';
 import { createPostgresRunEventReader } from '../../workflow-runs/events/postgres-reader.js';
-import { RedisRunEventNotificationPublisher as RedisRunEventPublisher } from '@pertexo/queue';
+import { RedisRunEventNotificationPublisher as RedisRunEventPublisher } from '@pertexo/queue/server';
 import { RedisRunEventSource } from '../../workflow-runs/events/redis-source.js';
 import { WorkflowAuthoringModule } from '../../workflow-authoring/index.js';
 import { NodeTestingModule } from '../../node-testing/index.js';

@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto';
 
-import { QUEUE_NAME } from '@pertexo/queue';
+import { QUEUE_NAME } from '@pertexo/queue/server';
 import { invocationKey } from '@pertexo/workflow-engine/server';
 import { Queue } from 'bullmq';
 import { Pool } from 'pg';

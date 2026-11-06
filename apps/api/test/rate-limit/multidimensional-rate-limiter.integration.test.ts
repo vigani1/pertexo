@@ -4,7 +4,7 @@ import {
   RedisRateLimitRuntime,
   type RateLimitDecision,
   type RateLimitDimensionKind,
-} from '@pertexo/rate-limit';
+} from '@pertexo/rate-limit/server';
 import { assertIntegrationGateConfigured } from '../support/integration-gate.js';
 
 const redisUrl = process.env.REDIS_URL;

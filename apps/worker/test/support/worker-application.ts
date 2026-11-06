@@ -5,8 +5,8 @@ import type { WorkspaceDatabase } from '@pertexo/database/testing';
 import type {
   StructuredLogger,
   TransportMetrics,
-} from '@pertexo/observability';
-import type { QueueProducer } from '@pertexo/queue';
+} from '@pertexo/observability/server';
+import type { QueueProducer } from '@pertexo/queue/server';
 
 import type { WorkerApplicationCompositionFactories } from '../../src/app.js';
 import type { NodeAttemptRuntime } from '../../src/attempts/delivery/node-attempt.runtime.js';

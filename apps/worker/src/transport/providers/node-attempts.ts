@@ -4,7 +4,7 @@ import { createPreviewAttemptRunStore } from '@pertexo/core/previews';
 import { createNodeProviderHttpClient } from '../../providers/http-client.js';
 
 import { createPlatformNodeRegistry } from '../../providers/node-registry.js';
-import type { QueueConsumerObserver } from '@pertexo/queue';
+import type { QueueConsumerObserver } from '@pertexo/queue/server';
 
 import type { WorkerConfig } from '../../config/worker.js';
 import {

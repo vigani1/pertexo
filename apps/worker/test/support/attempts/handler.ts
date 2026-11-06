@@ -4,7 +4,7 @@ import type {
   NodeAttemptRunStore,
   PublishedWorkflow,
 } from '@pertexo/core/testing';
-import { JOB_NAME, type QueueDelivery } from '@pertexo/queue';
+import { JOB_NAME, type QueueDelivery } from '@pertexo/queue/server';
 import { vi } from 'vitest';
 
 import {

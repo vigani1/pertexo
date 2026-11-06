@@ -5,7 +5,7 @@ import type {
 import type {
   StructuredLogger,
   TransportMetrics,
-} from '@pertexo/observability';
+} from '@pertexo/observability/server';
 
 import { bounded } from '../operation-deadline.js';
 import {

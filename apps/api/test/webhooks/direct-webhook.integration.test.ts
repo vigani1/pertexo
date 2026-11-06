@@ -71,7 +71,7 @@ import {
   type Seeded as Seeded2,
 } from './direct-webhook/doors.fixture.js';
 import { Writable } from 'node:stream';
-import { createStructuredLogger } from '@pertexo/observability';
+import { createStructuredLogger } from '@pertexo/observability/server';
 import Fastify from 'fastify';
 import { registerWebhookIngress } from '../../src/webhooks/ingress/register.js';
 import { apiProblemSchema } from '@pertexo/contracts';

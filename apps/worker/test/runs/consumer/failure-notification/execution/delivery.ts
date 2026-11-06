@@ -8,7 +8,7 @@ import {
   createQueueProducer,
   JOB_NAME,
   QUEUE_NAME,
-} from '@pertexo/queue';
+} from '@pertexo/queue/server';
 import { Queue } from 'bullmq';
 
 import { expect } from 'vitest';

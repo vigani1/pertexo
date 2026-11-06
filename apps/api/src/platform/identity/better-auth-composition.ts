@@ -1,4 +1,4 @@
-import type { StructuredLogger } from '@pertexo/observability';
+import type { StructuredLogger } from '@pertexo/observability/server';
 import { createSystemMailEnqueueStore } from '@pertexo/secrets/server';
 import type {
   DatabaseConfig,

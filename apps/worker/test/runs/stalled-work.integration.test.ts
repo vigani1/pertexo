@@ -10,7 +10,7 @@ import {
   parseDatabaseConfig,
   parseMigrationConfig,
 } from '@pertexo/database/testing';
-import type { StructuredLogger } from '@pertexo/observability';
+import type { StructuredLogger } from '@pertexo/observability/server';
 import { Client } from 'pg';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 

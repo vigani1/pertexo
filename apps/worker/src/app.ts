@@ -14,7 +14,7 @@ import {
   type WorkspaceDatabase,
 } from '@pertexo/database/platform';
 import type { createEncryptionKeyRepository } from '@pertexo/secrets/server';
-import type { TransportMetrics } from '@pertexo/observability';
+import type { TransportMetrics } from '@pertexo/observability/server';
 
 import type { WorkerConfig } from './config/worker.js';
 import { WORKSPACE_DATABASE } from './platform/database/database.module.js';

@@ -12,13 +12,13 @@ import type {
 } from '@pertexo/database/platform';
 import type { FailureNotificationStore } from '@pertexo/core/notifications';
 import type { PreviewReconciliationStore } from '@pertexo/core/previews';
-import { createQueueTraceRunner } from '@pertexo/observability';
+import { createQueueTraceRunner } from '@pertexo/observability/server';
 import {
   createQueueConsumer,
   QUEUE_NAME,
   type QueueConsumer,
   type QueueConsumerObserver,
-} from '@pertexo/queue';
+} from '@pertexo/queue/server';
 
 import { previewReconciliationFactories } from '../previews/reconciliation.js';
 import type {

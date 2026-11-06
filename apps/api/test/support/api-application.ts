@@ -1,5 +1,5 @@
 import type { WorkspaceDatabase } from '@pertexo/database/testing';
-import { RedisRateLimitRuntime } from '@pertexo/rate-limit';
+import { RedisRateLimitRuntime } from '@pertexo/rate-limit/server';
 
 import {
   cleanupApiRuntimes,

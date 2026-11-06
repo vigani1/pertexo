@@ -7,8 +7,8 @@ import {
   parseDatabaseConfig,
 } from '@pertexo/database/testing';
 import { createOutboxDispatcherDatabase } from '@pertexo/core/testing';
-import { createQueueProducer, JOB_NAME } from '@pertexo/queue';
-import type { QueueProducer } from '@pertexo/queue';
+import { createQueueProducer, JOB_NAME } from '@pertexo/queue/server';
+import type { QueueProducer } from '@pertexo/queue/server';
 
 import { expect } from 'vitest';
 

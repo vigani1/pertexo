@@ -5,7 +5,7 @@ import { initialCheckpointFactory } from '@pertexo/core/runs';
 import { createOutboxDispatcherDatabase } from '@pertexo/core/testing';
 
 import { NodeExecutorFailure } from '@pertexo/node-sdk/server';
-import { createQueueProducer, JOB_NAME } from '@pertexo/queue';
+import { createQueueProducer, JOB_NAME } from '@pertexo/queue/server';
 
 import { createCoordinatorRuntime } from '../../../../../dist/runs/coordinator.runtime.js';
 import { WorkerDrainState } from '../../../../../dist/runtime/shutdown/drain-state.js';

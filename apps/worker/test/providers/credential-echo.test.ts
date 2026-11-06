@@ -2,7 +2,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import {
   createOpenTelemetrySdk,
   createStructuredLogger,
-} from '@pertexo/observability';
+} from '@pertexo/observability/server';
 import type { HttpRequestOutput } from '@pertexo/integrations';
 import type { ServiceResponseFacts } from '@pertexo/node-sdk/server';
 import { createServer } from 'node:http';

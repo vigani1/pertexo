@@ -3,8 +3,8 @@ import { randomUUID } from 'node:crypto';
 import type { Redis } from 'ioredis';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import type { RedisRateLimitRuntime } from '@pertexo/rate-limit';
-import type { RateLimitDecision } from '@pertexo/rate-limit';
+import type { RedisRateLimitRuntime } from '@pertexo/rate-limit/server';
+import type { RateLimitDecision } from '@pertexo/rate-limit/server';
 import { assertIntegrationGateConfigured } from '../support/integration-gate.js';
 import type { FixtureRedisProxy } from './integration.fixture.js';
 import {

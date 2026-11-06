@@ -5,7 +5,7 @@ import { NodeExecutorFailure } from '@pertexo/node-sdk/server';
 import { createPlatformNodeRegistry } from '../../../src/providers/node-registry.js';
 import { createOutboxDispatcherDatabase } from '@pertexo/core/testing';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
-import { createQueueProducer, JOB_NAME } from '@pertexo/queue';
+import { createQueueProducer, JOB_NAME } from '@pertexo/queue/server';
 import { createMaintenanceRuntime } from '../../../src/maintenance/maintenance.runtime.js';
 import { OutboxDispatcher } from '../../../src/transport/outbox/dispatch/outbox-dispatcher.runtime.js';
 import { WorkerDrainState } from '../../../src/runtime/shutdown/drain-state.js';

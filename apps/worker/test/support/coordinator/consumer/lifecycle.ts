@@ -5,7 +5,7 @@ import {
   parseMigrationConfig,
 } from '@pertexo/database/testing';
 
-import { QUEUE_NAME } from '@pertexo/queue';
+import { QUEUE_NAME } from '@pertexo/queue/server';
 import { Queue } from 'bullmq';
 import { Pool } from 'pg';
 import { seedCoordinatorWorkflowFixtures } from '../workflows.js';

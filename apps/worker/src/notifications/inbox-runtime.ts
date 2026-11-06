@@ -2,7 +2,7 @@ import type {
   WorkspaceInboxChange,
   WorkspaceInboxFoldStore,
 } from '@pertexo/core/inbox';
-import type { WorkspaceInboxHintPublisher } from '@pertexo/queue';
+import type { WorkspaceInboxHintPublisher } from '@pertexo/queue/server';
 
 import {
   createPollingRuntime,

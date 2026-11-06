@@ -2,7 +2,7 @@ import { createSystemMailClient } from '../../src/mail/system-mail-client.js';
 import type { WorkspaceInvitationDeliveryStore } from '@pertexo/core/tenant-access';
 
 import type { SystemMailClient } from '@pertexo/secrets/server';
-import { JOB_NAME, type QueueHandlerContext } from '@pertexo/queue';
+import { JOB_NAME, type QueueHandlerContext } from '@pertexo/queue/server';
 import { describe, expect, it, vi } from 'vitest';
 
 import { createWorkspaceInvitationDeliveryHandler } from '../../src/identity/invitation-delivery.js';

@@ -3,7 +3,7 @@ import {
   CoordinatorDeliveryMismatchError,
 } from '@pertexo/core/testing';
 import { WorkflowEngineError } from '@pertexo/workflow-engine/server';
-import { createQueueConsumer } from '@pertexo/queue';
+import { createQueueConsumer } from '@pertexo/queue/server';
 
 const engineCodes = new Set([
   'checkpoint_invalid',

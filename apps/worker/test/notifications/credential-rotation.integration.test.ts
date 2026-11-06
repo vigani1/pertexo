@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { createNotificationDestinationStore } from '@pertexo/core/notifications';
 import { createFailureNotificationStore } from '@pertexo/core/testing';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
-import { JOB_NAME } from '@pertexo/queue';
+import { JOB_NAME } from '@pertexo/queue/server';
 import {
   SECURE_HTTP_ERROR_CODE,
   SecureHttpError,

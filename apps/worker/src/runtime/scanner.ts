@@ -1,4 +1,4 @@
-import type { QueueConsumer } from '@pertexo/queue';
+import type { QueueConsumer } from '@pertexo/queue/server';
 
 import { waitForSupervisorDelay } from './abortable-delay.js';
 import { boundedBackgroundTask } from './background-task-deadline.js';

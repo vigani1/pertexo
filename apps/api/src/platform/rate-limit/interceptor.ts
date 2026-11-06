@@ -9,7 +9,7 @@ import type { Observable } from 'rxjs';
 import type {
   RateLimitEndpointClass,
   RateLimitSubject,
-} from '@pertexo/rate-limit';
+} from '@pertexo/rate-limit/server';
 import {
   setResponseHeader,
   type HttpResponseLike,

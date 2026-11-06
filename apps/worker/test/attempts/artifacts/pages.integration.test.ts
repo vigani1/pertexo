@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   createArtifactStore,
   parseArtifactStoreConfig,
-} from '@pertexo/artifact-store';
+} from '@pertexo/artifact-store/server';
 import {
   createWorkspaceDatabase,
   artifacts as artifactsTable,

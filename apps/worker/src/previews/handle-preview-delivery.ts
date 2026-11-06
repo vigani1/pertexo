@@ -13,7 +13,7 @@ import {
 import type { CodeDiagnostics } from '@pertexo/node-sdk';
 import type { NodeExecutionRuntime } from '@pertexo/node-sdk/server';
 import { NodeDispatchEvidenceError } from '@pertexo/node-sdk/server';
-import type { QueueDelivery, QueueHandlerContext } from '@pertexo/queue';
+import type { QueueDelivery, QueueHandlerContext } from '@pertexo/queue/server';
 import type { NodeExecutionCapabilityFactories } from '../attempts/execution/capabilities.js';
 import { nodeExecutionOptionalFields } from '../attempts/execution/runtime-fields.js';
 import { parsePreviewFailure, previewDiagnostics } from './completion.js';

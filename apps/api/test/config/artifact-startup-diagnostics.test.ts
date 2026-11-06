@@ -1,4 +1,4 @@
-import { describeProcessFailure } from '@pertexo/observability';
+import { describeProcessFailure } from '@pertexo/observability/server';
 import { describe, expect, it } from 'vitest';
 
 import { parseApiConfig } from '../../src/platform/config/api.js';

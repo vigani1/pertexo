@@ -7,14 +7,14 @@ import {
   createTransportMetrics,
   type StructuredLogger,
   type TransportMetrics,
-} from '@pertexo/observability';
+} from '@pertexo/observability/server';
 import {
   createQueueProducer,
   JOB_NAME,
   type JobName,
   type QueueConsumerObserver,
   type QueueProducer,
-} from '@pertexo/queue';
+} from '@pertexo/queue/server';
 
 import type { WorkerConfig } from '../../config/worker.js';
 import { WorkerDrainState } from '../../runtime/shutdown/drain-state.js';

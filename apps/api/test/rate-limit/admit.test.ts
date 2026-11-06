@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import { AbuseRateLimitPolicy } from '@pertexo/rate-limit';
+import { AbuseRateLimitPolicy } from '@pertexo/rate-limit/server';
 import { describe, expect, it, vi } from 'vitest';
 
 import {

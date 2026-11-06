@@ -8,7 +8,7 @@ import {
   RunEventNotificationConfigurationError as RedisRunEventPublisherConfigurationError,
   RunEventNotificationPublishError as RedisRunEventPublishError,
   encodeRunEventReference,
-} from '@pertexo/queue';
+} from '@pertexo/queue/server';
 
 const WORKSPACE_ID = '11111111-1111-4111-8111-111111111111';
 const RUN_ID = '33333333-3333-4333-8333-333333333333';

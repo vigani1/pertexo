@@ -2,7 +2,7 @@ import { createTestArtifactScratch } from '../../infrastructure/artifact-scratch
 import { createEditorCodeRuntime } from '../code/runtime.js';
 
 import { createArtifactDestination } from '../../../attempts/artifacts/http-destination.js';
-import { parseArtifactStoreConfig } from '@pertexo/artifact-store';
+import { parseArtifactStoreConfig } from '@pertexo/artifact-store/server';
 
 import { createWorkerNodeRuntimeCapabilities } from '../../../../src/attempts/execution/runtime-capabilities.js';
 

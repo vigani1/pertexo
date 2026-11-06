@@ -1,4 +1,4 @@
-import { QUEUE_NAME } from '@pertexo/queue';
+import { QUEUE_NAME } from '@pertexo/queue/server';
 
 import { RECOVERY_LIMIT_MS } from '../environment.js';
 import { delay, waitForRunsToEnd } from '../facts.js';

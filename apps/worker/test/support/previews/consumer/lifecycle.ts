@@ -15,7 +15,7 @@ import {
   composeExecutableCatalog,
 } from '@pertexo/workflow-engine/server';
 import { Queue } from 'bullmq';
-import { QUEUE_NAME } from '@pertexo/queue';
+import { QUEUE_NAME } from '@pertexo/queue/server';
 import {
   workerTransportIntegrationEnabled,
   adminUrl,

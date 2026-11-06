@@ -3,7 +3,11 @@ import { randomUUID } from 'node:crypto';
 import { createPreviewAttemptRunStore } from '@pertexo/core/previews';
 import { createOutboxDispatcherDatabase } from '@pertexo/core/testing';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
-import { createQueueProducer, JOB_NAME, parseQueueJob } from '@pertexo/queue';
+import {
+  createQueueProducer,
+  JOB_NAME,
+  parseQueueJob,
+} from '@pertexo/queue/server';
 import { Queue } from 'bullmq';
 import { Redis } from 'ioredis';
 import { expect, it } from 'vitest';
