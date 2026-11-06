@@ -9,6 +9,36 @@ import {
 } from '../../src/values/expressions/policy.js';
 import { evaluators } from '../support/expression-owner.js';
 describe('restricted JSONata policy v1', () => {
+  it.each([
+    '1 / 0',
+    '-1 / 0',
+    '0 / 0',
+    '{"nested": [1 / 0]}',
+    '[{"nested": 0 / 0}]',
+  ])(
+    'refuses nonfinite numeric results before JSON IPC: %s',
+    async (expression) => {
+      const evaluator = new JsonataEvaluator();
+      evaluators.push(evaluator);
+      await expect(
+        evaluator.evaluate({
+          expression,
+          context: { runInput: null, nodeOutputs: {} },
+        }),
+      ).resolves.toMatchObject({
+        kind: 'error',
+        code: 'nonfinite_result',
+        message:
+          'The expression returned a nonfinite number. Reduce the numeric result or check for division by zero.',
+      });
+      await expect(
+        evaluator.evaluate({
+          expression: '[null, 42]',
+          context: { runInput: null, nodeOutputs: {} },
+        }),
+      ).resolves.toMatchObject({ kind: 'value', value: [null, 42] });
+    },
+  );
   it('keeps the pinned JSONata AST contract behind the policy boundary', () => {
     expect(JSONATA_EVALUATOR_DIAGNOSTICS.libraryVersion).toBe('2.2.2');
     expect(jsonata('runInput.name').ast()).toMatchObject({

@@ -80,7 +80,7 @@ export async function resolveMappedNodeInput(
         'attempt_invalid',
         'mapping selected source failure is incomplete',
       );
-    const resolution = await resolveMappingValue(source, {
+    const resolution = await resolveMappingValue(key, source, {
       runInput,
       completedOutputs,
       directUpstream,
@@ -159,6 +159,7 @@ export async function resolveSingleNodePreviewInput(
 }
 
 async function resolveMappingValue(
+  mappingKey: string,
   source: ValueSource,
   {
     runInput,
@@ -196,14 +197,23 @@ async function resolveMappingValue(
     (resolution.expression?.code === 'canceled' || signal.aborted);
   if (mappingCanceled)
     operationError('attempt_aborted', 'node attempt was aborted');
-  if (resolution.kind === 'error') refuseMapping(resolution);
+  if (resolution.kind === 'error') refuseMapping(mappingKey, resolution);
   return resolution;
 }
 
 function refuseMapping(
+  mappingKey: string,
   resolution: Extract<ValueResolution, { kind: 'error' }>,
 ): never {
   const { expression } = resolution;
+  if (expression?.code === 'nonfinite_result')
+    throw new NodeExecutorFailure({
+      kind: 'failed',
+      errorKind: 'configuration',
+      possiblyDispatched: false,
+      safeErrorCode: 'execution.expression_failed',
+      errorSummary: `Expression for field "${mappingKey}" returned a nonfinite number. Reduce the numeric result or check for division by zero.`,
+    });
   if (expression !== undefined && isTemporaryExpressionFailure(expression))
     // A busy host says nothing about the step's inputs: another try can work.
     throw new NodeExecutorFailure({

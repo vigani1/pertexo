@@ -78,6 +78,14 @@ function outcomeFromMessage(
           'output_bytes',
         ),
       };
+    case 'nonfinite_result':
+      return {
+        reusable: true,
+        result: expressionError(
+          'nonfinite_result',
+          'The expression returned a nonfinite number. Reduce the numeric result or check for division by zero.',
+        ),
+      };
     case 'failed':
       return {
         reusable: true,

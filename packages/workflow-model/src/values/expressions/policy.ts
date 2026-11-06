@@ -67,6 +67,7 @@ export type ExpressionResult =
         | 'timed_out'
         | 'canceled'
         | 'evaluation_failed'
+        | 'nonfinite_result'
         | 'unavailable'
         | 'variable_missing'
         | 'callback_unavailable';
