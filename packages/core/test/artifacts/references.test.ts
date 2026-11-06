@@ -56,17 +56,10 @@ describe('durable artifact references', () => {
       }),
     ).toEqual([reference, reference]);
   });
-  it('does not authorize incidental artifact IDs', async () => {
-    const query = vi.fn();
-    await lockArtifactReferences(
-      { query } as never,
-      workspaceId,
-      {
-        artifactId: reference.artifactId,
-      },
-      workspaceId,
-    );
-    expect(query).not.toHaveBeenCalled();
+  it('ignores incidental artifact IDs while collecting descriptors', () => {
+    expect(
+      collectArtifactReferences({ artifactId: reference.artifactId }),
+    ).toEqual([]);
   });
   it('accepts exact metadata and rejects absent, mismatched or preview-owned authoring references', async () => {
     const query = vi.fn().mockResolvedValue({ rows: [row()] });
