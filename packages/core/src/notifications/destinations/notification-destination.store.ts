@@ -7,6 +7,7 @@ import {
   ACTIVE_WORKSPACE_STATUSES,
   BROWSABLE_WORKSPACE_STATUSES,
   type AuthorizationCapability,
+  type Role,
   type WorkspaceStatusList,
 } from '@pertexo/policy';
 import type { PoolClient } from 'pg';
@@ -31,7 +32,7 @@ import type {
   SetWorkflowPolicyInput,
   WorkflowPolicyInput,
 } from './notification-destination.types.js';
-import { destinationError } from './command.js';
+import { FailureNotificationDestinationError } from './notification-destination.errors.js';
 import {
   appendDestinationVersion,
   createDestination,
@@ -57,7 +58,7 @@ export function createNotificationDestinationStore(
     input: CommandMetadata,
     capability: AuthorizationCapability,
     statuses: WorkspaceStatusList,
-    work: (client: PoolClient) => Promise<T>,
+    work: (client: PoolClient, role: Role) => Promise<T>,
   ): Promise<T> => {
     const actor: WorkspaceActor = {
       workspaceId: input.workspaceId,
@@ -72,22 +73,25 @@ export function createNotificationDestinationStore(
       );
     } catch (error) {
       if (error instanceof WorkspaceAccessDeniedError)
-        throw destinationError('not_found', 'Destination is not visible');
+        throw new FailureNotificationDestinationError(
+          'not_found',
+          'Destination is not visible',
+        );
       throw error;
     }
   };
   /** Where alerts go is an owner's or admin's decision. */
   const manage = <T>(
     input: CommandMetadata,
-    work: (client: PoolClient) => Promise<T>,
+    work: (client: PoolClient, role: Role) => Promise<T>,
   ) => access(input, 'governance:manage', ACTIVE_WORKSPACE_STATUSES, work);
   const browse = <T>(
     input: CommandMetadata,
-    work: (client: PoolClient) => Promise<T>,
+    work: (client: PoolClient, role: Role) => Promise<T>,
   ) => access(input, 'workflow:update', BROWSABLE_WORKSPACE_STATUSES, work);
   const edit = <T>(
     input: CommandMetadata,
-    work: (client: PoolClient) => Promise<T>,
+    work: (client: PoolClient, role: Role) => Promise<T>,
   ) => access(input, 'workflow:update', ACTIVE_WORKSPACE_STATUSES, work);
   return Object.freeze({
     create: (input: CreateDestinationInput) =>
@@ -109,11 +113,11 @@ export function createNotificationDestinationStore(
     setStatus: (input: SetDestinationStatusInput) =>
       manage(input, (client) => setDestinationStatus(client, input)),
     setWorkflowPolicy: (input: SetWorkflowPolicyInput) =>
-      edit(input, (client) => setWorkflowPolicy(client, input)),
+      edit(input, (client, role) => setWorkflowPolicy(client, input, role)),
     clearWorkflowPolicy: (input: ClearWorkflowPolicyInput) =>
-      edit(input, (client) => clearWorkflowPolicy(client, input)),
+      edit(input, (client, role) => clearWorkflowPolicy(client, input, role)),
     getWorkflowPolicy: (input: WorkflowPolicyInput) =>
-      browse(input, (client) => readWorkflowPolicy(client, input)),
+      browse(input, (client, role) => readWorkflowPolicy(client, input, role)),
     close: () => lease.close(),
   });
 }

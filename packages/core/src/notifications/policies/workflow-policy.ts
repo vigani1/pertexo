@@ -1,3 +1,4 @@
+import { FailureNotificationDestinationError } from '../destinations/notification-destination.errors.js';
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { alias } from 'drizzle-orm/pg-core';
@@ -8,13 +9,14 @@ import {
   workflowFailureNotificationPolicies as policy,
 } from '@pertexo/database/schema';
 import type { PoolClient } from 'pg';
-import { authorizeWorkflowResource } from '../../shared/resources/workflow-authority.repository.js';
+import type { Role } from '@pertexo/policy';
+import { readFolderScope } from '../../shared/folder-access-facts.repository.js';
+import { workflowAccessible } from '../../shared/resources/workflow-access.repository.js';
 
 import {
   audit,
   claimNotificationCommand,
   completeNotificationCommand,
-  destinationError,
 } from '../destinations/command.js';
 import type {
   ClearWorkflowPolicyInput,
@@ -31,16 +33,24 @@ import { readFailureNotificationDestination } from '../destinations/notification
 export async function setWorkflowPolicy(
   client: PoolClient,
   input: SetWorkflowPolicyInput,
+  role: Role,
 ): Promise<void> {
   const workflowId = input.workflowId;
   if (
-    !(await authorizeWorkflowResource(
+    !(await workflowAccessible(
       client,
-      { ...input, workflowId },
-      { capability: 'workflow:update', locking: true },
+      await readFolderScope(client, input, role),
+      {
+        workspaceId: input.workspaceId,
+        workflowId,
+        capability: 'workflow:update',
+      },
     ))
   )
-    throw destinationError('not_found', 'Workflow is not visible');
+    throw new FailureNotificationDestinationError(
+      'not_found',
+      'Workflow is not visible',
+    );
   const operation = 'workflow.failure.notification.policy.set';
   const scope = `${input.actorId}:${workflowId}`;
   const replay = await claimNotificationCommand(client, input, {
@@ -94,7 +104,7 @@ export async function setWorkflowPolicy(
     .returning({ id: policy.workflowId })
     .catch(rethrowQueryFailure);
   if (result.length !== 1)
-    throw destinationError(
+    throw new FailureNotificationDestinationError(
       'not_found',
       'Workflow or destination is not visible',
     );
@@ -113,6 +123,7 @@ export async function setWorkflowPolicy(
 export async function clearWorkflowPolicy(
   client: PoolClient,
   input: ClearWorkflowPolicyInput,
+  role: Role,
 ): Promise<void> {
   const workflowId = input.workflowId;
   const db = drizzle(client);
@@ -130,13 +141,20 @@ export async function clearWorkflowPolicy(
   // A deleted workflow has no remaining authority to resurrect; only its null receipt may replay.
   if (
     existing.length === 1 &&
-    !(await authorizeWorkflowResource(
+    !(await workflowAccessible(
       client,
-      { ...input, workflowId },
-      { capability: 'workflow:update', locking: true },
+      await readFolderScope(client, input, role),
+      {
+        workspaceId: input.workspaceId,
+        workflowId,
+        capability: 'workflow:update',
+      },
     ))
   )
-    throw destinationError('not_found', 'Workflow is not visible');
+    throw new FailureNotificationDestinationError(
+      'not_found',
+      'Workflow is not visible',
+    );
   const operation = 'workflow.failure.notification.policy.clear';
   const scope = `${input.actorId}:${workflowId}`;
   const replay = await claimNotificationCommand(client, input, {
@@ -146,7 +164,10 @@ export async function clearWorkflowPolicy(
   });
   if (replay.kind === 'replay') return;
   if (existing.length !== 1)
-    throw destinationError('not_found', 'Workflow is not visible');
+    throw new FailureNotificationDestinationError(
+      'not_found',
+      'Workflow is not visible',
+    );
   const result = await db
     .delete(policy)
     .where(
@@ -178,16 +199,24 @@ export async function clearWorkflowPolicy(
 export async function readWorkflowPolicy(
   client: PoolClient,
   input: WorkflowPolicyInput,
+  role: Role,
 ): Promise<FailureNotificationDestinationRecord | null> {
   const workflowId = input.workflowId;
   if (
-    !(await authorizeWorkflowResource(
+    !(await workflowAccessible(
       client,
-      { ...input, workflowId },
-      { capability: 'workflow:read', locking: true, browsing: true },
+      await readFolderScope(client, input, role),
+      {
+        workspaceId: input.workspaceId,
+        workflowId,
+        capability: 'workflow:read',
+      },
     ))
   )
-    throw destinationError('not_found', 'Workflow is not visible');
+    throw new FailureNotificationDestinationError(
+      'not_found',
+      'Workflow is not visible',
+    );
   const [row] = await drizzle(client)
     .select({ destinationId: policy.destinationId })
     .from(workflows)
@@ -206,7 +235,10 @@ export async function readWorkflowPolicy(
     )
     .catch(rethrowQueryFailure);
   if (row === undefined)
-    throw destinationError('not_found', 'Workflow is not visible');
+    throw new FailureNotificationDestinationError(
+      'not_found',
+      'Workflow is not visible',
+    );
   const destinationId = row.destinationId;
   return destinationId === null
     ? null

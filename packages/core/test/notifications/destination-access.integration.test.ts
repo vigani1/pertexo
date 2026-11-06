@@ -287,6 +287,31 @@ describe('failure notification destinations by role', () => {
       expect(await storedPolicy(f.workflowId)).toBeUndefined();
     }));
 
+  it('keeps a restricted workflow policy hidden after using the fenced role', () =>
+    withFixture(async (f) => {
+      const builder = await f.member('builder');
+      const destinationId = await f.createDestination();
+      await policyWrites(f, f.owner, destinationId).setWorkflowPolicy();
+      const folderId = randomUUID();
+      await db.asAdmin(
+        "insert into app.workflow_folders(id,workspace_id,name,name_key,access_mode) values($1,$2,'Private','private','restricted')",
+        [folderId, f.workspaceId],
+      );
+      await db.asAdmin(
+        'insert into app.workflow_organization_state(workspace_id,workflow_id,folder_id) values($1,$2,$3) on conflict(workspace_id,workflow_id) do update set folder_id=excluded.folder_id',
+        [f.workspaceId, f.workflowId, folderId],
+      );
+      for (const operation of [
+        ...Object.values(policyWrites(f, builder, destinationId)),
+        reads(f, builder, destinationId).getWorkflowPolicy,
+      ])
+        await expectNotFound(operation);
+      expect(await storedPolicy(f.workflowId)).toBe(destinationId);
+      await expect(
+        reads(f, f.owner, destinationId).getWorkflowPolicy(),
+      ).resolves.toMatchObject({ id: destinationId });
+    }));
+
   it('refuses a removed member everything as not found', () =>
     withFixture(async (f) => {
       const removed = await f.member('admin', 'removed');

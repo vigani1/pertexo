@@ -1,3 +1,4 @@
+import { FailureNotificationDestinationError } from './notification-destination.errors.js';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import {
   connections,
@@ -14,7 +15,6 @@ import {
   audit,
   claimNotificationCommand,
   completeNotificationCommand,
-  destinationError,
 } from './command.js';
 import type {
   AppendDestinationVersionInput,
@@ -130,7 +130,10 @@ export async function appendDestinationVersion(
     current.currentVersion !== input.expectedVersion ||
     current.kind !== config.kind
   )
-    throw destinationError('conflict', 'Destination version conflict');
+    throw new FailureNotificationDestinationError(
+      'conflict',
+      'Destination version conflict',
+    );
   await assertConnection(client, input.workspaceId, config);
   const next = current.currentVersion + 1;
   await insertVersion(client, {
@@ -247,7 +250,10 @@ async function assertConnection(
     .for('share')
     .catch(rethrowQueryFailure);
   if (result.length !== 1)
-    throw destinationError('not_found', 'Connection is not visible');
+    throw new FailureNotificationDestinationError(
+      'not_found',
+      'Connection is not visible',
+    );
 }
 
 async function insertVersion(

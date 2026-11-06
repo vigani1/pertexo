@@ -11,19 +11,9 @@ import type {
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
 
-import {
-  FailureNotificationDestinationError,
-  type FailureNotificationDestinationErrorCode,
-} from './notification-destination.errors.js';
+import { FailureNotificationDestinationError } from './notification-destination.errors.js';
 
 /* Idempotency and audit steps shared by the destination commands and the workflow policy. */
-
-export function destinationError(
-  code: FailureNotificationDestinationErrorCode,
-  message: string,
-): FailureNotificationDestinationError {
-  return new FailureNotificationDestinationError(code, message);
-}
 
 const replaySchema = z
   .object({
@@ -61,7 +51,7 @@ export async function claimNotificationCommand(
     requestHash: input.requestHash,
     resourceId,
     conflict: () =>
-      destinationError(
+      new FailureNotificationDestinationError(
         'idempotency_conflict',
         'Idempotency key request mismatch',
       ),
