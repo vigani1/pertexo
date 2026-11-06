@@ -10,7 +10,7 @@ import {
   nodeTestingDependencies,
   nodeTestingDraft,
   nodeTestingIds,
-} from './fixture.js';
+} from './node-testing.fixture.js';
 
 describe('node testing Nest module', () => {
   it('forwards the registered evaluator through the resolved use case', async () => {

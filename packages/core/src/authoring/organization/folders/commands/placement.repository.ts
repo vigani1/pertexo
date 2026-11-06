@@ -14,7 +14,7 @@ import type {
   ReviewMoveInput,
   WorkflowFolderPlacementResult,
 } from '../workflow-folder.types.js';
-import { placementResult } from '../input.js';
+import { placementResult } from '../folder-receipts.schemas.js';
 
 export function reviewFolderMove(
   session: ReturnType<typeof createOrganizationSession>,

@@ -6,7 +6,7 @@ import {
   fixture,
   parseResponse,
   signedPut,
-} from './transfer/fixture.js';
+} from './artifact-transfer.fixture.js';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { CORE_NODE_CATALOG } from '@pertexo/nodes-core';
 import {

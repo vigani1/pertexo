@@ -2,7 +2,7 @@ import type { RunArtifactRetentionProcessResult } from './artifact-retention.typ
 import {
   optionsSchema,
   type RunArtifactRetentionCoordinatorOptions,
-} from './input.js';
+} from './artifact-retention-options.schemas.js';
 import { eraseArtifact, type RetentionArtifactStore } from './erase.js';
 import { and, asc, eq, isNull, lte, notExists, or, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';

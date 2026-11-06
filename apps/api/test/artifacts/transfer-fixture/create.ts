@@ -29,7 +29,7 @@ import type {
   ArtifactFixtureRole,
   VerificationStore,
   ArtifactTransferApiFixture,
-} from './contract.js';
+} from './artifact-transfer-fixture.types.js';
 import { createFixtureLogCapture, telemetry } from './logging.js';
 import { resolveIdentity } from './http.js';
 import { artifactApiConfig, artifactStoreConfig } from './settings.js';

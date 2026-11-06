@@ -11,7 +11,7 @@ import {
   idleErrorWorkflows,
   maintenanceRuntime,
   idleStores,
-} from './reconciliation/fixture.js';
+} from './reconciliation.fixture.js';
 import { testMaintenanceRuntime } from '../support/runtime-factories.js';
 import { JOB_NAME, type QueueConsumerOptions } from '@pertexo/queue';
 import {

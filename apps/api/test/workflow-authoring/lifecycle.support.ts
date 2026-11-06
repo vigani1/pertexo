@@ -8,7 +8,7 @@ export {
   type WorkflowHistory,
   type WorkflowLifecycleState,
   type WorkflowLifecycleApiFixture,
-} from './lifecycle-fixture/contract.js';
+} from './lifecycle-fixture/workflow-lifecycle-fixture.types.js';
 export {
   createWorkflowLifecycleApiFixture,
   closeWorkflowLifecycleApiFixture,

@@ -17,7 +17,7 @@ import {
   setup,
   workflowId,
   workspaceId,
-} from './controller/fixture.js';
+} from './batch-http.fixture.js';
 
 afterEach(cleanAppsApiTestWorkflowAuthoringOrganizationControllerTestTsFixture);
 describe('folder and batch HTTP routes with controlled session/persistence', () => {

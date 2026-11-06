@@ -26,7 +26,7 @@ import {
   PURGED,
   summary,
   untilIdle,
-} from './retention-runs/fixture.js';
+} from './retention-runs.fixture.js';
 
 describe('run retention windows', () => {
   it('removes every detail of a run a minute past 30 days and then marks it purged, keeping the summary', async () => {

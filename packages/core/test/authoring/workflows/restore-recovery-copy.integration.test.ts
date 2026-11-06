@@ -13,7 +13,7 @@ import {
   createRestoreFixture,
   restoreInput,
   graphWithDuration,
-} from './version-restore/fixture.js';
+} from './version-restore.fixture.js';
 import {
   openWorld,
   closeWorld,

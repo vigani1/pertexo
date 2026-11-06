@@ -4,8 +4,8 @@ import { withTenantScopedClient } from '@pertexo/database/primitives';
 import { readCapacitySnapshot } from '../../../src/runs/queries/usage/capacity.repository.js';
 
 import { apiUrl, maintenanceUrl } from '../../lifecycle/retention.support.js';
-import type { createFamily } from '../../lifecycle/calls/fixtures.js';
-import { admin, insertHint } from '../../lifecycle/calls/fixtures.js';
+import type { createFamily } from '../../lifecycle/calls/calls.fixture.js';
+import { admin, insertHint } from '../../lifecycle/calls/calls.fixture.js';
 
 type Family = Awaited<ReturnType<typeof createFamily>>;
 

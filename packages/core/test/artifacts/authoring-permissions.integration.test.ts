@@ -28,11 +28,11 @@ import {
   command as importCommand,
   database as importDatabase,
   portableCatalog,
-} from '../authoring/workflows/portability/fixture.js';
+} from '../authoring/workflows/portability.fixture.js';
 import {
   fixture as sampleWorkflow,
   testIntent,
-} from '../authoring/samples/support.js';
+} from '../authoring/samples/step-sample.fixture.js';
 
 beforeAll(beforeAllFixture1, 60_000);
 afterAll(afterAllFixture2);

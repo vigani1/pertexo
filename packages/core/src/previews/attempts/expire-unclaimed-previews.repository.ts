@@ -5,9 +5,9 @@ import { previewRuns, previewAttempts } from '@pertexo/database/schema';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { lockWorkspaceRunAdmission } from '../../shared/workspace-fence.repository.js';
 import { isStoredDataError } from '../../shared/stored-values.js';
-import { loadPreviewLease } from './claim/state.repository.js';
+import { loadPreviewLease } from './preview-claim.repository.js';
 import { appendPreviewTerminalFacts } from './facts.repository.js';
-import { UNFINISHED_PREVIEW_STATUSES } from '../state.js';
+import { UNFINISHED_PREVIEW_STATUSES } from '../preview-state.js';
 
 /** Maintenance decides expired work even when no delivery ever claimed it. */
 export async function expireUnclaimedPreview(client: PoolClient) {

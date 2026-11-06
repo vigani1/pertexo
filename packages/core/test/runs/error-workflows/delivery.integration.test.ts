@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createAuthoringAccess } from '../../../src/authoring/workflows/access.js';
-import { admin, insertHint } from '../../lifecycle/calls/fixtures.js';
+import { admin, insertHint } from '../../lifecycle/calls/calls.fixture.js';
 import {
   createWorkflowErrorStore,
   WorkflowErrorSettingsConflictError,

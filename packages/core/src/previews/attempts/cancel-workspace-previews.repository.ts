@@ -3,7 +3,7 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
 import { previewAttempts, previewRuns } from '@pertexo/database/schema';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
-import { UNFINISHED_PREVIEW_STATUSES } from '../state.js';
+import { UNFINISHED_PREVIEW_STATUSES } from '../preview-state.js';
 import { appendPreviewTerminalFacts } from './facts.repository.js';
 
 /** Caller holds the workspace exclusively; dispatched effects keep their outcome. */

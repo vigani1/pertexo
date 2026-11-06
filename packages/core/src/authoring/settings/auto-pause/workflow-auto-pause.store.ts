@@ -42,7 +42,7 @@ import {
   workflowProjection,
   workflowSettingsOf,
   workspaceProjection,
-} from './state.repository.js';
+} from './auto-pause-state.repository.js';
 
 const EDITORS: readonly Role[] = WORKFLOW_EDITOR_ROLES;
 

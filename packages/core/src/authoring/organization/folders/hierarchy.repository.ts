@@ -11,7 +11,7 @@ import { WorkflowNotFoundError } from '../../workflows/workflow-authoring.errors
 import { WorkflowFolderConflictError } from '../workflow-organization.errors.js';
 
 import type { WorkflowFolderRecord } from './workflow-folder.types.js';
-import { nameKey } from './input.js';
+import { nameKey } from './folder-receipts.schemas.js';
 
 export const folderProjection = {
   id: workflowFolders.id,

@@ -1,4 +1,4 @@
-import type { PREVIEW_STATUS } from '../state.js';
+import type { PREVIEW_STATUS } from '../preview-state.js';
 import type {
   PreviewDelivery,
   PreviewSideEffectClass,

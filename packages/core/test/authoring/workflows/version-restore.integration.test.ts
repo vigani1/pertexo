@@ -34,7 +34,7 @@ import {
   persistedRun,
   blockedDefinitionCatalog,
   currentDefinitionCatalog,
-} from './version-restore/fixture.js';
+} from './version-restore.fixture.js';
 
 describe('workflow version restoration persistence', () => {
   it('copies the exact retained graph, advances once, audits identity, preserves history, and rejects retry', async () => {

@@ -35,7 +35,7 @@ import {
   identity,
   purgeTestWorkspace,
 } from '../../support/workflow-authoring.js';
-import { source, command, facts, commandFacts } from './duplication/fixture.js';
+import { source, command, facts, commandFacts } from './duplication.fixture.js';
 import { WorkflowDefinitionPlacementError } from '../../../src/authoring/workflows/workflow-authoring.errors.js';
 
 describe('same-workspace workflow duplication through the runtime database role', () => {

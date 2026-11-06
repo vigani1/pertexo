@@ -19,7 +19,7 @@ import {
   mayHaveDispatchedUnsafely,
   TERMINAL_PREVIEW_STATUSES,
   UNFINISHED_PREVIEW_STATUSES,
-} from '../state.js';
+} from '../preview-state.js';
 import {
   auditingDeliveryMismatch,
   claimPreviewReceipt,
@@ -32,7 +32,7 @@ import { appendPreviewTerminalFacts } from './facts.repository.js';
 import {
   loadPreviewLease,
   lockPreviewClaimState,
-} from './claim/state.repository.js';
+} from './preview-claim.repository.js';
 
 async function terminalizeExpiredPreview(
   client: PoolClient,

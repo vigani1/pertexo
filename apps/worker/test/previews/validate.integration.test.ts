@@ -2,7 +2,7 @@ import {
   describeIntegration,
   validateConfigInput,
   createValidateRuntime,
-} from './validate/fixture.js';
+} from './preview-envelope.fixture.js';
 import { parseStoredExecutionValue } from '@pertexo/core/runs';
 import {
   CORE_VALIDATE_CONFIG_SCHEMA,

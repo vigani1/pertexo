@@ -9,7 +9,7 @@ import { In, Route } from '../../workspaces/http/route.js';
 import { requestHeaderValue } from '../../platform/http/request-headers.js';
 
 import { withWorkflowOrganizationRequest } from '../organization/http.js';
-import { WorkflowOrganizationReadsUseCase } from '../organization/reads.js';
+import { WorkflowOrganizationReadsUseCase } from '../organization/organization-reads.service.js';
 
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
 import { singleRequestHeader } from '../../platform/http/request-headers.js';

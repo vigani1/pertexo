@@ -1,6 +1,6 @@
 import { randomBytes, randomUUID } from 'node:crypto';
 
-import { admin } from '../../../lifecycle/calls/fixtures.js';
+import { admin } from '../../../lifecycle/calls/calls.fixture.js';
 import type { fixture } from './admission.fixture.js';
 import { store } from './admission.fixture.js';
 

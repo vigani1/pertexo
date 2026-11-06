@@ -11,7 +11,7 @@ import {
   command,
   runs,
   workspaceDatabase,
-} from './admission/fixture.js';
+} from './admission.fixture.js';
 import {
   IdempotencyConflictError,
   parseDatabaseConfig,

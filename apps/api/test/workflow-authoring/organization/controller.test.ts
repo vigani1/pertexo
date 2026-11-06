@@ -15,7 +15,7 @@ import {
   tagId,
   tagResult,
   workspaceId,
-} from './controller/fixture.js';
+} from './organization-http.fixture.js';
 
 function deniedRouteStatus(name: string) {
   return name === 'replaceTags' ? 404 : 403;

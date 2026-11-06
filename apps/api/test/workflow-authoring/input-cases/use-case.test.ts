@@ -24,7 +24,7 @@ import {
   representationTag,
   result,
   fixture,
-} from './use-case/fixture.js';
+} from './input-cases-service.fixture.js';
 import { toProblem } from '../../../src/problems/registry.js';
 import { WorkflowInputCasesUseCase } from '../../../src/workflow-authoring/input-cases/workflow-input-cases.service.js';
 import { WORKSPACE_AUTHORIZATION } from '../../../src/workspaces/tokens.js';

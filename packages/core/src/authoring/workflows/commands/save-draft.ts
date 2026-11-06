@@ -7,7 +7,7 @@ import { lockArtifactReferences } from '../../../artifacts/references/locks.repo
 import { workflowDrafts, workflows } from '@pertexo/database/schema';
 import { requireWorkflowCallTargets } from '../../../shared/resources/workflow-call-bindings.repository.js';
 import { requireConnectionBindings } from '../../../shared/resources/connection-bindings.repository.js';
-import { pruneStepSamples } from '../../step-samples/records.repository.js';
+import { pruneStepSamples } from '../../step-samples/step-sample-state.repository.js';
 
 import type { AuthoringCatalogs } from '../catalogs.js';
 import type { SaveWorkflowDraftInput } from '../workflow-commands.types.js';

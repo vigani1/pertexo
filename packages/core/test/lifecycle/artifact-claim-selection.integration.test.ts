@@ -13,7 +13,7 @@ import {
   insertExpiredPendingUserUpload,
   readCapacity,
   withOwnerTransaction,
-} from './retention-artifacts/fixture.js';
+} from './retention-artifacts.fixture.js';
 
 beforeEach(beforeEachFixture1);
 const store = {

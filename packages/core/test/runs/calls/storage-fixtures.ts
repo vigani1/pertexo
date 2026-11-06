@@ -9,7 +9,7 @@ import {
   createFamily,
   inline,
   insertHint,
-} from '../../lifecycle/calls/fixtures.js';
+} from '../../lifecycle/calls/calls.fixture.js';
 import { randomUUID } from '../../lifecycle/retention.support.js';
 
 export async function declarationFixture(

@@ -7,7 +7,7 @@ import {
   fixture,
   requestMetadata,
   uploadUrl,
-} from './transfer/fixture.js';
+} from './artifact-transfer.fixture.js';
 import { mutationHeaders } from './transfer.support.js';
 
 integrationDescribe('stored upload receipt failures over HTTP', () => {

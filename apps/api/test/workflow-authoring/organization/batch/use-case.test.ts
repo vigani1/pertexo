@@ -28,7 +28,7 @@ import {
   tagId,
   updated,
   workspaceId,
-} from './use-case/fixture.js';
+} from './batch-service.fixture.js';
 
 describe('workflow organization full-parent batch orchestration', () => {
   it('normalizes the full parent without reordering selection and passes the same identity to admission and every item', async () => {

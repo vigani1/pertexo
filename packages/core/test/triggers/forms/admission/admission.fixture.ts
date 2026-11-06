@@ -12,7 +12,7 @@ import { formConfigSchema, type WorkflowGraph } from '@pertexo/workflow-model';
 import { createFormStore } from '../../../../src/triggers/forms/form.store.js';
 
 import { parseDatabaseConfig } from '@pertexo/database/platform';
-import { admin, createFamily } from '../../../lifecycle/calls/fixtures.js';
+import { admin, createFamily } from '../../../lifecycle/calls/calls.fixture.js';
 import { apiUrl, userId } from '../../../lifecycle/retention.support.js';
 
 export let store: ReturnType<typeof createFormStore>;

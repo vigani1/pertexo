@@ -9,7 +9,7 @@ import {
   portableCatalog,
   inputForPreview,
   importReceipts,
-} from './portability/fixture.js';
+} from './portability.fixture.js';
 import { workflowDefinitionCatalogFingerprint } from '@pertexo/workflow-model/server';
 import { CURATED_WORKFLOW_TEMPLATES } from '@pertexo/templates';
 import {

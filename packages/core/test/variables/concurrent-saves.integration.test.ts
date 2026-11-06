@@ -6,7 +6,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { WorkspaceVariablesConflictError } from '../../src/variables/workspace-variables.js';
 import { createWorkspaceVariablesStore } from '../../src/variables/workspace-variables.store.js';
 
-import { admin } from '../lifecycle/calls/fixtures.js';
+import { admin } from '../lifecycle/calls/calls.fixture.js';
 import { apiUrl, withApplicationName } from '../lifecycle/retention.support.js';
 import { waitForApplicationLock } from '../support/postgres/lock-coordination.js';
 import {

@@ -16,7 +16,7 @@ import {
   workflowId,
   apiPool,
   workerPool,
-} from './base.js';
+} from './preview-worker-database.fixture.js';
 
 let fixtureSequence = 0;
 

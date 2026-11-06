@@ -4,7 +4,7 @@ import {
   afterAllFixture2,
   database,
   fixture,
-} from './input-cases/fixture.js';
+} from './input-cases.fixture.js';
 import {
   WorkflowInputCaseLimitError,
   WorkflowInputCaseRevisionConflictError,

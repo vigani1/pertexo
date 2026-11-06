@@ -18,7 +18,7 @@ import {
   resetFixture,
   workflowA,
   workspaceA,
-} from './fixture.js';
+} from './execution.fixture.js';
 
 beforeAll(beforeAllFixture1);
 beforeEach(resetFixture);

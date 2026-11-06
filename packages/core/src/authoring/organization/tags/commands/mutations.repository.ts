@@ -27,13 +27,17 @@ import type {
   WorkflowTagDeleteResult,
   WorkflowTagReplaceResult,
 } from '../workflow-tag.types.js';
-import { assignment, deleteResult, replaceResult } from '../input.js';
+import {
+  assignment,
+  deleteResult,
+  replaceResult,
+} from '../tag-receipts.schemas.js';
 import {
   readTag,
   requireFreeKey,
   requireRevision,
   tagProjection,
-} from '../state.repository.js';
+} from '../tag-state.repository.js';
 import { assignmentCommand, tagCommand } from './receipts.js';
 
 /** Detaches a tag from at most 50 workflows, advancing each one's revision. */

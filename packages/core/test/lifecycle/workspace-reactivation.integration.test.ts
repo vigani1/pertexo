@@ -14,7 +14,7 @@ import {
   scheduleTriggerId,
   workflowId,
   workspaceId,
-} from './workspace-deletion/fixture.js';
+} from './workspace-deletion/workspace-deletion.fixture.js';
 
 // Widened by the reactivation change; `never` keeps this typed before and after.
 const REACTIVATED = 'reactivated' as never;

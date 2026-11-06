@@ -10,7 +10,7 @@ import {
   published,
   connection,
   promote,
-} from './bindings/fixture.js';
+} from './bindings.fixture.js';
 import { randomUUID } from 'node:crypto';
 import {
   actorId,

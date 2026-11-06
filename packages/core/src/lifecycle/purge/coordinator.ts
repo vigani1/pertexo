@@ -21,7 +21,10 @@ import type {
   WorkspacePurgeObjectStore,
   WorkspacePurgeProcessResult,
 } from './workspace-purge.types.js';
-import { optionsSchema, type WorkspacePurgeOptions } from './input.js';
+import {
+  optionsSchema,
+  type WorkspacePurgeOptions,
+} from './workspace-purge-options.schemas.js';
 import { PURGE_PRESERVED_TABLES, PURGE_STEPS } from './steps.js';
 
 /** Fails if a workspace table still holds the purged workspace's rows. */

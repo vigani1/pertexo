@@ -6,7 +6,7 @@ import { createRunAdvanceStore } from '../../../src/runs/advance/run-advance.sto
 import { createWorkflowCallStore } from '../../../src/runs/calls/workflow-call.store.js';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
 
-import { admin } from '../../lifecycle/calls/fixtures.js';
+import { admin } from '../../lifecycle/calls/calls.fixture.js';
 import { apiUrl, maintenanceUrl } from '../../lifecycle/retention.support.js';
 
 import { declarationFixture } from './storage-fixtures.js';

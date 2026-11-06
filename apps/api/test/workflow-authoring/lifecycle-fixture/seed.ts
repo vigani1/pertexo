@@ -5,7 +5,7 @@ import { testExecutableCompiler } from '@pertexo/core/testing';
 import type { Pool } from 'pg';
 import type { PoolClient } from 'pg';
 
-import type { LifecycleWorkflowIds } from './contract.js';
+import type { LifecycleWorkflowIds } from './workflow-lifecycle-fixture.types.js';
 import { withOwnerClient } from './database.js';
 
 export async function seedWorkflowRows(

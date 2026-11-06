@@ -75,7 +75,7 @@ export {
   createPendingArtifact,
   createPendingPreviewArtifact,
   finalizeArtifactUpload,
-} from './artifacts/records.repository.js';
+} from './artifacts/artifact-lifecycle.repository.js';
 export {
   readArtifactCapacity,
   readExecutionStorageCapacity,
@@ -212,9 +212,9 @@ export type {
   InboxConsumeResult,
   InboxMessage,
 } from './outbox/consume-message.js';
-export { isValidStoredExecutionOutput } from './previews/output.js';
+export { isValidStoredExecutionOutput } from './previews/preview-output.validation.js';
 export { PREVIEW_RETENTION_MAX_MS } from './previews/runs/acceptance/limits.js';
-export { PREVIEW_STATUS } from './previews/state.js';
+export { PREVIEW_STATUS } from './previews/preview-state.js';
 export { createNodeAttemptRunStore } from './attempts/node-attempt-run.store.js';
 export {
   NodeAttemptConnectionFenceError,

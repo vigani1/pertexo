@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { createFamily } from '../../lifecycle/calls/fixtures.js';
+import { createFamily } from '../../lifecycle/calls/calls.fixture.js';
 import { admin, store, sync, taskFixture } from './pending-tasks.fixture.js';
 
 it('releases a quiescent slot and pauses the execution budget for a seven-day task', async () => {

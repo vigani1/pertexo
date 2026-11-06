@@ -39,7 +39,7 @@ import {
   sessionId,
   draft,
   encodedCursor,
-} from './use-cases/fixture.js';
+} from './workflow-commands.fixture.js';
 import { RenameWorkflowUseCase } from '../../src/workflow-authoring/commands/rename.js';
 import type { WorkflowAuthoringPersistence } from '../../src/workflow-authoring/ports.js';
 

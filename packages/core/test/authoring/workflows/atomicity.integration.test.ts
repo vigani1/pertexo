@@ -23,7 +23,7 @@ import {
   workflowDraftRepresentationTag,
   workflowId,
 } from '../../support/workflow-authoring.js';
-import { publicationFacts } from './atomicity/fixture.js';
+import { publicationFacts } from './atomicity.fixture.js';
 
 describe('workflow publication atomicity', () => {
   it('rolls back every material publication step and locked-validator failure', async () => {

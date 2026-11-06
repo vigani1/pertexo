@@ -1,4 +1,4 @@
-import type * as TransferFixture from './transfer/fixture.js';
+import type * as TransferFixture from './artifact-transfer.fixture.js';
 import type { mutationHeaders as HeadersForMutation } from './transfer-fixture/http.js';
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -48,7 +48,7 @@ describe.skipIf(process.env.API_ARTIFACT_INTEGRATION !== 'true')(
         ownerRole: 'pertexo_owner',
       });
       ({ mutationHeaders } = await import('./transfer.support.js'));
-      transfer = await import('./transfer/fixture.js');
+      transfer = await import('./artifact-transfer.fixture.js');
       await transfer.prepareAuthenticatedArtifactTransferHTTPFixture();
     }, 60_000);
     afterAll(async () => {

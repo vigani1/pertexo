@@ -4,7 +4,7 @@ import {
   normalizeBeginInput,
   normalizeFinalizeInput,
   normalizeIdentity,
-} from '../../src/artifacts/uploads/input.js';
+} from '../../src/artifacts/uploads/normalize-upload-command.js';
 
 const actorId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const workspaceId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';

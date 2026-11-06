@@ -7,7 +7,7 @@ import {
   settings,
   reviews,
   request,
-} from './publication-review/fixture.js';
+} from './publication-review.fixture.js';
 import { randomUUID } from 'node:crypto';
 import {
   actorId,

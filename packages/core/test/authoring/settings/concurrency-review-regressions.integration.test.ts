@@ -33,7 +33,7 @@ import {
   withWorker,
   pendingDelivery,
   rebind,
-} from './concurrency-review-regressions/fixture.js';
+} from './concurrency-review-regressions.fixture.js';
 
 installExecutionAcceptanceFixture();
 describe('workflow concurrency review regressions', () => {

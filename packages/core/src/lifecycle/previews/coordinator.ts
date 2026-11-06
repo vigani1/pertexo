@@ -3,7 +3,7 @@ import type { PreviewRetentionProcessResult } from './preview-retention.types.js
 import {
   optionsSchema,
   type PreviewRetentionCoordinatorOptions,
-} from './input.js';
+} from './preview-retention-options.schemas.js';
 import {
   eraseArtifact,
   type RetentionArtifactStore,

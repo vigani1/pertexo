@@ -25,9 +25,9 @@ import {
   actorId,
   workflowId,
   emailGraph,
-} from './use-case/fixture.js';
+} from './node-testing-service.fixture.js';
 import { NodeTestInvalidError } from '../../src/node-testing/node-test.errors.js';
-import { nodeTestingPreview } from './fixture.js';
+import { nodeTestingPreview } from './node-testing.fixture.js';
 
 describe('node test application use case', () => {
   it('uses pinned output without evaluating mappings or authorizing credentials, while setup validation stays real', async () => {

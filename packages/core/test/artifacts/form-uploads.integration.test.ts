@@ -16,7 +16,7 @@ import {
   digest,
   memberForm,
   fileFields,
-} from './form-uploads/fixture.js';
+} from './form-uploads.fixture.js';
 import {
   FormFileRejectedError,
   FormValuesInvalidError,

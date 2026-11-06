@@ -13,7 +13,7 @@ import {
   withApplicationName,
   waitForPostgresLock,
 } from '../../support/workflow-authoring.js';
-import { fixture, paste, testIntent } from './support.js';
+import { fixture, paste, testIntent } from './step-sample.fixture.js';
 import { PreviewAdmissionDeniedError } from '../../../src/previews/preview.errors.js';
 import { WorkflowNotFoundError } from '../../../src/authoring/workflows/workflow-authoring.errors.js';
 

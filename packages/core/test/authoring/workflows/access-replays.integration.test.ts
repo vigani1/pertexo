@@ -1,7 +1,7 @@
 import {
   command as importCommand,
   database as importDatabase,
-} from './portability/fixture.js';
+} from './portability.fixture.js';
 import { randomUUID } from 'node:crypto';
 
 import { parseDatabaseConfig } from '@pertexo/database/platform';

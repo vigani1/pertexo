@@ -8,7 +8,7 @@ import {
   currentRepresentationTag,
   saveCurrentDraft,
 } from '../../support/workflow-authoring.js';
-import { catalog, database } from './portability/fixture.js';
+import { catalog, database } from './portability.fixture.js';
 
 const step = (limit: number, extra: object = {}) => ({
   ...emptyGraph,

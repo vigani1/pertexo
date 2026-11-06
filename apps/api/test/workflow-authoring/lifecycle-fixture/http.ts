@@ -5,7 +5,7 @@ import type { IdentityWorkspaceStore } from '@pertexo/core/testing';
 import { expect } from 'vitest';
 
 import { emailDomain } from './environment.js';
-import type { SessionCookies } from './contract.js';
+import type { SessionCookies } from './workflow-lifecycle-fixture.types.js';
 
 export function mutationHeaders(
   cookies: SessionCookies,

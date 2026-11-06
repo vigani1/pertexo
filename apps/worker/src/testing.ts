@@ -17,4 +17,4 @@ export {
   createPlatformPreviewNodeInvoker,
   mapPreviewHandlerError,
 } from './previews/preview-invoker.runtime.js';
-export type { PreviewAttemptRunStore } from './previews/handler.js';
+export type { PreviewAttemptRunStore } from './previews/handle-preview-delivery.js';

@@ -14,7 +14,7 @@ import { ArtifactMetadataNotFoundError } from '../../src/artifacts/artifact.erro
 import {
   artifactStorageKey,
   createPendingPreviewArtifact,
-} from '../../src/artifacts/records.repository.js';
+} from '../../src/artifacts/artifact-lifecycle.repository.js';
 import {
   lockExecutionArtifactReferences,
   requireNodeArtifactReference,

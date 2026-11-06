@@ -14,7 +14,7 @@ import {
   owner,
   item,
   folderIds,
-} from './folders-batch/fixture.js';
+} from './folders-batch.fixture.js';
 import { randomUUID } from 'node:crypto';
 import type { WorkflowOrganizationBatchRequest } from '../../../src/authoring/index.js';
 import { enforceRetention } from '../../support/retention.js';

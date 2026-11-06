@@ -10,7 +10,7 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
 import { artifacts } from '@pertexo/database/schema';
-import { artifactStorageKey } from '../records.repository.js';
+import { artifactStorageKey } from '../artifact-lifecycle.repository.js';
 import { generatePersistedId } from '@pertexo/database/platform';
 import type { ArtifactRecord, ArtifactUploadPurpose } from '../artifact.js';
 import type { ArtifactMetadataIdentity } from '../metadata.js';

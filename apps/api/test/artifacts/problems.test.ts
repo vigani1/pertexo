@@ -32,7 +32,7 @@ import {
   service,
   uploadRequest,
   workspaceId,
-} from './service/fixture.js';
+} from './artifact-transfer-service.fixture.js';
 
 async function application() {
   const deps = dependencies();

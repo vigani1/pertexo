@@ -15,7 +15,7 @@ import {
   admin,
   createFamily,
   insertHint,
-} from '../../lifecycle/calls/fixtures.js';
+} from '../../lifecycle/calls/calls.fixture.js';
 import {
   withTenantScopedClient,
   canonicalOutboxPayloadChecksum,

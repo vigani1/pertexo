@@ -10,7 +10,7 @@ import {
   digest,
   asOwner,
   insertReplacement,
-} from './transient-data-retention/fixture.js';
+} from './transient-data-retention.fixture.js';
 import { createRetentionStore } from '../../src/lifecycle/retention/retention.store.js';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
 

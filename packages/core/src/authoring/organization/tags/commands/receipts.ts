@@ -14,8 +14,8 @@ import type {
   Command,
   WorkflowTagCommandResult,
 } from '../workflow-tag.types.js';
-import { tagResult } from '../input.js';
-import type { TagRow } from '../state.repository.js';
+import { tagResult } from '../tag-receipts.schemas.js';
+import type { TagRow } from '../tag-state.repository.js';
 
 export function tagCommand(
   session: ReturnType<typeof createOrganizationSession>,

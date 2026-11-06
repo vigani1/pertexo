@@ -1,4 +1,4 @@
-import { describeIntegration } from './crash-boundaries/fixture.js';
+import { describeIntegration } from './crash-boundaries/crash-boundaries.fixture.js';
 import { randomUUID } from 'node:crypto';
 import { createPreviewAttemptRunStore } from '@pertexo/core/previews';
 import { createOutboxDispatcherDatabase } from '@pertexo/core/testing';

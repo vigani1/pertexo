@@ -22,7 +22,7 @@ import {
   actorId,
   ownerTransactionAt,
   apiTransaction,
-} from './upload/fixture.js';
+} from './upload.fixture.js';
 import {
   ArtifactQuotaExceededError,
   ArtifactUploadIdempotencyConflictError,
