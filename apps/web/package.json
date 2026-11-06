@@ -27,6 +27,7 @@
     "@lezer/highlight": "1.2.5",
     "@pertexo/contracts": "workspace:*",
     "@pertexo/integrations": "workspace:*",
+    "@pertexo/node-catalog": "workspace:*",
     "@pertexo/node-sdk": "workspace:*",
     "@pertexo/nodes-core": "workspace:*",
     "@pertexo/policy": "workspace:*",

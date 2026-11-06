@@ -20,6 +20,10 @@ export const CORE_READ_FILE_EXECUTOR = Object.freeze({
 export const CORE_READ_FILE_MANIFEST: NodeManifest = Object.freeze({
   definition: CORE_READ_FILE_DEFINITION,
   family: 'transform',
+  display: Object.freeze({
+    name: 'Read file',
+    description: 'Turn a CSV, Excel or JSON file into data',
+  }),
   configVersion: 1,
   configSchema: generateSchemaDocument(CORE_READ_FILE_CONFIG_SCHEMA),
   inputSchema: generateSchemaDocument(CORE_READ_FILE_INPUT_SCHEMA),

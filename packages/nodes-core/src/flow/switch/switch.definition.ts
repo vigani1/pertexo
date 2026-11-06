@@ -23,6 +23,10 @@ export const CORE_SWITCH_EXECUTOR = Object.freeze({
 export const CORE_SWITCH_MANIFEST: NodeManifest = Object.freeze({
   definition: CORE_SWITCH_DEFINITION,
   family: 'logic',
+  display: Object.freeze({
+    name: 'Switch',
+    description: 'Route the run to one of several cases',
+  }),
   configVersion: 1,
   configSchema: generateSchemaDocument(CORE_SWITCH_CONFIG_SCHEMA),
   inputSchema: generateSchemaDocument(CORE_SWITCH_INPUT_SCHEMA),

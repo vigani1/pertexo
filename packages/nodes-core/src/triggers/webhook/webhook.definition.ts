@@ -18,6 +18,10 @@ export const CORE_WEBHOOK_EXECUTOR = Object.freeze({
 export const CORE_WEBHOOK_MANIFEST: NodeManifest = Object.freeze({
   definition: CORE_WEBHOOK_DEFINITION,
   family: 'trigger',
+  display: Object.freeze({
+    name: 'Webhook',
+    description: 'Start when another app sends a request',
+  }),
   configVersion: 1,
   configSchema: generateSchemaDocument(CORE_WEBHOOK_CONFIG_SCHEMA),
   inputSchema: generateSchemaDocument(CORE_WEBHOOK_INPUT_SCHEMA),

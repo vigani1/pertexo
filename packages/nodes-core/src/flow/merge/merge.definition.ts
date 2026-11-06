@@ -23,6 +23,10 @@ export const CORE_MERGE_EXECUTOR = Object.freeze({
 export const CORE_MERGE_MANIFEST: NodeManifest = Object.freeze({
   definition: CORE_MERGE_DEFINITION,
   family: 'logic',
+  display: Object.freeze({
+    name: 'Merge',
+    description: 'Wait for parallel branches and pass on what each produced',
+  }),
   configVersion: 1,
   configSchema: generateSchemaDocument(CORE_MERGE_CONFIG_SCHEMA),
   inputSchema: generateSchemaDocument(CORE_MERGE_INPUT_SCHEMA, {

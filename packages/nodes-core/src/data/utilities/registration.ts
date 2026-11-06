@@ -1,5 +1,6 @@
 import {
   generateSchemaDocument,
+  type NodeDisplayMetadata,
   STORED_EXECUTION_VALUE_LIMITS,
 } from '@pertexo/node-sdk';
 import type { NodeDefinitionRegistration } from '@pertexo/node-sdk/server';
@@ -11,6 +12,7 @@ import {
 
 export function defineUtility({
   key,
+  display,
   configSchema,
   inputSchema,
   outputSchema,
@@ -18,6 +20,7 @@ export function defineUtility({
   connectionSlot,
 }: Readonly<{
   key: string;
+  display: NodeDisplayMetadata;
   configSchema: ZodType;
   inputSchema: ZodType;
   outputSchema: ZodType;
@@ -33,6 +36,7 @@ export function defineUtility({
       definition: identity,
       executor: identity,
       family: 'transform',
+      display,
       configVersion: 1,
       configSchema: generateSchemaDocument(configSchema, {
         runtimeOnlySemantics: [

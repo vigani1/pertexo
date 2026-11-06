@@ -22,6 +22,10 @@ export const CORE_CONDITION_EXECUTOR = Object.freeze({
 export const CORE_CONDITION_MANIFEST: NodeManifest = Object.freeze({
   definition: CORE_CONDITION_DEFINITION,
   family: 'logic',
+  display: Object.freeze({
+    name: 'Condition',
+    description: 'Send the run down the true or false branch',
+  }),
   configVersion: 1,
   configSchema: generateSchemaDocument(CORE_CONDITION_CONFIG_SCHEMA),
   inputSchema: generateSchemaDocument(CORE_CONDITION_INPUT_SCHEMA),

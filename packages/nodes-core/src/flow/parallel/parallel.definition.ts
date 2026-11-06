@@ -20,6 +20,10 @@ export const CORE_PARALLEL_EXECUTOR = Object.freeze({
 export const CORE_PARALLEL_MANIFEST: NodeManifest = Object.freeze({
   definition: CORE_PARALLEL_DEFINITION,
   family: 'logic',
+  display: Object.freeze({
+    name: 'Parallel',
+    description: 'Run several branches at the same time',
+  }),
   configVersion: 1,
   configSchema: generateSchemaDocument(CORE_PARALLEL_CONFIG_SCHEMA, {
     runtimeOnlySemantics: [

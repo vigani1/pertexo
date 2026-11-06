@@ -26,6 +26,10 @@ const semantics = Object.freeze([
 export const CORE_DATE_MANIFEST: NodeManifest = Object.freeze({
   definition: CORE_DATE_DEFINITION,
   family: 'transform',
+  display: Object.freeze({
+    name: 'Convert date',
+    description: 'Format timestamps, convert time zones or add a duration',
+  }),
   configVersion: 1,
   configSchema: generateSchemaDocument(CORE_DATE_CONFIG_SCHEMA, {
     runtimeOnlySemantics: semantics,

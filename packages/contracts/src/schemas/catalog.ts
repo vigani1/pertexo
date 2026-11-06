@@ -1,5 +1,6 @@
 import {
   codeSettingsSchema,
+  nodeDisplayMetadataSchema,
   outputVariantSelectionSchema,
 } from '@pertexo/node-sdk';
 import { z } from 'zod';
@@ -57,6 +58,7 @@ export const nodeDefinitionCatalogItemSchema = z
   .object({
     definition: catalogDefinitionIdentitySchema,
     family: z.enum(['trigger', 'action', 'logic', 'transform', 'output']),
+    display: nodeDisplayMetadataSchema.optional(),
     configVersion: z.number().int().positive(),
     configSchema: schemaDocumentSchema,
     inputSchema: schemaDocumentSchema,

@@ -401,6 +401,32 @@
                     "output"
                   ]
                 },
+                "display": {
+                  "readOnly": true,
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 128
+                    },
+                    "description": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 512
+                    },
+                    "sideEffect": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 512
+                    }
+                  },
+                  "required": [
+                    "name",
+                    "description"
+                  ],
+                  "additionalProperties": false
+                },
                 "configVersion": {
                   "type": "integer",
                   "exclusiveMinimum": 0,

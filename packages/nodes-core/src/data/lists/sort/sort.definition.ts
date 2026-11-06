@@ -25,6 +25,10 @@ const semantics = Object.freeze([
 export const CORE_SORT_MANIFEST: NodeManifest = Object.freeze({
   definition: CORE_SORT_DEFINITION,
   family: 'transform',
+  display: Object.freeze({
+    name: 'Sort items',
+    description: 'Order items by a number or text field',
+  }),
   configVersion: 1,
   configSchema: generateSchemaDocument(CORE_SORT_CONFIG_SCHEMA, {
     runtimeOnlySemantics: semantics,

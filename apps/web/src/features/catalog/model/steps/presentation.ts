@@ -1,6 +1,7 @@
 import { TIMED_OUT_PORT, WORKFLOW_FAILURE_PORT } from '@pertexo/workflow-model';
 import type { NodeDefinitionCatalogItem } from '@pertexo/contracts';
-import { registry, type StepFamily, type StepPresentation } from './registry';
+import { platformBrowserNodeDefinitionCatalog } from '@pertexo/node-catalog';
+import { stepIcons, type StepFamily, type StepPresentation } from './registry';
 import {
   BoxIcon,
   BracesIcon,
@@ -20,6 +21,13 @@ const familyIcons: Readonly<Record<StepFamily | 'unknown', LucideIcon>> = {
   unknown: BoxIcon,
 };
 
+const catalogDefinitions = new Map(
+  platformBrowserNodeDefinitionCatalog().definitions.map((item) => [
+    item.definition.key,
+    item,
+  ]),
+);
+
 /** `acme_crm.create_contact` → "Create contact". */
 export function prettifyDefinitionKey(key: string): string {
   const lastSegment = key.split('.').at(-1) ?? key;
@@ -32,9 +40,14 @@ export function describeStep(
   definitionKey: string,
   family?: StepFamily,
 ): StepPresentation {
-  const known = registry[definitionKey];
-  if (known !== undefined) return known;
-  const resolvedFamily = family ?? 'unknown';
+  const known = catalogDefinitions.get(definitionKey);
+  const resolvedFamily = family ?? known?.family ?? 'unknown';
+  if (known?.display !== undefined)
+    return {
+      ...known.display,
+      family: resolvedFamily,
+      icon: stepIcons[definitionKey] ?? familyIcons[resolvedFamily],
+    };
   return {
     name: prettifyDefinitionKey(definitionKey),
     description: 'A step from the catalog',

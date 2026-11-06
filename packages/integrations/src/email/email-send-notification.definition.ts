@@ -27,6 +27,11 @@ export const EMAIL_SEND_NOTIFICATION_POLICY = Object.freeze({
 export const EMAIL_SEND_NOTIFICATION_MANIFEST: NodeManifest = Object.freeze({
   definition: EMAIL_SEND_NOTIFICATION_DEFINITION,
   family: 'action',
+  display: Object.freeze({
+    name: 'Send email',
+    description: 'Email a notification',
+    sideEffect: 'This sends a real email.',
+  }),
   configVersion: 1,
   configSchema: generateSchemaDocument(emailSendNotificationConfigSchema),
   inputSchema: generateSchemaDocument(emailSendNotificationInputSchema),

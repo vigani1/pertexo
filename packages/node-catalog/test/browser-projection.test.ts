@@ -94,3 +94,15 @@ describe('browser-safe platform catalog projection', () => {
     expectDeepFrozen(catalog);
   });
 });
+
+it('serves human display metadata for every actual platform definition', () => {
+  for (const item of platformBrowserNodeDefinitionCatalog().definitions) {
+    expect(item, item.definition.key).toHaveProperty(
+      'display',
+      expect.objectContaining({
+        name: expect.any(String),
+        description: expect.any(String),
+      }),
+    );
+  }
+});

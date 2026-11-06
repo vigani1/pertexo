@@ -21,6 +21,10 @@ export const CORE_REQUEST_INPUT_EXECUTOR = Object.freeze({
 export const CORE_REQUEST_INPUT_MANIFEST: NodeManifest = Object.freeze({
   definition: CORE_REQUEST_INPUT_DEFINITION,
   family: 'logic',
+  display: Object.freeze({
+    name: 'Request input',
+    description: 'Wait for an allowed member to fill in a form',
+  }),
   configVersion: 1,
   configSchema: generateSchemaDocument(CORE_REQUEST_INPUT_CONFIG_SCHEMA),
   inputSchema: generateSchemaDocument(CORE_REQUEST_INPUT_INPUT_SCHEMA),

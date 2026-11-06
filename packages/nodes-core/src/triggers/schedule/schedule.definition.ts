@@ -18,6 +18,10 @@ export const CORE_SCHEDULE_EXECUTOR = Object.freeze({
 export const CORE_SCHEDULE_MANIFEST: NodeManifest = Object.freeze({
   definition: CORE_SCHEDULE_DEFINITION,
   family: 'trigger',
+  display: Object.freeze({
+    name: 'Schedule',
+    description: 'Start on a repeating timetable',
+  }),
   configVersion: 1,
   configSchema: generateSchemaDocument(CORE_SCHEDULE_CONFIG_SCHEMA, {
     runtimeOnlySemantics: [

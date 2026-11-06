@@ -19,6 +19,10 @@ export const CORE_SET_EXECUTOR = Object.freeze({ key: 'core.set', version: 1 });
 export const CORE_SET_MANIFEST: NodeManifest = Object.freeze({
   definition: CORE_SET_DEFINITION,
   family: 'transform',
+  display: Object.freeze({
+    name: 'Set fields',
+    description: 'Build an object from mapped values',
+  }),
   configVersion: 1,
   configSchema: generateSchemaDocument(CORE_SET_CONFIG_SCHEMA),
   inputSchema: generateSchemaDocument(CORE_SET_INPUT_SCHEMA),

@@ -23,6 +23,11 @@ export const SLACK_SEND_MESSAGE_POLICY = Object.freeze({
 export const SLACK_SEND_MESSAGE_MANIFEST: NodeManifest = Object.freeze({
   definition: SLACK_SEND_MESSAGE_DEFINITION,
   family: 'action',
+  display: Object.freeze({
+    name: 'Send Slack message',
+    description: 'Post text to a channel',
+    sideEffect: 'This sends a real Slack message.',
+  }),
   configVersion: 1,
   configSchema: generateSchemaDocument(slackSendMessageConfigSchema),
   inputSchema: generateSchemaDocument(slackSendMessageInputSchema),

@@ -24,6 +24,10 @@ const semantics = Object.freeze([
 export const CORE_CONCAT_MANIFEST: NodeManifest = Object.freeze({
   definition: CORE_CONCAT_DEFINITION,
   family: 'transform',
+  display: Object.freeze({
+    name: 'Concatenate lists',
+    description: 'Append a second list, keeping order and duplicates',
+  }),
   configVersion: 1,
   configSchema: generateSchemaDocument(CORE_CONCAT_CONFIG_SCHEMA, {
     runtimeOnlySemantics: semantics,

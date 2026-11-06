@@ -69,10 +69,21 @@ export interface ReadOnlyConfigCondition {
   readonly values: readonly string[];
 }
 
+export const nodeDisplayMetadataSchema = z
+  .object({
+    name: z.string().min(1).max(128),
+    description: z.string().min(1).max(512),
+    sideEffect: z.string().min(1).max(512).optional(),
+  })
+  .strict()
+  .readonly();
+export type NodeDisplayMetadata = z.infer<typeof nodeDisplayMetadataSchema>;
+
 /** One node definition: its contract, ports, requirements and pinned executor. */
 export interface NodeManifest {
   readonly definition: DefinitionIdentity;
   readonly family: NodeFamily;
+  readonly display?: NodeDisplayMetadata | undefined;
   readonly configVersion: number;
   readonly configSchema: SchemaDocument;
   readonly inputSchema: SchemaDocument;
@@ -151,6 +162,7 @@ export const nodeManifestSchema = z
   .object({
     definition: definitionIdentitySchema,
     family: z.enum(['trigger', 'action', 'logic', 'transform', 'output']),
+    display: nodeDisplayMetadataSchema.optional(),
     configVersion: z.number().int().positive(),
     configSchema: schemaDocumentSchema,
     inputSchema: schemaDocumentSchema,

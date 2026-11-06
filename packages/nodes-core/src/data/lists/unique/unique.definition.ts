@@ -25,6 +25,10 @@ const semantics = Object.freeze([
 export const CORE_UNIQUE_MANIFEST: NodeManifest = Object.freeze({
   definition: CORE_UNIQUE_DEFINITION,
   family: 'transform',
+  display: Object.freeze({
+    name: 'Remove duplicates',
+    description: 'Keep the first item for each distinct value',
+  }),
   configVersion: 1,
   configSchema: generateSchemaDocument(CORE_UNIQUE_CONFIG_SCHEMA, {
     runtimeOnlySemantics: semantics,

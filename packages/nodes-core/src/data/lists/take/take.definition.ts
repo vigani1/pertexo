@@ -24,6 +24,10 @@ const semantics = Object.freeze([
 export const CORE_TAKE_MANIFEST: NodeManifest = Object.freeze({
   definition: CORE_TAKE_DEFINITION,
   family: 'transform',
+  display: Object.freeze({
+    name: 'Take first items',
+    description: 'Keep the first N items in a list',
+  }),
   configVersion: 1,
   configSchema: generateSchemaDocument(CORE_TAKE_CONFIG_SCHEMA, {
     runtimeOnlySemantics: semantics,

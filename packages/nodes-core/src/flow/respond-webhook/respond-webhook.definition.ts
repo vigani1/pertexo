@@ -16,6 +16,10 @@ export const CORE_RESPOND_WEBHOOK_EXECUTOR = Object.freeze({
 export const CORE_RESPOND_WEBHOOK_MANIFEST: NodeManifest = Object.freeze({
   definition: CORE_RESPOND_WEBHOOK_DEFINITION,
   family: 'output',
+  display: Object.freeze({
+    name: 'Respond to webhook',
+    description: 'Reply to the waiting webhook caller, then continue',
+  }),
   configVersion: 1,
   configSchema: generateSchemaDocument(CORE_RESPOND_WEBHOOK_CONFIG_SCHEMA),
   inputSchema: generateSchemaDocument(CORE_RESPOND_WEBHOOK_INPUT_SCHEMA),

@@ -26,6 +26,10 @@ const semantics = Object.freeze([
 export const CORE_SUMMARIZE_MANIFEST: NodeManifest = Object.freeze({
   definition: CORE_SUMMARIZE_DEFINITION,
   family: 'transform',
+  display: Object.freeze({
+    name: 'Summarize items',
+    description: 'Count and total numbers, optionally by group',
+  }),
   configVersion: 1,
   configSchema: generateSchemaDocument(CORE_SUMMARIZE_CONFIG_SCHEMA, {
     runtimeOnlySemantics: semantics,

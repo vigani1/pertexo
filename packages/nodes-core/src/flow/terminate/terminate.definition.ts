@@ -23,6 +23,10 @@ export const CORE_TERMINATE_EXECUTOR = Object.freeze({
 export const CORE_TERMINATE_MANIFEST: NodeManifest = Object.freeze({
   definition: CORE_TERMINATE_DEFINITION,
   family: 'output',
+  display: Object.freeze({
+    name: 'Stop run',
+    description: 'End the run here with a result',
+  }),
   configVersion: 1,
   configSchema: generateSchemaDocument(CORE_TERMINATE_CONFIG_SCHEMA),
   inputSchema: generateSchemaDocument(CORE_TERMINATE_INPUT_SCHEMA),
