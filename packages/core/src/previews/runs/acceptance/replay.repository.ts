@@ -7,7 +7,7 @@ import {
 } from '../../../shared/stored-execution.js';
 import { idempotencyRecords, previewRuns } from '@pertexo/database/schema';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
-import { PREVIEW_STATUS } from '../../state.js';
+import { PREVIEW_STATUS } from '../../preview-state.js';
 
 import {
   PreviewAcceptanceCorruptError,
@@ -18,7 +18,7 @@ import type {
   AcceptedPreviewRun,
   AcceptPreviewRunInput,
 } from './preview-acceptance.types.js';
-import { resultRefSchema } from './input.js';
+import { resultRefSchema } from './preview-result.schemas.js';
 
 export async function readExistingAcceptance(
   transaction: WorkspaceTransaction,

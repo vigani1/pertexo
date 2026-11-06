@@ -9,7 +9,7 @@ import type {
   Command,
   WorkflowFolderCommandResult,
 } from '../workflow-folder.types.js';
-import { folderResult } from '../input.js';
+import { folderResult } from '../folder-receipts.schemas.js';
 import { type FolderRow, folderRecord } from '../hierarchy.repository.js';
 
 export function folderCommand(

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { randomUUID } from 'node:crypto';
 import { markPreviewDispatched } from '../../src/previews/attempts/mark-dispatched.js';
-import { PREVIEW_STATUS } from '../../src/previews/state.js';
+import { PREVIEW_STATUS } from '../../src/previews/preview-state.js';
 import { reconcilePreviewDelivery } from '../../src/previews/reconciliation/reconcile.js';
 import {
   acceptFixture,
@@ -20,7 +20,7 @@ import {
   PreviewAttemptStateError,
   PreviewDeliveryMismatchError,
 } from '../../src/previews/preview.errors.js';
-import { waitForDatabaseTime } from './worker-reconciliation/fixture.js';
+import { waitForDatabaseTime } from './worker-reconciliation.fixture.js';
 
 describe('preview worker lease reconciliation', () => {
   it('reconciles expired attempts by dispatch evidence and side-effect class', async () => {

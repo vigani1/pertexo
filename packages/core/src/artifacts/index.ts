@@ -32,7 +32,7 @@ export {
   createPendingArtifact,
   createPendingPreviewArtifact,
   finalizeArtifactUpload,
-} from './records.repository.js';
+} from './artifact-lifecycle.repository.js';
 export {
   readArtifactCapacity,
   readExecutionStorageCapacity,

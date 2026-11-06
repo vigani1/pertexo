@@ -4,7 +4,7 @@ import { parseWorkspaceId } from '@pertexo/database/primitives';
 import {
   createPendingArtifact,
   artifactStorageKey,
-} from '../../src/artifacts/records.repository.js';
+} from '../../src/artifacts/artifact-lifecycle.repository.js';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   beforeEachFixture1,
@@ -14,7 +14,7 @@ import {
   readArtifactRetentionState,
   setArtifactRetryAt,
   type ArtifactStoreInput,
-} from './retention-artifacts/fixture.js';
+} from './retention-artifacts.fixture.js';
 import {
   createRunArtifactRetentionCoordinator,
   maintenanceUrl,

@@ -11,7 +11,7 @@ import {
   apiBaseUrl,
   redisUrl,
 } from '../support/better-auth/api/environment.js';
-import { httpNodeTestingGraph } from './fixture.js';
+import { httpNodeTestingGraph } from './node-testing.fixture.js';
 
 describe.runIf(betterAuthIntegrationEnabled)(
   'node testing runtime composition',

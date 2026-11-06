@@ -10,7 +10,7 @@ import {
   beforeAllFixture1,
   change,
   ownerUrlFor as ownerUrl,
-} from './workspace-deletion/fixture.js';
+} from './workspace-deletion/workspace-deletion.fixture.js';
 import { newWorkspace, statusOf } from './workspace-deletion/workspaces.js';
 
 beforeAll(beforeAllFixture1, 60_000);

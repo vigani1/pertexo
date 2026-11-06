@@ -15,7 +15,7 @@ import {
   complete,
   runId,
   restartSuiteScanner,
-} from './progress/fixture.js';
+} from './progress.fixture.js';
 import { randomUUID } from 'node:crypto';
 import { createWorkflowTestSuiteScanner } from '../../../src/previews/suites/scanner.js';
 import {

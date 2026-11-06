@@ -1,6 +1,6 @@
 import type { TelemetryLifecycle } from '@pertexo/observability';
 
-import type { FixtureLogCapture } from './contract.js';
+import type { FixtureLogCapture } from './artifact-transfer-fixture.types.js';
 
 export function createFixtureLogCapture(): FixtureLogCapture {
   const lines: string[] = [];

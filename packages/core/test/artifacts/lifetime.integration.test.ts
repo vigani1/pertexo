@@ -5,7 +5,7 @@ import {
   ownerTransaction,
   fixture,
   addVersion,
-} from './lifetime/fixture.js';
+} from './lifetime.fixture.js';
 import {
   lockArtifactReferences,
   requireNodeArtifactReference,

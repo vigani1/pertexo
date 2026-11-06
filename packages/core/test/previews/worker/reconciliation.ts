@@ -2,7 +2,7 @@ import type { PreviewDelivery } from '../../../src/previews/preview.types.js';
 
 import { withTenantScopedClient } from '@pertexo/database/primitives';
 
-import { workspaceId, workerPool } from './base.js';
+import { workspaceId, workerPool } from './preview-worker-database.fixture.js';
 import type { ClaimedFixture } from './acceptance.js';
 import { scopedQuery } from './queries.js';
 

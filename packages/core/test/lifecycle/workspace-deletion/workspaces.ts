@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import { asOwner } from './fixture.js';
+import { asOwner } from './workspace-deletion.fixture.js';
 
 export const COMMANDS = [
   'deletion_requested',

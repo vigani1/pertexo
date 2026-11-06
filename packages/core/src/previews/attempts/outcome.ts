@@ -9,7 +9,7 @@ import type {
   PreviewStatus,
   PreviewTerminalOutcome,
 } from '../preview.types.js';
-import { PREVIEW_STATUS } from '../state.js';
+import { PREVIEW_STATUS } from '../preview-state.js';
 
 export type CanonicalCompletionOutcome =
   | Readonly<{

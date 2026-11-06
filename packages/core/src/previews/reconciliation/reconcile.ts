@@ -5,7 +5,7 @@ import type {
   PreviewReconciliationScope,
   ReconcilePreviewDeliveryInput,
 } from './preview-reconciliation.types.js';
-import { lockPreviewReconciliationState } from './state.repository.js';
+import { lockPreviewReconciliationState } from './preview-reconciliation-state.repository.js';
 
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { Pool, PoolClient } from 'pg';
@@ -30,7 +30,7 @@ import {
   PREVIEW_STATUS,
   TERMINAL_PREVIEW_STATUSES,
   UNFINISHED_PREVIEW_STATUSES,
-} from '../state.js';
+} from '../preview-state.js';
 
 type LockedPreviewReconciliationState = Awaited<
   ReturnType<typeof lockPreviewReconciliationState>

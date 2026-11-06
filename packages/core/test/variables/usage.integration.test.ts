@@ -4,7 +4,7 @@ import { afterAll, beforeAll, expect, it } from 'vitest';
 
 import type { VariableUsagePage } from '../../src/variables/workspace-variables.js';
 
-import { admin } from '../lifecycle/calls/fixtures.js';
+import { admin } from '../lifecycle/calls/calls.fixture.js';
 import { userId } from '../lifecycle/retention.support.js';
 import {
   afterAllFixture2,

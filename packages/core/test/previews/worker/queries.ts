@@ -1,6 +1,10 @@
 import { withTenantScopedClient } from '@pertexo/database/primitives';
 
-import { workspaceId, apiPool, workerPool } from './base.js';
+import {
+  workspaceId,
+  apiPool,
+  workerPool,
+} from './preview-worker-database.fixture.js';
 
 // Post-state assertions must observe rows through a tenant-scoped serving
 // client: forced RLS hides everything from context-free connections.

@@ -20,7 +20,7 @@ import {
 import type {
   LifecycleFixtureRole,
   WorkflowLifecycleApiFixture,
-} from './contract.js';
+} from './workflow-lifecycle-fixture.types.js';
 import {
   logger,
   telemetry,

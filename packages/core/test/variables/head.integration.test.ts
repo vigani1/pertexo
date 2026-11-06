@@ -12,7 +12,7 @@ import {
   lockVariableSet,
   lockWorkspaceVariableNames,
 } from '../../src/variables/head.repository.js';
-import { admin, createFamily } from '../lifecycle/calls/fixtures.js';
+import { admin, createFamily } from '../lifecycle/calls/calls.fixture.js';
 import {
   adminUrl,
   apiUrl,

@@ -8,7 +8,7 @@ import {
   nodeDetails,
 } from '../../src/lifecycle/retention/rules/run-records.repository.js';
 import { workspaceId } from './retention.support.js';
-import { admin, untilIdle } from './retention-runs/fixture.js';
+import { admin, untilIdle } from './retention-runs.fixture.js';
 
 describe('an idle pass', () => {
   // The audit's finding: walking a child table and probing each row's run read

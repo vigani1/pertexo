@@ -22,7 +22,7 @@ import {
   previewRuns,
 } from '@pertexo/database/schema';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
-import { PREVIEW_STATUS } from '../state.js';
+import { PREVIEW_STATUS } from '../preview-state.js';
 
 import { PreviewAcceptanceCorruptError } from '../preview.errors.js';
 import {

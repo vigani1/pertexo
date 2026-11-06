@@ -5,7 +5,7 @@ import { QueryBuilder } from 'drizzle-orm/pg-core';
 import { withTenantScopedClient } from '@pertexo/database/primitives';
 import { artifactReferenceOwnersSql } from '../../src/artifacts/references/owners.repository.js';
 import { artifactOwnerFixture } from './owner-shapes.fixture.js';
-import { ownerTransaction } from './lifetime/fixture.js';
+import { ownerTransaction } from './lifetime.fixture.js';
 import { workspaceId, userId } from '../lifecycle/retention.support.js';
 
 it('keeps a negative retained-owner lookup indexed and bounded across authored documents', async () => {

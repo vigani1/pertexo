@@ -9,7 +9,7 @@ import {
   asOwner,
   beforeAllFixture1,
   change,
-} from './workspace-deletion/fixture.js';
+} from './workspace-deletion/workspace-deletion.fixture.js';
 import {
   COMMANDS,
   lifecycleWrites,

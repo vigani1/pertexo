@@ -24,7 +24,7 @@ import {
   finishTransactionClient,
 } from '../../support/workflow-authoring.js';
 import { testExecutableCompiler } from '../../../src/authoring/test-executable-compiler.js';
-import { recordBenchmarkOperation } from './publication/fixture.js';
+import { recordBenchmarkOperation } from './publication.fixture.js';
 import { ZodError } from 'zod';
 
 describe('workflow publication projections', () => {

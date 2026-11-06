@@ -10,7 +10,7 @@ import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { parseStoredExecutionValue } from '../../shared/stored-execution.js';
 import { workflowTestStepChoices } from '@pertexo/workflow-model';
 import type { FrozenWorkflowTestPins } from '@pertexo/database/schema';
-import { sampleDraft } from '../../authoring/step-samples/records.repository.js';
+import { sampleDraft } from '../../authoring/step-samples/step-sample-state.repository.js';
 import type { PoolClient } from 'pg';
 import { normalizedJson } from '@pertexo/workflow-model';
 import type { WorkflowTestPins } from '@pertexo/workflow-engine';

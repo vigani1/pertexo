@@ -12,7 +12,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { withWorkspaceAccess } from '../../../src/shared/index.js';
 
-import { admin } from '../../lifecycle/calls/fixtures.js';
+import { admin } from '../../lifecycle/calls/calls.fixture.js';
 import {
   adminUrl,
   apiUrl,

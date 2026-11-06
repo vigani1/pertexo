@@ -10,7 +10,7 @@ import {
   workspaceA,
   workspaceB,
   pendingInput,
-} from './metadata-lifecycle/fixture.js';
+} from './metadata-lifecycle.fixture.js';
 import { randomUUID } from 'node:crypto';
 import { eq } from 'drizzle-orm';
 import { Pool } from 'pg';
@@ -21,7 +21,7 @@ import {
 import {
   createPendingArtifact,
   finalizeArtifactUpload,
-} from '../../src/artifacts/records.repository.js';
+} from '../../src/artifacts/artifact-lifecycle.repository.js';
 import { readArtifactCapacity } from '../../src/artifacts/capacity.repository.js';
 import { artifacts } from '@pertexo/database/schema';
 

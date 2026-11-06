@@ -2,7 +2,7 @@ import { afterAll, beforeAll, expect, it } from 'vitest';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
 import { createStalledWorkStore } from '../../../src/runs/stalled/stalled-work.store.js';
 import { ErrorWorkflowDeliveryMismatchError } from '../../../src/runs/error-workflows/error-workflow.errors.js';
-import { admin } from '../../lifecycle/calls/fixtures.js';
+import { admin } from '../../lifecycle/calls/calls.fixture.js';
 import { maintenanceUrl } from '../../lifecycle/retention.support.js';
 import {
   beforeAllFixture1,

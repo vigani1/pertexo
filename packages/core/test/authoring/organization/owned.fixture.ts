@@ -17,7 +17,7 @@ import {
   createWorkflowFolderStore,
   createWorkflowOrganizationBatchStore,
 } from '../../../src/authoring/index.js';
-import { createWorkflowOrganizationReadStore } from '../../../src/authoring/organization/workflows/workflow-organization-read.store.js';
+import { createWorkflowOrganizationReadStore } from '../../../src/authoring/organization/workflow-organization-read.store.js';
 import { createWorkflowFavoriteStore } from '../../../src/authoring/organization/favorites/workflow-favorite.store.js';
 
 const roles = {

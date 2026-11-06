@@ -16,7 +16,7 @@ import {
   worker,
   waitForBlocked,
   maintenanceUrl,
-} from './auto-pause-controls/fixture.js';
+} from './auto-pause-controls.fixture.js';
 import { randomUUID } from 'node:crypto';
 import {
   WorkflowAutoPauseSettingsRevisionConflictError,

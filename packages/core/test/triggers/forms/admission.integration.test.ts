@@ -14,7 +14,7 @@ import {
   FormChangedError,
   FormAccessConflictError,
 } from '../../../src/triggers/forms/form.errors.js';
-import { admin } from '../../lifecycle/calls/fixtures.js';
+import { admin } from '../../lifecycle/calls/calls.fixture.js';
 import { createWorkflowRunDatabase } from '../../../src/runs/workflow-run.store.js';
 import { RunRequiresFormError } from '../../../src/runs/commands/acceptance/forms.repository.js';
 import { Client, Pool } from 'pg';

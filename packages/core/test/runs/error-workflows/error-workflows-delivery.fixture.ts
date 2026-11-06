@@ -13,7 +13,7 @@ import {
 import { createErrorWorkflowStore } from '../../../src/runs/error-workflows/error-workflow.store.js';
 import { persistErrorWorkflowIntent } from '../../../src/runs/error-workflows/produce.repository.js';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
-import { admin, createFamily } from '../../lifecycle/calls/fixtures.js';
+import { admin, createFamily } from '../../lifecycle/calls/calls.fixture.js';
 
 import { userId } from '../../lifecycle/retention.support.js';
 import { apiUrl } from '../../lifecycle/retention.support.js';

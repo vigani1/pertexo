@@ -20,7 +20,7 @@ import {
   waitForOperationEntry,
   withApplicationName,
 } from '../../support/workflow-authoring.js';
-import { lifecycleFacts } from './lifecycle/fixture.js';
+import { lifecycleFacts } from './workflow-lifecycle.fixture.js';
 
 describe('workflow lifecycle command persistence', () => {
   it.each(['workspaceId', 'id'] as const)(

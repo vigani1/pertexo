@@ -9,7 +9,7 @@ import {
   expectHistoryUnchanged,
   lifecycleFacts,
   type LifecycleResponse,
-} from './lifecycle/fixture.js';
+} from './workflow-lifecycle.fixture.js';
 import { expectProblem, mutationHeaders } from '../lifecycle.support.js';
 
 describeIntegration('authenticated workflow lifecycle HTTP commands', () => {

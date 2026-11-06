@@ -10,6 +10,6 @@ export {
   type ArtifactCapacitySnapshot,
   type ArtifactStorageCallSnapshot,
   type ArtifactTransferApiFixture,
-} from './transfer-fixture/contract.js';
+} from './transfer-fixture/artifact-transfer-fixture.types.js';
 export { createArtifactTransferApiFixture } from './transfer-fixture/create.js';
 export { mutationHeaders, expectProblem } from './transfer-fixture/http.js';

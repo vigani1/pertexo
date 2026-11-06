@@ -54,7 +54,7 @@ import {
   type PreviewAttemptRunStore,
   type PreviewNodeInvoker,
   type PreviewRuntimeCapabilityFactories,
-} from '../../previews/handler.js';
+} from '../../previews/handle-preview-delivery.js';
 import {
   createWorkerNodeRuntimeCapabilities,
   type WorkerNodeRuntimeCapabilities,

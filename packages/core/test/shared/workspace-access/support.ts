@@ -1,7 +1,7 @@
 import { UNPURGED_WORKSPACE_STATUSES } from '@pertexo/policy';
 import { Client } from 'pg';
 
-import { admin } from '../../lifecycle/calls/fixtures.js';
+import { admin } from '../../lifecycle/calls/calls.fixture.js';
 import { adminUrl, withDatabase } from '../../lifecycle/retention.support.js';
 
 export const MODES = ['read', 'change'] as const;

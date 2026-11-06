@@ -15,7 +15,7 @@ import {
   saveCurrentDraft,
   workspaceId,
 } from '../../support/workflow-authoring.js';
-import { createRestoreFixture } from './version-restore/fixture.js';
+import { createRestoreFixture } from './version-restore.fixture.js';
 
 const original = createWorkflowAuthoringStore(
   parseDatabaseConfig({ connectionString: apiUrl, max: 2 }),

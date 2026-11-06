@@ -26,7 +26,7 @@ import {
   request,
   requestFor,
   settings,
-} from './publication-review/fixture.js';
+} from './publication-review.fixture.js';
 
 // Past Postgres's own deadlock timer, and a loaded machine's lock waits.
 vi.setConfig({ testTimeout: 30_000 });

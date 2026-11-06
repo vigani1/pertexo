@@ -1,0 +1,237 @@
+import { AutomationAuthenticationGuard } from '../../../src/authentication/automation/guard.js';
+import type { Role } from '@pertexo/policy';
+import 'reflect-metadata';
+import { APPLICATION_ERROR_MAPPERS } from '../../../src/application-errors.js';
+
+import type { ExecutionContext } from '@nestjs/common';
+
+import {
+  FastifyAdapter,
+  type NestFastifyApplication,
+} from '@nestjs/platform-fastify';
+import { Test } from '@nestjs/testing';
+import type {
+  WorkflowFavoriteStore,
+  WorkflowTagStore,
+} from '@pertexo/core/authoring';
+import { vi } from 'vitest';
+import { WorkflowOrganizationCommandsUseCase } from '../../../src/workflow-authoring/organization/organization-commands.service.js';
+import { WorkflowOrganizationController } from '../../../src/workflow-authoring/organization/workflow-organization.controller.js';
+import { WorkflowOrganizationReadsUseCase } from '../../../src/workflow-authoring/organization/organization-reads.service.js';
+
+import { DoubleSubmitCsrfPolicy } from '../../../src/identity/index.js';
+import {
+  applicationError,
+  ProblemDetailsFilter,
+  RequestContextMiddleware,
+  RequestContextStore,
+  throwApplicationError,
+} from '../../../src/platform/http/index.js';
+import {
+  CsrfProtectionGuard,
+  SessionAuthenticationGuard,
+} from '../../../src/workspaces/index.js';
+
+import type { WorkflowAuthoringRequest } from '../../../src/workflow-authoring/workflow-transport.js';
+import { WORKSPACE_AUTHORIZATION } from '../../../src/workspaces/tokens.js';
+
+export const workspaceId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
+
+export const actorId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+
+const workflowId = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
+
+export const tagId = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
+
+export const sessionId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+
+const csrf = 'a'.repeat(43);
+
+export const headers = {
+  cookie: `pertexo_csrf=${csrf}`,
+  'x-csrf-token': csrf,
+  'idempotency-key': 'organization-http-command',
+};
+
+export const prefix = `/v1/workspaces/${workspaceId}`;
+
+export const tagResult = {
+  tag: { id: tagId, key: 'release', revision: 2 },
+  replayed: false,
+};
+
+export const routes = [
+  {
+    name: 'listTags',
+    path: 'workflow-tags',
+    method: 'GET',
+    suffix: '/workflow-tags',
+    body: undefined,
+    status: 200,
+  },
+  {
+    name: 'createTag',
+    path: 'workflow-tags',
+    method: 'POST',
+    suffix: '/workflow-tags',
+    body: { key: ' Release ' },
+    status: 201,
+  },
+  {
+    name: 'renameTag',
+    path: 'workflow-tags/:tagId/rename',
+    method: 'POST',
+    suffix: `/workflow-tags/${tagId}/rename`,
+    body: { key: 'release', expectedTagRevision: 1 },
+    status: 200,
+  },
+  {
+    name: 'deleteTag',
+    path: 'workflow-tags/:tagId/delete',
+    method: 'POST',
+    suffix: `/workflow-tags/${tagId}/delete`,
+    body: { expectedTagRevision: 1 },
+    status: 200,
+  },
+  {
+    name: 'assignments',
+    path: 'workflow-tags/:tagId/workflows',
+    method: 'GET',
+    suffix: `/workflow-tags/${tagId}/workflows`,
+    body: undefined,
+    status: 200,
+  },
+  {
+    name: 'replaceTags',
+    path: 'workflows/:workflowId/tags',
+    method: 'POST',
+    suffix: `/workflows/${workflowId}/tags`,
+    body: { tagIds: [tagId], expectedOrganizationRevision: 1 },
+    status: 200,
+  },
+  {
+    name: 'favorite',
+    path: 'workflows/:workflowId/favorite',
+    method: 'PUT',
+    suffix: `/workflows/${workflowId}/favorite`,
+    body: { favorite: false },
+    status: 200,
+  },
+] as const;
+
+export function fixture(role: Role = 'owner') {
+  const tags = {
+    listTags: vi
+      .fn()
+      .mockResolvedValue({ items: [tagResult.tag], nextId: null }),
+    listTagAssignments: vi.fn().mockResolvedValue({
+      items: [{ workflowId, organizationRevision: 2 }],
+      nextId: null,
+    }),
+    createTag: vi.fn().mockResolvedValue(tagResult),
+    renameTag: vi.fn().mockResolvedValue(tagResult),
+    deleteTag: vi.fn().mockResolvedValue({
+      tagId,
+      deleted: true,
+      detachedWorkflowCount: 2,
+      replayed: false,
+    }),
+    replaceTags: vi.fn().mockResolvedValue({
+      workflowId,
+      organizationRevision: 2,
+      tagIds: [tagId],
+      replayed: false,
+    }),
+    detachTag: vi.fn(),
+    close: vi.fn(),
+  } satisfies WorkflowTagStore;
+  const favorites = {
+    setFavorite: vi.fn().mockResolvedValue({ isFavorite: false }),
+    close: vi.fn(),
+  } satisfies WorkflowFavoriteStore;
+  const authorization = {
+    findAccess: vi.fn().mockResolvedValue({
+      actorId,
+      workspaceId,
+      role,
+      membershipStatus: 'active',
+      workspaceStatus: 'active',
+    }),
+  };
+  const commands = new WorkflowOrganizationCommandsUseCase(
+    tags,
+    favorites,
+    authorization,
+  );
+  const reads = new WorkflowOrganizationReadsUseCase(
+    { getWorkflow: vi.fn(), listWorkflows: vi.fn() },
+    tags,
+    authorization,
+  );
+  return { tags, favorites, authorization, commands, reads };
+}
+
+const applications: NestFastifyApplication[] = [];
+
+/** Real Nest/Fastify routes and real workspace/CSRF policy, fake session admission
+ * and persistence. This does not qualify production session auth or live SQL. */
+export async function httpFixture(role: Role = 'owner') {
+  const f = fixture(role);
+  const contexts = new RequestContextStore();
+  const sessions = {
+    canActivate(context: ExecutionContext) {
+      const request = context
+        .switchToHttp()
+        .getRequest<WorkflowAuthoringRequest>();
+      if (request.headers?.['x-test-anonymous'] === 'true')
+        return throwApplicationError(applicationError('auth.unauthenticated'));
+      Object.assign(request, {
+        identitySession: {
+          userId: actorId,
+          sessionId,
+          expiresAt: new Date('2099-01-01T00:00:00Z'),
+          clientMetadata: {},
+        },
+      });
+      return true;
+    },
+  };
+  const module = await Test.createTestingModule({
+    controllers: [WorkflowOrganizationController],
+    providers: [
+      { provide: WORKSPACE_AUTHORIZATION, useValue: f.authorization },
+      { provide: RequestContextStore, useValue: contexts },
+      { provide: WorkflowOrganizationCommandsUseCase, useValue: f.commands },
+      { provide: WorkflowOrganizationReadsUseCase, useValue: f.reads },
+    ],
+  })
+    .overrideGuard(SessionAuthenticationGuard)
+    .useValue(sessions)
+    .overrideGuard(AutomationAuthenticationGuard)
+    .useValue(sessions)
+    .overrideGuard(CsrfProtectionGuard)
+    .useValue(new CsrfProtectionGuard(new DoubleSubmitCsrfPolicy()))
+    .compile();
+  // Vitest's source transform omits compiler design:paramtypes. Explicit test
+  // wiring exercises production routes, not compiler-generated constructor DI.
+  Object.assign(module.get(WorkflowOrganizationController), {
+    commands: f.commands,
+    reads: f.reads,
+  });
+  const app = module.createNestApplication<NestFastifyApplication>(
+    new FastifyAdapter(),
+    { logger: false },
+  );
+  applications.push(app);
+  const middleware = new RequestContextMiddleware(contexts);
+  app.use(middleware.use.bind(middleware));
+  app.useGlobalFilters(
+    new ProblemDetailsFilter(contexts, undefined, APPLICATION_ERROR_MAPPERS),
+  );
+  await app.init();
+  return { ...f, app };
+}
+
+export async function cleanAppsApiTestWorkflowAuthoringOrganizationControllerTestTsFixture() {
+  await Promise.all(applications.splice(0).map((app) => app.close()));
+}

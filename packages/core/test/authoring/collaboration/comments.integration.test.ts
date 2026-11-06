@@ -6,7 +6,7 @@ import {
   scope,
   command,
   database,
-} from './comments/fixture.js';
+} from './comments.fixture.js';
 import { randomUUID } from 'node:crypto';
 import {
   actorId,

@@ -19,7 +19,7 @@ import {
   daysAgo,
   insertBorrowedSlot,
   runRow,
-} from './fixtures.js';
+} from './calls.fixture.js';
 
 async function createFamily(
   input: Parameters<typeof createRetainedFamily>[0] = {},

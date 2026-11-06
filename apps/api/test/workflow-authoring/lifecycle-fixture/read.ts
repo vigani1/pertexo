@@ -1,6 +1,9 @@
 import type { PoolClient } from 'pg';
 
-import type { WorkflowHistory, WorkflowLifecycleState } from './contract.js';
+import type {
+  WorkflowHistory,
+  WorkflowLifecycleState,
+} from './workflow-lifecycle-fixture.types.js';
 
 export async function readWorkflowHistory(
   withApi: <T>(work: (client: PoolClient) => Promise<T>) => Promise<T>,

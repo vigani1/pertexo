@@ -2,7 +2,7 @@ import { randomBytes, randomUUID } from 'node:crypto';
 
 import type { Pool } from 'pg';
 
-import type { PurgeSeed } from '../base.js';
+import type { PurgeSeed } from '../workspace-purge-database.fixture.js';
 
 export async function seedPurgeExecution(
   owner: Pool,

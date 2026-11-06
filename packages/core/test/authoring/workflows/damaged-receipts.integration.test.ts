@@ -10,7 +10,7 @@ import {
   randomUUID,
   workspaceId,
 } from '../../support/workflow-authoring.js';
-import { afterEachFixture1, command, database } from './portability/fixture.js';
+import { afterEachFixture1, command, database } from './portability.fixture.js';
 
 afterEach(afterEachFixture1);
 

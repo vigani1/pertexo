@@ -31,7 +31,7 @@ import {
   requireFreeName,
   requireRevision,
 } from '../hierarchy.repository.js';
-import { deleteResult, nameKey } from '../input.js';
+import { deleteResult, nameKey } from '../folder-receipts.schemas.js';
 import { folderCommand } from './receipt.js';
 
 export async function createFolder(

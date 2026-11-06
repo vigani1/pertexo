@@ -12,7 +12,7 @@ import {
   createRestoreFixture,
   graphWithDuration,
   restoreInput,
-} from './version-restore/fixture.js';
+} from './version-restore.fixture.js';
 
 it('replays the accepted restore and recovery id with the original key even after a later draft edit', async () => {
   const fixture = await createRestoreFixture(randomUUID());

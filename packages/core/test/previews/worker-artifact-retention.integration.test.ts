@@ -6,11 +6,11 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   artifactStorageKey,
   createPendingPreviewArtifact,
-} from '../../src/artifacts/records.repository.js';
+} from '../../src/artifacts/artifact-lifecycle.repository.js';
 import { ArtifactLifecycleConflictError } from '../../src/artifacts/artifact.errors.js';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
 import { completePreviewAttempt } from '../../src/previews/attempts/complete.js';
-import { PREVIEW_STATUS } from '../../src/previews/state.js';
+import { PREVIEW_STATUS } from '../../src/previews/preview-state.js';
 import { createPreviewRetentionCoordinator } from '../../src/lifecycle/previews/coordinator.js';
 import { databaseSchema } from '@pertexo/database/schema';
 import {

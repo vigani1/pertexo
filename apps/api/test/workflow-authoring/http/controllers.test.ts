@@ -16,7 +16,7 @@ import { TransitionWorkflowLifecycleUseCase } from '../../../src/workflow-author
 import { RenameWorkflowUseCase } from '../../../src/workflow-authoring/commands/rename.js';
 import { DuplicateWorkflowUseCase } from '../../../src/workflow-authoring/commands/duplicate.js';
 import { RestoreWorkflowVersionUseCase } from '../../../src/workflow-authoring/commands/restore-version.js';
-import { WorkflowOrganizationReadsUseCase } from '../../../src/workflow-authoring/organization/reads.js';
+import { WorkflowOrganizationReadsUseCase } from '../../../src/workflow-authoring/organization/organization-reads.service.js';
 import { WORKSPACE_AUTHORIZATION } from '../../../src/workspaces/tokens.js';
 import { FakeIdentityModule } from '../../support/identity-module.js';
 import { routeHarness } from '../../support/route-harness.js';
@@ -27,7 +27,7 @@ import {
   workflowId,
   version,
   graph,
-} from '../use-cases/fixture.js';
+} from '../workflow-commands.fixture.js';
 
 // Nest dynamic modules require a class token.
 // eslint-disable-next-line @typescript-eslint/no-extraneous-class

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { previewPairConsistent } from '../../src/previews/state.js';
+import { previewPairConsistent } from '../../src/previews/preview-state.js';
 import { executableNodeSchema } from '../../src/previews/executable-node.js';
 
 describe('preview executable-node admission', () => {

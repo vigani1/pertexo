@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { WorkspaceAccessDeniedError } from '../../src/tenant-access/index.js';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { admin } from '../lifecycle/calls/fixtures.js';
+import { admin } from '../lifecycle/calls/calls.fixture.js';
 import { userId } from '../lifecycle/retention.support.js';
 import {
   afterAllFixture2,

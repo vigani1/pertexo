@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createFoldersBulkFixture } from './folders-bulk/fixture.js';
+import { createFoldersBulkFixture } from './folders-bulk.fixture.js';
 import { randomUUID } from 'node:crypto';
 import { expectProblem } from '../../support/better-auth/real-api.support.js';
 

@@ -10,7 +10,7 @@ export {
   expectPgCode,
   withOwnerRole,
   withAdmin,
-} from './worker/base.js';
+} from './worker/preview-worker-database.fixture.js';
 export {
   type AcceptedFixture,
   acceptFixture,

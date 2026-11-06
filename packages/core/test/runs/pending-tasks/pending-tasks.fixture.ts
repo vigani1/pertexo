@@ -6,7 +6,7 @@ import { createPendingTaskStore } from '../../../src/runs/pending-tasks/response
 import { parseDatabaseConfig } from '@pertexo/database/platform';
 import { withTenantScopedClient } from '@pertexo/database/primitives';
 import { synchronizeHumanWait } from '../../../src/runs/pending-tasks/lifecycle/time-capacity.repository.js';
-import { admin, createFamily } from '../../lifecycle/calls/fixtures.js';
+import { admin, createFamily } from '../../lifecycle/calls/calls.fixture.js';
 import { apiUrl, userId } from '../../lifecycle/retention.support.js';
 export { admin, userId };
 export let store: ReturnType<typeof createPendingTaskStore>;

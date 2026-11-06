@@ -1,5 +1,5 @@
 import type { WorkspaceVariableValues } from '@pertexo/workflow-model';
-import type { PREVIEW_STATUS } from './state.js';
+import type { PREVIEW_STATUS } from './preview-state.js';
 
 import type { parseStoredExecutionValue } from '../shared/stored-execution.js';
 export type PreviewStatus =

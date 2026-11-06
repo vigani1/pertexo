@@ -20,7 +20,7 @@ import {
   workflowC,
   hasPostgresCode,
   workerDatabase,
-} from './execution/fixture.js';
+} from './execution/execution.fixture.js';
 import { and, count, eq } from 'drizzle-orm';
 import { createRetentionStore } from '../../src/lifecycle/retention/retention.store.js';
 import { createPreviewRetentionCoordinator } from '../../src/lifecycle/previews/coordinator.js';

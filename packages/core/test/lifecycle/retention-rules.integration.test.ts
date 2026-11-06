@@ -13,7 +13,7 @@ import {
   runRow,
   insertScheduleTrigger,
   insertOccurrence,
-} from './retention-rules/fixture.js';
+} from './retention-rules.fixture.js';
 import {
   randomUUID,
   retention,

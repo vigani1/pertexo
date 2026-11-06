@@ -15,7 +15,7 @@ import {
   nodeTestingDependencies,
   nodeTestingIds,
   nodeTestingPreview,
-} from './fixture.js';
+} from './node-testing.fixture.js';
 
 const { actorId, workspaceId, workflowId, previewRunId } = nodeTestingIds;
 const draft = `/v1/workspaces/${workspaceId}/workflows/${workflowId}/draft`;

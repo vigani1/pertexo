@@ -34,7 +34,7 @@ import {
   normalizeBeginInput,
   normalizeFinalizeInput,
   normalizeIdentity,
-} from './input.js';
+} from './normalize-upload-command.js';
 import {
   completeArtifactUpload,
   loadArtifact,

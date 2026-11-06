@@ -11,7 +11,7 @@ import {
   afterAllFixture2,
   beforeAllFixture1,
   database,
-} from '../suites/progress/fixture.js';
+} from '../suites/progress.fixture.js';
 import {
   draft,
   member,
@@ -22,7 +22,7 @@ import {
   setWorkspaceStatus,
   startSuite,
   startTest,
-} from './roles/fixture.js';
+} from './roles.fixture.js';
 
 beforeAll(beforeAllFixture1);
 afterAll(afterAllFixture2);

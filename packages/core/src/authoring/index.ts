@@ -18,13 +18,13 @@ export type {
   WorkflowOrganizationBatchItemResult,
   WorkflowOrganizationBatchRequest,
 } from './organization/batches/workflow-organization-batch.store.js';
-export { createWorkflowOrganizationReadStore } from './organization/workflows/workflow-organization-read.store.js';
+export { createWorkflowOrganizationReadStore } from './organization/workflow-organization-read.store.js';
 export type {
   WorkflowOrganizationFilters,
   WorkflowOrganizationMetadata,
   WorkflowOrganizationReadStore,
   WorkflowWithOrganization,
-} from './organization/workflows/workflow-organization-read.store.js';
+} from './organization/workflow-organization-read.store.js';
 export {
   createWorkflowTagStore,
   type WorkflowTagStore,
@@ -139,7 +139,7 @@ export type { WorkflowCollaborationStore } from './collaboration/workflow-collab
 // Other areas import these files directly (ADR 091); the door gains nothing.
 export type {} from './input-cases/metadata.repository.js';
 export type {} from './reviews/eligibility.repository.js';
-export type {} from './step-samples/records.repository.js';
+export type {} from './step-samples/step-sample-state.repository.js';
 export type {} from './workflows/authority.js';
 export type {} from './workflows/catalogs.js';
 

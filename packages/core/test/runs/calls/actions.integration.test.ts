@@ -20,7 +20,7 @@ import { Pool } from 'pg';
 import { createWorkflowCallStore } from '../../../src/runs/calls/workflow-call.store.js';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
 import { withTenantScopedClient } from '@pertexo/database/primitives';
-import { admin } from '../../lifecycle/calls/fixtures.js';
+import { admin } from '../../lifecycle/calls/calls.fixture.js';
 import {
   apiUrl,
   maintenanceUrl,

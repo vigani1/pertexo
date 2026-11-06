@@ -10,7 +10,7 @@ import {
   lockActorArtifactReferences,
 } from '../../src/artifacts/references/locks.repository.js';
 import { artifactOwnerFixture } from './owner-shapes.fixture.js';
-import { ownerTransaction } from './lifetime/fixture.js';
+import { ownerTransaction } from './lifetime.fixture.js';
 import { workspaceId, userId } from '../lifecycle/retention.support.js';
 
 const authoredOwners = {

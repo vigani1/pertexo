@@ -19,7 +19,7 @@ import type {
   WorkflowTagAssignment,
   WorkflowTagRecord,
 } from './workflow-tag.types.js';
-import { page, pagination, tagProjection } from './state.repository.js';
+import { page, pagination, tagProjection } from './tag-state.repository.js';
 
 export async function listTags(
   session: ReturnType<typeof createOrganizationSession>,

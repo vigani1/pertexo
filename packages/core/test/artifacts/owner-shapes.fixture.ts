@@ -1,5 +1,5 @@
 import { withTenantScopedClient } from '@pertexo/database/primitives';
-import { fixture, ownerTransaction, addVersion } from './lifetime/fixture.js';
+import { fixture, ownerTransaction, addVersion } from './lifetime.fixture.js';
 import {
   workspaceId,
   userId,

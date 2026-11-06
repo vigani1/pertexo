@@ -12,7 +12,7 @@ import {
   workflowId,
   change,
   asOwner,
-} from './workspace-deletion/fixture.js';
+} from './workspace-deletion/workspace-deletion.fixture.js';
 import { IdempotencyRequestConflictError } from '../../src/shared/command-receipt.errors.js';
 import { WorkspaceLifecycleConflictError } from '../../src/lifecycle/workspace-lifecycle.errors.js';
 

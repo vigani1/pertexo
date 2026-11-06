@@ -24,10 +24,10 @@ import { z } from 'zod';
 import type {
   PreviewInvocationOutcome,
   PreviewNodeInvoker,
-} from './handler.js';
-import { PreviewAttemptHandlerStateError } from './handler.js';
+} from './handle-preview-delivery.js';
+import { PreviewAttemptHandlerStateError } from './handle-preview-delivery.js';
 
-export type { PreviewAttemptHandler } from './handler.js';
+export type { PreviewAttemptHandler } from './handle-preview-delivery.js';
 
 const previewExecutableNodeSchema = z
   .object({

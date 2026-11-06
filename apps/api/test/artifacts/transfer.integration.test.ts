@@ -18,7 +18,7 @@ import {
   parseResponse,
   begin,
   expectInvalidPutOrFinalization,
-} from './transfer/fixture.js';
+} from './artifact-transfer.fixture.js';
 import { randomUUID } from 'node:crypto';
 import {
   artifactDownloadResponseSchema,

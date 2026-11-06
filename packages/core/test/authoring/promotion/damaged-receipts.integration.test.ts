@@ -13,7 +13,7 @@ import {
   promotions,
   published,
   scope,
-} from './commands/fixture.js';
+} from './promotion-commands.fixture.js';
 
 async function damage(operation: string) {
   const rows = await queryAsOwner(

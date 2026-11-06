@@ -2,7 +2,7 @@ import { expect, it } from 'vitest';
 
 import { withTenantScopedClient } from '@pertexo/database/primitives';
 import { visibleArtifactIds } from '../../src/artifacts/references/access.repository.js';
-import { fixture, ownerTransaction } from './lifetime/fixture.js';
+import { fixture, ownerTransaction } from './lifetime.fixture.js';
 import {
   workspaceId,
   userId,

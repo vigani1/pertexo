@@ -13,7 +13,7 @@ import {
   runRetentionIntervalSql,
 } from '../../runs/data-policy.js';
 import type { PoolClient } from 'pg';
-import { inlineSampleOutput } from './records.repository.js';
+import { inlineSampleOutput } from './step-sample-state.repository.js';
 import { WorkflowStepSampleError } from './step-sample.errors.js';
 import type {
   SampleCommand,

@@ -10,7 +10,7 @@ import {
   databaseName,
   PausingObjectStore,
   coordinator,
-} from './workspace-purge/fixture.js';
+} from './workspace-purge/workspace-purge.fixture.js';
 import { randomUUID } from 'node:crypto';
 import { Pool, Client } from 'pg';
 import {
