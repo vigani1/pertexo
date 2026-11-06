@@ -10,7 +10,7 @@ import {
   workflows,
 } from '@pertexo/database/schema';
 import type { FolderScope } from '../../../shared/folder-access.types.js';
-import { workflowScopeSql } from '../../../shared/scope.repository.js';
+import { workflowScopeSql } from '../../../shared/folder-scope.repository.js';
 import {
   workflowAccessible,
   workflowActions,

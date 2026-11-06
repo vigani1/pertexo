@@ -1,4 +1,4 @@
-import { evidenceOutcome } from '@pertexo/workflow-engine';
+import { evidenceOutcome } from './operator-command-decisions.js';
 import { and, eq, sql } from 'drizzle-orm';
 import {
   nodeAttempts,

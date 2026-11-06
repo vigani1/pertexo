@@ -3,7 +3,7 @@ import { inputRequestConfigSchema } from '@pertexo/workflow-model';
 import { rolesForCapability } from '@pertexo/policy';
 import { withTenantScopedClient } from '@pertexo/database/primitives';
 import { lockWorkspaceAuthority } from '../../../src/shared/authority.repository.js';
-import { readFolderScope } from '../../../src/shared/facts.repository.js';
+import { readFolderScope } from '../../../src/shared/folder-access-facts.repository.js';
 import { readTaskUploadTarget } from '../../../src/runs/pending-tasks/responses/pending-task-records.repository.js';
 import { loadUploadTarget } from '../../../src/artifacts/form-uploads/targets.repository.js';
 import { admin, pool, taskFixture, userId } from './pending-tasks.fixture.js';

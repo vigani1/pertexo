@@ -1,5 +1,5 @@
 import type { connectionScope } from '../../../../shared/resources/connection-scope.repository.js';
-import type { readFolderScope } from '../../../../shared/facts.repository.js';
+import type { readFolderScope } from '../../../../shared/folder-access-facts.repository.js';
 
 import type {
   WorkflowPromotionPreview,

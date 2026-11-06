@@ -1,4 +1,4 @@
-import { readFolderScope } from '../../../../src/shared/facts.repository.js';
+import { readFolderScope } from '../../../../src/shared/folder-access-facts.repository.js';
 import { withTenantScopedReadClient } from '@pertexo/database/primitives';
 import { randomUUID } from 'node:crypto';
 import { describe, expect, it } from 'vitest';

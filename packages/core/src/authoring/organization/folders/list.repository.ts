@@ -5,7 +5,7 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import { workflowFolders } from '@pertexo/database/schema';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { folderProjection, type FolderRow } from './hierarchy.repository.js';
-import { readBrowsableFolderScope } from '../../../shared/facts.repository.js';
+import { readBrowsableFolderScope } from '../../../shared/folder-access-facts.repository.js';
 import { FOLDER_DEPTH_LIMIT } from '../limits.js';
 import { FOLDER_LIMIT } from '../../../shared/folder-policy.js';
 

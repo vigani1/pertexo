@@ -1,4 +1,4 @@
-import { redispatchOutcome } from '@pertexo/workflow-engine';
+import { redispatchOutcome } from './operator-command-decisions.js';
 import { and, eq, sql } from 'drizzle-orm';
 import { outboxEvents } from '@pertexo/database/schema';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';

@@ -1,5 +1,5 @@
-import { readTransactionFolderScope } from '../../../shared/facts.repository.js';
-import { workflowScopeSql } from '../../../shared/scope.repository.js';
+import { readTransactionFolderScope } from '../../../shared/folder-access-facts.repository.js';
+import { workflowScopeSql } from '../../../shared/folder-scope.repository.js';
 
 import type { Role } from '@pertexo/policy';
 

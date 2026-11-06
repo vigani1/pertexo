@@ -77,17 +77,6 @@ export {
   type WorkflowTestCompilation,
 } from './testing/compile.js';
 
-export {
-  attemptReconciliationOutcome,
-  automaticReconciliationAction,
-  overdueDeliveryAction,
-  evidenceOutcome,
-  resumeOutcome,
-  cancellationOutcome,
-  triggerReconciliationOutcome,
-  runReplayOutcome,
-  redispatchOutcome,
-} from './operator/decisions.js';
 export { NODE_ATTEMPT_INPUT_LIMITS } from './workflow-execution.js';
 
 export {

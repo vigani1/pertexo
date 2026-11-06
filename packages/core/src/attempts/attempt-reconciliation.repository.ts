@@ -1,4 +1,4 @@
-import { attemptReconciliationOutcome } from '@pertexo/workflow-engine';
+import { attemptReconciliationOutcome } from './attempt-reconciliation.js';
 import { and, eq, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { nodeAttempts, nodeRuns, workflowRuns } from '@pertexo/database/schema';

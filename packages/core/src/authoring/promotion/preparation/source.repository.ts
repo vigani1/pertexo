@@ -13,7 +13,7 @@ import {
   connectionScope,
   connectionScopeSql,
 } from '../../../shared/resources/connection-scope.repository.js';
-import { readFolderScope } from '../../../shared/facts.repository.js';
+import { readFolderScope } from '../../../shared/folder-access-facts.repository.js';
 import { workflowAccessible } from '../../../shared/resources/workflow-access.repository.js';
 import type { PoolClient } from 'pg';
 import type { WorkflowPromotionPreviewRequest } from '@pertexo/contracts';

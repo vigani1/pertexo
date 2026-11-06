@@ -1,4 +1,5 @@
-import { resumeOutcome, cancellationOutcome } from '@pertexo/workflow-engine';
+import { resumeOutcome } from './operator-command-decisions.js';
+import { cancellationOutcome } from './operator-command-decisions.js';
 import { and, asc, eq, exists, isNull, lte, or, sql } from 'drizzle-orm';
 import {
   nodeRuns,

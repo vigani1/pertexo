@@ -17,7 +17,7 @@ import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
 import { lockArtifactReferences } from '../../../artifacts/references/locks.repository.js';
-import { readFolderScope } from '../../../shared/facts.repository.js';
+import { readFolderScope } from '../../../shared/folder-access-facts.repository.js';
 import { requireWorkflowCallTargets } from '../../../shared/resources/workflow-call-bindings.repository.js';
 import { requireConnectionBindings } from '../../../shared/resources/connection-bindings.repository.js';
 import { decodeStoredReceipt } from '../../../shared/receipts.js';

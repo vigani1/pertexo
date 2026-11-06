@@ -22,10 +22,8 @@ import type {
   WorkspaceInvitationRecord,
 } from '../../tenant-access.types.js';
 
-import {
-  invitationReceipt,
-  requireReadableReceipt,
-} from '../../../shared/receipts.js';
+import { requireReadableReceipt } from '../../../shared/receipts.js';
+import { invitationReceipt } from '../../command-receipts.schemas.js';
 import type { sealedToken } from '../input.js';
 import {
   mapDurableInvitation,

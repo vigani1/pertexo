@@ -8,8 +8,8 @@ import {
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { workflows } from '@pertexo/database/schema';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
-import { readFolderScope } from '../facts.repository.js';
-import { workflowScopeSql } from '../scope.repository.js';
+import { readFolderScope } from '../folder-access-facts.repository.js';
+import { workflowScopeSql } from '../folder-scope.repository.js';
 import type { ResourceActor } from '../folder-access.types.js';
 
 /** Only direct bindings are admitted; immutable child versions delegate their own closure. */

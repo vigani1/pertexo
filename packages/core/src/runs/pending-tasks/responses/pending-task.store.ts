@@ -1,4 +1,4 @@
-import { readFolderScope } from '../../../shared/facts.repository.js';
+import { readFolderScope } from '../../../shared/folder-access-facts.repository.js';
 import type { DatabaseConfig } from '@pertexo/database/platform';
 import {
   acquireDatabasePool,

@@ -17,10 +17,8 @@ import type {
 } from '../tenant-access.types.js';
 import { WorkspaceRenameCommandConflictError } from '../tenant-access.errors.js';
 import { readLockedMembers } from '../members/commands.repository.js';
-import {
-  renameReceipt,
-  requireReadableReceipt,
-} from '../../shared/receipts.js';
+import { requireReadableReceipt } from '../../shared/receipts.js';
+import { renameReceipt } from '../command-receipts.schemas.js';
 import { hasCapability } from '@pertexo/policy';
 import { workspaceRecord, workspaceSelection } from './projection.js';
 

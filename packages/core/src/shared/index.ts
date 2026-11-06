@@ -9,10 +9,10 @@ export {
 export type {} from './authority.repository.js';
 export type {} from './folder-access.types.js';
 export type {} from './workspace-access.errors.js';
-export type {} from './facts.repository.js';
+export type {} from './folder-access-facts.repository.js';
 export type {} from './folder-policy.js';
 export type {} from './receipts.js';
-export type {} from './scope.repository.js';
+export type {} from './folder-scope.repository.js';
 export type {} from './stored-values.js';
 export type {} from './stored-execution.js';
 export type {} from './workspace-fence.repository.js';
