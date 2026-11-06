@@ -2,7 +2,7 @@ import { NodeExecutorFailure } from '@pertexo/node-sdk/server';
 import { executorFailureCompletion } from '../../../../src/attempts/delivery/executor-failure.js';
 import { describe, expect, it, vi } from 'vitest';
 
-import { httpRequestConfigSchema } from '../../../../../../packages/integrations/src/index.js';
+import { httpRequestConfigSchema } from '../../../../../../packages/integrations/src/http-request/http-request.schemas.js';
 
 import { server, json, setup } from '../../support/pagination.js';
 describe('HTTP pagination through the real secure transport and registry', () => {
