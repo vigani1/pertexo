@@ -55,7 +55,6 @@ export const approvalOutputSchema = z
   .strict();
 
 export type ApprovalConfig = z.output<typeof approvalConfigSchema>;
-export type ApprovalOutput = z.output<typeof approvalOutputSchema>;
 
 export function isHumanTaskDefinition(
   definition: Readonly<{ key: string; version: number }> | undefined,

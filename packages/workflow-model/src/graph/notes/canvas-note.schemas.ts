@@ -30,7 +30,7 @@ const coordinate = z
   .number()
   .min(-WORKFLOW_NOTE_LIMITS.coordinate)
   .max(WORKFLOW_NOTE_LIMITS.coordinate);
-export const workflowNoteSchema: z.ZodType<WorkflowNote> = z
+const workflowNoteSchema: z.ZodType<WorkflowNote> = z
   .object({
     id: z.uuid(),
     text: z.string().max(WORKFLOW_NOTE_LIMITS.textLength),

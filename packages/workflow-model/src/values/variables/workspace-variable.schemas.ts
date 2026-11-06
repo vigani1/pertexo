@@ -15,7 +15,7 @@ export const workspaceVariableNameSchema = z
     /^[A-Z][A-Z0-9_]{0,63}$/u,
     'Use an uppercase letter, then uppercase letters, digits or underscores.',
   );
-export const workspaceVariableValueSchema = z.union([
+const workspaceVariableValueSchema = z.union([
   storageTextSchema.max(WORKSPACE_VARIABLE_LIMITS.textCharacters),
   z.number(),
   z.boolean(),
