@@ -36,7 +36,7 @@ export function defineUtility({
       definition: identity,
       executor: identity,
       family: 'transform',
-      display,
+      display: Object.freeze({ ...display }),
       configVersion: 1,
       configSchema: generateSchemaDocument(configSchema, {
         runtimeOnlySemantics: [

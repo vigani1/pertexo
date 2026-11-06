@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
+import { CORE_BOUNDED_JSON_POLICY } from '../src/policies.js';
 import {
-  CORE_BOUNDED_JSON_POLICY,
   CORE_NODE_DEFINITION_REGISTRATIONS,
   CORE_NODE_CATALOG,
 } from '../src/index.js';
@@ -111,4 +111,16 @@ describe('core node catalog', () => {
       ),
     ).toBe(true);
   });
+});
+
+it('keeps definition display metadata immutable for catalog consumers', () => {
+  for (const { manifest } of CORE_NODE_DEFINITION_REGISTRATIONS) {
+    if (manifest.display === undefined)
+      throw new Error('Display metadata missing');
+    const name = manifest.display.name;
+    expect(Reflect.set(manifest.display, 'name', 'Changed by a consumer')).toBe(
+      false,
+    );
+    expect(manifest.display.name).toBe(name);
+  }
 });
