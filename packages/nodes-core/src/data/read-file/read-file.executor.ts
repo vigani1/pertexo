@@ -15,7 +15,7 @@ import type {
 } from './read-file.schemas.js';
 import { parseJsonFile } from './json/inline.js';
 import { parseCsvFile } from './csv/inline.js';
-import { readXlsxRecords } from './xlsx/records.js';
+import { readXlsxRecords } from './xlsx/xlsx-records.js';
 
 export const coreReadFileExecutor: NodeExecutorRegistration = Object.freeze({
   executor: CORE_READ_FILE_EXECUTOR,

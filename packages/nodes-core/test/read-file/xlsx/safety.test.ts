@@ -1,7 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import { deflateRawSync } from 'node:zlib';
 import { describe, expect, it } from 'vitest';
-import { readXlsxRecords } from '../../../src/data/read-file/xlsx/records.js';
+import { readXlsxRecords } from '../../../src/data/read-file/xlsx/xlsx-records.js';
 import {
   entriesOf,
   readWorkbook,

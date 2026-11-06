@@ -16,7 +16,7 @@ import {
   configSchema,
   objectSchema,
   dispatchAwareFixture,
-} from '../support/registry.js';
+} from './registry.fixture.js';
 
 describe('node-sdk exact server registry', () => {
   it('executes ABI 2 after one durable marker and requires its runtime', async () => {

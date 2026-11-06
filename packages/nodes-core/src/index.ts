@@ -14,7 +14,7 @@ export {
   CORE_PARALLEL_EXECUTOR,
 } from './flow/parallel/parallel.definition.js';
 
-export { CORE_NODE_CATALOG } from './registry.js';
+export { CORE_NODE_CATALOG } from './core-node-catalog.js';
 
 export {
   CORE_SCHEDULE_CONFIG_SCHEMA,

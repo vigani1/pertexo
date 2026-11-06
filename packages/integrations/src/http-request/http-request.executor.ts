@@ -36,7 +36,7 @@ import {
   failedConfiguration,
 } from './execution/http-request-execution.js';
 import { consumeResponseBody, releaseHttpMaterial } from './execution/body.js';
-import { requestHeaders } from './execution/input.js';
+import { requestHeaders } from './execution/request-input.js';
 import {
   type RequestContext,
   type RequestMaterial,

@@ -19,7 +19,7 @@ import {
   configSchema,
   objectSchema,
   catalog,
-} from '../support/registry.js';
+} from './registry.fixture.js';
 
 describe('node-sdk catalog contracts', () => {
   it('rejects a catalog definition or executor that is not implemented', () => {

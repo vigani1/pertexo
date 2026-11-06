@@ -2,7 +2,7 @@ import { NODE_JSON_LIMITS } from '@pertexo/node-sdk';
 import type { JsonValue } from '@pertexo/node-sdk/server';
 import type { CoreReadFileConfig } from '../read-file.schemas.js';
 import { admitFileRows } from '../admit-value.js';
-import { readCsvRecords } from './records.js';
+import { readCsvRecords } from './csv-records.js';
 
 type CsvConfig = Extract<CoreReadFileConfig, { format: 'csv' }>;
 export async function parseCsvFile(

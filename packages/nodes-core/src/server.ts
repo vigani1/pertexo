@@ -4,7 +4,7 @@ import {
 } from '@pertexo/node-sdk/server';
 
 import { CORE_NODE_DEFINITION_REGISTRATIONS } from './definitions.js';
-import { CORE_NODE_CATALOG } from './registry.js';
+import { CORE_NODE_CATALOG } from './core-node-catalog.js';
 import { CORE_NODE_EXECUTOR_REGISTRATIONS } from './registrations.js';
 
 export { CORE_NODE_DEFINITION_REGISTRATIONS } from './definitions.js';

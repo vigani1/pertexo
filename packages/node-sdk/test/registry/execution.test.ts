@@ -24,7 +24,7 @@ import {
   objectSchema,
   catalog,
   dispatchAwareFixture,
-} from '../support/registry.js';
+} from './registry.fixture.js';
 
 describe('node-sdk exact server registry', () => {
   it('derives terminal success from the pinned capability', async () => {
