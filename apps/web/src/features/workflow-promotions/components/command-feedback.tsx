@@ -1,8 +1,13 @@
+import { Link } from '@tanstack/react-router';
+import { describeCommandError } from '@/lib/api/error-copy';
+import { promotionFailureMessage } from '../model/failures';
 import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/ui/notice';
 export function PromotionCommandFeedback({
   command,
   retryLabel,
+  reviewFailure,
+  recoveryTargetId,
 }: {
   command: Readonly<{
     error: string | undefined;
@@ -12,20 +17,40 @@ export function PromotionCommandFeedback({
     retry: () => void;
   }>;
   retryLabel: string;
+  reviewFailure?: unknown;
+  recoveryTargetId?: string | undefined;
 }) {
-  if (command.error === undefined) return null;
+  const message =
+    reviewFailure === undefined
+      ? command.error
+      : (promotionFailureMessage(reviewFailure) ??
+        describeCommandError(reviewFailure, 'reviewing this promotion'));
+  if (message === undefined && recoveryTargetId === undefined) return null;
   return (
-    <Notice tone="warning">
-      {command.error}
-      {command.uncertain ? (
-        <Button
-          type="button"
-          disabled={command.pending || command.expired}
-          onClick={command.retry}
+    <>
+      {message === undefined ? null : (
+        <Notice tone="warning">
+          {message}
+          {command.uncertain ? (
+            <Button
+              type="button"
+              disabled={command.pending || command.expired}
+              onClick={command.retry}
+            >
+              {retryLabel}
+            </Button>
+          ) : null}
+        </Notice>
+      )}
+      {recoveryTargetId === undefined ? null : (
+        <Link
+          to="/w/$workspaceId"
+          params={{ workspaceId: recoveryTargetId }}
+          className="inline-link self-start"
         >
-          {retryLabel}
-        </Button>
-      ) : null}
-    </Notice>
+          Open target workspace
+        </Link>
+      )}
+    </>
   );
 }

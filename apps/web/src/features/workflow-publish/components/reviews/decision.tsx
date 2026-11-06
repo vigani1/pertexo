@@ -1,3 +1,5 @@
+import { isApiError } from '@/lib/api/error';
+import { commandErrorMessage } from '../../data/mutations/command-utils';
 import { inboxKeys } from '@/features/inbox/inbox-queries.public';
 import { workflowKeys } from '@/features/workflows/workflows-queries.public';
 import { workflowPublishKeys } from '../../data/workflow-publish.queries';
@@ -35,8 +37,21 @@ export function ReviewDecision({
     { comment: '' },
   );
   const command = useRetainedCommand(
-    (body: PublicationReviewDecision, key: string) =>
-      decidePublicationReview(scope, request.id, body, key),
+    async (body: PublicationReviewDecision, key: string) => {
+      try {
+        return await decidePublicationReview(scope, request.id, body, key);
+      } catch (cause) {
+        if (
+          isApiError(cause) &&
+          (cause.problem?.code === 'workflow.publication_review_conflict' ||
+            cause.problem?.code === 'workflow.invalid')
+        )
+          await cache.invalidateQueries({
+            queryKey: publicationReviewKeys.scope(scope),
+          });
+        throw cause;
+      }
+    },
     async () => {
       await cache.invalidateQueries({
         queryKey: publicationReviewKeys.scope(scope),
@@ -55,7 +70,14 @@ export function ReviewDecision({
         queryKey: inboxKeys.scope(scope.userId, scope.workspaceId),
       });
     },
-    { action: 'deciding publication' },
+    {
+      action: 'deciding publication',
+      failureMessage: (cause) =>
+        isApiError(cause) &&
+        cause.problem?.code === 'workflow.publication_review_conflict'
+          ? cause.problem.detail
+          : commandErrorMessage(cause, 'deciding publication'),
+    },
   );
   const locked = !request.canDecide || command.pending || command.uncertain;
   const decide = (decision: PublicationReviewDecision['decision']) => {
