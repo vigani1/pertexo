@@ -2,7 +2,6 @@ import { getRequestUrl } from '../../support/request';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { expect, it, vi } from 'vitest';
-import type { WorkflowPromotionPreview } from '@pertexo/contracts';
 import { WorkflowPromotionPage } from '@/features/workflow-promotions/public';
 import { promotionSettingsQuery } from '@/features/workflow-promotions/data/promotions.queries';
 import { createApiClient } from '@/lib/api/client';
@@ -14,43 +13,7 @@ import {
   workflowId,
   versionId,
 } from '../workflows/list/fixtures';
-const targetId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
-const targetWorkflowId = '99999999-9999-4999-8999-999999999999';
-const graph = { nodes: [], edges: [], settings: {} };
-const preview: WorkflowPromotionPreview = {
-  fingerprint: 'a'.repeat(64),
-  sourceWorkspaceId: workspaceId,
-  sourceWorkspaceName: 'Development',
-  targetWorkspaceId: targetId,
-  targetWorkspaceName: 'Production',
-  mode: 'draft',
-  requireApproval: false,
-  compatible: true,
-  workflows: [
-    {
-      sourceWorkflowId: workflowId,
-      sourceName: 'Release',
-      sourceVersionId: versionId,
-      sourceVersionNumber: 1,
-      sourceChecksum: `wf:sha256:${'a'.repeat(64)}`,
-      targetWorkflowId,
-      targetName: 'Release',
-      targetRevision: 2,
-      targetPublishedVersionId: null,
-      directChanges: true,
-      proposedGraph: graph,
-      targetGraph: graph,
-    },
-  ],
-  requirements: [],
-};
-function json(value: unknown) {
-  return Promise.resolve(
-    new Response(JSON.stringify(value), {
-      headers: { 'Content-Type': 'application/json' },
-    }),
-  );
-}
+import { targetId, targetWorkflowId, preview, json } from './review.fixture';
 it('keeps the exact reviewed command through a lost response and preserves target edits until acknowledged', async () => {
   const requests: { body: string; key: string }[] = [];
   const fetch = vi
