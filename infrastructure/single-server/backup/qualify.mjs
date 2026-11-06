@@ -7,7 +7,14 @@ import { execFileSync, spawnSync } from 'node:child_process';
 import { createRecoveryFiles } from './files.fixture.mjs';
 import { seedEncryptedRecoveryFixture } from './encryption.fixture.mjs';
 import { createHash, randomUUID } from 'node:crypto';
-import { mkdtempSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
+import {
+  closeSync,
+  mkdtempSync,
+  openSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { Readable } from 'node:stream';
@@ -273,20 +280,25 @@ try {
  RESET ROLE;
  INSERT INTO public.recovery_fixture VALUES ${artifacts.map((a) => `('${a.workspaceId}','${a.artifactId}','${a.sha256}',${a.artifactId === bundle.pages[0].artifactId ? "'" + JSON.stringify(bundle) + "'::jsonb" : 'NULL'})`).join(',')};`,
   );
-  const dump = docker(
-    [
-      'exec',
-      sourceDb,
-      'pg_dump',
-      '-U',
-      'postgres',
-      '-d',
-      'pertexo',
-      '--format=custom',
-    ],
-    { encoding: null },
-  );
-  writeFileSync(join(directory, 'database.dump'), dump);
+  // Stream into the file: a dump read into memory grows past execFileSync's buffer.
+  const dumpFile = openSync(join(directory, 'database.dump'), 'w');
+  try {
+    docker(
+      [
+        'exec',
+        sourceDb,
+        'pg_dump',
+        '-U',
+        'postgres',
+        '-d',
+        'pertexo',
+        '--format=custom',
+      ],
+      { encoding: null, stdio: ['ignore', dumpFile, 'pipe'] },
+    );
+  } finally {
+    closeSync(dumpFile);
+  }
   const env = { RCLONE_CONFIG: '/dev/null' };
   for (const [remote, config, endpoint] of [
     ['SOURCE', source, 'http://storage:9000'],
@@ -412,7 +424,10 @@ try {
   );
   rclone(['copyto', point + '/database.dump', '/backup/restored.dump']);
   const restoredDump = readFileSync(join(directory, 'restored.dump'));
-  assert.deepEqual(restoredDump, dump);
+  assert.deepEqual(
+    restoredDump,
+    readFileSync(join(directory, 'database.dump')),
+  );
   for (const key of encryption.masterKeys) {
     assert.ok(!restoredDump.includes(Buffer.from(key)));
     assert.ok(!restoredDump.includes(Buffer.from(key, 'base64')));
