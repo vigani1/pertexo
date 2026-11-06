@@ -2,7 +2,7 @@ import {
   MappingExecutorFailure,
   MappingRefusalError,
   type MappingRefusal,
-} from '@pertexo/workflow-engine';
+} from '@pertexo/workflow-engine/server';
 
 /** Render only the engine's safe facts at the run/preview product boundary. */
 export function describeMappingFailure(error: unknown): string | undefined {

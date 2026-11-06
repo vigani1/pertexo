@@ -31,7 +31,7 @@ import {
 import {
   WorkflowEngineError,
   type NodeExecutionRegistry,
-} from '@pertexo/workflow-engine';
+} from '@pertexo/workflow-engine/server';
 import {
   HttpRequestExecutorError,
   createHttpRequestExecutorRegistration,

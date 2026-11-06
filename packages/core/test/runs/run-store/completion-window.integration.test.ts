@@ -7,7 +7,7 @@ import {
   createCheckpoint,
   invocationKey,
   parseCheckpoint,
-} from '@pertexo/workflow-engine';
+} from '@pertexo/workflow-engine/server';
 import {
   asOwner,
   asRuntime,

@@ -31,7 +31,7 @@ import {
   type QueueConsumerOptions,
   type RunEventNotificationPublisher,
 } from '@pertexo/queue';
-import type { NodeExecutionRegistry } from '@pertexo/workflow-engine';
+import type { NodeExecutionRegistry } from '@pertexo/workflow-engine/server';
 
 describe('node-attempt runtime', () => {
   it('closes a preview store created before invoker failure and preserves cleanup failure', async () => {

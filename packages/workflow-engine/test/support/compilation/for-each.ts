@@ -1,10 +1,10 @@
-import type { AdvanceWorkflowInput } from '../../../src/index.js';
+import type { AdvanceWorkflowInput } from '../../../src/operations.js';
 import {
   advanceWorkflow,
   buildWorkflowExecutable,
   composeExecutableCatalog,
   createCheckpoint,
-} from '../../../src/index.js';
+} from '../../../src/server.js';
 import { forEachGraph, nodeCatalog } from '../executable-workflow.js';
 export async function startForEach() {
   const executable = buildWorkflowExecutable({

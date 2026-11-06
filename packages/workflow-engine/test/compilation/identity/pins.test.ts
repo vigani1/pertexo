@@ -3,9 +3,9 @@ import { describe, expect, it } from 'vitest';
 import {
   buildWorkflowExecutable,
   composeExecutableCatalog,
-  parseWorkflowExecutable,
   verifyWorkflowExecutable,
-} from '../../../src/index.js';
+} from '../../../src/server.js';
+import { parseWorkflowExecutable } from '../../../src/compilation/boundary.js';
 import {
   nodeCatalog,
   conditionGraph,

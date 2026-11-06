@@ -6,7 +6,7 @@ import { acquireDatabasePool } from '@pertexo/database/platform';
 import {
   buildWorkflowTestExecutable,
   composeExecutableCatalog,
-} from '@pertexo/workflow-engine';
+} from '@pertexo/workflow-engine/server';
 import { PLATFORM_NODE_CATALOG } from '@pertexo/node-catalog';
 import { startCallbackReceiver } from './receiver.js';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';

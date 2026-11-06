@@ -2,7 +2,7 @@ import { performance } from 'node:perf_hooks';
 
 import { describe, expect, it } from 'vitest';
 
-import { parseCheckpoint, WORKFLOW_CHECKPOINT_LIMITS } from '../src/index.js';
+import { parseCheckpoint, WORKFLOW_CHECKPOINT_LIMITS } from '../src/server.js';
 
 const workflowVersionId = '00000000-0000-4000-8000-000000000001';
 

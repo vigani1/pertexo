@@ -1,7 +1,7 @@
 import type { InitialCheckpointFactory } from '../../../src/runs/commands/initial-checkpoint.js';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { CORE_NODE_CATALOG } from '@pertexo/nodes-core';
-import { composeExecutableCatalog } from '@pertexo/workflow-engine';
+import { composeExecutableCatalog } from '@pertexo/workflow-engine/server';
 import { initialCheckpointFactory } from '../../../src/runs/commands/create-initial-checkpoint.js';
 import { createScheduleTriggerTestEnvironment } from '../../support/schedule-triggers.js';
 

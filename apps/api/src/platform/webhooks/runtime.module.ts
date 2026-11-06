@@ -8,7 +8,7 @@ import type { DatabaseRuntime } from '@pertexo/database/platform';
 import { createWebhookTriggerEnvelopeEncryption } from '@pertexo/secrets/server';
 import type { StructuredLogger } from '@pertexo/observability';
 import { PLATFORM_NODE_CATALOG } from '@pertexo/node-catalog';
-import { composeExecutableCatalog } from '@pertexo/workflow-engine';
+import { composeExecutableCatalog } from '@pertexo/workflow-engine/server';
 
 import type { ApiConfig } from '../config/api.js';
 import { initialCheckpointFactory } from '@pertexo/core/runs';

@@ -1,13 +1,13 @@
 import { randomUUID } from 'node:crypto';
 import { expect } from 'vitest';
 import type { WorkflowGraph } from '@pertexo/workflow-model';
+import { type WorkflowCheckpoint } from '../../../src/index.js';
 import {
   advanceWorkflow,
   buildWorkflowExecutable,
   composeExecutableCatalog,
   createCheckpoint,
-  type WorkflowCheckpoint,
-} from '../../../src/index.js';
+} from '../../../src/server.js';
 import { nodeCatalog } from '../executable-workflow.js';
 export async function drive(
   graph: WorkflowGraph,

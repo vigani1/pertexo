@@ -6,14 +6,16 @@ import type {
 } from '../attempts/node-attempt.js';
 import { NodeAttemptStateCorruptError } from '../attempts/node-attempt.errors.js';
 import {
-  loopIterationOrdinal,
   NODE_ATTEMPT_INPUT_LIMITS,
-  parseCheckpoint,
   type BranchScopePart,
   type IterationScopePart,
   type LoopState,
   type WorkflowCheckpoint,
 } from '@pertexo/workflow-engine';
+import {
+  loopIterationOrdinal,
+  parseCheckpoint,
+} from '@pertexo/workflow-engine/server';
 import { canonicalJson } from '@pertexo/workflow-model';
 
 /** Everything a node attempt's executor reads, projected from stored state. */

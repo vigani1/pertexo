@@ -30,7 +30,7 @@ import {
   withWorkspaceTransaction,
   withTenantScopedClient,
 } from '@pertexo/database/primitives';
-import { createCheckpoint } from '@pertexo/workflow-engine';
+import { createCheckpoint } from '@pertexo/workflow-engine/server';
 import { readErrorWorkflow } from '../../../src/runs/error-workflows/read.repository.js';
 import { createWorkspacePurgeCoordinator } from '../../../src/lifecycle/purge/coordinator.js';
 import { parseDatabaseConfig } from '@pertexo/database/platform';

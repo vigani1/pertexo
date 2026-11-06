@@ -6,7 +6,7 @@ import {
   curatedScheduleInputCase,
 } from './worker-evidence.js';
 import { CURATED_WORKFLOW_TEMPLATES } from '@pertexo/templates';
-import { resolveSingleNodePreviewInput } from '@pertexo/workflow-engine';
+import { resolveSingleNodePreviewInput } from '@pertexo/workflow-engine/server';
 import {
   CORE_VALIDATE_CONFIG_SCHEMA,
   CORE_SCHEDULE_INPUT_SCHEMA,

@@ -5,7 +5,7 @@ import {
   type NodeAttemptLease,
 } from '@pertexo/core/attempts';
 
-import type { NodeAttemptOutcome } from '@pertexo/workflow-engine';
+import type { NodeAttemptOutcome } from '@pertexo/workflow-engine/server';
 
 import { classifyProcessError } from '@pertexo/observability/startup';
 

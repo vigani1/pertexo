@@ -23,7 +23,7 @@ import {
   registryPreparedAttempt,
 } from '../support/attempts/handler.js';
 import { STORED_CHECKPOINT } from './node-attempt-delivery.fixture.js';
-import type { NodeExecutionRegistry } from '@pertexo/workflow-engine';
+import type { NodeExecutionRegistry } from '@pertexo/workflow-engine/server';
 
 describe('NodeAttemptHandler', () => {
   it('rejects an unavailable published workflow', async () => {

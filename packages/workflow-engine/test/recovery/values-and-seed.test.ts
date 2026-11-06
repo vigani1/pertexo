@@ -3,7 +3,7 @@ import {
   buildWorkflowExecutable,
   composeExecutableCatalog,
   parseCheckpoint,
-} from '../../src/index.js';
+} from '../../src/server.js';
 import { nodeProviderIdempotencyKey } from '../../src/attempt/derive-provider-key.js';
 import { planRecovery } from '../../src/recovery/plan.js';
 import { seedRecovery } from '../../src/recovery/seed.js';

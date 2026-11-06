@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 import {
   buildWorkflowExecutable,
   composeExecutableCatalog,
-} from '../../../src/index.js';
+} from '../../../src/server.js';
 import { nodeCatalog, forEachGraph } from '../executable-workflow.js';
 export function structuredAttemptFixture() {
   const executable = buildWorkflowExecutable({

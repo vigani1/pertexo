@@ -4,7 +4,7 @@ import {
   StoredExecutionValueInvalidError,
 } from '@pertexo/node-sdk';
 import type { RunAdvanceState } from './run-advance.types.js';
-import type { CallableResultDecision } from '@pertexo/workflow-engine';
+import type { CallableResultDecision } from '@pertexo/workflow-engine/server';
 import {
   resolveValueSource,
   validateCallableValue,

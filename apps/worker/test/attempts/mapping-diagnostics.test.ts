@@ -5,7 +5,7 @@ import {
   type ExpressionLimit,
 } from '@pertexo/workflow-model/server';
 import { NodeExecutorFailure } from '@pertexo/node-sdk/server';
-import { resolveSingleNodePreviewInput } from '@pertexo/workflow-engine';
+import { resolveSingleNodePreviewInput } from '@pertexo/workflow-engine/server';
 import { describeMappingFailure } from '../../src/attempts/execution/mapping-diagnostic.js';
 import { executorFailureCompletion } from '../../src/attempts/delivery/executor-failure.js';
 

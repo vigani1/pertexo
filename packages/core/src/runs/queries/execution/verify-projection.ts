@@ -6,7 +6,7 @@ import {
 } from '@pertexo/workflow-model';
 import { decodeStoredValue } from '../../../shared/stored-values.js';
 import type { PublishedWorkflow } from './workflow-execution.types.js';
-import { verifyWorkflowExecutable } from '@pertexo/workflow-engine';
+import { verifyWorkflowExecutable } from '@pertexo/workflow-engine/server';
 
 /** The served catalog (node catalog plus engine policies) stored executables run on. */
 export type PersistedWorkflowProjectionVerificationOptions = Readonly<{

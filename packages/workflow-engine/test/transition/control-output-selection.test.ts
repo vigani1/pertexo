@@ -4,7 +4,7 @@ import { workflowControlOutputNodeIds } from '@pertexo/workflow-model';
 import {
   buildWorkflowExecutable,
   composeExecutableCatalog,
-} from '../../src/index.js';
+} from '../../src/server.js';
 import {
   conditionGraph,
   nestedForEachGraph,

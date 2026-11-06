@@ -1,10 +1,10 @@
+import { type WorkflowTransitionPlan } from '@pertexo/workflow-engine';
 import {
   advanceWorkflow,
   buildWorkflowExecutable,
   composeExecutableCatalog,
   createCheckpoint,
-  type WorkflowTransitionPlan,
-} from '@pertexo/workflow-engine';
+} from '@pertexo/workflow-engine/server';
 import { expect } from 'vitest';
 
 import { PLATFORM_NODE_CATALOG } from '../../../node-catalog/dist/index.js';

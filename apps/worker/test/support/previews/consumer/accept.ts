@@ -11,7 +11,7 @@ import {
 } from '@pertexo/core/testing';
 import { databaseSchema } from '@pertexo/database/testing';
 
-import { createCheckpoint } from '@pertexo/workflow-engine';
+import { createCheckpoint } from '@pertexo/workflow-engine/server';
 
 import {
   workspaceId,

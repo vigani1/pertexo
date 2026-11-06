@@ -10,7 +10,7 @@ import {
   createWorkflowTriggerReconciliationStore,
 } from '@pertexo/core/triggers';
 import { initialCheckpointFactory } from '@pertexo/core/runs';
-import { composeExecutableCatalog } from '@pertexo/workflow-engine';
+import { composeExecutableCatalog } from '@pertexo/workflow-engine/server';
 import { CORE_NODE_CATALOG } from '@pertexo/nodes-core';
 import { scheduleTriggerListResponseSchema } from '@pertexo/contracts';
 import {

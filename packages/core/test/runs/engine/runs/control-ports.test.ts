@@ -6,7 +6,7 @@ import {
   createCheckpoint,
   invocationKey,
   type CompiledWorkflowExecutable,
-} from '@pertexo/workflow-engine';
+} from '@pertexo/workflow-engine/server';
 import { describe, expect, it } from 'vitest';
 
 import { RUN_ID, VERSION_ID } from '../support/workflow.fixture.js';

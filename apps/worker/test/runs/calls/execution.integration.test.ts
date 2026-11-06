@@ -20,7 +20,7 @@ import {
 } from '@pertexo/core/runs';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
 import { PLATFORM_NODE_CATALOG } from '@pertexo/node-catalog';
-import { composeExecutableCatalog } from '@pertexo/workflow-engine';
+import { composeExecutableCatalog } from '@pertexo/workflow-engine/server';
 import { createCoordinatorRecoveryHarness } from '../../support/coordinator/recovery-harness.js';
 
 describeIntegration('Workflow Call execution through real transport', () => {

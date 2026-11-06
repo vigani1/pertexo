@@ -5,7 +5,7 @@ import {
   composeExecutableCatalog,
   createCheckpoint,
   invocationKey,
-} from '../../../src/index.js';
+} from '../../../src/server.js';
 import { nodeCatalog, switchGraph } from '../../support/executable-workflow.js';
 describe('branching production operations', () => {
   it('derives a Switch selection only from its persisted inline output', async () => {

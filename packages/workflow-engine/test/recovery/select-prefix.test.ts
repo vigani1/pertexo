@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   buildWorkflowExecutable,
   composeExecutableCatalog,
-} from '../../src/index.js';
+} from '../../src/server.js';
 import { graph, nodeCatalog } from '../support/executable-workflow.js';
 import { selectRecoveryPrefix } from '../../src/recovery/select-prefix.js';
 import type { RecoveryNode } from '../../src/recovery/workflow-recovery.types.js';

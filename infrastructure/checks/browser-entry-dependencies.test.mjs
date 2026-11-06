@@ -3,6 +3,7 @@ import { mkdtemp, mkdir, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
+import { fileURLToPath } from 'node:url';
 
 import { inspectBrowserEntryDependencies } from './browser-entry-dependencies.mjs';
 
@@ -121,4 +122,17 @@ test('removes only its owned fixture after success and setup failure', async (t)
     );
   });
   assert.deepEqual(await readdir(parent), ['unrelated.txt']);
+});
+
+test('lets browser consumers load the workflow model and engine roots', async () => {
+  assert.deepEqual(
+    await inspectBrowserEntryDependencies({
+      root: fileURLToPath(new URL('../../', import.meta.url)),
+      entries: [
+        'packages/workflow-model/src/index.ts',
+        'packages/workflow-engine/src/index.ts',
+      ],
+    }),
+    [],
+  );
 });

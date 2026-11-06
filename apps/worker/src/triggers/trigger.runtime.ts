@@ -22,7 +22,7 @@ import {
   type QueueConsumer,
   type QueueConsumerObserver,
 } from '@pertexo/queue';
-import { composeExecutableCatalog } from '@pertexo/workflow-engine';
+import { composeExecutableCatalog } from '@pertexo/workflow-engine/server';
 
 import { createTriggerReconciliationHandler } from './handle-trigger-delivery.js';
 import { createTriggerRuntimeTelemetry } from './telemetry.js';

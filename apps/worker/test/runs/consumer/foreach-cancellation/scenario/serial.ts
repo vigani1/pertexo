@@ -1,7 +1,7 @@
 import { parseDatabaseConfig } from '@pertexo/database/testing';
 import { createRetentionStore } from '@pertexo/core/lifecycle';
 
-import { parseCheckpoint } from '@pertexo/workflow-engine';
+import { parseCheckpoint } from '@pertexo/workflow-engine/server';
 
 import { expect } from 'vitest';
 

@@ -4,11 +4,9 @@ import {
   composeExecutableCatalog,
   createCheckpoint,
   invocationKey,
-} from '../../src/index.js';
-import type {
-  BranchScopePart,
-  CompiledWorkflowExecutable,
-} from '../../src/index.js';
+} from '../../src/server.js';
+import type { BranchScopePart } from '../../src/index.js';
+import type { CompiledWorkflowExecutable } from '../../src/server.js';
 import type {
   RecoveryNode,
   RecoverySource,

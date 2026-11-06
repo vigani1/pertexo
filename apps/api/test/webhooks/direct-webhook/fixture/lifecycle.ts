@@ -18,7 +18,7 @@ import {
 import { WebhookTriggerEnvelopeEncryption } from '@pertexo/secrets/server';
 import { PLATFORM_NODE_CATALOG } from '@pertexo/node-catalog';
 
-import { composeExecutableCatalog } from '@pertexo/workflow-engine';
+import { composeExecutableCatalog } from '@pertexo/workflow-engine/server';
 
 import { Pool } from 'pg';
 import { vi } from 'vitest';

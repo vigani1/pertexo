@@ -38,7 +38,7 @@ import {
   type RunEventNotificationPublisher,
   unrecoverableQueueError,
 } from '@pertexo/queue';
-import { composeExecutableCatalog } from '@pertexo/workflow-engine';
+import { composeExecutableCatalog } from '@pertexo/workflow-engine/server';
 import { JsonataEvaluator } from '@pertexo/workflow-model/server';
 
 import { createCoordinatorTelemetry } from './telemetry.js';

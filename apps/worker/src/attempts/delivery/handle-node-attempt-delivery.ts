@@ -12,11 +12,11 @@ import {
 import { loadAttemptInputs, type NodeAttemptInputs } from '@pertexo/core/runs';
 import { NODE_JSON_LIMITS } from '@pertexo/node-sdk';
 import type { QueueHandlerContext } from '@pertexo/queue';
-import type { NodeAttemptOutcome } from '@pertexo/workflow-engine';
+import type { NodeAttemptOutcome } from '@pertexo/workflow-engine/server';
 import {
   WorkflowEngineError,
   type EngineErrorCode,
-} from '@pertexo/workflow-engine';
+} from '@pertexo/workflow-engine/server';
 
 import {
   describeNodeRefusal,

@@ -1,9 +1,9 @@
 import type {
   BranchScopePart,
-  InvocationState,
   IterationScopePart,
 } from '../../../src/index.js';
-import { invocationKey } from '../../../src/index.js';
+import type { InvocationState } from '../../../src/workflow-execution.js';
+import { invocationKey } from '../../../src/server.js';
 import type { SchedulerState } from '../../../src/transition/scheduling/policy.js';
 
 export { runBypass } from './bypass.js';

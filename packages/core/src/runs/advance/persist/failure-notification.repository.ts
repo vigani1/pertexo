@@ -1,4 +1,4 @@
-import { notificationFailures } from '@pertexo/workflow-engine';
+import { notificationFailures } from '@pertexo/workflow-engine/server';
 import { and, eq, isNotNull, sql } from 'drizzle-orm';
 import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres';
 import {

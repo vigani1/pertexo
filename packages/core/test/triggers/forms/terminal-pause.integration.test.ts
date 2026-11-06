@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, expect, it } from 'vitest';
 import { CORE_NODE_CATALOG } from '@pertexo/nodes-core';
-import { composeExecutableCatalog } from '@pertexo/workflow-engine';
+import { composeExecutableCatalog } from '@pertexo/workflow-engine/server';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
 import { createRunAdvanceStore } from '../../../src/runs/advance/run-advance.store.js';
 import { advanceRun } from '../../../src/runs/advance/advance-run.js';

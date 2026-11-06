@@ -1,6 +1,6 @@
 import { createInitialCheckpoint } from '@pertexo/core/runs';
 import { PLATFORM_NODE_CATALOG } from '@pertexo/node-catalog';
-import { composeExecutableCatalog } from '@pertexo/workflow-engine';
+import { composeExecutableCatalog } from '@pertexo/workflow-engine/server';
 import { acceptManualFixtureRun } from '../support/attempts/manual-start.js';
 import { createHash, randomUUID } from 'node:crypto';
 import { createOperatorCommandStore } from '@pertexo/core/operator';

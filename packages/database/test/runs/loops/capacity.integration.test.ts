@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { WORKFLOW_CHECKPOINT_LIMITS } from '@pertexo/workflow-engine';
+import { WORKFLOW_CHECKPOINT_LIMITS } from '@pertexo/workflow-engine/server';
 import {
   summarizeWorkflowCalls,
   validateCallDependencyClosure,

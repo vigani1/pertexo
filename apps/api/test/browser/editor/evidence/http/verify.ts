@@ -3,7 +3,7 @@ import { expect } from 'vitest';
 import type { z } from 'zod';
 import { workflowGraphSchema } from '@pertexo/contracts';
 
-import { verifyWorkflowExecutable } from '@pertexo/workflow-engine';
+import { verifyWorkflowExecutable } from '@pertexo/workflow-engine/server';
 import type { httpEvidenceSchema, httpEffectsSchema } from './scope.js';
 import {
   executable,

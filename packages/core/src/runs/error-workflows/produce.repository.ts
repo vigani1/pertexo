@@ -18,7 +18,7 @@ import { generatePersistedId } from '@pertexo/database/platform';
 import {
   errorWorkflowInput,
   errorWorkflowFailure,
-} from '@pertexo/workflow-engine';
+} from '@pertexo/workflow-engine/server';
 import { readErrorWorkflowStep } from './step.repository.js';
 
 /** The terminal transition and its unique intent/outbox either all commit or none do. */

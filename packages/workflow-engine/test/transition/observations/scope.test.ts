@@ -8,7 +8,7 @@ import {
   executeNodeAttempt,
   invocationKey,
   resolveSingleNodePreviewInput,
-} from '../../../src/index.js';
+} from '../../../src/server.js';
 import {
   forEachGraph,
   graph,

@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 
 import { describe, expect, it } from 'vitest';
 
-import { invocationKey } from '../../../src/index.js';
+import { invocationKey } from '../../../src/server.js';
 
 const invocationKeyCases = JSON.parse(
   readFileSync(

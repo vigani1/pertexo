@@ -1,12 +1,14 @@
 import { randomUUID } from 'node:crypto';
 import {
+  type WorkflowCheckpoint,
+  type WorkflowCallOutcome,
+} from '@pertexo/workflow-engine';
+import {
   advanceWorkflow,
   buildWorkflowExecutable,
   createCheckpoint,
   parseCheckpoint,
-  type WorkflowCheckpoint,
-  type WorkflowCallOutcome,
-} from '@pertexo/workflow-engine';
+} from '@pertexo/workflow-engine/server';
 import { WORKFLOW_GRAPH_LIMITS } from '@pertexo/workflow-model';
 import { catalog, collectionItems, type LoopScenario } from './scenarios.js';
 

@@ -1,7 +1,5 @@
-import {
-  createCheckpoint,
-  type WorkflowTransitionPlan,
-} from '../../../../workflow-engine/dist/index.js';
+import type { WorkflowTransitionPlan } from '@pertexo/workflow-engine';
+import { createCheckpoint } from '@pertexo/workflow-engine/server';
 import { canonicalOutboxPayloadChecksum } from '@pertexo/database/primitives';
 import {
   admin,

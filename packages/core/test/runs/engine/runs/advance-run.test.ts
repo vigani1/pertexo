@@ -3,7 +3,7 @@ import {
   buildWorkflowExecutable,
   composeExecutableCatalog,
   createCheckpoint,
-} from '@pertexo/workflow-engine';
+} from '@pertexo/workflow-engine/server';
 import { describe, expect, it } from 'vitest';
 
 import { createDecisionEngine } from '../support/decide.js';

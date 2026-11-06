@@ -4,7 +4,7 @@ import {
   buildWorkflowExecutable,
   composeExecutableCatalog,
   createCheckpoint,
-} from '../../../src/index.js';
+} from '../../../src/server.js';
 import { providerIdempotencyKey } from '../../support/engine.js';
 import { graph, nodeCatalog } from '../../support/executable-workflow.js';
 describe('attempt outcome production operations', () => {

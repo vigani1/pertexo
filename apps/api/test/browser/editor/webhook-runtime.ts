@@ -8,7 +8,7 @@ import {
   type WebhookTriggerSecretContext,
 } from '@pertexo/secrets/server';
 import { PLATFORM_NODE_CATALOG } from '@pertexo/node-catalog';
-import { composeExecutableCatalog } from '@pertexo/workflow-engine';
+import { composeExecutableCatalog } from '@pertexo/workflow-engine/server';
 import type { ApiConfig } from '../../../src/platform/config/api.js';
 import type { ApiWebhookRuntime } from '../../../src/platform/webhooks/runtime.module.js';
 import { WebhookManagementService } from '../../../src/webhooks/management/webhook-management.service.js';

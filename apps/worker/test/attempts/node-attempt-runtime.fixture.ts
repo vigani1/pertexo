@@ -1,4 +1,4 @@
-import { createCheckpoint } from '@pertexo/workflow-engine';
+import { createCheckpoint } from '@pertexo/workflow-engine/server';
 import type {
   NodeAttemptLease,
   NodeAttemptRunStore,
@@ -10,7 +10,7 @@ import {
   type QueueConsumerOptions,
   type QueueJobHandler,
 } from '@pertexo/queue';
-import type { NodeExecutionRegistry } from '@pertexo/workflow-engine';
+import type { NodeExecutionRegistry } from '@pertexo/workflow-engine/server';
 import type { FactoryProvider } from '@nestjs/common';
 import { vi } from 'vitest';
 import type {

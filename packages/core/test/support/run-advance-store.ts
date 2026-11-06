@@ -1,5 +1,5 @@
 import { Pool } from 'pg';
-import { parseCheckpoint } from '@pertexo/workflow-engine';
+import { parseCheckpoint } from '@pertexo/workflow-engine/server';
 
 import type {
   DatabaseConfig,

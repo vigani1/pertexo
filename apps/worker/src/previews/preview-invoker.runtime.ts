@@ -8,7 +8,7 @@ import {
   resolveSingleNodePreviewInput,
   WorkflowEngineError,
   type EngineErrorCode,
-} from '@pertexo/workflow-engine';
+} from '@pertexo/workflow-engine/server';
 import { isWorkflowCallDefinition } from '@pertexo/workflow-model';
 import { JsonataEvaluator } from '@pertexo/workflow-model/server';
 

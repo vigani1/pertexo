@@ -303,7 +303,7 @@ describe('failure routing through public engine transitions', () => {
 });
 describe('handler input evidence', () => {
   it('requires exact safe failure data before executing the entry, separately from successful outputs', async () => {
-    const { executeNodeAttempt } = await import('../../src/index.js');
+    const { executeNodeAttempt } = await import('../../src/server.js');
     const f = fixture();
     const failure = {
       nodeId: 'set',

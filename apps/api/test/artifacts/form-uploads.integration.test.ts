@@ -12,7 +12,7 @@ import { CORE_NODE_CATALOG } from '@pertexo/nodes-core';
 import {
   buildWorkflowExecutable,
   composeExecutableCatalog,
-} from '@pertexo/workflow-engine';
+} from '@pertexo/workflow-engine/server';
 import {
   FORM_FILE_LIMITS,
   formConfigSchema,

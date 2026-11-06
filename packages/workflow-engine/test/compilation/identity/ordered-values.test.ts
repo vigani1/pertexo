@@ -3,7 +3,7 @@ import {
   buildWorkflowExecutable,
   composeExecutableCatalog,
   verifyWorkflowExecutable,
-} from '../../../src/index.js';
+} from '../../../src/server.js';
 import { graph, nodeCatalog } from '../../support/executable-workflow.js';
 
 it('changes the executable identity when authored mapping order changes', () => {

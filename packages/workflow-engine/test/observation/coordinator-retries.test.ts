@@ -2,14 +2,14 @@ import type { NodeManifest } from '@pertexo/node-sdk';
 import type { StepRetrySettings } from '@pertexo/workflow-model';
 import { describe, expect, it } from 'vitest';
 
+import { type WorkflowTransitionPlan } from '../../src/index.js';
 import {
   advanceWorkflow,
   buildWorkflowExecutable,
   composeExecutableCatalog,
   createCheckpoint,
   invocationKey,
-  type WorkflowTransitionPlan,
-} from '../../src/index.js';
+} from '../../src/server.js';
 import { graph, nodeCatalog } from '../support/executable-workflow.js';
 
 const version = '00000000-0000-4000-8000-000000000001';

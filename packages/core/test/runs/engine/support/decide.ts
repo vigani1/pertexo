@@ -2,7 +2,7 @@ import type {
   PublishedWorkflow,
   RunAdvanceDecision,
 } from '../../../../src/runs/index.js';
-import { parseCheckpoint } from '@pertexo/workflow-engine';
+import { parseCheckpoint } from '@pertexo/workflow-engine/server';
 
 import { advanceRun } from '../../../../src/runs/advance/advance-run.js';
 import type { PersistedWorkflowProjectionVerificationOptions } from '../../../../src/runs/queries/execution/verify-projection.js';

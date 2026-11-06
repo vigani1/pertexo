@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
-import { parseCheckpoint } from '@pertexo/workflow-engine';
+import { parseCheckpoint } from '@pertexo/workflow-engine/server';
 
 import { coordinatorFixture } from '../../support/coordinator/consumer.js';
 import {

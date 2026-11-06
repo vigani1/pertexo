@@ -6,7 +6,7 @@ import {
   type NodeAttemptLease,
   type NodeAttemptRunStore,
 } from '@pertexo/core/attempts';
-import type { NodeExecutionRegistry } from '@pertexo/workflow-engine';
+import type { NodeExecutionRegistry } from '@pertexo/workflow-engine/server';
 import {
   NodeDispatchEvidenceError,
   type NodeExecutionRuntime,

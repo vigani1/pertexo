@@ -2,7 +2,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
 import { createWorkflowRunDatabase } from '@pertexo/core/runs';
 
-import { createCheckpoint } from '@pertexo/workflow-engine';
+import { createCheckpoint } from '@pertexo/workflow-engine/server';
 
 import { coordinatorFixture } from '../consumer.js';
 import { acceptManualFixtureRun } from '../../attempts/manual-start.js';

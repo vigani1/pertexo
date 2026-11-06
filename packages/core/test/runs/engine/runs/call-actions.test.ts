@@ -2,7 +2,7 @@ import { CORE_NODE_CATALOG } from '@pertexo/nodes-core';
 import {
   buildWorkflowExecutable,
   composeExecutableCatalog,
-} from '@pertexo/workflow-engine';
+} from '@pertexo/workflow-engine/server';
 import { describe, expect, it } from 'vitest';
 import { advanceRun } from '../../../../src/runs/advance/advance-run.js';
 import {

@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { WorkflowEngineError } from '@pertexo/workflow-engine';
+import { WorkflowEngineError } from '@pertexo/workflow-engine/server';
 import { testExecutableCompiler } from '../../../src/authoring/test-executable-compiler.js';
 import {
   actorId,

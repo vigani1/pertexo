@@ -9,7 +9,7 @@ import {
   buildWorkflowExecutable,
   buildWorkflowTestExecutable,
   composeExecutableCatalog,
-} from '@pertexo/workflow-engine';
+} from '@pertexo/workflow-engine/server';
 import { parseWorkflowGraphDraft } from '@pertexo/workflow-model';
 import { createWorkflowAuthoringFixtureDatabase as createWorkflowAuthoringStore } from '../../support/workflow-authoring-admission.fixture.js';
 import { createWorkflowExecutionReader } from '../../../src/runs/queries/execution/source.repository.js';

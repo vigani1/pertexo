@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { advanceWorkflow } from '../../../src/index.js';
+import { advanceWorkflow } from '../../../src/server.js';
 
 import { startForEach } from '../../support/compilation/for-each.js';
 

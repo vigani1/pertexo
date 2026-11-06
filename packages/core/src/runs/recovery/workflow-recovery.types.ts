@@ -2,12 +2,12 @@ import type {
   JsonValue,
   WorkflowRecoveryEffectRisk,
 } from '@pertexo/workflow-model';
+import type { RecoveryNode } from '@pertexo/workflow-engine';
 import type {
   RecoveryCopy,
-  RecoveryNode,
   RecoveryRefused,
   RecoveryValues,
-} from '@pertexo/workflow-engine';
+} from '@pertexo/workflow-engine/server';
 import type { PublishedWorkflow } from '../queries/execution/workflow-execution.types.js';
 import type { WorkflowRunRecord } from '../commands/workflow-run-records.repository.js';
 

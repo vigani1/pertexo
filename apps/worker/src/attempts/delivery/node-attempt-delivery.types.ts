@@ -17,7 +17,7 @@ import type {
   ExecuteNodeAttemptInput,
   NodeAttemptOutcome,
   NodeExecutionRegistry,
-} from '@pertexo/workflow-engine';
+} from '@pertexo/workflow-engine/server';
 
 import type { NodeExecutionRuntime } from '@pertexo/node-sdk/server';
 

@@ -10,9 +10,9 @@ import {
   buildWorkflowTestExecutable,
   composeExecutableCatalog,
   createCheckpoint,
-  type AdvanceWorkflowInput,
   type WorkflowTestPins,
-} from '../../src/index.js';
+} from '../../src/server.js';
+import { type AdvanceWorkflowInput } from '../../src/operations.js';
 import {
   graph,
   nodeCatalog,

@@ -4,7 +4,7 @@ import { expect } from 'vitest';
 import { z } from 'zod';
 
 import { PLATFORM_NODE_CATALOG } from '@pertexo/node-catalog';
-import { composeExecutableCatalog } from '@pertexo/workflow-engine';
+import { composeExecutableCatalog } from '@pertexo/workflow-engine/server';
 
 export const executable = composeExecutableCatalog(PLATFORM_NODE_CATALOG);
 

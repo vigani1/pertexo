@@ -11,7 +11,7 @@ import {
 
 import { ConnectionEnvelopeEncryption } from '@pertexo/secrets/server';
 
-import { buildWorkflowExecutable } from '@pertexo/workflow-engine';
+import { buildWorkflowExecutable } from '@pertexo/workflow-engine/server';
 import { Pool, type PoolClient } from 'pg';
 import { afterAll, beforeAll } from 'vitest';
 import { dropDisconnectedDatabase } from '../../infrastructure/disposable-database.js';

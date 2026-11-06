@@ -1,9 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  parseCheckpoint,
-  type WorkflowTransitionPlan,
-} from '../../src/index.js';
+import { type WorkflowTransitionPlan } from '../../src/index.js';
+import { parseCheckpoint } from '../../src/server.js';
 import { at, fixture, key } from '../support/failure-routing/runtime.js';
 
 // A waiting invocation carries its wait kind and due time; once it leaves

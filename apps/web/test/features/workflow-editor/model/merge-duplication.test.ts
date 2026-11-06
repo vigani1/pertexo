@@ -3,7 +3,7 @@ import { PLATFORM_NODE_CATALOG } from '../../../../../../packages/node-catalog/d
 import {
   buildWorkflowExecutable,
   composeExecutableCatalog,
-} from '../../../../../../packages/workflow-engine/dist/index.js';
+} from '../../../../../../packages/workflow-engine/dist/server.js';
 import type { WorkflowGraphContract } from '@pertexo/contracts';
 import { describe, expect, it } from 'vitest';
 import { duplicateWorkflowNodes } from '@/features/workflow-editor/model/graph/copies';

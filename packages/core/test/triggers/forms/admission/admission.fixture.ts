@@ -7,7 +7,7 @@ import {
   buildWorkflowExecutable,
   composeExecutableCatalog,
   createCheckpoint,
-} from '@pertexo/workflow-engine';
+} from '@pertexo/workflow-engine/server';
 import { formConfigSchema, type WorkflowGraph } from '@pertexo/workflow-model';
 import { createFormStore } from '../../../../src/triggers/forms/form.store.js';
 

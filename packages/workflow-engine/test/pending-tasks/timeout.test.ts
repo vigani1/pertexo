@@ -6,15 +6,17 @@ import {
   type WorkflowGraph,
 } from '@pertexo/workflow-model';
 import {
+  type PendingTaskOutcome,
+  type WorkflowCheckpoint,
+} from '../../src/index.js';
+import {
   advanceWorkflow,
   buildWorkflowExecutable,
   composeExecutableCatalog,
   createCheckpoint,
   parseCheckpoint,
-  type AdvanceWorkflowInput,
-  type PendingTaskOutcome,
-  type WorkflowCheckpoint,
-} from '../../src/index.js';
+} from '../../src/server.js';
+import { type AdvanceWorkflowInput } from '../../src/operations.js';
 import { graph, nodeCatalog } from '../support/executable-workflow.js';
 import { completion } from '../compilation/calls/fixtures.js';
 

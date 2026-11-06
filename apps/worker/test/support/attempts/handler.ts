@@ -1,4 +1,4 @@
-import { createCheckpoint } from '@pertexo/workflow-engine';
+import { createCheckpoint } from '@pertexo/workflow-engine/server';
 import type {
   NodeAttemptLease,
   NodeAttemptRunStore,

@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
+import { type WorkflowCheckpoint } from '../../../src/index.js';
 import {
   advanceWorkflow,
   buildWorkflowExecutable,
   composeExecutableCatalog,
   createCheckpoint,
   parseCheckpoint,
-  type WorkflowCheckpoint,
-} from '../../../src/index.js';
+} from '../../../src/server.js';
 import { checkpoint } from '../../support/advance-workflow.js';
 import {
   pairedParallelGraph,

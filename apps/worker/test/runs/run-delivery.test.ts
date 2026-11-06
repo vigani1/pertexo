@@ -1,6 +1,6 @@
 import { canonicalOutboxPayloadChecksum } from '@pertexo/database/testing';
 import { JOB_NAME, type QueueDelivery } from '@pertexo/queue';
-import { WorkflowEngineError } from '@pertexo/workflow-engine';
+import { WorkflowEngineError } from '@pertexo/workflow-engine/server';
 import { describe, expect, it, vi } from 'vitest';
 
 import {

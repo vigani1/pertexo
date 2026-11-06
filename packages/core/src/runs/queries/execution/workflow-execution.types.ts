@@ -1,7 +1,7 @@
 import type {
   WorkflowTestPins,
   WorkflowTestPolicy,
-} from '@pertexo/workflow-engine';
+} from '@pertexo/workflow-engine/server';
 
 /** A published workflow version with the executable a run follows. */
 export type PublishedWorkflow = Readonly<{

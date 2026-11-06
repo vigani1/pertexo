@@ -2,7 +2,7 @@ import {
   CoordinatorRunStateCorruptError,
   CoordinatorDeliveryMismatchError,
 } from '@pertexo/core/testing';
-import { WorkflowEngineError } from '@pertexo/workflow-engine';
+import { WorkflowEngineError } from '@pertexo/workflow-engine/server';
 import { createQueueConsumer } from '@pertexo/queue';
 
 const engineCodes = new Set([

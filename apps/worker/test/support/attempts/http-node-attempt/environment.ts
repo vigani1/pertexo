@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 import { PLATFORM_NODE_CATALOG } from '@pertexo/node-catalog';
-import { composeExecutableCatalog } from '@pertexo/workflow-engine';
+import { composeExecutableCatalog } from '@pertexo/workflow-engine/server';
 
 import { createRedisTestNamespace } from '../../infrastructure/redis-test-namespace.js';
 

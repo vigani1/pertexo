@@ -7,7 +7,7 @@ import {
   seedRecovery,
   selectRecoveryPrefix,
   WorkflowEngineError,
-} from '@pertexo/workflow-engine';
+} from '@pertexo/workflow-engine/server';
 import {
   verifyPersistedWorkflowProjection,
   type PersistedWorkflowProjectionVerificationOptions,

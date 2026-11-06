@@ -1,4 +1,4 @@
-import { COORDINATOR_COMPLETION_WINDOW_LIMITS } from '@pertexo/workflow-engine';
+import { COORDINATOR_COMPLETION_WINDOW_LIMITS } from '@pertexo/workflow-engine/server';
 import { isStoredDataError } from '../../../shared/stored-values.js';
 import { reacquireSlotAfterTimedWait } from '../timed-wait-slot.repository.js';
 import {

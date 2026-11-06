@@ -3,10 +3,10 @@ import { WORKFLOW_GRAPH_LIMITS } from '@pertexo/workflow-model';
 import {
   buildWorkflowExecutable,
   composeExecutableCatalog,
-  parseWorkflowExecutable,
   verifyWorkflowExecutable,
-  WORKFLOW_EXECUTABLE_LIMITS,
-} from '../../../src/index.js';
+} from '../../../src/server.js';
+import { parseWorkflowExecutable } from '../../../src/compilation/boundary.js';
+import { WORKFLOW_EXECUTABLE_LIMITS } from '../../../src/compilation/foundation.js';
 import {
   nodeCatalog,
   graph,

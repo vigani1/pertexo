@@ -38,7 +38,7 @@ import {
   composeExecutableCatalog,
   parseCheckpoint,
   WorkflowEngineError,
-} from '@pertexo/workflow-engine';
+} from '@pertexo/workflow-engine/server';
 import { PLATFORM_NODE_CATALOG } from '@pertexo/node-catalog';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
 

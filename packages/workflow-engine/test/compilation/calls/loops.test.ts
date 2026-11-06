@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { WorkflowGraph } from '@pertexo/workflow-model';
-import { parseCheckpoint } from '../../../src/index.js';
+import { parseCheckpoint } from '../../../src/server.js';
 import { invocationKey } from '../../../src/transition/scheduling/loops.js';
 import { forEachGraph } from '../../support/executable-workflow.js';
 import { childOutcome, completion, runtime, target } from './fixtures.js';

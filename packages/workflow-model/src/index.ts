@@ -1,7 +1,6 @@
 // Safe anywhere, including the browser. Node-only parts are in ./server.ts.
 export {
   WORKFLOW_TRIGGER_DEFINITIONS,
-  type WorkflowTriggerDefinition,
   isWorkflowTriggerKey,
   isWorkflowTriggerDefinition,
 } from './graph/triggers.js';
@@ -13,21 +12,14 @@ export {
   isWorkflowFailureSource,
   type WorkflowFailureRoute,
 } from './flow/failure-routing/failure-routes.js';
-export {
-  inspectWorkflowFailureRoutes,
-  type FailureRoutingGraph,
-  type WorkflowFailureRoutes,
-} from './flow/failure-routing/failure-routes.validation.js';
+export { inspectWorkflowFailureRoutes } from './flow/failure-routing/failure-routes.validation.js';
 export {
   isRoutableExecutorFailure,
   workflowNodeFailureValueSchema,
   workflowFailureClassificationSchema,
   type WorkflowNodeFailureValue,
 } from './flow/failure-routing/value.js';
-export {
-  inspectWorkflowDecisionTree,
-  type WorkflowDecisionTree,
-} from './flow/failure-routing/decision-tree.js';
+export { inspectWorkflowDecisionTree } from './flow/failure-routing/decision-tree.js';
 export {
   WORKFLOW_RECOVERY_LIMITS,
   WORKFLOW_RECOVERY_REFUSALS,
@@ -35,7 +27,6 @@ export {
   type WorkflowRecoveryRefusal,
 } from './execution/recovery/workflow-recovery.js';
 export {
-  workflowCallPinSchema,
   workflowCallConfigSchema,
   isWorkflowCallDefinition,
   type WorkflowCallConfig,
@@ -43,20 +34,11 @@ export {
 export type { WorkflowCallPin } from './flow/callable/dependencies.js';
 export { CallableInputInvalidError } from './flow/callable/callable-input.errors.js';
 export {
-  callableTypeStructuralSchema,
-  callableTypeIssues,
   type CallableType,
   type CallableDeclaration,
-  type CallableTypeIssue,
 } from './flow/callable/callable-types.js';
-export {
-  validateCallableValue,
-  type CallableValueIssue,
-} from './flow/callable/validate-value.js';
-export {
-  SAFE_EXECUTOR_ERROR_CODE_PATTERN,
-  isSafeExecutorErrorCode,
-} from './execution/attempt-failure.js';
+export { validateCallableValue } from './flow/callable/validate-value.js';
+export { isSafeExecutorErrorCode } from './execution/attempt-failure.js';
 export {
   EMPTY_WORKFLOW_GRAPH,
   WORKFLOW_EXECUTION_LIMITS,
@@ -69,8 +51,8 @@ export {
   type ValueSource,
   type WorkflowEdge,
   type WorkflowGraph,
-  type WorkflowNode,
   type WorkflowSettings,
+  type WorkflowNode,
 } from './graph/workflow-graph.schemas.js';
 export {
   workflowControlOutputKind,
@@ -105,7 +87,6 @@ export { parseJsonPath, resolveJsonPath } from './values/json/path.js';
 export {
   DEFAULT_STEP_RETRY_SETTINGS,
   STEP_RETRY_LIMITS,
-  stepRetrySettingsSchema,
   supportsStepRetrySettings,
   type StepRetrySettings,
 } from './execution/step-retries/step-retry.schemas.js';
@@ -114,7 +95,6 @@ export {
   workflowActivationAfterReconciliation,
   workflowActivationStatusSchema,
   workflowLifecycleStatusSchema,
-  workflowTriggerStatusSchema,
   type WorkflowActivationStatus,
   type WorkflowLifecycleStatus,
   type WorkflowTriggerStatus,
@@ -176,7 +156,6 @@ export {
   taskExpiryChoiceSchema,
   type TaskExpiryChoice,
   type ApprovalConfig,
-  type ApprovalOutput,
 } from './flow/pending-tasks/approval.js';
 
 export {
@@ -198,7 +177,6 @@ export {
 export {
   inspectControlNodeConfig,
   type ControlNodeConfig,
-  type ControlNodeConfigInspection,
 } from './flow/control-nodes/config.js';
 export {
   PENDING_TASK_LIMITS,
@@ -218,17 +196,14 @@ export {
 export {
   parseFormValues,
   formSubmissionSchema,
-  formValuesSchema,
   FormValuesInvalidError,
   formFileUploads,
   attachFormFiles,
   type FormValues,
-  type FormSubmission,
 } from './triggers/forms/values.js';
 export {
   FORM_FILE_LIMITS,
   FORM_FILE_GROUPS,
-  formFileGroupSchema,
   formFileValueSchema,
   FormFileRejectedError,
   formFileType,
@@ -236,11 +211,8 @@ export {
   formFilename,
   assertFormFileSize,
   formFileMatchesType,
-  describeFormFileGroups,
   formatFormFileBytes,
-  type FormFileExtension,
   type FormFileGroup,
-  type FormFileRejection,
   type FormFileValue,
 } from './triggers/forms/files.js';
 export {
@@ -253,13 +225,11 @@ export {
   pendingTaskOutputPorts,
   timedOutTaskOutput,
   timedOutTaskOutputSchema,
-  type TimedOutTaskOutput,
 } from './flow/pending-tasks/timeout.js';
 
 export {
   WORKSPACE_VARIABLE_LIMITS,
   workspaceVariableNameSchema,
-  workspaceVariableValueSchema,
   workspaceVariableValuesSchema,
   workspaceVariableSnapshotSchema,
   workspaceVariableDescriptionsSchema,
@@ -290,14 +260,10 @@ export type { StepSampleSource } from './authoring/samples/step-sample-source.ty
 export { isStorageText } from './values/json/text.js';
 export {
   workflowTestExpectationsSchema,
-  testAssertionSchema,
-  testExpectationValueSchema,
   DEFAULT_TEST_EXPECTATIONS,
   type WorkflowTestExpectations,
-  type TestAssertion,
 } from './authoring/test-suites/workflow-test-expectations.schemas.js';
 export {
-  matchesTestAssertion,
   observeTestAssertion,
   type TestAssertionObservation,
 } from './authoring/test-suites/compare.js';
@@ -306,13 +272,10 @@ export { workflowTestStepChoices } from './authoring/test-suites/steps.js';
 
 export {
   EVENT_COORDINATION_LIMITS,
-  eventCoordinationKeySchema,
   eventCoordinationPolicySchema,
   eventCoordinationReceiptSchema,
-  eventCoordinationOutcomeSchema,
   eventCoordinationStatusSchema,
   eventCoordinationReasonSchema,
-  isEventCoordinationTrigger,
   type EventCoordinationPolicy,
   type EventCoordinationReceipt,
   type EventCoordinationStatus,
@@ -331,10 +294,7 @@ export { collectionPathSchema } from './values/json/path-validation.js';
 export {
   WORKFLOW_NOTE_LIMITS,
   workflowNoteColorSchema,
-  workflowNoteSchema,
-  workflowNotesSchema,
   type WorkflowNote,
-  type WorkflowNoteColor,
 } from './graph/notes/canvas-note.schemas.js';
 export { sameWorkflowNotes } from './graph/notes/identity.js';
 
@@ -351,7 +311,6 @@ export {
   isPendingTaskNode,
   type CallbackWaitConfig,
   type CallbackBindings,
-  type CallbackBinding,
 } from './flow/callbacks/callback-wait.js';
 
 export { supportsExpressionMappings } from './values/mapping/policy.js';

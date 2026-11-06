@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
-import { parseCheckpoint } from '../../../src/index.js';
+import { parseCheckpoint } from '../../../src/server.js';
 import {
   childOutcome,
   completion,

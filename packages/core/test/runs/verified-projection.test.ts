@@ -4,7 +4,7 @@ import { CORE_NODE_CATALOG } from '@pertexo/nodes-core';
 import {
   buildWorkflowExecutable,
   composeExecutableCatalog,
-} from '@pertexo/workflow-engine';
+} from '@pertexo/workflow-engine/server';
 import { verifyPersistedWorkflowProjection } from '../../src/runs/queries/execution/verify-projection.js';
 import { isStoredDataError } from '../../src/shared/stored-values.js';
 

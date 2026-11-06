@@ -73,7 +73,8 @@ export {
   assertRunTransition,
 } from '../../src/transition/status.js';
 export { NODE_STATUSES, RUN_STATUSES } from '../../src/workflow-execution.js';
-export * from '../../src/index.js';
+export * from '../../src/server.js';
+export type * from '../../src/workflow-execution.js';
 
 function schedulerInput(
   input: AdvanceWorkflowInput,

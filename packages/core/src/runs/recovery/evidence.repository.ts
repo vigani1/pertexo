@@ -16,11 +16,11 @@ import {
   WORKFLOW_GRAPH_LIMITS,
   WORKFLOW_RECOVERY_LIMITS,
 } from '@pertexo/workflow-model';
+import type { RecoveryNode } from '@pertexo/workflow-engine';
 import type {
-  RecoveryNode,
   RecoveryRefused,
   RecoveryValues,
-} from '@pertexo/workflow-engine';
+} from '@pertexo/workflow-engine/server';
 import { branchContextSchema } from '../../attempts/validation/attempt-scope.schemas.js';
 import { StoredExecutionValueInvalidError } from '@pertexo/node-sdk';
 import type { StoredExecutionValue } from '@pertexo/database/schema';

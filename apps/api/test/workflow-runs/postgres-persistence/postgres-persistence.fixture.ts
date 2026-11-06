@@ -1,4 +1,4 @@
-import { parseCheckpoint } from '@pertexo/workflow-engine';
+import { parseCheckpoint } from '@pertexo/workflow-engine/server';
 
 import { WORKFLOW_GRAPH_LIMITS } from '@pertexo/workflow-model';
 import { expect, vi } from 'vitest';

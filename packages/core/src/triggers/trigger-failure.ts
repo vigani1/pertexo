@@ -1,4 +1,4 @@
-import { WorkflowEngineError } from '@pertexo/workflow-engine';
+import { WorkflowEngineError } from '@pertexo/workflow-engine/server';
 import { isStoredDataError } from '../shared/stored-values.js';
 
 export type ScheduleFailureReason =

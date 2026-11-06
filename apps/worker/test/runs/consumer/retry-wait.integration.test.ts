@@ -23,11 +23,11 @@ import {
 } from '@pertexo/core/testing';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
 import { QUEUE_NAME, createQueueProducer, JOB_NAME } from '@pertexo/queue';
+import { type WorkflowTransitionPlan } from '@pertexo/workflow-engine';
 import {
   invocationKey,
   parseCheckpoint,
-  type WorkflowTransitionPlan,
-} from '@pertexo/workflow-engine';
+} from '@pertexo/workflow-engine/server';
 import { Queue } from 'bullmq';
 import {
   createCoordinatorDispatcher,

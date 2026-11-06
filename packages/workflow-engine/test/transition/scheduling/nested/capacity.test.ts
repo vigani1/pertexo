@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
+import { type WorkflowCheckpoint } from '../../../../src/index.js';
 import {
   advanceWorkflow,
   buildWorkflowExecutable,
   composeExecutableCatalog,
   createCheckpoint,
-  type WorkflowCheckpoint,
-} from '../../../../src/index.js';
+} from '../../../../src/server.js';
 import { nodeCatalog } from '../../../support/executable-workflow.js';
 import {
   rootParallelWithDescendantLoop,

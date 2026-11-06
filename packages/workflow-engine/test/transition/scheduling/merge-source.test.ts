@@ -4,8 +4,8 @@ import {
   composeExecutableCatalog,
   createCheckpoint,
   invocationKey,
-  type InvocationState,
-} from '../../../src/index.js';
+} from '../../../src/server.js';
+import { type InvocationState } from '../../../src/workflow-execution.js';
 import { executionNodes } from '../../../src/compilation/foundation.js';
 import { mergeCoordinatorObservations } from '../../../src/observation/coordinator.js';
 import {

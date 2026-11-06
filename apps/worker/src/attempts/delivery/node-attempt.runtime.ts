@@ -26,7 +26,7 @@ import {
 import {
   composeExecutableCatalog,
   type NodeExecutionRegistry,
-} from '@pertexo/workflow-engine';
+} from '@pertexo/workflow-engine/server';
 import type { SecureHttpAddressPolicy } from '@pertexo/secrets/server';
 import { createNodeProviderHttpClient } from '../../providers/http-client.js';
 import type { ConnectionEnvelopeEncryptionConfig } from '@pertexo/secrets/server';

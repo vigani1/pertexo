@@ -9,7 +9,7 @@ import type {
 
 import type { NodeConnectionRuntime } from '@pertexo/node-sdk/server';
 
-import type { NodeExecutionRegistry } from '@pertexo/workflow-engine';
+import type { NodeExecutionRegistry } from '@pertexo/workflow-engine/server';
 
 type ConnectionAssertCurrentInput = Parameters<
   NonNullable<NodeConnectionRuntime['assertCurrent']>

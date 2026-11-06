@@ -1,8 +1,5 @@
-import {
-  createCheckpoint,
-  parseCheckpoint,
-  type WorkflowCheckpoint,
-} from '../../src/index.js';
+import { type WorkflowCheckpoint } from '../../src/index.js';
+import { createCheckpoint, parseCheckpoint } from '../../src/server.js';
 import {
   parseSchedulerGraph,
   type AdvanceWorkflowInput,

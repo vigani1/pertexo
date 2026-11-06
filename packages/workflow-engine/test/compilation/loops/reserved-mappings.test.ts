@@ -6,7 +6,7 @@ import {
   composeExecutableCatalog,
   executeNodeAttempt,
   invocationKey,
-} from '../../../src/index.js';
+} from '../../../src/server.js';
 import {
   nodeCatalog,
   forEachGraph,
