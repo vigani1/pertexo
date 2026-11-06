@@ -6,6 +6,7 @@ import type {
   ForEachStructure,
   WorkflowGraph,
   WorkflowNode,
+  ValueSource,
 } from '../workflow-graph.schemas.js';
 import type {
   GraphIssueCode,
@@ -94,13 +95,7 @@ function validateMappings(
     }
     for (const [mappingKey, source] of Object.entries(node.inputMappings)) {
       const mappingPath = `${path}.nodes.${node.id}.inputMappings.${mappingKey}`;
-      if ('path' in source && parseJsonPath(source.path) === undefined) {
-        context.issue(
-          'invalid_mapping',
-          mappingPath,
-          "Use a JSON path such as $.customer.email, $[0], or $['email address'].",
-        );
-      }
+      validateMappingPath(source, mappingPath, context.issue);
       if (
         source.kind === 'structured_input' &&
         !structuredInputPorts?.has(source.port)
@@ -132,6 +127,20 @@ function validateMappings(
         );
       }
     }
+  }
+}
+
+function validateMappingPath(
+  source: ValueSource,
+  path: string,
+  issue: Issue,
+): void {
+  if ('path' in source && parseJsonPath(source.path) === undefined) {
+    issue(
+      'invalid_mapping',
+      path,
+      "Use a JSON path such as $.customer.email, $[0], or $['email address'].",
+    );
   }
 }
 
