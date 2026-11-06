@@ -3,10 +3,8 @@ import {
   type FailureNotificationStore,
 } from '@pertexo/core/notifications';
 
-import {
-  assertNever,
-  type FailureNotificationDeliveryResult,
-} from '@pertexo/workflow-model';
+import { assertNever } from '@pertexo/workflow-model';
+import { type FailureNotificationDeliveryResult } from '@pertexo/contracts';
 import type { FailureNotificationDeliveryCapability } from './failure-handler.js';
 import { settleUnresolvedDelivery, canceled } from './delivery/outcomes.js';
 import {

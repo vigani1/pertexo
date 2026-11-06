@@ -4,8 +4,8 @@ import type { QueueDelivery, QueueHandlerContext } from '@pertexo/queue';
 import type {
   FailureNotificationContext,
   FailureNotificationDeliveryResult,
-} from '@pertexo/workflow-model';
-import { FailureNotificationDeliveryResultSchema } from '@pertexo/workflow-model';
+} from '@pertexo/contracts';
+import { FailureNotificationDeliveryResultSchema } from '@pertexo/contracts';
 import { z } from 'zod';
 
 type Delivery = Extract<

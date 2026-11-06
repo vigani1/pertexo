@@ -1,4 +1,4 @@
-import type { FailureNotificationDeliveryResult } from '@pertexo/workflow-model';
+import type { FailureNotificationDeliveryResult } from '@pertexo/contracts';
 
 export interface FailureNotificationCompletionObservation {
   status: string;
