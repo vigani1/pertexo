@@ -1,3 +1,5 @@
+import { IdempotencyConflictError } from '@pertexo/database/platform';
+import { isStoredDataError } from '@pertexo/core/authoring';
 import {
   ArtifactIntegrityError,
   ArtifactNotFoundError,
@@ -83,6 +85,11 @@ export function storageFailure(
   error: unknown,
   source: 'database' | 'store',
 ): Error {
+  if (
+    error instanceof IdempotencyConflictError ||
+    (error instanceof Error && isStoredDataError(error))
+  )
+    return error;
   // A client that went away is not a storage outage.
   if (error instanceof Error && error.name === 'AbortError') return error;
   if (source === 'store') {

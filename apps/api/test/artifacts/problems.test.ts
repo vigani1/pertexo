@@ -109,7 +109,7 @@ describe('artifact storage problems over the artifact API', () => {
       503,
       'artifact.unavailable',
     ],
-    [new IdempotencyConflictError(), 503, 'artifact.unavailable'],
+    [new IdempotencyConflictError(), 409, 'request.idempotency_conflict'],
     [
       new ArtifactIntegrityError('private database detail'),
       503,

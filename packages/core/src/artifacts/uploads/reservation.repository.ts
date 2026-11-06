@@ -1,4 +1,4 @@
-import { decodeStoredValue } from '../../shared/stored-values.js';
+import { decodeStoredReceipt } from '../../shared/receipts.js';
 import {
   postgresFailure,
   rethrowQueryFailure,
@@ -89,7 +89,7 @@ export async function reserveArtifactUpload(
     const artifact = await loadArtifact(
       client,
       input.workspaceId,
-      decodeStoredValue(() => storedUploadSchema.parse(stored)).artifactId,
+      decodeStoredReceipt(storedUploadSchema, stored).artifactId,
       ['pending', 'available'],
     );
     return Object.freeze({ artifact, replayed: true });
