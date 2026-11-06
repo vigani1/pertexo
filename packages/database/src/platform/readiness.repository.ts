@@ -3,7 +3,7 @@ import { sql } from 'drizzle-orm';
 import { QueryBuilder } from 'drizzle-orm/pg-core';
 import type { Pool } from 'pg';
 
-export const EXPECTED_MIGRATION_HEAD = '0110_artifact_owner_references.sql';
+export const EXPECTED_MIGRATION_HEAD = '0111_artifact_owner_fast_paths.sql';
 const MINIMUM_POSTGRES_MAJOR = 18;
 
 /**

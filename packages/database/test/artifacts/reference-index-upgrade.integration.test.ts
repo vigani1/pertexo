@@ -1,6 +1,7 @@
 import { Client } from 'pg';
 import { randomUUID } from 'node:crypto';
 import { expect, it } from 'vitest';
+import { expectedMigrationsAfter } from '../../src/testing/expected-migrations.js';
 import { ARTIFACT_OWNER_SOURCES } from '../../src/schema/artifacts/references.js';
 import { withUpgradeDatabase } from '../platform/migrations/upgrade-fixture.js';
 import { seedReferenceIndexOwners } from './reference-index.fixture.js';
@@ -46,6 +47,9 @@ it('backfills every populated owner without changing JSON, normalizes UUIDs, and
       ]),
     );
     expect(await upgrade(110)).toEqual([]);
+    expect((await references()).rows).toEqual(rows);
+    expect(await upgrade()).toEqual(await expectedMigrationsAfter(110));
+    expect(await documents()).toEqual(before);
     expect((await references()).rows).toEqual(rows);
 
     await admin.query('begin');
