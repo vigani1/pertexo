@@ -7,7 +7,7 @@ import {
   composeExecutableCatalog,
   createCheckpoint,
   parseCheckpoint,
-} from '@pertexo/workflow-engine';
+} from '@pertexo/workflow-engine/server';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { parseWorkspaceId } from '@pertexo/database/primitives';
 import { requestWorkflowRunCancellation } from '../../../../src/runs/commands/request-cancellation.js';

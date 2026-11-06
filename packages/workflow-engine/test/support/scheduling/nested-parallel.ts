@@ -7,14 +7,14 @@ import type {
   WorkflowGraph,
   WorkflowNode,
 } from '@pertexo/workflow-model';
+import { type WorkflowCheckpoint } from '../../../src/index.js';
 import {
   advanceWorkflow,
   buildWorkflowExecutable,
   composeExecutableCatalog,
   createCheckpoint,
-  type AdvanceWorkflowInput,
-  type WorkflowCheckpoint,
-} from '../../../src/index.js';
+} from '../../../src/server.js';
+import { type AdvanceWorkflowInput } from '../../../src/operations.js';
 import {
   forEachGraph,
   nodeCatalog,

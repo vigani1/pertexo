@@ -1,6 +1,6 @@
 import { toProblem } from '../../src/problems/registry.js';
 import { authoringFailure } from '../../src/problems/context/normalize.js';
-import { WorkflowEngineError } from '@pertexo/workflow-engine';
+import { WorkflowEngineError } from '@pertexo/workflow-engine/server';
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import {

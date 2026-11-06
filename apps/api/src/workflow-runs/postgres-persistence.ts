@@ -12,7 +12,7 @@ import {
   recoveryPreparation,
   initialCheckpointFactory,
 } from '@pertexo/core/runs';
-import { composeExecutableCatalog } from '@pertexo/workflow-engine';
+import { composeExecutableCatalog } from '@pertexo/workflow-engine/server';
 
 import type {
   CancelWorkflowRunCommand,

@@ -1,4 +1,4 @@
-import { parseCheckpoint } from '@pertexo/workflow-engine';
+import { parseCheckpoint } from '@pertexo/workflow-engine/server';
 
 import { expect } from 'vitest';
 import { cancelFixtureRun } from '../../../../support/coordinator/runs.js';

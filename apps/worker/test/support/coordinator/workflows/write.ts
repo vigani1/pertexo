@@ -3,7 +3,7 @@ import type { CallableDeclaration } from '@pertexo/workflow-model';
 import {
   buildWorkflowExecutable,
   composeExecutableCatalog,
-} from '@pertexo/workflow-engine';
+} from '@pertexo/workflow-engine/server';
 import type {
   Query,
   WorkflowIdentity,

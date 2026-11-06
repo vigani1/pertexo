@@ -3,7 +3,7 @@ import {
   advanceWorkflow,
   buildWorkflowExecutable,
   composeExecutableCatalog,
-} from '../../../src/index.js';
+} from '../../../src/server.js';
 import {
   forEachGraph,
   nodeCatalog,

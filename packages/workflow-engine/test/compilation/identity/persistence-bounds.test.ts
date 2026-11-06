@@ -5,7 +5,7 @@ import {
   createCheckpoint,
   parseCheckpoint,
   composeExecutableCatalog,
-} from '../../../src/index.js';
+} from '../../../src/server.js';
 import { graph, nodeCatalog } from '../../support/executable-workflow.js';
 
 function nestedConditions(ids: readonly string[]) {

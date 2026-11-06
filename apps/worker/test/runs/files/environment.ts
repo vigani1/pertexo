@@ -2,7 +2,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
 import { PLATFORM_NODE_CATALOG } from '@pertexo/node-catalog';
 import { createInitialCheckpoint } from '@pertexo/core/runs';
-import { composeExecutableCatalog } from '@pertexo/workflow-engine';
+import { composeExecutableCatalog } from '@pertexo/workflow-engine/server';
 import type { WorkflowGraph } from '@pertexo/workflow-model';
 import {
   createArtifactStore,

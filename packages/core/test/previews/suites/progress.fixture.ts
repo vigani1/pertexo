@@ -5,7 +5,7 @@ import {
   buildWorkflowExecutable,
   buildWorkflowTestExecutable,
   composeExecutableCatalog,
-} from '@pertexo/workflow-engine';
+} from '@pertexo/workflow-engine/server';
 import { parseWorkflowGraphDraft } from '@pertexo/workflow-model';
 import { createWorkflowAuthoringFixtureDatabase as createWorkflowAuthoringStore } from '../../support/workflow-authoring-admission.fixture.js';
 import { createWorkflowInputCaseStore } from '../../../src/authoring/input-cases/workflow-input-case.store.js';

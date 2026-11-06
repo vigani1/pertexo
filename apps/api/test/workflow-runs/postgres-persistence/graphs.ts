@@ -3,7 +3,7 @@ import { workflowNode } from '../../support/workflow-node.js';
 import {
   buildWorkflowExecutable,
   composeExecutableCatalog,
-} from '@pertexo/workflow-engine';
+} from '@pertexo/workflow-engine/server';
 import { PLATFORM_NODE_CATALOG } from '@pertexo/node-catalog';
 
 export function executable() {

@@ -6,7 +6,7 @@ import { PLATFORM_NODE_CATALOG } from '@pertexo/node-catalog';
 
 import { createPlatformNodeRegistry } from '../../../../../src/providers/node-registry.js';
 
-import { composeExecutableCatalog } from '@pertexo/workflow-engine';
+import { composeExecutableCatalog } from '@pertexo/workflow-engine/server';
 
 import { coordinatorFixture as fixture } from '../../../../support/coordinator/consumer.js';
 import { insertCompiledWorkflow } from '../../../../support/coordinator/workflows.js';

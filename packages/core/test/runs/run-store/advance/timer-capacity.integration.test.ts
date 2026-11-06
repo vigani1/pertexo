@@ -1,8 +1,6 @@
 import { expect, it } from 'vitest';
-import {
-  createCheckpoint,
-  type WorkflowCheckpoint,
-} from '@pertexo/workflow-engine';
+import { type WorkflowCheckpoint } from '@pertexo/workflow-engine';
+import { createCheckpoint } from '@pertexo/workflow-engine/server';
 import {
   releaseSlotDuringTimedWait,
   reacquireSlotAfterTimedWait,

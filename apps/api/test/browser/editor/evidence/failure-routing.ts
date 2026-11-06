@@ -6,7 +6,7 @@ import { PLATFORM_NODE_CATALOG } from '@pertexo/node-catalog';
 import {
   composeExecutableCatalog,
   verifyWorkflowExecutable,
-} from '@pertexo/workflow-engine';
+} from '@pertexo/workflow-engine/server';
 import type { httpEffectsSchema } from './http.js';
 export const failureRoutingEvidenceSchema = z.strictObject({
   workspaceId: z.uuid(),

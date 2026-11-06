@@ -4,7 +4,7 @@ import {
   advanceWorkflow,
   buildWorkflowExecutable,
   parseCheckpoint,
-} from '@pertexo/workflow-engine';
+} from '@pertexo/workflow-engine/server';
 
 import { coordinatorFixture as fixture } from '../../../../support/coordinator/consumer.js';
 

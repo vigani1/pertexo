@@ -6,7 +6,7 @@ import {
   buildWorkflowExecutable,
   composeExecutableCatalog,
   createCheckpoint,
-} from '@pertexo/workflow-engine';
+} from '@pertexo/workflow-engine/server';
 import { curatedScheduleInputCase } from './worker-evidence.js';
 
 it('admits the reviewed schedule successor after an empty For Each declaration', async () => {

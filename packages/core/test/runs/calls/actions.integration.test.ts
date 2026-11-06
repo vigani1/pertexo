@@ -1,8 +1,9 @@
+import type { WorkflowTransitionPlan } from '@pertexo/workflow-engine';
 import { CORE_NODE_CATALOG } from '@pertexo/nodes-core';
 import {
   buildWorkflowExecutable,
   composeExecutableCatalog,
-} from '@pertexo/workflow-engine';
+} from '@pertexo/workflow-engine/server';
 import { advanceRun } from '../../../src/runs/advance/advance-run.js';
 import { graph } from '../engine/support/workflow.fixture.js';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -29,10 +30,7 @@ import {
 } from '../../lifecycle/retention.support.js';
 import { randomUUID } from 'node:crypto';
 import { CallableInputInvalidError } from '@pertexo/workflow-model';
-import {
-  parseCheckpoint,
-  type WorkflowTransitionPlan,
-} from '../../../../workflow-engine/dist/index.js';
+import { parseCheckpoint } from '@pertexo/workflow-engine/server';
 
 beforeAll(beforeAllFixture1);
 afterAll(afterAllFixture2);

@@ -4,7 +4,7 @@ import {
   buildWorkflowExecutable,
   composeExecutableCatalog,
   createCheckpoint,
-} from '../../../src/index.js';
+} from '../../../src/server.js';
 import { graph, nodeCatalog } from '../../support/executable-workflow.js';
 describe('wait and control production operations', () => {
   it('reconciles running cancellation and preserves reported unsafe uncertainty', async () => {

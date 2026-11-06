@@ -4,8 +4,8 @@ import { createNodeCatalog, type NodeCatalog } from '@pertexo/node-sdk';
 import {
   buildWorkflowExecutable,
   composeExecutableCatalog,
-  parseWorkflowExecutable,
-} from '../src/index.js';
+} from '../src/server.js';
+import { parseWorkflowExecutable } from '../src/compilation/boundary.js';
 import { branchPathHasPrefix } from '../src/scope.js';
 import {
   boundedPolicy,

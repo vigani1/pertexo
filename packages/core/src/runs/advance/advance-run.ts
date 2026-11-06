@@ -10,7 +10,7 @@ import {
   advanceWorkflow,
   parseCheckpoint,
   settleCallableResult,
-} from '@pertexo/workflow-engine';
+} from '@pertexo/workflow-engine/server';
 import type { ExpressionEvaluator } from '@pertexo/workflow-model/server';
 import { resolveRunResult } from './resolve-result.js';
 

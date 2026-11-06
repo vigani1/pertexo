@@ -5,7 +5,7 @@ import {
   composeExecutableCatalog,
   createCheckpoint,
   invocationKey,
-} from '../../../src/index.js';
+} from '../../../src/server.js';
 import {
   nodeCatalog,
   directPairedParallelGraph,

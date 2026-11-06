@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
 import { notificationFailures } from '../src/completion/failure-notification.js';
-import { createCheckpoint } from '../src/index.js';
+import { createCheckpoint } from '../src/server.js';
 
 it('selects uncertainty before timeout before failure with stable invocation ordering', () => {
   const checkpoint = {

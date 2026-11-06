@@ -1,7 +1,7 @@
 import {
   createCheckpoint,
   settleCallableResult,
-} from '@pertexo/workflow-engine';
+} from '@pertexo/workflow-engine/server';
 import { afterAll, expect, it } from 'vitest';
 import { createWorkflowRunDatabase } from '../../../../src/runs/workflow-run.store.js';
 import {

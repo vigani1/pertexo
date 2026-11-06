@@ -7,7 +7,7 @@ import { createOperatorCommandStore } from '@pertexo/core/operator';
 import {
   buildWorkflowExecutable,
   createCheckpoint,
-} from '@pertexo/workflow-engine';
+} from '@pertexo/workflow-engine/server';
 
 import {
   operatorUrl,

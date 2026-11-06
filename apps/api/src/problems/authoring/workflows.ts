@@ -19,7 +19,7 @@ import {
   WorkspaceAutoPauseSettingsRevisionConflictError,
 } from '@pertexo/core/authoring';
 import { ArtifactMetadataNotFoundError } from '@pertexo/core/artifacts';
-import { WorkflowEngineError } from '@pertexo/workflow-engine';
+import { WorkflowEngineError } from '@pertexo/workflow-engine/server';
 import { AuthoringValidationUnavailableError } from '@pertexo/workflow-model/server';
 import { apiProblemIssueSchema } from '@pertexo/contracts';
 import {

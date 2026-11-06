@@ -1,4 +1,4 @@
-import type { RecoveryRefused } from '@pertexo/workflow-engine';
+import type { RecoveryRefused } from '@pertexo/workflow-engine/server';
 
 export class WorkflowRecoveryUnavailableError extends Error {
   public override readonly name = 'WorkflowRecoveryUnavailableError';

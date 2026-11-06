@@ -4,7 +4,7 @@ import type {
   WorkflowGraph,
   GraphValidationResult,
 } from '@pertexo/workflow-model';
-import { WorkflowEngineError } from '@pertexo/workflow-engine';
+import { WorkflowEngineError } from '@pertexo/workflow-engine/server';
 import { InvalidWorkflowGraphError } from '@pertexo/workflow-model';
 import { parseWorkflowGraphForPublish } from '@pertexo/workflow-model/server';
 import { generatePersistedId } from '@pertexo/database/platform';

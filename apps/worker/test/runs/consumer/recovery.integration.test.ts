@@ -18,7 +18,7 @@ import { PLATFORM_NODE_CATALOG } from '@pertexo/node-catalog';
 
 import { createPlatformNodeRegistry } from '../../../src/providers/node-registry.js';
 import { createQueueProducer, JOB_NAME } from '@pertexo/queue';
-import { composeExecutableCatalog } from '@pertexo/workflow-engine';
+import { composeExecutableCatalog } from '@pertexo/workflow-engine/server';
 import { createCoordinatorRuntime } from '../../../dist/runs/coordinator.runtime.js';
 import { WorkerDrainState } from '../../../dist/runtime/shutdown/drain-state.js';
 import { OutboxDispatcher } from '../../../dist/transport/outbox/dispatch/outbox-dispatcher.runtime.js';

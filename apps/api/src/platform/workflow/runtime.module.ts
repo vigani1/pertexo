@@ -1,4 +1,4 @@
-import { buildWorkflowTestExecutable } from '@pertexo/workflow-engine';
+import { buildWorkflowTestExecutable } from '@pertexo/workflow-engine/server';
 import { createNodeTestingRuntime } from './composition/node-testing.runtime.js';
 import { GovernanceModule } from '../../governance/governance.module.js';
 

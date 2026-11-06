@@ -4,7 +4,7 @@ import { JsonataEvaluator } from '@pertexo/workflow-model/server';
 import {
   buildWorkflowExecutable,
   composeExecutableCatalog,
-} from '../../../src/index.js';
+} from '../../../src/server.js';
 import { graph, nodeCatalog } from '../executable-workflow.js';
 export const expressionEvaluator = new JsonataEvaluator();
 afterAll(async () => expressionEvaluator.shutdown());

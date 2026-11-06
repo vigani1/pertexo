@@ -1,6 +1,6 @@
 import { PLATFORM_NODE_CATALOG } from '@pertexo/node-catalog';
 
-import { composeExecutableCatalog } from '@pertexo/workflow-engine';
+import { composeExecutableCatalog } from '@pertexo/workflow-engine/server';
 
 export const catalog = composeExecutableCatalog(PLATFORM_NODE_CATALOG);
 

@@ -3,10 +3,10 @@ import { describe, expect, it } from 'vitest';
 import {
   buildWorkflowExecutable,
   composeExecutableCatalog,
-  computeWorkflowExecutableChecksum,
-  parseWorkflowExecutable,
   verifyWorkflowExecutable,
-} from '../../../src/index.js';
+} from '../../../src/server.js';
+import { computeWorkflowExecutableChecksum } from '../../../src/compilation/identity.js';
+import { parseWorkflowExecutable } from '../../../src/compilation/boundary.js';
 import { nodeCatalog, graph } from '../../support/executable-workflow.js';
 describe('workflow executable identity', () => {
   it('pins side-effect class into behavior identity and rejects a mutated pin', () => {

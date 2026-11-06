@@ -4,7 +4,7 @@ import {
   buildWorkflowExecutable,
   composeExecutableCatalog,
   createCheckpoint,
-} from '../../../src/index.js';
+} from '../../../src/server.js';
 import { graph, nodeCatalog } from '../../support/executable-workflow.js';
 describe('wait and control production operations', () => {
   it('settles durable waiting work on deadline or cancellation without reconciliation', async () => {

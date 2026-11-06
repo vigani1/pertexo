@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { advanceWorkflow, createCheckpoint } from '../../../src/index.js';
+import { advanceWorkflow, createCheckpoint } from '../../../src/server.js';
 
 import { standardExecutable } from '../../support/transition/operations.js';
 

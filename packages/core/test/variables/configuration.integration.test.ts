@@ -22,7 +22,7 @@ import { WorkspaceAccessDeniedError } from '../../src/tenant-access/index.js';
 import { withWorkspaceTransaction } from '@pertexo/database/primitives';
 import { admin } from '../lifecycle/calls/calls.fixture.js';
 import { waitForApplicationLock } from '../support/postgres/lock-coordination.js';
-import { createCheckpoint } from '@pertexo/workflow-engine';
+import { createCheckpoint } from '@pertexo/workflow-engine/server';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
 import { RunVariableSnapshotUnavailableError } from '../../src/runs/commands/acceptance/variables.repository.js';
 import { createWorkflowRunDatabase } from '../../src/runs/workflow-run.store.js';

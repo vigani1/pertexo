@@ -8,7 +8,7 @@ import { createPlatformNodeRegistry } from '../../../../../src/providers/node-re
 
 import type { Attributes, Meter, Span, Tracer } from '@opentelemetry/api';
 
-import type { NodeExecutionRegistry } from '@pertexo/workflow-engine';
+import type { NodeExecutionRegistry } from '@pertexo/workflow-engine/server';
 
 import { createHttpProviderTelemetry } from '../../../../../src/providers/telemetry.js';
 

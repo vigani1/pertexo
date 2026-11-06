@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
   parseWorkflowGraphDraft,
-  stepRetrySettingsSchema,
   supportsStepRetrySettings,
   validateWorkflowGraph,
 } from '../../src/index.js';
+import { stepRetrySettingsSchema } from '../../src/execution/step-retries/step-retry.schemas.js';
 
 describe('step retry settings', () => {
   it.each([

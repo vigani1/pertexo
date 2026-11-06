@@ -6,7 +6,7 @@ import { IdempotencyRequestConflictError } from '@pertexo/core/runs';
 
 import { PLATFORM_NODE_CATALOG } from '@pertexo/node-catalog';
 
-import type { composeExecutableCatalog } from '@pertexo/workflow-engine';
+import type { composeExecutableCatalog } from '@pertexo/workflow-engine/server';
 import type { WorkflowGraph } from '@pertexo/workflow-model';
 import { expect } from 'vitest';
 

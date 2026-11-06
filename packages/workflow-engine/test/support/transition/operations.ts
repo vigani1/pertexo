@@ -1,10 +1,10 @@
-import type { ExecuteNodeAttemptInput } from '../../../src/index.js';
+import type { ExecuteNodeAttemptInput } from '../../../src/server.js';
 import { vi } from 'vitest';
 import {
   buildWorkflowExecutable,
   composeExecutableCatalog,
   invocationKey,
-} from '../../../src/index.js';
+} from '../../../src/server.js';
 import {
   graph,
   nodeCatalog,

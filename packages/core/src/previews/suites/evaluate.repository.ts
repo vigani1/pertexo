@@ -3,7 +3,7 @@ import type { WorkflowTestSuiteReport } from '@pertexo/contracts';
 import {
   evaluateSuiteExpectations,
   type SuiteOutput,
-} from '@pertexo/workflow-engine';
+} from '@pertexo/workflow-engine/server';
 import {
   workflowTestExpectationsSchema,
   type JsonValue,

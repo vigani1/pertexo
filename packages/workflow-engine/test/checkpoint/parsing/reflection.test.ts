@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   parseCheckpoint,
   WORKFLOW_CHECKPOINT_LIMITS,
-} from '../../../src/index.js';
+} from '../../../src/server.js';
 import { checkpoint } from '../../support/advance-workflow.js';
 
 describe('checkpoint seam', () => {

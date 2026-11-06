@@ -14,7 +14,7 @@ import { PLATFORM_NODE_CATALOG } from '@pertexo/node-catalog';
 import {
   composeExecutableCatalog,
   WorkflowEngineError,
-} from '@pertexo/workflow-engine';
+} from '@pertexo/workflow-engine/server';
 import {
   unrecoverableQueueError,
   type QueueDelivery,

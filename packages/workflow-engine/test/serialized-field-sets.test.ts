@@ -6,8 +6,8 @@ import {
   composeExecutableCatalog,
   createCheckpoint,
   parseCheckpoint,
-  parseWorkflowExecutable,
-} from '../src/index.js';
+} from '../src/server.js';
+import { parseWorkflowExecutable } from '../src/compilation/boundary.js';
 import { graph, nodeCatalog } from './support/executable-workflow.js';
 
 // Each serialized boundary accepts exactly its own fields and reports a

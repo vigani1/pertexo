@@ -1,11 +1,11 @@
 import { CORE_NODE_CATALOG } from '@pertexo/nodes-core';
+import { type RecoveryNode } from '@pertexo/workflow-engine';
 import {
   buildWorkflowExecutable,
   composeExecutableCatalog,
   createCheckpoint,
   invocationKey,
-  type RecoveryNode,
-} from '@pertexo/workflow-engine';
+} from '@pertexo/workflow-engine/server';
 import type { WorkflowRecoveryMetadata } from '../../../../src/runs/index.js';
 import type { JsonValue } from '@pertexo/workflow-model';
 import { describe, expect, it } from 'vitest';

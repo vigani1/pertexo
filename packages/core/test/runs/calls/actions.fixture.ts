@@ -1,6 +1,6 @@
 import { Pool } from 'pg';
 
-import { createCheckpoint } from '../../../../workflow-engine/dist/index.js';
+import { createCheckpoint } from '@pertexo/workflow-engine/server';
 
 import { createRunAdvanceStore } from '../../../src/runs/advance/run-advance.store.js';
 import { createWorkflowCallStore } from '../../../src/runs/calls/workflow-call.store.js';

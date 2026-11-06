@@ -1,5 +1,5 @@
 import { NodeAttemptHandlerStateError } from '../delivery/handler-state-error.js';
-import { testStepDisposition } from '@pertexo/workflow-engine';
+import { testStepDisposition } from '@pertexo/workflow-engine/server';
 import { compareOrdinal, WORKFLOW_FAILURE_PORT } from '@pertexo/workflow-model';
 import {
   hasCallbackMapping,
@@ -10,7 +10,7 @@ import type { WorkflowExecutionProjection } from '@pertexo/core/runs';
 import type {
   ExecuteNodeAttemptInput,
   NodeExecutionRegistry,
-} from '@pertexo/workflow-engine';
+} from '@pertexo/workflow-engine/server';
 import type { NodeExecutionRuntime } from '@pertexo/node-sdk/server';
 import type { ExpressionEvaluator } from '@pertexo/workflow-model/server';
 import {
@@ -18,7 +18,7 @@ import {
   upstreamInvocationKey,
   invocationKey,
   type WorkflowExecutableNode,
-} from '@pertexo/workflow-engine';
+} from '@pertexo/workflow-engine/server';
 
 import type {
   NodeAttemptExecutionEngine,

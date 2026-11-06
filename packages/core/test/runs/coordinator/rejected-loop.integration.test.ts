@@ -3,12 +3,11 @@ import { describe, expect, it } from 'vitest';
 import { PLATFORM_NODE_CATALOG } from '../../../../node-catalog/dist/index.js';
 import { rejectedLoopGraph } from './rejected-loop-graph.js';
 
-// Test-only compiled facade: do not add the engine to the database runtime graph.
 import {
   advanceWorkflow,
   buildWorkflowExecutable,
   composeExecutableCatalog,
-} from '../../../../workflow-engine/dist/index.js';
+} from '@pertexo/workflow-engine/server';
 
 // The shared fixture supports local defaults for older suites. This suite never
 // imports it until every connection has been explicitly supplied by its owner.

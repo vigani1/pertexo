@@ -1,7 +1,7 @@
 import { storedAttemptCheckpoint } from '../support/attempts/handler.js';
 import type { NodeAttemptRunStore } from '@pertexo/core/testing';
 
-import { WorkflowEngineError } from '@pertexo/workflow-engine';
+import { WorkflowEngineError } from '@pertexo/workflow-engine/server';
 import { vi } from 'vitest';
 import { createNodeAttemptHandler } from '../../src/testing.js';
 import {

@@ -6,7 +6,7 @@ import {
   buildWorkflowExecutable,
   composeExecutableCatalog,
   createCheckpoint,
-} from '@pertexo/workflow-engine';
+} from '@pertexo/workflow-engine/server';
 import { curatedScheduleInputCase } from './worker-evidence.js';
 
 it('the actual reviewed For Each fails its pinned bound before any body admission', async () => {

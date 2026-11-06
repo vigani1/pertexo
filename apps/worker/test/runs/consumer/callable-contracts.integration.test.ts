@@ -2,7 +2,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
 import { createInitialCheckpoint } from '@pertexo/core/runs';
 import { PLATFORM_NODE_CATALOG } from '@pertexo/node-catalog';
-import { composeExecutableCatalog } from '@pertexo/workflow-engine';
+import { composeExecutableCatalog } from '@pertexo/workflow-engine/server';
 import {
   CallableInputInvalidError,
   type CallableDeclaration,

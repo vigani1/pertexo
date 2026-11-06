@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
 
-import { createCheckpoint } from '@pertexo/workflow-engine';
+import { createCheckpoint } from '@pertexo/workflow-engine/server';
 import type { WorkspaceVariableSnapshot } from '@pertexo/workflow-model';
 import { createWorkspaceVariablesStore } from '../../src/variables/index.js';
 

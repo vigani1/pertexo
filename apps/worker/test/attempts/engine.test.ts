@@ -11,7 +11,7 @@ import {
   composeExecutableCatalog,
   invocationKey,
   buildWorkflowExecutable,
-} from '@pertexo/workflow-engine';
+} from '@pertexo/workflow-engine/server';
 import { createNodeAttemptExecutionEngine } from '../../src/attempts/execution/engine.js';
 import {
   RUN_ID,

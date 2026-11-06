@@ -20,7 +20,7 @@ import {
   JOB_NAME,
   jobIdForOutboxEvent,
 } from '@pertexo/queue';
-import { createCheckpoint } from '@pertexo/workflow-engine';
+import { createCheckpoint } from '@pertexo/workflow-engine/server';
 import { WORKFLOW_GRAPH_LIMITS } from '@pertexo/workflow-model';
 import { seedScheduleQualification } from './schedule/execution/seed.js';
 import { startScheduleQualification } from './schedule/execution/schedule-execution-runtime.js';

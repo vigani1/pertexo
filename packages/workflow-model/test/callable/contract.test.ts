@@ -1,12 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  callableTypeIssues,
-  callableTypeStructuralSchema,
   validateCallableValue,
   type CallableType,
   type JsonValue,
 } from '../../src/index.js';
+import {
+  callableTypeIssues,
+  callableTypeStructuralSchema,
+} from '../../src/flow/callable/callable-types.js';
 
 describe('callable type declarations', () => {
   const order: CallableType = {

@@ -5,7 +5,10 @@ import {
   type NodeAttemptLease,
   type NodeAttemptStoredInputs,
 } from '../../../../src/attempts/index.js';
-import { createCheckpoint, invocationKey } from '@pertexo/workflow-engine';
+import {
+  createCheckpoint,
+  invocationKey,
+} from '@pertexo/workflow-engine/server';
 import { canonicalJson } from '@pertexo/workflow-model';
 import { describe, expect, it, vi } from 'vitest';
 

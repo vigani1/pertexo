@@ -18,7 +18,7 @@ import { admin } from '../../lifecycle/calls/calls.fixture.js';
 import { createWorkflowRunDatabase } from '../../../src/runs/workflow-run.store.js';
 import { RunRequiresFormError } from '../../../src/runs/commands/acceptance/forms.repository.js';
 import { Client, Pool } from 'pg';
-import { createCheckpoint } from '@pertexo/workflow-engine';
+import { createCheckpoint } from '@pertexo/workflow-engine/server';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
 import {
   adminUrl,

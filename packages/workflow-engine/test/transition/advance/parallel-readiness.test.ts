@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { invocationKey } from '../../../src/index.js';
+import { invocationKey } from '../../../src/server.js';
 import { deriveReadyNodes } from '../../support/engine.js';
 
 describe('AdvanceWorkflow branching', () => {

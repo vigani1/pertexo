@@ -4,7 +4,7 @@ import {
   composeExecutableCatalog,
   createCheckpoint,
   settleCallableResult,
-} from '@pertexo/workflow-engine';
+} from '@pertexo/workflow-engine/server';
 import {
   CallableInputInvalidError,
   type CallableDeclaration,

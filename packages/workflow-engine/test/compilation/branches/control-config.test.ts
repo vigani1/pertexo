@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   buildWorkflowExecutable,
   composeExecutableCatalog,
-} from '../../../src/index.js';
+} from '../../../src/server.js';
 import {
   nodeCatalog,
   pairedParallelGraph,

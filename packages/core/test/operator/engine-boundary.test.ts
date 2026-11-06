@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import * as engine from '@pertexo/workflow-engine';
+import * as engine from '@pertexo/workflow-engine/server';
 
 it('keeps administrative command and lease-recovery policy out of the engine entry', () => {
   const administrative = new Set([

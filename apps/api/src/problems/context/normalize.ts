@@ -14,7 +14,7 @@ import {
   CallableInputInvalidError,
   InvalidWorkflowGraphError,
 } from '@pertexo/workflow-model';
-import { WorkflowEngineError } from '@pertexo/workflow-engine';
+import { WorkflowEngineError } from '@pertexo/workflow-engine/server';
 import { z } from 'zod';
 import { requestInputCause } from '../../platform/http/request-input.js';
 import {

@@ -3,7 +3,7 @@ import { CORE_NODE_CATALOG } from '@pertexo/nodes-core';
 import {
   composeExecutableCatalog,
   verifyWorkflowExecutable,
-} from '@pertexo/workflow-engine';
+} from '@pertexo/workflow-engine/server';
 import { randomUUID } from 'node:crypto';
 import { expect, it } from 'vitest';
 import { expectedMigrationsAfter } from '../../../src/testing/expected-migrations.js';

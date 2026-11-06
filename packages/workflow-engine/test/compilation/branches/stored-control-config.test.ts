@@ -4,7 +4,7 @@ import {
   buildWorkflowExecutable,
   composeExecutableCatalog,
   verifyWorkflowExecutable,
-} from '../../../src/index.js';
+} from '../../../src/server.js';
 import { computeWorkflowExecutableChecksum } from '../../../src/compilation/identity.js';
 import type { WorkflowExecutable } from '../../../src/compilation/foundation.js';
 import { nodeCatalog, switchGraph } from '../../support/executable-workflow.js';

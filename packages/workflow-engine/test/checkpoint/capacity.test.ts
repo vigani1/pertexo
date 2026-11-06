@@ -14,7 +14,7 @@ import {
   composeExecutableCatalog,
   createCheckpoint,
   WORKFLOW_CHECKPOINT_LIMITS,
-} from '../../src/index.js';
+} from '../../src/server.js';
 import {
   forEachGraph,
   graph as chainGraph,

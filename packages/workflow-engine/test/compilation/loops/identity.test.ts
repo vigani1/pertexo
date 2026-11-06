@@ -4,7 +4,7 @@ import {
   buildWorkflowExecutable,
   composeExecutableCatalog,
   invocationKey,
-} from '../../../src/index.js';
+} from '../../../src/server.js';
 import {
   forEachGraph,
   nodeCatalog,

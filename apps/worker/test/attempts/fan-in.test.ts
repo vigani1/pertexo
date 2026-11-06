@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
 import { createCoreNodeRegistry } from '@pertexo/nodes-core/server';
-import { invocationKey } from '@pertexo/workflow-engine';
+import { invocationKey } from '@pertexo/workflow-engine/server';
 import { createNodeAttemptExecutionEngine } from '../../src/attempts/execution/engine.js';
 import { fixture, compiledProjection } from './engine.fixture.js';
 import { graph, VERSION_ID } from '../support/attempts/execution-engine.js';

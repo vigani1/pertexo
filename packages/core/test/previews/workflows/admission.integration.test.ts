@@ -33,7 +33,7 @@ import {
   buildWorkflowExecutable,
   buildWorkflowTestExecutable,
   composeExecutableCatalog,
-} from '@pertexo/workflow-engine';
+} from '@pertexo/workflow-engine/server';
 import { createWorkflowAuthoringFixtureDatabase as createWorkflowAuthoringStore } from '../../support/workflow-authoring-admission.fixture.js';
 
 beforeAll(beforeAllFixture1);

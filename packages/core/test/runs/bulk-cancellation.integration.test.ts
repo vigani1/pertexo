@@ -3,7 +3,7 @@ import { performance } from 'node:perf_hooks';
 import { describe, expect, it } from 'vitest';
 import { sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import { createCheckpoint } from '@pertexo/workflow-engine';
+import { createCheckpoint } from '@pertexo/workflow-engine/server';
 import { databaseSchema } from '@pertexo/database/testing';
 import { parseWorkspaceId } from '@pertexo/database/primitives';
 import { requestActiveRunCancellations } from '../../src/runs/commands/cancel-run.js';

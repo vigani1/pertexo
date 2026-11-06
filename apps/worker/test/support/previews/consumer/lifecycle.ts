@@ -13,7 +13,7 @@ import { PLATFORM_NODE_CATALOG } from '@pertexo/node-catalog';
 import {
   buildWorkflowExecutable,
   composeExecutableCatalog,
-} from '@pertexo/workflow-engine';
+} from '@pertexo/workflow-engine/server';
 import { Queue } from 'bullmq';
 import { QUEUE_NAME } from '@pertexo/queue';
 import {

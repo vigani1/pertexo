@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import type { JsonValue } from '@pertexo/workflow-model';
+import { type WorkflowCheckpoint } from '../../../../src/index.js';
 import {
   advanceWorkflow,
   buildWorkflowExecutable,
   composeExecutableCatalog,
   createCheckpoint,
   parseCheckpoint,
-  type WorkflowCheckpoint,
-} from '../../../../src/index.js';
+} from '../../../../src/server.js';
 import { nodeCatalog } from '../../../support/executable-workflow.js';
 import {
   parallelInsideNestedLoops,

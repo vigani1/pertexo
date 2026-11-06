@@ -3,8 +3,8 @@ import {
   createCheckpoint,
   invocationKey,
   parseCheckpoint,
-  reconstructReadySet,
-} from '../../../src/index.js';
+} from '../../../src/server.js';
+import { reconstructReadySet } from '../../../src/checkpoint/create-and-parse.js';
 import { checkpoint, occurredAt } from '../../support/advance-workflow.js';
 
 import { advanceWorkflow } from '../../support/checkpoint/seam.js';

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { invocationKey, loopIterationOrdinal } from '../../src/index.js';
+import { invocationKey, loopIterationOrdinal } from '../../src/server.js';
 
 const version = '01900000-0000-7000-8000-000000000001';
 

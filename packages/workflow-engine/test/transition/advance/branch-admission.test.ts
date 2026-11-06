@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createCheckpoint, invocationKey } from '../../../src/index.js';
+import { createCheckpoint, invocationKey } from '../../../src/server.js';
 import {
   advanceWorkflow as advanceWorkflowForTesting,
   deriveReadyNodes,

@@ -13,7 +13,7 @@ import type { FrozenWorkflowTestPins } from '@pertexo/database/schema';
 import { sampleDraft } from '../../authoring/step-samples/step-sample-state.repository.js';
 import type { PoolClient } from 'pg';
 import { normalizedJson } from '@pertexo/workflow-model';
-import type { WorkflowTestPins } from '@pertexo/workflow-engine';
+import type { WorkflowTestPins } from '@pertexo/workflow-engine/server';
 import type { WorkflowTestOptions } from './workflow-test.types.js';
 
 import { readDatabaseClock } from '../clock.repository.js';
