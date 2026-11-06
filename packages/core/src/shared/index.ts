@@ -17,3 +17,6 @@ export type {} from './stored-values.js';
 export type {} from './stored-execution.js';
 export type {} from './workspace-fence.repository.js';
 export type {} from './command-receipt.errors.js';
+export type {} from './retention-deletion.js';
+export type {} from './workflow-actor.js';
+export type {} from './traceparent.js';
