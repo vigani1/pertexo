@@ -1,3 +1,4 @@
+import { COORDINATOR_COMPLETION_WINDOW_LIMITS } from '@pertexo/workflow-engine';
 import { isStoredDataError } from '../../../shared/stored-values.js';
 import { reacquireSlotAfterTimedWait } from '../timed-wait-slot.repository.js';
 import {
@@ -170,6 +171,15 @@ async function loadLockedRunState(
   } catch {
     throw new CoordinatorRunStateCorruptError();
   }
+  const completedOutputs = facts.flatMap((fact) =>
+    completedInlineOutput(fact, controlOutputNodeIds),
+  );
+  if (completedOutputs.length > COORDINATOR_COMPLETION_WINDOW_LIMITS.count)
+    throw new CoordinatorRunStateCorruptError(undefined, {
+      cause: new Error(
+        'Completed control output count exceeds the graph concurrency limit',
+      ),
+    });
   return Object.freeze({
     kind: 'loaded',
     row,
@@ -183,11 +193,7 @@ async function loadLockedRunState(
       occurredAt: capacity.observedAt.toISOString(),
       checkpoint: row.scheduler_state,
       observations: Object.freeze(observations),
-      completedOutputs: Object.freeze(
-        facts.flatMap((fact) =>
-          completedInlineOutput(fact, controlOutputNodeIds),
-        ),
-      ),
+      completedOutputs: Object.freeze(completedOutputs),
       workflow: version,
       readCompletionValues: (nodeIds?: readonly string[]) =>
         readRunCompletionValues(client, {
