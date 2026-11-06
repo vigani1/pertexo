@@ -55,6 +55,7 @@ it.each([429, 200])(
         channelId: 'C123ABC',
         text: 'hello',
         timeoutMillis: 1000,
+        signal: new AbortController().signal,
         beforeDispatch: async () => undefined,
       }),
     ).toEqual({ kind: 'rate_limited', retryAfterMillis: 3000 });
