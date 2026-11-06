@@ -1,4 +1,4 @@
-import { decodeStoredValue } from '../../shared/stored-values.js';
+import { decodeStoredReceipt } from '../../shared/receipts.js';
 import type { AuditMetadata } from '@pertexo/database/primitives';
 import { claimCommand, completeCommand } from '@pertexo/database/primitives';
 import { appendAuditFact } from '../../governance/audit/facts.js';
@@ -59,7 +59,7 @@ export async function claimNotificationCommand(
   if (stored === null) return Object.freeze({ kind: 'new' });
   return Object.freeze({
     kind: 'replay',
-    result: decodeStoredValue(() => replaySchema.parse(stored)).result,
+    result: decodeStoredReceipt(replaySchema, stored).result,
   });
 }
 

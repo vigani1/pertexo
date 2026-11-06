@@ -113,7 +113,8 @@ export async function claimCommand<Result = unknown>(
     .catch(rethrowQueryFailure);
   if (row === undefined) throw new Error('Command claim is missing');
   if (row.requestHash !== requestHash) throw conflict(command);
-  if (row.status === IDEMPOTENCY_STATUS.completed) return row.resultRef;
+  if (row.status === IDEMPOTENCY_STATUS.completed)
+    return completedResult(row.resultRef);
   // A claim completes in the transaction that made it, so any other state
   // another transaction left behind is damage, not a command to resume.
   if (inserted.length !== 1) throw new Error('Command claim is not resumable');
@@ -140,7 +141,15 @@ export async function findCommandResult<Result = unknown>(
     .catch(rethrowQueryFailure);
   if (row === undefined) return null;
   if (row.requestHash !== requestDigest(command)) throw conflict(command);
-  return row.status === IDEMPOTENCY_STATUS.completed ? row.resultRef : null;
+  return row.status === IDEMPOTENCY_STATUS.completed
+    ? completedResult(row.resultRef)
+    : null;
+}
+
+function completedResult<Result>(value: Result): Result {
+  // Null is the unused-key sentinel, so a damaged completed receipt must never reuse it.
+  if (value === null) throw new IdempotencyConflictError();
+  return value;
 }
 
 /** Stores a command's result so an exact retry gets it back. */

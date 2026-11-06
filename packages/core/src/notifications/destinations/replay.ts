@@ -1,4 +1,5 @@
 import { decodeStoredValue } from '../../shared/stored-values.js';
+import { decodeStoredReceipt } from '../../shared/receipts.js';
 import { z } from 'zod';
 import { FailureNotificationDestinationConfigSchema } from '@pertexo/workflow-model';
 import type { FailureNotificationDestinationRecord } from './notification-destination.types.js';
@@ -14,11 +15,7 @@ const destinationReplaySchema = z
     createdAt: z.iso.datetime(),
     updatedAt: z.iso.datetime(),
   })
-  .strict()
-  .refine((record) => record.kind === record.config.kind, {
-    message: 'Destination kind does not match replayed configuration',
-    path: ['config', 'kind'],
-  });
+  .strict();
 
 export function serializeFailureNotificationDestinationRecord(
   record: FailureNotificationDestinationRecord,
@@ -33,10 +30,14 @@ export function serializeFailureNotificationDestinationRecord(
 export function decodeFailureNotificationDestinationReplay(
   value: unknown,
 ): FailureNotificationDestinationRecord {
-  const parsed = decodeStoredValue(() => destinationReplaySchema.parse(value));
-  return Object.freeze({
-    ...parsed,
-    createdAt: new Date(parsed.createdAt),
-    updatedAt: new Date(parsed.updatedAt),
+  const parsed = decodeStoredReceipt(destinationReplaySchema, value);
+  return decodeStoredValue(() => {
+    if (parsed.kind !== parsed.config.kind)
+      throw new Error('Destination kind does not match replayed configuration');
+    return Object.freeze({
+      ...parsed,
+      createdAt: new Date(parsed.createdAt),
+      updatedAt: new Date(parsed.updatedAt),
+    });
   });
 }

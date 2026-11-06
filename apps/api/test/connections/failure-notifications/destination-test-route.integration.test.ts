@@ -110,6 +110,76 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
       expect(invalid.statusCode).toBe(400);
     });
 
+    it.each([
+      ['null frame', "'null'::jsonb", 409, 'request.idempotency_conflict'],
+      [
+        'unreadable record',
+        "jsonb_set(result_ref,'{result,createdAt}','\"not-a-date\"'::jsonb)",
+        409,
+        'request.idempotency_conflict',
+      ],
+      [
+        'readable kind conflict',
+        "jsonb_set(result_ref,'{result,kind}','\"email\"'::jsonb)",
+        500,
+        'internal.unexpected',
+      ],
+    ] as const)(
+      'refuses a %s receipt without creating another destination',
+      async (_case, damage, status, code) => {
+        const { browser, workspaceId, destinationId } = await seedDestination();
+        const connection = (
+          await api
+            .database()
+            .query<{ id: string }>(
+              `select config->>'connectionId' id from app.failure_notification_destination_versions where workspace_id=$1 and destination_id=$2 and version=1`,
+              [workspaceId, destinationId],
+            )
+        ).rows[0];
+        if (connection === undefined)
+          throw new Error('Missing destination connection');
+        const path = `/v1/workspaces/${workspaceId}/failure-notification-destinations`;
+        const key = randomUUID();
+        const create = () =>
+          api.send('POST', path, {
+            browser,
+            headers: { 'Idempotency-Key': key },
+            payload: {
+              kind: 'slack',
+              connectionId: connection.id,
+              channelId: 'CRECEIPT',
+            },
+          });
+        const first = await create();
+        expect(first.statusCode, first.payload).toBe(201);
+        const id = first.json<{ id: string }>().id;
+        expect(
+          (
+            await api
+              .database()
+              .query(
+                `update app.idempotency_records set result_ref=${damage} where workspace_id=$1 and resource_id=$2 and operation='failure.notification.destination.create'`,
+                [workspaceId, id],
+              )
+          ).rowCount,
+        ).toBe(1);
+        const replay = await create();
+        const count = (
+          await api
+            .database()
+            .query<{ count: number }>(
+              'select count(*)::int count from app.failure_notification_destinations where workspace_id=$1',
+              [workspaceId],
+            )
+        ).rows[0]?.count;
+        expect({
+          status: replay.statusCode,
+          code: replay.json<{ code?: string }>().code,
+          destinations: count,
+        }).toEqual({ status, code, destinations: 2 });
+      },
+    );
+
     async function seedDestination() {
       const email = `destination-test-${randomUUID()}@example.test`;
       await api.signUp(email, '/workspaces');
