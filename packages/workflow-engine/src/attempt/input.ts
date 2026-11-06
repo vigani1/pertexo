@@ -24,7 +24,7 @@ import type {
 import { normalizeBoundedEngineValue } from '../compilation/executable.validation.js';
 import { exactKeys, operationError, record } from '../operation-values.js';
 import type { ExecuteNodeAttemptInput } from './node-attempt.types.js';
-import { invocationKey as createInvocationKey } from '../transition/scheduling/loops.js';
+import { invocationKey as createInvocationKey } from '../invocation-identity.js';
 
 export type PreparedNodeAttemptInput = Readonly<{
   completedOutputs: Readonly<Record<string, JsonValue>>;

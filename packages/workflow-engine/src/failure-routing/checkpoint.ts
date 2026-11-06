@@ -5,7 +5,7 @@ import type {
   InvocationState,
   WorkflowCheckpoint,
 } from '../workflow-execution.js';
-import { invocationKey } from '../transition/scheduling/loops.js';
+import { invocationKey } from '../invocation-identity.js';
 import { isSelectedFailureScope, isCompletedFailureHandler } from './scope.js';
 
 function expectedInvocationKey(

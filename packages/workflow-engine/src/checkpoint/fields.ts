@@ -14,7 +14,7 @@ import {
   type IterationScopePart,
 } from '../workflow-execution.js';
 
-import { invocationKey } from '../transition/scheduling/loops.js';
+import { invocationKey } from '../invocation-identity.js';
 import { compareOrdinal } from '@pertexo/workflow-model';
 import { WorkflowEngineError } from '../workflow-engine.errors.js';
 import { assertCanonicalTimestamp } from './identity.js';

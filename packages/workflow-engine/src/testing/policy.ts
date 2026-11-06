@@ -1,4 +1,4 @@
-import type { SchedulerState } from '../transition/scheduling/readiness.js';
+import type { SchedulerState } from '../transition/scheduling/policy.js';
 import type { JsonValue } from '@pertexo/workflow-model';
 import {
   isHumanTaskDefinition,

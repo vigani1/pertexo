@@ -1,7 +1,7 @@
 import { selectFailureHandler } from '../failure-routing/selection.js';
 import { WorkflowEngineError } from '../workflow-engine.errors.js';
 import { compareOrdinal } from '@pertexo/workflow-model';
-import { recordBranchDisposition } from './scheduling/loops.js';
+import { recordBranchDisposition } from '../join-settlement.js';
 import { sameOutputReference } from '../output-reference.js';
 import {
   assertNodeTransition,

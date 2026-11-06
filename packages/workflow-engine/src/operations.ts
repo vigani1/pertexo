@@ -41,7 +41,7 @@ import type { ControlNodeConfig } from '@pertexo/workflow-model';
 
 import type { WorkflowObservation } from './workflow-execution.js';
 import { parseCheckpoint } from './checkpoint/create-and-parse.js';
-import type { SchedulerState } from './transition/scheduling/readiness.js';
+import type { SchedulerState } from './transition/scheduling/policy.js';
 import { operationError, record } from './operation-values.js';
 import { parsePersistedObservations } from './observation/persisted.js';
 import { nodeProviderIdempotencyKey } from './attempt/derive-provider-key.js';

@@ -1,4 +1,4 @@
-import { configuredParallelMaxConcurrency } from './scheduling/readiness.js';
+import { configuredParallelMaxConcurrency } from '../control-output-ports.js';
 import type { SchedulerNodeLookup } from './state.js';
 import type {
   InvocationState,

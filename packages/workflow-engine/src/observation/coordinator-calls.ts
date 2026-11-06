@@ -12,7 +12,7 @@ import type {
   ExecutionNode,
 } from '../compilation/workflow-executable.js';
 import { findExecutableNodeContext } from '../compilation/graph.js';
-import { configuredScopedOutputPorts } from '../transition/scheduling/readiness.js';
+import { configuredScopedOutputPorts } from '../control-output-ports.js';
 import { normalizeBoundedEngineJson } from '../compilation/executable.validation.js';
 import { exactKeys, operationError, record } from '../operation-values.js';
 import type {
@@ -23,7 +23,7 @@ import type {
 } from '../workflow-execution.js';
 import { completedOutputReference } from './coordinator-output.js';
 import { parseBranchPath, parseIterationPath } from '../checkpoint/fields.js';
-import { invocationKey } from '../transition/scheduling/loops.js';
+import { invocationKey } from '../invocation-identity.js';
 import {
   isFinishedIterationScope,
   isTerminalNodeStatus,

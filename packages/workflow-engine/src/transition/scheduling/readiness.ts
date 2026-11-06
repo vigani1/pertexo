@@ -1,4 +1,4 @@
-import { invocationKey } from './loops.js';
+import { invocationKey } from '../../invocation-identity.js';
 import { WorkflowEngineError } from '../../workflow-engine.errors.js';
 import {
   descendants,
@@ -14,21 +14,12 @@ import type {
   IterationScopePart,
 } from '../../workflow-execution.js';
 
+import { type SchedulerState, type ReadyNodeDecision } from './policy.js';
 import {
-  type SchedulerState,
   configuredBranchOutputPorts,
   configuredParallelOutputPorts,
-  type ReadyNodeDecision,
-} from './policy.js';
+} from '../../control-output-ports.js';
 
-export {
-  type SchedulerState,
-  configuredBranchOutputPorts,
-  configuredParallelOutputPorts,
-  configuredParallelMaxConcurrency,
-  configuredScopedOutputPorts,
-  type ReadyNodeDecision,
-} from './policy.js';
 type SchedulerNode = SchedulerState['nodes'][number];
 
 type DeriveReadyNodesInput = Readonly<{

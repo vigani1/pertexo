@@ -24,8 +24,8 @@ import { parseBranchPath, parseIterationPath } from '../checkpoint/fields.js';
 import {
   configuredBranchOutputPorts,
   configuredScopedOutputPorts,
-} from '../transition/scheduling/readiness.js';
-import { invocationKey } from '../transition/scheduling/loops.js';
+} from '../control-output-ports.js';
+import { invocationKey } from '../invocation-identity.js';
 import {
   isFinishedIterationScope,
   isTerminalNodeStatus,

@@ -2,7 +2,8 @@ import {
   isCoreMergeDefinition,
   isCoreParallelDefinition,
 } from '../../core-definition-identities.js';
-import { configuredPairedParallelId, type SchedulerState } from './policy.js';
+import { configuredPairedParallelId } from '../../control-output-ports.js';
+import { type SchedulerState } from './policy.js';
 
 type SchedulerNode = SchedulerState['nodes'][number];
 

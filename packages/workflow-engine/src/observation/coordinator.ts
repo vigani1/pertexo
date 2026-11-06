@@ -11,12 +11,12 @@ import { completedOutputReference } from './coordinator-output.js';
 import {
   configuredBranchOutputPorts,
   configuredParallelOutputPorts,
-} from '../transition/scheduling/readiness.js';
+} from '../control-output-ports.js';
 import { isCoreMergeDefinition } from '../core-definition-identities.js';
 import { exactKeys, operationError, record } from '../operation-values.js';
 import { branchPathHasPrefix, sameIterationPath } from '../scope.js';
 import { UUID_PATTERN } from '@pertexo/workflow-model';
-import { invocationKey as createInvocationKey } from '../transition/scheduling/loops.js';
+import { invocationKey as createInvocationKey } from '../invocation-identity.js';
 import { invocationIdentity } from '../transition/status.js';
 import type { WorkflowObservation } from '../workflow-execution.js';
 

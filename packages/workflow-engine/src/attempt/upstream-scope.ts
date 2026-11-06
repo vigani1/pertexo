@@ -2,7 +2,7 @@ import type {
   BranchScopePart,
   IterationScopePart,
 } from '../workflow-execution.js';
-import { invocationKey } from '../transition/scheduling/loops.js';
+import { invocationKey } from '../invocation-identity.js';
 
 /** A control's selected branch starts after that control's own invocation. */
 export function upstreamInvocationKey(

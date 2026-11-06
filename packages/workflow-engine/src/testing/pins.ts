@@ -3,7 +3,7 @@ import type { ExecutionNode } from '../compilation/workflow-executable.js';
 import {
   configuredBranchOutputPorts,
   configuredParallelOutputPorts,
-} from '../transition/scheduling/readiness.js';
+} from '../control-output-ports.js';
 import type { WorkflowTestPins } from './policy.js';
 
 /** Branch selection is engine control data even when its output was pasted. */
