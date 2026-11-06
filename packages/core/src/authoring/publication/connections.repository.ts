@@ -12,11 +12,11 @@ import { CONNECTION_STATUS } from '@pertexo/workflow-model';
 import {
   workflowConnectionReferences,
   connectionReferenceIds,
-} from '../../tenant-access/resources/connections/bindings.repository.js';
+} from '../../shared/resources/connection-bindings.repository.js';
 import {
   readConnectionScope,
   connectionScopeSql,
-} from '../../tenant-access/resources/connections/scope.js';
+} from '../../shared/resources/connection-scope.repository.js';
 import type { ResourceActor } from '../../shared/folder-access.types.js';
 
 /** Permission applies to every binding; only enabled steps require a non-revoked secret. */

@@ -9,7 +9,7 @@ import type { Role } from '@pertexo/policy';
 import {
   connectionScope,
   connectionScopeSql,
-} from '../../tenant-access/resources/connections/scope.js';
+} from '../../shared/resources/connection-scope.repository.js';
 import type {
   ConnectionPage,
   ConnectionRecord,

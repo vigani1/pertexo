@@ -11,10 +11,10 @@ import { alias, QueryBuilder } from 'drizzle-orm/pg-core';
 import { connections, connectionShares } from '@pertexo/database/schema';
 import type { PoolClient } from 'pg';
 import { hasCapability, rolesForCapability, type Role } from '@pertexo/policy';
-import { WorkspaceAccessDeniedError } from '../../../shared/workspace-access.errors.js';
-import { readWorkspaceAuthority } from '../../../shared/authority.repository.js';
-import type { ResourceActor } from '../../../shared/folder-access.types.js';
-import { RESOURCE_ADMINISTRATORS } from '../../../shared/folder-policy.js';
+import { WorkspaceAccessDeniedError } from '../workspace-access.errors.js';
+import { readWorkspaceAuthority } from '../authority.repository.js';
+import type { ResourceActor } from '../folder-access.types.js';
+import { RESOURCE_ADMINISTRATORS } from '../folder-policy.js';
 
 export type ConnectionCapability = 'connection:read' | 'connection:use';
 export type ConnectionScope = Readonly<{

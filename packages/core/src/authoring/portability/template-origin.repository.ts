@@ -14,7 +14,7 @@ import {
 import {
   workflowAccessible,
   workflowActions,
-} from '../../tenant-access/resources/workflows.repository.js';
+} from '../../shared/resources/workflow-access.repository.js';
 import { WorkflowTemplateOriginUnavailableError } from '../workflows/workflow-authoring.errors.js';
 import type { PoolClient } from 'pg';
 import type { FolderScope } from '../../shared/folder-access.types.js';

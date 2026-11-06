@@ -12,7 +12,7 @@ import {
   connectionScope,
   connectionScopeSql,
   type ConnectionCapability,
-} from '../tenant-access/resources/connections/scope.js';
+} from '../shared/resources/connection-scope.repository.js';
 import type { ResourceActor } from '../shared/folder-access.types.js';
 import {
   ConnectionNotFoundError,

@@ -13,7 +13,7 @@ import { withTenantScopedClient } from '@pertexo/database/primitives';
 import {
   readConnectionScope,
   connectionScopeSql,
-} from '../../../src/tenant-access/resources/connections/scope.js';
+} from '../../../src/shared/resources/connection-scope.repository.js';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { alias } from 'drizzle-orm/pg-core';
 import { connections as storedConnections } from '@pertexo/database/schema';

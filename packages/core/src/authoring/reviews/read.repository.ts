@@ -11,10 +11,10 @@ import { parseWorkflowGraphDraft } from '@pertexo/workflow-model';
 import {
   connectionUseIssues,
   workflowConnectionReferences,
-} from '../../tenant-access/resources/connections/bindings.repository.js';
-import { connectionScope } from '../../tenant-access/resources/connections/scope.js';
+} from '../../shared/resources/connection-bindings.repository.js';
+import { connectionScope } from '../../shared/resources/connection-scope.repository.js';
 import { readBrowsableFolderScope } from '../../shared/facts.repository.js';
-import { workflowAccessible } from '../../tenant-access/resources/workflows.repository.js';
+import { workflowAccessible } from '../../shared/resources/workflow-access.repository.js';
 import type { PoolClient } from 'pg';
 import type { PublicationReview } from '@pertexo/contracts';
 import {

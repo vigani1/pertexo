@@ -14,7 +14,7 @@ import { readFolderScope } from '../../shared/facts.repository.js';
 import { withWorkspaceAccess } from '../../shared/workspace-access.js';
 import { WorkspaceAccessDeniedError } from '../../shared/workspace-access.errors.js';
 import type { WorkflowResourceCapability } from '../../shared/folder-access.types.js';
-import { workflowAccessible } from '../../tenant-access/resources/workflows.repository.js';
+import { workflowAccessible } from '../../shared/resources/workflow-access.repository.js';
 
 const capabilities = ['workflow:update', 'run:read', 'run:start'] as const;
 const testRoles = rolesForCapability('workflow:update').filter((role) =>

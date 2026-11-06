@@ -1,7 +1,7 @@
 import {
   connectionScopeSql,
   type ConnectionScope,
-} from '../../../tenant-access/resources/connections/scope.js';
+} from '../../../shared/resources/connection-scope.repository.js';
 import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';

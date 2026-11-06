@@ -14,7 +14,7 @@ import { workflowScopeSql } from '../../../shared/scope.repository.js';
 import {
   workflowAccessible,
   workflowActions,
-} from '../../../tenant-access/resources/workflows.repository.js';
+} from '../../../shared/resources/workflow-access.repository.js';
 import { workflowProjection } from '../representation/workflow-representations.repository.js';
 
 import type { ListWorkflowsInput } from '../workflow-commands.types.js';

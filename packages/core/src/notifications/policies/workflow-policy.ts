@@ -8,7 +8,7 @@ import {
   workflowFailureNotificationPolicies as policy,
 } from '@pertexo/database/schema';
 import type { PoolClient } from 'pg';
-import { authorizeWorkflowResource } from '../../tenant-access/resources/authority.js';
+import { authorizeWorkflowResource } from '../../shared/resources/workflow-authority.repository.js';
 
 import {
   audit,
