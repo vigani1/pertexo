@@ -42,33 +42,36 @@ async function refusal(
 }
 
 it.each([
-  [
-    'source',
-    '"' + 'x'.repeat(16_384) + '"',
-    {},
-    'source size limit of 16384 bytes',
-    'Shorten',
-  ],
-  [
-    'input',
-    'runInput.payload',
-    { runInput: { payload: 'x'.repeat(600_000) }, priorPreviewNodeId: 'prior' },
-    'input size limit of 1048576 bytes',
-    'Pass less',
-  ],
-  [
-    'output',
-    '$join([runInput.payload, runInput.payload])',
-    { runInput: { payload: 'x'.repeat(600_000) } },
-    'output size limit of 1048576 bytes',
-    'Return less',
-  ],
+  {
+    dimension: 'source',
+    expression: '"' + 'x'.repeat(16_384) + '"',
+    options: {},
+    limitCopy: 'source size limit of 16384 bytes',
+    remedy: 'Shorten',
+  },
+  {
+    dimension: 'input',
+    expression: 'runInput.payload',
+    options: {
+      runInput: { payload: 'x'.repeat(600_000) },
+      priorPreviewNodeId: 'prior',
+    },
+    limitCopy: 'input size limit of 1048576 bytes',
+    remedy: 'Pass less',
+  },
+  {
+    dimension: 'output',
+    expression: '$join([runInput.payload, runInput.payload])',
+    options: { runInput: { payload: 'x'.repeat(600_000) } },
+    limitCopy: 'output size limit of 1048576 bytes',
+    remedy: 'Return less',
+  },
 ] as const)(
-  'names the second field and the real %s limit without exposing its expression or data',
-  async (_dimension, expression, options, dimension, remedy) => {
+  'names the second field and the real $dimension limit without exposing its expression or data',
+  async ({ expression, options, limitCopy, remedy }) => {
     const error = await refusal(expression, options);
     expect(describeMappingFailure(error)).toContain(
-      `Expression for field "total" exceeded the ${dimension}.`,
+      `Expression for field "total" exceeded the ${limitCopy}.`,
     );
     expect(describeMappingFailure(error)).toContain(remedy);
     expect(describeMappingFailure(error)).not.toContain(privateData);
@@ -136,7 +139,7 @@ it.each([
       status: 'executor_failure',
       failureKind: 'retry',
       safeErrorCode,
-      errorSummary: expect.stringContaining(reason),
+      errorSummary: expect.stringContaining(reason) as unknown,
     });
     expect(JSON.stringify(completion)).toContain('total');
     expect(JSON.stringify(completion)).not.toContain(privateData);

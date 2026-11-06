@@ -36,7 +36,7 @@ it.each([
   'shows the second mapping’s safe reason for %j',
   async (source, safeErrorCode, errorSummary) => {
     const invoker = createPlatformPreviewNodeInvoker({
-      registry: createCoreNodeRegistry() as never,
+      registry: createCoreNodeRegistry(),
     });
     try {
       const lease = {
@@ -65,7 +65,7 @@ it.each([
 
 it('keeps syntactically valid absent-data mappings optional', async () => {
   const invoker = createPlatformPreviewNodeInvoker({
-    registry: createCoreNodeRegistry() as never,
+    registry: createCoreNodeRegistry(),
   });
   try {
     const lease = leaseFixture({
@@ -89,7 +89,7 @@ it('keeps syntactically valid absent-data mappings optional', async () => {
 
 it('keeps long escaped field/path identifiers within the persisted diagnostic limit', async () => {
   const invoker = createPlatformPreviewNodeInvoker({
-    registry: createCoreNodeRegistry() as never,
+    registry: createCoreNodeRegistry(),
   });
   try {
     const lease = leaseFixture({
@@ -109,7 +109,7 @@ it('keeps long escaped field/path identifiers within the persisted diagnostic li
     expect(result).toMatchObject({
       status: 'failed',
       safeErrorCode: 'preview.input_invalid',
-      errorSummary: expect.stringContaining('unsupported path'),
+      errorSummary: expect.stringContaining('unsupported path') as unknown,
     });
     if (result.status !== 'failed')
       throw new Error('Expected a mapping refusal');
