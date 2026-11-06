@@ -143,6 +143,11 @@ export const PURGE_PRESERVED_TABLES = Object.freeze([
   'transport_security_audit_facts',
 ]);
 
+/** Derived rows disappear with their JSON owners through storage index maintenance. */
+export const PURGE_DERIVED_TABLES = Object.freeze([
+  'artifact_owner_references',
+]);
+
 /**
  * Everything a purge removes, in dependency order. Each step changes at most
  * one page; a later step runs only once every earlier one has nothing left.
