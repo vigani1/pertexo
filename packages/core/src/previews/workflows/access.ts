@@ -1,3 +1,4 @@
+import type { WorkflowActor } from '../../shared/workflow-actor.js';
 import type { Pool, PoolClient } from 'pg';
 import {
   ACTIVE_WORKSPACE_STATUSES,
@@ -6,7 +7,7 @@ import {
   type AuthorizationCapability,
   type Role,
 } from '@pertexo/policy';
-import type { SampleScope } from '../../authoring/step-samples/step-sample.types.js';
+
 import { lockWorkflowAuthoringAuthority } from '../../authoring/workflows/authority.js';
 import { WorkflowNotFoundError } from '../../authoring/workflows/workflow-authoring.errors.js';
 import { readFolderScope } from '../../shared/facts.repository.js';
@@ -31,7 +32,7 @@ function workflowNotVisible(): WorkflowNotFoundError {
 /** For the suite worker, which has no member behind it and treats a denial as a stop reason. */
 export async function lockTestAuthority(
   client: PoolClient,
-  input: SampleScope,
+  input: WorkflowActor,
 ): Promise<void> {
   await lockWorkflowAuthoringAuthority(client, input.workspaceId, {
     actorId: input.actorId,
@@ -63,7 +64,7 @@ export function requireTestStopAuthority(
 
 async function requireVisibleWorkflow(
   client: PoolClient,
-  input: SampleScope,
+  input: WorkflowActor,
   role: Role,
   capability?: WorkflowResourceCapability,
 ): Promise<void> {
@@ -89,7 +90,7 @@ async function hidingDenial<T>(work: () => Promise<T>): Promise<T> {
 
 export function withTestChange<T>(
   pool: Pool,
-  input: SampleScope,
+  input: WorkflowActor,
   work: (client: PoolClient, role: Role) => Promise<T>,
 ): Promise<T> {
   return hidingDenial(() =>
@@ -111,7 +112,7 @@ export function withTestChange<T>(
 
 export function withTestRead<T>(
   pool: Pool,
-  input: SampleScope,
+  input: WorkflowActor,
   work: (client: PoolClient) => Promise<T>,
 ): Promise<T> {
   return hidingDenial(() =>

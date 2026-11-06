@@ -1,15 +1,16 @@
+import type { WorkflowActor } from '../../shared/workflow-actor.js';
 import type {
   workflowTestSuites,
   workflowTestSuiteCases,
 } from '@pertexo/database/schema';
 import type { WorkflowTestSuiteStartRequest } from '@pertexo/contracts';
-import type { SampleScope } from '../../authoring/step-samples/step-sample.types.js';
-export type WorkflowTestSuiteStartInput = SampleScope &
+
+export type WorkflowTestSuiteStartInput = WorkflowActor &
   Readonly<{
     idempotencyKey: string;
     request: WorkflowTestSuiteStartRequest;
   }>;
-export type WorkflowTestSuiteInput = SampleScope &
+export type WorkflowTestSuiteInput = WorkflowActor &
   Readonly<{ suiteId: string }>;
 export type WorkflowTestSuiteCaseInput = WorkflowTestSuiteInput &
   Readonly<{ ordinal: number }>;

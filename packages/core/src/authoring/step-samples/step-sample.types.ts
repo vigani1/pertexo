@@ -1,16 +1,10 @@
+import type { WorkflowActor } from '../../shared/workflow-actor.js';
 import type { workflowStepSamples } from '@pertexo/database/schema';
 import type { PoolClient } from 'pg';
 import type { StepSampleSource } from '@pertexo/workflow-model';
 import type { StoredExecutionValue } from '@pertexo/database/schema';
 
-export type SampleScope = Readonly<{
-  workspaceId: string;
-  actorId: string;
-  workflowId: string;
-  signal?: AbortSignal;
-}>;
-
-export type SampleNodeScope = SampleScope & Readonly<{ nodeId: string }>;
+export type SampleNodeScope = WorkflowActor & Readonly<{ nodeId: string }>;
 
 export type SampleCommand = SampleNodeScope &
   Readonly<{
@@ -73,7 +67,7 @@ export type PutSampleInput = SampleCommand & { source: SampleSource };
 export type RemoveSampleInput = SampleCommand & { expectedSampleId: string };
 
 export type SampleTransaction = <T>(
-  input: SampleScope,
+  input: WorkflowActor,
   options: Readonly<{
     write: boolean;
     work: (client: PoolClient) => Promise<T>;

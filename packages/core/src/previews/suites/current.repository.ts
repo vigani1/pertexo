@@ -1,3 +1,4 @@
+import type { WorkflowActor } from '../../shared/workflow-actor.js';
 import { and, asc, eq, isNull, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import {
@@ -12,13 +13,13 @@ import { createHash } from 'node:crypto';
 import type { PoolClient } from 'pg';
 import type { WorkflowTestSuiteCurrent } from '@pertexo/contracts';
 import { canonicalJson } from '@pertexo/workflow-model';
-import type { SampleScope } from '../../authoring/step-samples/step-sample.types.js';
+
 import { WorkflowTestError } from '../workflows/workflow-test.errors.js';
 import { SUITE_MAX_CASES } from './rules.js';
 /** The same metadata signature prepares suites and labels publish freshness. */
 export async function readSuiteCurrent(
   client: PoolClient,
-  input: SampleScope,
+  input: WorkflowActor,
   frozenVariableSetRevision?: number | null,
 ): Promise<WorkflowTestSuiteCurrent> {
   const db = drizzle(client);
@@ -105,7 +106,10 @@ export async function readSuiteCurrent(
   };
 }
 
-export function readSuiteCasePayloads(client: PoolClient, input: SampleScope) {
+export function readSuiteCasePayloads(
+  client: PoolClient,
+  input: WorkflowActor,
+) {
   return drizzle(client)
     .select({
       id: workflowInputCases.id,

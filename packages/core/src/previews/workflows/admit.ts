@@ -1,3 +1,4 @@
+import type { WorkflowActor } from '../../shared/workflow-actor.js';
 import { and, eq, inArray } from 'drizzle-orm';
 import {
   workflowRuns,
@@ -19,11 +20,10 @@ import {
 import { WorkflowTestError } from './workflow-test.errors.js';
 import { ACTIVE_TEST_RUN_STATUSES } from './rules.js';
 import { testRunSql } from '../../runs/data-policy.js';
-import type { SampleScope } from '../../authoring/step-samples/step-sample.types.js';
 
 export async function requireNoActiveTest(
   client: PoolClient,
-  input: SampleScope,
+  input: WorkflowActor,
 ): Promise<void> {
   const active = await drizzle(client)
     .select({ id: workflowRuns.id })
@@ -43,7 +43,7 @@ export async function requireNoActiveTest(
 }
 export async function requireNoActiveSuite(
   client: PoolClient,
-  input: SampleScope,
+  input: WorkflowActor,
 ): Promise<void> {
   const active = await drizzle(client)
     .select({ id: workflowTestSuites.id })
@@ -63,7 +63,7 @@ export async function requireNoActiveSuite(
 /** Every suite case is an ordinary draft test, with one acceptance/outbox owner. */
 export async function admitTestRun(
   client: PoolClient,
-  input: SampleScope &
+  input: WorkflowActor &
     Readonly<{
       runId: string;
       snapshotId: string;

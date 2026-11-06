@@ -11,7 +11,6 @@ import { previewAttempts } from '@pertexo/database/schema';
 import { isConnectionFenceCurrent } from '../../connections/runtime/credential-use.repository.js';
 import { PreviewAttemptStateError } from '../preview.errors.js';
 import type { MarkPreviewDispatchedInput } from './preview-attempt.types.js';
-import { optionsFor } from '../transaction-options.js';
 
 export async function markPreviewDispatched(
   pool: Pool,
@@ -92,6 +91,6 @@ export async function markPreviewDispatched(
         throw new PreviewAttemptStateError('dispatch_marker_lost');
       return 'committed' as const;
     },
-    optionsFor(input.signal),
+    input,
   );
 }

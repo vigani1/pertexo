@@ -1,3 +1,4 @@
+import type { WorkflowActor } from '../../shared/workflow-actor.js';
 import { decodeStoredValue } from '../../shared/stored-values.js';
 import { and, eq, notInArray, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
@@ -20,11 +21,7 @@ import {
 import { WorkflowNotFoundError } from '../workflows/workflow-authoring.errors.js';
 import { collectArtifactReferences } from '../../artifacts/references/locks.repository.js';
 import { WorkflowStepSampleError } from './step-sample.errors.js';
-import type {
-  SampleMetadata,
-  SampleMetadataRow,
-  SampleScope,
-} from './step-sample.types.js';
+import type { SampleMetadata, SampleMetadataRow } from './step-sample.types.js';
 
 export const sampleMetadataProjection = {
   id: workflowStepSamples.id,
@@ -45,7 +42,7 @@ export const sampleProjection = {
 
 export async function sampleDraft(
   client: PoolClient,
-  input: SampleScope,
+  input: WorkflowActor,
   { write }: Readonly<{ write: boolean }>,
 ) {
   const db = drizzle(client);
