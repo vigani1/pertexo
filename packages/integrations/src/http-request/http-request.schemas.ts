@@ -92,7 +92,7 @@ export function safeRequestUrl(value: string): boolean {
   }
 }
 
-export const httpRequestHeadersSchema = z
+const httpRequestHeadersSchema = z
   .record(headerNameSchema, headerValueSchema)
   .superRefine((headers, context) => {
     const names = Object.keys(headers);

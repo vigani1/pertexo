@@ -8,7 +8,7 @@ import {
   CORE_DATE_INPUT_SCHEMA,
   CORE_DATE_OUTPUT_SCHEMA,
 } from './date.schemas.js';
-export const CORE_DATE_DEFINITION = Object.freeze({
+const CORE_DATE_DEFINITION = Object.freeze({
   key: 'core.date',
   version: 1,
 });

@@ -2,9 +2,9 @@ import { describe, expect, it } from 'vitest';
 
 import {
   createEmailSendNotificationExecutorRegistration,
-  PROVIDER_HTTP_ERROR_CODE,
   ProviderHttpError,
 } from '../../../src/server.js';
+import { PROVIDER_HTTP_ERROR_CODE } from '../../../src/providers/http.errors.js';
 
 import {
   secretVersionId,

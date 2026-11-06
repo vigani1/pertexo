@@ -58,8 +58,8 @@ function boundedSchemaDocument(kind: 'value' | 'record'): SchemaDocument {
   );
 }
 
-export const BOUNDED_NODE_JSON_SCHEMA_DOCUMENT = boundedSchemaDocument('value');
-export const BOUNDED_NODE_JSON_RECORD_SCHEMA_DOCUMENT =
+const BOUNDED_NODE_JSON_SCHEMA_DOCUMENT = boundedSchemaDocument('value');
+const BOUNDED_NODE_JSON_RECORD_SCHEMA_DOCUMENT =
   boundedSchemaDocument('record');
 
 export interface SchemaProjectionOptions {

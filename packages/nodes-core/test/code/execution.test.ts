@@ -3,10 +3,8 @@ import {
   NodeCodeFailure,
   type NodeExecutionRuntime,
 } from '@pertexo/node-sdk/server';
-import {
-  CORE_CODE_CONFIG_SCHEMA,
-  CORE_CODE_MANIFEST,
-} from '../../src/index.js';
+import { CORE_CODE_CONFIG_SCHEMA } from '../../src/index.js';
+import { CORE_CODE_MANIFEST } from '../../src/data/code/code.definition.js';
 import { createCoreNodeRegistry } from '../../src/server.js';
 
 const identity = { key: 'core.code', version: 1 };

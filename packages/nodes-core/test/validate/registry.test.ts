@@ -3,10 +3,12 @@ import { NodeExecutionAbortedError } from '@pertexo/node-sdk/server';
 import {
   CORE_VALIDATE_DEFINITION,
   CORE_VALIDATE_EXECUTOR,
+} from '../../src/data/validate/validate.definition.js';
+import {
   CORE_VALIDATE_ISSUE_MESSAGES,
   CORE_VALIDATE_OUTPUT_SCHEMA,
-  evaluateCoreValidate,
-} from '../../src/index.js';
+} from '../../src/data/validate/validate.schemas.js';
+import { evaluateCoreValidate } from '../../src/index.js';
 import { CORE_NODE_EXECUTOR_REGISTRATIONS } from '../../src/server.js';
 import { registry, config } from '../support/validate.js';
 describe('core.validate registry execution', () => {

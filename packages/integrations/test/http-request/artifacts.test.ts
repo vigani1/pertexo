@@ -2,7 +2,7 @@ import { verifiedSource, sourceBytes } from '../support/artifact-runtime.js';
 
 import { NodeExecutorFailure } from '@pertexo/node-sdk/server';
 import { describe, expect, it, vi } from 'vitest';
-import { httpRequestInputSchema } from '../../src/index.js';
+import { httpRequestInputSchema } from '../../src/http-request/http-request.schemas.js';
 import { createHttpRequestExecutorRegistration } from '../../src/server.js';
 import {
   encoder,

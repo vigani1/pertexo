@@ -9,7 +9,7 @@ import {
   CORE_CONCAT_INPUT_SCHEMA,
   CORE_CONCAT_OUTPUT_SCHEMA,
 } from './concat.schemas.js';
-export const CORE_CONCAT_DEFINITION = Object.freeze({
+const CORE_CONCAT_DEFINITION = Object.freeze({
   key: 'core.concat',
   version: 1,
 });

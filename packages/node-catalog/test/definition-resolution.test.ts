@@ -4,7 +4,7 @@ import {
   HTTP_REQUEST_MANIFEST,
 } from '@pertexo/integrations';
 
-import { resolvePlatformNodeDefinition } from '../src/server.js';
+import { resolvePlatformNodeDefinition } from '../src/index.js';
 
 describe('platform node definition resolution', () => {
   it('resolves exact schemas without constructing or calling an executor', () => {

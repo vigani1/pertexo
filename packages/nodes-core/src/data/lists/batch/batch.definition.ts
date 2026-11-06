@@ -9,7 +9,7 @@ import {
   CORE_BATCH_INPUT_SCHEMA,
   CORE_BATCH_OUTPUT_SCHEMA,
 } from './batch.schemas.js';
-export const CORE_BATCH_DEFINITION = Object.freeze({
+const CORE_BATCH_DEFINITION = Object.freeze({
   key: 'core.batch',
   version: 1,
 });

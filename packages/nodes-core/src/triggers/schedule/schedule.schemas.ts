@@ -2,8 +2,8 @@ import { CronExpressionParser } from 'cron-parser';
 import { z } from 'zod';
 import { cronHasUnsupportedOperators } from '@pertexo/workflow-model';
 
-export const CORE_SCHEDULE_MAX_INTERVAL_MINUTES = 43_200;
-export const CORE_SCHEDULE_MISFIRE_POLICY_SCHEMA = z
+const CORE_SCHEDULE_MAX_INTERVAL_MINUTES = 43_200;
+const CORE_SCHEDULE_MISFIRE_POLICY_SCHEMA = z
   .enum(['catch_up_once', 'skip'])
   .default('catch_up_once');
 
@@ -86,6 +86,6 @@ export const CORE_SCHEDULE_INPUT_SCHEMA = scheduleTriggerEnvelopeSchema;
 export const CORE_SCHEDULE_OUTPUT_SCHEMA =
   scheduleTriggerEnvelopeSchema.clone();
 
-export type CoreScheduleConfig = Readonly<
+type CoreScheduleConfig = Readonly<
   z.output<typeof CORE_SCHEDULE_CONFIG_SCHEMA>
 >;

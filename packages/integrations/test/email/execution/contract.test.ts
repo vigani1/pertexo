@@ -1,11 +1,11 @@
 import { inlineBytes } from '../../support/artifact-runtime.js';
 
 import { describe, expect, it, vi } from 'vitest';
+import { EMAIL_SEND_NOTIFICATION_MANIFEST } from '../../../src/index.js';
 import {
-  EMAIL_SEND_NOTIFICATION_MANIFEST,
   providerEmailMailboxSchema,
   emailSendNotificationInputSchema,
-} from '../../../src/index.js';
+} from '../../../src/email/email-send-notification.schemas.js';
 import {
   createEmailSendNotificationExecutorRegistration,
   createResendClient,

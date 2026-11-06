@@ -10,7 +10,7 @@ import {
   CORE_READ_FILE_OUTPUT_SCHEMA,
 } from './read-file.schemas.js';
 
-export const CORE_READ_FILE_DEFINITION = Object.freeze({
+const CORE_READ_FILE_DEFINITION = Object.freeze({
   key: 'core.read_file',
   version: 1,
 });

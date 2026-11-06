@@ -1,10 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  CORE_WEBHOOK_CONFIG_SCHEMA,
-  webhookRunInput,
-  type WebhookRequest,
-} from '../../src/index.js';
+import { CORE_WEBHOOK_CONFIG_SCHEMA } from '../../src/triggers/webhook/webhook.schemas.js';
+import { webhookRunInput, type WebhookRequest } from '../../src/index.js';
 
 const post: WebhookRequest = {
   method: 'POST',

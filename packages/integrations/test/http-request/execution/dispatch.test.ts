@@ -3,11 +3,11 @@ import { HTTP_REQUEST_CONNECTION_SLOT } from '../../../src/index.js';
 import {
   createHttpRequestExecutorRegistration,
   HttpRequestExecutorError,
-  PROVIDER_HTTP_ERROR_CODE,
   ProviderHttpError,
   type ProviderHttpResponse,
   type ProviderHttpRequest,
 } from '../../../src/server.js';
+import { PROVIDER_HTTP_ERROR_CODE } from '../../../src/providers/http.errors.js';
 import {
   connectionId,
   secretVersionId,

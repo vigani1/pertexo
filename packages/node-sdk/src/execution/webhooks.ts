@@ -1,5 +1,5 @@
 export const WEBHOOK_RESPONSE_MAX_BYTES = 1_048_576;
-export const WEBHOOK_RESPONSE_HEADER_NAMES = [
+const WEBHOOK_RESPONSE_HEADER_NAMES = [
   'content-language',
   'retry-after',
   'x-request-id',

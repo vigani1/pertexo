@@ -7,7 +7,7 @@ import {
   CORE_WORKFLOW_ERROR_OUTPUT_SCHEMA,
 } from './workflow-error.schemas.js';
 
-export const CORE_WORKFLOW_ERROR_DEFINITION = Object.freeze({
+const CORE_WORKFLOW_ERROR_DEFINITION = Object.freeze({
   key: 'core.workflow_error',
   version: 1,
 });

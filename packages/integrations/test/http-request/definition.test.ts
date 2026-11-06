@@ -4,9 +4,11 @@ import {
   HTTP_REQUEST_CONNECTION_SLOT,
   HTTP_REQUEST_DEFINITION_REGISTRATION,
   HTTP_REQUEST_MANIFEST,
+} from '../../src/index.js';
+import {
   httpRequestConfigSchema,
   httpRequestInputSchema,
-} from '../../src/index.js';
+} from '../../src/http-request/http-request.schemas.js';
 
 import { config } from '../support/http-execution.js';
 describe('http.request@1 definition', () => {

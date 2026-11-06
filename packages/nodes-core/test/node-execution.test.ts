@@ -3,23 +3,35 @@ import { describe, expect, it } from 'vitest';
 import {
   CORE_CALL_DEFINITION,
   CORE_CALL_EXECUTOR,
+} from '../src/flow/call/call.definition.js';
+import {
   CORE_CONDITION_DEFINITION,
   CORE_CONDITION_EXECUTOR,
+} from '../src/flow/condition/condition.definition.js';
+import {
   CORE_FOR_EACH_DEFINITION,
   CORE_FOR_EACH_EXECUTOR,
+} from '../src/flow/for-each/for-each.definition.js';
+import {
   CORE_MERGE_DEFINITION,
   CORE_MERGE_EXECUTOR,
   CORE_PARALLEL_DEFINITION,
   CORE_PARALLEL_EXECUTOR,
+  CORE_SWITCH_DEFINITION,
+} from '../src/index.js';
+import {
   CORE_SCHEDULE_DEFINITION,
   CORE_SCHEDULE_EXECUTOR,
-  CORE_SWITCH_DEFINITION,
-  CORE_SWITCH_EXECUTOR,
+} from '../src/triggers/schedule/schedule.definition.js';
+import { CORE_SWITCH_EXECUTOR } from '../src/flow/switch/switch.definition.js';
+import {
   CORE_WAIT_DEFINITION,
   CORE_WAIT_EXECUTOR,
+} from '../src/flow/wait/wait.definition.js';
+import {
   CORE_WEBHOOK_DEFINITION,
   CORE_WEBHOOK_EXECUTOR,
-} from '../src/index.js';
+} from '../src/triggers/webhook/webhook.definition.js';
 import { createCoreNodeRegistry } from '../src/server.js';
 
 const registry = createCoreNodeRegistry();

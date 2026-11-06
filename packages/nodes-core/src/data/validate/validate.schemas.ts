@@ -10,13 +10,13 @@ import {
   coreValidateIssueMessages,
 } from './issue-metadata.js';
 
-export const CORE_VALIDATE_MAX_RULES = 64;
+const CORE_VALIDATE_MAX_RULES = 64;
 export const CORE_VALIDATE_MAX_ISSUES = 16;
-export const CORE_VALIDATE_MAX_PATH_BYTES = 512;
-export const CORE_VALIDATE_MAX_PATH_SEGMENTS = 64;
-export const CORE_VALIDATE_MAX_ENUM_VALUES = 32;
-export const CORE_VALIDATE_MAX_ENUM_STRING_BYTES = 256;
-export const CORE_VALIDATE_MAX_MESSAGE_BYTES = 128;
+const CORE_VALIDATE_MAX_PATH_BYTES = 512;
+const CORE_VALIDATE_MAX_PATH_SEGMENTS = 64;
+const CORE_VALIDATE_MAX_ENUM_VALUES = 32;
+const CORE_VALIDATE_MAX_ENUM_STRING_BYTES = 256;
+const CORE_VALIDATE_MAX_MESSAGE_BYTES = 128;
 
 export const CORE_VALIDATE_VALUE_TYPES = Object.freeze([
   'string',
@@ -26,19 +26,15 @@ export const CORE_VALIDATE_VALUE_TYPES = Object.freeze([
   'array',
   'null',
 ] as const);
-export const CORE_VALIDATE_VALUE_TYPE_SCHEMA = z.enum(
-  CORE_VALIDATE_VALUE_TYPES,
-);
+const CORE_VALIDATE_VALUE_TYPE_SCHEMA = z.enum(CORE_VALIDATE_VALUE_TYPES);
 
 export const CORE_VALIDATE_ISSUE_CODES = coreValidateIssueCodes;
 export const CORE_VALIDATE_ISSUE_CODE_VALUES = coreValidateIssueCodeValues;
-export const CORE_VALIDATE_ISSUE_CODE_SCHEMA = z.enum(
-  CORE_VALIDATE_ISSUE_CODE_VALUES,
-);
+const CORE_VALIDATE_ISSUE_CODE_SCHEMA = z.enum(CORE_VALIDATE_ISSUE_CODE_VALUES);
 
 export const CORE_VALIDATE_ISSUE_MESSAGES = coreValidateIssueMessages;
 
-export const CORE_VALIDATE_PATH_SCHEMA = z
+const CORE_VALIDATE_PATH_SCHEMA = z
   .string()
   .min(1)
   .max(CORE_VALIDATE_MAX_PATH_BYTES)
@@ -82,7 +78,7 @@ const enumStringSchema = z
       });
   });
 
-export const CORE_VALIDATE_ENUM_VALUE_SCHEMA = z.union([
+const CORE_VALIDATE_ENUM_VALUE_SCHEMA = z.union([
   z.null(),
   z.boolean(),
   finiteNumberSchema,

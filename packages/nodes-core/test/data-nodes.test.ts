@@ -3,12 +3,13 @@ import { describe, expect, it } from 'vitest';
 import {
   CORE_MANUAL_DEFINITION,
   CORE_MANUAL_EXECUTOR,
-  CORE_SET_DEFINITION,
-  CORE_SET_EXECUTOR,
-  CORE_SET_INPUT_SCHEMA,
+} from '../src/triggers/manual/manual.definition.js';
+import { CORE_SET_DEFINITION, CORE_SET_EXECUTOR } from '../src/index.js';
+import { CORE_SET_INPUT_SCHEMA } from '../src/data/set/set.schemas.js';
+import {
   CORE_TERMINATE_DEFINITION,
   CORE_TERMINATE_EXECUTOR,
-} from '../src/index.js';
+} from '../src/flow/terminate/terminate.definition.js';
 import { createCoreNodeRegistry } from '../src/server.js';
 
 const signal = new AbortController().signal;

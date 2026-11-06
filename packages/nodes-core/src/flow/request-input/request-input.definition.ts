@@ -10,7 +10,7 @@ import {
   CORE_REQUEST_INPUT_OUTPUT_SCHEMA,
 } from './request-input.schemas.js';
 
-export const CORE_REQUEST_INPUT_DEFINITION = Object.freeze({
+const CORE_REQUEST_INPUT_DEFINITION = Object.freeze({
   key: 'core.request_input',
   version: 1,
 });

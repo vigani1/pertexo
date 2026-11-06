@@ -50,7 +50,7 @@ export const DATA_TABLE_JSON_LIMITS = Object.freeze({
 });
 // A table's name is shown to people and finds the table for its steps, so
 // like n8n it may hold words with spaces; column names stay identifiers.
-export const DATA_TABLE_NAME_PATTERN =
+const DATA_TABLE_NAME_PATTERN =
   '^[A-Za-z0-9](?:[A-Za-z0-9 _-]{0,62}[A-Za-z0-9_-])?$';
 export const dataTableNameSchema = z
   .string()
@@ -133,7 +133,7 @@ export const dataTableValuesSchema = boundedTableJson.pipe(
   dataTableValuesStructuralSchema,
 );
 export type DataTableValues = z.infer<typeof dataTableValuesSchema>;
-export const dataTableFilterSchema = z
+const dataTableFilterSchema = z
   .object({
     column: dataTableIdentifierSchema,
     operator: z.enum([

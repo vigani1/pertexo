@@ -4,8 +4,8 @@ import {
   CORE_VALIDATE_ISSUE_MESSAGES,
   CORE_VALIDATE_MAX_ISSUES,
   type CoreValidateInput,
-  evaluateCoreValidate,
-} from '../../src/index.js';
+} from '../../src/data/validate/validate.schemas.js';
+import { evaluateCoreValidate } from '../../src/index.js';
 
 import { config } from '../support/validate.js';
 describe('core.validate deterministic evaluation', () => {

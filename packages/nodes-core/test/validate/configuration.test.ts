@@ -1,14 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
+import { CORE_VALIDATE_CONFIG_SCHEMA } from '../../src/index.js';
 import {
-  CORE_VALIDATE_CONFIG_SCHEMA,
   CORE_VALIDATE_ISSUE_CODES,
   CORE_VALIDATE_ISSUE_CODE_VALUES,
   CORE_VALIDATE_ISSUE_MESSAGES,
   CORE_VALIDATE_ISSUE_SCHEMA,
   CORE_VALIDATE_RULE_SCHEMA,
   CORE_VALIDATE_VALUE_TYPES,
-} from '../../src/index.js';
+} from '../../src/data/validate/validate.schemas.js';
 
 import { invalidCases, fixedIssueMetadata } from '../support/validate.js';
 describe('core.validate configuration contract', () => {
