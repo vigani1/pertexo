@@ -11,13 +11,6 @@ import type { FailureNotificationDestinationRecord } from './notification-destin
 
 import { FailureNotificationDestinationError } from './notification-destination.errors.js';
 
-function destinationNotFound(): FailureNotificationDestinationError {
-  return new FailureNotificationDestinationError(
-    'not_found',
-    'Destination is not visible',
-  );
-}
-
 /** The FK and strict JSON check correlate the canonical kind with its config. */
 export const destinationConfigSql = sql<FailureNotificationDestinationConfig>`${version.config} || jsonb_build_object('kind',${version.kind})`;
 export function destinationRecords(db: Pick<NodePgDatabase, 'select'>) {
@@ -53,11 +46,10 @@ export async function readFailureNotificationDestination(
   destinationId: string,
   { lock = false }: Readonly<{ lock?: boolean | undefined }> = {},
 ): Promise<FailureNotificationDestinationRecord> {
-  const parsedDestinationId = destinationId;
   const db = drizzle(client);
   const predicate = and(
     eq(destination.workspaceId, workspaceId),
-    eq(destination.id, parsedDestinationId),
+    eq(destination.id, destinationId),
   );
   if (lock) {
     const locked = await db
@@ -66,11 +58,19 @@ export async function readFailureNotificationDestination(
       .where(predicate)
       .for('update')
       .catch(rethrowQueryFailure);
-    if (locked.length !== 1) throw destinationNotFound();
+    if (locked.length !== 1)
+      throw new FailureNotificationDestinationError(
+        'not_found',
+        'Destination is not visible',
+      );
   }
   const [row] = await destinationRecords(db)
     .where(predicate)
     .catch(rethrowQueryFailure);
-  if (row === undefined) throw destinationNotFound();
+  if (row === undefined)
+    throw new FailureNotificationDestinationError(
+      'not_found',
+      'Destination is not visible',
+    );
   return Object.freeze(row);
 }
