@@ -1,3 +1,4 @@
+import type { DataTablesResponse } from '@pertexo/contracts';
 import { decodeStoredValue } from '../shared/stored-values.js';
 import { StoredTableDefinitionError } from './data-table.errors.js';
 import type { PoolClient } from 'pg';
@@ -31,16 +32,33 @@ const tableFields = {
 };
 
 export async function listTables(client: PoolClient, workspaceId: string) {
+  const rows = await drizzle(client)
+    .select(tableFields)
+    .from(tables)
+    .where(eq(tables.workspaceId, workspaceId))
+    .orderBy(tables.name)
+    .limit(DATA_TABLE_LIMITS.maxTables)
+    .catch(rethrowQueryFailure);
+  const available: DataTableDefinition[] = [];
+  const unavailableTables: NonNullable<
+    DataTablesResponse['unavailableTables']
+  > = [];
+  for (const row of rows) {
+    try {
+      available.push(decodeTableDefinition(row));
+    } catch (error) {
+      if (!(error instanceof StoredTableDefinitionError)) throw error;
+      unavailableTables.push({
+        id: row.id,
+        name: row.name,
+        reason: 'data_table.stored_definition_invalid',
+      });
+    }
+  }
   return {
     quotas: await readQuotas(client, workspaceId),
-    tables: await drizzle(client)
-      .select(tableFields)
-      .from(tables)
-      .where(eq(tables.workspaceId, workspaceId))
-      .orderBy(tables.name)
-      .limit(DATA_TABLE_LIMITS.maxTables)
-      .catch(rethrowQueryFailure)
-      .then((rows) => rows.map(decodeTableDefinition)),
+    tables: available,
+    unavailableTables,
   };
 }
 

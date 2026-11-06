@@ -44,6 +44,18 @@ export const dataTablesResponseSchema = z
   .object({
     tables: z.array(dataTableDefinitionSchema).max(DATA_TABLE_LIMITS.maxTables),
     quotas: dataTableQuotasSchema,
+    unavailableTables: z
+      .array(
+        z
+          .object({
+            id: z.uuid(),
+            name: dataTableNameSchema,
+            reason: z.literal('data_table.stored_definition_invalid'),
+          })
+          .strict(),
+      )
+      .max(DATA_TABLE_LIMITS.maxTables)
+      .optional(),
   })
   .strict();
 export const dataTableCreatedSchema = z.object({ id: z.uuid() }).strict();

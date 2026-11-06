@@ -150,3 +150,105 @@ test('explains a damaged stored table definition', async ({ page }) => {
   await page.goto(`/w/${workspaceId}/data-tables`);
   await expect(page.getByText(detail)).toBeVisible();
 });
+
+test('opens and exports a healthy table beside a damaged definition after fresh loads', async ({
+  page,
+  context,
+}, testInfo) => {
+  await installEditorRoutes(page, remoteDraft(), {
+    accessibleWorkspace: { ...workspace, role: 'owner' },
+  });
+  await addCsrfCookie(context);
+  const id = '10000000-0000-4000-8000-000000000001';
+  const badId = '10000000-0000-4000-8000-000000000003';
+  const path = `**/v1/workspaces/${workspaceId}/data-tables`;
+  await page.route(path, (route) =>
+    route.fulfill({
+      json: {
+        tables: [
+          {
+            id,
+            name: 'Healthy',
+            columns: [
+              { id: 'note', name: 'note', type: 'text', required: true },
+            ],
+            keyColumn: null,
+            hasRemovedColumns: false,
+            rowCount: 1,
+            storedBytes: 25,
+            revision: 1,
+          },
+        ],
+        unavailableTables: [
+          {
+            id: badId,
+            name: 'Damaged',
+            reason: 'data_table.stored_definition_invalid',
+          },
+        ],
+        quotas: {
+          tableLimit: 20,
+          columnLimit: 20,
+          rowLimit: 10000,
+          byteLimit: 52428800,
+          tableCount: 2,
+          storedBytes: 25,
+        },
+      },
+    }),
+  );
+  await page.route(`${path}/${id}/rows/query`, (route) =>
+    route.fulfill({
+      json: {
+        rows: [
+          {
+            id: '10000000-0000-4000-8000-000000000002',
+            revision: 1,
+            values: { note: 'retained' },
+          },
+        ],
+        affected: 1,
+        hasMore: false,
+      },
+    }),
+  );
+  await context.route(`${path}/${id}/export`, (route) =>
+    route.fulfill({
+      headers: {
+        'Content-Type': 'text/csv',
+        'Content-Disposition': 'attachment; filename="Healthy.csv"',
+      },
+      body: '"note"\r\n"retained"\r\n',
+    }),
+  );
+  await page.goto(`/w/${workspaceId}/data-tables`);
+  await expect(
+    page.getByText('Damaged — unavailable', { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByText('A stored table definition is damaged.', { exact: false }),
+  ).toBeVisible();
+  await page.screenshot({
+    path: testInfo.outputPath('mixed-table-collection.png'),
+    fullPage: true,
+  });
+  await page.getByRole('link', { name: /Healthy/ }).click();
+  await expect(
+    page.getByRole('cell', { name: 'retained', exact: true }),
+  ).toBeVisible();
+  await page.reload();
+  await expect(
+    page.getByRole('cell', { name: 'retained', exact: true }),
+  ).toBeVisible();
+  const downloading = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Export all rows' }).click();
+  const downloaded = await downloading;
+  expect(downloaded.suggestedFilename()).toBe('Healthy.csv');
+  const file = await downloaded.path();
+  const { readFile } = await import('node:fs/promises');
+  expect(await readFile(file, 'utf8')).toContain('retained');
+  await page.goto(`/w/${workspaceId}/data-tables/${badId}`);
+  await expect(
+    page.getByText('A stored table definition is damaged.', { exact: false }),
+  ).toBeVisible();
+});

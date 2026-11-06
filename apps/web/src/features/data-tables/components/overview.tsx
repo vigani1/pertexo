@@ -1,3 +1,4 @@
+import { UnavailableDataTable } from './unavailable';
 import { Link } from '@tanstack/react-router';
 import type {
   DataTablesResponse,
@@ -150,14 +151,16 @@ const SHOWN_COLUMNS = 4;
  */
 export function TableCollection({
   tables,
+  unavailableTables,
   rowLimit,
   workspaceId,
 }: Readonly<{
   tables: DataTablesResponse['tables'] | undefined;
+  unavailableTables?: DataTablesResponse['unavailableTables'];
   rowLimit: number | undefined;
   workspaceId: string;
 }>) {
-  if (tables?.length === 0)
+  if (tables?.length === 0 && (unavailableTables?.length ?? 0) === 0)
     return (
       <Empty>
         <EmptyMedia className="w-full max-w-56">
@@ -172,6 +175,11 @@ export function TableCollection({
     );
   return (
     <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+      {unavailableTables?.map((item) => (
+        <li key={item.id} className="min-w-0">
+          <UnavailableDataTable name={item.name} />
+        </li>
+      ))}
       {tables?.map((item) => {
         const more = item.columns.length - SHOWN_COLUMNS;
         return (

@@ -47,7 +47,7 @@ it.each([
     'key',
   ],
 ] as const)(
-  'classifies a stored %s on every reader and keeps other tables usable',
+  'isolates a stored %s in the collection and refuses targeted readers',
   async (_name, columns, key) => {
     const damaged = await table();
     const healthy = await table();
@@ -64,8 +64,21 @@ it.each([
         [damaged.id, JSON.stringify(columns), key],
         workspaceId,
       );
+      const collection = await store.list(scope());
+      expect(collection.tables.some((item) => item.id === healthy.id)).toBe(
+        true,
+      );
+      expect(collection.tables.some((item) => item.id === damaged.id)).toBe(
+        false,
+      );
+      expect(collection.unavailableTables).toEqual([
+        {
+          id: damaged.id,
+          name: damaged.name,
+          reason: 'data_table.stored_definition_invalid',
+        },
+      ]);
       const reads = [
-        () => store.list(scope()),
         () => store.find({ ...scope(), tableId: damaged.id, query }),
         () =>
           store.exportCsv({

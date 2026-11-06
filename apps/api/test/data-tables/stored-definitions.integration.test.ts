@@ -37,14 +37,43 @@ describe.runIf(betterAuthIntegrationEnabled)(
       };
       const damaged = await create('Damaged');
       const healthy = await create('Healthy');
+      const inserted = await api.send('POST', `${path}/${healthy}/rows`, {
+        browser,
+        headers: { 'Idempotency-Key': randomUUID() },
+        payload: {
+          command: {
+            operation: 'insert',
+            table: 'Healthy',
+            values: { note: 'retained' },
+          },
+        },
+      });
+      expect(inserted.statusCode, inserted.payload).toBe(200);
+
       await api
         .database()
         .query(
           "update app.workspace_data_tables set columns_json='[null]'::jsonb where id=$1",
           [damaged],
         );
+      const collection = await api.send('GET', path, { browser });
+      expect(collection.statusCode, collection.payload).toBe(200);
+      expect(
+        collection
+          .json<{ tables: { id: string }[] }>()
+          .tables.map((table) => table.id),
+      ).toEqual([healthy]);
+      expect(
+        collection.json<{ unavailableTables: unknown[] }>().unavailableTables,
+      ).toEqual([
+        {
+          id: damaged,
+          name: 'Damaged',
+          reason: 'data_table.stored_definition_invalid',
+        },
+      ]);
+      expect(collection.payload).not.toContain('TypeError');
       for (const response of [
-        await api.send('GET', path, { browser }),
         await api.send('POST', `${path}/${damaged}/rows/query`, {
           browser,
           payload: { filters: [], limit: 1, offset: 0 },
@@ -65,12 +94,18 @@ describe.runIf(betterAuthIntegrationEnabled)(
         payload: { filters: [], limit: 1, offset: 0 },
       });
       expect(read.statusCode, read.payload).toBe(200);
+      expect(
+        read
+          .json<{ rows: { values: { note: string } }[] }>()
+          .rows.map((row) => row.values.note),
+      ).toEqual(['retained']);
       const exported = await api.send('POST', `${path}/${healthy}/export`, {
         browser,
         payload: { filters: [] },
       });
       expect(exported.statusCode, exported.payload).toBe(200);
       expect(exported.payload).toContain('note');
+      expect(exported.payload).toContain('retained');
     });
   },
 );

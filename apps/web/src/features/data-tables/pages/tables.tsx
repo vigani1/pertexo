@@ -1,3 +1,4 @@
+import { UnavailableDataTable } from '../components/unavailable';
 import { QueryView } from '@/components/patterns/states/query-view';
 import { isAdministrativeRole } from '@pertexo/policy';
 import { useState } from 'react';
@@ -45,6 +46,9 @@ export function DataTablesPage({
     workspace.capabilities.includes('workflow:update');
   const admin = editable && isAdministrativeRole(workspace.role);
   const table = query.data?.tables.find((item) => item.id === tableId);
+  const unavailable = query.data?.unavailableTables?.find(
+    (item) => item.id === tableId,
+  );
   const quotas = query.data?.quotas;
   return (
     <div className="flex min-w-0 max-w-7xl flex-col gap-6">
@@ -65,7 +69,7 @@ export function DataTablesPage({
               <ArrowLeftIcon aria-hidden="true" />
             </Button>
             <PageHeaderTitle className="wrap-anywhere">
-              {table?.name ?? 'Data table'}
+              {table?.name ?? unavailable?.name ?? 'Data table'}
             </PageHeaderTitle>
           </div>
         )}
@@ -91,11 +95,13 @@ export function DataTablesPage({
       {tableId === undefined ? (
         <TableCollection
           tables={query.data?.tables}
+          unavailableTables={query.data?.unavailableTables}
           rowLimit={quotas?.rowLimit}
           workspaceId={workspace.id}
         />
       ) : (
         <TableDetail
+          unavailableName={unavailable?.name}
           scope={scope}
           table={table}
           quotas={quotas}
@@ -119,16 +125,20 @@ export function DataTablesPage({
 function TableDetail({
   scope,
   table,
+  unavailableName,
   quotas,
   pending,
   editable,
 }: Readonly<{
   scope: TableScope;
   table: DataTableDefinition | undefined;
+  unavailableName: string | undefined;
   quotas: DataTablesResponse['quotas'] | undefined;
   pending: boolean;
   editable: boolean;
 }>) {
+  if (unavailableName !== undefined)
+    return <UnavailableDataTable name={unavailableName} />;
   if (table === undefined)
     return pending ? null : (
       <Notice>
