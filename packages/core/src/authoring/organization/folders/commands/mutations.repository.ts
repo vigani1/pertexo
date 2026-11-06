@@ -1,3 +1,4 @@
+import { generatePersistedId } from '@pertexo/database/platform';
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { alias, unionAll } from 'drizzle-orm/pg-core';
@@ -70,7 +71,7 @@ export async function createFolder(
         .insert(workflowFolders)
         .values({
           workspaceId,
-          id: sql`uuidv7()`,
+          id: generatePersistedId(),
           parentId: request.parentId,
           name: request.name,
           nameKey: nameKey(request.name),

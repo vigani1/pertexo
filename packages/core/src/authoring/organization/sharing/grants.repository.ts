@@ -1,3 +1,4 @@
+import { generatePersistedId } from '@pertexo/database/platform';
 import { folderGrantDigest } from './audience-digests.js';
 import { z } from 'zod';
 import { and, asc, eq, inArray, sql } from 'drizzle-orm';
@@ -219,7 +220,7 @@ export async function replaceFolderSharing(
           .insert(workflowFolderGrants)
           .values(
             request.grants.map((grant) => ({
-              id: sql`uuidv7()`,
+              id: generatePersistedId(),
               workspaceId: scope.workspaceId,
               folderId: input.folderId,
               userId: grant.kind === 'member' ? grant.userId : null,

@@ -1,8 +1,8 @@
+import { generatePersistedId } from '@pertexo/database/platform';
 import { decodeStoredValue } from '../../shared/stored-values.js';
 import { and, eq, isNull, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { Pool, PoolClient } from 'pg';
-import { v7 as uuidv7 } from 'uuid';
 import type { z } from 'zod';
 import {
   rethrowQueryFailure,
@@ -46,7 +46,7 @@ export async function insertPreviewOutboxDelivery(
         workspaceId: string;
       }>,
 ): Promise<Readonly<{ outboxEventId: string; payloadChecksum: string }>> {
-  const outboxEventId = uuidv7();
+  const outboxEventId = generatePersistedId();
   const payload =
     input.jobName === 'execute-preview-attempt'
       ? {
@@ -295,7 +295,7 @@ async function auditPreviewDeliveryMismatch(
       await drizzle(client)
         .insert(transportSecurityAuditFacts)
         .values({
-          id: uuidv7(),
+          id: generatePersistedId(),
           workspaceId,
           factType: 'inbox_checksum_mismatch',
           consumerName,
