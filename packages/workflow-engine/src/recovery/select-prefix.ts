@@ -1,9 +1,13 @@
+import {
+  completeAttempts,
+  completeFailure,
+  retryOutcome,
+} from './attempt-evidence.js';
 import { isPendingTaskNode } from '@pertexo/workflow-model';
 import {
   canonicalJson,
   inspectWorkflowDecisionTree,
   type WorkflowEdge,
-  type StepRetrySettings,
   WORKFLOW_FAILURE_PORT,
 } from '@pertexo/workflow-model';
 import {
@@ -15,85 +19,19 @@ import type {
   WorkflowExecutableNode,
 } from '../compilation/workflow-executable.js';
 import { assertCheckpointMatchesExecutable } from '../checkpoint/matches-executable.js';
-import {
-  decideRetry,
-  resolveRetryPolicy,
-  type RetryPolicy,
-} from '../attempt/retries.js';
+import { resolveRetryPolicy, type RetryPolicy } from '../attempt/retries.js';
 import { invocationKey } from '../invocation-identity.js';
 import type {
   BranchScopePart,
   InvocationState,
 } from '../workflow-execution.js';
 import type {
-  RecoveryAttempt,
   RecoveryCandidate,
   RecoveryNode,
   RecoveryPrefixNode,
   RecoveryRefused,
   RecoverySource,
 } from './workflow-recovery.types.js';
-function completeFailure(
-  attempt: RecoveryAttempt,
-): attempt is RecoveryAttempt & {
-  failureKind: 'failed' | 'retry' | 'outcome_unknown';
-  errorKind: NonNullable<RecoveryAttempt['errorKind']>;
-  possiblyDispatched: boolean;
-} {
-  return (
-    (attempt.status === 'failed' || attempt.status === 'outcome_unknown') &&
-    (attempt.failureKind === 'failed' ||
-      attempt.failureKind === 'retry' ||
-      attempt.failureKind === 'outcome_unknown') &&
-    attempt.errorKind !== null &&
-    attempt.possiblyDispatched !== null
-  );
-}
-
-function completeAttempts(node: RecoveryNode): boolean {
-  const incompleteAttemptCount =
-    node.currentAttemptNumber === null ||
-    node.currentAttemptNumber < 1 ||
-    node.attempts.length !== node.currentAttemptNumber;
-  if (incompleteAttemptCount) return false;
-  for (const [index, attempt] of node.attempts.entries()) {
-    if (attempt.number !== index + 1) return false;
-    const invalidPriorAttempt =
-      index < node.attempts.length - 1 &&
-      (!completeFailure(attempt) ||
-        attempt.status !== 'failed' ||
-        attempt.retryDecision !== 'retry');
-    if (invalidPriorAttempt) return false;
-  }
-  const current = node.attempts.at(-1);
-  return (
-    current?.id === node.currentAttemptId &&
-    (current.status === node.status ||
-      (node.status === 'outcome_unknown' && current.status === 'failed'))
-  );
-}
-
-function retryOutcome(
-  node: RecoveryNode,
-  attempt: RecoveryAttempt,
-  policy: RetryPolicy,
-  settings?: StepRetrySettings,
-) {
-  if (!completeFailure(attempt)) return undefined;
-  return decideRetry({
-    sideEffectClass: node.sideEffectClass,
-    currentAttemptNumber: attempt.number,
-    policy,
-    settings,
-    observation: {
-      kind: 'executor_failure',
-      recommendation: attempt.failureKind,
-      errorKind: attempt.errorKind,
-      possiblyDispatched: attempt.possiblyDispatched,
-    },
-  });
-}
-
 /** Select only the values needed for a single verified root-to-failure path. */
 export function selectRecoveryPrefix(
   input: Readonly<{
