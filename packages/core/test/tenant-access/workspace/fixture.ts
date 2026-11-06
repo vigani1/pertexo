@@ -1,3 +1,7 @@
+import {
+  createWorkspaceLifecycleStore,
+  type WorkspaceLifecycleStore,
+} from '../../../src/lifecycle/index.js';
 import { createHash, randomUUID } from 'node:crypto';
 
 import { Pool } from 'pg';
@@ -57,7 +61,8 @@ const migrationConfig = {
   ownerRole: 'pertexo_owner',
 } as const;
 
-export let identityDatabase: ReturnType<typeof createIdentityWorkspaceStore>;
+export let identityDatabase: ReturnType<typeof createIdentityWorkspaceStore> &
+  WorkspaceLifecycleStore;
 
 export let tenantDatabase: ReturnType<typeof createWorkspaceDatabase>;
 
@@ -165,9 +170,16 @@ export async function createInvitationProofSession(
 export async function beforeAllFixture1() {
   await fixture.create();
   await migrateDatabase(migrationConfig);
-  identityDatabase = createIdentityWorkspaceStore(
-    parseDatabaseConfig({ connectionString: apiUrl, max: 3 }),
-  );
+  const config = parseDatabaseConfig({ connectionString: apiUrl, max: 3 });
+  const identity = createIdentityWorkspaceStore(config);
+  const lifecycle = createWorkspaceLifecycleStore(config);
+  identityDatabase = Object.freeze({
+    ...identity,
+    ...lifecycle,
+    close: async () => {
+      await Promise.all([identity.close(), lifecycle.close()]);
+    },
+  });
   identityResources.push(identityDatabase);
   tenantDatabase = createWorkspaceDatabase(
     parseDatabaseConfig({ connectionString: apiUrl, max: 3 }),

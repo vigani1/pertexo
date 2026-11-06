@@ -1,3 +1,4 @@
+import { createWorkspaceLifecycleStore } from '@pertexo/core/lifecycle';
 import type { IdentityWorkspaceStore } from '@pertexo/core/tenant-access';
 import type { StructuredLogger } from '@pertexo/observability';
 import { DirectoryManagementModule } from '../../authentication/federation/provisioning/management/directory-management.module.js';
@@ -120,7 +121,13 @@ export async function createApiIdentityRuntime(
         secureCookies: config.session.secureCookie,
       },
     );
-    const persistence = createIdentityWorkspaceAdapter(identityDatabase);
+    const lifecycle = resources.own(
+      createWorkspaceLifecycleStore(databaseConfig, runtime),
+    );
+    const persistence = createIdentityWorkspaceAdapter(
+      identityDatabase,
+      lifecycle,
+    );
     const betterAuth = composeBetterAuthRuntime({
       logger,
       config,

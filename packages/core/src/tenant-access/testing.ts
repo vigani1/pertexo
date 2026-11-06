@@ -15,13 +15,11 @@ export {
 export { USER_STATUS, WORKSPACE_STATUS } from './state.js';
 export type {
   CreateUserInput,
-  RequestWorkspaceLifecycleOperationInput,
   UserStatus,
   UserRecord,
   WorkspaceAccessRecord,
   WorkspaceMemberRecord,
   WorkspaceMembersPage,
-  WorkspaceLifecycleOperation,
   WorkspaceRecord,
   WorkspaceStatus,
   WorkspaceWithOwnerInput,

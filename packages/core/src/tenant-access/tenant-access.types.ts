@@ -292,9 +292,6 @@ export type WorkspaceRenameResult = Readonly<{
   changed: boolean;
   replayed: boolean;
 }>;
-export type { WorkspaceLifecycleOperation } from '../lifecycle/deletion/workspace-lifecycle.types.js';
-export type { RequestWorkspaceLifecycleOperationInput } from '../lifecycle/deletion/workspace-lifecycle.types.js';
-
 export type WorkspaceMembersPosition = Readonly<{
   createdAt: string;
   userId: string;

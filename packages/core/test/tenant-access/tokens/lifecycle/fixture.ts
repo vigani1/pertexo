@@ -1,3 +1,7 @@
+import {
+  createWorkspaceLifecycleStore,
+  type WorkspaceLifecycleStore,
+} from '../../../../src/lifecycle/index.js';
 import { randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
 
@@ -46,7 +50,8 @@ export const admin = new Pool({
   max: 1,
 });
 
-export let identities: ReturnType<typeof createIdentityWorkspaceStore>;
+export let identities: ReturnType<typeof createIdentityWorkspaceStore> &
+  WorkspaceLifecycleStore;
 
 export let tokens: ReturnType<typeof createApiTokenStore>;
 
@@ -89,7 +94,15 @@ export async function beforeAllFixture1() {
     ownerRole: 'pertexo_owner',
     connectionString: fixture.databaseUrl(migrationUrl),
   });
-  identities = createIdentityWorkspaceStore(config);
+  const identity = createIdentityWorkspaceStore(config);
+  const lifecycle = createWorkspaceLifecycleStore(config);
+  identities = Object.freeze({
+    ...identity,
+    ...lifecycle,
+    close: async () => {
+      await Promise.all([identity.close(), lifecycle.close()]);
+    },
+  });
   tokens = createApiTokenStore(config);
   ({ workspaceId, ownerUserId } = await createOwner());
   builderUserId = (

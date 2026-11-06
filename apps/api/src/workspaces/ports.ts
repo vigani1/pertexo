@@ -1,3 +1,4 @@
+import type { WorkspaceLifecycleStore } from '@pertexo/core/lifecycle';
 import type {
   IdentityWorkspaceStore,
   WorkspaceInvitationRecord,
@@ -68,7 +69,7 @@ export type IdentityWorkspacePersistence = Pick<
     ): Promise<WorkspaceRenamePersistenceResult>;
     requestWorkspaceLifecycleOperation(
       input: Parameters<
-        IdentityWorkspaceStore['requestWorkspaceLifecycleOperation']
+        WorkspaceLifecycleStore['requestWorkspaceLifecycleOperation']
       >[0],
     ): Promise<WorkspaceLifecycleOperationRecord>;
   }>;
@@ -105,7 +106,7 @@ export type WorkspaceRenamePersistenceResult = Omit<
 /** The receipt of a lifecycle request, applied when submitted. */
 export type WorkspaceLifecycleOperationRecord = Pick<
   Awaited<
-    ReturnType<IdentityWorkspaceStore['requestWorkspaceLifecycleOperation']>
+    ReturnType<WorkspaceLifecycleStore['requestWorkspaceLifecycleOperation']>
   >,
   'id' | 'workspaceId' | 'commandType' | 'submittedAt'
 >;
