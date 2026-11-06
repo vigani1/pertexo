@@ -29,7 +29,8 @@ export class WorkflowVersionsController {
   @Route(routes.restoreVersion)
   public async restoreVersion(
     @Req() request: WorkflowAuthoringRequest,
-    @In() { params, body }: RouteInput<typeof routes.restoreVersion>,
+    @In()
+    { params, body, idempotencyKey }: RouteInput<typeof routes.restoreVersion>,
     @Res({ passthrough: true }) response: WorkflowResponse,
   ) {
     const route = params;
@@ -43,6 +44,7 @@ export class WorkflowVersionsController {
         requestHeaderValue(request.headers, 'if-match'),
       ),
       request: body,
+      idempotencyKey,
     });
     response.header('ETag', result.representationTag);
     return result.body;

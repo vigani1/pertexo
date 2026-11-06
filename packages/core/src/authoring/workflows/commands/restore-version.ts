@@ -1,8 +1,14 @@
+import { z } from 'zod';
+import { decodeStoredReceipt } from '../../../shared/receipts.js';
 import { canonicalJson } from '@pertexo/workflow-model';
 import type { WorkflowGraph } from '@pertexo/workflow-model';
 import type { FolderScope } from '../../../shared/folder-access.types.js';
 import { recoverWorkflowDraft } from './duplicate.js';
-import { rethrowQueryFailure } from '@pertexo/database/primitives';
+import {
+  claimCommand,
+  completeCommand,
+  rethrowQueryFailure,
+} from '@pertexo/database/primitives';
 import { appendAuditFact } from '../../../governance/audit/facts.js';
 import { and, eq, exists, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
@@ -35,6 +41,14 @@ import {
   versionProjection,
 } from '../representation/workflow-representations.repository.js';
 
+const restoreReceipt = z
+  .object({
+    revision: z.number().int().positive().max(Number.MAX_SAFE_INTEGER),
+    updatedAt: z.iso.datetime().transform((value) => new Date(value)),
+    recoveryCopyId: z.uuid().nullable(),
+  })
+  .strict();
+
 export async function restoreWorkflowVersion(
   client: PoolClient,
   input: RestoreWorkflowVersionInput,
@@ -50,6 +64,41 @@ export async function restoreWorkflowVersion(
 
   const db = drizzle(client);
   await lockActiveWorkflow(client, input);
+  const command =
+    input.idempotencyKey === undefined
+      ? null
+      : {
+          workspaceId,
+          operation: 'workflow.version.restore',
+          scope: `${actorId}:${workflowId}`,
+          idempotencyKey: input.idempotencyKey,
+        };
+  const stored =
+    command === null
+      ? null
+      : await claimCommand(client, {
+          ...command,
+          request: { versionId, representationTag },
+          resourceId: workflowId,
+        });
+  if (stored !== null) {
+    const receipt = decodeStoredReceipt(restoreReceipt, stored);
+    const source = await readRestorationSource(client, input);
+    return {
+      ...projectDraft(
+        {
+          workspaceId,
+          workflowId,
+          revision: receipt.revision,
+          updatedAt: receipt.updatedAt,
+          updatedBy: actorId,
+          graphJson: source.graphJson,
+        },
+        definitionCatalog,
+      ),
+      recoveryCopyId: receipt.recoveryCopyId,
+    };
+  }
   const draftRow = await lockDraft(client, input);
   if (draftRow === undefined)
     throw new WorkflowNotFoundError('Workflow is not visible');
@@ -142,6 +191,12 @@ export async function restoreWorkflowVersion(
       sourceVersionId: sourceVersion.id,
     },
   });
+  if (command !== null)
+    await completeCommand(client, command, {
+      revision: restoredDraft.revision,
+      updatedAt: restoredDraft.updatedAt.toISOString(),
+      recoveryCopyId,
+    });
   return { ...restoredDraft, recoveryCopyId };
 }
 

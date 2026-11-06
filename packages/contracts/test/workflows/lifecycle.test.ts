@@ -9,7 +9,7 @@ import {
 } from '../../src/index.js';
 
 describe('workflow lifecycle public contract', () => {
-  it('restores a version with an empty body and draft precondition, without idempotency', () => {
+  it('restores a version with an empty body, draft precondition and durable retry key', () => {
     expect(workflowVersionRestoreRequestSchema.parse({})).toEqual({});
     expect(
       workflowVersionRestoreRequestSchema.safeParse({ publish: true }).success,
@@ -20,7 +20,7 @@ describe('workflow lifecycle public contract', () => {
       ].post;
     const names = operation.parameters.map(({ name }) => name);
     expect(names).toContain('If-Match');
-    expect(names).not.toContain('Idempotency-Key');
+    expect(names).toContain('Idempotency-Key');
     expect(operation.security).toEqual([{ cookieSession: [] }]);
     expect(operation.responses).toHaveProperty('200');
     expect(operation.responses).toHaveProperty('412');

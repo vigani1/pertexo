@@ -12,8 +12,9 @@ export const versionRoutes = {
     params: schemas.workflowVersionRestoreParamsSchema,
     access: updating,
     rateLimit: 'ordinary_mutation',
+    idempotent: true,
     description:
-      'Copy an immutable version into the current draft with strong concurrency control. Preserves displaced unpublished edits as a disabled recovery workflow. Does not publish or change workflow lifecycle. A committed retry with the old tag returns 412.',
+      'Copy an immutable version into the current draft with strong concurrency control. Preserves displaced unpublished edits as a disabled recovery workflow. Does not publish or change workflow lifecycle. An exact retry with the same idempotency key replays the accepted restore and recovery copy id; a new attempt with a stale tag returns 412.',
     body: projected(
       'WorkflowVersionRestoreRequest',
       schemas.workflowVersionRestoreRequestSchema,
@@ -46,6 +47,7 @@ export const versionRoutes = {
       '401': responseReference('Unauthenticated'),
       '403': responseReference('Forbidden'),
       '404': responseReference('NotFound'),
+      '409': responseReference('Conflict'),
       '412': responseReference('PreconditionFailed'),
       '422': responseReference('UnprocessableEntity'),
       '428': responseReference('PreconditionRequired'),

@@ -135,7 +135,7 @@
     "/v1/workspaces/{workspaceId}/workflows/{workflowId}/versions/{versionId}/restore": {
       "post": {
         "operationId": "restoreWorkflowVersion",
-        "description": "Copy an immutable version into the current draft with strong concurrency control. Preserves displaced unpublished edits as a disabled recovery workflow. Does not publish or change workflow lifecycle. A committed retry with the old tag returns 412.",
+        "description": "Copy an immutable version into the current draft with strong concurrency control. Preserves displaced unpublished edits as a disabled recovery workflow. Does not publish or change workflow lifecycle. An exact retry with the same idempotency key replays the accepted restore and recovery copy id; a new attempt with a stale tag returns 412.",
         "security": [
           {
             "cookieSession": []
@@ -184,6 +184,18 @@
               "type": "string",
               "minLength": 16,
               "maxLength": 256
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^[\\x21-\\x2b\\x2d-\\x7e]+$"
             }
           },
           {
@@ -241,6 +253,9 @@
           },
           "404": {
             "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
           },
           "412": {
             "$ref": "#/components/responses/PreconditionFailed"

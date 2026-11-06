@@ -224,6 +224,45 @@ describe('workflow versions tab', () => {
     });
   });
 
+  it('recovers the same copy link after a committed restore loses its response', async () => {
+    installQueries();
+    const copyId = '88888888-8888-4888-8888-888888888888';
+    let committed = false;
+    const keys: (string | null)[] = [];
+    mockServer.use(
+      http.get(`${workflowApi}/draft`, () =>
+        draftResponse(
+          committed ? emptyGraph : graphWithNode('unfinished'),
+          committed ? etagB : etag,
+        ),
+      ),
+      http.post(
+        `${workflowApi}/versions/${versionId}/restore`,
+        ({ request }) => {
+          keys.push(request.headers.get('idempotency-key'));
+          expect(request.headers.get('if-match')).toBe(etag);
+          if (!committed) {
+            committed = true;
+            return HttpResponse.error();
+          }
+          return draftResponse(emptyGraph, etagB, copyId);
+        },
+      ),
+    );
+    renderApp(versionsPath);
+    await openRestore();
+    expect(
+      await screen.findByText('Your unpublished changes were saved as a copy:'),
+    ).toBeVisible();
+    expect(screen.getByRole('link', { name: 'Open copy' })).toHaveAttribute(
+      'href',
+      `/w/${workspaceId}/workflows/${copyId}`,
+    );
+    expect(keys).toHaveLength(2);
+    expect(keys[0]).toMatch(/^[0-9a-f-]{36}$/u);
+    expect(keys[1]).toBe(keys[0]);
+  });
+
   it('does not overwrite an intervening draft after a lost restore acknowledgement', async () => {
     installQueries();
     const intervening = graphWithNode('another-tab');
@@ -241,7 +280,9 @@ describe('workflow versions tab', () => {
           expect(request.headers.get('if-match')).toBe(etag);
           currentGraph = intervening;
           currentEtag = etagC;
-          return HttpResponse.error();
+          return restoreCalls === 1
+            ? HttpResponse.error()
+            : problem(412, 'workflow.revision_conflict');
         },
       ),
     );
@@ -254,7 +295,7 @@ describe('workflow versions tab', () => {
       screen.getByRole('button', { name: 'Replace newer draft' }),
     ).toBeVisible();
     await event.click(screen.getByRole('button', { name: 'Cancel' }));
-    expect(restoreCalls).toBe(1);
+    expect(restoreCalls).toBe(2);
     expect(currentGraph).toEqual(intervening);
   });
 
