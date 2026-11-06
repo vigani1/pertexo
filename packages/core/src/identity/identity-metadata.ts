@@ -1,4 +1,4 @@
-import { utf8ByteLength } from '../values/text.js';
+import { utf8ByteLength } from '@pertexo/workflow-model';
 
 const IDENTITY_METADATA_MAX_BYTES = 8_192;
 const IDENTITY_METADATA_MAX_DEPTH = 32;

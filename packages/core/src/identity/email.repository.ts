@@ -1,5 +1,5 @@
 import { invalidatePasswordResetProofs } from './password-reset.repository.js';
-import { canonicalEmail } from '@pertexo/workflow-model';
+import { canonicalEmail } from './email-policy.js';
 import { canonicalEmailSql } from './canonical-email.js';
 import { readIdentityEmailChangeEligibility } from './federation/sessions/authority.repository.js';
 import { randomUUID } from 'node:crypto';

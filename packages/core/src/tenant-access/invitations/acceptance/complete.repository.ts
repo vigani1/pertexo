@@ -1,5 +1,5 @@
 import { readInvitationTime } from '../deadlines.js';
-import { decideInvitationAcceptance } from '@pertexo/workflow-model';
+import { decideInvitationAcceptance } from './decide-invitation-acceptance.js';
 import { and, eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { Pool, PoolClient } from 'pg';

@@ -1,9 +1,7 @@
 import { readInvitationTime } from '../deadlines.js';
 import { InvitationAcceptanceConflictError } from '../../tenant-access.errors.js';
-import {
-  canonicalEmail,
-  INVITATION_PROOF_TTL_MILLIS,
-} from '@pertexo/workflow-model';
+import { canonicalEmail } from '../../../identity/email-policy.js';
+import { INVITATION_PROOF_TTL_MILLIS } from './decide-invitation-acceptance.js';
 import { and, eq, getTableName, inArray, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { alias } from 'drizzle-orm/pg-core';

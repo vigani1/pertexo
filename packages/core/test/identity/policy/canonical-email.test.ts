@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { canonicalEmail } from '../../src/index.js';
+import { canonicalEmail } from '../../../src/identity/email-policy.js';
 
 describe('canonicalEmail', () => {
   it.each([

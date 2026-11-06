@@ -47,3 +47,6 @@ export type {} from './federation/provisioning/management/detach.repository.js';
 export type {} from './federation/sessions/policy.js';
 export type {} from './federation/sessions/recovery.repository.js';
 export { revokeAuthenticationSession } from './federation/sessions/revocation.repository.js';
+
+export { canonicalEmail } from './email-policy.js';
+export { parseIdentityMetadata } from './identity-metadata.js';

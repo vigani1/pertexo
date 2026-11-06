@@ -1,4 +1,4 @@
-import { canonicalEmail } from '@pertexo/workflow-model';
+import { canonicalEmail } from '@pertexo/core/identity';
 import { z } from 'zod';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
 import {

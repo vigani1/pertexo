@@ -402,7 +402,6 @@ export {
   API_TOKEN_MAX_LIFETIME_DAYS,
   API_TOKEN_ACTIVE_LIMIT,
   apiTokenCredentialSchema,
-  canonicalEmail,
 } from './workspaces/identity-policy.js';
 
 export { CORE_WEBHOOK_CONFIG_SCHEMA } from './triggers/webhook.js';
@@ -426,19 +425,12 @@ export {
   capturedFormReplayMatches,
 } from './triggers/forms/admission.js';
 
-export { parseIdentityMetadata } from './workspaces/identity-metadata.js';
-
 export {
   addedWorkflowCallTargets,
   addedWorkflowConnectionReferences,
   workflowConnectionReferences,
   connectionReferenceIds,
 } from './authoring/bindings.js';
-
-export {
-  decideInvitationAcceptance,
-  INVITATION_PROOF_TTL_MILLIS,
-} from './workspaces/invitation-acceptance.js';
 
 export { publicationReviewDecision } from './authoring/reviews/decision.js';
 export { requiresPublicationReviewer } from './workspaces/governance.js';
