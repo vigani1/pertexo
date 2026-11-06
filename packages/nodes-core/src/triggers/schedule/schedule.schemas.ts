@@ -85,7 +85,3 @@ const scheduleTriggerEnvelopeSchema = z
 export const CORE_SCHEDULE_INPUT_SCHEMA = scheduleTriggerEnvelopeSchema;
 export const CORE_SCHEDULE_OUTPUT_SCHEMA =
   scheduleTriggerEnvelopeSchema.clone();
-
-type CoreScheduleConfig = Readonly<
-  z.output<typeof CORE_SCHEDULE_CONFIG_SCHEMA>
->;
