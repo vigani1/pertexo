@@ -35,12 +35,24 @@ export function shardCommand(shard, stacks, extraArguments = []) {
 }
 
 export function workerSuitePhases(stacks, extraArguments = []) {
+  const shards = Array.from({ length: stacks }, (_, stack) => ({
+    label: `worker-${String(stack + 1)}`,
+    stack,
+    command: shardCommand(stack, stacks, extraArguments),
+  }));
+  if (extraArguments.length > 0) return [shards];
+  // Cold process recovery competes with all three shards for the runner's CPU.
+  // Keep its proof and timeout, but give it the runner before starting the shards.
+  const recoveryFile =
+    'test/runs/consumer/foreach-cancellation.integration.test.ts';
+  const recovery = shardCommand(0, 1);
+  recovery.args = recovery.args.filter((arg) => !arg.startsWith('--shard='));
+  recovery.args.push(recoveryFile);
+  for (const { command } of shards)
+    command.args.push(`--exclude=${recoveryFile}`);
   return [
-    Array.from({ length: stacks }, (_, stack) => ({
-      label: `worker-${String(stack + 1)}`,
-      stack,
-      command: shardCommand(stack, stacks, extraArguments),
-    })),
+    [{ label: 'worker-foreach-recovery', stack: 0, command: recovery }],
+    shards,
   ];
 }
 
