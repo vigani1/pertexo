@@ -28,7 +28,7 @@ import {
   scopedLoopSinkInvocation,
   transitionEvent as event,
   type MutableWorkflowTransition,
-} from './state.js';
+} from './transition-state.js';
 
 function hasUnsettledSchedulerWork(state: MutableWorkflowTransition): boolean {
   const { current, graph, invocations, branchSelections, loops } = state;

@@ -25,7 +25,7 @@ export {
   WORKFLOW_RECOVERY_REFUSALS,
   type WorkflowRecoveryEffectRisk,
   type WorkflowRecoveryRefusal,
-} from './execution/recovery/workflow-recovery.js';
+} from './execution/workflow-recovery.js';
 export {
   workflowCallConfigSchema,
   isWorkflowCallDefinition,
@@ -89,7 +89,7 @@ export {
   STEP_RETRY_LIMITS,
   supportsStepRetrySettings,
   type StepRetrySettings,
-} from './execution/step-retries/step-retry.schemas.js';
+} from './execution/step-retry.schemas.js';
 export {
   planWorkflowLifecycleCommand,
   workflowActivationAfterReconciliation,
@@ -238,7 +238,7 @@ export {
   type WorkspaceVariableSnapshot,
 } from './values/variables/workspace-variable.schemas.js';
 
-export { ianaTimeZoneSchema } from './values/json/time-zone.js';
+export { ianaTimeZoneSchema } from './values/time-zone.schemas.js';
 export {
   taskDetailsSchema,
   taskContextSchema,
@@ -301,7 +301,7 @@ export { sameWorkflowNotes } from './graph/notes/identity.js';
 export {
   webhookAuthenticationSchema,
   type WebhookAuthentication,
-} from './triggers/webhooks/authentication.js';
+} from './triggers/webhook-authentication.js';
 
 export {
   callbackWaitConfigSchema,
@@ -322,7 +322,7 @@ export {
 
 export { remapCallbackReferences } from './flow/callbacks/references.js';
 
-export { cronHasUnsupportedOperators } from './triggers/schedules/cron.js';
+export { cronHasUnsupportedOperators } from './triggers/schedule-cron.js';
 
 export {
   utf8ByteLength,
@@ -365,7 +365,7 @@ export {
   connectionReferenceIds,
 } from './authoring/bindings.js';
 
-export { publicationReviewDecision } from './authoring/reviews/decision.js';
+export { publicationReviewDecision } from './authoring/publication-review-decision.js';
 export { requiresPublicationReviewer } from './workspaces/governance.js';
 
 export {
@@ -373,7 +373,7 @@ export {
   type SuiteCaseReport,
 } from './authoring/test-suites/report.js';
 
-export * from './authoring/connections/connection.js';
+export * from './authoring/connection-vocabulary.js';
 export {
   noticeScheduleSchema,
   noticeEmailModeSchema,

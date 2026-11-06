@@ -7,7 +7,7 @@ import {
 import { reconstructReadySet } from '../../../src/checkpoint/create-and-parse.js';
 import { checkpoint, occurredAt } from '../../support/advance-workflow.js';
 
-import { advanceWorkflow } from '../../support/checkpoint/seam.js';
+import { advanceWorkflow } from '../../support/checkpoint-engine.js';
 
 describe('checkpoint seam', () => {
   it('defaults the additive retained deadline flag to false', () => {

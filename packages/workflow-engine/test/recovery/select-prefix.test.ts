@@ -6,7 +6,13 @@ import {
 import { graph, nodeCatalog } from '../support/executable-workflow.js';
 import { selectRecoveryPrefix } from '../../src/recovery/select-prefix.js';
 import type { RecoveryNode } from '../../src/recovery/workflow-recovery.types.js';
-import { conditional, id, linear, record, source } from './fixtures.js';
+import {
+  conditional,
+  id,
+  linear,
+  record,
+  source,
+} from './recovery-workflow-fixtures.js';
 
 function changeTarget(
   change: (node: RecoveryNode) => RecoveryNode,

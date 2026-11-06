@@ -18,7 +18,10 @@ import {
   nodeCatalog,
   forEachGraph,
 } from '../support/executable-workflow.js';
-import { callGraph, completion } from '../compilation/calls/fixtures.js';
+import {
+  callGraph,
+  completion,
+} from '../compilation/calls/call-workflow-fixtures.js';
 
 function runtime(
   source: unknown,

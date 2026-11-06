@@ -4,7 +4,7 @@ import {
   indexTransitionNodes,
   schedulerNodeDisabled,
   schedulerNodeSideEffectClass,
-} from '../../src/transition/state.js';
+} from '../../src/transition/transition-state.js';
 
 describe('transition-local scheduler node lookup', () => {
   it('keeps branch and enclosing-iteration limits separate and rejects missing loop scope', () => {

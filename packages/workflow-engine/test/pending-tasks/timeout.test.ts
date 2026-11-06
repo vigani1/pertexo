@@ -18,7 +18,7 @@ import {
 } from '../../src/server.js';
 import type { AdvanceWorkflowInput } from '../../src/operations.js';
 import { graph, nodeCatalog } from '../support/executable-workflow.js';
-import { completion } from '../compilation/calls/fixtures.js';
+import { completion } from '../compilation/calls/call-workflow-fixtures.js';
 
 const at = '2026-10-26T00:00:00.000Z';
 type TaskKey = 'core.approval' | 'core.request_input';

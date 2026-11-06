@@ -12,7 +12,7 @@ import {
   observationOrder,
   indexTransitionNodes,
   type MutableWorkflowTransition,
-} from './state.js';
+} from './transition-state.js';
 import { settleFailureHandlers } from '../failure-routing/selection.js';
 import { applyWorkflowStops } from './stops.js';
 

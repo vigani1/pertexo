@@ -8,7 +8,7 @@ import {
   id,
   key,
   fixture,
-} from '../support/failure-routing/runtime.js';
+} from '../support/failure-routing-engine.js';
 
 describe('handler input evidence', () => {
   it('rejects a forged selected sink when advancing a restored checkpoint', async () => {

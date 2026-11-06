@@ -1,7 +1,7 @@
 import { parseJsonPath } from '../../values/json/path.js';
 import { WORKFLOW_GRAPH_CONTRACT_LIMITS } from '../workflow-graph.schemas.js';
 import { canonicalJson } from '../../values/json/canonical.js';
-import { supportsStepRetrySettings } from '../../execution/step-retries/step-retry.schemas.js';
+import { supportsStepRetrySettings } from '../../execution/step-retry.schemas.js';
 import type {
   ForEachStructure,
   WorkflowGraph,

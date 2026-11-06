@@ -21,7 +21,7 @@ import { UUID_PATTERN } from '@pertexo/workflow-model';
 import {
   isTerminalNodeStatus,
   scopedLoopSinkInvocation,
-} from '../transition/state.js';
+} from '../transition/transition-state.js';
 import type { WorkflowObservation } from '../workflow-execution.js';
 
 type CheckpointInvocation = ReturnType<

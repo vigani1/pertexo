@@ -27,7 +27,7 @@ import { invocationKey } from '../invocation-identity.js';
 import {
   isFinishedIterationScope,
   isTerminalNodeStatus,
-} from '../transition/state.js';
+} from '../transition/transition-state.js';
 
 /** Executor success prepares input; only the child fact settles the logical Call. */
 export function callDeclarationObservations(

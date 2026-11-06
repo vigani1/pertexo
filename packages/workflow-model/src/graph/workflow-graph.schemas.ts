@@ -10,7 +10,7 @@ import { workspaceVariableNameSchema } from '../values/variables/workspace-varia
 import {
   stepRetrySettingsSchema,
   type StepRetrySettings,
-} from '../execution/step-retries/step-retry.schemas.js';
+} from '../execution/step-retry.schemas.js';
 import { z } from 'zod';
 
 import type { JsonValue } from '../values/json/canonical.js';
