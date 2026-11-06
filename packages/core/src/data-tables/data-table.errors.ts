@@ -27,3 +27,10 @@ export function translateWorkerFailure(caught: unknown): never {
     );
   return translateTableConstraint(caught);
 }
+
+export class StoredTableDefinitionError extends Error {
+  public constructor(options: ErrorOptions) {
+    super('Stored table definition is invalid', options);
+    this.name = 'StoredTableDefinitionError';
+  }
+}

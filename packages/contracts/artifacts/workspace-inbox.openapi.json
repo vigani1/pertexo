@@ -390,6 +390,7 @@
               "artifact.conflict",
               "artifact.unavailable",
               "workspace.conflict",
+              "data_table.stored_definition_invalid",
               "data_table.conflict",
               "data_table.key_conflict",
               "data_table.quota_exceeded",

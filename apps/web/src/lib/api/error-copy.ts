@@ -1,4 +1,4 @@
-import { isApiError } from './error';
+import { isApiError, type ApiError } from './error';
 
 // Generic, human wording for failures every feature shares. Features keep
 // their own messages for domain-specific codes and fall back to these.
@@ -44,6 +44,8 @@ export function supportReference(error: unknown): string | undefined {
 /** A sentence for a failed read, e.g. `describeReadError(error, 'Runs')`. */
 export function describeReadError(error: unknown, resource: string): string {
   if (isApiError(error)) {
+    const storedDefinition = storedTableFailureReason(error);
+    if (storedDefinition !== undefined) return storedDefinition;
     if (error.status === 401) return 'Your session ended. Sign in again.';
     if (error.status === 403)
       return `Your role no longer has access to ${resource.toLowerCase()} here.`;
@@ -64,6 +66,8 @@ export function describeReadError(error: unknown, resource: string): string {
  */
 export function readFailureReason(error: unknown): string {
   if (isApiError(error)) {
+    const storedDefinition = storedTableFailureReason(error);
+    if (storedDefinition !== undefined) return storedDefinition;
     if (error.status === 403) return 'Your role no longer has access to this.';
     if (error.kind === 'network')
       return 'Pertexo couldn’t be reached. Check your connection and try again.';
@@ -101,4 +105,10 @@ export function describeCommandError(error: unknown, action: string): string {
   if (serverFailureWithReference)
     return `${Action} didn’t work on our side. Try again; if it keeps happening, quote reference ${reference.slice(0, 8)}.`;
   return `${Action} didn’t work. Try again.`;
+}
+
+function storedTableFailureReason(error: ApiError): string | undefined {
+  return error.problem?.code === 'data_table.stored_definition_invalid'
+    ? (error.problem.detail ?? error.problem.title)
+    : undefined;
 }

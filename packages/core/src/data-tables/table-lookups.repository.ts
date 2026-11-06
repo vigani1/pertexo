@@ -1,7 +1,14 @@
+import { decodeStoredValue } from '../shared/stored-values.js';
+import { StoredTableDefinitionError } from './data-table.errors.js';
 import type { PoolClient } from 'pg';
 import { and, eq, inArray } from 'drizzle-orm';
 import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres';
-import { DataTableError, DATA_TABLE_LIMITS } from '@pertexo/node-sdk';
+import {
+  DataTableError,
+  DATA_TABLE_LIMITS,
+  dataTableColumnsSchema,
+  isDataTableKeyColumn,
+} from '@pertexo/node-sdk';
 import {
   workspaceDataTables as tables,
   workspaceDataTableQuotas as quotas,
@@ -32,7 +39,8 @@ export async function listTables(client: PoolClient, workspaceId: string) {
       .where(eq(tables.workspaceId, workspaceId))
       .orderBy(tables.name)
       .limit(DATA_TABLE_LIMITS.maxTables)
-      .catch(rethrowQueryFailure),
+      .catch(rethrowQueryFailure)
+      .then((rows) => rows.map(decodeTableDefinition)),
   };
 }
 
@@ -61,7 +69,7 @@ export async function requireTable(
       'not_found',
       'This data table is unavailable. Select an existing workspace table.',
     );
-  return row;
+  return decodeTableDefinition(row);
 }
 
 export async function readQuotas(
@@ -119,5 +127,26 @@ export async function readTablesByNames(
       ),
     )
     .orderBy(tables.id)
-    .for('share');
+    .for('share')
+    .then((rows) => rows.map(decodeTableDefinition));
+}
+
+/** Stored definitions become typed only here, including semantic key validity. */
+function decodeTableDefinition(row: DataTableDefinition): DataTableDefinition {
+  return decodeStoredValue(() => {
+    try {
+      const columns = dataTableColumnsSchema.parse(row.columns);
+      if (
+        row.keyColumn !== null &&
+        !columns.some(
+          (column) =>
+            column.name === row.keyColumn && isDataTableKeyColumn(column),
+        )
+      )
+        throw new Error('Stored key does not identify an eligible column');
+      return { ...row, columns };
+    } catch (cause) {
+      throw new StoredTableDefinitionError({ cause });
+    }
+  });
 }

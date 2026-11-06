@@ -40,6 +40,7 @@ Generated from the problem manifest; run `pnpm contracts:generate`. Branch on th
 | `data_table.conflict` | 409 | Data table changed |
 | `data_table.key_conflict` | 409 | Unique key already used |
 | `data_table.quota_exceeded` | 409 | Data table limit reached |
+| `data_table.stored_definition_invalid` | 500 | Stored table definition is damaged |
 | `export.already_running` | 409 | An export is already running |
 | `form.access_conflict` | 409 | Form access changed |
 | `form.changed` | 409 | Form changed |
