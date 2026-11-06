@@ -23,3 +23,16 @@ it.each([
     expect(shown.advice).not.toMatch(/setup|settings|Build/u);
   },
 );
+
+it.each([
+  'http.response_encoding',
+  'http.response_redaction_limit',
+  'http.response_too_large',
+])(
+  'tells someone to check whether the action happened before replaying %s',
+  (code) => {
+    const shown = describeStepError(code);
+    expect(shown.advice).toMatch(/check.*service.*before replay/iu);
+    expect(shown.sentence).not.toMatch(/configuration|settings/iu);
+  },
+);

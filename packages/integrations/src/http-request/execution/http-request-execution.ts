@@ -75,6 +75,8 @@ export function failedConfiguration(): HttpRequestExecutorError {
 }
 
 function responseFailureCode(code: ProviderHttpErrorCode | undefined) {
+  if (code === PROVIDER_HTTP_ERROR_CODE.responseTooLarge)
+    return 'http.response_too_large' as const;
   if (code === PROVIDER_HTTP_ERROR_CODE.responseEncodingRejected)
     return 'http.response_encoding' as const;
   if (code === PROVIDER_HTTP_ERROR_CODE.responseRedactionLimit)

@@ -82,6 +82,12 @@ export function classifySecureHttpResponse(
   return failed('provider');
 }
 
+const unreadableResponseCodes = new Set<ProviderHttpError['code']>([
+  PROVIDER_HTTP_ERROR_CODE.responseTooLarge,
+  PROVIDER_HTTP_ERROR_CODE.responseEncodingRejected,
+  PROVIDER_HTTP_ERROR_CODE.responseRedactionLimit,
+]);
+
 export function classifySecureHttpError(
   error: Pick<
     ProviderHttpError,
@@ -96,6 +102,13 @@ export function classifySecureHttpError(
     return sideEffectClass === 'unsafe' && error.possiblyDispatched
       ? Object.freeze({ kind: 'outcome_unknown', errorKind: 'provider' })
       : Object.freeze({ kind: 'canceled', errorKind: 'canceled' });
+  // A local response refusal cannot establish whether a dispatched effect happened.
+  if (
+    sideEffectClass === 'unsafe' &&
+    error.possiblyDispatched &&
+    unreadableResponseCodes.has(error.code)
+  )
+    return Object.freeze({ kind: 'outcome_unknown', errorKind: 'provider' });
   const errorKind = secureErrorKind(error);
   if (error.classification === 'ambiguous')
     return retryOrUnknown(

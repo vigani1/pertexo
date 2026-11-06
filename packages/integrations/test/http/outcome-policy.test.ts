@@ -110,7 +110,7 @@ describe('ADR 007 HTTP outcome policy', () => {
         'unsafe',
         { providerKeyPresent: false },
       ),
-    ).toEqual({ kind: 'failed', errorKind: 'configuration' });
+    ).toEqual({ kind: 'outcome_unknown', errorKind: 'provider' });
   });
 
   it('maps a pre-dispatch provider-runtime outage into the immutable retry policy', () => {
