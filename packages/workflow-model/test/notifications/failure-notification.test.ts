@@ -5,7 +5,7 @@ import {
   FailureNotificationContextSchema,
   FailureNotificationDestinationConfigSchema,
   FailureNotificationDeliveryResultSchema,
-} from '../src/execution/failure-notification.js';
+} from '../../src/notifications/failure-notification.schemas.js';
 
 const id = (digit: string): string =>
   `${digit.repeat(8)}-${digit.repeat(4)}-4${digit.repeat(3)}-8${digit.repeat(3)}-${digit.repeat(12)}`;
