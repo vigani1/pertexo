@@ -1,3 +1,4 @@
+import { parseDatabaseConfig } from '@pertexo/database/platform';
 import { randomUUID } from 'node:crypto';
 
 import { canonicalOutboxPayloadChecksum } from '@pertexo/database/primitives';
@@ -324,4 +325,189 @@ it('rolls back a replay canceled while its request is locked and lets the same d
     outcome: 'replay_created',
     receipts: 1,
   });
+});
+
+it('stores immutable replay lineage and input, then returns duplicate without another effect', async () => {
+  const world = await requested();
+  const input = {
+    commandId: world.commandId,
+    delivery: world.delivery,
+    workspaceId,
+  };
+  const processed = await schedule.replayStore.replay(input);
+  if (processed.kind !== 'processed') throw new Error('Replay not processed');
+  const rows = await workerQuery<Record<string, unknown>>(
+    `select replay_command_id,replay_source_run_id,workflow_id,workflow_version_id,started_by,input_ref from app.workflow_runs where id=$1`,
+    [processed.runId],
+  );
+  const source = await workerQuery<{ started_by: string | null }>(
+    'select started_by from app.workflow_runs where id=$1',
+    [sourceRunId],
+  );
+  expect(rows.rows).toEqual([
+    {
+      replay_command_id: world.commandId,
+      replay_source_run_id: sourceRunId,
+      workflow_id: schedule.workflowId,
+      workflow_version_id: versionId,
+      started_by: source.rows[0]?.started_by,
+      input_ref: { kind: 'inline', value: { pinned: true } },
+    },
+  ]);
+  const before = await facts(world);
+  await expect(schedule.replayStore.replay(input)).resolves.toEqual({
+    kind: 'duplicate',
+  });
+  expect(await facts(world)).toEqual(before);
+});
+
+it('refuses an invalid signal without consuming the genuine replay', async () => {
+  const world = await requested();
+  await expect(
+    schedule.replayStore.replay({
+      commandId: world.commandId,
+      delivery: world.delivery,
+      workspaceId,
+      signal: {} as AbortSignal,
+    }),
+  ).rejects.toBeInstanceOf(TypeError);
+  expect(await facts(world)).toEqual(untouched);
+});
+
+it.each(['missing', 'completed'] as const)(
+  'refuses a %s durable request without consuming its delivery',
+  async (state) => {
+    const world = await requested();
+    const changed =
+      state === 'missing'
+        ? await ownerQuery(
+            'delete from app.operator_run_replay_requests where command_id=$1',
+            [world.commandId],
+          )
+        : await ownerQuery(
+            "update app.operator_run_replay_requests set status='completed', result_run_id=$2, completed_at=clock_timestamp() where command_id=$1",
+            [world.commandId, sourceRunId],
+          );
+    expect(changed.rowCount).toBe(1);
+    const before = await facts(world);
+    await expect(
+      schedule.replayStore.replay({
+        commandId: world.commandId,
+        delivery: world.delivery,
+        workspaceId,
+      }),
+    ).rejects.toBeInstanceOf(OperatorRunReplayMismatchError);
+    expect(await facts(world)).toEqual(before);
+  },
+);
+
+it.each(['commandId', 'outboxEventId', 'workspaceId'] as const)(
+  'refuses a stored payload with a different %s',
+  async (key) => {
+    const world = await requested();
+    const payload = {
+      commandId: world.commandId,
+      outboxEventId: world.outboxEventId,
+      workspaceId,
+      [key]: randomUUID(),
+    };
+    const checksum = canonicalOutboxPayloadChecksum(payload);
+    await ownerQuery(
+      'update app.outbox_events set payload=$2::jsonb,payload_checksum=$3 where id=$1',
+      [world.outboxEventId, JSON.stringify(payload), checksum],
+    );
+    await expect(
+      schedule.replayStore.replay({
+        commandId: world.commandId,
+        workspaceId,
+        delivery: { ...world.delivery, payloadChecksum: checksum },
+      }),
+    ).rejects.toBeInstanceOf(OperatorRunReplayMismatchError);
+    expect(await facts(world)).toEqual(untouched);
+  },
+);
+
+it('refuses a version from another workflow without consuming the request', async () => {
+  const world = await requested();
+  await ownerQuery(
+    'update app.operator_run_replay_requests set workflow_id=$2 where command_id=$1',
+    [world.commandId, randomUUID()],
+  );
+  await expect(
+    schedule.replayStore.replay({
+      commandId: world.commandId,
+      delivery: world.delivery,
+      workspaceId,
+    }),
+  ).rejects.toThrow('Run replay target is not executable');
+  expect(await facts(world)).toEqual(untouched);
+});
+
+it.each(['checkpoint', 'acceptance', 'completion'] as const)(
+  'rolls back all durable replay effects when %s fails',
+  async (phase) => {
+    const world = await requested();
+    const input = {
+      commandId: world.commandId,
+      delivery: world.delivery,
+      workspaceId,
+    };
+    if (phase === 'checkpoint') {
+      const { createOperatorRunReplayStore } =
+        await import('../../src/operator/replay/operator-run-replay.store.js');
+      const failed = createOperatorRunReplayStore(
+        parseDatabaseConfig({ connectionString: schedule.apiConnectionString }),
+        () => {
+          throw new Error('checkpoint construction refused');
+        },
+      );
+      try {
+        await expect(failed.replay(input)).rejects.toThrow(
+          'checkpoint construction refused',
+        );
+      } finally {
+        await failed.close();
+      }
+    } else {
+      const table =
+        phase === 'acceptance'
+          ? 'workflow_runs'
+          : 'operator_run_replay_requests';
+      const condition =
+        phase === 'acceptance'
+          ? `replay_command_id is distinct from '${world.commandId}'::uuid`
+          : `command_id <> '${world.commandId}'::uuid or status <> 'completed'`;
+      await ownerQuery(
+        `alter table app.${table} add constraint refuse_replay_effect check (${condition}) not valid`,
+      );
+      try {
+        await expect(schedule.replayStore.replay(input)).rejects.toThrow();
+      } finally {
+        await ownerQuery(
+          `alter table app.${table} drop constraint refuse_replay_effect`,
+        );
+      }
+    }
+    expect(await facts(world)).toEqual(untouched);
+    await expect(schedule.replayStore.replay(input)).resolves.toMatchObject({
+      kind: 'processed',
+    });
+    expect(await facts(world)).toMatchObject({
+      runs: 1,
+      receipts: 1,
+      request: 'completed',
+      command: 'completed',
+    });
+  },
+);
+
+it('cannot retain a replay request naming a version that does not exist', async () => {
+  const world = await requested();
+  await expect(
+    ownerQuery(
+      'update app.operator_run_replay_requests set workflow_version_id=$2 where command_id=$1',
+      [world.commandId, randomUUID()],
+    ),
+  ).rejects.toMatchObject({ code: '23503' });
+  expect(await facts(world)).toEqual(untouched);
 });
