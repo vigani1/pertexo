@@ -26,7 +26,7 @@ it.each([
       safeErrorCode: 'list.summary_too_large',
       errorSummary: expect.stringMatching(
         /groups.*(limit|bounded).*smaller batches/iu,
-      ),
+      ) as unknown,
     });
   },
 );
@@ -46,7 +46,7 @@ it('keeps a smaller admitted grouped summary usable', async () => {
       skippedCount: 0,
       groups: expect.arrayContaining([
         { key: 1399, count: 1, sum: 1, min: 1, max: 1, average: 1 },
-      ]),
+      ]) as unknown,
     },
   });
 });
