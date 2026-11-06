@@ -14,7 +14,6 @@ type UsageRow = WorkspaceVariableUsageResponse['items'][number];
 
 /** A page of the check; `first` is the page asked for without a cursor. */
 export function usagePage(
-  counts: Readonly<{ checked: number; total: number }>,
   rest: Readonly<{
     next?: string;
     items?: readonly UsageRow[];
@@ -26,8 +25,6 @@ export function usagePage(
       items: rest.items ?? [],
       nextCursor: rest.next ?? null,
       incomplete: rest.incomplete ?? false,
-      checkedWorkflows: counts.checked,
-      totalWorkflows: counts.total,
     });
 }
 
@@ -150,18 +147,12 @@ export const FAILED_WARNING =
 export const USUAL_WARNING =
   'Removing a name does not rewrite these references. New runs that require it will fail; existing snapshots stay unchanged.';
 
-export function expectBar(now: number, max: number) {
+export function expectBar() {
   const bar = screen.getByRole('progressbar', { name: 'Workflows checked' });
-  expect(bar).toHaveAttribute('aria-valuenow', String(now));
-  expect(bar).toHaveAttribute('aria-valuemax', String(max));
+  expect(bar).not.toHaveAttribute('aria-valuenow');
+  expect(bar).not.toHaveAttribute('aria-valuemax');
   return bar;
 }
-
-export const barWidth = () =>
-  (
-    screen.getByRole('progressbar', { name: 'Workflows checked' })
-      .firstElementChild as HTMLElement
-  ).style.width;
 
 /** The browser's own signals, which is what the query library listens to. */
 export const goOffline = () => {

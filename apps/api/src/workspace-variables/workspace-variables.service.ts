@@ -30,8 +30,6 @@ export class WorkspaceVariablesService {
     return {
       items: result.items,
       incomplete: result.incomplete,
-      checkedWorkflows: result.checkedWorkflows,
-      totalWorkflows: result.totalWorkflows,
       nextCursor:
         result.next === null
           ? null

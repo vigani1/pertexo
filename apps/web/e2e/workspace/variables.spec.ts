@@ -170,8 +170,6 @@ test('members can inspect references and an empty scan page is never presented a
             items: [],
             nextCursor: 'cursor',
             incomplete: false,
-            checkedWorkflows: 1,
-            totalWorkflows: 2,
           },
         });
       await lastPageMayAnswer;
@@ -192,8 +190,6 @@ test('members can inspect references and an empty scan page is never presented a
           ],
           nextCursor: null,
           incomplete: false,
-          checkedWorkflows: 2,
-          totalWorkflows: 2,
         },
       });
     },
@@ -207,7 +203,7 @@ test('members can inspect references and an empty scan page is never presented a
   ).toBeVisible();
   await page.getByRole('button', { name: 'References', exact: true }).click();
   await expect(
-    page.getByText('Checked 1 of 2 workflows you can see.', { exact: true }),
+    page.getByText(/Checking workflows…/u, { exact: true }),
   ).toBeVisible();
   await expect(
     page.getByText('No references in the workflows checked so far.', {
@@ -217,7 +213,7 @@ test('members can inspect references and an empty scan page is never presented a
   // Nothing to click: the check carries on by itself.
   finishCheck();
   await expect(
-    page.getByText('Checked all 2 workflows you can see.', { exact: true }),
+    page.getByText(/Check complete\./u, { exact: true }),
   ).toBeVisible();
   await expect(
     page.getByRole('link', { name: 'Invoice export', exact: true }),

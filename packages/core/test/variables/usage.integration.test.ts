@@ -1,3 +1,7 @@
+import { withTenantScopedClient } from '@pertexo/database/primitives';
+import type { QueryConfig } from 'pg';
+import { readVariableUsage } from '../../src/variables/usage.repository.js';
+import { pool } from './configuration/fixture.js';
 import { randomUUID } from 'node:crypto';
 
 import { afterAll, beforeAll, expect, it } from 'vitest';
@@ -134,7 +138,7 @@ it('checks every workflow once in a page, in draft then publication order', asyn
   const { workspaceId, first, second } = await twoWorkflows();
   const pages = await everyPage(workspaceId, 'RATE', 25);
   expect(pages).toHaveLength(1);
-  expect(pages[0]).toMatchObject({ checkedWorkflows: 2, totalWorkflows: 2 });
+  expect(pages[0]).toMatchObject({ next: null });
   expect(
     pages
       .flatMap((page) => page.items)
@@ -164,10 +168,7 @@ it('reaches the same references when a small limit splits a workflow across page
   const split = await everyPage(workspaceId, 'RATE', 1);
   expect(items(split)).toEqual(items(await everyPage(workspaceId, 'RATE', 25)));
   expect(split[0]?.next).toMatchObject({ offset: 1 });
-  expect(split[0]).toMatchObject({ checkedWorkflows: 0, totalWorkflows: 2 });
   expect(split.at(-1)).toMatchObject({
-    checkedWorkflows: 2,
-    totalWorkflows: 2,
     next: null,
   });
 });
@@ -189,21 +190,18 @@ it('has nothing to report for a workspace without workflows that use the name', 
   ).toMatchObject({ items: [], incomplete: false });
 });
 
-it('counts a workflow only once it has been passed, however the pages were cut', async () => {
+it('reports cursor progress inside a workflow and completion at the end', async () => {
   const { workspaceId } = await twoWorkflows();
-  // The first workflow holds three references, the second one.
   const pages = await everyPage(workspaceId, 'RATE', 1);
-  expect(
-    pages.map((page) => [page.checkedWorkflows, page.totalWorkflows]),
-  ).toEqual([
-    [0, 2],
-    [0, 2],
-    [1, 2],
-    [2, 2],
+  expect(pages.map((page) => page.next?.offset ?? null)).toEqual([
+    1,
+    2,
+    0,
+    null,
   ]);
 });
 
-it('reports nothing to check, as 0 of 0, for a workspace with no workflows at all', async () => {
+it('reports completion with no references for a workspace with no workflows at all', async () => {
   const workspaceId = randomUUID();
   await admin.query(
     "insert into app.workspaces(id,name,slug,created_by) values($1,'Empty',$2,$3)",
@@ -219,7 +217,63 @@ it('reports nothing to check, as 0 of 0, for a workspace with no workflows at al
     items: [],
     incomplete: false,
     next: null,
-    checkedWorkflows: 0,
-    totalWorkflows: 0,
   });
+});
+
+it('bounds database work for an empty reference page independently of 10000 visible workflows', async () => {
+  const { workspaceId } = await twoWorkflows();
+  await admin.query(
+    `insert into app.workflows(id,workspace_id,name,created_by) select gen_random_uuid(),$1,'Unrelated '||n,$2 from generate_series(1,10000)n`,
+    [workspaceId, userId],
+  );
+  await admin.query('analyze app.workflows');
+  const page = await withTenantScopedClient(
+    pool,
+    { workspaceId, actorId: userId },
+    async (client) => {
+      const captured: { text: string; values: unknown[] }[] = [];
+      const traced = new Proxy(client, {
+        get(target, key) {
+          if (key !== 'query') return Reflect.get(target, key) as unknown;
+          return (config: string | QueryConfig, values?: unknown[]) => {
+            const text = typeof config === 'string' ? config : config.text;
+            captured.push({
+              text,
+              values:
+                values ??
+                (typeof config === 'string' ? [] : (config.values ?? [])),
+            });
+            return target.query(config, values);
+          };
+        },
+      });
+      const result = await readVariableUsage(
+        traced,
+        { ...scope(workspaceId), name: 'UNUSED', limit: 1 },
+        'owner',
+      );
+      interface Plan {
+        'Actual Rows': number;
+        'Actual Loops': number;
+        Plans?: Plan[];
+      }
+      const visited = (plan: Plan): number =>
+        plan['Actual Rows'] * plan['Actual Loops'] +
+        (plan.Plans ?? []).reduce((sum, child) => sum + visited(child), 0);
+      let work = 0;
+      for (const statement of captured) {
+        const explained = await client.query<{
+          'QUERY PLAN': { Plan: Plan }[];
+        }>(`explain (analyze,format json) ${statement.text}`, statement.values);
+        const plan = explained.rows[0]?.['QUERY PLAN'][0]?.Plan;
+        if (plan === undefined) throw new Error('Usage plan missing');
+        work += visited(plan);
+      }
+      expect(work).toBeLessThan(2000);
+      return result;
+    },
+  );
+  expect(page.items).toEqual([]);
+  expect(page.next).not.toBeNull();
+  expect(page).not.toHaveProperty('totalWorkflows');
 });

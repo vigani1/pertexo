@@ -27,21 +27,11 @@ function emptySentence(phase: UsageCheckPhase, incomplete: boolean): string {
 
 const count = (value: number) => value.toLocaleString(FORMAT_LOCALE);
 
-/** Hidden workflows aren't checked, so every sentence says whose view this is. */
-function progressSentence(
-  phase: UsageCheckPhase,
-  counts: Readonly<{ checked: number; total: number }> | undefined,
-): string {
-  if (counts === undefined) return 'Checking workflows…';
-  const { checked, total } = counts;
-  if (phase === 'finished') {
-    if (total === 0) return 'You can’t see any workflows to check.';
-    return total === 1
-      ? 'Checked the 1 workflow you can see.'
-      : `Checked all ${count(total)} workflows you can see.`;
-  }
-  const seen = `${count(checked)} of ${count(total)} ${total === 1 ? 'workflow' : 'workflows'} you can see`;
-  return phase === 'failed' ? `Stopped after ${seen}.` : `Checked ${seen}.`;
+function progressSentence(phase: UsageCheckPhase, found: number): string {
+  const references = `${count(found)} ${found === 1 ? 'reference' : 'references'} found`;
+  if (phase === 'finished') return `Check complete. ${references}.`;
+  if (phase === 'failed') return `Check stopped. ${references} so far.`;
+  return `Checking workflows… ${references} so far.`;
 }
 
 const PHASE_ANNOUNCEMENT: Readonly<Record<UsageCheckPhase, string>> = {
@@ -56,29 +46,23 @@ const PHASE_ANNOUNCEMENT: Readonly<Record<UsageCheckPhase, string>> = {
  */
 function UsageProgress({
   phase,
-  counts,
+  found,
 }: Readonly<{
   phase: UsageCheckPhase;
-  counts: Readonly<{ checked: number; total: number }> | undefined;
+  found: number;
 }>) {
-  // A finished check fills the bar, even with no workflows to count.
-  const max = Math.max(counts?.total ?? 0, 1);
-  const now = phase === 'finished' ? max : (counts?.checked ?? 0);
-  const sentence = progressSentence(phase, counts);
+  const sentence = progressSentence(phase, found);
   return (
     <div className="flex flex-col gap-1.5">
       <div
         role="progressbar"
         aria-label="Workflows checked"
-        aria-valuemin={0}
-        aria-valuemax={max}
-        aria-valuenow={now}
         aria-valuetext={sentence}
         className="relative h-1 overflow-hidden rounded-full bg-surface-ink/[0.07]"
       >
         <span
-          className="absolute inset-y-0 left-0 rounded-full bg-action/80 transition-[width] duration-300 ease-unspool motion-reduce:transition-none"
-          style={{ width: `${String((now / max) * 100)}%` }}
+          className="absolute inset-0 rounded-full bg-action/80 data-checking:animate-pulse motion-reduce:animate-none"
+          data-checking={phase === 'checking' || undefined}
         />
       </div>
       <p className="text-xs text-muted-foreground tabular-nums">{sentence}</p>
@@ -167,13 +151,11 @@ function VariableUsage({
       {phase === 'failed' && lastPage === undefined ? null : (
         <UsageProgress
           phase={phase}
-          counts={
-            lastPage === undefined
-              ? undefined
-              : {
-                  checked: lastPage.checkedWorkflows,
-                  total: lastPage.totalWorkflows,
-                }
+          found={
+            query.data?.pages.reduce(
+              (total, page) => total + page.items.length,
+              0,
+            ) ?? 0
           }
         />
       )}

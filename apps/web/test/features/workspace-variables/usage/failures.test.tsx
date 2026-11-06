@@ -21,14 +21,8 @@ import {
   workflowChanged,
 } from './check.support';
 
-const page50 = usagePage(
-  { checked: 50, total: 201 },
-  { next: 'c1', items: [reference('Invoice export')] },
-);
-const lastPage = usagePage(
-  { checked: 201, total: 201 },
-  { items: [reference('Weekly summary')] },
-);
+const page50 = usagePage({ next: 'c1', items: [reference('Invoice export')] });
+const lastPage = usagePage({ items: [reference('Weekly summary')] });
 const tryAgain = () => screen.getByRole('button', { name: 'Try again' });
 
 describe('a later page failing', () => {
@@ -37,10 +31,8 @@ describe('a later page failing', () => {
     const onRemove = vi.fn();
     const event = await openDialog({ onRemove });
 
-    expect(
-      await screen.findByText('Stopped after 50 of 201 workflows you can see.'),
-    ).toBeVisible();
-    expectBar(50, 201);
+    expect(await screen.findByText(/Check stopped\./u)).toBeVisible();
+    expectBar();
     expect(screen.getByText('Check stopped')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Invoice export' })).toBeVisible();
     expect(
@@ -69,7 +61,7 @@ describe('a later page failing', () => {
       c1: [onOurSide, retry.reply],
     });
     const event = await openDialog({ onRemove: vi.fn() });
-    await screen.findByText('Stopped after 50 of 201 workflows you can see.');
+    await screen.findByText(/Check stopped\./u);
 
     await event.click(tryAgain());
     // Still holding the old error here: only the running retry says it's undecided.
@@ -77,16 +69,12 @@ describe('a later page failing', () => {
       expect(removeOff()).toBeDisabled();
     });
     expect(screen.queryByRole('button', { name: 'Remove anyway' })).toBeNull();
-    expect(
-      screen.getByText('Checked 50 of 201 workflows you can see.'),
-    ).toBeVisible();
+    expect(screen.getByText(/Checking workflows…/u)).toBeVisible();
     expect(screen.queryByText(FAILED_WARNING)).toBeNull();
     expect(screen.getByText(REMOVE_HINT)).toBeVisible();
 
     retry.release();
-    expect(
-      await screen.findByText('Checked all 201 workflows you can see.'),
-    ).toBeVisible();
+    expect(await screen.findByText(/Check complete\./u)).toBeVisible();
     expect(removeOff()).toBeEnabled();
     expect(screen.getByText(USUAL_WARNING)).toBeVisible();
     expect(asked).toEqual([null, 'c1', 'c1']);
@@ -99,7 +87,7 @@ describe('a later page failing', () => {
       c1: [onOurSide, onOurSide],
     });
     const event = await openDialog({ onRemove: vi.fn() });
-    await screen.findByText('Stopped after 50 of 201 workflows you can see.');
+    await screen.findByText(/Check stopped\./u);
     await event.click(tryAgain());
     await waitFor(() => {
       expect(asked).toEqual([null, 'c1', 'c1']);
@@ -136,9 +124,7 @@ describe('a rate limit', () => {
     expect(removeAnyway()).toBeEnabled();
 
     await event.click(tryAgain());
-    expect(
-      await screen.findByText('Checked all 201 workflows you can see.'),
-    ).toBeVisible();
+    expect(await screen.findByText(/Check complete\./u)).toBeVisible();
     // Not from the start: page one was never asked for twice.
     expect(asked).toEqual([null, 'c1', 'c1']);
     expect(screen.getAllByRole('listitem')).toHaveLength(2);
@@ -157,12 +143,7 @@ describe('a rate limit', () => {
 
 describe('a workflow changing during the check', () => {
   it('asks for a restart, which starts from the first page and closes Remove again', async () => {
-    const restarted = held(
-      usagePage(
-        { checked: 201, total: 201 },
-        { items: [reference('Fresh result')] },
-      ),
-    );
+    const restarted = held(usagePage({ items: [reference('Fresh result')] }));
     const { asked } = serveUsage({
       first: [page50, restarted.reply],
       c1: [workflowChanged],
@@ -179,15 +160,13 @@ describe('a workflow changing during the check', () => {
     expect(screen.queryByRole('button', { name: 'Try again' })).toBeNull();
 
     await event.click(screen.getByRole('button', { name: 'Restart check' }));
-    expect(await screen.findByText('Checking workflows…')).toBeVisible();
-    expectBar(0, 1);
+    expect(await screen.findByText(/Checking workflows…/u)).toBeVisible();
+    expectBar();
     expect(removeOff()).toBeDisabled();
     expect(screen.queryByRole('link', { name: 'Invoice export' })).toBeNull();
 
     restarted.release();
-    expect(
-      await screen.findByText('Checked all 201 workflows you can see.'),
-    ).toBeVisible();
+    expect(await screen.findByText(/Check complete\./u)).toBeVisible();
     expect(asked).toEqual([null, 'c1', null]);
     expect(screen.getByRole('link', { name: 'Fresh result' })).toBeVisible();
     expect(screen.queryByRole('link', { name: 'Invoice export' })).toBeNull();
@@ -214,13 +193,11 @@ describe('the first page failing', () => {
     expect(asked).toEqual([null]);
 
     await event.click(screen.getByRole('button', { name: 'Retry' }));
-    expect(await screen.findByText('Checking workflows…')).toBeVisible();
+    expect(await screen.findByText(/Checking workflows…/u)).toBeVisible();
     expect(removeOff()).toBeDisabled();
 
     retry.release();
-    expect(
-      await screen.findByText('Checked all 201 workflows you can see.'),
-    ).toBeVisible();
+    expect(await screen.findByText(/Check complete\./u)).toBeVisible();
     expect(removeOff()).toBeEnabled();
     expect(asked).toEqual([null, null]);
   });
@@ -229,7 +206,11 @@ describe('the first page failing', () => {
     serveUsage({
       first: [
         () =>
-          HttpResponse.json({ items: [], nextCursor: null, incomplete: false }),
+          HttpResponse.json({
+            items: 'unreadable',
+            nextCursor: null,
+            incomplete: false,
+          }),
       ],
     });
     await openDialog({ onRemove: vi.fn() });
@@ -314,9 +295,7 @@ describe('losing access during the check', () => {
     await event.click(screen.getByRole('button', { name: 'Retry' }));
     await settle();
     retry.release();
-    expect(
-      await screen.findByText('Checked all 201 workflows you can see.'),
-    ).toBeVisible();
+    expect(await screen.findByText(/Check complete\./u)).toBeVisible();
     expect(asked).toEqual([null, 'c1', null, 'c1']);
     expect(removeOff()).toBeEnabled();
   });

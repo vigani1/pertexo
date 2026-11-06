@@ -122,7 +122,7 @@ it('does not promise more pages because a hidden workflow sorts after the last v
     });
     expect(page.items.map((item) => item.workflowId)).toEqual([publicId]);
     expect(page.next).toBeNull();
-    expect(page).toMatchObject({ checkedWorkflows: 1, totalWorkflows: 1 });
+    expect(page).toMatchObject({ next: null });
     let after: typeof page.next = null;
     const seenByOwner: string[] = [];
     for (let visited = 0; visited < 8; visited += 1) {
@@ -201,11 +201,6 @@ describe.each(['suspended', 'pending_deletion'])(
         [workspaceId, manager],
         workspaceId,
       );
-      const [everything] = await queryAsOwner<{ total: number }>(
-        'select count(*)::int total from app.workflows where workspace_id=$1',
-        [workspaceId],
-        workspaceId,
-      );
       await queryAsOwner(
         status === 'suspended'
           ? "update app.workspaces set status='suspended' where id=$1"
@@ -222,17 +217,12 @@ describe.each(['suspended', 'pending_deletion'])(
         const limited = await usageOf(variables, builder);
         expect(limited.items).toEqual([publicId]);
         expect(limited.last).toMatchObject({
-          checkedWorkflows: 1,
-          totalWorkflows: 1,
           next: null,
         });
         for (const actor of [actorId, manager]) {
           const all = await usageOf(variables, actor);
           expect([...all.items].sort()).toEqual([workflowId, publicId].sort());
-          expect(all.last).toMatchObject({
-            checkedWorkflows: everything?.total,
-            totalWorkflows: everything?.total,
-          });
+          expect(all.last).toMatchObject({ next: null });
         }
       } finally {
         await variables.close();

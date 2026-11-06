@@ -1,7 +1,6 @@
 import { screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import {
-  barWidth,
   expectBar,
   FAILED_WARNING,
   goOffline,
@@ -20,8 +19,8 @@ import {
   workflowChanged,
 } from './check.support';
 
-const page50 = usagePage({ checked: 50, total: 201 }, { next: 'c1' });
-const lastPage = usagePage({ checked: 201, total: 201 });
+const page50 = usagePage({ next: 'c1' });
+const lastPage = usagePage();
 
 describe('opening the dialog offline', () => {
   it('keeps Remove off with nothing checked, then runs by itself on reconnect', async () => {
@@ -30,18 +29,16 @@ describe('opening the dialog offline', () => {
     goOffline();
     await open();
 
-    expect(await screen.findByText('Checking workflows…')).toBeVisible();
+    expect(await screen.findByText(/Checking workflows…/u)).toBeVisible();
     expect(removeOff()).toBeDisabled();
     expect(screen.getByText(REMOVE_HINT)).toBeVisible();
-    expectBar(0, 1);
-    expect(barWidth()).toBe('0%');
+    expectBar();
+
     await settle();
     expect(asked).toEqual([]);
 
     goOnline();
-    expect(
-      await screen.findByText('Checked all 201 workflows you can see.'),
-    ).toBeVisible();
+    expect(await screen.findByText(/Check complete\./u)).toBeVisible();
     expect(asked).toEqual([null, 'c1']);
     expect(removeOff()).toBeEnabled();
   });
@@ -53,7 +50,7 @@ describe('closing the dialog while it waits for the network', () => {
     const { event, open } = await renderOpener({ onRemove: vi.fn() });
     goOffline();
     await open();
-    await screen.findByText('Checking workflows…');
+    await screen.findByText(/Checking workflows…/u);
 
     await event.click(screen.getByRole('button', { name: 'Close references' }));
     await waitFor(() => {
@@ -66,30 +63,26 @@ describe('closing the dialog while it waits for the network', () => {
 });
 
 describe('going offline partway', () => {
-  it('keeps the counts and keeps Remove off, then carries on by itself', async () => {
+  it('keeps the results and keeps Remove off, then carries on by itself', async () => {
     const first = held(page50);
     const { asked } = serveUsage({ first: [first.reply], c1: [lastPage] });
     await openDialog({ onRemove: vi.fn() });
-    await screen.findByText('Checking workflows…');
+    await screen.findByText(/Checking workflows…/u);
     await waitFor(() => {
       expect(asked).toEqual([null]);
     });
 
     goOffline();
     first.release();
-    expect(
-      await screen.findByText('Checked 50 of 201 workflows you can see.'),
-    ).toBeVisible();
-    expectBar(50, 201);
+    expect(await screen.findByText(/Checking workflows…/u)).toBeVisible();
+    expectBar();
     expect(removeOff()).toBeDisabled();
     expect(screen.getByText(REMOVE_HINT)).toBeVisible();
     await settle();
     expect(asked).toEqual([null]);
 
     goOnline();
-    expect(
-      await screen.findByText('Checked all 201 workflows you can see.'),
-    ).toBeVisible();
+    expect(await screen.findByText(/Check complete\./u)).toBeVisible();
     expect(removeOff()).toBeEnabled();
     expect(asked).toEqual([null, 'c1']);
   });
@@ -106,15 +99,13 @@ describe('a retry made offline', () => {
 
     goOffline();
     await event.click(screen.getByRole('button', { name: 'Retry' }));
-    expect(await screen.findByText('Checking workflows…')).toBeVisible();
+    expect(await screen.findByText(/Checking workflows…/u)).toBeVisible();
     expect(removeOff()).toBeDisabled();
     await settle();
     expect(asked).toEqual([null]);
 
     goOnline();
-    expect(
-      await screen.findByText('Checked all 201 workflows you can see.'),
-    ).toBeVisible();
+    expect(await screen.findByText(/Check complete\./u)).toBeVisible();
     expect(removeOff()).toBeEnabled();
   });
 
@@ -124,22 +115,18 @@ describe('a retry made offline', () => {
       c1: [onOurSide, lastPage],
     });
     const event = await openDialog({ onRemove: vi.fn() });
-    await screen.findByText('Stopped after 50 of 201 workflows you can see.');
+    await screen.findByText(/Check stopped\./u);
 
     goOffline();
     await event.click(screen.getByRole('button', { name: 'Try again' }));
     await settle();
     expect(removeAnyway()).toBeEnabled();
     expect(screen.getByText(FAILED_WARNING)).toBeVisible();
-    expect(
-      screen.getByText('Stopped after 50 of 201 workflows you can see.'),
-    ).toBeVisible();
+    expect(screen.getByText(/Check stopped\./u)).toBeVisible();
     expect(asked).toEqual([null, 'c1']);
 
     goOnline();
-    expect(
-      await screen.findByText('Checked all 201 workflows you can see.'),
-    ).toBeVisible();
+    expect(await screen.findByText(/Check complete\./u)).toBeVisible();
     expect(removeOff()).toBeEnabled();
     expect(asked).toEqual([null, 'c1', 'c1']);
   });
@@ -156,13 +143,11 @@ describe('a retry made offline', () => {
 
     goOffline();
     await event.click(restart);
-    expect(await screen.findByText('Checking workflows…')).toBeVisible();
+    expect(await screen.findByText(/Checking workflows…/u)).toBeVisible();
     expect(removeOff()).toBeDisabled();
 
     goOnline();
-    expect(
-      await screen.findByText('Checked all 201 workflows you can see.'),
-    ).toBeVisible();
+    expect(await screen.findByText(/Check complete\./u)).toBeVisible();
     expect(asked).toEqual([null, 'c1', null]);
   });
 });
@@ -170,22 +155,15 @@ describe('a retry made offline', () => {
 describe('a finished check', () => {
   it('stays finished offline, and neither a reconnect nor a returning tab walks it again', async () => {
     const { asked } = serveUsage({
-      first: [
-        usagePage(
-          { checked: 1, total: 1 },
-          { items: [reference('Invoice export')] },
-        ),
-      ],
+      first: [usagePage({ items: [reference('Invoice export')] })],
     });
     await openDialog({ onRemove: vi.fn() });
-    await screen.findByText('Checked the 1 workflow you can see.');
+    await screen.findByText(/Check complete\./u);
 
     goOffline();
     await settle();
     expect(removeOff()).toBeEnabled();
-    expect(
-      screen.getByText('Checked the 1 workflow you can see.'),
-    ).toBeVisible();
+    expect(screen.getByText(/Check complete\./u)).toBeVisible();
 
     goOnline();
     await settle();

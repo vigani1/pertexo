@@ -2,7 +2,6 @@ import { notifyManager } from '@tanstack/react-query';
 import { screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
-  barWidth,
   expectBar,
   held,
   openDialog,
@@ -18,32 +17,18 @@ import {
 
 describe('a check running by itself', () => {
   it('walks every page with no click, showing its progress, and only then lets a name go', async () => {
-    const second = held(
-      usagePage({ checked: 100, total: 201 }, { next: 'c2' }),
-    );
+    const second = held(usagePage({ next: 'c2' }));
     const { asked, pageSizes } = serveUsage({
-      first: [
-        usagePage(
-          { checked: 50, total: 201 },
-          { next: 'c1', items: [reference('Invoice export')] },
-        ),
-      ],
+      first: [usagePage({ next: 'c1', items: [reference('Invoice export')] })],
       c1: [second.reply],
-      c2: [
-        usagePage(
-          { checked: 201, total: 201 },
-          { items: [reference('Weekly summary')] },
-        ),
-      ],
+      c2: [usagePage({ items: [reference('Weekly summary')] })],
     });
     const onRemove = vi.fn();
     const event = await openDialog({ onRemove });
 
-    expect(
-      await screen.findByText('Checked 50 of 201 workflows you can see.'),
-    ).toBeVisible();
-    expectBar(50, 201);
-    expect(Number.parseFloat(barWidth())).toBeCloseTo(24.88, 1);
+    expect(await screen.findByText(/Checking workflows…/u)).toBeVisible();
+    expectBar();
+
     expect(screen.getByText('Checking workflows')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Invoice export' })).toBeVisible();
     // Between two pages there is nothing to click, and a name can't go yet.
@@ -54,11 +39,9 @@ describe('a check running by itself', () => {
     ).toBeNull();
 
     second.release();
-    expect(
-      await screen.findByText('Checked all 201 workflows you can see.'),
-    ).toBeVisible();
-    expectBar(201, 201);
-    expect(barWidth()).toBe('100%');
+    expect(await screen.findByText(/Check complete\./u)).toBeVisible();
+    expectBar();
+
     expect(screen.getByText('Check finished')).toBeInTheDocument();
     expect(asked).toEqual([null, 'c1', 'c2']);
     // Dense references cost fewer requests against the rate limit this way.
@@ -73,26 +56,24 @@ describe('a check running by itself', () => {
   });
 
   it('keeps Remove off, with an empty bar, while the first page is on its way', async () => {
-    const first = held(usagePage({ checked: 1, total: 1 }));
+    const first = held(usagePage());
     serveUsage({ first: [first.reply] });
     await openDialog({ onRemove: vi.fn() });
 
-    expect(await screen.findByText('Checking workflows…')).toBeVisible();
-    expectBar(0, 1);
+    expect(await screen.findByText(/Checking workflows…/u)).toBeVisible();
+    expectBar();
     expect(removeOff()).toBeDisabled();
     expect(screen.getByText(REMOVE_HINT)).toBeVisible();
 
     first.release();
-    expect(
-      await screen.findByText('Checked the 1 workflow you can see.'),
-    ).toBeVisible();
+    expect(await screen.findByText(/Check complete\./u)).toBeVisible();
     expect(removeOff()).toBeEnabled();
   });
 
   it('never calls a name unused before the last page', async () => {
-    const last = held(usagePage({ checked: 2, total: 2 }));
+    const last = held(usagePage());
     serveUsage({
-      first: [usagePage({ checked: 1, total: 2 }, { next: 'c1' })],
+      first: [usagePage({ next: 'c1' })],
       c1: [last.reply],
     });
     await openDialog();
@@ -112,36 +93,30 @@ describe('a check running by itself', () => {
         'No current draft or publication references this name.',
       ),
     ).toBeVisible();
-    expect(
-      screen.getByText('Checked all 2 workflows you can see.'),
-    ).toBeVisible();
+    expect(screen.getByText(/Check complete\./u)).toBeVisible();
   });
 
-  it('counts one workflow in the singular while it is in progress', async () => {
-    const last = held(usagePage({ checked: 1, total: 1 }));
+  it('keeps checking through a cursor with no references yet', async () => {
+    const last = held(usagePage());
     serveUsage({
-      first: [usagePage({ checked: 0, total: 1 }, { next: 'c1' })],
+      first: [usagePage({ next: 'c1' })],
       c1: [last.reply],
     });
     await openDialog();
-    expect(
-      await screen.findByText('Checked 0 of 1 workflow you can see.'),
-    ).toBeVisible();
+    expect(await screen.findByText(/Checking workflows…/u)).toBeVisible();
     last.release();
-    expect(
-      await screen.findByText('Checked the 1 workflow you can see.'),
-    ).toBeVisible();
+    expect(await screen.findByText(/Check complete\./u)).toBeVisible();
   });
 
-  it('shows a full, valid bar when no workflows are visible', async () => {
-    serveUsage({ first: [usagePage({ checked: 0, total: 0 })] });
+  it('finishes honestly with no references when no workflows are visible', async () => {
+    serveUsage({ first: [usagePage()] });
     await openDialog({ onRemove: vi.fn() });
 
     expect(
-      await screen.findByText('You can’t see any workflows to check.'),
+      await screen.findByText('Check complete. 0 references found.'),
     ).toBeVisible();
-    expectBar(1, 1);
-    expect(barWidth()).toBe('100%');
+    expectBar();
+
     expect(removeOff()).toBeEnabled();
     expect(
       screen.getByText('No current draft or publication references this name.'),
@@ -150,10 +125,8 @@ describe('a check running by itself', () => {
 
   it('says the check is incomplete if any page could not be analysed, not only the last', async () => {
     serveUsage({
-      first: [
-        usagePage({ checked: 1, total: 2 }, { next: 'c1', incomplete: true }),
-      ],
-      c1: [usagePage({ checked: 2, total: 2 })],
+      first: [usagePage({ next: 'c1', incomplete: true })],
+      c1: [usagePage()],
     });
     await openDialog();
 
@@ -171,19 +144,12 @@ describe('a check running by itself', () => {
 
   it('walks to the end for a member who cannot remove names, and offers nothing to remove', async () => {
     const { asked } = serveUsage({
-      first: [usagePage({ checked: 1, total: 2 }, { next: 'c1' })],
-      c1: [
-        usagePage(
-          { checked: 2, total: 2 },
-          { items: [reference('Invoice export')] },
-        ),
-      ],
+      first: [usagePage({ next: 'c1' })],
+      c1: [usagePage({ items: [reference('Invoice export')] })],
     });
     await openDialog();
 
-    expect(
-      await screen.findByText('Checked all 2 workflows you can see.'),
-    ).toBeVisible();
+    expect(await screen.findByText(/Check complete\./u)).toBeVisible();
     expect(asked).toEqual([null, 'c1']);
     expect(screen.getByRole('link', { name: 'Invoice export' })).toBeVisible();
     expect(screen.queryByRole('button', { name: /Remove/u })).toBeNull();
@@ -199,9 +165,9 @@ describe('a tab whose timers run late, as a hidden one’s do', () => {
 
   it('still walks to the end', async () => {
     serveUsage({
-      first: [usagePage({ checked: 1, total: 3 }, { next: 'c1' })],
-      c1: [usagePage({ checked: 2, total: 3 }, { next: 'c2' })],
-      c2: [usagePage({ checked: 3, total: 3 })],
+      first: [usagePage({ next: 'c1' })],
+      c1: [usagePage({ next: 'c2' })],
+      c2: [usagePage()],
     });
     const { open, queryClient } = await renderOpener();
     // The library tells React through setTimeout. Holding that back until each
@@ -216,9 +182,7 @@ describe('a tab whose timers run late, as a hidden one’s do', () => {
     }, 10);
     try {
       await open();
-      expect(
-        await screen.findByText('Checked all 3 workflows you can see.'),
-      ).toBeVisible();
+      expect(await screen.findByText(/Check complete\./u)).toBeVisible();
     } finally {
       clearInterval(pump);
     }
@@ -227,17 +191,14 @@ describe('a tab whose timers run late, as a hidden one’s do', () => {
 
 describe('closing the dialog', () => {
   it('calls off the page in flight, asks for no more, and starts over when opened again', async () => {
-    const second = held(usagePage({ checked: 2, total: 3 }, { next: 'c2' }));
+    const second = held(usagePage({ next: 'c2' }));
     const { asked, signals } = serveUsage({
-      first: [
-        usagePage({ checked: 1, total: 3 }, { next: 'c1' }),
-        usagePage({ checked: 3, total: 3 }),
-      ],
+      first: [usagePage({ next: 'c1' }), usagePage()],
       c1: [second.reply],
     });
     const { event, open } = await renderOpener();
     await open();
-    await screen.findByText('Checked 1 of 3 workflows you can see.');
+    await screen.findByText(/Checking workflows…/u);
     await waitFor(() => {
       expect(asked).toEqual([null, 'c1']);
     });
@@ -254,9 +215,32 @@ describe('closing the dialog', () => {
     expect(asked).toEqual([null, 'c1']);
 
     await open();
-    expect(
-      await screen.findByText('Checked all 3 workflows you can see.'),
-    ).toBeVisible();
+    expect(await screen.findByText(/Check complete\./u)).toBeVisible();
     expect(asked).toEqual([null, 'c1', null]);
   });
+});
+
+it('shows references while a cursor remains and reports completion without an exact percentage', async () => {
+  const pending = held(usagePage({ items: [reference('Second')] }));
+  serveUsage({
+    first: [usagePage({ next: 'later', items: [reference('First')] })],
+    later: [pending.reply],
+  });
+  await openDialog();
+  try {
+    expect(await screen.findByRole('link', { name: 'First' })).toBeVisible();
+    expect(screen.getByRole('progressbar')).not.toHaveAttribute(
+      'aria-valuenow',
+    );
+    expect(
+      await screen.findByText('Checking workflows… 1 reference found so far.'),
+    ).toBeVisible();
+    pending.release();
+    expect(
+      await screen.findByText('Check complete. 2 references found.'),
+    ).toBeVisible();
+    expect(screen.getByRole('link', { name: 'Second' })).toBeVisible();
+  } finally {
+    pending.release();
+  }
 });

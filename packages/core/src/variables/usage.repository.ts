@@ -7,9 +7,8 @@ import {
   workflowVersions,
 } from '@pertexo/database/schema';
 import type { Role } from '@pertexo/policy';
-import { and, eq, exists, gt, gte, lt, lte, sql } from 'drizzle-orm';
+import { and, eq, exists, gt, gte, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import { alias } from 'drizzle-orm/pg-core';
 import type { PoolClient } from 'pg';
 
 import type {
@@ -27,13 +26,9 @@ export async function readVariableUsage(
   role: Role,
 ): Promise<VariableUsagePage> {
   const scope = await readFolderScope(client, input, role);
-  const page = await walkVariableUsage(input, (after) =>
+  return walkVariableUsage(input, (after) =>
     readUsageWorkflow(client, input.workspaceId, scope, after),
   );
-  return {
-    ...page,
-    ...(await readUsageProgress(client, input.workspaceId, scope, page.next)),
-  };
 }
 
 /** The next visible workflow, with its graphs. */
@@ -44,8 +39,23 @@ async function readUsageWorkflow(
   after: UsageCursor,
 ) {
   const db = drizzle(client);
-  const later = alias(workflows, 'later');
+  // Limit the indexed identity page before loading any graphs.
+  const candidates = db.$with('usage_candidates').as(
+    db
+      .select({ id: workflows.id })
+      .from(workflows)
+      .where(
+        and(
+          eq(workflows.workspaceId, workspaceId),
+          workflowScopeSql(scope, sql`${workflows.id}`),
+          afterWorkflow(after),
+        ),
+      )
+      .orderBy(workflows.id)
+      .limit(2),
+  );
   const [workflow] = await db
+    .with(candidates)
     .select({
       id: workflows.id,
       name: workflows.name,
@@ -56,15 +66,9 @@ async function readUsageWorkflow(
       publishedGraph: workflowVersions.graphJson,
       hasMore: exists(
         db
-          .select({ id: later.id })
-          .from(later)
-          .where(
-            and(
-              eq(later.workspaceId, workflows.workspaceId),
-              gt(later.id, workflows.id),
-              workflowScopeSql(scope, sql`${later.id}`),
-            ),
-          ),
+          .select({ id: candidates.id })
+          .from(candidates)
+          .where(gt(candidates.id, workflows.id)),
       ).mapWith(Boolean),
     })
     .from(workflows)
@@ -86,8 +90,10 @@ async function readUsageWorkflow(
     .where(
       and(
         eq(workflows.workspaceId, workspaceId),
-        workflowScopeSql(scope, sql`${workflows.id}`),
-        afterWorkflow(after),
+        eq(
+          workflows.id,
+          sql`(${db.select({ id: candidates.id }).from(candidates).orderBy(candidates.id).limit(1)})`,
+        ),
       ),
     )
     .orderBy(workflows.id)
@@ -102,37 +108,4 @@ function afterWorkflow(cursor: UsageCursor) {
   return cursor.offset > 0
     ? gte(workflows.id, cursor.workflowId)
     : gt(workflows.id, cursor.workflowId);
-}
-
-/**
- * How far the check has got, counted from the cursor rather than added up by the
- * caller, so a page fetched twice can't count twice. Visible workflows only.
- */
-async function readUsageProgress(
-  client: PoolClient,
-  workspaceId: string,
-  scope: FolderScope,
-  next: UsageCursor | null,
-) {
-  const [progress] = await drizzle(client)
-    .select({
-      totalWorkflows: sql<number>`count(*)::int`,
-      checkedWorkflows: sql<number>`count(*) filter (where ${checkedWorkflow(next)})::int`,
-    })
-    .from(workflows)
-    .where(
-      and(
-        eq(workflows.workspaceId, workspaceId),
-        workflowScopeSql(scope, sql`${workflows.id}`),
-      ),
-    )
-    .catch(rethrowQueryFailure);
-  return progress ?? { totalWorkflows: 0, checkedWorkflows: 0 };
-}
-
-function checkedWorkflow(next: UsageCursor | null) {
-  if (next === null || next === undefined) return sql`true`;
-  return next.offset > 0
-    ? lt(workflows.id, next.workflowId)
-    : lte(workflows.id, next.workflowId);
 }
