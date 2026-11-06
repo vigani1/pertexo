@@ -89,3 +89,5 @@ export {
   evaluateSuiteExpectations,
   type SuiteOutput,
 } from './testing/evaluate-suite.js';
+
+export { COORDINATOR_COMPLETION_WINDOW_LIMITS } from './observation/coordinator-output.js';

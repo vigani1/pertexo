@@ -34,7 +34,12 @@ export function exactKeys(
     fail('executable envelope contains missing or unknown fields');
 }
 
-function assertSafeExecutableJson(value: unknown): void {
+type JsonBounds = Readonly<{ bytes: number; depth: number; members: number }>;
+
+function assertSafeExecutableJson(
+  value: unknown,
+  limits: JsonBounds = WORKFLOW_EXECUTABLE_LIMITS,
+): void {
   type Frame =
     | {
         readonly kind: 'value';
@@ -48,8 +53,7 @@ function assertSafeExecutableJson(value: unknown): void {
   let bytes = 0;
   const add = (amount: number): void => {
     bytes += amount;
-    if (bytes > WORKFLOW_EXECUTABLE_LIMITS.bytes)
-      fail('executable envelope exceeds maximum bytes');
+    if (bytes > limits.bytes) fail('executable envelope exceeds maximum bytes');
   };
   while (pending.length > 0) {
     const frame = pending.pop();
@@ -63,23 +67,20 @@ function assertSafeExecutableJson(value: unknown): void {
       add(4);
       continue;
     }
-    const primitiveBytes = executablePrimitiveBytes(
-      item,
-      WORKFLOW_EXECUTABLE_LIMITS.bytes - bytes,
-    );
+    const primitiveBytes = executablePrimitiveBytes(item, limits.bytes - bytes);
     if (primitiveBytes !== undefined) {
       add(primitiveBytes);
       continue;
     }
     if (typeof item !== 'object') fail('executable envelope must contain JSON');
-    assertExecutableContainer(item, frame.depth, ancestors);
+    assertExecutableContainer(item, frame.depth, ancestors, limits.depth);
     const isArray = Array.isArray(item);
     const prototype: object | null = Object.getPrototypeOf(item) as
       object | null;
     const plainContainer =
       isArray || prototype === Object.prototype || prototype === null;
     if (!plainContainer) fail('executable envelope must contain plain objects');
-    if (isArray && item.length > WORKFLOW_EXECUTABLE_LIMITS.members)
+    if (isArray && item.length > limits.members)
       fail('executable envelope array is oversized');
     add(2 + (isArray ? Math.max(0, item.length - 1) : 0));
     ancestors.add(item);
@@ -87,7 +88,7 @@ function assertSafeExecutableJson(value: unknown): void {
     let enumerableCount = 0;
     for (const key of Object.keys(item)) {
       members += 1;
-      if (members > WORKFLOW_EXECUTABLE_LIMITS.members)
+      if (members > limits.members)
         fail('executable envelope exceeds maximum members');
       if (isArray && key !== String(enumerableCount))
         fail('executable envelope array is sparse or has extra fields');
@@ -95,7 +96,7 @@ function assertSafeExecutableJson(value: unknown): void {
         if (enumerableCount > 0) add(1);
         add(
           jsonStringByteLength(key, {
-            stopAfterBytes: WORKFLOW_EXECUTABLE_LIMITS.bytes - bytes,
+            stopAfterBytes: limits.bytes - bytes,
           }),
         );
         add(1);
@@ -112,8 +113,11 @@ function assertSafeExecutableJson(value: unknown): void {
 }
 
 /** Engine structures, with sorted keys so they compare by their text. */
-export function normalizeBoundedEngineJson(value: unknown): JsonValue {
-  assertSafeExecutableJson(value);
+export function normalizeBoundedEngineJson(
+  value: unknown,
+  limits?: JsonBounds,
+): JsonValue {
+  assertSafeExecutableJson(value, limits);
   return JSON.parse(canonicalJson(value)) as JsonValue;
 }
 
@@ -215,9 +219,9 @@ function assertExecutableContainer(
   item: object,
   depth: number,
   ancestors: ReadonlySet<object>,
+  maximumDepth: number,
 ): void {
-  if (depth > WORKFLOW_EXECUTABLE_LIMITS.depth)
-    fail('executable envelope exceeds maximum depth');
+  if (depth > maximumDepth) fail('executable envelope exceeds maximum depth');
   if (ancestors.has(item)) fail('executable envelope must not contain cycles');
 }
 
