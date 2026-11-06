@@ -1,8 +1,10 @@
 import { Pool } from 'pg';
+import { ARTIFACT_OWNER_SOURCES } from '@pertexo/database/schema';
 import { afterAll, expect, it } from 'vitest';
 import { nodeArtifactReferenceSchema } from '@pertexo/node-sdk';
 import {
   ARTIFACT_DESCRIPTOR_JSON_PATH,
+  ARTIFACT_REFERENCE_PRESENCE_JSON_PATH,
   isArtifactDescriptor,
 } from '../../src/artifacts/references/descriptor-shape.js';
 import { collectArtifactReferences } from '../../src/artifacts/references/locks.repository.js';
@@ -125,4 +127,75 @@ it('keeps shape recognition distinct from metadata validation', async () => {
     [JSON.stringify(value)],
   );
   expect(result.rows).toEqual([{ id: descriptor.artifactId }]);
+});
+
+it.each([
+  descriptor,
+  { kind: 'artifact', artifactId: descriptor.artifactId },
+  {
+    nested: [
+      [descriptor],
+      { kind: 'artifact', artifactId: descriptor.artifactId },
+    ],
+  },
+  JSON.parse(
+    '{"k\\u0069nd":"artifact","artifact\\u0049d":"abcdefab-cdef-4abc-8def-abcdefabcdef"}',
+  ) as unknown,
+  { artifactId: descriptor.artifactId },
+  { kind: ['artifact'], artifactId: descriptor.artifactId },
+  { kind: 'business', artifactId: descriptor.artifactId },
+])(
+  'never skips extractable references in the cheap presence guard: %j',
+  async (value) => {
+    const result = await pool.query<{ present: boolean; ids: string[] }>(
+      `select jsonb_path_exists($1::jsonb,$2::jsonpath) present,
+      array(select app.artifact_owner_ids($1::jsonb,'value')) ids`,
+      [JSON.stringify(value), ARTIFACT_REFERENCE_PRESENCE_JSON_PATH],
+    );
+    const row = result.rows[0];
+    if (!row) throw new Error('Presence query returned no result');
+    if (row.ids.length > 0) expect(row.present).toBe(true);
+    if (
+      JSON.stringify(value) ===
+      JSON.stringify({ artifactId: descriptor.artifactId })
+    )
+      expect(row.present).toBe(false);
+    const text = await pool.query<{ present: boolean }>(
+      'select app.artifact_owner_text_may_reference($1) present',
+      [JSON.stringify(value)],
+    );
+    expect(text.rows[0]?.present).toBe(row.present);
+  },
+);
+
+it('keeps deployed owner guards on the SDK-derived presence shape', async () => {
+  const expected = await pool.query<{ path: string }>(
+    'select $1::jsonpath::text path',
+    [ARTIFACT_REFERENCE_PRESENCE_JSON_PATH],
+  );
+  const path = expected.rows[0]?.path;
+  if (!path) throw new Error('Presence path query returned no result');
+  const triggers = await pool.query<{ definition: string }>(
+    `select pg_get_triggerdef(t.oid) definition from pg_trigger t
+     join pg_class c on c.oid=t.tgrelid join pg_namespace n on n.oid=c.relnamespace
+     where n.nspname='app' and t.tgname like '%_artifact_owner_insert'`,
+  );
+  expect(triggers.rows).toHaveLength(ARTIFACT_OWNER_SOURCES.length);
+  for (const { definition } of triggers.rows) {
+    expect(
+      definition.includes(path) ||
+        definition.includes('artifact_owner_text_may_reference'),
+    ).toBe(true);
+  }
+  const helper = await pool.query<{ definition: string }>(
+    "select pg_get_functiondef('app.artifact_owner_text_may_reference(text)'::regprocedure) definition",
+  );
+  expect(helper.rows[0]?.definition).toContain(
+    ARTIFACT_REFERENCE_PRESENCE_JSON_PATH,
+  );
+  const malformed = await pool.query<{ present: boolean }>(
+    'select app.artifact_owner_text_may_reference($1) present',
+    ['{broken'],
+  );
+  expect(malformed.rows).toEqual([{ present: false }]);
 });

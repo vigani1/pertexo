@@ -778,6 +778,13 @@
       "when": 1793941844855,
       "tag": "0110_artifact_owner_references",
       "breakpoints": true
+    },
+    {
+      "idx": 111,
+      "version": "7",
+      "when": 1793957039647,
+      "tag": "0111_artifact_owner_fast_paths",
+      "breakpoints": true
     }
   ]
 }
