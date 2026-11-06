@@ -1,3 +1,4 @@
+import { WEB_BROWSER_PACKAGE_ROOTS } from './browser-entry-dependencies.mjs';
 import { executionAreaDependencyAllowed } from './execution-area-rules.mjs';
 import console from 'node:console';
 import { readdir, readFile } from 'node:fs/promises';
@@ -7,16 +8,7 @@ import { pathToFileURL } from 'node:url';
 import ts from 'typescript';
 
 const root = path.resolve(import.meta.dirname, '../..');
-const webAllowedWorkspaceImports = new Set([
-  '@pertexo/node-catalog',
-  '@pertexo/node-sdk',
-  '@pertexo/nodes-core',
-  '@pertexo/contracts',
-  '@pertexo/workflow-model',
-  '@pertexo/policy',
-  '@pertexo/templates',
-  '@pertexo/integrations',
-]);
+const webAllowedWorkspaceImports = new Set(WEB_BROWSER_PACKAGE_ROOTS);
 // Tables and primitives are what core and secrets build on; applications go through them.
 const coreOnlyDatabaseEntries = new Set([
   '@pertexo/database/schema',

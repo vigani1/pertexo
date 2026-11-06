@@ -6,6 +6,18 @@ import process from 'node:process';
 import { pathToFileURL } from 'node:url';
 import ts from 'typescript';
 
+// One reviewed browser-root list drives lint, architecture and transitive dependency checks.
+export const WEB_BROWSER_PACKAGE_ROOTS = Object.freeze([
+  '@pertexo/contracts',
+  '@pertexo/integrations',
+  '@pertexo/node-catalog',
+  '@pertexo/node-sdk',
+  '@pertexo/nodes-core',
+  '@pertexo/policy',
+  '@pertexo/templates',
+  '@pertexo/workflow-model',
+]);
+
 const builtins = new Set([
   ...builtinModules,
   ...builtinModules.map((name) => `node:${name}`),
