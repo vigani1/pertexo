@@ -75,3 +75,4 @@ export {
   createDisposableDatabaseFixture,
   dropDisconnectedDatabase,
 } from './testing/postgres/disposable-database.js';
+export { expectedMigrationsAfter } from './testing/expected-migrations.js';
