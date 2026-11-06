@@ -124,13 +124,20 @@ test('removes only its owned fixture after success and setup failure', async (t)
   assert.deepEqual(await readdir(parent), ['unrelated.txt']);
 });
 
-test('lets browser consumers load the workflow model and engine roots', async () => {
+test('lets browser consumers load the execution and node package roots', async () => {
   assert.deepEqual(
     await inspectBrowserEntryDependencies({
       root: fileURLToPath(new URL('../../', import.meta.url)),
       entries: [
         'packages/workflow-model/src/index.ts',
         'packages/workflow-engine/src/index.ts',
+        ...[
+          'node-sdk',
+          'nodes-core',
+          'node-catalog',
+          'templates',
+          'integrations',
+        ].map((name) => `packages/${name}/src/index.ts`),
       ],
     }),
     [],

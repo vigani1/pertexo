@@ -628,7 +628,7 @@ test('a package reaches its own code by relative path', () => {
       );
   assert.deepEqual(
     validateModuleImports({
-      'packages/nodes-core/src/a.ts': "import { a } from '@pertexo/core-ish';",
+      'packages/example/src/a.ts': "import { a } from '@pertexo/core-ish';",
       'packages/core/test/a.ts': "import { a } from '@pertexo/core/variables';",
     }),
     [],
@@ -835,3 +835,27 @@ test('workflow packages retain their execution and domain vocabulary dependencie
     [],
   );
 });
+
+for (const workspace of [
+  'node-sdk',
+  'nodes-core',
+  'node-catalog',
+  'templates',
+  'integrations',
+]) {
+  test(`batch F part 2 preserves ${workspace} ownership against engine dependencies`, () => {
+    for (const declaration of ['import { a }', 'import type { A }']) {
+      for (const specifier of [
+        '@pertexo/workflow-engine',
+        '../../workflow-engine/src/transition.js',
+      ]) {
+        assert.match(
+          validateModuleImports({
+            [`packages/${workspace}/src/step-contract.ts`]: `${declaration} from '${specifier}';`,
+          }).join('\n'),
+          /package dependency is not allowed/u,
+        );
+      }
+    }
+  });
+}

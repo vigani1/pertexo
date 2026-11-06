@@ -191,16 +191,35 @@ function directionViolations(file, specifier) {
       `${file}: applications reach the database only through @pertexo/database/platform and, from tests, /testing; ${specifier} belongs in a core area`,
     );
   const workspace = file.split('/')[1];
-  const workflowDependencies = {
+  const executionPackageDependencies = {
     'workflow-model': ['policy'],
     'workflow-engine': ['workflow-model', 'node-sdk'],
+    'node-sdk': [],
+    'nodes-core': ['node-sdk', 'workflow-model'],
+    'node-catalog': [
+      'node-sdk',
+      'nodes-core',
+      'integrations',
+      'templates',
+      'workflow-model',
+    ],
+    templates: ['workflow-model'],
+    integrations: ['contracts', 'node-sdk', 'workflow-model'],
   };
+  const target = specifier.startsWith('.')
+    ? path.posix.normalize(path.posix.join(path.posix.dirname(file), specifier))
+    : undefined;
+  const dependency = specifier.startsWith('@pertexo/')
+    ? specifier.split('/')[1]
+    : target?.startsWith('packages/')
+      ? target.split('/')[1]
+      : undefined;
   if (
     file.startsWith('packages/') &&
-    workflowDependencies[workspace] &&
-    specifier.startsWith('@pertexo/') &&
-    specifier.split('/')[1] !== workspace &&
-    !workflowDependencies[workspace].includes(specifier.split('/')[1])
+    executionPackageDependencies[workspace] &&
+    dependency !== undefined &&
+    dependency !== workspace &&
+    !executionPackageDependencies[workspace].includes(dependency)
   )
     violations.push(
       `${file}: workflow package dependency is not allowed: ${specifier}`,
