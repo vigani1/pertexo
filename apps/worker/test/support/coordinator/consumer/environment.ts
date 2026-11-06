@@ -1,6 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 
+import { afterAll } from 'vitest';
+
 import { createRedisTestNamespace } from '../../infrastructure/redis-test-namespace.js';
 
 export const enabled = process.env.WORKER_TRANSPORT_INTEGRATION === 'true';
@@ -45,6 +47,10 @@ export const redisNamespace = createRedisTestNamespace(
   12,
   'coordinator-consumer',
 );
+
+// Suite teardown can itself time out while closing PostgreSQL resources. Keep
+// namespace release independently registered, after the suite's worker cleanup.
+afterAll(() => redisNamespace.close());
 
 export const redisUrl = redisNamespace.redisUrl;
 
