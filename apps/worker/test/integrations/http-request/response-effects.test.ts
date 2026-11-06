@@ -37,7 +37,7 @@ it.each(['size', 'encoding'] as const)(
       nodeId: 'effect',
       invocationKey: 'effect',
       sideEffectClass: 'unsafe',
-      beforeDispatch: async () => undefined,
+      beforeDispatch: () => Promise.resolve(),
     };
     const failureResult = createHttpRequestExecutorRegistration({
       httpClient: createNodeProviderHttpClient({

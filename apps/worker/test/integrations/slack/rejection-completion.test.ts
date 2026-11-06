@@ -21,7 +21,7 @@ it.each(['token_expired', 'missing_scope', 'not_in_channel'])(
       failureKind: 'failed',
       possiblyDispatched: false,
       safeErrorCode: `slack.${error}`,
-      errorSummary: expect.stringMatching(/Slack/iu),
+      errorSummary: expect.stringMatching(/Slack/iu) as unknown,
     });
   },
 );
