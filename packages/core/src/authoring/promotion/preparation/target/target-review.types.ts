@@ -6,7 +6,7 @@ import type {
   WorkflowPromotionRequirement,
 } from '@pertexo/contracts';
 
-import type { DataTableDefinition } from '../../../../data-tables/data-table-commands.types.js';
+import type { DataTableDefinition } from '@pertexo/contracts';
 
 import type { PromotionScope } from '../../workflow-promotion.types.js';
 import type { PromotionGraphBudget } from '../graph.js';
