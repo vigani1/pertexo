@@ -24,7 +24,9 @@ import {
   isCoreMergeDefinition,
   isCoreParallelDefinition,
 } from '../core-definition-identities.js';
-import { compareOrdinal, fail, sameIdentity } from './foundation.js';
+import { compareOrdinal } from '@pertexo/workflow-model';
+import { fail } from './executable-errors.js';
+import { sameIdentity } from './definition-identity.js';
 
 export function definitionManifest(
   catalog: NodeCatalog,

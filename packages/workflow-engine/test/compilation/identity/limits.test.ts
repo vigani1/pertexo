@@ -6,7 +6,7 @@ import {
   verifyWorkflowExecutable,
 } from '../../../src/server.js';
 import { parseWorkflowExecutable } from '../../../src/compilation/boundary.js';
-import { WORKFLOW_EXECUTABLE_LIMITS } from '../../../src/compilation/foundation.js';
+import { WORKFLOW_EXECUTABLE_LIMITS } from '../../../src/compilation/runtime-policies.js';
 import {
   nodeCatalog,
   graph,

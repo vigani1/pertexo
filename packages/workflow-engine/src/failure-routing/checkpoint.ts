@@ -1,7 +1,5 @@
-import {
-  executableFailureRoutes,
-  type CompiledWorkflowExecutable,
-} from '../compilation/foundation.js';
+import { executableFailureRoutes } from '../compilation/verified-executable.js';
+import { type CompiledWorkflowExecutable } from '../compilation/workflow-executable.js';
 import { operationError } from '../operation-values.js';
 import type {
   InvocationState,

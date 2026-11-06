@@ -6,7 +6,7 @@ import {
   invocationKey,
 } from '../../../src/server.js';
 import type { InvocationState } from '../../../src/workflow-execution.js';
-import { executionNodes } from '../../../src/compilation/foundation.js';
+import { executionNodes } from '../../../src/compilation/verified-executable.js';
 import { mergeCoordinatorObservations } from '../../../src/observation/coordinator.js';
 import {
   nodeCatalog,

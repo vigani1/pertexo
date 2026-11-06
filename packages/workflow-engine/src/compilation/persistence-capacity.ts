@@ -28,11 +28,11 @@ import type {
   InvocationState,
   WorkflowCheckpoint,
 } from '../workflow-execution.js';
+import { executableControls } from './verified-executable.js';
 import {
-  executableControls,
   type CompiledWorkflowExecutable,
   type WorkflowExecutableGraph,
-} from './foundation.js';
+} from './workflow-executable.js';
 
 const versionId = 'ffffffff-ffff-4fff-8fff-ffffffffffff';
 type ScopeBounds = Readonly<{ identity: Scope; retained: Scope }>;

@@ -10,7 +10,7 @@ import {
 import type {
   WorkflowExecutableGraph,
   ExecutionNode,
-} from '../compilation/foundation.js';
+} from '../compilation/workflow-executable.js';
 import { findExecutableNodeContext } from '../compilation/graph.js';
 import { configuredScopedOutputPorts } from '../transition/scheduling/readiness.js';
 import { normalizeBoundedEngineJson } from '../compilation/executable.validation.js';

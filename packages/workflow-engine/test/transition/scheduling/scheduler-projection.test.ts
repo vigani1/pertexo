@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { projectSchedulerState } from '../../../src/operations.js';
-import type { WorkflowExecutableGraph } from '../../../src/compilation/foundation.js';
+import type { WorkflowExecutableGraph } from '../../../src/compilation/workflow-executable.js';
 
 describe('scheduler executable projection', () => {
   it('visits each nested structured body once', () => {

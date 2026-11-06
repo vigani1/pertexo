@@ -7,7 +7,7 @@ import {
 } from '@pertexo/workflow-model';
 
 import type { parseCheckpoint } from '../checkpoint/create-and-parse.js';
-import type { WorkflowExecutableNode } from '../compilation/foundation.js';
+import type { WorkflowExecutableNode } from '../compilation/workflow-executable.js';
 import { completedOutputReference } from './coordinator-output.js';
 import {
   exactKeys,

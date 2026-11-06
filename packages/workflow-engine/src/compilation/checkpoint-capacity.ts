@@ -10,7 +10,7 @@ import type {
   InvocationState,
   WorkflowCheckpoint,
 } from '../workflow-execution.js';
-import type { WorkflowExecutableNode } from './foundation.js';
+import type { WorkflowExecutableNode } from './workflow-executable.js';
 
 export type Scope = Readonly<{
   branchPath: readonly BranchScopePart[];

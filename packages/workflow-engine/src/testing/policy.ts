@@ -5,7 +5,7 @@ import {
   isCallbackWaitNode,
   isWorkflowCallDefinition,
 } from '@pertexo/workflow-model';
-import type { WorkflowExecutableNode } from '../compilation/foundation.js';
+import type { WorkflowExecutableNode } from '../compilation/workflow-executable.js';
 
 export type WorkflowTestPins = Readonly<
   Record<string, Readonly<{ sampleId: string; output: JsonValue }>>

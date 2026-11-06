@@ -6,7 +6,7 @@ import {
   verifyWorkflowExecutable,
 } from '../../../src/server.js';
 import { computeWorkflowExecutableChecksum } from '../../../src/compilation/identity.js';
-import type { WorkflowExecutable } from '../../../src/compilation/foundation.js';
+import type { WorkflowExecutable } from '../../../src/compilation/workflow-executable.js';
 import { nodeCatalog, switchGraph } from '../../support/executable-workflow.js';
 
 const catalog = composeExecutableCatalog(nodeCatalog({ switch: true }));

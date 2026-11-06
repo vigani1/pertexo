@@ -15,12 +15,12 @@ import {
   type JsonValue,
 } from '@pertexo/workflow-model';
 
-import { executableFailureRoutes } from '../compilation/foundation.js';
+import { executableFailureRoutes } from '../compilation/verified-executable.js';
 import { findExecutableNodeContext } from '../compilation/graph.js';
 import type {
   WorkflowExecutableGraph,
   WorkflowExecutableNode,
-} from '../compilation/foundation.js';
+} from '../compilation/workflow-executable.js';
 import { normalizeBoundedEngineValue } from '../compilation/executable.validation.js';
 import { exactKeys, operationError, record } from '../operation-values.js';
 import type { ExecuteNodeAttemptInput } from './node-attempt.types.js';

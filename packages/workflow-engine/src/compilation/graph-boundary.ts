@@ -16,11 +16,10 @@ import {
 import {
   type WorkflowExecutableGraph,
   type WorkflowExecutableNode,
-  compareIdentity,
-  compareOrdinal,
-  fail,
-  sameIdentity,
-} from './foundation.js';
+} from './workflow-executable.js';
+import { compareIdentity, sameIdentity } from './definition-identity.js';
+import { compareOrdinal } from '@pertexo/workflow-model';
+import { fail } from './executable-errors.js';
 import {
   exactKeys,
   parseIdentity,

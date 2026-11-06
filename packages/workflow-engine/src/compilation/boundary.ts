@@ -5,12 +5,11 @@ import {
   type CompiledWorkflowExecutable,
   type VerifiedWorkflowExecutable,
   type WorkflowExecutable,
-  fail,
-  freezeExecutable,
-  readUntrusted,
-  registerExecutableIdentity,
-  validateGlobals,
-} from './foundation.js';
+} from './workflow-executable.js';
+import { fail, readUntrusted } from './executable-errors.js';
+import { freezeExecutable } from './freeze-executable.js';
+import { registerExecutableIdentity } from './verified-executable.js';
+import { validateGlobals } from './runtime-policies.js';
 import {
   authoringGraph,
   readRawExecutableGraph,

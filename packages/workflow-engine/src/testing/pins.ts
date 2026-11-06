@@ -1,5 +1,5 @@
 import { isRecord, isHumanTaskDefinition } from '@pertexo/workflow-model';
-import type { ExecutionNode } from '../compilation/foundation.js';
+import type { ExecutionNode } from '../compilation/workflow-executable.js';
 import {
   configuredBranchOutputPorts,
   configuredParallelOutputPorts,

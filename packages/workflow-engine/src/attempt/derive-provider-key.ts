@@ -1,4 +1,4 @@
-import type { WorkflowExecutableNode } from '../compilation/foundation.js';
+import type { WorkflowExecutableNode } from '../compilation/workflow-executable.js';
 import type { SideEffectClass } from '../workflow-execution.js';
 import { providerIdempotencyKey } from './retries.js';
 

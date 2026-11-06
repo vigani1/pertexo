@@ -31,7 +31,7 @@ import {
   WorkflowEngineError,
 } from '../workflow-engine.errors.js';
 
-import type { WorkflowExecutableNode } from '../compilation/foundation.js';
+import type { WorkflowExecutableNode } from '../compilation/workflow-executable.js';
 import { normalizeBoundedEngineValue } from '../compilation/executable.validation.js';
 
 import { operationError, record } from '../operation-values.js';

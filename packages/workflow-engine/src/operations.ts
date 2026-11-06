@@ -31,10 +31,12 @@ import {
   executableFailureRoutes,
   executableReadOnlyNodeIds,
   executionNodes,
+} from './compilation/verified-executable.js';
+import {
   type CompiledWorkflowExecutable,
   type ExecutionNode,
   type WorkflowExecutableGraph,
-} from './compilation/foundation.js';
+} from './compilation/workflow-executable.js';
 import type { ControlNodeConfig } from '@pertexo/workflow-model';
 
 import type { WorkflowObservation } from './workflow-execution.js';
