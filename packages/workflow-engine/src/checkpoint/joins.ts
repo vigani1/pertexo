@@ -1,3 +1,4 @@
+import { settleJoin } from '../join-settlement.js';
 import { isRecord } from '@pertexo/workflow-model';
 import type { JoinState } from '../workflow-execution.js';
 import {
@@ -12,44 +13,6 @@ import {
 
 type JoinPolicy = JoinState['policy'];
 type JoinLedger = JoinState['ledger'];
-
-function requiredJoinArrivals(
-  policy: JoinPolicy,
-  arrivedCount: number,
-): number {
-  if (policy.kind === 'all') return arrivedCount;
-  if (policy.kind === 'any') return 1;
-  return policy.count;
-}
-
-function joinSelectionIsSatisfiable(
-  policy: JoinPolicy,
-  ledger: JoinLedger,
-  arrivedCount: number,
-): boolean {
-  if (policy.kind !== 'all')
-    return arrivedCount >= requiredJoinArrivals(policy, arrivedCount);
-  return ledger.every(
-    ({ disposition }) => disposition !== 'failed' && disposition !== 'canceled',
-  );
-}
-
-function expectedUnsatisfiedReason(
-  policy: JoinPolicy,
-  ledger: JoinLedger,
-  arrivedCount: number,
-): JoinState['unsatisfiedReasonCode'] {
-  if (policy.kind === 'all') {
-    if (ledger.some(({ disposition }) => disposition === 'failed'))
-      return 'branch_failed';
-    if (ledger.some(({ disposition }) => disposition === 'canceled'))
-      return 'branch_canceled';
-    return undefined;
-  }
-  return arrivedCount < requiredJoinArrivals(policy, arrivedCount)
-    ? 'insufficient_arrivals'
-    : undefined;
-}
 
 export function parseJoin(value: unknown): JoinState {
   assertCheckpoint(isRecord(value), 'join must be an object');
@@ -133,14 +96,9 @@ export function parseJoin(value: unknown): JoinState {
       ledger.every(({ disposition }) => disposition !== 'pending'),
       'an unsatisfied join cannot contain pending branches',
     );
-    const arrivedCount = ledger.filter(
-      ({ disposition }) => disposition === 'arrived',
-    ).length;
-    const expectedReason = expectedUnsatisfiedReason(
-      policy,
-      ledger,
-      arrivedCount,
-    );
+    const decision = settleJoin({ policy, ledger });
+    const expectedReason =
+      decision.kind === 'unsatisfied' ? decision.reasonCode : undefined;
     assertCheckpoint(
       unsatisfiedReasonCode === expectedReason,
       'persisted join failure is inconsistent',
@@ -174,16 +132,9 @@ function parseJoinSelection(
     ledger.every(({ disposition }) => disposition !== 'pending'),
     'a selected join cannot contain pending branches',
   );
-  const arrived = ledger
-    .filter(({ disposition }) => disposition === 'arrived')
-    .map(({ branchId }) => branchId);
-  const required = requiredJoinArrivals(policy, arrived.length);
-  const satisfiable = joinSelectionIsSatisfiable(
-    policy,
-    ledger,
-    arrived.length,
-  );
-  const expected = satisfiable ? arrived.slice(0, required) : [];
+  const decision = settleJoin({ policy, ledger });
+  const satisfiable = decision.kind === 'satisfied';
+  const expected = satisfiable ? decision.selectedBranchIds : [];
   assertCheckpoint(
     satisfiable &&
       selectedBranchIds.length === expected.length &&
