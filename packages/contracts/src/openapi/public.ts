@@ -1,4 +1,4 @@
-import { isDeepStrictEqual } from 'node:util';
+import { canonicalJson } from '@pertexo/workflow-model';
 import { PUBLIC_OPERATIONS, EVERY_TOKEN_ROUTE } from './public-operations.js';
 import { catalogOpenApiDocument } from './catalog.js';
 import { connectionsOpenApiDocument } from './connections.js';
@@ -123,7 +123,10 @@ export function buildPublicDocument(
     for (const [kind, entries] of Object.entries(components ?? {}))
       for (const [name, component] of Object.entries(entries)) {
         const key = `${kind}/${name}`;
-        if (owner.has(key) && !isDeepStrictEqual(owner.get(key), component))
+        if (
+          owner.has(key) &&
+          canonicalJson(owner.get(key)) !== canonicalJson(component)
+        )
           throw new Error(`Conflicting OpenAPI component ${key}`);
         owner.set(key, component);
       }
