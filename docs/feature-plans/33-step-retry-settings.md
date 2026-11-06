@@ -127,8 +127,10 @@ single-step preview retry coordination, new integrations and AI.
 
 Slack and email use `NodeExecutorFailure.minimumRetryDelayMillis`, the existing
 worker/persistence/scheduler field, instead of subclass-only delay properties.
-Provider hints are bounded to the existing 60-second scheduler/receipt cap,
-matching HTTP; longer client hints do not extend the stored format. A real
+Provider minimum waits are honored up to the existing 60-second scheduler/receipt cap,
+including HTTP dates. A longer minimum stops the attempt with a specific safe
+explanation rather than scheduling an earlier request. Longer hints do not extend
+the stored retry format; OAuth token-address blocks retain their own actual timestamp. A real
 worker/Redis/PostgreSQL regression proves each provider's seven-second hint is
 persisted and its retry cannot be scheduled earlier. Retry eligibility, dispatch
 truth, configured attempt counts and unknown outcomes are unchanged.

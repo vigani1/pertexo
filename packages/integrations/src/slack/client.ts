@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { parseBoundedRetryAfterMillis } from '../http/retry-after.js';
+import { parseRetryAfterMillis } from '../http/retry-after.js';
 
 import type {
   ProviderHttpClient,
@@ -142,9 +142,8 @@ export function createSlackClient(
       if (response.status === 429)
         return Object.freeze({
           kind: 'rate_limited',
-          retryAfterMillis: parseBoundedRetryAfterMillis(
+          retryAfterMillis: parseRetryAfterMillis(
             response.headers['retry-after'],
-            SLACK_SEND_MESSAGE_LIMITS.maxRetryAfterMillis,
           ),
         });
       if (response.status < 200 || response.status > 299)

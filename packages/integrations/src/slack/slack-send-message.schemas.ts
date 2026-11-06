@@ -63,6 +63,5 @@ export type SlackSendMessageOutput = z.output<
 
 export const SLACK_SEND_MESSAGE_LIMITS = Object.freeze({
   maxResponseBytes: 65_536,
-  maxRetryAfterMillis: 300_000,
   maxTextBytes: MAX_TEXT_BYTES,
 });

@@ -1,14 +1,18 @@
 const MINIMUM_RETRY_AFTER_MILLIS = 1_000;
 
-/** Provider retry policy accepts bounded integer seconds, not HTTP dates. */
-export function parseBoundedRetryAfterMillis(
+/** A provider minimum is never shortened to the platform's automatic retry ceiling. */
+export function parseRetryAfterMillis(
   value: string | undefined,
-  maximumMillis: number,
+  nowMillis = Date.now(),
+  fallbackMillis = MINIMUM_RETRY_AFTER_MILLIS,
 ): number {
-  if (value === undefined || !/^\d{1,9}$/u.test(value))
-    return MINIMUM_RETRY_AFTER_MILLIS;
-  return Math.min(
-    Math.max(Number(value) * 1_000, MINIMUM_RETRY_AFTER_MILLIS),
-    maximumMillis,
-  );
+  if (value === undefined || value === '') return fallbackMillis;
+  if (/^\d{1,9}$/u.test(value))
+    return Number(value) === 0 ? fallbackMillis : Number(value) * 1_000;
+  // HTTP dates have a textual month; don't reinterpret malformed seconds as dates.
+  if (!/[A-Za-z]{3}/u.test(value)) return fallbackMillis;
+  const date = Date.parse(value);
+  return Number.isFinite(date) && date > nowMillis
+    ? Math.max(date - nowMillis, MINIMUM_RETRY_AFTER_MILLIS)
+    : fallbackMillis;
 }

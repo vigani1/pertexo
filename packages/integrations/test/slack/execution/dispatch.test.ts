@@ -25,10 +25,10 @@ describe('slack.send_message@1', () => {
     [
       { kind: 'rate_limited', retryAfterMillis: 300_000 },
       {
-        kind: 'retry',
+        kind: 'failed',
         errorKind: 'rate_limit',
         possiblyDispatched: false,
-        minimumRetryDelayMillis: 60_000,
+        safeErrorCode: 'provider.retry_after_exceeded',
       },
     ],
     [

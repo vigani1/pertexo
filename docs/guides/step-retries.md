@@ -12,8 +12,10 @@ tries. They never make an unsafe effect safe to repeat.
 
 The first try counts. **Max tries: 5**, **Wait between tries: 2 seconds** means one
 initial attempt and at most four retries. Service execution time comes in
-addition to the waits. A service's bounded `Retry-After` can lengthen your wait,
-up to one minute. Custom waits have no jitter and are never shortened. Choosing
+addition to the waits. A service's `Retry-After`, in seconds or as an HTTP date,
+can lengthen your wait up to one minute. If its minimum is longer, the step stops
+with an explanation instead of calling the service early. Wait for the requested
+delay before starting another run. Custom waits have no jitter and are never shortened. Choosing
 Platform default removes the override and restores the existing backoff.
 
 Only eligible temporary failures retry. Authentication errors, invalid setup,

@@ -1,6 +1,6 @@
 import { MAXIMUM_RETRY_DELAY_MILLIS } from '@pertexo/node-sdk/server';
 
-import { parseBoundedRetryAfterMillis } from './retry-after.js';
+import { parseRetryAfterMillis } from './retry-after.js';
 
 import {
   PROVIDER_HTTP_ERROR_CODE,
@@ -28,7 +28,11 @@ export type HttpExecutionErrorKind =
 
 export type HttpOutcomeDecision =
   | Readonly<{ kind: 'succeeded' }>
-  | Readonly<{ kind: 'failed'; errorKind: HttpExecutionErrorKind }>
+  | Readonly<{
+      kind: 'failed';
+      errorKind: HttpExecutionErrorKind;
+      reason?: 'retry_after_exceeded';
+    }>
   | Readonly<{ kind: 'canceled'; errorKind: 'canceled' }>
   | Readonly<{
       kind: 'retry';
@@ -61,13 +65,19 @@ export function classifySecureHttpResponse(
     const decision = retryDefinite('rate_limit', sideEffectClass, {
       providerKeyPresent,
     });
+    const minimumRetryDelayMillis = parseRetryAfterMillis(
+      headers['retry-after'],
+    );
+    if (minimumRetryDelayMillis > MAXIMUM_RETRY_DELAY_MILLIS)
+      return Object.freeze({
+        kind: 'failed',
+        errorKind: 'rate_limit',
+        reason: 'retry_after_exceeded',
+      });
     return decision.kind === 'retry'
       ? Object.freeze({
           ...decision,
-          minimumRetryDelayMillis: parseBoundedRetryAfterMillis(
-            headers['retry-after'],
-            MAXIMUM_RETRY_DELAY_MILLIS,
-          ),
+          minimumRetryDelayMillis,
         })
       : decision;
   }

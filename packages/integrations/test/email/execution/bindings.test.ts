@@ -111,7 +111,7 @@ describe('email.send_notification@1', () => {
     [{ kind: 'http_failure', status: 422 }, 'failed', 'provider', false],
     [
       { kind: 'rate_limited', retryAfterMillis: 300_000 },
-      'retry',
+      'failed',
       'rate_limit',
       false,
     ],

@@ -1,5 +1,9 @@
+import { PROVIDER_RETRY_FAILURE } from '../../providers/retry-after-failure.js';
 import type { OAuth2StepFailureCode } from '@pertexo/contracts';
-import { NodeExecutorFailure } from '@pertexo/node-sdk/server';
+import {
+  MAXIMUM_RETRY_DELAY_MILLIS,
+  NodeExecutorFailure,
+} from '@pertexo/node-sdk/server';
 
 import type { OAuth2TokenFailure } from '../../oauth2/oauth2-token.js';
 
@@ -80,16 +84,22 @@ export class HttpOAuth2Failure extends NodeExecutorFailure {
   public override readonly name = 'HttpOAuth2Failure';
   public constructor(failure: OAuth2TokenFailure) {
     const outcome = HTTP_OAUTH2_FAILURES[failure.code];
+    const retryWaitExceeded =
+      failure.retryAfterSeconds !== undefined &&
+      failure.retryAfterSeconds * 1_000 > MAXIMUM_RETRY_DELAY_MILLIS;
     super({
-      kind: outcome.kind,
+      kind: retryWaitExceeded ? 'failed' : outcome.kind,
       errorKind: outcome.errorKind,
       possiblyDispatched: false,
-      safeErrorCode: failure.code,
-      errorSummary:
-        failure.serviceError === undefined
+      safeErrorCode: retryWaitExceeded
+        ? PROVIDER_RETRY_FAILURE.code
+        : failure.code,
+      errorSummary: retryWaitExceeded
+        ? PROVIDER_RETRY_FAILURE.sentence
+        : failure.serviceError === undefined
           ? outcome.summary
           : `${outcome.summary} The service's code: ${failure.serviceError}.`,
-      ...(failure.retryAfterSeconds === undefined
+      ...(failure.retryAfterSeconds === undefined || retryWaitExceeded
         ? {}
         : { minimumRetryDelayMillis: failure.retryAfterSeconds * 1_000 }),
     });
