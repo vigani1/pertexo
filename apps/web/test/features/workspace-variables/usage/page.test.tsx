@@ -51,13 +51,8 @@ it('takes a manager from Remove through the finished check to a name gone from t
     ),
   );
   serveUsage({
-    first: [usagePage({ checked: 1, total: 2 }, { next: 'c1' })],
-    c1: [
-      usagePage(
-        { checked: 2, total: 2 },
-        { items: [reference('Invoice export')] },
-      ),
-    ],
+    first: [usagePage({ next: 'c1' })],
+    c1: [usagePage({ items: [reference('Invoice export')] })],
   });
   renderApp(`/w/${workspaceId}/settings/variables`);
   const event = userEvent.setup();
@@ -72,9 +67,7 @@ it('takes a manager from Remove through the finished check to a name gone from t
   );
   await event.click(await screen.findByRole('menuitem', { name: 'Remove' }));
 
-  expect(
-    await screen.findByText('Checked all 2 workflows you can see.'),
-  ).toBeVisible();
+  expect(await screen.findByText(/Check complete\./u)).toBeVisible();
   expect(screen.getByRole('link', { name: 'Invoice export' })).toBeVisible();
 
   await event.click(removeOff());
