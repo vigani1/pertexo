@@ -18,3 +18,11 @@ export type WorkspaceLifecycleChange = Readonly<{
   idempotencyKeyHash: string;
   requestHash: string;
 }>;
+
+export type RequestWorkspaceLifecycleOperationInput = Readonly<{
+  workspaceId: string;
+  actorUserId: string;
+  commandType: WorkspaceLifecycleOperation['commandType'];
+  reason: string;
+  idempotencyKey: string;
+}>;

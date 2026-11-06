@@ -1,6 +1,5 @@
 import type { DirectoryMembershipSource } from '@pertexo/contracts';
 import type { DelegatedRole, Role } from '@pertexo/policy';
-import type { WorkspaceLifecycleOperation } from '../lifecycle/deletion/workspace-lifecycle.types.js';
 import type {
   users,
   workspaceInvitations,
@@ -294,13 +293,7 @@ export type WorkspaceRenameResult = Readonly<{
   replayed: boolean;
 }>;
 export type { WorkspaceLifecycleOperation } from '../lifecycle/deletion/workspace-lifecycle.types.js';
-export type RequestWorkspaceLifecycleOperationInput = Readonly<{
-  workspaceId: string;
-  actorUserId: string;
-  commandType: WorkspaceLifecycleOperation['commandType'];
-  reason: string;
-  idempotencyKey: string;
-}>;
+export type { RequestWorkspaceLifecycleOperationInput } from '../lifecycle/deletion/workspace-lifecycle.types.js';
 
 export type WorkspaceMembersPosition = Readonly<{
   createdAt: string;

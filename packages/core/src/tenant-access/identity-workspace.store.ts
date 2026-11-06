@@ -1,4 +1,7 @@
-import { throwWorkspaceLifecycleError } from '../lifecycle/workspace-lifecycle.errors.js';
+import {
+  commandKeyHash,
+  commandRequestHash,
+} from '../shared/command-fingerprints.js';
 import {
   rethrowQueryFailure,
   withTenantScopedClient,
@@ -18,10 +21,9 @@ import type {
 } from '@pertexo/database/platform';
 import { workspaces, users } from '@pertexo/database/schema';
 
-import { changeWorkspaceLifecycle } from '../lifecycle/deletion/change.js';
+import { requestWorkspaceLifecycleOperation } from '../lifecycle/deletion/request-workspace-lifecycle.js';
 import type {
   RequestWorkspaceLifecycleOperationInput,
-  WorkspaceLifecycleOperation,
   WorkspaceRecord,
   WorkspaceWithOwnerInput,
 } from './tenant-access.types.js';
@@ -37,8 +39,6 @@ import { createIdentityWorkspaceProfileStore } from './users/user-profile.store.
 import { createUserStore } from './users/user.store.js';
 import {
   claimWorkspaceCreationCommand,
-  commandKeyHash,
-  commandRequestHash,
   completeWorkspaceCreationCommand,
 } from './workspaces/creation-receipt.repository.js';
 import {
@@ -169,33 +169,5 @@ async function createWorkspaceWithOwner(
       'Workspace creation conflicts with an existing record',
       'workspace_slug',
     );
-  }
-}
-
-async function requestWorkspaceLifecycleOperation(
-  pool: Pool,
-  input: RequestWorkspaceLifecycleOperationInput,
-): Promise<WorkspaceLifecycleOperation> {
-  const workspaceId = input.workspaceId;
-  const actorUserId = input.actorUserId;
-  const commandType = input.commandType;
-  const reason = input.reason;
-  try {
-    return await changeWorkspaceLifecycle(pool, {
-      operationId: generatePersistedId(),
-      workspaceId,
-      actorUserId,
-      commandType,
-      reason,
-      idempotencyKeyHash: commandKeyHash(input.idempotencyKey),
-      requestHash: commandRequestHash({
-        actorUserId,
-        commandType,
-        reason,
-        workspaceId,
-      }),
-    });
-  } catch (error: unknown) {
-    throwWorkspaceLifecycleError(error);
   }
 }
