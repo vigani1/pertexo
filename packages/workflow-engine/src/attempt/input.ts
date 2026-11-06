@@ -1,3 +1,4 @@
+import { upstreamInvocationKey } from './upstream-scope.js';
 import { createHash } from 'node:crypto';
 
 import {
@@ -93,37 +94,21 @@ function parseCompletedDescriptor(
     [],
     'attempt_invalid',
   );
-  const upstreamEdge = graph.edges.find(
-    ({ source, target }) =>
-      source.nodeId === nodeId && target.nodeId === node.id,
-  );
-  const branchPath = input.branchPath ?? [];
-  const nearestBranch = branchPath.at(-1);
-  const upstreamBranchPath =
-    upstreamEdge !== undefined &&
-    nearestBranch?.nodeId === nodeId &&
-    nearestBranch?.outputPort === upstreamEdge.source.port
-      ? branchPath.slice(0, -1)
-      : branchPath;
   const expectedKey =
     typeof nodeId === 'string'
-      ? createInvocationKey({
+      ? upstreamInvocationKey({
           workflowVersionId: input.workflowVersionId,
-          nodeId: nodeId,
-          branchPath: upstreamBranchPath.map(
-            ({ nodeId: branchNodeId, outputPort }) =>
-              `${branchNodeId}:${outputPort}`,
-          ),
-          ...(input.iterationPath === undefined
-            ? {}
-            : { iterationPath: input.iterationPath }),
+          sourceNodeId: nodeId,
+          targetNodeId: node.id,
+          edges: graph.edges,
+          branchPath: input.branchPath ?? [],
+          iterationPath: input.iterationPath ?? [],
         })
       : undefined;
   const invalidUpstreamIdentity =
     typeof nodeId !== 'string' ||
     typeof invocationKey !== 'string' ||
     !directUpstream.has(nodeId) ||
-    upstreamEdge === undefined ||
     invocationKey !== expectedKey;
   if (invalidUpstreamIdentity) {
     operationError(
