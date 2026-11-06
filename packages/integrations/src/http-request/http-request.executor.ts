@@ -49,7 +49,6 @@ export {
   HttpRequestExecutorError,
   type HttpRequestExecutorDependencies,
   type HttpRequestExecutorTelemetry,
-  NOOP_HTTP_REQUEST_EXECUTOR_TELEMETRY,
 } from './execution/http-request-execution.js';
 
 async function executeHttpRequest(

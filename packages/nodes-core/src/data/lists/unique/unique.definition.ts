@@ -9,7 +9,7 @@ import {
   CORE_UNIQUE_INPUT_SCHEMA,
   CORE_UNIQUE_OUTPUT_SCHEMA,
 } from './unique.schemas.js';
-export const CORE_UNIQUE_DEFINITION = Object.freeze({
+const CORE_UNIQUE_DEFINITION = Object.freeze({
   key: 'core.unique',
   version: 1,
 });

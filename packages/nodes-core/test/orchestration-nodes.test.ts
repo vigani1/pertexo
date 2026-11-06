@@ -3,30 +3,42 @@ import { NODE_JSON_LIMITS } from '@pertexo/node-sdk';
 
 import {
   CORE_FOR_EACH_CONFIG_SCHEMA,
+  CORE_FOR_EACH_INPUT_SCHEMA,
+  CORE_FOR_EACH_OUTPUT_SCHEMA,
+} from '../src/flow/for-each/for-each.schemas.js';
+import {
   CORE_FOR_EACH_DEFINITION,
   CORE_FOR_EACH_EXECUTOR,
-  CORE_FOR_EACH_INPUT_SCHEMA,
   CORE_FOR_EACH_MANIFEST,
-  CORE_FOR_EACH_OUTPUT_SCHEMA,
+} from '../src/flow/for-each/for-each.definition.js';
+import {
   CORE_MERGE_CONFIG_SCHEMA,
+  CORE_MERGE_INPUT_SCHEMA,
+} from '../src/flow/merge/merge.schemas.js';
+import {
   CORE_MERGE_DEFINITION,
   CORE_MERGE_EXECUTOR,
-  CORE_MERGE_INPUT_SCHEMA,
-  CORE_MERGE_MANIFEST,
-  CORE_PARALLEL_CONFIG_SCHEMA,
   CORE_PARALLEL_DEFINITION,
   CORE_PARALLEL_EXECUTOR,
-  CORE_PARALLEL_MANIFEST,
-  CORE_PARALLEL_OUTPUT_SCHEMA,
   CORE_SWITCH_CONFIG_SCHEMA,
   CORE_SWITCH_DEFINITION,
+} from '../src/index.js';
+import { CORE_MERGE_MANIFEST } from '../src/flow/merge/merge.definition.js';
+import {
+  CORE_PARALLEL_CONFIG_SCHEMA,
+  CORE_PARALLEL_OUTPUT_SCHEMA,
+} from '../src/flow/parallel/parallel.schemas.js';
+import { CORE_PARALLEL_MANIFEST } from '../src/flow/parallel/parallel.definition.js';
+import {
   CORE_SWITCH_EXECUTOR,
   CORE_SWITCH_MANIFEST,
-  CORE_WAIT_CONFIG_SCHEMA,
+} from '../src/flow/switch/switch.definition.js';
+import { CORE_WAIT_CONFIG_SCHEMA } from '../src/flow/wait/wait.schemas.js';
+import {
   CORE_WAIT_DEFINITION,
   CORE_WAIT_EXECUTOR,
   CORE_WAIT_MANIFEST,
-} from '../src/index.js';
+} from '../src/flow/wait/wait.definition.js';
 
 describe('core orchestration node contracts', () => {
   it('defines strict bounded Switch cases with stable output ports', () => {

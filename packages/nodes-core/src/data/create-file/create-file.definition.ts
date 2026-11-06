@@ -9,7 +9,7 @@ import {
   CORE_CREATE_FILE_INPUT_SCHEMA,
   CORE_CREATE_FILE_OUTPUT_SCHEMA,
 } from './create-file.schemas.js';
-export const CORE_CREATE_FILE_DEFINITION = Object.freeze({
+const CORE_CREATE_FILE_DEFINITION = Object.freeze({
   key: 'core.create_file',
   version: 1,
 });

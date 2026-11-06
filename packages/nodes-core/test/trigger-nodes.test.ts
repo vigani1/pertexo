@@ -3,8 +3,8 @@ import { describe, expect, it } from 'vitest';
 import {
   CORE_SCHEDULE_CONFIG_SCHEMA,
   CORE_SCHEDULE_INPUT_SCHEMA,
-  CORE_SCHEDULE_MANIFEST,
 } from '../src/index.js';
+import { CORE_SCHEDULE_MANIFEST } from '../src/triggers/schedule/schedule.definition.js';
 
 describe('core Schedule trigger contract', () => {
   it.each([

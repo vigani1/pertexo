@@ -3,7 +3,7 @@ import { isSupportedHttpFieldValue as isSerializableHttpHeaderValue } from '@per
 /** `{orderId}` in the address after its origin, or in a header value. */
 const PLACEHOLDER = /\{([A-Za-z][A-Za-z0-9_]{0,63})\}/gu;
 export const HTTP_PLACEHOLDER_NAME = /^[A-Za-z][A-Za-z0-9_]{0,63}$/u;
-export const HTTP_PLACEHOLDER_LIMIT = 32;
+const HTTP_PLACEHOLDER_LIMIT = 32;
 
 export type HttpPlaceholderValue = string | number | boolean;
 

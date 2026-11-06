@@ -8,10 +8,8 @@ import { createHash, randomUUID } from 'node:crypto';
 import FormData from 'form-data';
 import { describe, expect, it, vi } from 'vitest';
 import type { NodeArtifactRuntime } from '@pertexo/node-sdk/server';
-import {
-  httpRequestInputSchema,
-  httpMultipartConfigSchema,
-} from '../../src/index.js';
+import { httpRequestInputSchema } from '../../src/http-request/http-request.schemas.js';
+import { httpMultipartConfigSchema } from '../../src/index.js';
 import { encodeMultipart } from '../../src/http-request/multipart/encode.js';
 
 const textKey = 'part_11111111-1111-4111-8111-111111111111';

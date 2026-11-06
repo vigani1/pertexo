@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
+import { httpMultipartConfigSchema } from '../../src/index.js';
 import {
-  httpMultipartConfigSchema,
   httpRequestConfigSchema,
   httpRequestInputSchema,
-} from '../../src/index.js';
+} from '../../src/http-request/http-request.schemas.js';
 const key = 'part_11111111-1111-4111-8111-111111111111';
 const part = { inputKey: key, name: 'document', kind: 'file' };
 const config = {

@@ -3,10 +3,7 @@ import {
   outputVariantSelectionSchema,
   type OutputVariantSelection,
 } from './output-variant.js';
-export {
-  outputVariantSelectionSchema,
-  type OutputVariantSelection,
-} from './output-variant.js';
+export { type OutputVariantSelection } from './output-variant.js';
 
 import { cloneAndFreeze } from '../values/freeze.js';
 import { compareIdentity, identityToken } from './identity.js';
@@ -16,9 +13,6 @@ import {
 } from './schema-document.js';
 
 export {
-  BOUNDED_NODE_JSON_RECORD_SCHEMA_DOCUMENT,
-  BOUNDED_NODE_JSON_SCHEMA_DOCUMENT,
-  NODE_JSON_LIMITS,
   boundedNodeJsonRecordSchema,
   boundedNodeJsonSchema,
   generateSchemaDocument,
@@ -129,7 +123,7 @@ const identitySchema = z
     version: z.number().int().positive(),
   })
   .strict();
-export const policyReferenceSchema = identitySchema;
+const policyReferenceSchema = identitySchema;
 
 const identifiersSchema = z
   .array(z.string().min(1))
@@ -227,7 +221,7 @@ export const nodeManifestSchema = z
     },
   );
 
-export const executorManifestSchema = z
+const executorManifestSchema = z
   .object({
     executor: executorIdentitySchema,
     abiVersion: z.number().int().positive(),

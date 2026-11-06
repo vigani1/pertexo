@@ -9,7 +9,7 @@ import {
   CORE_TAKE_INPUT_SCHEMA,
   CORE_TAKE_OUTPUT_SCHEMA,
 } from './take.schemas.js';
-export const CORE_TAKE_DEFINITION = Object.freeze({
+const CORE_TAKE_DEFINITION = Object.freeze({
   key: 'core.take',
   version: 1,
 });

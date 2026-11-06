@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   EMAIL_SEND_NOTIFICATION_LIMITS,
-  emailSendNotificationInputSchema,
   encodedAttachmentBytes,
 } from '../../../src/index.js';
+import { emailSendNotificationInputSchema } from '../../../src/email/email-send-notification.schemas.js';
 import { planAttachments } from '../../../src/email/attachments/plan.js';
 
 function file(byteLength: number, mediaType = 'text/csv') {

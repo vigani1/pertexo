@@ -6,7 +6,7 @@ import {
   CORE_RESPOND_WEBHOOK_OUTPUT_SCHEMA,
 } from './respond-webhook.schemas.js';
 
-export const CORE_RESPOND_WEBHOOK_DEFINITION = Object.freeze({
+const CORE_RESPOND_WEBHOOK_DEFINITION = Object.freeze({
   key: 'core.respond_webhook',
   version: 1,
 });

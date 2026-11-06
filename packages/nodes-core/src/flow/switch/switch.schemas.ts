@@ -5,7 +5,7 @@ import {
 } from '@pertexo/workflow-model';
 import { z } from 'zod';
 
-export const CORE_SWITCH_SELECTED_PORT_SCHEMA = z.enum([
+const CORE_SWITCH_SELECTED_PORT_SCHEMA = z.enum([
   ...SWITCH_CASE_PORTS,
   'default',
 ]);

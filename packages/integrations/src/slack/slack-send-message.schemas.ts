@@ -14,7 +14,7 @@ export const slackChannelIdSchema = z
   .max(255)
   .regex(/^[CDGU][A-Z0-9]+$/u);
 
-export const slackMessageTextSchema = z
+const slackMessageTextSchema = z
   .string()
   .min(1)
   .max(4_000)

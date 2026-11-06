@@ -1,9 +1,7 @@
 import { NodeDispatchEvidenceError } from '@pertexo/node-sdk/server';
 import { describe, expect, it } from 'vitest';
-import {
-  SLACK_SEND_MESSAGE_MANIFEST,
-  slackSendMessageInputSchema,
-} from '../../../src/index.js';
+import { SLACK_SEND_MESSAGE_MANIFEST } from '../../../src/slack/slack-send-message.definition.js';
+import { slackSendMessageInputSchema } from '../../../src/slack/slack-send-message.schemas.js';
 import { createSlackSendMessageExecutorRegistration } from '../../../src/server.js';
 
 import {

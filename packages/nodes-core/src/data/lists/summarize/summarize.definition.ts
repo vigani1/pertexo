@@ -9,7 +9,7 @@ import {
   CORE_SUMMARIZE_INPUT_SCHEMA,
   CORE_SUMMARIZE_OUTPUT_SCHEMA,
 } from './summarize.schemas.js';
-export const CORE_SUMMARIZE_DEFINITION = Object.freeze({
+const CORE_SUMMARIZE_DEFINITION = Object.freeze({
   key: 'core.summarize',
   version: 1,
 });

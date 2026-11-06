@@ -9,7 +9,7 @@ import {
   CORE_FILTER_INPUT_SCHEMA,
   CORE_FILTER_OUTPUT_SCHEMA,
 } from './filter.schemas.js';
-export const CORE_FILTER_DEFINITION = Object.freeze({
+const CORE_FILTER_DEFINITION = Object.freeze({
   key: 'core.filter',
   version: 1,
 });

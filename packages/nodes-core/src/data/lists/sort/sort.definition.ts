@@ -9,7 +9,7 @@ import {
   CORE_SORT_INPUT_SCHEMA,
   CORE_SORT_OUTPUT_SCHEMA,
 } from './sort.schemas.js';
-export const CORE_SORT_DEFINITION = Object.freeze({
+const CORE_SORT_DEFINITION = Object.freeze({
   key: 'core.sort',
   version: 1,
 });

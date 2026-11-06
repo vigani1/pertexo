@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { createCoreNodeRegistry } from '../../src/server.js';
-import { CORE_WEBHOOK_CONFIG_SCHEMA } from '../../src/index.js';
+import { CORE_WEBHOOK_CONFIG_SCHEMA } from '../../src/triggers/webhook/webhook.schemas.js';
 import type {
   NodeExecutionRuntime,
   NodeWebhookResponseRuntime,

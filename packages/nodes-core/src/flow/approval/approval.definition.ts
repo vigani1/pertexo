@@ -10,7 +10,7 @@ import {
   CORE_APPROVAL_OUTPUT_SCHEMA,
 } from './approval.schemas.js';
 
-export const CORE_APPROVAL_DEFINITION = Object.freeze({
+const CORE_APPROVAL_DEFINITION = Object.freeze({
   key: 'core.approval',
   version: 1,
 });

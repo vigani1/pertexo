@@ -1,5 +1,5 @@
-export { platformPortableDefinitionPolicy } from './portable-definition-policy.js';
 export { validateRegisteredCuratedTemplateSetup } from './curated-template-policy.js';
+export { platformPortableDefinitionPolicy } from './portable-definition-policy.js';
 
 import {
   createHttpRequestExecutorRegistration,
@@ -15,7 +15,6 @@ import {
 import {
   PLATFORM_NODE_CATALOG,
   PLATFORM_NODE_DEFINITION_REGISTRATIONS,
-  resolvePlatformNodeDefinition,
 } from './catalog.js';
 import {
   createNodeRegistry,
@@ -23,8 +22,6 @@ import {
   type NodeRegistry,
 } from '@pertexo/node-sdk/server';
 import { CORE_NODE_EXECUTOR_REGISTRATIONS } from '@pertexo/nodes-core/server';
-
-export { resolvePlatformNodeDefinition };
 
 export type PlatformNodeRegistryDependencies = Readonly<{
   httpRequest: HttpRequestExecutorDependencies;

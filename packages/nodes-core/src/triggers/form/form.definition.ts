@@ -7,7 +7,7 @@ import {
   CORE_FORM_OUTPUT_SCHEMA,
 } from './form.schemas.js';
 
-export const CORE_FORM_DEFINITION = Object.freeze({
+const CORE_FORM_DEFINITION = Object.freeze({
   key: 'core.form',
   version: 1,
 });

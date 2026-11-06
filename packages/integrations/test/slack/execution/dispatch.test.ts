@@ -2,10 +2,10 @@ import { describe, expect, it } from 'vitest';
 
 import {
   createSlackSendMessageExecutorRegistration,
-  PROVIDER_HTTP_ERROR_CODE,
   SlackSendMessageExecutorError,
   ProviderHttpError,
 } from '../../../src/server.js';
+import { PROVIDER_HTTP_ERROR_CODE } from '../../../src/providers/http.errors.js';
 
 import { runtime, invocation } from '../../support/slack-execution.js';
 describe('slack.send_message@1', () => {
