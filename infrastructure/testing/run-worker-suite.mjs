@@ -34,6 +34,16 @@ export function shardCommand(shard, stacks, extraArguments = []) {
   };
 }
 
+export function workerSuitePhases(stacks, extraArguments = []) {
+  return [
+    Array.from({ length: stacks }, (_, stack) => ({
+      label: `worker-${String(stack + 1)}`,
+      stack,
+      command: shardCommand(stack, stacks, extraArguments),
+    })),
+  ];
+}
+
 const migrate = { args: ['db:migrate'], env: {} };
 
 async function main([stackCount, ...extraArguments]) {
@@ -61,19 +71,24 @@ async function main([stackCount, ...extraArguments]) {
       process.exitCode = 1;
       return;
     }
-    const results = await Promise.all(
-      slots.map(async (shard) => {
-        const result = await runLogged(
-          `worker-${String(shard + 1)}`,
-          shardCommand(shard, stacks, extraArguments),
-          environments[shard],
-          directory,
-        );
-        report(result);
-        if (!result.passed) await printServiceLogs(environments[shard]);
-        return result;
-      }),
-    );
+    const results = [];
+    for (const phase of workerSuitePhases(stacks, extraArguments)) {
+      results.push(
+        ...(await Promise.all(
+          phase.map(async ({ label, stack, command }) => {
+            const result = await runLogged(
+              label,
+              command,
+              environments[stack],
+              directory,
+            );
+            report(result);
+            if (!result.passed) await printServiceLogs(environments[stack]);
+            return result;
+          }),
+        )),
+      );
+    }
     console.log(summary(results));
     if (results.some(({ passed }) => !passed)) process.exitCode = 1;
   } finally {
