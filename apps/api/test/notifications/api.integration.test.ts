@@ -1,4 +1,6 @@
 import { randomUUID } from 'node:crypto';
+import { parseDatabaseConfig } from '@pertexo/database/platform';
+import { createWorkspaceInboxFoldStore } from '@pertexo/core/inbox';
 
 import { RedisWorkspaceInboxHintPublisher } from '@pertexo/queue';
 import { describe, expect, it } from 'vitest';
@@ -92,9 +94,19 @@ describe.runIf(betterAuthIntegrationEnabled)(
          values ($1,$2,$3,$4,3,'failed',clock_timestamp())`,
         [randomUUID(), workspaceId, workflowId, runId],
       );
-      await database.query(
-        "select * from app.fold_workspace_inbox_events(100,interval '720 hours')",
+      const sourceUrl = database.options.connectionString;
+      if (sourceUrl === undefined)
+        throw new Error('Fixture database URL unavailable');
+      const workerUrl = new URL(process.env.DATABASE_URL ?? sourceUrl);
+      workerUrl.pathname = new URL(sourceUrl).pathname;
+      const fold = createWorkspaceInboxFoldStore(
+        parseDatabaseConfig({ connectionString: workerUrl.href, max: 1 }),
       );
+      try {
+        await fold.foldPending(100);
+      } finally {
+        await fold.close();
+      }
       return {
         workspaceId,
         workflowId,

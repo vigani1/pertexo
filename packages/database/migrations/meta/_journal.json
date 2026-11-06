@@ -792,6 +792,13 @@
       "when": 1793957039648,
       "tag": "0112_inbox_failure_days",
       "breakpoints": true
+    },
+    {
+      "idx": 113,
+      "version": "7",
+      "when": 1793960315177,
+      "tag": "0113_inbox_fold_storage",
+      "breakpoints": true
     }
   ]
 }

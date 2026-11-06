@@ -1,16 +1,11 @@
-import { sql } from 'drizzle-orm';
-import { drizzle } from 'drizzle-orm/node-postgres';
-import {
-  rethrowQueryFailure,
-  checkDatabaseReadiness,
-} from '@pertexo/database/primitives';
+import { checkDatabaseReadiness } from '@pertexo/database/primitives';
 import {
   acquireDatabasePool,
   type DatabaseConfig,
   type DatabaseRuntime,
   withPlatformTransaction,
 } from '@pertexo/database/platform';
-import { NOTICE_WINDOW_SQL } from '../lifetime.js';
+import { foldInboxEvents } from './fold-inbox-events.js';
 import { createAttentionObserver } from '../observations/observe.js';
 
 const STATEMENT_TIMEOUT_MILLIS = 5_000;
@@ -53,22 +48,7 @@ export function createWorkspaceInboxFoldStore(
     foldPending: (limit: number, signal?: AbortSignal) =>
       withPlatformTransaction(
         pool,
-        async (client) => {
-          // The cross-workspace fold function owns queue claiming and revision allocation.
-          const result = await drizzle(client)
-            .execute<{ workspace_id: string; revision: string }>(
-              sql`select workspace_id,revision::text from app.fold_workspace_inbox_events(${limit},${NOTICE_WINDOW_SQL})`,
-            )
-            .catch(rethrowQueryFailure);
-          return Object.freeze(
-            result.rows.map((row) =>
-              Object.freeze({
-                workspaceId: row.workspace_id,
-                revision: row.revision,
-              }),
-            ),
-          );
-        },
+        (client) => foldInboxEvents(client, limit),
         options(signal),
       ),
     close: async () => {
