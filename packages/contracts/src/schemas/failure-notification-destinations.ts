@@ -37,6 +37,7 @@ export const failureNotificationDestinationResponseSchema = z
   .strict();
 export const failureNotificationDestinationListResponseSchema = z
   .object({
+    nextCursor: z.uuid().nullable().optional(),
     items: z
       .array(failureNotificationDestinationResponseSchema)
       .max(FAILURE_NOTIFICATION_DESTINATION_LIST_LIMIT),

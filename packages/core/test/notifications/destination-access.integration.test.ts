@@ -348,3 +348,40 @@ describe('failure notification destinations by workspace state', () => {
         await expectNotFound(operation);
     }));
 });
+
+describe('destination collection pages', () => {
+  it('keeps all 101 saved destinations reachable, including disabled entries', async () => {
+    const f = await setup();
+    try {
+      const saved: string[] = [];
+      for (let n = 0; n < 101; n += 1)
+        saved.push(await f.createDestination(`C${String(n)}`));
+      const disabled = saved[0];
+      if (disabled === undefined) throw new Error('Missing destination');
+      await f.store.setStatus({
+        ...f.owner,
+        ...once(),
+        destinationId: disabled,
+        status: 'disabled',
+      });
+      const first = await f.store.list({ ...f.owner, ...once() });
+      expect(first).toHaveLength(100);
+      const last = first.at(-1);
+      if (last === undefined) throw new Error('Missing first page');
+      const second = await f.store.list({
+        ...f.owner,
+        ...once(),
+        afterId: last.id,
+      });
+      expect(second).toHaveLength(1);
+      expect(new Set([...first, ...second].map((row) => row.id))).toEqual(
+        new Set(saved),
+      );
+      expect(
+        [...first, ...second].find((row) => row.id === disabled)?.status,
+      ).toBe('disabled');
+    } finally {
+      await f.store.close();
+    }
+  });
+});

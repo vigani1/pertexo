@@ -26,6 +26,29 @@ import {
 } from './destinations/fixture';
 
 describe('alert destinations', () => {
+  it('shows and opens a saved destination beyond the first 100 entries', async () => {
+    const first = Array.from({ length: 100 }, (_, n) => ({
+      ...destination(`C${String(n)}`),
+      id: `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`,
+    }));
+    mockServer.use(
+      ...identityHandlers(),
+      connectionHandler(),
+      http.get(destinationsUrl, ({ request }) =>
+        HttpResponse.json(
+          new URL(request.url).searchParams.has('afterId')
+            ? { items: [destination('CLAST')], nextCursor: null }
+            : { items: first, nextCursor: first.at(-1)?.id },
+        ),
+      ),
+    );
+    renderApp(`/w/${workspaceId}/settings/alerts?destination=${destinationId}`);
+    const sheet = await screen.findByRole('dialog');
+    expect(
+      await within(sheet).findByRole('heading', { name: /edit/iu }),
+    ).toBeVisible();
+    expect(await screen.findByText('#CLAST via Incident Slack')).toBeVisible();
+  });
   it('opens the destination a link names, once it has loaded', async () => {
     mockServer.use(
       ...identityHandlers(),

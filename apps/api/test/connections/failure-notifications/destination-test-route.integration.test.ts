@@ -61,6 +61,55 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
       keys.close();
     });
 
+    it('pages through every destination after 100, including disabled entries', async () => {
+      const { browser, workspaceId, destinationId } = await seedDestination();
+      const connection = await api.database().connect();
+      try {
+        await connection.query('begin');
+        await connection.query(
+          `with copies as (
+          insert into app.failure_notification_destinations(id,workspace_id,kind,status,current_config_version,created_by)
+          select gen_random_uuid(),workspace_id,kind,'disabled',1,created_by from app.failure_notification_destinations
+          cross join generate_series(1,100) where id=$1 returning *
+        ) insert into app.failure_notification_destination_versions(workspace_id,destination_id,version,kind,side_effect_class,config,created_by)
+          select c.workspace_id,c.id,1,v.kind,v.side_effect_class,v.config,c.created_by from copies c
+          join app.failure_notification_destination_versions v on v.destination_id=$1 and v.version=1`,
+          [destinationId],
+        );
+        await connection.query('commit');
+      } finally {
+        await connection.query('rollback');
+        connection.release();
+      }
+      const path = `/v1/workspaces/${workspaceId}/failure-notification-destinations`;
+      const first = await api.send('GET', path, { browser });
+      expect(first.statusCode, first.payload).toBe(200);
+      const page = first.json<{
+        items: { id: string; status: string }[];
+        nextCursor: string;
+      }>();
+      expect(page.items).toHaveLength(100);
+      const second = await api.send(
+        'GET',
+        `${path}?afterId=${page.nextCursor}`,
+        { browser },
+      );
+      expect(second.statusCode, second.payload).toBe(200);
+      const last = second.json<{
+        items: { id: string; status: string }[];
+        nextCursor: null;
+      }>();
+      expect(last.items).toHaveLength(1);
+      expect(last.nextCursor).toBeNull();
+      const all = [...page.items, ...last.items];
+      expect(new Set(all.map((row) => row.id)).size).toBe(101);
+      expect(all.filter((row) => row.status === 'disabled')).toHaveLength(100);
+      const invalid = await api.send('GET', `${path}?afterId=invalid`, {
+        browser,
+      });
+      expect(invalid.statusCode).toBe(400);
+    });
+
     async function seedDestination() {
       const email = `destination-test-${randomUUID()}@example.test`;
       await api.signUp(email, '/workspaces');
@@ -108,6 +157,9 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
       expect(destination.statusCode, destination.payload).toBe(201);
       const { id: destinationId } = destination.json<{ id: string }>();
       return {
+        browser,
+        workspaceId,
+        destinationId,
         send: () =>
           api.send(
             'POST',

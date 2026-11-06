@@ -100,8 +100,10 @@ export function createNotificationDestinationStore(
           input.destinationId,
         ),
       ),
-    list: (input: CommandMetadata) =>
-      browse(input, (client) => listDestinations(client, input.workspaceId)),
+    list: (input: CommandMetadata & Readonly<{ afterId?: string }>) =>
+      browse(input, (client) =>
+        listDestinations(client, input.workspaceId, input.afterId),
+      ),
     appendVersion: (input: AppendDestinationVersionInput) =>
       manage(input, (client) => appendDestinationVersion(client, input)),
     setStatus: (input: SetDestinationStatusInput) =>

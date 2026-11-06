@@ -40,9 +40,9 @@ export class FailureNotificationDestinationsController {
   @Route(routes.list)
   public list(
     @Req() request: ConnectionRequest,
-    @In() { params }: RouteInput<typeof routes.list>,
+    @In() { params, query }: RouteInput<typeof routes.list>,
   ) {
-    return this.useCases.list(context(request, params));
+    return this.useCases.list({ ...context(request, params), ...query });
   }
 
   @Route(routes.get)
