@@ -1,7 +1,7 @@
 import { canonicalJson } from '@pertexo/workflow-model';
 import type { WorkflowGraph } from '@pertexo/workflow-model';
 import type { FolderScope } from '../../../shared/folder-access.types.js';
-import { duplicateWorkflow } from './duplicate.js';
+import { recoverWorkflowDraft } from './duplicate.js';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { appendAuditFact } from '../../../governance/audit/facts.js';
 import { and, eq, exists, sql } from 'drizzle-orm';
@@ -85,12 +85,11 @@ export async function restoreWorkflowVersion(
     sourceVersion.graphJson,
     actorId,
   );
-  const recoveryCopyId = await preserveUnpublishedDraft(
-    client,
-    input,
-    catalogs,
-    { scope, current: currentDraft, restoredGraph: sourceVersion.graphJson },
-  );
+  const recoveryCopyId = await preserveUnpublishedDraft(client, input, {
+    scope,
+    current: currentDraft,
+    restoredGraph: sourceVersion.graphJson,
+  });
   const visible = db
     .select({ id: workflows.id })
     .from(workflows)
@@ -177,7 +176,6 @@ async function readRestorationSource(
 async function preserveUnpublishedDraft(
   client: PoolClient,
   input: RestoreWorkflowVersionInput,
-  catalogs: AuthoringCatalogs,
   {
     scope,
     current,
@@ -227,17 +225,14 @@ async function preserveUnpublishedDraft(
     workflow.name
       .slice(0, 128 - suffix.length)
       .replace(/[\uD800-\uDBFF]$/u, '') + suffix;
-  const copy = await duplicateWorkflow(
+  return recoverWorkflowDraft(
     client,
     {
       ...input,
       folderId: workflow.folderId,
       name,
-      source: { kind: 'draft' },
-      idempotencyKey: `restore:${String(current.revision)}:${input.versionId}`,
+      graph: current.graphJson,
     },
-    catalogs,
     scope,
   );
-  return copy.workflowId;
 }

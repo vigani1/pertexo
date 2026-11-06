@@ -164,9 +164,39 @@ export async function duplicateWorkflow(
   await completeCommand(client, command, result);
   return result;
 }
+type DuplicatePersistenceInput = Pick<
+  DuplicateWorkflowInput,
+  | 'workspaceId'
+  | 'workflowId'
+  | 'actorId'
+  | 'name'
+  | 'folderId'
+  | 'source'
+  | 'requestId'
+  | 'traceId'
+>;
+
+/** Preserve an already-saved draft, including obsolete definitions and bindings. */
+export async function recoverWorkflowDraft(
+  client: PoolClient,
+  input: Omit<DuplicatePersistenceInput, 'source'> &
+    Readonly<{ graph: WorkflowGraph }>,
+  scope: FolderScope,
+): Promise<string> {
+  if (!scope.permits(input.folderId ?? null, 'workflow:create'))
+    throw new WorkflowNotFoundError('Workflow destination is not visible');
+  const destinationId = generatePersistedId();
+  await persistDuplicate(
+    client,
+    { ...input, source: { kind: 'draft' } },
+    { destinationId, graph: input.graph },
+  );
+  return destinationId;
+}
+
 async function persistDuplicate(
   client: PoolClient,
-  input: DuplicateWorkflowInput,
+  input: DuplicatePersistenceInput,
   {
     destinationId,
     graph,
