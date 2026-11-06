@@ -247,3 +247,81 @@ describe('failing a replay', () => {
     });
   });
 });
+
+it('rolls back a replay canceled while its request is locked and lets the same delivery retry once', async () => {
+  const world = await requested();
+  const blocker = await schedule.worker.connect();
+  await blocker.query('begin');
+  await blocker.query("select set_config('app.workspace_id',$1,true)", [
+    workspaceId,
+  ]);
+  expect(
+    (
+      await blocker.query(
+        'select command_id from app.operator_run_replay_requests where command_id=$1 for update',
+        [world.commandId],
+      )
+    ).rowCount,
+  ).toBe(1);
+  let locked = true;
+  const unlock = async () => {
+    if (!locked) return;
+    locked = false;
+    await blocker.query('rollback');
+    blocker.release();
+  };
+  const controller = new AbortController();
+  const replaying = schedule.replayStore
+    .replay({
+      commandId: world.commandId,
+      delivery: world.delivery,
+      workspaceId,
+      signal: controller.signal,
+    })
+    .catch((error: unknown) => error);
+  try {
+    await expect
+      .poll(async () => {
+        await blocker.query('select pg_stat_clear_snapshot()');
+        const result = await blocker.query<{ waiting: boolean }>(
+          `select exists(select 1 from pg_stat_activity where datname=current_database() and wait_event_type='Lock' and query like '%operator_run_replay_requests%') waiting`,
+        );
+        return result.rows[0]?.waiting;
+      })
+      .toBe(true);
+    controller.abort(new Error('stop replay'));
+    await unlock();
+    expect(await replaying).toMatchObject({ name: 'AbortError' });
+    expect(await facts(world)).toEqual(untouched);
+  } finally {
+    controller.abort();
+    await unlock();
+    await replaying;
+  }
+  await expect(
+    schedule.replayStore.replay({
+      commandId: world.commandId,
+      delivery: world.delivery,
+      workspaceId,
+    }),
+  ).resolves.toMatchObject({ kind: 'processed' });
+  expect(await facts(world)).toEqual({
+    runs: 1,
+    request: 'completed',
+    command: 'completed',
+    outcome: 'replay_created',
+    receipts: 1,
+  });
+  await schedule.replayStore.replay({
+    commandId: world.commandId,
+    delivery: world.delivery,
+    workspaceId,
+  });
+  expect(await facts(world)).toEqual({
+    runs: 1,
+    request: 'completed',
+    command: 'completed',
+    outcome: 'replay_created',
+    receipts: 1,
+  });
+});
