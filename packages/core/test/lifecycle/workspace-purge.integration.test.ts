@@ -332,6 +332,7 @@ describe('workspace purge', () => {
   it('purges replay and recovery descendants across pages and a coordinator restart', async () => {
     if (owner === undefined) throw new Error('Fixture not initialized');
     const ids = await seedPurgeScenario(owner);
+    const untouched = await seedPurgeScenario(owner);
     const admin = new Client({ connectionString: adminUrl });
     await admin.connect();
     let worker = coordinator();
@@ -372,6 +373,10 @@ describe('workspace purge', () => {
           ids.nodeRunId,
         ],
       );
+      const beforeOther = await admin.query(
+        'select * from app.workflow_runs where workspace_id=$1 order by id',
+        [untouched.workspaceId],
+      );
       await makeWorkspaceDueForPurge(adminUrl, ids.workspaceId);
       let restarted = false;
       let completed = false;
@@ -400,6 +405,14 @@ describe('workspace purge', () => {
           break;
         }
       }
+      expect(
+        (
+          await admin.query(
+            'select * from app.workflow_runs where workspace_id=$1 order by id',
+            [untouched.workspaceId],
+          )
+        ).rows,
+      ).toEqual(beforeOther.rows);
       expect(restarted).toBe(true);
       expect(completed).toBe(true);
       expect(

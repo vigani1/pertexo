@@ -1,4 +1,6 @@
-import { expect, it } from 'vitest';
+import { Pool } from 'pg';
+import { adminDatabaseUrl } from '../../support/workflow-authoring/base.js';
+import { beforeAll, afterAll, expect, it } from 'vitest';
 import {
   actorId,
   authoring,
@@ -9,6 +11,12 @@ import {
   saveCurrentDraft,
   queryAsOwner,
 } from '../../support/workflow-authoring.js';
+
+const inspector = new Pool({ connectionString: adminDatabaseUrl, max: 1 });
+beforeAll(() =>
+  inspector.query('create extension if not exists pg_stat_statements'),
+);
+afterAll(() => inspector.end());
 
 const noteIds = Array.from({ length: 20 }, () => randomUUID());
 const documented = (text: string) => ({
@@ -112,7 +120,17 @@ it('reuses the most recent matching notes across 500 retained versions and prese
     [first.version.id],
     workspaceId,
   );
+  const transferredRows = async () => {
+    const result = await inspector.query<{ count: string }>(
+      `select coalesce(sum(rows),0)::text count from public.pg_stat_statements
+       where dbid=(select oid from pg_database where datname=current_database())
+         and query ilike '%workflow_versions%' and query ilike '%graph_json%'`,
+    );
+    return Number(result.rows[0]?.count);
+  };
+  const beforeTransfer = await transferredRows();
   const repeated = await publish();
+  expect((await transferredRows()) - beforeTransfer).toBeLessThan(50);
   expect(repeated.reused).toBe(true);
   expect(repeated.version.id).toBe(fresh.version.id);
 });
