@@ -66,10 +66,6 @@ export const workflowCalls = appSchema.table(
   },
   (table): PgTableExtraConfigValue[] => [
     check(
-      'workflow_calls_target_checksum_valid',
-      sql`target_checksum ~ '^wf:sha256:(v2:)?[a-f0-9]{64}$'`,
-    ),
-    check(
       'workflow_calls_status_valid',
       sql`status in ('pending','accepted','refused','succeeded','failed','canceled','timed_out','outcome_unknown')`,
     ),
