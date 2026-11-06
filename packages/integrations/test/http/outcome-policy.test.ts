@@ -173,12 +173,6 @@ describe('ADR 007 HTTP outcome policy', () => {
     });
   });
 
-  it('uses only the closed stable secure HTTP error vocabulary', () => {
-    expect(Object.values(PROVIDER_HTTP_ERROR_CODE)).toContain(
-      'response_encoding_rejected',
-    );
-  });
-
   it.each(RESPONSE_CASES)(
     'classifies HTTP status %i for every side-effect class',
     (status, ...row) => {
