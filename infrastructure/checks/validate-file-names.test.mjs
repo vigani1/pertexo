@@ -331,3 +331,19 @@ for (const area of [
     assert.deepEqual(check(`packages/core/src/${area}/index.ts`), []);
   });
 }
+
+for (const workspace of ['workflow-engine', 'workflow-model']) {
+  for (const lane of ['src', 'test']) {
+    test(`batch F requires concrete subjects in ${workspace}/${lane}`, () => {
+      assert.ok(
+        rules(`packages/${workspace}/${lane}/area/fixture.ts`).includes(
+          'FN008',
+        ),
+      );
+    });
+  }
+  test(`batch F preserves the ${workspace} entry points`, () => {
+    assert.deepEqual(rules(`packages/${workspace}/src/index.ts`), []);
+    assert.deepEqual(rules(`packages/${workspace}/src/server.ts`), []);
+  });
+}

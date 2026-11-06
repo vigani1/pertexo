@@ -148,6 +148,11 @@ export function executionAreaDependencyAllowed(from, to) {
 export function isExecutionAreaFile(file) {
   const [kind, workspace, lane, area] = file.split('/');
   if (!['src', 'test'].includes(lane)) return false;
+  if (
+    kind === 'packages' &&
+    ['workflow-engine', 'workflow-model'].includes(workspace)
+  )
+    return true;
   if (kind === 'packages' && workspace === 'core') return coreAreas.has(area);
   return (
     kind === 'apps' && applicationAreas[workspace]?.includes(area) === true
@@ -156,6 +161,13 @@ export function isExecutionAreaFile(file) {
 
 export function isExecutionAreaEntry(file) {
   const [kind, workspace, lane, area, name, ...rest] = file.split('/');
+  if (
+    kind === 'packages' &&
+    ['workflow-engine', 'workflow-model'].includes(workspace) &&
+    lane === 'src' &&
+    name === undefined
+  )
+    return ['index.ts', 'server.ts'].includes(area);
   if (name !== 'index.ts' || rest.length !== 0 || lane !== 'src') return false;
   return (
     (kind === 'packages' && workspace === 'core' && coreAreas.has(area)) ||

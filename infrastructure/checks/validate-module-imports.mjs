@@ -188,6 +188,31 @@ function directionViolations(file, specifier) {
     violations.push(
       `${file}: applications reach the database only through @pertexo/database/platform and, from tests, /testing; ${specifier} belongs in a core area`,
     );
+  const workspace = file.split('/')[1];
+  const workflowDependencies = {
+    'workflow-model': ['policy'],
+    'workflow-engine': ['workflow-model', 'node-sdk'],
+  };
+  if (
+    file.startsWith('packages/') &&
+    workflowDependencies[workspace] &&
+    specifier.startsWith('@pertexo/') &&
+    specifier.split('/')[1] !== workspace &&
+    !workflowDependencies[workspace].includes(specifier.split('/')[1])
+  )
+    violations.push(
+      `${file}: workflow package dependency is not allowed: ${specifier}`,
+    );
+  if (
+    file.startsWith('packages/workflow-engine/src/checkpoint/') &&
+    specifier.startsWith('.') &&
+    path.posix
+      .normalize(path.posix.join(path.posix.dirname(file), specifier))
+      .startsWith('packages/workflow-engine/src/transition/')
+  )
+    violations.push(
+      `${file}: checkpoint facts do not depend on transitions; use their shared engine owner`,
+    );
   return violations;
 }
 
