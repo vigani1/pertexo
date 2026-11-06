@@ -35,89 +35,97 @@ export function createAttentionObserver(pool: Pool, maintenance: Pool) {
     signal?.throwIfAborted();
     const candidates = await readAttentionCandidates(maintenance, after);
     const changes: WorkspaceInboxChange[] = [];
+    const byWorkspace = new Map<string, Candidate[]>();
     for (const candidate of candidates) {
+      const group = byWorkspace.get(candidate.workspace_id) ?? [];
+      group.push(candidate);
+      byWorkspace.set(candidate.workspace_id, group);
+    }
+    for (const [workspaceId, subjects] of byWorkspace) {
       signal?.throwIfAborted();
-      const changed = await withTenantScopedClient(
+      const committed = await withTenantScopedClient(
         pool,
-        { workspaceId: candidate.workspace_id },
+        { workspaceId },
         async (client) => {
           const db = drizzle(client);
+          // Claim the workspace's page together, preserving workspace/source/thread order.
+          // A locked workspace returns on the next keyset pass.
           const workspace = await db
             .select({ id: workspaces.id })
             .from(workspaces)
             .where(
               and(
-                eq(workspaces.id, candidate.workspace_id),
+                eq(workspaces.id, workspaceId),
                 eq(workspaces.status, 'active'),
               ),
             )
-            .for('share')
+            .for('no key update', { skipLocked: true })
             .catch(rethrowQueryFailure);
-          if (workspace.length !== 1) return null;
-          // The workspace fence fixes source/thread lock order for concurrent observers.
-          const subjectKey =
-            candidate.notice_kind === 'limit_approaching'
-              ? `${candidate.subject_id}:${candidate.capacity_limit}`
-              : candidate.subject_id;
-          await db
-            .execute(
-              sql`select pg_advisory_xact_lock(hashtextextended(${`notice:${candidate.workspace_id}:${candidate.notice_kind}:${subjectKey}`},0))`,
-            )
-            .catch(rethrowQueryFailure);
-          const scope = {
-            workspaceId: candidate.workspace_id,
-            subjectId: candidate.subject_id,
-          };
-          const fact = await readAttentionFact(
-            client,
-            candidate.notice_kind === 'limit_approaching'
-              ? {
-                  ...scope,
-                  noticeKind: candidate.notice_kind,
-                  capacityLimit: candidate.capacity_limit,
-                }
-              : { ...scope, noticeKind: candidate.notice_kind },
-          );
-          const [row] = await db
-            .select({
-              id: thread.id,
-              active: thread.active,
-              source_revision: thread.sourceRevision,
-            })
-            .from(thread)
-            .where(
-              and(
-                eq(thread.workspaceId, candidate.workspace_id),
-                eq(thread.noticeKind, candidate.notice_kind),
-                candidate.notice_kind === 'limit_approaching'
-                  ? eq(thread.capacityLimit, candidate.capacity_limit)
-                  : eq(thread.subjectId, candidate.subject_id),
-              ),
-            )
-            .for('update')
-            .catch(rethrowQueryFailure);
-          if (row === undefined && !fact.active) return null;
-          const alreadyObserved =
-            row?.active === fact.active &&
-            (!fact.active || row.source_revision === fact.sourceRevision);
-          if (alreadyObserved) return null;
-          return writeAttentionThread(client, { candidate, row, fact });
+          if (workspace.length !== 1) return [];
+          const observed: WorkspaceInboxChange[] = [];
+          for (const candidate of subjects) {
+            signal?.throwIfAborted();
+            const revision = await observeSubject(client, candidate);
+            if (revision !== null) observed.push({ workspaceId, revision });
+          }
+          return observed;
         },
         {
           statementTimeoutMillis: STATEMENT_TIMEOUT_MILLIS,
           ...(signal === undefined ? {} : { signal }),
         },
       ).catch(rethrowQueryFailure);
-      after = candidate;
-      if (changed !== null)
-        changes.push({
-          workspaceId: candidate.workspace_id,
-          revision: changed,
-        });
+      changes.push(...committed);
     }
+    after = candidates.at(-1);
     if (candidates.length < ATTENTION_PAGE_SIZE) after = undefined;
     return changes;
   };
+}
+
+async function observeSubject(
+  client: PoolClient,
+  candidate: Candidate,
+): Promise<string | null> {
+  const db = drizzle(client);
+  const scope = {
+    workspaceId: candidate.workspace_id,
+    subjectId: candidate.subject_id,
+  };
+  const fact = await readAttentionFact(
+    client,
+    candidate.notice_kind === 'limit_approaching'
+      ? {
+          ...scope,
+          noticeKind: candidate.notice_kind,
+          capacityLimit: candidate.capacity_limit,
+        }
+      : { ...scope, noticeKind: candidate.notice_kind },
+  );
+  const [row] = await db
+    .select({
+      id: thread.id,
+      active: thread.active,
+      source_revision: thread.sourceRevision,
+    })
+    .from(thread)
+    .where(
+      and(
+        eq(thread.workspaceId, candidate.workspace_id),
+        eq(thread.noticeKind, candidate.notice_kind),
+        candidate.notice_kind === 'limit_approaching'
+          ? eq(thread.capacityLimit, candidate.capacity_limit)
+          : eq(thread.subjectId, candidate.subject_id),
+      ),
+    )
+    .for('update')
+    .catch(rethrowQueryFailure);
+  if (row === undefined && !fact.active) return null;
+  const alreadyObserved =
+    row?.active === fact.active &&
+    (!fact.active || row.source_revision === fact.sourceRevision);
+  if (alreadyObserved) return null;
+  return writeAttentionThread(client, { candidate, row, fact });
 }
 
 interface AttentionThread {
