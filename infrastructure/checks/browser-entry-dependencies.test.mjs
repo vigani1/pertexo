@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process';
 import assert from 'node:assert/strict';
 import { mkdtemp, mkdir, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -140,4 +141,48 @@ test('lets browser consumers load the execution and node package roots', async (
     }),
     [],
   );
+});
+
+const runtimePackages = [
+  'queue',
+  'rate-limit',
+  'artifact-store',
+  'observability',
+];
+function importEntries(entries, conditions = []) {
+  const script = `const result = {}; for (const entry of ${JSON.stringify(entries)}) { result[entry] = await import(entry).then(() => 'loaded', error => error.code ?? 'unexpected_error'); } console.log(JSON.stringify(result));`;
+  return JSON.parse(
+    execFileSync(
+      process.execPath,
+      [...conditions, '--input-type=module', '-e', script],
+      {
+        cwd: fileURLToPath(new URL('../../apps/worker', import.meta.url)),
+        encoding: 'utf8',
+        timeout: 10_000,
+        maxBuffer: 64 * 1024,
+      },
+    ),
+  );
+}
+
+test('Node runtime packages have only explicit server doors, with no runtime root', () => {
+  const entries = runtimePackages.flatMap((name) => [
+    `@pertexo/${name}`,
+    `@pertexo/${name}/server`,
+  ]);
+  const results = importEntries(entries);
+  for (const name of runtimePackages) {
+    assert.equal(results[`@pertexo/${name}`], 'ERR_PACKAGE_PATH_NOT_EXPORTED');
+    assert.equal(results[`@pertexo/${name}/server`], 'loaded');
+  }
+});
+
+test('browser resolution refuses runtime doors, including early instrumentation', () => {
+  const entries = [
+    ...runtimePackages.map((name) => `@pertexo/${name}/server`),
+    '@pertexo/observability/startup',
+  ];
+  const results = importEntries(entries, ['--conditions=browser']);
+  for (const entry of entries)
+    assert.equal(results[entry], 'ERR_INVALID_PACKAGE_TARGET', entry);
 });

@@ -33,12 +33,12 @@ remain in `docs/adr/`, with supersession noted where their decisions changed.
 | `observability`   | Structured logging, OpenTelemetry startup, traces and metrics                                                      |
 | `rate-limit`      | Abuse policies and atomic Redis counters                                                                           |
 
-Packages expose a browser-safe root and, when needed, `/server`. The database
+Browser-safe interfaces use a root export; Node runtimes use `/server`. The database
 exposes `/schema` and `/primitives` for what core and secrets build on, `/platform` for pools
 and startup, and `/testing` for fixtures; a check keeps applications to `/platform`,
-plus `/testing` from tests. Observability's `/startup` must load before the
-instrumented runtime libraries. Artifact storage, queue and rate limiting are
-server-side packages despite having a single root door.
+plus `/testing` from tests. Queue, artifact storage, rate limiting and observability
+are runtime-only packages: they expose a guarded `/server` and no root.
+Observability's guarded `/startup` must load before the instrumented runtime libraries.
 
 Applications depend on `core`, and `core` on `secrets`, `database`, the engine and
 the model; `secrets` builds on `database` and the shared contracts, workflow model and node SDK. Applications compose its implementations into the provider ports in `integrations`. A check refuses the reverse
