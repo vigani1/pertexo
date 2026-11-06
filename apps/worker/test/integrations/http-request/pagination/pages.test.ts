@@ -22,6 +22,63 @@ describe('explicit HTTP result pages', () => {
     });
     return { pages, write };
   }
+  it.each([
+    { mode: 'cursor', paged: false },
+    { mode: 'next_link', paged: false },
+    { mode: 'link_header', paged: false },
+    { mode: 'cursor', paged: true },
+    { mode: 'next_link', paged: true },
+    { mode: 'link_header', paged: true },
+  ])(
+    'keeps $mode cycle output honest (pages: $paged)',
+    async ({ mode, paged }) => {
+      const files = storage();
+      let requests = 0;
+      const root = await server((url, _request, response) => {
+        if (url.pathname !== '/items') {
+          response.writeHead(404).end();
+          return;
+        }
+        requests++;
+        if (mode === 'link_header')
+          response.setHeader('link', '</items?next=cycle>; rel="next"');
+        json(response, {
+          data: [requests],
+          next: mode === 'cursor' ? 'cycle' : '?next=cycle',
+        });
+      });
+      const result = await setup(
+        `${root}/items`,
+        {
+          ...(mode === 'cursor'
+            ? { mode, parameter: 'cursor', cursorPath: '$.next' }
+            : {
+                mode: 'next_link',
+                source:
+                  mode === 'link_header'
+                    ? { kind: 'link_header' }
+                    : { kind: 'body', path: '$.next' },
+              }),
+          ...(paged ? { outputMode: 'pages' } : {}),
+          maxPages: 10,
+        },
+        { artifacts: { write: files.write } },
+      ).run();
+      expect(result.output).toMatchObject({
+        complete: false,
+        ...(paged
+          ? { fetchedPageCount: 2, itemCount: 2 }
+          : { pageCount: 2, items: [1, 2] }),
+      });
+      expect(requests).toBe(2);
+      if (paged)
+        expect(
+          [...files.pages.values()].flatMap(
+            (bytes) => JSON.parse(bytes.toString()) as unknown[],
+          ),
+        ).toEqual([1, 2]);
+    },
+  );
   it('keeps over 1 MB ordered records in bounded files, with redaction and distinct fetch counts', async () => {
     const files = storage();
     let requests = 0;

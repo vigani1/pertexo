@@ -140,7 +140,7 @@ export async function executePagination(input: PaginationExecutionInput) {
           pageItems.length === 0 ||
           (page === pagination.maxPages
             ? !hasNextPage(pagination, response.body, page)
-            : next === undefined),
+            : next?.kind === 'exhausted'),
         status: response.status,
         headers: response.headers,
         finalOrigin: response.finalUrl,
@@ -160,12 +160,12 @@ export async function executePagination(input: PaginationExecutionInput) {
         if (paged) yield encodeFilePageRecord(item);
         else items.push(item);
       }
-      if (next === undefined || page === pagination.maxPages) {
+      if (next?.kind !== 'next' || page === pagination.maxPages) {
         const { items: _items, ...finished } = output;
         metadata = finished;
         return;
       }
-      url = next;
+      url = next.url;
       if (pagination.delayMillis > 0)
         await timers.setTimeout(pagination.delayMillis, undefined, {
           ...(request.signal === undefined ? {} : { signal: request.signal }),
