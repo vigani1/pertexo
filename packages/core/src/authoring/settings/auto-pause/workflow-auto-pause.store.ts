@@ -32,7 +32,10 @@ import {
   WorkflowPauseRevisionConflictError,
   WorkspaceAutoPauseSettingsRevisionConflictError,
 } from './auto-pause.errors.js';
-import { workflowSettings, workspaceSettings } from './input.js';
+import {
+  workflowSettings,
+  workspaceSettings,
+} from './auto-pause-receipts.schemas.js';
 import {
   lockWorkflow,
   lockWorkspace,

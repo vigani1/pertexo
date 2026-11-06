@@ -45,7 +45,7 @@ import type {
   PublicationClaim,
 } from './workflow-publication.types.js';
 import { decodeStoredReceipt } from '../../shared/receipts.js';
-import { publicationReceipt } from './input.js';
+import { publicationReceipt } from './publication-state.schemas.js';
 import { compilePublicationGraph } from './compile-publication.js';
 import {
   finalizePublication,

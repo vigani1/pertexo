@@ -21,7 +21,7 @@ import type {
   UpdateInputCaseInput,
   WorkflowInputCaseResult,
 } from '../workflow-input-case.types.js';
-import { payload } from '../input.js';
+import { payload } from '../input-case-storage.js';
 import { lockedCase, quota } from '../metadata.repository.js';
 import { mutate } from './receipt.repository.js';
 

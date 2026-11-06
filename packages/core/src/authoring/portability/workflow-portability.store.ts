@@ -59,7 +59,7 @@ import {
 } from './source-authority.repository.js';
 
 import { inspectImport, portableFailure, selectedPolicy } from './admission.js';
-import { importResultSchema } from './input.js';
+import { importResultSchema } from './import-receipt.schemas.js';
 
 export type PortabilityContext = Readonly<{
   access: AuthoringAccess;
