@@ -1,5 +1,8 @@
 import { describeMappingFailure } from '../execution/mapping-diagnostic.js';
-import { HTTP_RESPONSE_FAILURES } from '@pertexo/integrations';
+import {
+  PROVIDER_RETRY_FAILURE,
+  HTTP_RESPONSE_FAILURES,
+} from '@pertexo/integrations';
 import {
   NodeAttemptStateCorruptError,
   type NodeAttemptRunStore,
@@ -39,6 +42,7 @@ const executorSummaryCodes = new Set<string>([
   ...Object.keys(HTTP_OAUTH2_FAILURES),
   ...Object.keys(HTTP_RESPONSE_FAILURES),
   FILE_INPUT_ERROR_CODE,
+  PROVIDER_RETRY_FAILURE.code,
 ]);
 
 /** Admit executor diagnostics before private failure text reaches persistence. */

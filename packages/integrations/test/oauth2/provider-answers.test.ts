@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { requestOAuth2Token } from '../../src/oauth2/token-endpoint.js';
 
@@ -100,7 +100,7 @@ describe('fields a service writes as null or empty', () => {
 describe('how long a 429 blocks', () => {
   // S5: a Retry-After that can't be read takes the plan's 15 s default, not 1 s.
   it.each([
-    ['an HTTP date', 'Wed, 21 Oct 2015 07:28:00 GMT'],
+    ['an elapsed HTTP date', 'Wed, 21 Oct 2015 07:28:00 GMT'],
     ['zero', '0'],
   ])('S5 %s blocks for the 15 s default', async (_name, retryAfter) => {
     const answer = await ask({
@@ -121,3 +121,19 @@ describe('how long a 429 blocks', () => {
     ).toEqual({ kind: 'rate_limited', retryAfterSeconds: 7 });
   });
 });
+
+it.each([30, 300])(
+  'preserves a token address HTTP-date minimum of %i seconds',
+  async (seconds) => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2030-01-01T00:00:00Z'));
+    try {
+      const date = new Date(Date.now() + seconds * 1000).toUTCString();
+      expect(
+        await ask({ status: 429, headers: { 'retry-after': date }, body: {} }),
+      ).toEqual({ kind: 'rate_limited', retryAfterSeconds: seconds });
+    } finally {
+      vi.useRealTimers();
+    }
+  },
+);

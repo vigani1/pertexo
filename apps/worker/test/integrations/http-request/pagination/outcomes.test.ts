@@ -1,3 +1,5 @@
+import { NodeExecutorFailure } from '@pertexo/node-sdk/server';
+import { executorFailureCompletion } from '../../../../src/attempts/delivery/executor-failure.js';
 import { describe, expect, it, vi } from 'vitest';
 
 import { httpRequestConfigSchema } from '../../../../../../packages/integrations/src/index.js';
@@ -221,3 +223,44 @@ function expectedPositions(mode: string): readonly [string, string] {
   if (mode === 'page') return ['1', '2'];
   return ['0', '10'];
 }
+
+it.each(['seconds', 'date'] as const)(
+  'stops instead of shortening a real HTTP Retry-After in %s form',
+  async (form) => {
+    let requests = 0;
+    const root = await server((url, _request, response) => {
+      if (url.pathname !== '/items') {
+        response.writeHead(404).end();
+        return;
+      }
+      requests++;
+      response.writeHead(429, {
+        'retry-after':
+          form === 'seconds'
+            ? '300'
+            : new Date(Date.now() + 300_000).toUTCString(),
+      });
+      response.end('private provider response');
+    });
+    const error: unknown = await setup(
+      `${root}/items`,
+      {},
+      { singleRequest: true },
+    )
+      .run()
+      .catch((failure: unknown) => failure);
+    expect(error).toMatchObject({
+      kind: 'failed',
+      errorKind: 'rate_limit',
+      safeErrorCode: 'provider.retry_after_exceeded',
+    });
+    if (!(error instanceof NodeExecutorFailure)) throw error;
+    expect(error.minimumRetryDelayMillis).toBeUndefined();
+    expect(executorFailureCompletion(error)).toMatchObject({
+      failureKind: 'failed',
+      safeErrorCode: 'provider.retry_after_exceeded',
+      errorSummary: expect.stringMatching(/service.*wait longer/iu),
+    });
+    expect(requests).toBe(1);
+  },
+);

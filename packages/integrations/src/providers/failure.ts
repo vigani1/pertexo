@@ -1,3 +1,4 @@
+import { PROVIDER_RETRY_FAILURE } from './retry-after-failure.js';
 import type { NodeExecutorFailure } from '@pertexo/node-sdk/server';
 import {
   MAXIMUM_RETRY_DELAY_MILLIS,
@@ -23,24 +24,34 @@ export type ProviderFailure<Failure extends NodeExecutorFailure> = (
   }>,
 ) => Failure;
 
-/** A provider's failure constructor; a service never stretches a retry wait past the platform maximum. */
+/** Stop rather than turn a provider's minimum wait into an earlier request. */
 export function providerFailure<Failure extends NodeExecutorFailure>(
   Failure: new (outcome: unknown) => Failure,
 ): ProviderFailure<Failure> {
-  return (kind, errorKind, { possiblyDispatched, retryAfterMillis }) =>
-    new Failure({
+  return (kind, errorKind, { possiblyDispatched, retryAfterMillis }) => {
+    if (
+      kind === 'retry' &&
+      retryAfterMillis !== undefined &&
+      retryAfterMillis > MAXIMUM_RETRY_DELAY_MILLIS
+    )
+      return new Failure({
+        kind: 'failed',
+        errorKind: 'rate_limit',
+        possiblyDispatched,
+        safeErrorCode: PROVIDER_RETRY_FAILURE.code,
+        errorSummary: PROVIDER_RETRY_FAILURE.sentence,
+      });
+    return new Failure({
       kind,
       errorKind,
       possiblyDispatched,
       ...(retryAfterMillis === undefined
         ? {}
         : {
-            minimumRetryDelayMillis: Math.min(
-              retryAfterMillis,
-              MAXIMUM_RETRY_DELAY_MILLIS,
-            ),
+            minimumRetryDelayMillis: retryAfterMillis,
           }),
     });
+  };
 }
 
 /**

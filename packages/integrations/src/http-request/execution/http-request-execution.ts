@@ -1,3 +1,4 @@
+import { PROVIDER_RETRY_FAILURE } from '../../providers/retry-after-failure.js';
 import {
   PROVIDER_HTTP_ERROR_CODE,
   type ProviderHttpErrorCode,
@@ -31,6 +32,8 @@ export class HttpRequestExecutorError extends NodeExecutorFailure {
     }>,
   ) {
     const responseFailure = responseFailureCode(responseCode);
+    const retryWaitExceeded =
+      decision.kind === 'failed' && decision.reason === 'retry_after_exceeded';
     if (decision.kind === 'succeeded')
       throw new TypeError('Successful HTTP outcome');
     super({
@@ -42,6 +45,12 @@ export class HttpRequestExecutorError extends NodeExecutorFailure {
         ? { minimumRetryDelayMillis: decision.minimumRetryDelayMillis }
         : {}),
       ...(serviceResponse === undefined ? {} : { serviceResponse }),
+      ...(retryWaitExceeded
+        ? {
+            safeErrorCode: PROVIDER_RETRY_FAILURE.code,
+            errorSummary: PROVIDER_RETRY_FAILURE.sentence,
+          }
+        : {}),
       ...(responseFailure === undefined
         ? {}
         : {

@@ -97,7 +97,7 @@ describe('slack.send_message@1', () => {
     });
     expect(execute).toHaveBeenCalledOnce();
   });
-  it('bounds Retry-After and performs fixed auth.test without a caller URL', async () => {
+  it('preserves Retry-After and performs fixed auth.test without a caller URL', async () => {
     const execute = vi.fn(
       (request: ProviderHttpRequest): Promise<ProviderHttpResponse> =>
         Promise.resolve({
@@ -115,7 +115,10 @@ describe('slack.send_message@1', () => {
         timeoutMillis: 15_000,
         beforeDispatch: () => Promise.resolve(),
       }),
-    ).resolves.toEqual({ kind: 'rate_limited', retryAfterMillis: 300_000 });
+    ).resolves.toEqual({
+      kind: 'rate_limited',
+      retryAfterMillis: 999999999000,
+    });
     expect(execute).toHaveBeenCalledWith(
       expect.objectContaining({
         url: 'https://slack.com/api/auth.test',

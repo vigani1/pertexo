@@ -146,7 +146,6 @@ export function encodedAttachmentBytes(byteLength: number): number {
 
 export const EMAIL_SEND_NOTIFICATION_LIMITS = Object.freeze({
   maxResponseBytes: 65_536,
-  maxRetryAfterMillis: 300_000,
   maxSubjectBytes: MAX_SUBJECT_BYTES,
   maxTextBytes: MAX_TEXT_BYTES,
   maxAttachments: MAX_ATTACHMENTS,

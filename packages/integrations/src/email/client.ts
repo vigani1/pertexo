@@ -3,7 +3,7 @@ import type {
   NodeVerifiedByteSource,
 } from '@pertexo/node-sdk/server';
 import { z } from 'zod';
-import { parseBoundedRetryAfterMillis } from '../http/retry-after.js';
+import { parseRetryAfterMillis } from '../http/retry-after.js';
 
 import type {
   ProviderHttpClient,
@@ -106,9 +106,8 @@ export function createResendClient(
           if (response.status === 429)
             return Object.freeze({
               kind: 'rate_limited' as const,
-              retryAfterMillis: parseBoundedRetryAfterMillis(
+              retryAfterMillis: parseRetryAfterMillis(
                 response.headers['retry-after'],
-                EMAIL_SEND_NOTIFICATION_LIMITS.maxRetryAfterMillis,
               ),
             });
           let decoded: unknown;

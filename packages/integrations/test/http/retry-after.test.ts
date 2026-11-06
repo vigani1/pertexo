@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
-import { parseBoundedRetryAfterMillis } from '../../src/http/retry-after.js';
+import { parseRetryAfterMillis } from '../../src/http/retry-after.js';
 
-describe('bounded provider Retry-After policy', () => {
+describe('provider Retry-After minimum', () => {
   it.each([
     undefined,
     '',
@@ -13,22 +13,32 @@ describe('bounded provider Retry-After policy', () => {
     '1e3',
     '1234567890',
     'Wed, 21 Oct 2015 07:28:00 GMT',
-  ])('uses the minimum for invalid seconds %j', (value) => {
-    expect(parseBoundedRetryAfterMillis(value, 60_000)).toBe(1_000);
+  ])('uses the minimum for invalid or elapsed hints %j', (value) => {
+    expect(
+      parseRetryAfterMillis(value, Date.parse('2030-01-01T00:00:00Z')),
+    ).toBe(1_000);
   });
 
   it.each([
-    ['0', 60_000, 1_000],
-    ['1', 60_000, 1_000],
-    ['12', 60_000, 12_000],
-    ['000012', 60_000, 12_000],
-    ['60', 60_000, 60_000],
-    ['999999999', 60_000, 60_000],
-    ['12', 5_000, 5_000],
+    ['0', 1_000],
+    ['1', 1_000],
+    ['12', 12_000],
+    ['000012', 12_000],
+    ['60', 60_000],
+    ['300', 300_000],
+    ['999999999', 999999999000],
   ] as const)(
-    'bounds %s seconds by the provider maximum %i',
-    (value, maximum, expected) => {
-      expect(parseBoundedRetryAfterMillis(value, maximum)).toBe(expected);
+    'preserves %s seconds as a provider minimum',
+    (value, expected) => {
+      expect(parseRetryAfterMillis(value)).toBe(expected);
     },
   );
+  it('uses an explicit clock for an HTTP-date without shortening it', () => {
+    expect(
+      parseRetryAfterMillis(
+        'Tue, 01 Jan 2030 00:00:30 GMT',
+        Date.parse('2030-01-01T00:00:00.250Z'),
+      ),
+    ).toBe(29_750);
+  });
 });

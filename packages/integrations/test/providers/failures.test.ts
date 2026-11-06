@@ -71,14 +71,13 @@ const providers = {
 } as const;
 
 describe.each(Object.entries(providers))('%s failures', (_, provider) => {
-  // A service may ask for a longer wait, but never more than one minute
-  // (docs/guides/step-retries.md).
-  it('caps a requested retry delay at one minute', async () => {
+  // A service minimum beyond the supported automatic wait must stop, never shorten.
+  it('stops rather than shortening a provider minimum beyond one minute', async () => {
     await expect(provider.throttled(300_000)).rejects.toMatchObject({
-      kind: 'retry',
+      kind: 'failed',
       errorKind: 'rate_limit',
       possiblyDispatched: false,
-      minimumRetryDelayMillis: 60_000,
+      safeErrorCode: 'provider.retry_after_exceeded',
     });
   });
 

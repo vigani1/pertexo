@@ -6,7 +6,7 @@ import {
   type OAuth2ServiceError,
 } from '@pertexo/contracts';
 
-import { parseBoundedRetryAfterMillis } from '../http/retry-after.js';
+import { parseRetryAfterMillis } from '../http/retry-after.js';
 import {
   PROVIDER_HTTP_ERROR_CODE,
   inspectProviderHttpError,
@@ -19,7 +19,6 @@ const MAXIMUM_RESPONSE_BYTES = 65_536;
 const MAXIMUM_ACCESS_TOKEN_LENGTH = 8_000;
 const MAXIMUM_REFRESH_TOKEN_LENGTH = 16_384;
 const MAXIMUM_EXPIRES_IN_SECONDS = 315_360_000;
-const MAXIMUM_RETRY_AFTER_MILLIS = 60_000;
 const DEFAULT_BLOCK_SECONDS = 15;
 
 const PRINTABLE_ASCII = /^[\x21-\x7e]+$/u;
@@ -201,12 +200,15 @@ function parseBody(bytes: Uint8Array): Record<string, unknown> | undefined {
   }
 }
 
-/** A date or a zero says nothing useful about when to ask again, so the default stands. */
+/** Keep the token address blocked until its actual not-before time. */
 function rateLimitBlockSeconds(retryAfter: string | undefined): number {
-  return retryAfter !== undefined && /^0*[1-9]\d{0,8}$/u.test(retryAfter)
-    ? parseBoundedRetryAfterMillis(retryAfter, MAXIMUM_RETRY_AFTER_MILLIS) /
-        1_000
-    : DEFAULT_BLOCK_SECONDS;
+  return Math.ceil(
+    parseRetryAfterMillis(
+      retryAfter,
+      Date.now(),
+      DEFAULT_BLOCK_SECONDS * 1_000,
+    ) / 1_000,
+  );
 }
 
 function classifyAnswer(
