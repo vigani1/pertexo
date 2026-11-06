@@ -17,6 +17,7 @@
   },
   "include": ["src"],
   "references": [
+    { "path": "../../packages/node-catalog/tsconfig.json" },
     {
       "path": "../../packages/policy/tsconfig.json"
     },

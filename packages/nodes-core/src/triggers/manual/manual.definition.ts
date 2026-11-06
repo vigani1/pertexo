@@ -19,6 +19,10 @@ export const CORE_MANUAL_EXECUTOR = Object.freeze({
 export const CORE_MANUAL_MANIFEST: NodeManifest = Object.freeze({
   definition: CORE_MANUAL_DEFINITION,
   family: 'trigger',
+  display: Object.freeze({
+    name: 'Manual start',
+    description: 'Start when someone runs it by hand',
+  }),
   configVersion: 1,
   configSchema: generateSchemaDocument(CORE_MANUAL_CONFIG_SCHEMA),
   inputSchema: generateSchemaDocument(CORE_MANUAL_INPUT_SCHEMA),

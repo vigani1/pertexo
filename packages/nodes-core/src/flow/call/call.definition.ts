@@ -20,6 +20,10 @@ export const CORE_CALL_EXECUTOR = Object.freeze({
 export const CORE_CALL_MANIFEST: NodeManifest = Object.freeze({
   definition: CORE_CALL_DEFINITION,
   family: 'logic',
+  display: Object.freeze({
+    name: 'Call workflow',
+    description: 'Run an exact published workflow and wait for its result',
+  }),
   configVersion: 1,
   configSchema: generateSchemaDocument(CORE_CALL_CONFIG_SCHEMA),
   inputSchema: generateSchemaDocument(CORE_CALL_INPUT_SCHEMA),

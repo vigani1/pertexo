@@ -19,6 +19,10 @@ export const CORE_FOR_EACH_EXECUTOR = Object.freeze({
 export const CORE_FOR_EACH_MANIFEST: NodeManifest = Object.freeze({
   definition: CORE_FOR_EACH_DEFINITION,
   family: 'logic',
+  display: Object.freeze({
+    name: 'For each',
+    description: 'Repeat steps for every item in a list',
+  }),
   configVersion: 1,
   configSchema: generateSchemaDocument(CORE_FOR_EACH_CONFIG_SCHEMA),
   inputSchema: generateSchemaDocument(CORE_FOR_EACH_INPUT_SCHEMA),

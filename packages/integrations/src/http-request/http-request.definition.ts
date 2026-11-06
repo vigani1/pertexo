@@ -31,6 +31,11 @@ export const HTTP_REQUEST_VALUE_POLICY = Object.freeze({
 export const HTTP_REQUEST_MANIFEST: NodeManifest = Object.freeze({
   definition: HTTP_REQUEST_DEFINITION,
   family: 'action',
+  display: Object.freeze({
+    name: 'HTTP request',
+    description: 'Call a web API',
+    sideEffect: 'This sends a real HTTP request to the address you set up.',
+  }),
   configVersion: 1,
   configSchema: generateSchemaDocument(httpRequestConfigSchema),
   inputSchema: generateSchemaDocument(httpRequestInputSchema),

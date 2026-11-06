@@ -25,6 +25,10 @@ const semantics = Object.freeze([
 export const CORE_FILTER_MANIFEST: NodeManifest = Object.freeze({
   definition: CORE_FILTER_DEFINITION,
   family: 'transform',
+  display: Object.freeze({
+    name: 'Filter items',
+    description: 'Keep items that match a field or value',
+  }),
   configVersion: 1,
   configSchema: generateSchemaDocument(CORE_FILTER_CONFIG_SCHEMA, {
     runtimeOnlySemantics: semantics,

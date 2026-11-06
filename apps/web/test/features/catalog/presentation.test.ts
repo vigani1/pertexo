@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { platformBrowserNodeDefinitionCatalog } from '@pertexo/node-catalog';
 import {
   describeConnectionRequirement,
   describeRetryBehaviour,
@@ -10,7 +11,7 @@ import {
 } from '@/features/catalog/presentation.public';
 
 describe('step presentation registry', () => {
-  it('names every catalog step in human words with its family', () => {
+  it('keeps established step names and side-effect explanations', () => {
     const expected = {
       'core.webhook': ['Webhook', 'trigger'],
       'core.schedule': ['Schedule', 'trigger'],
@@ -96,4 +97,22 @@ describe('step presentation registry', () => {
       /idempotency key/u,
     );
   });
+});
+
+it('uses the supplied catalog family even for a known step', () => {
+  expect(describeStep('core.set', 'action')).toMatchObject({
+    name: 'Set fields',
+    family: 'action',
+  });
+});
+
+it('presents every actual catalog definition using its owned display vocabulary', () => {
+  for (const item of platformBrowserNodeDefinitionCatalog().definitions) {
+    expect(item.display, item.definition.key).toBeDefined();
+    const shown = describeStep(item.definition.key, item.family);
+    expect(shown).toMatchObject({ ...item.display, family: item.family });
+    expect(shown.icon).toBeDefined();
+    expect(shown.name.length).toBeGreaterThan(0);
+    expect(shown.description.length).toBeGreaterThan(0);
+  }
 });

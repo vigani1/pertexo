@@ -19,6 +19,10 @@ export const CORE_CREATE_FILE_EXECUTOR = Object.freeze({
 export const CORE_CREATE_FILE_MANIFEST: NodeManifest = Object.freeze({
   definition: CORE_CREATE_FILE_DEFINITION,
   family: 'transform',
+  display: Object.freeze({
+    name: 'Create file',
+    description: 'Turn data into a CSV, Excel, JSON or text file',
+  }),
   configVersion: 1,
   configSchema: generateSchemaDocument(CORE_CREATE_FILE_CONFIG_SCHEMA),
   inputSchema: generateSchemaDocument(CORE_CREATE_FILE_INPUT_SCHEMA),

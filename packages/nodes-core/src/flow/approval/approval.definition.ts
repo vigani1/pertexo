@@ -21,6 +21,10 @@ export const CORE_APPROVAL_EXECUTOR = Object.freeze({
 export const CORE_APPROVAL_MANIFEST: NodeManifest = Object.freeze({
   definition: CORE_APPROVAL_DEFINITION,
   family: 'logic',
+  display: Object.freeze({
+    name: 'Approval',
+    description: 'Pause for an eligible member to approve or reject',
+  }),
   configVersion: 1,
   configSchema: generateSchemaDocument(CORE_APPROVAL_CONFIG_SCHEMA),
   inputSchema: generateSchemaDocument(CORE_APPROVAL_INPUT_SCHEMA),

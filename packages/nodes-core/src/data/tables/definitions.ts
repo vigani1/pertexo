@@ -11,6 +11,32 @@ import {
 import type { NodeDefinitionRegistration } from '@pertexo/node-sdk/server';
 import { CORE_BOUNDED_JSON_POLICY } from '../../policies.js';
 export { DATA_TABLE_OPERATIONS } from '@pertexo/node-sdk';
+const tableDisplay = {
+  find: {
+    name: 'Find rows',
+    description: 'Find rows in a workspace data table',
+  },
+  insert: {
+    name: 'Insert row',
+    description: 'Insert row in a workspace data table',
+    sideEffect: 'This changes real rows in a workspace data table.',
+  },
+  update: {
+    name: 'Update rows',
+    description: 'Update rows in a workspace data table',
+    sideEffect: 'This changes real rows in a workspace data table.',
+  },
+  upsert: {
+    name: 'Upsert by key',
+    description: 'Upsert by key in a workspace data table',
+    sideEffect: 'This changes real rows in a workspace data table.',
+  },
+  delete: {
+    name: 'Delete rows',
+    description: 'Delete rows in a workspace data table',
+    sideEffect: 'This changes real rows in a workspace data table.',
+  },
+};
 const DATA_TABLE_CONFIG_SCHEMA = dataTableConfigSchema;
 const query = dataTableQuerySchema.default({
   filters: [],
@@ -34,6 +60,7 @@ export const DATA_TABLE_DEFINITIONS: readonly NodeDefinitionRegistration[] =
     const manifest: NodeManifest = Object.freeze({
       definition,
       family: operation === 'find' ? 'transform' : 'action',
+      display: tableDisplay[operation],
       configVersion: 1,
       configSchema: generateSchemaDocument(DATA_TABLE_CONFIG_SCHEMA),
       inputSchema: generateSchemaDocument(inputSchema),

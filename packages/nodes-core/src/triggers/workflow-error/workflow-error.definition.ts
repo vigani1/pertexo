@@ -19,6 +19,10 @@ export const CORE_WORKFLOW_ERROR_EXECUTOR = Object.freeze({
 export const CORE_WORKFLOW_ERROR_MANIFEST: NodeManifest = Object.freeze({
   definition: CORE_WORKFLOW_ERROR_DEFINITION,
   family: 'trigger',
+  display: Object.freeze({
+    name: 'When a workflow fails',
+    description: 'Receive a safe summary after another workflow fails',
+  }),
   configVersion: 1,
   configSchema: generateSchemaDocument(CORE_WORKFLOW_ERROR_CONFIG_SCHEMA),
   inputSchema: generateSchemaDocument(CORE_WORKFLOW_ERROR_INPUT_SCHEMA),

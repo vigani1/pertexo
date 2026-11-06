@@ -29,6 +29,10 @@ const CORE_VALIDATE_RUNTIME_SEMANTICS = Object.freeze([
 export const CORE_VALIDATE_MANIFEST: NodeManifest = Object.freeze({
   definition: CORE_VALIDATE_DEFINITION,
   family: 'transform',
+  display: Object.freeze({
+    name: 'Validate',
+    description: 'Check data against rules before continuing',
+  }),
   configVersion: 1,
   configSchema: generateSchemaDocument(CORE_VALIDATE_CONFIG_SCHEMA, {
     runtimeOnlySemantics: CORE_VALIDATE_RUNTIME_SEMANTICS,

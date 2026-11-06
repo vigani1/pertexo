@@ -24,6 +24,10 @@ const semantics = Object.freeze([
 export const CORE_BATCH_MANIFEST: NodeManifest = Object.freeze({
   definition: CORE_BATCH_DEFINITION,
   family: 'transform',
+  display: Object.freeze({
+    name: 'Batch items',
+    description: 'Split a list into ordered batches',
+  }),
   configVersion: 1,
   configSchema: generateSchemaDocument(CORE_BATCH_CONFIG_SCHEMA, {
     runtimeOnlySemantics: semantics,

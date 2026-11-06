@@ -17,6 +17,7 @@ import { PLATFORM_NODE_CATALOG } from './catalog.js';
 export type PlatformNodeDefinitionBrowserProjection = Readonly<{
   readonly definition: Readonly<{ key: string; version: number }>;
   readonly family: NodeManifest['family'];
+  readonly display?: NodeManifest['display'];
   readonly configVersion: number;
   readonly configSchema: NodeManifest['configSchema'];
   readonly inputSchema: NodeManifest['inputSchema'];
@@ -61,6 +62,9 @@ export function platformBrowserNodeDefinitionCatalog(): PlatformNodeDefinitionBr
       Object.freeze({
         definition: Object.freeze({ ...projection.definition }),
         family: projection.family,
+        ...(projection.display === undefined
+          ? {}
+          : { display: projection.display }),
         configVersion: projection.configVersion,
         configSchema: projection.configSchema,
         inputSchema: projection.inputSchema,

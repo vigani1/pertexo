@@ -18,6 +18,10 @@ export const CORE_WAIT_EXECUTOR = Object.freeze({
 export const CORE_WAIT_MANIFEST: NodeManifest = Object.freeze({
   definition: CORE_WAIT_DEFINITION,
   family: 'logic',
+  display: Object.freeze({
+    name: 'Wait',
+    description: 'Pause for a duration or until called back',
+  }),
   configVersion: 1,
   configSchema: generateSchemaDocument(CORE_WAIT_CONFIG_SCHEMA),
   inputSchema: generateSchemaDocument(CORE_WAIT_INPUT_SCHEMA),

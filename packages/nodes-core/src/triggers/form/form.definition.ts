@@ -18,6 +18,10 @@ export const CORE_FORM_EXECUTOR = Object.freeze({
 export const CORE_FORM_MANIFEST: NodeManifest = Object.freeze({
   definition: CORE_FORM_DEFINITION,
   family: 'trigger',
+  display: Object.freeze({
+    name: 'Form',
+    description: 'Start when someone submits a form',
+  }),
   configVersion: 1,
   configSchema: generateSchemaDocument(CORE_FORM_CONFIG_SCHEMA),
   inputSchema: generateSchemaDocument(CORE_FORM_INPUT_SCHEMA),

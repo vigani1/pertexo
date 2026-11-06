@@ -16,6 +16,10 @@ export const CORE_RUN_VALUES_OUTPUT_SCHEMA = saveRunValuesOutputSchema;
 export const CORE_RUN_VALUES_MANIFEST: NodeManifest = Object.freeze({
   definition: CORE_RUN_VALUES_DEFINITION,
   family: 'transform',
+  display: Object.freeze({
+    name: 'Save run values',
+    description: 'Save business values on a run for exact lookup',
+  }),
   configVersion: 1,
   configSchema: generateSchemaDocument(CORE_RUN_VALUES_CONFIG_SCHEMA),
   inputSchema: generateSchemaDocument(CORE_RUN_VALUES_INPUT_SCHEMA, {
