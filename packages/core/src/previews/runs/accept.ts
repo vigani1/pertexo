@@ -1,3 +1,4 @@
+import { generatePersistedId } from '@pertexo/database/platform';
 import { decodeStoredValue } from '../../shared/stored-values.js';
 import {
   canonicalOutboxPayloadChecksum,
@@ -12,7 +13,6 @@ import { resolvePreviewSample } from './samples.repository.js';
 
 import type { Role } from '@pertexo/policy';
 import { and, eq, sql } from 'drizzle-orm';
-import { v7 as uuidv7 } from 'uuid';
 import { lockActorArtifactReferences } from '../../artifacts/references/locks.repository.js';
 import { captureWorkspaceVariableRevision } from '../../variables/head.repository.js';
 
@@ -86,14 +86,14 @@ export async function acceptPreviewRun(
     sample,
     resolvedInput,
   });
-  const idempotencyRecordId = uuidv7();
-  const previewRunId = uuidv7();
+  const idempotencyRecordId = generatePersistedId();
+  const previewRunId = generatePersistedId();
   const dispatch =
     sample === undefined
       ? {
           kind: 'execution' as const,
-          previewAttemptId: uuidv7(),
-          outboxEventId: uuidv7(),
+          previewAttemptId: generatePersistedId(),
+          outboxEventId: generatePersistedId(),
         }
       : { kind: 'pinned' as const, ...sample };
   const previewAttemptId =

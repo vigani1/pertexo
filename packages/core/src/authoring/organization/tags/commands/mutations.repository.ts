@@ -1,3 +1,4 @@
+import { generatePersistedId } from '@pertexo/database/platform';
 import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
@@ -129,7 +130,7 @@ export async function createTag(
         throw new WorkflowTagConflictError('limit');
       const [row] = await db
         .insert(workflowTags)
-        .values({ workspaceId, id: sql`uuidv7()`, key: request.key })
+        .values({ workspaceId, id: generatePersistedId(), key: request.key })
         .returning(tagProjection)
         .catch(rethrowQueryFailure);
       if (row === undefined) throw new Error('Tag was not created');

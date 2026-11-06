@@ -1,9 +1,9 @@
+import { generatePersistedId } from '@pertexo/database/platform';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { appendAuditFact } from '../../governance/audit/facts.js';
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
-import { v7 as uuidv7 } from 'uuid';
 import { previewRuns, usageEvents } from '@pertexo/database/schema';
 import { PreviewAttemptStateError } from '../preview.errors.js';
 import type { PreviewStatus } from '../preview.types.js';
@@ -63,7 +63,7 @@ export async function appendPreviewTerminalFacts(
   await db
     .insert(usageEvents)
     .values({
-      id: uuidv7(),
+      id: generatePersistedId(),
       workspaceId: input.workspaceId,
       category: 'preview_execution',
       quantity: 1,
