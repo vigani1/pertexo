@@ -291,24 +291,66 @@ describeOAuth2('what the token address answers', () => {
     expect(call?.headers.authorization).toBe(`Bearer ${'a'.repeat(8_000)}`);
   });
 
-  // Constants: a block after a temporary failure is Retry-After, up to 60 s.
-  it('a Retry-After over a minute blocks for a minute', async () => {
+  // ND6 keeps OAuth's full not-before block even beyond the attempt retry bound.
+  it('keeps a 3600-second provider minimum in the stored OAuth block', async () => {
     const connection = await harness.connected(owner, 'non-rotating');
     harness.standIn.setBehavior(connection.clientId, '429');
     harness.standIn.setRetryAfter(connection.clientId, 3_600);
     await harness.expireToken(connection.id);
+    const [before] = await harness.stack.sql<{ seconds: number }>(
+      `select extract(epoch from clock_timestamp())::float8 as seconds`,
+    );
     const runId = await harness.run(owner, {
       ...get(connection),
       retry: ONE_ATTEMPT,
     });
     await harness.finish(runId);
-    const [blocked] = await harness.stack.sql<{ seconds: number }>(
-      `select extract(epoch from refresh_blocked_until - clock_timestamp())::float8 as seconds
+    const [blocked] = await harness.stack.sql<{
+      deadline: number;
+      now: number;
+    }>(
+      `select extract(epoch from refresh_blocked_until)::float8 as deadline,
+              extract(epoch from clock_timestamp())::float8 as now
          from app.connection_oauth2_tokens where connection_id=$1`,
       [connection.id],
     );
-    expect(blocked?.seconds).toBeGreaterThan(0);
-    expect(blocked?.seconds).toBeLessThanOrEqual(60);
+    expect(blocked?.deadline).toBeGreaterThanOrEqual(
+      (before?.seconds ?? Infinity) + 3_600,
+    );
+    expect(blocked?.deadline).toBeLessThanOrEqual(
+      (blocked?.now ?? -Infinity) + 3_600,
+    );
+  });
+
+  it('stores the finite 15-second OAuth fallback for an out-of-range numeric Retry-After', async () => {
+    const connection = await harness.connected(owner, 'non-rotating');
+    harness.standIn.setBehavior(connection.clientId, '429');
+    harness.standIn.setRetryAfter(connection.clientId, '9'.repeat(400));
+    await harness.expireToken(connection.id);
+    const [before] = await harness.stack.sql<{ seconds: number }>(
+      `select extract(epoch from clock_timestamp())::float8 as seconds`,
+    );
+    const runId = await harness.run(owner, {
+      ...get(connection),
+      retry: ONE_ATTEMPT,
+    });
+    await harness.finish(runId);
+    const [blocked] = await harness.stack.sql<{
+      deadline: number;
+      now: number;
+    }>(
+      `select extract(epoch from refresh_blocked_until)::float8 as deadline,
+              extract(epoch from clock_timestamp())::float8 as now
+         from app.connection_oauth2_tokens where connection_id=$1`,
+      [connection.id],
+    );
+    expect(Number.isFinite(blocked?.deadline)).toBe(true);
+    expect(blocked?.deadline).toBeGreaterThanOrEqual(
+      (before?.seconds ?? Infinity) + 15,
+    );
+    expect(blocked?.deadline).toBeLessThanOrEqual(
+      (blocked?.now ?? -Infinity) + 15,
+    );
   });
 
   // Constants, answer table: the request gives up after 15 s, as an unavailable service.
