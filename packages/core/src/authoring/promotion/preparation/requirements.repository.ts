@@ -15,7 +15,7 @@ import {
 import type { WorkflowPromotionRequirement } from '@pertexo/contracts';
 import { lockWorkspaceVariableNames } from '../../../variables/head.repository.js';
 import { dataTableReferenceIssues } from '../../../data-tables/columns/references.repository.js';
-import { promotionNodes } from './graph.js';
+import { workflowNodes } from '@pertexo/workflow-model';
 
 export async function inspectPromotionRequirements(
   client: PoolClient,
@@ -66,7 +66,7 @@ export async function inspectPromotionRequirements(
   }
   const ids = [
     ...new Set(
-      [...promotionNodes(graph)].flatMap((node) =>
+      [...workflowNodes(graph)].flatMap((node) =>
         Object.values(node.connectionRefs),
       ),
     ),

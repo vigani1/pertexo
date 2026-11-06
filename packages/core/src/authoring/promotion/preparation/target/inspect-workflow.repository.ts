@@ -14,7 +14,7 @@ import type { PoolClient } from 'pg';
 import { parseWorkflowGraphDraft } from '@pertexo/workflow-model';
 
 import type { PromotionContext } from '../../workflow-promotion.types.js';
-import { promotionDigest } from '../graph.js';
+import { promotionGraphDigest } from '../graph.js';
 import type { PromotionSource } from '../source.repository.js';
 
 import type {
@@ -135,7 +135,7 @@ function targetChangedDirectly(
     (target.name !== origin.target_name ||
       target.revision !== origin.draft_revision ||
       target.published_version_id !== origin.published_version_id ||
-      promotionDigest(targetGraph) !== origin.graph_digest)
+      promotionGraphDigest(targetGraph) !== origin.graph_digest)
   );
 }
 
