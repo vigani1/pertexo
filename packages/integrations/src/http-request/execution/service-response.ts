@@ -1,5 +1,6 @@
 import {
   MAXIMUM_RESPONSE_EXCERPT_CHARACTERS,
+  MAXIMUM_SERVICE_RESPONSE_URL_CHARACTERS,
   type ServiceResponseFacts,
 } from '@pertexo/node-sdk/server';
 
@@ -18,7 +19,11 @@ function shownUrl(
   sensitiveValues: readonly string[],
 ): string {
   const { origin, pathname } = new URL(url);
-  return redactText(`${origin}${pathname}`, sensitiveValues);
+  const redacted = redactText(`${origin}${pathname}`, sensitiveValues);
+  if (redacted.length <= MAXIMUM_SERVICE_RESPONSE_URL_CHARACTERS)
+    return redacted;
+  // Redact before shortening, and never leave a partial percent escape in the path.
+  return `${redacted.slice(0, MAXIMUM_SERVICE_RESPONSE_URL_CHARACTERS - 1).replace(/%[0-9a-f]?$/iu, '')}…`;
 }
 
 function shownBody(body: ResponseBody): ServiceResponseFacts['body'] {
