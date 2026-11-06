@@ -14,7 +14,7 @@ import type {
 import type { NodeTestingPersistence } from '../ports.js';
 
 import type { Authorization } from '../node-testing.service.js';
-import { previewOutputResponse } from './response.js';
+import { previewOutputResponse, previewIdentityResponse } from './response.js';
 
 export class GetPreviewRunUseCase {
   public constructor(
@@ -50,33 +50,14 @@ export class GetPreviewRunUseCase {
       throw new WorkflowNotFoundError('Preview is not visible');
     return previewRunResponseSchema.parse({
       preview: {
-        id: preview.id,
-        workspaceId: preview.workspaceId,
-        workflowId: preview.workflowId,
-        draftRevision: preview.draftRevision,
-        nodeId: preview.nodeId,
-        status: preview.status,
-        disclosure: {
-          sideEffectClass: preview.sideEffectClass,
-          mayContactProvider: preview.mayContactProvider,
-          mayCauseExternalSideEffect: preview.mayCauseExternalSideEffect,
-          dryRun: preview.dryRun,
-        },
+        ...previewIdentityResponse(preview),
         output: previewOutputResponse(preview.output),
-        ...(preview.codeDiagnostics === undefined
-          ? {}
-          : { codeDiagnostics: preview.codeDiagnostics }),
         ...(preview.errorSummary === undefined
           ? {}
           : { errorSummary: preview.errorSummary }),
-        ...(preview.pinnedSampleId == null
-          ? {}
-          : { pinnedSampleId: preview.pinnedSampleId }),
         safeErrorCode: preview.safeErrorCode,
-        createdAt: preview.createdAt.toISOString(),
         startedAt: preview.startedAt?.toISOString() ?? null,
         completedAt: preview.completedAt?.toISOString() ?? null,
-        expiresAt: preview.expiresAt.toISOString(),
       },
     });
   }

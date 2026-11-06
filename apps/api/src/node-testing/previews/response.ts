@@ -64,33 +64,71 @@ export function previewAcceptanceResponse(
     mode: 'test_execute',
     replayed,
     preview: {
-      id: preview.id,
-      workspaceId: preview.workspaceId,
-      workflowId: preview.workflowId,
-      draftRevision: preview.draftRevision,
-      nodeId: preview.nodeId,
-      status: preview.status,
-      disclosure: {
-        sideEffectClass: preview.sideEffectClass,
-        mayContactProvider: preview.mayContactProvider,
-        mayCauseExternalSideEffect: preview.mayCauseExternalSideEffect,
-        dryRun: preview.dryRun,
-      },
+      ...previewIdentityResponse(preview),
       output:
         preview.output === undefined || preview.output === null
           ? null
           : previewOutputResponse(preview.output),
-      ...(preview.codeDiagnostics === undefined
-        ? {}
-        : { codeDiagnostics: preview.codeDiagnostics }),
-      ...(preview.pinnedSampleId == null
-        ? {}
-        : { pinnedSampleId: preview.pinnedSampleId }),
       safeErrorCode: null,
-      createdAt: preview.createdAt.toISOString(),
       startedAt: null,
       completedAt: preview.completedAt?.toISOString() ?? null,
-      expiresAt: preview.expiresAt.toISOString(),
     },
   });
+}
+
+/** Acceptance and readback expose the same safe identity and provider disclosure. */
+export function previewIdentityResponse(
+  preview: Pick<
+    PreviewAcceptanceView,
+    | 'id'
+    | 'workspaceId'
+    | 'workflowId'
+    | 'draftRevision'
+    | 'nodeId'
+    | 'status'
+    | 'sideEffectClass'
+    | 'mayContactProvider'
+    | 'mayCauseExternalSideEffect'
+    | 'dryRun'
+    | 'codeDiagnostics'
+    | 'pinnedSampleId'
+    | 'createdAt'
+    | 'expiresAt'
+  >,
+): Pick<
+  NodeTestExecuteAcceptedResponse['preview'],
+  | 'id'
+  | 'workspaceId'
+  | 'workflowId'
+  | 'draftRevision'
+  | 'nodeId'
+  | 'status'
+  | 'disclosure'
+  | 'codeDiagnostics'
+  | 'pinnedSampleId'
+  | 'createdAt'
+  | 'expiresAt'
+> {
+  return {
+    id: preview.id,
+    workspaceId: preview.workspaceId,
+    workflowId: preview.workflowId,
+    draftRevision: preview.draftRevision,
+    nodeId: preview.nodeId,
+    status: preview.status,
+    disclosure: {
+      sideEffectClass: preview.sideEffectClass,
+      mayContactProvider: preview.mayContactProvider,
+      mayCauseExternalSideEffect: preview.mayCauseExternalSideEffect,
+      dryRun: preview.dryRun,
+    },
+    ...(preview.codeDiagnostics === undefined
+      ? {}
+      : { codeDiagnostics: preview.codeDiagnostics }),
+    ...(preview.pinnedSampleId == null
+      ? {}
+      : { pinnedSampleId: preview.pinnedSampleId }),
+    createdAt: preview.createdAt.toISOString(),
+    expiresAt: preview.expiresAt.toISOString(),
+  };
 }
