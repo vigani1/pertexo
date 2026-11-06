@@ -1,3 +1,5 @@
+import { recordInboxFailureDay } from '../../../inbox/failure-days.repository.js';
+import { WORKSPACE_INBOX_FAILURE_KINDS } from '../../../inbox/threads/workspace-inbox-thread.js';
 import { assertRunStartDeadline } from '../queued-run-admission.repository.js';
 import { decodeStoredValue } from '../../../shared/stored-values.js';
 import { TERMINAL_RUN_STATUSES } from '../../statuses.js';
@@ -125,6 +127,7 @@ export async function persistCoordinatorRunTransition(
     ({ name }) =>
       name.startsWith('run.') && TERMINAL_RUN_STATUSES.has(name.slice(4)),
   )?.occurredAt;
+  await persistFailureDay(client, input, completedAt);
   const runFailure = plan.events.find(
     ({ name }) =>
       name === 'run.failed' ||
@@ -248,6 +251,28 @@ async function persistRunNotices(
       cancellationRequested: authoritativeCancellation,
       hadWaitingStep,
       plan,
+    });
+  }
+}
+
+async function persistFailureDay(
+  client: PoolClient,
+  input: Parameters<typeof persistCoordinatorRunTransition>[1],
+  completedAt: string | undefined,
+): Promise<void> {
+  const { workspaceId, row, plan } = input;
+  if (
+    completedAt !== undefined &&
+    !isTestRun(row.trigger_type) &&
+    !TERMINAL_RUN_STATUSES.has(row.status) &&
+    new Set<string>(WORKSPACE_INBOX_FAILURE_KINDS).has(
+      plan.checkpoint.runStatus,
+    )
+  ) {
+    await recordInboxFailureDay(client, {
+      workspaceId,
+      workflowId: row.workflow_id,
+      completedAt,
     });
   }
 }

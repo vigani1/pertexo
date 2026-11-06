@@ -1,3 +1,4 @@
+import { recordInboxFailureDay } from '../../../src/inbox/failure-days.repository.js';
 import { createTestUser } from '../../support/user.js';
 import type { Role } from '@pertexo/policy';
 import { randomUUID } from 'node:crypto';
@@ -156,9 +157,16 @@ export async function fail(
     // Admission reads the workspace's entitlement under its tenant context.
     await asAdmin(
       `with tenant as (select set_config('app.workspace_id',$2::uuid::text,true))
-       insert into app.workflow_runs (id,workspace_id,workflow_id,workflow_version_id,trigger_type,status)
-       select $1::uuid,$2::uuid,$3::uuid,$4::uuid,'manual',$5 from tenant`,
-      [runId, workspaceId, workflowId, randomUUID(), kind],
+       insert into app.workflow_runs (id,workspace_id,workflow_id,workflow_version_id,trigger_type,status,completed_at)
+       select $1::uuid,$2::uuid,$3::uuid,$4::uuid,'manual',$5,$6::timestamptz from tenant`,
+      [
+        runId,
+        workspaceId,
+        workflowId,
+        randomUUID(),
+        kind,
+        options.occurredAt ?? new Date().toISOString(),
+      ],
     );
   const client = await worker.connect();
   try {
@@ -166,6 +174,12 @@ export async function fail(
     await client.query("select set_config('app.workspace_id',$1,true)", [
       options.contextWorkspaceId ?? workspaceId,
     ]);
+    if (options.runId === undefined)
+      await recordInboxFailureDay(client, {
+        workspaceId,
+        workflowId,
+        completedAt: options.occurredAt ?? new Date().toISOString(),
+      });
     await persistWorkspaceInboxEvent(client, {
       workspaceId,
       workflowId,

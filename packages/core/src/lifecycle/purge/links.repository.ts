@@ -1,3 +1,4 @@
+import { removeInboxFailureDays } from '../../inbox/failure-days.repository.js';
 import {
   workflowFolders,
   previewRuns,
@@ -128,19 +129,27 @@ export async function purgeRunLeaves(
       )
       .limit(pageSize),
   );
-  return (
-    await db
-      .with(page)
-      .delete(workflowRuns)
-      .where(
-        inArray(
-          sql<string>`${workflowRuns}.ctid`,
-          db.select({ ctid: page.ctid }).from(page),
-        ),
-      )
-      .returning({ one: sql`1` })
-      .catch(rethrowQueryFailure)
-  ).length;
+  const removed = await db
+    .with(page)
+    .delete(workflowRuns)
+    .where(
+      inArray(
+        sql<string>`${workflowRuns}.ctid`,
+        db.select({ ctid: page.ctid }).from(page),
+      ),
+    )
+    .returning({
+      workspaceId: workflowRuns.workspaceId,
+      workflowId: workflowRuns.workflowId,
+      day: sql<
+        string | null
+      >`to_char(${workflowRuns.completedAt} at time zone 'UTC','YYYY-MM-DD')`,
+      status: workflowRuns.status,
+      triggerType: workflowRuns.triggerType,
+    })
+    .catch(rethrowQueryFailure);
+  await removeInboxFailureDays(client, removed);
+  return removed.length;
 }
 export async function purgeOldConnectionSecrets(
   client: PoolClient,
