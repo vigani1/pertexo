@@ -1,4 +1,4 @@
-import { isStoredDataError } from '../../../src/shared/stored-values.js';
+import { IdempotencyConflictError } from '@pertexo/database/platform';
 import { expect, it } from 'vitest';
 import {
   actorId,
@@ -60,7 +60,7 @@ it('replays the accepted restore and recovery id with the original key even afte
   ).toEqual([{ count: 1 }]);
 });
 
-it('reports a damaged stored restore receipt as stored data instead of replaying success', async () => {
+it('refuses a damaged stored restore receipt as a request-key conflict instead of replaying success', async () => {
   const fixture = await createRestoreFixture(randomUUID());
   const command = {
     ...(await restoreInput(fixture)),
@@ -72,7 +72,7 @@ it('reports a damaged stored restore receipt as stored data instead of replaying
     [fixture.workflowId],
     workspaceId,
   );
-  await expect(authoring.restoreWorkflowVersion(command)).rejects.toSatisfy(
-    isStoredDataError,
-  );
+  await expect(
+    authoring.restoreWorkflowVersion(command),
+  ).rejects.toBeInstanceOf(IdempotencyConflictError);
 });
