@@ -60,7 +60,7 @@ export const DATA_TABLE_DEFINITIONS: readonly NodeDefinitionRegistration[] =
     const manifest: NodeManifest = Object.freeze({
       definition,
       family: operation === 'find' ? 'transform' : 'action',
-      display: tableDisplay[operation],
+      display: Object.freeze(tableDisplay[operation]),
       configVersion: 1,
       configSchema: generateSchemaDocument(DATA_TABLE_CONFIG_SCHEMA),
       inputSchema: generateSchemaDocument(inputSchema),
