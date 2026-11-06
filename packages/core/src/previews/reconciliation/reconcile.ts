@@ -25,7 +25,7 @@ import {
 import { appendPreviewTerminalFacts } from '../attempts/facts.repository.js';
 import { previewReconcilerConsumerName } from '../delivery.js';
 import { PreviewAttemptStateError } from '../preview.errors.js';
-import { optionsFor } from '../input.js';
+import { optionsFor } from '../transaction-options.js';
 import {
   mayHaveDispatchedUnsafely,
   PREVIEW_STATUS,

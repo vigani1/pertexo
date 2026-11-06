@@ -1,3 +1,4 @@
+import type { WorkflowRef } from '../../../shared/workflow-actor.js';
 import { and, asc, desc, eq, exists, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { QueryBuilder } from 'drizzle-orm/pg-core';
@@ -15,7 +16,7 @@ import {
   workflowActions,
 } from '../../../tenant-access/resources/workflows.repository.js';
 import { workflowProjection } from '../representation/workflow-representations.repository.js';
-import type { WorkflowRef } from '../access.js';
+
 import type { ListWorkflowsInput } from '../workflow-commands.types.js';
 
 const folder = new QueryBuilder()

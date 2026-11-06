@@ -15,7 +15,7 @@ import type {
 import type { PreviewDelivery } from '../preview.types.js';
 import { previewConsumerName } from '../delivery.js';
 import { PreviewAttemptStateError } from '../preview.errors.js';
-import { optionsFor } from '../input.js';
+import { optionsFor } from '../transaction-options.js';
 import {
   mayHaveDispatchedUnsafely,
   TERMINAL_PREVIEW_STATUSES,

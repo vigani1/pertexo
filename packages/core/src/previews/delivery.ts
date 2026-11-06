@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { traceparentSchema } from './input.js';
+import { traceparentSchema } from '../shared/traceparent.js';
 import { DELIVERY_CONSUMER } from '../outbox/delivery-consumers.js';
 
 export const previewConsumerName = DELIVERY_CONSUMER['execute-preview-attempt'];

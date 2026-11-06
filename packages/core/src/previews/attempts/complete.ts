@@ -24,7 +24,7 @@ import { appendPreviewTerminalFacts } from './facts.repository.js';
 import type { PreviewDelivery } from '../preview.types.js';
 import { previewConsumerName } from '../delivery.js';
 import { PreviewAttemptStateError } from '../preview.errors.js';
-import { optionsFor } from '../input.js';
+import { optionsFor } from '../transaction-options.js';
 import { PREVIEW_STATUS, UNFINISHED_PREVIEW_STATUSES } from '../state.js';
 import {
   auditingDeliveryMismatch,
