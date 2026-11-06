@@ -2,7 +2,7 @@ import type { WorkflowActor } from '../../shared/workflow-actor.js';
 import type { Pool } from 'pg';
 import type { WorkflowTestSuitePreparation } from '@pertexo/contracts';
 
-import type { AuthoringCatalogs } from '../../authoring/workflows/catalogs.js';
+import type { WorkflowTestOptions } from '../workflows/workflow-test.types.js';
 import { withTestChange, withTestRead } from '../workflows/access.js';
 import { cancelTestSuite } from './cancel.js';
 import type {
@@ -24,7 +24,7 @@ export type WorkflowTestSuiteStore = ReturnType<
 
 export function createWorkflowTestSuiteStore(
   pool: Pool,
-  catalogs: AuthoringCatalogs,
+  options: WorkflowTestOptions,
 ) {
   return {
     prepare: (input: WorkflowActor): Promise<WorkflowTestSuitePreparation> =>
@@ -32,11 +32,11 @@ export function createWorkflowTestSuiteStore(
         pool,
         input,
         async (client) =>
-          (await prepareTestSuite(client, input, catalogs)).prepared,
+          (await prepareTestSuite(client, input, options)).prepared,
       ),
     start: (input: WorkflowTestSuiteStartInput) =>
       withTestChange(pool, input, (client, role) =>
-        startTestSuite(client, role, input, catalogs),
+        startTestSuite(client, role, input, options),
       ),
     list: (input: WorkflowActor) =>
       withTestRead(pool, input, async (client) => ({

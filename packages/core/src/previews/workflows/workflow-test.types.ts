@@ -1,3 +1,8 @@
+import type { WorkflowGraph } from '@pertexo/workflow-model';
+import type {
+  WorkflowTestPins,
+  WorkflowTestCompilation,
+} from '@pertexo/workflow-engine';
 import type { WorkflowActor } from '../../shared/workflow-actor.js';
 
 export type WorkflowTestPreparation = Readonly<{
@@ -39,3 +44,12 @@ export type WorkflowTestDetail = WorkflowTestSummary &
       >
     >;
   }>;
+
+export type WorkflowTestCompiler = (
+  graph: WorkflowGraph,
+  pins: WorkflowTestPins,
+) => WorkflowTestCompilation;
+
+export type WorkflowTestOptions = Readonly<{
+  workflowTestCompiler: WorkflowTestCompiler | undefined;
+}>;

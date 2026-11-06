@@ -1,6 +1,6 @@
 import type { WorkflowActor } from '../../shared/workflow-actor.js';
 import type { Pool } from 'pg';
-import type { AuthoringCatalogs } from '../../authoring/workflows/catalogs.js';
+import type { WorkflowTestOptions } from './workflow-test.types.js';
 
 import { cancelWorkflowTest } from './cancel.js';
 import type {
@@ -17,7 +17,7 @@ export type WorkflowTestStore = ReturnType<typeof createWorkflowTestStore>;
 
 export function createWorkflowTestStore(
   pool: Pool,
-  catalogs: AuthoringCatalogs,
+  options: WorkflowTestOptions,
 ) {
   return {
     prepare: (input: WorkflowActor): Promise<WorkflowTestPreparation> =>
@@ -25,11 +25,11 @@ export function createWorkflowTestStore(
         pool,
         input,
         async (client) =>
-          (await loadTestSnapshot(client, input, catalogs)).preparation,
+          (await loadTestSnapshot(client, input, options)).preparation,
       ),
     start: (input: WorkflowTestCommand) =>
       withTestChange(pool, input, (client, role) =>
-        startWorkflowTest(client, role, input, catalogs),
+        startWorkflowTest(client, role, input, options),
       ),
     list: (input: WorkflowActor) =>
       withTestRead(pool, input, (client) => listTests(client, input)),

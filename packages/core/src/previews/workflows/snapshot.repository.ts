@@ -14,7 +14,7 @@ import { sampleDraft } from '../../authoring/step-samples/records.repository.js'
 import type { PoolClient } from 'pg';
 import { normalizedJson } from '@pertexo/workflow-model';
 import type { WorkflowTestPins } from '@pertexo/workflow-engine';
-import type { AuthoringCatalogs } from '../../authoring/workflows/catalogs.js';
+import type { WorkflowTestOptions } from './workflow-test.types.js';
 
 import { readDatabaseClock } from '../clock.repository.js';
 import { WorkflowTestError } from './workflow-test.errors.js';
@@ -22,7 +22,7 @@ import { WorkflowTestError } from './workflow-test.errors.js';
 export async function loadTestSnapshot(
   client: PoolClient,
   input: WorkflowActor,
-  catalogs: AuthoringCatalogs,
+  options: WorkflowTestOptions,
 ) {
   const draft = await sampleDraft(client, input, { write: true });
   const { graph, bindings } = draft;
@@ -61,9 +61,9 @@ export async function loadTestSnapshot(
       outputRef: sample.outputRef,
     };
   }
-  if (catalogs.workflowTestCompiler === undefined)
+  if (options.workflowTestCompiler === undefined)
     throw new WorkflowTestError('not_supported');
-  const compiled = catalogs.workflowTestCompiler(graph, pins);
+  const compiled = options.workflowTestCompiler(graph, pins);
   if (compiled.invalidPinIds.length > 0)
     throw new WorkflowTestError('pin_invalid');
   const labels = new Map(

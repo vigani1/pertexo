@@ -24,7 +24,7 @@ import type { PoolClient } from 'pg';
 import { lockArtifactReferences } from '../../artifacts/references/locks.repository.js';
 import { lockInputCaseQuota } from '../../authoring/input-cases/metadata.repository.js';
 
-import type { AuthoringCatalogs } from '../../authoring/workflows/catalogs.js';
+import type { WorkflowTestOptions } from '../workflows/workflow-test.types.js';
 import { generatePersistedId } from '@pertexo/database/platform';
 import { TEST_RUN_RETENTION_MILLIS } from '../../runs/data-policy.js';
 import { requireWorkflowCallTargets } from '../../tenant-access/resources/bindings.repository.js';
@@ -52,9 +52,9 @@ import { assertPreparedSuite, SUITE_MAX_DURATION_MS } from './rules.js';
 export async function prepareTestSuite(
   client: PoolClient,
   input: WorkflowActor,
-  catalogs: AuthoringCatalogs,
+  options: WorkflowTestOptions,
 ) {
-  const snapshot = await loadTestSnapshot(client, input, catalogs);
+  const snapshot = await loadTestSnapshot(client, input, options);
   await lockInputCaseQuota(client, input.workspaceId);
   const transaction = {
     db: drizzle(client, { schema: databaseSchema }),
@@ -76,7 +76,7 @@ export async function startTestSuite(
   client: PoolClient,
   role: Role,
   input: WorkflowTestSuiteStartInput,
-  catalogs: AuthoringCatalogs,
+  options: WorkflowTestOptions,
 ): Promise<{ suiteId: string }> {
   const suiteId = generatePersistedId();
   const command = {
@@ -91,7 +91,7 @@ export async function startTestSuite(
     resourceId: suiteId,
   });
   if (replay !== null) return replay;
-  const { snapshot, current } = await prepareTestSuite(client, input, catalogs);
+  const { snapshot, current } = await prepareTestSuite(client, input, options);
   assertPreparedSuite(input, current, snapshot.preparation.effectfulSteps);
   if (snapshot.usesConnections) requireTestCapability(role, 'connection:use');
   await requireNoActiveSuite(client, input);
