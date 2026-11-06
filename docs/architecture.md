@@ -57,7 +57,7 @@ API and imports only browser-safe packages. `pnpm architecture:check` verifies
 workspace dependencies, TypeScript references and source import cycles.
 
 Workspace roles, capability grants and membership-role transitions live in the
-browser-safe `workflow-model/src/workspaces/policy.ts`. Database and API
+browser-safe `policy/src/authorization-policy.ts`. Database and API
 consumers share those rules; contracts derive role schemas and the web derives
 its role matrix from them. API persistence ports import stored record types,
 with `Pick`/`Partial` only for deliberately narrower projections and test fakes.

@@ -1,3 +1,8 @@
+import {
+  ALL_WORKSPACE_STATUSES,
+  UNPURGED_WORKSPACE_STATUSES,
+  AUTHORIZATION_CAPABILITIES,
+} from '@pertexo/policy';
 import { storageTextSchema } from '@pertexo/workflow-model';
 import { directoryMembershipSourceSchema } from './federation/directory.js';
 import {
@@ -56,13 +61,7 @@ export const workspaceResponseSchema = z
     id: z.uuid(),
     name: z.string(),
     slug: z.string(),
-    status: z.enum([
-      'active',
-      'suspended',
-      'pending_deletion',
-      'purging',
-      'deleted',
-    ]),
+    status: z.enum(ALL_WORKSPACE_STATUSES),
     createdAt: z.iso.datetime(),
     updatedAt: z.iso.datetime(),
   })
@@ -286,34 +285,10 @@ export const accessibleWorkspacesQuerySchema = z
     after: workspaceIdentifierSchema.optional(),
   })
   .strict();
-const workspaceCapabilitySchema = z.enum([
-  'workspace:read',
-  'workspace:manage',
-  'audit:read',
-  'governance:manage',
-  'variable:manage',
-  'artifact:read',
-  'artifact:upload',
-  'workflow:read',
-  'workflow:create',
-  'workflow:update',
-  'workflow:publish',
-  'run:read',
-  'run:read-data',
-  'run:start',
-  'run:cancel',
-  'run:replay',
-  'connection:read',
-  'connection:use',
-  'connection:manage',
-  'member:read',
-  'member:manage',
-  'notification:read',
-  'notification:manage_defaults',
-]);
+const workspaceCapabilitySchema = z.enum(AUTHORIZATION_CAPABILITIES);
 export const accessibleWorkspaceSchema = workspaceResponseSchema
   .extend({
-    status: z.enum(['active', 'suspended', 'pending_deletion']),
+    status: z.enum(UNPURGED_WORKSPACE_STATUSES),
     revision: workspaceRevisionSchema,
     role: workspaceRoleSchema,
     capabilities: z
