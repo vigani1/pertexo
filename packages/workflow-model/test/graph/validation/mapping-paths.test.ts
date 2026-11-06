@@ -11,12 +11,19 @@ function mappedGraph(
   kind: 'run_input' | 'node_output' | 'node_failure' | 'structured_input',
   path: string,
 ): WorkflowGraph {
-  const source: ValueSource =
-    kind === 'node_output' || kind === 'node_failure'
-      ? { kind, nodeId: 'source', path }
-      : kind === 'structured_input'
-        ? { kind, port: 'item', path }
-        : { kind, path };
+  let source: ValueSource;
+  switch (kind) {
+    case 'node_output':
+    case 'node_failure':
+      source = { kind, nodeId: 'source', path };
+      break;
+    case 'structured_input':
+      source = { kind, port: 'item', path };
+      break;
+    case 'run_input':
+      source = { kind, path };
+      break;
+  }
   const sink = {
     ...node('sink'),
     connectionRefs: {},
