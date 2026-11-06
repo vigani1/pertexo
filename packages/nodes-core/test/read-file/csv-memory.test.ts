@@ -3,7 +3,7 @@ import { expect, it } from 'vitest';
 
 function probe(total: number) {
   const parser = new URL(
-    '../../dist/data/read-file/csv/records.js',
+    '../../dist/data/read-file/csv/csv-records.js',
     import.meta.url,
   ).href;
   const sdk = new URL('../../../node-sdk/dist/server.js', import.meta.url).href;

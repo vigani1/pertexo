@@ -15,7 +15,7 @@ function probe(bytes: Buffer) {
   const file = join(directory, `${String(Math.random()).slice(2)}.xlsx`);
   writeFileSync(file, bytes);
   const moduleUrl = new URL(
-    '../../../dist/data/read-file/xlsx/records.js',
+    '../../../dist/data/read-file/xlsx/xlsx-records.js',
     import.meta.url,
   ).href;
   const script = `
