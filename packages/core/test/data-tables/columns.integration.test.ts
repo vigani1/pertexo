@@ -426,7 +426,7 @@ it('checks singleton/multiple table bindings before published starts, including 
   };
   const version = randomUUID();
   await queryAsOwner(
-    'insert into app.workflow_versions(id,workspace_id,workflow_id,version_number,graph_json,executable_json,checksum,published_by) select $1,$2,$3,coalesce(max(version_number),0)+1,$4::jsonb,$5::jsonb,$6,$7 from app.workflow_versions where workflow_id=$3',
+    'insert into app.workflow_versions(id,workspace_id,workflow_id,version_number,graph_json,executable_json,checksum,published_by) select $1,$2,$3,coalesce(max(version_number),0)+1,$4::json,$5::json,$6,$7 from app.workflow_versions where workflow_id=$3',
     [
       version,
       workspaceId,

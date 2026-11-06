@@ -156,7 +156,7 @@ export async function addVersion(
 ) {
   await ownerTransaction((client) =>
     client.query(
-      'insert into app.workflow_versions(id,workspace_id,workflow_id,version_number,graph_json,checksum,executable_json,published_by) values($1,$2,$3,1,$4::jsonb,$5,$6::jsonb,$7)',
+      'insert into app.workflow_versions(id,workspace_id,workflow_id,version_number,graph_json,checksum,executable_json,published_by) values($1,$2,$3,1,$4::json,$5,$6::json,$7)',
       [
         state.versionId,
         workspaceId,

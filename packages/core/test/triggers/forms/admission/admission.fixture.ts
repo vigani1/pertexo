@@ -93,7 +93,7 @@ export async function fixture(config: z.input<typeof formConfigSchema> = {}) {
     [workflowId, family.workspaceId, userId],
   );
   await admin.query(
-    `insert into app.workflow_versions(id,workspace_id,workflow_id,version_number,graph_json,executable_json,checksum,published_by) values($1,$2,$3,1,$4::jsonb,$5::jsonb,$6,$7)`,
+    `insert into app.workflow_versions(id,workspace_id,workflow_id,version_number,graph_json,executable_json,checksum,published_by) values($1,$2,$3,1,$4::json,$5::json,$6,$7)`,
     [
       versionId,
       family.workspaceId,
@@ -142,7 +142,7 @@ export async function insertFormRevision(
   });
   const versionId = randomUUID();
   await admin.query(
-    `insert into app.workflow_versions(id,workspace_id,workflow_id,version_number,graph_json,executable_json,checksum,published_by) values($1,$2,$3,2,$4::jsonb,$5::jsonb,$6,$7)`,
+    `insert into app.workflow_versions(id,workspace_id,workflow_id,version_number,graph_json,executable_json,checksum,published_by) values($1,$2,$3,2,$4::json,$5::json,$6,$7)`,
     [
       versionId,
       f.workspaceId,

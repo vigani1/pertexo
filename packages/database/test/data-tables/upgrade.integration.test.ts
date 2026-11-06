@@ -81,7 +81,7 @@ it('backfills stable IDs without changing populated rows or published graphs and
       [workflow, workspace, user],
     );
     await admin.query(
-      'insert into app.workflow_versions(id,workspace_id,workflow_id,version_number,graph_json,executable_json,checksum,published_by) values($1,$2,$3,1,$4::jsonb,$5::jsonb,$6,$7)',
+      'insert into app.workflow_versions(id,workspace_id,workflow_id,version_number,graph_json,executable_json,checksum,published_by) values($1,$2,$3,1,$4::json,$5::json,$6,$7)',
       [
         version,
         workspace,
