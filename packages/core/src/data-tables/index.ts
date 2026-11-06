@@ -24,3 +24,5 @@ export type { WorkspaceActor } from '../shared/workspace-access.js';
 // Runs and authoring check table references directly (ADR 091).
 export type {} from './columns/references.repository.js';
 export type {} from './table-lookups.repository.js';
+
+export { StoredTableDefinitionError } from './data-table.errors.js';

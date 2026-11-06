@@ -115,3 +115,32 @@ describe('QueryView', () => {
     expect(screen.getByText('No notes yet.')).toBeVisible();
   });
 });
+
+it('explains a damaged stored table definition in the table read notice', () => {
+  const detail =
+    'A stored table definition is damaged. Ask the workspace owner to restore it from a backup. Other tables can still be read and exported.';
+  render(
+    <QueryView
+      resource="Data tables"
+      query={read({
+        isError: true,
+        error: new ApiError({
+          kind: 'problem',
+          message: detail,
+          status: 500,
+          problem: {
+            type: 'about:blank',
+            title: 'Stored table definition is damaged',
+            status: 500,
+            code: 'data_table.stored_definition_invalid',
+            requestId: 'stored-table-read',
+            detail,
+          },
+        }),
+      })}
+    >
+      {() => <p>Tables</p>}
+    </QueryView>,
+  );
+  expect(screen.getByText(detail)).toBeVisible();
+});

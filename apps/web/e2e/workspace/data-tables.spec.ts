@@ -126,3 +126,27 @@ for (const width of [1280, 375])
       )
       .toBe(true);
   });
+
+test('explains a damaged stored table definition', async ({ page }) => {
+  await installEditorRoutes(page, remoteDraft(), {
+    accessibleWorkspace: { ...workspace, role: 'owner' },
+  });
+  const detail =
+    'A stored table definition is damaged. Ask the workspace owner to restore it from a backup. Other tables can still be read and exported.';
+  await page.route(`**/v1/workspaces/${workspaceId}/data-tables`, (route) =>
+    route.fulfill({
+      status: 500,
+      contentType: 'application/problem+json',
+      json: {
+        type: 'about:blank',
+        title: 'Stored table definition is damaged',
+        status: 500,
+        code: 'data_table.stored_definition_invalid',
+        detail,
+        requestId: 'stored-table-read',
+      },
+    }),
+  );
+  await page.goto(`/w/${workspaceId}/data-tables`);
+  await expect(page.getByText(detail)).toBeVisible();
+});

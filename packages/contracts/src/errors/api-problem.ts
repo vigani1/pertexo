@@ -61,6 +61,7 @@ export const API_PROBLEM_CODES = [
   'artifact.conflict',
   'artifact.unavailable',
   'workspace.conflict',
+  'data_table.stored_definition_invalid',
   'data_table.conflict',
   'data_table.key_conflict',
   'data_table.quota_exceeded',
@@ -414,6 +415,12 @@ const apiProblemDetails = {
     status: 409,
     title: 'Workspace conflict',
     severity: 'info',
+    exposeDetail: true,
+  },
+  'data_table.stored_definition_invalid': {
+    status: 500,
+    title: 'Stored table definition is damaged',
+    severity: 'error',
     exposeDetail: true,
   },
   'data_table.conflict': {

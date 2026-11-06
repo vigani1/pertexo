@@ -1,3 +1,5 @@
+import { StoredTableDefinitionError } from '@pertexo/core/data-tables';
+import { applicationError } from '../../platform/http/application-error.js';
 import { WorkspaceAccessDeniedError } from '@pertexo/core/tenant-access';
 import { IdempotencyConflictError } from '@pertexo/database/platform';
 import { isStoredDataError } from '@pertexo/core/authoring';
@@ -127,6 +129,12 @@ export function inboxFailure(error: unknown): unknown {
 }
 
 export function dataTableFailure(error: unknown): unknown {
+  if (error instanceof StoredTableDefinitionError)
+    return applicationError('data_table.stored_definition_invalid', {
+      safeDetail:
+        'A stored table definition is damaged. Ask the workspace owner to restore it from a backup. Other tables can still be read and exported.',
+      cause: error,
+    });
   if (error instanceof z.ZodError && !isStoredDataError(error))
     return new InvalidRequestError(
       error.issues[0]?.message ?? 'The data table request is invalid.',
