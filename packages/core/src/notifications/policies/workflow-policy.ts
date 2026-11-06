@@ -1,3 +1,5 @@
+import { z } from 'zod';
+import { decodeStoredReceipt } from '../../shared/receipts.js';
 import { FailureNotificationDestinationError } from '../destinations/notification-destination.errors.js';
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
@@ -58,7 +60,10 @@ export async function setWorkflowPolicy(
     scope,
     resourceId: workflowId,
   });
-  if (replay.kind === 'replay') return;
+  if (replay.kind === 'replay') {
+    decodeStoredReceipt(z.null(), replay.result);
+    return;
+  }
   await readFailureNotificationDestination(
     client,
     input.workspaceId,
@@ -162,7 +167,10 @@ export async function clearWorkflowPolicy(
     scope,
     resourceId: workflowId,
   });
-  if (replay.kind === 'replay') return;
+  if (replay.kind === 'replay') {
+    decodeStoredReceipt(z.null(), replay.result);
+    return;
+  }
   if (existing.length !== 1)
     throw new FailureNotificationDestinationError(
       'not_found',
