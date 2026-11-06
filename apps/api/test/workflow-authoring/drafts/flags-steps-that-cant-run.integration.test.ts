@@ -254,4 +254,51 @@ describeIntegration('checking a draft before it is published', () => {
     expect(refused.statusCode, refused.body).toBe(422);
     expect(refused.json<{ errors: unknown }>().errors).toEqual(report.issues);
   }, 60_000);
+  it.each([100, 101])(
+    'keeps Check and Publish consistent at %i predecessors',
+    async (count) => {
+      const sources = Array.from({ length: count }, (_, n) =>
+        step(`source-${String(n)}`, 'core.set', 200),
+      );
+      const { report, publish } = await saveAndValidate({
+        settings: {},
+        nodes: [
+          step('manual', 'core.manual', 0),
+          ...sources,
+          step('sink', 'core.set', 400),
+        ],
+        edges: sources.flatMap((source) => [
+          {
+            id: `start-${source.id}`,
+            source: { nodeId: 'manual', port: 'out' },
+            target: { nodeId: source.id, port: 'in' },
+          },
+          {
+            id: `end-${source.id}`,
+            source: { nodeId: source.id, port: 'out' },
+            target: { nodeId: 'sink', port: 'in' },
+          },
+        ]),
+      });
+      expect(report.valid).toBe(count === 100);
+      const published = await publish();
+      if (count === 100) {
+        expect(published.statusCode, published.body).toBe(200);
+      } else {
+        expect(report.issues).toEqual([
+          {
+            code: 'graph_limit',
+            path: '$.nodes.sink',
+            message:
+              'A step can have at most 100 direct predecessors. Add an intermediate step to combine their outputs.',
+          },
+        ]);
+        expect(published.statusCode, published.body).toBe(422);
+        expect(published.json<{ errors: unknown }>().errors).toEqual(
+          report.issues,
+        );
+      }
+    },
+    60000,
+  );
 });

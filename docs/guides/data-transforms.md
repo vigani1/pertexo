@@ -10,6 +10,12 @@ A path such as `$.amount` selects a field inside each item; `$` selects the whol
 item. Map an `items` input from the run input or a linked predecessor's `$.items`
 output. Links determine execution order; input mappings determine the data.
 
+A step can have up to 100 directly linked predecessors. Check and Publish flag a
+step above that limit. Each predecessor output keeps its own JSON size limit;
+legal outputs do not share a single 1 MiB budget while they are loaded. The
+resolved inputs passed to the receiving step still have a 1 MiB limit. For a
+wider graph, add intermediate steps that reduce or summarize the outputs.
+
 ## Example: paid invoices, one per ID, totals by currency
 
 Create this chain:

@@ -1,3 +1,4 @@
+import { WORKFLOW_GRAPH_CONTRACT_LIMITS } from '../workflow-graph.schemas.js';
 import { canonicalJson } from '../../values/json/canonical.js';
 import { supportsStepRetrySettings } from '../../execution/step-retries/step-retry.schemas.js';
 import type {
@@ -79,6 +80,17 @@ function validateMappings(
     directUpstream.set(edge.target.nodeId, upstream);
   }
   for (const node of graph.nodes) {
+    if (
+      node.definition.key !== 'core.merge' &&
+      (directUpstream.get(node.id)?.size ?? 0) >
+        WORKFLOW_GRAPH_CONTRACT_LIMITS.maxDirectPredecessors
+    ) {
+      context.issue(
+        'graph_limit',
+        `${path}.nodes.${node.id}`,
+        `A step can have at most ${String(WORKFLOW_GRAPH_CONTRACT_LIMITS.maxDirectPredecessors)} direct predecessors. Add an intermediate step to combine their outputs.`,
+      );
+    }
     for (const [mappingKey, source] of Object.entries(node.inputMappings)) {
       const mappingPath = `${path}.nodes.${node.id}.inputMappings.${mappingKey}`;
       if (

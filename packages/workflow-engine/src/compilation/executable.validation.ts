@@ -122,8 +122,11 @@ export function normalizeBoundedEngineJson(
 }
 
 /** Data a step reads or returns, keeping the key order it was written in. */
-export function normalizeBoundedEngineValue(value: unknown): JsonValue {
-  assertSafeExecutableJson(value);
+export function normalizeBoundedEngineValue(
+  value: unknown,
+  limits?: JsonBounds,
+): JsonValue {
+  assertSafeExecutableJson(value, limits);
   return JSON.parse(normalizedJson(value)) as JsonValue;
 }
 

@@ -1,3 +1,4 @@
+import { WORKFLOW_GRAPH_CONTRACT_LIMITS } from '@pertexo/workflow-model';
 import type { CallbackWaitConfig } from '@pertexo/workflow-model';
 import type {
   JsonValue,
@@ -386,5 +387,5 @@ export interface WorkflowTransitionPlan {
 
 /** Maximum direct upstream values assembled for one node attempt. */
 export const NODE_ATTEMPT_INPUT_LIMITS = Object.freeze({
-  upstreamNodeOutputs: 100,
+  upstreamNodeOutputs: WORKFLOW_GRAPH_CONTRACT_LIMITS.maxDirectPredecessors,
 });
