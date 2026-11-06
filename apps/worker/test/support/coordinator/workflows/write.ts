@@ -38,7 +38,7 @@ export async function insertCompiledWorkflow(
        id, workspace_id, workflow_id, version_number,
        graph_json, checksum, executable_json,
        published_by
-     ) values ($1, $2, $3, 1, $4::jsonb, $5, $6::jsonb, $7)`,
+     ) values ($1, $2, $3, 1, $4::json, $5, $6::json, $7)`,
     [
       input.identity.workflowVersionId,
       input.workspaceId,
