@@ -51,3 +51,5 @@ export {
   openNoticeUnsubscribe,
   type NoticeUnsubscribeClaims,
 } from './notice-unsubscribe.js';
+
+export type {} from './failure-days.repository.js';

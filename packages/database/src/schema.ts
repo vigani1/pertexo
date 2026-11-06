@@ -1,3 +1,4 @@
+import { workspaceInboxFailureDays } from './schema/inbox/failure-days.js';
 import { artifactOwnerReferences } from './schema/artifacts/references.js';
 export type { ArtifactOwnerFamily } from './schema/artifacts/references.js';
 export {
@@ -350,6 +351,7 @@ export const databaseSchema = {
   users,
   workspaceMemberships,
   workspaceInboxEvents,
+  workspaceInboxFailureDays,
   workspaceInboxReads,
   workspaceInboxThreads,
   workflowFailureStreaks,
@@ -537,3 +539,5 @@ export type {
   StoredExecutionJsonValue,
   StoredExecutionValue,
 } from './schema/stored-shapes.js';
+
+export { workspaceInboxFailureDays } from './schema/inbox/failure-days.js';

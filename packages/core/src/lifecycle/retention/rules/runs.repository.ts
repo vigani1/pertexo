@@ -1,3 +1,4 @@
+import { removeInboxFailureDays } from '../../../inbox/failure-days.repository.js';
 import {
   workflowRuns,
   nodeRuns,
@@ -259,20 +260,28 @@ export const runSummaries = {
         .limit(pageSize)
         .for('update', { skipLocked: true }),
     );
-    return (
-      await db
-        .with(page)
-        .delete(workflowRuns)
-        .where(
-          exists(
-            db
-              .select({ one: sql`1` })
-              .from(page)
-              .where(eq(page.id, workflowRuns.id)),
-          ),
-        )
-        .returning({ one: sql`1` })
-        .catch(rethrowQueryFailure)
-    ).length;
+    const removed = await db
+      .with(page)
+      .delete(workflowRuns)
+      .where(
+        exists(
+          db
+            .select({ one: sql`1` })
+            .from(page)
+            .where(eq(page.id, workflowRuns.id)),
+        ),
+      )
+      .returning({
+        workspaceId: workflowRuns.workspaceId,
+        workflowId: workflowRuns.workflowId,
+        day: sql<
+          string | null
+        >`to_char(${workflowRuns.completedAt} at time zone 'UTC','YYYY-MM-DD')`,
+        status: workflowRuns.status,
+        triggerType: workflowRuns.triggerType,
+      })
+      .catch(rethrowQueryFailure);
+    await removeInboxFailureDays(client, removed);
+    return removed.length;
   },
 } as const;

@@ -1,10 +1,8 @@
-import { ordinaryRunSql } from '../../runs/data-policy.js';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { and, eq, gte, inArray, lte, sql } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import type { databaseSchema } from '@pertexo/database/schema';
-import { WORKSPACE_INBOX_FAILURE_KINDS } from './workspace-inbox-thread.js';
-import { workflowRuns } from '@pertexo/database/schema';
+import { workspaceInboxFailureDays as failureDays } from '@pertexo/database/schema';
 
 type FailureDay = Readonly<{ day: string; count: number }>;
 
@@ -15,28 +13,28 @@ export async function readFailureDays(
   workflowIds: readonly string[],
 ): Promise<ReadonlyMap<string, readonly FailureDay[]>> {
   if (workflowIds.length === 0) return new Map();
-  const day = sql<string>`to_char(${workflowRuns.completedAt} at time zone 'UTC', 'YYYY-MM-DD')`;
+  const day = failureDays.day;
   const rows = await db
     .select({
-      workflowId: workflowRuns.workflowId,
+      workflowId: failureDays.workflowId,
       day,
-      count: sql<number>`count(*)::integer`,
+      count: sql<number>`${failureDays.count}::integer`,
     })
-    .from(workflowRuns)
+    .from(failureDays)
     .where(
       and(
-        eq(workflowRuns.workspaceId, workspaceId),
-        ordinaryRunSql('workflow_runs'),
-        inArray(workflowRuns.workflowId, [...workflowIds]),
-        inArray(workflowRuns.status, [...WORKSPACE_INBOX_FAILURE_KINDS]),
+        eq(failureDays.workspaceId, workspaceId),
+        inArray(failureDays.workflowId, [...workflowIds]),
         gte(
-          workflowRuns.completedAt,
-          sql`(date_trunc('day', transaction_timestamp() at time zone 'UTC') - interval '29 days') at time zone 'UTC'`,
+          failureDays.day,
+          sql`(transaction_timestamp() at time zone 'UTC')::date-29`,
         ),
-        lte(workflowRuns.completedAt, sql`transaction_timestamp()`),
+        lte(
+          failureDays.day,
+          sql`(transaction_timestamp() at time zone 'UTC')::date`,
+        ),
       ),
     )
-    .groupBy(workflowRuns.workflowId, day)
     .orderBy(day)
     .catch(rethrowQueryFailure);
   const grouped = new Map<string, FailureDay[]>();

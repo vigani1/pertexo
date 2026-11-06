@@ -346,7 +346,7 @@ describe('workspace inbox threads (ADR 055)', () => {
         ?.workflowName,
     ).toMatch(/^Workflow /u);
     expect(firstPage.items[0]).toMatchObject({
-      failureDays: [],
+      failureDays: [{ day: new Date().toISOString().slice(0, 10), count: 1 }],
       occurrenceCount: 1,
       kind: 'failed',
       latestFailedStep: null,
@@ -394,27 +394,13 @@ describe('workspace inbox threads (ADR 055)', () => {
 
   it('returns retained UTC failure days and excludes old or foreign runs', async () => {
     const { workspaceId, first, members } = await seed();
-    const current = await fail(workspaceId, first);
-    const recent = await fail(workspaceId, first, { kind: 'timed_out' });
-    const old = await fail(workspaceId, first);
-    await asAdmin(
-      `update app.workflow_runs set completed_at=now() where workspace_id=$1 and id=$2`,
-      [workspaceId, current],
-    );
-    await asAdmin(
-      `update app.workflow_runs set completed_at=now() where workspace_id=$1 and id=$2`,
-      [workspaceId, recent],
-    );
-    await asAdmin(
-      `update app.workflow_runs set completed_at=now()-interval '31 days' where workspace_id=$1 and id=$2`,
-      [workspaceId, old],
-    );
+    await fail(workspaceId, first);
+    await fail(workspaceId, first, { kind: 'timed_out' });
+    await fail(workspaceId, first, {
+      occurredAt: new Date(Date.now() - 31 * 24 * 60 * 60 * 1000).toISOString(),
+    });
     const foreign = await seed();
-    const foreignRun = await fail(foreign.workspaceId, foreign.first);
-    await asAdmin(
-      `update app.workflow_runs set completed_at=now() where workspace_id=$1 and id=$2`,
-      [foreign.workspaceId, foreignRun],
-    );
+    await fail(foreign.workspaceId, foreign.first);
     await drain();
     const page = await inbox.listThreads({
       ...reader(workspaceId, members.owner),
