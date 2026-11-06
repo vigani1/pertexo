@@ -1,3 +1,4 @@
+import { isWorkspaceBrowsable } from '@/features/workspaces/availability.public';
 import { useState } from 'react';
 import { WorkflowExportDialog } from '@/features/workflows/creation/portability.public';
 import type {
@@ -221,7 +222,7 @@ export function WorkflowVersionsPage({
                   setOverlay({ kind: 'restore', version });
                 },
                 onExport:
-                  workspace.status === 'active' &&
+                  isWorkspaceBrowsable(workspace) &&
                   workspace.capabilities.includes('workflow:read')
                     ? (version) => {
                         setOverlay({ kind: 'export', version });

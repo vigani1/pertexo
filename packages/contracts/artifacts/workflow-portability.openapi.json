@@ -11,7 +11,7 @@
         "x-pertexo-api-token-scopes": [
           "workflow:read"
         ],
-        "description": "Export only the explicitly reviewed saved source. Draft source additionally requires a strong If-Match. No credential bytes or automatic redaction.",
+        "description": "Export only the explicitly reviewed retained draft or version, including archived workflows in browsable workspaces. Draft source additionally requires a strong If-Match. No credential bytes or automatic redaction.",
         "security": [
           {
             "cookieSession": []

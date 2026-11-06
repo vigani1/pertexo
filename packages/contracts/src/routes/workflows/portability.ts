@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { jsonRequest, problemResponse } from '../../openapi/primitives.js';
 import { workflowIdParamSchema } from '../../schemas/workflows/authoring.js';
 import * as schemas from '../../schemas/workflows/portability.js';
-import { projected, session, workspaceParams } from './access.js';
+import { projected, reading, session, workspaceParams } from './access.js';
 
 import { responseReference } from '../../openapi/primitives.js';
 import { defineRoute } from '../define.js';
@@ -25,10 +25,10 @@ export const portabilityRoutes = {
     method: 'post',
     path: '/v1/workspaces/{workspaceId}/workflows/{workflowId}/export',
     params: workflowIdParamSchema,
-    access: { ...session('workflow:read'), auth: 'session_or_token' } as const,
+    access: { ...reading, auth: 'session_or_token' } as const,
     rateLimit: 'workflow_compile',
     description:
-      'Export only the explicitly reviewed saved source. Draft source additionally requires a strong If-Match. No credential bytes or automatic redaction.',
+      'Export only the explicitly reviewed retained draft or version, including archived workflows in browsable workspaces. Draft source additionally requires a strong If-Match. No credential bytes or automatic redaction.',
     cacheControl: 'private, no-store',
     requestDocument: jsonRequest('WorkflowExportRequest'),
     precondition: {

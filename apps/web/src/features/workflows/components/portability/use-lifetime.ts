@@ -1,3 +1,4 @@
+import { isWorkspaceBrowsable } from '@/features/workspaces/availability.public';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { assertSessionIdentity } from '@/features/auth/session/identity.public';
@@ -79,7 +80,10 @@ export function usePortabilityLifetime(
         await getAllAccessibleWorkspaces(apiClient, signal)
       ).find((item) => item.id === workspaceId);
       if (
-        workspace?.status !== 'active' ||
+        workspace === undefined ||
+        !(creating
+          ? workspace.status === 'active'
+          : isWorkspaceBrowsable(workspace)) ||
         !workspace.capabilities.includes(
           creating ? 'workflow:create' : 'workflow:read',
         )
