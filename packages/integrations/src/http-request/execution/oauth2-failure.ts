@@ -87,6 +87,10 @@ export class HttpOAuth2Failure extends NodeExecutorFailure {
     const retryWaitExceeded =
       failure.retryAfterSeconds !== undefined &&
       failure.retryAfterSeconds * 1_000 > MAXIMUM_RETRY_DELAY_MILLIS;
+    const serviceSummary =
+      failure.serviceError === undefined
+        ? outcome.summary
+        : `${outcome.summary} The service's code: ${failure.serviceError}.`;
     super({
       kind: retryWaitExceeded ? 'failed' : outcome.kind,
       errorKind: outcome.errorKind,
@@ -96,9 +100,7 @@ export class HttpOAuth2Failure extends NodeExecutorFailure {
         : failure.code,
       errorSummary: retryWaitExceeded
         ? PROVIDER_RETRY_FAILURE.sentence
-        : failure.serviceError === undefined
-          ? outcome.summary
-          : `${outcome.summary} The service's code: ${failure.serviceError}.`,
+        : serviceSummary,
       ...(failure.retryAfterSeconds === undefined || retryWaitExceeded
         ? {}
         : { minimumRetryDelayMillis: failure.retryAfterSeconds * 1_000 }),

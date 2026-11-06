@@ -136,11 +136,13 @@ export async function executePagination(input: PaginationExecutionInput) {
       const output = {
         items,
         pageCount: page,
-        complete:
-          pageItems.length === 0 ||
-          (page === pagination.maxPages
-            ? !hasNextPage(pagination, response.body, page)
-            : next?.kind === 'exhausted'),
+        complete: pageCompletesCollection({
+          pagination,
+          current: response.body,
+          page,
+          itemCount: pageItems.length,
+          next,
+        }),
         status: response.status,
         headers: response.headers,
         finalOrigin: response.finalUrl,
@@ -241,5 +243,26 @@ function exceedsInlinePageEnvelope({
     envelope.bytes + itemBytes > NODE_EXECUTION_LIMITS.bytes ||
     envelope.members + itemMembers > NODE_EXECUTION_LIMITS.members ||
     Math.max(envelope.depth, itemDepth + 1) > NODE_EXECUTION_LIMITS.depth
+  );
+}
+
+function pageCompletesCollection({
+  pagination,
+  current,
+  page,
+  itemCount,
+  next,
+}: Readonly<{
+  pagination: HttpPagination;
+  current: Page;
+  page: number;
+  itemCount: number;
+  next: ReturnType<typeof nextPage> | undefined;
+}>): boolean {
+  return (
+    itemCount === 0 ||
+    (page === pagination.maxPages
+      ? !hasNextPage(pagination, current, page)
+      : next?.kind === 'exhausted')
   );
 }
