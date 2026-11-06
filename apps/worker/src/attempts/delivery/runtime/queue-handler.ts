@@ -2,7 +2,8 @@ import {
   NodeAttemptDeliveryMismatchError,
   NodeAttemptStateCorruptError,
 } from '@pertexo/core/attempts';
-import { isStoredDataError, type RunFailureStore } from '@pertexo/core/runs';
+import { isStoredDataError } from '@pertexo/core/shared';
+import type { RunFailureStore } from '@pertexo/core/runs';
 
 import {
   InvalidQueueDeliveryError,

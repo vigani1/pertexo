@@ -1,5 +1,5 @@
 import { requestFailure } from './context/normalize.js';
-import { isStoredDataError } from '@pertexo/core/authoring';
+import { isStoredDataError } from '@pertexo/core/shared';
 import { createErrorRegistry } from '../platform/http/problems/registry.js';
 import {
   applicationError,

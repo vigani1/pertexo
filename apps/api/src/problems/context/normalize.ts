@@ -2,7 +2,7 @@ import { StoredTableDefinitionError } from '@pertexo/core/data-tables';
 import { applicationError } from '../../platform/http/application-error.js';
 import { WorkspaceAccessDeniedError } from '@pertexo/core/tenant-access';
 import { IdempotencyConflictError } from '@pertexo/database/platform';
-import { isStoredDataError } from '@pertexo/core/authoring';
+import { isStoredDataError } from '@pertexo/core/shared';
 import { ArtifactMetadataNotFoundError } from '@pertexo/core/artifacts';
 import {
   WorkflowRunNotExecutableError,
