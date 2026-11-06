@@ -71,9 +71,6 @@ const REFUSAL_CODES = [
   'pagination_origin_changed',
   'pagination_navigation_invalid',
   'redirect_rejected',
-  'response_encoding_rejected',
-  'response_redaction_limit',
-  'response_too_large',
   'ssrf_blocked',
 ] as const satisfies readonly ProviderHttpErrorCode[];
 
@@ -175,6 +172,32 @@ export const ERROR_CASES: readonly ErrorCase[] = [
     'retry timeout same-key',
     'unknown timeout',
   ],
+  ...(
+    [
+      'response_encoding_rejected',
+      'response_redaction_limit',
+      'response_too_large',
+    ] as const
+  ).flatMap((code): ErrorCase[] => [
+    [code, 'definite_failure', false, ...REFUSED],
+    [
+      code,
+      'definite_failure',
+      true,
+      'failed configuration',
+      'failed configuration',
+      'unknown provider',
+    ],
+    [code, 'ambiguous', false, ...AMBIGUOUS_NETWORK],
+    [
+      code,
+      'ambiguous',
+      true,
+      'retry network',
+      'retry network same-key',
+      'unknown provider',
+    ],
+  ]),
   ...REFUSAL_CODES.flatMap((code): ErrorCase[] => [
     [code, 'definite_failure', false, ...REFUSED],
     [code, 'definite_failure', true, ...REFUSED],
