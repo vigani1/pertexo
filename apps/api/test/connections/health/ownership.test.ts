@@ -1,8 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { verifyConnectionHealthOwnership } from './ownership.js';
 
-function fixture() {
-  const project = 'pertexo-connection-health-20261001';
+function fixture(project = 'pertexo-connection-health-20261001') {
   const env: Record<string, string | undefined> = {
     CONNECTION_HEALTH_COMPOSE_PROJECT: project,
     COMPOSE_PROJECT_NAME: project,
@@ -89,4 +88,11 @@ describe('connection health ownership preflight', () => {
       'service identity',
     );
   });
+});
+
+it('attests the explicitly owned single-offset integration project', async () => {
+  const { env, read } = fixture('pertexo-ci-4200-integration');
+  await expect(
+    verifyConnectionHealthOwnership(env, read),
+  ).resolves.toBeUndefined();
 });
