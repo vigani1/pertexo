@@ -163,18 +163,3 @@ export class InvitationAcceptanceConflictError extends Error {
     super(message, options);
   }
 }
-
-export type WorkspaceLifecycleConflictReason =
-  'actor_inactive' | 'invalid_state';
-
-export class WorkspaceLifecycleConflictError extends Error {
-  public override readonly name = 'WorkspaceLifecycleConflictError';
-
-  public constructor(
-    public readonly reason: WorkspaceLifecycleConflictReason,
-    message: string,
-    options?: ErrorOptions,
-  ) {
-    super(message, options);
-  }
-}

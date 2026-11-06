@@ -1,3 +1,4 @@
+import { WorkspaceLifecycleConflictError } from '@pertexo/core/lifecycle';
 import {
   InvalidWorkspaceMemberCursorError,
   InvalidWorkspaceInvitationCursorError,
@@ -9,7 +10,6 @@ import {
   DirectoryManagedMembershipError,
   IdentityConflictError,
   WorkspaceAccessDeniedError,
-  WorkspaceLifecycleConflictError,
   WorkspaceMemberRoleCommandConflictError,
   WorkspaceMemberRemovalCommandConflictError,
   WorkspaceMembershipCommandConflictError,

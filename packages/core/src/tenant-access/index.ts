@@ -17,7 +17,6 @@ export {
   InvitationAcceptanceConflictError,
   UserProfileCommandConflictError,
   WorkspaceInvitationCommandConflictError,
-  WorkspaceLifecycleConflictError,
   WorkspaceMemberRemovalCommandConflictError,
   WorkspaceMemberRoleCommandConflictError,
   WorkspaceMembershipCommandConflictError,

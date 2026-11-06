@@ -6,7 +6,7 @@ import {
 } from '@pertexo/database/schema';
 import { and, isNotNull, isNull, not, sql, type SQL } from 'drizzle-orm';
 
-import { deletionRule } from '../lifecycle/retention/deletion-rule.js';
+import { deletionRule } from '../shared/retention-deletion.js';
 
 /** Past any redelivery, which gives up after about a day. */
 const PUBLISHED_ROW_DAYS = 30;

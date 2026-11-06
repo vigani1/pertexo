@@ -1,3 +1,4 @@
+import { throwWorkspaceLifecycleError } from '../lifecycle/workspace-lifecycle.errors.js';
 import {
   rethrowQueryFailure,
   withTenantScopedClient,
@@ -31,10 +32,7 @@ import { createMemberships } from './members/records.repository.js';
 import { createIdentityWorkspaceMemberRemovalStore } from './members/member-removal.store.js';
 import { createIdentityWorkspaceMemberStore } from './members/workspace-members.store.js';
 import { createIdentityWorkspaceRoleCommandStore } from './members/member-roles.store.js';
-import {
-  throwIdentityDatabaseConflict,
-  throwWorkspaceLifecycleError,
-} from './conflicts.js';
+import { throwIdentityDatabaseConflict } from './conflicts.js';
 import { createIdentityWorkspaceProfileStore } from './users/user-profile.store.js';
 import { createUserStore } from './users/user.store.js';
 import {
