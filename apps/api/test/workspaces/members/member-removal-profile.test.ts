@@ -76,7 +76,9 @@ describe('member removal and self profile commands', () => {
         replayed: true,
       }),
     } as unknown as IdentityWorkspaceStore;
-    const adapter = createIdentityWorkspaceAdapter(database);
+    const adapter = createIdentityWorkspaceAdapter(database, {
+      requestWorkspaceLifecycleOperation: vi.fn(),
+    });
     const removal = {
       workspaceId,
       actorUserId: actorId,

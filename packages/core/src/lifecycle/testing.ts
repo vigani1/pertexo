@@ -17,3 +17,8 @@ export type { RetentionStore } from './retention/retention.store.js';
 export { createPreviewRetentionCoordinator } from './previews/coordinator.js';
 export type { PreviewRetentionCoordinator } from './previews/coordinator.js';
 export type { PreviewRetentionProcessResult } from './previews/preview-retention.types.js';
+
+export type {
+  RequestWorkspaceLifecycleOperationInput,
+  WorkspaceLifecycleOperation,
+} from './deletion/workspace-lifecycle.types.js';

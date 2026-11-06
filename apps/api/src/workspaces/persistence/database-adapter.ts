@@ -1,3 +1,4 @@
+import type { WorkspaceLifecycleStore } from '@pertexo/core/lifecycle';
 import type { IdentityWorkspaceStore } from '@pertexo/core/tenant-access';
 import type {
   IdentityWorkspacePersistence,
@@ -8,9 +9,15 @@ import type {
 /** Keep internal profile/workspace fields and absent access behind the application boundary. */
 export function createIdentityWorkspaceAdapter(
   database: IdentityWorkspaceStore,
+  lifecycle: Pick<
+    WorkspaceLifecycleStore,
+    'requestWorkspaceLifecycleOperation'
+  >,
 ): IdentityWorkspacePersistence & WorkspaceAuthorizationReader {
   return Object.freeze({
     ...database,
+    requestWorkspaceLifecycleOperation:
+      lifecycle.requestWorkspaceLifecycleOperation,
     async findUserById(userId: string) {
       const user = await database.findUserById(userId);
       return user === null ? null : mapUserProfile(user);

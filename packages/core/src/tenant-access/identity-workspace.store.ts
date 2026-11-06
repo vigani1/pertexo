@@ -21,9 +21,7 @@ import type {
 } from '@pertexo/database/platform';
 import { workspaces, users } from '@pertexo/database/schema';
 
-import { requestWorkspaceLifecycleOperation } from '../lifecycle/deletion/request-workspace-lifecycle.js';
 import type {
-  RequestWorkspaceLifecycleOperationInput,
   WorkspaceRecord,
   WorkspaceWithOwnerInput,
 } from './tenant-access.types.js';
@@ -71,10 +69,6 @@ export function createIdentityWorkspaceStore(
 
     createWorkspaceWithOwner: (input: WorkspaceWithOwnerInput) =>
       createWorkspaceWithOwner(pool, input),
-
-    requestWorkspaceLifecycleOperation: (
-      input: RequestWorkspaceLifecycleOperationInput,
-    ) => requestWorkspaceLifecycleOperation(pool, input),
 
     close: () => lease.close(),
   });
