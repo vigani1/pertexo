@@ -14,7 +14,7 @@ import type {
   IterationScopePart,
 } from '../../workflow-execution.js';
 
-import { type SchedulerState, type ReadyNodeDecision } from './policy.js';
+import type { SchedulerState, ReadyNodeDecision } from './policy.js';
 import {
   configuredBranchOutputPorts,
   configuredParallelOutputPorts,

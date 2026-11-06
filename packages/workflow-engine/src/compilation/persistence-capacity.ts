@@ -29,9 +29,9 @@ import type {
   WorkflowCheckpoint,
 } from '../workflow-execution.js';
 import { executableControls } from './verified-executable.js';
-import {
-  type CompiledWorkflowExecutable,
-  type WorkflowExecutableGraph,
+import type {
+  CompiledWorkflowExecutable,
+  WorkflowExecutableGraph,
 } from './workflow-executable.js';
 
 const versionId = 'ffffffff-ffff-4fff-8fff-ffffffffffff';

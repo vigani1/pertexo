@@ -4,7 +4,7 @@ import {
 } from '@pertexo/workflow-model';
 import { buildWorkflowExecutable } from '../compilation/compile.js';
 import { executionNodes } from '../compilation/verified-executable.js';
-import { type WorkflowExecutableGraph } from '../compilation/workflow-executable.js';
+import type { WorkflowExecutableGraph } from '../compilation/workflow-executable.js';
 import { createCheckpoint } from '../checkpoint/create-and-parse.js';
 import { testStepDisposition, type WorkflowTestPins } from './policy.js';
 import { validWorkflowTestPin } from './pins.js';

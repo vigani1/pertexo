@@ -13,9 +13,9 @@ import {
   definitionManifest,
   executorManifest,
 } from './graph-rules.js';
-import {
-  type WorkflowExecutableGraph,
-  type WorkflowExecutableNode,
+import type {
+  WorkflowExecutableGraph,
+  WorkflowExecutableNode,
 } from './workflow-executable.js';
 import { compareIdentity, sameIdentity } from './definition-identity.js';
 import { compareOrdinal } from '@pertexo/workflow-model';

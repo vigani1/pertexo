@@ -32,10 +32,10 @@ import {
   executableReadOnlyNodeIds,
   executionNodes,
 } from './compilation/verified-executable.js';
-import {
-  type CompiledWorkflowExecutable,
-  type ExecutionNode,
-  type WorkflowExecutableGraph,
+import type {
+  CompiledWorkflowExecutable,
+  ExecutionNode,
+  WorkflowExecutableGraph,
 } from './compilation/workflow-executable.js';
 import type { ControlNodeConfig } from '@pertexo/workflow-model';
 

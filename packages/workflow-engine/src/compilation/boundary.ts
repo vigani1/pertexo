@@ -1,10 +1,10 @@
 import { parseNodeCatalog, type NodeCatalog } from '@pertexo/node-sdk';
 import { parseWorkflowGraphForPublish } from '@pertexo/workflow-model/server';
 import { verifiedWorkflowExecutableChecksum } from './identity.js';
-import {
-  type CompiledWorkflowExecutable,
-  type VerifiedWorkflowExecutable,
-  type WorkflowExecutable,
+import type {
+  CompiledWorkflowExecutable,
+  VerifiedWorkflowExecutable,
+  WorkflowExecutable,
 } from './workflow-executable.js';
 import { fail, readUntrusted } from './executable-errors.js';
 import { freezeExecutable } from './freeze-executable.js';
