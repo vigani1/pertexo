@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { test as base } from '@playwright/test';
+import { test as base } from '../../test/support/temporary-test-path';
 
 async function notifyLifetime(
   phase: 'browser-opened' | 'browser-disposed',

@@ -1,3 +1,4 @@
+import { temporaryTestPath } from '../../test/support/temporary-test-path';
 import {
   connectionId,
   csrfToken,
@@ -99,7 +100,7 @@ for (const width of [390, 1280]) {
       ),
     ).toBe(true);
     await page.screenshot({
-      path: `/tmp/pertexo-polish-3-${String(width)}.png`,
+      path: temporaryTestPath(`pertexo-polish-3-${String(width)}.png`),
     });
   });
 }

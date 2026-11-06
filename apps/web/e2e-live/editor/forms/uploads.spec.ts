@@ -1,3 +1,4 @@
+import { temporaryTestPath } from '../../../test/support/temporary-test-path';
 import { mkdir } from 'node:fs/promises';
 import { expect, type Page } from '@playwright/test';
 import { pendingTaskListResponseSchema } from '@pertexo/contracts';
@@ -17,7 +18,8 @@ import { formUploadsGraph } from './uploads-graph';
 
 // Opt in to the full size and theme matrix; otherwise two plain screenshots.
 const shots = process.env.PERTEXO_FEATURE_SHOTS;
-const directory = shots ?? '/tmp/pertexo-form-upload-screenshots';
+const directory = () =>
+  shots ?? temporaryTestPath('pertexo-form-upload-screenshots');
 const sizes = shots
   ? ([
       [360, 740],
@@ -53,7 +55,7 @@ async function capture(
         ),
       ).toBe(true);
       await page.screenshot({
-        path: `${directory}/${name}-${String(width)}x${String(height)}-${scheme}.png`,
+        path: `${directory()}/${name}-${String(width)}x${String(height)}-${scheme}.png`,
         fullPage: true,
       });
     }
@@ -141,7 +143,7 @@ test('form and input request uploads reach the run as files that Read file reads
   request,
 }) => {
   test.setTimeout(240000);
-  await mkdir(directory, { recursive: true });
+  await mkdir(directory(), { recursive: true });
   const mailOrigin = process.env.PERTEXO_LIVE_MAIL_ORIGIN;
   if (mailOrigin === undefined) throw new Error('Owned mail missing');
   await page.emulateMedia({ reducedMotion: 'reduce' });

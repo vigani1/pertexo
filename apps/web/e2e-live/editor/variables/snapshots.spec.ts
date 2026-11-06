@@ -1,3 +1,4 @@
+import { temporaryTestPath } from '../../../test/support/temporary-test-path';
 import {
   createWorkflowNodeFixture,
   createWorkflowEdgeFixture,
@@ -134,7 +135,9 @@ test('real variables save once after a lost acknowledgement and retain old run v
   const version = await publishSingleStep(page, workflowPath);
   const source = await startSingleStep(page, {});
   await waitForRun(page, workspaceId, source, 'waiting');
-  await mkdir('/tmp/pertexo-variable-screenshots', { recursive: true });
+  await mkdir(temporaryTestPath('pertexo-variable-screenshots'), {
+    recursive: true,
+  });
   await page.goto(variablePage);
   await rate.getByRole('button', { name: 'Edit RATE', exact: true }).click();
   await rate.getByLabel('Value', { exact: true }).fill('20');
@@ -164,7 +167,9 @@ test('real variables save once after a lost acknowledgement and retain old run v
       await description.click();
     }
     await page.screenshot({
-      path: `/tmp/pertexo-variable-screenshots/settings-${String(width)}.png`,
+      path: temporaryTestPath(
+        `pertexo-variable-screenshots/settings-${String(width)}.png`,
+      ),
       fullPage: width >= 1024,
     });
   }
@@ -219,7 +224,9 @@ test('real variables save once after a lost acknowledgement and retain old run v
       page.getByRole('button', { name: 'Copy RATE', exact: true }),
     ).toBeVisible();
     await page.screenshot({
-      path: `/tmp/pertexo-variable-screenshots/run-${String(expected)}-${runId === source ? 'original' : 'next'}.png`,
+      path: temporaryTestPath(
+        `pertexo-variable-screenshots/run-${String(expected)}-${runId === source ? 'original' : 'next'}.png`,
+      ),
       fullPage: true,
     });
   }

@@ -1,3 +1,4 @@
+import { temporaryTestPath } from '../../test/support/temporary-test-path';
 import './coordination/events.case';
 import { createHmac, randomUUID } from 'node:crypto';
 import { expect, type Page } from '@playwright/test';
@@ -356,12 +357,12 @@ test('changes authentication through settings and answers a real browser caller 
   await page.reload();
   await expect(card).toContainText('Authentication: Secret URL');
   await page.screenshot({
-    path: '/tmp/pertexo-webhook-auth-phone.png',
+    path: temporaryTestPath('pertexo-webhook-auth-phone.png'),
     animations: 'disabled',
   });
   await page.setViewportSize({ width: 1280, height: 720 });
   await page.screenshot({
-    path: '/tmp/pertexo-webhook-auth-desktop.png',
+    path: temporaryTestPath('pertexo-webhook-auth-desktop.png'),
     animations: 'disabled',
   });
 });

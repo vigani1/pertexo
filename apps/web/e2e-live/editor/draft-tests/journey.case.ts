@@ -1,3 +1,4 @@
+import { temporaryTestPath } from '../../../test/support/temporary-test-path';
 import { expect, type Page } from '@playwright/test';
 import {
   workflowTestAcceptedSchema,
@@ -244,7 +245,9 @@ test('saved draft tests run on the worker, skip waits and pinned human steps, an
     await (await page.request.get(`/v1/workspaces/${workspaceId}/runs`)).json(),
   );
   expect(realHistory.items).toEqual([]);
-  await page.screenshot({ path: '/tmp/pertexo-draft-tests-desktop.png' });
+  await page.screenshot({
+    path: temporaryTestPath('pertexo-draft-tests-desktop.png'),
+  });
   await page.setViewportSize({ width: 375, height: 768 });
   // On phones the test actions join the editor's ⋯ menu.
   await page
@@ -260,7 +263,9 @@ test('saved draft tests run on the worker, skip waits and pinned human steps, an
   await expect(
     page.getByRole('button', { name: 'Run (publish first)', exact: true }),
   ).toBeInViewport();
-  await page.screenshot({ path: '/tmp/pertexo-draft-tests-phone.png' });
+  await page.screenshot({
+    path: temporaryTestPath('pertexo-draft-tests-phone.png'),
+  });
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= window.innerWidth,

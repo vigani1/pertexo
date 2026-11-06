@@ -1,3 +1,4 @@
+import { validateTestFileWrites } from './test-file-writes.mjs';
 import { WEB_BROWSER_PACKAGE_ROOTS } from './browser-entry-dependencies.mjs';
 import { executionAreaDependencyAllowed } from './execution-area-rules.mjs';
 import console from 'node:console';
@@ -277,6 +278,7 @@ export function validateModuleImports(sources) {
       ts.ScriptTarget.Latest,
       true,
     );
+    errors.push(...validateTestFileWrites(file, source));
     const dependencies = [];
     const workspace = file.split('/').slice(0, 2).join('/');
     const resolveTarget = (specifier) => {

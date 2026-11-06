@@ -1,3 +1,4 @@
+import { temporaryTestPath } from '../../test/support/temporary-test-path';
 import { createWorkflowNodeFixture } from '../../test/support/fixtures/graph';
 import { readCsrfToken } from '../../test/support/browser/csrf';
 import { mkdir } from 'node:fs/promises';
@@ -17,7 +18,7 @@ import {
   readEditorDraft,
 } from '../support/authoring/single-step';
 
-const screenshots = '/tmp/pertexo-task-timeout-screenshots';
+const screenshots = () => temporaryTestPath('pertexo-task-timeout-screenshots');
 
 type Graph = Awaited<ReturnType<typeof readEditorDraft>>['graph'];
 
@@ -93,7 +94,7 @@ async function captureEverySize(page: Page, name: string) {
       await page.setViewportSize({ width, height });
       await page.emulateMedia({ reducedMotion: 'reduce', colorScheme: theme });
       await page.screenshot({
-        path: `${screenshots}/${name}-${String(width)}x${String(height)}-${theme}.png`,
+        path: `${screenshots()}/${name}-${String(width)}x${String(height)}-${theme}.png`,
       });
       expect(
         await page.evaluate(
@@ -137,7 +138,7 @@ test('an unanswered approval continues on Timed out to a later step; one without
 }) => {
   const mailOrigin = process.env.PERTEXO_LIVE_MAIL_ORIGIN;
   if (mailOrigin === undefined) throw new Error('Owned mail missing');
-  await mkdir(screenshots, { recursive: true });
+  await mkdir(screenshots(), { recursive: true });
   await registerEditorUser(page, request, mailOrigin, 'Timeout owner');
   const workspaceId = await createEditorWorkspace(
     page,
@@ -202,7 +203,7 @@ test('an unanswered approval continues on Timed out to a later step; one without
       .getByRole('list', { name: 'Outputs' })
       .getByText('Timed out → Escalate', { exact: true }),
   ).toBeVisible();
-  await page.screenshot({ path: `${screenshots}/canvas-1440.png` });
+  await page.screenshot({ path: `${screenshots()}/canvas-1440.png` });
   await publishSingleStep(page, workflowPath);
 
   const continued = await runUntilExpiry(page, { workspaceId, mailOrigin });
@@ -238,7 +239,7 @@ test('an unanswered approval continues on Timed out to a later step; one without
   ).toBeVisible();
   await page.setViewportSize({ width: 390, height: 844 });
   await page.screenshot({
-    path: `${screenshots}/request-390.png`,
+    path: `${screenshots()}/request-390.png`,
     fullPage: true,
   });
   expect(

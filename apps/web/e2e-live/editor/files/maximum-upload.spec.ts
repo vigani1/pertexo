@@ -1,3 +1,4 @@
+import { temporaryTestPath } from '../../../test/support/temporary-test-path';
 import { createHash } from 'node:crypto';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -188,7 +189,9 @@ test('hashes and finalizes 10 MB files in both themes at phone, pane and desktop
             ),
           ).toBe(false);
           await page.screenshot({
-            path: `/tmp/pertexo-f45-release-${theme}-${String(width)}.png`,
+            path: temporaryTestPath(
+              `pertexo-f45-release-${theme}-${String(width)}.png`,
+            ),
           });
           await cdp.detach();
         });

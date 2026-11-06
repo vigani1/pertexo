@@ -1,3 +1,4 @@
+import { temporaryTestPath } from '../../../test/support/temporary-test-path';
 import { workflowGraphSchema } from '@pertexo/contracts';
 import { expect, test } from '../../support/fixtures';
 import { mappingGraph } from '../graph';
@@ -118,7 +119,9 @@ for (const width of [1280, 375])
       'Mappings and input data are not rewritten',
     );
     await page.screenshot({
-      path: `/tmp/pertexo-column-name-review-${String(width)}.png`,
+      path: temporaryTestPath(
+        `pertexo-column-name-review-${String(width)}.png`,
+      ),
     });
     await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
     await expect(dialog).not.toBeVisible();

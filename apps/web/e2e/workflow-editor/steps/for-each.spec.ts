@@ -1,3 +1,4 @@
+import { temporaryTestPath } from '../../../test/support/temporary-test-path';
 import { expect, test, type Page } from '../../support/fixtures';
 import { editorNode } from '../graph';
 import {
@@ -154,7 +155,9 @@ for (const width of [390, 1024, 1280, 1440]) {
         await expect(concurrent).toHaveValue('1');
       }
       await page.screenshot({
-        path: `/tmp/pertexo-f01-loop-${String(width)}-${editable ? 'edit' : 'read'}.png`,
+        path: temporaryTestPath(
+          `pertexo-f01-loop-${String(width)}-${editable ? 'edit' : 'read'}.png`,
+        ),
       });
     });
   }

@@ -1,3 +1,4 @@
+import { temporaryTestPath } from '../../../test/support/temporary-test-path';
 import {
   provisionDirectory,
   reviewProvisionedMembership,
@@ -143,9 +144,13 @@ for (const width of [1280, 375]) {
     await expect(page.getByText('SSO required', { exact: true })).toBeVisible();
     await expect(page.getByRole('dialog')).toHaveCount(0);
     await page.getByText('SAML setup and metadata', { exact: true }).click();
-    await mkdir('/tmp/pertexo-saml-screenshots', { recursive: true });
+    await mkdir(temporaryTestPath('pertexo-saml-screenshots'), {
+      recursive: true,
+    });
     await page.screenshot({
-      path: `/tmp/pertexo-saml-screenshots/settings-${String(width)}.png`,
+      path: temporaryTestPath(
+        `pertexo-saml-screenshots/settings-${String(width)}.png`,
+      ),
       fullPage: true,
     });
     expect(
@@ -195,7 +200,9 @@ for (const width of [1280, 375]) {
         .getByText('Owned SAML', { exact: true }),
     ).toBeVisible();
     await page.screenshot({
-      path: `/tmp/pertexo-saml-screenshots/account-${String(width)}.png`,
+      path: temporaryTestPath(
+        `pertexo-saml-screenshots/account-${String(width)}.png`,
+      ),
       fullPage: true,
     });
     await page.goto('/workspaces');

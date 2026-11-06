@@ -1,3 +1,4 @@
+import { temporaryTestPath } from '../../../test/support/temporary-test-path';
 import { readCsrfToken } from '../../../test/support/browser/csrf';
 import { mkdir } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
@@ -184,7 +185,7 @@ test('discusses steps, delivers private mentions, preserves refreshes, and warns
           ),
         )
         .toBe(true);
-      await mkdir('/tmp/pertexo-collaboration-screenshots', {
+      await mkdir(temporaryTestPath('pertexo-collaboration-screenshots'), {
         recursive: true,
       });
       await teammate.getByRole('button', { name: /^Here with you: /u }).click();
@@ -193,7 +194,9 @@ test('discusses steps, delivers private mentions, preserves refreshes, and warns
       ).toBeVisible();
       await teammate.keyboard.press('Escape');
       await teammate.screenshot({
-        path: `/tmp/pertexo-collaboration-screenshots/discussion-${String(width)}.png`,
+        path: temporaryTestPath(
+          `pertexo-collaboration-screenshots/discussion-${String(width)}.png`,
+        ),
         fullPage: true,
       });
     }
@@ -238,7 +241,9 @@ test('discusses steps, delivers private mentions, preserves refreshes, and warns
         teammate.getByText('Unsaved changes in another tab.', { exact: true }),
       ).toBeVisible({ timeout: 25000 });
       await teammate.screenshot({
-        path: '/tmp/pertexo-collaboration-screenshots/presence-1280.png',
+        path: temporaryTestPath(
+          'pertexo-collaboration-screenshots/presence-1280.png',
+        ),
         fullPage: true,
       });
       await teammate.setViewportSize({ width: 375, height: 800 });
@@ -253,7 +258,9 @@ test('discusses steps, delivers private mentions, preserves refreshes, and warns
         )
         .toBe(true);
       await teammate.screenshot({
-        path: '/tmp/pertexo-collaboration-screenshots/presence-375.png',
+        path: temporaryTestPath(
+          'pertexo-collaboration-screenshots/presence-375.png',
+        ),
         fullPage: true,
       });
       await teammate.setViewportSize({ width: 1280, height: 800 });

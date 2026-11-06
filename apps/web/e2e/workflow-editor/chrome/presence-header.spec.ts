@@ -1,3 +1,4 @@
+import { temporaryTestPath } from '../../../test/support/temporary-test-path';
 import { expect, test } from '../../support/fixtures';
 import {
   addCsrfCookie,
@@ -111,7 +112,7 @@ for (const state of ['unchecked', 'valid', 'issues', 'unavailable'] as const) {
         await page.setViewportSize({ width: width, height: height });
 
         await page.screenshot({
-          path: `${process.env.PERTEXO_EDITOR_HEADER_SHOTS ?? '/tmp/pertexo-editor-header'}/${String(width)}-${colorScheme}-${state}.png`,
+          path: `${process.env.PERTEXO_EDITOR_HEADER_SHOTS ?? temporaryTestPath('pertexo-editor-header')}/${String(width)}-${colorScheme}-${state}.png`,
         });
         expect(
           (await page.locator('header').boundingBox())?.height,

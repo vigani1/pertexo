@@ -1,3 +1,4 @@
+import { temporaryTestPath } from '../../../test/support/temporary-test-path';
 import {
   workflowRunListResponseSchema,
   workflowTestSuiteAcceptedSchema,
@@ -163,7 +164,9 @@ test('saved input cases run as a serial suite with reports, pins and advisory pu
   await expect(suites.locator('pre').first()).toHaveText('9');
   await expect(suites.locator('pre').last()).toHaveText('8');
   await suites.locator('pre').last().scrollIntoViewIfNeeded();
-  await page.screenshot({ path: '/tmp/pertexo-f02-suites-desktop.png' });
+  await page.screenshot({
+    path: temporaryTestPath('pertexo-f02-suites-desktop.png'),
+  });
   await page.setViewportSize({ width: 375, height: 768 });
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await expect(
@@ -175,7 +178,9 @@ test('saved input cases run as a serial suite with reports, pins and advisory pu
     ),
   ).toBe(true);
   await suites.locator('pre').last().scrollIntoViewIfNeeded();
-  await page.screenshot({ path: '/tmp/pertexo-f02-suites-phone.png' });
+  await page.screenshot({
+    path: temporaryTestPath('pertexo-f02-suites-phone.png'),
+  });
   await page.setViewportSize({ width: 1280, height: 900 });
   await suites
     .getByRole('button', { name: 'View test Seven', exact: true })

@@ -1,6 +1,8 @@
 import type { ChildProcess } from 'node:child_process';
 
-import { writeFile } from 'node:fs/promises';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 import { FixtureResourceOwner } from '../harness/resource-owner.js';
 import { ownEditorBrowserProcess } from '../harness/process.js';
@@ -51,26 +53,34 @@ export function createWorkflowOrganizationJourney({
       // can release the control listener. The API fixture preserves its DB.
       await closeOrganizationBrowserBarriers(barriers);
       await owner.close();
-      if (publicEvidence !== undefined)
-        await writeFile(
-          `/tmp/pertexo-workflow-organization-${role}.public.json`,
-          JSON.stringify(
-            {
-              case: role,
-              evidence: publicEvidence,
-              selectedTestResults: testResults,
-              lifetime: {
-                browserOpenedReceipt: opened,
-                browserDisposedReceipts: openBrowsers.size === 0,
-                ownedProcessBarriersClosed: true,
-                databaseCleanup: 'fixture continues after this receipt',
-              },
-            },
-            null,
-            2,
-          ),
-          { mode: 0o600 },
+      if (publicEvidence !== undefined) {
+        const directory = await mkdtemp(
+          join(tmpdir(), 'pertexo-organization-evidence-'),
         );
+        try {
+          await writeFile(
+            join(directory, `${role}.public.json`),
+            JSON.stringify(
+              {
+                case: role,
+                evidence: publicEvidence,
+                selectedTestResults: testResults,
+                lifetime: {
+                  browserOpenedReceipt: opened,
+                  browserDisposedReceipts: openBrowsers.size === 0,
+                  ownedProcessBarriersClosed: true,
+                  databaseCleanup: 'fixture continues after this receipt',
+                },
+              },
+              null,
+              2,
+            ),
+            { mode: 0o600 },
+          );
+        } finally {
+          await rm(directory, { recursive: true, force: true });
+        }
+      }
     },
   });
 

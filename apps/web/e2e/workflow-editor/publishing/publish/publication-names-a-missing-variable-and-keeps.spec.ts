@@ -1,3 +1,4 @@
+import { temporaryTestPath } from '../../../../test/support/temporary-test-path';
 import { expect, test } from '../../../support/fixtures';
 
 import { addStep } from '../../actions';
@@ -83,7 +84,7 @@ for (const width of [1280, 375])
       ),
     ).toBe(true);
     await page.screenshot({
-      path: `/tmp/pertexo-variable-publish-${String(width)}.png`,
+      path: temporaryTestPath(`pertexo-variable-publish-${String(width)}.png`),
     });
     await dialog
       .getByRole('button', { name: 'Try again', exact: true })

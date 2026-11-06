@@ -1,3 +1,4 @@
+import { temporaryTestPath } from '../../../test/support/temporary-test-path';
 import { mkdir } from 'node:fs/promises';
 import { expect } from '@playwright/test';
 import { workflowTestAcceptedSchema } from '@pertexo/contracts';
@@ -46,7 +47,7 @@ test('callback Wait is authored in the editor and resumes a whole-draft test thr
   await expect(page.getByTestId(`rf__node-${waitId}`)).toContainText(
     'Until called back',
   );
-  await mkdir('/tmp/pertexo-f46-browser', { recursive: true });
+  await mkdir(temporaryTestPath('pertexo-f46-browser'), { recursive: true });
   for (const colorScheme of ['dark', 'light'] as const) {
     await page.emulateMedia({ colorScheme, reducedMotion: 'reduce' });
     for (const width of [1440, 990, 375]) {
@@ -60,7 +61,9 @@ test('callback Wait is authored in the editor and resumes a whole-draft test thr
         page.getByRole('combobox', { name: 'Wait until', exact: true }),
       ).toBeVisible();
       await page.screenshot({
-        path: `/tmp/pertexo-f46-browser/wait-${colorScheme}-${String(width)}.png`,
+        path: temporaryTestPath(
+          `pertexo-f46-browser/wait-${colorScheme}-${String(width)}.png`,
+        ),
       });
     }
   }

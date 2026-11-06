@@ -1,3 +1,4 @@
+import { temporaryTestPath } from '../../test/support/temporary-test-path';
 import { createWorkflowNodeFixture } from '../../test/support/fixtures/graph';
 import { readCsrfToken } from '../../test/support/browser/csrf';
 import './callbacks/journey.case';
@@ -164,7 +165,9 @@ test('a starter cannot decide; a named viewer approves and rejects real runs thr
       )
       .toBe('Review the request');
     await publishSingleStep(page, workflowPath);
-    await mkdir('/tmp/pertexo-approval-screenshots', { recursive: true });
+    await mkdir(temporaryTestPath('pertexo-approval-screenshots'), {
+      recursive: true,
+    });
     for (const [decision, width] of [
       ['approved', 1280],
       ['rejected', 375],
@@ -237,7 +240,9 @@ test('a starter cannot decide; a named viewer approves and rejects real runs thr
         ),
       ).toBe(true);
       await decider.screenshot({
-        path: `/tmp/pertexo-approval-screenshots/${decision}-${String(width)}-before.png`,
+        path: temporaryTestPath(
+          `pertexo-approval-screenshots/${decision}-${String(width)}-before.png`,
+        ),
         fullPage: true,
       });
       await decider
@@ -256,7 +261,9 @@ test('a starter cannot decide; a named viewer approves and rejects real runs thr
       ).toBeVisible();
       await waitForRun(decider, workspaceId, runId, 'succeeded');
       await decider.screenshot({
-        path: `/tmp/pertexo-approval-screenshots/${decision}-${String(width)}-after.png`,
+        path: temporaryTestPath(
+          `pertexo-approval-screenshots/${decision}-${String(width)}-after.png`,
+        ),
         fullPage: true,
       });
     }
@@ -278,7 +285,9 @@ test('a starter cannot decide; a named viewer approves and rejects real runs thr
       'If you start this run, nobody else in this audience can decide. Allow the starter or choose another member.';
     await expect(page.getByText(hint, { exact: true })).toBeVisible();
     await page.screenshot({
-      path: '/tmp/pertexo-approval-screenshots/starter-settings-1280.png',
+      path: temporaryTestPath(
+        'pertexo-approval-screenshots/starter-settings-1280.png',
+      ),
       fullPage: true,
     });
     const starter = page.getByRole('checkbox', {
@@ -304,7 +313,9 @@ test('a starter cannot decide; a named viewer approves and rejects real runs thr
       .click();
     await starter.scrollIntoViewIfNeeded();
     await page.screenshot({
-      path: '/tmp/pertexo-approval-screenshots/starter-settings-375.png',
+      path: temporaryTestPath(
+        'pertexo-approval-screenshots/starter-settings-375.png',
+      ),
       fullPage: true,
     });
     expect(

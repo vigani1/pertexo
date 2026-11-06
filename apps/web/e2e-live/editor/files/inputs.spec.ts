@@ -1,3 +1,4 @@
+import { temporaryTestPath } from '../../../test/support/temporary-test-path';
 import { createHash } from 'node:crypto';
 import { mkdir } from 'node:fs/promises';
 import { expect, request as requestFactory, type Page } from '@playwright/test';
@@ -13,7 +14,7 @@ import {
 const bytes = Buffer.alloc(1048576);
 for (let index = 0; index < bytes.length; index++) bytes[index] = index % 256;
 const sha256 = createHash('sha256').update(bytes).digest('hex');
-const images = '/tmp/pertexo-f04-screenshots';
+const images = () => temporaryTestPath('pertexo-f04-screenshots');
 
 async function add(
   page: Page,
@@ -141,7 +142,7 @@ for (const manual of [false, true])
     page,
     request,
   }) => {
-    await mkdir(images, { recursive: true });
+    await mkdir(images(), { recursive: true });
     await page.emulateMedia({ reducedMotion: 'reduce' });
     const { workspaceId, connection } = await createOwnedHttpConnection(
       page,
@@ -186,7 +187,7 @@ for (const manual of [false, true])
         path: '$.file',
       });
     else {
-      await page.screenshot({ path: `${images}/editor-before.png` });
+      await page.screenshot({ path: `${images()}/editor-before.png` });
       await page.setViewportSize({ width: 375, height: 768 });
       await page
         .getByRole('navigation', { name: 'Editor panels' })
@@ -215,9 +216,9 @@ for (const manual of [false, true])
         `Owned 1 MiB browser upload observation ${JSON.stringify({ durationMs: Math.round(performance.now() - started), before, after })}\n`,
       );
       await heap.detach();
-      await page.screenshot({ path: `${images}/editor-upload-phone.png` });
+      await page.screenshot({ path: `${images()}/editor-upload-phone.png` });
       await page.setViewportSize({ width: 1280, height: 768 });
-      await page.screenshot({ path: `${images}/editor-upload-desktop.png` });
+      await page.screenshot({ path: `${images()}/editor-upload-desktop.png` });
       await page.setViewportSize({ width: 375, height: 768 });
       expect(
         await page.evaluate(
@@ -295,7 +296,7 @@ for (const manual of [false, true])
     await beginRun(page);
     if (manual) {
       await page.setViewportSize({ width: 375, height: 768 });
-      await page.screenshot({ path: `${images}/manual-before.png` });
+      await page.screenshot({ path: `${images()}/manual-before.png` });
       await page
         .getByRole('button', { name: 'Upload file', exact: true })
         .click();
@@ -306,7 +307,7 @@ for (const manual of [false, true])
       });
       await expect(page.getByText('File ready', { exact: true })).toBeVisible();
       await page.getByRole('button', { name: 'Use file', exact: true }).focus();
-      await page.screenshot({ path: `${images}/manual-upload-phone.png` });
+      await page.screenshot({ path: `${images()}/manual-upload-phone.png` });
       await page.getByRole('button', { name: 'Use file', exact: true }).click();
       await expect
         .poll(

@@ -1,3 +1,4 @@
+import { temporaryTestPath } from '../../test/support/temporary-test-path';
 import { expect } from '@playwright/test';
 
 import { test } from '../support/browser-fixture';
@@ -60,7 +61,7 @@ export function installOrganizationObservations() {
     );
     if (/^\/w\/[0-9a-f-]+\/workflows$/u.test(new URL(page.url()).pathname))
       await page.screenshot({
-        path: '/tmp/pertexo-f07-creation-public.png',
+        path: temporaryTestPath('pertexo-f07-creation-public.png'),
         fullPage: true,
       });
   });

@@ -1,3 +1,4 @@
+import { temporaryTestPath } from '../../test/support/temporary-test-path';
 import { mkdir } from 'node:fs/promises';
 import { expect } from '@playwright/test';
 import {
@@ -23,13 +24,13 @@ const expected = {
   complete: true,
   status: 200,
 };
-const images = '/tmp/pertexo-f32-pagination-screenshots';
+const images = () => temporaryTestPath('pertexo-f32-pagination-screenshots');
 
 test('fetches three authenticated pages in a real run and single-step preview', async ({
   page,
   request,
 }) => {
-  await mkdir(images, { recursive: true });
+  await mkdir(images(), { recursive: true });
   await page.setViewportSize({ width: 1280, height: 768 });
   await page.emulateMedia({ reducedMotion: 'reduce' });
   const { workspaceId } = await createOwnedHttpConnection(page, request);
@@ -60,14 +61,14 @@ test('fetches three authenticated pages in a real run and single-step preview', 
     .click();
   await page.getByLabel('Max pages', { exact: true }).fill('4');
   await page.getByLabel('Items path', { exact: true }).scrollIntoViewIfNeeded();
-  await page.screenshot({ path: `${images}/desktop.png` });
+  await page.screenshot({ path: `${images()}/desktop.png` });
   await page.setViewportSize({ width: 375, height: 768 });
   await page
     .getByRole('navigation', { name: 'Editor panels' })
     .getByRole('button', { name: 'Step', exact: true })
     .click();
   await page.getByLabel('Items path', { exact: true }).scrollIntoViewIfNeeded();
-  await page.screenshot({ path: `${images}/phone.png` });
+  await page.screenshot({ path: `${images()}/phone.png` });
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= innerWidth,

@@ -1,3 +1,4 @@
+import { temporaryTestPath } from '../../../test/support/temporary-test-path';
 import {
   workflowDraftResponseSchema,
   workflowNodeRunOutputResponseSchema,
@@ -17,7 +18,7 @@ import {
 } from '../../support/authoring/single-step';
 import { test } from '../../support/browser-fixture';
 
-const images = '/tmp/pertexo-f04-multipart-screenshots';
+const images = () => temporaryTestPath('pertexo-f04-multipart-screenshots');
 const binary = Buffer.from([0, 255, 13, 10, 128]);
 const hash = (bytes: Buffer | string) =>
   createHash('sha256').update(bytes).digest('hex');
@@ -66,7 +67,7 @@ test('authors multipart at desktop and phone widths, then sends exact ordered pa
   page,
   request,
 }) => {
-  await mkdir(images, { recursive: true });
+  await mkdir(images(), { recursive: true });
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.setViewportSize({ width: 1280, height: 768 });
   const { workspaceId, connection } = await createOwnedHttpConnection(
@@ -80,7 +81,7 @@ test('authors multipart at desktop and phone widths, then sends exact ordered pa
   );
   const nodeId = await addSingleStep(page, path, /HTTP request/u, 'Send form');
   await setup(page);
-  await page.screenshot({ path: `${images}/before.png` });
+  await page.screenshot({ path: `${images()}/before.png` });
   await page.getByRole('button', { name: 'Form parts', exact: true }).click();
   const part = (index: number) =>
     page.getByRole('group', {
@@ -171,7 +172,7 @@ test('authors multipart at desktop and phone widths, then sends exact ordered pa
   await part(1)
     .getByLabel('Field name', { exact: true })
     .scrollIntoViewIfNeeded();
-  await page.screenshot({ path: `${images}/after-desktop.png` });
+  await page.screenshot({ path: `${images()}/after-desktop.png` });
   await page.setViewportSize({ width: 375, height: 768 });
   await page
     .getByRole('navigation', { name: 'Editor panels' })
@@ -180,7 +181,7 @@ test('authors multipart at desktop and phone widths, then sends exact ordered pa
   await part(1)
     .getByLabel('Field name', { exact: true })
     .scrollIntoViewIfNeeded();
-  await page.screenshot({ path: `${images}/after-phone.png` });
+  await page.screenshot({ path: `${images()}/after-phone.png` });
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= innerWidth,

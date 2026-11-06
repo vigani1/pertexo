@@ -1,3 +1,4 @@
+import { temporaryTestPath } from '../test/support/temporary-test-path';
 import {
   botToken,
   connectionId,
@@ -239,7 +240,9 @@ test('recovers run-rejected health, pages published usage, rotates to unknown an
       'Live as version 2, 1 older version still used by runs (archived workflow)',
     ),
   ).toBeVisible();
-  await page.screenshot({ path: '/tmp/pertexo-connection-health-desktop.png' });
+  await page.screenshot({
+    path: temporaryTestPath('pertexo-connection-health-desktop.png'),
+  });
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(lens).toBeVisible();
   expect(
@@ -247,7 +250,9 @@ test('recovers run-rejected health, pages published usage, rotates to unknown an
       () => document.documentElement.scrollWidth <= innerWidth,
     ),
   ).toBe(true);
-  await page.screenshot({ path: '/tmp/pertexo-connection-health-mobile.png' });
+  await page.screenshot({
+    path: temporaryTestPath('pertexo-connection-health-mobile.png'),
+  });
   await lens.getByRole('button', { name: 'Test' }).click();
   await lens.getByRole('button', { name: 'Test connection' }).click();
   await expect(lens.getByText('Slack accepted the token.')).toBeVisible();

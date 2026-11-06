@@ -1,3 +1,4 @@
+import { temporaryTestPath } from '../test/support/temporary-test-path';
 import type { AccessibleWorkspace } from '@pertexo/contracts';
 import {
   createUserFixture,
@@ -219,7 +220,7 @@ test('Usage keeps exact capacity, fixed activity windows, drilldowns and mobile 
     ),
   ).toBe(true);
   await page.screenshot({
-    path: '/tmp/pertexo-usage-mocked-mobile.png',
+    path: temporaryTestPath('pertexo-usage-mocked-mobile.png'),
     fullPage: true,
   });
   // On a phone, Settings' sections sit behind one button naming the open one.

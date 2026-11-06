@@ -1,3 +1,4 @@
+import { temporaryTestPath } from '../../../test/support/temporary-test-path';
 import {
   expect,
   test,
@@ -155,7 +156,7 @@ async function exerciseSaveStates(
     page.getByRole('dialog', { name: 'Your copy and theirs' }),
   ).toBeVisible();
   await page.screenshot({
-    path: `/tmp/pertexo-polish-9-conflict-${String(width)}.png`,
+    path: temporaryTestPath(`pertexo-polish-9-conflict-${String(width)}.png`),
   });
 }
 for (const colorScheme of ['light', 'dark'] as const) {
@@ -278,7 +279,7 @@ for (const width of [390, 1280]) {
     await expect.poll(() => remote.revision).toBe(2);
     await expectSameHeader(page, baseline);
     await page.screenshot({
-      path: `/tmp/pertexo-polish-9-after-${String(width)}.png`,
+      path: temporaryTestPath(`pertexo-polish-9-after-${String(width)}.png`),
     });
   });
 }

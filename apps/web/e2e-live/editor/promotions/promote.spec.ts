@@ -1,3 +1,4 @@
+import { temporaryTestPath } from '../../../test/support/temporary-test-path';
 import { mkdir } from 'node:fs/promises';
 import { expect } from '@playwright/test';
 import { test } from '../../support/browser-fixture';
@@ -76,9 +77,13 @@ test('reviews and runs independent promoted workflows at desktop and phone width
         ),
       )
       .toBe(true);
-    await mkdir('/tmp/pertexo-promotion-screenshots', { recursive: true });
+    await mkdir(temporaryTestPath('pertexo-promotion-screenshots'), {
+      recursive: true,
+    });
     await page.screenshot({
-      path: `/tmp/pertexo-promotion-screenshots/review-${String(width)}.png`,
+      path: temporaryTestPath(
+        `pertexo-promotion-screenshots/review-${String(width)}.png`,
+      ),
       fullPage: true,
     });
     await page
@@ -101,7 +106,9 @@ test('reviews and runs independent promoted workflows at desktop and phone width
       history.getByRole('link', { name: workflowName, exact: true }),
     ).toBeVisible();
     await page.screenshot({
-      path: `/tmp/pertexo-promotion-screenshots/history-${String(width)}.png`,
+      path: temporaryTestPath(
+        `pertexo-promotion-screenshots/history-${String(width)}.png`,
+      ),
       fullPage: true,
     });
   }

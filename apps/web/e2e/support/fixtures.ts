@@ -1,5 +1,6 @@
 import { installPresenceRoutes } from '../../test/support/browser/mock-reads';
-import { test as base, type Page } from '@playwright/test';
+import type { Page } from '@playwright/test';
+import { test as base } from '../../test/support/temporary-test-path';
 
 export {
   expect,

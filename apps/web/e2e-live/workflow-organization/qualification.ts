@@ -1,3 +1,4 @@
+import { temporaryTestPath } from '../../test/support/temporary-test-path';
 import {
   workflowOrganizationBulkRequestSchema,
   workflowOrganizationBulkResponseSchema,
@@ -190,7 +191,9 @@ export async function qualifyExtended(input: {
         await expect(row(actor.page, alphaName)).toHaveCount(0);
         await actor.page.setViewportSize({ width: 390, height: 844 });
         await actor.page.screenshot({
-          path: '/tmp/pertexo-workflow-organization-viewer-mobile.png',
+          path: temporaryTestPath(
+            'pertexo-workflow-organization-viewer-mobile.png',
+          ),
           fullPage: true,
         });
       } else if (role === 'builder') {
