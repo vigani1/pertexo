@@ -28,6 +28,9 @@ export type NodeExecutorFailureKind =
   (typeof NODE_EXECUTOR_FAILURE_KINDS)[number];
 export type NodeExecutorErrorKind = (typeof NODE_EXECUTOR_ERROR_KINDS)[number];
 
+/** The longest origin/path representation retained with a service refusal. */
+export const MAXIMUM_SERVICE_RESPONSE_URL_CHARACTERS = 512;
+
 /** The longest response excerpt a failure keeps. */
 export const MAXIMUM_RESPONSE_EXCERPT_CHARACTERS = 1_500;
 
@@ -35,7 +38,7 @@ const serviceResponseSchema = z
   .object({
     method: z.string().min(1).max(16),
     /** Origin and path only: a query can hold credentials. */
-    url: z.url().max(512),
+    url: z.url().max(MAXIMUM_SERVICE_RESPONSE_URL_CHARACTERS),
     status: z.number().int().min(100).max(599),
     /** Already redacted by the secure HTTP client, and bounded here. */
     body: z.discriminatedUnion('kind', [
