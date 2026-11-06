@@ -1,5 +1,5 @@
 import type { WorkflowGraph } from './workflow-graph.schemas.js';
-import type { WorkflowDefinitionCatalog } from './identity.js';
+import type { WorkflowDefinitionCatalog } from './definition-catalog.js';
 
 export type WorkflowDefinitionPlacementIssue = Readonly<{
   code: 'definition_not_placeable';

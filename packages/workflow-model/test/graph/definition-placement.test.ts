@@ -5,7 +5,7 @@ import type {
   WorkflowNode,
 } from '../../src/graph/workflow-graph.schemas.js';
 import { workflowDefinitionPlacementIssues } from '../../src/graph/definition-placement.js';
-import { EMPTY_DEFINITION_CATALOG } from '../../src/graph/identity.js';
+import { EMPTY_DEFINITION_CATALOG } from '../../src/graph/definition-catalog.js';
 
 const unavailable = { key: 'legacy.unavailable', version: 1 } as const;
 const node = (id: string): WorkflowNode => ({

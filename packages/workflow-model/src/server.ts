@@ -15,13 +15,13 @@ export {
 } from './values/expressions/policy.js';
 export {
   EMPTY_DEFINITION_CATALOG,
-  parseWorkflowGraphForPublish,
   workflowCompatibilityReport,
   workflowDefinitionCatalogFingerprint,
-  workflowDraftRepresentationTag,
-  workflowIntegrationUsage,
   type WorkflowDefinitionCatalog,
-} from './graph/identity.js';
+} from './graph/definition-catalog.js';
+export { parseWorkflowGraphForPublish } from './graph/publish-workflow-graph.js';
+export { workflowDraftRepresentationTag } from './graph/draft-representation.js';
+export { workflowIntegrationUsage } from './graph/integration-usage.js';
 
 export {
   workflowVariableSources,
