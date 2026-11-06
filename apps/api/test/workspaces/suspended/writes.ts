@@ -243,12 +243,6 @@ export const WRITES: readonly Write[] = [
     payload: ({ folderId }) => ({ folderId, expectedRevision: 1 }),
   },
   {
-    name: 'exporting a workflow',
-    method: 'POST',
-    path: (world) => `${workflow(world)}/export`,
-    payload: () => ({}),
-  },
-  {
     name: 'replying to a comment',
     method: 'POST',
     path: (world) => `${workflow(world)}/comments/${world.threadId}/replies`,
