@@ -4,7 +4,7 @@ import { test } from 'node:test';
 import { parse } from 'yaml';
 
 import { journeyCommand } from './run-browser-journeys.mjs';
-import { shardCommand } from './run-worker-suite.mjs';
+import { shardCommand, workerSuitePhases } from './run-worker-suite.mjs';
 import { runSideBySide, slotEnvironment } from './side-by-side.mjs';
 
 const base = {
@@ -136,4 +136,33 @@ test('the worker suite runs every shard, each on a stack of its own', () => {
   assert.equal(new Set(projects).size, 3);
   for (const project of projects)
     assert.match(project, /^pertexo-ci-\d+-\d+-integration$/u);
+});
+
+test('cold-worker For Each recovery runs alone before the parallel worker shards', () => {
+  const file = 'test/runs/consumer/foreach-cancellation.integration.test.ts';
+  const phases = workerSuitePhases(3);
+  assert.equal(phases.length, 2);
+  assert.equal(phases[0].length, 1);
+  assert.equal(phases[0][0].stack, 0);
+  assert.ok(phases[0][0].command.args.includes(file));
+  assert.ok(
+    !phases[0][0].command.args.some((arg) => arg.startsWith('--shard')),
+  );
+  assert.deepEqual(
+    phases[1].map(({ stack }) => stack),
+    [0, 1, 2],
+  );
+  for (const { command } of phases[1]) {
+    assert.ok(command.args.includes(`--exclude=${file}`));
+  }
+});
+
+test('explicit worker selections keep their requested files and shard arguments', () => {
+  const selection = ['test/connections', '--reporter=verbose'];
+  const phases = workerSuitePhases(3, selection);
+  assert.equal(phases.length, 1);
+  assert.deepEqual(
+    phases[0].map(({ command }) => command),
+    [0, 1, 2].map((shard) => shardCommand(shard, 3, selection)),
+  );
 });
