@@ -284,3 +284,36 @@ test('execution area entry points and subject-role modules remain valid', () => 
   ])
     assert.deepEqual(check(file), []);
 });
+
+for (const file of [
+  'packages/core/src/authoring/workflows/input.ts',
+  'packages/core/src/lifecycle/purge/input.ts',
+  'packages/core/src/governance/records.repository.ts',
+  'packages/core/src/artifacts/uploads/input.ts',
+  'packages/core/src/previews/attempts/state.repository.ts',
+  'apps/api/src/workflow-authoring/organization/commands.ts',
+  'apps/api/test/node-testing/use-case/fixture.ts',
+  'apps/api/test/artifacts/service.test.ts',
+  'apps/api/test/governance/errors.test.ts',
+  'apps/worker/src/previews/handler.ts',
+  'apps/worker/test/retention/runtime.test.ts',
+]) {
+  test(`batch D modules retain a concrete subject: ${file}`, () => {
+    assert.ok(rules(file).includes('FN008'));
+  });
+}
+
+test('batch D existing entry points and concrete fixture subjects remain valid', () => {
+  for (const file of [
+    ...['authoring', 'lifecycle', 'governance', 'artifacts', 'previews'].map(
+      (area) => `packages/core/src/${area}/index.ts`,
+    ),
+    'apps/api/src/artifacts/index.ts',
+    'apps/api/src/node-testing/index.ts',
+    'apps/api/src/workflow-authoring/index.ts',
+    'packages/core/test/lifecycle/workspace-purge.fixture.ts',
+    'apps/api/test/node-testing/node-testing.fixture.ts',
+    'apps/worker/src/previews/handle-preview-delivery.ts',
+  ])
+    assert.deepEqual(check(file), []);
+});
