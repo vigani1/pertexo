@@ -1,4 +1,6 @@
-import { Controller, Req, UseInterceptors } from '@nestjs/common';
+import type { WorkspaceVariablesStore } from '@pertexo/core/variables';
+import { WORKSPACE_VARIABLES_STORE } from './workspace-variables.tokens.js';
+import { Controller, Inject, Req, UseInterceptors } from '@nestjs/common';
 import { variableRoutes, type RouteInput } from '@pertexo/contracts/server';
 import { commandCredential } from '../authorization/credentials.js';
 import { projectAuthenticatedWorkspaceContext } from '../workspaces/request/authenticated-context.js';
@@ -15,14 +17,18 @@ type Request = IdentityWorkspaceRequest & AbortableRequest;
 @UseInterceptors(domainErrors(resourceFailure))
 @Controller()
 export class WorkspaceVariablesController {
-  constructor(private readonly variables: WorkspaceVariablesService) {}
+  constructor(
+    @Inject(WORKSPACE_VARIABLES_STORE)
+    private readonly store: WorkspaceVariablesStore,
+    private readonly variables: WorkspaceVariablesService,
+  ) {}
   @Route(variableRoutes.read)
   read(
     @Req() request: Request,
     @In() { params }: RouteInput<typeof variableRoutes.read>,
   ) {
     return withRequestOperationSignal(request, (signal) =>
-      this.variables.read({
+      this.store.read({
         workspaceId: params.workspaceId,
         actorId: projectAuthenticatedWorkspaceContext(
           request,
@@ -60,7 +66,7 @@ export class WorkspaceVariablesController {
       params.workspaceId,
     );
     return withRequestOperationSignal(request, (signal) =>
-      this.variables.replace({
+      this.store.replace({
         workspaceId: params.workspaceId,
         actorId: actor.actorId,
         ...commandCredential(actor),

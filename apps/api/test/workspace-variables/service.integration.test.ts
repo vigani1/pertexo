@@ -131,7 +131,7 @@ describe.runIf(requested)('workspace variables over the real store', () => {
   it('answers a stale save with a typed conflict and keeps the set', async () => {
     const scope = await workspace();
     const save = (expectedRevision: number, value: number) =>
-      service.replace({
+      store.replace({
         ...scope,
         expectedRevision,
         values: { RATE: value },
@@ -145,7 +145,7 @@ describe.runIf(requested)('workspace variables over the real store', () => {
     await expect(
       problemResult(save(0, 2), resourceFailure),
     ).rejects.toMatchObject({ code: 'variables.changed' });
-    expect(await service.read(scope)).toEqual({
+    expect(await store.read(scope)).toEqual({
       revision: 1,
       values: { RATE: 1 },
       descriptions: {},
@@ -156,10 +156,10 @@ describe.runIf(requested)('workspace variables over the real store', () => {
     const scope = await workspace();
     const outsider = { ...scope, actorId: await user() };
     const actions: readonly (() => Promise<unknown>)[] = [
-      () => service.read(outsider),
+      () => store.read(outsider),
       () => service.usage({ ...outsider, name: 'RATE', limit: 25 }),
       () =>
-        service.replace({
+        store.replace({
           ...outsider,
           expectedRevision: 0,
           values: { RATE: 1 },

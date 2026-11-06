@@ -16,9 +16,6 @@ import {
 /** HTTP's view of the store: the opaque usage cursor. */
 export class WorkspaceVariablesService {
   constructor(private readonly store: WorkspaceVariablesStore) {}
-  read: WorkspaceVariablesStore['read'] = (input) => this.store.read(input);
-  replace: WorkspaceVariablesStore['replace'] = (input) =>
-    this.store.replace(input);
   async usage({
     after,
     ...scope

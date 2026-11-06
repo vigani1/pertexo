@@ -1,3 +1,4 @@
+import { WORKSPACE_VARIABLES_STORE } from './workspace-variables.tokens.js';
 import { Module, type DynamicModule } from '@nestjs/common';
 import type { WorkspaceVariablesStore } from '@pertexo/core/variables';
 import type { WorkspaceAuthorizationSource } from '../workspaces/ports.js';
@@ -18,6 +19,7 @@ export class WorkspaceVariablesModule {
       imports: [identityModule],
       controllers: [WorkspaceVariablesController],
       providers: [
+        { provide: WORKSPACE_VARIABLES_STORE, useValue: store },
         {
           provide: WorkspaceVariablesService,
           useValue: new WorkspaceVariablesService(store),
