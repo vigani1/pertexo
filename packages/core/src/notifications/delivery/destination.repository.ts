@@ -53,6 +53,7 @@ export function loadDestination(
         .with(source)
         .select({
           config: source.config,
+          configVersion: source.configVersion,
           secretVersionId: secret.id,
           sealed: {
             kmsKeyReference: secret.kmsKeyReference,
@@ -91,6 +92,7 @@ export function loadDestination(
         purpose: 'failure_notification.deliver',
       });
       const resolved = {
+        configVersion: row.configVersion,
         connectionId,
         secretVersionId,
         sealed: Object.freeze(row.sealed),
@@ -174,7 +176,11 @@ export async function fenceDispatch(
       const [source] = await deliverySources(db)
         .where(and(scope, currentDestinationSql))
         .catch(rethrowQueryFailure);
-      if (source === undefined)
+      if (
+        source?.configVersion !== input.destinationIdentity.configVersion ||
+        source.config.connectionId !== input.destinationIdentity.connectionId ||
+        source.secretVersionId !== input.destinationIdentity.secretVersionId
+      )
         throw new FailureNotificationStateError(
           'Delivery dispatch fence failed',
         );

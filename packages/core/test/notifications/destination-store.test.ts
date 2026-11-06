@@ -42,7 +42,16 @@ describe('failure notification destination attempt validation', () => {
     async (attemptNumber) => {
       withTenantScopedClient.mockResolvedValueOnce(undefined);
       await expect(
-        fenceDispatch({} as Pool, { attemptNumber, intentId, workspaceId }),
+        fenceDispatch({} as Pool, {
+          attemptNumber,
+          intentId,
+          workspaceId,
+          destinationIdentity: {
+            configVersion: 1,
+            connectionId: intentId,
+            secretVersionId: intentId,
+          },
+        }),
       ).resolves.toBeUndefined();
       expect(withTenantScopedClient).toHaveBeenCalledOnce();
     },

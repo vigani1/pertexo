@@ -227,6 +227,48 @@ describeIntegration('failure alerts through a rotated credential', () => {
     },
   );
 
+  it.each(['address', 'connection', 'credential'] as const)(
+    'refuses a stale prepared email when its %s changes before dispatch',
+    async (change) => {
+      const target = await createTarget('email', 'old@example.test');
+      const intentId = await failRun(await acceptRun());
+      const harness = deliveryHarness(store, async () => {
+        if (change === 'credential') {
+          await rotateCredential('email', target.connectionId);
+          return;
+        }
+        const connectionId =
+          change === 'connection'
+            ? (await createTarget('email', 'other@example.test')).connectionId
+            : target.connectionId;
+        await destinations.appendVersion({
+          ...command(),
+          destinationId: target.destinationId,
+          expectedVersion: 1,
+          config: { kind: 'email', connectionId, toEmail: 'new@example.test' },
+        });
+      });
+
+      await runDelivery(harness, intentId);
+
+      expect(harness.emails).toEqual([]);
+      expect(await storedIntent(intentId)).toMatchObject({
+        status: 'dead_letter',
+        safe_error_code: 'delivery.dispatch_fence_failed',
+        possibly_dispatched: false,
+      });
+      const [evidence] = await fixture.workerQuery(
+        `select dispatched_config_version,dispatched_secret_version_id
+           from app.run_failure_notification_intents where id=$1`,
+        [intentId],
+      );
+      expect(evidence).toMatchObject({
+        dispatched_config_version: null,
+        dispatched_secret_version_id: null,
+      });
+    },
+  );
+
   it('sends to the new Slack channel when a version is appended during the run', async () => {
     const harness = deliveryHarness(store);
     const { connectionId, destinationId } = await createTarget('slack', 'COLD');

@@ -40,6 +40,7 @@ describe.each(['email', 'slack'] as const)(
         alert,
         claimed.attemptNumber,
         kind === 'email' ? emailBinding('a') : undefined,
+        destination,
       );
       await expect(
         complete(alert, claimed.attemptNumber, {

@@ -24,6 +24,7 @@ export type FailureNotificationClaimResult =
     }>;
 
 type FailureNotificationResolvedDestinationBase = Readonly<{
+  configVersion: number;
   connectionId: string;
   secretVersionId: string;
   sealed: Readonly<{
@@ -72,6 +73,10 @@ export type LoadDestinationInput = NotificationAttempt &
 
 export type FenceDispatchInput = NotificationAttempt &
   Readonly<{
+    destinationIdentity: Pick<
+      FailureNotificationResolvedDestination,
+      'configVersion' | 'connectionId' | 'secretVersionId'
+    >;
     attemptNumber: number;
     deliveryBinding?: string;
     signal?: AbortSignal;

@@ -408,6 +408,7 @@ describe('provider failure notification delivery', () => {
       const secretVersionId =
         overrides.secretVersionId ?? identity.connectionSecretVersionId;
       vi.mocked(persistence.loadDestination).mockResolvedValue({
+        configVersion: 1,
         kind: 'email',
         connectionId: '88888888-8888-4888-8888-888888888888',
         secretVersionId,
@@ -552,6 +553,7 @@ describe('provider failure notification delivery', () => {
       slack: { sendMessage: vi.fn() },
       email: {
         sendNotification: vi.fn().mockResolvedValue({
+          configVersion: 1,
           kind: 'rate_limited',
           retryAfterMillis: 1_000,
         }),
@@ -897,6 +899,7 @@ describe('provider failure notification delivery', () => {
   it('keeps a retry of a possibly sent alert on the credential that send used', async () => {
     const persistence = store('email');
     vi.mocked(persistence.loadDestination).mockResolvedValue({
+      configVersion: 1,
       kind: 'email',
       connectionId: '88888888-8888-4888-8888-888888888888',
       secretVersionId: '99999999-9999-4999-8999-999999999999',
