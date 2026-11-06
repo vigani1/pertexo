@@ -790,3 +790,48 @@ for (const [from, to] of [
     }
   });
 }
+
+for (const [workspace, dependency] of [
+  ['workflow-model', 'workflow-engine'],
+  ['workflow-model', 'contracts'],
+  ['workflow-engine', 'contracts'],
+]) {
+  test(`batch F preserves the ${workspace} dependency seam against ${dependency}`, () => {
+    for (const declaration of ['import { a }', 'import type { A }']) {
+      assert.match(
+        validateModuleImports({
+          [`packages/${workspace}/src/vocabulary.ts`]: `${declaration} from '@pertexo/${dependency}';`,
+        }).join('\n'),
+        /workflow package dependency is not allowed/u,
+      );
+    }
+  });
+}
+test('checkpoint facts do not load transition implementations', () => {
+  assert.match(
+    validateModuleImports({
+      'packages/workflow-engine/src/checkpoint/parser.ts':
+        "import type { A } from '../transition/scheduling/policy.js';",
+      'packages/workflow-engine/src/transition/scheduling/policy.ts':
+        'export type A = string;',
+    }).join('\n'),
+    /checkpoint facts do not depend on transitions/u,
+  );
+});
+test('workflow packages retain their execution and domain vocabulary dependencies', () => {
+  assert.deepEqual(
+    validateModuleImports({
+      'packages/workflow-model/test/domain.test.ts':
+        "import { a } from '@pertexo/workflow-model';",
+      'packages/workflow-model/src/identity/identity-primitives.ts':
+        "import { a } from '@pertexo/policy';",
+      'packages/workflow-engine/src/attempt/execute.ts':
+        "import { a } from '@pertexo/workflow-model'; import type { B } from '@pertexo/node-sdk/server';",
+      'packages/workflow-engine/src/checkpoint/parser.ts':
+        "import { identity } from '../invocation-identity.js';",
+      'packages/workflow-engine/src/invocation-identity.ts':
+        'export const identity = 1;',
+    }),
+    [],
+  );
+});

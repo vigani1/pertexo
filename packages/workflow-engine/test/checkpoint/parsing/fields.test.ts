@@ -1,3 +1,5 @@
+import { startForEach } from '../../support/compilation/for-each.js';
+import { parseJoin } from '../../../src/checkpoint/joins.js';
 import { describe, expect, it } from 'vitest';
 import {
   createCheckpoint,
@@ -15,81 +17,58 @@ describe('checkpoint seam', () => {
     expect(parseCheckpoint(retained).deadlineExpired).toBe(false);
     expect(checkpoint().deadlineExpired).toBe(false);
   });
-  it('rejects malformed present optional scope fields', () => {
-    const base = checkpoint();
-    const controlKey = invocationKey({
-      workflowVersionId: base.workflowVersionId,
-      nodeId: 'legacy-loop',
-    });
-    const retained = {
-      ...base,
-      invocations: [
-        {
-          invocationKey: controlKey,
-          nodeId: 'legacy-loop',
-          status: 'succeeded',
-          attemptNumber: 1,
-        },
-      ],
-      loops: [
-        {
-          loopId: 'legacy-loop',
-          collection: {
-            kind: 'inline',
-            attemptId: '00000000-0000-4000-8000-000000000202',
-          },
-          collectionChecksum: 'legacy-checksum',
-          collectionSize: 0,
-          maxConcurrency: 1,
-          maxIterations: 1,
-          nextOrdinal: 0,
-          activeOrdinals: [],
-          terminalOrdinals: [],
-          branchPath: null,
-        },
-      ],
+  it.each([
+    {
+      field: 'branchPath',
+      value: null,
+      message: 'loop branch scope must be an array',
+    },
+    {
+      field: 'controlInvocationKey',
+      value: 42,
+      message: 'loop control key is invalid',
+    },
+    {
+      field: 'bodyRootNodeIds',
+      value: 'legacy-loop',
+      message: 'loop body roots are invalid',
+    },
+  ])(
+    'rejects malformed retained loop $field for its own reason',
+    async ({ field, value, message }) => {
+      const { declared } = await startForEach();
+      const valid = parseCheckpoint(
+        JSON.parse(JSON.stringify(declared.checkpoint)),
+      );
+      expect(valid).toEqual(declared.checkpoint);
+      expect(valid.loops).toHaveLength(1);
+      expect(() =>
+        parseCheckpoint({
+          ...valid,
+          loops: valid.loops.map((loop) => ({ ...loop, [field]: value })),
+        }),
+      ).toThrow(
+        expect.objectContaining({ code: 'checkpoint_invalid', message }),
+      );
+    },
+  );
+  it('rejects a malformed join invocation key for its own reason', () => {
+    const valid = {
+      joinId: 'join',
+      joinInvocationKey: invocationKey({
+        workflowVersionId: checkpoint().workflowVersionId,
+        nodeId: 'join',
+      }),
+      policy: { kind: 'all' },
+      ledger: [{ branchId: 'branch', disposition: 'pending' }],
     };
-
-    expect(() => parseCheckpoint(retained)).toThrow(
-      expect.objectContaining({ code: 'checkpoint_invalid' }),
+    expect(parseJoin(valid)).toMatchObject(valid);
+    expect(() => parseJoin({ ...valid, joinInvocationKey: 42 })).toThrow(
+      expect.objectContaining({
+        code: 'checkpoint_invalid',
+        message: 'join invocation key is invalid',
+      }),
     );
-    expect(() =>
-      parseCheckpoint({
-        ...retained,
-        loops: [
-          {
-            ...retained.loops[0],
-            branchPath: [],
-            controlInvocationKey: 42,
-          },
-        ],
-      }),
-    ).toThrow(expect.objectContaining({ code: 'checkpoint_invalid' }));
-    expect(() =>
-      parseCheckpoint({
-        ...base,
-        joins: [
-          {
-            joinId: 'join',
-            joinInvocationKey: 42,
-            policy: { kind: 'all' },
-            ledger: [{ branchId: 'branch', disposition: 'pending' }],
-          },
-        ],
-      }),
-    ).toThrow(expect.objectContaining({ code: 'checkpoint_invalid' }));
-    expect(() =>
-      parseCheckpoint({
-        ...retained,
-        loops: [
-          {
-            ...retained.loops[0],
-            branchPath: [],
-            bodyRootNodeIds: 'legacy-loop',
-          },
-        ],
-      }),
-    ).toThrow(expect.objectContaining({ code: 'checkpoint_invalid' }));
   });
   it('requires due time for an ordinary waiting invocation', () => {
     const base = checkpoint();

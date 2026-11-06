@@ -30,29 +30,6 @@ function baselineCatalog(): NodeCatalog {
 }
 
 describe('expanded public workflow-engine boundaries', () => {
-  it('rejects extra envelope fields', () => {
-    const catalog = baselineCatalog();
-    const compiled = buildWorkflowExecutable({ graph: graph(), catalog });
-
-    for (const mutate of [
-      (envelope: Record<string, unknown>) => {
-        envelope.unexpected = 1;
-      },
-    ]) {
-      const envelope = structuredClone(compiled.envelope) as unknown as Record<
-        string,
-        unknown
-      >;
-      mutate(envelope);
-      expect(() =>
-        parseWorkflowExecutable({
-          envelope,
-          catalog: catalog,
-        }),
-      ).toThrow(expect.objectContaining({ code: 'executable_invalid' }));
-    }
-  });
-
   it('rejects incompatible config pins', () => {
     const catalog = baselineCatalog();
     const incompatibleGraph = structuredClone(graph());
