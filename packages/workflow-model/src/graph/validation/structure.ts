@@ -1,3 +1,4 @@
+import { parseJsonPath } from '../../values/json/path.js';
 import { WORKFLOW_GRAPH_CONTRACT_LIMITS } from '../workflow-graph.schemas.js';
 import { canonicalJson } from '../../values/json/canonical.js';
 import { supportsStepRetrySettings } from '../../execution/step-retries/step-retry.schemas.js';
@@ -93,6 +94,13 @@ function validateMappings(
     }
     for (const [mappingKey, source] of Object.entries(node.inputMappings)) {
       const mappingPath = `${path}.nodes.${node.id}.inputMappings.${mappingKey}`;
+      if ('path' in source && parseJsonPath(source.path) === undefined) {
+        context.issue(
+          'invalid_mapping',
+          mappingPath,
+          "Use a JSON path such as $.customer.email, $[0], or $['email address'].",
+        );
+      }
       if (
         source.kind === 'structured_input' &&
         !structuredInputPorts?.has(source.port)
