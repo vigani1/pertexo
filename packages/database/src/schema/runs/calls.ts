@@ -28,7 +28,7 @@ export const workflowCalls = appSchema.table(
     invocationKey: varchar('invocation_key', { length: 256 }).notNull(),
     targetWorkflowId: uuid('target_workflow_id').notNull(),
     targetVersionId: uuid('target_version_id').notNull(),
-    targetChecksum: varchar('target_checksum', { length: 74 }).notNull(),
+    targetChecksum: varchar('target_checksum', { length: 77 }).notNull(),
     inputRef: json('input_ref'),
     inputChecksum: char('input_checksum', { length: 64 }).notNull(),
     deadlineAt: timestamp('deadline_at', { withTimezone: true, mode: 'date' }),
@@ -62,6 +62,10 @@ export const workflowCalls = appSchema.table(
     }),
   },
   (table): PgTableExtraConfigValue[] => [
+    check(
+      'workflow_calls_target_checksum_valid',
+      sql`target_checksum ~ '^wf:sha256:(v2:)?[a-f0-9]{64}$'`,
+    ),
     check(
       'workflow_calls_status_valid',
       sql`status in ('pending','accepted','refused','succeeded','failed','canceled','timed_out','outcome_unknown')`,

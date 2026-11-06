@@ -28,7 +28,7 @@ export const workflowTestSnapshots = appSchema.table(
     workspaceId: uuid('workspace_id').notNull(),
     draftRevision: integer('draft_revision').notNull(),
     graphJson: json('graph_json').$type<WorkflowGraph>().notNull(),
-    checksum: varchar('checksum', { length: 74 }).notNull(),
+    checksum: varchar('checksum', { length: 77 }).notNull(),
     executableJson: json('executable_json').notNull(),
     dispositions: jsonb('dispositions')
       .$type<WorkflowTestCompilation['dispositions']>()
@@ -51,7 +51,7 @@ export const workflowTestSnapshots = appSchema.table(
     ),
     check(
       'workflow_test_snapshots_checksum_valid',
-      sql`checksum ~ '^wf:sha256:[0-9a-f]{64}$'`,
+      sql`checksum ~ '^wf:sha256:(v2:)?[0-9a-f]{64}$'`,
     ),
     check('workflow_test_snapshots_revision_positive', sql`draft_revision > 0`),
     check(

@@ -1,3 +1,4 @@
+import { workflowExecutableChecksumSchema } from '@pertexo/workflow-model';
 export * from './sharing.js';
 import { z } from 'zod';
 import { workflowTemplateOriginSchema } from '@pertexo/workflow-model';
@@ -210,7 +211,7 @@ export const workflowVersionResponseSchema = z
     workflowId: z.uuid(),
     versionNumber: z.number().int().positive(),
     graph: workflowGraphSchema,
-    checksum: z.string().regex(/^wf:sha256:[0-9a-f]{64}$/u),
+    checksum: workflowExecutableChecksumSchema,
     publishedAt: z.iso.datetime(),
   })
   .strict();

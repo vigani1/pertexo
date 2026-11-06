@@ -1,3 +1,4 @@
+import { workflowExecutableChecksumSchema } from '@pertexo/workflow-model';
 import { utf8ByteLength } from '@pertexo/workflow-model';
 import { z } from 'zod';
 import {
@@ -148,7 +149,7 @@ export const workflowInputCaseMetadataSchema = z
     workspaceId: z.uuid(),
     workflowId: z.uuid(),
     workflowVersionId: z.uuid(),
-    versionChecksum: z.string().regex(/^wf:sha256:[0-9a-f]{64}$/u),
+    versionChecksum: workflowExecutableChecksumSchema,
     name: workflowInputCaseNameSchema,
     revision: workflowInputCaseRevisionSchema,
     representationTag: workflowInputCaseTagSchema,

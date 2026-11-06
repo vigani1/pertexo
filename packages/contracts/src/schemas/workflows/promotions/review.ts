@@ -1,3 +1,4 @@
+import { workflowExecutableChecksumSchema } from '@pertexo/workflow-model';
 import { z } from 'zod';
 import { workflowGraphSchema } from '@pertexo/workflow-model';
 import {
@@ -64,7 +65,7 @@ export const workflowPromotionPreviewSchema = z
             sourceName: z.string().max(128),
             sourceVersionId: id,
             sourceVersionNumber: z.number().int().positive(),
-            sourceChecksum: z.string().regex(/^wf:sha256:[a-f0-9]{64}$/u),
+            sourceChecksum: workflowExecutableChecksumSchema,
             targetWorkflowId: id.nullable(),
             targetName: z.string().max(128),
             targetRevision: z.number().int().positive().nullable(),

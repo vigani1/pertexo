@@ -15,6 +15,28 @@ const node: WorkflowNode = {
   connectionRefs: {},
 };
 describe('pinned sample setup identity', () => {
+  it('invalidates samples when authored mapping or literal object order changes', () => {
+    const name = { kind: 'literal', value: 'Ada' } as const;
+    const qty = { kind: 'literal', value: 2 } as const;
+    expect(
+      stepSampleIdentity({ ...node, inputMappings: { name, qty } }),
+    ).not.toBe(stepSampleIdentity({ ...node, inputMappings: { qty, name } }));
+    expect(
+      stepSampleIdentity({
+        ...node,
+        inputMappings: {
+          value: { kind: 'literal', value: { name: 'Ada', qty: 2 } },
+        },
+      }),
+    ).not.toBe(
+      stepSampleIdentity({
+        ...node,
+        inputMappings: {
+          value: { kind: 'literal', value: { qty: 2, name: 'Ada' } },
+        },
+      }),
+    );
+  });
   it('preserves pins through cosmetic edits and canonical key ordering', () => {
     expect(
       stepSampleIdentity({

@@ -42,7 +42,14 @@ describe('workflow executable identity', () => {
     const catalog = composeExecutableCatalog(nodeCatalog());
     const original = graph();
     const baseline = buildWorkflowExecutable({ graph: original, catalog });
-    expect(baseline.checksum).toBe(
+    expect(
+      verifyWorkflowExecutable({
+        envelope: baseline.envelope,
+        checksum:
+          'wf:sha256:bc624efc7e092d274f7655954b21da21501b8ac128fafb5095fdd91e7bb1e6d7',
+        catalog,
+      }).checksum,
+    ).toBe(
       'wf:sha256:bc624efc7e092d274f7655954b21da21501b8ac128fafb5095fdd91e7bb1e6d7',
     );
     const configured = buildWorkflowExecutable({
@@ -240,7 +247,7 @@ describe('workflow executable identity', () => {
       }),
     ).not.toThrow();
   });
-  it('composes engine-owned policies and produces the pre-publication golden checksum', () => {
+  it('composes engine-owned policies and produces the v2 golden checksum', () => {
     const catalog = composeExecutableCatalog(nodeCatalog());
     const compiled = buildWorkflowExecutable({ graph: graph(), catalog });
     expect(compiled.envelope.graph.nodes.map(({ id }) => id)).toEqual([
@@ -254,7 +261,7 @@ describe('workflow executable identity', () => {
       ),
     ).toEqual(['safe', 'safe', 'safe']);
     expect(compiled.checksum).toBe(
-      'wf:sha256:bc624efc7e092d274f7655954b21da21501b8ac128fafb5095fdd91e7bb1e6d7',
+      'wf:sha256:v2:75c996f9ac6a0f68128faf4da83b14ef2df967e3b5573e3513ab22a709e42ebb',
     );
     expect(
       verifyWorkflowExecutable({

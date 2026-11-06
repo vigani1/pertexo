@@ -486,3 +486,9 @@ export {
   RUN_STATUSES,
   type RunStatus,
 } from './execution/run-status.js';
+
+export {
+  workflowExecutionValues,
+  valueSourceExecutionIdentity,
+} from './graph/execution-values.js';
+export { workflowExecutableChecksumSchema } from './graph/executable-checksum.js';
