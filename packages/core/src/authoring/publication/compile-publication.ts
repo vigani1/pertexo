@@ -20,7 +20,7 @@ import { validatePublicationCalls } from './calls.repository.js';
 import { connectionReferenceIssues } from './connections.repository.js';
 import type { CompiledPublication } from './workflow-publication.types.js';
 
-import { executableSchema } from './input.js';
+import { executableSchema } from './publication-state.schemas.js';
 
 type PublicationInspection =
   | Readonly<{

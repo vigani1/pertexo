@@ -8,7 +8,7 @@ import type {
   Command,
   CaseTransaction,
 } from '../workflow-input-case.types.js';
-import { resultSchema } from '../input.js';
+import { resultSchema } from '../input-case-storage.js';
 import { workflow, lockInputCaseQuota } from '../metadata.repository.js';
 
 export async function mutate(

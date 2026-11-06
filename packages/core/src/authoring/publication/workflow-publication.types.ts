@@ -10,7 +10,7 @@ import type {
   PublishWorkflowInput,
   PublishWorkflowResult,
 } from '../workflows/workflow-commands.types.js';
-import type { executableSchema } from './input.js';
+import type { executableSchema } from './publication-state.schemas.js';
 
 export type PublicationCandidateInput = Omit<
   PublishWorkflowInput,
