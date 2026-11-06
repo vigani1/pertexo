@@ -1,12 +1,24 @@
 import { describe, expect, it } from 'vitest';
-import { createCheckpoint, parseCheckpoint } from '../../../src/index.js';
+import {
+  advanceWorkflow,
+  buildWorkflowExecutable,
+  composeExecutableCatalog,
+  createCheckpoint,
+  parseCheckpoint,
+  type WorkflowCheckpoint,
+} from '../../../src/index.js';
 import { checkpoint } from '../../support/advance-workflow.js';
+import {
+  pairedParallelGraph,
+  nodeCatalog,
+} from '../../support/executable-workflow.js';
+import { startForEach } from '../../support/compilation/for-each.js';
 
 describe('checkpoint seam', () => {
-  it.each([
-    [
-      'invalid output reference',
-      {
+  it('fails closed on an invalid output reference', () => {
+    expect(() =>
+      parseCheckpoint({
+        ...checkpoint(),
         invocations: [
           {
             invocationKey: 'done',
@@ -16,92 +28,87 @@ describe('checkpoint seam', () => {
             output: { kind: 'inline', attemptId: 'not-a-uuid' },
           },
         ],
-      },
-    ],
-    [
-      'duplicate join IDs',
-      {
-        joins: [
-          { joinId: 'join', policy: { kind: 'all' }, ledger: [] },
-          { joinId: 'join', policy: { kind: 'all' }, ledger: [] },
-        ],
-      },
-    ],
-    [
-      'inconsistent persisted join selection',
-      {
-        joins: [
-          {
-            joinId: 'join',
-            policy: { kind: 'any' },
-            ledger: [
-              { branchId: 'a', disposition: 'arrived' },
-              { branchId: 'b', disposition: 'arrived' },
-            ],
-            selectedBranchIds: ['b'],
-          },
-        ],
-      },
-    ],
-    [
-      'duplicate loop IDs',
-      {
-        loops: [
-          {
-            loopId: 'loop',
-            collection: {
-              kind: 'artifact',
-              artifactId: '00000000-0000-4000-8000-000000000101',
-            },
-            collectionChecksum: 'sha256:a',
-            collectionSize: 0,
-            maxConcurrency: 1,
-            maxIterations: 1,
-            nextOrdinal: 0,
-            activeOrdinals: [],
-            terminalOrdinals: [],
-          },
-          {
-            loopId: 'loop',
-            collection: {
-              kind: 'artifact',
-              artifactId: '00000000-0000-4000-8000-000000000101',
-            },
-            collectionChecksum: 'sha256:a',
-            collectionSize: 0,
-            maxConcurrency: 1,
-            maxIterations: 1,
-            nextOrdinal: 0,
-            activeOrdinals: [],
-            terminalOrdinals: [],
-          },
-        ],
-      },
-    ],
-    [
-      'loop cursor gap',
-      {
-        loops: [
-          {
-            loopId: 'loop',
-            collection: {
-              kind: 'artifact',
-              artifactId: '00000000-0000-4000-8000-000000000101',
-            },
-            collectionChecksum: 'sha256:a',
-            collectionSize: 3,
-            maxConcurrency: 1,
-            maxIterations: 3,
-            nextOrdinal: 2,
-            activeOrdinals: [],
-            terminalOrdinals: [],
-          },
-        ],
-      },
-    ],
-  ] as const)('fails closed on %s', (_label, change) => {
-    expect(() => parseCheckpoint({ ...checkpoint(), ...change })).toThrow(
-      expect.objectContaining({ code: 'checkpoint_invalid' }),
+      }),
+    ).toThrow(expect.objectContaining({ code: 'checkpoint_invalid' }));
+  });
+  it('rejects duplicate join invocation keys in an otherwise valid retained checkpoint', async () => {
+    const valid = await selectedJoinCheckpoint();
+    expect(parseCheckpoint(JSON.parse(JSON.stringify(valid)))).toEqual(valid);
+    const join = valid.joins[0];
+    expect(join).toBeDefined();
+    expect(() =>
+      parseCheckpoint({ ...valid, joins: [...valid.joins, join] }),
+    ).toThrow(
+      expect.objectContaining({
+        code: 'checkpoint_invalid',
+        message: 'join invocation keys must be unique',
+      }),
+    );
+  });
+  it('rejects inconsistent persisted join selection after all branches are accounted for', async () => {
+    const valid = await selectedJoinCheckpoint();
+    expect(parseCheckpoint(JSON.parse(JSON.stringify(valid)))).toEqual(valid);
+    expect(valid.joins[0]).toMatchObject({
+      policy: { kind: 'any' },
+      selectedBranchIds: ['branch-01'],
+      ledger: [
+        { branchId: 'branch-01', disposition: 'arrived' },
+        { branchId: 'branch-02', disposition: 'arrived' },
+      ],
+    });
+    expect(() =>
+      parseCheckpoint({
+        ...valid,
+        joins: valid.joins.map((join) => ({
+          ...join,
+          selectedBranchIds: ['branch-02'],
+        })),
+      }),
+    ).toThrow(
+      expect.objectContaining({
+        code: 'checkpoint_invalid',
+        message: 'persisted join selection is inconsistent',
+      }),
+    );
+  });
+  it('rejects duplicate loop control keys in an otherwise valid retained checkpoint', async () => {
+    const { declared } = await startForEach();
+    const valid = parseCheckpoint(
+      JSON.parse(JSON.stringify(declared.checkpoint)),
+    );
+    expect(valid).toEqual(declared.checkpoint);
+    expect(valid.loops).toHaveLength(1);
+    expect(() =>
+      parseCheckpoint({ ...valid, loops: [...valid.loops, ...valid.loops] }),
+    ).toThrow(
+      expect.objectContaining({
+        code: 'checkpoint_invalid',
+        message: 'loop control invocation keys must be unique',
+      }),
+    );
+  });
+  it('rejects a loop cursor gap without changing any other checkpoint property', async () => {
+    const { declared } = await startForEach();
+    const valid = parseCheckpoint(
+      JSON.parse(JSON.stringify(declared.checkpoint)),
+    );
+    expect(valid).toEqual(declared.checkpoint);
+    expect(valid.loops[0]).toMatchObject({
+      nextOrdinal: 1,
+      completedPrefix: 0,
+      activeOrdinals: [0],
+      terminalOrdinals: [],
+    });
+    expect(() =>
+      parseCheckpoint({
+        ...valid,
+        loops: valid.loops.map((loop) => ({ ...loop, nextOrdinal: 2 })),
+      }),
+    ).toThrow(
+      expect.objectContaining({
+        code: 'checkpoint_invalid',
+        message: 'loop cursor has an unrecorded ordinal',
+      }),
     );
   });
   it('rejects oversized checkpoint collections before traversal', () => {
@@ -253,3 +260,65 @@ describe('checkpoint seam', () => {
     expect(parsed.invocations[0]?.invocationKey).toBe(invocationKey);
   });
 });
+
+/** Advance a real paired Parallel until its any-policy Merge has a persisted choice. */
+async function selectedJoinCheckpoint(): Promise<WorkflowCheckpoint> {
+  const graph = pairedParallelGraph();
+  const merge = graph.nodes.find((node) => node.id === 'merge');
+  if (merge === undefined) throw new Error('Missing Merge fixture');
+  Object.assign(merge, {
+    config: { ...merge.config, policy: { kind: 'any' } },
+  });
+  const base = {
+    runId: 'retained-join',
+    workflowVersionId: '00000000-0000-4000-8000-000000000001',
+    executable: buildWorkflowExecutable({
+      graph,
+      catalog: composeExecutableCatalog(
+        nodeCatalog({ parallel: true, merge: true }),
+      ),
+    }),
+    occurredAt: '2026-08-24T10:00:00.000Z',
+    maximumAdmissions: 200,
+    signal: new AbortController().signal,
+  };
+  let plan = await advanceWorkflow({
+    ...base,
+    checkpoint: createCheckpoint({
+      workflowVersionId: base.workflowVersionId,
+      iterationBudget: 0,
+    }),
+    observations: [],
+  });
+  for (let turn = 0; turn < 10; turn += 1) {
+    if (
+      plan.checkpoint.joins.some((join) => join.selectedBranchIds !== undefined)
+    )
+      return plan.checkpoint;
+    const completedOutputs = plan.attempts.map((attempt, index) => ({
+      sequence: plan.checkpoint.nextEventSequence + index,
+      attemptId: `00000000-0000-4000-8000-${String(plan.checkpoint.nextEventSequence + index).padStart(12, '0')}`,
+      invocationKey: attempt.invocationKey,
+      value:
+        attempt.nodeId === 'parallel'
+          ? { branchIds: ['branch-02', 'branch-01'] }
+          : {},
+    }));
+    plan = await advanceWorkflow({
+      ...base,
+      checkpoint: JSON.parse(JSON.stringify(plan.checkpoint)),
+      observations: completedOutputs.map((output) => ({
+        kind: 'outcome' as const,
+        sequence: output.sequence,
+        occurredAt: base.occurredAt,
+        invocationKey: output.invocationKey,
+        attemptId: output.attemptId,
+        attemptNumber: 1,
+        status: 'succeeded' as const,
+        output: { kind: 'inline' as const, attemptId: output.attemptId },
+      })),
+      completedOutputs,
+    });
+  }
+  throw new Error('Merge did not reach a persisted selection');
+}
