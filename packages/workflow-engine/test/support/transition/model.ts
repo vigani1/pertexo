@@ -1,6 +1,6 @@
 import { expect } from 'vitest';
 
-import { type WorkflowCheckpoint } from '../../../src/index.js';
+import type { WorkflowCheckpoint } from '../../../src/index.js';
 import { createCheckpoint } from '../../../src/server.js';
 import {
   advanceWorkflow,

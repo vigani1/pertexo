@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { type WorkflowCheckpoint } from '../../../src/index.js';
+import type { WorkflowCheckpoint } from '../../../src/index.js';
 import {
   advanceWorkflow,
   buildWorkflowExecutable,

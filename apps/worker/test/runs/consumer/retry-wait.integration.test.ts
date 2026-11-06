@@ -23,7 +23,7 @@ import {
 } from '@pertexo/core/testing';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
 import { QUEUE_NAME, createQueueProducer, JOB_NAME } from '@pertexo/queue';
-import { type WorkflowTransitionPlan } from '@pertexo/workflow-engine';
+import type { WorkflowTransitionPlan } from '@pertexo/workflow-engine';
 import {
   invocationKey,
   parseCheckpoint,

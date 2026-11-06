@@ -12,7 +12,7 @@ import {
   createCheckpoint,
   type WorkflowTestPins,
 } from '../../src/server.js';
-import { type AdvanceWorkflowInput } from '../../src/operations.js';
+import type { AdvanceWorkflowInput } from '../../src/operations.js';
 import {
   graph,
   nodeCatalog,

@@ -4,9 +4,9 @@ import {
   approvalConfigSchema,
   type WorkflowGraph,
 } from '@pertexo/workflow-model';
-import {
-  type WorkflowCheckpoint,
-  type PendingTaskOutcome,
+import type {
+  WorkflowCheckpoint,
+  PendingTaskOutcome,
 } from '../../src/index.js';
 import {
   advanceWorkflow,
@@ -14,7 +14,7 @@ import {
   composeExecutableCatalog,
   createCheckpoint,
 } from '../../src/server.js';
-import { type AdvanceWorkflowInput } from '../../src/operations.js';
+import type { AdvanceWorkflowInput } from '../../src/operations.js';
 import {
   pairedParallelGraph,
   nodeCatalog,

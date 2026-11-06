@@ -4,9 +4,9 @@ import {
   inputRequestConfigSchema,
   type WorkflowGraph,
 } from '@pertexo/workflow-model';
-import {
-  type WorkflowCheckpoint,
-  type PendingTaskOutcome,
+import type {
+  WorkflowCheckpoint,
+  PendingTaskOutcome,
 } from '../../src/index.js';
 import {
   advanceWorkflow,
@@ -15,7 +15,7 @@ import {
   createCheckpoint,
   parseCheckpoint,
 } from '../../src/server.js';
-import { type AdvanceWorkflowInput } from '../../src/operations.js';
+import type { AdvanceWorkflowInput } from '../../src/operations.js';
 import { graph, nodeCatalog } from '../support/executable-workflow.js';
 import { completion } from '../compilation/calls/fixtures.js';
 async function waitingRequest(context?: {

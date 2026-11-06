@@ -3,7 +3,7 @@ import { createRunAdvanceStore } from '@pertexo/core/testing';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
 import { createWorkflowRunDatabase } from '@pertexo/core/runs';
 
-import { type WorkflowTransitionPlan } from '@pertexo/workflow-engine';
+import type { WorkflowTransitionPlan } from '@pertexo/workflow-engine';
 import {
   createCheckpoint,
   invocationKey,
