@@ -11,6 +11,53 @@ import {
   queryAsOwner,
 } from './notices.fixture.js';
 describe('current operational notice episodes', () => {
+  it('notices another workspace while the earlier workspace is locked, then revisits it', async () => {
+    const fixtures = await Promise.all([
+      seedNoticeWorkspace(),
+      seedNoticeWorkspace(),
+    ]);
+    fixtures.sort((a, b) => a.workspaceId.localeCompare(b.workspaceId));
+    const [blocked, available] = fixtures;
+    for (const f of fixtures) {
+      const run = await seedFailure(f.workspaceId, f.workflowId);
+      await queryAsOwner(
+        "update app.workflows set trigger_pause_state='paused',trigger_paused_at=clock_timestamp(),trigger_pause_reason='consecutive_failures',trigger_pause_failures=3,trigger_pause_last_run_id=$3 where workspace_id=$1 and id=$2",
+        [f.workspaceId, f.workflowId, run],
+        f.workspaceId,
+      );
+    }
+    const fold = observer();
+    const read = inbox();
+    const list = (f: typeof blocked) =>
+      read.listThreads({
+        ...f.scope,
+        filter: 'all',
+        noticeKind: 'workflow_auto_paused',
+        limit: 100,
+      });
+    await withTenantScopedClient(
+      apiPool,
+      { workspaceId: blocked.workspaceId },
+      async (client) => {
+        await client.query(
+          'select id from app.workspaces where id=$1 for update',
+          [blocked.workspaceId],
+        );
+        const changes = await fold.observeCurrent?.();
+        expect(changes).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({ workspaceId: available.workspaceId }),
+          ]),
+        );
+        expect((await list(available)).items).toHaveLength(1);
+      },
+    );
+    await fold.observeCurrent?.();
+    expect((await list(blocked)).items).toHaveLength(1);
+    expect((await list(available)).items).toMatchObject([
+      { occurrenceCount: 1 },
+    ]);
+  });
   it('coalesces a pause revision, resolves it, and notices a later pause without repeated poll churn', async () => {
     const f = await seedNoticeWorkspace();
     const run = await seedFailure(f.workspaceId, f.workflowId);
