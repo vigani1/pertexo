@@ -26,3 +26,4 @@ export type { WorkspacePurgeProcessResult } from './purge/workspace-purge.types.
 export type {} from './deletion/change.js';
 export type {} from './deletion/workspace-lifecycle.types.js';
 export { WorkspaceLifecycleConflictError } from './workspace-lifecycle.errors.js';
+export type {} from './deletion/request-workspace-lifecycle.js';

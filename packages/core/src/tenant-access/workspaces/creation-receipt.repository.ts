@@ -1,7 +1,5 @@
-import { canonicalJson } from '@pertexo/workflow-model';
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import { createHash, randomUUID } from 'node:crypto';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { workspaceCreationIdempotencyRecords as records } from '@pertexo/database/schema';
 
@@ -81,18 +79,6 @@ function parseDurableWorkspaceResult(value: unknown): WorkspaceCreationResult {
       updatedAt: new Date(workspace.updatedAt),
     }),
   });
-}
-
-function sha256(value: string): string {
-  return createHash('sha256').update(value).digest('hex');
-}
-
-export function commandRequestHash(value: Record<string, unknown>): string {
-  return sha256(canonicalJson(value));
-}
-
-export function commandKeyHash(value: string | undefined): string {
-  return sha256(value ?? randomUUID());
 }
 
 type CommandClaim =

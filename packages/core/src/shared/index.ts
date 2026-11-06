@@ -27,3 +27,4 @@ export type {} from './resources/workflow-access.repository.js';
 export type {} from './resources/workflow-call-bindings.repository.js';
 export type {} from './resources/connection-scope.repository.js';
 export type {} from './resources/connection-bindings.repository.js';
+export type {} from './command-fingerprints.js';
