@@ -3,7 +3,7 @@ import type { createBrowserOidcProvider } from '../federation/oidc-provider.js';
 import {
   createArtifactStore,
   parseArtifactStoreConfig,
-} from '@pertexo/artifact-store';
+} from '@pertexo/artifact-store/server';
 
 import type { ChildProcess } from 'node:child_process';
 import { randomBytes, randomUUID } from 'node:crypto';
@@ -19,7 +19,7 @@ import { createEditorBrowserEnvelopeKeys } from '../../../../../../infrastructur
 import { createCuratedTemplateEnvelopeContext } from '../../../../../../infrastructure/testing/curated-template-envelope-context.mjs';
 import { createEditorWebhookRuntime } from '../webhook-runtime.js';
 
-import { createStructuredLogger } from '@pertexo/observability';
+import { createStructuredLogger } from '@pertexo/observability/server';
 
 import { useBetterAuthRealApi } from '../../../support/better-auth/real-api.support.js';
 

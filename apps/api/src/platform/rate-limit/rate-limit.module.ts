@@ -3,7 +3,7 @@ import { HttpRateLimitAdmission } from './admission.js';
 import type { DynamicModule } from '@nestjs/common';
 import { Module } from '@nestjs/common';
 import { APP_INTERCEPTOR, Reflector } from '@nestjs/core';
-import type { RedisRateLimitRuntime } from '@pertexo/rate-limit';
+import type { RedisRateLimitRuntime } from '@pertexo/rate-limit/server';
 
 import {
   RateLimitInterceptor,

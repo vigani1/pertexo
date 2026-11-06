@@ -14,7 +14,7 @@ import {
   JOB_NAME,
   jobIdForOutboxEvent,
 } from '../support/workflow-lifecycle.integration.support.js';
-import { createQueueProducer } from '@pertexo/queue';
+import { createQueueProducer } from '@pertexo/queue/server';
 
 const describeIntegration = workflowLifecycleIntegrationEnabled
   ? describe

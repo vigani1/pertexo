@@ -3,7 +3,7 @@ import { expect } from 'vitest';
 import { runWithCleanup } from '../../infrastructure/test-operation.js';
 
 import { Queue } from 'bullmq';
-import { createQueueProducer, QUEUE_NAME } from '@pertexo/queue';
+import { createQueueProducer, QUEUE_NAME } from '@pertexo/queue/server';
 import { redisUrl, redisConnectionOptions } from './environment.js';
 import type {
   AcceptedDelivery,

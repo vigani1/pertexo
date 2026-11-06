@@ -12,7 +12,7 @@ import {
   temporaryDirectories,
 } from './runtime-capabilities.fixture.js';
 import { createDatabaseRuntime } from '@pertexo/database/platform';
-import { RedisRateLimitRuntime } from '@pertexo/rate-limit';
+import { RedisRateLimitRuntime } from '@pertexo/rate-limit/server';
 import type { ConnectionStore } from '@pertexo/core/testing';
 import {
   ProviderExecutionRateLimitError,
@@ -22,7 +22,7 @@ import { createHash } from 'node:crypto';
 import { mkdtemp, readdir, open, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import type { PutArtifactRequest } from '@pertexo/artifact-store';
+import type { PutArtifactRequest } from '@pertexo/artifact-store/server';
 import { ConnectionUnavailableError } from '@pertexo/core/connections';
 
 afterEach(cleanRuntimeCapabilitiesTestTsFixture);

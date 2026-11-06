@@ -1,5 +1,5 @@
 import { transportMetrics } from '../support/transport/metrics.js';
-import { JOB_NAME, QUEUE_NAME } from '@pertexo/queue';
+import { JOB_NAME, QUEUE_NAME } from '@pertexo/queue/server';
 import { describe, expect, it, vi } from 'vitest';
 
 import { createQueueMetricsObserver } from '../../src/transport/metrics-adapter.js';

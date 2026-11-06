@@ -16,7 +16,7 @@ import {
   jobIdForOutboxEvent,
   QUEUE_NAME,
   type QueueConsumer,
-} from '@pertexo/queue';
+} from '@pertexo/queue/server';
 import { Queue } from 'bullmq';
 import { Pool, type QueryResult, type QueryResultRow } from 'pg';
 import { dropDisconnectedDatabase } from './infrastructure/disposable-database.js';

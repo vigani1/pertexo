@@ -15,11 +15,11 @@ import {
   createWorkspaceInboxFoldStore,
 } from '@pertexo/core/inbox';
 import { createApplicationSecretEnvelope } from '@pertexo/secrets/server';
-import { RedisWorkspaceInboxHintPublisher } from '@pertexo/queue';
+import { RedisWorkspaceInboxHintPublisher } from '@pertexo/queue/server';
 import type {
   StructuredLogger,
   TelemetryLifecycle,
-} from '@pertexo/observability';
+} from '@pertexo/observability/server';
 
 import type { WorkerConfig } from './config/worker.js';
 import { createSystemMailDeliveryHandler } from '@pertexo/secrets/server';

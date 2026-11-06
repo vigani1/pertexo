@@ -1,11 +1,11 @@
-import type { StructuredLogger } from '@pertexo/observability';
+import type { StructuredLogger } from '@pertexo/observability/server';
 import { createApiCallbackRuntime } from './platform/webhooks/callback-runtime.module.js';
 import {
   createDatabaseRuntime,
   createWorkspaceDatabase,
   type DatabaseRuntime,
 } from '@pertexo/database/platform';
-import { RedisRateLimitRuntime } from '@pertexo/rate-limit';
+import { RedisRateLimitRuntime } from '@pertexo/rate-limit/server';
 
 import type { ApiConfig } from './platform/config/api.js';
 import { createApiConnectionRuntime } from './platform/connections/runtime.module.js';

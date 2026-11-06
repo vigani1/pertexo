@@ -10,7 +10,7 @@ import {
   RedisWorkspaceInboxHintPublisher,
   parseWorkspaceInboxHint,
   workspaceInboxChannel,
-} from '@pertexo/queue';
+} from '@pertexo/queue/server';
 import { Redis } from 'ioredis';
 import { Pool } from 'pg';
 import { afterAll, beforeAll, expect, it, vi } from 'vitest';

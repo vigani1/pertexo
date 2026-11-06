@@ -26,7 +26,11 @@ import {
 } from '../support/previews/consumer.js';
 import { randomUUID } from 'node:crypto';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
-import { JOB_NAME, QUEUE_NAME, createQueueProducer } from '@pertexo/queue';
+import {
+  JOB_NAME,
+  QUEUE_NAME,
+  createQueueProducer,
+} from '@pertexo/queue/server';
 import { Queue } from 'bullmq';
 import { createCoordinatorRuntime } from '../../src/runs/coordinator.runtime.js';
 import { testNodeAttemptRuntime } from '../support/runtime-factories.js';

@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { createArtifactStore } from '@pertexo/artifact-store';
+import { createArtifactStore } from '@pertexo/artifact-store/server';
 import {
   createArtifactUploadStore,
   createFormUploadStore,

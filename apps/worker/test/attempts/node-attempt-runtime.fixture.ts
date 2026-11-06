@@ -9,7 +9,7 @@ import {
   type QueueDelivery,
   type QueueConsumerOptions,
   type QueueJobHandler,
-} from '@pertexo/queue';
+} from '@pertexo/queue/server';
 import type { NodeExecutionRegistry } from '@pertexo/workflow-engine/server';
 import type { FactoryProvider } from '@nestjs/common';
 import { vi } from 'vitest';

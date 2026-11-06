@@ -7,7 +7,7 @@ import type { WorkflowGraph } from '@pertexo/workflow-model';
 import {
   createArtifactStore,
   parseArtifactStoreConfig,
-} from '@pertexo/artifact-store';
+} from '@pertexo/artifact-store/server';
 import { createWorkerNodeRuntimeCapabilities } from '../../../src/attempts/execution/runtime-capabilities.js';
 import { coordinatorFixture as fixture } from '../../support/coordinator/consumer.js';
 import { insertCompiledWorkflow } from '../../support/coordinator/workflows.js';

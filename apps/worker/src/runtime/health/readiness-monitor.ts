@@ -1,7 +1,7 @@
 import { rm, writeFile } from 'node:fs/promises';
 
 import type { BeforeApplicationShutdown } from '@nestjs/common';
-import type { StructuredLogger } from '@pertexo/observability';
+import type { StructuredLogger } from '@pertexo/observability/server';
 
 import { boundedBackgroundTask } from '../background-task-deadline.js';
 

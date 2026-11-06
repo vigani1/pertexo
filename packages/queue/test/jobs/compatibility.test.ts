@@ -7,7 +7,7 @@ import {
   QUEUE_FOR_JOB,
   QUEUE_NAME,
   parseQueueJob,
-} from '../../src/index.js';
+} from '../../src/server.js';
 
 type WireFixture = Readonly<{ name: unknown; queue: unknown; data: unknown }>;
 

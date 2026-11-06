@@ -3,7 +3,7 @@ import {
   InvalidQueueDeliveryError,
   JOB_NAME,
   type QueueConsumerOptions,
-} from '@pertexo/queue';
+} from '@pertexo/queue/server';
 import {
   mapPreviewReconciliationError,
   type createPreviewReconciliationHandler,

@@ -8,7 +8,7 @@ import { nodeTestingSamples } from '../node-testing/node-testing.fixture.js';
 
 import type { WorkflowAuthoringStore } from '@pertexo/core/testing';
 import type { WorkspaceDatabase } from '@pertexo/database/testing';
-import type { TelemetryLifecycle } from '@pertexo/observability';
+import type { TelemetryLifecycle } from '@pertexo/observability/server';
 import { JsonataEvaluator } from '@pertexo/workflow-model/server';
 import { vi } from 'vitest';
 import type { createApiApplication } from '../../src/app.js';

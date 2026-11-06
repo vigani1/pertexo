@@ -1,6 +1,6 @@
 import type { OutboxDispatcherDatabase } from '@pertexo/core/outbox';
 
-import type { QueueProducer } from '@pertexo/queue';
+import type { QueueProducer } from '@pertexo/queue/server';
 
 import { bounded } from '../operation-deadline.js';
 

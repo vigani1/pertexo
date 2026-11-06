@@ -1,4 +1,4 @@
-import { JOB_NAME, jobIdForOutboxEvent } from '@pertexo/queue';
+import { JOB_NAME, jobIdForOutboxEvent } from '@pertexo/queue/server';
 
 import { expect } from 'vitest';
 import { waitForCoordinatorOutbox } from '../../../../support/coordinator/runs.js';

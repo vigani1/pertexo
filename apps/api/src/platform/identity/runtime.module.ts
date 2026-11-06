@@ -1,6 +1,6 @@
 import { createWorkspaceLifecycleStore } from '@pertexo/core/lifecycle';
 import type { IdentityWorkspaceStore } from '@pertexo/core/tenant-access';
-import type { StructuredLogger } from '@pertexo/observability';
+import type { StructuredLogger } from '@pertexo/observability/server';
 import { DirectoryManagementModule } from '../../authentication/federation/provisioning/management/directory-management.module.js';
 import {
   createIdentityWorkspaceStore,

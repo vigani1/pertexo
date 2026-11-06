@@ -6,7 +6,7 @@ import path from 'node:path';
 import { ArtifactScratchSpace } from '../../../src/attempts/artifacts/scratch/space.js';
 import { Readable } from 'node:stream';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { ArtifactIntegrityError } from '@pertexo/artifact-store';
+import { ArtifactIntegrityError } from '@pertexo/artifact-store/server';
 import { ArtifactMetadataNotFoundError } from '@pertexo/core/artifacts';
 import { createArtifactReader } from '../../../src/attempts/artifacts/read.js';
 

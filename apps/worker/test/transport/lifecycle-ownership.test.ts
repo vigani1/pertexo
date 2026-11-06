@@ -4,7 +4,7 @@ import {
   JOB_NAME,
   type QueueConsumer,
   type QueueProducer,
-} from '@pertexo/queue';
+} from '@pertexo/queue/server';
 import { describe, expect, it, vi } from 'vitest';
 
 import { parseWorkerConfig } from '../../src/config/worker.js';

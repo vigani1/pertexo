@@ -1,4 +1,4 @@
-import type { TelemetryLifecycle } from '@pertexo/observability';
+import type { TelemetryLifecycle } from '@pertexo/observability/server';
 
 import type { FixtureLogCapture } from './artifact-transfer-fixture.types.js';
 

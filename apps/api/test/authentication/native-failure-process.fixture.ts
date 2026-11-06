@@ -1,9 +1,9 @@
-import { createStructuredLogger } from '@pertexo/observability';
+import { createStructuredLogger } from '@pertexo/observability/server';
 import Fastify from 'fastify';
 import { createBetterAuthRuntime } from '../../src/authentication/better-auth/better-auth.runtime.js';
 import { registerBetterAuthHandler } from '../../src/authentication/better-auth/fastify.js';
 import { LocalAuthenticationMailSink } from '../../src/authentication/mail/delivery.js';
-import { RedisRateLimitRuntime } from '@pertexo/rate-limit';
+import { RedisRateLimitRuntime } from '@pertexo/rate-limit/server';
 
 process.once(
   'message',

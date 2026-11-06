@@ -2,7 +2,7 @@ import {
   ArtifactIntegrityError,
   ArtifactNotFoundError,
   type ArtifactStore,
-} from '@pertexo/artifact-store';
+} from '@pertexo/artifact-store/server';
 import { ARTIFACT_INPUT_MAX_BYTES, FILE_PAGE_LIMITS } from '@pertexo/node-sdk';
 import { ArtifactMetadataNotFoundError } from '@pertexo/core/artifacts';
 import {

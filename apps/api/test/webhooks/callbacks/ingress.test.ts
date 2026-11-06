@@ -1,7 +1,7 @@
 import { ArtifactMetadataNotFoundError } from '@pertexo/core/artifacts';
 import { createHmac } from 'node:crypto';
 import Fastify, { type FastifyInstance } from 'fastify';
-import type { StructuredLogger } from '@pertexo/observability';
+import type { StructuredLogger } from '@pertexo/observability/server';
 import { afterEach, expect, it, vi } from 'vitest';
 import {
   callbackWaitConfigSchema,

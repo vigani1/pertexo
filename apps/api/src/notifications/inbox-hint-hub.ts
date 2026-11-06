@@ -5,7 +5,7 @@ import {
   parseWorkspaceInboxHint,
   workspaceInboxChannel,
   type RedisTelemetryObserver,
-} from '@pertexo/queue';
+} from '@pertexo/queue/server';
 
 /** What an open inbox learns: its workspace changed, or hints may be lost. */
 export type InboxHintSignal =

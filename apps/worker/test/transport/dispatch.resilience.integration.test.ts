@@ -31,7 +31,7 @@ import {
   QUEUE_NAME,
   type QueueConsumer,
   type QueueProducer,
-} from '@pertexo/queue';
+} from '@pertexo/queue/server';
 import { Queue } from 'bullmq';
 import { expect, it } from 'vitest';
 import { z } from 'zod';

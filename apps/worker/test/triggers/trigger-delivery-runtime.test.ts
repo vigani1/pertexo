@@ -3,7 +3,7 @@ import type { ScheduleTriggerScanner } from '@pertexo/core/testing';
 import type { TriggerCompositionFactories } from '../../src/triggers/trigger.runtime.js';
 import { dependencies, options } from './trigger-runtime.fixture.js';
 import { testTriggerRuntime } from '../support/runtime-factories.js';
-import { JOB_NAME, QUEUE_NAME } from '@pertexo/queue';
+import { JOB_NAME, QUEUE_NAME } from '@pertexo/queue/server';
 
 describe('trigger runtime', () => {
   it.each([

@@ -4,7 +4,7 @@ import type {
   QueueDelivery,
   QueueHandlerContext,
   RunEventNotificationPublisher,
-} from '@pertexo/queue';
+} from '@pertexo/queue/server';
 import { WorkflowEngineError } from '@pertexo/workflow-engine/server';
 
 import type { CoordinatorTelemetry } from './telemetry.js';

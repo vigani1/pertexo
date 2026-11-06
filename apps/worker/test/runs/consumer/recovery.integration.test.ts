@@ -17,7 +17,7 @@ import { parseDatabaseConfig } from '@pertexo/database/testing';
 import { PLATFORM_NODE_CATALOG } from '@pertexo/node-catalog';
 
 import { createPlatformNodeRegistry } from '../../../src/providers/node-registry.js';
-import { createQueueProducer, JOB_NAME } from '@pertexo/queue';
+import { createQueueProducer, JOB_NAME } from '@pertexo/queue/server';
 import { composeExecutableCatalog } from '@pertexo/workflow-engine/server';
 import { createCoordinatorRuntime } from '../../../dist/runs/coordinator.runtime.js';
 import { WorkerDrainState } from '../../../dist/runtime/shutdown/drain-state.js';

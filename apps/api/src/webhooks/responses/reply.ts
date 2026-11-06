@@ -1,4 +1,4 @@
-import type { StructuredLogger } from '@pertexo/observability';
+import type { StructuredLogger } from '@pertexo/observability/server';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { withRequestOperationSignal } from '../../platform/http/index.js';
 import { API_RESPONSE_SECURITY_HEADERS } from '../../platform/http/response-security.js';

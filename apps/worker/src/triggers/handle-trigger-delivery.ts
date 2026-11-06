@@ -8,7 +8,7 @@ import {
   unrecoverableQueueError,
   type QueueDelivery,
   type QueueHandlerContext,
-} from '@pertexo/queue';
+} from '@pertexo/queue/server';
 
 type TriggerReconciliationDelivery = Extract<
   QueueDelivery,

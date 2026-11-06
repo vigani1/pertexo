@@ -24,7 +24,7 @@ import { z } from 'zod';
 import {
   parseArtifactStoreConfig,
   type ArtifactStoreConfig,
-} from '@pertexo/artifact-store';
+} from '@pertexo/artifact-store/server';
 import type { ObservabilityConfig } from '@pertexo/observability/startup';
 
 import {

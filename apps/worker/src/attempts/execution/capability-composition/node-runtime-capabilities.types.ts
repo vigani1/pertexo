@@ -13,7 +13,7 @@ import type { WebhookResponseStore } from '@pertexo/core/triggers';
 import type {
   ArtifactStore,
   ArtifactStoreConfig,
-} from '@pertexo/artifact-store';
+} from '@pertexo/artifact-store/server';
 import type { WorkerConnectionResolutionStore } from '@pertexo/core/connections';
 
 import type {
@@ -28,7 +28,7 @@ import type {
 } from '@pertexo/secrets/server';
 import type { AllowedPrivateNetwork } from '@pertexo/secrets/server';
 import type { OAuth2TokenService } from '@pertexo/core/connections';
-import type { RedisRateLimitRuntime } from '@pertexo/rate-limit';
+import type { RedisRateLimitRuntime } from '@pertexo/rate-limit/server';
 import type { NodeExecutionCapabilityFactories } from '../capabilities.js';
 import type { createProviderConnectionRuntimeFactory } from '../../../providers/connections.js';
 import type { ProviderRateLimiter } from '../../../providers/connections.js';

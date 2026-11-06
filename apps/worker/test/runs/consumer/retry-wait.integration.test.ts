@@ -22,7 +22,11 @@ import {
   type RunAdvanceStore,
 } from '@pertexo/core/testing';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
-import { QUEUE_NAME, createQueueProducer, JOB_NAME } from '@pertexo/queue';
+import {
+  QUEUE_NAME,
+  createQueueProducer,
+  JOB_NAME,
+} from '@pertexo/queue/server';
 import type { WorkflowTransitionPlan } from '@pertexo/workflow-engine';
 import {
   invocationKey,

@@ -1,4 +1,4 @@
-import type { createQueueProducer } from '@pertexo/queue';
+import type { createQueueProducer } from '@pertexo/queue/server';
 
 import type { Queue } from 'bullmq';
 

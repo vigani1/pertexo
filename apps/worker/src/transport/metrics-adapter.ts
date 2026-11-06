@@ -2,7 +2,7 @@ import type {
   StructuredLogger,
   TransportErrorClass,
   TransportMetrics,
-} from '@pertexo/observability';
+} from '@pertexo/observability/server';
 import type {
   QueueConsumerObserver,
   QueueConsumerLifecycleObservation,
@@ -11,7 +11,7 @@ import type {
   QueueHandlerFinishedObservation,
   QueueHandlerObservation,
   QueueStallObservation,
-} from '@pertexo/queue';
+} from '@pertexo/queue/server';
 
 import { transportJobForName } from './job.js';
 

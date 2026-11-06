@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { Redis } from 'ioredis';
-import type { RedisTelemetryObserver } from '@pertexo/queue';
+import type { RedisTelemetryObserver } from '@pertexo/queue/server';
 import {
   RedisRunEventSource,
   RedisRunEventSourceConfigurationError,

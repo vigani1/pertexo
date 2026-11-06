@@ -30,7 +30,7 @@ const settings = {
 };
 // Expose Node's real module cache to the SDK's preload diagnostic in this ESM process.
 globalThis.require = createRequire(
-  import.meta.resolve('@pertexo/observability'),
+  import.meta.resolve('@pertexo/observability/server'),
 );
 diag.setLogger(
   {
@@ -58,7 +58,8 @@ process.env.OTEL_LOGS_EXPORTER = 'none';
 const sdk = createOpenTelemetrySdk(settings);
 try {
   sdk.start();
-  const { createStructuredLogger } = await import('@pertexo/observability');
+  const { createStructuredLogger } =
+    await import('@pertexo/observability/server');
   trace.getTracer('startup-probe').startActiveSpan('startup.probe', (span) => {
     createStructuredLogger(settings).info('startup.probe');
     span.end();

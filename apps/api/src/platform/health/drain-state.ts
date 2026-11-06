@@ -1,4 +1,4 @@
-import { ShutdownCoordinator } from '@pertexo/observability';
+import { ShutdownCoordinator } from '@pertexo/observability/server';
 import { Global, Injectable, Module } from '@nestjs/common';
 import type {
   BeforeApplicationShutdown,

@@ -2,7 +2,7 @@ import { createTestArtifactScratch } from '../../support/infrastructure/artifact
 import {
   createArtifactStore,
   parseArtifactStoreConfig,
-} from '@pertexo/artifact-store';
+} from '@pertexo/artifact-store/server';
 import {
   canonicalOutboxPayloadChecksum,
   parseDatabaseConfig,

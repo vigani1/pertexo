@@ -6,7 +6,7 @@ import {
   type DatabaseConfig,
 } from '@pertexo/database/testing';
 
-import { QUEUE_NAME } from '@pertexo/queue';
+import { QUEUE_NAME } from '@pertexo/queue/server';
 
 import {
   AuthoringValidationUnavailableError,

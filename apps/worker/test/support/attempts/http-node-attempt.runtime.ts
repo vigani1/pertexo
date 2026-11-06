@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import {
   createArtifactStore,
   parseArtifactStoreConfig,
-} from '@pertexo/artifact-store';
+} from '@pertexo/artifact-store/server';
 import {
   createNodeAttemptRunStore,
   type NodeAttemptRunStore,
@@ -15,7 +15,7 @@ import {
 import { parseDatabaseConfig } from '@pertexo/database/testing';
 import type { ConnectionEnvelopeEncryption } from '@pertexo/secrets/server';
 
-import { createQueueProducer, QUEUE_NAME } from '@pertexo/queue';
+import { createQueueProducer, QUEUE_NAME } from '@pertexo/queue/server';
 
 import { Queue } from 'bullmq';
 

@@ -12,7 +12,7 @@ import type {
   QueueDelivery,
   QueueHandlerContext,
   RunEventNotificationPublisher,
-} from '@pertexo/queue';
+} from '@pertexo/queue/server';
 import type {
   ExecuteNodeAttemptInput,
   NodeAttemptOutcome,

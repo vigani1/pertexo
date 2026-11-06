@@ -5,8 +5,8 @@ import {
   classifyProcessError,
   describeProcessFailure,
 } from '@pertexo/observability/startup';
-import type { StructuredLogger } from '@pertexo/observability';
-import type * as LoggingModule from '@pertexo/observability';
+import type { StructuredLogger } from '@pertexo/observability/server';
+import type * as LoggingModule from '@pertexo/observability/server';
 
 import type * as WorkerApplicationModule from './app.js';
 import { parseWorkerConfig, type WorkerConfig } from './config/worker.js';
@@ -42,7 +42,7 @@ export interface WorkerBootstrapDependencies {
 
 async function loadModules(): Promise<WorkerBootstrapModules> {
   const [logging, application] = await Promise.all([
-    import('@pertexo/observability'),
+    import('@pertexo/observability/server'),
     import('./app.js'),
   ]);
   return { application, logging };
@@ -95,7 +95,7 @@ export async function bootstrapWorker(
         const logging =
           loadedLogging ??
           (dependencies.loadModules === undefined
-            ? await import('@pertexo/observability')
+            ? await import('@pertexo/observability/server')
             : undefined);
         logger = logging?.createStructuredLogger(config.observability);
       } catch {

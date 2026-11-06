@@ -1,5 +1,5 @@
 import { createWorkflowTriggerPauseFoldStore } from '@pertexo/core/triggers';
-import type { StructuredLogger } from '@pertexo/observability';
+import type { StructuredLogger } from '@pertexo/observability/server';
 
 import type { WorkerConfig } from '../config/worker.js';
 

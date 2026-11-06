@@ -16,7 +16,7 @@ import {
   AbuseRateLimitPolicy,
   type RateLimitEndpointClass,
   type RateLimitSubject,
-} from '@pertexo/rate-limit';
+} from '@pertexo/rate-limit/server';
 import {
   admitRateLimit,
   type RateLimitConsumer,

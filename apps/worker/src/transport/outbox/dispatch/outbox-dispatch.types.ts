@@ -1,4 +1,4 @@
-import type { JobName } from '@pertexo/queue';
+import type { JobName } from '@pertexo/queue/server';
 
 import type { OutboxDispatchResult as InternalOutboxDispatchResult } from '../dispatch-result.js';
 

@@ -10,7 +10,7 @@ import {
 import type { ArgumentsHost, ExceptionFilter } from '@nestjs/common';
 import type { FastifyReply } from 'fastify';
 import type { WorkspaceDatabase } from '@pertexo/database/platform';
-import type { StructuredLogger } from '@pertexo/observability';
+import type { StructuredLogger } from '@pertexo/observability/server';
 
 import { WORKSPACE_DATABASE } from '../database/database.module.js';
 import { RateLimitExempt } from '../rate-limit/metadata.js';

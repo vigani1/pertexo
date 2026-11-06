@@ -8,7 +8,7 @@ import {
   JOB_NAME,
   type QueueConsumerOptions,
   type QueueDelivery,
-} from '@pertexo/queue';
+} from '@pertexo/queue/server';
 import { describe, expect, it, vi } from 'vitest';
 
 import {

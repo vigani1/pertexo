@@ -1,6 +1,10 @@
 import { parseDatabaseConfig } from '@pertexo/database/testing';
 
-import { createQueueProducer, JOB_NAME, QUEUE_NAME } from '@pertexo/queue';
+import {
+  createQueueProducer,
+  JOB_NAME,
+  QUEUE_NAME,
+} from '@pertexo/queue/server';
 
 import { Queue } from 'bullmq';
 

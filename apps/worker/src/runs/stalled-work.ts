@@ -5,8 +5,8 @@ import {
   type StalledWorkRecovery,
   type StalledWorkStore,
 } from '@pertexo/core/runs';
-import type { StructuredLogger } from '@pertexo/observability';
-import type { QueueConsumer } from '@pertexo/queue';
+import type { StructuredLogger } from '@pertexo/observability/server';
+import type { QueueConsumer } from '@pertexo/queue/server';
 
 import type { WorkerConfig } from '../config/worker.js';
 import {

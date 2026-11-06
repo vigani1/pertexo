@@ -1,6 +1,6 @@
 import { AuthenticationDiagnostics } from '../../src/authentication/better-auth/diagnostics.js';
 import { silent } from '../support/better-auth/api/environment.js';
-import type { StructuredLogger } from '@pertexo/observability';
+import type { StructuredLogger } from '@pertexo/observability/server';
 import { randomUUID } from 'node:crypto';
 
 import { Pool } from 'pg';

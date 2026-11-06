@@ -1,4 +1,4 @@
-import type { ArtifactStore } from '@pertexo/artifact-store';
+import type { ArtifactStore } from '@pertexo/artifact-store/server';
 import { artifactStorageKey } from '@pertexo/core/artifacts';
 import { generatePersistedId } from '@pertexo/database/platform';
 import type {

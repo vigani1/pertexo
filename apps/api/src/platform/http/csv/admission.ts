@@ -1,5 +1,5 @@
 import { Logger } from '@nestjs/common';
-import type { RedisRateLimitRuntime } from '@pertexo/rate-limit';
+import type { RedisRateLimitRuntime } from '@pertexo/rate-limit/server';
 import {
   applicationError,
   throwApplicationError,

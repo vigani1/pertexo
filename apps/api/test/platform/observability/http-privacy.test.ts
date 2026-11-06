@@ -108,7 +108,8 @@ it('exports matched API templates and host-only clients without sensitive reques
     const { NestFactory } = require('@nestjs/core') as typeof NestCore;
     const { FastifyAdapter } =
       require('@nestjs/platform-fastify') as typeof NestFastify;
-    const { createStructuredLogger } = await import('@pertexo/observability');
+    const { createStructuredLogger } =
+      await import('@pertexo/observability/server');
     const logger = createStructuredLogger(
       parseObservabilityConfig({
         environment: 'test',

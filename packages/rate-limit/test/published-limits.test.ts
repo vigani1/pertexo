@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 import {
   AbuseRateLimitPolicy,
   type RateLimitEndpointClass,
-} from '../src/index.js';
+} from '../src/server.js';
 
 const ROWS: readonly (readonly [string, RateLimitEndpointClass])[] = [
   ['Reads', 'authenticated_read'],

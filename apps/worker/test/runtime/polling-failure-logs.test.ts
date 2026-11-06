@@ -2,7 +2,7 @@ import { Test } from '@nestjs/testing';
 import type {
   StructuredLogger,
   TelemetryLifecycle,
-} from '@pertexo/observability';
+} from '@pertexo/observability/server';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { parseWorkerConfig } from '../../src/config/worker.js';

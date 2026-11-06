@@ -11,7 +11,7 @@ import type {
   SystemMailResult,
   SystemMailClient,
 } from '@pertexo/secrets/server';
-import type { QueueDelivery, QueueHandlerContext } from '@pertexo/queue';
+import type { QueueDelivery, QueueHandlerContext } from '@pertexo/queue/server';
 export const workspaceInvitationDeliveryFactories = Object.freeze({
   store: createWorkspaceInvitationDeliveryStore,
   envelope: createApplicationSecretEnvelope,

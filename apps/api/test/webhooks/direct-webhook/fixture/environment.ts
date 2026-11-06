@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import type {
   StructuredLogger,
   TelemetryLifecycle,
-} from '@pertexo/observability';
+} from '@pertexo/observability/server';
 
 export const adminBaseUrl = process.env.DATABASE_ADMIN_URL;
 

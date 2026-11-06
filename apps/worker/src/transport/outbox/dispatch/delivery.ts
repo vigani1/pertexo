@@ -1,14 +1,17 @@
 import { ZodError } from 'zod';
 import { canonicalOutboxPayloadChecksum } from '@pertexo/core/outbox';
 import type { LeasedOutboxEvent } from '@pertexo/core/outbox';
-import type { TransportErrorClass, TransportJob } from '@pertexo/observability';
+import type {
+  TransportErrorClass,
+  TransportJob,
+} from '@pertexo/observability/server';
 import {
   JOB_NAME,
   QueueNotReadyError,
   parseQueueJob,
   type QueueJob,
   type JobName,
-} from '@pertexo/queue';
+} from '@pertexo/queue/server';
 
 import { transportJobForName } from '../../job.js';
 

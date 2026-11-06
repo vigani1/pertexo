@@ -16,7 +16,7 @@ import type { FastifyReply } from 'fastify';
 import { CallableInputInvalidError } from '@pertexo/workflow-model';
 import { isTransientDatabaseFailure } from '@pertexo/database/platform';
 import { StoredExecutionValueInvalidError } from '@pertexo/node-sdk';
-import type { StructuredLogger } from '@pertexo/observability';
+import type { StructuredLogger } from '@pertexo/observability/server';
 
 import {
   REJECTED_ATTEMPT,

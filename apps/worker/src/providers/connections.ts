@@ -22,7 +22,7 @@ import {
   AbuseRateLimitPolicy,
   type DistributedRateLimitResult,
   type RateLimitDecision,
-} from '@pertexo/rate-limit';
+} from '@pertexo/rate-limit/server';
 
 import type { NodeExecutionCapabilityContext } from '../attempts/execution/capabilities.js';
 

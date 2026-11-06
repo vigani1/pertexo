@@ -3,10 +3,10 @@ import type { Role } from '@pertexo/policy';
 import type {
   ArtifactDownloadCapability,
   ArtifactStore,
-} from '@pertexo/artifact-store';
+} from '@pertexo/artifact-store/server';
 import type { IdentityWorkspaceStore } from '@pertexo/core/testing';
 import type { WorkspaceDatabase } from '@pertexo/database/testing';
-import type { StructuredLogger } from '@pertexo/observability';
+import type { StructuredLogger } from '@pertexo/observability/server';
 import type { PoolClient } from 'pg';
 
 import type { createApiApplication } from '../../../src/app.js';

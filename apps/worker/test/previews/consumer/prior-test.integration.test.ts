@@ -6,7 +6,7 @@ import { parseStoredExecutionValue } from '@pertexo/core/runs';
 import type { AcceptPreviewRunInput } from '@pertexo/core/testing';
 
 import { createPlatformNodeRegistry } from '../../../src/providers/node-registry.js';
-import { createQueueProducer } from '@pertexo/queue';
+import { createQueueProducer } from '@pertexo/queue/server';
 import { describe, expect, it } from 'vitest';
 
 import { createNodeAttemptRuntime } from '../../../src/attempts/delivery/node-attempt.runtime.js';

@@ -1,4 +1,4 @@
-import type { StructuredLogger } from '@pertexo/observability';
+import type { StructuredLogger } from '@pertexo/observability/server';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { parseWorkerConfig } from '../../src/config/worker.js';

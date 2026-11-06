@@ -1,6 +1,6 @@
 import { SetMetadata } from '@nestjs/common';
 
-import type { RateLimitEndpointClass } from '@pertexo/rate-limit';
+import type { RateLimitEndpointClass } from '@pertexo/rate-limit/server';
 
 export const RATE_LIMIT_METADATA = Symbol('RATE_LIMIT_METADATA');
 export const RATE_LIMIT_EXEMPT = Symbol('RATE_LIMIT_EXEMPT');

@@ -1,5 +1,5 @@
 import type { DatabaseRuntime } from '@pertexo/database/platform';
-import type { StructuredLogger } from '@pertexo/observability';
+import type { StructuredLogger } from '@pertexo/observability/server';
 
 export const OUTBOX_DISPATCHER = Symbol('OUTBOX_DISPATCHER');
 export const QUEUE_CONSUMER_OBSERVER = Symbol('QUEUE_CONSUMER_OBSERVER');

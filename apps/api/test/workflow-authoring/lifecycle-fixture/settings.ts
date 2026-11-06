@@ -5,7 +5,7 @@ import type { WorkspaceDatabase } from '@pertexo/database/testing';
 import type {
   StructuredLogger,
   TelemetryLifecycle,
-} from '@pertexo/observability';
+} from '@pertexo/observability/server';
 import type { ApiConfig } from '../../../src/platform/config/api.js';
 
 import { redisUrl, workflowLifecycleDatabaseConfig } from './environment.js';

@@ -7,7 +7,7 @@ import { initialCheckpointFactory } from '@pertexo/core/runs';
 import { PLATFORM_NODE_CATALOG } from '@pertexo/node-catalog';
 
 import { createPlatformNodeRegistry } from '../../../src/providers/node-registry.js';
-import { createQueueProducer, JOB_NAME } from '@pertexo/queue';
+import { createQueueProducer, JOB_NAME } from '@pertexo/queue/server';
 import { composeExecutableCatalog } from '@pertexo/workflow-engine/server';
 import {
   validateWorkflowGraph,

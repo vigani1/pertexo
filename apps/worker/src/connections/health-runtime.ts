@@ -13,7 +13,7 @@ import {
   unrecoverableQueueError,
   type QueueDelivery,
   type QueueHandlerContext,
-} from '@pertexo/queue';
+} from '@pertexo/queue/server';
 
 type HealthDelivery = Extract<
   QueueDelivery,

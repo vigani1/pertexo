@@ -6,7 +6,7 @@ import type {
 import type {
   StructuredLogger,
   TelemetryLifecycle,
-} from '@pertexo/observability';
+} from '@pertexo/observability/server';
 
 import type { ApiConnectionRuntime } from './connections/runtime.module.js';
 import type { ApiIdentityRuntime } from './identity/runtime.module.js';

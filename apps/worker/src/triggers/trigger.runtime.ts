@@ -12,8 +12,8 @@ import type {
   DatabaseRuntime,
 } from '@pertexo/database/platform';
 import { PLATFORM_NODE_CATALOG } from '@pertexo/node-catalog';
-import { createQueueTraceRunner } from '@pertexo/observability';
-import type { StructuredLogger } from '@pertexo/observability';
+import { createQueueTraceRunner } from '@pertexo/observability/server';
+import type { StructuredLogger } from '@pertexo/observability/server';
 import {
   createQueueConsumer,
   InvalidQueueDeliveryError,
@@ -21,7 +21,7 @@ import {
   QUEUE_NAME,
   type QueueConsumer,
   type QueueConsumerObserver,
-} from '@pertexo/queue';
+} from '@pertexo/queue/server';
 import { composeExecutableCatalog } from '@pertexo/workflow-engine/server';
 
 import { createTriggerReconciliationHandler } from './handle-trigger-delivery.js';

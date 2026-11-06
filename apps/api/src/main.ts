@@ -5,8 +5,8 @@ import {
   classifyProcessError,
   describeProcessFailure,
 } from '@pertexo/observability/startup';
-import type { StructuredLogger } from '@pertexo/observability';
-import type * as LoggingModule from '@pertexo/observability';
+import type { StructuredLogger } from '@pertexo/observability/server';
+import type * as LoggingModule from '@pertexo/observability/server';
 
 import type * as ApiApplicationModule from './app.js';
 import {
@@ -35,7 +35,7 @@ export interface ApiBootstrapDependencies {
 
 async function loadModules(): Promise<ApiBootstrapModules> {
   const [logging, application] = await Promise.all([
-    import('@pertexo/observability'),
+    import('@pertexo/observability/server'),
     import('./app.js'),
   ]);
   return { application, logging };
@@ -81,7 +81,7 @@ export async function bootstrapApi(
         const logging =
           loadedLogging ??
           (dependencies.loadModules === undefined
-            ? await import('@pertexo/observability')
+            ? await import('@pertexo/observability/server')
             : undefined);
         logger = logging?.createStructuredLogger(config.observability);
       } catch {

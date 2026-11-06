@@ -1,7 +1,7 @@
 import type { acceptWorkflowRun } from '@pertexo/core/testing';
 
 import type { Queue } from 'bullmq';
-import type { QueueProducer } from '@pertexo/queue';
+import type { QueueProducer } from '@pertexo/queue/server';
 
 import type { withTenantAccept } from './accept.js';
 import type { previewState } from './queries.js';

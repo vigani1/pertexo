@@ -1,4 +1,4 @@
-import { createStructuredLogger } from '@pertexo/observability';
+import { createStructuredLogger } from '@pertexo/observability/server';
 import {
   createWorkspaceDatabase,
   parseDatabaseConfig,
@@ -6,7 +6,7 @@ import {
 import { createApiIdentityRuntime } from '../../dist/platform/identity/runtime.module.js';
 import { LocalAuthenticationMailSink } from '../../src/authentication/mail/delivery.js';
 import { assembleApiApplication } from '../../dist/app.js';
-import { RedisRateLimitRuntime } from '@pertexo/rate-limit';
+import { RedisRateLimitRuntime } from '@pertexo/rate-limit/server';
 import { apiConfig } from '../support/better-auth/api/configuration.js';
 import {
   password,

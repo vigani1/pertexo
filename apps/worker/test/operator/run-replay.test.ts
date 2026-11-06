@@ -10,7 +10,7 @@ import {
   OperatorRunReplayNotExecutableError,
   type OperatorRunReplayStore,
 } from '@pertexo/core/operator';
-import { JOB_NAME } from '@pertexo/queue';
+import { JOB_NAME } from '@pertexo/queue/server';
 import { describe, expect, it, vi } from 'vitest';
 
 import { createOperatorRunReplayHandler } from '../../src/operator/run-replay.js';

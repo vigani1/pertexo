@@ -1,5 +1,5 @@
 import { DELIVERY_CONSUMER } from '@pertexo/core/outbox';
-import { JOB_NAME } from '@pertexo/queue';
+import { JOB_NAME } from '@pertexo/queue/server';
 import { expect, it } from 'vitest';
 
 // A job kind nobody confirms would be delivered again for a day, then fail.

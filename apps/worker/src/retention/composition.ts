@@ -1,4 +1,4 @@
-import { createArtifactStore } from '@pertexo/artifact-store';
+import { createArtifactStore } from '@pertexo/artifact-store/server';
 import { createDatabaseRuntime } from '@pertexo/database/platform';
 import {
   createPreviewRetentionCoordinator,
@@ -6,7 +6,7 @@ import {
   createRunArtifactRetentionCoordinator,
   createWorkspacePurgeCoordinator,
 } from '@pertexo/core/lifecycle';
-import type { StructuredLogger } from '@pertexo/observability';
+import type { StructuredLogger } from '@pertexo/observability/server';
 
 import type { WorkerConfig } from '../config/worker.js';
 import { createRetentionMetrics } from './metrics.js';

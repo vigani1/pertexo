@@ -5,7 +5,11 @@ import { Queue } from 'bullmq';
 import { afterAll, beforeAll, expect, it } from 'vitest';
 import { createOutboxDispatcherDatabase } from '@pertexo/core/testing';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
-import { createQueueProducer, JOB_NAME, QUEUE_NAME } from '@pertexo/queue';
+import {
+  createQueueProducer,
+  JOB_NAME,
+  QUEUE_NAME,
+} from '@pertexo/queue/server';
 import { OutboxDispatcher } from '../../src/transport/outbox/dispatch/outbox-dispatcher.runtime.js';
 import { WorkerDrainState } from '../../src/runtime/shutdown/drain-state.js';
 import {

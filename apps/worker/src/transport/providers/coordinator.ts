@@ -1,5 +1,5 @@
 import type { Provider } from '@nestjs/common';
-import type { QueueConsumerObserver } from '@pertexo/queue';
+import type { QueueConsumerObserver } from '@pertexo/queue/server';
 
 import type { WorkerConfig } from '../../config/worker.js';
 import {

@@ -13,7 +13,7 @@ import { eq, getTableName, sql } from 'drizzle-orm';
 import {
   createArtifactStore,
   parseArtifactStoreConfig,
-} from '@pertexo/artifact-store';
+} from '@pertexo/artifact-store/server';
 import {
   artifacts as artifactsTable,
   createWorkspaceDatabase,

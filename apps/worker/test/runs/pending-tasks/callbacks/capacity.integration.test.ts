@@ -13,7 +13,7 @@ import type { WorkflowGraph } from '@pertexo/workflow-model';
 import { callbackResources } from './callbacks.fixture.js';
 import { wait, reply, loop } from './callbacks-capacity.fixture.js';
 import { Queue } from 'bullmq';
-import { QUEUE_NAME } from '@pertexo/queue';
+import { QUEUE_NAME } from '@pertexo/queue/server';
 
 import { createPlatformNodeRegistry } from '../../../../src/providers/node-registry.js';
 import { Readable } from 'node:stream';

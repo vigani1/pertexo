@@ -4,7 +4,7 @@ import type { Redis } from 'ioredis';
 import {
   encodeWorkspaceInboxHint,
   workspaceInboxChannel,
-} from '@pertexo/queue';
+} from '@pertexo/queue/server';
 import { describe, expect, it, vi } from 'vitest';
 
 import {

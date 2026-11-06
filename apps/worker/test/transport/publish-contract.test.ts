@@ -1,5 +1,5 @@
 import { reconcileWorkflowTriggersPayload } from '@pertexo/core/testing';
-import { ReconcileWorkflowTriggersJobSchema } from '@pertexo/queue';
+import { ReconcileWorkflowTriggersJobSchema } from '@pertexo/queue/server';
 import { describe, expect, it } from 'vitest';
 
 describe('workflow publication transport composition', () => {

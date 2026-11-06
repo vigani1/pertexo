@@ -4,7 +4,7 @@ import {
   type ArtifactCapacityObservation,
 } from '@pertexo/core/artifacts';
 import type { WorkspaceDatabase } from '@pertexo/database/platform';
-import type { TransportMetrics } from '@pertexo/observability';
+import type { TransportMetrics } from '@pertexo/observability/server';
 
 export async function observeWorkspaceArtifactCapacity(
   database: WorkspaceDatabase,

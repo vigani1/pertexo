@@ -5,7 +5,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   createArtifactStore,
   parseArtifactStoreConfig,
-} from '@pertexo/artifact-store';
+} from '@pertexo/artifact-store/server';
 import { httpChain } from '../../support/recovery/graphs.js';
 import { startStack, type Stack } from '../../support/recovery/stack.js';
 import { waitForRunsToEnd } from '../../support/recovery/facts.js';

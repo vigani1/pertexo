@@ -2,7 +2,7 @@ import {
   measureOperation,
   NOOP_OPERATION_TELEMETRY,
   type OperationTelemetry,
-} from '@pertexo/observability';
+} from '@pertexo/observability/server';
 export const CONNECTION_OPERATION = Object.freeze({
   list: 'connection.list',
   read: 'connection.read',

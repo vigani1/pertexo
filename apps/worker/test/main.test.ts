@@ -1,4 +1,4 @@
-import type { StructuredLogger } from '@pertexo/observability';
+import type { StructuredLogger } from '@pertexo/observability/server';
 import type { TelemetryLifecycle } from '@pertexo/observability/startup';
 import { describe, expect, it, vi } from 'vitest';
 

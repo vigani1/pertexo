@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
 import { createWorkspaceInboxFoldStore } from '@pertexo/core/inbox';
 
-import { RedisWorkspaceInboxHintPublisher } from '@pertexo/queue';
+import { RedisWorkspaceInboxHintPublisher } from '@pertexo/queue/server';
 import { describe, expect, it } from 'vitest';
 
 import {

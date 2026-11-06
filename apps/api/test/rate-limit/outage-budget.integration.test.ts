@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { expect, it } from 'vitest';
-import { RedisRateLimitRuntime } from '@pertexo/rate-limit';
+import { RedisRateLimitRuntime } from '@pertexo/rate-limit/server';
 import { HttpRateLimitAdmission } from '../../src/platform/rate-limit/admission.js';
 import { assertIntegrationGateConfigured } from '../support/integration-gate.js';
 

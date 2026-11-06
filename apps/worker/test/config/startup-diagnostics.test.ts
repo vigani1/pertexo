@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { describeProcessFailure } from '@pertexo/observability';
+import { describeProcessFailure } from '@pertexo/observability/server';
 import { parseWorkerConfig } from '../../src/config/worker.js';
 import { parseInvitationDeliveryConfig } from '../../src/config/invitation-delivery.js';
 import { parseSystemMailDeliveryConfig } from '../../src/config/system-mail.js';

@@ -4,7 +4,7 @@ import {
   WorkflowTriggerReconciliationMismatchError,
   WorkflowTriggerStalePublicationError,
 } from '@pertexo/core/testing';
-import { JOB_NAME, type QueueHandlerContext } from '@pertexo/queue';
+import { JOB_NAME, type QueueHandlerContext } from '@pertexo/queue/server';
 import { describe, expect, it, vi } from 'vitest';
 
 import { createTriggerReconciliationHandler } from '../../src/triggers/handle-trigger-delivery.js';

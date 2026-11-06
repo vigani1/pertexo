@@ -1,5 +1,5 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
-import type { StructuredLogger } from '@pertexo/observability';
+import type { StructuredLogger } from '@pertexo/observability/server';
 import type { BetterAuthOptions } from 'better-auth';
 import { createRequestContext } from '../../platform/http/request-context.js';
 

@@ -19,7 +19,7 @@ import {
 } from './foreach-cancellation/for-each-cancellation.fixture.js';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { createQueueProducer, QUEUE_NAME } from '@pertexo/queue';
+import { createQueueProducer, QUEUE_NAME } from '@pertexo/queue/server';
 import { Queue } from 'bullmq';
 import { createForEachScenario } from './foreach-cancellation/scenario/execute.js';
 import { registerTestResourceCleanup } from '../../support/infrastructure/test-resource-cleanup.js';

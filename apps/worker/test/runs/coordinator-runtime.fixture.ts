@@ -1,4 +1,4 @@
-import type { QueueConsumer } from '@pertexo/queue';
+import type { QueueConsumer } from '@pertexo/queue/server';
 import { vi } from 'vitest';
 import type { TestCoordinatorServices } from '../support/runtime-factories.js';
 import type { CoordinatorRuntimeOptions } from '../../src/runs/coordinator.runtime.js';

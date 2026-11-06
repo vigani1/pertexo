@@ -2,11 +2,11 @@ import { transportMetrics as createTransportMetrics } from '../support/transport
 import { DEFAULT_CODE_SETTINGS } from '@pertexo/node-sdk';
 import type { OutboxDispatcherDatabase } from '@pertexo/core/testing';
 import type { WorkspaceDatabase } from '@pertexo/database/testing';
-import type { QueueConsumer, QueueProducer } from '@pertexo/queue';
+import type { QueueConsumer, QueueProducer } from '@pertexo/queue/server';
 import type {
   StructuredLogger,
   TelemetryLifecycle,
-} from '@pertexo/observability';
+} from '@pertexo/observability/server';
 import { vi } from 'vitest';
 import {
   createWorkerApplication as constructWorkerApplication,

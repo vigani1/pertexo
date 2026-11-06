@@ -4,7 +4,7 @@ import {
   QUEUE_FOR_JOB,
   QUEUE_NAME,
   parseQueueJob,
-} from '../../src/index.js';
+} from '../../src/server.js';
 
 const data = {
   workspaceId: '11111111-1111-4111-8111-111111111111',

@@ -2,7 +2,7 @@ import {
   measureOperation,
   NOOP_OPERATION_TELEMETRY,
   type OperationTelemetry,
-} from '@pertexo/observability';
+} from '@pertexo/observability/server';
 export const IDENTITY_WORKSPACE_OPERATION = Object.freeze({
   sessionLogout: 'session.logout',
   userProfileRead: 'user.profile_read',

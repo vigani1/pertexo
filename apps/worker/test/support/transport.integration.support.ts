@@ -7,7 +7,7 @@ import {
   parseDatabaseConfig,
   parseMigrationConfig,
 } from '@pertexo/database/testing';
-import { QUEUE_NAME } from '@pertexo/queue';
+import { QUEUE_NAME } from '@pertexo/queue/server';
 import { Queue } from 'bullmq';
 
 import { Redis } from 'ioredis';

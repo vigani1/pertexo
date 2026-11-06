@@ -10,11 +10,11 @@ import type {
   DatabaseConfig,
   DatabaseRuntime,
 } from '@pertexo/database/platform';
-import type { ArtifactStoreConfig } from '@pertexo/artifact-store';
+import type { ArtifactStoreConfig } from '@pertexo/artifact-store/server';
 import { PLATFORM_NODE_CATALOG } from '@pertexo/node-catalog';
 
 import { createPlatformNodeRegistry } from '../../providers/node-registry.js';
-import { createQueueTraceRunner } from '@pertexo/observability';
+import { createQueueTraceRunner } from '@pertexo/observability/server';
 import {
   createQueueConsumer,
   QUEUE_NAME,
@@ -22,7 +22,7 @@ import {
   type QueueConsumer,
   type QueueConsumerObserver,
   type RunEventNotificationPublisher,
-} from '@pertexo/queue';
+} from '@pertexo/queue/server';
 import {
   composeExecutableCatalog,
   type NodeExecutionRegistry,

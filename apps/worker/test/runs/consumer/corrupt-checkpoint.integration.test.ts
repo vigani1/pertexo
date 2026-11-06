@@ -3,7 +3,11 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { Pool } from 'pg';
 import { Queue } from 'bullmq';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
-import { jobIdForOutboxEvent, JOB_NAME, QUEUE_NAME } from '@pertexo/queue';
+import {
+  jobIdForOutboxEvent,
+  JOB_NAME,
+  QUEUE_NAME,
+} from '@pertexo/queue/server';
 import { createCoordinatorRuntime } from '../../../src/runs/coordinator.runtime.js';
 import { coordinatorFixture as f } from '../../support/coordinator/consumer.js';
 import { acceptRun } from '../../support/coordinator/runs.js';

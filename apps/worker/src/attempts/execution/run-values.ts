@@ -1,5 +1,5 @@
 import { RUN_VALUES_ERROR_CODE } from '@pertexo/node-sdk';
-import { redactCredentialFields } from '@pertexo/observability';
+import { redactCredentialFields } from '@pertexo/observability/server';
 import {
   ExecutionCapabilityExpiredError,
   RunValuesLimitError,

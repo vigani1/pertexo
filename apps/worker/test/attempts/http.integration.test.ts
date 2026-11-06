@@ -52,7 +52,7 @@ import { proveArtifactSlackRedelivery } from './http/execution/artifact-scenario
 import { proveArtifactEmailRetry } from './http/execution/artifact-scenario/email.js';
 import { proveArtifactRotatedCredentialFence } from './http/execution/artifact-scenario/rotation.js';
 import { assertArtifactScenarioPrivacy } from './http/execution/artifact-scenario/privacy.js';
-import { JOB_NAME } from '@pertexo/queue';
+import { JOB_NAME } from '@pertexo/queue/server';
 import { NodeExecutorFailure } from '@pertexo/node-sdk/server';
 import {
   createNodeAttemptRunStore,

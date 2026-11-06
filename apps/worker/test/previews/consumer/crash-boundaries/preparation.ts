@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 import { parseStoredExecutionValue } from '@pertexo/core/runs';
-import type { createQueueProducer } from '@pertexo/queue';
+import type { createQueueProducer } from '@pertexo/queue/server';
 import type { Queue } from 'bullmq';
 
 import { expect } from 'vitest';

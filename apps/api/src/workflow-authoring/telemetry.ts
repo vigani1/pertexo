@@ -2,7 +2,7 @@ import {
   measureOperation,
   NOOP_OPERATION_TELEMETRY,
   type OperationTelemetry,
-} from '@pertexo/observability';
+} from '@pertexo/observability/server';
 export const WORKFLOW_AUTHORING_OPERATION = Object.freeze({
   list: 'workflow.list',
   create: 'workflow.create',

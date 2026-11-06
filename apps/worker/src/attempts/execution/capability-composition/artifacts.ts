@@ -1,7 +1,7 @@
 import { ArtifactScratchSpace } from '../../artifacts/scratch/space.js';
 import { FILE_PAGE_LIMITS } from '@pertexo/node-sdk';
 
-import { createArtifactStore } from '@pertexo/artifact-store';
+import { createArtifactStore } from '@pertexo/artifact-store/server';
 
 import {
   createPendingArtifact,

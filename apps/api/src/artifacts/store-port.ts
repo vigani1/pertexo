@@ -1,7 +1,7 @@
 import type {
   ArtifactDownloadCapability,
   ArtifactStore as StoredArtifacts,
-} from '@pertexo/artifact-store';
+} from '@pertexo/artifact-store/server';
 
 /** Keep the API seam tied to the single server-only store contract. */
 export type ArtifactStore = Pick<
