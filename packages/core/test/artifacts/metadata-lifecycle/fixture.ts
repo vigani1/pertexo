@@ -71,33 +71,6 @@ export function pendingInput(overrides: Record<string, unknown> = {}) {
   };
 }
 
-export async function waitForMilestone(
-  milestone: Promise<void>,
-  operation: Promise<unknown>,
-  label: string,
-): Promise<void> {
-  let timeout: ReturnType<typeof setTimeout> | undefined;
-  const bounded = new Promise<never>((_resolve, reject) => {
-    timeout = setTimeout(() => {
-      reject(new Error(`${label} was not observed within 5000ms`));
-    }, 5_000);
-  });
-  try {
-    await Promise.race([
-      milestone,
-      operation.then(
-        () => Promise.reject(new Error(`${label} operation settled early`)),
-        (error: unknown) => {
-          throw error;
-        },
-      ),
-      bounded,
-    ]);
-  } finally {
-    clearTimeout(timeout);
-  }
-}
-
 export async function beforeAllFixture1() {
   try {
     await fixture.create();

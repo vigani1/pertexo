@@ -1,3 +1,4 @@
+import { createRunArtifactRetentionCoordinator } from '@pertexo/core/lifecycle';
 import {
   describeIntegration,
   sha256Hex,
@@ -13,8 +14,6 @@ import {
 } from '@pertexo/artifact-store';
 import {
   artifactStorageKey,
-  claimDueUnfinalizedArtifact,
-  completeArtifactRemoval,
   createPendingArtifact,
   finalizeArtifactUpload,
 } from '@pertexo/core/testing';
@@ -59,6 +58,8 @@ describeIntegration('artifact direct upload', () => {
     const expiresAt = new Date(Date.now() + 300_000);
     let store: ReturnType<typeof createArtifactStore> | undefined;
     let database: ReturnType<typeof createWorkspaceDatabase> | undefined;
+    let retention:
+      ReturnType<typeof createRunArtifactRetentionCoordinator> | undefined;
     let corruptObjectWritten = false;
     let availableObjectWritten = false;
     let expiredObjectWritten = false;
@@ -174,23 +175,24 @@ describeIntegration('artifact direct upload', () => {
         await expiredUploadResponse.arrayBuffer();
         expiredObjectWritten = expiredUploadResponse.ok;
         expect(expiredUploadResponse.ok).toBe(true);
-        const claimedForRemoval = await database.withWorkspace(
-          expiredMetadata.workspaceId,
-          (transaction) =>
-            claimDueUnfinalizedArtifact(transaction, {
-              artifactId: expiredMetadata.artifactId,
-            }),
+        retention = createRunArtifactRetentionCoordinator(
+          databaseEnvironment.maintenanceConfig,
+          store,
         );
-        expect(claimedForRemoval.id).toBe(expiredMetadata.artifactId);
-        await store.delete(expiredMetadata);
+        await expect(retention.processNext()).resolves.toMatchObject({
+          artifactId: expiredMetadata.artifactId,
+          workspaceId: expiredMetadata.workspaceId,
+          status: 'completed',
+        });
         const removed = await database.withWorkspace(
           expiredMetadata.workspaceId,
           (transaction) =>
-            completeArtifactRemoval(transaction, {
-              artifactId: expiredMetadata.artifactId,
-            }),
+            transaction.db
+              .select()
+              .from(artifactsTable)
+              .where(eq(artifactsTable.id, expiredMetadata.artifactId)),
         );
-        expect(removed.status).toBe('deleted');
+        expect(removed).toEqual([]);
         await expect(store.head(expiredMetadata)).resolves.toBeNull();
 
         const metrics = transportMetrics();
@@ -203,13 +205,13 @@ describeIntegration('artifact direct upload', () => {
           ),
         ).resolves.toEqual([
           { bytes: body.byteLength, count: 1, status: 'available' },
-          { bytes: body.byteLength, count: 1, status: 'deleted' },
+          { bytes: 0, count: 0, status: 'deleted' },
           { bytes: 0, count: 0, status: 'deleting' },
           { bytes: body.byteLength, count: 1, status: 'pending' },
         ]);
         expect(observeArtifacts.mock.calls.map(([value]) => value)).toEqual([
           { bytes: body.byteLength, count: 1, status: 'available' },
-          { bytes: body.byteLength, count: 1, status: 'deleted' },
+          { bytes: 0, count: 0, status: 'deleted' },
           { bytes: 0, count: 0, status: 'deleting' },
           { bytes: body.byteLength, count: 1, status: 'pending' },
         ]);
@@ -227,6 +229,7 @@ describeIntegration('artifact direct upload', () => {
           await attempt(() => store?.delete(corruptMetadata));
         if (expiredObjectWritten)
           await attempt(() => store?.delete(expiredMetadata));
+        await attempt(() => retention?.close());
         await attempt(() => store?.close());
         await attempt(() => database?.close());
         await attempt(() => databaseEnvironment.close());
