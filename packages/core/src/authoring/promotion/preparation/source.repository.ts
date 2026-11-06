@@ -23,7 +23,7 @@ import {
 } from '@pertexo/workflow-model';
 import { isDataTableDefinition, type DataTableConfig } from '@pertexo/node-sdk';
 import { readTablesByNames } from '../../../data-tables/table-lookups.repository.js';
-import type { DataTableDefinition } from '../../../data-tables/data-table-commands.types.js';
+import type { DataTableDefinition } from '@pertexo/contracts';
 import { WorkflowNotFoundError } from '../../workflows/workflow-authoring.errors.js';
 import { workflowNodes } from '@pertexo/workflow-model';
 import type { PromotionGraphBudget } from './graph.js';
