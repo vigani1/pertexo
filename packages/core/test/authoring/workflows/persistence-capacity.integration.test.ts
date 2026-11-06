@@ -53,13 +53,11 @@ it('reports the same step scope issue while validating and publishing, before a 
   const graph = {
     settings: {},
     nodes,
-    edges: nodes
-      .slice(1)
-      .map((node, n) => ({
-        id: `edge-${String(n)}`,
-        source: { nodeId: nodes[n]?.id ?? '', port: n === 0 ? 'out' : 'true' },
-        target: { nodeId: node.id, port: 'in' },
-      })),
+    edges: nodes.slice(1).map((node, n) => ({
+      id: `edge-${String(n)}`,
+      source: { nodeId: nodes[n]?.id ?? '', port: n === 0 ? 'out' : 'true' },
+      target: { nodeId: node.id, port: 'in' },
+    })),
   };
   const created = await authoring.createWorkflow({
     actorId,
