@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { createWorkspaceInboxFoldStore } from '../../../src/inbox/folding/workspace-inbox-fold.store.js';
 import { Pool } from 'pg';
 import { describe, expect, it } from 'vitest';
 
@@ -235,17 +236,11 @@ describe('the reader', () => {
   });
 });
 
-describe('the fold function', () => {
-  it.each([
-    ['no window', null],
-    ['a zero window', '0 hours'],
-    ['a negative window', '-1 hours'],
-  ])('refuses %s', async (_case, window) => {
-    await expect(
-      queryAsOwner(
-        'select * from app.fold_workspace_inbox_events(10,$1::interval)',
-        [window],
-      ),
-    ).rejects.toMatchObject({ code: '22023' });
+describe('the bounded fold command', () => {
+  it.each([0, -1, 1001])('refuses a claim bound of %s', async (limit) => {
+    const fold = own(createWorkspaceInboxFoldStore(config()));
+    await expect(fold.foldPending(limit)).rejects.toMatchObject({
+      code: '22023',
+    });
   });
 });
