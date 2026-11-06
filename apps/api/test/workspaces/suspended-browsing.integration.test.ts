@@ -1,3 +1,7 @@
+import {
+  portableGraphDigest,
+  type WorkflowGraph,
+} from '@pertexo/workflow-model';
 import { describe, it, beforeAll, expect } from 'vitest';
 
 import {
@@ -131,6 +135,42 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
           expectShown(entry, await read(entry), world);
         });
 
+      it('exports a retained immutable version without changing suspended workspace facts', async () => {
+        const base = `/v1/workspaces/${world.workspaceId}/workflows/${world.workflowId}`;
+        const versions = await api.send('GET', `${base}/versions?limit=10`, {
+          browser: owner,
+        });
+        expect(versions.statusCode, versions.payload).toBe(200);
+        const version = versions
+          .json<{ items: { id: string; graph: WorkflowGraph }[] }>()
+          .items.find(({ id }) => id === world.versionId);
+        if (version === undefined)
+          throw new Error('Expected retained fixture version');
+        const before = (
+          await api.database().query(durableWorkspaceFacts, [world.workspaceId])
+        ).rows;
+        const exported = await api.send('POST', `${base}/export`, {
+          browser: owner,
+          headers: apiHeaders(),
+          payload: {
+            source: { kind: 'version', versionId: world.versionId },
+            reviewedGraphDigest: await portableGraphDigest(version.graph),
+          },
+        });
+        expect(exported.statusCode, exported.payload).toBe(200);
+        expect(exported.json()).toMatchObject({
+          format: 'pertexo.workflow',
+          graph: version.graph,
+        });
+        expect(
+          (
+            await api
+              .database()
+              .query(durableWorkspaceFacts, [world.workspaceId])
+          ).rows,
+        ).toEqual(before);
+      });
+
       it('keeps what a role does not grant from a viewer', async () => {
         const { workspaceId } = world;
         expectProblem(
@@ -189,6 +229,22 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
 
     describe('while it is scheduled for deletion', () => {
       beforeAll(() => enter('pending_deletion'));
+      it('refuses retained export after browsing closes', async () => {
+        const refused = await api.send(
+          'POST',
+          `/v1/workspaces/${world.workspaceId}/workflows/${world.workflowId}/export`,
+          {
+            browser: owner,
+            headers: apiHeaders(),
+            payload: {
+              source: { kind: 'version', versionId: world.versionId },
+              reviewedGraphDigest:
+                await portableGraphDigest(emptyWorkflowGraph()),
+            },
+          },
+        );
+        expectProblem(refused, 404, 'resource.not_found');
+      });
 
       for (const entry of READS_OPEN_UNTIL_PURGE)
         it(`shows ${entry.name}`, async () => {
@@ -231,6 +287,22 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
 
     describe('while it is being purged', () => {
       beforeAll(() => enter('purging'));
+      it('refuses retained export after browsing closes', async () => {
+        const refused = await api.send(
+          'POST',
+          `/v1/workspaces/${world.workspaceId}/workflows/${world.workflowId}/export`,
+          {
+            browser: owner,
+            headers: apiHeaders(),
+            payload: {
+              source: { kind: 'version', versionId: world.versionId },
+              reviewedGraphDigest:
+                await portableGraphDigest(emptyWorkflowGraph()),
+            },
+          },
+        );
+        expectProblem(refused, 404, 'resource.not_found');
+      });
 
       for (const entry of [...READS_OPEN_TODAY, ...READS_CLOSED_TODAY])
         it(`refuses ${entry.name}`, async () => {
