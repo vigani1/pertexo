@@ -1,9 +1,9 @@
 import { restrictAcceptedWorkflows } from '../../../support/resources/sharing.js';
 import { callbackResources } from './callbacks.fixture.js';
 import { randomUUID } from 'node:crypto';
-import { createWorkflowAuthoringStore } from '@pertexo/core/authoring';
+import { createWorkflowTestStore } from '@pertexo/core/previews';
+import { acquireDatabasePool } from '@pertexo/database/platform';
 import {
-  buildWorkflowExecutable,
   buildWorkflowTestExecutable,
   composeExecutableCatalog,
 } from '@pertexo/workflow-engine';
@@ -68,31 +68,24 @@ async function acceptDraft(
     ],
   );
   const catalog = composeExecutableCatalog(PLATFORM_NODE_CATALOG);
-  const authoring = createWorkflowAuthoringStore(
+  const lease = acquireDatabasePool(
     parseDatabaseConfig({
       connectionString: fixture.databaseUrl(fixture.apiUrl),
       max: 2,
     }),
-    {
-      executableCompiler: (graph) => {
-        const compiled = buildWorkflowExecutable({ graph, catalog });
-        return {
-          checksum: compiled.checksum,
-          executableJson: compiled.envelope,
-        };
-      },
-      workflowTestCompiler: (graph, pins) =>
-        buildWorkflowTestExecutable({ graph, pins, catalog }),
-    },
   );
+  const tests = createWorkflowTestStore(lease.pool, {
+    workflowTestCompiler: (graph, pins) =>
+      buildWorkflowTestExecutable({ graph, pins, catalog }),
+  });
   try {
     const scope = {
       workspaceId: fixture.workspaceId,
       workflowId: version.workflowId,
       actorId: fixture.actorId,
     };
-    const preparation = await authoring.workflowTests.prepare(scope);
-    return await authoring.workflowTests.start({
+    const preparation = await tests.prepare(scope);
+    return await tests.start({
       ...scope,
       idempotencyKey: randomUUID(),
       request: {
@@ -104,7 +97,7 @@ async function acceptDraft(
       },
     });
   } finally {
-    await authoring.close();
+    await lease.close();
   }
 }
 

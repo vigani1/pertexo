@@ -31,7 +31,7 @@ import {
   buildWorkflowTestExecutable,
   composeExecutableCatalog,
 } from '@pertexo/workflow-engine';
-import { createWorkflowAuthoringStore } from '../../../src/authoring/workflows/workflow-authoring.store.js';
+import { createWorkflowAuthoringFixtureDatabase as createWorkflowAuthoringStore } from '../../support/workflow-authoring-admission.fixture.js';
 import { WorkflowNotFoundError } from '../../../src/authoring/workflows/workflow-authoring.errors.js';
 import { setVariableSet } from '../../support/variable-sets.js';
 import { createRetentionStore } from '../../../src/lifecycle/retention/retention.store.js';

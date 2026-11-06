@@ -1,3 +1,4 @@
+import type { NodeTestingPersistence } from '../../src/node-testing/ports.js';
 import { unusedWorkspacePersistence } from '../support/identity-workspace.fixture.js';
 import {
   stubFederationService,
@@ -164,7 +165,7 @@ const notUsed = {} as never;
 
 export function workflowAuthoringDatabase(
   close = vi.fn().mockResolvedValue(undefined),
-): WorkflowAuthoringStore {
+): WorkflowAuthoringStore & NodeTestingPersistence {
   return {
     workflowTestSuites: {
       prepare: vi.fn(),
@@ -215,7 +216,7 @@ export function workflowAuthoringDatabase(
 /** The stub runtime with the real node-testing routes behind `persistence`. */
 export function nodeTestingWorkflowRuntime(
   authorization: IdentityWorkspaceDependencies['authorization'],
-  persistence: WorkflowAuthoringStore,
+  persistence: NodeTestingPersistence,
 ): ApiWorkflowRuntime {
   const expressionEvaluator = new JsonataEvaluator();
   return {

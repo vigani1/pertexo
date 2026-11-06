@@ -8,6 +8,7 @@ import { closeWorkflowResources } from './lifecycle.js';
 
 export function assembleWorkflowRuntime({
   database,
+  nodeTesting,
   metadataRuntime,
   pendingTasks,
   forms,
@@ -66,7 +67,7 @@ export function assembleWorkflowRuntime({
       telemetry,
     }),
     nodeTestingDependencies: Object.freeze({
-      persistence: database,
+      persistence: nodeTesting.persistence,
       authorization: identityRuntime.dependencies.authorization,
       expressionEvaluator,
     }),
@@ -93,6 +94,7 @@ export function assembleWorkflowRuntime({
           metadata: acquiredMetadataRuntime,
           pendingTasks: acquiredPendingTasks,
           forms: acquiredForms,
+          nodeTesting,
         },
       );
       return closePromise;

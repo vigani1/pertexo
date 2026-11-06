@@ -54,6 +54,7 @@ const applicationAreas = {
 const removedDependencies = new Set([
   'lifecycle -> tenant-access',
   'authoring -> connections',
+  'authoring -> previews',
 ]);
 
 export function executionAreaDependencyAllowed(from, to) {

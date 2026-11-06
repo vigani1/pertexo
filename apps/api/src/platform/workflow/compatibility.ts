@@ -14,7 +14,6 @@ import type {
 import { PLATFORM_NODE_CATALOG } from '@pertexo/node-catalog';
 import {
   buildWorkflowExecutable,
-  buildWorkflowTestExecutable,
   composeExecutableCatalog,
 } from '@pertexo/workflow-engine';
 import type { WorkflowGraph } from '@pertexo/workflow-model';
@@ -118,15 +117,6 @@ export function createCoreAuthoringOptions(
             issues: [...result.issues, ...issues].slice(0, 100),
           };
     },
-    workflowTestCompiler: (
-      graph: WorkflowGraph,
-      pins: Parameters<typeof buildWorkflowTestExecutable>[0]['pins'],
-    ) =>
-      buildWorkflowTestExecutable({
-        graph,
-        pins,
-        catalog: compatibility.catalog,
-      }),
     executableCompiler: (
       graph: Parameters<typeof buildWorkflowExecutable>[0]['graph'],
     ) => {

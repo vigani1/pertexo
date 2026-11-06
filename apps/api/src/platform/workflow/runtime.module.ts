@@ -1,3 +1,5 @@
+import { buildWorkflowTestExecutable } from '@pertexo/workflow-engine';
+import { createNodeTestingRuntime } from './composition/node-testing.runtime.js';
 import { GovernanceModule } from '../../governance/governance.module.js';
 
 import { DataTablesModule } from '../../data-tables/data-tables.module.js';
@@ -63,6 +65,7 @@ export async function createApiWorkflowRuntime(
   const compatibility = createCoreWorkflowCompatibility();
   const resources: WorkflowResources = {
     database: undefined,
+    nodeTesting: undefined,
     metadataRuntime: undefined,
     pendingTasks: undefined,
     forms: undefined,
@@ -85,6 +88,17 @@ export async function createApiWorkflowRuntime(
         ),
         ...(runtime === undefined ? {} : { runtime }),
       },
+    ));
+    const nodeTesting = (resources.nodeTesting = createNodeTestingRuntime(
+      databaseConfig,
+      database,
+      (graph, pins) =>
+        buildWorkflowTestExecutable({
+          graph,
+          pins,
+          catalog: compatibility.catalog,
+        }),
+      runtime,
     ));
     const pendingTasks = (resources.pendingTasks = createPendingTaskStore(
       databaseConfig,
@@ -121,6 +135,7 @@ export async function createApiWorkflowRuntime(
       new JsonataEvaluator());
     return assembleWorkflowRuntime({
       database,
+      nodeTesting,
       metadataRuntime,
       pendingTasks,
       forms,
@@ -147,6 +162,7 @@ export async function createApiWorkflowRuntime(
         metadata: resources.metadataRuntime,
         pendingTasks: resources.pendingTasks,
         forms: resources.forms,
+        nodeTesting: resources.nodeTesting,
       },
     );
     if (cleanupFailures.length > 0)
