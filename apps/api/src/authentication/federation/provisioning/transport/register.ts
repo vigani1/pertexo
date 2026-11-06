@@ -11,7 +11,7 @@ import {
   type DirectoryPrincipal,
   type DirectoryStore,
 } from '@pertexo/core/identity';
-import { DIRECTORY_LIMITS } from '@pertexo/workflow-model';
+import { DIRECTORY_LIMITS } from '@pertexo/contracts';
 import {
   AbuseRateLimitPolicy,
   type RateLimitEndpointClass,

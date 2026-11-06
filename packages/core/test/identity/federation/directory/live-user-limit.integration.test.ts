@@ -1,4 +1,4 @@
-import { DIRECTORY_LIMITS } from '@pertexo/workflow-model';
+import { DIRECTORY_LIMITS } from '@pertexo/contracts';
 import { randomUUID } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import {

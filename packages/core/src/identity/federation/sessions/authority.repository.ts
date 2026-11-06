@@ -22,7 +22,7 @@ import {
 import { appendAuditFact } from '../../../governance/audit/facts.js';
 import { directorySessionAllowed } from '../provisioning/session.repository.js';
 import { UNPURGED_WORKSPACE_STATUSES } from '@pertexo/policy';
-import { AUTHENTICATION_PROVIDERS } from '@pertexo/workflow-model';
+import { AUTHENTICATION_PROVIDERS } from '@pertexo/contracts';
 import type { Pool, PoolClient } from 'pg';
 import { withPlatformTransaction } from '@pertexo/database/platform';
 import {

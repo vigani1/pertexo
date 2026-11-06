@@ -1,6 +1,12 @@
-import { AUTHENTICATION_PROVIDERS } from '@pertexo/workflow-model';
-import { ACCOUNT_SIGN_IN_METHOD_LIMIT } from '@pertexo/workflow-model';
-export { ACCOUNT_SIGN_IN_METHOD_LIMIT };
+export const AUTHENTICATION_PROVIDERS = [
+  'google',
+  'microsoft',
+  'github',
+  'apple',
+] as const;
+
+export const ACCOUNT_SIGN_IN_METHOD_LIMIT = 16;
+
 import { authorizationStartedSchema } from './federation/authorization.js';
 import { z } from 'zod';
 

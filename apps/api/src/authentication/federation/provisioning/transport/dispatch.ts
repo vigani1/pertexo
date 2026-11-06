@@ -7,7 +7,7 @@ import {
   type DirectoryUser,
   type DirectoryGroup,
 } from '@pertexo/core/identity';
-import { DIRECTORY_LIMITS } from '@pertexo/workflow-model';
+import { DIRECTORY_LIMITS } from '@pertexo/contracts';
 import { directoryDiscovery } from '../protocol/discovery.js';
 import {
   parseDirectoryUser,

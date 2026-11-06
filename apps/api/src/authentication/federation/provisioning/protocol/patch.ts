@@ -1,4 +1,4 @@
-import { DIRECTORY_LIMITS } from '@pertexo/workflow-model';
+import { DIRECTORY_LIMITS } from '@pertexo/contracts';
 import { canonicalEmail } from '@pertexo/core/identity';
 import { isDeepStrictEqual } from 'node:util';
 import { z } from 'zod';
