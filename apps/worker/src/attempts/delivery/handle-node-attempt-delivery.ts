@@ -1,3 +1,4 @@
+import { isStoredDataError } from '@pertexo/core/shared';
 import { executorFailureCompletion } from './executor-failure.js';
 import { codeCompletionFields } from '../code/diagnostics.js';
 import { canonicalOutboxPayloadChecksum } from '@pertexo/core/outbox';
@@ -7,11 +8,7 @@ import {
   type NodeAttemptRunStore,
 } from '@pertexo/core/attempts';
 
-import {
-  isStoredDataError,
-  loadAttemptInputs,
-  type NodeAttemptInputs,
-} from '@pertexo/core/runs';
+import { loadAttemptInputs, type NodeAttemptInputs } from '@pertexo/core/runs';
 import { NODE_JSON_LIMITS } from '@pertexo/node-sdk';
 import type { QueueHandlerContext } from '@pertexo/queue';
 import type { NodeAttemptOutcome } from '@pertexo/workflow-engine';

@@ -75,6 +75,10 @@
     "./variables": {
       "types": "./dist/variables/index.d.ts",
       "default": "./dist/variables/index.js"
+    },
+    "./shared": {
+      "types": "./dist/shared/index.d.ts",
+      "default": "./dist/shared/index.js"
     }
   },
   "scripts": {

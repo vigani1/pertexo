@@ -1,5 +1,5 @@
 import { IdempotencyConflictError } from '@pertexo/database/platform';
-import { isStoredDataError } from '@pertexo/core/authoring';
+import { isStoredDataError } from '@pertexo/core/shared';
 import {
   ArtifactIntegrityError,
   ArtifactNotFoundError,
