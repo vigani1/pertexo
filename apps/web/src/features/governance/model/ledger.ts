@@ -172,10 +172,37 @@ function roleName(value: unknown): string | undefined {
     : undefined;
 }
 
+const PREVIEW_OUTCOMES: Readonly<Record<string, string>> = {
+  succeeded: 'Succeeded',
+  failed: 'Failed',
+  canceled: 'Canceled',
+  timed_out: 'Timed out',
+  outcome_unknown: 'Outcome unknown',
+};
+const PREVIEW_DRY_RUN: Readonly<Record<string, string>> = {
+  not_supported: 'Runs for real',
+  provider_supported: 'Provider dry-run mode',
+};
+
 /** The few facts worth reading in the sentence itself. */
 function particulars(event: AuditEvent): string[] {
   const facts: string[] = [];
   const { metadata } = event;
+  if (
+    event.action === 'preview.execution_terminal' ||
+    event.action === 'preview.execution_accepted'
+  ) {
+    const outcome =
+      typeof metadata.status === 'string'
+        ? PREVIEW_OUTCOMES[metadata.status]
+        : undefined;
+    const dryRun =
+      typeof metadata.dryRun === 'string'
+        ? PREVIEW_DRY_RUN[metadata.dryRun]
+        : undefined;
+    if (outcome !== undefined) facts.push(outcome);
+    if (dryRun !== undefined) facts.push(dryRun);
+  }
   if (typeof metadata.versionNumber === 'number')
     facts.push(`v${String(metadata.versionNumber)}`);
   const from = roleName(metadata.fromRole);

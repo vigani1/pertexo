@@ -40,6 +40,6 @@ export function projectAuditEvent(row: AuditRow): AuditEvent {
     targetType: row.targetType,
     targetId: row.targetId,
     occurredAt: row.occurredAt.toISOString(),
-    metadata: projectAuditMetadata(row.metadata),
+    metadata: projectAuditMetadata(row.metadata, row.action),
   };
 }

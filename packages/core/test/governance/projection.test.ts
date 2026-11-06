@@ -81,3 +81,30 @@ it('projects the operator status lookup found fact', () => {
       projectAuditMetadata({ actorRef: 'operator@example.test', found }),
     ).toEqual({ actorRef: 'operator@example.test', found });
 });
+
+it('keeps preview outcome and dry-run facts action-scoped without exposing arbitrary historical strings', () => {
+  expect(
+    projectAuditMetadata(
+      { status: 'failed', dryRun: 'not_supported' },
+      'unrelated.action',
+    ),
+  ).toEqual({});
+  expect(
+    projectAuditMetadata(
+      { status: 'PRIVATE_PROVIDER_MESSAGE', dryRun: 'PRIVATE_CONFIGURATION' },
+      'preview.execution_terminal',
+    ),
+  ).toEqual({});
+  expect(
+    projectAuditMetadata(
+      { status: 'running', dryRun: 'provider_supported' },
+      'preview.execution_terminal',
+    ),
+  ).toEqual({ dryRun: 'provider_supported' });
+  expect(
+    projectAuditMetadata(
+      { status: 'active', dryRun: true },
+      'membership.changed',
+    ),
+  ).toEqual({ status: 'active', dryRun: true });
+});
