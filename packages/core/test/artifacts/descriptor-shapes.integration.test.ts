@@ -175,17 +175,60 @@ it('keeps deployed owner guards on the SDK-derived presence shape', async () => 
   );
   const path = expected.rows[0]?.path;
   if (!path) throw new Error('Presence path query returned no result');
-  const triggers = await pool.query<{ definition: string }>(
-    `select pg_get_triggerdef(t.oid) definition from pg_trigger t
+  const triggers = await pool.query<{
+    family: string;
+    operation: 'insert' | 'update' | 'delete';
+    definition: string;
+  }>(
+    `select c.relname family,case when t.tgtype & 4<>0 then 'insert'
+       when t.tgtype & 8<>0 then 'delete' else 'update' end operation,
+       pg_get_triggerdef(t.oid) definition from pg_trigger t
      join pg_class c on c.oid=t.tgrelid join pg_namespace n on n.oid=c.relnamespace
-     where n.nspname='app' and t.tgname like '%_artifact_owner_insert'`,
+     where n.nspname='app' and t.tgfoid='app.index_artifact_owner_references()'::regprocedure
+       and t.tgtype & 1<>0`,
   );
-  expect(triggers.rows).toHaveLength(ARTIFACT_OWNER_SOURCES.length);
-  for (const { definition } of triggers.rows) {
+  expect(
+    triggers.rows
+      .map(({ family, operation }) => `${family}/${operation}`)
+      .sort(),
+  ).toEqual(
+    ARTIFACT_OWNER_SOURCES.flatMap(({ table }) =>
+      ['insert', 'update', 'delete'].map(
+        (operation) => `${table}/${operation}`,
+      ),
+    ).sort(),
+  );
+  for (const { family, operation, definition } of triggers.rows) {
+    const source = ARTIFACT_OWNER_SOURCES.find(({ table }) => table === family);
+    if (source === undefined)
+      throw new Error(`Unknown artifact owner ${family}`);
+    const rows =
+      operation === 'update'
+        ? ['old', 'new']
+        : [operation === 'insert' ? 'new' : 'old'];
+    const expectedGuards = rows.flatMap((row) =>
+      Object.entries(source.values).map(
+        ([column, format]) =>
+          `${row}.${column}|${format.endsWith('-text') ? 'text' : path}`,
+      ),
+    );
+    const jsonGuards = [
+      ...definition.matchAll(
+        /jsonb_path_exists\(\(?((?:old|new)\.[a-z_]+)\)?(?:::jsonb)?, '((?:''|[^'])*)'::jsonpath\)/gu,
+      ),
+    ].map(
+      ([, column, guardPath]) =>
+        `${column}|${guardPath?.replaceAll("''", "'")}`,
+    );
+    const textGuards = [
+      ...definition.matchAll(
+        /app\.artifact_owner_text_may_reference\(((?:old|new)\.[a-z_]+)\)/gu,
+      ),
+    ].map(([, column]) => `${column}|text`);
     expect(
-      definition.includes(path) ||
-        definition.includes('artifact_owner_text_may_reference'),
-    ).toBe(true);
+      [...jsonGuards, ...textGuards].sort(),
+      `${family}/${operation} guards`,
+    ).toEqual(expectedGuards.sort());
   }
   const helper = await pool.query<{ definition: string }>(
     "select pg_get_functiondef('app.artifact_owner_text_may_reference(text)'::regprocedure) definition",
