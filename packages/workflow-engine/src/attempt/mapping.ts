@@ -1,3 +1,8 @@
+import {
+  MappingRefusalError,
+  MappingExecutorFailure,
+  type MappingRefusal,
+} from './mapping-refusal.js';
 import type { CallbackBindings } from '@pertexo/workflow-model';
 
 import {
@@ -14,9 +19,10 @@ import {
   type ValueSource,
   type WorkflowNodeFailureValue,
 } from '@pertexo/workflow-model';
-import { NodeExecutorFailure } from '@pertexo/node-sdk/server';
 import {
   isTemporaryExpressionFailure,
+  EXPRESSION_POLICY,
+  type ExpressionLimit,
   type ExpressionEvaluator,
 } from '@pertexo/workflow-model/server';
 
@@ -197,38 +203,84 @@ async function resolveMappingValue(
     (resolution.expression?.code === 'canceled' || signal.aborted);
   if (mappingCanceled)
     operationError('attempt_aborted', 'node attempt was aborted');
-  if (resolution.kind === 'error') refuseMapping(mappingKey, resolution);
+  if (resolution.kind === 'error')
+    refuseMapping(mappingKey, source, resolution);
   return resolution;
 }
 
 function refuseMapping(
   mappingKey: string,
+  source: ValueSource,
   resolution: Extract<ValueResolution, { kind: 'error' }>,
 ): never {
+  const field = { mappingKey, sourceKind: source.kind };
   const { expression } = resolution;
   if (expression?.code === 'nonfinite_result')
-    throw new NodeExecutorFailure({
-      kind: 'failed',
-      errorKind: 'configuration',
-      possiblyDispatched: false,
-      safeErrorCode: 'execution.expression_failed',
-      errorSummary: `Expression for field "${mappingKey}" returned a nonfinite number. Reduce the numeric result or check for division by zero.`,
-    });
-  if (expression !== undefined && isTemporaryExpressionFailure(expression))
+    throw new MappingExecutorFailure({ ...field, kind: 'nonfinite_result' });
+  if (expression !== undefined && isTemporaryExpressionFailure(expression)) {
     // A busy host says nothing about the step's inputs: another try can work.
-    throw new NodeExecutorFailure({
-      kind: 'retry',
-      errorKind: 'timeout',
-      possiblyDispatched: false,
-      safeErrorCode:
-        expression.code === 'timed_out'
-          ? 'execution.expression_timed_out'
-          : 'execution.expression_unavailable',
+    if (expression.code === 'timed_out')
+      throw new MappingExecutorFailure({
+        ...field,
+        kind: 'expression_timeout',
+        maximumMs: EXPRESSION_POLICY.timeoutMs,
+      });
+    if (expression.limit === 'pool_capacity')
+      throw new MappingExecutorFailure({
+        ...field,
+        kind: 'pool_capacity',
+        maximumQueued: EXPRESSION_POLICY.maxQueued,
+      });
+    throw new MappingExecutorFailure({
+      ...field,
+      kind: 'expression_unavailable',
     });
-  operationError(
-    mappingFailureCode(resolution),
-    'Mapping could not resolve; check its inputs and captured workspace variables.',
-  );
+  }
+
+  let diagnostic: MappingRefusal;
+  if (source.kind === 'workspace_variable')
+    diagnostic = {
+      ...field,
+      kind: 'variable_missing',
+      variable: { kind: 'named', name: source.name },
+    };
+  else if (expression?.code === 'variable_missing')
+    diagnostic = {
+      ...field,
+      kind: 'variable_missing',
+      variable: expression.variable,
+    };
+  else if (resolution.code === 'invalid_path' && 'path' in source)
+    diagnostic = { ...field, kind: 'invalid_path', path: source.path };
+  else if (
+    expression?.code === 'limit_exceeded' &&
+    expression.limit !== undefined
+  )
+    diagnostic = {
+      ...field,
+      kind: 'expression_limit',
+      limit: expression.limit,
+      maximum: expressionLimitMaximum(expression.limit),
+    };
+  else diagnostic = { ...field, kind: 'expression_failed' };
+  throw new MappingRefusalError(mappingFailureCode(resolution), diagnostic);
+}
+
+function expressionLimitMaximum(limit: ExpressionLimit): number {
+  const maxima: Record<ExpressionLimit, number> = {
+    expression_bytes: EXPRESSION_POLICY.expressionBytes,
+    ast_depth: EXPRESSION_POLICY.astDepth,
+    ast_nodes: EXPRESSION_POLICY.astNodes,
+    input_bytes: EXPRESSION_POLICY.inputBytes,
+    input_depth: EXPRESSION_POLICY.inputDepth,
+    input_members: EXPRESSION_POLICY.inputMembers,
+    output_bytes: EXPRESSION_POLICY.outputBytes,
+    output_depth: EXPRESSION_POLICY.outputDepth,
+    output_members: EXPRESSION_POLICY.outputMembers,
+    memory: EXPRESSION_POLICY.processHeapMb,
+    pool_capacity: EXPRESSION_POLICY.maxQueued,
+  };
+  return maxima[limit];
 }
 
 function mappingFailureCode(

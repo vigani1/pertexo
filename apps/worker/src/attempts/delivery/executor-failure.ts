@@ -1,3 +1,4 @@
+import { describeMappingFailure } from '../execution/mapping-diagnostic.js';
 import { HTTP_RESPONSE_FAILURES } from '@pertexo/integrations';
 import {
   NodeAttemptStateCorruptError,
@@ -44,6 +45,7 @@ const executorSummaryCodes = new Set<string>([
 export function executorFailureCompletion(
   error: NodeExecutorFailure,
 ): Parameters<NodeAttemptRunStore['complete']>[0]['outcome'] {
+  const summary = describeMappingFailure(error) ?? error.shownSummary;
   const safeErrorCode = error.safeErrorCode ?? `execution.${error.errorKind}`;
   if (
     error.errorSummary !== undefined &&
@@ -59,8 +61,6 @@ export function executorFailureCompletion(
     errorKind: error.errorKind,
     possiblyDispatched: error.possiblyDispatched,
     safeErrorCode,
-    ...(error.shownSummary === undefined
-      ? {}
-      : { errorSummary: error.shownSummary }),
+    ...(summary === undefined ? {} : { errorSummary: summary }),
   };
 }

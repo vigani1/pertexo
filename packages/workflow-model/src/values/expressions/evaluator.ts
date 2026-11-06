@@ -113,7 +113,12 @@ export class JsonataEvaluator implements ExpressionEvaluator {
     for (const name of validation.references.requiredNames) {
       const value = lookupWorkspaceVariable(name, context.variables ?? {});
       if (value.kind === 'error')
-        return Promise.resolve(expressionError(value.code, value.message));
+        return Promise.resolve({
+          kind: 'error',
+          code: 'variable_missing',
+          message: value.message,
+          variable: { kind: 'named', name },
+        });
     }
     for (const [limit, actual, maximum] of [
       ['input_bytes', inspection.bytes, EXPRESSION_POLICY.inputBytes],

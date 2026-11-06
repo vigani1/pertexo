@@ -1,3 +1,4 @@
+import { describeMappingFailure } from '../attempts/execution/mapping-diagnostic.js';
 import {
   PreviewAttemptStateError,
   PreviewDeliveryMismatchError,
@@ -153,7 +154,8 @@ export function createPlatformPreviewNodeInvoker(
         if (error instanceof WorkflowEngineError) {
           if (error.code === 'attempt_aborted') return canceledWith();
           const refusal = PREVIEW_ENGINE_REFUSALS.get(error.code);
-          if (refusal !== undefined) return failedWith(refusal);
+          if (refusal !== undefined)
+            return failedWith(refusal, describeMappingFailure(error));
         }
       } catch {
         // Hostile rejections cannot claim a known executable/input contract.
@@ -223,12 +225,12 @@ function classifyExecutorFailure(
             ? outcomes.unknownWith()
             : outcomes.failedWith(
                 error.safeErrorCode ?? `preview.${error.errorKind}`,
-                error.shownSummary,
+                describeMappingFailure(error) ?? error.shownSummary,
               );
         case 'failed':
           return outcomes.failedWith(
             error.safeErrorCode ?? `preview.${error.errorKind}`,
-            error.shownSummary,
+            describeMappingFailure(error) ?? error.shownSummary,
           );
       }
     }

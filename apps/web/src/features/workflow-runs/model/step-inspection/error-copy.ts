@@ -25,10 +25,9 @@ const expressionFailed: StepErrorCopy = {
 };
 
 const expressionLimit: StepErrorCopy = {
-  sentence:
-    'An expression in this step needed more memory or produced more data than a step’s expression may.',
+  sentence: 'An expression in this step exceeded a limit.',
   advice:
-    'Change it to work on less data in Build, publish, then replay the run.',
+    'Review the specific limit in the step’s error. Simplify the expression or reduce the data it reads or returns, publish, then replay the run.',
 };
 
 const providerUnavailable: StepErrorCopy = {

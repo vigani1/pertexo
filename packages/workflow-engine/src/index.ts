@@ -93,3 +93,9 @@ export {
 export { COORDINATOR_COMPLETION_WINDOW_LIMITS } from './observation/coordinator-output.js';
 
 export { upstreamInvocationKey } from './attempt/upstream-scope.js';
+
+export {
+  MappingRefusalError,
+  MappingExecutorFailure,
+  type MappingRefusal,
+} from './attempt/mapping-refusal.js';
