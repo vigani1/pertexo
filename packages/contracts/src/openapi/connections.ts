@@ -56,7 +56,9 @@ const problemResponses = Object.freeze({
   Conflict: sharedProblemResponses.Conflict,
   ReauthorizationRequired: problemResponse('Reauthorization required'),
   RateLimited: sharedProblemResponses.RateLimited,
-  ServiceUnavailable: problemResponse('Key or provider service unavailable'),
+  ConnectionServiceUnavailable: problemResponse(
+    'Key or provider service unavailable',
+  ),
   Unexpected: sharedProblemResponses.Unexpected,
 });
 

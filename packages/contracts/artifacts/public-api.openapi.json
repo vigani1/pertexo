@@ -128,7 +128,7 @@
             "$ref": "#/components/responses/Unexpected"
           },
           "503": {
-            "$ref": "#/components/responses/ServiceUnavailable"
+            "$ref": "#/components/responses/ConnectionServiceUnavailable"
           }
         },
         "summary": "List connections",
@@ -2996,7 +2996,7 @@
             "$ref": "#/components/responses/PreconditionFailed"
           },
           "422": {
-            "$ref": "#/components/responses/UnprocessableEntity"
+            "$ref": "#/components/responses/PublicationUnprocessable"
           },
           "428": {
             "$ref": "#/components/responses/PreconditionRequired"
@@ -4301,7 +4301,7 @@
             "$ref": "#/components/responses/Conflict"
           },
           "422": {
-            "$ref": "#/components/responses/UnprocessableEntity"
+            "$ref": "#/components/responses/RunUnprocessable"
           },
           "429": {
             "description": "Rate limited; see Retry-After",
@@ -4972,16 +4972,16 @@
             "$ref": "#/components/responses/NotFound"
           },
           "409": {
-            "$ref": "#/components/responses/Conflict"
+            "$ref": "#/components/responses/PortabilityConflict"
           },
           "412": {
             "$ref": "#/components/responses/PreconditionFailed"
           },
           "422": {
-            "$ref": "#/components/responses/UnprocessableEntity"
+            "$ref": "#/components/responses/PortabilityUnprocessable"
           },
           "428": {
-            "$ref": "#/components/responses/PreconditionRequired"
+            "$ref": "#/components/responses/PortabilityPreconditionRequired"
           },
           "429": {
             "description": "Rate limited; see Retry-After",
@@ -4997,7 +4997,7 @@
             "$ref": "#/components/responses/Unexpected"
           },
           "503": {
-            "$ref": "#/components/responses/Unavailable"
+            "$ref": "#/components/responses/PortabilityUnavailable"
           }
         },
         "summary": "Export a workflow",
@@ -5088,13 +5088,13 @@
             "$ref": "#/components/responses/NotFound"
           },
           "409": {
-            "$ref": "#/components/responses/Conflict"
+            "$ref": "#/components/responses/PortabilityConflict"
           },
           "413": {
-            "$ref": "#/components/responses/PayloadTooLarge"
+            "$ref": "#/components/responses/PortabilityPayloadTooLarge"
           },
           "422": {
-            "$ref": "#/components/responses/UnprocessableEntity"
+            "$ref": "#/components/responses/PortabilityUnprocessable"
           },
           "429": {
             "description": "Rate limited; see Retry-After",
@@ -5110,7 +5110,7 @@
             "$ref": "#/components/responses/Unexpected"
           },
           "503": {
-            "$ref": "#/components/responses/Unavailable"
+            "$ref": "#/components/responses/PortabilityUnavailable"
           }
         },
         "summary": "Preview an import",
@@ -5218,13 +5218,13 @@
             "$ref": "#/components/responses/NotFound"
           },
           "409": {
-            "$ref": "#/components/responses/Conflict"
+            "$ref": "#/components/responses/PortabilityConflict"
           },
           "413": {
-            "$ref": "#/components/responses/PayloadTooLarge"
+            "$ref": "#/components/responses/PortabilityPayloadTooLarge"
           },
           "422": {
-            "$ref": "#/components/responses/UnprocessableEntity"
+            "$ref": "#/components/responses/PortabilityUnprocessable"
           },
           "429": {
             "description": "Rate limited; see Retry-After",
@@ -5240,7 +5240,7 @@
             "$ref": "#/components/responses/Unexpected"
           },
           "503": {
-            "$ref": "#/components/responses/Unavailable"
+            "$ref": "#/components/responses/PortabilityUnavailable"
           }
         },
         "summary": "Import a workflow",
@@ -24091,7 +24091,7 @@
     },
     "responses": {
       "BadRequest": {
-        "description": "Invalid discovery query",
+        "description": "Invalid request",
         "content": {
           "application/problem+json": {
             "schema": {
@@ -24111,7 +24111,7 @@
         }
       },
       "Forbidden": {
-        "description": "CSRF protection failed",
+        "description": "Forbidden",
         "content": {
           "application/problem+json": {
             "schema": {
@@ -24121,7 +24121,7 @@
         }
       },
       "NotFound": {
-        "description": "Artifact or workspace not found",
+        "description": "Resource not found",
         "content": {
           "application/problem+json": {
             "schema": {
@@ -24140,7 +24140,7 @@
           }
         }
       },
-      "ServiceUnavailable": {
+      "ConnectionServiceUnavailable": {
         "description": "Key or provider service unavailable",
         "content": {
           "application/problem+json": {
@@ -24151,7 +24151,7 @@
         }
       },
       "Conflict": {
-        "description": "Artifact lifecycle, metadata or idempotency conflict",
+        "description": "Request conflict",
         "content": {
           "application/problem+json": {
             "schema": {
@@ -24191,8 +24191,8 @@
           }
         }
       },
-      "UnprocessableEntity": {
-        "description": "Node test input is not executable",
+      "PublicationUnprocessable": {
+        "description": "Workflow is not publishable",
         "content": {
           "application/problem+json": {
             "schema": {
@@ -24221,8 +24221,8 @@
           }
         }
       },
-      "Unavailable": {
-        "description": "Artifact storage is unavailable",
+      "RunUnprocessable": {
+        "description": "Workflow is not executable",
         "content": {
           "application/problem+json": {
             "schema": {
@@ -24231,7 +24231,47 @@
           }
         }
       },
-      "PayloadTooLarge": {
+      "PortabilityConflict": {
+        "description": "Source, compatibility or idempotency conflict",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/ApiProblem"
+            }
+          }
+        }
+      },
+      "PortabilityUnprocessable": {
+        "description": "Unsafe or incompatible workflow",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/ApiProblem"
+            }
+          }
+        }
+      },
+      "PortabilityPreconditionRequired": {
+        "description": "Draft If-Match required",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/ApiProblem"
+            }
+          }
+        }
+      },
+      "PortabilityUnavailable": {
+        "description": "Automation token authentication, limiter or import writer unavailable",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/ApiProblem"
+            }
+          }
+        }
+      },
+      "PortabilityPayloadTooLarge": {
         "description": "Request exceeds portable byte ceiling",
         "content": {
           "application/problem+json": {

@@ -1091,7 +1091,7 @@
         }
       },
       "Forbidden": {
-        "description": "CSRF validation failed",
+        "description": "Forbidden",
         "content": {
           "application/problem+json": {
             "schema": {
@@ -1100,7 +1100,7 @@
           }
         }
       },
-      "NotFound": {
+      "InboxNotFound": {
         "description": "Inbox or thread unavailable",
         "content": {
           "application/problem+json": {
@@ -2182,7 +2182,7 @@
             "$ref": "#/components/responses/Unauthenticated"
           },
           "404": {
-            "$ref": "#/components/responses/NotFound"
+            "$ref": "#/components/responses/InboxNotFound"
           },
           "429": {
             "$ref": "#/components/responses/RateLimited"
@@ -2232,7 +2232,7 @@
             "$ref": "#/components/responses/Unauthenticated"
           },
           "404": {
-            "$ref": "#/components/responses/NotFound"
+            "$ref": "#/components/responses/InboxNotFound"
           },
           "429": {
             "$ref": "#/components/responses/RateLimited"
@@ -2317,7 +2317,7 @@
             "$ref": "#/components/responses/Forbidden"
           },
           "404": {
-            "$ref": "#/components/responses/NotFound"
+            "$ref": "#/components/responses/InboxNotFound"
           },
           "429": {
             "$ref": "#/components/responses/RateLimited"
@@ -2391,7 +2391,7 @@
             "$ref": "#/components/responses/Forbidden"
           },
           "404": {
-            "$ref": "#/components/responses/NotFound"
+            "$ref": "#/components/responses/InboxNotFound"
           },
           "429": {
             "$ref": "#/components/responses/RateLimited"
@@ -2441,7 +2441,7 @@
             "$ref": "#/components/responses/Unauthenticated"
           },
           "404": {
-            "$ref": "#/components/responses/NotFound"
+            "$ref": "#/components/responses/InboxNotFound"
           },
           "429": {
             "$ref": "#/components/responses/RateLimited"

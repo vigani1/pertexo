@@ -66,7 +66,7 @@ const problemResponses = Object.freeze({
   Forbidden: sharedProblemResponses.Forbidden,
   NotFound: sharedProblemResponses.NotFound,
   Conflict: sharedProblemResponses.Conflict,
-  UnprocessableEntity: problemResponse('Workflow is not executable'),
+  RunUnprocessable: problemResponse('Workflow is not executable'),
   Unexpected: sharedProblemResponses.Unexpected,
 });
 

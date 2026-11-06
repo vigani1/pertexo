@@ -1,3 +1,4 @@
+import { isDeepStrictEqual } from 'node:util';
 import { PUBLIC_OPERATIONS, EVERY_TOKEN_ROUTE } from './public-operations.js';
 import { catalogOpenApiDocument } from './catalog.js';
 import { connectionsOpenApiDocument } from './connections.js';
@@ -120,9 +121,12 @@ export function buildPublicDocument(
         if (takesToken(operation))
           (paths[path] ??= {})[method] = publicOperation(operation);
     for (const [kind, entries] of Object.entries(components ?? {}))
-      for (const [name, component] of Object.entries(entries))
-        if (!owner.has(`${kind}/${name}`))
-          owner.set(`${kind}/${name}`, component);
+      for (const [name, component] of Object.entries(entries)) {
+        const key = `${kind}/${name}`;
+        if (owner.has(key) && !isDeepStrictEqual(owner.get(key), component))
+          throw new Error(`Conflicting OpenAPI component ${key}`);
+        owner.set(key, component);
+      }
   }
   const { securitySchemes: _unused, ...components } = reachableComponents(
     paths,

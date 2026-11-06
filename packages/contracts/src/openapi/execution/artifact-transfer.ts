@@ -19,18 +19,20 @@ export const artifactTransferOpenApiDocument = Object.freeze({
       ...routeSchemas(routes),
     },
     {
-      BadRequest: problemResponse('Invalid artifact request'),
+      ArtifactBadRequest: problemResponse('Invalid artifact request'),
       Unauthenticated: sharedProblemResponses.Unauthenticated,
-      Forbidden: problemResponse('CSRF protection failed'),
-      NotFound: problemResponse('Artifact or workspace not found'),
-      Conflict: problemResponse(
+      Forbidden: sharedProblemResponses.Forbidden,
+      ArtifactNotFound: problemResponse('Artifact or workspace not found'),
+      ArtifactConflict: problemResponse(
         'Artifact lifecycle, metadata or idempotency conflict',
       ),
       TooLarge: problemResponse(
         'File exceeds 10 MB or the configured lower storage limit',
       ),
       QuotaExceeded: problemResponse('Workspace artifact capacity exceeded'),
-      Unavailable: problemResponse('Artifact storage is unavailable'),
+      ArtifactStoreUnavailable: problemResponse(
+        'Artifact storage is unavailable',
+      ),
       Unexpected: sharedProblemResponses.Unexpected,
     },
   ),

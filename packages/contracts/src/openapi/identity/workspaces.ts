@@ -61,7 +61,7 @@ const problemResponses = Object.freeze({
   Forbidden: sharedProblemResponses.Forbidden,
   NotFound: sharedProblemResponses.NotFound,
   Conflict: sharedProblemResponses.Conflict,
-  ServiceUnavailable: problemResponse('Upstream service unavailable'),
+  IdentityServiceUnavailable: problemResponse('Upstream service unavailable'),
   RateLimited: sharedProblemResponses.RateLimited,
   Unexpected: sharedProblemResponses.Unexpected,
 });

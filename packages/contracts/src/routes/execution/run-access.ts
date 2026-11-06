@@ -40,7 +40,7 @@ const PROBLEMS: Readonly<Record<string, unknown>> = {
   '403': responseReference('Forbidden'),
   '404': responseReference('NotFound'),
   '409': responseReference('Conflict'),
-  '422': responseReference('UnprocessableEntity'),
+  '422': responseReference('RunUnprocessable'),
   '500': responseReference('Unexpected'),
 };
 export const problems = (...statuses: readonly string[]) =>

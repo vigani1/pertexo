@@ -23,7 +23,7 @@ const readProblems = {
 };
 const commandProblems = {
   ...readProblems,
-  '422': responseReference('UnprocessableEntity'),
+  '422': responseReference('PublicationUnprocessable'),
 };
 const review = projected('PublicationReview', schemas.publicationReviewSchema);
 

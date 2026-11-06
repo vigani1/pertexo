@@ -121,7 +121,7 @@
             "$ref": "#/components/responses/PreconditionFailed"
           },
           "422": {
-            "$ref": "#/components/responses/UnprocessableEntity"
+            "$ref": "#/components/responses/PublicationUnprocessable"
           },
           "428": {
             "$ref": "#/components/responses/PreconditionRequired"
@@ -261,7 +261,7 @@
             "$ref": "#/components/responses/PreconditionFailed"
           },
           "422": {
-            "$ref": "#/components/responses/UnprocessableEntity"
+            "$ref": "#/components/responses/PublicationUnprocessable"
           },
           "428": {
             "$ref": "#/components/responses/PreconditionRequired"
@@ -1539,7 +1539,7 @@
             "$ref": "#/components/responses/PreconditionFailed"
           },
           "422": {
-            "$ref": "#/components/responses/UnprocessableEntity"
+            "$ref": "#/components/responses/PublicationUnprocessable"
           },
           "428": {
             "$ref": "#/components/responses/PreconditionRequired"
@@ -2774,7 +2774,7 @@
             "$ref": "#/components/responses/PreconditionFailed"
           },
           "422": {
-            "$ref": "#/components/responses/UnprocessableEntity"
+            "$ref": "#/components/responses/PublicationUnprocessable"
           },
           "429": {
             "$ref": "#/components/responses/RateLimited"
@@ -2950,7 +2950,7 @@
             "$ref": "#/components/responses/PreconditionFailed"
           },
           "422": {
-            "$ref": "#/components/responses/UnprocessableEntity"
+            "$ref": "#/components/responses/PublicationUnprocessable"
           },
           "429": {
             "$ref": "#/components/responses/RateLimited"
@@ -4166,7 +4166,7 @@
             "$ref": "#/components/responses/Unexpected"
           },
           "503": {
-            "$ref": "#/components/responses/Unavailable"
+            "$ref": "#/components/responses/PromotionUnavailable"
           }
         }
       },
@@ -4256,7 +4256,7 @@
             "$ref": "#/components/responses/Unexpected"
           },
           "503": {
-            "$ref": "#/components/responses/Unavailable"
+            "$ref": "#/components/responses/PromotionUnavailable"
           }
         }
       }
@@ -4370,7 +4370,7 @@
             "$ref": "#/components/responses/Unexpected"
           },
           "503": {
-            "$ref": "#/components/responses/Unavailable"
+            "$ref": "#/components/responses/PromotionUnavailable"
           }
         }
       }
@@ -4462,7 +4462,7 @@
             "$ref": "#/components/responses/Unexpected"
           },
           "503": {
-            "$ref": "#/components/responses/Unavailable"
+            "$ref": "#/components/responses/PromotionUnavailable"
           }
         }
       }
@@ -4542,7 +4542,7 @@
             "$ref": "#/components/responses/Unexpected"
           },
           "503": {
-            "$ref": "#/components/responses/Unavailable"
+            "$ref": "#/components/responses/PromotionUnavailable"
           }
         }
       }
@@ -4634,7 +4634,7 @@
             "$ref": "#/components/responses/Unexpected"
           },
           "503": {
-            "$ref": "#/components/responses/Unavailable"
+            "$ref": "#/components/responses/PromotionUnavailable"
           }
         }
       }
@@ -26209,8 +26209,8 @@
           }
         }
       },
-      "Unavailable": {
-        "description": "Historical template origin unavailable",
+      "PromotionUnavailable": {
+        "description": "Workflow promotion is temporarily unavailable",
         "content": {
           "application/problem+json": {
             "schema": {
@@ -26330,7 +26330,7 @@
           }
         }
       },
-      "UnprocessableEntity": {
+      "PublicationUnprocessable": {
         "description": "Workflow is not publishable",
         "content": {
           "application/problem+json": {

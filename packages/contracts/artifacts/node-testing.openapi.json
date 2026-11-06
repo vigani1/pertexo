@@ -415,7 +415,7 @@
             "$ref": "#/components/responses/Conflict"
           },
           "422": {
-            "$ref": "#/components/responses/UnprocessableEntity"
+            "$ref": "#/components/responses/NodeTestUnprocessable"
           },
           "500": {
             "$ref": "#/components/responses/Unexpected"
@@ -482,7 +482,7 @@
             "$ref": "#/components/responses/Conflict"
           },
           "422": {
-            "$ref": "#/components/responses/UnprocessableEntity"
+            "$ref": "#/components/responses/NodeTestUnprocessable"
           },
           "500": {
             "$ref": "#/components/responses/Unexpected"
@@ -580,7 +580,7 @@
             "$ref": "#/components/responses/Conflict"
           },
           "422": {
-            "$ref": "#/components/responses/UnprocessableEntity"
+            "$ref": "#/components/responses/NodeTestUnprocessable"
           },
           "500": {
             "$ref": "#/components/responses/Unexpected"
@@ -658,7 +658,7 @@
             "$ref": "#/components/responses/Conflict"
           },
           "422": {
-            "$ref": "#/components/responses/UnprocessableEntity"
+            "$ref": "#/components/responses/NodeTestUnprocessable"
           },
           "500": {
             "$ref": "#/components/responses/Unexpected"
@@ -757,7 +757,7 @@
             "$ref": "#/components/responses/Conflict"
           },
           "422": {
-            "$ref": "#/components/responses/UnprocessableEntity"
+            "$ref": "#/components/responses/NodeTestUnprocessable"
           },
           "500": {
             "$ref": "#/components/responses/Unexpected"
@@ -824,7 +824,7 @@
             "$ref": "#/components/responses/Conflict"
           },
           "422": {
-            "$ref": "#/components/responses/UnprocessableEntity"
+            "$ref": "#/components/responses/NodeTestUnprocessable"
           },
           "429": {
             "description": "Rate limited",
@@ -901,7 +901,7 @@
             "$ref": "#/components/responses/Conflict"
           },
           "422": {
-            "$ref": "#/components/responses/UnprocessableEntity"
+            "$ref": "#/components/responses/NodeTestUnprocessable"
           },
           "429": {
             "description": "Rate limited",
@@ -1009,7 +1009,7 @@
             "$ref": "#/components/responses/Conflict"
           },
           "422": {
-            "$ref": "#/components/responses/UnprocessableEntity"
+            "$ref": "#/components/responses/NodeTestUnprocessable"
           },
           "429": {
             "description": "Rate limited",
@@ -1097,7 +1097,7 @@
             "$ref": "#/components/responses/Conflict"
           },
           "422": {
-            "$ref": "#/components/responses/UnprocessableEntity"
+            "$ref": "#/components/responses/NodeTestUnprocessable"
           },
           "429": {
             "description": "Rate limited",
@@ -1196,7 +1196,7 @@
             "$ref": "#/components/responses/Conflict"
           },
           "422": {
-            "$ref": "#/components/responses/UnprocessableEntity"
+            "$ref": "#/components/responses/NodeTestUnprocessable"
           },
           "429": {
             "description": "Rate limited",
@@ -1305,7 +1305,7 @@
             "$ref": "#/components/responses/Conflict"
           },
           "422": {
-            "$ref": "#/components/responses/UnprocessableEntity"
+            "$ref": "#/components/responses/NodeTestUnprocessable"
           },
           "429": {
             "description": "Rate limited",
@@ -1437,7 +1437,7 @@
             "$ref": "#/components/responses/Conflict"
           },
           "422": {
-            "$ref": "#/components/responses/UnprocessableEntity"
+            "$ref": "#/components/responses/NodeTestUnprocessable"
           },
           "500": {
             "$ref": "#/components/responses/Unexpected"
@@ -5401,7 +5401,7 @@
           }
         }
       },
-      "UnprocessableEntity": {
+      "NodeTestUnprocessable": {
         "description": "Node test input is not executable",
         "content": {
           "application/problem+json": {

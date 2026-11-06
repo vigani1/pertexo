@@ -94,7 +94,7 @@ export const nodeTestingRoutes = {
     ],
     problems: {
       ...problems,
-      '422': responseReference('UnprocessableEntity'),
+      '422': responseReference('NodeTestUnprocessable'),
     },
   }),
   preview: defineRoute({

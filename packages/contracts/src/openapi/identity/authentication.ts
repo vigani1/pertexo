@@ -277,7 +277,7 @@ export const authenticationContractPaths = Object.freeze({
         '403': responseReference('Forbidden'),
         '404': responseReference('Forbidden'),
         '409': responseReference('Conflict'),
-        '503': responseReference('ServiceUnavailable'),
+        '503': responseReference('IdentityServiceUnavailable'),
       },
     },
   },

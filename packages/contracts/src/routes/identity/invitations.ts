@@ -29,7 +29,7 @@ const commandProblems = {
   '404': problemResponse('Invitation unavailable'),
   '409': responseReference('Conflict'),
   '429': responseReference('RateLimited'),
-  '503': responseReference('ServiceUnavailable'),
+  '503': responseReference('IdentityServiceUnavailable'),
   '500': responseReference('Unexpected'),
 };
 const accepted = (description: string) => ({

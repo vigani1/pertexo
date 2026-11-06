@@ -45,7 +45,7 @@ const changing: RouteAccess = {
 const readProblems = {
   '400': responseReference('BadRequest'),
   '401': responseReference('Unauthenticated'),
-  '404': responseReference('NotFound'),
+  '404': responseReference('InboxNotFound'),
   '429': responseReference('RateLimited'),
   '500': responseReference('Unexpected'),
 };

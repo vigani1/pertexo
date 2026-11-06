@@ -27,8 +27,8 @@ const schemas = Object.freeze({
 const responses = Object.freeze({
   BadRequest: sharedProblemResponses.BadRequest,
   Unauthenticated: sharedProblemResponses.Unauthenticated,
-  Forbidden: problemResponse('CSRF validation failed'),
-  NotFound: problemResponse('Inbox or thread unavailable'),
+  Forbidden: sharedProblemResponses.Forbidden,
+  InboxNotFound: problemResponse('Inbox or thread unavailable'),
   RateLimited: sharedProblemResponses.RateLimited,
   Unexpected: sharedProblemResponses.Unexpected,
 });
