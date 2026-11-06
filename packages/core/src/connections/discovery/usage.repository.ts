@@ -9,8 +9,8 @@ import {
 } from '@pertexo/database/schema';
 import type { Role } from '@pertexo/policy';
 import type { FolderScope } from '../../shared/folder-access.types.js';
-import { readFolderScope } from '../../shared/facts.repository.js';
-import { workflowScopeSql } from '../../shared/scope.repository.js';
+import { readFolderScope } from '../../shared/folder-access-facts.repository.js';
+import { workflowScopeSql } from '../../shared/folder-scope.repository.js';
 import { ConnectionNotFoundError } from '../connection.js';
 import { requireVisibleConnection } from '../connections.repository.js';
 import type {

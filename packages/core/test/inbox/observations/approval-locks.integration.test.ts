@@ -1,4 +1,4 @@
-import { readFolderScope } from '../../../src/shared/facts.repository.js';
+import { readFolderScope } from '../../../src/shared/folder-access-facts.repository.js';
 import { randomUUID } from 'node:crypto';
 import { expect, it } from 'vitest';
 import { Pool } from 'pg';

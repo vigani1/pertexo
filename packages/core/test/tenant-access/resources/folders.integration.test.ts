@@ -33,7 +33,7 @@ import { parseDatabaseConfig } from '@pertexo/database/platform';
 import { connectionScope } from '../../../src/shared/resources/connection-scope.repository.js';
 import { inspectPromotionCallDependencies } from '../../../src/authoring/promotion/preparation/calls.repository.js';
 import { PromotionGraphBudget } from '../../../src/authoring/promotion/preparation/graph.js';
-import { readFolderScope } from '../../../src/shared/facts.repository.js';
+import { readFolderScope } from '../../../src/shared/folder-access-facts.repository.js';
 import type { WorkflowPromotionRequirement } from '@pertexo/contracts';
 import { InvalidWorkflowGraphError } from '@pertexo/workflow-model';
 import { requireWorkflowCallTargets } from '../../../src/shared/resources/workflow-call-bindings.repository.js';

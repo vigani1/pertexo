@@ -1,4 +1,4 @@
-import { readFolderScope } from '../../shared/facts.repository.js';
+import { readFolderScope } from '../../shared/folder-access-facts.repository.js';
 import { workflowAccessible } from '../../shared/resources/workflow-access.repository.js';
 import type { WorkflowResourceCapability } from '../../shared/folder-access.types.js';
 import type { PoolClient } from 'pg';

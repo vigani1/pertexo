@@ -10,7 +10,7 @@ import {
 
 import { lockWorkflowAuthoringAuthority } from '../../authoring/workflows/authority.js';
 import { WorkflowNotFoundError } from '../../authoring/workflows/workflow-authoring.errors.js';
-import { readFolderScope } from '../../shared/facts.repository.js';
+import { readFolderScope } from '../../shared/folder-access-facts.repository.js';
 import { withWorkspaceAccess } from '../../shared/workspace-access.js';
 import { WorkspaceAccessDeniedError } from '../../shared/workspace-access.errors.js';
 import type { WorkflowResourceCapability } from '../../shared/folder-access.types.js';

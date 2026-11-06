@@ -7,7 +7,7 @@ import type {
   WorkspaceMemberRoleChangeResult,
 } from '../tenant-access.types.js';
 import { WorkspaceMemberRoleCommandConflictError } from '../tenant-access.errors.js';
-import { roleReceipt } from '../../shared/receipts.js';
+import { roleReceipt } from '../command-receipts.schemas.js';
 import { revokeUserSessions } from '../users/sessions.repository.js';
 import {
   executeMemberCommand,

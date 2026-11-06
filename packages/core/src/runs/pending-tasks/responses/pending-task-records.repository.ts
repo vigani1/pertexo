@@ -12,7 +12,7 @@ import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { parseStoredExecutionValue } from '../../../shared/stored-execution.js';
 import { and, eq, desc, inArray, lt, or, sql } from 'drizzle-orm';
 import type { FolderScope } from '../../../shared/folder-access.types.js';
-import { workflowScopeSql } from '../../../shared/scope.repository.js';
+import { workflowScopeSql } from '../../../shared/folder-scope.repository.js';
 import type { PoolClient } from 'pg';
 import type {
   PendingTaskDetail,

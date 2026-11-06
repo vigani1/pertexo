@@ -15,12 +15,12 @@ import type {
   WorkflowMoveReview,
   WorkflowMoveReviewItem,
 } from '@pertexo/contracts';
-import { readFolderScope } from '../../../shared/facts.repository.js';
+import { readFolderScope } from '../../../shared/folder-access-facts.repository.js';
 import {
   RESOURCE_ADMINISTRATORS,
   removesFolderRestriction,
 } from '../../../shared/folder-policy.js';
-import { workflowScopeSql } from '../../../shared/scope.repository.js';
+import { workflowScopeSql } from '../../../shared/folder-scope.repository.js';
 import { WorkflowNotFoundError } from '../../workflows/workflow-authoring.errors.js';
 import { WorkflowFolderConflictError } from '../workflow-organization.errors.js';
 import type { OrganizationActor } from '../session.js';

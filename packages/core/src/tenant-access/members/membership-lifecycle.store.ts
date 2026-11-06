@@ -31,7 +31,7 @@ import {
   memberReceipt,
   memberStatusReceipt,
   ownershipReceipt,
-} from '../../shared/receipts.js';
+} from '../command-receipts.schemas.js';
 
 /** Suspension and reactivation are one command in two directions. */
 const STATUS_CHANGES = Object.freeze({

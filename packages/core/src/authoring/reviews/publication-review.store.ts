@@ -1,5 +1,5 @@
-import { readFolderScope } from '../../shared/facts.repository.js';
-import { workflowScopeSql } from '../../shared/scope.repository.js';
+import { readFolderScope } from '../../shared/folder-access-facts.repository.js';
+import { workflowScopeSql } from '../../shared/folder-scope.repository.js';
 import { and, desc, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import {

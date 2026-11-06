@@ -5,7 +5,7 @@ export {
 export {
   createWorkerDataTablesStore,
   type WorkerDataTablesStore,
-} from './worker-store.js';
+} from './worker-data-tables.store.js';
 export type {
   ConfigureTablesInput,
   CreateTableInput,

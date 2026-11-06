@@ -7,7 +7,7 @@ import type {
   FolderScope,
   WorkflowResourceCapability,
 } from '../folder-access.types.js';
-import { workflowScopeSql } from '../scope.repository.js';
+import { workflowScopeSql } from '../folder-scope.repository.js';
 
 /** Reuse the caller's scope for a direct read or command, including idempotent replay. */
 export async function workflowAccessible(

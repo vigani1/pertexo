@@ -6,7 +6,7 @@ import {
 } from '@pertexo/policy';
 import type { Pool } from 'pg';
 import { WorkspaceAccessDeniedError } from '../shared/workspace-access.errors.js';
-import { readResourceTransaction } from '../shared/facts.repository.js';
+import { readResourceTransaction } from '../shared/folder-access-facts.repository.js';
 import {
   withWorkspaceAccess,
   type WorkspaceActor,
@@ -14,7 +14,7 @@ import {
 import { and, eq, sql } from 'drizzle-orm';
 import { WorkflowRunNotFoundError } from './workflow-run.errors.js';
 import type { ResourceTransaction } from '../shared/folder-access.types.js';
-import { workflowScopeSql } from '../shared/scope.repository.js';
+import { workflowScopeSql } from '../shared/folder-scope.repository.js';
 import type { WorkflowResourceCapability } from '../shared/folder-access.types.js';
 
 /** The command already holds the workspace authority fence before touching run rows. */

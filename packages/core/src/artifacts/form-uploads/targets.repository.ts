@@ -14,7 +14,7 @@ import {
 } from '../../triggers/forms/form-versions.repository.js';
 import { FormUnavailableError } from '../../triggers/forms/form.errors.js';
 import { lockWorkspaceAuthority } from '../../shared/authority.repository.js';
-import { readFolderScope } from '../../shared/facts.repository.js';
+import { readFolderScope } from '../../shared/folder-access-facts.repository.js';
 import { readTaskUploadTarget } from '../../runs/pending-tasks/responses/pending-task-records.repository.js';
 import {
   PendingTaskDecisionError,

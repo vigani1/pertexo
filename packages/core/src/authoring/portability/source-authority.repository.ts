@@ -18,7 +18,7 @@ import {
   workflowVersions,
   connections,
 } from '@pertexo/database/schema';
-import { readFolderScope } from '../../shared/facts.repository.js';
+import { readFolderScope } from '../../shared/folder-access-facts.repository.js';
 import { workflowAccessible } from '../../shared/resources/workflow-access.repository.js';
 import {
   connectionScopeSql,

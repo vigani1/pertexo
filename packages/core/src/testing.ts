@@ -251,7 +251,30 @@ export type {
 } from './runs/queries/run.repository.js';
 export type { WorkflowRunRecord as ApiWorkflowRunRecord } from './runs/commands/workflow-run-records.repository.js';
 export * from './lifecycle/testing.js';
-export * from './operator/testing.js';
+export {
+  createOperatorRunReplayStore,
+  type OperatorRunReplayStore,
+} from './operator/replay/operator-run-replay.store.js';
+export {
+  OperatorRunReplayMismatchError,
+  OperatorRunReplayNotExecutableError,
+} from './operator/replay/operator-replay.js';
+export { createOperatorCommandStore } from './operator/operator-command.store.js';
+export { OperatorCommandConflictError } from './operator/operator-command.js';
+export {
+  type GetOperatorCommandInput,
+  type GenericOperatorCommandResult,
+  type OperatorRunCommandInput,
+  type OperatorWorkflowCommandInput,
+  type ReplayOperatorRunInput,
+  type OperatorCommandStoreOptions,
+  type OperatorCommandOutcome,
+  type OperatorCommandRecord,
+  type OperatorCommandResult,
+  type ReconcileOperatorAttemptInput,
+  type RecordUnknownOutcomeEvidenceInput,
+  type RedispatchFailedOutboxInput,
+} from './operator/operator-command.js';
 export * from './tenant-access/testing.js';
 export { createWorkflowTriggerReconciliationStore } from './triggers/reconciliation/workflow-trigger-reconciliation.store.js';
 export {

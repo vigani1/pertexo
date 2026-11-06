@@ -2,10 +2,8 @@ import {
   readFailedErrorWorkflowDeliveries,
   replaceFailedErrorWorkflowDelivery,
 } from '../error-workflows/recovery.repository.js';
-import {
-  automaticReconciliationAction,
-  overdueDeliveryAction,
-} from '@pertexo/workflow-engine';
+import { automaticReconciliationAction } from '../../attempts/attempt-reconciliation.js';
+import { overdueDeliveryAction } from '../../outbox/overdue-delivery.js';
 import { and, asc, eq, inArray, isNotNull, lte, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { Pool } from 'pg';
