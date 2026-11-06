@@ -183,3 +183,37 @@ it('allows queue consumption only for the scoped worker, preserving actor and fo
   }
   await fold.foldPending(1_000);
 });
+
+it('refuses invalid claim bounds and leaves the remaining events for a later bounded claim', async () => {
+  const workspace = await seed();
+  for (let index = 0; index < 3; index++)
+    await fail(workspace.workspaceId, workspace.first);
+  const pool = new Pool({ connectionString: apiUrl, max: 1 });
+  try {
+    for (const limit of [null, 0, -1, 1001]) {
+      await expect(
+        pool.query('select * from app.claim_workspace_inbox_events($1)', [
+          limit,
+        ]),
+      ).rejects.toMatchObject({ code: '22023' });
+      expect(await pending(workspace.workspaceId)).toBe(3);
+    }
+    for (const limit of [1, 2, 1000]) {
+      const claimed = await pool.query(
+        'select * from app.claim_workspace_inbox_events($1)',
+        [limit],
+      );
+      expect(claimed.rows).toHaveLength(Math.min(limit, 3));
+      expect(await pending(workspace.workspaceId)).toBe(3);
+    }
+  } finally {
+    await pool.end();
+  }
+  await fold.foldPending(1);
+  expect(await pending(workspace.workspaceId)).toBe(2);
+  await fold.foldPending(1000);
+  expect(await pending(workspace.workspaceId)).toBe(0);
+  expect(await threads(workspace.workspaceId)).toEqual([
+    expect.objectContaining({ occurrence_count: '3' }),
+  ]);
+});
