@@ -411,7 +411,7 @@ export {
   API_TOKEN_MAX_LIFETIME_DAYS,
   API_TOKEN_ACTIVE_LIMIT,
   apiTokenCredentialSchema,
-} from './workspaces/identity-policy.js';
+} from './identity/identity-primitives.js';
 export {
   FAILURE_NOTIFICATION_CONTEXT_MAX_BYTES,
   FAILURE_NOTIFICATION_DESTINATION_LIST_LIMIT,
