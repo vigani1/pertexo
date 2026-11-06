@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { webhookAuthenticationSchema } from '../../triggers/webhooks/authentication.js';
+import { webhookAuthenticationSchema } from '../../triggers/webhook-authentication.js';
 import { isHumanTaskDefinition } from '../pending-tasks/approval.js';
 
 export const CALLBACKS_PER_STEP = 16;

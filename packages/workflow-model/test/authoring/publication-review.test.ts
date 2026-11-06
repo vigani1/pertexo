@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { publicationReviewDecision } from '../../src/authoring/reviews/decision.js';
+import { publicationReviewDecision } from '../../src/authoring/publication-review-decision.js';
 
 describe('publication review decision', () => {
   const input = {

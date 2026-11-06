@@ -17,7 +17,7 @@ import {
 } from '../../src/server.js';
 import type { AdvanceWorkflowInput } from '../../src/operations.js';
 import { graph, nodeCatalog } from '../support/executable-workflow.js';
-import { completion } from '../compilation/calls/fixtures.js';
+import { completion } from '../compilation/calls/call-workflow-fixtures.js';
 async function waitingRequest(context?: {
   details: Record<string, string>;
   prefill: Record<string, string>;

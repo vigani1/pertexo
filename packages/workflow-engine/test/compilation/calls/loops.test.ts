@@ -3,7 +3,12 @@ import type { WorkflowGraph } from '@pertexo/workflow-model';
 import { parseCheckpoint } from '../../../src/server.js';
 import { invocationKey } from '../../../src/invocation-identity.js';
 import { forEachGraph } from '../../support/executable-workflow.js';
-import { childOutcome, completion, runtime, target } from './fixtures.js';
+import {
+  childOutcome,
+  completion,
+  runtime,
+  target,
+} from './call-workflow-fixtures.js';
 
 function graphWithCallSink(): WorkflowGraph {
   const original = forEachGraph();

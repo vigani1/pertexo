@@ -1,13 +1,13 @@
 import type { WorkflowGraph } from '@pertexo/workflow-model';
-import type { WorkflowTransitionPlan } from '../../../src/index.js';
+import type { WorkflowTransitionPlan } from '../../src/index.js';
 import {
   advanceWorkflow,
   buildWorkflowExecutable,
   composeExecutableCatalog,
   createCheckpoint,
   invocationKey,
-} from '../../../src/server.js';
-import { graph, nodeCatalog } from '../executable-workflow.js';
+} from '../../src/server.js';
+import { graph, nodeCatalog } from './executable-workflow.js';
 export const version = '00000000-0000-4000-8000-000000000001';
 export const at = '2026-10-14T00:00:00.000Z';
 export const id = '00000000-0000-4000-8000-000000000002';

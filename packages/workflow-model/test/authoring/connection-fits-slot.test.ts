@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { connectionFitsSlot } from '../../src/authoring/connections/connection.js';
+import { connectionFitsSlot } from '../../src/authoring/connection-vocabulary.js';
 
 const http = { providerKey: 'http', authType: 'http_headers' };
 const slack = { providerKey: 'slack', authType: 'slack_bot_token' };

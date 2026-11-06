@@ -9,7 +9,7 @@ import { normalizeBoundedEngineValue } from '../compilation/executable.validatio
 
 import { operationError } from '../operation-values.js';
 
-import { prepareNodeAttemptInput } from './input.js';
+import { prepareNodeAttemptInput } from './prepare-attempt-input.js';
 import type {
   ExecuteNodeAttemptInput,
   NodeAttemptOutcome,

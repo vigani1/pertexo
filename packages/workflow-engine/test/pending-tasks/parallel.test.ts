@@ -19,7 +19,7 @@ import {
   pairedParallelGraph,
   nodeCatalog,
 } from '../support/executable-workflow.js';
-import { completion } from '../compilation/calls/fixtures.js';
+import { completion } from '../compilation/calls/call-workflow-fixtures.js';
 it('waits on human branches and their structural Merge without hiding an active sibling', async () => {
   const base = pairedParallelGraph();
   const graph: WorkflowGraph = {

@@ -6,7 +6,7 @@ import { invocationKey } from '../invocation-identity.js';
 import {
   transitionEvent,
   type MutableWorkflowTransition,
-} from '../transition/state.js';
+} from '../transition/transition-state.js';
 
 export function selectFailureHandler(
   state: MutableWorkflowTransition,

@@ -11,7 +11,7 @@ import {
   schedulerNodeDisabled,
   transitionEvent as event,
   type MutableWorkflowTransition,
-} from './state.js';
+} from './transition-state.js';
 
 type TransitionInput = Readonly<{
   coordinatorNodeIds: ReadonlySet<string>;

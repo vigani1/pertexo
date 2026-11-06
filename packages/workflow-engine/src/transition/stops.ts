@@ -13,7 +13,7 @@ import {
   nodeEventName,
   transitionEvent as event,
   type MutableWorkflowTransition,
-} from './state.js';
+} from './transition-state.js';
 
 type StopStatus = 'canceled' | 'timed_out';
 type StoppableInvocation = InvocationState & {

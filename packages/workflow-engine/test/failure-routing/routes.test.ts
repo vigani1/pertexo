@@ -6,7 +6,7 @@ import {
   id,
   key,
   fixture,
-} from '../support/failure-routing/runtime.js';
+} from '../support/failure-routing-engine.js';
 
 describe('failure routing through public engine transitions', () => {
   it.each(['utility.xml_malformed', 'file.create_data'])(

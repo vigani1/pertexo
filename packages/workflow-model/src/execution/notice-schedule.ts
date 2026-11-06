@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { ianaTimeZoneSchema } from '../values/json/time-zone.js';
+import { ianaTimeZoneSchema } from '../values/time-zone.schemas.js';
 
 export const noticeEmailModeSchema = z.enum([
   'off',

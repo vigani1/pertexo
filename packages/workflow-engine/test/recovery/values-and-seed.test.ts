@@ -12,7 +12,13 @@ import type {
   RecoveryCandidate,
   RecoveryValues,
 } from '../../src/recovery/workflow-recovery.types.js';
-import { conditional, id, linear, record, source } from './fixtures.js';
+import {
+  conditional,
+  id,
+  linear,
+  record,
+  source,
+} from './recovery-workflow-fixtures.js';
 import { graph, nodeCatalog } from '../support/executable-workflow.js';
 
 function candidate(fixture = linear()): RecoveryCandidate {

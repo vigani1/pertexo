@@ -7,7 +7,7 @@ import {
   declaredCall,
   occurredAt,
   target,
-} from './fixtures.js';
+} from './call-workflow-fixtures.js';
 
 describe('durable logical Call transitions', () => {
   it('prepares input once, waits without a timer, and exposes only the child result', async () => {

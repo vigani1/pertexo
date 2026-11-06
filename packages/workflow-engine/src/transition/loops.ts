@@ -14,7 +14,7 @@ import {
   sameLoopDeclaration,
   transitionEvent as event,
   type MutableWorkflowTransition,
-} from './state.js';
+} from './transition-state.js';
 
 export function applyLoopStart(
   state: MutableWorkflowTransition,

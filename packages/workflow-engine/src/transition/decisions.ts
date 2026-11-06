@@ -1,5 +1,5 @@
 import { configuredParallelMaxConcurrency } from '../control-output-ports.js';
-import type { SchedulerNodeLookup } from './state.js';
+import type { SchedulerNodeLookup } from './transition-state.js';
 import type {
   InvocationState,
   WorkflowCheckpoint,

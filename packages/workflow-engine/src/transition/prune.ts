@@ -3,7 +3,7 @@ import type { InvocationState, LoopState } from '../workflow-execution.js';
 import {
   isTerminalNodeStatus,
   type MutableWorkflowTransition,
-} from './state.js';
+} from './transition-state.js';
 
 function iterationOwns(
   loop: LoopState,

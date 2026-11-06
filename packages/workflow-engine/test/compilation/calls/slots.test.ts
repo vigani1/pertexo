@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { WorkflowGraph } from '@pertexo/workflow-model';
 import { parseCheckpoint } from '../../../src/server.js';
-import { callGraph, completion, runtime } from './fixtures.js';
+import { callGraph, completion, runtime } from './call-workflow-fixtures.js';
 
 function withOrdinaryWork(): WorkflowGraph {
   const original = callGraph();

@@ -22,7 +22,7 @@ import {
   sameJoinDeclaration,
   transitionEvent as event,
   type MutableWorkflowTransition,
-} from './state.js';
+} from './transition-state.js';
 
 function applyJoinDeclaration(
   state: MutableWorkflowTransition,

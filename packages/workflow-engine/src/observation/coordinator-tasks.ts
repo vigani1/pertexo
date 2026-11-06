@@ -29,7 +29,7 @@ import { invocationKey } from '../invocation-identity.js';
 import {
   isFinishedIterationScope,
   isTerminalNodeStatus,
-} from '../transition/state.js';
+} from '../transition/transition-state.js';
 import type {
   InvocationState,
   PendingTaskIntent,

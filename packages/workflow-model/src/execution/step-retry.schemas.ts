@@ -1,7 +1,7 @@
 import { z } from 'zod';
-import { isWorkflowCallDefinition } from '../../flow/callable/invocation.js';
-import { workflowControlOutputKind } from '../../graph/control-output-selection.js';
-import { isWorkflowTriggerKey } from '../../graph/triggers.js';
+import { isWorkflowCallDefinition } from '../flow/callable/invocation.js';
+import { workflowControlOutputKind } from '../graph/control-output-selection.js';
+import { isWorkflowTriggerKey } from '../graph/triggers.js';
 
 export const STEP_RETRY_LIMITS = Object.freeze({
   maximumAttempts: 5,

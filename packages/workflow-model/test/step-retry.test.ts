@@ -3,8 +3,8 @@ import {
   parseWorkflowGraphDraft,
   supportsStepRetrySettings,
   validateWorkflowGraph,
-} from '../../src/index.js';
-import { stepRetrySettingsSchema } from '../../src/execution/step-retries/step-retry.schemas.js';
+} from '../src/index.js';
+import { stepRetrySettingsSchema } from '../src/execution/step-retry.schemas.js';
 
 describe('step retry settings', () => {
   it.each([
