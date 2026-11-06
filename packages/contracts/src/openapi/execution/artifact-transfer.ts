@@ -1,3 +1,4 @@
+import { sharedProblemResponses } from '../problem-responses.js';
 import { apiProblemSchema } from '../../errors/api-problem.js';
 import { artifactRoutes } from '../../routes/execution/artifacts.js';
 import { routePaths, routeSchemas } from '../../routes/openapi.js';
@@ -19,7 +20,7 @@ export const artifactTransferOpenApiDocument = Object.freeze({
     },
     {
       BadRequest: problemResponse('Invalid artifact request'),
-      Unauthenticated: problemResponse('Authentication required'),
+      Unauthenticated: sharedProblemResponses.Unauthenticated,
       Forbidden: problemResponse('CSRF protection failed'),
       NotFound: problemResponse('Artifact or workspace not found'),
       Conflict: problemResponse(
@@ -30,7 +31,7 @@ export const artifactTransferOpenApiDocument = Object.freeze({
       ),
       QuotaExceeded: problemResponse('Workspace artifact capacity exceeded'),
       Unavailable: problemResponse('Artifact storage is unavailable'),
-      Unexpected: problemResponse('Unexpected server error'),
+      Unexpected: sharedProblemResponses.Unexpected,
     },
   ),
   paths: routePaths(routes),

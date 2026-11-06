@@ -1,3 +1,4 @@
+import { sharedProblemResponses } from '../problem-responses.js';
 import { apiProblemSchema } from '../../errors/api-problem.js';
 import { dataTableRoutes } from '../../routes/identity/data-tables.js';
 import { sessionRoutes } from '../../routes/identity/session.js';
@@ -55,14 +56,14 @@ const openApiSchemas = {
 };
 
 const problemResponses = Object.freeze({
-  BadRequest: problemResponse('Invalid request'),
-  Unauthenticated: problemResponse('Authentication required'),
-  Forbidden: problemResponse('Forbidden'),
-  NotFound: problemResponse('Resource not found'),
-  Conflict: problemResponse('Request conflict'),
+  BadRequest: sharedProblemResponses.BadRequest,
+  Unauthenticated: sharedProblemResponses.Unauthenticated,
+  Forbidden: sharedProblemResponses.Forbidden,
+  NotFound: sharedProblemResponses.NotFound,
+  Conflict: sharedProblemResponses.Conflict,
   ServiceUnavailable: problemResponse('Upstream service unavailable'),
-  RateLimited: problemResponse('Rate limited'),
-  Unexpected: problemResponse('Unexpected server error'),
+  RateLimited: sharedProblemResponses.RateLimited,
+  Unexpected: sharedProblemResponses.Unexpected,
 });
 
 type DeclaredIdentityRoute =

@@ -1,3 +1,4 @@
+import { sharedProblemResponses } from '../problem-responses.js';
 import { apiProblemSchema } from '../../errors/api-problem.js';
 import {
   workflowTestRoutes,
@@ -20,13 +21,13 @@ const routes = [
 ];
 
 const problemResponses = Object.freeze({
-  BadRequest: problemResponse('Invalid request'),
-  Unauthenticated: problemResponse('Authentication required'),
-  Forbidden: problemResponse('Forbidden'),
-  NotFound: problemResponse('Resource not found'),
-  Conflict: problemResponse('Request conflict'),
+  BadRequest: sharedProblemResponses.BadRequest,
+  Unauthenticated: sharedProblemResponses.Unauthenticated,
+  Forbidden: sharedProblemResponses.Forbidden,
+  NotFound: sharedProblemResponses.NotFound,
+  Conflict: sharedProblemResponses.Conflict,
   UnprocessableEntity: problemResponse('Node test input is not executable'),
-  Unexpected: problemResponse('Unexpected server error'),
+  Unexpected: sharedProblemResponses.Unexpected,
 });
 
 export const nodeTestingOpenApiDocument = Object.freeze({

@@ -1,3 +1,4 @@
+import { sharedProblemResponses } from '../problem-responses.js';
 import { apiProblemSchema } from '../../errors/api-problem.js';
 import { routePaths, routeSchemas } from '../../routes/openapi.js';
 import { portabilityRoutes } from '../../routes/workflows/portability.js';
@@ -18,15 +19,15 @@ export const workflowPortabilityOpenApiDocument = Object.freeze({
       ),
     },
     {
-      BadRequest: problemResponse('Invalid request'),
-      Unauthenticated: problemResponse('Authentication required'),
-      Forbidden: problemResponse('Forbidden'),
-      NotFound: problemResponse('Resource not found'),
+      BadRequest: sharedProblemResponses.BadRequest,
+      Unauthenticated: sharedProblemResponses.Unauthenticated,
+      Forbidden: sharedProblemResponses.Forbidden,
+      NotFound: sharedProblemResponses.NotFound,
       Conflict: problemResponse(
         'Source, compatibility or idempotency conflict',
       ),
       UnprocessableEntity: problemResponse('Unsafe or incompatible workflow'),
-      Unexpected: problemResponse('Unexpected server error'),
+      Unexpected: sharedProblemResponses.Unexpected,
       Unavailable: problemResponse(
         'Automation token authentication, limiter or import writer unavailable',
       ),

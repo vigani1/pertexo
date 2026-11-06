@@ -1,3 +1,4 @@
+import { sharedProblemResponses } from '../problem-responses.js';
 import { formSchemas, formPaths } from './forms.js';
 import { formUploadPaths, formUploadSchemas } from './form-uploads.js';
 import { pendingTaskPaths, pendingTaskSchemas } from './pending-tasks.js';
@@ -60,13 +61,13 @@ const schemas = Object.freeze({
 });
 
 const problemResponses = Object.freeze({
-  BadRequest: problemResponse('Invalid request'),
-  Unauthenticated: problemResponse('Authentication required'),
-  Forbidden: problemResponse('Forbidden'),
-  NotFound: problemResponse('Resource not found'),
-  Conflict: problemResponse('Request conflict'),
+  BadRequest: sharedProblemResponses.BadRequest,
+  Unauthenticated: sharedProblemResponses.Unauthenticated,
+  Forbidden: sharedProblemResponses.Forbidden,
+  NotFound: sharedProblemResponses.NotFound,
+  Conflict: sharedProblemResponses.Conflict,
   UnprocessableEntity: problemResponse('Workflow is not executable'),
-  Unexpected: problemResponse('Unexpected server error'),
+  Unexpected: sharedProblemResponses.Unexpected,
 });
 
 export const workflowRunsOpenApiDocument = Object.freeze({

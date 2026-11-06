@@ -1,3 +1,4 @@
+import { sharedProblemResponses } from './problem-responses.js';
 import { apiProblemSchema } from '../errors/api-problem.js';
 import { catalogRoutes } from '../routes/catalog.js';
 import { routePaths, routeSchemas } from '../routes/openapi.js';
@@ -21,9 +22,9 @@ export const catalogOpenApiDocument = Object.freeze({
     },
     {
       BadRequest: problemResponse('Invalid discovery query'),
-      Unauthenticated: problemResponse('Authentication required'),
-      RateLimited: problemResponse('Rate limited'),
-      Unexpected: problemResponse('Unexpected server error'),
+      Unauthenticated: sharedProblemResponses.Unauthenticated,
+      RateLimited: sharedProblemResponses.RateLimited,
+      Unexpected: sharedProblemResponses.Unexpected,
     },
   ),
 });
