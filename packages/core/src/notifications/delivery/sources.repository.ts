@@ -6,7 +6,7 @@ import {
   failureNotificationDestinationVersions as version,
   connections as connection,
 } from '@pertexo/database/schema';
-import { notificationProviderRequirements } from '../policies/admission.repository.js';
+import { notificationProviderRequirements } from '../destinations/notification-policy.js';
 import { destinationConfigSql } from '../destinations/notification-destinations.repository.js';
 /**
  * An alert goes through the destination and credential in force when it's sent,

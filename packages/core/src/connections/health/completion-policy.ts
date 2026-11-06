@@ -3,7 +3,7 @@ import {
   CONNECTION_EVENT_TYPE,
   type ConnectionStatus,
   type ConnectionTestOutcome,
-} from './connection.js';
+} from '@pertexo/workflow-model';
 
 export function classifyConnectionTestCompletion(
   currentStatus: ConnectionStatus,

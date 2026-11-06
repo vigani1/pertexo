@@ -4,7 +4,7 @@ import {
   withTenantScopedClient,
   rethrowQueryFailure,
 } from '@pertexo/database/primitives';
-import { publishesSlackBinding } from '@pertexo/workflow-model';
+import { publishesSlackBinding } from './slack-binding.js';
 import { and, eq, sql, inArray, isNull } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { drizzle } from 'drizzle-orm/node-postgres';

@@ -10,7 +10,7 @@ import { and, eq, gt, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
 
-import { notificationProviderRequirements } from '../policies/admission.repository.js';
+import { notificationProviderRequirements } from './notification-policy.js';
 import {
   audit,
   claimNotificationCommand,

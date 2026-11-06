@@ -1,4 +1,4 @@
-import { connectionTestStatus } from '@pertexo/workflow-model';
+import { connectionTestStatus } from './completion-policy.js';
 import type { PoolClient } from 'pg';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 

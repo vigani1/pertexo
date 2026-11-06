@@ -2,7 +2,7 @@ import type { FailureNotificationDestinationConfig } from '@pertexo/workflow-mod
 import {
   eligibleNotificationConnection,
   eligibleNotificationDestination,
-} from '@pertexo/workflow-model';
+} from '../../notifications/destinations/notification-policy.js';
 
 /** How a failure alert ended when nobody can say it arrived. */
 export const UNDELIVERED_ALERT_STATUSES = [

@@ -1,7 +1,7 @@
 import {
   eligibleNotificationConnection,
   eligibleNotificationDestination,
-} from '@pertexo/workflow-model';
+} from '../destinations/notification-policy.js';
 import { and, eq, getTableName, sql } from 'drizzle-orm';
 import { alias, type AnyPgColumn } from 'drizzle-orm/pg-core';
 import {
@@ -11,7 +11,6 @@ import {
   workflowFailureNotificationPolicies as policy,
   failureNotificationDestinationVersions as versions,
 } from '@pertexo/database/schema';
-export { notificationProviderRequirements } from '@pertexo/workflow-model';
 
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 

@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { publishesSlackBinding } from '../src/execution/dispatch-binding.js';
+import { publishesSlackBinding } from '../../../src/attempts/dispatch/slack-binding.js';
 
 it('matches only the published Slack send node and its own connection, including loop bodies', () => {
   const node = {

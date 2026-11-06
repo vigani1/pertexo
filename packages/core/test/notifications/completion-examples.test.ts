@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { failureNotificationCompletionDecision } from '../../src/execution/notification-completion.js';
+import { failureNotificationCompletionDecision } from '../../src/notifications/delivery/completion-policy.js';
 
 describe('notification completion policy examples', () => {
   it.each([

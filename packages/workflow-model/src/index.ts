@@ -403,8 +403,6 @@ export {
   type WorkflowTemplateOrigin,
 } from './authoring/portability/origin.js';
 
-export { publishesSlackBinding } from './execution/dispatch-binding.js';
-
 export {
   requiresFormAdmissionCheck,
   formAdmissionRequirement,
@@ -426,23 +424,7 @@ export {
   type SuiteCaseReport,
 } from './authoring/test-suites/report.js';
 
-export {
-  failureNotificationCompletionDecision,
-  failureNotificationCompletionAuditFactType,
-} from './execution/notification-completion.js';
-
-export {
-  notificationProviderRequirements,
-  eligibleNotificationDestination,
-  eligibleNotificationConnection,
-} from './execution/notification-policy.js';
-export { decideScheduleHealthTransition } from './triggers/schedules/health.js';
-
 export * from './authoring/connections/connection.js';
-export {
-  classifyConnectionTestCompletion,
-  connectionTestStatus,
-} from './authoring/connections/health.js';
 export {
   noticeScheduleSchema,
   noticeEmailModeSchema,

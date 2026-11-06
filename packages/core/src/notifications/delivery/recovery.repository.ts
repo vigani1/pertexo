@@ -8,7 +8,7 @@ import {
   withWorkspaceScope,
 } from '@pertexo/database/primitives';
 import { runFailureNotificationIntents as intents } from '@pertexo/database/schema';
-import { failureNotificationCompletionAuditFactType } from '@pertexo/workflow-model';
+import { failureNotificationCompletionAuditFactType } from './completion-policy.js';
 import type { FailureNotificationClaimResult } from '../failure-notification.types.js';
 import { FailureNotificationStateError } from '../failure-notification.errors.js';
 import {
