@@ -91,6 +91,11 @@ export function summarizeItems(
     inputCount: input.items.length,
     skippedCount,
   };
+  requireRetainableSummary(result, groups.size);
+  return result;
+}
+
+function requireRetainableSummary(result: unknown, groupCount: number): void {
   try {
     canonicalizeBoundedJson(result, {
       bytes: STORED_EXECUTION_VALUE_LIMITS.inlineBytes,
@@ -104,8 +109,7 @@ export function summarizeItems(
       errorKind: 'configuration',
       possiblyDispatched: false,
       safeErrorCode: SUMMARY_RESULT_FAILURE.code,
-      errorSummary: `${String(groups.size)} groups. ${SUMMARY_RESULT_FAILURE.sentence} ${SUMMARY_RESULT_FAILURE.advice}`,
+      errorSummary: `${String(groupCount)} groups. ${SUMMARY_RESULT_FAILURE.sentence} ${SUMMARY_RESULT_FAILURE.advice}`,
     });
   }
-  return result;
 }
