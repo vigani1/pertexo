@@ -40,7 +40,7 @@ const clients = [];
 const databaseEnvironments = new Map();
 let failure;
 function create(args) {
-  const id = docker(['create', ...args]).trim();
+  const id = docker(['create', ...args], { captureOutput: true }).trim();
   containers.push(id);
   docker(['start', id]);
   return id;
@@ -117,7 +117,10 @@ async function storage(alias, bucket) {
     rust,
     '/data',
   ]);
-  const port = docker(['port', id, '9000/tcp']).trim().split(':').at(-1);
+  const port = docker(['port', id, '9000/tcp'], { captureOutput: true })
+    .trim()
+    .split(':')
+    .at(-1);
   const endpoint = `http://127.0.0.1:${port}`;
   await waitFor(async () => {
     const r = await fetch(`${endpoint}/health`, {
@@ -194,7 +197,10 @@ async function database(alias, migrate) {
       'pertexo',
     ]),
   );
-  const port = docker(['port', id, '5432/tcp']).trim().split(':').at(-1);
+  const port = docker(['port', id, '5432/tcp'], { captureOutput: true })
+    .trim()
+    .split(':')
+    .at(-1);
   databaseEnvironments.set(id, {
     DATABASE_URL:
       'postgresql://pertexo_app:' +
@@ -238,7 +244,7 @@ function sql(id, input) {
       '-v',
       'ON_ERROR_STOP=1',
     ],
-    { input },
+    { input, captureOutput: true },
   );
 }
 try {
@@ -323,24 +329,27 @@ try {
       .join(''),
     { mode: 0o600 },
   );
-  const rclone = (args) =>
-    docker([
-      'run',
-      '--rm',
-      '--network',
-      network,
-      '--read-only',
-      '--tmpfs',
-      '/tmp',
-      '--user',
-      `${process.getuid()}:${process.getgid()}`,
-      '--env-file',
-      envFile,
-      '-v',
-      `${directory}:/backup`,
-      clone,
-      ...args,
-    ]);
+  const rclone = (args, options = {}) =>
+    docker(
+      [
+        'run',
+        '--rm',
+        '--network',
+        network,
+        '--read-only',
+        '--tmpfs',
+        '/tmp',
+        '--user',
+        `${process.getuid()}:${process.getgid()}`,
+        '--env-file',
+        envFile,
+        '-v',
+        `${directory}:/backup`,
+        clone,
+        ...args,
+      ],
+      options,
+    );
   clients.push(
     ...[source, backup].map(
       (config) =>
@@ -405,7 +414,9 @@ try {
   ]);
   writeFileSync(join(directory, 'COMPLETE'), 'complete\n');
   rclone(['copyto', '/backup/COMPLETE', point + '/COMPLETE']);
-  const files = rclone(['lsf', '--recursive', '--files-only', point])
+  const files = rclone(['lsf', '--recursive', '--files-only', point], {
+    captureOutput: true,
+  })
     .trim()
     .split('\n');
   assert.deepEqual(
