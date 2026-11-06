@@ -181,7 +181,7 @@ describe('who can test a step', () => {
     const [, read, replay] = flows(previewRunId);
 
     await expect(accept(outside)).rejects.toMatchObject({
-      message: 'preview.draft_denied',
+      message: 'preview.actor_denied',
     });
     await expect(read[1](outside)).resolves.toBeNull();
     await expect(replay[1](outside)).resolves.toBeNull();

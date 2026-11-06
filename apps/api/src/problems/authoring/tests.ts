@@ -10,12 +10,26 @@ import { WorkflowStepSampleError } from '@pertexo/core/authoring';
 import { sampleApplicationError } from './samples.js';
 import {
   PreviewIdempotencyConflictError,
+  PreviewAdmissionDeniedError,
   PriorPreviewInputUnavailableError,
   WorkflowTestError,
 } from '@pertexo/core/previews';
 import { applicationError } from '../../platform/http/index.js';
 
 export const nodeTestProblems = [
+  errorRegistration(PreviewAdmissionDeniedError, (error) => {
+    if (error.reason === 'actor') return applicationError('resource.not_found');
+    if (error.reason === 'draft')
+      return applicationError('workflow.revision_conflict', {
+        safeDetail:
+          'The saved draft changed. Refresh the draft and prepare the step test again.',
+      });
+    if (error.reason === 'deadline')
+      return applicationError('workflow.invalid', {
+        safeDetail: 'The prepared step test expired. Prepare the test again.',
+      });
+    return applicationError('internal.unexpected', { cause: error });
+  }),
   errorRegistration(PreviewIdempotencyConflictError, () =>
     applicationError('request.idempotency_conflict', {
       safeDetail: 'The idempotency key was already used for another request.',

@@ -28,7 +28,7 @@ export async function assertAdmission(
     )
     .for('share')
     .limit(1);
-  if (workflow.length !== 1) throw new PreviewAdmissionDeniedError('draft');
+  if (workflow.length !== 1) throw new PreviewAdmissionDeniedError('actor');
   const drafts = await transaction.db
     .select({
       revision: workflowDrafts.revision,
@@ -43,7 +43,8 @@ export async function assertAdmission(
     )
     .for('share')
     .limit(1);
-  if (drafts[0]?.revision !== draftRevision)
+  if (drafts[0] === undefined) throw new PreviewAdmissionDeniedError('actor');
+  if (drafts[0].revision !== draftRevision)
     throw new PreviewAdmissionDeniedError('draft');
   return drafts[0].graph;
 }
@@ -96,6 +97,6 @@ export async function assertPreviewWorkflow(
     actorId,
     workflowId,
   );
-  if (resources === undefined) throw new PreviewAdmissionDeniedError('draft');
+  if (resources === undefined) throw new PreviewAdmissionDeniedError('actor');
   return resources;
 }

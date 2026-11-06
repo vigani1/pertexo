@@ -30,7 +30,9 @@ export class PreviewAcceptanceCorruptError extends Error {
 
 export class PreviewAdmissionDeniedError extends Error {
   public override readonly name = 'PreviewAdmissionDeniedError';
-  public constructor(reason: 'actor' | 'deadline' | 'draft' | 'retention') {
+  public constructor(
+    public readonly reason: 'actor' | 'deadline' | 'draft' | 'retention',
+  ) {
     super(`preview.${reason}_denied`);
   }
 }
