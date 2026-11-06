@@ -720,3 +720,50 @@ for (const [from, to] of [
     }
   });
 }
+
+for (const [from, to] of [
+  ['artifacts', 'connections'],
+  ['authoring', 'identity'],
+  ['governance', 'artifacts'],
+  ['lifecycle', 'authoring'],
+  ['previews', 'identity'],
+  ['previews', 'tenant-access'],
+  ['tenant-access', 'lifecycle'],
+]) {
+  test(`batch D refuses unapproved ${from} -> ${to} imports`, () => {
+    for (const declaration of ['import { a }', 'import type { A }']) {
+      assert.match(
+        validateModuleImports({
+          [`packages/core/src/${from}/operation.ts`]: `${declaration} from '../${to}/public.js';`,
+          [`packages/core/src/${to}/index.ts`]:
+            "export type {} from './public.js';",
+          [`packages/core/src/${to}/public.ts`]:
+            'export const a = 1; export type A = number;',
+        }).join('\n'),
+        /execution-area dependency is not allowed/u,
+      );
+    }
+  });
+}
+
+test('batch D retains its real transactional and disclosure dependencies', () => {
+  for (const [from, to] of [
+    ['artifacts', 'triggers'],
+    ['authoring', 'artifacts'],
+    ['governance', 'previews'],
+    ['lifecycle', 'identity'],
+    ['previews', 'authoring'],
+    ['identity', 'governance'],
+    ['inbox', 'authoring'],
+    ['tenant-access', 'governance'],
+  ])
+    assert.deepEqual(
+      validateModuleImports({
+        [`packages/core/src/${from}/operation.ts`]: `import type { A } from '../${to}/public.js';`,
+        [`packages/core/src/${to}/index.ts`]:
+          "export type {} from './public.js';",
+        [`packages/core/src/${to}/public.ts`]: 'export type A = number;',
+      }),
+      [],
+    );
+});
