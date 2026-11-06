@@ -1,3 +1,8 @@
+import {
+  workflowDraftConflictResponse,
+  workflowDraftConflictSchemas,
+} from './draft-precondition.js';
+import { sharedProblemResponses } from '../problem-responses.js';
 import type { RoutePaths } from '../../routes/openapi.js';
 import type { z } from 'zod';
 import { apiProblemSchema } from '../../errors/api-problem.js';
@@ -6,20 +11,14 @@ import { authoringRoutes } from '../../routes/workflows/authoring.js';
 import { lifecycleRoutes } from '../../routes/workflows/lifecycle.js';
 import { versionRoutes } from '../../routes/workflows/versions.js';
 import {
-  strongEtagSchema,
   workflowCompatibilityReportSchema,
   workflowListResponseSchema,
-  workflowRevisionConflictProblemSchema,
   workflowSummaryResponseSchema,
   workflowSummarySchema,
   workflowTemplateOriginProjectionResponseSchema,
   workflowVersionResponseSchema,
 } from '../../schemas/workflows/authoring.js';
-import {
-  authenticatedComponents,
-  jsonSchema,
-  problemResponse,
-} from '../primitives.js';
+import { authenticatedComponents, problemResponse } from '../primitives.js';
 import { projectContractSchema } from '../schema-projection.js';
 import {
   workflowAutoPauseContractPaths,
@@ -74,11 +73,7 @@ function contractSchemas() {
     ...workflowPromotionContractSchemas(),
     ...workflowInputCaseContractSchemas(project),
     ...workflowOrganizationContractSchemas(project),
-    WorkflowRevisionConflictProblem: project(
-      'WorkflowRevisionConflictProblem',
-      workflowRevisionConflictProblemSchema,
-      'output',
-    ),
+    ...workflowDraftConflictSchemas,
     WorkflowSummary: project(
       'WorkflowSummary',
       workflowSummarySchema,
@@ -113,16 +108,8 @@ function contractSchemas() {
 }
 const openApiSchemas = contractSchemas();
 
-const etagResponseHeader = {
-  ETag: {
-    description: 'Strong opaque validator for this draft representation',
-    required: true,
-    schema: jsonSchema(strongEtagSchema, 'output'),
-  },
-} as const;
-
 const problemResponses = Object.freeze({
-  BadRequest: problemResponse('Invalid request'),
+  BadRequest: sharedProblemResponses.BadRequest,
   Unavailable: problemResponse('Historical template origin unavailable'),
   ValidationUnavailable: {
     ...problemResponse('Workflow validation temporarily unavailable'),
@@ -147,25 +134,15 @@ const problemResponses = Object.freeze({
       },
     },
   },
-  PreconditionRequired: problemResponse('Precondition required'),
-  PreconditionFailed: {
-    description: 'The draft representation is no longer current',
-    headers: etagResponseHeader,
-    content: {
-      'application/problem+json': {
-        schema: {
-          $ref: '#/components/schemas/WorkflowRevisionConflictProblem',
-        },
-      },
-    },
-  },
-  Unauthenticated: problemResponse('Authentication required'),
-  Forbidden: problemResponse('Forbidden'),
-  NotFound: problemResponse('Resource not found'),
-  Conflict: problemResponse('Request conflict'),
+  PreconditionRequired: sharedProblemResponses.PreconditionRequired,
+  PreconditionFailed: workflowDraftConflictResponse,
+  Unauthenticated: sharedProblemResponses.Unauthenticated,
+  Forbidden: sharedProblemResponses.Forbidden,
+  NotFound: sharedProblemResponses.NotFound,
+  Conflict: sharedProblemResponses.Conflict,
   UnprocessableEntity: problemResponse('Workflow is not publishable'),
-  RateLimited: problemResponse('Rate limited'),
-  Unexpected: problemResponse('Unexpected server error'),
+  RateLimited: sharedProblemResponses.RateLimited,
+  Unexpected: sharedProblemResponses.Unexpected,
 });
 
 type DeclaredAuthoringRoute =

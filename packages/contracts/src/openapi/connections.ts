@@ -1,3 +1,4 @@
+import { sharedProblemResponses } from './problem-responses.js';
 import { apiProblemSchema } from '../errors/api-problem.js';
 import { failureNotificationRoutes } from '../routes/connections/failure-notifications.js';
 import { connectionRoutes } from '../routes/connections/management.js';
@@ -48,15 +49,15 @@ const schemas = Object.freeze({
 });
 
 const problemResponses = Object.freeze({
-  BadRequest: problemResponse('Invalid request'),
-  Unauthenticated: problemResponse('Authentication required'),
-  Forbidden: problemResponse('Forbidden'),
-  NotFound: problemResponse('Resource not found'),
-  Conflict: problemResponse('Request conflict'),
+  BadRequest: sharedProblemResponses.BadRequest,
+  Unauthenticated: sharedProblemResponses.Unauthenticated,
+  Forbidden: sharedProblemResponses.Forbidden,
+  NotFound: sharedProblemResponses.NotFound,
+  Conflict: sharedProblemResponses.Conflict,
   ReauthorizationRequired: problemResponse('Reauthorization required'),
-  RateLimited: problemResponse('Rate limited'),
+  RateLimited: sharedProblemResponses.RateLimited,
   ServiceUnavailable: problemResponse('Key or provider service unavailable'),
-  Unexpected: problemResponse('Unexpected server error'),
+  Unexpected: sharedProblemResponses.Unexpected,
 });
 
 export const connectionsOpenApiDocument = Object.freeze({

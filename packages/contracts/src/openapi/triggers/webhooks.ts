@@ -1,3 +1,4 @@
+import { sharedProblemResponses } from '../problem-responses.js';
 import { callbackPaths } from './callbacks.js';
 import { testEventPaths } from './test-events.js';
 import { webhookRoutes } from '../../routes/triggers/webhooks.js';
@@ -25,16 +26,16 @@ const schemas = Object.freeze({
   ...routeSchemas(routes),
 });
 const responses = Object.freeze({
-  BadRequest: problemResponse('Invalid request'),
-  Unauthenticated: problemResponse('Authentication required'),
-  Forbidden: problemResponse('Forbidden'),
-  NotFound: problemResponse('Resource not found'),
-  Conflict: problemResponse('Request conflict'),
-  PayloadTooLarge: problemResponse('Payload too large'),
+  BadRequest: sharedProblemResponses.BadRequest,
+  Unauthenticated: sharedProblemResponses.Unauthenticated,
+  Forbidden: sharedProblemResponses.Forbidden,
+  NotFound: sharedProblemResponses.NotFound,
+  Conflict: sharedProblemResponses.Conflict,
+  PayloadTooLarge: sharedProblemResponses.PayloadTooLarge,
   UnsupportedMediaType: problemResponse('Unsupported media type'),
-  RateLimited: problemResponse('Rate limited'),
+  RateLimited: sharedProblemResponses.RateLimited,
   Unavailable: problemResponse('Service unavailable'),
-  Unexpected: problemResponse('Unexpected server error'),
+  Unexpected: sharedProblemResponses.Unexpected,
 });
 
 function ingressWorkflowResponse(

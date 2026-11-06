@@ -1,3 +1,4 @@
+import { sharedProblemResponses } from '../problem-responses.js';
 import {
   notificationPreferencePaths,
   notificationPreferenceSchemas,
@@ -24,12 +25,12 @@ const schemas = Object.freeze({
   ),
 });
 const responses = Object.freeze({
-  BadRequest: problemResponse('Invalid request'),
-  Unauthenticated: problemResponse('Authentication required'),
+  BadRequest: sharedProblemResponses.BadRequest,
+  Unauthenticated: sharedProblemResponses.Unauthenticated,
   Forbidden: problemResponse('CSRF validation failed'),
   NotFound: problemResponse('Inbox or thread unavailable'),
-  RateLimited: problemResponse('Rate limited'),
-  Unexpected: problemResponse('Unexpected server error'),
+  RateLimited: sharedProblemResponses.RateLimited,
+  Unexpected: sharedProblemResponses.Unexpected,
 });
 
 /** ADR 055: failure threads read on demand, with private read state. */

@@ -1,11 +1,8 @@
+import { sharedProblemResponses } from '../problem-responses.js';
 import { apiProblemSchema } from '../../errors/api-problem.js';
 import { routePaths, routeSchemas } from '../../routes/openapi.js';
 import { scheduleRoutes } from '../../routes/triggers/schedules.js';
-import {
-  authenticatedComponents,
-  jsonSchema,
-  problemResponse,
-} from '../primitives.js';
+import { authenticatedComponents, jsonSchema } from '../primitives.js';
 
 const routes = Object.values(scheduleRoutes);
 
@@ -18,13 +15,13 @@ export const schedulesOpenApiDocument = Object.freeze({
       ...routeSchemas(routes),
     },
     {
-      BadRequest: problemResponse('Invalid request'),
-      Unauthenticated: problemResponse('Authentication required'),
-      Forbidden: problemResponse('Forbidden'),
-      NotFound: problemResponse('Resource not found'),
-      Conflict: problemResponse('Request conflict'),
-      RateLimited: problemResponse('Rate limited'),
-      Unexpected: problemResponse('Unexpected server error'),
+      BadRequest: sharedProblemResponses.BadRequest,
+      Unauthenticated: sharedProblemResponses.Unauthenticated,
+      Forbidden: sharedProblemResponses.Forbidden,
+      NotFound: sharedProblemResponses.NotFound,
+      Conflict: sharedProblemResponses.Conflict,
+      RateLimited: sharedProblemResponses.RateLimited,
+      Unexpected: sharedProblemResponses.Unexpected,
     },
   ),
   paths: routePaths(routes),

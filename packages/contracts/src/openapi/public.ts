@@ -109,10 +109,12 @@ function reachableComponents(
   return components;
 }
 
-function buildPublicDocument() {
+export function buildPublicDocument(
+  documents: readonly Document[] = DOCUMENTS,
+) {
   const paths: Record<string, Record<string, Operation>> = {};
   const owner = new Map<string, unknown>();
-  for (const { paths: documented, components } of DOCUMENTS) {
+  for (const { paths: documented, components } of documents) {
     for (const [path, methods] of Object.entries(documented))
       for (const [method, operation] of Object.entries(methods))
         if (takesToken(operation))
