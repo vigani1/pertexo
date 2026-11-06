@@ -430,6 +430,7 @@ describe('connections real Nest HTTP stack', () => {
     });
     expect(listed.statusCode).toBe(200);
     expect(listed.json()).toEqual({
+      nextCursor: null,
       items: [
         expect.objectContaining({ id: destinationId, currentVersion: 2 }),
       ],
