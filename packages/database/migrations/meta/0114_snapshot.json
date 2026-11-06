@@ -1,5 +1,5 @@
 {
-  "id": "78ef7026-cc09-46d4-a8a3-694835691e52",
+  "id": "f4a2ec9a-935e-4fe2-923a-060b9abcb9b3",
   "prevId": "c500d7f8-4972-4683-af3f-a06587f52980",
   "version": "7",
   "dialect": "postgresql",
@@ -2751,10 +2751,6 @@
         "workflow_input_cases_revision_check": {
           "name": "workflow_input_cases_revision_check",
           "value": "(revision > 0)"
-        },
-        "workflow_input_cases_checksum_valid": {
-          "name": "workflow_input_cases_checksum_valid",
-          "value": "version_checksum ~ '^wf:sha256:(v2:)?[a-f0-9]{64}$'"
         }
       },
       "isRLSEnabled": false
@@ -12999,10 +12995,6 @@
         "workflow_calls_retired_details_valid": {
           "name": "workflow_calls_retired_details_valid",
           "value": "details_purged_at is null or (input_ref is null and result_ref is null)"
-        },
-        "workflow_calls_target_checksum_valid": {
-          "name": "workflow_calls_target_checksum_valid",
-          "value": "target_checksum ~ '^wf:sha256:(v2:)?[a-f0-9]{64}$'"
         }
       },
       "isRLSEnabled": false

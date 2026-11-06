@@ -35,10 +35,6 @@ export const workflowInputCases = appSchema.table(
   },
   (table): PgTableExtraConfigValue[] => [
     check(
-      'workflow_input_cases_checksum_valid',
-      sql`version_checksum ~ '^wf:sha256:(v2:)?[a-f0-9]{64}$'`,
-    ),
-    check(
       'workflow_input_cases_name_check',
       sql`((length(btrim((name)::text)) >= 1) AND (length(btrim((name)::text)) <= 128))`,
     ),
