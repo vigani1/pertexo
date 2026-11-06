@@ -1,3 +1,4 @@
+import { storageTextSchema } from '@pertexo/workflow-model';
 import { z } from 'zod';
 import {
   PROMOTION_LIMITS,
@@ -17,7 +18,7 @@ export const workflowPromotionApplySchema =
           (ids) => new Set(ids).size === ids.length,
           'Acknowledge each workflow once.',
         ),
-      note: z.string().trim().min(1).max(1000).optional(),
+      note: storageTextSchema.trim().min(1).max(1000).optional(),
     })
     .strict();
 export const workflowPromotionResultSchema = z

@@ -1,3 +1,4 @@
+import { storageTextSchema } from '@pertexo/workflow-model';
 import { FEDERATION_LIMITS } from '@pertexo/workflow-model';
 export { FEDERATION_LIMITS };
 import { z } from 'zod';
@@ -82,7 +83,7 @@ export const federationDomainNameSchema = z
     }
   });
 const revision = z.number().int().positive().max(2147483647);
-const name = z.string().trim().min(1).max(128);
+const name = storageTextSchema.trim().min(1).max(128);
 const issuer = z
   .url({ protocol: /^https$/u })
   .trim()
@@ -103,7 +104,7 @@ const issuer = z
         return exactIssuer;
       }, 'Use the exact HTTPS issuer without credentials, query or fragment.'),
   );
-const claimName = z.string().trim().min(1).max(256);
+const claimName = storageTextSchema.trim().min(1).max(256);
 const secret = z
   .string()
   .min(1)
@@ -114,7 +115,7 @@ const secret = z
   );
 export const oidcConfigurationSchema = z
   .object({
-    clientId: z.string().trim().min(1).max(512),
+    clientId: storageTextSchema.trim().min(1).max(512),
     emailClaim: claimName.default('email'),
     nameClaim: claimName.default('name'),
     jitEnabled: z.boolean().default(false),

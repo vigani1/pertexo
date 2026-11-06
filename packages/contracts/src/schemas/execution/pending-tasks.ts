@@ -1,3 +1,4 @@
+import { storageTextSchema } from '@pertexo/workflow-model';
 import {
   workspacePeopleQuerySchema as approvalAudienceQuerySchema,
   workspacePeoplePageSchema as approvalAudiencePageSchema,
@@ -120,8 +121,7 @@ export const pendingTaskListResponseSchema = z
 export const pendingTaskDecisionRequestSchema = z
   .object({
     decision: approvalDecisionSchema,
-    comment: z
-      .string()
+    comment: storageTextSchema
       .trim()
       .max(PENDING_TASK_LIMITS.commentCharacters)
       .optional(),

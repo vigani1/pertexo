@@ -257,7 +257,7 @@ export {
 } from './authoring/samples/identity.js';
 export type { StepSampleSource } from './authoring/samples/step-sample-source.types.js';
 
-export { isStorageText } from './values/json/text.js';
+export { isStorageText, storageTextSchema } from './values/json/text.js';
 export {
   workflowTestExpectationsSchema,
   DEFAULT_TEST_EXPECTATIONS,

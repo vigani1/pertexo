@@ -1,3 +1,4 @@
+import { storageTextSchema } from '@pertexo/workflow-model';
 import { z } from 'zod';
 import { workflowTemplateOriginRequestSchema } from '@pertexo/workflow-model';
 import {
@@ -30,7 +31,7 @@ export const workflowImportPreviewRequestSchema = z
   .strict();
 export const workflowImportRequestSchema =
   workflowImportPreviewRequestSchema.extend({
-    name: z.string().trim().min(1).max(128),
+    name: storageTextSchema.trim().min(1).max(128),
     expectedCompatibilityFingerprint: z
       .string()
       .regex(/^wf-compat:sha256:[a-f0-9]{64}$/u),

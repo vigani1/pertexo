@@ -1,3 +1,4 @@
+import { storageTextSchema } from '@pertexo/workflow-model';
 import { z } from 'zod';
 
 export const connectionIdentifierSchema = z.uuid();
@@ -20,7 +21,7 @@ export const connectionStatusSchema = z.enum([
   'reauthorization_required',
   'revoked',
 ]);
-export const connectionNameSchema = z.string().trim().min(1).max(128);
+export const connectionNameSchema = storageTextSchema.trim().min(1).max(128);
 
 /** The fields every connection answers with; an OAuth2 connection narrows them. */
 export const connectionResponseFields = {

@@ -1,13 +1,14 @@
+import { storageTextSchema } from '@pertexo/workflow-model';
 import { z } from 'zod';
 import { workflowGraphSchema } from '@pertexo/workflow-model';
 
 export const publicationReviewRequestSchema = z
-  .object({ note: z.string().trim().min(1).max(1000) })
+  .object({ note: storageTextSchema.trim().min(1).max(1000) })
   .strict();
 export const publicationReviewDecisionSchema = z
   .object({
     decision: z.enum(['approve', 'reject']),
-    comment: z.string().trim().max(1000).optional(),
+    comment: storageTextSchema.trim().max(1000).optional(),
   })
   .strict();
 export const publicationReviewParamsSchema = z
