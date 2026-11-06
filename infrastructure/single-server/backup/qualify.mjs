@@ -1,3 +1,4 @@
+import { docker } from './docker-command.mjs';
 import { seedSharingRecoveryFixture } from './sharing.fixture.mjs';
 import { seedOAuth2RecoveryFixture } from './oauth2.fixture.mjs';
 import assert from 'node:assert/strict';
@@ -25,13 +26,6 @@ import { parseArtifactStoreConfig } from '../../../packages/artifact-store/dist/
 const directory = mkdtempSync(join(tmpdir(), 'pertexo-recovery-'));
 const network = `pertexo-recovery-${randomUUID()}`;
 const containers = [];
-const docker = (args, options = {}) =>
-  execFileSync('docker', args, {
-    encoding: 'utf8',
-    timeout: 120000,
-    stdio: ['pipe', 'pipe', 'pipe'],
-    ...options,
-  });
 const rust =
   'rustfs/rustfs:1.0.1@sha256:1803faef57627e2d9c2e7d89d655d712ddded5389040054987163043fecb6a3c';
 const rc =
