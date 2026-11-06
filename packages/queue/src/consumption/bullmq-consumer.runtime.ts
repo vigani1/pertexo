@@ -1,3 +1,4 @@
+import { notifyConsumerObserver } from './notify-consumer-observer.js';
 import { performance } from 'node:perf_hooks';
 import { Worker } from 'bullmq';
 import type { Job as BullMqJob, Processor } from 'bullmq';
@@ -99,7 +100,7 @@ export class BullMqQueueConsumer implements QueueConsumer {
       );
       if (this.lifecycle === 'open') {
         this.ready = true;
-        this.notifyObserver(() => {
+        notifyConsumerObserver(() => {
           this.observer?.consumerLifecycle?.({
             event: 'ready',
             queueName: parsed.queueName,
@@ -124,7 +125,7 @@ export class BullMqQueueConsumer implements QueueConsumer {
       this.ready = false;
     });
     this.worker.on('stalled', () => {
-      this.notifyObserver(() => {
+      notifyConsumerObserver(() => {
         this.observer?.jobStalled?.({ queueName: parsed.queueName });
       });
     });
@@ -249,14 +250,14 @@ export class BullMqQueueConsumer implements QueueConsumer {
       queueName,
     };
     const startedAt = performance.now();
-    const observerStarted = this.notifyObserver(() => {
+    const observerStarted = notifyConsumerObserver(() => {
       this.observer?.handlerStarted(observation);
     });
 
     try {
       await Promise.race([handlerPromise, aborted]);
       if (observerStarted) {
-        this.notifyObserver(() => {
+        notifyConsumerObserver(() => {
           this.observer?.handlerFinished({
             ...observation,
             durationSeconds: (performance.now() - startedAt) / 1_000,
@@ -266,7 +267,7 @@ export class BullMqQueueConsumer implements QueueConsumer {
       }
     } catch (error: unknown) {
       if (observerStarted) {
-        this.notifyObserver(() => {
+        notifyConsumerObserver(() => {
           this.observer?.handlerFinished({
             ...observation,
             durationSeconds: (performance.now() - startedAt) / 1_000,
@@ -275,7 +276,7 @@ export class BullMqQueueConsumer implements QueueConsumer {
           });
         });
       }
-      this.notifyObserver(() => {
+      notifyConsumerObserver(() => {
         this.observer?.deliveryFailed?.({
           ...observation,
           ...deliveryIdentity(parsed, job),
@@ -293,16 +294,6 @@ export class BullMqQueueConsumer implements QueueConsumer {
 
   private isOpen(): boolean {
     return this.lifecycle === 'open';
-  }
-
-  private notifyObserver(notify: () => void): boolean {
-    try {
-      notify();
-      return true;
-    } catch {
-      // Operational telemetry cannot change queue delivery semantics.
-      return false;
-    }
   }
 
   private async pauseForDrain(deadline: number): Promise<boolean> {
@@ -389,7 +380,7 @@ export class BullMqQueueConsumer implements QueueConsumer {
     if (!workerClosed) forced = true;
     if (!(await this.closeRedis({ workerClosed: workerClosed }))) forced = true;
     this.lifecycle = 'closed';
-    this.notifyObserver(() => {
+    notifyConsumerObserver(() => {
       this.observer?.consumerLifecycle?.({
         event: forced ? 'drain_forced' : 'drain_graceful',
         queueName: this.queueName,
