@@ -272,19 +272,9 @@ function headerParameters({ headers }: AnyRoute) {
   });
 }
 
-/**
- * The fields an empty object is refused for. Asking each field about `undefined`
- * would call an exact-optional field required, though leaving it out is fine.
- */
+/** Input projection preserves enum, default and exact-optional presence rules. */
 function requiredFields(object: z.ZodObject): ReadonlySet<PropertyKey> {
-  const issues = object.safeParse({}).error?.issues ?? [];
-  return new Set(
-    issues.flatMap(({ code, path: [field, ...nested] }) =>
-      code === 'invalid_type' && field !== undefined && nested.length === 0
-        ? [field]
-        : [],
-    ),
-  );
+  return new Set(jsonSchema(object, 'input').required ?? []);
 }
 
 function requiredShapeField(
