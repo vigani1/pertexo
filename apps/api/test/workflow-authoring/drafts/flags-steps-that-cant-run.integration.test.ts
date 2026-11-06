@@ -301,4 +301,44 @@ describeIntegration('checking a draft before it is published', () => {
     },
     60000,
   );
+  it.each(['run_input', 'node_output'] as const)(
+    'checks %s path syntax before Publish and allows absent-data paths',
+    async (kind) => {
+      for (const path of ['customer.email', '$.customer.email']) {
+        const { report, publish } = await saveAndValidate(
+          afterManual(
+            step('candidate', 'core.set', 200, {
+              inputMappings: {
+                email:
+                  kind === 'node_output'
+                    ? { kind, nodeId: 'manual', path }
+                    : { kind, path },
+              },
+            }),
+          ),
+        );
+        const published = await publish();
+        if (path === 'customer.email') {
+          expect(report.valid).toBe(false);
+          expect(report.issues).toEqual([
+            {
+              code: 'invalid_mapping',
+              path: '$.nodes.candidate.inputMappings.email',
+              message:
+                "Use a JSON path such as $.customer.email, $[0], or $['email address'].",
+            },
+          ]);
+          expect(published.statusCode, published.body).toBe(422);
+          expect(published.json<{ errors: unknown }>().errors).toEqual(
+            report.issues,
+          );
+        } else {
+          expect(report.issues).toEqual([]);
+          expect(report.valid).toBe(true);
+          expect(published.statusCode, published.body).toBe(200);
+        }
+      }
+    },
+    60000,
+  );
 });
