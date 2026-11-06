@@ -20,7 +20,7 @@ import type {
   ApplyPromotionInput,
   PromotionContext,
 } from '../workflow-promotion.types.js';
-import { promotionDigest } from '../preparation/graph.js';
+import { promotionGraphDigest } from '../preparation/graph.js';
 export async function writePromotedDraft(
   client: PoolClient,
   context: PromotionContext,
@@ -158,7 +158,7 @@ async function persistPromotionCandidate(
       sourceWorkflowId: workflow.sourceWorkflowId,
       sourceVersionId: workflow.sourceVersionId,
       sourceChecksum: workflow.sourceChecksum,
-      graphDigest: promotionDigest(workflow.proposedGraph),
+      graphDigest: promotionGraphDigest(workflow.proposedGraph),
       targetName: workflow.sourceName,
       draftRevision: revision,
       publishedVersionId: workflow.targetPublishedVersionId,

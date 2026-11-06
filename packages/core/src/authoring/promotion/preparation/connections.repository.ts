@@ -24,7 +24,7 @@ import type {
   PromotionSource,
   PromotionSourceSet,
 } from './source.repository.js';
-import { promotionNodes } from './graph.js';
+import { workflowNodes } from '@pertexo/workflow-model';
 
 export async function rebindPromotionConnections(
   client: PoolClient,
@@ -51,7 +51,7 @@ export async function rebindPromotionConnections(
     );
   const manifest = projectWorkflowPortableManifest(source.graph, catalog);
   const sourceNodes = new Map(
-    [...promotionNodes(source.graph)].map((node) => [node.id, node]),
+    [...workflowNodes(source.graph)].map((node) => [node.id, node]),
   );
   const names = [
     ...new Set(

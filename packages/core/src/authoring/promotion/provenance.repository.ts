@@ -9,7 +9,7 @@ import {
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import type { PoolClient } from 'pg';
 import type { WorkflowVersionRecord } from '../workflows/representation/workflow-record.types.js';
-import { promotionDigest } from './preparation/graph.js';
+import { promotionGraphDigest } from './preparation/graph.js';
 
 /** Only the unchanged promoted draft can attribute a published version to its source. */
 export async function recordPromotedPublication(
@@ -46,7 +46,7 @@ export async function recordPromotedPublication(
       ),
     )
     .catch(rethrowQueryFailure);
-  if (row?.graphDigest !== promotionDigest(version.graphJson)) return;
+  if (row?.graphDigest !== promotionGraphDigest(version.graphJson)) return;
   await db
     .insert(workflowVersionPromotions)
     .select(

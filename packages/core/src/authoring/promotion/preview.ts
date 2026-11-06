@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto';
+import { canonicalJson } from '@pertexo/workflow-model';
 import { PROMOTION_LIMITS } from '@pertexo/workflow-model';
 import { utf8ByteLength } from '@pertexo/workflow-model';
 import type {
@@ -11,7 +13,7 @@ import type {
   PromotionContext,
   PromotionScope,
 } from './workflow-promotion.types.js';
-import { PromotionGraphBudget, promotionDigest } from './preparation/graph.js';
+import { PromotionGraphBudget } from './preparation/graph.js';
 import { readPromotionSources } from './preparation/source.repository.js';
 import { preparePromotionTarget } from './preparation/target.repository.js';
 
@@ -67,7 +69,7 @@ export async function preparePromotion(
     workflows: prepared.workflows,
     requirements,
   };
-  const fingerprint = promotionDigest({
+  const fingerprint = promotionReviewFingerprint({
     actorId: input.actorId,
     link: pair.source,
     ...data,
@@ -96,4 +98,11 @@ function promotionPolicyIssue({
     return 'Publication approval is off in the target. Choose Publish or Create drafts.';
   }
   return null;
+}
+
+/** Review identity includes authority and target facts, beyond the graph itself. */
+function promotionReviewFingerprint(
+  facts: Readonly<Record<string, unknown>>,
+): string {
+  return createHash('sha256').update(canonicalJson(facts)).digest('hex');
 }

@@ -9,15 +9,8 @@ import {
 
 import { WorkflowPromotionError } from '../workflow-promotion.errors.js';
 
-export function promotionDigest(value: unknown): string {
-  return createHash('sha256').update(canonicalJson(value)).digest('hex');
-}
-export function* promotionNodes(graph: WorkflowGraph): Generator<WorkflowNode> {
-  for (const node of graph.nodes) {
-    yield node;
-    if (node.structured !== undefined)
-      yield* promotionNodes(node.structured.body);
-  }
+export function promotionGraphDigest(graph: WorkflowGraph | null): string {
+  return createHash('sha256').update(canonicalJson(graph)).digest('hex');
 }
 export function mapPromotionNodes(
   graph: WorkflowGraph,
