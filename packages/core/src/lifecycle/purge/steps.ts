@@ -7,15 +7,17 @@ import {
   purgeOldDestinationVersions,
   purgeDestinations,
 } from './links.repository.js';
+import { purgeInputPayloads } from './input-payloads.repository.js';
 import {
-  purgeInputPayloads,
   clearCurrentAttempts,
+  clearPublishedVersions,
+} from './execution-pointers.repository.js';
+import {
   scrubAuditFacts,
   scrubUsageFacts,
   scrubTransportFacts,
-  purgeCreationReceipts,
-  clearPublishedVersions,
-} from './records.repository.js';
+} from './privacy-scrubbing.repository.js';
+import { purgeCreationReceipts } from './creation-receipts.repository.js';
 import {
   purgeNoticeMail,
   purgeFederationAttempts,

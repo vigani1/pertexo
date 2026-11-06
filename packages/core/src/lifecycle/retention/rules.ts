@@ -38,17 +38,16 @@ import {
   acceptanceIntents,
   invitationRecipients,
 } from './rules/invitations.repository.js';
+import { presence } from './rules/collaboration.repository.js';
+import { publicationRequests } from './rules/publication-reviews.repository.js';
+import { triggerSkips, previewUsage } from './rules/usage.repository.js';
+import { testSuites } from './rules/test-suites.repository.js';
+import { transportFacts } from './rules/transport-security.repository.js';
 import {
-  presence,
-  publicationRequests,
-  triggerSkips,
-  previewUsage,
-  testSuites,
-  transportFacts,
   commandReceipts,
   creationReceipts,
   startRejections,
-} from './rules/metadata.repository.js';
+} from './rules/command-receipts.repository.js';
 import {
   provisioningCredentials,
   sessions,
