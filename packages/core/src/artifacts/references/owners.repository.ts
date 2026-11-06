@@ -1,8 +1,9 @@
-import { ARTIFACT_DESCRIPTOR_JSON_PATH } from './descriptor-shape.js';
 import { expiredRunSql, retainedTestRunSql } from '../../runs/data-policy.js';
 import { and, eq, exists, sql, type SQL, type SQLWrapper } from 'drizzle-orm';
 import { alias, QueryBuilder } from 'drizzle-orm/pg-core';
 import {
+  artifactOwnerReferences,
+  type ArtifactOwnerFamily,
   workflowTestSnapshots,
   workflowTestSuiteCases,
   workflowTestSuites,
@@ -19,6 +20,7 @@ import {
   runCheckpoints,
   pendingRunTasks,
 } from '@pertexo/database/schema';
+const reference = alias(artifactOwnerReferences, 'artifact_reference');
 const snapshot = alias(workflowTestSnapshots, 'snapshot');
 const entry = alias(workflowTestSuiteCases, 'entry');
 const suite = alias(workflowTestSuites, 'suite');
@@ -35,26 +37,18 @@ const event = alias(runEvents, 'event');
 const checkpoint = alias(runCheckpoints, 'checkpoint');
 const task = alias(pendingRunTasks, 'task');
 const db = new QueryBuilder();
-type OwnerValue =
-  | Readonly<{ kind: 'authored'; value: SQL }>
-  | Readonly<{
-      kind: 'execution';
-      value: SQL;
-      format: 'value' | 'event' | 'checkpoint';
-    }>;
 type ReferenceOwner = Readonly<{
   build(where: SQL | undefined): SQLWrapper;
   workspace: SQLWrapper;
   workflow: SQLWrapper;
   retained?: SQL;
   accessibleWhen?: SQL;
-  accessibleValues?: readonly OwnerValue[];
-  values: readonly OwnerValue[];
+  identity: SQL;
 }>;
 const liveRunValues = sql`${run.detailsPurgedAt} is null and ${retainedTestRunSql('run', 'clock_timestamp()')} and not (${expiredRunSql('run', 'details')})`;
 /** Retention and access share existing reference facts, including sharing through a readable owner. */
-const OWNERS: readonly ReferenceOwner[] = [
-  {
+const OWNERS: Record<ArtifactOwnerFamily, ReferenceOwner> = {
+  workflow_test_snapshots: {
     build: (where) =>
       db
         .select({ one: sql`1` })
@@ -63,9 +57,9 @@ const OWNERS: readonly ReferenceOwner[] = [
     workspace: snapshot.workspaceId,
     workflow: snapshot.workflowId,
     retained: sql`${snapshot.expiresAt}>clock_timestamp()`,
-    values: [{ kind: 'authored', value: sql`${snapshot.graphJson}::jsonb` }],
+    identity: sql`${snapshot.id}=${reference.ownerId}`,
   },
-  {
+  workflow_test_suite_cases: {
     build: (where) =>
       db
         .select({ one: sql`1` })
@@ -81,9 +75,9 @@ const OWNERS: readonly ReferenceOwner[] = [
     workspace: entry.workspaceId,
     workflow: suite.workflowId,
     retained: sql`${suite.expiresAt}>clock_timestamp()`,
-    values: [{ kind: 'authored', value: sql`${entry.input}::jsonb` }],
+    identity: sql`${entry.suiteId}=${reference.ownerId} and ${entry.ordinal}=${reference.ownerSubId}`,
   },
-  {
+  workflow_drafts: {
     build: (where) =>
       db
         .select({ one: sql`1` })
@@ -91,9 +85,9 @@ const OWNERS: readonly ReferenceOwner[] = [
         .where(where),
     workspace: draft.workspaceId,
     workflow: draft.workflowId,
-    values: [{ kind: 'authored', value: sql`${draft.graphJson}::jsonb` }],
+    identity: sql`${draft.workflowId}=${reference.ownerId}`,
   },
-  {
+  workflow_versions: {
     build: (where) =>
       db
         .select({ one: sql`1` })
@@ -101,9 +95,9 @@ const OWNERS: readonly ReferenceOwner[] = [
         .where(where),
     workspace: version.workspaceId,
     workflow: version.workflowId,
-    values: [{ kind: 'authored', value: sql`${version.graphJson}::jsonb` }],
+    identity: sql`${version.id}=${reference.ownerId}`,
   },
-  {
+  workflow_input_case_payloads: {
     build: (where) =>
       db
         .select({ one: sql`1` })
@@ -119,9 +113,9 @@ const OWNERS: readonly ReferenceOwner[] = [
     workspace: payload.workspaceId,
     workflow: inputCase.workflowId,
     accessibleWhen: sql`${inputCase.deletedAt} is null and ${inputCase.revision}=${payload.revision}`,
-    values: [{ kind: 'authored', value: sql`${payload.input}::jsonb` }],
+    identity: sql`${payload.caseId}=${reference.ownerId} and ${payload.revision}=${reference.ownerSubId}`,
   },
-  {
+  workflow_step_samples: {
     build: (where) =>
       db
         .select({ one: sql`1` })
@@ -130,9 +124,9 @@ const OWNERS: readonly ReferenceOwner[] = [
     workspace: sample.workspaceId,
     workflow: sample.workflowId,
     retained: sql`${sample.expiresAt}>clock_timestamp()`,
-    values: [executionReferences(sql`${sample.outputRef}::jsonb`)],
+    identity: sql`${sample.id}=${reference.ownerId}`,
   },
-  {
+  preview_runs: {
     build: (where) =>
       db
         .select({ one: sql`1` })
@@ -141,13 +135,9 @@ const OWNERS: readonly ReferenceOwner[] = [
     workspace: preview.workspaceId,
     workflow: preview.workflowId,
     retained: sql`${preview.expiresAt}>clock_timestamp()`,
-    values: [
-      executionReferences(sql`${preview.inputRef}::jsonb`),
-      { kind: 'authored', value: sql`${preview.executableNodeJson}::jsonb` },
-      executionReferences(sql`${preview.outputRef}::jsonb`),
-    ],
+    identity: sql`${preview.id}=${reference.ownerId}`,
   },
-  {
+  workflow_runs: {
     build: (where) =>
       db
         .select({ one: sql`1` })
@@ -155,20 +145,10 @@ const OWNERS: readonly ReferenceOwner[] = [
         .where(where),
     workspace: run.workspaceId,
     workflow: run.workflowId,
-    accessibleValues: [
-      executionReferences(
-        sql`case when ${run.inputRefExpiresAt}>clock_timestamp() then ${run.inputRef}::jsonb end`,
-      ),
-      executionReferences(
-        sql`case when ${liveRunValues} then ${run.outputRef}::jsonb end`,
-      ),
-    ],
-    values: [
-      executionReferences(sql`${run.inputRef}::jsonb`),
-      executionReferences(sql`${run.outputRef}::jsonb`),
-    ],
+    accessibleWhen: sql`((${reference.ownerSlot}='input_ref' and ${run.inputRefExpiresAt}>clock_timestamp()) or (${reference.ownerSlot}='output_ref' and ${liveRunValues}))`,
+    identity: sql`${run.id}=${reference.ownerId}`,
   },
-  {
+  node_runs: {
     build: (where) =>
       db
         .select({ one: sql`1` })
@@ -184,12 +164,9 @@ const OWNERS: readonly ReferenceOwner[] = [
     workspace: node.workspaceId,
     workflow: run.workflowId,
     accessibleWhen: liveRunValues,
-    values: [
-      executionReferences(sql`${node.inputRef}::jsonb`),
-      executionReferences(sql`${node.outputRef}::jsonb`),
-    ],
+    identity: sql`${node.id}=${reference.ownerId}`,
   },
-  {
+  node_attempts: {
     build: (where) =>
       db
         .select({ one: sql`1` })
@@ -212,12 +189,9 @@ const OWNERS: readonly ReferenceOwner[] = [
     workspace: attempt.workspaceId,
     workflow: run.workflowId,
     accessibleWhen: liveRunValues,
-    values: [
-      executionReferences(sql`${attempt.outputRef}::jsonb`),
-      executionReferences(sql`${attempt.reconciliationRef}`),
-    ],
+    identity: sql`${attempt.id}=${reference.ownerId}`,
   },
-  {
+  run_events: {
     build: (where) =>
       db
         .select({ one: sql`1` })
@@ -233,9 +207,9 @@ const OWNERS: readonly ReferenceOwner[] = [
     workspace: event.workspaceId,
     workflow: run.workflowId,
     accessibleWhen: liveRunValues,
-    values: [executionReferences(sql`${event.payload}`, 'event')],
+    identity: sql`${event.workflowRunId}=${reference.ownerId} and ${event.sequence}=${reference.ownerSubId}`,
   },
-  {
+  run_checkpoints: {
     build: (where) =>
       db
         .select({ one: sql`1` })
@@ -251,11 +225,9 @@ const OWNERS: readonly ReferenceOwner[] = [
     workspace: checkpoint.workspaceId,
     workflow: run.workflowId,
     accessibleWhen: liveRunValues,
-    values: [
-      executionReferences(sql`${checkpoint.schedulerState}`, 'checkpoint'),
-    ],
+    identity: sql`${checkpoint.workflowRunId}=${reference.ownerId}`,
   },
-  {
+  pending_run_tasks: {
     // A response's files are its own until the resumed step outputs them.
     build: (where) =>
       db
@@ -269,60 +241,41 @@ const OWNERS: readonly ReferenceOwner[] = [
     workspace: task.workspaceId,
     workflow: run.workflowId,
     accessibleWhen: liveRunValues,
-    values: [executionReferences(sql`${task.outputRef}::jsonb`)],
+    identity: sql`${task.id}=${reference.ownerId}`,
   },
-];
-function referencesArtifact(source: OwnerValue, artifact: SQL): SQL {
-  if (source.kind === 'execution')
-    return exists(
-      db
-        .select({ one: sql`1` })
-        .from(
-          sql`app.execution_artifact_ids(${source.value},${source.format}) reference`,
-        )
-        .where(sql`reference=${artifact}::uuid`),
-    );
-  return exists(
-    db
-      .select({ one: sql`1` })
-      .from(
-        sql`jsonb_path_query(${source.value},${ARTIFACT_DESCRIPTOR_JSON_PATH}::jsonpath) reference`,
-      )
-      .where(sql`lower(reference #>> '{}')=${artifact}::uuid::text`),
-  );
-}
-/** SQL filters existing reference facts using an already-decided resource scope. */
+};
+/** Probe derived facts first, then apply current owner visibility and lifetime policy. */
 export function artifactReferenceOwnersSql(
   workspace: SQL,
   artifact: SQL,
   visible?: (workflow: SQL) => SQL,
 ): SQL<boolean> {
-  const owners = OWNERS.map((owner) => {
-    const values =
-      visible !== undefined && owner.accessibleValues !== undefined
-        ? owner.accessibleValues
-        : owner.values;
-    return exists(
-      owner.build(
-        and(
-          sql`${owner.workspace}=${workspace}::uuid`,
-          owner.retained,
-          visible === undefined ? undefined : owner.accessibleWhen,
-          sql`(${sql.join(
-            values.map((value) => referencesArtifact(value, artifact)),
-            sql` or `,
-          )})`,
-          visible === undefined ? undefined : visible(sql`${owner.workflow}`),
+  const owners = Object.entries(OWNERS).map(([family, owner]) =>
+    and(
+      eq(reference.ownerFamily, family),
+      exists(
+        owner.build(
+          and(
+            sql`${owner.workspace}=${reference.workspaceId}`,
+            owner.identity,
+            owner.retained,
+            visible === undefined ? undefined : owner.accessibleWhen,
+            visible === undefined ? undefined : visible(sql`${owner.workflow}`),
+          ),
         ),
       ),
-    );
-  });
-  return sql`(${sql.join(owners, sql` or `)})`;
-}
-
-function executionReferences(
-  value: SQL,
-  format: 'value' | 'event' | 'checkpoint' = 'value',
-): OwnerValue {
-  return { kind: 'execution', value, format };
+    ),
+  );
+  return sql<boolean>`${exists(
+    db
+      .select({ one: sql`1` })
+      .from(reference)
+      .where(
+        and(
+          sql`${reference.workspaceId}=${workspace}::uuid`,
+          sql`${reference.artifactId}=${artifact}::uuid`,
+          sql`(${sql.join(owners, sql` or `)})`,
+        ),
+      ),
+  )}`;
 }

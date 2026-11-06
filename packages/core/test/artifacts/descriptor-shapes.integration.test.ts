@@ -86,6 +86,13 @@ it.each(cases)(
     expect(result.rows.map((row) => row.reference)).toEqual(
       testCase.descriptor ? [descriptor.artifactId] : [],
     );
+    const indexed = await pool.query<{ id: string }>(
+      "select app.artifact_owner_ids($1::jsonb,'authored') id",
+      [JSON.stringify(testCase.value)],
+    );
+    expect(indexed.rows.map((row) => row.id)).toEqual(
+      testCase.descriptor ? [descriptor.artifactId] : [],
+    );
     if (!testCase.descriptor)
       expect(collectArtifactReferences(testCase.value)).toEqual([]);
   },
@@ -115,4 +122,17 @@ it('keeps arrays containing descriptors and ordinary business objects valid', as
       sha256: null,
     }),
   ).toThrow();
+});
+
+it('normalizes mixed-case descriptor UUIDs in the derived index', async () => {
+  const result = await pool.query<{ id: string }>(
+    "select app.artifact_owner_ids($1::jsonb,'authored') id",
+    [
+      JSON.stringify({
+        ...descriptor,
+        artifactId: descriptor.artifactId.toUpperCase(),
+      }),
+    ],
+  );
+  expect(result.rows).toEqual([{ id: descriptor.artifactId }]);
 });
