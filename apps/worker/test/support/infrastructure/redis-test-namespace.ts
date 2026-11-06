@@ -8,6 +8,7 @@ const OWNERSHIP_TTL_MILLIS = 60 * 60 * 1_000;
 interface RedisTestClient {
   connect(): Promise<unknown>;
   dbsize(): Promise<number>;
+  get(key: string): Promise<string | null>;
   disconnect(reconnect?: boolean): void;
   eval(
     script: string,
@@ -50,6 +51,7 @@ export function createRedisTestNamespace(
   let control: RedisTestClient | undefined;
   let target: RedisTestClient | undefined;
   let acquired = false;
+  let cleanupPromise: Promise<void> | undefined;
 
   const client = (url: string): RedisTestClient => {
     if (dependencies.createClient !== undefined)
@@ -96,6 +98,7 @@ export function createRedisTestNamespace(
     redisUrl: targetUrl.toString(),
     async acquire(): Promise<void> {
       if (acquired) return;
+      cleanupPromise = undefined;
       const nextControl = client(controlUrl.toString());
       control = nextControl;
       try {
@@ -107,10 +110,12 @@ export function createRedisTestNamespace(
           OWNERSHIP_TTL_MILLIS,
           'NX',
         );
-        if (result !== 'OK')
+        if (result !== 'OK') {
+          const currentOwner = await nextControl.get(lockKey);
           throw new Error(
-            `Redis test database ${String(database)} is already owned`,
+            `Redis test database ${String(database)} is already owned by ${currentOwner?.split(':')[0] ?? 'an owner whose lease just expired'}`,
           );
+        }
         acquired = true;
         const nextTarget = client(targetUrl.toString());
         target = nextTarget;
@@ -133,50 +138,53 @@ export function createRedisTestNamespace(
         );
       }
     },
-    async close(): Promise<void> {
-      const activeTarget = target;
-      target = undefined;
-      if (activeTarget === undefined) {
-        await releaseControl();
-        return;
-      }
-      try {
-        if (!acquired || control === undefined)
-          throw new Error('Redis test namespace is not owned');
-        await dependencies.beforeCleanup?.();
-        // Redis scripts execute atomically across these local standalone DBs.
-        // No TTL expiry or competing SET may intervene between the ownership
-        // check, target cleanup and exact-token release. Never FLUSH separately.
-        const cleaned = await control.eval(
-          `if redis.call('get',KEYS[1]) ~= ARGV[1] then return 0 end
+    close(): Promise<void> {
+      cleanupPromise ??= (async () => {
+        const activeTarget = target;
+        target = undefined;
+        if (activeTarget === undefined) {
+          await releaseControl();
+          return;
+        }
+        try {
+          if (!acquired || control === undefined)
+            throw new Error('Redis test namespace is not owned');
+          await dependencies.beforeCleanup?.();
+          // Redis scripts execute atomically across these local standalone DBs.
+          // No TTL expiry or competing SET may intervene between the ownership
+          // check, target cleanup and exact-token release. Never FLUSH separately.
+          const cleaned = await control.eval(
+            `if redis.call('get',KEYS[1]) ~= ARGV[1] then return 0 end
            redis.call('select',ARGV[2])
            redis.call('flushdb')
            redis.call('select',ARGV[3])
            redis.call('del',KEYS[1])
            return 1`,
-          1,
-          lockKey,
-          ownerValue,
-          database,
-          CONTROL_DATABASE,
-        );
-        if (cleaned !== 1)
-          throw new Error('Redis test namespace ownership was lost');
-        acquired = false;
-        await activeTarget.quit();
-        await releaseControl();
-      } catch (error: unknown) {
-        // A failed/mismatched atomic cleanup must not release a lease or retry
-        // destructive cleanup under a new owner. Preserve evidence and fail.
-        activeTarget.disconnect(false);
-        control?.disconnect(false);
-        control = undefined;
-        acquired = false;
-        throw new AggregateError(
-          [error],
-          'Redis test namespace cleanup failed',
-        );
-      }
+            1,
+            lockKey,
+            ownerValue,
+            database,
+            CONTROL_DATABASE,
+          );
+          if (cleaned !== 1)
+            throw new Error('Redis test namespace ownership was lost');
+          acquired = false;
+          await activeTarget.quit();
+          await releaseControl();
+        } catch (error: unknown) {
+          // A failed/mismatched atomic cleanup must not release a lease or retry
+          // destructive cleanup under a new owner. Preserve evidence and fail.
+          activeTarget.disconnect(false);
+          control?.disconnect(false);
+          control = undefined;
+          acquired = false;
+          throw new AggregateError(
+            [error],
+            'Redis test namespace cleanup failed',
+          );
+        }
+      })();
+      return cleanupPromise;
     },
   });
 }
