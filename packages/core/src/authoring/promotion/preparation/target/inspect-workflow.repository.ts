@@ -7,7 +7,7 @@ import {
   readTargetOrigin,
   lockTargetWorkflow,
 } from './target-workflows.repository.js';
-import { workflowAccessible } from '../../../../tenant-access/resources/workflows.repository.js';
+import { workflowAccessible } from '../../../../shared/resources/workflow-access.repository.js';
 import { WorkflowNotFoundError } from '../../../workflows/workflow-authoring.errors.js';
 import type { PoolClient } from 'pg';
 

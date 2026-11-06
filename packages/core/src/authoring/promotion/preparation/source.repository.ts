@@ -8,13 +8,13 @@ import {
   workflowVersions,
   connections as storedConnections,
 } from '@pertexo/database/schema';
-import type { ConnectionScope } from '../../../tenant-access/resources/connections/scope.js';
+import type { ConnectionScope } from '../../../shared/resources/connection-scope.repository.js';
 import {
   connectionScope,
   connectionScopeSql,
-} from '../../../tenant-access/resources/connections/scope.js';
+} from '../../../shared/resources/connection-scope.repository.js';
 import { readFolderScope } from '../../../shared/facts.repository.js';
-import { workflowAccessible } from '../../../tenant-access/resources/workflows.repository.js';
+import { workflowAccessible } from '../../../shared/resources/workflow-access.repository.js';
 import type { PoolClient } from 'pg';
 import type { WorkflowPromotionPreviewRequest } from '@pertexo/contracts';
 import {

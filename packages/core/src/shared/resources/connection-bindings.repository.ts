@@ -10,12 +10,12 @@ import {
   type WorkflowGraph,
 } from '@pertexo/workflow-model';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
-import type { ResourceActor } from '../../../shared/folder-access.types.js';
+import type { ResourceActor } from '../folder-access.types.js';
 import {
   connectionScopeSql,
   readConnectionScope,
   type ConnectionScope,
-} from './scope.js';
+} from './connection-scope.repository.js';
 
 export {
   workflowConnectionReferences,

@@ -16,7 +16,7 @@ import {
   workflowErrorPolicies,
 } from '@pertexo/database/schema';
 import type { FolderScope } from '../../../shared/folder-access.types.js';
-import { workflowAccessible } from '../../../tenant-access/resources/workflows.repository.js';
+import { workflowAccessible } from '../../../shared/resources/workflow-access.repository.js';
 import { workflowScopeSql } from '../../../shared/scope.repository.js';
 import type { PoolClient } from 'pg';
 import { isWorkflowErrorTarget } from '@pertexo/workflow-model';

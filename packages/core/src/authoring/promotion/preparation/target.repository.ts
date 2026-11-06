@@ -6,7 +6,7 @@ import {
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { PROMOTION_LIMITS } from '@pertexo/workflow-model';
-import { connectionScope } from '../../../tenant-access/resources/connections/scope.js';
+import { connectionScope } from '../../../shared/resources/connection-scope.repository.js';
 import { readFolderScope } from '../../../shared/facts.repository.js';
 
 import type { PoolClient } from 'pg';

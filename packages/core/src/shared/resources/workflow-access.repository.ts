@@ -6,8 +6,8 @@ import type { PoolClient } from 'pg';
 import type {
   FolderScope,
   WorkflowResourceCapability,
-} from '../../shared/folder-access.types.js';
-import { workflowScopeSql } from '../../shared/scope.repository.js';
+} from '../folder-access.types.js';
+import { workflowScopeSql } from '../scope.repository.js';
 
 /** Reuse the caller's scope for a direct read or command, including idempotent replay. */
 export async function workflowAccessible(

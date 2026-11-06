@@ -12,7 +12,7 @@ import {
 
 import type { PoolClient } from 'pg';
 import type { FolderScope } from '../../../shared/folder-access.types.js';
-import { workflowAccessible } from '../../../tenant-access/resources/workflows.repository.js';
+import { workflowAccessible } from '../../../shared/resources/workflow-access.repository.js';
 
 import type { ListWorkflowVersionsInput } from '../workflow-commands.types.js';
 

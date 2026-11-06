@@ -8,7 +8,7 @@ import {
 } from '../shared/workspace-access.js';
 import { WorkspaceAccessDeniedError } from '../shared/workspace-access.errors.js';
 import type { WorkflowResourceCapability } from '../shared/folder-access.types.js';
-import { workflowAccessible } from '../tenant-access/resources/workflows.repository.js';
+import { workflowAccessible } from '../shared/resources/workflow-access.repository.js';
 
 /**
  * A member reaching one workflow. The role comes from `capability`, the folder from

@@ -13,7 +13,7 @@ import {
   type WorkspaceActor,
 } from '../../shared/workspace-access.js';
 import { WorkspaceAccessDeniedError } from '../../shared/workspace-access.errors.js';
-import { workflowAccessible } from '../../tenant-access/resources/workflows.repository.js';
+import { workflowAccessible } from '../../shared/resources/workflow-access.repository.js';
 import {
   ACTIVE_WORKSPACE_STATUSES,
   BROWSABLE_WORKSPACE_STATUSES,

@@ -1,4 +1,4 @@
-import type { connectionScope } from '../../../../tenant-access/resources/connections/scope.js';
+import type { connectionScope } from '../../../../shared/resources/connection-scope.repository.js';
 import type { readFolderScope } from '../../../../shared/facts.repository.js';
 
 import type {

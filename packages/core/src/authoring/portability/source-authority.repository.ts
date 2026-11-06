@@ -19,11 +19,11 @@ import {
   connections,
 } from '@pertexo/database/schema';
 import { readFolderScope } from '../../shared/facts.repository.js';
-import { workflowAccessible } from '../../tenant-access/resources/workflows.repository.js';
+import { workflowAccessible } from '../../shared/resources/workflow-access.repository.js';
 import {
   connectionScopeSql,
   readConnectionScope,
-} from '../../tenant-access/resources/connections/scope.js';
+} from '../../shared/resources/connection-scope.repository.js';
 import type { AuthoringCatalogs } from '../workflows/catalogs.js';
 import type { ExportWorkflowInput } from '../workflows/workflow-commands.types.js';
 import {

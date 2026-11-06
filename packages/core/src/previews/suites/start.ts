@@ -27,8 +27,8 @@ import { lockInputCaseQuota } from '../../authoring/input-cases/metadata.reposit
 import type { WorkflowTestOptions } from '../workflows/workflow-test.types.js';
 import { generatePersistedId } from '@pertexo/database/platform';
 import { TEST_RUN_RETENTION_MILLIS } from '../../runs/data-policy.js';
-import { requireWorkflowCallTargets } from '../../tenant-access/resources/bindings.repository.js';
-import { requireConnectionBindings } from '../../tenant-access/resources/connections/bindings.repository.js';
+import { requireWorkflowCallTargets } from '../../shared/resources/workflow-call-bindings.repository.js';
+import { requireConnectionBindings } from '../../shared/resources/connection-bindings.repository.js';
 import { captureWorkspaceVariableRevision } from '../../variables/head.repository.js';
 import {
   requireNoActiveSuite,

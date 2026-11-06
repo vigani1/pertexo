@@ -1,5 +1,5 @@
 import { decodeStoredValue } from '../../../shared/stored-values.js';
-import type { ConnectionScope } from '../../../tenant-access/resources/connections/scope.js';
+import type { ConnectionScope } from '../../../shared/resources/connection-scope.repository.js';
 import { and, desc, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { alias } from 'drizzle-orm/pg-core';

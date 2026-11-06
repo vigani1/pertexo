@@ -11,7 +11,7 @@ import {
 } from '@pertexo/database/testing';
 import { withTenantScopedClient } from '@pertexo/database/primitives';
 import { readFolderScope } from '../../../src/shared/facts.repository.js';
-import { workflowAccessible } from '../../../src/tenant-access/resources/workflows.repository.js';
+import { workflowAccessible } from '../../../src/shared/resources/workflow-access.repository.js';
 
 it('keeps populated folders workspace-shared and forces isolation on grant rows after upgrading', async () => {
   const adminUrl =

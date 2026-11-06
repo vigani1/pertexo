@@ -20,3 +20,10 @@ export type {} from './command-receipt.errors.js';
 export type {} from './retention-deletion.js';
 export type {} from './workflow-actor.js';
 export type {} from './traceparent.js';
+
+// Resource authority is shared by authoring, execution and tenant discovery.
+export type {} from './resources/workflow-authority.repository.js';
+export type {} from './resources/workflow-access.repository.js';
+export type {} from './resources/workflow-call-bindings.repository.js';
+export type {} from './resources/connection-scope.repository.js';
+export type {} from './resources/connection-bindings.repository.js';

@@ -22,8 +22,8 @@ import {
   workflows,
   workflowVersions,
 } from '@pertexo/database/schema';
-import { requireWorkflowCallTargets } from '../../../tenant-access/resources/bindings.repository.js';
-import { requireConnectionBindings } from '../../../tenant-access/resources/connections/bindings.repository.js';
+import { requireWorkflowCallTargets } from '../../../shared/resources/workflow-call-bindings.repository.js';
+import { requireConnectionBindings } from '../../../shared/resources/connection-bindings.repository.js';
 
 import { generatePersistedId } from '@pertexo/database/platform';
 import { decodeStoredValue } from '../../../shared/stored-values.js';

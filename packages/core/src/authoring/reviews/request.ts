@@ -11,7 +11,7 @@ import {
   completeCommand,
 } from '@pertexo/database/primitives';
 import { appendAuditFact } from '../../governance/audit/facts.js';
-import { requireConnectionBindings } from '../../tenant-access/resources/connections/bindings.repository.js';
+import { requireConnectionBindings } from '../../shared/resources/connection-bindings.repository.js';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
 import { generatePersistedId } from '@pertexo/database/platform';

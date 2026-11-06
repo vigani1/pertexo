@@ -1,5 +1,5 @@
 import type { PoolClient } from 'pg';
-import { WorkspaceAccessDeniedError } from '../../shared/workspace-access.errors.js';
+import { WorkspaceAccessDeniedError } from '../workspace-access.errors.js';
 import {
   BROWSABLE_WORKSPACE_STATUSES,
   rolesForCapability,
@@ -9,13 +9,13 @@ import {
   lockBrowsableWorkspaceAuthority,
   lockWorkspaceAuthority,
   readWorkspaceAuthority,
-} from '../../shared/authority.repository.js';
+} from '../authority.repository.js';
 import type {
   ResourceActor,
   WorkflowResourceCapability,
-} from '../../shared/folder-access.types.js';
-import { readFolderScope } from '../../shared/facts.repository.js';
-import { workflowAccessible } from './workflows.repository.js';
+} from '../folder-access.types.js';
+import { readFolderScope } from '../facts.repository.js';
+import { workflowAccessible } from './workflow-access.repository.js';
 
 /** Commands stabilize current grants through the workspace-first authority fence. */
 export async function authorizeWorkflowResource(
