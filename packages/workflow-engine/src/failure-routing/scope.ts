@@ -2,7 +2,7 @@ import type {
   BranchSelection,
   InvocationState,
 } from '../workflow-execution.js';
-import { invocationKey } from '../transition/scheduling/loops.js';
+import { invocationKey } from '../invocation-identity.js';
 
 /** A handler inherits an executed choice, never an unselected sibling scope. */
 export function isSelectedFailureScope(

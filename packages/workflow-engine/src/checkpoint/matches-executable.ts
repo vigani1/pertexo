@@ -10,11 +10,11 @@ import type {
 import {
   configuredParallelOutputPorts,
   configuredScopedOutputPorts,
-} from '../transition/scheduling/readiness.js';
+} from '../control-output-ports.js';
 import { operationError } from '../operation-values.js';
 import { compareOrdinal } from '@pertexo/workflow-model';
 import { branchPathHasPrefix, sameIterationPath } from '../scope.js';
-import { invocationKey as createInvocationKey } from '../transition/scheduling/loops.js';
+import { invocationKey as createInvocationKey } from '../invocation-identity.js';
 
 type ParsedCheckpoint = ReturnType<typeof parseCheckpoint>;
 type CheckpointJoin = ParsedCheckpoint['joins'][number];

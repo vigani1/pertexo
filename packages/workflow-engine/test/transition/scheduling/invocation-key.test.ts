@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { invocationKey } from '../../../src/transition/scheduling/loops.js';
+import { invocationKey } from '../../../src/invocation-identity.js';
 
 describe('invocation keys', () => {
   it('agrees with persisted writer/checkpoint branch and iteration bytes', () => {

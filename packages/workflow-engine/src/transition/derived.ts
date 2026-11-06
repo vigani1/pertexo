@@ -1,11 +1,9 @@
 import { WorkflowEngineError } from '../workflow-engine.errors.js';
 import { deriveReadyNodes } from './scheduling/readiness.js';
 import { compareOrdinal } from '@pertexo/workflow-model';
-import {
-  admitLoopIterations,
-  invocationKey as createInvocationKey,
-  settleJoin,
-} from './scheduling/loops.js';
+import { admitLoopIterations } from './scheduling/loops.js';
+import { invocationKey as createInvocationKey } from '../invocation-identity.js';
+import { settleJoin } from '../join-settlement.js';
 import { assertNodeTransition, invocationIdentity } from './status.js';
 import type { InvocationState } from '../workflow-execution.js';
 import {

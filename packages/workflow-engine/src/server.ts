@@ -31,10 +31,7 @@ export type {
   VerifiedWorkflowExecutable,
   WorkflowExecutableNode,
 } from './compilation/workflow-executable.js';
-export {
-  invocationKey,
-  loopIterationOrdinal,
-} from './transition/scheduling/loops.js';
+export { invocationKey, loopIterationOrdinal } from './invocation-identity.js';
 
 export { selectRecoveryPrefix } from './recovery/select-prefix.js';
 export { planRecovery } from './recovery/plan.js';

@@ -49,14 +49,16 @@ export function advanceWorkflow(
 
 export { deriveReadyNodes, parseSchedulerGraph };
 export type { SchedulerGraph, WorkflowObservation };
-export type { ReadyNodeDecision } from '../../src/transition/scheduling/readiness.js';
+export type { ReadyNodeDecision } from '../../src/transition/scheduling/policy.js';
 export {
   completeLoopIteration,
   createLoopState,
+} from '../../src/transition/scheduling/loops.js';
+export {
   recordBranchDisposition,
   settleJoin,
-} from '../../src/transition/scheduling/loops.js';
-export type { JoinDecision } from '../../src/transition/scheduling/loops.js';
+} from '../../src/join-settlement.js';
+export type { JoinDecision } from '../../src/join-settlement.js';
 export {
   decideRetry,
   ENGINE_RETRY_POLICY,

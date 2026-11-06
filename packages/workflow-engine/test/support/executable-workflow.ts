@@ -1,4 +1,4 @@
-import { invocationKey } from '../../src/transition/scheduling/loops.js';
+import { invocationKey } from '../../src/invocation-identity.js';
 
 export {
   boundedPolicy,

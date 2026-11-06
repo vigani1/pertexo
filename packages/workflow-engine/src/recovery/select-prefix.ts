@@ -20,7 +20,7 @@ import {
   resolveRetryPolicy,
   type RetryPolicy,
 } from '../attempt/retries.js';
-import { invocationKey } from '../transition/scheduling/loops.js';
+import { invocationKey } from '../invocation-identity.js';
 import type {
   BranchScopePart,
   InvocationState,
