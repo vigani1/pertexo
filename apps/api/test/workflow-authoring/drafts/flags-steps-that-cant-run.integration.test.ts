@@ -217,4 +217,41 @@ describeIntegration('checking a draft before it is published', () => {
     },
     60_000,
   );
+  it('identifies an oversized execution scope consistently in Check and Publish', async () => {
+    const nodes = [
+      step('manual', 'core.manual', 0),
+      ...Array.from({ length: 7 }, (_, n) =>
+        step(
+          `00000000-0000-4000-8000-${String(n + 1).padStart(12, '0')}`,
+          'core.condition',
+          200,
+          { inputMappings: { condition: { kind: 'literal', value: true } } },
+        ),
+      ),
+      step('leaf', 'core.set', 400),
+    ];
+    const graph = {
+      settings: {},
+      nodes,
+      edges: nodes.slice(1).map((node, n) => ({
+        id: `edge-${String(n)}`,
+        source: {
+          nodeId: nodes[n]?.id ?? '',
+          port: n === 0 ? 'out' : 'true',
+        },
+        target: { nodeId: node.id, port: 'in' },
+      })),
+    };
+    const { report, publish } = await saveAndValidate(graph);
+    expect(report.valid).toBe(false);
+    expect(report.issues).toHaveLength(1);
+    expect(report.issues[0]?.code).toBe('graph_limit');
+    expect(report.issues[0]?.path).toMatch(/^\$\.nodes\./u);
+    expect(report.issues[0]?.message).toContain(
+      '256-character execution identity limit',
+    );
+    const refused = await publish();
+    expect(refused.statusCode, refused.body).toBe(422);
+    expect(refused.json<{ errors: unknown }>().errors).toEqual(report.issues);
+  }, 60_000);
 });

@@ -1,3 +1,4 @@
+import { WORKFLOW_GRAPH_CONTRACT_LIMITS } from '@pertexo/workflow-model';
 import { sql } from 'drizzle-orm';
 import {
   check,
@@ -30,7 +31,9 @@ export const pendingRunTasks = appSchema.table(
     callbackTokenHash: char('callback_token_hash', { length: 64 }),
     callbackKeyVersion: varchar('callback_key_version', { length: 64 }),
     openedAt: timestamp('opened_at', { withTimezone: true, mode: 'date' }),
-    invocationKey: varchar('invocation_key', { length: 256 }).notNull(),
+    invocationKey: varchar('invocation_key', {
+      length: WORKFLOW_GRAPH_CONTRACT_LIMITS.invocationKeyLength,
+    }).notNull(),
     kind: varchar({ length: 32 }).notNull(),
     config: jsonb().notNull(),
     context: jsonb()

@@ -9,7 +9,11 @@ export function parseCheckpoint(value: unknown): WorkflowCheckpoint {
     assertBoundedCheckpointJson(value);
     return parseCheckpointRecord(value);
   } catch (error) {
-    if (error instanceof WorkflowEngineError) throw error;
+    if (
+      error instanceof WorkflowEngineError &&
+      error.code !== 'workflow_identity_invalid'
+    )
+      throw error;
     throw new WorkflowEngineError(
       'checkpoint_invalid',
       error instanceof Error ? error.message : 'checkpoint parsing failed',

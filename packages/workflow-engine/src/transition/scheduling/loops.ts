@@ -1,5 +1,8 @@
 import { WorkflowEngineError } from '../../workflow-engine.errors.js';
-import { compareOrdinal } from '@pertexo/workflow-model';
+import {
+  WORKFLOW_GRAPH_CONTRACT_LIMITS,
+  compareOrdinal,
+} from '@pertexo/workflow-model';
 import { sameOutputReference } from '../../output-reference.js';
 import type {
   BranchScopePart,
@@ -250,7 +253,13 @@ export function invocationKey(input: {
   const iterations = (input.iterationPath ?? [])
     .map(({ loopNodeId, ordinal }) => `${loopNodeId}:${String(ordinal)}`)
     .join('/');
-  return `${encodeURIComponent(input.workflowVersionId)}|${encodeURIComponent(input.nodeId)}|b:${encodeURIComponent(branches)}|i:${encodeURIComponent(iterations)}`;
+  const key = `${encodeURIComponent(input.workflowVersionId)}|${encodeURIComponent(input.nodeId)}|b:${encodeURIComponent(branches)}|i:${encodeURIComponent(iterations)}`;
+  if (key.length > WORKFLOW_GRAPH_CONTRACT_LIMITS.invocationKeyLength)
+    throw new WorkflowEngineError(
+      'workflow_identity_invalid',
+      `Step "${input.nodeId}" exceeds the ${String(WORKFLOW_GRAPH_CONTRACT_LIMITS.invocationKeyLength)}-character execution identity limit. Shorten step IDs or reduce branch and loop nesting.`,
+    );
+  return key;
 }
 
 /**
