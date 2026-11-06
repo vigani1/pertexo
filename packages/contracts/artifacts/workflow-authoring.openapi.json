@@ -11553,7 +11553,7 @@
               },
               "checksum": {
                 "type": "string",
-                "pattern": "^wf:sha256:[0-9a-f]{64}$"
+                "pattern": "^wf:sha256:(?:v2:)?[a-f0-9]{64}$"
               },
               "publishedAt": {
                 "type": "string",
@@ -13852,7 +13852,7 @@
                 },
                 "checksum": {
                   "type": "string",
-                  "pattern": "^wf:sha256:[0-9a-f]{64}$"
+                  "pattern": "^wf:sha256:(?:v2:)?[a-f0-9]{64}$"
                 },
                 "publishedAt": {
                   "type": "string",
@@ -19020,7 +19020,7 @@
                 },
                 "sourceChecksum": {
                   "type": "string",
-                  "pattern": "^wf:sha256:[a-f0-9]{64}$"
+                  "pattern": "^wf:sha256:(?:v2:)?[a-f0-9]{64}$"
                 },
                 "targetWorkflowId": {
                   "anyOf": [
@@ -21195,7 +21195,7 @@
                 },
                 "versionChecksum": {
                   "type": "string",
-                  "pattern": "^wf:sha256:[0-9a-f]{64}$"
+                  "pattern": "^wf:sha256:(?:v2:)?[a-f0-9]{64}$"
                 },
                 "name": {
                   "type": "string",
@@ -21410,7 +21410,7 @@
               },
               "versionChecksum": {
                 "type": "string",
-                "pattern": "^wf:sha256:[0-9a-f]{64}$"
+                "pattern": "^wf:sha256:(?:v2:)?[a-f0-9]{64}$"
               },
               "name": {
                 "type": "string",
@@ -21743,7 +21743,7 @@
           },
           "versionChecksum": {
             "type": "string",
-            "pattern": "^wf:sha256:[0-9a-f]{64}$"
+            "pattern": "^wf:sha256:(?:v2:)?[a-f0-9]{64}$"
           },
           "name": {
             "type": "string",
@@ -26179,7 +26179,7 @@
           },
           "checksum": {
             "type": "string",
-            "pattern": "^wf:sha256:[0-9a-f]{64}$"
+            "pattern": "^wf:sha256:(?:v2:)?[a-f0-9]{64}$"
           },
           "publishedAt": {
             "type": "string",

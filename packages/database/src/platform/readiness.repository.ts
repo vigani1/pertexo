@@ -3,7 +3,8 @@ import { sql } from 'drizzle-orm';
 import { QueryBuilder } from 'drizzle-orm/pg-core';
 import type { Pool } from 'pg';
 
-export const EXPECTED_MIGRATION_HEAD = '0113_inbox_fold_storage.sql';
+export const EXPECTED_MIGRATION_HEAD =
+  '0114_versioned_executable_checksums.sql';
 const MINIMUM_POSTGRES_MAJOR = 18;
 
 /**

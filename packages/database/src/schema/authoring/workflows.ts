@@ -193,7 +193,7 @@ export const workflowVersions = appSchema.table(
     workflowId: uuid('workflow_id').notNull(),
     versionNumber: integer('version_number').notNull(),
     graphJson: json('graph_json').notNull(),
-    checksum: varchar('checksum', { length: 74 }).notNull(),
+    checksum: varchar('checksum', { length: 77 }).notNull(),
     executableJson: json('executable_json').notNull(),
     publishedBy: uuid('published_by').notNull(),
     publishedAt: timestamp('published_at', {
@@ -206,7 +206,7 @@ export const workflowVersions = appSchema.table(
   (table): PgTableExtraConfigValue[] => [
     check(
       'workflow_versions_checksum_format',
-      sql`((checksum)::text ~ '^wf:sha256:[0-9a-f]{64}$'::text)`,
+      sql`((checksum)::text ~ '^wf:sha256:(v2:)?[0-9a-f]{64}$'::text)`,
     ),
     check(
       'workflow_versions_executable_object',

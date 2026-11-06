@@ -45,7 +45,7 @@ export const workflowPromotionOrigins = appSchema.table(
     check('promotion_origin_revision_positive', sql`draft_revision>0`),
     check(
       'promotion_origin_digests_valid',
-      sql`source_checksum ~ '^wf:sha256:[a-f0-9]{64}$' and graph_digest ~ '^[a-f0-9]{64}$'`,
+      sql`source_checksum ~ '^wf:sha256:(v2:)?[a-f0-9]{64}$' and graph_digest ~ '^[a-f0-9]{64}$'`,
     ),
     check(
       'promotion_origin_name_valid',

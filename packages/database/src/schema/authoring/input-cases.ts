@@ -22,7 +22,7 @@ export const workflowInputCases = appSchema.table(
     workspaceId: uuid('workspace_id').notNull(),
     workflowId: uuid('workflow_id').notNull(),
     workflowVersionId: uuid('workflow_version_id').notNull(),
-    versionChecksum: varchar('version_checksum', { length: 74 }).notNull(),
+    versionChecksum: varchar('version_checksum', { length: 77 }).notNull(),
     name: varchar('name', { length: 128 }).notNull(),
     revision: integer('revision').default(1).notNull(),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
@@ -34,6 +34,10 @@ export const workflowInputCases = appSchema.table(
     deletedAt: timestamp('deleted_at', { withTimezone: true, mode: 'date' }),
   },
   (table): PgTableExtraConfigValue[] => [
+    check(
+      'workflow_input_cases_checksum_valid',
+      sql`version_checksum ~ '^wf:sha256:(v2:)?[a-f0-9]{64}$'`,
+    ),
     check(
       'workflow_input_cases_name_check',
       sql`((length(btrim((name)::text)) >= 1) AND (length(btrim((name)::text)) <= 128))`,

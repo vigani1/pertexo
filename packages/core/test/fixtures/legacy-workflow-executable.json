@@ -1,0 +1,106 @@
+{
+  "envelope": {
+    "graph": {
+      "settings": {},
+      "nodes": [
+        {
+          "id": "manual",
+          "definition": {
+            "key": "core.manual",
+            "version": 1
+          },
+          "configVersion": 1,
+          "config": {},
+          "inputMappings": {},
+          "connectionRefs": {},
+          "disabled": false,
+          "sideEffectClass": "safe",
+          "executor": {
+            "key": "core.manual",
+            "version": 1
+          },
+          "executorAbi": 1,
+          "policyReferences": [
+            {
+              "key": "node.json.bounded",
+              "version": 1
+            }
+          ]
+        },
+        {
+          "id": "set",
+          "definition": {
+            "key": "core.set",
+            "version": 1
+          },
+          "configVersion": 1,
+          "config": {},
+          "inputMappings": {
+            "name": {
+              "kind": "literal",
+              "value": "Ada"
+            },
+            "qty": {
+              "kind": "literal",
+              "value": 2
+            }
+          },
+          "connectionRefs": {},
+          "disabled": false,
+          "sideEffectClass": "safe",
+          "executor": {
+            "key": "core.set",
+            "version": 1
+          },
+          "executorAbi": 1,
+          "policyReferences": [
+            {
+              "key": "jsonata.restricted",
+              "version": 1
+            },
+            {
+              "key": "node.json.bounded",
+              "version": 1
+            }
+          ]
+        }
+      ],
+      "edges": [
+        {
+          "id": "link",
+          "source": {
+            "nodeId": "manual",
+            "port": "out"
+          },
+          "target": {
+            "nodeId": "set",
+            "port": "in"
+          }
+        }
+      ]
+    },
+    "runtimePolicies": {
+      "scheduler": {
+        "key": "engine.scheduler",
+        "version": 1
+      },
+      "checkpoint": {
+        "key": "engine.checkpoint",
+        "version": 1
+      },
+      "retry": {
+        "key": "engine.retry",
+        "version": 1
+      },
+      "timeout": {
+        "key": "engine.timeout",
+        "version": 1
+      },
+      "cancellation": {
+        "key": "engine.cancellation",
+        "version": 1
+      }
+    }
+  },
+  "checksum": "wf:sha256:40305a375e03eba694bcc04751339e0b10f55e7f78fbf0d4c28dc1b638315242"
+}

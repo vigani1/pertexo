@@ -15710,7 +15710,7 @@
               },
               "checksum": {
                 "type": "string",
-                "pattern": "^wf:sha256:[0-9a-f]{64}$"
+                "pattern": "^wf:sha256:(?:v2:)?[a-f0-9]{64}$"
               },
               "publishedAt": {
                 "type": "string",
@@ -16671,7 +16671,7 @@
                 },
                 "checksum": {
                   "type": "string",
-                  "pattern": "^wf:sha256:[0-9a-f]{64}$"
+                  "pattern": "^wf:sha256:(?:v2:)?[a-f0-9]{64}$"
                 },
                 "publishedAt": {
                   "type": "string",

@@ -1,3 +1,4 @@
+import { workflowExecutableChecksumSchema } from '../../graph/executable-checksum.js';
 import { z } from 'zod';
 import type { WorkflowCallPin } from './dependencies.js';
 
@@ -5,7 +6,7 @@ export const workflowCallPinSchema: z.ZodType<WorkflowCallPin> = z
   .object({
     workflowId: z.uuid(),
     workflowVersionId: z.uuid(),
-    executableChecksum: z.string().regex(/^wf:sha256:[a-f0-9]{64}$/u),
+    executableChecksum: workflowExecutableChecksumSchema,
   })
   .strict();
 

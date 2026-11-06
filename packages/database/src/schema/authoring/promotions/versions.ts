@@ -54,7 +54,7 @@ export const workflowVersionPromotions = appSchema.table(
     ),
     check(
       'version_promotion_checksum_valid',
-      sql`source_checksum ~ '^wf:sha256:[a-f0-9]{64}$'`,
+      sql`source_checksum ~ '^wf:sha256:(v2:)?[a-f0-9]{64}$'`,
     ),
   ],
 );

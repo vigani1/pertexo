@@ -1,3 +1,4 @@
+import { workflowExecutionValues } from '../../graph/execution-values.js';
 import { canonicalJson } from '../../values/json/canonical.js';
 import type {
   WorkflowGraph,
@@ -6,11 +7,10 @@ import type {
 
 /** An equality binding for one step's setup; cosmetic edits and links are not inputs. */
 export function stepSampleIdentity(node: WorkflowNode): string {
-  return canonicalJson({
+  return `v2:${canonicalJson({
     definition: node.definition,
     configVersion: node.configVersion,
-    config: node.config,
-    inputMappings: node.inputMappings,
+    ...workflowExecutionValues(node),
     connectionRefs: node.connectionRefs,
     disabled: node.disabled ?? false,
     ...(node.retry === undefined ? {} : { retry: node.retry }),
@@ -25,7 +25,7 @@ export function stepSampleIdentity(node: WorkflowNode): string {
             outputPorts: node.structured.body.outputPorts,
             settings: node.structured.body.settings,
           },
-  });
+  })}`;
 }
 
 /** An ambiguous ID cannot own a sample, even while an invalid graph is editable. */

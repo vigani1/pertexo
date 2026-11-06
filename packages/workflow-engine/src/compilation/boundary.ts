@@ -1,6 +1,6 @@
 import { parseNodeCatalog, type NodeCatalog } from '@pertexo/node-sdk';
 import { parseWorkflowGraphForPublish } from '@pertexo/workflow-model/server';
-import { computeWorkflowExecutableChecksum } from './identity.js';
+import { verifiedWorkflowExecutableChecksum } from './identity.js';
 import {
   type CompiledWorkflowExecutable,
   type VerifiedWorkflowExecutable,
@@ -71,8 +71,8 @@ export function verifyWorkflowExecutable(input: {
 }): CompiledWorkflowExecutable {
   const { executable, catalog } = readUntrusted(() => readBoundary(input));
   const envelope = freezeExecutable(executable) as VerifiedWorkflowExecutable;
-  const checksum = computeWorkflowExecutableChecksum(envelope);
-  if (input.checksum !== checksum)
+  const checksum = verifiedWorkflowExecutableChecksum(envelope, input.checksum);
+  if (checksum === undefined)
     fail('workflow executable checksum does not match');
   return registerExecutableIdentity(
     Object.freeze({ envelope, checksum }),
