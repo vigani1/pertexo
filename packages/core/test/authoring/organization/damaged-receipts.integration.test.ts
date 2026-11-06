@@ -1,5 +1,5 @@
+import { IdempotencyConflictError } from '@pertexo/database/platform';
 import { randomUUID } from 'node:crypto';
-import { isStoredDataError } from '../../../src/shared/stored-values.js';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   createOrganizationOwnedFixture,
@@ -49,8 +49,8 @@ describe.skipIf(!organizationFixtureEnabled)(
       };
       await stores.batches.admitBatch(input);
       await damage(workspace, actor, 'organization.batch');
-      await expect(stores.batches.admitBatch(input)).rejects.toSatisfy(
-        isStoredDataError,
+      await expect(stores.batches.admitBatch(input)).rejects.toBeInstanceOf(
+        IdempotencyConflictError,
       );
     });
 
@@ -80,8 +80,8 @@ describe.skipIf(!organizationFixtureEnabled)(
           [workspace],
         ),
       );
-      await expect(stores.folders.replaceSharing(input)).rejects.toSatisfy(
-        isStoredDataError,
+      await expect(stores.folders.replaceSharing(input)).rejects.toBeInstanceOf(
+        IdempotencyConflictError,
       );
     });
 
@@ -97,16 +97,16 @@ describe.skipIf(!organizationFixtureEnabled)(
       };
       const created = await stores.folders.createFolder(folder);
       await damage(workspace, actor, 'folder.create');
-      await expect(stores.folders.createFolder(folder)).rejects.toSatisfy(
-        isStoredDataError,
+      await expect(stores.folders.createFolder(folder)).rejects.toBeInstanceOf(
+        IdempotencyConflictError,
       );
 
       const tagKey = randomUUID();
       const tag = { ...scope, key: 'receipts', idempotencyKey: tagKey };
       await fixture.tags.createTag(tag);
       await damage(workspace, actor, 'tag.create');
-      await expect(fixture.tags.createTag(tag)).rejects.toSatisfy(
-        isStoredDataError,
+      await expect(fixture.tags.createTag(tag)).rejects.toBeInstanceOf(
+        IdempotencyConflictError,
       );
 
       const placeKey = randomUUID();
@@ -119,8 +119,8 @@ describe.skipIf(!organizationFixtureEnabled)(
       };
       await stores.folders.placeWorkflow(place);
       await damage(workspace, actor, 'folder.place');
-      await expect(stores.folders.placeWorkflow(place)).rejects.toSatisfy(
-        isStoredDataError,
+      await expect(stores.folders.placeWorkflow(place)).rejects.toBeInstanceOf(
+        IdempotencyConflictError,
       );
     }, 60_000);
   },

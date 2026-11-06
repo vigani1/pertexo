@@ -1,3 +1,4 @@
+import { IdempotencyConflictError } from '@pertexo/database/platform';
 import { isStoredDataError } from '../../../src/shared/stored-values.js';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
@@ -56,7 +57,7 @@ describe('a damaged receipt is reported as stored-data corruption', () => {
           idempotencyKey,
         }),
       ),
-    ).rejects.toSatisfy(isStoredDataError);
+    ).rejects.toBeInstanceOf(IdempotencyConflictError);
   });
 
   it('duplicating a workflow', async () => {
@@ -78,7 +79,7 @@ describe('a damaged receipt is reported as stored-data corruption', () => {
           idempotencyKey,
         }),
       ),
-    ).rejects.toSatisfy(isStoredDataError);
+    ).rejects.toBeInstanceOf(IdempotencyConflictError);
   });
 
   it('publishing a workflow', async () => {
@@ -99,7 +100,7 @@ describe('a damaged receipt is reported as stored-data corruption', () => {
           idempotencyKey,
         }),
       ),
-    ).rejects.toSatisfy(isStoredDataError);
+    ).rejects.toBeInstanceOf(IdempotencyConflictError);
   });
 
   it('renaming and archiving a workflow', async () => {
@@ -115,7 +116,7 @@ describe('a damaged receipt is reported as stored-data corruption', () => {
           idempotencyKey: renameKey,
         }),
       ),
-    ).rejects.toSatisfy(isStoredDataError);
+    ).rejects.toBeInstanceOf(IdempotencyConflictError);
     const archiveKey = randomUUID();
     await expect(
       retryOverDamage('workflow.archive', () =>
@@ -127,7 +128,7 @@ describe('a damaged receipt is reported as stored-data corruption', () => {
           idempotencyKey: archiveKey,
         }),
       ),
-    ).rejects.toSatisfy(isStoredDataError);
+    ).rejects.toBeInstanceOf(IdempotencyConflictError);
   });
 
   it('changing auto-pause settings', async () => {
@@ -147,7 +148,7 @@ describe('a damaged receipt is reported as stored-data corruption', () => {
           idempotencyKey: workflowKey,
         }),
       ),
-    ).rejects.toSatisfy(isStoredDataError);
+    ).rejects.toBeInstanceOf(IdempotencyConflictError);
     const { revision } =
       await authoring.autoPause.readWorkspaceSettings(scope());
     const workspaceKey = randomUUID();
@@ -160,7 +161,7 @@ describe('a damaged receipt is reported as stored-data corruption', () => {
           idempotencyKey: workspaceKey,
         }),
       ),
-    ).rejects.toSatisfy(isStoredDataError);
+    ).rejects.toBeInstanceOf(IdempotencyConflictError);
   });
 
   it('importing a workflow', async () => {
@@ -168,7 +169,7 @@ describe('a damaged receipt is reported as stored-data corruption', () => {
     const input = command();
     await expect(
       retryOverDamage('workflow.import', () => store.importWorkflow(input)),
-    ).rejects.toSatisfy(isStoredDataError);
+    ).rejects.toBeInstanceOf(IdempotencyConflictError);
   });
   it('tags a receipt that names a different workflow as stored corruption', async () => {
     const workflowId = await newWorkflow();
@@ -204,7 +205,7 @@ describe('a damaged receipt is reported as stored-data corruption', () => {
       retryOverDamage('workflow.concurrency', () =>
         authoring.concurrency.updateSettings(input),
       ),
-    ).rejects.toSatisfy(isStoredDataError);
+    ).rejects.toBeInstanceOf(IdempotencyConflictError);
   });
 
   it('changing the error workflow', async () => {
@@ -221,7 +222,7 @@ describe('a damaged receipt is reported as stored-data corruption', () => {
       retryOverDamage('workflow.error.policy', () =>
         authoring.errorWorkflow.updateSettings(input),
       ),
-    ).rejects.toSatisfy(isStoredDataError);
+    ).rejects.toBeInstanceOf(IdempotencyConflictError);
   });
 
   it('creating a discussion', async () => {
@@ -238,6 +239,6 @@ describe('a damaged receipt is reported as stored-data corruption', () => {
       retryOverDamage('workflow.comment.created', () =>
         authoring.collaboration.create(input),
       ),
-    ).rejects.toSatisfy(isStoredDataError);
+    ).rejects.toBeInstanceOf(IdempotencyConflictError);
   });
 });

@@ -9,6 +9,7 @@ import {
 
 import { claimCommand, completeCommand } from '@pertexo/database/primitives';
 import type { CommandIdentity } from '@pertexo/database/primitives';
+import { requireReadableReceipt } from '../../shared/receipts.js';
 import type { WorkflowRecord } from './representation/workflow-record.types.js';
 
 const uuidSchema = z.uuid();
@@ -74,6 +75,7 @@ export async function claimWorkflowCommand(
     resourceId: command.workflowId,
   });
   if (stored === null) return null;
+  requireReadableReceipt(storedResultSchema, stored);
   const workflow = decodeStoredValue(() => {
     const { workflow } = storedResultSchema.parse(stored);
     if (
