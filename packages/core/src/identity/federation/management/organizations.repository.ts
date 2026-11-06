@@ -8,7 +8,7 @@ import { count, eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { organizationSelection } from './identity-organizations.repository.js';
-import { FEDERATION_LIMITS } from '@pertexo/contracts';
+import { FEDERATION_LIMITS } from '@pertexo/workflow-model';
 import { projectDirectoryMemberships } from '../provisioning/projection.repository.js';
 import type { Pool, PoolClient } from 'pg';
 import type { FederationSettings } from '@pertexo/contracts';

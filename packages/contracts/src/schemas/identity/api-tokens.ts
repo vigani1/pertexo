@@ -1,23 +1,17 @@
 import { API_TOKEN_SCOPES } from '@pertexo/policy';
-import { UUID_PATTERN } from '@pertexo/workflow-model';
+import {
+  API_TOKEN_DEFAULT_LIFETIME_DAYS,
+  API_TOKEN_MAX_LIFETIME_DAYS,
+  API_TOKEN_ACTIVE_LIMIT,
+  apiTokenCredentialSchema,
+} from '@pertexo/workflow-model';
+export {
+  API_TOKEN_DEFAULT_LIFETIME_DAYS,
+  API_TOKEN_MAX_LIFETIME_DAYS,
+  API_TOKEN_ACTIVE_LIMIT,
+  apiTokenCredentialSchema,
+};
 import { z } from 'zod';
-
-export const API_TOKEN_DEFAULT_LIFETIME_DAYS = 30;
-
-export const API_TOKEN_MAX_LIFETIME_DAYS = 365;
-
-export const API_TOKEN_ACTIVE_LIMIT = 10;
-
-const uuidBody = UUID_PATTERN.source.slice(1, -1);
-
-export const apiTokenCredentialSchema = z
-  .string()
-  .regex(
-    new RegExp(
-      `^ptx_1\\.${uuidBody}\\.${uuidBody}\\.[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]$`,
-      'u',
-    ),
-  );
 
 export const apiTokenScopeSchema = z.enum(API_TOKEN_SCOPES);
 export type ApiTokenScope = z.output<typeof apiTokenScopeSchema>;

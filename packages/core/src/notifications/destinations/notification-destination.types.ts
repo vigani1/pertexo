@@ -1,4 +1,4 @@
-import type { FailureNotificationDestinationConfig } from '@pertexo/contracts';
+import type { FailureNotificationDestinationConfig } from '@pertexo/workflow-model';
 
 export type DestinationConfig = FailureNotificationDestinationConfig;
 

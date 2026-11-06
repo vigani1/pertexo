@@ -15,7 +15,7 @@ import {
   ACTIVE_WORKSPACE_STATUSES,
   UNPURGED_WORKSPACE_STATUSES,
 } from '@pertexo/policy';
-import { FEDERATION_LIMITS } from '@pertexo/contracts';
+import { FEDERATION_LIMITS } from '@pertexo/workflow-model';
 import type { Pool } from 'pg';
 import type { FederationDiscovery } from '@pertexo/contracts';
 import { withPlatformTransaction } from '@pertexo/database/platform';

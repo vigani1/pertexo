@@ -6,9 +6,9 @@ import {
   failureNotificationDestinationStatusRequestSchema,
   failureNotificationDestinationTestRequestSchema,
   connectionTestResponseSchema,
-  type FailureNotificationDestinationConfig,
   type FailureNotificationDestinationResponse,
 } from '@pertexo/contracts';
+import type { FailureNotificationDestinationConfig } from '@pertexo/workflow-model';
 import type { ApiClient } from '@/lib/api/client';
 
 function destinationsPath(workspaceId: string): `/v1${string}` {

@@ -1,9 +1,9 @@
 import { expect, request as httpRequest } from '@playwright/test';
 import {
-  apiTokenCredentialSchema,
   apiTokenListResponseSchema,
   userProfileResponseSchema,
 } from '@pertexo/contracts';
+import { apiTokenCredentialSchema } from '@pertexo/workflow-model';
 import { test } from './support/browser-fixture';
 import { verifyAutomationCliBuild } from './support/automation/cli';
 import { qualifyAutomationCli } from './support/automation/journey';

@@ -1,7 +1,7 @@
 import type {
   FailureNotificationContext,
   FailureNotificationDeliveryResult,
-} from '@pertexo/contracts';
+} from '@pertexo/workflow-model';
 
 export type FailureNotificationDelivery = Readonly<{
   outboxEventId: string;

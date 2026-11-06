@@ -1,9 +1,9 @@
 import type { ConnectionResponse, ApiProblemIssue } from '@pertexo/contracts';
 import {
   failureNotificationDestinationConfigSchema,
-  type FailureNotificationDestinationConfig,
   type FailureNotificationDestinationResponse,
 } from '@pertexo/contracts';
+import type { FailureNotificationDestinationConfig } from '@pertexo/workflow-model';
 import {
   channelKey,
   describeChannel,

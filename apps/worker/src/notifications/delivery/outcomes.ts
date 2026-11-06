@@ -8,7 +8,7 @@ import {
   SECURE_HTTP_ERROR_CODE,
   SecureHttpError,
 } from '@pertexo/secrets/server';
-import type { FailureNotificationDeliveryResult } from '@pertexo/contracts';
+import type { FailureNotificationDeliveryResult } from '@pertexo/workflow-model';
 
 import type { DeliveryInput } from './transport.js';
 

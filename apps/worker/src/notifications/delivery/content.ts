@@ -1,4 +1,4 @@
-import type { FailureNotificationContext } from '@pertexo/contracts';
+import type { FailureNotificationContext } from '@pertexo/workflow-model';
 
 export function render(context: FailureNotificationContext): Readonly<{
   subject: string;

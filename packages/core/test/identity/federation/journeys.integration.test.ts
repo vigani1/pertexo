@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ACCOUNT_SIGN_IN_METHOD_LIMIT } from '@pertexo/contracts';
+import { ACCOUNT_SIGN_IN_METHOD_LIMIT } from '@pertexo/workflow-model';
 import {
   isAuthenticationSessionAllowed,
   OrganizationSignInCommands,

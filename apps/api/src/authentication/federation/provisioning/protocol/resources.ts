@@ -1,4 +1,4 @@
-import { DIRECTORY_LIMITS } from '@pertexo/contracts';
+import { DIRECTORY_LIMITS } from '@pertexo/workflow-model';
 import { canonicalEmail } from '@pertexo/core/identity';
 import SCIMMY from 'scimmy';
 import { z } from 'zod';

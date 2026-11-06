@@ -1,7 +1,7 @@
 import { decodeStoredValue } from '../../shared/stored-values.js';
 import { decodeStoredReceipt } from '../../shared/receipts.js';
 import { z } from 'zod';
-import { FailureNotificationDestinationConfigSchema } from '@pertexo/contracts';
+import { FailureNotificationDestinationConfigSchema } from '@pertexo/workflow-model';
 import type { FailureNotificationDestinationRecord } from './notification-destination.types.js';
 
 const destinationReplaySchema = z

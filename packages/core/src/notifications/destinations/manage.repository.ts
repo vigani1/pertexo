@@ -5,7 +5,7 @@ import {
   failureNotificationDestinations as destination,
   failureNotificationDestinationVersions as version,
 } from '@pertexo/database/schema';
-import { FAILURE_NOTIFICATION_DESTINATION_LIST_LIMIT } from '@pertexo/contracts';
+import { FAILURE_NOTIFICATION_DESTINATION_LIST_LIMIT } from '@pertexo/workflow-model';
 import { and, eq, gt, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';

@@ -19,7 +19,7 @@ import type {
   DirectoryUserValues,
 } from '../directory-provisioning.types.js';
 
-import { DIRECTORY_LIMITS } from '@pertexo/contracts';
+import { DIRECTORY_LIMITS } from '@pertexo/workflow-model';
 import { projectDirectoryMemberships } from '../projection.repository.js';
 import {
   assertDirectoryRevision,

@@ -11,7 +11,7 @@ import {
   outboxEvents,
   runFailureNotificationIntents as intents,
 } from '@pertexo/database/schema';
-import { FailureNotificationContextSchema } from '@pertexo/contracts';
+import { FailureNotificationContextSchema } from '@pertexo/workflow-model';
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { Pool, PoolClient } from 'pg';
