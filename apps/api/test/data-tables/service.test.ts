@@ -33,6 +33,7 @@ function fixture() {
     });
   const store = {
     list: vi.fn<DataTablesStore['list']>().mockResolvedValue({
+      unavailableTables: [],
       tables: [{ ...definition, columns: [...definition.columns] }],
       quotas: {
         tableLimit: 20,
