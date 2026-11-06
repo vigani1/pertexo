@@ -57,7 +57,20 @@ it.each(ownerLocations)(
   },
 );
 
-it.each(['preview-input', 'run-input'] as const)(
+// Samples require an inline envelope; their descriptors are covered above.
+it.each([
+  'preview-input',
+  'preview-output',
+  'run-input',
+  'run-output',
+  'node-input',
+  'node-output',
+  'attempt-output',
+  'attempt-reconciliation',
+  'event',
+  'checkpoint',
+  'task-response',
+] as const)(
   'retains the canonical stored artifact envelope in %s without requiring descriptor metadata',
   async (location) => {
     const state = await artifactOwnerFixture(location, 'execution-reference');
