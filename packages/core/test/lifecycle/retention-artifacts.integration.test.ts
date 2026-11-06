@@ -300,6 +300,62 @@ describe('retention artifact reclamation', () => {
     },
   );
 
+  it.each(['node-output', 'http-response'] as const)(
+    'keeps a live pending %s upload and its reserved capacity',
+    async (purpose) => {
+      const artifactId = randomUUID();
+      await withOwnerTransaction((client) =>
+        client.query(
+          'insert into app.workspace_artifact_capacity(workspace_id) values($1) on conflict do nothing',
+          [workspaceId],
+        ),
+      );
+      const before = await readCapacity();
+      await withOwnerTransaction((client) =>
+        createPendingArtifact(
+          {
+            db: drizzle(client, { schema: databaseSchema }),
+            workspaceId: parseWorkspaceId(workspaceId),
+          },
+          {
+            artifactId,
+            purpose,
+            byteLength: 10,
+            sha256: 'a'.repeat(64),
+            mediaType: 'application/octet-stream',
+            storageKey: artifactStorageKey(workspaceId, artifactId),
+            expiresAt: new Date(Date.now() + 60_000),
+          },
+        ),
+      );
+      const remove = vi.fn(() => Promise.resolve());
+      const retention = createRunArtifactRetentionCoordinator(
+        parseDatabaseConfig({ connectionString: maintenanceUrl, max: 2 }),
+        { delete: remove, head: () => Promise.resolve(null) },
+      );
+      try {
+        expect(await retention.processNext()).toEqual({ status: 'idle' });
+        expect(await readCapacity()).toEqual({
+          chargedBytes: before.chargedBytes + 10,
+          chargedCount: before.chargedCount + 1,
+        });
+        await withOwnerTransaction(async (client) => {
+          expect(
+            (
+              await client.query(
+                'select status from app.artifacts where id=$1',
+                [artifactId],
+              )
+            ).rows,
+          ).toEqual([{ status: 'pending' }]);
+        });
+        expect(remove).not.toHaveBeenCalled();
+      } finally {
+        await retention.close();
+      }
+    },
+  );
+
   it('keeps an expired pending upload deleting and charged across a store failure', async () => {
     const artifactId = randomUUID();
     const before = await readCapacity();
@@ -745,6 +801,103 @@ describe('retention artifact reclamation', () => {
         ArtifactUploadNotFoundError,
       );
       await expect(readCapacity()).resolves.toEqual(capacityBefore);
+    } finally {
+      releaseVerification.resolve(undefined);
+      await (finalization ?? Promise.resolve());
+      await coordinator?.close();
+      await uploadDatabase.close();
+    }
+  });
+
+  it('keeps finalization in progress before expiry and then makes the upload available', async () => {
+    const apiUrl = new URL(
+      process.env.DATABASE_URL ??
+        'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo',
+    );
+    apiUrl.pathname = new URL(maintenanceUrl).pathname;
+    const uploadDatabase = createArtifactUploadStore(
+      parseDatabaseConfig({ connectionString: apiUrl.toString(), max: 2 }),
+    );
+    const releaseVerification = Promise.withResolvers<undefined>();
+    let coordinator:
+      ReturnType<typeof createRunArtifactRetentionCoordinator> | undefined;
+    let finalization: Promise<unknown> | undefined;
+    try {
+      await withOwnerTransaction(async (client) => {
+        await client.query(
+          `insert into app.workspace_memberships(workspace_id,user_id,role,status)
+           values($1,$2,'owner','active') on conflict do nothing`,
+          [workspaceId, userId],
+        );
+      });
+      const actor = {
+        actorId: userId,
+        kind: 'user' as const,
+        requestId: 'retention-finalization-race',
+        sessionId: randomUUID(),
+        workspaceId,
+      };
+      const metadata = {
+        byteLength: 17,
+        mediaType: 'application/octet-stream',
+        sha256: 'f'.repeat(64),
+      } as const;
+      const capacityBefore = await readCapacity();
+      const created = await uploadDatabase.beginUpload({
+        actor,
+        ...metadata,
+        idempotencyKey: `retention-finalization-${randomUUID()}`,
+        workspaceId,
+      });
+      const verificationStarted = Promise.withResolvers<undefined>();
+      finalization = uploadDatabase
+        .finalizeUpload({
+          actor,
+          expectedMetadata: metadata,
+          identity: { artifactId: created.artifact.id, workspaceId },
+          verifyUpload: async () => {
+            verificationStarted.resolve(undefined);
+            await releaseVerification.promise;
+          },
+        })
+        .catch((error: unknown) => error);
+      await verificationStarted.promise;
+      await withOwnerTransaction(async (client) => {
+        await client.query(
+          `update app.artifacts set expires_at=clock_timestamp()+interval '30 seconds'
+            where workspace_id=$1 and id=$2`,
+          [workspaceId, created.artifact.id],
+        );
+      });
+      const artifacts = {
+        delete: vi.fn(() => Promise.resolve()),
+        head: vi.fn(() => Promise.resolve(null)),
+      };
+      coordinator = createRunArtifactRetentionCoordinator(
+        parseDatabaseConfig({ connectionString: maintenanceUrl, max: 2 }),
+        artifacts,
+      );
+      expect(await coordinator.processNext()).toEqual({ status: 'idle' });
+      expect(artifacts.delete).not.toHaveBeenCalled();
+      expect(await readCapacity()).toEqual({
+        chargedBytes: capacityBefore.chargedBytes + metadata.byteLength,
+        chargedCount: capacityBefore.chargedCount + 1,
+      });
+      releaseVerification.resolve(undefined);
+      expect(await finalization).not.toBeInstanceOf(Error);
+      await withOwnerTransaction(async (client) => {
+        expect(
+          (
+            await client.query('select status from app.artifacts where id=$1', [
+              created.artifact.id,
+            ])
+          ).rows,
+        ).toEqual([{ status: 'available' }]);
+      });
+      expect(await readCapacity()).toEqual({
+        chargedBytes: capacityBefore.chargedBytes + metadata.byteLength,
+        chargedCount: capacityBefore.chargedCount + 1,
+      });
     } finally {
       releaseVerification.resolve(undefined);
       await (finalization ?? Promise.resolve());

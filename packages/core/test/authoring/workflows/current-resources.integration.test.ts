@@ -112,6 +112,22 @@ it.each(['variable', 'connection', 'task audience', 'Call pin'] as const)(
         (await authoring.validateDraft(workspaceId, workflowId, actorId))
           ?.validation.ok,
       ).toBe(true);
+      const published = await authoring.publishWorkflow({
+        workspaceId,
+        actorId,
+        workflowId,
+        representationTag: await currentRepresentationTag(
+          authoring,
+          workspaceId,
+          {
+            scopedWorkflowId: workflowId,
+            scopedActorId: actorId,
+          },
+        ),
+        idempotencyKey: randomUUID(),
+        requestHash: 'a'.repeat(64),
+      });
+      expect(published.version.graphJson).toEqual(graph);
       await connections.revokeConnection({
         workspaceId,
         actorId,
@@ -148,7 +164,7 @@ it.each(['variable', 'connection', 'task audience', 'Call pin'] as const)(
         [workflowId],
         workspaceId,
       ),
-    ).toEqual([{ count: 0 }]);
+    ).toEqual([{ count: kind === 'connection' ? 1 : 0 }]);
     expect(
       (await authoring.getDraft(workspaceId, workflowId, actorId))?.graphJson,
     ).toEqual(graph);
