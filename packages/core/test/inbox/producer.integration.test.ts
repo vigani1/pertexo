@@ -1,12 +1,15 @@
-import type { PoolClient } from 'pg';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
+import {
+  asAdmin,
+  asRuntime,
+  insertRun,
+  workerBaseUrl,
+  workflowA,
+  workspaceA,
+} from '../runs/run-store/run-store.fixture.js';
 
 import type { WorkflowTransitionPlan } from '@pertexo/workflow-engine';
 import { persistWorkspaceInboxEvent } from '../../src/inbox/folding/events.repository.js';
-
-const workspaceId = '018f2d7a-1c9b-7a42-9c3e-2f5a6b7c8d90';
-const workflowId = '018f2d7a-1c9b-7a42-9c3e-2f5a6b7c8d91';
-const runId = '018f2d7a-1c9b-7a42-9c3e-2f5a6b7c8d92';
 
 function plan(
   runStatus: string,
@@ -27,15 +30,27 @@ async function produce(
     cancellationRequested?: boolean;
   }>,
 ) {
-  const query = vi.fn().mockResolvedValue({ rows: [], rowCount: 1 });
-  await persistWorkspaceInboxEvent({ query } as unknown as PoolClient, {
-    workspaceId,
-    workflowId,
-    runId,
-    cancellationRequested: input.cancellationRequested ?? false,
-    plan: input.plan,
+  const runId = await insertRun({});
+  await asRuntime(workerBaseUrl, workspaceA, async (client) => {
+    const event = {
+      workspaceId: workspaceA,
+      workflowId: workflowA,
+      runId,
+      cancellationRequested: input.cancellationRequested ?? false,
+      plan: input.plan,
+    };
+    await persistWorkspaceInboxEvent(client, event);
+    await persistWorkspaceInboxEvent(client, event);
   });
-  return query;
+  return asAdmin(
+    async (pool) =>
+      (
+        await pool.query<Record<string, unknown>>(
+          'select workspace_id, workflow_id, terminal_event_sequence, kind, occurred_at from app.workspace_inbox_events where run_id=$1',
+          [runId],
+        )
+      ).rows,
+  );
 }
 
 describe('workspace inbox producer', () => {
@@ -48,19 +63,14 @@ describe('workspace inbox producer', () => {
           { name: `run.${status}`, sequence: 5 },
         ]),
       });
-      expect(query).toHaveBeenCalledTimes(1);
-      const [config, values] = query.mock.calls[0] as [
-        { text: string },
-        unknown[],
-      ];
-      expect(config.text).toMatch(/on conflict do nothing/u);
-      expect(values.slice(1)).toEqual([
-        workspaceId,
-        workflowId,
-        runId,
-        5n,
-        status,
-        '2026-09-28T10:01:00.000Z',
+      expect(query).toEqual([
+        {
+          workspace_id: workspaceA,
+          workflow_id: workflowA,
+          terminal_event_sequence: '5',
+          kind: status,
+          occurred_at: new Date('2026-09-28T10:01:00.000Z'),
+        },
       ]);
     },
   );
@@ -80,7 +90,7 @@ describe('workspace inbox producer', () => {
     ],
     ['a failure without its terminal event', plan('failed', [])],
   ])('ignores %s', async (_case, transition) => {
-    await expect(produce({ plan: transition })).resolves.not.toHaveBeenCalled();
+    await expect(produce({ plan: transition })).resolves.toEqual([]);
   });
 
   it('ignores a failure that follows a cancellation request', async () => {
@@ -88,6 +98,6 @@ describe('workspace inbox producer', () => {
       plan: plan('failed', [{ name: 'run.failed', sequence: 3 }]),
       cancellationRequested: true,
     });
-    expect(query).not.toHaveBeenCalled();
+    expect(query).toEqual([]);
   });
 });
