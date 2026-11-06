@@ -25,3 +25,20 @@ it.each(['token_expired', 'missing_scope', 'not_in_channel'])(
     });
   },
 );
+
+it('keeps an unrecognized Slack rejection unknown without retaining its raw text', async () => {
+  const raw = 'private-provider-detail: workspace-secret';
+  const state = runtime({ kind: 'rejected', error: raw });
+  const failure: unknown = await createSlackSendMessageExecutorRegistration({
+    client: { sendMessage: state.sendMessage },
+  })
+    .execute(invocation(state.value))
+    .catch((caught: unknown) => caught);
+  if (!(failure instanceof NodeExecutorFailure)) throw failure;
+  const completion = executorFailureCompletion(failure);
+  expect(completion).toMatchObject({
+    failureKind: 'outcome_unknown',
+    possiblyDispatched: true,
+  });
+  expect(JSON.stringify(completion)).not.toContain(raw);
+});
