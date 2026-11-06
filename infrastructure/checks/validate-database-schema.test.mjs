@@ -111,3 +111,16 @@ test('applies chained quoted and bare table renames in statement order without t
     { tableCount: 1 },
   );
 });
+
+test('refuses a new SQL rule without an ADR 069 storage category', () => {
+  assert.throws(
+    () =>
+      validateDatabaseSchemaSources({
+        ...validSources,
+        migrationSql: `${validSources.migrationSql}
+        CREATE FUNCTION app.decide_workflow_retry() RETURNS boolean
+        LANGUAGE sql AS $$ SELECT true $$;`,
+      }),
+    /SQL function.*app\.decide_workflow_retry.*category/iu,
+  );
+});

@@ -3,6 +3,7 @@ import console from 'node:console';
 import path from 'node:path';
 import process from 'node:process';
 import { URL } from 'node:url';
+import { validateSqlFunctionSources } from './validate-sql-functions.mjs';
 
 const repositoryRoot = path.resolve(import.meta.dirname, '../..');
 const migrationsDirectory = path.join(
@@ -45,6 +46,7 @@ export function validateDatabaseSchemaSources({ migrationSql, schemaSource }) {
   if (typeof migrationSql !== 'string' || typeof schemaSource !== 'string')
     throw new TypeError('Database schema sources must be strings');
 
+  validateSqlFunctionSources(migrationSql);
   const migrationTables = liveTables(migrationSql);
   const typedTables = matches(
     schemaSource,
