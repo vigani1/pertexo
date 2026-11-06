@@ -1,3 +1,4 @@
+import { decodeStoredVariableSet } from './stored-variable-set.js';
 import type { WorkspaceVariablesResponse } from '@pertexo/contracts';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import {
@@ -33,5 +34,7 @@ export async function readWorkspaceVariables(
     )
     .where(eq(workspaceVariables.workspaceId, workspaceId))
     .catch(rethrowQueryFailure);
-  return row ?? { ...EMPTY_VARIABLE_SNAPSHOT, descriptions: {} };
+  return row === undefined
+    ? { ...EMPTY_VARIABLE_SNAPSHOT, descriptions: {} }
+    : { revision: row.revision, ...decodeStoredVariableSet(row) };
 }

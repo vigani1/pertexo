@@ -1,3 +1,4 @@
+import { decodeStoredVariableSet } from './stored-variable-set.js';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { EMPTY_VARIABLE_SNAPSHOT } from '@pertexo/workflow-model';
@@ -34,5 +35,5 @@ export async function readVariableSet(
     .catch(rethrowQueryFailure);
   if (stored === undefined)
     throw new Error('Workspace variable revision is missing');
-  return stored;
+  return decodeStoredVariableSet(stored);
 }
