@@ -147,7 +147,6 @@ export const formSubmissionSchema = z
     submittedAt: z.iso.datetime(),
   })
   .strict();
-export type FormSubmission = z.output<typeof formSubmissionSchema>;
 
 function isListField(field: FormField): boolean {
   return field.type === 'multi_select' || field.type === 'file';

@@ -34,8 +34,6 @@ import {
 } from './foundation.js';
 import { sideEffectClass } from './executable.validation.js';
 
-export { computeWorkflowExecutableChecksum } from './identity.js';
-
 function executableNode(
   node: WorkflowNode,
   catalog: NodeCatalog,

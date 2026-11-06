@@ -15,7 +15,7 @@ export const EVENT_COORDINATION_LIMITS = Object.freeze({
   capacityWaitMillis: 15 * 60_000,
   historyDays: 90,
 });
-export const eventCoordinationKeySchema = z.discriminatedUnion('kind', [
+const eventCoordinationKeySchema = z.discriminatedUnion('kind', [
   runInputValueSourceSchema.extend({
     path: z
       .string()
@@ -56,7 +56,7 @@ export const eventCoordinationPolicySchema = z.discriminatedUnion('mode', [
 export type EventCoordinationPolicy = z.output<
   typeof eventCoordinationPolicySchema
 >;
-export const eventCoordinationOutcomeSchema = z.enum([
+const eventCoordinationOutcomeSchema = z.enum([
   'deduplicated',
   'debounced',
   'throttled',

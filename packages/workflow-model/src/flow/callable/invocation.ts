@@ -2,7 +2,7 @@ import { workflowExecutableChecksumSchema } from '../../graph/executable-checksu
 import { z } from 'zod';
 import type { WorkflowCallPin } from './dependencies.js';
 
-export const workflowCallPinSchema: z.ZodType<WorkflowCallPin> = z
+const workflowCallPinSchema: z.ZodType<WorkflowCallPin> = z
   .object({
     workflowId: z.uuid(),
     workflowVersionId: z.uuid(),

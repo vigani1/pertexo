@@ -216,9 +216,7 @@ const GROUP_NAMES: Readonly<Record<FormFileGroup, string>> = {
   spreadsheets: 'spreadsheets',
   data: 'JSON and XML files',
 };
-export function describeFormFileGroups(
-  groups: readonly FormFileGroup[],
-): string {
+function describeFormFileGroups(groups: readonly FormFileGroup[]): string {
   const names = groups.map((group) => GROUP_NAMES[group]);
   return names.length < 2
     ? (names[0] ?? 'files')
