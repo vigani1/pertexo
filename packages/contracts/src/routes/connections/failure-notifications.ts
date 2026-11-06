@@ -30,6 +30,7 @@ const commandProblems = problem('400', '401', '403', '404', '409', '500');
 export const failureNotificationRoutes = {
   list: defineRoute({
     operationId: 'listFailureNotificationDestinations',
+    query: z.object({ afterId: z.uuid().optional() }).strict(),
     method: 'get',
     path: ROOT,
     params: workspace,
@@ -43,7 +44,7 @@ export const failureNotificationRoutes = {
         failureNotificationDestinationListResponseSchema,
       ),
     },
-    problems: problem('401', '403', '404', '503', '500'),
+    problems: problem('400', '401', '403', '404', '503', '500'),
   }),
   create: defineRoute({
     operationId: 'createFailureNotificationDestination',

@@ -73,7 +73,7 @@ describe('failure notification destination API seams', () => {
       updatedAt: '2026-08-25T10:00:00.000Z',
     };
     expect(created).toEqual(exactResponse);
-    expect(listed).toEqual({ items: [exactResponse] });
+    expect(listed).toEqual({ items: [exactResponse], nextCursor: null });
     expect(fetched).toEqual(exactResponse);
     expect(appended).toEqual(exactResponse);
     expect(status).toEqual(exactResponse);

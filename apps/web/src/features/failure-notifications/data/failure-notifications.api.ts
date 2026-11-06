@@ -15,20 +15,27 @@ function destinationsPath(workspaceId: string): `/v1${string}` {
   return `/v1/workspaces/${encodeURIComponent(workspaceId)}/failure-notification-destinations`;
 }
 
-export function getFailureNotificationDestinations(
+export async function getFailureNotificationDestinations(
   apiClient: ApiClient,
   workspaceId: string,
   signal?: AbortSignal,
 ) {
-  return apiClient.request({
-    path: destinationsPath(workspaceId),
-    ...(signal === undefined ? {} : { signal }),
-    response: {
-      kind: 'json',
-      decode: (value) =>
-        failureNotificationDestinationListResponseSchema.parse(value),
-    },
-  });
+  const items: FailureNotificationDestinationResponse[] = [];
+  let afterId: string | undefined;
+  do {
+    const page = await apiClient.request({
+      path: `${destinationsPath(workspaceId)}${afterId === undefined ? '' : `?afterId=${encodeURIComponent(afterId)}`}`,
+      ...(signal === undefined ? {} : { signal }),
+      response: {
+        kind: 'json',
+        decode: (value) =>
+          failureNotificationDestinationListResponseSchema.parse(value),
+      },
+    });
+    items.push(...page.items);
+    afterId = page.nextCursor ?? undefined;
+  } while (afterId !== undefined);
+  return { items };
 }
 
 export function createFailureNotificationDestination(

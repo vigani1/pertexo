@@ -1,3 +1,4 @@
+import { FAILURE_NOTIFICATION_DESTINATION_LIST_LIMIT } from '@pertexo/workflow-model';
 import { Injectable } from '@nestjs/common';
 import {
   failureNotificationDestinationAppendVersionRequestSchema,
@@ -70,7 +71,8 @@ export type CreateFailureNotificationDestinationInput =
     Readonly<{
       body: z.output<typeof failureNotificationDestinationCreateRequestSchema>;
     }>;
-export type ListFailureNotificationDestinationsInput = DestinationCommandInput;
+export type ListFailureNotificationDestinationsInput = DestinationCommandInput &
+  Readonly<{ afterId?: string | undefined }>;
 export type GetFailureNotificationDestinationInput = DestinationCommandInput &
   Readonly<{ destinationId: string }>;
 export type AppendFailureNotificationDestinationVersionInput =
@@ -131,8 +133,17 @@ export class FailureNotificationDestinationUseCases {
   ): Promise<
     z.output<typeof failureNotificationDestinationListResponseSchema>
   > {
-    const records = await this.database.list(databaseCommand(input));
-    return { items: records.map(response) };
+    const records = await this.database.list({
+      ...databaseCommand(input),
+      ...(input.afterId === undefined ? {} : { afterId: input.afterId }),
+    });
+    return {
+      items: records.map(response),
+      nextCursor:
+        records.length === FAILURE_NOTIFICATION_DESTINATION_LIST_LIMIT
+          ? (records.at(-1)?.id ?? null)
+          : null,
+    };
   }
   public async get(
     input: GetFailureNotificationDestinationInput,

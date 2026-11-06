@@ -5,7 +5,7 @@ import {
   failureNotificationDestinationVersions as version,
 } from '@pertexo/database/schema';
 import { FAILURE_NOTIFICATION_DESTINATION_LIST_LIMIT } from '@pertexo/workflow-model';
-import { and, eq, sql } from 'drizzle-orm';
+import { and, eq, gt, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
 
@@ -35,10 +35,16 @@ import {
 export async function listDestinations(
   client: PoolClient,
   workspaceId: string,
+  afterId?: string,
 ): Promise<readonly FailureNotificationDestinationRecord[]> {
   const result = await destinationRecords(drizzle(client))
-    .where(eq(destination.workspaceId, workspaceId))
-    .orderBy(destination.createdAt, destination.id)
+    .where(
+      and(
+        eq(destination.workspaceId, workspaceId),
+        afterId === undefined ? undefined : gt(destination.id, afterId),
+      ),
+    )
+    .orderBy(destination.id)
     .limit(FAILURE_NOTIFICATION_DESTINATION_LIST_LIMIT)
     .catch(rethrowQueryFailure);
   return Object.freeze(result.map((row) => Object.freeze(row)));
