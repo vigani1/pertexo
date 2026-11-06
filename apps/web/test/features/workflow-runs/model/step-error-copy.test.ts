@@ -98,3 +98,17 @@ describe('step error copy', () => {
     );
   });
 });
+
+it.each([
+  'execution.expression_limit_exceeded',
+  'preview.expression_limit_exceeded',
+])(
+  'uses limit-neutral fallback advice for %s so source and input refusals get useful guidance',
+  (code) => {
+    const copy = describeStepError(code);
+    expect(copy.sentence).toBe('An expression in this step exceeded a limit.');
+    expect(copy.advice).toBe(
+      'Review the specific limit in the step’s error. Simplify the expression or reduce the data it reads or returns, publish, then replay the run.',
+    );
+  },
+);

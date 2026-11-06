@@ -185,14 +185,7 @@ function mappingInspector(
       validation =
         validation.kind === 'valid'
           ? validation
-          : {
-              kind: 'error',
-              code: validation.code,
-              message: safeExpressionMessage(validation),
-              ...(validation.limit === undefined
-                ? {}
-                : { limit: validation.limit }),
-            };
+          : { ...validation, message: safeExpressionMessage(validation) };
       sources.set(expression, validation);
     }
     return validation;

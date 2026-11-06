@@ -69,10 +69,18 @@ export type ExpressionResult =
         | 'evaluation_failed'
         | 'nonfinite_result'
         | 'unavailable'
-        | 'variable_missing'
         | 'callback_unavailable';
       readonly message: string;
       readonly limit?: ExpressionLimit;
+    }
+  | {
+      readonly kind: 'error';
+      readonly code: 'variable_missing';
+      readonly message: string;
+      readonly variable:
+        | Readonly<{ kind: 'named'; name: string }>
+        | Readonly<{ kind: 'dynamic' }>;
+      readonly limit?: never;
     };
 
 export interface ExpressionContext {
@@ -122,6 +130,8 @@ export function expressionError(
   message: string,
   limit?: ExpressionLimit,
 ): Extract<ExpressionResult, { kind: 'error' }> {
+  if (code === 'variable_missing')
+    return { kind: 'error', code, message, variable: { kind: 'dynamic' } };
   return limit === undefined
     ? { kind: 'error', code, message }
     : { kind: 'error', code, message, limit };

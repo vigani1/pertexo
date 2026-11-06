@@ -65,7 +65,11 @@ describe('input resolution production operations', () => {
         ).rejects.toMatchObject({
           kind: 'failed',
           safeErrorCode: 'execution.expression_failed',
-          errorSummary: `Expression for field "${field}" returned a nonfinite number. Reduce the numeric result or check for division by zero.`,
+          diagnostic: {
+            kind: 'nonfinite_result',
+            mappingKey: field,
+            sourceKind: 'expression',
+          },
           possiblyDispatched: false,
         });
       }

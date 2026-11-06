@@ -1,3 +1,4 @@
+import { describeMappingFailure } from '../execution/mapping-diagnostic.js';
 import { isStoredDataError } from '@pertexo/core/shared';
 import { executorFailureCompletion } from './executor-failure.js';
 import { codeCompletionFields } from '../code/diagnostics.js';
@@ -158,7 +159,8 @@ async function executePreparedNodeAttempt(
       // The step's input or setup can't work: a definite failure of the step
       // itself, so the coordinator decides it like any other and its failure
       // link can take it.
-      const reason = describeNodeRefusal(error.cause);
+      const reason =
+        describeMappingFailure(error) ?? describeNodeRefusal(error.cause);
       const completed = await dependencies.runStore.complete({
         ...connectionHealthCompletionFields(environment),
         ...codeCompletionFields(environment),

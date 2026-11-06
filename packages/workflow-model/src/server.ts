@@ -7,7 +7,12 @@ export {
 } from './authoring/validation/contracts.js';
 export { WorkflowAuthoringValidator } from './authoring/validation/validator.js';
 export { JsonataEvaluator } from './values/expressions/evaluator.js';
-export type { ExpressionEvaluator } from './values/expressions/policy.js';
+export {
+  EXPRESSION_POLICY,
+  type ExpressionEvaluator,
+  type ExpressionLimit,
+  type ExpressionResult,
+} from './values/expressions/policy.js';
 export {
   EMPTY_DEFINITION_CATALOG,
   parseWorkflowGraphForPublish,
