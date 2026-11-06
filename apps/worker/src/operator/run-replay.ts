@@ -1,3 +1,4 @@
+import { CallableInputInvalidError } from '@pertexo/workflow-model';
 import {
   canonicalOutboxPayloadChecksum,
   InboxChecksumMismatchError,
@@ -71,6 +72,16 @@ export function createOperatorRunReplayHandler(store: OperatorRunReplayStore) {
           workspaceId: delivery.data.workspaceId,
         });
       } catch (error: unknown) {
+        if (error instanceof CallableInputInvalidError) {
+          await store.fail({
+            commandId: delivery.data.commandId,
+            safeErrorCode: 'input_invalid',
+            workspaceId: delivery.data.workspaceId,
+          });
+          throw unrecoverableQueueError(
+            'Replay input does not match the workflow input contract. Correct the input and submit a new command ID.',
+          );
+        }
         if (error instanceof OperatorRunReplayNotExecutableError) {
           await store.fail({
             commandId: delivery.data.commandId,

@@ -238,6 +238,14 @@ run_ops \
   -e OPERATOR_DRY_RUN=true
 ```
 
+After `replay_requested`, use `operator.status` with the command ID to check the
+worker's result. A `replay_failed` result with `input_invalid` means the input
+does not match that workflow version's callable input contract. The command is
+finished; it will not keep retrying. Correct `OPERATOR_RUN_INPUT` and submit
+`run.replay` with a **new** `OPERATOR_COMMAND_ID`. Reusing the old ID keeps its
+original result. To discard the replay, leave the failed command as it is; no run
+was created. Transient database failures still retry the pending request.
+
 `OPERATOR_RUN_INPUT` is JSON of at most 64 KiB, such as `'{"orderId":42}'`.
 
 ## `trigger.reconcile`
