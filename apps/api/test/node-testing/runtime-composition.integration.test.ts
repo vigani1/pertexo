@@ -73,6 +73,16 @@ describe.runIf(betterAuthIntegrationEnabled)(
         });
       const started = await execute();
       expect(started.statusCode, started.payload).toBe(202);
+      expect(started.json()).toMatchObject({
+        preview: {
+          disclosure: {
+            sideEffectClass: 'unsafe',
+            mayContactProvider: true,
+            mayCauseExternalSideEffect: true,
+            dryRun: 'not_supported',
+          },
+        },
+      });
       const preview = started.json<{ preview: { id: string } }>().preview;
       const replay = await execute();
       expect(replay.statusCode, replay.payload).toBe(202);
@@ -84,8 +94,8 @@ describe.runIf(betterAuthIntegrationEnabled)(
         browser,
       });
       expect(read.statusCode, read.payload).toBe(200);
-      expect(read.json()).toMatchObject({
-        preview: { id: preview.id, status: 'queued' },
+      expect(read.json()).toEqual({
+        preview: started.json<{ preview: unknown }>().preview,
       });
       for (const kind of ['tests', 'test-suites']) {
         const prepared = await api.send('GET', `${draft}/${kind}/prepare`, {
