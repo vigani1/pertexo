@@ -10,6 +10,7 @@ class FakeRedisClient {
       databaseSize?: number;
       flushError?: Error;
       lockResult?: unknown;
+      owner?: string;
       releaseResult?: unknown;
       releaseError?: Error;
     }> = {},
@@ -23,6 +24,10 @@ class FakeRedisClient {
   dbsize(): Promise<number> {
     this.calls.push({ name: 'dbsize', arguments: [] });
     return Promise.resolve(this.behavior.databaseSize ?? 0);
+  }
+
+  get(): Promise<string | null> {
+    return Promise.resolve(this.behavior.owner ?? null);
   }
 
   disconnect(reconnect?: boolean): void {
@@ -104,6 +109,26 @@ describe('Redis test namespace ownership', () => {
     expect(control.calls.at(-1)?.name).toBe('disconnect');
     expect(target.calls.at(-1)?.name).toBe('disconnect');
   });
+  it('makes concurrent cleanup callers wait for the same fenced cleanup', async () => {
+    let finish: (() => void) | undefined;
+    const pending = new Promise<void>((resolve) => {
+      finish = resolve;
+    });
+    const { namespace, target } = fixture({}, {}, () => pending);
+    await namespace.acquire();
+    const first = namespace.close();
+    let secondClosed = false;
+    const second = namespace.close().then(() => {
+      secondClosed = true;
+    });
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(secondClosed).toBe(false);
+    finish?.();
+    await Promise.all([first, second]);
+    expect(target.calls.filter(({ name }) => name === 'quit')).toHaveLength(1);
+  });
+
   it('rejects invalid and reserved database identities before constructing clients', () => {
     expect(() =>
       createRedisTestNamespace('redis://localhost', 10, 'valid-owner'),
@@ -148,9 +173,14 @@ describe('Redis test namespace ownership', () => {
   });
 
   it('refuses a competing owner without opening or flushing the target', async () => {
-    const { control, namespace, target } = fixture({ lockResult: null });
+    const { control, namespace, target } = fixture({
+      lockResult: null,
+      owner: 'timed-out-file:private-token',
+    });
 
-    await expect(namespace.acquire()).rejects.toThrow(/already owned/u);
+    await expect(namespace.acquire()).rejects.toThrow(
+      /already owned by timed-out-file$/u,
+    );
     await namespace.close();
 
     expect(target.calls).toEqual([]);
