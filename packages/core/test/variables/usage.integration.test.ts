@@ -58,7 +58,7 @@ async function addVersion(
   const id = randomUUID();
   await admin.query(
     `insert into app.workflow_versions(id,workspace_id,workflow_id,version_number,graph_json,executable_json,checksum,published_by)
-     values($1,$2,$3,$4,$5::jsonb,'{}'::jsonb,$6,$7)`,
+     values($1,$2,$3,$4,$5::json,'{}'::jsonb,$6,$7)`,
     [
       id,
       workspaceId,

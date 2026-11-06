@@ -1435,7 +1435,7 @@ describe('workflow run API persistence', () => {
       `insert into app.workflow_versions
          (id, workspace_id, workflow_id, version_number,
           graph_json, checksum, executable_json, published_by)
-       values ($1, $2, $3, 3, $4::jsonb, $5, $6::jsonb, $7)`,
+       values ($1, $2, $3, 3, $4::json, $5, $6::json, $7)`,
       [
         loopVersionId,
         workspaceId,

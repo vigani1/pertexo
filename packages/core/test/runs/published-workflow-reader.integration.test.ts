@@ -157,7 +157,7 @@ beforeAll(async () => {
     `insert into app.workflow_versions (
        id, workspace_id, workflow_id, version_number,
        graph_json, checksum, executable_json, published_by
-     ) values ($1, $2, $3, 2, $4::jsonb, $5, $6::jsonb, $7)`,
+     ) values ($1, $2, $3, 2, $4::json, $5, $6::json, $7)`,
     [
       versionId,
       workspaceId,
@@ -228,7 +228,7 @@ describe('PublishedWorkflowReader', () => {
     const checksum = `wf:sha256:${'f'.repeat(64)}`;
     await executeAsOwner(
       `insert into app.workflow_versions(id,workspace_id,workflow_id,version_number,graph_json,checksum,executable_json,published_by)
-       values($1,$2,$3,3,'{}',$4,$5::jsonb,$6)`,
+       values($1,$2,$3,3,'{}',$4,$5::json,$6)`,
       [
         id,
         workspaceId,

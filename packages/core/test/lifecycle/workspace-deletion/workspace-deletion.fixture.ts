@@ -174,7 +174,7 @@ export async function beforeAllFixture1() {
          version_number,graph_json,checksum,
          executable_json,
          published_by)
-       values($1,$2,$3,1,$4::jsonb,$5,'{}'::jsonb,$6)`,
+       values($1,$2,$3,1,$4::json,$5,'{}'::jsonb,$6)`,
       [
         workflowVersionId,
         workspaceId,

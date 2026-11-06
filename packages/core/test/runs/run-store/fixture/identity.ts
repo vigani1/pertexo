@@ -73,7 +73,7 @@ export async function seedIdentityAndExecutables(): Promise<void> {
         `insert into app.workflow_versions (
            id,workspace_id,workflow_id,version_number,graph_json,
            checksum,executable_json,published_by
-         ) values ($1,$2,$3,1,'{}'::jsonb,$4,$5::jsonb,$6)`,
+         ) values ($1,$2,$3,1,'{}'::jsonb,$4,$5::json,$6)`,
         [
           versionId,
           workspaceId,

@@ -43,7 +43,7 @@ export async function seedWorkflowRows(
     `insert into app.workflow_versions
        (id,workspace_id,workflow_id,version_number,
         graph_json,checksum,executable_json,published_by)
-     values ($1,$2,$3,4,$4::jsonb,$5,$6::jsonb,$7)`,
+     values ($1,$2,$3,4,$4::json,$5,$6::json,$7)`,
     [
       ids.publishedVersion,
       workspaceId,
@@ -94,7 +94,7 @@ export async function createForeignVersionWithOwner(
       `insert into app.workflow_versions
          (id,workspace_id,workflow_id,version_number,
           graph_json,checksum,executable_json,published_by)
-       values ($1,$2,$3,1,$4::jsonb,$5,$6::jsonb,$7)`,
+       values ($1,$2,$3,1,$4::json,$5,$6::json,$7)`,
       [
         foreignVersionId,
         foreignWorkspaceId,

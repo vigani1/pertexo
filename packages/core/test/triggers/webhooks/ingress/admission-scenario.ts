@@ -101,7 +101,7 @@ export async function insertVersionWithoutWebhookStep(
   const versionId = randomUUID();
   await holder.query(
     `insert into app.workflow_versions(id,workspace_id,workflow_id,version_number,graph_json,checksum,executable_json,published_by)
-     values($1,$2,$3,50,$4::jsonb,$5,'{}'::jsonb,$6)`,
+     values($1,$2,$3,50,$4::json,$5,'{}'::jsonb,$6)`,
     [
       versionId,
       workspaceId,

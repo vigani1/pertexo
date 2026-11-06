@@ -69,7 +69,7 @@ async function publicForm() {
     );
     await client.query(
       `insert into app.workflow_versions(id,workspace_id,workflow_id,version_number,graph_json,executable_json,checksum,published_by)
-       values($1,$2,$3,1,$4::jsonb,$5::jsonb,$6,$7)`,
+       values($1,$2,$3,1,$4::json,$5::json,$6,$7)`,
       [
         versionId,
         fixture.workspaceId,

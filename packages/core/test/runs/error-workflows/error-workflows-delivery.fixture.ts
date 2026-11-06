@@ -140,7 +140,7 @@ export async function publishManualTarget(
   const nextVersionId = crypto.randomUUID();
   await admin.query(
     `insert into app.workflow_versions(id,workspace_id,workflow_id,version_number,graph_json,executable_json,checksum,published_by)
-      values($1,$2,$3,2,'{}',$4::jsonb,$5,$6)`,
+      values($1,$2,$3,2,'{}',$4::json,$5,$6)`,
     [
       nextVersionId,
       f.workspaceId,
