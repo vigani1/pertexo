@@ -1,3 +1,4 @@
+import { WEB_BROWSER_PACKAGE_ROOTS } from '../../infrastructure/checks/browser-entry-dependencies.mjs';
 import tseslint from 'typescript-eslint';
 import reactHooks from 'eslint-plugin-react-hooks';
 import reactRefresh from 'eslint-plugin-react-refresh';
@@ -106,8 +107,7 @@ export default tseslint.config(
                 'Browser-only app. Add a reviewed browser-safe public contract subpath explicitly when wiring the API; never import backend runtime code.',
             },
             {
-              regex:
-                '^@pertexo/(?!(?:contracts|workflow-model|policy|templates|integrations|node-sdk)$).+',
+              regex: `^@pertexo/(?!(?:${WEB_BROWSER_PACKAGE_ROOTS.map((name) => name.slice('@pertexo/'.length)).join('|')})$).+`,
               message:
                 'Import only an explicitly reviewed browser-safe contract schema subpath.',
             },

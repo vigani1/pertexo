@@ -5,7 +5,10 @@ import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
-import { inspectBrowserEntryDependencies } from './browser-entry-dependencies.mjs';
+import {
+  inspectBrowserEntryDependencies,
+  WEB_BROWSER_PACKAGE_ROOTS,
+} from './browser-entry-dependencies.mjs';
 
 async function fixture(t, files, options = {}) {
   const root = await mkdtemp(
@@ -129,15 +132,10 @@ test('lets browser consumers load the execution and node package roots', async (
     await inspectBrowserEntryDependencies({
       root: fileURLToPath(new URL('../../', import.meta.url)),
       entries: [
-        'packages/workflow-model/src/index.ts',
         'packages/workflow-engine/src/index.ts',
-        ...[
-          'node-sdk',
-          'nodes-core',
-          'node-catalog',
-          'templates',
-          'integrations',
-        ].map((name) => `packages/${name}/src/index.ts`),
+        ...WEB_BROWSER_PACKAGE_ROOTS.map(
+          (name) => `packages/${name.slice('@pertexo/'.length)}/src/index.ts`,
+        ),
       ],
     }),
     [],
