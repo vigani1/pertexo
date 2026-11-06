@@ -1,8 +1,12 @@
+import { NODE_JSON_LIMITS } from '@pertexo/node-sdk';
+import { NODE_ATTEMPT_INPUT_LIMITS } from '../workflow-execution.js';
 import { upstreamInvocationKey } from './upstream-scope.js';
 import { createHash } from 'node:crypto';
 
 import {
   canonicalJson,
+  inspectJsonValue,
+  WORKFLOW_GRAPH_CONTRACT_LIMITS,
   workspaceVariableValuesSchema,
   type WorkspaceVariableValues,
   WORKFLOW_FAILURE_PORT,
@@ -123,7 +127,7 @@ function parseCompletedDescriptor(
 }
 
 function parseCompletedOutputs(
-  completed: JsonValue,
+  completed: unknown,
   {
     input,
     node,
@@ -138,15 +142,50 @@ function parseCompletedOutputs(
 ): Readonly<Record<string, JsonValue>> {
   if (!Array.isArray(completed))
     operationError('attempt_invalid', 'completed outputs must be a list');
+  if (completed.length > NODE_ATTEMPT_INPUT_LIMITS.upstreamNodeOutputs)
+    operationError(
+      'attempt_invalid',
+      `Completed inputs exceed ${String(NODE_ATTEMPT_INPUT_LIMITS.upstreamNodeOutputs)} direct predecessors.`,
+    );
   const outputs = Object.create(null) as Record<string, JsonValue>;
   const canonicalByNodeId = new Map<string, string>();
-  for (const candidate of completed as readonly JsonValue[]) {
-    const [nodeId, value] = parseCompletedDescriptor(candidate, {
+  for (const candidate of completed) {
+    // Bound each value separately: legal predecessor outputs do not share a
+    // single step's byte/member budget. The count bounds their total material.
+    let normalized: JsonValue;
+    try {
+      normalized = normalizeBoundedEngineValue(candidate, {
+        bytes:
+          NODE_JSON_LIMITS.bytes +
+          6 *
+            (WORKFLOW_GRAPH_CONTRACT_LIMITS.identifierLength +
+              WORKFLOW_GRAPH_CONTRACT_LIMITS.invocationKeyLength) +
+          128,
+        depth: NODE_JSON_LIMITS.depth + 1,
+        members: NODE_JSON_LIMITS.members + 3,
+      });
+    } catch {
+      operationError(
+        'attempt_invalid',
+        'A completed predecessor output exceeds the step JSON limits.',
+      );
+    }
+    const [nodeId, value] = parseCompletedDescriptor(normalized, {
       input: input,
       node: node,
       graph: graph,
       directUpstream: directUpstream,
     });
+    const size = inspectJsonValue(value);
+    if (
+      size.bytes > NODE_JSON_LIMITS.bytes ||
+      size.depth > NODE_JSON_LIMITS.depth ||
+      size.members > NODE_JSON_LIMITS.members
+    )
+      operationError(
+        'attempt_invalid',
+        'A completed predecessor output exceeds the step JSON limits.',
+      );
     const canonicalValue = canonicalJson(value);
     const existing = canonicalByNodeId.get(nodeId);
     if (existing !== undefined && existing !== canonicalValue)
@@ -206,11 +245,9 @@ export function prepareNodeAttemptInput(
 ): PreparedNodeAttemptInput {
   let runInput: JsonValue;
   let variables: WorkspaceVariableValues;
-  let completed: JsonValue;
   try {
     runInput = normalizeBoundedEngineValue(input.runInput);
     variables = workspaceVariableValuesSchema.parse(input.variables ?? {});
-    completed = normalizeBoundedEngineValue(input.completedNodeOutputs);
   } catch (error) {
     operationError(
       'attempt_invalid',
@@ -270,7 +307,7 @@ export function prepareNodeAttemptInput(
     runInput,
     variables,
     directUpstream,
-    completedOutputs: parseCompletedOutputs(completed, {
+    completedOutputs: parseCompletedOutputs(input.completedNodeOutputs, {
       input: input,
       node: node,
       graph: containingGraph,
