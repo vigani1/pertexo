@@ -1,6 +1,6 @@
 import { NodeAttemptHandlerStateError } from '../delivery/handler-state-error.js';
 import { testStepDisposition } from '@pertexo/workflow-engine';
-import { WORKFLOW_FAILURE_PORT } from '@pertexo/workflow-model';
+import { compareOrdinal, WORKFLOW_FAILURE_PORT } from '@pertexo/workflow-model';
 import {
   hasCallbackMapping,
   inspectExpression,
@@ -15,6 +15,7 @@ import type { NodeExecutionRuntime } from '@pertexo/node-sdk/server';
 import type { ExpressionEvaluator } from '@pertexo/workflow-model/server';
 import {
   executeNodeAttempt,
+  upstreamInvocationKey,
   invocationKey,
   type WorkflowExecutableNode,
 } from '@pertexo/workflow-engine';
@@ -35,11 +36,6 @@ export type NodeAttemptExecutionEngineOptions = Readonly<
     expressionEvaluator?: ExpressionEvaluator;
   }
 >;
-
-function ordinal(left: string, right: string): number {
-  if (left < right) return -1;
-  return left > right ? 1 : 0;
-}
 
 type ExecutableGraph = Readonly<{
   nodes: readonly WorkflowExecutableNode[];
@@ -73,42 +69,28 @@ function deriveUpstreamNodeOutputs(
   // A Merge takes whichever branch arrived; it has no fixed upstream set.
   if (node.definition.key === 'core.merge' && node.definition.version === 1)
     return Object.freeze([]);
+  const sourceIds = new Set(
+    graph.edges
+      .filter(
+        ({ source, target }) =>
+          target.nodeId === node.id && source.port !== WORKFLOW_FAILURE_PORT,
+      )
+      .map((edge) => edge.source.nodeId),
+  );
   return Object.freeze(
-    [
-      ...new Map(
-        graph.edges
-          .filter(
-            ({ source, target }) =>
-              target.nodeId === node.id &&
-              source.port !== WORKFLOW_FAILURE_PORT,
-          )
-          .map((edge) => [edge.source.nodeId, edge]),
-      ).values(),
-    ]
-      .sort((left, right) => ordinal(left.source.nodeId, right.source.nodeId))
-      .map((edge) => {
-        const branchPath = lease.branchPath ?? [];
-        const nearestBranch = branchPath.at(-1);
-        const sourceBranchPath =
-          nearestBranch?.nodeId === edge.source.nodeId &&
-          nearestBranch.outputPort === edge.source.port
-            ? branchPath.slice(0, -1)
-            : branchPath;
-        return Object.freeze({
-          nodeId: edge.source.nodeId,
-          invocationKey: invocationKey({
-            workflowVersionId: lease.workflowVersionId,
-            nodeId: edge.source.nodeId,
-            branchPath: sourceBranchPath.map(
-              ({ nodeId: branchNodeId, outputPort }) =>
-                `${branchNodeId}:${outputPort}`,
-            ),
-            ...(lease.iterationPath === undefined
-              ? {}
-              : { iterationPath: lease.iterationPath }),
-          }),
-        });
+    [...sourceIds].sort(compareOrdinal).map((sourceNodeId) =>
+      Object.freeze({
+        nodeId: sourceNodeId,
+        invocationKey: upstreamInvocationKey({
+          workflowVersionId: lease.workflowVersionId,
+          sourceNodeId,
+          targetNodeId: node.id,
+          edges: graph.edges,
+          branchPath: lease.branchPath ?? [],
+          iterationPath: lease.iterationPath ?? [],
+        }),
       }),
+    ),
   );
 }
 
