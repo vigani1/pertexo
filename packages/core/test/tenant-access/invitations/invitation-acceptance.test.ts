@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { decideInvitationAcceptance } from '../../src/index.js';
+import { decideInvitationAcceptance } from '../../../src/tenant-access/invitations/acceptance/decide-invitation-acceptance.js';
 
 const now = new Date('2026-10-25T12:00:00.000Z');
 function facts() {

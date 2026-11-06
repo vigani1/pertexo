@@ -14,7 +14,7 @@ import { generatePersistedId } from '@pertexo/database/platform';
 import { WorkspaceInvitationCommandConflictError } from '../../tenant-access.errors.js';
 
 import { canInviteWorkspaceRole } from '@pertexo/policy';
-import { canonicalEmail } from '@pertexo/workflow-model';
+import { canonicalEmail } from '../../../identity/email-policy.js';
 import { expireWorkspaceInvitations } from '../expiration.repository.js';
 import type {
   CreateWorkspaceInvitationInput,

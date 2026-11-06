@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { canonicalEmail } from '@pertexo/workflow-model';
+import { canonicalEmail } from './email-policy.js';
 import { withPlatformTransaction } from '@pertexo/database/platform';
 import {
   insertSystemMail,

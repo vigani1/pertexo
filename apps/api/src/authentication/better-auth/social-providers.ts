@@ -1,6 +1,6 @@
 import type { BetterAuthOptions } from 'better-auth';
 import { authenticationProviderSchema } from '@pertexo/contracts';
-import { canonicalEmail } from '@pertexo/workflow-model';
+import { canonicalEmail } from '@pertexo/core/identity';
 import { z } from 'zod';
 import { verifyProviderIdToken } from 'better-auth/oauth2';
 

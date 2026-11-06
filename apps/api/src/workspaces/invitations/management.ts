@@ -1,5 +1,5 @@
 import type { z } from 'zod';
-import { canonicalEmail } from '@pertexo/workflow-model';
+import { canonicalEmail } from '@pertexo/core/identity';
 import { randomUUID } from 'node:crypto';
 import {
   applicationError,

@@ -1,4 +1,4 @@
-import { canonicalEmail } from '@pertexo/workflow-model';
+import { canonicalEmail } from '../../email-policy.js';
 import { authAccounts } from '@pertexo/database/schema';
 import { generatePersistedId } from '@pertexo/database/platform';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';

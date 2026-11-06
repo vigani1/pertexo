@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseIdentityMetadata } from '../../src/index.js';
+import { parseIdentityMetadata } from '../../../src/identity/identity-metadata.js';
 
 describe('identity audit metadata', () => {
   it('accepts nested ordinary arrays and the exact 8 KiB metadata boundary', () => {

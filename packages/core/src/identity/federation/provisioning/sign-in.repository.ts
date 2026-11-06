@@ -1,4 +1,4 @@
-import { canonicalEmail } from '@pertexo/workflow-model';
+import { canonicalEmail } from '../../email-policy.js';
 import {
   authAccounts,
   authDirectoryUsers,

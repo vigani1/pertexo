@@ -1,4 +1,4 @@
-import { canonicalEmail } from '@pertexo/workflow-model';
+import { canonicalEmail } from './email-policy.js';
 import { eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { Pool, PoolClient } from 'pg';

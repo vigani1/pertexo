@@ -1,4 +1,4 @@
-import { canonicalEmail } from '@pertexo/workflow-model';
+import { canonicalEmail } from '@pertexo/core/identity';
 import { createHash, randomBytes } from 'node:crypto';
 
 import { authenticationReturnPathSchema } from '@pertexo/contracts';
