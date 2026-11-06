@@ -47,3 +47,4 @@ export type {} from './attempts/cancel-workspace-previews.repository.js';
 
 // Lifecycle supplies eventual cleanup when a preview delivery never claims it.
 export type {} from './attempts/expire-unclaimed-previews.repository.js';
+export type { WorkflowTestCompiler } from './workflows/workflow-test.types.js';

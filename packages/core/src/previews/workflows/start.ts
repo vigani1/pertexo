@@ -3,7 +3,7 @@ import type { Role } from '@pertexo/policy';
 import { claimCommand, completeCommand } from '@pertexo/database/primitives';
 import { generatePersistedId } from '@pertexo/database/platform';
 import { lockArtifactReferences } from '../../artifacts/references/locks.repository.js';
-import type { AuthoringCatalogs } from '../../authoring/workflows/catalogs.js';
+import type { WorkflowTestOptions } from './workflow-test.types.js';
 import { TEST_RUN_RETENTION_MILLIS } from '../../runs/data-policy.js';
 import { requireWorkflowCallTargets } from '../../tenant-access/resources/bindings.repository.js';
 import { requireConnectionBindings } from '../../tenant-access/resources/connections/bindings.repository.js';
@@ -26,7 +26,7 @@ export async function startWorkflowTest(
   client: PoolClient,
   role: Role,
   input: WorkflowTestCommand,
-  catalogs: AuthoringCatalogs,
+  options: WorkflowTestOptions,
 ): Promise<{ runId: string }> {
   const runId = generatePersistedId();
   const command = {
@@ -41,7 +41,7 @@ export async function startWorkflowTest(
     resourceId: runId,
   });
   if (replay !== null) return replay;
-  const snapshot = await loadTestSnapshot(client, input, catalogs);
+  const snapshot = await loadTestSnapshot(client, input, options);
   if (snapshot.preparation.draftRevision !== input.request.expectedRevision)
     throw new WorkflowTestError('draft_changed');
   if (
