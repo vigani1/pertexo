@@ -317,3 +317,17 @@ test('batch D existing entry points and concrete fixture subjects remain valid',
   ])
     assert.deepEqual(check(file), []);
 });
+
+for (const area of [
+  'inbox',
+  'notifications',
+  'data-tables',
+  'operator',
+  'variables',
+  'shared',
+]) {
+  test(`batch E requires a concrete subject in ${area}`, () => {
+    assert.ok(rules(`packages/core/test/${area}/fixture.ts`).includes('FN008'));
+    assert.deepEqual(check(`packages/core/src/${area}/index.ts`), []);
+  });
+}
