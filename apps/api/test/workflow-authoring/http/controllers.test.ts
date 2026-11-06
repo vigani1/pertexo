@@ -112,7 +112,7 @@ describe('workflow authoring HTTP contract', () => {
     ] as const) {
       const reply = await harness.send(method, path, {
         body,
-        headers: { 'if-match': tag },
+        headers: { 'if-match': tag, ...key },
       });
       expect(reply.statusCode).toBe(200);
       expect(reply.json()).toMatchObject({ workflowId, revision: 2, graph });

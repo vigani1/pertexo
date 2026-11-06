@@ -109,6 +109,7 @@ export type RestoreWorkflowVersionInput = Readonly<{
   versionId: string;
   actorId: string;
   representationTag: string;
+  idempotencyKey?: string;
   requestId?: string;
   traceId?: string;
 }>;

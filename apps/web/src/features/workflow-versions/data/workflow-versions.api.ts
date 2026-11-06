@@ -103,19 +103,24 @@ export function restoreWorkflowVersion({
   workflowId,
   versionId,
   etag,
+  idempotencyKey,
 }: Readonly<{
   apiClient: ApiClient;
   workspaceId: string;
   workflowId: string;
   versionId: string;
   etag: string;
+  idempotencyKey: string;
 }>): Promise<
   WorkflowDraftSnapshot & Readonly<{ recoveryCopyId: string | null }>
 > {
   return apiClient.request({
     path: `${versionsPath(workspaceId, workflowId)}/${encodeURIComponent(versionId)}/restore`,
     method: 'POST',
-    headers: { 'If-Match': strongEtagSchema.parse(etag) },
+    headers: {
+      'If-Match': strongEtagSchema.parse(etag),
+      'Idempotency-Key': idempotencyKey,
+    },
     body: workflowVersionRestoreRequestSchema.parse({}),
     response: {
       kind: 'json',

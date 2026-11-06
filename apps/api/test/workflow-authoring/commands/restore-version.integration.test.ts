@@ -23,7 +23,7 @@ describeIntegration('authenticated immutable version restoration', () => {
   });
 
   it.each(['owner', 'builder'] as const)(
-    'lets an active %s restore only the draft with a fresh tag and rejects stale retries',
+    'lets an active %s replay an accepted restore and rejects a new attempt with a stale tag',
     async (role) => {
       const { application, workspaceId, ids } = fixture;
       const owner = await fixture.login(role);
@@ -56,7 +56,7 @@ describeIntegration('authenticated immutable version restoration', () => {
       const stale = await application.inject({
         method: 'POST',
         url,
-        headers,
+        headers: { ...headers, 'idempotency-key': randomUUID() },
         payload: {},
       });
       expectProblem(stale, 412, 'workflow.revision_conflict');
@@ -104,17 +104,38 @@ describeIntegration('authenticated immutable version restoration', () => {
       payload: { graph },
     });
     expect(saved.statusCode, saved.body).toBe(200);
+    const restoreHeaders = mutationHeaders(owner, {
+      'if-match': String(saved.headers.etag),
+    });
     const restored = await application.inject({
       method: 'POST',
       url: `${base}/versions/${ids.publishedVersion}/restore`,
-      headers: mutationHeaders(owner, {
-        'if-match': String(saved.headers.etag),
-      }),
+      headers: restoreHeaders,
       payload: {},
     });
     expect(restored.statusCode, restored.body).toBe(200);
     const copyId = restored.json<{ recoveryCopyId: string }>().recoveryCopyId;
     expect(copyId).toEqual(expect.any(String));
+    const replayed = await application.inject({
+      method: 'POST',
+      url: `${base}/versions/${ids.publishedVersion}/restore`,
+      headers: restoreHeaders,
+      payload: {},
+    });
+    expect(replayed.statusCode, replayed.body).toBe(200);
+    expect(replayed.json()).toEqual(restored.json());
+    expect(replayed.headers.etag).toBe(restored.headers.etag);
+    expect(
+      await fixture.withOwner(
+        async (client) =>
+          (
+            await client.query<{ result_ref: unknown }>(
+              "select result_ref from app.idempotency_records where resource_id=$1 and operation='workflow.version.restore'",
+              [ids.published],
+            )
+          ).rows,
+      ),
+    ).toMatchObject([{ result_ref: { recoveryCopyId: copyId } }]);
     const copy = `/v1/workspaces/${workspaceId}/workflows/${copyId}`;
     const draft = await application.inject({
       method: 'GET',

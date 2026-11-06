@@ -21,6 +21,7 @@ export type RestoreWorkflowVersionInput = WorkflowApplicationInput &
     workflowId: string;
     versionId: string;
     representationTag: string;
+    idempotencyKey?: string;
     request: z.output<typeof workflowVersionRestoreRequestSchema>;
   }>;
 
@@ -61,6 +62,9 @@ export class RestoreWorkflowVersionUseCase {
           versionId: input.versionId,
           actorId: input.actor.actorId,
           representationTag: input.representationTag,
+          ...(input.idempotencyKey === undefined
+            ? {}
+            : { idempotencyKey: input.idempotencyKey }),
           requestId: input.actor.requestId,
           ...(input.actor.traceId === undefined
             ? {}
