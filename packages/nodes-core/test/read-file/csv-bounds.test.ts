@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { FILE_PAGE_LIMITS } from '@pertexo/node-sdk';
 import { encodeFilePageRecord } from '@pertexo/node-sdk/server';
-import { readCsvRecords } from '../../src/data/read-file/csv/records.js';
+import { readCsvRecords } from '../../src/data/read-file/csv/csv-records.js';
 
 const config = { format: 'csv', delimiter: ',', convertValues: true } as const;
 const signal = new AbortController().signal;

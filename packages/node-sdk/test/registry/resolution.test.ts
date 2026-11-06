@@ -23,7 +23,7 @@ import {
   configSchema,
   objectSchema,
   catalog,
-} from '../support/registry.js';
+} from './registry.fixture.js';
 
 describe('node-sdk exact server registry', () => {
   it('rejects duplicate identities and mismatched bindings', () => {

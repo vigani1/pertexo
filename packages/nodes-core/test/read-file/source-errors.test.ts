@@ -2,8 +2,8 @@ import { FILE_PAGE_LIMITS } from '@pertexo/node-sdk';
 import { encodeFilePageRecord } from '@pertexo/node-sdk/server';
 import { describe, expect, it } from 'vitest';
 
-import { readCsvRecords } from '../../src/data/read-file/csv/records.js';
-import { readJsonRecords } from '../../src/data/read-file/json/records.js';
+import { readCsvRecords } from '../../src/data/read-file/csv/csv-records.js';
+import { readJsonRecords } from '../../src/data/read-file/json/json-records.js';
 
 // A failure while reading the stored file is not a fault in its contents: the
 // readers pass it on unchanged instead of blaming the file's format.

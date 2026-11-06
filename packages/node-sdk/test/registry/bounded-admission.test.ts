@@ -13,7 +13,7 @@ import {
   configSchema,
   objectSchema,
   catalog,
-} from '../support/registry.js';
+} from './registry.fixture.js';
 
 describe('node-sdk bounded JSON contracts', () => {
   it('normalizes hostile reflection failures and rejects invalid custom limits', () => {

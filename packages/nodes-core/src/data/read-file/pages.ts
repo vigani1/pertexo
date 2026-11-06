@@ -8,9 +8,9 @@ import {
   type NodeArtifactRuntime,
   type JsonValue,
 } from '@pertexo/node-sdk/server';
-import { readCsvRecords } from './csv/records.js';
-import { readJsonRecords } from './json/records.js';
-import { readXlsxRecords } from './xlsx/records.js';
+import { readCsvRecords } from './csv/csv-records.js';
+import { readJsonRecords } from './json/json-records.js';
+import { readXlsxRecords } from './xlsx/xlsx-records.js';
 import type { CoreReadFileConfig } from './read-file.schemas.js';
 
 export async function readFilePages(
