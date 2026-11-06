@@ -421,4 +421,4 @@ export {
   type FailureNotificationContext,
   type FailureNotificationDeliveryResult,
   type FailureNotificationDestinationConfig,
-} from './execution/failure-notification.js';
+} from './notifications/failure-notification.schemas.js';
