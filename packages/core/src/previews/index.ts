@@ -6,6 +6,7 @@ export { reconcilePreviewDelivery } from './reconciliation/reconcile.js';
 export { markPreviewDispatched } from './attempts/mark-dispatched.js';
 export {
   PreviewAttemptStateError,
+  PreviewAdmissionDeniedError,
   PreviewDeliveryMismatchError,
   PreviewIdempotencyConflictError,
   PriorPreviewInputUnavailableError,

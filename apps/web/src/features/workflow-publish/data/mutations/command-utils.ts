@@ -34,6 +34,11 @@ export function commandErrorMessage(error: unknown, action: string): string {
     error.problem?.code === 'workflow.published_version_conflict'
   )
     return 'The published version changed. No run started. Review the current publication and create or load a new input case, then explicitly confirm a new run. The old case has not been rebound.';
+  if (isApiError(error) && error.problem?.code === 'workflow.revision_conflict')
+    return (
+      error.problem.detail ??
+      'The saved draft changed. Refresh the draft and prepare the test again.'
+    );
   if (isApiError(error) && (error.status === 409 || error.status === 412))
     return 'The draft changed after it was saved. Check the latest changes and try again.';
   if (isApiError(error) && error.status === 422)
