@@ -2,6 +2,18 @@
 // transactional joins and deliberate application composition remain explicit.
 // A new relationship needs an ownership decision, even for type-only imports.
 const allowedDependencies = new Set([
+  // Batch E: retained authority, storage and transactional relationships.
+  'connections -> shared',
+  'data-tables -> shared',
+  'identity -> shared',
+  'inbox -> notifications',
+  'inbox -> shared',
+  'notifications -> connections',
+  'notifications -> shared',
+  'operator -> shared',
+  'tenant-access -> shared',
+  'variables -> shared',
+
   'artifacts -> runs',
   'artifacts -> shared',
   'artifacts -> triggers',
@@ -77,6 +89,12 @@ const allowedDependencies = new Set([
 ]);
 
 const coreAreas = new Set([
+  'inbox',
+  'notifications',
+  'data-tables',
+  'operator',
+  'variables',
+  'shared',
   'runs',
   'attempts',
   'triggers',

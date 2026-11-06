@@ -767,3 +767,26 @@ test('batch D retains its real transactional and disclosure dependencies', () =>
       [],
     );
 });
+
+for (const [from, to] of [
+  ['inbox', 'operator'],
+  ['notifications', 'variables'],
+  ['data-tables', 'operator'],
+  ['operator', 'identity'],
+  ['variables', 'notifications'],
+]) {
+  test(`batch E refuses an undecided ${from} -> ${to} edge`, () => {
+    for (const declaration of ['import { a }', 'import type { A }']) {
+      assert.match(
+        validateModuleImports({
+          [`packages/core/src/${from}/operation.ts`]: `${declaration} from '../${to}/public.js';`,
+          [`packages/core/src/${to}/index.ts`]:
+            "export type {} from './public.js';",
+          [`packages/core/src/${to}/public.ts`]:
+            'export const a = 1; export type A = number;',
+        }).join('\n'),
+        /execution-area dependency is not allowed/u,
+      );
+    }
+  });
+}
