@@ -20,7 +20,6 @@ const allowedDependencies = new Set([
   'operator -> outbox',
   'operator -> attempts',
   'operator -> runs',
-  'outbox -> lifecycle',
   'outbox -> shared',
   'previews -> outbox',
   'previews -> runs',
@@ -39,7 +38,6 @@ const allowedDependencies = new Set([
   'triggers -> attempts',
   'triggers -> authoring',
   'triggers -> governance',
-  'triggers -> lifecycle',
   'triggers -> outbox',
   'triggers -> runs',
   'triggers -> shared',
@@ -52,7 +50,14 @@ const applicationAreas = {
   worker: ['runs', 'attempts', 'triggers', 'transport'],
 };
 
+// These completed batch D cuts also cover areas outside the execution cohort.
+const removedDependencies = new Set([
+  'lifecycle -> tenant-access',
+  'authoring -> connections',
+]);
+
 export function executionAreaDependencyAllowed(from, to) {
+  if (removedDependencies.has(`${from} -> ${to}`)) return false;
   return (
     from === to ||
     (!coreAreas.has(from) && !coreAreas.has(to)) ||

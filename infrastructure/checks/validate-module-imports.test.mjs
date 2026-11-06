@@ -696,3 +696,26 @@ test('execution areas keep legitimate transaction and execution-source dependenc
     [],
   );
 });
+
+for (const [from, to] of [
+  ['outbox', 'lifecycle'],
+  ['triggers', 'lifecycle'],
+  ['lifecycle', 'tenant-access'],
+  ['authoring', 'connections'],
+]) {
+  test(`batch D keeps the removed ${from} -> ${to} dependency out`, () => {
+    for (const declaration of ['import { a }', 'import type { A }']) {
+      const errors = validateModuleImports({
+        [`packages/core/src/${from}/operation.ts`]: `${declaration} from '../${to}/public.js';`,
+        [`packages/core/src/${to}/index.ts`]:
+          "export type {} from './public.js';",
+        [`packages/core/src/${to}/public.ts`]:
+          'export const a = 1; export type A = number;',
+      });
+      assert.match(
+        errors.join('\n'),
+        /execution-area dependency is not allowed/u,
+      );
+    }
+  });
+}
