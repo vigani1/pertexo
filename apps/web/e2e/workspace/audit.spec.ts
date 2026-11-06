@@ -109,3 +109,52 @@ for (const width of [1280, 375])
       )
       .toBe(true);
   });
+
+for (const width of [1280, 375]) {
+  test(`retains a step test’s unknown outcome and real mode at ${String(width)}px`, async ({
+    page,
+  }, info) => {
+    await page.setViewportSize({ width, height: 900 });
+    await installEditorRoutes(page, remoteDraft(), {
+      accessibleWorkspace: {
+        ...workspace,
+        role: 'owner',
+        capabilities: [
+          ...workspace.capabilities,
+          'audit:read',
+          'governance:manage',
+        ],
+      },
+    });
+    const root = `**/v1/workspaces/${workspaceId}/governance`;
+    await page.route(`${root}/settings`, (route) =>
+      route.fulfill({ json: { revision: 1, auditRetentionDays: 365 } }),
+    );
+    await page.route(`${root}/audit?*`, (route) =>
+      route.fulfill({
+        json: {
+          items: [
+            {
+              id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+              actorId: null,
+              actorName: null,
+              action: 'preview.execution_terminal',
+              targetType: 'preview-run',
+              targetId: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+              occurredAt: new Date().toISOString(),
+              metadata: { status: 'outcome_unknown', dryRun: 'not_supported' },
+            },
+          ],
+          nextCursor: null,
+        },
+      }),
+    );
+    await page.goto(`/w/${workspaceId}/settings/audit`);
+    await expect(page.getByText(/Outcome unknown/u)).toBeVisible();
+    await expect(page.getByText(/Runs for real/u)).toBeVisible();
+    await page.screenshot({
+      path: info.outputPath('preview-audit.png'),
+      fullPage: true,
+    });
+  });
+}

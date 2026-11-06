@@ -4,6 +4,25 @@ import {
 } from '@pertexo/workflow-model';
 import { ROLES } from '@pertexo/policy';
 import type { AuditEvent } from '@pertexo/contracts';
+import type {
+  PreviewDryRun,
+  PreviewStatus,
+} from '../../previews/preview.types.js';
+
+// The audit's privacy boundary admits these facts only for preview actions.
+const previewOutcomes: Readonly<
+  Record<Exclude<PreviewStatus, 'queued' | 'running'>, true>
+> = {
+  succeeded: true,
+  failed: true,
+  canceled: true,
+  timed_out: true,
+  outcome_unknown: true,
+};
+const previewDryRunModes: Readonly<Record<PreviewDryRun, true>> = {
+  not_supported: true,
+  provider_supported: true,
+};
 
 // Historical writers sometimes stored free text. Expose typed facts only, never
 // arbitrary strings under a familiar key (or a new writer's accidental payload).
@@ -72,12 +91,27 @@ export type AuditViewKey =
 
 export function projectAuditMetadata(
   metadata: unknown,
+  action?: string,
 ): AuditEvent['metadata'] {
   const result: AuditEvent['metadata'] = {};
   let legacyChangedCount: number | undefined;
   if (typeof metadata !== 'object' || metadata === null) return result;
   const entries: readonly [string, unknown][] = Object.entries(metadata);
   for (const [key, value] of entries) {
+    if (action === 'preview.execution_terminal' && key === 'status') {
+      if (typeof value === 'string' && Object.hasOwn(previewOutcomes, value))
+        result.status = value;
+      continue;
+    }
+    if (
+      (action === 'preview.execution_terminal' ||
+        action === 'preview.execution_accepted') &&
+      key === 'dryRun'
+    ) {
+      if (typeof value === 'string' && Object.hasOwn(previewDryRunModes, value))
+        result.dryRun = value;
+      continue;
+    }
     if (key === 'changedNames') {
       const names = changedNamesSchema.safeParse(value);
       if (names.success) {
