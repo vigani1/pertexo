@@ -1,4 +1,4 @@
-import { API_TOKEN_SCOPES } from '@pertexo/workflow-model';
+import { API_TOKEN_SCOPES } from '@pertexo/contracts';
 import { canonicalJson } from '@pertexo/workflow-model';
 import { sql } from 'drizzle-orm';
 import {

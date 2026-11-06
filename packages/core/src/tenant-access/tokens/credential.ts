@@ -1,4 +1,4 @@
-import { apiTokenCredentialSchema } from '@pertexo/workflow-model';
+import { apiTokenCredentialSchema } from '@pertexo/contracts';
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 
 export type ParsedApiTokenCredential = Readonly<{

@@ -21,7 +21,7 @@ import type {
   DirectoryGroupValues,
 } from '../directory-provisioning.types.js';
 
-import { DIRECTORY_LIMITS } from '@pertexo/workflow-model';
+import { DIRECTORY_LIMITS } from '@pertexo/contracts';
 import { projectDirectoryMemberships } from '../projection.repository.js';
 import {
   assertDirectoryRevision,
