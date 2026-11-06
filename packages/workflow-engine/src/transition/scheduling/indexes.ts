@@ -3,7 +3,7 @@ import {
   isCoreParallelDefinition,
 } from '../../core-definition-identities.js';
 import { configuredPairedParallelId } from '../../control-output-ports.js';
-import { type SchedulerState } from './policy.js';
+import type { SchedulerState } from './policy.js';
 
 type SchedulerNode = SchedulerState['nodes'][number];
 

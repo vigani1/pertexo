@@ -17,12 +17,12 @@ import {
   executorManifest,
 } from './graph-rules.js';
 import { computeWorkflowExecutableChecksum } from './identity.js';
-import {
-  type CompiledWorkflowExecutable,
-  type VerifiedWorkflowExecutable,
-  type WorkflowExecutableGraph,
-  type WorkflowExecutableNode,
-  type WorkflowExecutable,
+import type {
+  CompiledWorkflowExecutable,
+  VerifiedWorkflowExecutable,
+  WorkflowExecutableGraph,
+  WorkflowExecutableNode,
+  WorkflowExecutable,
 } from './workflow-executable.js';
 import {
   BASELINE_RUNTIME_POLICIES,

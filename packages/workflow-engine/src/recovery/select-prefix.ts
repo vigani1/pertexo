@@ -10,9 +10,9 @@ import {
   assertAuthenticExecutableIdentity,
   executionNodes,
 } from '../compilation/verified-executable.js';
-import {
-  type CompiledWorkflowExecutable,
-  type WorkflowExecutableNode,
+import type {
+  CompiledWorkflowExecutable,
+  WorkflowExecutableNode,
 } from '../compilation/workflow-executable.js';
 import { assertCheckpointMatchesExecutable } from '../checkpoint/matches-executable.js';
 import {
