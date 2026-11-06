@@ -1,4 +1,4 @@
-import { JOB_NAME } from '@pertexo/queue';
+import { JOB_NAME, jobIdForOutboxEvent } from '@pertexo/queue';
 
 import { expect } from 'vitest';
 import { waitForCoordinatorOutbox } from '../../../../support/coordinator/runs.js';
@@ -149,6 +149,11 @@ export function createForEachDelivery(
     node_run_id: string;
     outbox_id: string;
   }) => {
+    // Re-publishing a retained BullMQ job would only observe its old completion.
+    // Remove it so each duplicate really reaches the PostgreSQL receipt boundary.
+    await (
+      await ownedAttemptQueue.getJob(jobIdForOutboxEvent(attempt.outbox_id))
+    )?.remove();
     const published = await ownedProducer.publish({
       name: JOB_NAME.executeNodeAttempt,
       data: {

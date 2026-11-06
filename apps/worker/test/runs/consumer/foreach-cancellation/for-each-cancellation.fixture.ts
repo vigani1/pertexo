@@ -40,7 +40,7 @@ export type StartableChild = OwnedChild &
     start: () => Promise<void>;
   }>;
 
-export const SPARE_WORKERS = 2;
+export const SPARE_WORKERS = 1;
 
 async function bounded<T>(
   operation: Promise<T>,
