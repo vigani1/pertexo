@@ -37,7 +37,18 @@ export function commandRecord(
         .nullable()
         .parse(result.priorPublishAttempts ?? null),
     ),
-    result: Object.freeze(result),
+    result: Object.freeze({
+      ...result,
+      ...(row.outcome === 'replay_failed' &&
+      result.safeErrorCode === 'input_invalid'
+        ? {
+            safeErrorMessage:
+              'Replay input does not match the workflow input contract.',
+            recoveryAction:
+              'Correct the input and submit run.replay with a new command ID.',
+          }
+        : {}),
+    }),
     requestFingerprint: row.requestFingerprint,
     status: row.status,
   });
