@@ -13,3 +13,5 @@ export type { FailureNotificationResolvedDestination } from './failure-notificat
 // Run acceptance and a run's completion use these directly (ADR 091).
 export type {} from './policies/admission.repository.js';
 export type {} from './delivery/evidence.repository.js';
+
+export type {} from './destinations/notification-policy.js';

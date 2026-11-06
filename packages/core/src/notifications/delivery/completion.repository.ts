@@ -1,7 +1,7 @@
 import {
   failureNotificationCompletionAuditFactType,
   failureNotificationCompletionDecision,
-} from '@pertexo/workflow-model';
+} from './completion-policy.js';
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres';
 import type { Pool } from 'pg';

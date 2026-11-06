@@ -1,5 +1,5 @@
 import { decodeStoredValue } from '../../shared/stored-values.js';
-import { classifyConnectionTestCompletion } from '@pertexo/workflow-model';
+import { classifyConnectionTestCompletion } from '../health/completion-policy.js';
 import { eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { Pool } from 'pg';

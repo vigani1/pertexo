@@ -1,5 +1,5 @@
 import { decodeStoredValue } from '../../../shared/stored-values.js';
-import { decideScheduleHealthTransition } from '@pertexo/workflow-model';
+import { decideScheduleHealthTransition } from './schedule-health.js';
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { alias } from 'drizzle-orm/pg-core';
