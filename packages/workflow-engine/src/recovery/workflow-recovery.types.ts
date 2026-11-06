@@ -10,7 +10,7 @@ import type {
 import type {
   CompiledWorkflowExecutable,
   WorkflowExecutableNode,
-} from '../compilation/foundation.js';
+} from '../compilation/workflow-executable.js';
 import type {
   BranchScopePart,
   BranchSelection,

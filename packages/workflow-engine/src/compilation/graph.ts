@@ -1,7 +1,7 @@
 import type {
   WorkflowExecutableGraph,
   WorkflowExecutableNode,
-} from './foundation.js';
+} from './workflow-executable.js';
 
 export function findExecutableNodeContext(
   graph: WorkflowExecutableGraph,

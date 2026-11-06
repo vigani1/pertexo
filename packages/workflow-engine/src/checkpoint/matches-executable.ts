@@ -6,7 +6,7 @@ import { findExecutableNodeContext } from '../compilation/graph.js';
 import type {
   CompiledWorkflowExecutable,
   ExecutionNode,
-} from '../compilation/foundation.js';
+} from '../compilation/workflow-executable.js';
 import {
   configuredParallelOutputPorts,
   configuredScopedOutputPorts,

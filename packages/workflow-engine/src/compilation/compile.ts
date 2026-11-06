@@ -19,19 +19,20 @@ import {
 import { computeWorkflowExecutableChecksum } from './identity.js';
 import {
   type CompiledWorkflowExecutable,
-  BASELINE_RUNTIME_POLICIES,
   type VerifiedWorkflowExecutable,
   type WorkflowExecutableGraph,
   type WorkflowExecutableNode,
   type WorkflowExecutable,
-  compareIdentity,
-  compareOrdinal,
-  fail,
-  freezeExecutable,
-  readUntrusted,
-  registerExecutableIdentity,
+} from './workflow-executable.js';
+import {
+  BASELINE_RUNTIME_POLICIES,
   validateGlobals,
-} from './foundation.js';
+} from './runtime-policies.js';
+import { compareIdentity } from './definition-identity.js';
+import { compareOrdinal } from '@pertexo/workflow-model';
+import { fail, readUntrusted } from './executable-errors.js';
+import { freezeExecutable } from './freeze-executable.js';
+import { registerExecutableIdentity } from './verified-executable.js';
 import { sideEffectClass } from './executable.validation.js';
 
 function executableNode(

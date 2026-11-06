@@ -5,10 +5,9 @@ import {
 } from '@pertexo/node-sdk';
 import {
   BASELINE_RUNTIME_POLICIES,
-  fail,
   globalPolicies,
-  readUntrusted,
-} from './foundation.js';
+} from './runtime-policies.js';
+import { fail, readUntrusted } from './executable-errors.js';
 
 export function composeExecutableCatalog(
   nodeCatalogInput: unknown,

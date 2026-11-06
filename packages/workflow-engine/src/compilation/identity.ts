@@ -3,7 +3,8 @@ import {
   workflowExecutionValues,
   valueSourceExecutionIdentity,
 } from '@pertexo/workflow-model';
-import { type WorkflowExecutable, digest } from './foundation.js';
+import { type WorkflowExecutable } from './workflow-executable.js';
+import { digest } from './executable-digest.js';
 
 function executableProjection(envelope: WorkflowExecutable) {
   return {

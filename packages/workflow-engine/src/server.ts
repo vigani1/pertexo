@@ -30,7 +30,7 @@ export type {
   CompiledWorkflowExecutable,
   VerifiedWorkflowExecutable,
   WorkflowExecutableNode,
-} from './compilation/foundation.js';
+} from './compilation/workflow-executable.js';
 export {
   invocationKey,
   loopIterationOrdinal,

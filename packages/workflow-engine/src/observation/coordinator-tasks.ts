@@ -16,7 +16,7 @@ import {
 import type {
   WorkflowExecutableGraph,
   ExecutionNode,
-} from '../compilation/foundation.js';
+} from '../compilation/workflow-executable.js';
 import { findExecutableNodeContext } from '../compilation/graph.js';
 import { normalizeBoundedEngineJson } from '../compilation/executable.validation.js';
 import { exactKeys, operationError, record } from '../operation-values.js';

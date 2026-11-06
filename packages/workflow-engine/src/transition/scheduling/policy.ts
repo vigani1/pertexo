@@ -3,7 +3,7 @@ import {
   workflowControlOutputKind,
   type ControlNodeConfig,
 } from '@pertexo/workflow-model';
-import type { ExecutionFailureRoute } from '../../compilation/foundation.js';
+import type { ExecutionFailureRoute } from '../../compilation/workflow-executable.js';
 
 import type {
   BranchScopePart,
