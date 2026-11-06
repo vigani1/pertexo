@@ -369,7 +369,7 @@ it.each([
       safeErrorCode: 'utility.xml_input',
       errorSummary: expect.stringMatching(
         /processing instructions.*not supported/iu,
-      ),
+      ) as unknown,
     });
   },
 );
