@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray, lte, sql } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import {
   artifactLinks,
   artifacts,
@@ -8,9 +8,6 @@ import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 import {
   ARTIFACT_STATUS,
   type ArtifactRecord,
-  type ClaimDueUnfinalizedArtifactInput,
-  type ClaimDueUnfinalizedArtifactsInput,
-  type CompleteArtifactRemovalInput,
   type CreatePendingArtifactInput,
   type CreatePendingPreviewArtifactInput,
   type FinalizeArtifactInput,
@@ -170,113 +167,4 @@ export async function finalizeArtifactUpload(
     throw new ArtifactLifecycleConflictError('Artifact finalize lost its lock');
   }
   return finalized;
-}
-
-export async function claimDueUnfinalizedArtifacts(
-  transaction: WorkspaceTransaction,
-  input: ClaimDueUnfinalizedArtifactsInput,
-): Promise<readonly ArtifactRecord[]> {
-  const due = await transaction.db
-    .select({ id: artifacts.id })
-    .from(artifacts)
-    .where(
-      and(
-        eq(artifacts.status, ARTIFACT_STATUS.pending),
-        lte(artifacts.expiresAt, sql`clock_timestamp()`),
-      ),
-    )
-    .orderBy(asc(artifacts.expiresAt), asc(artifacts.id))
-    .limit(input.limit)
-    .for('update', { skipLocked: true });
-  if (due.length === 0) return Object.freeze([]);
-
-  // The rows stay locked and pending until this transaction ends.
-  const claimed = await transaction.db
-    .update(artifacts)
-    .set({
-      status: ARTIFACT_STATUS.deleting,
-      updatedAt: sql`clock_timestamp()`,
-    })
-    .where(
-      inArray(
-        artifacts.id,
-        due.map(({ id }) => id),
-      ),
-    )
-    .returning();
-  return Object.freeze(claimed);
-}
-
-export async function claimDueUnfinalizedArtifact(
-  transaction: WorkspaceTransaction,
-  input: ClaimDueUnfinalizedArtifactInput,
-): Promise<ArtifactRecord> {
-  const artifact = await lockArtifact(transaction, input.artifactId);
-  if (artifact.status === ARTIFACT_STATUS.deleting) return artifact;
-  if (artifact.status !== ARTIFACT_STATUS.pending) {
-    throw new ArtifactLifecycleConflictError(
-      `Artifact cannot be claimed for unfinalized cleanup from ${artifact.status}`,
-    );
-  }
-  const [expiry] = await transaction.db
-    .select({
-      expired: sql<boolean | null>`${artifacts.expiresAt}<=clock_timestamp()`,
-    })
-    .from(artifacts)
-    .where(eq(artifacts.id, artifact.id));
-  if (!(expiry?.expired ?? false)) {
-    throw new ArtifactLifecycleConflictError('Pending artifact is not due');
-  }
-
-  const rows = await transaction.db
-    .update(artifacts)
-    .set({
-      status: ARTIFACT_STATUS.deleting,
-      updatedAt: sql`clock_timestamp()`,
-    })
-    .where(
-      and(
-        eq(artifacts.id, input.artifactId),
-        eq(artifacts.status, ARTIFACT_STATUS.pending),
-      ),
-    )
-    .returning();
-  const claimed = rows[0];
-  if (claimed === undefined) {
-    throw new ArtifactLifecycleConflictError('Artifact cleanup lost its lock');
-  }
-  return claimed;
-}
-
-export async function completeArtifactRemoval(
-  transaction: WorkspaceTransaction,
-  input: CompleteArtifactRemovalInput,
-): Promise<ArtifactRecord> {
-  const artifact = await lockArtifact(transaction, input.artifactId);
-  if (artifact.status === ARTIFACT_STATUS.deleted) return artifact;
-  if (artifact.status !== ARTIFACT_STATUS.deleting) {
-    throw new ArtifactLifecycleConflictError(
-      `Artifact cannot complete removal from ${artifact.status}`,
-    );
-  }
-
-  const rows = await transaction.db
-    .update(artifacts)
-    .set({
-      deletedAt: sql`clock_timestamp()`,
-      status: ARTIFACT_STATUS.deleted,
-      updatedAt: sql`clock_timestamp()`,
-    })
-    .where(
-      and(
-        eq(artifacts.id, input.artifactId),
-        eq(artifacts.status, ARTIFACT_STATUS.deleting),
-      ),
-    )
-    .returning();
-  const deleted = rows[0];
-  if (deleted === undefined) {
-    throw new ArtifactLifecycleConflictError('Artifact removal lost its lock');
-  }
-  return deleted;
 }

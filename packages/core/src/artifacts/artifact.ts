@@ -29,6 +29,3 @@ export type CreatePendingPreviewArtifactInput = CreatePendingArtifactInput &
   Readonly<{ previewRunId: string }>;
 export type FinalizeArtifactInput = ArtifactMetadataInput &
   Pick<ArtifactRecord, 'workspaceId'>;
-export type ClaimDueUnfinalizedArtifactsInput = Readonly<{ limit: number }>;
-export type ClaimDueUnfinalizedArtifactInput = Readonly<{ artifactId: string }>;
-export type CompleteArtifactRemovalInput = Readonly<{ artifactId: string }>;

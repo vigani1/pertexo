@@ -41,6 +41,14 @@ export function createArtifactDatabaseEnvironment() {
     connectionString: databaseUrl(workerDatabaseUrl, databaseName),
     max: 2,
   });
+  const maintenanceConfig = parseDatabaseConfig({
+    connectionString: databaseUrl(
+      process.env.DATABASE_MAINTENANCE_URL ??
+        'postgresql://pertexo_maintenance:pertexo-local-maintenance@localhost:5432/pertexo',
+      databaseName,
+    ),
+    max: 2,
+  });
   let scratch:
     Awaited<ReturnType<typeof createTestArtifactScratch>> | undefined;
   let databaseCreated = false;
@@ -50,6 +58,7 @@ export function createArtifactDatabaseEnvironment() {
   return Object.freeze({
     apiConfig,
     workerConfig,
+    maintenanceConfig,
     get artifactScratchDirectory() {
       if (scratch === undefined)
         throw new Error('Artifact environment not initialized');

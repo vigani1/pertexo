@@ -72,9 +72,6 @@ export {
 } from './artifacts/artifact.errors.js';
 export {
   artifactStorageKey,
-  claimDueUnfinalizedArtifact,
-  claimDueUnfinalizedArtifacts,
-  completeArtifactRemoval,
   createPendingArtifact,
   createPendingPreviewArtifact,
   finalizeArtifactUpload,
@@ -110,9 +107,6 @@ export type {
 export type {
   ArtifactRecord,
   ArtifactStatus,
-  ClaimDueUnfinalizedArtifactInput,
-  ClaimDueUnfinalizedArtifactsInput,
-  CompleteArtifactRemovalInput,
   CreatePendingArtifactInput,
   CreatePendingPreviewArtifactInput,
   FinalizeArtifactInput,
