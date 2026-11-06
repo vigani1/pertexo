@@ -53,7 +53,7 @@ export async function seedWorkflowRows(
     `insert into app.workflow_versions
        (id,workspace_id,workflow_id,version_number,graph_json,
         checksum,published_by,executable_json)
-     values ($1,$2,$3,3,$4::jsonb,$5,$6,$7::jsonb)`,
+     values ($1,$2,$3,3,$4::json,$5,$6,$7::json)`,
     [
       ids.version,
       workspaceId,

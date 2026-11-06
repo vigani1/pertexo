@@ -293,10 +293,10 @@ export async function resetFixture(): Promise<void> {
        (id, workspace_id, workflow_id, version_number,
         graph_json, checksum, executable_json, published_by)
      values
-       ($1, $2, $3, 1, $4::jsonb, $5, $6::jsonb, $7),
+       ($1, $2, $3, 1, $4::json, $5, $6::json, $7),
        ($8, $2, $3, 2,
         jsonb_set($4::jsonb, '{settings}', '{"maxRunDurationMs":5000}'::jsonb),
-        $9, $10::jsonb, $7)`,
+        $9, $10::json, $7)`,
     [
       workflowVersionId,
       workspaceId,
@@ -317,7 +317,7 @@ export async function resetFixture(): Promise<void> {
     `insert into app.workflow_versions
        (id, workspace_id, workflow_id, version_number,
         graph_json, checksum, executable_json, published_by)
-     values ($1, $2, $3, 1, $4::jsonb, $5, $6::jsonb, $7)`,
+     values ($1, $2, $3, 1, $4::json, $5, $6::json, $7)`,
     [
       otherWorkflowVersionId,
       otherWorkspaceId,

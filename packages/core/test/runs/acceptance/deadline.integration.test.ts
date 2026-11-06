@@ -37,8 +37,8 @@ async function publishDuration(maxRunDurationMs?: number): Promise<void> {
       `insert into app.workflow_versions(id,workspace_id,workflow_id,
         version_number,graph_json,checksum,published_by,
         executable_json)
-       values ($1,$2,$3,1,$4::jsonb,$5,$6,
-         jsonb_build_object('graph',$4::jsonb))`,
+       values ($1,$2,$3,1,$4::json,$5,$6,
+         json_build_object('graph',$4::json))`,
       [
         workflowVersionId,
         workspaceA,

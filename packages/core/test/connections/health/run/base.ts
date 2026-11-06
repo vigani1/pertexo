@@ -82,7 +82,7 @@ export async function createHealthConnection(
   await asOwner(workspaceA, async (client) => {
     await client.query(
       `insert into app.workflow_versions(id,workspace_id,workflow_id,version_number,graph_json,checksum,executable_json,published_by)
-      select $1,$2,$3,coalesce(max(version_number),0)+1,'{}'::jsonb,$4,$5::jsonb,$6
+      select $1,$2,$3,coalesce(max(version_number),0)+1,'{}'::jsonb,$4,$5::json,$6
        from app.workflow_versions where workspace_id=$2 and workflow_id=$3`,
       [
         versionId,

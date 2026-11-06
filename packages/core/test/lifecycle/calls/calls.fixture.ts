@@ -80,7 +80,7 @@ export async function createFamily(
     await admin.query(
       `insert into app.workflow_versions
        (id,workspace_id,workflow_id,version_number,graph_json,executable_json,checksum,published_by)
-       values($1,$2,$3,1,'{}',$6::jsonb,$4,$5)`,
+       values($1,$2,$3,1,'{}',$6::json,$4,$5)`,
       [
         versionId,
         workspaceId,
