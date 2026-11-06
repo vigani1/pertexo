@@ -1,4 +1,4 @@
-import { API_TOKEN_SCOPES } from '@pertexo/contracts';
+import { API_TOKEN_SCOPES } from '@pertexo/policy';
 import {
   httpDraft,
   installHttp,

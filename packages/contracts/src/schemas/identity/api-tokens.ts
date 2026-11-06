@@ -1,19 +1,6 @@
+import { API_TOKEN_SCOPES } from '@pertexo/policy';
 import { UUID_PATTERN } from '@pertexo/workflow-model';
 import { z } from 'zod';
-
-export const API_TOKEN_SCOPES = [
-  'workflow:read',
-  'workflow:create',
-  'workflow:update',
-  'workflow:publish',
-  'run:read',
-  'run:read-data',
-  'run:start',
-  'run:cancel',
-  'connection:read',
-  'workspace:read',
-  'variable:manage',
-] as const;
 
 export const API_TOKEN_DEFAULT_LIFETIME_DAYS = 30;
 
