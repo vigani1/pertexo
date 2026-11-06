@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { DirectoryError, type DirectoryQuery } from '@pertexo/core/identity';
-import { DIRECTORY_LIMITS } from '@pertexo/contracts';
+import { DIRECTORY_LIMITS } from '@pertexo/workflow-model';
 import {
   canonicalPath,
   supportedAttributes,

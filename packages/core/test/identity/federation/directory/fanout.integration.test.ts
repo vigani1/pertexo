@@ -9,7 +9,7 @@ import {
   withDirectoryTransaction,
 } from '../../../../src/identity/federation/provisioning/authority.repository.js';
 import { projectDirectoryMemberships } from '../../../../src/identity/federation/provisioning/projection.repository.js';
-import { DIRECTORY_LIMITS } from '@pertexo/contracts';
+import { DIRECTORY_LIMITS } from '@pertexo/workflow-model';
 
 const db = useIdentityCommandDatabase('scim_fanout');
 it('projects maximum directory fan-out atomically without per-person round trips or no-op revocations', async () => {

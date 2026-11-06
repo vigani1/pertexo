@@ -385,9 +385,6 @@ importers:
       '@pertexo/artifact-store':
         specifier: workspace:*
         version: link:../../packages/artifact-store
-      '@pertexo/contracts':
-        specifier: workspace:*
-        version: link:../../packages/contracts
       '@pertexo/core':
         specifier: workspace:*
         version: link:../../packages/core

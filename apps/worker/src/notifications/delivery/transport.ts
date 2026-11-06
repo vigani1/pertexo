@@ -11,7 +11,7 @@ import {
 import type { ConnectionEnvelopeEncryption } from '@pertexo/secrets/server';
 import type { ResendClient, SlackClient } from '@pertexo/integrations/server';
 
-import type { FailureNotificationDeliveryResult } from '@pertexo/contracts';
+import type { FailureNotificationDeliveryResult } from '@pertexo/workflow-model';
 import type { FailureNotificationDeliveryCapability } from '../failure-handler.js';
 import {
   localFailure,

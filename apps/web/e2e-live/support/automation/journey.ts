@@ -6,7 +6,6 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { expect, type Page } from '@playwright/test';
 import {
-  apiTokenCredentialSchema,
   strongEtagSchema,
   workflowCreateResponseSchema,
   workflowDraftResponseSchema,
@@ -20,6 +19,7 @@ import {
   workflowRunResponseSchema,
   workflowRunListResponseSchema,
 } from '@pertexo/contracts';
+import { apiTokenCredentialSchema } from '@pertexo/workflow-model';
 import {
   portableGraphDigest,
   workflowPortableManifestSchema,

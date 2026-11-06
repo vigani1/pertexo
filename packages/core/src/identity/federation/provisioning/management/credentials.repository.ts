@@ -16,7 +16,7 @@ import { generatePersistedId } from '@pertexo/database/platform';
 import { withWorkspaceAccess } from '../../../../shared/workspace-access.js';
 import { organizationForWorkspace } from '../../management/authority.repository.js';
 import { DirectoryError } from '../directory.errors.js';
-import { DIRECTORY_LIMITS } from '@pertexo/contracts';
+import { DIRECTORY_LIMITS } from '@pertexo/workflow-model';
 import {
   auditDirectoryManagement,
   runDirectoryCommand,

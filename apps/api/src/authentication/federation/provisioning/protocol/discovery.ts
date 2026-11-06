@@ -1,4 +1,4 @@
-import { DIRECTORY_LIMITS } from '@pertexo/contracts';
+import { DIRECTORY_LIMITS } from '@pertexo/workflow-model';
 import {
   coreSchema,
   supportedAttributes,

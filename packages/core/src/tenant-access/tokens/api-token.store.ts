@@ -9,7 +9,7 @@ import { serializeStoredExecutionJsonValue } from '../../shared/stored-execution
 import { and, desc, eq, gt, isNull, lt, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { apiTokens } from '@pertexo/database/schema';
-import { API_TOKEN_ACTIVE_LIMIT } from '@pertexo/contracts';
+import { API_TOKEN_ACTIVE_LIMIT } from '@pertexo/workflow-model';
 import type { Pool, PoolClient } from 'pg';
 
 import type {

@@ -1,4 +1,4 @@
-import { FAILURE_NOTIFICATION_DESTINATION_LIST_LIMIT } from '@pertexo/contracts';
+import { FAILURE_NOTIFICATION_DESTINATION_LIST_LIMIT } from '@pertexo/workflow-model';
 import { Injectable } from '@nestjs/common';
 import {
   failureNotificationDestinationAppendVersionRequestSchema,

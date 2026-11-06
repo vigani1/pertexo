@@ -2,7 +2,7 @@ import { count, eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { authAccounts } from '@pertexo/database/schema';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
-import { ACCOUNT_SIGN_IN_METHOD_LIMIT } from '@pertexo/contracts';
+import { ACCOUNT_SIGN_IN_METHOD_LIMIT } from '@pertexo/workflow-model';
 import type { PoolClient } from 'pg';
 
 /** The caller locks the user, so every attachment observes the same account bound. */

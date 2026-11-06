@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { expect, it } from 'vitest';
-import { FailureNotificationContextSchema } from '@pertexo/contracts';
+import { FailureNotificationContextSchema } from '@pertexo/workflow-model';
 import { workspaceA } from '../run-store.fixture.js';
 import { emergencyRun, query, safeErrorCode } from './emergency.fixture.js';
 

@@ -401,3 +401,24 @@ export {
   valueSourceExecutionIdentity,
 } from './graph/execution-values.js';
 export { workflowExecutableChecksumSchema } from './graph/executable-checksum.js';
+
+export {
+  AUTHENTICATION_PROVIDERS,
+  FEDERATION_LIMITS,
+  DIRECTORY_LIMITS,
+  ACCOUNT_SIGN_IN_METHOD_LIMIT,
+  API_TOKEN_DEFAULT_LIFETIME_DAYS,
+  API_TOKEN_MAX_LIFETIME_DAYS,
+  API_TOKEN_ACTIVE_LIMIT,
+  apiTokenCredentialSchema,
+} from './workspaces/identity-policy.js';
+export {
+  FAILURE_NOTIFICATION_CONTEXT_MAX_BYTES,
+  FAILURE_NOTIFICATION_DESTINATION_LIST_LIMIT,
+  FailureNotificationContextSchema,
+  FailureNotificationDeliveryResultSchema,
+  FailureNotificationDestinationConfigSchema,
+  type FailureNotificationContext,
+  type FailureNotificationDeliveryResult,
+  type FailureNotificationDestinationConfig,
+} from './execution/failure-notification.js';

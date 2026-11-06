@@ -1,8 +1,5 @@
-import {
-  API_TOKEN_ACTIVE_LIMIT,
-  type ApiTokenMetadata,
-  type ApiTokenScope,
-} from '@pertexo/contracts';
+import type { ApiTokenMetadata, ApiTokenScope } from '@pertexo/contracts';
+import { API_TOKEN_ACTIVE_LIMIT } from '@pertexo/workflow-model';
 import type { StatusTone } from '@/components/ui/status';
 import { isApiError } from '@/lib/api/error';
 import { describeCommandError, isUncertainOutcome } from '@/lib/api/error-copy';
