@@ -5,7 +5,7 @@ import {
   UNPURGED_WORKSPACE_STATUSES,
   type Role,
 } from '@pertexo/policy';
-import { API_TOKEN_SCOPES } from '@pertexo/contracts';
+import { API_TOKEN_SCOPES } from '@pertexo/policy';
 
 /**
  * An owner can list and revoke tokens until the purge starts, so a suspended or

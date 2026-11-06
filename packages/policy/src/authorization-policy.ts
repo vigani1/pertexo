@@ -94,6 +94,21 @@ const capabilityRoles = Object.freeze({
   'notification:manage_defaults': ADMINISTRATIVE_ROLES,
 } satisfies Readonly<Record<string, readonly Role[]>>);
 export type AuthorizationCapability = keyof typeof capabilityRoles;
+
+/** Capabilities that may be delegated to a workspace API token. */
+export const API_TOKEN_SCOPES = [
+  'workflow:read',
+  'workflow:create',
+  'workflow:update',
+  'workflow:publish',
+  'run:read',
+  'run:read-data',
+  'run:start',
+  'run:cancel',
+  'connection:read',
+  'workspace:read',
+  'variable:manage',
+] as const satisfies readonly AuthorizationCapability[];
 export const AUTHORIZATION_CAPABILITIES = Object.freeze(
   Object.keys(capabilityRoles) as AuthorizationCapability[],
 );

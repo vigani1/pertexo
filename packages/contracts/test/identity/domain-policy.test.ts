@@ -10,7 +10,7 @@ import {
 } from '../../src/schemas/identity/governance.js';
 import { ACCOUNT_SIGN_IN_METHOD_LIMIT } from '../../src/schemas/identity/authentication.js';
 import {
-  API_TOKEN_SCOPES,
+  apiTokenScopeSchema,
   API_TOKEN_ACTIVE_LIMIT,
   apiTokenCredentialSchema,
 } from '../../src/schemas/identity/api-tokens.js';
@@ -44,7 +44,7 @@ it('keeps authoring and identity policy limits unchanged at the transport bounda
   expect(auditRetentionSchema.parse(30)).toBe(30);
   expect(ACCOUNT_SIGN_IN_METHOD_LIMIT).toBe(16);
   expect(API_TOKEN_ACTIVE_LIMIT).toBe(10);
-  expect(API_TOKEN_SCOPES).toEqual([
+  expect(apiTokenScopeSchema.options).toEqual([
     'workflow:read',
     'workflow:create',
     'workflow:update',

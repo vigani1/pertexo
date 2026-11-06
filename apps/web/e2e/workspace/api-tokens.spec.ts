@@ -3,7 +3,8 @@ import {
   createWorkspaceFixture,
 } from '../../test/support/fixtures/identity';
 import { expect, test, type Page } from '../support/fixtures';
-import { API_TOKEN_SCOPES, type ApiTokenMetadata } from '@pertexo/contracts';
+import { API_TOKEN_SCOPES } from '@pertexo/policy';
+import type { ApiTokenMetadata } from '@pertexo/contracts';
 
 const workspaceId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 const tokenId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
