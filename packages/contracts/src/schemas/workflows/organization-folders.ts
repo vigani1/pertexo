@@ -1,3 +1,4 @@
+import { storageTextSchema } from '@pertexo/workflow-model';
 import { audienceReviewSchema } from './sharing.js';
 import { z } from 'zod';
 import { trimSpaces, utf8ByteLength } from '../shared/text.js';
@@ -18,8 +19,7 @@ export const WORKFLOW_FOLDER_LIMITS = Object.freeze({
 function normalizeWorkflowFolderName(name: string): string {
   return trimSpaces(name);
 }
-export const workflowFolderNameSchema = z
-  .string()
+export const workflowFolderNameSchema = storageTextSchema
   .min(1)
   .max(WORKFLOW_FOLDER_LIMITS.nameBytes)
   // ADR064 deliberately rejects the entire C0 range and DEL in wire names.

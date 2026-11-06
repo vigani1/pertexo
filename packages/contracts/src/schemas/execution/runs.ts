@@ -1,3 +1,4 @@
+import { storageTextSchema } from '@pertexo/workflow-model';
 import {
   WORKFLOW_GRAPH_LIMITS,
   RUN_STATUSES,
@@ -111,7 +112,7 @@ export const workflowRunReplayRequestSchema = z
   .strict();
 
 export const workflowRunCancelRequestSchema = z
-  .object({ reason: z.string().trim().min(1).max(500).optional() })
+  .object({ reason: storageTextSchema.trim().min(1).max(500).optional() })
   .strict();
 
 export const workflowRunSummarySchema = z

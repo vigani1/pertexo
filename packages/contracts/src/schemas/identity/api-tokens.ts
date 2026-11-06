@@ -1,3 +1,4 @@
+import { storageTextSchema } from '@pertexo/workflow-model';
 import { API_TOKEN_SCOPES } from '@pertexo/policy';
 import {
   API_TOKEN_DEFAULT_LIFETIME_DAYS,
@@ -26,8 +27,7 @@ const scopes = z
   );
 export const apiTokenCreateRequestSchema = z
   .object({
-    name: z
-      .string()
+    name: storageTextSchema
       .trim()
       .min(1)
       .max(128)

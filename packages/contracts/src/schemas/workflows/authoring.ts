@@ -1,3 +1,4 @@
+import { storageTextSchema } from '@pertexo/workflow-model';
 import { workflowExecutableChecksumSchema } from '@pertexo/workflow-model';
 export * from './sharing.js';
 import { z } from 'zod';
@@ -56,7 +57,7 @@ export const workflowVersionRestoreRequestSchema = z.object({}).strict();
 const workflowCursorSchema = z.string().min(1).max(512);
 const workflowPageLimitSchema = z.coerce.number().int().min(1).max(100);
 const workflowListOrderSchema = z.enum(['created_asc', 'updated_desc']);
-export const workflowNameSchema = z.string().trim().min(1).max(128);
+export const workflowNameSchema = storageTextSchema.trim().min(1).max(128);
 
 const positiveVersionSchema = z.number().int().positive();
 export { workflowGraphSchema };

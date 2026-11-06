@@ -1,3 +1,4 @@
+import { storageTextSchema } from '@pertexo/workflow-model';
 import { DIRECTORY_LIMITS } from '@pertexo/workflow-model';
 export { DIRECTORY_LIMITS };
 import { FEDERATION_LIMITS } from './settings.js';
@@ -16,7 +17,7 @@ export const directoryCredentialSchema = z
   .strict();
 export const directoryCredentialCreateSchema = z
   .object({
-    name: z.string().trim().min(1).max(128),
+    name: storageTextSchema.trim().min(1).max(128),
     expectedRevision: revision,
   })
   .strict();

@@ -1,3 +1,4 @@
+import { storageTextSchema } from '@pertexo/workflow-model';
 import { directoryMembershipSourceSchema } from './federation/directory.js';
 import {
   workspaceRoleSchema,
@@ -12,7 +13,7 @@ export * from './membership.js';
 
 export const workspaceCreateRequestSchema = z
   .object({
-    name: z.string().trim().min(1).max(128),
+    name: storageTextSchema.trim().min(1).max(128),
     slug: z
       .string()
       .trim()
@@ -24,13 +25,13 @@ export const workspaceCreateRequestSchema = z
 const workspaceRevisionSchema = z.number().int().positive();
 export const workspaceRenameRequestSchema = z
   .object({
-    name: z.string().trim().min(1).max(128),
+    name: storageTextSchema.trim().min(1).max(128),
     expectedRevision: workspaceRevisionSchema,
   })
   .strict();
 export const workspaceDeletionRequestSchema = z
   .object({
-    reason: z.string().trim().min(1).max(512),
+    reason: storageTextSchema.trim().min(1).max(512),
   })
   .strict();
 export const workspaceIdentifierSchema = z.uuid();
@@ -80,8 +81,7 @@ export const userProfileResponseSchema = z
   .strict();
 /** ADR 043: the name teammates see; printable text, 1–128 characters. */
 export const USER_DISPLAY_NAME_MAX_LENGTH = 128;
-export const userDisplayNameSchema = z
-  .string()
+export const userDisplayNameSchema = storageTextSchema
   .trim()
   .min(1)
   .max(USER_DISPLAY_NAME_MAX_LENGTH)

@@ -1,3 +1,4 @@
+import { storageTextSchema } from '@pertexo/workflow-model';
 import { z } from 'zod';
 import { FORM_FILE_LIMITS } from '@pertexo/workflow-model';
 import { artifactUploadResponseSchema } from '../execution/artifact-transfer.js';
@@ -8,7 +9,7 @@ export const formUploadRequestSchema = z
   .object({
     versionId: z.uuid(),
     fieldId: z.string().min(1).max(64),
-    filename: z.string().trim().min(1).max(1_024),
+    filename: storageTextSchema.trim().min(1).max(1_024),
     byteLength: z.number().int().min(0).max(FORM_FILE_LIMITS.maxBytes),
     sha256: z.string().regex(/^[a-f0-9]{64}$/u),
   })
