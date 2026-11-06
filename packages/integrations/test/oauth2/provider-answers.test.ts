@@ -137,3 +137,18 @@ it.each([30, 300])(
     }
   },
 );
+
+it('uses the same bounded OAuth block for out-of-range numeric and malformed Retry-After headers', async () => {
+  const malformed = await ask({
+    status: 429,
+    headers: { 'retry-after': 'not a delay' },
+    body: {},
+  });
+  const outOfRange = await ask({
+    status: 429,
+    headers: { 'retry-after': '9'.repeat(400) },
+    body: {},
+  });
+  expect(outOfRange).toEqual(malformed);
+  expect(outOfRange).toEqual({ kind: 'rate_limited', retryAfterSeconds: 15 });
+});
