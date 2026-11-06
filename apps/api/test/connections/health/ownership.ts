@@ -18,7 +18,7 @@ export async function verifyConnectionHealthOwnership(
   if (
     project === undefined ||
     project !== env.COMPOSE_PROJECT_NAME ||
-    !/^(?:pertexo-ci-[0-9]+-[0-9]+-(?:browser|integration)|pertexo-local-quality-[a-z0-9-]+|pertexo-connection-health-[a-z0-9][a-z0-9-]{6,30}[a-z0-9])$/u.test(
+    !/^(?:pertexo-ci-[0-9]+(?:-[0-9]+)?-(?:browser|integration)|pertexo-local-quality-[a-z0-9-]+|pertexo-connection-health-[a-z0-9][a-z0-9-]{6,30}[a-z0-9])$/u.test(
       project,
     )
   )
