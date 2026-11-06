@@ -1,3 +1,4 @@
+import { describeProcessFailure } from '@pertexo/observability';
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_CODE_SETTINGS } from '@pertexo/node-sdk';
 import { parseApiConfig } from '../src/platform/config/api.js';
@@ -278,12 +279,19 @@ describe('parseApiConfig', () => {
   });
 
   it('rejects partial artifact configuration without exposing credentials', () => {
-    expect(() =>
+    let failure: unknown;
+    try {
       parseApiConfig({
         DATABASE_URL: 'postgresql://pertexo_app:secret@localhost:5432/pertexo',
         ARTIFACT_STORE_ACCESS_KEY_ID: 'sensitive-access-key',
-      }),
-    ).toThrow('Artifact store configuration is incomplete');
+      });
+    } catch (error: unknown) {
+      failure = error;
+    }
+    expect(failure).toBeInstanceOf(Error);
+    const diagnostic = describeProcessFailure(failure);
+    expect(diagnostic).toContain('ARTIFACT_STORE_BUCKET (invalid_type)');
+    expect(diagnostic).not.toContain('sensitive-access-key');
   });
 
   it('requires identity configuration in a deployed environment', () => {

@@ -240,11 +240,7 @@ function parseArtifactsConfig(
   );
   const deployed = nodeEnv === 'staging' || nodeEnv === 'production';
   if (!configured && !deployed) return undefined;
-  try {
-    return parseArtifactStoreConfig(environment);
-  } catch {
-    throw new Error('Artifact store configuration is incomplete');
-  }
+  return parseArtifactStoreConfig(environment);
 }
 
 type ParsedApiEnvironment = z.output<typeof apiEnvironmentSchema>;
