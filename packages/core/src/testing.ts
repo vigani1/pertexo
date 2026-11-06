@@ -334,3 +334,7 @@ export { createRunAdvanceStore } from './runs/advance/run-advance.store.js';
 export type { RunAdvanceStore } from './runs/advance/run-advance.store.js';
 export { acceptWorkflowRun } from './runs/commands/acceptance/accept.js';
 export { createWorkflowRunDatabase } from './runs/workflow-run.store.js';
+export {
+  WorkspaceLifecycleConflictError,
+  type WorkspaceLifecycleConflictReason,
+} from './lifecycle/workspace-lifecycle.errors.js';

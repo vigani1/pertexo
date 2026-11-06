@@ -28,7 +28,7 @@ import { and, eq, inArray, isNull, ne, sql } from 'drizzle-orm';
 
 import { requestActiveRunCancellations } from '../../runs/commands/cancel-run.js';
 import { IdempotencyRequestConflictError } from '../../shared/command-receipt.errors.js';
-import { WorkspaceLifecycleConflictError } from '../../tenant-access/tenant-access.errors.js';
+import { WorkspaceLifecycleConflictError } from '../workspace-lifecycle.errors.js';
 import type { WorkspaceId } from '@pertexo/database/primitives';
 import {
   LIFECYCLE_TRANSITIONS,

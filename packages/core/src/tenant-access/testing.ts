@@ -6,7 +6,6 @@ export {
 export { WorkspaceAccessDeniedError } from '../shared/workspace-access.errors.js';
 export {
   IdentityConflictError,
-  WorkspaceLifecycleConflictError,
   WorkspaceMemberRoleCommandConflictError,
   WorkspaceMemberRemovalCommandConflictError,
   WorkspaceMembershipCommandConflictError,
@@ -29,7 +28,6 @@ export type {
 } from './tenant-access.types.js';
 export type {
   IdentityConflictReason,
-  WorkspaceLifecycleConflictReason,
   WorkspaceMemberRoleCommandConflictReason,
   WorkspaceRenameCommandConflictReason,
 } from './tenant-access.errors.js';

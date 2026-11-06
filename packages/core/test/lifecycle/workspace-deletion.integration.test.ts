@@ -14,7 +14,7 @@ import {
   asOwner,
 } from './workspace-deletion/fixture.js';
 import { IdempotencyRequestConflictError } from '../../src/shared/command-receipt.errors.js';
-import { WorkspaceLifecycleConflictError } from '../../src/tenant-access/tenant-access.errors.js';
+import { WorkspaceLifecycleConflictError } from '../../src/lifecycle/workspace-lifecycle.errors.js';
 
 beforeAll(beforeAllFixture1, 120_000);
 afterAll(afterAllFixture2);
