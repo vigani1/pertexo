@@ -47,3 +47,9 @@ it.each([
   expect(copy.advice).toMatch(remedy);
   expect(copy.advice).not.toMatch(/HTTP/iu);
 });
+
+it('explains how to reduce a built-in summary instead of editing its output schema', () => {
+  const copy = describeStepError('list.summary_too_large');
+  expect(copy.sentence).toMatch(/Summarize.*limits/u);
+  expect(copy.advice).toMatch(/Group fewer.*smaller batches/u);
+});

@@ -1,4 +1,11 @@
 import {
+  canonicalizeBoundedJson,
+  InvalidBoundedJsonError,
+  NodeExecutorFailure,
+} from '@pertexo/node-sdk/server';
+import { STORED_EXECUTION_VALUE_LIMITS } from '@pertexo/node-sdk';
+import { SUMMARY_RESULT_FAILURE } from './summary-failure.js';
+import {
   canonicalJson,
   parseJsonPath,
   resolveJsonPath,
@@ -76,7 +83,7 @@ export function summarizeItems(
     group.min = group.min === null ? value : Math.min(group.min, value);
     group.max = group.max === null ? value : Math.max(group.max, value);
   }
-  return {
+  const result = {
     groups: [...groups.values()].map((group) => ({
       ...group,
       average: group.count === 0 ? null : group.sum / group.count,
@@ -84,4 +91,21 @@ export function summarizeItems(
     inputCount: input.items.length,
     skippedCount,
   };
+  try {
+    canonicalizeBoundedJson(result, {
+      bytes: STORED_EXECUTION_VALUE_LIMITS.inlineBytes,
+      depth: STORED_EXECUTION_VALUE_LIMITS.depth,
+      members: STORED_EXECUTION_VALUE_LIMITS.members,
+    });
+  } catch (error) {
+    if (!(error instanceof InvalidBoundedJsonError)) throw error;
+    throw new NodeExecutorFailure({
+      kind: 'failed',
+      errorKind: 'configuration',
+      possiblyDispatched: false,
+      safeErrorCode: SUMMARY_RESULT_FAILURE.code,
+      errorSummary: `${String(groups.size)} groups. ${SUMMARY_RESULT_FAILURE.sentence} ${SUMMARY_RESULT_FAILURE.advice}`,
+    });
+  }
+  return result;
 }

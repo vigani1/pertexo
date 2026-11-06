@@ -1,3 +1,4 @@
+import { SUMMARY_RESULT_FAILURE } from '@pertexo/nodes-core';
 import { SLACK_REJECTIONS } from '@pertexo/integrations';
 import { describeMappingFailure } from '../execution/mapping-diagnostic.js';
 import {
@@ -45,6 +46,7 @@ const executorSummaryCodes = new Set<string>([
   ...Object.values(SLACK_REJECTIONS).map(({ code }) => code),
   FILE_INPUT_ERROR_CODE,
   PROVIDER_RETRY_FAILURE.code,
+  SUMMARY_RESULT_FAILURE.code,
 ]);
 
 /** Admit executor diagnostics before private failure text reaches persistence. */

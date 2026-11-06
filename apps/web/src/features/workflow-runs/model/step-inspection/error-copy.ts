@@ -1,3 +1,4 @@
+import { SUMMARY_RESULT_FAILURE } from '@pertexo/nodes-core';
 import { SLACK_REJECTIONS } from '@pertexo/integrations';
 import {
   HTTP_RESPONSE_FAILURES,
@@ -62,6 +63,7 @@ const outcomeUnknown: StepErrorCopy = {
 
 const knownCodes: Readonly<Record<string, StepErrorCopy>> = {
   ...HTTP_RESPONSE_FAILURES,
+  [SUMMARY_RESULT_FAILURE.code]: SUMMARY_RESULT_FAILURE,
   ...Object.fromEntries(
     Object.values(SLACK_REJECTIONS).map((policy) => [policy.code, policy]),
   ),

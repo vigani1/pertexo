@@ -21,6 +21,7 @@
       "path": "../../packages/policy/tsconfig.json"
     },
     { "path": "../../packages/node-sdk/tsconfig.json" },
+    { "path": "../../packages/nodes-core/tsconfig.json" },
     { "path": "../../packages/contracts/tsconfig.json" },
     { "path": "../../packages/integrations/tsconfig.json" },
     { "path": "../../packages/templates/tsconfig.json" },
