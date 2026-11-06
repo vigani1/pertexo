@@ -433,6 +433,7 @@ describe('connections real Nest HTTP stack', () => {
       items: [
         expect.objectContaining({ id: destinationId, currentVersion: 2 }),
       ],
+      nextCursor: null,
     });
     expect(connection.listDestinations).toHaveBeenCalledOnce();
 
