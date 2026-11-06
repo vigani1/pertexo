@@ -1,4 +1,4 @@
-import { isStoredDataError } from '../../../src/shared/stored-values.js';
+import { IdempotencyConflictError } from '@pertexo/database/platform';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   emptyGraph,
@@ -41,8 +41,8 @@ describe('a damaged promotion receipt is reported as stored-data corruption', ()
     };
     await promotions().setTarget(input);
     await damage('workspace.promotion.target');
-    await expect(promotions().setTarget(input)).rejects.toSatisfy(
-      isStoredDataError,
+    await expect(promotions().setTarget(input)).rejects.toBeInstanceOf(
+      IdempotencyConflictError,
     );
   });
 
@@ -64,8 +64,8 @@ describe('a damaged promotion receipt is reported as stored-data corruption', ()
     };
     await promotions().apply(input);
     await damage('workflow.promote');
-    await expect(promotions().apply(input)).rejects.toSatisfy(
-      isStoredDataError,
+    await expect(promotions().apply(input)).rejects.toBeInstanceOf(
+      IdempotencyConflictError,
     );
   });
 });

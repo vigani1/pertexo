@@ -1,4 +1,3 @@
-import { decodeStoredValue } from './stored-values.js';
 import { IdempotencyConflictError } from '@pertexo/database/platform';
 import { z } from 'zod';
 
@@ -69,10 +68,15 @@ export function requireReadableReceipt(
   if (!shape.safeParse(stored).success) throw new IdempotencyConflictError();
 }
 
-/** Decode command output where persisted JSON enters the application. */
+/**
+ * Decode command output where persisted JSON enters the application. An unreadable
+ * receipt is a request-key conflict (409) in every area, never a replayed success.
+ */
 export function decodeStoredReceipt<T>(
   shape: z.ZodType<T>,
   stored: unknown,
 ): T {
-  return decodeStoredValue(() => shape.parse(stored));
+  const decoded = shape.safeParse(stored);
+  if (!decoded.success) throw new IdempotencyConflictError();
+  return decoded.data;
 }
