@@ -22,6 +22,7 @@ import { fileURLToPath } from 'node:url';
 import { createQueueProducer, QUEUE_NAME } from '@pertexo/queue';
 import { Queue } from 'bullmq';
 import { createForEachScenario } from './foreach-cancellation/scenario/execute.js';
+import { registerTestResourceCleanup } from '../../support/infrastructure/test-resource-cleanup.js';
 import { requireCurrentWorkerBuild } from '../../support/infrastructure/worker-build.js';
 
 describeIntegration('For Each cancellation recovery', () => {
@@ -35,12 +36,37 @@ describeIntegration('For Each cancellation recovery', () => {
     await setup();
   }, 60_000);
   afterAll(restoreServicesAndClose);
-  it('recovers bounded For Each batches and cancellation from PostgreSQL on fresh workers', async () => {
+  it('recovers bounded For Each batches and cancellation from PostgreSQL on fresh workers', async (context) => {
     let producer: ReturnType<typeof createQueueProducer> | undefined;
     let coordinatorQueue: Queue | undefined;
     let attemptQueue: Queue | undefined;
     let workers: OwnedChild | undefined;
     const spares: Promise<StartableChild>[] = [];
+    let closing = false;
+    const requireOpen = () => {
+      if (closing) throw new Error('For Each resources are closed');
+    };
+    const close = registerTestResourceCleanup(context, async () => {
+      closing = true;
+      const errors: unknown[] = [];
+      const activeWorkers = workers;
+      if (activeWorkers !== undefined)
+        await stopOwnedChild(activeWorkers).catch((error: unknown) =>
+          errors.push(error),
+        );
+      await discardSpares(spares).catch((error: unknown) => errors.push(error));
+      await producer?.close().catch((error: unknown) => errors.push(error));
+      await coordinatorQueue
+        ?.close()
+        .catch((error: unknown) => errors.push(error));
+      await attemptQueue?.close().catch((error: unknown) => errors.push(error));
+      if (errors.length > 0)
+        // Cleanup failures must remain visible even when the scenario failed.
+        throw new AggregateError(
+          errors,
+          'For Each recovery scenario cleanup failed',
+        );
+    });
     try {
       producer = createQueueProducer({ redisUrl });
       coordinatorQueue = new Queue(QUEUE_NAME.workflowCoordinator, {
@@ -63,13 +89,17 @@ describeIntegration('For Each cancellation recovery', () => {
         }
       };
       const startWorkers = async (): Promise<OwnedChild> => {
+        requireOpen();
         refillSpares();
         const next = spares.shift();
         refillSpares();
         if (next === undefined) throw new Error('For Each spare is missing');
         const owner = await next;
         try {
+          requireOpen();
+          workers = owner;
           await owner.start();
+          requireOpen();
           return owner;
         } catch (startupError: unknown) {
           let cleanupError: unknown;
@@ -216,7 +246,9 @@ describeIntegration('For Each cancellation recovery', () => {
         workers = undefined;
       };
       const eraseRedisAndRestart = async () => {
+        requireOpen();
         await stopWorkers();
+        requireOpen();
         await Promise.all([
           ownedCoordinatorQueue.obliterate({ force: true }),
           ownedAttemptQueue.obliterate({ force: true }),
@@ -244,25 +276,7 @@ describeIntegration('For Each cancellation recovery', () => {
       await verifyScenario('cancel_running');
       await verifyScenario('deadline_running');
     } finally {
-      const errors: unknown[] = [];
-      const activeWorkers = workers;
-      if (activeWorkers !== undefined)
-        await stopOwnedChild(activeWorkers).catch((error: unknown) =>
-          errors.push(error),
-        );
-      await discardSpares(spares).catch((error: unknown) => errors.push(error));
-      await producer?.close().catch((error: unknown) => errors.push(error));
-      await coordinatorQueue
-        ?.close()
-        .catch((error: unknown) => errors.push(error));
-      await attemptQueue?.close().catch((error: unknown) => errors.push(error));
-      if (errors.length > 0)
-        // Cleanup failures must remain visible even when the scenario failed.
-        // eslint-disable-next-line no-unsafe-finally
-        throw new AggregateError(
-          errors,
-          'For Each recovery scenario cleanup failed',
-        );
+      await close();
     }
   }, 120_000);
 });
