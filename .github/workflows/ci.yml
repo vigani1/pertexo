@@ -195,13 +195,15 @@ jobs:
       matrix:
         include:
           - group: database
+          - group: core
           - group: services
           - group: worker
     env:
       # Tests that own their fixtures expect the project suffix `-integration`.
       COMPOSE_PROJECT_NAME:
         pertexo-ci-${{ github.run_id }}-${{ github.run_attempt }}-${{
-        matrix.group == 'database' && 'database' || 'integration' }}
+        (matrix.group == 'database' || matrix.group == 'core') && 'database' ||
+        'integration' }}
     steps:
       - name: Check out repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -229,6 +231,8 @@ jobs:
             --argjson postgresPort "$POSTGRES_PORT" --argjson redisPort "$REDIS_PORT" \
             '{project:$project,postgres:{id:$postgres,port:$postgresPort},redis:{id:$redis,port:$redisPort}}')
           echo "EDITOR_BROWSER_OWNERSHIP_MANIFEST=$manifest" >> "$GITHUB_ENV"
+      # Core's suite alone takes 8 to 12 minutes, depending on the runner, so it is
+      # split into two shards: one shares this leg, the other runs in the core leg.
       - name: Database integration tests
         if: matrix.group == 'database'
         run: |
@@ -236,6 +240,15 @@ jobs:
           pnpm --filter @pertexo/database exec vitest run --config vitest.integration.config.ts
           pnpm --filter @pertexo/secrets exec vitest run --config vitest.integration.config.ts
           pnpm --filter @pertexo/core exec vitest run --config vitest.integration.config.ts \
+            --shard=1/2 \
+            --exclude 'test/authoring/organization/**' \
+            --exclude 'test/runs/statistics.integration.test.ts'
+      - name: Core integration tests
+        if: matrix.group == 'core'
+        run: |
+          set -euo pipefail
+          pnpm --filter @pertexo/core exec vitest run --config vitest.integration.config.ts \
+            --shard=2/2 \
             --exclude 'test/authoring/organization/**' \
             --exclude 'test/runs/statistics.integration.test.ts'
           # Alone: it waits on VACUUM and reads query plans, which other files disturb.
