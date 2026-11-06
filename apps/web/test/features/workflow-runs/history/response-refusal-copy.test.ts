@@ -36,3 +36,14 @@ it.each([
     expect(shown.sentence).not.toMatch(/configuration|settings/iu);
   },
 );
+
+it.each([
+  ['slack.token_expired', /expired/iu, /reconnect/iu],
+  ['slack.missing_scope', /scope/iu, /scope/iu],
+  ['slack.not_in_channel', /channel/iu, /invite/iu],
+] as const)('gives a specific safe repair for %s', (code, reason, remedy) => {
+  const copy = describeStepError(code);
+  expect(copy.sentence).toMatch(reason);
+  expect(copy.advice).toMatch(remedy);
+  expect(copy.advice).not.toMatch(/HTTP/iu);
+});

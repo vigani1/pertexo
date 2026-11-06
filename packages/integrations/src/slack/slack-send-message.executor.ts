@@ -1,3 +1,4 @@
+import { slackRejection } from './rejection-policy.js';
 import {
   type NodeExecutionInvocation,
   type NodeExecutionRuntime,
@@ -26,24 +27,6 @@ import {
   connectionLookupFailure,
   providerFailure,
 } from '../providers/failure.js';
-
-const AUTH_ERRORS = new Set([
-  'account_inactive',
-  'invalid_auth',
-  'not_authed',
-  'token_revoked',
-]);
-const DEFINITE_ERRORS = new Set([
-  ...AUTH_ERRORS,
-  'channel_not_found',
-  'is_archived',
-  'missing_scope',
-  'msg_too_long',
-  'no_permission',
-  'no_text',
-  'not_in_channel',
-]);
-const RETRYABLE_ERRORS = new Set(['service_unavailable']);
 
 type ResolvedSlackConnection = Awaited<
   ReturnType<NonNullable<NodeExecutionRuntime['connections']>['resolve']>
@@ -94,18 +77,20 @@ function classifyResult(
       throw failure('outcome_unknown', 'provider', {
         possiblyDispatched: true,
       });
-    case 'rejected':
-      if (AUTH_ERRORS.has(result.error))
-        throw failure('failed', 'authentication', {
+    case 'rejected': {
+      const policy = slackRejection(result.error);
+      if (policy !== undefined)
+        throw new SlackSendMessageExecutorError({
+          kind: policy.kind,
+          errorKind: policy.errorKind,
           possiblyDispatched: false,
+          safeErrorCode: policy.code,
+          errorSummary: policy.sentence,
         });
-      if (DEFINITE_ERRORS.has(result.error))
-        throw failure('failed', 'provider', { possiblyDispatched: false });
-      if (RETRYABLE_ERRORS.has(result.error))
-        throw failure('retry', 'provider', { possiblyDispatched: false });
       throw failure('outcome_unknown', 'provider', {
         possiblyDispatched: true,
       });
+    }
   }
 }
 

@@ -1,3 +1,4 @@
+import { SLACK_REJECTIONS } from '@pertexo/integrations';
 import { describeMappingFailure } from '../execution/mapping-diagnostic.js';
 import {
   PROVIDER_RETRY_FAILURE,
@@ -41,6 +42,7 @@ const executorSummaryCodes = new Set<string>([
   ...Object.keys(HTTP_PAGINATION_FAILURES),
   ...Object.keys(HTTP_OAUTH2_FAILURES),
   ...Object.keys(HTTP_RESPONSE_FAILURES),
+  ...Object.values(SLACK_REJECTIONS).map(({ code }) => code),
   FILE_INPUT_ERROR_CODE,
   PROVIDER_RETRY_FAILURE.code,
 ]);

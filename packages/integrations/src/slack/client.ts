@@ -158,6 +158,13 @@ export function createSlackClient(
       }
       const parsed = schema.safeParse(decoded);
       if (!parsed.success) return Object.freeze({ kind: 'invalid_response' });
+      if (!parsed.data.ok && parsed.data.error === 'ratelimited')
+        return Object.freeze({
+          kind: 'rate_limited',
+          retryAfterMillis: parseRetryAfterMillis(
+            response.headers['retry-after'],
+          ),
+        });
       if (!parsed.data.ok)
         return parsed.data.error === undefined
           ? Object.freeze({ kind: 'invalid_response' })

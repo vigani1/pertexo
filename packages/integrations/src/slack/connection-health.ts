@@ -1,3 +1,4 @@
+import { slackRejection } from './rejection-policy.js';
 import type { NodeConnectionHealthObservation } from '@pertexo/node-sdk/server';
 
 import type { SlackClient } from './client.js';
@@ -12,23 +13,8 @@ export function classifySlackConnectionHealth(
 ): NodeConnectionHealthObservation | undefined {
   if (result.kind === 'succeeded') return Object.freeze({ kind: 'healthy' });
   if (result.kind !== 'rejected') return undefined;
-  switch (result.error) {
-    case 'account_inactive':
-      return Object.freeze({
-        kind: 'reauthorization_required',
-        reasonCode: 'connection.slack_account_inactive',
-      });
-    case 'token_expired':
-      return Object.freeze({
-        kind: 'reauthorization_required',
-        reasonCode: 'connection.slack_token_expired',
-      });
-    case 'token_revoked':
-      return Object.freeze({
-        kind: 'reauthorization_required',
-        reasonCode: 'connection.slack_token_revoked',
-      });
-    default:
-      return undefined;
-  }
+  const policy = slackRejection(result.error);
+  return policy !== undefined && 'health' in policy
+    ? Object.freeze(policy.health)
+    : undefined;
 }
