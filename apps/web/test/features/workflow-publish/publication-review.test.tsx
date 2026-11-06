@@ -1,5 +1,8 @@
+import userEvent from '@testing-library/user-event';
+import { renderInRouter } from '../../support/render-in-router';
+import { PublicationReviewPage } from '@/features/workflow-publish/reviews.public';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { act, renderHook } from '@testing-library/react';
+import { act, renderHook, screen, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { expect, it, vi } from 'vitest';
 import { createApiClient } from '@/lib/api/client';
@@ -123,4 +126,86 @@ it('retries the original review note, saved revision, ETag and key after an ambi
   });
   expect(commands[0]?.key).toBeTruthy();
   expect(result.current.publishRecoveryPending).toBe(false);
+});
+
+it('shows a stale publication decision’s recovery detail and refreshes the review', async () => {
+  let decided = false;
+  const request = {
+    id: reviewId,
+    workflowId,
+    workflowName: 'Release',
+    requestedBy: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+    requesterName: 'Builder',
+    draftRevision: 1,
+    note: 'Release note',
+    status: 'pending',
+    createdAt: new Date().toISOString(),
+    expiresAt: new Date(Date.now() + 3_600_000).toISOString(),
+    decidedBy: null,
+    deciderName: null,
+    decidedAt: null,
+    comment: null,
+    publishedVersionId: null,
+    versionNumber: null,
+    canDecide: true,
+  };
+  const detail =
+    'The draft changed after this request. Review the latest draft and request approval again.';
+  const fetch = vi.fn<typeof globalThis.fetch>((input) => {
+    const path = input instanceof Request ? input.url : input.toString();
+    if (path.endsWith('/decision')) {
+      decided = true;
+      return Promise.resolve(
+        new Response(
+          JSON.stringify({
+            type: 'urn:pertexo:problem:workflow.publication_review_conflict',
+            title: 'Review changed',
+            status: 409,
+            code: 'workflow.publication_review_conflict',
+            detail,
+            requestId: 'ffffffff-ffff-4fff-8fff-ffffffffffff',
+          }),
+          {
+            status: 409,
+            headers: { 'Content-Type': 'application/problem+json' },
+          },
+        ),
+      );
+    }
+    return Promise.resolve(
+      json({
+        request: {
+          ...request,
+          status: decided ? 'stale' : 'pending',
+          canDecide: !decided,
+        },
+        graph: null,
+        liveGraph: null,
+      }),
+    );
+  });
+  const apiClient = createApiClient({
+    fetch,
+    readCsrfToken: () => 'csrf-token-for-component-tests-12345678901234567890',
+  });
+  renderInRouter(
+    <PublicationReviewPage
+      scope={{ apiClient, userId, workspaceId }}
+      reviewId={reviewId}
+      capabilities={[]}
+    />,
+  );
+  const user = userEvent.setup();
+  await user.click(
+    await screen.findByRole('button', { name: 'Approve and publish' }),
+  );
+  expect(await screen.findByText(detail)).toBeVisible();
+  await waitFor(() =>
+    expect(
+      screen.queryByRole('button', { name: 'Approve and publish' }),
+    ).not.toBeInTheDocument(),
+  );
+  expect(
+    screen.getByRole('link', { name: 'Open workflow editor' }),
+  ).toHaveAttribute('href', `/w/${workspaceId}/workflows/${workflowId}`);
 });

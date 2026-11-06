@@ -24,7 +24,7 @@ import { SettingsSection } from '@/components/patterns/settings/section';
 import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/ui/notice';
 
-import { describeCommandError } from '@/lib/api/error-copy';
+import { ProgressButton } from '@/components/ui/progress-button';
 import { previewPromotion, type PromotionScope } from '../data/promotions.api';
 import { promotionSettingsQuery } from '../data/promotions.queries';
 import { promotionSelections } from '../model/search';
@@ -69,7 +69,7 @@ export function WorkflowPromotionPage({
   const locked = command.pending || command.uncertain;
   const busy = locked || review.isPending;
   const compatibleReview = promotionReviewIsCurrent({
-    review: review.data,
+    review: command.needsReview ? undefined : review.data,
     context: review.variables,
     settings: settings.data,
     selections,
@@ -129,7 +129,9 @@ export function WorkflowPromotionPage({
                 }}
                 onNote={setNote}
               />
-              <Button
+              <ProgressButton
+                pending={review.isPending}
+                pendingLabel="Reviewing…"
                 className="self-start"
                 variant="outline"
                 disabled={busy || selections.length === 0}
@@ -142,18 +144,10 @@ export function WorkflowPromotionPage({
                   });
                 }}
               >
-                {review.isPending ? 'Reviewing…' : 'Review promotion'}
-              </Button>
-              {review.isError ? (
-                <Notice tone="warning">
-                  {describeCommandError(
-                    review.error,
-                    'reviewing this promotion',
-                  )}
-                </Notice>
-              ) : null}
+                {command.needsReview ? 'Review again' : 'Review promotion'}
+              </ProgressButton>
               <PromotionConfirmation
-                review={review.data}
+                review={command.needsReview ? undefined : review.data}
                 current={compatibleReview}
                 acknowledged={acknowledged}
                 locked={busy}
@@ -179,6 +173,13 @@ export function WorkflowPromotionPage({
               <PromotionCommandFeedback
                 command={command}
                 retryLabel="Retry same promotion"
+                reviewFailure={review.isError ? review.error : undefined}
+                recoveryTargetId={
+                  command.needsReview ||
+                  (compatibleReview && review.data?.compatible === false)
+                    ? snapshot.target.workspaceId
+                    : undefined
+                }
               />
               {command.data === undefined ? null : (
                 <PromotionResult result={command.data} />

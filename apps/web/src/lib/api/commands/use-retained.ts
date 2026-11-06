@@ -16,7 +16,11 @@ type Command<Input> = Readonly<{ body: Input; uncertain: boolean }> &
 export function useRetainedCommand<Input, Output>(
   execute: (body: Input, key: string) => Promise<Output>,
   onSuccess?: (result: Output, body: Input) => void | Promise<void>,
-  options: Readonly<{ action?: string; expiredMessage?: string }> = {},
+  options: Readonly<{
+    action?: string;
+    expiredMessage?: string;
+    failureMessage?: (cause: unknown) => string | undefined;
+  }> = {},
 ) {
   const intent = useRef<Command<Input> | undefined>(undefined);
   const busy = useRef(false);
@@ -68,9 +72,12 @@ export function useRetainedCommand<Input, Output>(
     if (uncertain)
       return 'We couldn’t confirm the result. Retry the same action before changing anything.';
     if (mutation.isError)
-      return describeCommandError(
-        mutation.error,
-        options.action ?? 'sending this response',
+      return (
+        options.failureMessage?.(mutation.error) ??
+        describeCommandError(
+          mutation.error,
+          options.action ?? 'sending this response',
+        )
       );
     return undefined;
   }
