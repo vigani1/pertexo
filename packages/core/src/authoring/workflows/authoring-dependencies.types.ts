@@ -1,4 +1,3 @@
-import type { WorkflowTestCompiler } from '../../previews/workflows/workflow-test.types.js';
 import type { DatabaseRuntime } from '@pertexo/database/platform';
 import type {
   GraphValidationResult,
@@ -40,6 +39,5 @@ export type WorkflowAuthoringStoreOptions = Readonly<{
   definitionCatalog?: WorkflowDefinitionCatalog;
   runtime?: DatabaseRuntime;
   executableCompiler: WorkflowExecutableCompiler;
-  workflowTestCompiler?: WorkflowTestCompiler;
   validateAuthoringGraph?: WorkflowAuthoringGraphValidator;
 }>;

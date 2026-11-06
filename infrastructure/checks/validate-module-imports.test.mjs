@@ -702,6 +702,7 @@ for (const [from, to] of [
   ['triggers', 'lifecycle'],
   ['lifecycle', 'tenant-access'],
   ['authoring', 'connections'],
+  ['authoring', 'previews'],
 ]) {
   test(`batch D keeps the removed ${from} -> ${to} dependency out`, () => {
     for (const declaration of ['import { a }', 'import type { A }']) {

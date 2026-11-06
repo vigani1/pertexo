@@ -5,9 +5,6 @@ import {
   withTenantScopedClient,
   type WorkspaceScopeRunner,
 } from '@pertexo/database/primitives';
-import { createPreviewRunStore } from '../../previews/runs/preview-run.store.js';
-import { createWorkflowTestSuiteStore } from '../../previews/suites/workflow-test-suite.store.js';
-import { createWorkflowTestStore } from '../../previews/workflows/workflow-test.store.js';
 import { createWorkflowCollaborationStore } from '../collaboration/workflow-collaboration.store.js';
 import { createWorkflowPortabilityStore } from '../portability/workflow-portability.store.js';
 import { readWorkflowWithTemplateOrigin } from '../portability/template-origin.repository.js';
@@ -75,8 +72,6 @@ export function createWorkflowAuthoringStore(
     }),
     publicationReviews: createPublicationReviewStore(access, { catalogs }),
     stepSamples: createWorkflowStepSampleStore(access),
-    workflowTests: createWorkflowTestStore(pool, catalogs),
-    workflowTestSuites: createWorkflowTestSuiteStore(pool, catalogs),
     autoPause: createWorkflowAutoPauseStore((workspaceId, actorId, operation) =>
       access.tracked(() =>
         withTenantScopedClient(pool, { workspaceId, actorId }, operation),
@@ -84,7 +79,6 @@ export function createWorkflowAuthoringStore(
     ),
     concurrency: createWorkflowConcurrencyStore(access),
     errorWorkflow: createWorkflowErrorStore(access),
-    ...createPreviewRunStore(pool),
     ...createWorkflowPortabilityStore({ access, catalogs }),
     createWorkflow: (input: CreateWorkflowInput) =>
       access.author(input, (client, role) =>

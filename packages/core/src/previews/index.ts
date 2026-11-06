@@ -28,8 +28,14 @@ export type {
 } from './attempts/preview-attempt.types.js';
 export type { PreviewDeliveryReconciliationResult } from './reconciliation/preview-reconciliation.types.js';
 export { WorkflowTestError } from './workflows/workflow-test.errors.js';
-export type { WorkflowTestStore } from './workflows/workflow-test.store.js';
-export type { WorkflowTestSuiteStore } from './suites/workflow-test-suite.store.js';
+export {
+  createWorkflowTestStore,
+  type WorkflowTestStore,
+} from './workflows/workflow-test.store.js';
+export {
+  createWorkflowTestSuiteStore,
+  type WorkflowTestSuiteStore,
+} from './suites/workflow-test-suite.store.js';
 export { createWorkflowTestSuiteScanner } from './suites/scanner.js';
 export type { WorkflowTestSuiteScanner } from './suites/workflow-test-suite.types.js';
 export {
@@ -37,8 +43,7 @@ export {
   PREVIEW_RETENTION_MAX_MS,
 } from './runs/acceptance/limits.js';
 
-// Named for the areas that reach them directly (authoring composes these stores).
-export type {} from './runs/preview-run.store.js';
+export { createPreviewRunStore } from './runs/preview-run.store.js';
 export type {} from './runs/preview-replay.types.js';
 export type {} from './runs/acceptance/preview-acceptance.types.js';
 

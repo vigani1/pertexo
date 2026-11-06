@@ -11,7 +11,7 @@ import {
   composeExecutableCatalog,
 } from '@pertexo/workflow-engine';
 import { parseWorkflowGraphDraft } from '@pertexo/workflow-model';
-import { createWorkflowAuthoringStore } from '../../../../src/authoring/workflows/workflow-authoring.store.js';
+import { createWorkflowAuthoringFixtureDatabase as createWorkflowAuthoringStore } from '../../../support/workflow-authoring-admission.fixture.js';
 import { createWorkflowExecutionReader } from '../../../../src/runs/queries/execution/source.repository.js';
 import { createPublishedWorkflowReader } from '../../../../src/runs/queries/execution/published.repository.js';
 

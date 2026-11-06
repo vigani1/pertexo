@@ -1,3 +1,4 @@
+import type { NodeTestingRuntime } from './node-testing.runtime.js';
 import type { FormStore } from '@pertexo/core/triggers';
 
 import type { PendingTaskStore } from '@pertexo/core/runs';
@@ -25,6 +26,7 @@ export async function closeWorkflowResources(
     metadata,
     pendingTasks,
     forms,
+    nodeTesting,
   }: Readonly<{
     events: WorkspaceDatabase | undefined;
     notifications: RunEventNotificationPublisher | undefined;
@@ -34,6 +36,7 @@ export async function closeWorkflowResources(
     metadata: ApiWorkflowMetadataRuntime | undefined;
     pendingTasks: PendingTaskStore | undefined;
     forms: FormStore | undefined;
+    nodeTesting: NodeTestingRuntime | undefined;
   }>,
 ): Promise<void> {
   const failures = await collectWorkflowCloseFailures(authoring, runs, {
@@ -44,6 +47,7 @@ export async function closeWorkflowResources(
     metadata: metadata,
     pendingTasks: pendingTasks,
     forms: forms,
+    nodeTesting,
   });
   if (failures.length > 0)
     throw new AggregateError(failures, 'Workflow resource shutdown failed');
@@ -60,6 +64,7 @@ export async function collectWorkflowCloseFailures(
     metadata,
     pendingTasks,
     forms,
+    nodeTesting,
   }: Readonly<{
     events: WorkspaceDatabase | undefined;
     notifications: RunEventNotificationPublisher | undefined;
@@ -69,6 +74,7 @@ export async function collectWorkflowCloseFailures(
     metadata: ApiWorkflowMetadataRuntime | undefined;
     pendingTasks: PendingTaskStore | undefined;
     forms: FormStore | undefined;
+    nodeTesting: NodeTestingRuntime | undefined;
   }>,
 ): Promise<unknown[]> {
   const failures: unknown[] = [];
@@ -79,6 +85,7 @@ export async function collectWorkflowCloseFailures(
   }
   const results = await Promise.allSettled([
     Promise.resolve().then(() => authoring?.close()),
+    Promise.resolve().then(() => nodeTesting?.close()),
     Promise.resolve().then(() => metadata?.close()),
     Promise.resolve().then(() => pendingTasks?.close()),
     Promise.resolve().then(() => forms?.close()),

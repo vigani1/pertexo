@@ -34,7 +34,7 @@ import {
   buildWorkflowTestExecutable,
   composeExecutableCatalog,
 } from '@pertexo/workflow-engine';
-import { createWorkflowAuthoringStore } from '../../../src/authoring/workflows/workflow-authoring.store.js';
+import { createWorkflowAuthoringFixtureDatabase as createWorkflowAuthoringStore } from '../../support/workflow-authoring-admission.fixture.js';
 
 beforeAll(beforeAllFixture1);
 afterAll(afterAllFixture2);

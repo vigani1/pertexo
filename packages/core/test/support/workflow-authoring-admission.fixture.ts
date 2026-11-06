@@ -1,3 +1,9 @@
+import {
+  createPreviewRunStore,
+  createWorkflowTestStore,
+  createWorkflowTestSuiteStore,
+  type WorkflowTestCompiler,
+} from '../../src/previews/index.js';
 import { parseWorkflowGraphDraft } from '@pertexo/workflow-model';
 import type {
   CreateWorkflowInput,
@@ -9,7 +15,10 @@ import {
   WorkflowAuthoringValidator,
   type WorkflowDefinitionCatalog,
 } from '@pertexo/workflow-model/server';
-import type { DatabaseConfig } from '@pertexo/database/platform';
+import {
+  acquireDatabasePool,
+  type DatabaseConfig,
+} from '@pertexo/database/platform';
 import { createWorkflowAuthoringStore } from '../../src/authoring/workflows/workflow-authoring.store.js';
 import { testExecutableCompiler } from '../../src/authoring/test-executable-compiler.js';
 import type {
@@ -23,8 +32,12 @@ import type {
  */
 export function createWorkflowAuthoringFixtureDatabase(
   config: DatabaseConfig,
-  options: Partial<WorkflowAuthoringStoreOptions> = {},
+  options: Partial<WorkflowAuthoringStoreOptions> & {
+    workflowTestCompiler?: WorkflowTestCompiler;
+  } = {},
 ) {
+  const { workflowTestCompiler, ...authoringOptions } = options;
+  const previewLease = acquireDatabasePool(config, options.runtime);
   let validator: WorkflowAuthoringValidator | undefined;
   let closed = false;
   function admission(
@@ -43,7 +56,7 @@ export function createWorkflowAuthoringFixtureDatabase(
     };
   }
   const database = createWorkflowAuthoringStore(config, {
-    ...options,
+    ...authoringOptions,
     executableCompiler: options.executableCompiler ?? testExecutableCompiler,
     validateAuthoringGraph:
       options.validateAuthoringGraph ??
@@ -57,16 +70,27 @@ export function createWorkflowAuthoringFixtureDatabase(
     } catch (error) {
       failures.push(error);
     }
-    try {
-      await database.close();
-    } catch (error) {
-      failures.push(error);
-    }
+    const closed = await Promise.allSettled([
+      database.close(),
+      previewLease.close(),
+    ]);
+    failures.push(
+      ...closed.flatMap((result) =>
+        result.status === 'rejected' ? [result.reason as unknown] : [],
+      ),
+    );
     if (failures.length > 0)
       throw new AggregateError(failures, 'Authoring fixture shutdown failed');
   }
   return Object.freeze({
     ...database,
+    ...createPreviewRunStore(previewLease.pool),
+    workflowTests: createWorkflowTestStore(previewLease.pool, {
+      workflowTestCompiler,
+    }),
+    workflowTestSuites: createWorkflowTestSuiteStore(previewLease.pool, {
+      workflowTestCompiler,
+    }),
     // Synthetic callers enter through the graph boundary used by the API.
     createWorkflow: async (
       input: Omit<CreateWorkflowInput, 'emptyGraph'> & { emptyGraph: unknown },

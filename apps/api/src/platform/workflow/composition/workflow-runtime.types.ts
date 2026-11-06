@@ -1,3 +1,4 @@
+import type { NodeTestingRuntime } from './node-testing.runtime.js';
 import type { PendingTaskOperations } from '../../../pending-tasks/pending-task.service.js';
 import type { GovernanceStore } from '@pertexo/core/governance';
 
@@ -39,6 +40,7 @@ export type ApiWorkflowRuntime = Readonly<{
 
 export interface WorkflowRuntimeAssembly {
   readonly database: WorkflowAuthoringStore;
+  readonly nodeTesting: NodeTestingRuntime;
   readonly metadataRuntime: ApiWorkflowMetadataRuntime;
   readonly pendingTasks: PendingTaskStore;
   readonly forms: FormStore;
@@ -59,6 +61,7 @@ export interface WorkflowRuntimeAssembly {
 
 export interface WorkflowResources {
   database: WorkflowAuthoringStore | undefined;
+  nodeTesting: NodeTestingRuntime | undefined;
   metadataRuntime: ApiWorkflowMetadataRuntime | undefined;
   pendingTasks: PendingTaskStore | undefined;
   forms: FormStore | undefined;
