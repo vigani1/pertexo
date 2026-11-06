@@ -2,10 +2,8 @@ import { performance } from 'node:perf_hooks';
 import { describe, expect, it } from 'vitest';
 import { workflowGraphSchema } from '../../src/graph/workflow-graph.schemas.js';
 import { EMPTY_WORKFLOW_GRAPH } from '../../src/graph/workflow-graph.schemas.js';
-import {
-  parseWorkflowGraphForPublish,
-  workflowCompatibilityReport,
-} from '../../src/graph/identity.js';
+import { parseWorkflowGraphForPublish } from '../../src/graph/publish-workflow-graph.js';
+import { workflowCompatibilityReport } from '../../src/graph/definition-catalog.js';
 import { parseWorkflowGraphDraft } from '../../src/graph/validation/preflight.js';
 import {
   InvalidWorkflowGraphError,

@@ -1,11 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
 import { EMPTY_WORKFLOW_GRAPH } from '../../src/graph/workflow-graph.schemas.js';
-import {
-  workflowCompatibilityReport,
-  workflowDraftRepresentationTag,
-  workflowIntegrationUsage,
-} from '../../src/graph/identity.js';
+import { workflowCompatibilityReport } from '../../src/graph/definition-catalog.js';
+import { workflowDraftRepresentationTag } from '../../src/graph/draft-representation.js';
+import { workflowIntegrationUsage } from '../../src/graph/integration-usage.js';
 
 import {
   TEST_DEFINITION_CATALOG,
