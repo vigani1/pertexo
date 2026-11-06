@@ -44,15 +44,7 @@ it('keeps dispatch binding and refuses a revoked connection through the worker s
     expectedAuthType: 'resend_api_key',
   };
   const providerDispatchBinding = `email:sha256:${'c'.repeat(64)}`;
-  const connectionString = workerPool.options.connectionString;
-  if (connectionString === undefined)
-    throw new Error('Worker fixture has no database URL');
-  const store = createPreviewAttemptRunStore(
-    parseDatabaseConfig({
-      connectionString,
-      max: 2,
-    }),
-  );
+  const store = workerStore();
   try {
     const first = await claimFixture(await acceptFixture(), 'store-first');
     await expect(
@@ -102,6 +94,41 @@ it('keeps dispatch binding and refuses a revoked connection through the worker s
     expect(refused.rows).toEqual([
       { dispatch_marked_at: null, provider_dispatch_binding: null },
     ]);
+  } finally {
+    await store.close();
+  }
+});
+
+function workerStore() {
+  const connectionString = workerPool.options.connectionString;
+  if (connectionString === undefined)
+    throw new Error('Worker fixture has no database URL');
+  return createPreviewAttemptRunStore(
+    parseDatabaseConfig({
+      connectionString,
+      max: 2,
+    }),
+  );
+}
+
+it('leaves a claimed preview undispatched when its store command is already aborted', async () => {
+  const claimed = await claimFixture(await acceptFixture(), 'store-aborted');
+  const store = workerStore();
+  try {
+    await expect(
+      store.markDispatched({
+        lease: claimed.lease,
+        workerId: claimed.workerId,
+        signal: AbortSignal.abort(),
+      }),
+    ).rejects.toMatchObject({ name: 'AbortError' });
+    const result = await withAdmin((client) =>
+      client.query<{ dispatch_marked_at: Date | null }>(
+        'select dispatch_marked_at from app.preview_attempts where workspace_id=$1 and id=$2',
+        [workspaceId, claimed.lease.previewAttemptId],
+      ),
+    );
+    expect(result.rows).toEqual([{ dispatch_marked_at: null }]);
   } finally {
     await store.close();
   }

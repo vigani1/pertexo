@@ -1,3 +1,4 @@
+import type { WorkflowActor } from '../../shared/workflow-actor.js';
 import { and, desc, eq, inArray, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { drizzle } from 'drizzle-orm/node-postgres';
@@ -10,7 +11,6 @@ import {
 } from '../../runs/data-policy.js';
 import type { PoolClient } from 'pg';
 
-import type { SampleScope } from '../../authoring/step-samples/step-sample.types.js';
 import { WorkflowTestError } from './workflow-test.errors.js';
 import { ACTIVE_TEST_RUN_STATUSES } from './rules.js';
 import type {
@@ -30,7 +30,7 @@ const testSummarySelection = {
       run.createdAt,
     ),
 };
-function visibleTest(input: SampleScope) {
+function visibleTest(input: WorkflowActor) {
   return and(
     eq(workflowTestSnapshots.workspaceId, input.workspaceId),
     eq(run.workflowId, input.workflowId),
@@ -39,7 +39,7 @@ function visibleTest(input: SampleScope) {
     sql`${workflowTestSnapshots.expiresAt}>clock_timestamp()`,
   );
 }
-function listTestRows(client: PoolClient, input: SampleScope) {
+function listTestRows(client: PoolClient, input: WorkflowActor) {
   return drizzle(client)
     .select(testSummarySelection)
     .from(workflowTestSnapshots)
@@ -71,13 +71,13 @@ function summary(
     expiresAt: row.expiresAt.toISOString(),
   };
 }
-export async function listTests(client: PoolClient, input: SampleScope) {
+export async function listTests(client: PoolClient, input: WorkflowActor) {
   const rows = await listTestRows(client, input);
   return { items: rows.map(summary) };
 }
 export async function readTestDetail(
   client: PoolClient,
-  input: SampleScope & { runId: string },
+  input: WorkflowActor & { runId: string },
 ): Promise<WorkflowTestDetail> {
   const rows = await drizzle(client)
     .select({

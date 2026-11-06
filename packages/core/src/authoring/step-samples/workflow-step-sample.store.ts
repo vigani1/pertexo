@@ -1,3 +1,4 @@
+import type { WorkflowActor } from '../../shared/workflow-actor.js';
 import { decodeStoredValue } from '../../shared/stored-values.js';
 import { and, asc, eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
@@ -22,7 +23,6 @@ import type {
   RemoveSampleInput,
   SampleNodeScope,
   SampleRead,
-  SampleScope,
   SampleTransaction,
 } from './step-sample.types.js';
 
@@ -50,7 +50,7 @@ export function createWorkflowStepSampleStore(access: AuthoringAccess) {
       },
     );
   return {
-    list: (input: SampleScope) =>
+    list: (input: WorkflowActor) =>
       transact(input, {
         write: false,
         work: async (client) => {

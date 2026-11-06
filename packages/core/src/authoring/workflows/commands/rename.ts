@@ -32,7 +32,7 @@ type RenameCommand = Readonly<{
   traceId: string | null;
 }>;
 
-function parseRenameCommand(input: RenameWorkflowInput): RenameCommand {
+function renameCommandInput(input: RenameWorkflowInput): RenameCommand {
   return Object.freeze({
     workspaceId: input.workspaceId,
     workflowId: input.workflowId,
@@ -120,7 +120,7 @@ export async function renameWorkflow(
   client: PoolClient,
   input: RenameWorkflowInput,
 ): Promise<RenameWorkflowResult> {
-  const command = parseRenameCommand(input);
+  const command = renameCommandInput(input);
   const claim: WorkflowCommand = {
     workspaceId: command.workspaceId,
     workflowId: command.workflowId,

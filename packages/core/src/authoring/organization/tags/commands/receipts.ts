@@ -15,7 +15,7 @@ import type {
   WorkflowTagCommandResult,
 } from '../workflow-tag.types.js';
 import { tagResult } from '../input.js';
-import { tagRecord, type TagRow } from '../state.repository.js';
+import type { TagRow } from '../state.repository.js';
 
 export function tagCommand(
   session: ReturnType<typeof createOrganizationSession>,
@@ -42,7 +42,7 @@ export function tagCommand(
       apply: async () => {
         const row = await apply(client, scope.workspaceId);
         return {
-          result: { tag: tagRecord(row) },
+          result: { tag: row },
           audit: {
             action: `workflow.${operation}`,
             targetId: row.id,

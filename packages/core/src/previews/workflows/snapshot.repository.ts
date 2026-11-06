@@ -1,3 +1,4 @@
+import type { WorkflowActor } from '../../shared/workflow-actor.js';
 import { decodeStoredValue } from '../../shared/stored-values.js';
 import { and, asc, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
@@ -14,14 +15,13 @@ import type { PoolClient } from 'pg';
 import { normalizedJson } from '@pertexo/workflow-model';
 import type { WorkflowTestPins } from '@pertexo/workflow-engine';
 import type { AuthoringCatalogs } from '../../authoring/workflows/catalogs.js';
-import type { SampleScope } from '../../authoring/step-samples/step-sample.types.js';
 
 import { readDatabaseClock } from '../clock.repository.js';
 import { WorkflowTestError } from './workflow-test.errors.js';
 
 export async function loadTestSnapshot(
   client: PoolClient,
-  input: SampleScope,
+  input: WorkflowActor,
   catalogs: AuthoringCatalogs,
 ) {
   const draft = await sampleDraft(client, input, { write: true });
@@ -91,7 +91,7 @@ export async function loadTestSnapshot(
 /** One immutable source may serve a standalone test or all serial suite cases. */
 export async function saveTestSnapshot(
   client: PoolClient,
-  input: SampleScope,
+  input: WorkflowActor,
   {
     id,
     snapshot,

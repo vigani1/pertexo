@@ -1,11 +1,11 @@
-import type { SampleScope } from '../../authoring/step-samples/step-sample.types.js';
+import type { WorkflowActor } from '../../shared/workflow-actor.js';
 
 export type WorkflowTestPreparation = Readonly<{
   draftRevision: number;
   samples: readonly Readonly<{ nodeId: string; sampleId: string }>[];
   effectfulSteps: readonly Readonly<{ nodeId: string; label: string }>[];
 }>;
-export type WorkflowTestCommand = SampleScope &
+export type WorkflowTestCommand = WorkflowActor &
   Readonly<{
     idempotencyKey: string;
     request: Readonly<{
@@ -16,7 +16,7 @@ export type WorkflowTestCommand = SampleScope &
       acknowledgeSideEffects: boolean;
     }>;
   }>;
-export type WorkflowTestRunInput = SampleScope & Readonly<{ runId: string }>;
+export type WorkflowTestRunInput = WorkflowActor & Readonly<{ runId: string }>;
 export type WorkflowTestSummary = Readonly<{
   runId: string;
   startedBy: string | null;

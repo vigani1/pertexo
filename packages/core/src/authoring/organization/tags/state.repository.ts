@@ -8,11 +8,7 @@ import { WorkflowNotFoundError } from '../../workflows/workflow-authoring.errors
 
 import { WorkflowTagConflictError } from '../workflow-organization.errors.js';
 
-import type {
-  Page,
-  PageInput,
-  WorkflowTagRecord,
-} from './workflow-tag.types.js';
+import type { Page, PageInput } from './workflow-tag.types.js';
 
 export const tagProjection = {
   id: workflowTags.id,
@@ -23,12 +19,6 @@ export type TagRow = Pick<
   typeof workflowTags.$inferSelect,
   keyof typeof tagProjection
 >;
-
-export const tagRecord = (row: TagRow): WorkflowTagRecord => ({
-  id: row.id,
-  key: row.key,
-  revision: row.revision,
-});
 
 export async function readTag(
   client: PoolClient,

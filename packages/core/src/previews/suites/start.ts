@@ -1,3 +1,4 @@
+import type { WorkflowActor } from '../../shared/workflow-actor.js';
 import { decodeStoredValue } from '../../shared/stored-values.js';
 import { workflowTestExpectationsSchema } from '@pertexo/workflow-model';
 import { and, eq, sql } from 'drizzle-orm';
@@ -22,7 +23,7 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
 import { lockArtifactReferences } from '../../artifacts/references/locks.repository.js';
 import { lockInputCaseQuota } from '../../authoring/input-cases/metadata.repository.js';
-import type { SampleScope } from '../../authoring/step-samples/step-sample.types.js';
+
 import type { AuthoringCatalogs } from '../../authoring/workflows/catalogs.js';
 import { generatePersistedId } from '@pertexo/database/platform';
 import { TEST_RUN_RETENTION_MILLIS } from '../../runs/data-policy.js';
@@ -50,7 +51,7 @@ import { assertPreparedSuite, SUITE_MAX_DURATION_MS } from './rules.js';
 
 export async function prepareTestSuite(
   client: PoolClient,
-  input: SampleScope,
+  input: WorkflowActor,
   catalogs: AuthoringCatalogs,
 ) {
   const snapshot = await loadTestSnapshot(client, input, catalogs);

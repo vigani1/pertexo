@@ -1,3 +1,4 @@
+import type { WorkflowActor } from '../../shared/workflow-actor.js';
 import { decodeStoredValue } from '../../shared/stored-values.js';
 import type {
   WorkflowTestSuiteDetail,
@@ -12,7 +13,7 @@ import { and, asc, desc, eq, sql } from 'drizzle-orm';
 import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { alias } from 'drizzle-orm/pg-core';
 import type { PoolClient } from 'pg';
-import type { SampleScope } from '../../authoring/step-samples/step-sample.types.js';
+
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import {
   workflowTestSuiteCases,
@@ -90,14 +91,14 @@ function summarySelection(
     skipped: counts.skipped,
   };
 }
-function visibleSuite(input: SampleScope) {
+function visibleSuite(input: WorkflowActor) {
   return and(
     eq(suite.workspaceId, input.workspaceId),
     eq(suite.workflowId, input.workflowId),
     sql`${suite.expiresAt}>clock_timestamp()`,
   );
 }
-async function listSuiteRows(client: PoolClient, input: SampleScope) {
+async function listSuiteRows(client: PoolClient, input: WorkflowActor) {
   const db = drizzle(client);
   // Counts depend on this bounded relation, so no other suite is aggregated.
   const history = db.$with('suite').as(
@@ -158,13 +159,13 @@ function summary(
 }
 export async function listSuites(
   client: PoolClient,
-  input: SampleScope,
+  input: WorkflowActor,
 ): Promise<readonly WorkflowTestSuiteSummary[]> {
   return (await listSuiteRows(client, input)).map(summary);
 }
 export async function readSuite(
   client: PoolClient,
-  input: SampleScope & { suiteId: string },
+  input: WorkflowActor & { suiteId: string },
 ): Promise<WorkflowTestSuiteDetail> {
   const db = drizzle(client);
   const counts = suiteCounts(db, historyFields);
@@ -206,7 +207,7 @@ export async function readSuite(
 }
 export async function readCaseReport(
   client: PoolClient,
-  input: SampleScope & { suiteId: string; ordinal: number },
+  input: WorkflowActor & { suiteId: string; ordinal: number },
 ): Promise<{
   report: WorkflowTestSuiteReport | null;
   stepLabels: Readonly<Record<string, string>>;
