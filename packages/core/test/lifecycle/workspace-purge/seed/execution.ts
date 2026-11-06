@@ -224,4 +224,13 @@ export async function seedPurgeExecution(
     'update app.preview_runs set variable_set_revision=1 where id=$1',
     [previewRunId],
   );
+  // Both retained versions really own this file before the restartable purge.
+  await owner.query(
+    `update app.workflow_versions version set graph_json=json_build_object('retained',json_build_object(
+      'kind','artifact','artifactId',artifact.id,'byteLength',artifact.byte_length,
+      'mediaType',artifact.media_type,'sha256',artifact.sha256))
+      from app.artifacts artifact where version.workspace_id=$1 and version.workflow_id=$2
+        and artifact.workspace_id=$1 and artifact.id=$3`,
+    [workspaceId, workflowId, artifactId],
+  );
 }

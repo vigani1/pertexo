@@ -20,6 +20,7 @@ import {
 import { enforceRetention } from '../support/retention.js';
 import {
   PURGE_PRESERVED_TABLES,
+  PURGE_DERIVED_TABLES,
   PURGE_STEPS,
 } from '../../src/lifecycle/purge/steps.js';
 
@@ -268,6 +269,7 @@ describe('workspace purge', () => {
           (select count(*) from app.workspace_invitation_binding_replacement_claims
             where prior_workspace_id=$1 or successor_workspace_id=$1) replacement_claim_count,
           (select count(*) from app.artifacts where workspace_id=$1) artifact_count,
+          (select count(*) from app.artifact_owner_references where workspace_id=$1) artifact_reference_count,
           (select count(*) from app.connection_oauth2_clients where workspace_id=$1)
             + (select count(*) from app.connection_oauth2_tokens where workspace_id=$1)
             + (select count(*) from app.connection_oauth2_authorizations where workspace_id=$1) oauth2_count,
@@ -285,6 +287,7 @@ describe('workspace purge', () => {
       expect(residue.rows[0]).toEqual({
         audit_sensitive: '0',
         artifact_count: '0',
+        artifact_reference_count: '0',
         membership_count: '0',
         oauth2_count: '0',
         replacement_claim_count: '1',
@@ -323,6 +326,7 @@ describe('workspace purge', () => {
     const covered = new Set([
       ...PURGE_STEPS.map(({ name }) => name),
       ...PURGE_PRESERVED_TABLES,
+      ...PURGE_DERIVED_TABLES,
     ]);
     expect(
       tables.rows.map(({ name }) => name).filter((name) => !covered.has(name)),

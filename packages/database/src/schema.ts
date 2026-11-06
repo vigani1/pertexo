@@ -1,3 +1,9 @@
+import { artifactOwnerReferences } from './schema/artifacts/references.js';
+export type { ArtifactOwnerFamily } from './schema/artifacts/references.js';
+export {
+  artifactOwnerReferences,
+  ARTIFACT_OWNER_SOURCES,
+} from './schema/artifacts/references.js';
 import { workflowFolderGrants } from './schema/authoring/folder-grants.js';
 import { workflowRunValues } from './schema/runs/values.js';
 export { workflowRunValues } from './schema/runs/values.js';
@@ -313,6 +319,7 @@ export const databaseSchema = {
   workflowInputCasePayloads,
   workflowConcurrencyPolicies,
   artifactLinks,
+  artifactOwnerReferences,
   artifacts,
   workspaceArtifactCapacity,
   auditEvents,
