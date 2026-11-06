@@ -332,7 +332,15 @@ for (const area of [
   });
 }
 
-for (const workspace of ['workflow-engine', 'workflow-model']) {
+for (const workspace of [
+  'workflow-engine',
+  'workflow-model',
+  'node-sdk',
+  'nodes-core',
+  'node-catalog',
+  'templates',
+  'integrations',
+]) {
   for (const lane of ['src', 'test']) {
     test(`batch F requires concrete subjects in ${workspace}/${lane}`, () => {
       assert.ok(

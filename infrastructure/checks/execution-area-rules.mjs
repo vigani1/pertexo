@@ -150,7 +150,15 @@ export function isExecutionAreaFile(file) {
   if (!['src', 'test'].includes(lane)) return false;
   if (
     kind === 'packages' &&
-    ['workflow-engine', 'workflow-model'].includes(workspace)
+    [
+      'workflow-engine',
+      'workflow-model',
+      'node-sdk',
+      'nodes-core',
+      'node-catalog',
+      'templates',
+      'integrations',
+    ].includes(workspace)
   )
     return true;
   if (kind === 'packages' && workspace === 'core') return coreAreas.has(area);
@@ -163,7 +171,15 @@ export function isExecutionAreaEntry(file) {
   const [kind, workspace, lane, area, name, ...rest] = file.split('/');
   if (
     kind === 'packages' &&
-    ['workflow-engine', 'workflow-model'].includes(workspace) &&
+    [
+      'workflow-engine',
+      'workflow-model',
+      'node-sdk',
+      'nodes-core',
+      'node-catalog',
+      'templates',
+      'integrations',
+    ].includes(workspace) &&
     lane === 'src' &&
     name === undefined
   )
