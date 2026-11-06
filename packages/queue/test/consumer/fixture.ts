@@ -22,6 +22,7 @@ const mocks = vi.hoisted(() => {
     cancelAllJobs: ReturnType<typeof vi.fn>;
     isRunning: () => boolean;
     isPaused: () => boolean;
+    getBackend: () => { blockingClient: Promise<{ status: string }> };
     on: ReturnType<typeof vi.fn>;
   }
 
@@ -33,6 +34,8 @@ const mocks = vi.hoisted(() => {
     quit: vi.fn(() => Promise.resolve('OK')),
     disconnect: vi.fn(),
   };
+
+  const blockingRedisClient = { status: 'ready' };
 
   class UnrecoverableError extends Error {
     public override readonly name = 'UnrecoverableError';
@@ -49,6 +52,9 @@ const mocks = vi.hoisted(() => {
       processor,
       running: true,
       paused: false,
+      getBackend: () => ({
+        blockingClient: Promise.resolve(blockingRedisClient),
+      }),
       waitUntilReady: vi.fn(() => Promise.resolve()),
       pause: vi.fn((doNotWaitActive: boolean) => {
         instance.paused = true;
@@ -82,6 +88,7 @@ const mocks = vi.hoisted(() => {
     UnrecoverableError,
     Worker,
     redisClient,
+    blockingRedisClient,
     workerInstances,
     workerListeners,
   };
@@ -120,6 +127,7 @@ export function resetPackagesQueueTestConsumerTestTsBullMQQueueConsumerFixture()
   mocks.workerInstances.length = 0;
   mocks.workerListeners.clear();
   mocks.redisClient.status = 'ready';
+  mocks.blockingRedisClient.status = 'ready';
   mocks.redisClient.quit.mockReset().mockResolvedValue('OK');
   mocks.redisClient.disconnect.mockReset().mockImplementation(() => undefined);
 }
