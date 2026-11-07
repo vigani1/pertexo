@@ -140,6 +140,15 @@ const refusals = [
     settings: ['HTTP_ALLOWED_PRIVATE_NETWORKS'],
     remedy: 'use comma-separated IPv4 or IPv6 CIDRs',
   },
+  {
+    name: 'invalid instance limit',
+    environment: {
+      ...standalone,
+      WORKSPACE_ACTIVE_RUN_LIMIT: 'private-invalid-limit',
+    },
+    settings: ['WORKSPACE_ACTIVE_RUN_LIMIT'],
+    remedy: 'set a supported integer limit',
+  },
 ];
 
 describe('owned startup refusals through the real API process', () => {
