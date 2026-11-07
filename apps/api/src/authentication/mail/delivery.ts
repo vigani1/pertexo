@@ -1,4 +1,3 @@
-import { sealedPayload as sealedMailPayloadSchema } from './input.js';
 import { authenticationMailAssociatedData } from '@pertexo/secrets/server';
 import { randomUUID } from 'node:crypto';
 
@@ -311,16 +310,14 @@ export class DurableAuthenticationMail implements AuthenticationMail {
       id,
       expiresAt,
     );
-    const sealedPayload = sealedMailPayloadSchema.parse(
-      this.envelope.seal(
-        JSON.stringify({
-          fromEmail: this.fromEmail,
-          toEmail: recipient,
-          subject,
-          text,
-        }),
-        associatedData,
-      ),
+    const sealedPayload = this.envelope.seal(
+      JSON.stringify({
+        fromEmail: this.fromEmail,
+        toEmail: recipient,
+        subject,
+        text,
+      }),
+      associatedData,
     );
     return { id, purpose, expiresAt, sealedPayload };
   }
