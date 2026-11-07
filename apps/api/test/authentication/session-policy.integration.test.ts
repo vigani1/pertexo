@@ -31,11 +31,15 @@ for (const [sameSite, ttlMillis] of [
         const raw = reply.headers['set-cookie'];
         const cookies = typeof raw === 'string' ? [raw] : (raw ?? []);
         for (const name of ['pertexo_session', 'pertexo_csrf']) {
-          const cookie = cookies.find((value) => value.startsWith(`${name}=`));
-          expect(cookie).toBeDefined();
-          expect(cookie?.toLowerCase()).toContain(`samesite=${sameSite}`);
-          expect(cookie).toContain(`Max-Age=${String(ttlMillis / 1_000)}`);
-          expect(cookie).toContain('Secure');
+          const matching = cookies.filter((value) =>
+            value.startsWith(`${name}=`),
+          );
+          expect(matching.length).toBeGreaterThan(0);
+          for (const cookie of matching) {
+            expect(cookie.toLowerCase()).toContain(`samesite=${sameSite}`);
+            expect(cookie).toContain(`Max-Age=${String(ttlMillis / 1_000)}`);
+            expect(cookie).toContain('Secure');
+          }
         }
       }
       it('uses the parsed policy for issued and replacement cookies and the stored expiry', async () => {
@@ -76,6 +80,18 @@ for (const [sameSite, ttlMillis] of [
             [email],
           );
         expect(successor.rows).toHaveLength(1);
+        const loggedOut = await api.send('POST', '/v1/auth/logout', {
+          browser: browserFrom(replacement),
+        });
+        expect(loggedOut.statusCode, loggedOut.payload).toBe(204);
+        const raw = loggedOut.headers['set-cookie'];
+        const cleared = typeof raw === 'string' ? [raw] : (raw ?? []);
+        for (const name of ['pertexo_session', 'pertexo_csrf']) {
+          const cookie = cleared.find((value) => value.startsWith(`${name}=`));
+          expect(cookie).toBeDefined();
+          expect(cookie?.toLowerCase()).toContain(`samesite=${sameSite}`);
+          expect(cookie).toContain('Max-Age=0');
+        }
         expect(Number(successor.rows[0]?.lifetime)).toBeGreaterThan(0);
         expect(Number(successor.rows[0]?.lifetime)).toBeLessThanOrEqual(
           ttlMillis,
