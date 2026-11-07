@@ -49,3 +49,30 @@ export async function authorizeWorkflowRead(
       : { authorizedWorkspace: input.authorizedWorkspace }),
   });
 }
+
+/** Authoring reads remain browsable during suspension; changes require active status. */
+export async function authorizeAuthoringOperation(
+  input: WorkflowApplicationInput & { signal?: AbortSignal },
+  capability:
+    | 'workflow:read'
+    | 'workflow:update'
+    | 'workflow:publish'
+    | 'governance:manage',
+  access: WorkspaceAuthorizationSource,
+): Promise<void> {
+  await authorizeWorkspaceOperation({
+    actor: input.actor,
+    routeWorkspaceId: input.routeWorkspaceId,
+    capability,
+    access,
+    disclosure: 'not_found',
+    allowedWorkspaceStatuses:
+      capability === 'workflow:read'
+        ? BROWSABLE_WORKSPACE_STATUSES
+        : ['active'],
+    ...(input.signal === undefined ? {} : { signal: input.signal }),
+    ...(input.authorizedWorkspace === undefined
+      ? {}
+      : { authorizedWorkspace: input.authorizedWorkspace }),
+  });
+}

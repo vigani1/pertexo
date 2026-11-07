@@ -1,3 +1,4 @@
+import { authorizeAuthoringOperation } from '../commands/authorization.js';
 import type { z } from 'zod';
 import type {
   workflowInputCaseCreateRequestSchema,
@@ -15,11 +16,7 @@ import type {
   WorkflowInputCaseStore,
   WorkflowInputCaseMetadata,
 } from '@pertexo/core/authoring';
-import {
-  authorizeWorkspaceOperation,
-  type WorkspaceAuthorizationSource,
-  BROWSABLE_WORKSPACE_STATUSES,
-} from '../../authorization/index.js';
+import type { WorkspaceAuthorizationSource } from '../../authorization/index.js';
 import { applicationError } from '../../platform/http/index.js';
 import type { WorkflowApplicationInput } from '../ports.js';
 import { WorkflowHeaderError } from '../http/preconditions.js';
@@ -150,21 +147,7 @@ export class WorkflowInputCasesUseCase {
     capability: 'workflow:read' | 'workflow:update',
   ) {
     input.signal?.throwIfAborted();
-    await authorizeWorkspaceOperation({
-      actor: input.actor,
-      routeWorkspaceId: input.routeWorkspaceId,
-      capability,
-      access: this.authorization,
-      disclosure: 'not_found',
-      allowedWorkspaceStatuses:
-        capability === 'workflow:read'
-          ? BROWSABLE_WORKSPACE_STATUSES
-          : ['active'],
-      ...(input.signal === undefined ? {} : { signal: input.signal }),
-      ...(input.authorizedWorkspace === undefined
-        ? {}
-        : { authorizedWorkspace: input.authorizedWorkspace }),
-    });
+    await authorizeAuthoringOperation(input, capability, this.authorization);
     input.signal?.throwIfAborted();
   }
 }
