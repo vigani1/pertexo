@@ -1,10 +1,11 @@
+import { useCommandAttempt } from '@/lib/api/commands/use-command-attempt';
+import { ExpiredAttemptNotice } from '@/components/patterns/states/expired-attempt-notice';
 import {
-  canResend,
   isUnconfirmedCommand,
   newCommandKey,
   type CommandKey,
 } from '@/lib/api/commands/command-retry';
-import { useRef, useState, type SyntheticEvent } from 'react';
+import { useState, type SyntheticEvent } from 'react';
 import { workflowCreateRequestSchema } from '@pertexo/contracts';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { Notice } from '@/components/ui/notice';
@@ -73,7 +74,7 @@ export function NewWorkflowSheet({
   const notifications = useNotifications();
   const [name, setName] = useState('');
   const validation = useFieldValidation<'name'>();
-  const attempt = useRef<Attempt | undefined>(undefined);
+  const attempt = useCommandAttempt<Attempt>();
   const mutation = useCreateWorkflow(apiClient, userId, workspaceId);
 
   function changeName(nextName: string) {
@@ -81,25 +82,25 @@ export function NewWorkflowSheet({
     setName(nextName);
     mutation.reset();
     validation.change('name', nameProblem(nextName));
-    if (attempt.current?.name !== nextName.trim()) attempt.current = undefined;
+    if (attempt.current()?.name !== nextName.trim()) attempt.clear();
   }
 
   async function submit(event: SyntheticEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!validation.submit({ name: nameProblem(name) })) return;
     const parsed = workflowCreateRequestSchema.parse({ name });
-    const current =
-      attempt.current?.name === parsed.name && canResend(attempt.current)
-        ? attempt.current
-        : { name: parsed.name, ...newCommandKey() };
-    attempt.current = current;
+    const current = await attempt.getOrCreate(() => ({
+      name: parsed.name,
+      ...newCommandKey(),
+    }));
+    if (current === undefined) return;
     let created: Awaited<ReturnType<typeof mutation.mutateAsync>>;
     try {
       created = await mutation.mutateAsync(current);
     } catch {
       return; // The mutation's error renders in the sheet.
     }
-    attempt.current = undefined;
+    attempt.clear();
     setName('');
     validation.reset();
     notifications.success({
@@ -152,7 +153,15 @@ export function NewWorkflowSheet({
                 />
               )}
             </LabelledField>
-            {mutation.isError ? (
+            {attempt.expired ? (
+              <ExpiredAttemptNotice
+                onNewAttempt={() => {
+                  attempt.clear();
+                  mutation.reset();
+                }}
+              />
+            ) : null}
+            {mutation.isError && !attempt.expired ? (
               <Notice tone="destructive">
                 {createErrorMessage(mutation.error)}
               </Notice>
@@ -180,32 +189,36 @@ export function NewWorkflowSheet({
               </section>
             )}
           </SheetBody>
-          <SheetFooter>
-            <SheetClose
-              render={
-                <Button
-                  type="button"
-                  variant="ghost"
-                  disabled={mutation.isPending}
-                />
-              }
-            >
-              Cancel
-            </SheetClose>
-            <ProgressButton
-              type="submit"
-              variant="primary"
-              className="min-w-36"
-              pending={mutation.isPending}
-              pendingLabel="Creating…"
-            >
-              {mutation.isError && isUnconfirmedCommand(mutation.error)
-                ? 'Retry safely'
-                : 'Create workflow'}
-            </ProgressButton>
-          </SheetFooter>
+          <NewWorkflowFooter
+            pending={mutation.isPending}
+            uncertain={mutation.isError && isUnconfirmedCommand(mutation.error)}
+          />
         </form>
       </SheetContent>
     </Sheet>
+  );
+}
+
+function NewWorkflowFooter({
+  pending,
+  uncertain,
+}: Readonly<{ pending: boolean; uncertain: boolean }>) {
+  return (
+    <SheetFooter>
+      <SheetClose
+        render={<Button type="button" variant="ghost" disabled={pending} />}
+      >
+        Cancel
+      </SheetClose>
+      <ProgressButton
+        type="submit"
+        variant="primary"
+        className="min-w-36"
+        pending={pending}
+        pendingLabel="Creating…"
+      >
+        {uncertain ? 'Retry safely' : 'Create workflow'}
+      </ProgressButton>
+    </SheetFooter>
   );
 }

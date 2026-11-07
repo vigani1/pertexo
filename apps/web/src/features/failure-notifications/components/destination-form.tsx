@@ -1,11 +1,12 @@
+import { useCommandAttempt } from '@/lib/api/commands/use-command-attempt';
+import { ExpiredAttemptNotice } from '@/components/patterns/states/expired-attempt-notice';
 import {
-  canResend,
   isUnconfirmedCommand,
   newCommandKey,
   type CommandKey,
 } from '@/lib/api/commands/command-retry';
 import { usableConnections } from '../model/destination-copy';
-import { useId, useRef, useState } from 'react';
+import { useId, useState } from 'react';
 import type {
   ConnectionResponse,
   FailureNotificationDestinationResponse,
@@ -235,7 +236,15 @@ export function DestinationForm(props: DestinationFormProps) {
             }}
           />
         </FieldGroup>
-        {model.mutation.isError ? (
+        {model.attempt.expired ? (
+          <ExpiredAttemptNotice
+            onNewAttempt={() => {
+              model.attempt.clear();
+              model.mutation.reset();
+            }}
+          />
+        ) : null}
+        {model.mutation.isError && !model.attempt.expired ? (
           <SaveFailure
             error={model.mutation.error}
             editing={model.editing}
@@ -297,14 +306,14 @@ function useDestinationForm({
   const create = useCreateFailureNotificationDestinationMutation(scope);
   const append = useAppendFailureNotificationDestinationVersionMutation(scope);
   const mutation = editing ? append : create;
-  const attempt = useRef<Readonly<{ signature: string }> & CommandKey>(
-    undefined,
-  );
+  const attempt = useCommandAttempt<
+    Readonly<{ signature: string }> & CommandKey
+  >();
   const errorsFor = (next: DestinationValues) =>
     destinationErrors(next.kind, next.connectionId, next.target, connections);
 
   function succeed(saved: FailureNotificationDestinationResponse) {
-    attempt.current = undefined;
+    attempt.clear();
     const { label } = describeDestination(saved, connections, channelNames);
     notifications.success({
       title: editing ? `Saved alerts to ${label}` : `Alerts now go to ${label}`,
@@ -328,12 +337,12 @@ function useDestinationForm({
       values.target,
     );
     const signature = JSON.stringify({ config, expectedVersion });
-    const held = attempt.current;
-    const command =
-      held?.signature === signature && canResend(held)
-        ? held
-        : { signature, ...newCommandKey() };
-    attempt.current = command;
+    if (attempt.current()?.signature !== signature) attempt.clear();
+    const command = await attempt.getOrCreate(() => ({
+      signature,
+      ...newCommandKey(),
+    }));
+    if (command === undefined) return;
     const key = command.idempotencyKey;
     let saved: FailureNotificationDestinationResponse;
     try {
@@ -357,7 +366,7 @@ function useDestinationForm({
     const latest = await listRefresh.reload();
     const fresh = latest.find((item) => item.id === destination?.id);
     if (fresh === undefined) return;
-    attempt.current = undefined;
+    attempt.clear();
     append.reset();
     setExpectedVersion(fresh.currentVersion);
   }
@@ -368,6 +377,7 @@ function useDestinationForm({
 
   return {
     uncertain,
+    attempt,
     submit,
     editing,
     listRefresh,

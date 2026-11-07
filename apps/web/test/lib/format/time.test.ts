@@ -44,6 +44,12 @@ describe('formatMoment', () => {
 });
 
 describe('local calendar day headings across daylight saving', () => {
+  it('runs in a zone with both intended daylight-saving transitions', () => {
+    expect(new Date(2026, 2, 29, 0).getTimezoneOffset()).toBe(-60);
+    expect(new Date(2026, 2, 30, 0).getTimezoneOffset()).toBe(-120);
+    expect(new Date(2026, 9, 25, 0).getTimezoneOffset()).toBe(-120);
+    expect(new Date(2026, 9, 26, 0).getTimezoneOffset()).toBe(-60);
+  });
   it.each([
     [new Date(2026, 9, 26, 12), new Date(2026, 9, 25, 0, 30), 'Yesterday'],
     [new Date(2026, 2, 30, 12), new Date(2026, 2, 28, 23, 30), 'Mar 28'],

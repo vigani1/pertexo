@@ -1,4 +1,6 @@
-import { useId, useRef, useState } from 'react';
+import { useCommandAttempt } from '@/lib/api/commands/use-command-attempt';
+import { ExpiredAttemptNotice } from '@/components/patterns/states/expired-attempt-notice';
+import { useId, useState } from 'react';
 import type { ConnectionResponse } from '@pertexo/contracts';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { Button } from '@/components/ui/button';
@@ -6,7 +8,6 @@ import { Notice } from '@/components/ui/notice';
 import { useNotifications } from '@/components/ui/use-notifications';
 import { isApiError } from '@/lib/api/error';
 import {
-  canResend,
   isUnconfirmedCommand,
   newCommandKey,
   type CommandKey,
@@ -45,17 +46,13 @@ export function ReplaceCredentialForm({
   );
   const [baseVersion, setBaseVersion] = useState(connection.secretVersionId);
   const { mutation, clearSensitiveState } = useRotateConnectionMutation(scope);
-  const attempt = useRef<
-    | Readonly<{
-        signature: string;
-        command: RotateConnectionCommand & CommandKey;
-      }>
-    | undefined
-  >(undefined);
+  const attempt = useCommandAttempt<
+    RotateConnectionCommand & CommandKey & Readonly<{ signature: string }>
+  >();
 
   function finish() {
     if (mutation.isPending) return;
-    attempt.current = undefined;
+    attempt.clear();
     credential.clear();
     clearSensitiveState();
     onDone();
@@ -70,20 +67,18 @@ export function ReplaceCredentialForm({
       : baseVersion;
     if (replacingNewer) {
       setBaseVersion(expectedVersion);
-      attempt.current = undefined;
+      attempt.clear();
     }
     const signature = JSON.stringify(value);
-    const held = attempt.current;
-    const command =
-      held?.signature === signature && canResend(held.command)
-        ? held.command
-        : {
-            connectionId: connection.id,
-            expectedSecretVersionId: expectedVersion,
-            credential: value,
-            ...newCommandKey(),
-          };
-    attempt.current = { signature, command };
+    if (attempt.current()?.signature !== signature) attempt.clear();
+    const command = await attempt.getOrCreate(() => ({
+      signature,
+      connectionId: connection.id,
+      expectedSecretVersionId: expectedVersion,
+      credential: value,
+      ...newCommandKey(),
+    }));
+    if (command === undefined) return;
     try {
       await mutation.mutateAsync(command);
     } catch (error) {
@@ -142,7 +137,15 @@ export function ReplaceCredentialForm({
           if (mutation.isError) clearSensitiveState();
         }}
       />
-      {mutation.isError ? (
+      {attempt.expired ? (
+        <ExpiredAttemptNotice
+          onNewAttempt={() => {
+            attempt.clear();
+            clearSensitiveState();
+          }}
+        />
+      ) : null}
+      {mutation.isError && !attempt.expired ? (
         <Notice role="alert" tone={uncertain ? 'warning' : 'destructive'}>
           {replacingNewer
             ? 'A different credential was saved while you were editing. Use my credential replaces that latest version with what you entered.'

@@ -1,4 +1,10 @@
-import { useState, type ReactNode } from 'react';
+import {
+  useEffect,
+  useRef,
+  useState,
+  type FocusEvent,
+  type ReactNode,
+} from 'react';
 import { Autocomplete } from '@base-ui/react/autocomplete';
 import { SearchIcon } from 'lucide-react';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
@@ -51,6 +57,7 @@ export function CommandPalette({
     | Readonly<{ status: 'ready' }>;
 }>) {
   const [query, setQueryState] = useState('');
+  const { input, recoveryFocusProps } = useSearchRecoveryFocus(search?.status);
   function setQuery(next: string) {
     setQueryState(next);
     onQueryChange?.(next.trim());
@@ -95,6 +102,7 @@ export function CommandPalette({
               className="size-4 text-subtle-foreground"
             />
             <Autocomplete.Input
+              ref={input}
               aria-label="Search pages, workflows and actions"
               // Short enough to fit a phone without being cut mid-word.
               placeholder="Search pages and actions"
@@ -110,7 +118,9 @@ export function CommandPalette({
             </p>
           ) : null}
           {search?.status === 'failed' ? (
-            <div className="px-4 py-3">{search.feedback}</div>
+            <div className="px-4 py-3" {...recoveryFocusProps}>
+              {search.feedback}
+            </div>
           ) : null}
           {search === undefined || search.status === 'ready' ? (
             <Autocomplete.Empty className="px-4 py-8 text-sm text-muted-foreground empty:hidden">
@@ -157,4 +167,33 @@ export function CommandPalette({
       </DialogContent>
     </Dialog>
   );
+}
+
+/** Return keyboard ownership to search only if recovery owned focus. */
+function useSearchRecoveryFocus(
+  status: 'loading' | 'failed' | 'ready' | undefined,
+) {
+  const input = useRef<HTMLInputElement>(null);
+  const recoveryFocused = useRef(false);
+  useEffect(() => {
+    if (status === 'ready' && recoveryFocused.current) {
+      recoveryFocused.current = false;
+      input.current?.focus();
+    }
+  }, [status]);
+  return {
+    input,
+    recoveryFocusProps: {
+      onFocusCapture: () => {
+        recoveryFocused.current = true;
+      },
+      onBlurCapture: (event: FocusEvent<HTMLDivElement>) => {
+        if (
+          event.relatedTarget !== null &&
+          !event.currentTarget.contains(event.relatedTarget)
+        )
+          recoveryFocused.current = false;
+      },
+    },
+  };
 }
