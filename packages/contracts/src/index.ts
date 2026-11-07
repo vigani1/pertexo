@@ -348,3 +348,11 @@ export {
 } from './schemas/identity/people.js';
 
 export { isSupportedHttpFieldValue } from './schemas/shared/http-field-value.js';
+export * from './schemas/identity/authentication.js';
+export * from './schemas/identity/membership.js';
+export * from './schemas/workflows/sharing.js';
+export * from './schemas/workflows/auto-pause.js';
+export * from './schemas/workflows/concurrency.js';
+export * from './schemas/workflows/organization.js';
+export * from './schemas/workflows/organization-folders.js';
+export * from './schemas/workflows/input-cases.js';

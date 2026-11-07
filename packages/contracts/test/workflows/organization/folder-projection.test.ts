@@ -1,6 +1,7 @@
+import * as schemas1 from '../../../src/schemas/workflows/organization-folders.js';
 import { Ajv2020 } from 'ajv/dist/2020.js';
 import { describe, expect, it } from 'vitest';
-import * as schemas from '../../../src/schemas/workflows/authoring.js';
+
 import {
   API_PROBLEM_MANIFEST,
   apiProblemSchema,
@@ -20,18 +21,18 @@ describe('accepted folder and general-bulk public contracts', () => {
       },
       { workflowId: a, status: 'not_visible' },
       { workflowId: a, status: 'outcome_unknown' },
-      ...schemas.workflowOrganizationBulkConflictCodeSchema.options.map(
+      ...schemas1.workflowOrganizationBulkConflictCodeSchema.options.map(
         (code) => ({ workflowId: a, status: 'conflict', code }),
       ),
     ];
     for (const outcome of statuses)
       expect(
-        schemas.workflowOrganizationBulkResponseSchema.parse({
+        schemas1.workflowOrganizationBulkResponseSchema.parse({
           items: [outcome],
         }),
       ).toEqual({ items: [outcome] });
     expect(
-      schemas.workflowOrganizationBulkResponseSchema
+      schemas1.workflowOrganizationBulkResponseSchema
         .parse({
           items: [
             { workflowId: b, status: 'forbidden' },
@@ -62,7 +63,7 @@ describe('accepted folder and general-bulk public contracts', () => {
       [statuses[0], statuses[0]],
     ])
       expect(
-        schemas.workflowOrganizationBulkResponseSchema.safeParse({
+        schemas1.workflowOrganizationBulkResponseSchema.safeParse({
           items: outcomes,
         }).success,
       ).toBe(false);

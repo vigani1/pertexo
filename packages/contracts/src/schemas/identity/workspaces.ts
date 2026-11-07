@@ -12,9 +12,6 @@ import {
 import { z } from 'zod';
 
 export { idempotencyKeySchema } from '../shared/transport-headers.js';
-/** The published identity-workspace schema entry also carries authentication. */
-export * from './authentication.js';
-export * from './membership.js';
 
 export const workspaceCreateRequestSchema = z
   .object({

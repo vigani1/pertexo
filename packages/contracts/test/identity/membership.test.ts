@@ -11,7 +11,7 @@ import {
   workspaceMemberStatusResponseSchema,
   workspaceOwnershipTransferRequestSchema,
   workspaceOwnershipTransferResponseSchema,
-} from '../../src/schemas/identity/workspaces.js';
+} from '../../src/schemas/identity/membership.js';
 import { identityWorkspaceOpenApiDocument } from '../../src/server.js';
 
 const ownerId = '0199a4a2-5c1e-7000-8000-000000000001';
