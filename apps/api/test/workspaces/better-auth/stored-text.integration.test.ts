@@ -16,7 +16,7 @@ describe.runIf(betterAuthIntegrationEnabled)(
       const email = `${randomUUID()}@example.test`;
       await api.signUp(email, '/login?verified=true');
       const browser = await api.signIn(email);
-      const validName = 'Équipe 😀';
+      const validName = 'E\u0301quipe 👩‍💻';
       const create = (name: string) =>
         api.send('POST', '/v1/workspaces', {
           browser,
