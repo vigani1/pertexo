@@ -130,7 +130,9 @@ it('keeps unsaved members on refetch and offers an explicit reload after a confl
   await screen.findByText(/Someone changed who can use this connection/);
   expect(screen.getByRole('button', { name: 'Remove Jane' })).toBeVisible();
   expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
-  await event.click(screen.getByRole('button', { name: 'Reload' }));
+  await event.click(
+    screen.getByRole('button', { name: 'Discard edits and reload' }),
+  );
   await waitFor(() =>
     expect(
       screen.queryByRole('button', { name: 'Remove Jane' }),

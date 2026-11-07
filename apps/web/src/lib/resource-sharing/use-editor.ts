@@ -4,7 +4,12 @@ import {
   isRevisionConflict,
 } from '../api/query-snapshot';
 import { useState } from 'react';
-import { useQuery, useQueryClient, type QueryKey } from '@tanstack/react-query';
+import {
+  useQuery,
+  useQueryClient,
+  type QueryKey,
+  type UseQueryResult,
+} from '@tanstack/react-query';
 import { useRetainedCommand } from '../api/commands/use-retained';
 import { isApiError } from '../api/error';
 /** Unsaved edits own a snapshot only after an edit. Refetches never replace it. */
@@ -83,6 +88,7 @@ export function useSharingEditor<
   const canSaveChanges = canChangeSharing && snapshot !== reader.data;
   return {
     reader,
+    readFailure: sharingReadFailure(reader, locked),
     snapshot,
     // The current-sharing notice owns definite conflict recovery feedback.
     command:
@@ -95,6 +101,7 @@ export function useSharingEditor<
     canSaveChanges,
     canReview:
       reader.isSuccess &&
+      !reader.isFetching &&
       snapshot !== undefined &&
       reader.data.revision !== snapshot.revision,
     review: () => {
@@ -104,6 +111,7 @@ export function useSharingEditor<
         snapshot === undefined ||
         reader.data === undefined ||
         !reader.isSuccess ||
+        reader.isFetching ||
         reader.data.revision === snapshot.revision
       )
         return;
@@ -134,6 +142,21 @@ export function useSharingEditor<
         setEdited(undefined);
         command.reset();
       }
+    },
+  };
+}
+
+/** Retrying a read never changes the locally edited snapshot. */
+function sharingReadFailure<Value>(
+  reader: UseQueryResult<Value>,
+  locked: boolean,
+) {
+  if (!reader.isError) return undefined;
+  return {
+    error: reader.error,
+    retrying: reader.isFetching,
+    retry: () => {
+      if (!locked) void reader.refetch();
     },
   };
 }

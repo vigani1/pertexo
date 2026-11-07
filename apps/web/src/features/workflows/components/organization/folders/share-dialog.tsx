@@ -1,3 +1,4 @@
+import { ReadRecovery } from '@/components/patterns/states/read-recovery';
 import { SharingRevisionNotice } from '@/components/patterns/sharing/revision-notice';
 import { XIcon } from 'lucide-react';
 import type { FolderPrincipal, WorkflowFolder } from '@pertexo/contracts';
@@ -247,6 +248,7 @@ function SaveState({ editor }: Readonly<{ editor: Editor }>) {
       {editor.stale ? (
         <SharingRevisionNotice
           subject="access this folder"
+          readFailure={editor.readFailure}
           latest={
             current !== undefined
               ? {
@@ -266,7 +268,7 @@ function SaveState({ editor }: Readonly<{ editor: Editor }>) {
           }}
         />
       ) : null}
-      {editor.reader.isError && !editor.stale ? (
+      {editor.readFailure !== undefined && !editor.stale ? (
         <Notice
           tone="warning"
           action={
@@ -279,12 +281,15 @@ function SaveState({ editor }: Readonly<{ editor: Editor }>) {
                 void editor.reload();
               }}
             >
-              Reload
+              Discard edits and reload
             </Button>
           }
         >
-          Couldn’t check the latest sharing. Your changes are kept; reload
-          before saving.
+          <ReadRecovery
+            {...editor.readFailure}
+            resource="Current sharing"
+            disabled={editor.locked}
+          />
         </Notice>
       ) : null}
       {editor.command.error === undefined ? null : (
