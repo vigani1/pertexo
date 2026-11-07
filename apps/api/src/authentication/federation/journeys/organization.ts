@@ -34,7 +34,7 @@ import {
   type BrowserSession,
   prepareOrganizationStart,
 } from './start-organization-sign-in.js';
-import { failure } from './organization-reply.js';
+import { failure, organizationLanding } from './organization-reply.js';
 
 const callbackPath = '/v1/auth/federation/oidc/callback';
 
@@ -258,11 +258,15 @@ export class OrganizationSignIn {
             : 'email_domain',
         );
       if (result.kind === 'tested')
-        return this.land(result.returnPath, 'passed');
+        return organizationLanding(
+          this.input.baseUrl,
+          result.returnPath,
+          'passed',
+        );
       return await landWithReplacementSession(
         this.input.deliver,
         result.token,
-        () => this.land(result.returnPath),
+        () => organizationLanding(this.input.baseUrl, result.returnPath),
         () => fail('unavailable'),
       );
     } catch (error: unknown) {
@@ -353,24 +357,6 @@ export class OrganizationSignIn {
         ),
     };
   }
-  private land(
-    path: string,
-    test?: 'passed' | Readonly<{ failed: FederationFailureReason }>,
-  ): Response {
-    const destination = new URL(path, this.input.baseUrl);
-    if (test === 'passed') destination.searchParams.set('ssoTest', 'passed');
-    else if (test !== undefined) {
-      destination.searchParams.set('ssoTest', 'failed');
-      destination.searchParams.set('ssoReason', test.failed);
-    }
-    return new Response(null, {
-      status: 302,
-      headers: {
-        location: destination.toString(),
-        'cache-control': 'no-store',
-      },
-    });
-  }
   private failed(
     requestId: string | null,
     {
@@ -392,11 +378,14 @@ export class OrganizationSignIn {
       reason === 'unavailable' ? 'failed' : 'refused',
     );
     if (testing && path !== undefined)
-      return this.land(path, { failed: reason });
+      return organizationLanding(this.input.baseUrl, path, { failed: reason });
     const destination = new URL('/login', this.input.baseUrl);
     destination.searchParams.set('ssoError', 'true');
     if (path !== undefined && path !== '/workspaces')
       destination.searchParams.set('returnTo', path);
-    return this.land(destination.pathname + destination.search);
+    return organizationLanding(
+      this.input.baseUrl,
+      destination.pathname + destination.search,
+    );
   }
 }
