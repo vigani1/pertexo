@@ -938,3 +938,51 @@ test('rejects infrastructure built paths after their source was renamed', () => 
     `const script = "import './packages/example/dist/records.js';";`;
   assert.deepEqual(validateModuleImports(sources), []);
 });
+
+for (const root of ['/tmp', '/private/tmp']) {
+  const parts = root
+    .split('/')
+    .filter(Boolean)
+    .map((part) => `'${part}'`)
+    .join(', ');
+  for (const destination of [
+    `('${root}/x')`,
+    `('${root}/x' as const)`,
+    `('${root}/x' satisfies string)`,
+    `('${root}/x')!`,
+    `<string>'${root}/x'`,
+    `join('/', ${parts}, 'x')`,
+    `resolve('/', ${parts}, 'x')`,
+    `path.join('/', ${parts}, 'x')`,
+    `path.resolve('/', ${parts}, 'x')`,
+    `path.join(('/' as const), ${parts}, ('x' satisfies string))!`,
+  ])
+    test(`refuses a fixed temporary write through ${destination}`, () => {
+      assert.match(
+        validateModuleImports({
+          'apps/example/test/files.test.ts': `writeFileSync(${destination}, 'x');`,
+        }).join('\n'),
+        /test-owned files use a created temporary directory/u,
+      );
+      assert.deepEqual(
+        validateModuleImports({
+          'apps/example/test/files.test.ts': `expect(parse(${destination})).toBe(false);`,
+        }),
+        [],
+      );
+    });
+}
+
+test('checks the whole literal destination rather than an intermediate temporary segment', () => {
+  for (const destination of [
+    "join('/tmp', '..', 'owned', 'x')",
+    "resolve('/private/tmp', '..', '..', 'owned', 'x')",
+    "path.resolve('/tmp', '/owned', 'x')",
+  ])
+    assert.deepEqual(
+      validateModuleImports({
+        'apps/example/test/files.test.ts': `writeFileSync(${destination}, 'x');`,
+      }),
+      [],
+    );
+});
