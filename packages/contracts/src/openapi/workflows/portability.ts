@@ -6,8 +6,11 @@ import { sharedProblemResponses } from '../problem-responses.js';
 import { apiProblemSchema } from '../../errors/api-problem.js';
 import { routePaths, routeSchemas } from '../../routes/openapi.js';
 import { portabilityRoutes } from '../../routes/workflows/portability.js';
-import { authenticatedComponents, problemResponse } from '../../routes/openapi-primitives.js';
-import { projectContractSchema } from '../schema-projection.js';
+import {
+  authenticatedComponents,
+  problemResponse,
+} from '../../routes/openapi-primitives.js';
+import { projectContractSchema } from '../../routes/schema-projection.js';
 
 export const workflowPortabilityOpenApiDocument = Object.freeze({
   openapi: '3.1.0',

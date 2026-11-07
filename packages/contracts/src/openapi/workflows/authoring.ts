@@ -18,8 +18,11 @@ import {
   workflowTemplateOriginProjectionResponseSchema,
   workflowVersionResponseSchema,
 } from '../../schemas/workflows/authoring.js';
-import { authenticatedComponents, problemResponse } from '../../routes/openapi-primitives.js';
-import { projectContractSchema } from '../schema-projection.js';
+import {
+  authenticatedComponents,
+  problemResponse,
+} from '../../routes/openapi-primitives.js';
+import { projectContractSchema } from '../../routes/schema-projection.js';
 import {
   workflowAutoPauseContractPaths,
   workflowAutoPauseContractSchemas,

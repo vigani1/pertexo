@@ -1,7 +1,7 @@
 import { governanceRoutes } from '../../routes/identity/governance.js';
 import { routePaths, routeSchemas } from '../../routes/openapi.js';
 import { auditQuerySchema } from '../../schemas/identity/governance.js';
-import { projectContractSchema } from '../schema-projection.js';
+import { projectContractSchema } from '../../routes/schema-projection.js';
 
 const routes = Object.values(governanceRoutes);
 

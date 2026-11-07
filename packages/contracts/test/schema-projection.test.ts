@@ -8,7 +8,7 @@ import {
   workflowAuthoringOpenApiDocument,
   workflowPortabilityOpenApiDocument,
 } from '../src/server.js';
-import { projectContractSchema } from '../src/openapi/schema-projection.js';
+import { projectContractSchema } from '../src/routes/schema-projection.js';
 
 function references(value: unknown, output: string[] = []): readonly string[] {
   if (value === null || typeof value !== 'object') return output;
