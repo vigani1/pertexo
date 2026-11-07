@@ -53,6 +53,7 @@ export type BetterAuthRuntimeConfig = Readonly<{
     max: number;
   }>;
   secureCookies: boolean;
+  sessionSameSite?: 'lax' | 'strict' | 'none';
   sessionTtlSeconds: number;
   trustedOrigins: readonly string[];
   mail: AuthenticationMail;
@@ -113,6 +114,7 @@ export function createBetterAuthRuntime(
   }
   const diagnostics = new AuthenticationDiagnostics(config.logger);
   const authOptions = {
+    sessionSameSite: config.sessionSameSite ?? 'lax',
     diagnostics,
     pool,
     baseUrl: config.baseUrl,

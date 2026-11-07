@@ -47,6 +47,7 @@ export function composeBetterAuthRuntime(
       secret: config.betterAuth.secret,
       database: input.databaseConfig,
       secureCookies: config.session.secureCookie,
+      sessionSameSite: config.session.sameSite,
       sessionTtlSeconds: Math.floor(config.session.ttlMillis / 1_000),
       trustedOrigins: [publicOrigin],
       mail,

@@ -109,16 +109,42 @@ export function registerAuthenticationCapabilities(
   fastify: FastifyInstance,
   capabilities: Omit<AuthenticationCapabilitiesResponse, 'signUp'>,
   signUpAvailableToEveryone: () => Promise<boolean>,
+  rateLimitConsumer: RateLimitConsumer,
 ): void {
-  fastify.get('/v1/auth/capabilities', async (_request, reply) => {
-    reply.send(
-      authenticationCapabilitiesResponseSchema.parse({
-        ...capabilities,
-        // The first verified account closes an install, so this can't be fixed at start.
-        signUp: (await signUpAvailableToEveryone()) ? 'open' : 'invitation',
-      }),
-    );
-  });
+  const metrics = createRateLimitMetricRecorder();
+  fastify.get(
+    '/v1/auth/capabilities',
+    { config: { rateLimit: 'identity_callback' } },
+    async (request, reply) => {
+      const admitted = await admitRateLimit(
+        rateLimitConsumer,
+        metrics,
+        rateLimitPolicy.evaluate('identity_callback', {
+          clientAddress: request.ip,
+        }),
+      );
+      if (admitted.kind === 'limited') {
+        reply.header(
+          'retry-after',
+          String(Math.max(1, admitted.retryAfterSeconds)),
+        );
+        sendProblem(reply, {
+          ...createRequestContext(request.id),
+          status: 429,
+          code: 'request.rate_limited',
+          title: 'Too many authentication requests',
+        });
+        return;
+      }
+      reply.send(
+        authenticationCapabilitiesResponseSchema.parse({
+          ...capabilities,
+          // The first verified account closes an install, so this can't be fixed at start.
+          signUp: (await signUpAvailableToEveryone()) ? 'open' : 'invitation',
+        }),
+      );
+    },
+  );
 }
 
 type AuthenticationDispatch = Readonly<{

@@ -56,6 +56,10 @@ export class AuthenticationDiagnostics {
     }
   }
 
+  public passwordResetFailure(): void {
+    this.report('internal_failure');
+  }
+
   private report(reason: 'internal_failure' | 'sdk_warning'): void {
     const scope = this.#scope.getStore();
     if (scope?.reported) return;

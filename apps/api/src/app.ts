@@ -58,6 +58,7 @@ export async function assembleApiApplication(
     webhookRuntime,
   } = runtimes;
   const fastifyAdapter = new FastifyAdapter({
+    requestTimeout: 30_000,
     routerOptions: { ignoreTrailingSlash: true },
     trustProxy:
       config.trustedProxyCidrs === undefined ||
@@ -115,6 +116,7 @@ export async function assembleApiApplication(
       },
       async () =>
         identityRuntime?.betterAuth.signUp.availableToEveryone() ?? false,
+      rateLimit,
     );
     if (identityRuntime !== undefined && config.identity !== undefined)
       registerBetterAuthHandler(fastifyInstance, {
