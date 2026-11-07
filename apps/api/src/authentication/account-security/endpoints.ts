@@ -1,6 +1,7 @@
 import { randomUUID, randomBytes } from 'node:crypto';
 import {
   isAuthenticationSessionAllowed,
+  readAccountProviderNames,
   changePasswordAndRevokeSessions,
   resetPasswordAndRevokeSessions,
   setupPasswordAndRevokeSessions,
@@ -76,12 +77,9 @@ function createGetPertexoAccountSecurityEndpoint(
       const accounts = await context.context.internalAdapter.findAccounts(
         context.context.session.user.id,
       );
-      const providers = await pool.query<{ id: string; name: string }>(
-        'select id,name from app.auth_providers where id::text=any($1::text[])',
-        [accounts.map((account) => account.providerId)],
-      );
-      const names = new Map(
-        providers.rows.map((provider) => [provider.id, provider.name]),
+      const names = await readAccountProviderNames(
+        pool,
+        accounts.map((account) => account.providerId),
       );
       return context.json({
         email: context.context.session.user.email,

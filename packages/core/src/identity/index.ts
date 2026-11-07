@@ -50,3 +50,8 @@ export { revokeAuthenticationSession } from './federation/sessions/revocation.re
 
 export { canonicalEmail } from './email-policy.js';
 export { parseIdentityMetadata } from './identity-metadata.js';
+
+export {
+  readAccountProviderNames,
+  readCredentialPasswordHash,
+} from './account-security.repository.js';
