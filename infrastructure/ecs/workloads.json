@@ -17,6 +17,7 @@
         "AUTH_MAIL_MODE": "durable",
         "DATABASE_POOL_MAX": "5",
         "HOST": "0.0.0.0",
+        "CODE_STEPS_ENABLED": "false",
         "NODE_ENV": "production",
         "PORT": "3000",
         "SESSION_COOKIE_SECURE": "true"
@@ -73,6 +74,7 @@
         "DATABASE_DISPATCHER_POOL_MAX": "2",
         "DATABASE_MAINTENANCE_POOL_MAX": "2",
         "DATABASE_POOL_MAX": "5",
+        "CODE_STEPS_ENABLED": "false",
         "NODE_ENV": "production",
         "WORKER_MAX_EVENT_LOOP_DELAY_MILLIS": "200",
         "WORKER_MAX_RSS_BYTES": "805306368",
