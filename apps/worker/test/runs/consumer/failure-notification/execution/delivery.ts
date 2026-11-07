@@ -65,6 +65,7 @@ export async function qualifyRecoveredNotificationDelivery(
       }),
     );
     const providerDelivery = createProviderFailureNotificationDelivery({
+        publicWebOrigin: 'https://app.example.test',
       store: providerStore,
       encryption: {
         open: (_sealed, encryptionContext) =>

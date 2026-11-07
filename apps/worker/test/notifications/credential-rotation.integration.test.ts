@@ -2,7 +2,11 @@ import { randomUUID } from 'node:crypto';
 
 import { createNotificationDestinationStore } from '@pertexo/core/notifications';
 import { createFailureNotificationStore } from '@pertexo/core/testing';
-import { parseDatabaseConfig } from '@pertexo/database/testing';
+import {
+  parseDatabaseConfig,
+  canonicalOutboxPayloadChecksum,
+} from '@pertexo/database/testing';
+import { FailureNotificationContextSchema } from '@pertexo/workflow-model';
 import { JOB_NAME } from '@pertexo/queue/server';
 import {
   SECURE_HTTP_ERROR_CODE,
@@ -379,4 +383,111 @@ describeIntegration('failure alerts through a rotated credential', () => {
       expect(harness.opened).toEqual([]);
     },
   );
+  it.each(
+    (['email', 'slack'] as const).flatMap((kind) =>
+      (
+        [
+          ['failed', 'provider.unavailable', 'Review the failed step'],
+          ['timed_out', 'code.timeout', 'time limit'],
+          [
+            'outcome_unknown',
+            'provider.outcome_unknown',
+            'Check the outside service before replaying',
+          ],
+        ] as const
+      ).map(([status, code, action]) => ({ kind, status, code, action })),
+    ),
+  )(
+    'sends an actionable $status alert through $kind without private diagnostics',
+    async ({ kind, status, code, action }) => {
+      await createTarget(kind, kind === 'email' ? 'ops@example.test' : 'COPS');
+      const accepted = await acceptRun();
+      const intentId = await failRun(accepted);
+      await asAdmin(
+        `with changed_attempts as (
+        update app.node_attempts a set error_summary=$3,code_diagnostics=$4::json
+          from app.node_runs n where a.workspace_id=$1 and n.workspace_id=$1 and a.node_run_id=n.id and n.workflow_run_id=$2
+      ) update app.workflow_runs set error_summary=$5 where workspace_id=$1 and id=$2`,
+        [
+          workspaceId,
+          accepted.runId,
+          'private-code-error',
+          JSON.stringify({
+            logs: [{ level: 'log', message: 'private-code-output' }],
+            truncated: false,
+            error: { message: 'private-code-error' },
+          }),
+          'private-provider-response',
+        ],
+      );
+      const [row] = await fixture.workerQuery<{ context: unknown }>(
+        'select context from app.run_failure_notification_intents where workspace_id=$1 and id=$2',
+        [workspaceId, intentId],
+      );
+      const original = FailureNotificationContextSchema.parse(row?.context);
+      const context = {
+        ...original,
+        terminalStatus: status,
+        primaryFailure: {
+          nodeId: 'set',
+          invocationKey: 'set',
+          nodeStatus: status,
+          attemptNumber: 1,
+          safeErrorCode: code,
+        },
+      };
+      // Presentation fixtures use the existing retained context and checksum, with no new format.
+      await asAdmin(
+        'update app.run_failure_notification_intents set context=$3::json,context_checksum=$4 where workspace_id=$1 and id=$2',
+        [
+          workspaceId,
+          intentId,
+          JSON.stringify(context),
+          canonicalOutboxPayloadChecksum(context),
+        ],
+      );
+      const harness = deliveryHarness(store);
+      await runDelivery(harness, intentId);
+      expect(await storedIntent(intentId)).toMatchObject({
+        status: 'delivered',
+      });
+      const message = harness.messages[0];
+      expect(message?.kind).toBe(kind);
+      expect(message?.text.startsWith('Coordinator proof')).toBe(true);
+      expect(message?.text).toContain(
+        `https://app.example.test/w/${workspaceId}/runs/${accepted.runId}`,
+      );
+      expect(message?.text).toContain(action);
+      expect(message?.text.length).toBeLessThanOrEqual(4000);
+      for (const secret of [
+        `re_${FIRST_CIPHERTEXT}`,
+        `xoxb-slack-${FIRST_CIPHERTEXT}`,
+        'private-code-error',
+        'private-code-output',
+        'private-provider-response',
+      ])
+        expect(message?.text).not.toContain(secret);
+    },
+  );
+  it('keeps workflow labels literal in outgoing Slack text', async () => {
+    await createTarget('slack', 'COPS');
+    await asAdmin(
+      'update app.workflows set name=$3 where workspace_id=$1 and id=$2',
+      [workspaceId, workflowId, '<@U12345> & payroll'],
+    );
+    try {
+      const intentId = await failRun(await acceptRun());
+      const harness = deliveryHarness(store);
+      await runDelivery(harness, intentId);
+      expect(harness.messages[0]?.text).toContain(
+        '&lt;@U12345&gt; &amp; payroll',
+      );
+      expect(harness.messages[0]?.text).not.toContain('<@U12345>');
+    } finally {
+      await asAdmin(
+        'update app.workflows set name=$3 where workspace_id=$1 and id=$2',
+        [workspaceId, workflowId, 'Coordinator proof'],
+      );
+    }
+  });
 });

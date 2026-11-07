@@ -52,6 +52,7 @@ export function loadDestination(
       const [row] = await db
         .with(source)
         .select({
+          workflowName: source.workflowName,
           config: source.config,
           configVersion: source.configVersion,
           secretVersionId: secret.id,
@@ -92,6 +93,7 @@ export function loadDestination(
         purpose: 'failure_notification.deliver',
       });
       const resolved = {
+        workflowName: row.workflowName,
         configVersion: row.configVersion,
         connectionId,
         secretVersionId,

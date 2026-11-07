@@ -1,5 +1,6 @@
-/** The least a worker needs to start: its databases, Redis and artifact storage. */
+/** Owned worker fixture settings, including the public origin for alert links. */
 export const workerEnvironment = Object.freeze({
+  PUBLIC_WEB_ORIGIN: 'https://app.example.test',
   DATABASE_URL: 'postgresql://pertexo_app:secret@localhost:5432/pertexo',
   DATABASE_MAINTENANCE_URL:
     'postgresql://pertexo_maintenance:secret@localhost:5432/pertexo',

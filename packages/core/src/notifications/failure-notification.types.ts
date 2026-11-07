@@ -24,6 +24,7 @@ export type FailureNotificationClaimResult =
     }>;
 
 type FailureNotificationResolvedDestinationBase = Readonly<{
+  workflowName: string;
   configVersion: number;
   connectionId: string;
   secretVersionId: string;

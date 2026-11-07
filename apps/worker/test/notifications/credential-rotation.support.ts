@@ -15,6 +15,11 @@ export function deliveryHarness(
 ) {
   const emails: { apiKey: string; toEmail: string }[] = [];
   const slackMessages: { botToken: string; channelId: string }[] = [];
+  const messages: {
+    kind: 'slack' | 'email';
+    text: string;
+    subject?: string;
+  }[] = [];
   const opened: string[] = [];
   const answers: EmailAnswer[] = [];
   const delivered: EmailAnswer = async (send) => {
@@ -27,6 +32,7 @@ export function deliveryHarness(
     maxAttempts: 2,
     retryDelaySeconds: 30,
     delivery: createProviderFailureNotificationDelivery({
+      publicWebOrigin: 'https://app.example.test',
       store,
       workerId: 'rotation-integration-worker',
       encryption: {
@@ -54,6 +60,7 @@ export function deliveryHarness(
       slack: {
         sendMessage: async (input) => {
           await input.beforeDispatch();
+          messages.push({ kind: 'slack', text: input.text });
           slackMessages.push({
             botToken: input.botToken,
             channelId: input.channelId,
@@ -69,11 +76,16 @@ export function deliveryHarness(
         sendNotification: async (input) => {
           const answer = answers.shift() ?? delivered;
           const result = await answer(() => input.beforeDispatch());
+          messages.push({
+            kind: 'email',
+            text: input.text,
+            subject: input.subject,
+          });
           emails.push({ apiKey: input.apiKey, toEmail: input.toEmail });
           return result as never;
         },
       },
     }),
   });
-  return { emails, slackMessages, opened, answers, handler };
+  return { emails, slackMessages, messages, opened, answers, handler };
 }

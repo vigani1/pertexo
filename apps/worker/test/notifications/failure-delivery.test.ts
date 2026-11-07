@@ -25,6 +25,7 @@ describe('provider failure notification delivery', () => {
       const sendMessage = vi.fn();
       const sendNotification = vi.fn();
       const delivery = createProviderFailureNotificationDelivery({
+        publicWebOrigin: 'https://app.example.test',
         store: persistence,
         encryption: { open: vi.fn() },
         slack: { sendMessage },
@@ -51,6 +52,7 @@ describe('provider failure notification delivery', () => {
     const persistence = store('slack');
     const sendMessage = vi.fn();
     const delivery = createProviderFailureNotificationDelivery({
+      publicWebOrigin: 'https://app.example.test',
       store: persistence,
       encryption: { open: vi.fn().mockResolvedValue(Uint8Array.from([0xff])) },
       slack: { sendMessage },
@@ -84,6 +86,7 @@ describe('provider failure notification delivery', () => {
       const sendMessage = vi.fn();
       const sendNotification = vi.fn();
       const delivery = createProviderFailureNotificationDelivery({
+        publicWebOrigin: 'https://app.example.test',
         store: persistence,
         encryption: { open: vi.fn() },
         slack: { sendMessage },
@@ -114,6 +117,7 @@ describe('provider failure notification delivery', () => {
       ),
     );
     const delivery = createProviderFailureNotificationDelivery({
+      publicWebOrigin: 'https://app.example.test',
       store: persistence,
       encryption: { open: vi.fn() },
       slack: { sendMessage: vi.fn() },
@@ -142,6 +146,7 @@ describe('provider failure notification delivery', () => {
       const sendMessage = vi.fn();
       const sendNotification = vi.fn();
       const delivery = createProviderFailureNotificationDelivery({
+        publicWebOrigin: 'https://app.example.test',
         store: persistence,
         encryption: {
           open: vi.fn(
@@ -197,6 +202,7 @@ describe('provider failure notification delivery', () => {
       const sendMessage = vi.fn();
       const sendNotification = vi.fn();
       const delivery = createProviderFailureNotificationDelivery({
+        publicWebOrigin: 'https://app.example.test',
         store: persistence,
         encryption: {
           open: vi
@@ -230,6 +236,7 @@ describe('provider failure notification delivery', () => {
       const sendMessage = vi.fn();
       const sendNotification = vi.fn();
       const delivery = createProviderFailureNotificationDelivery({
+        publicWebOrigin: 'https://app.example.test',
         store: persistence,
         encryption: {
           open: vi.fn().mockResolvedValue(new TextEncoder().encode('{}')),
@@ -270,6 +277,7 @@ describe('provider failure notification delivery', () => {
         );
       };
       const delivery = createProviderFailureNotificationDelivery({
+        publicWebOrigin: 'https://app.example.test',
         store: persistence,
         encryption: {
           open: vi.fn(() =>
@@ -356,6 +364,7 @@ describe('provider failure notification delivery', () => {
       },
     );
     const delivery = createProviderFailureNotificationDelivery({
+      publicWebOrigin: 'https://app.example.test',
       store: persistence,
       encryption: {
         open: vi.fn(() =>
@@ -408,6 +417,7 @@ describe('provider failure notification delivery', () => {
       const secretVersionId =
         overrides.secretVersionId ?? identity.connectionSecretVersionId;
       vi.mocked(persistence.loadDestination).mockResolvedValue({
+        workflowName: 'Example workflow',
         configVersion: 1,
         kind: 'email',
         connectionId: '88888888-8888-4888-8888-888888888888',
@@ -416,6 +426,7 @@ describe('provider failure notification delivery', () => {
         toEmail: overrides.toEmail ?? 'ops@example.test',
       });
       const delivery = createProviderFailureNotificationDelivery({
+        publicWebOrigin: 'https://app.example.test',
         store: persistence,
         encryption: {
           open: vi.fn(() =>
@@ -493,6 +504,7 @@ describe('provider failure notification delivery', () => {
       const credentialBytes: Uint8Array[] = [];
       const sendNotification = vi.fn().mockResolvedValue(providerResult);
       const delivery = createProviderFailureNotificationDelivery({
+        publicWebOrigin: 'https://app.example.test',
         store: persistence,
         encryption: {
           open: vi.fn(() => {
@@ -536,6 +548,7 @@ describe('provider failure notification delivery', () => {
   it('keeps repeated definite email rate limits retryable', async () => {
     const persistence = store('email');
     const delivery = createProviderFailureNotificationDelivery({
+      publicWebOrigin: 'https://app.example.test',
       store: persistence,
       encryption: {
         open: vi.fn(() =>
@@ -602,6 +615,7 @@ describe('provider failure notification delivery', () => {
     async (_name, providerResult, expected) => {
       const persistence = store('slack');
       const delivery = createProviderFailureNotificationDelivery({
+        publicWebOrigin: 'https://app.example.test',
         store: persistence,
         encryption: {
           open: vi.fn().mockResolvedValue(
@@ -635,6 +649,7 @@ describe('provider failure notification delivery', () => {
         ).FailureNotificationStateError('fence rejected'),
       );
       const delivery = createProviderFailureNotificationDelivery({
+        publicWebOrigin: 'https://app.example.test',
         store: persistence,
         encryption: {
           open: vi.fn(() =>
@@ -698,6 +713,7 @@ describe('provider failure notification delivery', () => {
       ),
     );
     const delivery = createProviderFailureNotificationDelivery({
+      publicWebOrigin: 'https://app.example.test',
       store: persistence,
       encryption: {
         open: vi.fn(() =>
@@ -766,6 +782,7 @@ describe('provider failure notification delivery', () => {
     'pins remaining Slack provider result policy',
     async (result, kind) => {
       const delivery = createProviderFailureNotificationDelivery({
+        publicWebOrigin: 'https://app.example.test',
         store: store('slack'),
         encryption: {
           open: vi.fn().mockResolvedValue(
@@ -804,6 +821,7 @@ describe('provider failure notification delivery', () => {
     'pins remaining email provider result policy',
     async (result, kind) => {
       const delivery = createProviderFailureNotificationDelivery({
+        publicWebOrigin: 'https://app.example.test',
         store: store('email'),
         encryption: {
           open: vi.fn().mockResolvedValue(
@@ -841,6 +859,7 @@ describe('provider failure notification delivery', () => {
     'pins predispatch secure HTTP failure policy for %s',
     async (code, kind, safeErrorCode) => {
       const delivery = createProviderFailureNotificationDelivery({
+        publicWebOrigin: 'https://app.example.test',
         store: store('slack'),
         encryption: {
           open: vi.fn().mockResolvedValue(
@@ -877,6 +896,7 @@ describe('provider failure notification delivery', () => {
       new AggregateError([], 'database unavailable'),
     );
     const delivery = createProviderFailureNotificationDelivery({
+      publicWebOrigin: 'https://app.example.test',
       store: persistence,
       encryption: { open: vi.fn() },
       slack: { sendMessage: vi.fn() },
@@ -907,6 +927,7 @@ describe('provider failure notification delivery', () => {
       toEmail: 'ops@example.test',
     });
     const delivery = createProviderFailureNotificationDelivery({
+      publicWebOrigin: 'https://app.example.test',
       store: persistence,
       encryption: { open: vi.fn() },
       slack: { sendMessage: vi.fn() },

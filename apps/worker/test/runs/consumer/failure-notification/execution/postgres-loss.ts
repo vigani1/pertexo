@@ -105,6 +105,7 @@ export async function assertPostgresLossBeforeFence(
     throw new Error('destructive destination claims were not ready');
   const preFenceProviderCalls: string[] = [];
   const preFenceDelivery = createProviderFailureNotificationDelivery({
+        publicWebOrigin: 'https://app.example.test',
     store,
     encryption: {
       open: () =>
