@@ -9,10 +9,13 @@ import {
 } from '@tanstack/react-query';
 import { afterEach, expect, it, vi } from 'vitest';
 import { NotificationsProvider } from '@/components/ui/toast';
-import { QueryView } from '@/components/patterns/states/query-view';
+import {
+  QueryView,
+  FailedReadState,
+} from '@/components/patterns/states/query-view';
 import { createApiClient } from '@/lib/api/client';
 afterEach(() => vi.restoreAllMocks());
-function setup(status: number) {
+function setup(status: number, designed = false) {
   const fetch = vi.fn<typeof globalThis.fetch>(() =>
     Promise.resolve(
       new Response(
@@ -46,6 +49,17 @@ function setup(status: number) {
           response: { kind: 'json', decode: (value) => value },
         }),
     });
+    if (designed)
+      return query.isError ? (
+        <FailedReadState
+          title="Notes couldn’t be loaded"
+          error={query.error}
+          retrying={query.isFetching}
+          retry={() => {
+            void query.refetch();
+          }}
+        />
+      ) : null;
     return <QueryView query={query} resource="Notes" />;
   }
   render(
@@ -79,12 +93,19 @@ it('disables read retries until Retry-After has counted down', async () => {
       screen.getByRole('button', { name: /Try again in|Retry/ }),
     ).toBeEnabled(),
   );
+  expect(
+    screen.getByText('Too many requests. You can try again now.'),
+  ).toBeVisible();
   cache.clear();
 });
 it('retains the full safe support reference on a failed first read', async () => {
   const { cache } = setup(500);
   expect(await screen.findByText('full-safe-support-reference')).toBeVisible();
   expect(screen.getByRole('button', { name: /Copy error ID/ })).toBeVisible();
+  await screen.findByRole('button', { name: /Try again in/ });
+  expect(
+    screen.getByText('Notes couldn’t be loaded. Try again.'),
+  ).toBeVisible();
   cache.clear();
 });
 
@@ -173,5 +194,14 @@ it('keeps earlier rows and local edits while a next-page refusal owns cooldown a
   expect(screen.getByRole('button', { name: /Try again in/ })).toBeDisabled();
   expect(field).toHaveValue('Saved note and local edits');
   expect(fetch).toHaveBeenCalledTimes(2);
+  cache.clear();
+});
+
+it('uses one changing cooldown sentence in a designed first-read state', async () => {
+  const { cache } = setup(429, true);
+  await screen.findByRole('button', { name: /Try again in/ });
+  expect(
+    screen.getAllByText('Too many requests. Try again in 2 s.'),
+  ).toHaveLength(1);
   cache.clear();
 });

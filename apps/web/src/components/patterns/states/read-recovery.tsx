@@ -33,7 +33,11 @@ export function ReadRecovery({
   let description =
     message === undefined ? describeReadError(error, resource) : message;
   if (expired || inaccessible) description = describeReadError(error, resource);
-  if (waitSeconds > 0) description = `Try again in ${String(waitSeconds)} s.`;
+  if (isApiError(error) && error.status === 429)
+    description =
+      waitSeconds > 0
+        ? `Too many requests. Try again in ${String(waitSeconds)} s.`
+        : 'Too many requests. You can try again now.';
   let action = (
     <ProgressButton
       type="button"

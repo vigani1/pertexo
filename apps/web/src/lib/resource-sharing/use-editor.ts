@@ -60,6 +60,7 @@ export function useSharingEditor<
       },
     },
   );
+  const revisionConflict = isRevisionConflict(command.cause);
   const denied =
     reader.isError &&
     isApiError(reader.error) &&
@@ -75,8 +76,7 @@ export function useSharingEditor<
   const stale =
     snapshot !== undefined &&
     reader.data !== undefined &&
-    (snapshot.revision !== reader.data.revision ||
-      isRevisionConflict(command.cause));
+    (snapshot.revision !== reader.data.revision || revisionConflict);
   const canChangeSharing =
     snapshot !== undefined && !locked && !stale && reader.isSuccess;
   // Reading the current grants does not create an edit to save.
@@ -84,7 +84,11 @@ export function useSharingEditor<
   return {
     reader,
     snapshot,
-    command,
+    // The current-sharing notice owns definite conflict recovery feedback.
+    command:
+      revisionConflict && !command.uncertain
+        ? { ...command, error: undefined }
+        : command,
     locked,
     closeLocked,
     stale,
