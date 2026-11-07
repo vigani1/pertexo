@@ -1,4 +1,7 @@
-import { authenticationMailAssociatedData } from '@pertexo/secrets/server';
+import {
+  createApplicationSecretEnvelope,
+  authenticationMailAssociatedData,
+} from '@pertexo/secrets/server';
 import type { SystemMailEnqueueStore } from '@pertexo/secrets/server';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -56,24 +59,19 @@ describe('local authentication mail', () => {
 });
 
 describe('durable authentication mail', () => {
-  it('rejects an oversized sealed envelope at the producer before enqueue', () => {
+  it('rejects oversized mail content with the real envelope before enqueue', () => {
     const enqueue = vi.fn().mockResolvedValue(undefined);
     const mail = new DurableAuthenticationMail(
       { enqueue, close: vi.fn().mockResolvedValue(undefined) },
-      {
-        seal: () => ({
-          ciphertext: 'x'.repeat(32769),
-          nonce: 'nonce',
-          tag: 'tag',
-          keyVersion: 'v1',
-        }),
-      },
+      createApplicationSecretEnvelope({
+        current: { version: 'v1', key: Buffer.alloc(32, 7).toString('base64') },
+      }),
       'security@example.test',
     );
     expect(() =>
       mail.sendPasswordReset({
         recipient: 'ada@example.test',
-        displayName: 'Ada',
+        displayName: 'A'.repeat(32_769),
         url: 'https://app.example.test/reset?token=reset',
       }),
     ).toThrow();
