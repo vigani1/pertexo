@@ -986,3 +986,25 @@ test('checks the whole literal destination rather than an intermediate temporary
       [],
     );
 });
+
+test('keeps identity SQL in core rather than the authentication adapters', () => {
+  for (const expression of [
+    'pool.query("select password from app.auth_accounts")',
+    'client.query(sql, values)',
+  ])
+    assert.match(
+      validateModuleImports({
+        'apps/api/src/authentication/account-security/read-methods.ts': `export async function read() { return ${expression}; }`,
+      }).join('\n'),
+      /identity product persistence belongs in core/u,
+    );
+});
+test('keeps the SDK transaction dialect as a database protocol adapter', () => {
+  assert.deepEqual(
+    validateModuleImports({
+      'apps/api/src/authentication/better-auth/transactions/authentication-transaction-dialect.ts':
+        'export async function run(client, query) { return client.query(query.sql, query.parameters); }',
+    }),
+    [],
+  );
+});
