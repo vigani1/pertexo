@@ -1,3 +1,4 @@
+import { SharingRevisionNotice } from '@/components/patterns/sharing/revision-notice';
 import { XIcon } from 'lucide-react';
 import type { FolderPrincipal, WorkflowFolder } from '@pertexo/contracts';
 import type { WorkspaceApiScope } from '@/lib/api/workspace-scope';
@@ -243,25 +244,15 @@ function SaveState({ editor }: Readonly<{ editor: Editor }>) {
   return (
     <>
       {editor.stale ? (
-        <Notice
-          tone="warning"
-          action={
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={editor.locked}
-              onClick={() => {
-                void editor.reload();
-              }}
-            >
-              Reload
-            </Button>
-          }
-        >
-          Someone changed who can access this folder while you were editing.
-          Reload to see the latest, then make your change again.
-        </Notice>
+        <SharingRevisionNotice
+          subject="access this folder"
+          canReview={editor.canReview}
+          locked={editor.locked}
+          onReview={editor.review}
+          onReload={() => {
+            void editor.reload();
+          }}
+        />
       ) : null}
       {editor.reader.isError && !editor.stale ? (
         <Notice

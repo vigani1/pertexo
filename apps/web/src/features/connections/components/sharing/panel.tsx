@@ -1,3 +1,4 @@
+import { SharingRevisionNotice } from '@/components/patterns/sharing/revision-notice';
 import { QueryView } from '@/components/patterns/states/query-view';
 import { XIcon } from 'lucide-react';
 import type { ConnectionMutationScope } from '../../data/connections.mutations';
@@ -81,25 +82,15 @@ export function ConnectionSharingPanel({
         />
       ) : null}
       {editor.stale ? (
-        <Notice
-          tone="warning"
-          action={
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={editor.locked}
-              onClick={() => {
-                void editor.reload();
-              }}
-            >
-              Reload
-            </Button>
-          }
-        >
-          Someone changed who can use this connection while you were editing.
-          Reload to see the latest, then make your change again.
-        </Notice>
+        <SharingRevisionNotice
+          subject="use this connection"
+          canReview={editor.canReview}
+          locked={editor.locked}
+          onReview={editor.review}
+          onReload={() => {
+            void editor.reload();
+          }}
+        />
       ) : null}
       {editor.command.error === undefined ? null : (
         <Notice tone="warning">{editor.command.error}</Notice>

@@ -1,3 +1,4 @@
+import { recoverRevisionConflict } from '@/lib/api/query-snapshot';
 import {
   useCallback,
   useEffect,
@@ -35,6 +36,7 @@ export type WorkflowOrganizationCommandResult = Awaited<
 >;
 
 type State = Readonly<{
+  revisionConflict?: boolean;
   pending: boolean;
   retryAvailable: boolean;
   denied: boolean;
@@ -341,11 +343,17 @@ async function sendOrganizationCommand(
       return;
     }
     const retryAvailable = uncertain(error);
+    const revisionConflict = await recoverRevisionConflict(
+      queryClient,
+      workflowOrganizationKeys.folders(userId, workspaceId),
+      error,
+    );
     attempt.current = retryAvailable ? held : undefined;
     setState({
       pending: false,
       retryAvailable,
       denied: false,
+      revisionConflict,
       error: retryAvailable
         ? 'We couldn’t confirm that change. Retry it; refreshing the list won’t lose your place.'
         : definitiveMessage(error),

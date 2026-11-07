@@ -19,6 +19,7 @@ export function useRetainedCommand<Input, Output>(
   options: Readonly<{
     action?: string;
     expiredMessage?: string;
+    onRefused?: (cause: unknown) => Promise<void>;
     failureMessage?: (cause: unknown) => string | undefined;
   }> = {},
 ) {
@@ -36,11 +37,14 @@ export function useRetainedCommand<Input, Output>(
       setHeld(undefined);
       await onSuccess?.(result, command.body);
     },
-    onError: (error, command) => {
+    onError: async (error, command) => {
       if (command.uncertain || isUnconfirmedCommand(error)) {
         intent.current = { ...command, uncertain: true };
         setHeld(command);
-      } else intent.current = undefined;
+      } else {
+        intent.current = undefined;
+        await options.onRefused?.(error);
+      }
     },
   });
   async function send(body: Input) {

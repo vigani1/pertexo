@@ -1,3 +1,7 @@
+import {
+  reconcileQuerySnapshot,
+  recoverRevisionConflict,
+} from '@/lib/api/query-snapshot';
 import { useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { FederationSettings } from '@pertexo/contracts';
@@ -30,6 +34,7 @@ export function useFederationCommand(
   const [error, setError] = useState<string>(),
     [held, setHeld] = useState<Intent>();
   const expired = useResendExpired(held);
+  const [refusedRevision, setRefusedRevision] = useState<number>();
   async function execute(command: Intent): Promise<boolean> {
     if (busy.current || !canResend(command)) return false;
     busy.current = true;
@@ -45,9 +50,10 @@ export function useFederationCommand(
       if (!attempt.isCurrent()) return false;
       intent.current = undefined;
       setHeld(undefined);
-      cache.setQueryData(
+      await reconcileQuerySnapshot(
+        cache,
         federationSettingsQueryOptions(scope).queryKey,
-        result,
+        { kind: 'accepted', value: result },
       );
       onApplied?.(result);
       return true;
@@ -59,6 +65,16 @@ export function useFederationCommand(
           'The result could not be confirmed. Retry this exact request before changing the form.',
         );
       } else {
+        if (
+          await recoverRevisionConflict(
+            cache,
+            federationSettingsQueryOptions(scope).queryKey,
+            cause,
+          )
+        ) {
+          if (command.operation.kind !== 'createOrganization')
+            setRefusedRevision(command.operation.input.expectedRevision);
+        }
         intent.current = undefined;
         setHeld(undefined);
         setError(
@@ -81,12 +97,18 @@ export function useFederationCommand(
   }
   return {
     pending: requests.pending,
+    refusedRevision,
     uncertain: held !== undefined,
     expired,
     error: expired
       ? 'The request retry window ended. Check settings before starting a new request.'
       : error,
     send: (operation: FederationCommand) => {
+      if (
+        operation.kind !== 'createOrganization' &&
+        operation.input.expectedRevision === refusedRevision
+      )
+        return Promise.resolve(false);
       if (intent.current !== undefined) return Promise.resolve(false);
       const command = {
         operation: structuredClone(operation),

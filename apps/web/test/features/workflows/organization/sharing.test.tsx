@@ -284,3 +284,58 @@ it('does not send an audience-changing move before an unchecked acknowledgement 
     }),
   );
 });
+it('keeps edited grants through a real conflict and uses the reviewed current revision', async () => {
+  const f = setup();
+  const bodies: unknown[] = [];
+  mockServer.use(
+    http.post(
+      `${api}/workflow-folders/${workflowId}/sharing`,
+      async ({ request }) => {
+        bodies.push(await request.json());
+        if (bodies.length === 1) {
+          f.update({ ...f.initial, revision: 2 });
+          return HttpResponse.json(
+            {
+              type: 'about:blank',
+              title: 'Folder changed',
+              status: 409,
+              code: 'workflow.folder_revision_conflict',
+              requestId: 'folder-sharing-conflict',
+            },
+            {
+              status: 409,
+              headers: { 'content-type': 'application/problem+json' },
+            },
+          );
+        }
+        const result = {
+          ...f.initial,
+          revision: 3,
+          grants: [
+            ...f.initial.grants,
+            { kind: 'member' as const, userId, access: 'viewer' as const },
+          ],
+        };
+        f.update(result);
+        return HttpResponse.json({ ...result, replayed: false });
+      },
+    ),
+  );
+  const event = userEvent.setup();
+  await event.click(await screen.findByRole('button', { name: 'Add Jane' }));
+  await event.click(screen.getByRole('button', { name: 'Save' }));
+  await event.click(
+    await screen.findByRole('button', {
+      name: 'Keep edits and use latest revision',
+    }),
+  );
+  expect(screen.getByRole('button', { name: 'Remove Jane' })).toBeVisible();
+  await event.click(screen.getByRole('button', { name: 'Save' }));
+  await waitFor(() => {
+    expect(bodies).toHaveLength(2);
+  });
+  expect(bodies[1]).toMatchObject({
+    expectedFolderRevision: 2,
+    grants: [...f.initial.grants, { kind: 'member', userId, access: 'viewer' }],
+  });
+});

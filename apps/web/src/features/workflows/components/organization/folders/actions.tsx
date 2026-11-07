@@ -1,11 +1,11 @@
-import { useEffect, useRef } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useEffect, useRef, useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Notice } from '@/components/ui/notice';
 import type { AccessibleWorkspace, WorkflowFolder } from '@pertexo/contracts';
 import type { ApiClient } from '@/lib/api/client';
 import { useNotifications } from '@/components/ui/use-notifications';
 import { useWorkflowOrganizationCommand } from '../../../hooks/use-workflow-organization-command';
 import { useAudienceMove } from '../../../hooks/use-audience-move';
-import { workflowOrganizationKeys } from '../../../data/organization/workflow-organization.queries';
 import type { FolderAction } from './shelf';
 import {
   FolderDeleteDialog,
@@ -67,24 +67,52 @@ export function FolderActionDialog({
     notifications.success({ title: DONE[action.kind] });
     onDone(action);
   }, [succeeded, notifications, onDone, action, command.result]);
-  // A refused change usually means the folder changed; load the current one.
-  const refused = command.error !== undefined && !command.retryAvailable;
-  const cache = useQueryClient();
-  useEffect(() => {
-    if (refused)
-      void cache.invalidateQueries({
-        queryKey: workflowOrganizationKeys.folders(userId, workspace.id),
-      });
-  }, [refused, cache, userId, workspace.id]);
-  const scope = { workspaceId: workspace.id };
-  switch (action.kind) {
+  const [reviewed, setReviewed] = useState(action);
+  const latest =
+    reviewed.kind === 'create'
+      ? undefined
+      : folders.find((folder) => folder.id === reviewed.folder.id);
+  const needsReview =
+    reviewed.kind !== 'create' &&
+    reviewed.kind !== 'share' &&
+    (command.revisionConflict === true ||
+      latest?.revision !== reviewed.folder.revision);
+  const revisionReview = needsReview ? (
+    <Notice
+      tone="warning"
+      action={
+        <Button
+          type="button"
+          variant="outline"
+          disabled={
+            command.pending ||
+            latest === undefined ||
+            latest.revision === reviewed.folder.revision
+          }
+          onClick={() => {
+            if (latest === undefined) return;
+            setReviewed({ ...reviewed, folder: latest });
+            command.reset();
+          }}
+        >
+          Keep edits and use latest revision
+        </Button>
+      }
+    >
+      This folder changed. Current folder: {latest?.name ?? 'unavailable'}. Your
+      edits are kept.
+    </Notice>
+  ) : undefined;
+  const guardedCommand = { ...command, revisionConflict: needsReview };
+  const scope = { workspaceId: workspace.id, revisionReview };
+  switch (reviewed.kind) {
     case 'create':
     case 'rename':
       return (
         <FolderNameDialog
           {...scope}
-          target={action}
-          command={command}
+          target={reviewed}
+          command={guardedCommand}
           onClose={onClose}
         />
       );
@@ -92,9 +120,9 @@ export function FolderActionDialog({
       return (
         <FolderMoveDialog
           {...scope}
-          folder={action.folder}
+          folder={reviewed.folder}
           folders={folders}
-          command={command}
+          command={guardedCommand}
           audience={audience}
           onClose={onClose}
         />
@@ -103,8 +131,8 @@ export function FolderActionDialog({
       return (
         <FolderDeleteDialog
           {...scope}
-          folder={action.folder}
-          command={command}
+          folder={reviewed.folder}
+          command={guardedCommand}
           onClose={onClose}
         />
       );
@@ -112,7 +140,7 @@ export function FolderActionDialog({
       return (
         <FolderShareDialog
           scope={{ apiClient, userId, workspaceId: workspace.id }}
-          folder={action.folder}
+          folder={reviewed.folder}
           folders={folders}
           onClose={onClose}
         />

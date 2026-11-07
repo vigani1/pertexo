@@ -1,3 +1,8 @@
+import {
+  reconcileQuerySnapshot,
+  recoverRevisionConflict,
+  isRevisionConflict,
+} from '../api/query-snapshot';
 import { useState } from 'react';
 import { useQuery, useQueryClient, type QueryKey } from '@tanstack/react-query';
 import { useRetainedCommand } from '../api/commands/use-retained';
@@ -34,17 +39,26 @@ export function useSharingEditor<
     replace,
     async () => {
       // A receipt confirms the command, not the current grants. Read them again.
-      const refreshed = reader.refetch({ cancelRefetch: false });
+      const refreshed = await reconcileQuerySnapshot<Snapshot>(
+        cache,
+        queryKey,
+        { kind: 'read' },
+      );
       await cache.invalidateQueries(
         { queryKey: invalidationKey },
         { cancelRefetch: false },
       );
-      if ((await refreshed).isSuccess) {
+      if (refreshed !== undefined) {
         setEdited(undefined);
         onSaved?.();
       }
     },
-    { action: 'saving sharing' },
+    {
+      action: 'saving sharing',
+      onRefused: async (cause) => {
+        await recoverRevisionConflict(cache, queryKey, cause);
+      },
+    },
   );
   const denied =
     reader.isError &&
@@ -61,7 +75,8 @@ export function useSharingEditor<
   const stale =
     snapshot !== undefined &&
     reader.data !== undefined &&
-    snapshot.revision !== reader.data.revision;
+    (snapshot.revision !== reader.data.revision ||
+      isRevisionConflict(command.cause));
   const canChangeSharing =
     snapshot !== undefined && !locked && !stale && reader.isSuccess;
   // Reading the current grants does not create an edit to save.
@@ -74,6 +89,26 @@ export function useSharingEditor<
     closeLocked,
     stale,
     canSaveChanges,
+    canReview:
+      reader.isSuccess &&
+      snapshot !== undefined &&
+      reader.data.revision !== snapshot.revision,
+    review: () => {
+      if (
+        locked ||
+        resourceId === undefined ||
+        snapshot === undefined ||
+        reader.data === undefined ||
+        !reader.isSuccess ||
+        reader.data.revision === snapshot.revision
+      )
+        return;
+      setEdited({
+        resourceId,
+        snapshot: { ...snapshot, revision: reader.data.revision },
+      });
+      command.reset();
+    },
     update: (change: (snapshot: Snapshot) => Snapshot) => {
       if (snapshot === undefined || resourceId === undefined || locked) return;
       command.reset();
