@@ -249,6 +249,16 @@ export class ConnectionIdempotencyConflictError extends Error {
 
 export class ConnectionUnavailableError extends Error {
   public override readonly name = 'ConnectionUnavailableError';
+  public constructor(
+    message?: string,
+    public readonly reason:
+      | 'revoked'
+      | 'authentication_type'
+      | 'settings_changed'
+      | 'unavailable' = 'revoked',
+  ) {
+    super(message);
+  }
 }
 
 /** An OAuth2 connection with no usable grant: it says so rather than just being unavailable. */

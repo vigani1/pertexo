@@ -66,6 +66,7 @@ export async function resolveConnectionSecret(
           );
         throw new ConnectionUnavailableError(
           'Connection is not available for credential use',
+          'unavailable',
         );
       }
       const connection = Object.freeze(row.connection);
@@ -81,6 +82,7 @@ export async function resolveConnectionSecret(
       if (!current)
         throw new ConnectionUnavailableError(
           'Connection changed before credential resolution',
+          'settings_changed',
         );
       await recordCredentialAccess(client, {
         workspaceId,
@@ -128,6 +130,7 @@ export async function assertConnectionSecretCurrent(
       if (result.length !== 1)
         throw new ConnectionUnavailableError(
           'Connection is not current for credential use',
+          'settings_changed',
         );
     },
   ).catch(rethrowQueryFailure);

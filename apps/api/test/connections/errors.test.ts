@@ -140,3 +140,16 @@ describe('connection error mapping', () => {
     });
   });
 });
+
+it('explains a controlled settings-change refusal without exposing its diagnostic', () => {
+  const error = new ConnectionUnavailableError(
+    'private raw diagnostic',
+    'settings_changed',
+  );
+  const problem = toProblem(connectionFailure(error));
+  expect(problem).toMatchObject({
+    code: 'connection.conflict',
+  });
+  expect(problem.safeDetail).toMatch(/settings changed.*reload/i);
+  expect(JSON.stringify(problem)).not.toContain('private raw diagnostic');
+});

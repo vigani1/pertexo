@@ -116,6 +116,9 @@ export async function startConnectionTest(
   )
     throw new ConnectionUnavailableError(
       'Connection is not available for testing',
+      connection?.status === CONNECTION_STATUS.revoked
+        ? 'revoked'
+        : 'unavailable',
     );
   return Object.freeze({ kind: 'dispatch' as const, dispatchToken });
 }

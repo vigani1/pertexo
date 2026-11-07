@@ -60,6 +60,7 @@ export async function resolveConnectionTestSecret(
   if (row === undefined)
     throw new ConnectionUnavailableError(
       'Connection is not available for testing',
+      'unavailable',
     );
   const connection = Object.freeze(row.connection);
   const secretVersionId = row.secretVersionId;

@@ -132,7 +132,10 @@ export async function startOAuth2Authorization(
     }),
   );
   if (connection.currentSecretVersionId !== input.secretVersionId)
-    throw new ConnectionUnavailableError('Connection settings changed');
+    throw new ConnectionUnavailableError(
+      'Connection settings changed',
+      'settings_changed',
+    );
   const expiresAt = sql`clock_timestamp()+make_interval(secs=>${input.lifetimeSeconds}::double precision)`;
   const values = {
     stateDigest: input.stateDigest,
