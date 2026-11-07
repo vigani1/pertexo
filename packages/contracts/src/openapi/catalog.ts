@@ -2,7 +2,7 @@ import { sharedProblemResponses } from './problem-responses.js';
 import { apiProblemSchema } from '../errors/api-problem.js';
 import { catalogRoutes } from '../routes/catalog.js';
 import { routePaths, routeSchemas } from '../routes/openapi.js';
-import { authenticatedComponents, problemResponse } from './primitives.js';
+import { authenticatedComponents, problemResponse } from '../routes/openapi-primitives.js';
 import { projectContractSchema } from './schema-projection.js';
 
 const routes = Object.values(catalogRoutes);

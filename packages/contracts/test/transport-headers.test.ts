@@ -8,7 +8,7 @@ import { idempotencyKeySchema } from '../src/schemas/identity/workspaces.js';
 import {
   csrfHeaderParameter,
   idempotencyHeaderParameter,
-} from '../src/openapi/primitives.js';
+} from '../src/routes/openapi-primitives.js';
 import { webhooksOpenApiDocument } from '../src/server.js';
 
 describe('transport header contracts', () => {

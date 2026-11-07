@@ -2,7 +2,7 @@ import {
   ACTIVE_WORKSPACE_STATUSES,
   BROWSABLE_WORKSPACE_STATUSES,
 } from '@pertexo/policy';
-import { responseReference } from '../../openapi/primitives.js';
+import { responseReference } from '../openapi-primitives.js';
 import {
   artifactDownloadResponseSchema,
   artifactFinalizeRequestSchema,

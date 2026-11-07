@@ -1,6 +1,6 @@
 import { workflowIdParamSchema } from '../../schemas/workflows/authoring.js';
 import * as schemas from '../../schemas/workflows/input-cases.js';
-import { jsonSchema, responseReference } from '../../openapi/primitives.js';
+import { jsonSchema, responseReference } from '../openapi-primitives.js';
 import { defineRoute } from '../define.js';
 import {
   problems,

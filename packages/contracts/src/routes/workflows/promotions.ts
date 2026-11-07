@@ -1,6 +1,6 @@
 import { BROWSABLE_WORKSPACE_STATUSES } from '@pertexo/policy';
 
-import { responseReference } from '../../openapi/primitives.js';
+import { responseReference } from '../openapi-primitives.js';
 import * as commands from '../../schemas/workflows/promotions/promotion-commands.js';
 import * as history from '../../schemas/workflows/promotions/history.js';
 import * as review from '../../schemas/workflows/promotions/review.js';

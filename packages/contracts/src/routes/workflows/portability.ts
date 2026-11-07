@@ -1,11 +1,11 @@
 import { workflowPortableManifestSchema } from '@pertexo/workflow-model';
 import { z } from 'zod';
-import { jsonRequest, problemResponse } from '../../openapi/primitives.js';
+import { jsonRequest, problemResponse } from '../openapi-primitives.js';
 import { workflowIdParamSchema } from '../../schemas/workflows/authoring.js';
 import * as schemas from '../../schemas/workflows/portability.js';
 import { projected, reading, session, workspaceParams } from './access.js';
 
-import { responseReference } from '../../openapi/primitives.js';
+import { responseReference } from '../openapi-primitives.js';
 import { defineRoute } from '../define.js';
 const sharedProblems1 = {
   '400': responseReference('BadRequest'),

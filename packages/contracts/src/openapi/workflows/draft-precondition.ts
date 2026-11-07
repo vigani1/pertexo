@@ -2,7 +2,7 @@ import {
   strongEtagSchema,
   workflowRevisionConflictProblemSchema,
 } from '../../schemas/workflows/authoring.js';
-import { jsonSchema } from '../primitives.js';
+import { jsonSchema } from '../../routes/openapi-primitives.js';
 import { projectContractSchema } from '../schema-projection.js';
 
 export const workflowDraftConflictSchemas = {

@@ -1,4 +1,4 @@
-import { problemResponse } from '../../openapi/primitives.js';
+import { problemResponse } from '../openapi-primitives.js';
 import { workflowIdParamSchema } from '../../schemas/workflows/authoring.js';
 import * as organization from '../../schemas/workflows/organization.js';
 import {
@@ -10,7 +10,7 @@ import {
 } from './access.js';
 const participating = session('workflow:read');
 
-import { responseReference } from '../../openapi/primitives.js';
+import { responseReference } from '../openapi-primitives.js';
 import { defineRoute } from '../define.js';
 const sharedProblems1 = {
   '400': responseReference('BadRequest'),

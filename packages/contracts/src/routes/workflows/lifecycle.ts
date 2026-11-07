@@ -2,7 +2,7 @@ import { ACTIVE_WORKSPACE_STATUSES } from '@pertexo/policy';
 import * as schemas from '../../schemas/workflows/authoring.js';
 import { projected, publishing, updating } from './access.js';
 
-import { responseReference } from '../../openapi/primitives.js';
+import { responseReference } from '../openapi-primitives.js';
 import { defineRoute } from '../define.js';
 export const lifecycleRoutes = {
   archive: defineRoute({

@@ -1,4 +1,4 @@
-import { responseReference } from '../openapi/primitives.js';
+import { responseReference } from './openapi-primitives.js';
 import {
   catalogQuerySchema,
   integrationListResponseSchema,

@@ -7,7 +7,7 @@ import {
 import {
   problemResponse,
   responseReference,
-} from '../../openapi/primitives.js';
+} from '../openapi-primitives.js';
 import * as workspaces from '../../schemas/identity/workspaces.js';
 import { defineRoute, named, type RouteAccess } from '../define.js';
 

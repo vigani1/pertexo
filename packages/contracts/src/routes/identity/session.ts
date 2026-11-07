@@ -1,7 +1,7 @@
 import * as schemas from '../../schemas/identity/workspaces.js';
 import { named as projected, named } from '../define.js';
 import { defineRoute } from '../define.js';
-import { responseReference } from '../../openapi/primitives.js';
+import { responseReference } from '../openapi-primitives.js';
 export const sessionRoutes = {
   me: defineRoute({
     operationId: 'getCurrentUserProfile',

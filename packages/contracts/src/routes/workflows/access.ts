@@ -6,7 +6,7 @@ import {
 } from '@pertexo/policy';
 import { z } from 'zod';
 
-import { responseReference } from '../../openapi/primitives.js';
+import { responseReference } from '../openapi-primitives.js';
 import type { NamedSchema, RouteAccess } from '../define.js';
 import { named } from '../define.js';
 

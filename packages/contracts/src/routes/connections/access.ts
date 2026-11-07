@@ -5,7 +5,7 @@ import {
   type WorkspaceStatusList,
 } from '@pertexo/policy';
 
-import { responseReference } from '../../openapi/primitives.js';
+import { responseReference } from '../openapi-primitives.js';
 import type { RouteAccess } from '../define.js';
 
 function session(

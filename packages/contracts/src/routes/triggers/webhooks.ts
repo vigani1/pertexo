@@ -5,7 +5,7 @@ import {
 import { webhookAuthenticationSchema } from '@pertexo/workflow-model';
 import { z } from 'zod';
 
-import { responseReference } from '../../openapi/primitives.js';
+import { responseReference } from '../openapi-primitives.js';
 import {
   webhookDeliveryListQuerySchema,
   webhookDeliveryListResponseSchema,

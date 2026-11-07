@@ -6,7 +6,7 @@ import {
   authenticatedComponents,
   jsonSchema,
   problemResponse,
-} from '../primitives.js';
+} from '../../routes/openapi-primitives.js';
 
 const routes = Object.values(artifactRoutes);
 

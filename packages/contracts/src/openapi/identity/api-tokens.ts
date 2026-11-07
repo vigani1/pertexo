@@ -4,7 +4,7 @@ import {
 } from '../../routes/identity/api-tokens.js';
 import { routePaths, routeSchemas } from '../../routes/openapi.js';
 import { apiTokenInfoResponseSchema } from '../../schemas/identity/api-tokens.js';
-import { jsonResponse, jsonSchema, problemResponse } from '../primitives.js';
+import { jsonResponse, jsonSchema, problemResponse } from '../../routes/openapi-primitives.js';
 
 const routes = Object.values(apiTokenRoutes);
 

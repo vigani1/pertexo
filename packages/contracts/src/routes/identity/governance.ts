@@ -4,7 +4,7 @@ import {
 } from '@pertexo/policy';
 import { z } from 'zod';
 
-import { problemResponse } from '../../openapi/primitives.js';
+import { problemResponse } from '../openapi-primitives.js';
 import * as schemas from '../../schemas/identity/governance.js';
 import { defineRoute, named, type RouteAccess } from '../define.js';
 

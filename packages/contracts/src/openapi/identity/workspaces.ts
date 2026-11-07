@@ -10,7 +10,7 @@ import {
   authenticatedComponents,
   jsonSchema,
   problemResponse,
-} from '../primitives.js';
+} from '../../routes/openapi-primitives.js';
 import {
   apiTokenContractPaths,
   apiTokenContractSchemas,
