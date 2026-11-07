@@ -11,7 +11,7 @@ import {
   oauth2CredentialSchema,
 } from '../../src/schemas/oauth2-connections.js';
 
-import { connectionFields, consentSettings, grant } from './fixture.js';
+import { connectionFields, consentSettings, grant } from './oauth2.fixture.js';
 
 describe('the OAuth2 credential', () => {
   const credential = {

@@ -22,7 +22,7 @@ import {
   publicationReviewRequestSchema,
   publicationReviewDecisionSchema,
 } from '../src/schemas/workflows/publication-review.js';
-import { workflowPromotionApplySchema } from '../src/schemas/workflows/promotions/commands.js';
+import { workflowPromotionApplySchema } from '../src/schemas/workflows/promotions/promotion-commands.js';
 import { workflowRunCancelRequestSchema } from '../src/schemas/execution/runs.js';
 import { pendingTaskDecisionRequestSchema } from '../src/schemas/execution/pending-tasks.js';
 

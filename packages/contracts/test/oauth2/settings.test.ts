@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { oauth2ClientSettingsSchema } from '../../src/schemas/oauth2-connections.js';
 
-import { consentSettings, serverSettings } from './fixture.js';
+import { consentSettings, serverSettings } from './oauth2.fixture.js';
 
 const accepts = (settings: unknown): boolean =>
   oauth2ClientSettingsSchema.safeParse(settings).success;
