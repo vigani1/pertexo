@@ -13,3 +13,13 @@ export class QueueNotReadyError extends Error {
     super('Queue producer Redis connection is not ready');
   }
 }
+
+export class QueuePublicationUnavailableError extends Error {
+  public override readonly name = 'QueuePublicationUnavailableError';
+
+  public constructor() {
+    super(
+      'Redis cannot accept queue writes. Check Redis memory limits and persistence disk errors, then retry the readiness check.',
+    );
+  }
+}

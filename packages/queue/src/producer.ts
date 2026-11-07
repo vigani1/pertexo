@@ -22,7 +22,10 @@ import type {
   QueueMap,
 } from './publication/queue-producer.types.js';
 import { parseProducerOptions } from './publication/configuration.js';
-import { QueueNotReadyError } from './publication/queue-producer.errors.js';
+import {
+  QueueNotReadyError,
+  QueuePublicationUnavailableError,
+} from './publication/queue-producer.errors.js';
 
 export {
   type QueueProducerOptions,
@@ -31,7 +34,10 @@ export {
   type QueueStateObservation,
   type QueueProducer,
 } from './publication/queue-producer.types.js';
-export { QueueNotReadyError } from './publication/queue-producer.errors.js';
+export {
+  QueueNotReadyError,
+  QueuePublicationUnavailableError,
+} from './publication/queue-producer.errors.js';
 export { jobIdForOutboxEvent } from './jobs/job-id.js';
 function createQueues(redis: Redis): QueueMap {
   return {
@@ -185,6 +191,17 @@ export class BullMqQueueProducer implements QueueProducer {
       new QueueNotReadyError(),
     );
     if (!this.isReady()) throw new QueueNotReadyError();
+    try {
+      // PING/connection readiness stays green during OOM and persistence refusal.
+      // One expiring key checks admission without creating any queue work.
+      await this.withTimeout(
+        this.redis.set('pertexo:queue:write-readiness', '1', 'PX', 10_000),
+        Math.max(1, deadline - Date.now()),
+        new QueuePublicationUnavailableError(),
+      );
+    } catch {
+      throw new QueuePublicationUnavailableError();
+    }
   }
 
   public async publish(
