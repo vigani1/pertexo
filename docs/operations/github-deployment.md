@@ -57,3 +57,11 @@ restore and operator mutations.
 Run the workflow once and inspect its health result and server logs. A failed SSH
 session is not proof of rollback: inspect `state/current` and any migration/restore
 fence before retrying.
+
+### Code steps on ECS
+
+The retained ECS API and worker tasks set `CODE_STEPS_ENABLED=false` together.
+These task definitions do not include the hardened runner or its private Unix
+socket, so Code steps are unavailable on this target. Do not enable the setting
+until a separately reviewed cloud runner composition satisfies ADR 082. The
+single-server Compose deployment includes that runner and keeps Code support.
