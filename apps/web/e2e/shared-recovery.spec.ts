@@ -91,8 +91,9 @@ for (const width of [375, 1280]) {
       name: 'See all results for “Needle”',
     });
     await expect(all).toBeVisible();
-    await input.press('End');
-    await input.press('Enter');
+    await expect(input).toBeFocused();
+    await page.keyboard.press('End');
+    await page.keyboard.press('Enter');
     await expect(page).toHaveURL(/query=Needle/);
     await page.getByRole('button', { name: 'Load more', exact: true }).click();
     await expect(

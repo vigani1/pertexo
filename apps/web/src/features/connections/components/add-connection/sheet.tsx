@@ -1,14 +1,15 @@
+import { useCommandAttempt } from '@/lib/api/commands/use-command-attempt';
+import { ExpiredAttemptNotice } from '@/components/patterns/states/expired-attempt-notice';
 import { DialogFooter } from '@/components/ui/dialog';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { DialogClose } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import {
-  canResend,
   isUnconfirmedCommand,
   newCommandKey,
   type CommandKey,
 } from '@/lib/api/commands/command-retry';
-import { useId, useRef, useState } from 'react';
+import { useId, useState } from 'react';
 import { ConfirmDialog } from '@/components/patterns/actions/confirm-dialog';
 import type { ConnectionResponse } from '@pertexo/contracts';
 import {
@@ -91,6 +92,14 @@ export function AddConnectionSheet(props: AddConnectionSheetProps) {
           <StepIndicator step={model.step} />
         </SheetHeader>
         <SheetBody>
+          {model.attempt.expired ? (
+            <ExpiredAttemptNotice
+              onNewAttempt={() => {
+                model.attempt.clear();
+                model.clearSensitiveState();
+              }}
+            />
+          ) : null}
           <form
             id={`${model.id}-form`}
             noValidate
@@ -112,9 +121,10 @@ export function AddConnectionSheet(props: AddConnectionSheetProps) {
               command={{
                 disabled: model.create.isPending,
                 uncertain: model.uncertain,
-                createError: model.createFailed
-                  ? model.create.error
-                  : undefined,
+                createError:
+                  model.createFailed && !model.attempt.expired
+                    ? model.create.error
+                    : undefined,
               }}
               result={{
                 created: model.created,
@@ -220,7 +230,7 @@ function useAddConnectionForm({
     // A step's slot takes it as soon as it can be used, not when this sheet closes.
     onCreated?.(connected);
   });
-  const attempt = useRef<HeldCommand | undefined>(undefined);
+  const attempt = useCommandAttempt<HeldCommand>();
   const name =
     nameInput ??
     (provider && suggestConnectionName(provider, workspaceName)) ??
@@ -232,7 +242,7 @@ function useAddConnectionForm({
       notifications.success(savedMessage(created, test.phase === 'ok'));
       onCreated?.(test.result?.connection ?? created);
     }
-    attempt.current = undefined;
+    attempt.clear();
     setChosen(undefined);
     setStep(undefined);
     setNameInput(undefined);
@@ -261,14 +271,6 @@ function useAddConnectionForm({
     if (credential.validate() !== undefined) setStep('name');
   }
 
-  /** Server field errors land on the name or the credential step. */
-  function placeServerIssues(error: unknown) {
-    const issues = problemIssues(error);
-    if (issues.some((issue) => issue.path === 'name'))
-      nameValidation.showErrors({ name: NAME_REFUSED });
-    if (credential.showServerIssues(issues)) setStep('credential');
-  }
-
   async function save() {
     if (provider === undefined || create.isPending) return;
     if (!nameValidation.submit({ name: connectionNameError(name) })) return;
@@ -276,20 +278,24 @@ function useAddConnectionForm({
       setStep('credential');
       return;
     }
-    const held = heldCommand(
-      attempt.current,
-      toCreateRequest(name.trim(), credential.draft),
-    );
-    attempt.current = held;
-    const { command } = held;
+    const request = toCreateRequest(name.trim(), credential.draft);
+    const signature = JSON.stringify(request);
+    if (attempt.current()?.signature !== signature) attempt.clear();
+    const command = await attempt.getOrCreate(() => ({
+      signature,
+      request,
+      ...newCommandKey(),
+    }));
+    if (command === undefined) return;
     let connection: ConnectionResponse;
     try {
       connection = await create.mutateAsync(command);
     } catch (error) {
-      placeServerIssues(error);
+      if (placeServerIssues(error, nameValidation, credential))
+        setStep('credential');
       return;
     }
-    attempt.current = undefined;
+    attempt.clear();
     setSavedCredential(describeSavedCredential(credential.draft));
     credential.clear();
     clearSensitiveState();
@@ -311,6 +317,7 @@ function useAddConnectionForm({
 
   return {
     request,
+    attempt,
     requestClose,
     provider,
     step,
@@ -339,23 +346,10 @@ function useAddConnectionForm({
   } as const;
 }
 
-type HeldCommand = Readonly<{
-  signature: string;
-  command: CreateConnectionCommand & CommandKey;
-}>;
-
+type HeldCommand = CreateConnectionCommand &
+  CommandKey &
+  Readonly<{ signature: string }>;
 const NAME_REFUSED = 'Pertexo couldn’t use this name. Try a shorter one.';
-
-/** A retry of the same request keeps its key, so it can't save twice. */
-function heldCommand(
-  held: HeldCommand | undefined,
-  request: CreateConnectionCommand['request'],
-): HeldCommand {
-  const signature = JSON.stringify(request);
-  return held?.signature === signature && canResend(held.command)
-    ? held
-    : { signature, command: { request, ...newCommandKey() } };
-}
 
 const problemIssues = (error: unknown) =>
   isApiError(error) ? (error.problem?.errors ?? []) : [];
@@ -374,4 +368,16 @@ function savedMessage(connection: ConnectionResponse, passed: boolean) {
 
 function isFieldProblem(error: unknown): boolean {
   return isApiError(error) && (error.problem?.errors?.length ?? 0) > 0;
+}
+
+/** Server field errors land on the name or the credential step. */
+function placeServerIssues(
+  error: unknown,
+  nameValidation: ReturnType<typeof useFieldValidation<'name'>>,
+  credential: ReturnType<typeof useCredentialForm>,
+) {
+  const issues = problemIssues(error);
+  if (issues.some((issue) => issue.path === 'name'))
+    nameValidation.showErrors({ name: NAME_REFUSED });
+  return credential.showServerIssues(issues);
 }
