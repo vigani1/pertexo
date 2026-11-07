@@ -21,9 +21,9 @@ import { randomUUID } from 'node:crypto';
 import {
   WorkflowAutoPauseSettingsRevisionConflictError,
   WorkspaceAutoPauseSettingsRevisionConflictError,
-  WorkflowNotFoundError,
   WorkflowPauseRevisionConflictError,
-} from '../../../src/testing.js';
+} from '../../../src/authoring/settings/auto-pause/auto-pause.errors.js';
+import { WorkflowNotFoundError } from '../../../src/authoring/workflows/workflow-authoring.errors.js';
 import { IdempotencyConflictError } from '@pertexo/database/platform';
 import { enforceRetention } from '../../support/retention.js';
 

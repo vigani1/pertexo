@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, expect, it } from 'vitest';
-import { withTenantScopedReadClient } from '../../../src/testing.js';
+import { withTenantScopedReadClient } from '@pertexo/database/primitives';
 import {
   admin,
   closeWorld,

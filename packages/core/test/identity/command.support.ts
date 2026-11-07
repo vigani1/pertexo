@@ -5,7 +5,7 @@ import { randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
 import { afterAll, beforeAll } from 'vitest';
 
-import { createIdentityWorkspaceStore } from '../../src/testing.js';
+import { createIdentityWorkspaceStore } from '../../src/tenant-access/identity-workspace.store.js';
 import {
   createWorkspaceDatabase,
   parseDatabaseConfig,

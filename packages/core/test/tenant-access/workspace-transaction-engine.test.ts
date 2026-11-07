@@ -3,9 +3,9 @@ import type { Pool, PoolClient } from 'pg';
 import {
   withActorScopedClient,
   withTenantScopedClient,
-  withPlatformTransaction,
   withWorkspaceTransaction,
-} from '../../src/testing.js';
+} from '@pertexo/database/primitives';
+import { withPlatformTransaction } from '@pertexo/database/platform';
 import {
   workspaceId,
   actorId,

@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import { describe, expect, it } from 'vitest';
 
-import { UserProfileCommandConflictError } from '../../src/testing.js';
+import { UserProfileCommandConflictError } from '../../src/tenant-access/tenant-access.errors.js';
 import { useIdentityCommandDatabase } from './command.support.js';
 
 const database = useIdentityCommandDatabase('user_profile');

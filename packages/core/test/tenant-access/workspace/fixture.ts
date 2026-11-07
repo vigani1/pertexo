@@ -7,7 +7,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
 import type { DatabaseError } from 'pg';
 
-import { createIdentityWorkspaceStore } from '../../../src/testing.js';
+import { createIdentityWorkspaceStore } from '../../../src/tenant-access/identity-workspace.store.js';
 import {
   createWorkspaceDatabase,
   parseDatabaseConfig,

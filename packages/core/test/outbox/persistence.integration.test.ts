@@ -34,7 +34,7 @@ import {
   parseDatabaseConfig,
   createWorkspaceDatabase,
 } from '@pertexo/database/platform';
-import { consumeInboxMessage } from '../../src/testing.js';
+import { consumeInboxMessage } from '../../src/outbox/consume-message.js';
 import { createPostgresCommitAckProxy } from '@pertexo/database/testing';
 import { createOutboxDispatcherDatabase } from '../../src/outbox/dispatcher/outbox-dispatcher.store.js';
 import { Pool } from 'pg';

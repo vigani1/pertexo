@@ -4,10 +4,8 @@ import { parseDatabaseConfig } from '@pertexo/database/platform';
 import type { Role } from '@pertexo/policy';
 import { describe, expect, it } from 'vitest';
 
-import {
-  FailureNotificationDestinationError,
-  createNotificationDestinationStore,
-} from '../../src/testing.js';
+import { FailureNotificationDestinationError } from '../../src/notifications/destinations/notification-destination.errors.js';
+import { createNotificationDestinationStore } from '../../src/notifications/destinations/notification-destination.store.js';
 import { useIdentityCommandDatabase } from '../identity/command.support.js';
 
 const db = useIdentityCommandDatabase('dest_access');

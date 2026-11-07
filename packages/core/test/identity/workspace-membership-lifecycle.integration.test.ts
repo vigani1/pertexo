@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { randomUUID } from 'node:crypto';
-import { WorkspaceMembershipCommandConflictError } from '../../src/testing.js';
+import { WorkspaceMembershipCommandConflictError } from '../../src/tenant-access/tenant-access.errors.js';
 import {
   database,
   membership,

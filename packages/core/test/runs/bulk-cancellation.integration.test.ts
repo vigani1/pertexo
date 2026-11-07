@@ -1,4 +1,4 @@
-import { lockRunAcceptanceCommand } from '../../src/testing.js';
+import { lockRunAcceptanceCommand } from '../../src/runs/commands/acceptance/lock.repository.js';
 import { performance } from 'node:perf_hooks';
 import { describe, expect, it } from 'vitest';
 import { sql } from 'drizzle-orm';
