@@ -23,25 +23,19 @@ Module({
 })(FakeIdentityModule);
 
 describe('catalog Nest module', () => {
-  it('registers static discovery use cases behind the identity module', () => {
-    const dynamic = CatalogModule.register({ module: FakeIdentityModule });
-    expect(dynamic.controllers).toEqual([CatalogController]);
-    expect(dynamic.imports).toEqual([{ module: FakeIdentityModule }]);
-    expect(dynamic.providers).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ provide: ListNodeDefinitionsUseCase }),
-        expect.objectContaining({ provide: ListIntegrationsUseCase }),
-      ]),
-    );
-  });
-
   it('resolves the controller and both use cases through Nest injection', async () => {
     const dynamic = CatalogModule.register({ module: FakeIdentityModule });
     const testing = await Test.createTestingModule({
       imports: [dynamic],
     }).compile();
     try {
-      expect(testing.get(CatalogController)).toBeInstanceOf(CatalogController);
+      const controller = testing.get(CatalogController);
+      expect(
+        controller
+          .listNodeDefinitions()
+          .items.some((node) => node.definition.key === 'core.set'),
+      ).toBe(true);
+      expect(controller.listIntegrations().items.length).toBeGreaterThan(0);
       expect(testing.get(ListNodeDefinitionsUseCase)).toBeInstanceOf(
         ListNodeDefinitionsUseCase,
       );
