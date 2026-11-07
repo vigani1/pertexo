@@ -160,18 +160,36 @@ describe('identity and problem public contracts', () => {
       invitationAcceptanceJourneySchema.parse({ state: 'unavailable' }),
     ).toEqual({ state: 'unavailable' });
     expect(
-      invitationAcceptanceJourneySchema.safeParse({
-        state: 'sign_in_required',
-        intentId: 'a31a3bd0-d607-4f13-85d6-00b1c4cd4bb7',
-        expiresAt: '2026-09-19T15:00:00.000Z',
-        csrfToken: 'not-long-enough',
-        email: 'secret@example.com',
-      }).success,
-    ).toBe(false);
-    expect(
       identityWorkspaceOpenApiDocument.paths[
         '/v1/invitation-acceptance/complete'
       ].post.security,
     ).toEqual([{ cookieSession: [], invitationBinding: [] }]);
+  });
+
+  it('refuses invitation details in an otherwise valid sign-in journey', () => {
+    const journey = {
+      state: 'sign_in_required',
+      intentId: 'a31a3bd0-d607-4f13-85d6-00b1c4cd4bb7',
+      expiresAt: '2099-09-19T15:00:00.000Z',
+      csrfToken: 'c'.repeat(32),
+    };
+    expect(invitationAcceptanceJourneySchema.parse(journey)).toEqual(journey);
+    expect(
+      invitationAcceptanceJourneySchema.safeParse({
+        ...journey,
+        email: 'secret@example.com',
+      }).success,
+    ).toBe(false);
+  });
+
+  it('refuses a short CSRF token independently of invitation privacy', () => {
+    expect(
+      invitationAcceptanceJourneySchema.safeParse({
+        state: 'sign_in_required',
+        intentId: 'a31a3bd0-d607-4f13-85d6-00b1c4cd4bb7',
+        expiresAt: '2099-09-19T15:00:00.000Z',
+        csrfToken: 'not-long-enough',
+      }).success,
+    ).toBe(false);
   });
 });
