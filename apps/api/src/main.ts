@@ -1,3 +1,4 @@
+import { IdentityConfigurationError } from './platform/config/identity-configuration.errors.js';
 import { fileURLToPath } from 'node:url';
 
 import {
@@ -129,7 +130,10 @@ if (isMainModule()) {
       `${JSON.stringify({
         event: 'api.process_failed',
         errorType: classifyProcessError(error),
-        cause: describeProcessFailure(error),
+        cause:
+          error instanceof IdentityConfigurationError
+            ? error.message
+            : describeProcessFailure(error),
         level: 'fatal',
         ...(error instanceof InvalidInstanceLimitError
           ? { invalidSetting: error.setting }

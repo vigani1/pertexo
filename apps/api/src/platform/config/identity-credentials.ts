@@ -1,3 +1,4 @@
+import { IdentityConfigurationError } from './identity-configuration.errors.js';
 import {
   parseApplicationPreviousKeys,
   validateApplicationKeyRing,
@@ -86,8 +87,9 @@ function authenticationProviderPair(
 ): Readonly<{ clientId: string; clientSecret: string }> | undefined {
   if (clientId === undefined && clientSecret === undefined) return undefined;
   if (clientId === undefined || clientSecret === undefined)
-    throw new Error(
-      `${provider}_CLIENT_ID / ${provider}_CLIENT_SECRET (incomplete_pair): supply both settings or remove both.`,
+    throw new IdentityConfigurationError(
+      `${provider}_CLIENT_ID / ${provider}_CLIENT_SECRET`,
+      'incomplete_pair',
     );
   return Object.freeze({ clientId, clientSecret });
 }

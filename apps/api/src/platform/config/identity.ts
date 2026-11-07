@@ -1,3 +1,4 @@
+import { IdentityConfigurationError } from './identity-configuration.errors.js';
 import { parseApplicationPreviousKeys } from '@pertexo/secrets/server';
 import { z } from 'zod';
 
@@ -263,8 +264,6 @@ function parseIdentitySection<T>(settings: string, parse: () => T): T {
   try {
     return parse();
   } catch {
-    throw new Error(
-      `${settings} (invalid_configuration): supply matching settings and valid keys; check the identity configuration guide.`,
-    );
+    throw new IdentityConfigurationError(settings, 'invalid_configuration');
   }
 }
