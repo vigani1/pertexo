@@ -12,6 +12,7 @@ export type BetterAuthTrustedSessions = Readonly<{
   authenticate(
     cookieValue: string,
     signal?: AbortSignal,
+    refresh?: boolean,
   ): Promise<BetterAuthAuthenticatedSession | undefined>;
   revoke(cookieValue: string): Promise<void>;
   revokeToken(token: string): Promise<void>;
@@ -31,6 +32,7 @@ type BetterAuthAuthenticatedSession = Readonly<{
   userId: string;
   sessionId: string;
   expiresAt: Date;
+  setCookies: readonly string[];
   ipAddress?: string;
   userAgent?: string;
 }>;
@@ -71,11 +73,16 @@ export function createTrustedSessions(
           returnHeaders: true,
         }),
       ),
-    authenticate: async (cookieValue: string, signal?: AbortSignal) => {
+    authenticate: async (
+      cookieValue: string,
+      signal?: AbortSignal,
+      refresh = false,
+    ) => {
       signal?.throwIfAborted();
-      const session = await auth.api.getSession({
+      const { response: session, headers } = await auth.api.getSession({
         headers: sessionHeaders(cookieValue),
-        query: { disableCookieCache: true },
+        query: { disableCookieCache: true, disableRefresh: !refresh },
+        returnHeaders: true,
       });
       signal?.throwIfAborted();
       if (session === null) return undefined;
@@ -89,13 +96,14 @@ export function createTrustedSessions(
         userId: session.user.id,
         sessionId: session.session.id,
         expiresAt: new Date(session.session.expiresAt),
+        setCookies: headers.getSetCookie(),
         ...optionalClientMetadata(session.session),
       });
     },
     revoke: async (cookieValue: string) => {
       const session = await auth.api.getSession({
         headers: sessionHeaders(cookieValue),
-        query: { disableCookieCache: true },
+        query: { disableCookieCache: true, disableRefresh: true },
       });
       if (session !== null)
         await revokeAuthenticationSession(pool, session.session.token);
@@ -106,7 +114,7 @@ export function createTrustedSessions(
     evidence: async (cookieValue: string) => {
       const session = await auth.api.getSession({
         headers: sessionHeaders(cookieValue),
-        query: { disableCookieCache: true },
+        query: { disableCookieCache: true, disableRefresh: true },
       });
       if (
         session === null ||
@@ -132,7 +140,7 @@ export async function authenticateBrowserRequest(
 ): Promise<BrowserSession | undefined> {
   const current = await auth.api.getSession({
     headers: request.headers,
-    query: { disableCookieCache: true },
+    query: { disableCookieCache: true, disableRefresh: true },
   });
   if (current === null) return undefined;
   if (!(await isAuthenticationSessionAllowed(pool, current.session.id)))

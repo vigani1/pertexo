@@ -51,15 +51,21 @@ export class BetterAuthSessionService {
 
   public async authenticate(
     cookieValue: string,
-    options: Readonly<{ signal?: AbortSignal }> = {},
+    options: Readonly<{
+      signal?: AbortSignal;
+      cookieBoundary?: SessionCookieBoundary;
+    }> = {},
   ): Promise<AuthenticatedSession> {
     try {
       const session = await this.runtime.sessions.authenticate(
         cookieValue,
         options.signal,
+        options.cookieBoundary !== undefined,
       );
       if (session === undefined)
         throw new IdentityError('identity.session_invalid');
+      if (options.cookieBoundary !== undefined && session.setCookies.length > 0)
+        await this.writeCookies(options.cookieBoundary, session);
       const clientMetadata: SafeClientMetadata = Object.freeze({
         ...(session.userAgent === undefined
           ? {}
