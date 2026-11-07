@@ -71,6 +71,7 @@ describe('@pertexo/secrets/server as a built package', () => {
     `);
 
     expect(names).toEqual([
+      'ApplicationKeyConfigurationError',
       'ApplicationSecretKeyUnavailableError',
       'AwsKmsEnvelopeKeyProvider',
       'AwsKmsWebhookEnvelopeKeyProvider',
@@ -84,6 +85,7 @@ describe('@pertexo/secrets/server as a built package', () => {
       'SecureHttpClient',
       'SecureHttpError',
       'StoredKeyVerificationError',
+      'SystemMailConfigurationError',
       'WebhookTriggerEnvelopeEncryption',
       'WebhookTriggerSecretEncryptionError',
       'applicationKeyVersionSchema',
