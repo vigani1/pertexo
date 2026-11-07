@@ -107,6 +107,12 @@ const coreAreas = new Set([
 ]);
 const applicationAreas = {
   api: [
+    'authentication',
+    'authorization',
+    'identity',
+    'api-tokens',
+    'platform',
+    'problems',
     'workflow-runs',
     'pending-tasks',
     'forms',
@@ -170,6 +176,7 @@ export function isExecutionAreaFile(file) {
 }
 
 export function isExecutionAreaEntry(file) {
+  if (file === 'apps/api/src/platform/http/index.ts') return true;
   const [kind, workspace, lane, area, name, ...rest] = file.split('/');
   if (
     kind === 'packages' &&
@@ -192,6 +199,13 @@ export function isExecutionAreaEntry(file) {
     (kind === 'packages' && workspace === 'core' && coreAreas.has(area)) ||
     (kind === 'apps' &&
       workspace === 'api' &&
-      ['artifacts', 'node-testing', 'workflow-authoring'].includes(area))
+      [
+        'artifacts',
+        'node-testing',
+        'workflow-authoring',
+        'authentication',
+        'authorization',
+        'identity',
+      ].includes(area))
   );
 }

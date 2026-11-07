@@ -391,6 +391,16 @@ export function validateModuleImports(sources) {
     const inspectRawFetch = (node) => {
       if (ts.isCallExpression(node)) {
         const callee = node.expression;
+        if (
+          file.startsWith('apps/api/src/authentication/') &&
+          file !==
+            'apps/api/src/authentication/better-auth/transactions/authentication-transaction-dialect.ts' &&
+          ts.isPropertyAccessExpression(callee) &&
+          callee.name.text === 'query'
+        )
+          errors.push(
+            `${file}: identity product persistence belongs in core; only the SDK transaction dialect executes adapter SQL`,
+          );
         const isGlobalFetch =
           ts.isIdentifier(callee) && callee.text === 'fetch'
             ? true

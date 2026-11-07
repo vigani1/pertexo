@@ -44,7 +44,7 @@ for (const file of [
   `${browser}/connections-search.public.ts`,
   `${browser}/public.ts`,
   `${browser}/picker.public.ts`,
-  'apps/api/src/platform/config/api.ts',
+  'apps/api/src/platform/config/api-config.ts',
 ]) {
   test(`accepts ${file}`, () => assert.deepEqual(check(file), []));
 }
@@ -369,4 +369,31 @@ test('keeps contracts and infrastructure names within the completed cohort', () 
     'infrastructure/testing/worker-databases.mjs',
   ])
     assert.deepEqual(check(file), []);
+});
+
+for (const area of [
+  'authentication',
+  'authorization',
+  'identity',
+  'api-tokens',
+  'platform',
+  'problems',
+]) {
+  for (const lane of ['src', 'test']) {
+    test(`batch G requires concrete names in API ${lane}/${area}`, () => {
+      for (const name of ['fixture.ts', 'input.ts', 'runtime.module.ts'])
+        assert.ok(
+          rules(`apps/api/${lane}/${area}/peer/${name}`).includes('FN008'),
+        );
+    });
+  }
+}
+test('preserves the intentional API auth and HTTP interfaces', () => {
+  for (const file of [
+    'authentication/index.ts',
+    'authorization/index.ts',
+    'identity/index.ts',
+    'platform/http/index.ts',
+  ])
+    assert.deepEqual(check(`apps/api/src/${file}`), []);
 });
