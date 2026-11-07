@@ -422,3 +422,65 @@ for (const area of [
         );
   });
 }
+
+for (const app of ['worker', 'code-runner', 'ops', 'cli']) {
+  for (const lane of ['src', 'test']) {
+    test(`batch G part 3 requires concrete ${app} ${lane} module names`, () => {
+      for (const name of [
+        'fixture.ts',
+        'types.ts',
+        'runtime.module.ts',
+        'config.ts',
+        'app.ts',
+        'run.ts',
+        'files.ts',
+        'http.ts',
+        'arguments.ts',
+      ])
+        assert.ok(
+          rules(`apps/${app}/${lane}/peer/${name}`).includes('FN008'),
+          name,
+        );
+    });
+  }
+}
+test('keeps runtime entry points and named native/language modules', () => {
+  for (const file of [
+    'apps/worker/src/main.ts',
+    'apps/worker/src/testing.ts',
+    'apps/ops/src/identity/main.ts',
+    'apps/cli/src/automation-http-client.ts',
+    'apps/code-runner/native/launch.c',
+    'apps/code-runner/python/task.py',
+    'infrastructure/single-server/release-operations.sh',
+  ])
+    assert.deepEqual(check(file), [], file);
+});
+test('repository naming discovery includes runner languages and operational shell scripts', async (t) => {
+  const directory = await mkdtemp(
+    path.join(tmpdir(), 'pertexo-runtime-names-'),
+  );
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const files = [
+    'apps/code-runner/native/BadName.c',
+    'apps/code-runner/python/BadName.py',
+    'infrastructure/single-server/common.sh',
+  ];
+  for (const file of files) {
+    await mkdir(path.dirname(path.join(directory, file)), { recursive: true });
+    await writeFile(path.join(directory, file), '');
+  }
+  const diagnostics = await inspectFileNames(directory);
+  assert.deepEqual(
+    [...new Set(diagnostics.map(({ path: file }) => file))].sort(),
+    files.toSorted(),
+  );
+});
+
+test('runner native and Python modules also name their concrete subject', () => {
+  for (const file of [
+    'apps/code-runner/native/utils.c',
+    'apps/code-runner/python/helpers.py',
+  ])
+    assert.ok(rules(file).includes('FN008'), file);
+});
