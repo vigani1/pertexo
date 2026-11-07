@@ -50,8 +50,11 @@ export function fixtureIdentityConfiguration(
     ...defaults,
     publicWebOrigin: fixtureOrigin,
     session: {
-      ...defaults.session,
-      secureCookie: options.secureCookies ?? defaults.session.secureCookie,
+      ...(options.session ?? defaults.session),
+      secureCookie:
+        options.secureCookies ??
+        options.session?.secureCookie ??
+        defaults.session.secureCookie,
     },
     ...(options.federationEncryption === undefined
       ? {}

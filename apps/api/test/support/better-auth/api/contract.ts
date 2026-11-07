@@ -52,6 +52,7 @@ export type ApiFixtureOptions = Readonly<{
   notificationMail?: ApiIdentityConfig['betterAuth']['durableMail'];
   federationEncryption?: ApiIdentityConfig['federationEncryption'];
   secureCookies?: boolean;
+  session?: ApiIdentityConfig['session'];
   /** Reads like AUTH_SIGN_UP_MODE; left out, the fixture is open. */
   signUpMode?: 'invitation' | 'open';
   socialProviders?: ApiIdentityConfig['betterAuth']['providers'];
