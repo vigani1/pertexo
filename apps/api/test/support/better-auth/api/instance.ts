@@ -324,6 +324,7 @@ export function useBetterAuthRealApi(
     return identityRuntime;
   }
   return {
+    application: () => application,
     send,
     signUp,
     signIn,
