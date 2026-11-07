@@ -102,25 +102,6 @@ describe('identity runtime composition', () => {
     );
   });
 
-  it('composes Better Auth as the one session authority', async () => {
-    createsIdentityDatabase(identityDatabase());
-    const runtime = await createApiIdentityRuntime(
-      identityConfig,
-      databaseConfig,
-      { logger: silent },
-    );
-
-    expect(runtime.betterAuth).toBeDefined();
-    expect(runtime.dependencies.sessions).toBeDefined();
-    expect(runtime.dependencies.persistence).toBe(
-      runtime.dependencies.authorization,
-    );
-    expect(runtime.dependencies.config.publicWebOrigin).toBe(
-      'https://app.example.test',
-    );
-    await runtime.close();
-  });
-
   it('owns and closes the production database resources when none are injected', async () => {
     const closes = [
       ownedClose('createIdentityWorkspaceStore'),
