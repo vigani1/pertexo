@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { parseEnv } from 'node:util';
 import { test } from 'node:test';
-import { it } from './support/it.mjs';
+import { it } from 'node:test';
 import { parseApiConfig } from '../../../apps/api/dist/platform/config/api.js';
 import { parseWorkerConfig } from '../../../apps/worker/dist/config/worker.js';
 import {

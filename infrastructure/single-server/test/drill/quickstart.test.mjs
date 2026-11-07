@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { randomBytes, randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { after, before, describe } from 'node:test';
-import { it } from '../support/it.mjs';
+import { it } from 'node:test';
 import { createClient } from './support/client.mjs';
 import {
   removeReleaseTags,

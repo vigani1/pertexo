@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { after, afterEach, before, describe } from 'node:test';
-import { it } from '../support/it.mjs';
+import { it } from 'node:test';
 import { RUNTIME_IMAGE, WEB_IMAGE, requireImages } from './support/images.mjs';
 import { docker, mustDocker, waitFor } from './support/process.mjs';
 
