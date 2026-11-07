@@ -139,3 +139,65 @@ it('keeps unsaved members on refetch and offers an explicit reload after a confl
   await event.click(screen.getByRole('button', { name: 'Cancel' }));
   expect(f.done).toHaveBeenCalledOnce();
 });
+it('loads a refused sharing revision and resubmits retained people only after review', async () => {
+  const f = setup();
+  const bodies: unknown[] = [];
+  mockServer.use(
+    http.post(
+      `${api}/connections/${connectionId}/sharing`,
+      async ({ request }) => {
+        bodies.push(await request.json());
+        if (bodies.length === 1) {
+          f.update({
+            connectionId,
+            mode: 'workspace',
+            revision: 2,
+            members: [],
+          });
+          return HttpResponse.json(
+            {
+              type: 'about:blank',
+              title: 'Sharing changed',
+              status: 409,
+              code: 'connection.conflict',
+              requestId: 'sharing-conflict',
+            },
+            {
+              status: 409,
+              headers: { 'content-type': 'application/problem+json' },
+            },
+          );
+        }
+        const result = {
+          connectionId,
+          mode: 'restricted' as const,
+          revision: 3,
+          members: [{ userId, label: 'Jane', active: true }],
+        };
+        f.update(result);
+        return HttpResponse.json({ ...result, replayed: false });
+      },
+    ),
+  );
+  const event = userEvent.setup();
+  await event.click(
+    await screen.findByRole('radio', { name: /Only people you choose/ }),
+  );
+  await event.click(await screen.findByRole('button', { name: 'Add Jane' }));
+  await event.click(screen.getByRole('button', { name: 'Save' }));
+  await event.click(
+    await screen.findByRole('button', {
+      name: 'Keep edits and use latest revision',
+    }),
+  );
+  expect(screen.getByRole('button', { name: 'Remove Jane' })).toBeVisible();
+  await event.click(screen.getByRole('button', { name: 'Save' }));
+  await waitFor(() => {
+    expect(bodies).toHaveLength(2);
+  });
+  expect(bodies[1]).toEqual({
+    mode: 'restricted',
+    expectedSharingRevision: 2,
+    userIds: [userId],
+  });
+});

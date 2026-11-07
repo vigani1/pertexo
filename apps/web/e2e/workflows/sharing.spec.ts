@@ -103,6 +103,8 @@ for (const theme of ['light', 'dark'] as const)
       let moves = 0,
         shares = 0,
         connectionShares = 0;
+      let folderRefused = false,
+        connectionRefused = false;
       await page.route(`${base}/workflow-folders`, (route) =>
         route.fulfill({ json: { items: folders } }),
       );
@@ -115,6 +117,21 @@ for (const theme of ['light', 'dark'] as const)
             route.request().postDataJSON(),
           );
           expect(body.expectedFolderRevision).toBe(sharing.revision);
+          if (!folderRefused) {
+            folderRefused = true;
+            sharing = { ...sharing, revision: 2 };
+            return route.fulfill({
+              status: 409,
+              contentType: 'application/problem+json',
+              json: {
+                type: 'about:blank',
+                title: 'Folder changed',
+                status: 409,
+                code: 'workflow.folder_revision_conflict',
+                requestId: 'browser-folder-conflict',
+              },
+            });
+          }
           shares++;
           sharing = {
             ...sharing,
@@ -171,7 +188,7 @@ for (const theme of ['light', 'dark'] as const)
         async (route) => {
           expect(route.request().postDataJSON()).toMatchObject({
             parentId: null,
-            expectedFolderRevision: 2,
+            expectedFolderRevision: 3,
             audienceReview: { token, acknowledge: true },
           });
           moves++;
@@ -209,6 +226,15 @@ for (const theme of ['light', 'dark'] as const)
       await page.keyboard.press('ArrowDown');
       await page.getByRole('option', { name: 'Can view', exact: true }).click();
       await capture(page, info, `folder-sharing-${theme}-${String(width)}`);
+      await share
+        .getByRole('button', { name: 'Save', exact: true })
+        .press('Enter');
+      await expect(
+        share.getByRole('combobox', { name: 'Access for Finance reviewer' }),
+      ).toContainText('Can view');
+      await share
+        .getByRole('button', { name: 'Keep edits and use latest revision' })
+        .click();
       await share
         .getByRole('button', { name: 'Save', exact: true })
         .press('Enter');
@@ -271,12 +297,27 @@ for (const theme of ['light', 'dark'] as const)
           const body = connectionSharingRequestSchema.parse(
             route.request().postDataJSON(),
           );
-          expect(body.expectedSharingRevision).toBe(1);
+          expect(body.expectedSharingRevision).toBe(connectionSharing.revision);
+          if (!connectionRefused) {
+            connectionRefused = true;
+            connectionSharing = { ...connectionSharing, revision: 2 };
+            return route.fulfill({
+              status: 409,
+              contentType: 'application/problem+json',
+              json: {
+                type: 'about:blank',
+                title: 'Sharing changed',
+                status: 409,
+                code: 'connection.conflict',
+                requestId: 'browser-connection-conflict',
+              },
+            });
+          }
           connectionShares++;
           connectionSharing = {
             ...connectionSharing,
             mode: body.mode,
-            revision: 2,
+            revision: 3,
           };
           await route.fulfill({
             json: { ...connectionSharing, replayed: false },
@@ -301,6 +342,15 @@ for (const theme of ['light', 'dark'] as const)
         .getByRole('button', { name: 'Add Operations owner' })
         .click();
       await capture(page, info, `connection-sharing-${theme}-${String(width)}`);
+      await details
+        .getByRole('button', { name: 'Save', exact: true })
+        .press('Enter');
+      await details
+        .getByRole('button', { name: 'Keep edits and use latest revision' })
+        .click();
+      await expect(
+        details.getByRole('button', { name: 'Remove Operations owner' }),
+      ).toBeVisible();
       await details
         .getByRole('button', { name: 'Save', exact: true })
         .press('Enter');

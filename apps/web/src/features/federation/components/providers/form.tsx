@@ -8,8 +8,7 @@ import {
 } from '@pertexo/contracts';
 import { LabelledField } from '@/components/ui/field';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Button } from '@/components/ui/button';
-import { Notice } from '@/components/ui/notice';
+import { ProviderRevisionNotice } from './revision-notice';
 import { useFieldValues } from '@/components/ui/use-field-validation';
 import { useFederationCommand } from '../../data/use-command';
 import {
@@ -64,7 +63,9 @@ function OidcProviderForm({
   const fields = useFieldValues(oidcFieldRules(provider), initial(provider));
   const command = useFederationCommand(scope, onClose),
     locked = command.pending || command.uncertain,
-    stale = organization.revision !== baseRevision;
+    stale =
+      organization.revision !== baseRevision ||
+      baseRevision === command.refusedRevision;
   return (
     <ProviderDialog
       title={
@@ -156,28 +157,21 @@ function OidcProviderForm({
         </LabelledField>
         <OidcClaimFields id={id} fields={fields} locked={locked} />
         {stale ? (
-          <Notice
-            tone="warning"
-            action={
-              <Button
-                type="button"
-                variant="outline"
-                disabled={locked}
-                onClick={() => {
-                  fields.reset(initial(provider));
-                  setEnabled(provider?.enabled ?? false);
-                  setJit(provider?.configuration.jitEnabled ?? false);
-                  setBaseRevision(organization.revision);
-                  command.reset();
-                }}
-              >
-                Reload provider
-              </Button>
-            }
-          >
-            Organization settings changed. Your edits are kept. Reloading
-            replaces this form with the current settings.
-          </Notice>
+          <ProviderRevisionNotice
+            locked={locked}
+            canReview={organization.revision !== baseRevision}
+            onKeepEdits={() => {
+              setBaseRevision(organization.revision);
+              command.reset();
+            }}
+            onReload={() => {
+              fields.reset(initial(provider));
+              setEnabled(provider?.enabled ?? false);
+              setJit(provider?.configuration.jitEnabled ?? false);
+              setBaseRevision(organization.revision);
+              command.reset();
+            }}
+          />
         ) : null}
         <ProviderFooter
           command={command}

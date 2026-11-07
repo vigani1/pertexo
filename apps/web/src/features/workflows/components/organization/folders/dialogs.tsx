@@ -1,5 +1,5 @@
 import { DialogClose } from '@/components/ui/dialog';
-import { useId, useState } from 'react';
+import { useId, useState, type ReactNode } from 'react';
 import {
   workflowFolderNameInputSchema,
   type WorkflowFolder,
@@ -42,6 +42,7 @@ export function FolderNameDialog({
   target,
   command,
   onClose,
+  revisionReview,
 }: Readonly<{
   workspaceId: string;
   target:
@@ -49,6 +50,7 @@ export function FolderNameDialog({
     | Readonly<{ kind: 'rename'; folder: WorkflowFolder }>;
   command: WorkflowOrganizationCommand;
   onClose: () => void;
+  revisionReview?: ReactNode;
 }>) {
   const id = useId();
   const fields = useFieldValidation<'name'>();
@@ -66,7 +68,12 @@ export function FolderNameDialog({
   };
   const locked = command.pending || command.retryAvailable;
   const submit = () => {
-    if (locked || !fields.submit({ name: nameError(name) })) return;
+    if (
+      locked ||
+      command.revisionConflict === true ||
+      !fields.submit({ name: nameError(name) })
+    )
+      return;
     void command.start(
       target.kind === 'create'
         ? {
@@ -107,6 +114,7 @@ export function FolderNameDialog({
             form={id}
             variant="primary"
             pending={command.pending}
+            disabled={command.revisionConflict}
             pendingLabel={target.kind === 'create' ? 'Creating…' : 'Saving…'}
             onClick={
               command.retryAvailable
@@ -153,6 +161,7 @@ export function FolderNameDialog({
           )}
         </LabelledField>
       </form>
+      {revisionReview}
       <CommandProblem command={command} />
     </ActionDialog>
   );
@@ -166,6 +175,7 @@ export function FolderMoveDialog({
   command,
   audience,
   onClose,
+  revisionReview,
 }: Readonly<{
   workspaceId: string;
   folder: WorkflowFolder;
@@ -173,6 +183,7 @@ export function FolderMoveDialog({
   command: WorkflowOrganizationCommand;
   audience: Audience;
   onClose: () => void;
+  revisionReview?: ReactNode;
 }>) {
   const [parentId, setParentId] = useState<string | null>(folder.parentId);
   const busy = command.pending || audience.pending;
@@ -202,7 +213,10 @@ export function FolderMoveDialog({
               variant="primary"
               pending={busy}
               pendingLabel="Moving…"
-              disabled={!command.retryAvailable && parentId === folder.parentId}
+              disabled={
+                command.revisionConflict === true ||
+                (!command.retryAvailable && parentId === folder.parentId)
+              }
               onClick={() => {
                 if (command.retryAvailable) {
                   void command.retry();
@@ -247,6 +261,7 @@ export function FolderMoveDialog({
       {audience.error === undefined ? null : (
         <Notice tone="warning">{audience.error}</Notice>
       )}
+      {revisionReview}
       <CommandProblem command={command} />
     </ActionDialog>
   );
@@ -257,11 +272,13 @@ export function FolderDeleteDialog({
   folder,
   command,
   onClose,
+  revisionReview,
 }: Readonly<{
   workspaceId: string;
   folder: WorkflowFolder;
   command: WorkflowOrganizationCommand;
   onClose: () => void;
+  revisionReview?: ReactNode;
 }>) {
   const changeConfirmationOpen = (open: boolean) => {
     if (!open) onClose();
@@ -289,7 +306,7 @@ export function FolderDeleteDialog({
             body: { expectedFolderRevision: folder.revision },
           }))
       }
-      submitDisabled={command.pending}
+      submitDisabled={command.pending || command.revisionConflict === true}
       footer={
         <ConfirmationFooter>
           {confirmationRetry === undefined ? (
@@ -322,6 +339,7 @@ export function FolderDeleteDialog({
         </ConfirmationFooter>
       }
     >
+      {revisionReview}
       <ConfirmationDetails
         error={command.retryAvailable ? UNCONFIRMED : command.error}
         tone={command.retryAvailable ? 'warning' : 'destructive'}
