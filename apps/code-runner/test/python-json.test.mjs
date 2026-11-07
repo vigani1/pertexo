@@ -16,7 +16,7 @@ after(async () => {
   await pool?.close();
 });
 
-async function execute(language, code) {
+async function execute(language, code, input = null) {
   const deadline = Date.now() + 5000;
   let slot;
   while ((slot = pool.reserve()) === undefined) {
@@ -25,7 +25,7 @@ async function execute(language, code) {
   }
   try {
     return await slot.run(
-      { language, code, input: null, variables: {}, timeoutSeconds: 2 },
+      { language, code, input, variables: {}, timeoutSeconds: 2 },
       new AbortController().signal,
     );
   } finally {
@@ -75,6 +75,7 @@ for (const code of [
     const result = await execute('python', code);
     assert.equal(result.kind, 'failed');
     assert.equal(result.code, 'code.output_invalid');
+    assert.match(JSON.stringify(result.diagnostics), /cycl|circular/i);
   });
 }
 test('Python counts shared material against the JSON member bound', async () => {
@@ -94,4 +95,23 @@ test('Python counts shared material against the JSON byte bound', async () => {
   assert.equal(result.kind, 'failed');
   assert.equal(result.code, 'code.output_invalid');
   assert.match(JSON.stringify(result.diagnostics), /JSON byte limit/);
+});
+
+for (const language of ['python', 'javascript']) {
+  test(`${language} accepts aliased input and returns its repeated JSON values`, async () => {
+    const shared = { amount: 3 };
+    const result = await execute(language, 'return input', [shared, shared]);
+    assert.equal(result.kind, 'succeeded', JSON.stringify(result));
+    assert.deepEqual(result.output, [{ amount: 3 }, { amount: 3 }]);
+  });
+}
+
+test('JavaScript explains why a real output cycle is refused', async () => {
+  const result = await execute(
+    'javascript',
+    'const a = {}; a.self = a; return a;',
+  );
+  assert.equal(result.kind, 'failed');
+  assert.equal(result.code, 'code.output_invalid');
+  assert.match(JSON.stringify(result.diagnostics), /cycl|circular/i);
 });

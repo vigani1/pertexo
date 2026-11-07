@@ -21,10 +21,10 @@ function fixture(run) {
     `#!${process.execPath}
 const fs = require('node:fs');
 const mode = process.argv[2];
-const size = mode === 'small' || mode === 'stderr-only' ? 12 : 2 * 1024 * 1024;
+const size = mode === 'small' || mode === 'stderr-only' ? 12 : 3 * 1024 * 1024;
 fs.writeFileSync(1, Buffer.alloc(size, 'o'));
 if (['progress', 'dump', 'dump-failure', 'stderr-only'].includes(mode)) {
-  fs.writeFileSync(2, Buffer.alloc(2 * 1024 * 1024, 'e'));
+  fs.writeFileSync(2, Buffer.alloc(3 * 1024 * 1024, 'e'));
 }
 if (mode === 'dump-failure') {
   fs.writeFileSync(2, 'owned dump failure diagnostic');
@@ -64,11 +64,11 @@ test('recovery commands stream progress larger than the child-process buffer on 
     }
     assert.equal(
       readFileSync(join(directory, 'output')).length,
-      2 * 1024 * 1024,
+      3 * 1024 * 1024,
     );
     assert.equal(
       readFileSync(join(directory, 'errors')).length,
-      2 * 1024 * 1024,
+      3 * 1024 * 1024,
     );
   });
 });
@@ -87,7 +87,7 @@ test('recovery captures only explicitly requested small command answers', () => 
   });
 });
 
-test('recovery dump streams 2 MiB of stderr with stdout directed to the dump file', () => {
+test('recovery dump streams 3 MiB of stderr with stdout directed to the dump file', () => {
   fixture((directory, env) => {
     const output = openSync(join(directory, 'database.dump'), 'w');
     try {
@@ -101,7 +101,7 @@ test('recovery dump streams 2 MiB of stderr with stdout directed to the dump fil
     }
     assert.equal(
       readFileSync(join(directory, 'database.dump')).length,
-      2 * 1024 * 1024,
+      3 * 1024 * 1024,
     );
   });
 });
@@ -132,7 +132,7 @@ test('recovery dump preserves the failed exit and a bounded useful stderr diagno
   });
 });
 
-test('recovery captures a small answer even when stderr exceeds 2 MiB', () => {
+test('recovery captures a small answer with 3 MiB of stderr', () => {
   fixture((_directory, env) => {
     assert.equal(
       docker(['stderr-only'], { env, captureOutput: true }),
