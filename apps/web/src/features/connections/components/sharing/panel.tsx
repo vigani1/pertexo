@@ -1,3 +1,4 @@
+import { ReadRecovery } from '@/components/patterns/states/read-recovery';
 import { SharingRevisionNotice } from '@/components/patterns/sharing/revision-notice';
 import { QueryView } from '@/components/patterns/states/query-view';
 import { XIcon } from 'lucide-react';
@@ -84,6 +85,7 @@ export function ConnectionSharingPanel({
       {editor.stale ? (
         <SharingRevisionNotice
           subject="use this connection"
+          readFailure={editor.readFailure}
           latest={
             editor.reader.isSuccess
               ? {
@@ -102,6 +104,15 @@ export function ConnectionSharingPanel({
             void editor.reload();
           }}
         />
+      ) : null}
+      {!editor.stale && editor.readFailure !== undefined ? (
+        <Notice tone="warning">
+          <ReadRecovery
+            {...editor.readFailure}
+            resource="Current sharing"
+            disabled={editor.locked}
+          />
+        </Notice>
       ) : null}
       {editor.command.error === undefined ? null : (
         <Notice tone="warning">{editor.command.error}</Notice>

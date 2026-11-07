@@ -1,3 +1,4 @@
+import { ReadRecovery } from '@/components/patterns/states/read-recovery';
 import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/ui/notice';
 
@@ -8,6 +9,7 @@ export function SharingRevisionNotice({
   locked,
   onReview,
   onReload,
+  readFailure,
 }: Readonly<{
   latest:
     | Readonly<{
@@ -20,6 +22,9 @@ export function SharingRevisionNotice({
   locked: boolean;
   onReview: () => void;
   onReload: () => void;
+  readFailure:
+    | Readonly<{ error: unknown; retrying: boolean; retry: () => void }>
+    | undefined;
 }>) {
   return (
     <Notice
@@ -42,16 +47,25 @@ export function SharingRevisionNotice({
             disabled={locked}
             onClick={onReload}
           >
-            Reload
+            Discard edits and reload
           </Button>
         </div>
       }
     >
       Someone changed who can {subject} while you were editing. Review the
-      current sharing before saving your edits, or reload to replace them.
-      {latest === undefined ? (
-        <p>The current sharing could not be loaded. Reload before saving.</p>
-      ) : (
+      current sharing before saving your edits, or choose Discard edits and
+      reload to replace them.
+      {readFailure === undefined ? null : (
+        <ReadRecovery
+          {...readFailure}
+          resource="Current sharing"
+          disabled={locked}
+        />
+      )}
+      {latest === undefined && readFailure === undefined ? (
+        <p>Loading current sharing…</p>
+      ) : null}
+      {latest === undefined ? null : (
         <section
           aria-label="Current saved sharing"
           className="mt-2 min-w-0 break-words"

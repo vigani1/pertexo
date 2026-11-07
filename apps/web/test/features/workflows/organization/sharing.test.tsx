@@ -126,7 +126,9 @@ it('names people with email and role, marks admins, and keeps local edits across
   ).toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Remove Jane' })).toBeVisible();
   expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
-  await event.click(screen.getByRole('button', { name: 'Reload' }));
+  await event.click(
+    screen.getByRole('button', { name: 'Discard edits and reload' }),
+  );
   await waitFor(() =>
     expect(
       screen.queryByRole('button', { name: 'Remove Jane' }),
@@ -151,16 +153,20 @@ it('keeps unsaved grants through a temporary read failure and only discards them
     });
   });
   expect(screen.getByRole('button', { name: 'Remove Jane' })).toBeVisible();
-  await screen.findByText(/Couldn’t check the latest sharing/);
+  await screen.findByText(/Current sharing couldn’t be loaded/);
   expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
-  await event.click(screen.getByRole('button', { name: 'Reload' }));
+  await event.click(
+    screen.getByRole('button', { name: 'Discard edits and reload' }),
+  );
   expect(screen.getByRole('button', { name: 'Remove Jane' })).toBeVisible();
   mockServer.use(
     http.get(`${api}/workflow-folders/${workflowId}/sharing`, () =>
       HttpResponse.json(f.initial),
     ),
   );
-  await event.click(screen.getByRole('button', { name: 'Reload' }));
+  await event.click(
+    screen.getByRole('button', { name: 'Discard edits and reload' }),
+  );
   await waitFor(() =>
     expect(
       screen.queryByRole('button', { name: 'Remove Jane' }),
