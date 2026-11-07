@@ -356,3 +356,5 @@ export * from './schemas/workflows/concurrency.js';
 export * from './schemas/workflows/organization.js';
 export * from './schemas/workflows/organization-folders.js';
 export * from './schemas/workflows/input-cases.js';
+export * from './schemas/execution/step-history.js';
+export * from './schemas/execution/recovery.js';

@@ -17,9 +17,6 @@ import {
   workflowNodeReuseSchema,
 } from './recovery.js';
 
-export * from './step-history.js';
-export * from './recovery.js';
-
 export const workflowRunIdentifierSchema = z.uuid();
 export const workflowRunParamsSchema = z
   .object({ workspaceId: z.uuid(), runId: workflowRunIdentifierSchema })
