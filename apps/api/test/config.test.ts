@@ -171,9 +171,9 @@ describe('parseApiConfig', () => {
     expect(() =>
       parseApiConfig({
         ...validDeployedEnvironment(),
-        INVITATION_TOKEN_PREVIOUS_KEYS: '{',
+        INVITATION_TOKEN_PREVIOUS_KEYS: '{private-previous-key-json',
       }),
-    ).toThrow('Identity configuration is invalid');
+    ).toThrow(/INVITATION_TOKEN_PREVIOUS_KEYS.*supply matching settings/u);
   });
 
   it('uses safe development defaults when optional values are absent', () => {
@@ -351,7 +351,10 @@ describe('parseApiConfig', () => {
     } catch (error: unknown) {
       message = error instanceof Error ? error.message : String(error);
     }
-    expect(message).toBe('Identity configuration is invalid');
+    expect(message).toContain(
+      'AUTH_GOOGLE_CLIENT_ID / AUTH_GOOGLE_CLIENT_SECRET',
+    );
+    expect(message).toContain('supply both settings or remove both');
     expect(message).not.toContain(secret);
   });
 
@@ -457,22 +460,22 @@ describe('parseApiConfig identity boundary', () => {
     [
       'durable mail settings while mail delivery is local',
       { AUTH_MAIL_FROM: 'security@example.test' },
-      'Identity configuration is invalid',
+      /AUTH_MAIL_MODE.*supply matching settings/u,
     ],
     [
       'incomplete durable mail settings',
       { AUTH_MAIL_MODE: 'durable', AUTH_MAIL_FROM: 'security@example.test' },
-      'Identity configuration is invalid',
+      /AUTH_MAIL_MODE.*supply matching settings/u,
     ],
     [
       'a social client ID without its secret',
       { AUTH_GOOGLE_CLIENT_ID: 'google-client' },
-      'Identity configuration is invalid',
+      /AUTH_GOOGLE_CLIENT_ID.*supply both settings or remove both/u,
     ],
     [
       'a social client secret without its client ID',
       { AUTH_APPLE_CLIENT_SECRET: 'apple-secret' },
-      'Identity configuration is invalid',
+      /AUTH_APPLE_CLIENT_ID.*supply both settings or remove both/u,
     ],
     [
       'malformed previous invitation keys',
@@ -481,12 +484,18 @@ describe('parseApiConfig identity boundary', () => {
         INVITATION_TOKEN_KEY_VERSION: 'invite-v1',
         INVITATION_TOKEN_PREVIOUS_KEYS: JSON.stringify([{ version: 'v0' }]),
       },
-      'Identity configuration is invalid',
+      /INVITATION_TOKEN_PREVIOUS_KEYS.*supply matching settings/u,
     ],
   ])('rejects %s for standalone Better Auth', (_name, changed, message) => {
     expect(() =>
       parseApiConfig({ ...standaloneBetterAuthEnvironment(), ...changed }),
     ).toThrow(message);
+    try {
+      parseApiConfig({ ...standaloneBetterAuthEnvironment(), ...changed });
+    } catch (error: unknown) {
+      for (const value of Object.values(changed))
+        expect(String(error)).not.toContain(value);
+    }
   });
 
   it('requires Better Auth once any session setting enables identity', () => {
@@ -620,11 +629,13 @@ describe('parseApiConfig identity boundary', () => {
     (keys) => {
       expect(() =>
         parseApiConfig({ ...standaloneBetterAuthEnvironment(), ...keys }),
-      ).toThrow('Identity configuration is invalid');
+      ).toThrow(/AUTH_FEDERATION_KEY.*supply matching settings/u);
       try {
         parseApiConfig({ ...standaloneBetterAuthEnvironment(), ...keys });
       } catch (error: unknown) {
         expect(String(error)).not.toContain('private-invalid');
+        for (const value of Object.values(keys))
+          expect(String(error)).not.toContain(value);
       }
     },
   );
