@@ -168,11 +168,18 @@ describeIntegration('whether a real queue consumer has stopped', () => {
             outboxEventId: randomUUID(),
           },
         });
-        await vi.waitFor(() => { expect(deliveries).toBe(1); }, { timeout: 30_000 });
+        await vi.waitFor(
+          () => {
+            expect(deliveries).toBe(1);
+          },
+          { timeout: 30_000 },
+        );
       } finally {
         await producer.close();
       }
-      await vi.waitFor(() => { expect(opened.isReady()).toBe(true); });
+      await vi.waitFor(() => {
+        expect(opened.isReady()).toBe(true);
+      });
       expect(opened.hasStopped()).toBe(false);
       const previousErrors = connectionErrors.count;
       await redis.cut();
@@ -185,9 +192,14 @@ describeIntegration('whether a real queue consumer has stopped', () => {
       );
       expect(opened.hasStopped()).toBe(false);
       await redis.restore();
-      await vi.waitFor(() => { expect(opened.isReady()).toBe(true); }, {
-        timeout: 30_000,
-      });
+      await vi.waitFor(
+        () => {
+          expect(opened.isReady()).toBe(true);
+        },
+        {
+          timeout: 30_000,
+        },
+      );
       await opened.close();
       expect(opened.isReady()).toBe(false);
       expect(opened.hasStopped()).toBe(false);

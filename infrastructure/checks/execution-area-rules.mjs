@@ -147,10 +147,12 @@ export function executionAreaDependencyAllowed(from, to) {
 
 export function isExecutionAreaFile(file) {
   const [kind, workspace, lane, area] = file.split('/');
+  if (kind === 'infrastructure') return true;
   if (!['src', 'test'].includes(lane)) return false;
   if (
     kind === 'packages' &&
     [
+      'contracts',
       'workflow-engine',
       'workflow-model',
       'node-sdk',
@@ -172,6 +174,7 @@ export function isExecutionAreaEntry(file) {
   if (
     kind === 'packages' &&
     [
+      'contracts',
       'workflow-engine',
       'workflow-model',
       'node-sdk',

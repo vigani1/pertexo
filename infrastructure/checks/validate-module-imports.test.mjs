@@ -891,3 +891,50 @@ test('test writes refuse fixed temporary destinations, including indirect screen
     [],
   );
 });
+
+test('keeps contract schemas and routes below document assembly, including types', () => {
+  for (const [file, statement] of [
+    ['schemas/example.ts', "import type { Route } from '../routes/define.js';"],
+    [
+      'errors/example.ts',
+      "export type { Document } from '../openapi/public.js';",
+    ],
+    [
+      'routes/example.ts',
+      "import { response } from '../openapi/primitives.js';",
+    ],
+    ['schemas/example.ts', "export * from './identity/authentication.js';"],
+  ])
+    assert.match(
+      validateModuleImports({
+        [`packages/contracts/src/${file}`]: statement,
+      }).join('\n'),
+      /contracts dependency points above its owner|publish schema vocabulary/u,
+    );
+  assert.deepEqual(
+    validateModuleImports({
+      'packages/contracts/src/index.ts':
+        "export * from './schemas/example.js';",
+      'packages/contracts/src/schemas/example.ts': 'export const schema = 1;',
+      'packages/contracts/src/routes/example.ts':
+        "import { schema } from '../schemas/example.js';",
+      'packages/contracts/src/openapi/example.ts':
+        "import { schema } from '../schemas/example.js';",
+    }),
+    [],
+  );
+});
+
+test('rejects infrastructure built paths after their source was renamed', () => {
+  const sources = {
+    'infrastructure/images/verify.mjs': `const script = "import './packages/example/dist/old-records.js';";`,
+    'packages/example/src/records.ts': 'export const records = [];',
+  };
+  assert.match(
+    validateModuleImports(sources).join('\n'),
+    /built path has no source owner/u,
+  );
+  sources['infrastructure/images/verify.mjs'] =
+    `const script = "import './packages/example/dist/records.js';";`;
+  assert.deepEqual(validateModuleImports(sources), []);
+});
