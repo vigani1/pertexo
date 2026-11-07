@@ -1,3 +1,4 @@
+import { origin } from '../support/better-auth/api/environment.js';
 import { connect } from 'node:net';
 import { performance } from 'node:perf_hooks';
 import { describe, expect, it } from 'vitest';
@@ -41,15 +42,13 @@ describe.runIf(betterAuthIntegrationEnabled)(
       const start = performance.now();
       try {
         const response = await new Promise<string>((resolve, reject) => {
-          const timer = setTimeout(
-            () =>
-              reject(
-                new Error(
-                  'Incomplete request was not refused within the receive deadline',
-                ),
+          const timer = setTimeout(() => {
+            reject(
+              new Error(
+                'Incomplete request was not refused within the receive deadline',
               ),
-            65_000,
-          );
+            );
+          }, 40_000);
           let data = '';
           socket.on('data', (chunk: Buffer) => {
             data += chunk.toString();
@@ -66,16 +65,23 @@ describe.runIf(betterAuthIntegrationEnabled)(
           );
         });
         expect(response).toContain('408 Request Timeout');
-        expect(performance.now() - start).toBeLessThan(65_000);
-        const healthy = await api.send(
-          'POST',
-          '/v1/auth/request-password-reset',
-          { payload: { email: 'absent@example.test' } },
+        expect(performance.now() - start).toBeLessThan(40_000);
+        const healthy = await fetch(
+          new URL('/v1/auth/request-password-reset', url),
+          {
+            method: 'POST',
+            headers: { origin, 'content-type': 'application/json' },
+            body: JSON.stringify({
+              email: 'absent@example.test',
+              padding: 'x'.repeat(1_048_000),
+            }),
+          },
         );
-        expect(healthy.statusCode, healthy.payload).toBe(200);
+        expect(healthy.status).toBe(200);
+        expect(await healthy.json()).toMatchObject({ status: true });
       } finally {
         socket.destroy();
       }
-    }, 75_000);
+    }, 50_000);
   },
 );
