@@ -5,7 +5,7 @@ import type {
   NestModule,
   Provider,
 } from '@nestjs/common';
-import { APP_FILTER } from '@nestjs/core';
+import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 
 import {
   HTTP_APPLICATION_ERROR_MAPPERS,
@@ -18,6 +18,7 @@ import {
   RequestContextMiddleware,
   RequestContextStore,
 } from './request-context.js';
+import { PrivateResponseCacheGuard } from './private-response-cache.guard.js';
 import { RouteTable } from './route-table.js';
 
 const REQUEST_CONTEXT_STORE = Symbol('REQUEST_CONTEXT_STORE');
@@ -47,6 +48,7 @@ const problemFilterProvider: Provider = {
 @Global()
 @Module({
   providers: [
+    { provide: APP_GUARD, useClass: PrivateResponseCacheGuard },
     RequestContextStore,
     contextStoreProvider,
     RequestContextMiddleware,

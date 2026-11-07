@@ -1,11 +1,10 @@
-import { PrivateResponseCacheGuard } from '../../src/workspaces/http/route.js';
+import { usesPrivateAuthentication } from '../../src/platform/http/private-response-cache.guard.js';
 import { readdirSync, readFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import {
   GUARDS_METADATA,
-  HEADERS_METADATA,
   HTTP_CODE_METADATA,
   METHOD_METADATA,
   PATH_METADATA,
@@ -102,9 +101,7 @@ function routesOf(controller: Type, source: string): WalkedRoute[] {
           path: joined(prefix, suffix),
           status: successStatus(handler, method),
           signIn: signInOf(guards),
-          privateCache:
-            guards.includes(PrivateResponseCacheGuard) ||
-            hasDeclaredNoStore(handler),
+          privateCache: usesPrivateAuthentication(controller, handler),
           capability,
           csrf: guards.includes(CsrfProtectionGuard),
           rateClass: rateClass(handler, controller),
@@ -138,16 +135,5 @@ export async function walkRoutes(): Promise<readonly WalkedRoute[]> {
     (left, right) =>
       left.path.localeCompare(right.path) ||
       left.method.localeCompare(right.method),
-  );
-}
-
-function hasDeclaredNoStore(handler: object): boolean {
-  const headers = Reflect.getMetadata(HEADERS_METADATA, handler) as
-    { name: string; value: string }[] | undefined;
-  return (
-    headers?.some(
-      ({ name, value }) =>
-        name.toLowerCase() === 'cache-control' && value.includes('no-store'),
-    ) ?? false
   );
 }

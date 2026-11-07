@@ -1,4 +1,5 @@
-import { Injectable } from '@nestjs/common';
+import { PRIVATE_AUTHENTICATION } from '../../platform/http/private-response-cache.guard.js';
+import { Injectable, SetMetadata } from '@nestjs/common';
 import type { CanActivate, ExecutionContext } from '@nestjs/common';
 import { createAutomationActorContext } from '../../authorization/index.js';
 import {
@@ -23,6 +24,7 @@ import type { AuthorizationHeaderSource } from './headers.js';
 import { ApiTokenAuthentication } from './authority.js';
 
 @Injectable()
+@SetMetadata(PRIVATE_AUTHENTICATION, true)
 export class AutomationAuthenticationGuard implements CanActivate {
   public constructor(
     private readonly sessions: SessionAuthenticationGuard,

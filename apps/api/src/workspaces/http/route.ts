@@ -57,10 +57,7 @@ export function Route(route: AnyRoute): MethodDecorator {
     METHOD_DECORATORS[route.method](nestPath(route.path)),
     HttpCode(route.success.status),
     RateLimit(route.rateLimit),
-    UseGuards(
-      ...(route.access.auth === 'public' ? [] : [PrivateResponseCacheGuard]),
-      ...routeGuards(route),
-    ),
+    UseGuards(...routeGuards(route)),
     UseInterceptors(RouteContractInterceptor),
     ...(route.cacheControl === undefined
       ? []
@@ -230,21 +227,4 @@ function guardFor({
     capabilityGuards.set(key, guard);
   }
   return guard;
-}
-
-/** Establish privacy before authentication, so refusals carry it too. */
-export class PrivateResponseCacheGuard implements CanActivate {
-  public canActivate(context: ExecutionContext): boolean {
-    const route = declaredRoute(context);
-    context
-      .switchToHttp()
-      .getResponse<{ header(name: string, value: string): void }>()
-      .header(
-        'Cache-Control',
-        route.cacheControl ??
-          route.responseHeaders?.['Cache-Control'] ??
-          'private, no-store',
-      );
-    return true;
-  }
 }

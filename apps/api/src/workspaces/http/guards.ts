@@ -1,8 +1,9 @@
+import { PRIVATE_AUTHENTICATION } from '../../platform/http/private-response-cache.guard.js';
 import type { FastifyReply } from 'fastify';
 import { serializeCsrfCookie } from '../../authentication/better-auth/transport/authentication-credentials.js';
 import { hasAuthorizationHeader } from '../../authentication/automation/headers.js';
 import type { AuthorizationHeaderSource } from '../../authentication/automation/headers.js';
-import { Inject, Injectable, mixin } from '@nestjs/common';
+import { Inject, Injectable, mixin, SetMetadata } from '@nestjs/common';
 import type { Type } from '@nestjs/common';
 import type { CanActivate, ExecutionContext } from '@nestjs/common';
 
@@ -41,6 +42,7 @@ export const CSRF_COOKIE_NAME = 'pertexo_csrf';
 const CSRF_HEADER_NAME = 'x-csrf-token';
 
 @Injectable()
+@SetMetadata(PRIVATE_AUTHENTICATION, true)
 export class SessionAuthenticationGuard implements CanActivate {
   public constructor(
     @Inject(SESSION_AUTHORITY)
