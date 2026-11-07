@@ -1,3 +1,4 @@
+import { InvalidWorkflowRunCursorError } from '../../workflow-runs/cursor.js';
 import { errorRegistration } from '../../platform/http/problems/error-registry.js';
 import {
   ExecutionStateConflictError,
@@ -19,6 +20,12 @@ import {
 import { WorkflowRunNotFoundError } from '../../workflow-runs/workflow-runs.service.js';
 
 export const runProblems = [
+  errorRegistration(InvalidWorkflowRunCursorError, () =>
+    applicationError('request.invalid', {
+      safeDetail:
+        'The run cursor or filters changed. Restart the list with the current filters.',
+    }),
+  ),
   errorRegistration(WorkspaceRunQuotaExceededError, (error) => {
     return applicationError('workspace.quota_exceeded', {
       safeDetail: 'The workspace queued-run limit has been reached.',
