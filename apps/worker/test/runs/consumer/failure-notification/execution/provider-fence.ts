@@ -84,6 +84,7 @@ export async function assertProviderFenceDrain(
     });
   };
   const blockedDelivery = createProviderFailureNotificationDelivery({
+        publicWebOrigin: 'https://app.example.test',
     store,
     encryption: {
       open: (_sealed, encryptionContext) =>

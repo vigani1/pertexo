@@ -58,6 +58,7 @@ describe('parseWorkerConfig', () => {
   it('enables the shared local provider only outside deployed environments', () => {
     const local = {
       ...requiredEnvironment,
+      PUBLIC_WEB_ORIGIN: 'https://app.example.test',
       CONNECTION_ENCRYPTION_MODE: 'local',
       CONNECTION_LOCAL_KEY: Buffer.alloc(32).toString('base64'),
     };
@@ -285,6 +286,7 @@ describe('parseWorkerConfig', () => {
   it('parses optional worker connection and artifact capability configuration', () => {
     const config = parseWorkerConfig({
       ...requiredEnvironment,
+      PUBLIC_WEB_ORIGIN: 'https://app.example.test',
       CONNECTION_KMS_KEY_REFERENCE: 'alias/pertexo-connections',
       CONNECTION_KMS_REGION: 'eu-central-1',
       CONNECTION_KMS_ENDPOINT: 'http://localhost:4566',
@@ -669,3 +671,23 @@ it('requires an explicit deployed disk scratch directory before delivery starts'
     'ARTIFACT_SCRATCH_DIRECTORY',
   ]);
 });
+
+it.each([
+  undefined,
+  'ftp://private.example.test',
+  'https://private.example.test/path',
+  'https://private-user:private-password@example.test',
+  'https://private.example.test?query=private',
+])(
+  'requires a usable public origin for outgoing notification links: %s',
+  (PUBLIC_WEB_ORIGIN) => {
+    expect(() =>
+      parseWorkerConfig({
+        ...requiredEnvironment,
+        CONNECTION_ENCRYPTION_MODE: 'local',
+        CONNECTION_LOCAL_KEY: Buffer.alloc(32).toString('base64'),
+        PUBLIC_WEB_ORIGIN,
+      }),
+    ).toThrow('Invalid worker configuration');
+  },
+);

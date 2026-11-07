@@ -1,3 +1,4 @@
+import { StartupSettingError } from '@pertexo/observability/startup';
 import type { Provider } from '@nestjs/common';
 import type { FailureNotificationStore } from '@pertexo/core/notifications';
 import type { WorkspaceInvitationDeliveryStore } from '@pertexo/core/tenant-access';
@@ -68,6 +69,11 @@ export async function createOwnedMaintenanceRuntime(
     let failureNotificationDelivery;
     const encryptionConfig = config.connectionEncryption;
     if (encryptionConfig !== undefined) {
+      if (config.publicWebOrigin === undefined)
+        throw new StartupSettingError(
+          'PUBLIC_WEB_ORIGIN',
+          'http_origin_required',
+        );
       notificationStore = deliveryFactories.store(
         config.database,
         dependencies.databaseRuntime,
@@ -80,6 +86,7 @@ export async function createOwnedMaintenanceRuntime(
         slack: deliveryFactories.slack(httpClient),
         email: deliveryFactories.email(httpClient),
         workerId: config.nodeAttempt.workerId,
+        publicWebOrigin: config.publicWebOrigin,
       });
     }
     let workspaceInvitationDelivery;

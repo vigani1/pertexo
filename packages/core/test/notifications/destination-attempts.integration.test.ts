@@ -32,6 +32,7 @@ describe.each([1, 10])(
     it('loads the exact sealed version and records real credential access', async () => {
       const alert = await atAttempt(attemptNumber);
       expect(await load(alert)).toEqual({
+        workflowName: 'Workflow a',
         kind: 'email',
         toEmail: 'first@example.test',
         configVersion: 1,

@@ -5,6 +5,8 @@ import {
   failureNotificationDestinations as destination,
   failureNotificationDestinationVersions as version,
   connections as connection,
+  workflows,
+  workflowRuns,
 } from '@pertexo/database/schema';
 import { notificationProviderRequirements } from '../destinations/notification-policy.js';
 import { destinationConfigSql } from '../destinations/notification-destinations.repository.js';
@@ -31,11 +33,26 @@ export const currentDestinationSql = and(
 export function deliverySources(db: Pick<NodePgDatabase, 'select'>) {
   return db
     .select({
+      workflowName: sql<string>`${workflows.name}`.as('workflow_name'),
       config: destinationConfigSql.as('config'),
       configVersion: deliveredVersion.as('config_version'),
       secretVersionId: deliveredSecret.as('secret_version_id'),
     })
     .from(intent)
+    .innerJoin(
+      workflowRuns,
+      and(
+        eq(workflowRuns.workspaceId, intent.workspaceId),
+        eq(workflowRuns.id, intent.workflowRunId),
+      ),
+    )
+    .innerJoin(
+      workflows,
+      and(
+        eq(workflows.workspaceId, intent.workspaceId),
+        eq(workflows.id, workflowRuns.workflowId),
+      ),
+    )
     .innerJoin(
       destination,
       and(

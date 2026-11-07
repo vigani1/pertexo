@@ -56,6 +56,7 @@ export const database: WorkspaceDatabase = {
 };
 
 export const workerConfig = {
+  publicWebOrigin: 'https://app.example.test',
   httpRequest: { allowedPrivateNetworks: [] },
   codeRunner: {
     settings: DEFAULT_CODE_SETTINGS,

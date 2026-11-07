@@ -16,6 +16,7 @@ const observer = {} as QueueConsumerObserver;
 function config() {
   return parseWorkerConfig({
     ...workerEnvironment,
+    PUBLIC_WEB_ORIGIN: 'https://app.example.test',
     CONNECTION_KMS_KEY_REFERENCE: 'alias/pertexo-connections',
     CONNECTION_KMS_REGION: 'eu-central-1',
     OUTBOX_DISPATCH_OPERATION_TIMEOUT_MILLIS: '100',

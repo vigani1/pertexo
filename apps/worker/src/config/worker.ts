@@ -1,4 +1,7 @@
-import { StartupSettingError } from '@pertexo/observability/startup';
+import {
+  StartupSettingError,
+  parseStartupSettings,
+} from '@pertexo/observability/startup';
 import {
   parseCallbackKeyConfig,
   type CallbackKeyConfig,
@@ -35,6 +38,7 @@ import { workerConfigSchema } from './worker/environment.js';
 
 export type WorkerConfig = Readonly<
   z.output<typeof workerConfigSchema> & {
+    publicWebOrigin?: string;
     callbacks?: CallbackKeyConfig;
     artifactStore: ArtifactStoreConfig;
     artifactScratchDirectory: string;
@@ -112,6 +116,12 @@ export function parseWorkerConfig(
     const systemMailDelivery = parseSystemMailDeliveryConfig(raw, {
       deployed: deployed,
     });
+    const publicWebOrigin = notificationPublicWebOrigin(raw, {
+      deployed,
+      enabled: connectionEncryption !== undefined,
+      mail: systemMailDelivery,
+      invitation: invitationDelivery,
+    });
     if (deployed && connectionEncryption === undefined)
       throw new StartupSettingError(
         'CONNECTION_ENCRYPTION_MODE',
@@ -119,6 +129,7 @@ export function parseWorkerConfig(
       );
     return Object.freeze({
       ...result.data,
+      ...(publicWebOrigin === undefined ? {} : { publicWebOrigin }),
       ...(callbacks === undefined ? {} : { callbacks }),
       httpRequest: Object.freeze({
         allowedPrivateNetworks: parseAllowedPrivateNetworks(
@@ -167,4 +178,47 @@ function workerCodeRunnerSocket(
       { cause: error },
     );
   }
+}
+
+function workerPublicWebOrigin(
+  environment: Readonly<Record<string, string | undefined>>,
+  deployed: boolean,
+): string | undefined {
+  if (environment.PUBLIC_WEB_ORIGIN === undefined) return undefined;
+  const { PUBLIC_WEB_ORIGIN } = parseStartupSettings(
+    z.object({ PUBLIC_WEB_ORIGIN: z.url() }),
+    environment,
+    { PUBLIC_WEB_ORIGIN: 'http_origin_required' },
+  );
+  const url = new URL(PUBLIC_WEB_ORIGIN);
+  if (
+    !['http:', 'https:'].includes(url.protocol) ||
+    url.username ||
+    url.password ||
+    url.pathname !== '/' ||
+    url.search ||
+    url.hash
+  )
+    throw new StartupSettingError('PUBLIC_WEB_ORIGIN', 'http_origin_required');
+  if (deployed && url.protocol !== 'https:')
+    throw new StartupSettingError('PUBLIC_WEB_ORIGIN', 'https_required');
+  return url.origin;
+}
+
+function notificationPublicWebOrigin(
+  environment: Readonly<Record<string, string | undefined>>,
+  options: Readonly<{
+    deployed: boolean;
+    enabled: boolean;
+    mail: SystemMailDeliveryConfig | undefined;
+    invitation: InvitationDeliveryConfig | undefined;
+  }>,
+): string | undefined {
+  const origin =
+    options.mail?.noticeSender?.publicWebOrigin ??
+    options.invitation?.webOrigin ??
+    workerPublicWebOrigin(environment, options.deployed);
+  if (options.enabled && origin === undefined)
+    throw new StartupSettingError('PUBLIC_WEB_ORIGIN', 'http_origin_required');
+  return origin;
 }

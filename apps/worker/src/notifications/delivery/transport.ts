@@ -34,6 +34,7 @@ export type DeliveryDependencies = Readonly<{
   slack: Pick<SlackClient, 'sendMessage'>;
   email: Pick<ResendClient, 'sendNotification'>;
   workerId: string;
+  publicWebOrigin: string;
 }>;
 
 type SlackDestination = Extract<
@@ -84,7 +85,14 @@ export async function deliverSlack(
         { deliveryUnresolved: input.deliveryUnresolved },
       );
     }
-    const message = render(input.context);
+    const message = render(input.context, {
+      workflowName: destination.workflowName,
+      runUrl: new URL(
+        `/w/${input.workspaceId}/runs/${input.context.runId}`,
+        dependencies.publicWebOrigin,
+      ).toString(),
+      kind: destination.kind,
+    });
     try {
       return slackResult(
         await dependencies.slack.sendMessage({
@@ -155,7 +163,14 @@ export async function deliverEmail(
         { deliveryUnresolved: input.deliveryUnresolved },
       );
     }
-    const message = render(input.context);
+    const message = render(input.context, {
+      workflowName: destination.workflowName,
+      runUrl: new URL(
+        `/w/${input.workspaceId}/runs/${input.context.runId}`,
+        dependencies.publicWebOrigin,
+      ).toString(),
+      kind: destination.kind,
+    });
     const binding = `email:sha256:${createHash('sha256')
       .update(
         JSON.stringify({
