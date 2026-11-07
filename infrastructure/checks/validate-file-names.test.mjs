@@ -355,3 +355,18 @@ for (const workspace of [
     assert.deepEqual(rules(`packages/${workspace}/src/server.ts`), []);
   });
 }
+
+test('keeps contracts and infrastructure names within the completed cohort', () => {
+  for (const file of [
+    'packages/contracts/src/schemas/workflows/promotions/commands.ts',
+    'packages/contracts/test/oauth2/fixture.ts',
+    'infrastructure/testing/helpers.mjs',
+  ])
+    assert.ok(rules(file).includes('FN008'));
+  for (const file of [
+    'packages/contracts/src/index.ts',
+    'packages/contracts/src/server.ts',
+    'infrastructure/testing/worker-databases.mjs',
+  ])
+    assert.deepEqual(check(file), []);
+});

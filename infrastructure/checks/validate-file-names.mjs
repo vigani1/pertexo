@@ -233,6 +233,7 @@ export async function inspectFileNames(directory = root) {
       if (workspace.isDirectory())
         for (const tree of roots)
           await scan(`${category}/${workspace.name}/${tree}`);
+  await scan('infrastructure');
   return diagnostics.sort((a, b) =>
     a.path < b.path
       ? -1

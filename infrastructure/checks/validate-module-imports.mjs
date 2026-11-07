@@ -1,3 +1,7 @@
+import {
+  validateContractDependencies,
+  validateInfrastructureBuiltPaths,
+} from './contract-infra-drift.mjs';
 import { validateTestFileWrites } from './test-file-writes.mjs';
 import { WEB_BROWSER_PACKAGE_ROOTS } from './browser-entry-dependencies.mjs';
 import { executionAreaDependencyAllowed } from './execution-area-rules.mjs';
@@ -133,6 +137,7 @@ function reachesPackageCode(file, specifier, packageName) {
  * module name to the function that takes it, and no test does this today.
  */
 function directionViolations(file, specifier) {
+  if (file.startsWith('infrastructure/')) return [];
   const violations = [];
   if (
     (specifier === '@pertexo/core' ||
@@ -198,6 +203,7 @@ function directionViolations(file, specifier) {
     ],
     templates: ['workflow-model'],
     integrations: ['contracts', 'node-sdk', 'workflow-model'],
+    contracts: ['node-sdk', 'policy', 'workflow-model'],
   };
   const target = specifier.startsWith('.')
     ? path.posix.normalize(path.posix.join(path.posix.dirname(file), specifier))
@@ -279,6 +285,8 @@ export function validateModuleImports(sources) {
       true,
     );
     errors.push(...validateTestFileWrites(file, source));
+    errors.push(...validateContractDependencies(file, source));
+    errors.push(...validateInfrastructureBuiltPaths(file, source, sources));
     const dependencies = [];
     const workspace = file.split('/').slice(0, 2).join('/');
     const resolveTarget = (specifier) => {
@@ -435,7 +443,7 @@ export async function inspectModuleImports(directory = root) {
       if (entry.isDirectory()) await visit(file);
       else if (
         entry.isFile() &&
-        (entry.name.endsWith('.ts') || entry.name.endsWith('.tsx')) &&
+        /\.(?:ts|tsx|mjs|cjs|js)$/u.test(entry.name) &&
         !entry.name.endsWith('.d.ts')
       )
         sources[path.relative(directory, file).split(path.sep).join('/')] =
@@ -455,6 +463,11 @@ export async function inspectModuleImports(directory = root) {
         }
       }
     }
+  }
+  try {
+    await visit(path.join(directory, 'infrastructure'));
+  } catch (error) {
+    if (error?.code !== 'ENOENT') throw error;
   }
   return validateModuleImports(sources);
 }

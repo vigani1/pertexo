@@ -14,7 +14,11 @@ const writeOperations = new Set([
 
 /** Inspect destinations, not negative parser inputs or expected runtime paths. */
 export function validateTestFileWrites(file, source) {
-  if (!/^(?:apps|packages)\/[^/]+\/(?:test|e2e|e2e-live)\//u.test(file))
+  if (
+    !/^(?:(?:apps|packages)\/[^/]+\/(?:test|e2e|e2e-live)\/|infrastructure\/.*(?:\/test\/|\.test\.))/u.test(
+      file,
+    )
+  )
     return [];
   const bindings = new Map();
   const imports = new Map();
@@ -36,7 +40,7 @@ export function validateTestFileWrites(file, source) {
   const fixed = (node, seen = new Set()) => {
     if (!node) return false;
     if (ts.isStringLiteralLike(node))
-      return /^\/(?:private\/)?tmp\//u.test(node.text);
+      return /^\/(?:private\/)?tmp(?:\/|$)/u.test(node.text);
     if (ts.isTemplateExpression(node))
       return (
         fixed(node.head, seen) ||
