@@ -9,7 +9,7 @@ import {
   createSocialSignInFixture,
   verifications,
   gateway,
-} from './social/fixture.js';
+} from './social-sign-in.fixture.js';
 import { createHash, randomUUID } from 'node:crypto';
 
 describe.skipIf(!betterAuthIntegrationEnabled)(

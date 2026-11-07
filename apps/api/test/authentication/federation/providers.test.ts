@@ -3,9 +3,9 @@ import { AuthenticationDiagnostics } from '../../../src/authentication/better-au
 import { generateKeyPairSync, sign } from 'node:crypto';
 import { Pool } from 'pg';
 import { afterAll, afterEach, describe, expect, it, vi } from 'vitest';
-import { LocalAuthenticationMailSink } from '../../../src/authentication/mail/delivery.js';
+import { LocalAuthenticationMailSink } from '../../../src/authentication/mail/authentication-mail.js';
 import type { OwnedEmailProofs } from '../../../src/authentication/mail/email-proofs.js';
-import { createPertexoBetterAuth } from '../../../src/authentication/better-auth/options.js';
+import { createPertexoBetterAuth } from '../../../src/authentication/better-auth/better-auth-options.js';
 import {
   betterAuthSocialProviders,
   configuredSocialProviders,

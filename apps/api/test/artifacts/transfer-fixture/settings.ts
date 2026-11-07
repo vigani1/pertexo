@@ -3,7 +3,7 @@ import { DEFAULT_CODE_SETTINGS } from '@pertexo/node-sdk';
 
 import type { ArtifactStoreConfig } from '@pertexo/artifact-store/server';
 
-import type { ApiConfig } from '../../../src/platform/config/api.js';
+import type { ApiConfig } from '../../../src/platform/config/api-config.js';
 
 import {
   redisUrl,

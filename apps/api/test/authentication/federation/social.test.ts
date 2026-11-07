@@ -1,7 +1,7 @@
 import { Pool } from 'pg';
 import { afterAll, afterEach, describe, expect, it, vi } from 'vitest';
 import { SocialSignInCommands } from '@pertexo/core/identity';
-import { SocialSignIn } from '../../../src/authentication/federation/social.js';
+import { SocialSignIn } from '../../../src/authentication/federation/social-sign-in.js';
 import type { SocialProviderGateway } from '../../../src/authentication/social-provider.types.js';
 
 const pool = new Pool({

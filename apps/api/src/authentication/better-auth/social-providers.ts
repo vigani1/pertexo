@@ -8,7 +8,7 @@ import type {
   SocialProviderGateway,
   SocialProviderName,
 } from '../social-provider.types.js';
-import type { PertexoBetterAuth } from './options.js';
+import type { PertexoBetterAuth } from './better-auth-options.js';
 
 export function configuredSocialProviders(
   socialProviders: BetterAuthOptions['socialProviders'],

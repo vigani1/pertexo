@@ -11,7 +11,7 @@ import type { AbortableRequest } from '../platform/http/request-operation-signal
 import { authenticatedRequestIdentifiers } from '../workspaces/request/authenticated-context.js';
 import { PendingTaskService } from './pending-task.service.js';
 import { domainErrors } from '../platform/http/problems/interceptor.js';
-import { resourceFailure } from '../problems/context/normalize.js';
+import { resourceFailure } from '../problems/context/normalize-context-errors.js';
 
 type TaskRequest = IdentityWorkspaceRequest & AbortableRequest;
 

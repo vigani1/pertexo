@@ -5,7 +5,7 @@ import {
   verifyCallbackTokenKeys,
   type CallbackTokenKeys,
 } from '@pertexo/secrets/server';
-import type { ApiConfig } from '../config/api.js';
+import type { ApiConfig } from '../config/api-config.js';
 export type ApiCallbackRuntime = Readonly<{
   store: CallbackStore;
   keys: CallbackTokenKeys | undefined;

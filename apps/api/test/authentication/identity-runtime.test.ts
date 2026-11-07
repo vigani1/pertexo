@@ -4,8 +4,8 @@ import * as tenantAccessStores from '@pertexo/core/tenant-access';
 import type { IdentityWorkspaceStore } from '@pertexo/core/testing';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { ApiIdentityConfig } from '../../src/platform/config/identity.js';
-import { createApiIdentityRuntime } from '../../src/platform/identity/runtime.module.js';
+import type { ApiIdentityConfig } from '../../src/platform/config/identity-config.js';
+import { createApiIdentityRuntime } from '../../src/platform/identity/identity-runtime.module.js';
 
 const identityConfig: ApiIdentityConfig = {
   publicWebOrigin: 'https://app.example.test',

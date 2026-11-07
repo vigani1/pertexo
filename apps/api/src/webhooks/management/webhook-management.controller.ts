@@ -12,7 +12,7 @@ import { withRequestOperationSignal } from '../../platform/http/index.js';
 import type { AbortableRequest } from '../../platform/http/request-operation-signal.js';
 import { WebhookManagementService } from './webhook-management.service.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
-import { authoringFailure } from '../../problems/context/normalize.js';
+import { authoringFailure } from '../../problems/context/normalize-context-errors.js';
 
 type Request = IdentityWorkspaceRequest & AbortableRequest;
 type Command = RouteInput<typeof routes.provision>;

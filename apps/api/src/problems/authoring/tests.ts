@@ -1,4 +1,4 @@
-import { errorRegistration } from '../../platform/http/problems/registry.js';
+import { errorRegistration } from '../../platform/http/problems/error-registry.js';
 import {
   NodeTestRequestError,
   NodeTestInvalidError,

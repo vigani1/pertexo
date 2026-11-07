@@ -11,7 +11,7 @@ import type { AbortableRequest } from '../platform/http/request-operation-signal
 import { authenticatedRequestIdentifiers } from '../workspaces/request/authenticated-context.js';
 import { FormService } from './form.service.js';
 import { domainErrors } from '../platform/http/problems/interceptor.js';
-import { memberFormFailure } from '../problems/context/normalize.js';
+import { memberFormFailure } from '../problems/context/normalize-context-errors.js';
 
 type FormRequest = IdentityWorkspaceRequest & AbortableRequest;
 

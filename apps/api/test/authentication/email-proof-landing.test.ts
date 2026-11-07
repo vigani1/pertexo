@@ -1,7 +1,7 @@
 import { Pool } from 'pg';
 import { expect, it, vi } from 'vitest';
 import { OwnedEmailProofs } from '../../src/authentication/mail/email-proofs.js';
-import { LocalAuthenticationMailSink } from '../../src/authentication/mail/delivery.js';
+import { LocalAuthenticationMailSink } from '../../src/authentication/mail/authentication-mail.js';
 
 it.each([
   { outcome: 'initial_verification', expected: 'verified=true' },

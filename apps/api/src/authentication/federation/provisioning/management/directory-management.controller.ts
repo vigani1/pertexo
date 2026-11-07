@@ -6,13 +6,13 @@ import {
 import type { DirectoryStore } from '@pertexo/core/identity';
 import { withRequestOperationSignal } from '../../../../platform/http/index.js';
 import { domainErrors } from '../../../../platform/http/problems/interceptor.js';
-import { resourceFailure } from '../../../../problems/context/normalize.js';
+import { resourceFailure } from '../../../../problems/context/normalize-context-errors.js';
 import { In, Route } from '../../../../workspaces/http/route.js';
 import {
   federationCommand,
   federationScope,
   type FederationManagementRequest,
-} from '../../management/request.js';
+} from '../../management/federation-request.js';
 import { DIRECTORY_STORE } from './tokens.js';
 
 type Request = FederationManagementRequest;

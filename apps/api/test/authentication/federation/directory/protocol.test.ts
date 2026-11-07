@@ -2,12 +2,12 @@ import { describe, expect, it } from 'vitest';
 import {
   parseDirectoryUser,
   parseDirectoryGroup,
-} from '../../../../src/authentication/federation/provisioning/protocol/resources.js';
+} from '../../../../src/authentication/federation/provisioning/protocol/scim-resources.js';
 import {
   applyDirectoryPatch,
   parseDirectoryPatch,
-} from '../../../../src/authentication/federation/provisioning/protocol/patch.js';
-import { parseDirectoryFilter } from '../../../../src/authentication/federation/provisioning/protocol/filter.js';
+} from '../../../../src/authentication/federation/provisioning/protocol/scim-patch.js';
+import { parseDirectoryFilter } from '../../../../src/authentication/federation/provisioning/protocol/scim-filter.js';
 
 const user = {
   schemas: ['urn:ietf:params:scim:schemas:core:2.0:User'],

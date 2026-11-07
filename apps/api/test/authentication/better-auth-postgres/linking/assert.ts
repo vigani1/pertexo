@@ -1,6 +1,6 @@
 import { expect } from 'vitest';
 
-import type { callbackOrderings } from './contract.js';
+import type { callbackOrderings } from './linking-scenarios.js';
 import { createProviderLinkScenario } from './context.js';
 import { createVerifiedLinkingBrowser, startProviderLink } from './browser.js';
 import { dispatchProviderLinkCallbacks } from './callbacks.js';

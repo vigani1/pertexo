@@ -14,7 +14,7 @@ import {
   TestWorkflowNodeUseCase,
 } from './node-testing.service.js';
 import { domainErrors } from '../platform/http/problems/interceptor.js';
-import { nodeTestingFailure } from '../problems/context/normalize.js';
+import { nodeTestingFailure } from '../problems/context/normalize-context-errors.js';
 
 interface StatusResponse {
   status(code: number): unknown;

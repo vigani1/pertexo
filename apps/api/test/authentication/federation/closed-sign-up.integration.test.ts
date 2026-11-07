@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { betterAuthIntegrationEnabled } from '../../support/better-auth/real-api.support.js';
 import type { Browser } from '../../support/better-auth/api/contract.js';
 import { useSamlApi, samlOrigin } from './saml/api.fixture.js';
-import { createSocialSignInFixture } from './social/fixture.js';
+import { createSocialSignInFixture } from './social-sign-in.fixture.js';
 
 describe.skipIf(!betterAuthIntegrationEnabled)(
   'sign-in providers on an install with sign-up closed',

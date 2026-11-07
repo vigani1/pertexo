@@ -1,6 +1,6 @@
 import { commandCredential } from '../authorization/credentials.js';
 import { projectAuthenticatedWorkspaceContext } from '../workspaces/request/authenticated-context.js';
-import { CsvExportAdmission } from '../platform/http/csv/admission.js';
+import { CsvExportAdmission } from '../platform/http/csv/csv-admission.js';
 import type { FastifyRequest, FastifyReply } from 'fastify';
 import { decodeTableExportRequest } from './export/request.js';
 import { sendTableExport } from './export/response.js';
@@ -16,7 +16,7 @@ import { withRequestOperationSignal } from '../platform/http/index.js';
 import type { AbortableRequest } from '../platform/http/request-operation-signal.js';
 import { DataTablesService } from './data-tables.service.js';
 import { domainErrors } from '../platform/http/problems/interceptor.js';
-import { dataTableFailure } from '../problems/context/normalize.js';
+import { dataTableFailure } from '../problems/context/normalize-context-errors.js';
 
 type Request = IdentityWorkspaceRequest & AbortableRequest;
 

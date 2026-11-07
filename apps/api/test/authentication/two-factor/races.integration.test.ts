@@ -11,7 +11,7 @@ import {
   enrollFactor,
   factorPassword,
 } from '../../support/better-auth/two-factor.js';
-import { useOrganizationApi } from '../federation/organization/fixture.js';
+import { useOrganizationApi } from '../federation/organization/organization-sign-in.fixture.js';
 
 describe.skipIf(!betterAuthIntegrationEnabled)(
   'organization enforcement during second-factor session insertion',

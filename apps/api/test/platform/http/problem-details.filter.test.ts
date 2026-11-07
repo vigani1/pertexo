@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { toProblem } from '../../../src/problems/registry.js';
+import { toProblem } from '../../../src/problems/api-problem-registry.js';
 import { apiProblemSchema } from '@pertexo/contracts';
 import {
   ProblemDetailsFilter,
@@ -15,14 +15,14 @@ import {
   hostFor,
   revisionConflicts,
   autoPauseConflicts,
-} from './problem-details.filter/fixture.js';
+} from './problem-details-filter.fixture.js';
 import {
   workspaceFailure,
   connectionFailure,
   runFailure,
   nodeTestingFailure,
   authoringFailure,
-} from '../../../src/problems/context/normalize.js';
+} from '../../../src/problems/context/normalize-context-errors.js';
 import { IdentityError } from '../../../src/identity/index.js';
 import { BadRequestException, HttpException } from '@nestjs/common';
 import { z } from 'zod';

@@ -475,7 +475,7 @@ connection_oauth2_authorizations          -- at most one pending per connection
 | `apps/worker/src/attempts/execution/capability-composition/connections.ts` | Gives it the token service and HTTP client |
 | `apps/api/src/connections/oauth2/` | `controller.ts`, `start-authorization.ts`, `finish-authorization.ts`, `errors.ts`; registered in `module.ts` |
 | `apps/api/src/connections/use-cases/` | Create, rotate and test branches (`testing/oauth2.ts`); `problems/resources/connections.ts` |
-| `apps/api/src/platform/connections/runtime.module.ts` | A second secure client with the address policy for token requests only |
+| `apps/api/src/platform/connections/connections-runtime.module.ts` | A second secure client with the address policy for token requests only |
 | `apps/web/src/features/connections/` | `credential-draft.ts` union, `components/credential/oauth2-fields.tsx`, `components/oauth2/connect.tsx`, `hooks/use-oauth2-consent.ts`, `data/oauth2.api.ts`, `pages/oauth2-finished.tsx`, and the copy in `model/` |
 | `apps/web/src/routes/root/` | The landing route, public |
 | `infrastructure/single-server/` | Caddy `handle` (S13); `HTTP_ALLOWED_PRIVATE_NETWORKS` for the API; `.env.example`; runbook note (D9) |

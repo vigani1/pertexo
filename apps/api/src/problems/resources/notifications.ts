@@ -1,4 +1,4 @@
-import { errorRegistration } from '../../platform/http/problems/registry.js';
+import { errorRegistration } from '../../platform/http/problems/error-registry.js';
 import { applicationError } from '../../platform/http/index.js';
 import { InvalidWorkspaceInboxCursorError } from '../../notifications/cursor.js';
 import { WorkspaceInboxThreadNotFoundError } from '../../notifications/workspace-inbox.service.js';

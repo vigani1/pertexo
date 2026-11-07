@@ -6,7 +6,7 @@ import {
 } from 'better-auth/api';
 import { isAuthenticationSessionAllowed } from '@pertexo/core/identity';
 import type { Pool } from 'pg';
-import type { AuthenticationTransactions } from './transactions/context.js';
+import type { AuthenticationTransactions } from './transactions/authentication-transactions.js';
 import { requireDoubleSubmitCsrf } from './csrf.js';
 
 export const TWO_FACTOR_VERIFICATION_PATHS = [

@@ -19,9 +19,9 @@ import {
   migrateDatabase,
 } from '@pertexo/database/testing';
 
-import { createPertexoBetterAuth } from '../../src/authentication/better-auth/options.js';
-import { AuthenticationTransactions } from '../../src/authentication/better-auth/transactions/context.js';
-import { LocalAuthenticationMailSink } from '../../src/authentication/mail/delivery.js';
+import { createPertexoBetterAuth } from '../../src/authentication/better-auth/better-auth-options.js';
+import { AuthenticationTransactions } from '../../src/authentication/better-auth/transactions/authentication-transactions.js';
+import { LocalAuthenticationMailSink } from '../../src/authentication/mail/authentication-mail.js';
 import type { OwnedEmailProofs } from '../../src/authentication/mail/email-proofs.js';
 
 const adminUrl =

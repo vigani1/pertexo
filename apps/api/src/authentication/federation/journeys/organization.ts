@@ -20,7 +20,7 @@ import { samlTransportAvailable } from '../protocol/saml/configuration.js';
 import {
   readOrganizationCallback,
   type OrganizationCallback,
-} from './callback.js';
+} from './organization-callback.js';
 import {
   newJourneyToken,
   journeyDigest,
@@ -30,8 +30,11 @@ import {
   deriveJourneySecret,
   landWithReplacementSession,
 } from '../../journeys/browser-proof.js';
-import { type BrowserSession, prepareOrganizationStart } from './start.js';
-import { failure } from './reply.js';
+import {
+  type BrowserSession,
+  prepareOrganizationStart,
+} from './start-organization-sign-in.js';
+import { failure } from './organization-reply.js';
 
 const callbackPath = '/v1/auth/federation/oidc/callback';
 

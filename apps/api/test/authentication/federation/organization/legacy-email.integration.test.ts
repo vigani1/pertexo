@@ -11,7 +11,7 @@ import {
   browserFrom,
   setCookie,
 } from '../../../support/better-auth/real-api.support.js';
-import { useOrganizationApi } from './fixture.js';
+import { useOrganizationApi } from './organization-sign-in.fixture.js';
 
 const wide = (value: string) =>
   value.replace(/[!-~]/gu, (character) =>

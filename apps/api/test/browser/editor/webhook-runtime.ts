@@ -9,8 +9,8 @@ import {
 } from '@pertexo/secrets/server';
 import { PLATFORM_NODE_CATALOG } from '@pertexo/node-catalog';
 import { composeExecutableCatalog } from '@pertexo/workflow-engine/server';
-import type { ApiConfig } from '../../../src/platform/config/api.js';
-import type { ApiWebhookRuntime } from '../../../src/platform/webhooks/runtime.module.js';
+import type { ApiConfig } from '../../../src/platform/config/api-config.js';
+import type { ApiWebhookRuntime } from '../../../src/platform/webhooks/webhooks-runtime.module.js';
 import { WebhookManagementService } from '../../../src/webhooks/management/webhook-management.service.js';
 import { WebhookTestEventService } from '../../../src/webhooks/test-events/webhook-test-event.service.js';
 import { createEditorBrowserEnvelopeKeys } from '../../../../../infrastructure/testing/editor-browser-envelope-keys.mjs';

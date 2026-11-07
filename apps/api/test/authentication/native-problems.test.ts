@@ -2,7 +2,7 @@ import { apiProblemSchema } from '@pertexo/contracts';
 import Fastify from 'fastify';
 import { describe, expect, it } from 'vitest';
 
-import { registerBetterAuthHandler } from '../../src/authentication/better-auth/fastify.js';
+import { registerBetterAuthHandler } from '../../src/authentication/better-auth/better-auth-transport.js';
 
 const mappings = [
   [

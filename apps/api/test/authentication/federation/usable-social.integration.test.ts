@@ -4,7 +4,7 @@ import {
   betterAuthIntegrationEnabled,
   browserFrom,
 } from '../../support/better-auth/real-api.support.js';
-import { createSocialSignInFixture } from './social/fixture.js';
+import { createSocialSignInFixture } from './social-sign-in.fixture.js';
 
 describe.runIf(betterAuthIntegrationEnabled)(
   'a configured social alternative remains usable after removal',

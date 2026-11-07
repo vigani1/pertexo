@@ -6,7 +6,7 @@ import {
   workflowDraftResponseSchema,
   apiTokenCreateResponseSchema,
 } from '@pertexo/contracts';
-import type { createAutomationApiFixture } from '../fixture.js';
+import type { createAutomationApiFixture } from '../api-token-api.fixture.js';
 
 export async function createTokenWorkspace(
   caseFixture: ReturnType<typeof createAutomationApiFixture>,

@@ -8,7 +8,7 @@ import { WorkflowCollaborationUseCase } from './workflow-collaboration.service.j
 import { collaborationOperation } from './http.js';
 import type { WorkflowAuthoringRequest } from '../workflow-transport.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
-import { collaborationFailure } from '../../problems/context/normalize.js';
+import { collaborationFailure } from '../../problems/context/normalize-context-errors.js';
 @UseInterceptors(domainErrors(collaborationFailure))
 @Controller()
 export class WorkflowCommentsController {

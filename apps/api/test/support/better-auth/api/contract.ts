@@ -1,14 +1,14 @@
-import type { AuthenticationMail } from '../../../../src/authentication/mail/delivery.js';
+import type { AuthenticationMail } from '../../../../src/authentication/mail/authentication-mail.js';
 
-import type { ApiIdentityConfig } from '../../../../src/platform/config/identity.js';
+import type { ApiIdentityConfig } from '../../../../src/platform/config/identity-config.js';
 
 import type { StructuredLogger } from '@pertexo/observability/server';
 
 import type { createApiApplication } from '../../../../src/app.js';
-import type { ApiConfig } from '../../../../src/platform/config/api.js';
+import type { ApiConfig } from '../../../../src/platform/config/api-config.js';
 
 import type { FixtureConnectionServices } from '../../connection-runtime.js';
-import type { ApiWebhookRuntime } from '../../../../src/platform/webhooks/runtime.module.js';
+import type { ApiWebhookRuntime } from '../../../../src/platform/webhooks/webhooks-runtime.module.js';
 
 export type Browser = Readonly<{
   session: string;

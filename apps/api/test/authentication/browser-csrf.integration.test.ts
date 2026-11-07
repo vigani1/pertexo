@@ -5,7 +5,7 @@ import {
   type Browser,
 } from '../support/better-auth/real-api.support.js';
 import { password } from '../support/better-auth/api/environment.js';
-import { createSocialSignInFixture } from './federation/social/fixture.js';
+import { createSocialSignInFixture } from './federation/social-sign-in.fixture.js';
 
 describe.runIf(betterAuthIntegrationEnabled)(
   'one browser CSRF policy across transports',

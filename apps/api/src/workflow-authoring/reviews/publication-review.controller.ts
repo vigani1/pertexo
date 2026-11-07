@@ -14,7 +14,7 @@ import { projectAuthenticatedWorkspaceContext } from '../../workspaces/request/a
 import type { WorkflowAuthoringRequest } from '../workflow-transport.js';
 import { PublicationReviewUseCase } from './publication-review.service.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
-import { authoringFailure } from '../../problems/context/normalize.js';
+import { authoringFailure } from '../../problems/context/normalize-context-errors.js';
 
 @UseInterceptors(domainErrors(authoringFailure))
 @Controller()

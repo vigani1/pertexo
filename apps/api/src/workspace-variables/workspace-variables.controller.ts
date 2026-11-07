@@ -11,7 +11,7 @@ import { withRequestOperationSignal } from '../platform/http/index.js';
 import type { AbortableRequest } from '../platform/http/request-operation-signal.js';
 import { WorkspaceVariablesService } from './workspace-variables.service.js';
 import { domainErrors } from '../platform/http/problems/interceptor.js';
-import { resourceFailure } from '../problems/context/normalize.js';
+import { resourceFailure } from '../problems/context/normalize-context-errors.js';
 
 type Request = IdentityWorkspaceRequest & AbortableRequest;
 @UseInterceptors(domainErrors(resourceFailure))

@@ -12,7 +12,7 @@ import { In, Route } from '../workspaces/http/route.js';
 import type { IdentityWorkspaceRequest } from '../workspaces/workspace-transport.js';
 import { ScheduleManagementService } from './schedule-management.service.js';
 import { domainErrors } from '../platform/http/problems/interceptor.js';
-import { authoringFailure } from '../problems/context/normalize.js';
+import { authoringFailure } from '../problems/context/normalize-context-errors.js';
 
 type Request = IdentityWorkspaceRequest;
 type TriggerCommand = RouteInput<typeof routes.enable>;

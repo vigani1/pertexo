@@ -6,7 +6,7 @@ import {
   throwApplicationError,
 } from '../../platform/http/index.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
-import { formUploadFailure } from '../../problems/context/normalize.js';
+import { formUploadFailure } from '../../problems/context/normalize-context-errors.js';
 
 function unavailableStorage(): never {
   return throwApplicationError(

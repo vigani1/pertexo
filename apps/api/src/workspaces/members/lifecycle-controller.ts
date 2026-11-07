@@ -12,7 +12,7 @@ import type { IdentitySessionAuthority } from '../ports.js';
 import { SESSION_AUTHORITY } from '../tokens.js';
 import type { IdentityWorkspaceRequest } from '../workspace-transport.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
-import { workspaceFailure } from '../../problems/context/normalize.js';
+import { workspaceFailure } from '../../problems/context/normalize-context-errors.js';
 
 /**
  * ADR 047 membership lifecycle: leave a workspace, suspend or reactivate a

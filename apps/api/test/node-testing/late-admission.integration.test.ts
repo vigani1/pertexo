@@ -4,8 +4,8 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createPreviewRunStore } from '@pertexo/core/testing';
 import { createArtifactTransferApiFixture } from '../artifacts/transfer-fixture/create.js';
 import { artifactTransferIntegrationEnabled } from '../artifacts/transfer-fixture/environment.js';
-import { nodeTestingFailure } from '../../src/problems/context/normalize.js';
-import { toProblem } from '../../src/problems/registry.js';
+import { nodeTestingFailure } from '../../src/problems/context/normalize-context-errors.js';
+import { toProblem } from '../../src/problems/api-problem-registry.js';
 
 // This crosses the real late core admission, after an earlier draft snapshot,
 // then the same normalization/registry used by the node-testing controller.

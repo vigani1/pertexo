@@ -6,7 +6,7 @@ import {
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
 import { requestHeaderValue } from '../../platform/http/request-headers.js';
 import { withRequestOperationSignal } from '../../platform/http/request-operation-signal.js';
-import { authoringFailure } from '../../problems/context/normalize.js';
+import { authoringFailure } from '../../problems/context/normalize-context-errors.js';
 import { In, Route } from '../../workspaces/http/route.js';
 import { projectAuthenticatedWorkspaceContext } from '../../workspaces/request/authenticated-context.js';
 import type {

@@ -17,7 +17,7 @@ import {
   samlFixture,
   type SigningMaterial,
   type ResponseOptions,
-} from './fixture.js';
+} from './saml-sign-in.fixture.js';
 
 let material: SigningMaterial;
 beforeAll(() => {

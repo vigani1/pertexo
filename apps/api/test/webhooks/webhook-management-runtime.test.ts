@@ -5,7 +5,7 @@ import type {
 import type * as Secrets from '@pertexo/secrets/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { createApiWebhookRuntime } from '../../src/platform/webhooks/runtime.module.js';
+import { createApiWebhookRuntime } from '../../src/platform/webhooks/webhooks-runtime.module.js';
 import { silentLogger } from '../support/silent-logger.js';
 
 const outside = vi.hoisted(() => ({

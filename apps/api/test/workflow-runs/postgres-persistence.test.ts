@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { problemResult } from '../support/problem.js';
-import { runFailure } from '../../src/problems/context/normalize.js';
+import { runFailure } from '../../src/problems/context/normalize-context-errors.js';
 import {
   WorkflowPublishedVersionConflictError,
   createInitialCheckpoint,

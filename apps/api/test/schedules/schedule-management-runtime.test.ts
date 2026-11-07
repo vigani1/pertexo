@@ -4,7 +4,7 @@ import type {
 } from '@pertexo/database/platform';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { createApiScheduleRuntime } from '../../src/platform/schedules/runtime.module.js';
+import { createApiScheduleRuntime } from '../../src/platform/schedules/schedules-runtime.module.js';
 
 const outside = vi.hoisted(() => ({ database: vi.fn(), telemetry: vi.fn() }));
 

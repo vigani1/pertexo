@@ -13,7 +13,7 @@ import { WorkflowOrganizationReadsUseCase } from '../organization/organization-r
 
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
 import { singleRequestHeader } from '../../platform/http/request-headers.js';
-import { authoringFailure } from '../../problems/context/normalize.js';
+import { authoringFailure } from '../../problems/context/normalize-context-errors.js';
 import type {
   ConditionalWorkflowResponse,
   WorkflowAuthoringRequest,

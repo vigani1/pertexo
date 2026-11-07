@@ -2,7 +2,10 @@ import { randomUUID } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import { apiTokenCreateResponseSchema } from '@pertexo/contracts';
 import { betterAuthIntegrationEnabled } from '../support/better-auth/real-api.support.js';
-import { useQualificationApi, type World } from './qualification/fixture.js';
+import {
+  useQualificationApi,
+  type World,
+} from './qualification/qualification-api.fixture.js';
 
 type Command = Readonly<{
   method: 'POST' | 'PUT';

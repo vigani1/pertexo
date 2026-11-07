@@ -6,8 +6,8 @@ import {
   workflowRunStartResponseSchema,
   apiTokenCreateResponseSchema,
 } from '@pertexo/contracts';
-import type { createAutomationApiFixture } from '../fixture.js';
-import type { TokenWorkspace } from './contract.js';
+import type { createAutomationApiFixture } from '../api-token-api.fixture.js';
+import type { TokenWorkspace } from './portability-api.types.js';
 import type { qualifyCredentialRuns } from './runs.js';
 import type { qualifyReviewedPortability } from './manifest.js';
 

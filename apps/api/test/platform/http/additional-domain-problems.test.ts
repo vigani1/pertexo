@@ -9,7 +9,7 @@ import { HttpPlatformModule } from '../../../src/platform/http/index.js';
 import { InvalidWorkspaceMemberCursorError } from '../../../src/workspaces/cursor.js';
 import { InvalidAuthenticatedWorkspaceContextError } from '../../../src/workspaces/request/authenticated-context-error.js';
 
-import { workspaceFailure } from '../../../src/problems/context/normalize.js';
+import { workspaceFailure } from '../../../src/problems/context/normalize-context-errors.js';
 
 const failure = { current: new Error() };
 class FailureController {

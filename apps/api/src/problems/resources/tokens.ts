@@ -1,4 +1,4 @@
-import { errorRegistration } from '../../platform/http/problems/registry.js';
+import { errorRegistration } from '../../platform/http/problems/error-registry.js';
 import { ApiTokenPolicyError } from '@pertexo/core/tenant-access';
 import { applicationError } from '../../platform/http/index.js';
 

@@ -8,7 +8,7 @@ import {
   setCookie,
   type Reply,
 } from '../../support/better-auth/real-api.support.js';
-import { useOrganizationApi } from './organization/fixture.js';
+import { useOrganizationApi } from './organization/organization-sign-in.fixture.js';
 
 const CANARY = 'private-proof-bearer-SQL-exception-canary';
 

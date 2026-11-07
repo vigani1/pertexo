@@ -15,13 +15,13 @@ import type { createApiApplication } from '../../src/app.js';
 import { IdentityError } from '../../src/identity/index.js';
 import type { IdentityWorkspaceDependencies } from '../../src/workspaces/index.js';
 
-import type { ApiIdentityRuntime } from '../../src/platform/identity/runtime.module.js';
+import type { ApiIdentityRuntime } from '../../src/platform/identity/identity-runtime.module.js';
 
-import type { ApiArtifactRuntime } from '../../src/platform/artifacts/runtime.module.js';
-import type { ApiIdentityConfig } from '../../src/platform/config/identity.js';
+import type { ApiArtifactRuntime } from '../../src/platform/artifacts/artifacts-runtime.module.js';
+import type { ApiIdentityConfig } from '../../src/platform/config/identity-config.js';
 import type { BetterAuthRuntime } from '../../src/authentication/index.js';
 
-import type { ApiWorkflowRuntime } from '../../src/platform/workflow/runtime.module.js';
+import type { ApiWorkflowRuntime } from '../../src/platform/workflow/workflow-runtime.module.js';
 import {
   createApiPlatformFixture,
   createStubApiWorkflowRuntime,

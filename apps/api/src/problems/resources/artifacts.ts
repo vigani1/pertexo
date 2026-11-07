@@ -8,7 +8,7 @@ import {
   ArtifactUploadIdempotencyConflictError,
   ArtifactUploadNotFoundError,
 } from '@pertexo/core/artifacts';
-import { errorRegistration } from '../../platform/http/problems/registry.js';
+import { errorRegistration } from '../../platform/http/problems/error-registry.js';
 import {
   ArtifactUploadTooLargeError,
   ArtifactApiNotFoundError,

@@ -9,7 +9,7 @@ import type {
   ProviderLinkStart,
   ProviderLinkCallbacks,
   CallbackOrdering,
-} from './contract.js';
+} from './linking-scenarios.js';
 
 function providerLinkOutcome({
   response,

@@ -5,7 +5,7 @@ import { parseDatabaseConfig } from '@pertexo/database/testing';
 import { Client } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { resourceFailure } from '../../src/problems/context/normalize.js';
+import { resourceFailure } from '../../src/problems/context/normalize-context-errors.js';
 import { WorkspaceVariablesService } from '../../src/workspace-variables/workspace-variables.service.js';
 import { assertIntegrationGateConfigured } from '../support/integration-gate.js';
 import { problemResult } from '../support/problem.js';

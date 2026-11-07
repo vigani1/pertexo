@@ -8,8 +8,8 @@ import {
   workflowImportPreviewResponseSchema,
   workflowImportResponseSchema,
 } from '@pertexo/contracts';
-import type { createAutomationApiFixture } from '../fixture.js';
-import type { TokenWorkspace } from './contract.js';
+import type { createAutomationApiFixture } from '../api-token-api.fixture.js';
+import type { TokenWorkspace } from './portability-api.types.js';
 
 export async function qualifyReviewedPortability(
   caseFixture: ReturnType<typeof createAutomationApiFixture>,

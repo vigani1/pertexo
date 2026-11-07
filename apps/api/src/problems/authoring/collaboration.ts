@@ -1,5 +1,5 @@
 import type { ApiProblemCode } from '@pertexo/contracts';
-import { errorRegistration } from '../../platform/http/problems/registry.js';
+import { errorRegistration } from '../../platform/http/problems/error-registry.js';
 import { WorkflowCollaborationError } from '@pertexo/core/authoring';
 import { applicationError } from '../../platform/http/index.js';
 

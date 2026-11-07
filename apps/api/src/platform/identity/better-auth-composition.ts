@@ -14,7 +14,7 @@ import {
   type AuthenticationMail,
   type BetterAuthRuntime,
 } from '../../authentication/index.js';
-import type { ApiIdentityConfig } from '../config/identity.js';
+import type { ApiIdentityConfig } from '../config/identity-config.js';
 
 type BetterAuthConfig = ApiIdentityConfig['betterAuth'];
 

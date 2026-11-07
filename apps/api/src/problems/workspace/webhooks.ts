@@ -1,5 +1,5 @@
 import { CallbackResponseError } from '@pertexo/core/runs';
-import { errorRegistration } from '../../platform/http/problems/registry.js';
+import { errorRegistration } from '../../platform/http/problems/error-registry.js';
 import {
   WebhookTriggerIdempotencyConflictError,
   WebhookTriggerNotFoundError,

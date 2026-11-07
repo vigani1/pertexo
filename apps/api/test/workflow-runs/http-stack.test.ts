@@ -10,8 +10,8 @@ import {
   mutationHeaders,
   start,
 } from './http-stack.fixture.js';
-import { toProblem } from '../../src/problems/registry.js';
-import { runFailure } from '../../src/problems/context/normalize.js';
+import { toProblem } from '../../src/problems/api-problem-registry.js';
+import { runFailure } from '../../src/problems/context/normalize-context-errors.js';
 import { throwApplicationError } from '../../src/platform/http/application-error.js';
 import { applicationError } from '../../src/platform/http/index.js';
 import {

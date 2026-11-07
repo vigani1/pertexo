@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
-import { createApiWorkflowRuntime } from '../../src/platform/workflow/runtime.module.js';
+import { createApiWorkflowRuntime } from '../../src/platform/workflow/workflow-runtime.module.js';
 import {
   betterAuthIntegrationEnabled,
   useBetterAuthRealApi,

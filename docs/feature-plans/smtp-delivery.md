@@ -21,7 +21,7 @@ an external mailbox. No real mail is sent during automated verification.
 
 ## Existing seam and known constraints
 
-- `apps/api/src/authentication/mail/delivery.ts` enqueues sealed account mail.
+- `apps/api/src/authentication/mail/authentication-mail.ts` enqueues sealed account mail.
   API identity configuration owns sender and encryption, not delivery secrets.
 - `apps/worker/src/config/authentication-mail.ts` and
   `config/invitation-delivery.ts` currently require separate Resend API keys.

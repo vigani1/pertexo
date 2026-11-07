@@ -8,12 +8,12 @@ import {
 } from '../../src/api-runtimes.js';
 import { assembleApiApplication } from '../../src/app.js';
 import type { ApiRuntimeSet } from '../../src/platform/api-application.types.js';
-import { createApiArtifactRuntime } from '../../src/platform/artifacts/runtime.module.js';
-import type { ApiConfig } from '../../src/platform/config/api.js';
+import { createApiArtifactRuntime } from '../../src/platform/artifacts/artifacts-runtime.module.js';
+import type { ApiConfig } from '../../src/platform/config/api-config.js';
 import type { RateLimitConsumer } from '../../src/platform/rate-limit/interceptor.js';
 import type { ApiRateLimit } from '../../src/platform/rate-limit/rate-limit.module.js';
 import { createApiCallbackRuntime } from '../../src/platform/webhooks/callback-runtime.module.js';
-import { createApiWorkflowRuntime } from '../../src/platform/workflow/runtime.module.js';
+import { createApiWorkflowRuntime } from '../../src/platform/workflow/workflow-runtime.module.js';
 
 export type TestApiParts = ApiApplicationDependencies &
   Omit<ApiRuntimeSet, 'database' | 'rateLimit'> &

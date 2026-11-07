@@ -12,7 +12,7 @@ import {
 import type { federationFailureReasonSchema } from '@pertexo/contracts';
 import { betterAuthIntegrationEnabled } from '../../../support/better-auth/real-api.support.js';
 import { useSamlApi } from './api.fixture.js';
-import type { ResponseOptions } from './fixture.js';
+import type { ResponseOptions } from './saml-sign-in.fixture.js';
 
 const SAML = 'urn:oasis:names:tc:SAML:2.0';
 /** Text only an assertion could hold, to look for wherever a refusal leaves a trace. */

@@ -1,4 +1,4 @@
-import { CsvExportAdmission } from '../http/csv/admission.js';
+import { CsvExportAdmission } from '../http/csv/csv-admission.js';
 import { HttpRateLimitAdmission } from './admission.js';
 import type { DynamicModule } from '@nestjs/common';
 import { Module } from '@nestjs/common';

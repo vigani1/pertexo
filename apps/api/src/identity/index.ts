@@ -14,5 +14,5 @@ export type {
   SessionIssueResult,
   AuthenticatedSession,
   SignInEvidence,
-} from './ports.js';
+} from './identity-ports.js';
 export { assertRecentSignIn } from './recent-sign-in.js';

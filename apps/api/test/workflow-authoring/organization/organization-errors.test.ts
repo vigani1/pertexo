@@ -1,8 +1,8 @@
-import { toProblem } from '../../../src/problems/registry.js';
-import { createErrorRegistry } from '../../../src/platform/http/problems/registry.js';
+import { toProblem } from '../../../src/problems/api-problem-registry.js';
+import { createErrorRegistry } from '../../../src/platform/http/problems/error-registry.js';
 import { organizationProblems } from '../../../src/problems/authoring/organization.js';
 const organizationProblem = createErrorRegistry(organizationProblems);
-import { authoringFailure } from '../../../src/problems/context/normalize.js';
+import { authoringFailure } from '../../../src/problems/context/normalize-context-errors.js';
 import {
   WorkflowFolderConflictError,
   WorkflowNotFoundError,

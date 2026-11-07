@@ -9,7 +9,7 @@ import { withRequestOperationSignal } from '../../platform/http/index.js';
 import type { AbortableRequest } from '../../platform/http/request-operation-signal.js';
 import { HttpRateLimitAdmission } from '../../platform/rate-limit/admission.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
-import { formUploadFailure } from '../../problems/context/normalize.js';
+import { formUploadFailure } from '../../problems/context/normalize-context-errors.js';
 import { FormUploadService } from './form-upload.service.js';
 
 type PublicRequest = FastifyRequest & AbortableRequest;

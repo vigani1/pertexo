@@ -1,7 +1,7 @@
 import { Pool } from 'pg';
 import { describe, expect, it, vi } from 'vitest';
 import { betterAuthIntegrationEnabled } from '../../support/better-auth/real-api.support.js';
-import { useRecoveryApi, waitForBlocked } from './fixture.js';
+import { useRecoveryApi, waitForBlocked } from './account-recovery.fixture.js';
 
 describe.runIf(betterAuthIntegrationEnabled)('reset database deadlines', () => {
   const api = useRecoveryApi();

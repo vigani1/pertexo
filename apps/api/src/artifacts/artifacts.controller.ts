@@ -18,7 +18,7 @@ import type { AbortableRequest } from '../platform/http/request-operation-signal
 import type { IdentityWorkspaceRequest } from '../workspaces/workspace-transport.js';
 import { ArtifactService } from './artifact.service.js';
 import { domainErrors } from '../platform/http/problems/interceptor.js';
-import { artifactFailure } from '../problems/context/normalize.js';
+import { artifactFailure } from '../problems/context/normalize-context-errors.js';
 
 type ArtifactRequest = IdentityWorkspaceRequest & AbortableRequest;
 

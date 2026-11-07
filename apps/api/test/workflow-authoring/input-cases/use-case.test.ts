@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   inputCaseFailure,
   authoringFailure,
-} from '../../../src/problems/context/normalize.js';
+} from '../../../src/problems/context/normalize-context-errors.js';
 import { problemResult } from '../../support/problem.js';
 import {
   authorizeWorkspace,
@@ -25,7 +25,7 @@ import {
   result,
   fixture,
 } from './input-cases-service.fixture.js';
-import { toProblem } from '../../../src/problems/registry.js';
+import { toProblem } from '../../../src/problems/api-problem-registry.js';
 import { WorkflowInputCasesUseCase } from '../../../src/workflow-authoring/input-cases/workflow-input-cases.service.js';
 import { WORKSPACE_AUTHORIZATION } from '../../../src/workspaces/tokens.js';
 import { FakeIdentityModule } from '../../support/identity-module.js';

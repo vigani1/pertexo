@@ -7,16 +7,16 @@ import {
   createDirectoryFixture,
   coreGroup,
   patch,
-} from './provisioning/fixture.js';
+} from './directory-provisioning.fixture.js';
 import Fastify from 'fastify';
-import { registerDirectoryTransport } from '../../../../src/authentication/federation/provisioning/transport/register.js';
+import { registerDirectoryTransport } from '../../../../src/authentication/federation/provisioning/transport/register-directory-transport.js';
 import { createHash, randomUUID } from 'node:crypto';
 import {
   workspaceMembersResponseSchema,
   directoryCredentialResultSchema,
   directorySettingsSchema,
 } from '@pertexo/contracts';
-import { encryption } from '../organization/fixture.js';
+import { encryption } from '../organization/organization-sign-in.fixture.js';
 
 describe.skipIf(!betterAuthIntegrationEnabled)(
   'SCIM on the real API and PostgreSQL',

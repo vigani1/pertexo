@@ -1,7 +1,7 @@
 import { runPersistenceSpies } from '../support/run-ports.js';
 import type { Role } from '@pertexo/policy';
 
-import type { ApiIdentityRuntime } from '../../src/platform/identity/runtime.module.js';
+import type { ApiIdentityRuntime } from '../../src/platform/identity/identity-runtime.module.js';
 
 import { createTestApiApplication } from '../support/api-application.js';
 import {

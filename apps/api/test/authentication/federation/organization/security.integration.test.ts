@@ -6,7 +6,10 @@ import {
   expectProblem,
   origin,
 } from '../../../support/better-auth/real-api.support.js';
-import { useOrganizationApi, encryption } from './fixture.js';
+import {
+  useOrganizationApi,
+  encryption,
+} from './organization-sign-in.fixture.js';
 
 describe.skipIf(!betterAuthIntegrationEnabled)(
   'organization OIDC on the real API',

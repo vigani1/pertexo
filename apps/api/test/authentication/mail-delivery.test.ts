@@ -7,7 +7,7 @@ import {
   LocalAuthenticationMailSink,
   type LocalAuthenticationMailMessage,
   printLocalAuthenticationMail,
-} from '../../src/authentication/mail/delivery.js';
+} from '../../src/authentication/mail/authentication-mail.js';
 
 describe('local authentication mail', () => {
   it('shows every message to its observer', async () => {

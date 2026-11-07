@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { watchExportProgress } from '../../src/platform/http/csv/progress.js';
-import { exportBudgetMillis } from '../../src/platform/http/csv/limits.js';
+import { watchExportProgress } from '../../src/platform/http/csv/csv-progress.js';
+import { exportBudgetMillis } from '../../src/platform/http/csv/csv-limits.js';
 
 beforeEach(() =>
   vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval', 'performance'] }),

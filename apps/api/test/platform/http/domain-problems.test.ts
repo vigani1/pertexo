@@ -13,7 +13,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { APPLICATION_ERROR_MAPPERS } from '../../../src/application-errors.js';
 import { HttpPlatformModule } from '../../../src/platform/http/index.js';
 import { domainErrors } from '../../../src/platform/http/problems/interceptor.js';
-import { resourceFailure } from '../../../src/problems/context/normalize.js';
+import { resourceFailure } from '../../../src/problems/context/normalize-context-errors.js';
 
 const failure = { current: new Error('private failure') };
 const workflowPath = '/v1/workspaces/workspace-a/workflows/workflow-a';

@@ -15,7 +15,7 @@ import type {
   JsonataEvaluator,
   WorkflowAuthoringValidator,
 } from '@pertexo/workflow-model/server';
-import type { ApiIdentityRuntime } from '../../identity/runtime.module.js';
+import type { ApiIdentityRuntime } from '../../identity/identity-runtime.module.js';
 import type { ApiWorkflowMetadataRuntime } from '../metadata-runtime.js';
 import type { LiveRunEventSource } from '../../../workflow-runs/events/stream.js';
 import type { RunEventNotificationPublisher } from '@pertexo/queue/server';

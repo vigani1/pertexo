@@ -2,7 +2,7 @@ import { request as httpRequest } from 'node:http';
 import { randomUUID } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import { betterAuthIntegrationEnabled } from '../../support/better-auth/real-api.support.js';
-import { createAutomationApiFixture } from '../api/fixture.js';
+import { createAutomationApiFixture } from '../api/api-token-api.fixture.js';
 import { createTokenWorkspace } from '../api/portability/setup.js';
 
 describe.runIf(betterAuthIntegrationEnabled)(

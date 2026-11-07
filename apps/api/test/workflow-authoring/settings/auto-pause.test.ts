@@ -1,5 +1,5 @@
 import type { Role } from '@pertexo/policy';
-import { authoringFailure } from '../../../src/problems/context/normalize.js';
+import { authoringFailure } from '../../../src/problems/context/normalize-context-errors.js';
 import { problemResult } from '../../support/problem.js';
 import { describe, expect, it, vi } from 'vitest';
 import type { WorkflowAutoPauseStore } from '@pertexo/core/authoring';

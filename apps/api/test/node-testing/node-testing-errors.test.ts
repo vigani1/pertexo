@@ -1,5 +1,5 @@
-import { toProblem } from '../../src/problems/registry.js';
-import { nodeTestingFailure } from '../../src/problems/context/normalize.js';
+import { toProblem } from '../../src/problems/api-problem-registry.js';
+import { nodeTestingFailure } from '../../src/problems/context/normalize-context-errors.js';
 import type { ArgumentsHost } from '@nestjs/common';
 import { apiProblemSchema } from '@pertexo/contracts';
 import {

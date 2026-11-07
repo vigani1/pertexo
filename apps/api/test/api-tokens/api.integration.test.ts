@@ -3,7 +3,7 @@ import { betterAuthIntegrationEnabled } from '../support/better-auth/real-api.su
 import {
   createAutomationApiFixture,
   createDisabledAutomationFixture,
-} from './api/fixture.js';
+} from './api/api-token-api.fixture.js';
 import { randomUUID } from 'node:crypto';
 import { request as httpRequest } from 'node:http';
 import {

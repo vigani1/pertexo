@@ -7,7 +7,7 @@ import {
   expectProblem,
 } from '../../../support/better-auth/real-api.support.js';
 import { encryption, useSamlApi } from './api.fixture.js';
-import { signingMaterial } from './fixture.js';
+import { signingMaterial } from './saml-sign-in.fixture.js';
 
 describe.skipIf(!betterAuthIntegrationEnabled)(
   'SAML journey authority and refusal through the real API',

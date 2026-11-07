@@ -5,7 +5,7 @@ import { expect } from 'vitest';
 import { mailedMessages } from '../mail.js';
 import { runtime } from '../lifecycle.js';
 import { required, authRequest, cookieValue } from '../requests.js';
-import type { ProviderLinkScenario } from './contract.js';
+import type { ProviderLinkScenario } from './linking-scenarios.js';
 
 export async function createVerifiedLinkingBrowser() {
   const email = `linked-${randomUUID()}@example.test`;

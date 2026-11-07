@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { afterAll, describe, expect, it } from 'vitest';
 import { RedisRateLimitRuntime } from '@pertexo/rate-limit/server';
-import { CsvExportAdmission } from '../../src/platform/http/csv/admission.js';
+import { CsvExportAdmission } from '../../src/platform/http/csv/csv-admission.js';
 import { assertIntegrationGateConfigured } from '../support/integration-gate.js';
 
 const requested = process.env.REDIS_RATE_LIMIT_INTEGRATION === 'true';

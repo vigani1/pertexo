@@ -8,7 +8,7 @@ import { In, Route } from '../../workspaces/http/route.js';
 import { ListConnectionUsageUseCase } from '../use-cases/usage.js';
 import type { ConnectionRequest } from '../connection-request.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
-import { connectionFailure } from '../../problems/context/normalize.js';
+import { connectionFailure } from '../../problems/context/normalize-context-errors.js';
 import { context } from './connections.controller.js';
 
 /** Registered only when usage can be read, so it stands apart from the others. */

@@ -4,7 +4,7 @@ import {
 } from '@pertexo/core/identity';
 import type { Pool } from 'pg';
 
-import type { PertexoBetterAuth } from './options.js';
+import type { PertexoBetterAuth } from './better-auth-options.js';
 
 export type BetterAuthTrustedSessions = Readonly<{
   issue(userId: string): Promise<BetterAuthSessionDelivery>;

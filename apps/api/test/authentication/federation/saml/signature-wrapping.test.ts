@@ -6,7 +6,7 @@ import {
   samlFixture,
   signingMaterial,
   type SigningMaterial,
-} from './fixture.js';
+} from './saml-sign-in.fixture.js';
 
 const gateway = createSamlProofGateway();
 let material: SigningMaterial;

@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
-import { createAutomationApiFixture } from '../api/fixture.js';
+import { createAutomationApiFixture } from '../api/api-token-api.fixture.js';
 import { createTokenWorkspace } from '../api/portability/setup.js';
 import { betterAuthIntegrationEnabled } from '../../support/better-auth/real-api.support.js';
 

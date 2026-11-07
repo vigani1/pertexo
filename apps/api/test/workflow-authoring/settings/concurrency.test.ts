@@ -1,7 +1,7 @@
 import type { Role } from '@pertexo/policy';
 import { problemResult } from '../../support/problem.js';
-import { toProblem } from '../../../src/problems/registry.js';
-import { authoringFailure } from '../../../src/problems/context/normalize.js';
+import { toProblem } from '../../../src/problems/api-problem-registry.js';
+import { authoringFailure } from '../../../src/problems/context/normalize-context-errors.js';
 import { describe, expect, it, vi } from 'vitest';
 import type { WorkflowConcurrencyStore } from '@pertexo/core/authoring';
 import {

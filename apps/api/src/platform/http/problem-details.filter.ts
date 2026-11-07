@@ -42,8 +42,8 @@ import {
   nestCode,
   safeHttpStatus,
   unexpectedProblem,
-} from './problems/normalization/values.js';
-import { fromApplicationError } from './problems/normalization/application.js';
+} from './problems/normalization/problem-values.js';
+import { fromApplicationError } from './problems/normalization/application-problem.js';
 
 export {
   type HttpErrorLogEntry,

@@ -1,10 +1,10 @@
-import { toProblem } from '../../src/problems/registry.js';
+import { toProblem } from '../../src/problems/api-problem-registry.js';
 import {
   authoringFailure,
   runFailure,
   nodeTestingFailure,
   artifactFailure,
-} from '../../src/problems/context/normalize.js';
+} from '../../src/problems/context/normalize-context-errors.js';
 import { ArtifactUploadTooLargeError } from '../../src/artifacts/index.js';
 import { describe, expect, it } from 'vitest';
 import { ArtifactMetadataNotFoundError } from '@pertexo/core/artifacts';

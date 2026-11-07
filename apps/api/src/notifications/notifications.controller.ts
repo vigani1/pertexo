@@ -34,7 +34,7 @@ import type {
 import { WorkspaceInboxService } from './workspace-inbox.service.js';
 import { INBOX_HINT_SOURCE, NOTIFICATION_AUTHORIZATION } from './tokens.js';
 import { domainErrors } from '../platform/http/problems/interceptor.js';
-import { inboxFailure } from '../problems/context/normalize.js';
+import { inboxFailure } from '../problems/context/normalize-context-errors.js';
 
 /** Maximum time an open stream may rely on a previously verified access fact. */
 const STREAM_REAUTHORIZATION_INTERVAL_MS = 5_000;

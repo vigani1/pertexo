@@ -1,7 +1,10 @@
 import { randomUUID } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import { betterAuthIntegrationEnabled } from '../../support/better-auth/real-api.support.js';
-import { useRecoveryApi, replacementPassword } from './fixture.js';
+import {
+  useRecoveryApi,
+  replacementPassword,
+} from './account-recovery.fixture.js';
 
 describe.runIf(betterAuthIntegrationEnabled)(
   'actionable account security refusals through Fastify',

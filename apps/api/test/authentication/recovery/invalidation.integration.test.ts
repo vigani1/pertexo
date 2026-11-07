@@ -10,7 +10,7 @@ import {
   originalPassword,
   replacementPassword,
   waitForBlocked,
-} from './fixture.js';
+} from './account-recovery.fixture.js';
 
 describe.runIf(betterAuthIntegrationEnabled)(
   'outstanding password reset capabilities',

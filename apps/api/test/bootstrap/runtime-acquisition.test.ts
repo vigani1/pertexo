@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { acquireApiRuntimes } from '../../src/api-runtimes.js';
-import type { ApiConfig } from '../../src/platform/config/api.js';
-import type { ApiIdentityConfig } from '../../src/platform/config/identity.js';
+import type { ApiConfig } from '../../src/platform/config/api-config.js';
+import type { ApiIdentityConfig } from '../../src/platform/config/identity-config.js';
 import { silentLogger } from '../support/silent-logger.js';
 
 const created = vi.hoisted(() => ({
@@ -28,24 +28,27 @@ vi.mock('@pertexo/rate-limit/server', async (original) => ({
     return created.rateLimit() as object;
   },
 }));
-vi.mock('../../src/platform/identity/runtime.module.js', () => ({
+vi.mock('../../src/platform/identity/identity-runtime.module.js', () => ({
   createApiIdentityRuntime: created.identity,
 }));
-vi.mock('../../src/platform/workflow/runtime.module.js', () => ({
+vi.mock('../../src/platform/workflow/workflow-runtime.module.js', () => ({
   createApiWorkflowRuntime: created.workflow,
 }));
-vi.mock('../../src/platform/connections/runtime.module.js', () => ({
+vi.mock('../../src/platform/connections/connections-runtime.module.js', () => ({
   createApiConnectionRuntime: created.connection,
 }));
 vi.mock('../../src/platform/webhooks/callback-runtime.module.js', () => ({
   createApiCallbackRuntime: created.callback,
 }));
-vi.mock('../../src/platform/schedules/runtime.module.js', () => ({
+vi.mock('../../src/platform/schedules/schedules-runtime.module.js', () => ({
   createApiScheduleRuntime: created.schedule,
 }));
-vi.mock('../../src/platform/notifications/runtime.module.js', () => ({
-  createApiNotificationRuntime: created.notification,
-}));
+vi.mock(
+  '../../src/platform/notifications/notifications-runtime.module.js',
+  () => ({
+    createApiNotificationRuntime: created.notification,
+  }),
+);
 
 const identity = {
   betterAuth: { secret: 'acquisition-secret' },
