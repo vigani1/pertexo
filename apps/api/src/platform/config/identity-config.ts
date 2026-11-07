@@ -109,7 +109,10 @@ export function parseIdentityConfig(
   if (!scope.configured && !scope.deployed) return undefined;
   const secret = environment.BETTER_AUTH_SECRET;
   if (secret === undefined)
-    throw new Error('Better Auth configuration is incomplete');
+    throw new IdentityConfigurationError(
+      'BETTER_AUTH_SECRET',
+      'required_secret',
+    );
   requireInvitationKeyPair(environment, { deployed: scope.deployed });
   const publicWebOrigin = parsePublicWebOrigin(environment, {
     deployed: scope.deployed,
@@ -118,7 +121,7 @@ export function parseIdentityConfig(
     deployed: scope.deployed,
   });
   if (scope.deployed && environment.AUTH_MAIL_MODE !== 'durable')
-    throw new Error('Durable authentication mail is required when deployed');
+    throw new IdentityConfigurationError('AUTH_MAIL_MODE', 'durable_mail');
   return Object.freeze({
     publicWebOrigin,
     automationTokensEnabled: environment.AUTOMATION_TOKENS_ENABLED,
@@ -169,7 +172,10 @@ function requireInvitationKeyPair(
     (deployed && (keyMissing || versionMissing)) ||
     keyMissing !== versionMissing;
   if (invalidInvitationKeyPair)
-    throw new Error('Invitation token encryption configuration is incomplete');
+    throw new IdentityConfigurationError(
+      'INVITATION_TOKEN_KEY / INVITATION_TOKEN_KEY_VERSION',
+      'invitation_pair',
+    );
 }
 
 /** The browser origin is required and must be HTTPS when deployed. */
@@ -178,10 +184,13 @@ function parsePublicWebOrigin(
   { deployed }: Readonly<{ deployed: boolean }>,
 ): string {
   if (environment.PUBLIC_WEB_ORIGIN === undefined)
-    throw new Error('PUBLIC_WEB_ORIGIN is required for Better Auth');
+    throw new IdentityConfigurationError(
+      'PUBLIC_WEB_ORIGIN',
+      'required_origin',
+    );
   const origin = normalizedOrigin(environment.PUBLIC_WEB_ORIGIN);
   if (deployed && new URL(origin).protocol !== 'https:')
-    throw new Error('HTTPS public web origin is required when deployed');
+    throw new IdentityConfigurationError('PUBLIC_WEB_ORIGIN', 'https_origin');
   return origin;
 }
 
@@ -195,13 +204,20 @@ function parseSessionPolicy(
   const secureCookie =
     environment.SESSION_COOKIE_SECURE ?? protocol === 'https:';
   if (protocol === 'http:' && secureCookie)
-    throw new Error(
-      'Secure session cookies require an HTTPS public web origin',
+    throw new IdentityConfigurationError(
+      'PUBLIC_WEB_ORIGIN / SESSION_COOKIE_SECURE',
+      'secure_origin',
     );
   if (deployed && !secureCookie)
-    throw new Error('Secure session cookies are required when deployed');
+    throw new IdentityConfigurationError(
+      'SESSION_COOKIE_SECURE',
+      'secure_deployment',
+    );
   if (environment.SESSION_COOKIE_SAME_SITE === 'none' && !secureCookie)
-    throw new Error('SameSite=None requires secure session cookies');
+    throw new IdentityConfigurationError(
+      'SESSION_COOKIE_SAME_SITE / SESSION_COOKIE_SECURE',
+      'same_site_secure',
+    );
   return Object.freeze({
     ttlMillis: environment.SESSION_TTL_MILLIS,
     secureCookie,
@@ -256,14 +272,15 @@ function normalizedOrigin(value: string): string {
     parsed.search !== '' ||
     parsed.hash !== '';
   if (invalidWebOrigin)
-    throw new Error('PUBLIC_WEB_ORIGIN must be an origin without a path');
+    throw new IdentityConfigurationError('PUBLIC_WEB_ORIGIN', 'origin_shape');
   return parsed.origin;
 }
 
 function parseIdentitySection<T>(settings: string, parse: () => T): T {
   try {
     return parse();
-  } catch {
+  } catch (error: unknown) {
+    if (error instanceof IdentityConfigurationError) throw error;
     throw new IdentityConfigurationError(settings, 'invalid_configuration');
   }
 }

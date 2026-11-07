@@ -24,17 +24,29 @@ export function parseDurableAuthenticationMail(
   ];
   if (environment.AUTH_MAIL_MODE !== 'durable') {
     if (values.some((value) => value !== undefined))
-      throw new Error('Durable authentication mail configuration is inactive');
+      throw new IdentityConfigurationError(
+        'AUTH_MAIL_MODE / AUTH_MAIL_FROM / AUTH_MAIL_KEY / AUTH_MAIL_KEY_VERSION / AUTH_MAIL_PREVIOUS_KEYS',
+        'invalid_configuration',
+      );
     return undefined;
   }
   if (values.some((value) => value === undefined))
-    throw new Error('Durable authentication mail configuration is incomplete');
+    throw new IdentityConfigurationError(
+      'AUTH_MAIL_MODE / AUTH_MAIL_FROM / AUTH_MAIL_KEY / AUTH_MAIL_KEY_VERSION / AUTH_MAIL_PREVIOUS_KEYS',
+      'invalid_configuration',
+    );
   return Object.freeze({
-    fromEmail: requiredIdentityValue(environment.AUTH_MAIL_FROM),
+    fromEmail: requiredIdentityValue(
+      environment.AUTH_MAIL_FROM,
+      'AUTH_MAIL_FROM',
+    ),
     encryption: Object.freeze({
       current: Object.freeze({
-        key: requiredIdentityValue(environment.AUTH_MAIL_KEY),
-        version: requiredIdentityValue(environment.AUTH_MAIL_KEY_VERSION),
+        key: requiredIdentityValue(environment.AUTH_MAIL_KEY, 'AUTH_MAIL_KEY'),
+        version: requiredIdentityValue(
+          environment.AUTH_MAIL_KEY_VERSION,
+          'AUTH_MAIL_KEY_VERSION',
+        ),
       }),
       previous: parseApplicationPreviousKeys(
         environment.AUTH_MAIL_PREVIOUS_KEYS,
@@ -97,9 +109,12 @@ function authenticationProviderPair(
   return Object.freeze({ clientId, clientSecret });
 }
 
-function requiredIdentityValue(value: string | undefined): string {
+function requiredIdentityValue(
+  value: string | undefined,
+  setting: string,
+): string {
   if (value === undefined) {
-    throw new Error('Identity configuration is incomplete');
+    throw new IdentityConfigurationError(setting, 'invalid_configuration');
   }
   return value;
 }
@@ -116,8 +131,9 @@ export function parseFederationEncryption(
   )
     return {};
   if (key === undefined || version === undefined)
-    throw new Error(
-      'Organization sign-in encryption configuration is incomplete',
+    throw new IdentityConfigurationError(
+      'AUTH_FEDERATION_KEY / AUTH_FEDERATION_KEY_VERSION / AUTH_FEDERATION_PREVIOUS_KEYS',
+      'invalid_configuration',
     );
   return {
     federationEncryption: validateApplicationKeyRing({

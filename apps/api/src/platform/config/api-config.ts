@@ -1,4 +1,8 @@
 import {
+  ApiConfigurationError,
+  parseConfigurationSection,
+} from './api-configuration.errors.js';
+import {
   databaseClientEnvironmentSchema,
   clientDatabaseConfig,
   parseObservabilityConfig,
@@ -85,10 +89,13 @@ const instanceLimitsSchema = z.object({
 });
 
 /** An operator's typo: naming the setting tells them what to fix, and it holds no secret. */
-export class InvalidInstanceLimitError extends Error {
+export class InvalidInstanceLimitError extends ApiConfigurationError {
   public override readonly name = 'InvalidInstanceLimitError';
   public constructor(public readonly setting: string) {
-    super(`${setting} must be a whole number within its allowed range`);
+    super(
+      setting,
+      `${setting} must be a whole number within its allowed range; set a supported integer limit.`,
+    );
   }
 }
 
@@ -178,17 +185,30 @@ export function parseApiConfig(
   const deployed =
     parsed.NODE_ENV === 'staging' || parsed.NODE_ENV === 'production';
   if (deployed && parsed.REDIS_URL === undefined) {
-    throw new Error('REDIS_URL is required when deployed');
+    throw new ApiConfigurationError(
+      'REDIS_URL',
+      'configure a Redis connection URL when deployed.',
+    );
   }
   if (deployed && parsed.TRUST_PROXY_CIDRS === undefined) {
-    throw new Error('TRUST_PROXY_CIDRS is required when deployed');
+    throw new ApiConfigurationError(
+      'TRUST_PROXY_CIDRS',
+      'configure the trusted proxy IP addresses or CIDRs when deployed.',
+    );
   }
   const artifacts = parseArtifactsConfig(parsed.NODE_ENV, environment);
 
-  const callbacks = parseCallbackKeyConfig(environment, { deployed });
+  const callbacks = parseConfigurationSection(
+    'CALLBACK_TOKEN_KEY / CALLBACK_TOKEN_KEY_VERSION / CALLBACK_TOKEN_PREVIOUS_KEYS / PUBLIC_WEB_ORIGIN',
+    'configure matching callback key settings and a public web origin; use private keys with distinct versions and HTTPS when deployed.',
+    () => parseCallbackKeyConfig(environment, { deployed }),
+  );
   return Object.freeze({
-    httpAllowedPrivateNetworks: parseAllowedPrivateNetworks(
-      environment.HTTP_ALLOWED_PRIVATE_NETWORKS,
+    httpAllowedPrivateNetworks: parseConfigurationSection(
+      'HTTP_ALLOWED_PRIVATE_NETWORKS',
+      'use comma-separated IPv4 or IPv6 CIDRs, or remove this setting to allow public addresses only.',
+      () =>
+        parseAllowedPrivateNetworks(environment.HTTP_ALLOWED_PRIVATE_NETWORKS),
     ),
     ...(callbacks === undefined ? {} : { callbacks }),
     capacity: Object.freeze({
@@ -216,11 +236,16 @@ function parseConnectionsConfig(
   environment: ParsedApiEnvironment,
   rawEnvironment: Record<string, string | undefined>,
 ): ApiConfig['connections'] {
-  const parsed = parseConnectionEncryptionConfig(rawEnvironment, {
-    deployed:
-      environment.NODE_ENV === 'staging' ||
-      environment.NODE_ENV === 'production',
-  });
+  const parsed = parseConfigurationSection(
+    'CONNECTION_ENCRYPTION_MODE / CONNECTION_LOCAL_KEY / CONNECTION_SELF_MANAGED_KEY / CONNECTION_SELF_MANAGED_KEY_VERSION / CONNECTION_SELF_MANAGED_PREVIOUS_KEYS / CONNECTION_KMS_KEY_REFERENCE / CONNECTION_KMS_REGION / CONNECTION_KMS_ENDPOINT',
+    'select one connection encryption mode and configure its matching keys or KMS settings; use private keys with distinct versions, a KMS key reference and region for KMS, and HTTPS endpoints when deployed. Use self-managed or KMS encryption when deployed.',
+    () =>
+      parseConnectionEncryptionConfig(rawEnvironment, {
+        deployed:
+          environment.NODE_ENV === 'staging' ||
+          environment.NODE_ENV === 'production',
+      }),
+  );
   if (parsed === undefined || 'mode' in parsed) return parsed;
   return Object.freeze({
     kmsKeyReference: parsed.keyReference,

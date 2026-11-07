@@ -1,4 +1,4 @@
-import { IdentityConfigurationError } from './platform/config/identity-configuration.errors.js';
+import { ApiConfigurationError } from './platform/config/api-configuration.errors.js';
 import { fileURLToPath } from 'node:url';
 
 import {
@@ -131,7 +131,7 @@ if (isMainModule()) {
         event: 'api.process_failed',
         errorType: classifyProcessError(error),
         cause:
-          error instanceof IdentityConfigurationError
+          error instanceof ApiConfigurationError
             ? error.message
             : describeProcessFailure(error),
         level: 'fatal',
