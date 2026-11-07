@@ -104,3 +104,21 @@ it('runs the same pinned images as a real install', () => {
     'the storage setup client',
   );
 });
+
+it('keeps Code enabled on API and worker when the deployment supplies a runner', () => {
+  const { services } = JSON.parse(
+    execFileSync(
+      'docker',
+      ['compose', '-f', composePath, 'config', '--format', 'json'],
+      { encoding: 'utf8' },
+    ),
+  );
+  assert.ok(services['code-runner']);
+  for (const name of ['api', 'worker', 'code-runner']) {
+    assert.equal(
+      parseCodeSettings(services[name].environment).enabled,
+      true,
+      name,
+    );
+  }
+});
