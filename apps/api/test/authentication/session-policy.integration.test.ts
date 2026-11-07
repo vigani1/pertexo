@@ -34,7 +34,7 @@ for (const [sameSite, ttlMillis] of [
           const cookie = cookies.find((value) => value.startsWith(`${name}=`));
           expect(cookie).toBeDefined();
           expect(cookie?.toLowerCase()).toContain(`samesite=${sameSite}`);
-          expect(cookie).toContain(`Max-Age=${ttlMillis / 1_000}`);
+          expect(cookie).toContain(`Max-Age=${String(ttlMillis / 1_000)}`);
           expect(cookie).toContain('Secure');
         }
       }
