@@ -99,6 +99,7 @@ describe.each(fields)(
     );
     it('retains trimming, valid Unicode and the existing length bounds', () => {
       expect(schema.parse('  Équipe 😀  ')).toBe('Équipe 😀');
+      expect(schema.parse('  E\u0301quipe 👩‍💻  ')).toBe('E\u0301quipe 👩‍💻');
       expect(schema.safeParse('x'.repeat(maximum)).success).toBe(true);
       expect(schema.safeParse('x'.repeat(maximum + 1)).success).toBe(false);
       expect(schema.safeParse('').success).toBe(emptyAllowed);
