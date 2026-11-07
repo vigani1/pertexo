@@ -11,11 +11,11 @@ import {
   CreateConnectionUseCase,
   GetConnectionUseCase,
   ListConnectionsUseCase,
-  LookupSlackChannelsUseCase,
   RevokeConnectionUseCase,
   RotateConnectionSecretUseCase,
-  TestConnectionUseCase,
 } from '../use-cases/management.js';
+import { LookupSlackChannelsUseCase } from '../failure-notifications/slack-channel-lookup.js';
+import { TestConnectionUseCase } from '../use-cases/test-connection.js';
 import type { ConnectionRequest } from '../connection-request.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
 import { connectionFailure } from '../../problems/context/normalize-context-errors.js';

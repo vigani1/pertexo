@@ -5,10 +5,8 @@ import {
   WorkflowNotFoundError,
   PreviewIdempotencyConflictError,
 } from '@pertexo/core/testing';
-import {
-  TestWorkflowNodeUseCase,
-  GetPreviewRunUseCase,
-} from '../../src/node-testing/node-testing.service.js';
+import { TestWorkflowNodeUseCase } from '../../src/node-testing/node-testing.service.js';
+import { GetPreviewRunUseCase } from '../../src/node-testing/previews/read.js';
 import { authorizeWorkspace } from '../../src/authorization/index.js';
 import {
   workspaceId,

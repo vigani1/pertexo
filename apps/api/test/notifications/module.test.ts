@@ -6,7 +6,7 @@ import { RequestContextStore } from '../../src/platform/http/index.js';
 import {
   actorId,
   FakeIdentityModule,
-  cleanAppsApiTestNotificationsModuleTestModuleTestTsFixture,
+  closeNotificationFixture,
   workspaceId,
   workflowId,
   threadId,
@@ -53,7 +53,7 @@ Module({
   ],
   exports: [RequestContextStore, SESSION_AUTHORITY, DoubleSubmitCsrfPolicy],
 })(FakeIdentityModule);
-afterEach(cleanAppsApiTestNotificationsModuleTestModuleTestTsFixture);
+afterEach(closeNotificationFixture);
 describe('notifications HTTP surface', () => {
   it('lists threads with an opaque cursor that only this list accepts', async () => {
     const database = inboxDatabase();

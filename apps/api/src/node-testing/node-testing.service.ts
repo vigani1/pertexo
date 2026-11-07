@@ -44,7 +44,6 @@ import {
   normalizedExecutableNode,
 } from './previews/request.js';
 
-export { GetPreviewRunUseCase } from './previews/read.js';
 export type NodeTestUseCaseInput = Readonly<{
   actor: ActorContext;
   routeWorkspaceId: string;
@@ -58,8 +57,6 @@ export type NodeTestUseCaseInput = Readonly<{
   traceparent?: string;
 }>;
 
-export type Authorization = WorkspaceAuthorizationSource;
-
 export class TestWorkflowNodeUseCase {
   // Variable reads retain their own workspace authority; preview acceptance rechecks it.
   // eslint-disable-next-line max-params
@@ -68,7 +65,7 @@ export class TestWorkflowNodeUseCase {
       NodeTestingPersistence,
       'acceptPreview' | 'getDraft' | 'resolvePreviewReplay' | 'stepSamples'
     >,
-    private readonly authorization: Authorization,
+    private readonly authorization: WorkspaceAuthorizationSource,
     private readonly now: () => Date = () => new Date(),
     private readonly expressionEvaluator?: ExpressionEvaluator,
     private readonly variables?: Pick<WorkspaceVariablesStore, 'read'>,

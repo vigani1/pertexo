@@ -13,13 +13,13 @@ import type {
 
 import type { NodeTestingPersistence } from '../ports.js';
 
-import type { Authorization } from '../node-testing.service.js';
+import type { WorkspaceAuthorizationSource } from '../../workspaces/ports.js';
 import { previewOutputResponse, previewIdentityResponse } from './response.js';
 
 export class GetPreviewRunUseCase {
   public constructor(
     private readonly persistence: Pick<NodeTestingPersistence, 'readPreview'>,
-    private readonly authorization: Authorization,
+    private readonly authorization: WorkspaceAuthorizationSource,
   ) {}
 
   public async execute(
