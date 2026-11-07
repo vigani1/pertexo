@@ -23,6 +23,40 @@ import {
 } from './stream.fixture.js';
 
 describe('run event SSE reconstruction', () => {
+  it('reconciles repeatedly while hints stay idle and cancels the stream cleanly', async () => {
+    vi.useFakeTimers();
+    const reader = new MutableReader();
+    const subscription = new ControlledSubscription();
+    const abort = new AbortController();
+    const iterator = streamRunEventFrames(
+      {
+        lastEventId: 0,
+        runId: RUN_ID,
+        workspaceId: WORKSPACE_ID,
+        signal: abort.signal,
+      },
+      { reader, liveSource: source(subscription) },
+    )[Symbol.asyncIterator]();
+    try {
+      const pending = iterator.next();
+      await vi.advanceTimersByTimeAsync(60_000);
+      reader.events = [event(1)];
+      await vi.advanceTimersByTimeAsync(5_000);
+      const visible = await Promise.race([
+        pending,
+        Promise.resolve('visibility absent'),
+      ]);
+      expect(visible).toMatchObject({
+        value: { id: 1, event: 'run.progressed' },
+      });
+    } finally {
+      abort.abort();
+      await iterator.return(undefined);
+      vi.useRealTimers();
+    }
+    expect(subscription.closed).toBe(true);
+  });
+
   it.each([
     ['Error', new Error('iterator rejected')],
     ['string', 'iterator rejected'],
