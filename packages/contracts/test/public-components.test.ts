@@ -22,20 +22,23 @@ it.each(['responses', 'schemas'])(
   },
 );
 
-it('accepts genuinely identical components regardless of object key order', () => {
-  expect(() =>
-    buildPublicDocument([
-      {
-        paths: {},
-        components: { schemas: { Example: { type: 'string', minLength: 1 } } },
-      },
-      {
-        paths: {},
-        components: { schemas: { Example: { minLength: 1, type: 'string' } } },
-      },
-    ]),
-  ).not.toThrow();
-});
+it.each(['schemas', 'responses'])(
+  'accepts identical %s regardless of object key order',
+  (kind) => {
+    expect(() =>
+      buildPublicDocument([
+        {
+          paths: {},
+          components: { [kind]: { Example: { type: 'string', minLength: 1 } } },
+        },
+        {
+          paths: {},
+          components: { [kind]: { Example: { minLength: 1, type: 'string' } } },
+        },
+      ]),
+    ).not.toThrow();
+  },
+);
 
 it.each(['403', '503'] as const)(
   'keeps workflow export %s semantics in the public document',
