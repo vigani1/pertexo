@@ -1,3 +1,4 @@
+import { setTimeout as delay } from 'node:timers/promises';
 import { createHash, randomUUID } from 'node:crypto';
 
 import {
@@ -230,6 +231,24 @@ describe.runIf(enabled)('real PostgreSQL-authoritative run event SSE', () => {
         value: { id: 4, event: 'node.started' },
       });
       recordBenchmarkOperation(operationStartedAt);
+      // A terminal commit without its Redis hint must become visible without reconnect.
+      const next = iterator.next();
+      await delay(100);
+      const terminal = await workerDatabase.withWorkspace(
+        workspaceId,
+        async (transaction) =>
+          appendRunEvent(transaction, {
+            runId,
+            event: { type: 'run.succeeded', payload: {} },
+          }),
+      );
+      const observed = await Promise.race([
+        next,
+        delay(7_000).then(() => 'visibility deadline'),
+      ]);
+      expect(observed).toMatchObject({
+        value: { id: terminal, event: 'run.succeeded' },
+      });
     } catch (error: unknown) {
       primary = { error, failed: true };
       throw error;

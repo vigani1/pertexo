@@ -118,6 +118,8 @@ interface StreamOptions {
 }
 
 const ABORTED = Symbol('aborted');
+const RECONCILE = Symbol('reconcile');
+const DURABLE_RECONCILIATION_MS = 5_000;
 
 function signalWasAborted(signal: AbortSignal): boolean {
   return signal.aborted;
@@ -149,20 +151,26 @@ function frameForEvent(
 async function nextOrAbort<T>(
   iterator: AsyncIterator<T>,
   signal: AbortSignal,
-): Promise<IteratorResult<T> | typeof ABORTED> {
+): Promise<IteratorResult<T> | typeof ABORTED | typeof RECONCILE> {
   if (signal.aborted) {
     return ABORTED;
   }
 
   return new Promise((resolve, reject) => {
     const onAbort = (): void => {
+      clearTimeout(timer);
       resolve(ABORTED);
     };
+    const timer = setTimeout(() => {
+      signal.removeEventListener('abort', onAbort);
+      resolve(RECONCILE);
+    }, DURABLE_RECONCILIATION_MS);
     signal.addEventListener('abort', onAbort, { once: true });
     let next: PromiseLike<IteratorResult<T>>;
     try {
       next = iterator.next();
     } catch (error: unknown) {
+      clearTimeout(timer);
       signal.removeEventListener('abort', onAbort);
       // Iterator adapters may throw arbitrary values; identity is intentional.
       // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
@@ -171,10 +179,12 @@ async function nextOrAbort<T>(
     }
     void Promise.resolve(next).then(
       (result) => {
+        clearTimeout(timer);
         signal.removeEventListener('abort', onAbort);
         resolve(result);
       },
       (error: unknown) => {
+        clearTimeout(timer);
         signal.removeEventListener('abort', onAbort);
         // Iterator adapters may reject with arbitrary values; preserve identity.
         // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
@@ -249,7 +259,10 @@ export async function* streamRunEventFrames(
 
   let primary = NO_STREAM_FAILURE;
   try {
-    iterator = subscription[Symbol.asyncIterator]();
+    const liveIterator = subscription[Symbol.asyncIterator]();
+    iterator = liveIterator;
+    let pendingNext:
+      Promise<IteratorResult<LiveRunEventNotification>> | undefined;
     let shouldBackfill = true;
     let backfillPath: SseRunEventFrame['visibilityPath'] =
       identity.lastEventId === 0 ? 'initial_backfill' : 'reconnect_backfill';
@@ -259,7 +272,15 @@ export async function* streamRunEventFrames(
         shouldBackfill = false;
       }
 
-      const next = await nextOrAbort(iterator, input.signal);
+      pendingNext ??= Promise.resolve().then(() => liveIterator.next());
+      const pending = pendingNext;
+      const next = await nextOrAbort({ next: () => pending }, input.signal);
+      if (next === RECONCILE) {
+        shouldBackfill = true;
+        backfillPath = 'recovery_backfill';
+        continue;
+      }
+      pendingNext = undefined;
       if (next === ABORTED || (next.done ?? false)) {
         return;
       }
