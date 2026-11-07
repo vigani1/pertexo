@@ -1,7 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
-  resetAppsWorkerTestRuntimeReadinessLifecycleWorkerReadinessLifecycleFixture,
-  cleanAppsWorkerTestRuntimeReadinessLifecycleWorkerReadinessLifecycleFixture,
   logger,
   marker,
   idleRuntime,
@@ -12,13 +10,13 @@ import { WorkerReadiness } from '../../src/runtime/health/readiness.js';
 import { WorkerDrainState } from '../../src/runtime/shutdown/drain-state.js';
 
 describe('worker readiness lifecycle', () => {
-  beforeEach(
-    resetAppsWorkerTestRuntimeReadinessLifecycleWorkerReadinessLifecycleFixture,
-  );
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
-  afterEach(
-    cleanAppsWorkerTestRuntimeReadinessLifecycleWorkerReadinessLifecycleFixture,
-  );
+  afterEach(() => {
+    vi.useRealTimers();
+  });
   it.each(['success', 'failure'] as const)(
     'does not recreate readiness after shutdown during deferred %s',
     async (outcome) => {
