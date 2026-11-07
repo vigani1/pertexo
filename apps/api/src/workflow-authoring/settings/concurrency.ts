@@ -1,3 +1,4 @@
+import { authorizeAuthoringOperation } from '../commands/authorization.js';
 import type { z } from 'zod';
 import type { workflowConcurrencySettingsRequestSchema } from '@pertexo/contracts';
 import {
@@ -5,11 +6,7 @@ import {
   workflowConcurrencyCommandResponseSchema,
 } from '@pertexo/contracts';
 import type { WorkflowConcurrencyStore } from '@pertexo/core/authoring';
-import {
-  authorizeWorkspaceOperation,
-  type WorkspaceAuthorizationSource,
-  BROWSABLE_WORKSPACE_STATUSES,
-} from '../../authorization/index.js';
+import type { WorkspaceAuthorizationSource } from '../../authorization/index.js';
 import type { WorkflowApplicationInput } from '../ports.js';
 
 type ReadInput = WorkflowApplicationInput &
@@ -25,7 +22,11 @@ export class WorkflowConcurrencyUseCase {
   ) {}
   public async read(input: ReadInput) {
     input.signal?.throwIfAborted();
-    await this.authorize(input, 'workflow:read');
+    await authorizeAuthoringOperation(
+      input,
+      'workflow:read',
+      this.authorization,
+    );
     input.signal?.throwIfAborted();
     return workflowConcurrencySettingsSchema.parse(
       await this.persistence.readSettings(this.context(input)),
@@ -37,7 +38,11 @@ export class WorkflowConcurrencyUseCase {
     >,
   ) {
     input.signal?.throwIfAborted();
-    await this.authorize(input, 'workflow:update');
+    await authorizeAuthoringOperation(
+      input,
+      'workflow:update',
+      this.authorization,
+    );
     input.signal?.throwIfAborted();
     const { request } = input;
     return workflowConcurrencyCommandResponseSchema.parse(
@@ -59,25 +64,5 @@ export class WorkflowConcurrencyUseCase {
       actorId: input.actor.actorId,
       ...(input.signal === undefined ? {} : { signal: input.signal }),
     };
-  }
-  private authorize(
-    input: ReadInput,
-    capability: 'workflow:read' | 'workflow:update',
-  ) {
-    return authorizeWorkspaceOperation({
-      actor: input.actor,
-      routeWorkspaceId: input.routeWorkspaceId,
-      capability,
-      access: this.authorization,
-      disclosure: 'not_found',
-      allowedWorkspaceStatuses:
-        capability === 'workflow:read'
-          ? BROWSABLE_WORKSPACE_STATUSES
-          : ['active'],
-      ...(input.signal === undefined ? {} : { signal: input.signal }),
-      ...(input.authorizedWorkspace === undefined
-        ? {}
-        : { authorizedWorkspace: input.authorizedWorkspace }),
-    });
   }
 }

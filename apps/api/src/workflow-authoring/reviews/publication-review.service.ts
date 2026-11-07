@@ -1,3 +1,4 @@
+import { authorizeAuthoringOperation } from '../commands/authorization.js';
 import type { z } from 'zod';
 import type {
   publicationReviewRequestSchema,
@@ -9,11 +10,7 @@ import {
   publicationReviewDetailSchema,
 } from '@pertexo/contracts';
 import type { PublicationReviewStore } from '@pertexo/core/authoring';
-import {
-  authorizeWorkspaceOperation,
-  type WorkspaceAuthorizationSource,
-  BROWSABLE_WORKSPACE_STATUSES,
-} from '../../authorization/index.js';
+import type { WorkspaceAuthorizationSource } from '../../authorization/index.js';
 import type { WorkflowApplicationInput } from '../ports.js';
 
 type Scope = WorkflowApplicationInput & {
@@ -28,7 +25,11 @@ export class PublicationReviewUseCase {
     private readonly authorization: WorkspaceAuthorizationSource,
   ) {}
   async overview(input: WorkflowInput) {
-    await this.authorize(input, 'workflow:read');
+    await authorizeAuthoringOperation(
+      input,
+      'workflow:read',
+      this.authorization,
+    );
     return publicationReviewOverviewSchema.parse(
       await this.store.overview({
         ...this.scope(input),
@@ -37,7 +38,11 @@ export class PublicationReviewUseCase {
     );
   }
   async read(input: RequestInput) {
-    await this.authorize(input, 'workflow:read');
+    await authorizeAuthoringOperation(
+      input,
+      'workflow:read',
+      this.authorization,
+    );
     return publicationReviewDetailSchema.parse(
       await this.store.read({ ...this.scope(input), reviewId: input.reviewId }),
     );
@@ -49,7 +54,11 @@ export class PublicationReviewUseCase {
       idempotencyKey: string;
     },
   ) {
-    await this.authorize(input, 'workflow:publish');
+    await authorizeAuthoringOperation(
+      input,
+      'workflow:publish',
+      this.authorization,
+    );
     const body = input.request;
     return publicationReviewSchema.parse(
       await this.store.request({
@@ -67,7 +76,11 @@ export class PublicationReviewUseCase {
       idempotencyKey: string;
     },
   ) {
-    await this.authorize(input, 'governance:manage');
+    await authorizeAuthoringOperation(
+      input,
+      'governance:manage',
+      this.authorization,
+    );
     const body = input.request;
     return publicationReviewSchema.parse(
       await this.store.decide({
@@ -91,25 +104,5 @@ export class PublicationReviewUseCase {
         : { traceId: input.actor.traceId }),
       ...(input.signal === undefined ? {} : { signal: input.signal }),
     };
-  }
-  private authorize(
-    input: Scope,
-    capability: 'workflow:read' | 'workflow:publish' | 'governance:manage',
-  ) {
-    return authorizeWorkspaceOperation({
-      actor: input.actor,
-      routeWorkspaceId: input.routeWorkspaceId,
-      capability,
-      access: this.authorization,
-      disclosure: 'not_found',
-      allowedWorkspaceStatuses:
-        capability === 'workflow:read'
-          ? BROWSABLE_WORKSPACE_STATUSES
-          : ['active'],
-      ...(input.signal === undefined ? {} : { signal: input.signal }),
-      ...(input.authorizedWorkspace === undefined
-        ? {}
-        : { authorizedWorkspace: input.authorizedWorkspace }),
-    });
   }
 }
