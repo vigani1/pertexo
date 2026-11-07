@@ -1,3 +1,4 @@
+import { DialogFooter } from '@/components/ui/dialog';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { DialogClose } from '@/components/ui/dialog';
 import { useState } from 'react';
@@ -8,7 +9,6 @@ import { Status } from '@/components/ui/status';
 import { JsonTree } from '@/components/patterns/code/json-tree';
 import {
   ConfirmDialog,
-  ConfirmationFooter,
   ConfirmationDetails,
 } from '@/components/patterns/actions/confirm-dialog';
 import type { SampleScope } from '../../data/samples/step-samples.api';
@@ -71,7 +71,7 @@ export function CapturedEvent({
           }}
           submitDisabled={confirmBlocked}
           footer={
-            <ConfirmationFooter>
+            <DialogFooter>
               <DialogClose
                 disabled={pin.pending}
                 render={<Button type="button" variant="ghost" />}
@@ -87,7 +87,7 @@ export function CapturedEvent({
               >
                 {pin.uncertain ? 'Retry the same pin' : 'Keep as pinned sample'}
               </ProgressButton>
-            </ConfirmationFooter>
+            </DialogFooter>
           }
         >
           <ConfirmationDetails error={pin.error} />

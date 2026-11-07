@@ -1,11 +1,9 @@
+import { DialogFooter } from '@/components/ui/dialog';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { Button } from '@/components/ui/button';
 import { useState, type ReactNode, type ComponentProps } from 'react';
 import type { WorkflowGraphContract } from '@pertexo/contracts';
-import {
-  ConfirmDialog,
-  ConfirmationFooter,
-} from '@/components/patterns/actions/confirm-dialog';
+import { ConfirmDialog } from '@/components/patterns/actions/confirm-dialog';
 import {
   Dialog,
   DialogContent,
@@ -103,7 +101,7 @@ export function DeclarationDialog({
           description="These contract edits have not been applied to the workflow draft."
           onSubmit={close}
           footer={
-            <ConfirmationFooter>
+            <DialogFooter>
               <DialogClose render={<Button type="button" variant="ghost" />}>
                 Keep editing
               </DialogClose>
@@ -114,7 +112,7 @@ export function DeclarationDialog({
               >
                 Discard changes
               </ProgressButton>
-            </ConfirmationFooter>
+            </DialogFooter>
           }
         ></ConfirmDialog>
       </DialogContent>

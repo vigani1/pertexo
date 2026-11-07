@@ -1,3 +1,4 @@
+import { DialogFooter } from '@/components/ui/dialog';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { DialogClose } from '@/components/ui/dialog';
 import { useState } from 'react';
@@ -5,7 +6,6 @@ import { FEDERATION_LIMITS, type FederationSettings } from '@pertexo/contracts';
 import { SettingsSection } from '@/components/patterns/settings/section';
 import {
   ConfirmDialog,
-  ConfirmationFooter,
   ConfirmationDetails,
 } from '@/components/patterns/actions/confirm-dialog';
 import { Button } from '@/components/ui/button';
@@ -167,7 +167,7 @@ function RemoveProviderDialog({
       }
       submitDisabled={confirmBlocked}
       footer={
-        <ConfirmationFooter>
+        <DialogFooter>
           {confirmationRetry === undefined ? (
             <DialogClose
               disabled={command.pending}
@@ -196,7 +196,7 @@ function RemoveProviderDialog({
           >
             {confirmationRetry === undefined ? 'Remove provider' : 'Try again'}
           </ProgressButton>
-        </ConfirmationFooter>
+        </DialogFooter>
       }
     >
       <ConfirmationDetails

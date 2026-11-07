@@ -1,3 +1,4 @@
+import { DialogFooter } from '@/components/ui/dialog';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { DialogClose } from '@/components/ui/dialog';
 import type {
@@ -10,7 +11,6 @@ import { CornerDownRightIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   ConfirmDialog,
-  ConfirmationFooter,
   ConfirmationDetails,
 } from '@/components/patterns/actions/confirm-dialog';
 import { useNotifications } from '@/components/ui/use-notifications';
@@ -123,7 +123,7 @@ export function RunRecoveryAction({
           }}
           submitDisabled={preview.isFetching || preview.isFetching}
           footer={
-            <ConfirmationFooter>
+            <DialogFooter>
               <DialogClose
                 disabled={preview.isFetching}
                 render={<Button type="button" variant="ghost" />}
@@ -139,7 +139,7 @@ export function RunRecoveryAction({
               >
                 {unavailable ? 'Use full replay…' : 'Check again'}
               </ProgressButton>
-            </ConfirmationFooter>
+            </DialogFooter>
           }
         ></ConfirmDialog>
       ) : null}
@@ -165,7 +165,7 @@ function UnconfirmedRecoveryDialog({
       onSubmit={() => command.retry()}
       submitDisabled={command.pending || command.expired}
       footer={
-        <ConfirmationFooter>
+        <DialogFooter>
           <DialogClose
             disabled={command.pending}
             render={<Button type="button" variant="ghost" />}
@@ -181,7 +181,7 @@ function UnconfirmedRecoveryDialog({
           >
             Retry same request
           </ProgressButton>
-        </ConfirmationFooter>
+        </DialogFooter>
       }
     >
       <ConfirmationDetails error={command.error} tone="warning">

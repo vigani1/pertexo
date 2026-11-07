@@ -1,3 +1,4 @@
+import { DialogFooter } from '@/components/ui/dialog';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { DialogClose } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -8,7 +9,6 @@ import { Notice } from '@/components/ui/notice';
 import { pinnedParentsQueryOptions } from '../data/pins/pinned-parents.queries';
 import {
   ConfirmDialog,
-  ConfirmationFooter,
   ConfirmationDetails,
 } from '@/components/patterns/actions/confirm-dialog';
 import { useNotifications } from '@/components/ui/use-notifications';
@@ -110,7 +110,7 @@ export function WorkflowLifecycleDialog({
       onSubmit={confirm}
       submitDisabled={lifecycle.pending || pinCheckUnavailable}
       footer={
-        <ConfirmationFooter>
+        <DialogFooter>
           <DialogClose
             disabled={lifecycle.pending}
             render={<Button type="button" variant="ghost" />}
@@ -131,7 +131,7 @@ export function WorkflowLifecycleDialog({
           >
             {lifecycle.exactRetry ? 'Retry safely' : copy.confirm}
           </ProgressButton>
-        </ConfirmationFooter>
+        </DialogFooter>
       }
     >
       <ConfirmationDetails

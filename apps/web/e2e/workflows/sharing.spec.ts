@@ -120,17 +120,9 @@ for (const theme of ['light', 'dark'] as const)
           if (!folderRefused) {
             folderRefused = true;
             sharing = { ...sharing, revision: 2 };
-            return route.fulfill({
-              status: 409,
-              contentType: 'application/problem+json',
-              json: {
-                type: 'about:blank',
-                title: 'Folder changed',
-                status: 409,
-                code: 'workflow.folder_revision_conflict',
-                requestId: 'browser-folder-conflict',
-              },
-            });
+            return route.fulfill(
+              sharingConflict('workflow.folder_revision_conflict'),
+            );
           }
           shares++;
           sharing = {
@@ -232,6 +224,10 @@ for (const theme of ['light', 'dark'] as const)
       await expect(
         share.getByRole('combobox', { name: 'Access for Finance reviewer' }),
       ).toContainText('Can view');
+      await expect(
+        share.getByRole('region', { name: 'Current saved sharing' }),
+      ).toBeVisible();
+      await capture(page, info, `folder-conflict-${theme}-${String(width)}`);
       await share
         .getByRole('button', { name: 'Keep edits and use latest revision' })
         .click();
@@ -301,17 +297,7 @@ for (const theme of ['light', 'dark'] as const)
           if (!connectionRefused) {
             connectionRefused = true;
             connectionSharing = { ...connectionSharing, revision: 2 };
-            return route.fulfill({
-              status: 409,
-              contentType: 'application/problem+json',
-              json: {
-                type: 'about:blank',
-                title: 'Sharing changed',
-                status: 409,
-                code: 'connection.conflict',
-                requestId: 'browser-connection-conflict',
-              },
-            });
+            return route.fulfill(sharingConflict('connection.conflict'));
           }
           connectionShares++;
           connectionSharing = {
@@ -345,6 +331,14 @@ for (const theme of ['light', 'dark'] as const)
       await details
         .getByRole('button', { name: 'Save', exact: true })
         .press('Enter');
+      await expect(
+        details.getByRole('region', { name: 'Current saved sharing' }),
+      ).toBeVisible();
+      await capture(
+        page,
+        info,
+        `connection-conflict-${theme}-${String(width)}`,
+      );
       await details
         .getByRole('button', { name: 'Keep edits and use latest revision' })
         .click();
@@ -389,4 +383,18 @@ async function capture(page: Page, info: TestInfo, name: string) {
   const path = info.outputPath(`${name}.png`);
   await page.screenshot({ path });
   await info.attach(name, { path, contentType: 'image/png' });
+}
+
+function sharingConflict(code: string) {
+  return {
+    status: 409,
+    contentType: 'application/problem+json',
+    json: {
+      type: 'about:blank',
+      title: 'Sharing changed',
+      status: 409,
+      code,
+      requestId: `browser-${code}`,
+    },
+  };
 }

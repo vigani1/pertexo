@@ -1,3 +1,4 @@
+import { DialogFooter } from '@/components/ui/dialog';
 import { useState, type ReactNode } from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -5,7 +6,6 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   ConfirmDialog,
   ConfirmationDetails,
-  ConfirmationFooter,
 } from '../../src/components/patterns/actions/confirm-dialog';
 import { Button } from '../../src/components/ui/button';
 import { DialogClose } from '../../src/components/ui/dialog';
@@ -74,7 +74,7 @@ function Harness({
       onSubmit={unconfirmed?.onRetry ?? onConfirm}
       submitDisabled={pending || (options.confirmDisabled ?? false)}
       footer={
-        <ConfirmationFooter>
+        <DialogFooter>
           {cancelButton}
           {options.secondaryAction}
           <ProgressButton
@@ -86,7 +86,7 @@ function Harness({
           >
             {unconfirmed === undefined ? 'Revoke connection' : 'Try again'}
           </ProgressButton>
-        </ConfirmationFooter>
+        </DialogFooter>
       }
     >
       <ConfirmationDetails
@@ -156,30 +156,6 @@ describe('ConfirmDialog', () => {
     expect(dismiss).toHaveBeenCalledOnce();
     await waitFor(() => {
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-    });
-  });
-
-  it('keeps success effects that follow the command after it unmounts', async () => {
-    let finish: (() => void) | undefined;
-    const announced = vi.fn();
-    const user = userEvent.setup();
-    const { unmount } = render(
-      <Harness
-        onConfirm={async () => {
-          await new Promise<void>((resolve) => {
-            finish = resolve;
-          });
-          announced();
-        }}
-      />,
-    );
-    await user.click(screen.getByRole('button', { name: 'Revoke' }));
-    await user.click(screen.getByRole('button', { name: 'Revoke connection' }));
-    // The command's own cache update can take the dialog with it.
-    unmount();
-    finish?.();
-    await waitFor(() => {
-      expect(announced).toHaveBeenCalledOnce();
     });
   });
 

@@ -1,3 +1,4 @@
+import { DialogFooter } from '@/components/ui/dialog';
 import { useRouter } from '@tanstack/react-router';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { DialogClose } from '@/components/ui/dialog';
@@ -5,7 +6,6 @@ import { Button } from '@/components/ui/button';
 import type { WorkflowVersionResponse } from '@pertexo/contracts';
 import {
   ConfirmDialog,
-  ConfirmationFooter,
   ConfirmationDetails,
 } from '@/components/patterns/actions/confirm-dialog';
 import { useNotifications } from '@/components/ui/use-notifications';
@@ -95,7 +95,7 @@ export function RestoreVersionDialog({
       onSubmit={confirm}
       submitDisabled={restore.pending}
       footer={
-        <ConfirmationFooter>
+        <DialogFooter>
           <DialogClose
             disabled={restore.pending}
             render={<Button type="button" variant="ghost" />}
@@ -116,7 +116,7 @@ export function RestoreVersionDialog({
           >
             {CONFIRM[restore.recovery ?? 'start']}
           </ProgressButton>
-        </ConfirmationFooter>
+        </DialogFooter>
       }
     >
       <ConfirmationDetails

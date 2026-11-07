@@ -1,3 +1,4 @@
+import { DialogFooter } from '@/components/ui/dialog';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { DialogClose } from '@/components/ui/dialog';
 import type { AccessibleWorkspace } from '@pertexo/contracts';
@@ -6,7 +7,6 @@ import { LogOutIcon } from 'lucide-react';
 import { useState } from 'react';
 import {
   ConfirmDialog,
-  ConfirmationFooter,
   ConfirmationDetails,
 } from '@/components/patterns/actions/confirm-dialog';
 import { Button } from '@/components/ui/button';
@@ -89,7 +89,7 @@ export function WorkspaceLeave({
         onSubmit={confirmationRetry?.onRetry ?? (() => command.start())}
         submitDisabled={command.pending}
         footer={
-          <ConfirmationFooter>
+          <DialogFooter>
             {confirmationRetry === undefined ? (
               <DialogClose
                 disabled={command.pending || command.retryAvailable}
@@ -119,7 +119,7 @@ export function WorkspaceLeave({
                 ? 'Leave workspace'
                 : 'Try again'}
             </ProgressButton>
-          </ConfirmationFooter>
+          </DialogFooter>
         }
       >
         <ConfirmationDetails

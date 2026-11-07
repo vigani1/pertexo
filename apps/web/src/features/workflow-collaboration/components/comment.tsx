@@ -1,3 +1,4 @@
+import { DialogFooter } from '@/components/ui/dialog';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { DialogClose } from '@/components/ui/dialog';
 import { useState } from 'react';
@@ -5,7 +6,6 @@ import type { WorkflowComment } from '@pertexo/contracts';
 import { Button } from '@/components/ui/button';
 import {
   ConfirmDialog,
-  ConfirmationFooter,
   ConfirmationDetails,
 } from '@/components/patterns/actions/confirm-dialog';
 import { formatDateTime } from '@/lib/format/time';
@@ -124,7 +124,7 @@ export function DiscussionComment({
         }
         submitDisabled={confirmBlocked}
         footer={
-          <ConfirmationFooter>
+          <DialogFooter>
             <DialogClose
               disabled={command.pending || command.uncertain}
               render={<Button type="button" variant="ghost" />}
@@ -142,7 +142,7 @@ export function DiscussionComment({
             >
               Delete comment
             </ProgressButton>
-          </ConfirmationFooter>
+          </DialogFooter>
         }
       >
         <ConfirmationDetails>

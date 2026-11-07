@@ -8,7 +8,7 @@
    is actually happening). Tokens are semantic; components never hard-code hex. */
 
 /* Looping motion that decorates or restates a status runs unless the person
-   asks for less motion. useStillCanvases applies the same rule to canvas
+   asks for less motion. usePrefersReducedMotion applies the same rule to canvas
    drawings. */
 @custom-variant motion-loop {
   @media (prefers-reduced-motion: no-preference) {

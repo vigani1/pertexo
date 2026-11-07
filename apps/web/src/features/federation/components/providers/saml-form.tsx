@@ -132,6 +132,7 @@ export function SamlProviderForm({
         <SamlClaimFields id={id} fields={fields} locked={locked} />
         {stale ? (
           <ProviderRevisionNotice
+            organization={organization}
             locked={locked}
             canReview={organization.revision !== baseRevision}
             onKeepEdits={() => {

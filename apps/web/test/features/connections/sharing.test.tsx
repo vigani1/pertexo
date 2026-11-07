@@ -185,6 +185,9 @@ it('loads a refused sharing revision and resubmits retained people only after re
   );
   await event.click(await screen.findByRole('button', { name: 'Add Jane' }));
   await event.click(screen.getByRole('button', { name: 'Save' }));
+  expect(
+    await screen.findByRole('region', { name: 'Current saved sharing' }),
+  ).toBeVisible();
   await event.click(
     await screen.findByRole('button', {
       name: 'Keep edits and use latest revision',

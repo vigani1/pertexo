@@ -1,10 +1,8 @@
+import { DialogFooter } from '@/components/ui/dialog';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { DialogClose } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import {
-  ConfirmDialog,
-  ConfirmationFooter,
-} from '@/components/patterns/actions/confirm-dialog';
+import { ConfirmDialog } from '@/components/patterns/actions/confirm-dialog';
 import { useNotifications } from '@/components/ui/use-notifications';
 import type { ApiClient } from '@/lib/api/client';
 import {
@@ -78,7 +76,7 @@ export function CancelRunDialog({
       onSubmit={stop}
       submitDisabled={cancellation.isPending}
       footer={
-        <ConfirmationFooter>
+        <DialogFooter>
           <DialogClose
             disabled={cancellation.isPending}
             render={<Button type="button" variant="ghost" />}
@@ -93,7 +91,7 @@ export function CancelRunDialog({
           >
             Cancel run
           </ProgressButton>
-        </ConfirmationFooter>
+        </DialogFooter>
       }
     ></ConfirmDialog>
   );

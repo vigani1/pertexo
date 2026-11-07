@@ -1,7 +1,6 @@
 import type { ReactElement, ReactNode } from 'react';
 import {
   Dialog,
-  DialogFooter,
   DialogContent,
   DialogDescription,
   DialogTitle,
@@ -67,13 +66,6 @@ export function ConfirmDialog({
       </DialogContent>
     </Dialog>
   );
-}
-
-/** The shared footer layout leaves each confirmation's commands explicit. */
-export function ConfirmationFooter({
-  children,
-}: Readonly<{ children: ReactNode }>) {
-  return <DialogFooter>{children}</DialogFooter>;
 }
 
 /** The scrollable form content; simple confirmations need no empty area. */

@@ -84,6 +84,17 @@ export function ConnectionSharingPanel({
       {editor.stale ? (
         <SharingRevisionNotice
           subject="use this connection"
+          latest={
+            editor.reader.isSuccess
+              ? {
+                  mode: editor.reader.data.mode,
+                  people: editor.reader.data.members.map((member) => ({
+                    id: member.userId,
+                    label: member.label,
+                  })),
+                }
+              : undefined
+          }
           canReview={editor.canReview}
           locked={editor.locked}
           onReview={editor.review}

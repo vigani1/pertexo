@@ -1,3 +1,4 @@
+import { DialogFooter } from '@/components/ui/dialog';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { DialogClose } from '@/components/ui/dialog';
 import type { AccountSecurityResponse } from '@pertexo/contracts';
@@ -5,7 +6,6 @@ import { KeyRoundIcon, PlusIcon } from 'lucide-react';
 import { useState } from 'react';
 import {
   ConfirmDialog,
-  ConfirmationFooter,
   ConfirmationDetails,
 } from '@/components/patterns/actions/confirm-dialog';
 import { Button } from '@/components/ui/button';
@@ -144,7 +144,7 @@ export function AccountMethodsSection({
         }}
         submitDisabled={unlink.isPending || methodToRemove === undefined}
         footer={
-          <ConfirmationFooter>
+          <DialogFooter>
             <DialogClose
               disabled={unlink.isPending}
               render={<Button type="button" variant="ghost" />}
@@ -160,7 +160,7 @@ export function AccountMethodsSection({
             >
               Remove method
             </ProgressButton>
-          </ConfirmationFooter>
+          </DialogFooter>
         }
       >
         <ConfirmationDetails

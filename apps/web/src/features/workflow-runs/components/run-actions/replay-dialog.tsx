@@ -1,3 +1,4 @@
+import { DialogFooter } from '@/components/ui/dialog';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { DialogClose } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -15,7 +16,6 @@ import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import {
   ConfirmDialog,
-  ConfirmationFooter,
   ConfirmationDetails,
 } from '@/components/patterns/actions/confirm-dialog';
 import { useNotifications } from '@/components/ui/use-notifications';
@@ -300,7 +300,7 @@ export function ReplayRunDialog({
       onSubmit={submit}
       submitDisabled={replay.pending || cannotStart}
       footer={
-        <ConfirmationFooter>
+        <DialogFooter>
           <DialogClose
             disabled={replay.pending}
             render={<Button type="button" variant="ghost" />}
@@ -316,7 +316,7 @@ export function ReplayRunDialog({
           >
             {replay.retryAvailable ? 'Retry same replay' : 'Replay run'}
           </ProgressButton>
-        </ConfirmationFooter>
+        </DialogFooter>
       }
     >
       <ConfirmationDetails

@@ -362,6 +362,12 @@ it.each(['oidc', 'saml'] as const)(
       );
     await user.click(screen.getByRole('button', { name: 'Save provider' }));
     await user.click(
+      await screen.findByText('Review current provider settings'),
+    );
+    expect(
+      screen.getByRole('region', { name: 'Current saved provider settings' }),
+    ).toHaveTextContent(provider.name);
+    await user.click(
       await screen.findByRole('button', {
         name: 'Keep edits and use latest revision',
       }),

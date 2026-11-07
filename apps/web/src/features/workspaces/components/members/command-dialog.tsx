@@ -1,3 +1,4 @@
+import { DialogFooter } from '@/components/ui/dialog';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { DialogClose } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -5,7 +6,6 @@ import type { ReactNode } from 'react';
 import type { WorkspaceMember } from '@pertexo/contracts';
 import {
   ConfirmDialog,
-  ConfirmationFooter,
   ConfirmationDetails,
 } from '@/components/patterns/actions/confirm-dialog';
 import {
@@ -75,7 +75,7 @@ export function MemberCommandDialog({
       onSubmit={confirmationRetry?.onRetry ?? onConfirm}
       submitDisabled={command.pending || member === undefined}
       footer={
-        <ConfirmationFooter>
+        <DialogFooter>
           {confirmationRetry === undefined ? (
             <DialogClose
               disabled={command.locked}
@@ -110,7 +110,7 @@ export function MemberCommandDialog({
               ? content.confirmLabel
               : 'Try again'}
           </ProgressButton>
-        </ConfirmationFooter>
+        </DialogFooter>
       }
     >
       <ConfirmationDetails

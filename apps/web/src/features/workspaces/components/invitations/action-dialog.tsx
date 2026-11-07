@@ -1,10 +1,10 @@
+import { DialogFooter } from '@/components/ui/dialog';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { DialogClose } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import type { WorkspaceInvitation } from '@pertexo/contracts';
 import {
   ConfirmDialog,
-  ConfirmationFooter,
   ConfirmationDetails,
 } from '@/components/patterns/actions/confirm-dialog';
 import type { InvitationAction } from './list';
@@ -65,7 +65,7 @@ export function InvitationActionDialog(
       onSubmit={confirmationRetry?.onRetry ?? props.command.onConfirm}
       submitDisabled={props.command.pending}
       footer={
-        <ConfirmationFooter>
+        <DialogFooter>
           {confirmationRetry === undefined ? (
             <DialogClose
               disabled={props.command.locked}
@@ -99,7 +99,7 @@ export function InvitationActionDialog(
           >
             {confirmationRetry === undefined ? copy.confirm : 'Try again'}
           </ProgressButton>
-        </ConfirmationFooter>
+        </DialogFooter>
       }
     >
       <ConfirmationDetails

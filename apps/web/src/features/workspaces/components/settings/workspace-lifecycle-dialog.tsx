@@ -1,9 +1,9 @@
+import { DialogFooter } from '@/components/ui/dialog';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { DialogClose } from '@/components/ui/dialog';
 import { useState } from 'react';
 import {
   ConfirmDialog,
-  ConfirmationFooter,
   ConfirmationDetails,
 } from '@/components/patterns/actions/confirm-dialog';
 import { Button } from '@/components/ui/button';
@@ -58,7 +58,7 @@ export function WorkspaceLifecycleDialog({
       onSubmit={confirmationRetry?.onRetry ?? (() => send(onConfirm))}
       submitDisabled={pending}
       footer={
-        <ConfirmationFooter>
+        <DialogFooter>
           {confirmationRetry === undefined ? (
             <DialogClose
               disabled={pending || retryAvailable}
@@ -86,7 +86,7 @@ export function WorkspaceLifecycleDialog({
           >
             {confirmationRetry === undefined ? action : 'Try again'}
           </ProgressButton>
-        </ConfirmationFooter>
+        </DialogFooter>
       }
     >
       <ConfirmationDetails
