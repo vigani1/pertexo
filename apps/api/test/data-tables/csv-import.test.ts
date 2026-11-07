@@ -84,7 +84,7 @@ describe('typed CSV import', () => {
   ])(
     'refuses malformed or mismatched headers before writing: %s',
     async (csv) => {
-      const { service, imported } = fixture();
+      const { service } = fixture();
       await expect(service.importCsv({ ...input, csv })).rejects.toMatchObject({
         name: 'DataTableError',
         code: 'invalid_values',
