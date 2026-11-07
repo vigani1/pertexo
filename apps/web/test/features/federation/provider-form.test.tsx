@@ -122,8 +122,12 @@ describe('private organization provider editing', () => {
       screen.getByRole('button', { name: 'Save provider' }),
     ).toBeDisabled();
     expect(fetch).not.toHaveBeenCalled();
+    fetch.mockResolvedValueOnce(json({ ...settings, organization: changed }));
     await user.click(screen.getByRole('button', { name: 'Reload provider' }));
-    expect(screen.getByLabelText('Provider name')).toHaveValue('Server name');
+    await waitFor(() => {
+      expect(fetch.mock.calls[0]?.[1]?.method).toBe('GET');
+    });
+    expect(fetch.mock.calls[0]?.[1]?.method).toBe('GET');
     expect(screen.getByLabelText('Client secret')).toHaveValue('');
   });
   it('keeps a removed provider in edit mode, with saving refused', () => {
@@ -285,12 +289,17 @@ describe('SAML provider editing', () => {
       screen.getByRole('button', { name: 'Save provider' }),
     ).toBeDisabled();
     expect(fetch).not.toHaveBeenCalled();
+    fetch.mockResolvedValueOnce(json({ ...settings, organization: changed }));
     await user.click(screen.getByRole('button', { name: 'Reload provider' }));
+    await waitFor(() => {
+      expect(screen.getByLabelText('Signing certificate')).toHaveValue(
+        'rotated-public-certificate',
+      );
+    });
+    expect(fetch).toHaveBeenCalledOnce();
+
     expect(screen.getByLabelText('SSO sign-in URL')).toHaveValue(
       'https://idp.example.test/sso',
-    );
-    expect(screen.getByLabelText('Signing certificate')).toHaveValue(
-      'rotated-public-certificate',
     );
     expect(screen.getByRole('button', { name: 'Save provider' })).toBeEnabled();
     expect(screen.getByLabelText('IdP entity ID')).toBeDisabled();

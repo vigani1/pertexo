@@ -1,6 +1,7 @@
 import {
   reconcileQuerySnapshot,
   recoverRevisionConflict,
+  type SnapshotRead,
 } from '@/lib/api/query-snapshot';
 import { useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
@@ -34,6 +35,9 @@ export function useFederationCommand(
   const [error, setError] = useState<string>(),
     [held, setHeld] = useState<Intent>();
   const expired = useResendExpired(held);
+  const [revisionRead, setRevisionRead] =
+    useState<SnapshotRead<FederationSettings>>();
+  const [reading, setReading] = useState(false);
   const [refusedRevision, setRefusedRevision] = useState<number>();
   async function execute(command: Intent): Promise<boolean> {
     if (busy.current || !canResend(command)) return false;
@@ -65,13 +69,13 @@ export function useFederationCommand(
           'The result could not be confirmed. Retry this exact request before changing the form.',
         );
       } else {
-        if (
-          await recoverRevisionConflict(
-            cache,
-            federationSettingsQueryOptions(scope).queryKey,
-            cause,
-          )
-        ) {
+        const recovery = await recoverRevisionConflict<FederationSettings>(
+          cache,
+          federationSettingsQueryOptions(scope).queryKey,
+          cause,
+        );
+        if (recovery.kind !== 'not-conflict') {
+          setRevisionRead(recovery);
           if (command.operation.kind !== 'createOrganization')
             setRefusedRevision(command.operation.input.expectedRevision);
         }
@@ -95,8 +99,26 @@ export function useFederationCommand(
       attempt.finish();
     }
   }
+  async function refreshCurrent() {
+    if (busy.current || reading) return undefined;
+    setReading(true);
+    try {
+      const options = federationSettingsQueryOptions(scope);
+      await cache.cancelQueries({ queryKey: options.queryKey, exact: true });
+      const value = await cache.query({ ...options, staleTime: 0 });
+      setRevisionRead({ kind: 'refreshed', value });
+      return value;
+    } catch (error) {
+      setRevisionRead({ kind: 'read-failed', error });
+      return undefined;
+    } finally {
+      setReading(false);
+    }
+  }
   return {
-    pending: requests.pending,
+    pending: requests.pending || reading,
+    revisionRead,
+    refreshCurrent,
     refusedRevision,
     uncertain: held !== undefined,
     expired,

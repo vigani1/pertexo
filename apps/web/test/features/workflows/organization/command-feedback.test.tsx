@@ -24,6 +24,7 @@ function command(denied = false): OrganizationCommand {
       ],
     },
     start: vi.fn(() => Promise.resolve()),
+    retryRevisionRead: () => Promise.resolve(),
     retry: vi.fn(() => Promise.resolve()),
     reset: vi.fn(),
   };

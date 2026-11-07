@@ -42,9 +42,16 @@ const finance: WorkflowFolder = {
   name: 'Finance',
   revision: 4,
 };
-it.each(['rename', 'move', 'delete'] as const)(
-  'reviews the current folder before retrying a refused %s',
-  async (kind) => {
+it.each(
+  ['rename', 'move', 'delete'].flatMap((kind) =>
+    [false, true].map((failRead) => ({
+      kind: kind as 'rename' | 'move' | 'delete',
+      failRead,
+    })),
+  ),
+)(
+  'reviews the current folder before retrying a refused $kind (read fails: $failRead)',
+  async ({ kind, failRead }) => {
     mockServer.use(...discoveryHandlers());
     const workspace = accessibleWorkspaceSchema.parse({
       ...workspaceWith(['workflow:read', 'workflow:update']),
@@ -59,10 +66,15 @@ it.each(['rename', 'move', 'delete'] as const)(
     });
     let current = operations;
     const bodies: unknown[] = [];
+    let readFailed = false;
     mockServer.use(
-      http.get(`${api}/workflow-folders`, () =>
-        HttpResponse.json({ items: [current, finance] }),
-      ),
+      http.get(`${api}/workflow-folders`, () => {
+        if (failRead && bodies.length === 1 && !readFailed) {
+          readFailed = true;
+          return problem(503, 'internal.unexpected');
+        }
+        return HttpResponse.json({ items: [current, finance] });
+      }),
       http.post(`${api}/workflow-folders/review-move`, () =>
         HttpResponse.json({
           items: [
@@ -148,6 +160,13 @@ it.each(['rename', 'move', 'delete'] as const)(
     const review = await screen.findByRole('button', {
       name: 'Keep edits and use latest revision',
     });
+    if (failRead) {
+      expect(review).toBeDisabled();
+      expect(
+        await screen.findByRole('button', { name: /^Copy error ID/u }),
+      ).toBeVisible();
+      await user.click(screen.getByRole('button', { name: 'Retry' }));
+    }
     await waitFor(() => {
       expect(review).toBeEnabled();
     });

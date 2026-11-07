@@ -1,3 +1,5 @@
+import { ReadRecovery } from '@/components/patterns/states/read-recovery';
+import type { SnapshotRead } from '@/lib/api/query-snapshot';
 import type { FederationSettings } from '@pertexo/contracts';
 import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/ui/notice';
@@ -7,12 +9,16 @@ export function ProviderRevisionNotice({
   canReview,
   onKeepEdits,
   onReload,
+  revisionRead,
+  onRetry,
 }: Readonly<{
   organization: NonNullable<FederationSettings['organization']>;
   locked: boolean;
   canReview: boolean;
   onKeepEdits: () => void;
   onReload: () => void;
+  revisionRead: SnapshotRead<FederationSettings> | undefined;
+  onRetry: () => void;
 }>) {
   return (
     <Notice
@@ -40,6 +46,14 @@ export function ProviderRevisionNotice({
     >
       Organization settings changed. Your edits are kept. Reloading replaces
       this form with the current settings.
+      {revisionRead?.kind === 'read-failed' ? (
+        <ReadRecovery
+          error={revisionRead.error}
+          resource="current provider settings"
+          retrying={locked}
+          retry={onRetry}
+        />
+      ) : null}
       <details className="mt-2 min-w-0">
         <summary className="focus-ring cursor-pointer rounded-sm">
           Review current provider settings

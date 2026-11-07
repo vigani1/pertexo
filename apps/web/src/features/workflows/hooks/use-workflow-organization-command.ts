@@ -1,4 +1,8 @@
-import { recoverRevisionConflict } from '@/lib/api/query-snapshot';
+import {
+  recoverRevisionConflict,
+  refreshQuerySnapshot,
+  type SnapshotRead,
+} from '@/lib/api/query-snapshot';
 import {
   useCallback,
   useEffect,
@@ -37,6 +41,7 @@ export type WorkflowOrganizationCommandResult = Awaited<
 
 type State = Readonly<{
   revisionConflict?: boolean;
+  revisionRead?: SnapshotRead<unknown>;
   pending: boolean;
   retryAvailable: boolean;
   denied: boolean;
@@ -55,6 +60,7 @@ export type WorkflowOrganizationCommand = State &
   Readonly<{
     start: (attempt: WorkflowOrganizationAttempt) => Promise<void>;
     retry: () => Promise<void>;
+    retryRevisionRead: () => Promise<void>;
     reset: () => void;
   }>;
 
@@ -168,6 +174,17 @@ export function useWorkflowOrganizationCommand({
 
   return {
     ...state,
+    retryRevisionRead: async () => {
+      if (request.current !== undefined || denied.current) return;
+      const token = owner.current;
+      setState((previous) => ({ ...previous, pending: true }));
+      const revisionRead = await refreshQuerySnapshot(
+        queryClient,
+        workflowOrganizationKeys.folders(userId, workspaceId),
+      );
+      if (owner.current === token)
+        setState((previous) => ({ ...previous, pending: false, revisionRead }));
+    },
     start: async (input) => {
       const organizationRetryBlocked =
         request.current !== undefined ||
@@ -353,7 +370,7 @@ async function sendOrganizationCommand(
       pending: false,
       retryAvailable,
       denied: false,
-      revisionConflict,
+      ...conflictReadState(revisionConflict),
       error: retryAvailable
         ? 'We couldn’t confirm that change. Retry it; refreshing the list won’t lose your place.'
         : definitiveMessage(error),
@@ -361,4 +378,12 @@ async function sendOrganizationCommand(
   } finally {
     if (request.current === controller) request.current = undefined;
   }
+}
+
+function conflictReadState(
+  recovery: SnapshotRead<unknown> | Readonly<{ kind: 'not-conflict' }>,
+): Pick<State, 'revisionConflict' | 'revisionRead'> {
+  return recovery.kind === 'not-conflict'
+    ? { revisionConflict: false }
+    : { revisionConflict: true, revisionRead: recovery };
 }
