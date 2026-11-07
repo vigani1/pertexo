@@ -33,6 +33,8 @@ import {
 
 export type { ApiApplicationDependencies } from './api-runtimes.js';
 
+const HTTP_RECEIVE_TIMEOUT_MS = 30_000;
+
 export async function createApiApplication(
   config: ApiConfig,
   dependencies: ApiApplicationDependencies,
@@ -58,7 +60,12 @@ export async function assembleApiApplication(
     webhookRuntime,
   } = runtimes;
   const fastifyAdapter = new FastifyAdapter({
-    requestTimeout: 30_000,
+    requestTimeout: HTTP_RECEIVE_TIMEOUT_MS,
+    // Node's header deadline must agree with the body deadline at construction.
+    http: {
+      headersTimeout: HTTP_RECEIVE_TIMEOUT_MS,
+      connectionsCheckingInterval: 1_000,
+    },
     routerOptions: { ignoreTrailingSlash: true },
     trustProxy:
       config.trustedProxyCidrs === undefined ||
