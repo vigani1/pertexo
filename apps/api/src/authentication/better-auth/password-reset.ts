@@ -5,7 +5,7 @@ import { createAuthEndpoint, originCheck } from 'better-auth/api';
 import type { BetterAuthPlugin } from 'better-auth';
 import type { Pool } from 'pg';
 import { z } from 'zod';
-import type { AuthenticationMail } from '../mail/delivery.js';
+import type { AuthenticationMail } from '../mail/authentication-mail.js';
 
 /** Replace native issuance so lookup, proof and mail share the user lock. */
 export function createPasswordResetPlugin(

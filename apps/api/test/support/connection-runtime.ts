@@ -14,8 +14,8 @@ import type {
   ConnectionSecretEncryptionPort,
   ConnectionSlackClient,
 } from '../../src/connections/index.js';
-import type { ApiConnectionRuntime } from '../../src/platform/connections/runtime.module.js';
-import type { ApiIdentityRuntime } from '../../src/platform/identity/runtime.module.js';
+import type { ApiConnectionRuntime } from '../../src/platform/connections/connections-runtime.module.js';
+import type { ApiIdentityRuntime } from '../../src/platform/identity/identity-runtime.module.js';
 
 /** What a fixture puts in place of KMS and the providers. */
 export type FixtureConnectionServices = Readonly<{

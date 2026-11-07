@@ -16,7 +16,7 @@ import {
   ListWorkflowStepRunsUseCase,
 } from './run-data.service.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
-import { runFailure } from '../../problems/context/normalize.js';
+import { runFailure } from '../../problems/context/normalize-context-errors.js';
 
 /**
  * A run's input and each step's output (ADR 050), and each step across its

@@ -1,7 +1,10 @@
 import { randomUUID } from 'node:crypto';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { betterAuthIntegrationEnabled } from '../support/better-auth/real-api.support.js';
-import { useQualificationApi, type World } from './qualification/fixture.js';
+import {
+  useQualificationApi,
+  type World,
+} from './qualification/qualification-api.fixture.js';
 import { routes } from './qualification/routes.js';
 
 describe.runIf(betterAuthIntegrationEnabled)(

@@ -5,7 +5,7 @@ import { samlTransportAvailable } from '../federation/protocol/saml/configuratio
 import {
   needsSecurityTransaction,
   securityTransaction,
-} from './transactions/response.js';
+} from './transactions/security-transaction.js';
 import {
   createSamlProofGateway,
   type SamlProofGateway,
@@ -23,23 +23,26 @@ import { SignUpAvailability, type SignUpMode } from '@pertexo/core/identity';
 import { surviveConnectionLoss } from '@pertexo/database/platform';
 import { Pool } from 'pg';
 import { refuseClosedSignUp } from './sign-up-gate.js';
-import { AuthenticationTransactions } from './transactions/context.js';
+import { AuthenticationTransactions } from './transactions/authentication-transactions.js';
 
-import { AccountLinking } from '../account-security/linking.js';
+import { AccountLinking } from '../account-security/account-linking.js';
 import type { SocialProviderGateway } from '../social-provider.types.js';
-import type { AuthenticationMail } from '../mail/delivery.js';
+import type { AuthenticationMail } from '../mail/authentication-mail.js';
 import {
   betterAuthSocialProviders,
   configuredSocialProviders,
 } from './social-providers.js';
-import { createPertexoBetterAuth, type PertexoBetterAuth } from './options.js';
+import {
+  createPertexoBetterAuth,
+  type PertexoBetterAuth,
+} from './better-auth-options.js';
 import {
   authenticateBrowserRequest,
   createTrustedSessions,
   type BetterAuthTrustedSessions,
 } from './trusted-sessions.js';
 import { OwnedEmailProofs } from '../mail/email-proofs.js';
-import { SocialSignIn } from '../federation/social.js';
+import { SocialSignIn } from '../federation/social-sign-in.js';
 import { landProviderFormCallback } from '../journeys/form-callback.js';
 
 export type BetterAuthRuntimeConfig = Readonly<{

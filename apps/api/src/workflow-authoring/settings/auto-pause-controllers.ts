@@ -8,7 +8,7 @@ import { WorkflowAutoPauseUseCase } from './auto-pause.js';
 import { asker } from './asker.js';
 import type { WorkflowAuthoringRequest } from '../workflow-transport.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
-import { authoringFailure } from '../../problems/context/normalize.js';
+import { authoringFailure } from '../../problems/context/normalize-context-errors.js';
 
 @UseInterceptors(domainErrors(authoringFailure))
 @Controller()

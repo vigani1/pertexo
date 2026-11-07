@@ -3,7 +3,7 @@ import {
   cleanBetterAuthFastifyBridgeFixture,
   allowingRateLimit,
   applications,
-} from './better-auth-fastify/fixture.js';
+} from './better-auth-transport.fixture.js';
 import { randomUUID } from 'node:crypto';
 import { FastifyAdapter } from '@nestjs/platform-fastify';
 import { landProviderFormCallback } from '../../src/authentication/journeys/form-callback.js';
@@ -14,7 +14,7 @@ import Fastify from 'fastify';
 import {
   registerBetterAuthHandler,
   registerAuthenticationCapabilities,
-} from '../../src/authentication/better-auth/fastify.js';
+} from '../../src/authentication/better-auth/better-auth-transport.js';
 import { apiProblemSchema } from '@pertexo/contracts';
 
 describe('Better Auth Fastify bridge', () => {

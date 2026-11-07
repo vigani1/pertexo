@@ -8,7 +8,7 @@ import { In, Route } from '../../workspaces/http/route.js';
 import { withRequestOperationSignal } from '../../platform/http/index.js';
 import { WorkflowTestsUseCase } from './workflow-tests.service.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
-import { nodeTestingFailure } from '../../problems/context/normalize.js';
+import { nodeTestingFailure } from '../../problems/context/normalize-context-errors.js';
 import { draftContext, type DraftRequest } from '../draft-context.js';
 
 @UseInterceptors(domainErrors(nodeTestingFailure))

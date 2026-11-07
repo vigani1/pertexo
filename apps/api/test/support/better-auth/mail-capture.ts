@@ -1,5 +1,5 @@
 import { LocalAuthenticationMailSink } from '../../../src/authentication/index.js';
-import type { LocalAuthenticationMailMessage } from '../../../src/authentication/mail/delivery.js';
+import type { LocalAuthenticationMailMessage } from '../../../src/authentication/mail/authentication-mail.js';
 
 /** Captures the local sink's observable messages in the fixture, not the API. */
 export function captureLocalAuthenticationMail() {

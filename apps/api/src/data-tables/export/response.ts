@@ -3,7 +3,7 @@ import type {
   DataTablesStore,
   ExportTableInput,
 } from '@pertexo/core/data-tables';
-import { sendCsvDownload } from '../../platform/http/csv/response.js';
+import { sendCsvDownload } from '../../platform/http/csv/csv-response.js';
 type ExportInput = Omit<ExportTableInput, 'consume' | 'signal'>;
 export function sendTableExport(
   store: Pick<DataTablesStore, 'exportCsv'>,

@@ -18,7 +18,7 @@ import {
 } from '../use-cases/management.js';
 import type { ConnectionRequest } from '../connection-request.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
-import { connectionFailure } from '../../problems/context/normalize.js';
+import { connectionFailure } from '../../problems/context/normalize-context-errors.js';
 
 @UseInterceptors(domainErrors(connectionFailure))
 @Controller()

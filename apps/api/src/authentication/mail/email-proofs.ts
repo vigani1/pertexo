@@ -9,7 +9,7 @@ import { z } from 'zod';
 import type {
   AuthenticationMail,
   PreparedAuthenticationProofMail,
-} from './delivery.js';
+} from './authentication-mail.js';
 
 type ProofPurpose = 'initial_verification' | 'change_old' | 'change_new';
 type ProofUser = Readonly<{ id: string; email: string; name: string }>;

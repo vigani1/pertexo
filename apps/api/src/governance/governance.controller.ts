@@ -14,13 +14,13 @@ import { In, Route } from '../workspaces/http/route.js';
 import type { IdentityWorkspaceRequest } from '../workspaces/workspace-transport.js';
 import { withRequestOperationSignal } from '../platform/http/index.js';
 import type { AbortableRequest } from '../platform/http/request-operation-signal.js';
-import { CsvExportAdmission } from '../platform/http/csv/admission.js';
-import { decodeCsvDownloadRequest } from '../platform/http/csv/request.js';
+import { CsvExportAdmission } from '../platform/http/csv/csv-admission.js';
+import { decodeCsvDownloadRequest } from '../platform/http/csv/csv-request.js';
 import { parseRequestInput } from '../platform/http/request-input.js';
-import { sendCsvDownload } from '../platform/http/csv/response.js';
+import { sendCsvDownload } from '../platform/http/csv/csv-response.js';
 import { GOVERNANCE_STORE } from './tokens.js';
 import { domainErrors } from '../platform/http/problems/interceptor.js';
-import { resourceFailure } from '../problems/context/normalize.js';
+import { resourceFailure } from '../problems/context/normalize-context-errors.js';
 
 type Request = IdentityWorkspaceRequest & AbortableRequest;
 

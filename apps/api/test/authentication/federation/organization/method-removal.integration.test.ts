@@ -7,8 +7,8 @@ import {
   browserFrom,
   type Browser,
 } from '../../../support/better-auth/real-api.support.js';
-import { useOrganizationApi } from './fixture.js';
-import { waitForBlocked } from '../../recovery/fixture.js';
+import { useOrganizationApi } from './organization-sign-in.fixture.js';
+import { waitForBlocked } from '../../recovery/account-recovery.fixture.js';
 
 describe.runIf(betterAuthIntegrationEnabled)(
   'usable sign-in methods at removal',

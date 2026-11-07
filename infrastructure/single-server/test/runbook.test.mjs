@@ -15,7 +15,7 @@ import {
   codeContainerLimits,
   parseCodeSettings,
 } from '../../../packages/node-sdk/dist/index.js';
-import { parseApiConfig } from '../../../apps/api/dist/platform/config/api.js';
+import { parseApiConfig } from '../../../apps/api/dist/platform/config/api-config.js';
 import { it } from 'node:test';
 
 // What a stranger reads and relies on. These check claims against the real scripts

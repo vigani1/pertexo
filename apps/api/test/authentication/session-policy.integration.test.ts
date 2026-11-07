@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
-import { parseApiConfig } from '../../src/platform/config/api.js';
+import { parseApiConfig } from '../../src/platform/config/api-config.js';
 import { standaloneBetterAuthEnvironment } from '../config/fixture.js';
 import {
   betterAuthIntegrationEnabled,

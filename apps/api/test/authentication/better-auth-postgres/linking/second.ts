@@ -2,7 +2,7 @@ import { expect } from 'vitest';
 
 import { runtime } from '../lifecycle.js';
 import { required, cookieValue } from '../requests.js';
-import type { ProviderLinkScenario } from './contract.js';
+import type { ProviderLinkScenario } from './linking-scenarios.js';
 
 export async function linkSecondProvider(
   scenario: ProviderLinkScenario,

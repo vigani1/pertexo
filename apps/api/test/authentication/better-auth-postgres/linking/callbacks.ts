@@ -7,7 +7,7 @@ import type {
   ProviderLinkStart,
   CallbackOrdering,
   CallbackFailure,
-} from './contract.js';
+} from './linking-scenarios.js';
 
 export async function dispatchProviderLinkCallbacks({
   scenario,

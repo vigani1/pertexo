@@ -12,7 +12,7 @@ import {
 } from '../draft-context.js';
 import { StepSamplesUseCase } from './step-samples.service.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
-import { nodeTestingFailure } from '../../problems/context/normalize.js';
+import { nodeTestingFailure } from '../../problems/context/normalize-context-errors.js';
 
 @UseInterceptors(domainErrors(nodeTestingFailure))
 @Controller()

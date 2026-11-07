@@ -8,7 +8,7 @@ import {
   browserFrom,
   type Browser,
 } from '../../../support/better-auth/real-api.support.js';
-import { useOrganizationApi } from './fixture.js';
+import { useOrganizationApi } from './organization-sign-in.fixture.js';
 
 /**
  * A session issued outside Better Auth has a time-ordered id, part of which can

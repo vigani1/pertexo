@@ -1,5 +1,5 @@
 import type { ApiTokenScope } from '@pertexo/contracts';
-import type { World } from './fixture.js';
+import type { World } from './qualification-api.fixture.js';
 
 type Case = Readonly<{
   name: string;

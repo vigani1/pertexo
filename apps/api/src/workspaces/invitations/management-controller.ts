@@ -10,7 +10,7 @@ import { WorkspaceInvitationManagementUseCase } from './management.js';
 import { requestIdentifier, traceIdentifier } from '../request/identifiers.js';
 import type { IdentityWorkspaceRequest } from '../workspace-transport.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
-import { workspaceFailure } from '../../problems/context/normalize.js';
+import { workspaceFailure } from '../../problems/context/normalize-context-errors.js';
 
 @UseInterceptors(domainErrors(workspaceFailure))
 @Controller()

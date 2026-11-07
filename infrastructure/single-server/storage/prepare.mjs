@@ -1,7 +1,7 @@
 import { codeContainerLimits } from '../../../packages/node-sdk/dist/index.js';
 import { writeFile, chmod } from 'node:fs/promises';
 import { requireCompatibleRelease } from '../encryption/require-compatible-release.mjs';
-import { parseApiConfig } from '../../../apps/api/dist/platform/config/api.js';
+import { parseApiConfig } from '../../../apps/api/dist/platform/config/api-config.js';
 import { parseWorkerConfig } from '../../../apps/worker/dist/config/worker.js';
 import { parseMigrationConfig } from '../../../packages/database/dist/config.js';
 

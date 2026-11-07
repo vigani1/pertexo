@@ -5,11 +5,11 @@ import { describe, expect, it, vi } from 'vitest';
 import { APPLICATION_ERROR_MAPPERS } from '../../src/application-errors.js';
 import { RequestContextStore } from '../../src/platform/http/request-context.js';
 import { ProblemDetailsFilter } from '../../src/platform/http/problem-details.filter.js';
-import { authoringFailure } from '../../src/problems/context/normalize.js';
+import { authoringFailure } from '../../src/problems/context/normalize-context-errors.js';
 import {
   hostFor,
   responseMock,
-} from '../platform/http/problem-details.filter/fixture.js';
+} from '../platform/http/problem-details-filter.fixture.js';
 
 /** Through the real filter, so these see what the log and the caller really get. */
 function render(error: unknown) {

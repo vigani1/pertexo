@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises';
 
 import { describe, expect, it } from 'vitest';
 
-import { parseApiConfig } from '../../src/platform/config/api.js';
+import { parseApiConfig } from '../../src/platform/config/api-config.js';
 import { validDeployedEnvironment } from './fixture.js';
 
 describe('the sign-up setting', () => {

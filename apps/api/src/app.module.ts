@@ -10,7 +10,7 @@ import type {
 import type { WorkspaceDatabase } from '@pertexo/database/platform';
 
 import type { ApiRuntimeSet } from './platform/api-application.types.js';
-import type { ApiConfig } from './platform/config/api.js';
+import type { ApiConfig } from './platform/config/api-config.js';
 import { ConnectionsModule } from './connections/index.js';
 import { CatalogModule } from './catalog/index.js';
 import { ArtifactsModule } from './artifacts/index.js';
@@ -36,9 +36,9 @@ import type {
   HttpErrorLogger,
 } from './platform/http/problem-details.filter.js';
 import { ObservabilityModule } from './platform/observability/observability.module.js';
-import { ConnectionRuntimeModule } from './platform/connections/runtime.module.js';
-import { IdentityRuntimeModule } from './platform/identity/runtime.module.js';
-import { WorkflowRuntimeModule } from './platform/workflow/runtime.module.js';
+import { ConnectionRuntimeModule } from './platform/connections/connections-runtime.module.js';
+import { IdentityRuntimeModule } from './platform/identity/identity-runtime.module.js';
+import { WorkflowRuntimeModule } from './platform/workflow/workflow-runtime.module.js';
 import { WebhookModule } from './webhooks/webhook.module.js';
 import { ScheduleModule } from './schedules/schedule.module.js';
 import { NotificationsModule } from './notifications/notifications.module.js';
@@ -47,7 +47,7 @@ import { APPLICATION_ERROR_MAPPERS } from './application-errors.js';
 import {
   ArtifactRuntimeModule,
   DEFAULT_ARTIFACT_MAX_OBJECT_BYTES,
-} from './platform/artifacts/runtime.module.js';
+} from './platform/artifacts/artifacts-runtime.module.js';
 
 export type ApiModuleDependencies = ApiRuntimeSet &
   Readonly<{

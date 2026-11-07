@@ -1,6 +1,6 @@
 import { FormUploadLimitError } from '@pertexo/core/artifacts';
 import { expect, it } from 'vitest';
-import { toProblem } from '../../../src/problems/registry.js';
+import { toProblem } from '../../../src/problems/api-problem-registry.js';
 
 it('tells a responder over the per-response cap to reload the form', () => {
   expect(toProblem(new FormUploadLimitError('response'))).toMatchObject({

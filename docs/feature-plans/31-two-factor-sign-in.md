@@ -14,7 +14,7 @@ in. This matches [n8n's two-factor sign-in](https://docs.n8n.io/user-management/
 ## Today
 
 - Password sign-in is Better Auth's `emailAndPassword`, configured in
-  `apps/api/src/authentication/better-auth/options.ts` (base path `/v1/auth`).
+  `apps/api/src/authentication/better-auth/better-auth-options.ts` (base path `/v1/auth`).
 - The trusted-session plugin (`better-auth/session-plugin.ts`) re-checks the
   organization sign-in policy after `/sign-in/email` creates a session
   (`isAuthenticationSessionAllowed`). If the policy changed, it deletes the

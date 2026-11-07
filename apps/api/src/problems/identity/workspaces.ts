@@ -5,7 +5,7 @@ import {
 } from '../../workspaces/cursor.js';
 import { AuthorizationError } from '../../authorization/index.js';
 import { IdempotencyConflictError } from '@pertexo/database/platform';
-import { errorRegistration } from '../../platform/http/problems/registry.js';
+import { errorRegistration } from '../../platform/http/problems/error-registry.js';
 import {
   DirectoryManagedMembershipError,
   IdentityConflictError,

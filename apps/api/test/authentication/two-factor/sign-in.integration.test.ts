@@ -12,7 +12,7 @@ import {
   createFactorLockoutFixture,
   createFactorOrganizationFixture,
   createFactorAdmissionFixture,
-} from './sign-in/fixture.js';
+} from './two-factor-sign-in.fixture.js';
 import { accountSecurityResponseSchema } from '@pertexo/contracts';
 import {
   authenticatorCode,

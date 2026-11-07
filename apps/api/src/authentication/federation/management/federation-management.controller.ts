@@ -5,14 +5,14 @@ import {
 } from '@pertexo/contracts/server';
 import { withRequestOperationSignal } from '../../../platform/http/index.js';
 import { domainErrors } from '../../../platform/http/problems/interceptor.js';
-import { resourceFailure } from '../../../problems/context/normalize.js';
+import { resourceFailure } from '../../../problems/context/normalize-context-errors.js';
 import { In, Route } from '../../../workspaces/http/route.js';
 import {
   federationCommand,
   federationScope,
   type FederationCommandScope,
   type FederationManagementRequest,
-} from './request.js';
+} from './federation-request.js';
 import { FederationManagementService } from './federation-management.service.js';
 
 type Request = FederationManagementRequest;

@@ -6,7 +6,7 @@ import {
   type RouteInput,
 } from '@pertexo/contracts/server';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
-import { workspaceFailure } from '../../problems/context/normalize.js';
+import { workspaceFailure } from '../../problems/context/normalize-context-errors.js';
 import { RenameWorkspaceUseCase } from '../commands/rename.js';
 import { UpdateUserProfileUseCase } from '../commands/user-profile.js';
 import { RemoveWorkspaceMemberUseCase } from '../members/removal.js';

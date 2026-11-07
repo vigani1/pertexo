@@ -3,7 +3,7 @@ import { execFileSync, spawnSync } from 'node:child_process';
 import { parseEnv } from 'node:util';
 import { test } from 'node:test';
 import { it } from 'node:test';
-import { parseApiConfig } from '../../../apps/api/dist/platform/config/api.js';
+import { parseApiConfig } from '../../../apps/api/dist/platform/config/api-config.js';
 import { parseWorkerConfig } from '../../../apps/worker/dist/config/worker.js';
 import {
   parseMigrationConfig,

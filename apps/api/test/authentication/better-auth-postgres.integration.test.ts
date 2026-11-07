@@ -19,18 +19,18 @@ import {
   signInVerifiedUser,
   sha256Hex,
   createInvitationProofSession,
-} from './better-auth-postgres/fixture.js';
+} from './better-auth-postgres/postgres-auth.fixture.js';
 import { randomUUID, randomBytes } from 'node:crypto';
 import Fastify from 'fastify';
 import { Pool } from 'pg';
-import { registerBetterAuthHandler } from '../../src/authentication/better-auth/fastify.js';
+import { registerBetterAuthHandler } from '../../src/authentication/better-auth/better-auth-transport.js';
 import * as browserSessionBoundary from '../../src/authentication/better-auth/trusted-sessions.js';
 import {
   authenticationMailAssociatedData,
   createSystemMailEnqueueStore,
 } from '@pertexo/secrets/server';
 import { createApplicationSecretEnvelope } from '@pertexo/secrets/server';
-import { DurableAuthenticationMail } from '../../src/authentication/mail/delivery.js';
+import { DurableAuthenticationMail } from '../../src/authentication/mail/authentication-mail.js';
 import { createBetterAuthRuntime } from '../../src/authentication/better-auth/better-auth.runtime.js';
 import { createIdentityWorkspaceStore } from '@pertexo/core/tenant-access';
 import { parseDatabaseConfig } from '@pertexo/database/testing';

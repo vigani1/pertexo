@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { PreviewAdmissionDeniedError } from '@pertexo/core/previews';
-import { toProblem } from '../../../src/problems/registry.js';
-import { nodeTestingFailure } from '../../../src/problems/context/normalize.js';
+import { toProblem } from '../../../src/problems/api-problem-registry.js';
+import { nodeTestingFailure } from '../../../src/problems/context/normalize-context-errors.js';
 
 describe('public preview admission refusals', () => {
   it.each([

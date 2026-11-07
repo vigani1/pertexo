@@ -7,7 +7,7 @@ import {
   browserFrom,
   expectProblem,
 } from '../../support/better-auth/real-api.support.js';
-import { useOrganizationApi } from '../federation/organization/fixture.js';
+import { useOrganizationApi } from '../federation/organization/organization-sign-in.fixture.js';
 import {
   authenticatorCode,
   challengeCookie,

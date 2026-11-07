@@ -20,7 +20,7 @@ import {
 
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
 import { RateLimit } from '../../platform/rate-limit/metadata.js';
-import { connectionFailure } from '../../problems/context/normalize.js';
+import { connectionFailure } from '../../problems/context/normalize-context-errors.js';
 import { In, Route } from '../../workspaces/http/route.js';
 import { context } from '../http/connections.controller.js';
 import type { ConnectionRequest } from '../connection-request.js';

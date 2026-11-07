@@ -16,7 +16,7 @@ import {
   InvalidInstanceLimitError,
   parseApiConfig,
   type ApiConfig,
-} from './platform/config/api.js';
+} from './platform/config/api-config.js';
 
 interface CloseableApplication {
   close(): Promise<void>;

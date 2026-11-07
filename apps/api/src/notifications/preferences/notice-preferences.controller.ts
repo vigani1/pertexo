@@ -10,7 +10,7 @@ import { withRequestOperationSignal } from '../../platform/http/index.js';
 import type { AbortableRequest } from '../../platform/http/request-operation-signal.js';
 import { NoticePreferencesService } from './notice-preferences.service.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
-import { inboxFailure } from '../../problems/context/normalize.js';
+import { inboxFailure } from '../../problems/context/normalize-context-errors.js';
 
 type Request = IdentityWorkspaceRequest & AbortableRequest;
 

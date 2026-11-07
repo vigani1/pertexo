@@ -1,4 +1,4 @@
-import type { ApiIdentityConfig } from '../../../../src/platform/config/identity.js';
+import type { ApiIdentityConfig } from '../../../../src/platform/config/identity-config.js';
 import { captureLocalAuthenticationMail } from '../mail-capture.js';
 import { randomUUID } from 'node:crypto';
 import {
@@ -11,14 +11,14 @@ import {
 import { Pool } from 'pg';
 import { afterAll, beforeAll, expect } from 'vitest';
 
-import { createApiConnectionRuntime } from '../../../../src/platform/connections/runtime.module.js';
-import { createApiIdentityRuntime } from '../../../../src/platform/identity/runtime.module.js';
+import { createApiConnectionRuntime } from '../../../../src/platform/connections/connections-runtime.module.js';
+import { createApiIdentityRuntime } from '../../../../src/platform/identity/identity-runtime.module.js';
 import { FixtureResourceOwner } from '../../../browser/harness/resource-owner.js';
 import { dropDisconnectedDatabase } from '../../disposable-database.js';
 import { createFixtureConnectionRuntime } from '../../connection-runtime.js';
 import { createBetterAuthFixtureApplication } from '../fixture-application.js';
 
-import { createApiNotificationRuntime } from '../../../../src/platform/notifications/runtime.module.js';
+import { createApiNotificationRuntime } from '../../../../src/platform/notifications/notifications-runtime.module.js';
 import {
   adminUrl,
   migrationBaseUrl,

@@ -2,7 +2,7 @@ import { createServer } from 'node:http';
 import { request, type RequestOptions } from 'node:https';
 import { afterEach, describe, expect, it } from 'vitest';
 import { FixtureResourceOwner } from '../../harness/resource-owner.js';
-import { signingMaterial } from '../../../authentication/federation/saml/fixture.js';
+import { signingMaterial } from '../../../authentication/federation/saml/saml-sign-in.fixture.js';
 import {
   createSamlProofGateway,
   samlServiceProviderMetadata,

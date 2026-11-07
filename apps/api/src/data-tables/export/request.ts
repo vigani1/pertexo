@@ -1,5 +1,5 @@
 import { dataTableExportQuerySchema } from '@pertexo/contracts';
-import { decodeCsvDownloadRequest } from '../../platform/http/csv/request.js';
+import { decodeCsvDownloadRequest } from '../../platform/http/csv/csv-request.js';
 import { parseRequestInput } from '../../platform/http/request-input.js';
 export function decodeTableExportRequest(
   body: unknown,

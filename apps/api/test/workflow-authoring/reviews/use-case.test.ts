@@ -1,6 +1,6 @@
 import type { Role } from '@pertexo/policy';
-import { toProblem } from '../../../src/problems/registry.js';
-import { authoringFailure } from '../../../src/problems/context/normalize.js';
+import { toProblem } from '../../../src/problems/api-problem-registry.js';
+import { authoringFailure } from '../../../src/problems/context/normalize-context-errors.js';
 import { expect, it, vi } from 'vitest';
 import type { PublicationReviewStore } from '@pertexo/core/authoring';
 import { PublicationReviewError } from '@pertexo/core/authoring';

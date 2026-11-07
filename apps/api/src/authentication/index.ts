@@ -9,4 +9,4 @@ export {
   LocalAuthenticationMailSink,
   printLocalAuthenticationMail,
   type AuthenticationMail,
-} from './mail/delivery.js';
+} from './mail/authentication-mail.js';

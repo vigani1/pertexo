@@ -7,7 +7,7 @@ import {
   throwApplicationError,
 } from '../../platform/http/index.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
-import { workspaceFailure } from '../../problems/context/normalize.js';
+import { workspaceFailure } from '../../problems/context/normalize-context-errors.js';
 import type {
   IdentitySessionAuthority,
   SessionCookiePolicy,

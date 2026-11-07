@@ -4,7 +4,7 @@ import { createIdentityWorkspaceStore } from '@pertexo/core/testing';
 import { createWorkspaceDatabase } from '@pertexo/database/testing';
 
 import { createTestApiApplication } from '../../support/api-application.js';
-import { createApiIdentityRuntime } from '../../../src/platform/identity/runtime.module.js';
+import { createApiIdentityRuntime } from '../../../src/platform/identity/identity-runtime.module.js';
 import { Pool, type PoolClient } from 'pg';
 
 import { issueBrowserSession } from '../../webhooks/support/browser-session.fixture.js';

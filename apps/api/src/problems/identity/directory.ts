@@ -1,4 +1,4 @@
-import { errorRegistration } from '../../platform/http/problems/registry.js';
+import { errorRegistration } from '../../platform/http/problems/error-registry.js';
 import { DirectoryError } from '@pertexo/core/identity';
 import { applicationError } from '../../platform/http/index.js';
 

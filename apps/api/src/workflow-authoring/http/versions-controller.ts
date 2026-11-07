@@ -10,7 +10,7 @@ import { Controller, Req, Res, UseInterceptors } from '@nestjs/common';
 import { requestHeaderValue } from '../../platform/http/request-headers.js';
 
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
-import { authoringFailure } from '../../problems/context/normalize.js';
+import { authoringFailure } from '../../problems/context/normalize-context-errors.js';
 import { RestoreWorkflowVersionUseCase } from '../commands/restore-version.js';
 import type {
   WorkflowAuthoringRequest,

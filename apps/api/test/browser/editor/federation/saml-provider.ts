@@ -6,7 +6,7 @@ import { samlMetadataSchema } from '@pertexo/contracts';
 import {
   signedResponse,
   signingMaterial,
-} from '../../../authentication/federation/saml/fixture.js';
+} from '../../../authentication/federation/saml/saml-sign-in.fixture.js';
 
 const assertion = 'urn:oasis:names:tc:SAML:2.0:assertion';
 function escape(value: string) {

@@ -21,7 +21,7 @@ import {
   signingMaterial,
   type ResponseOptions,
   type SigningMaterial,
-} from './fixture.js';
+} from './saml-sign-in.fixture.js';
 
 export const samlOrigin = 'https://app.integration.test';
 export const encryption = {

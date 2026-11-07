@@ -12,7 +12,7 @@ import {
   RecoverRunUseCase,
 } from './run-recovery.service.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
-import { runFailure } from '../../problems/context/normalize.js';
+import { runFailure } from '../../problems/context/normalize-context-errors.js';
 
 @UseInterceptors(domainErrors(runFailure))
 @Controller()

@@ -3,8 +3,8 @@ import { AuthenticationDiagnostics } from '../../src/authentication/better-auth/
 import { Pool } from 'pg';
 import { afterAll, describe, expect, it } from 'vitest';
 
-import { LocalAuthenticationMailSink } from '../../src/authentication/mail/delivery.js';
-import { createPertexoBetterAuth } from '../../src/authentication/better-auth/options.js';
+import { LocalAuthenticationMailSink } from '../../src/authentication/mail/authentication-mail.js';
+import { createPertexoBetterAuth } from '../../src/authentication/better-auth/better-auth-options.js';
 import type { OwnedEmailProofs } from '../../src/authentication/mail/email-proofs.js';
 
 // Never connected: building the auth context reads no database.

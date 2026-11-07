@@ -1,5 +1,5 @@
 import { throwApplicationError } from '../../src/platform/http/application-error.js';
-import { toProblem } from '../../src/problems/registry.js';
+import { toProblem } from '../../src/problems/api-problem-registry.js';
 
 /** Compose service-level tests with the HTTP projection used in production. */
 export function problemResult<T>(

@@ -8,14 +8,14 @@ import type {
   TelemetryLifecycle,
 } from '@pertexo/observability/server';
 
-import type { ApiConnectionRuntime } from './connections/runtime.module.js';
-import type { ApiIdentityRuntime } from './identity/runtime.module.js';
-import type { ApiWorkflowRuntime } from './workflow/runtime.module.js';
-import type { ApiWebhookRuntime } from './webhooks/runtime.module.js';
-import type { ApiScheduleRuntime } from './schedules/runtime.module.js';
-import type { ApiNotificationRuntime } from './notifications/runtime.module.js';
+import type { ApiConnectionRuntime } from './connections/connections-runtime.module.js';
+import type { ApiIdentityRuntime } from './identity/identity-runtime.module.js';
+import type { ApiWorkflowRuntime } from './workflow/workflow-runtime.module.js';
+import type { ApiWebhookRuntime } from './webhooks/webhooks-runtime.module.js';
+import type { ApiScheduleRuntime } from './schedules/schedules-runtime.module.js';
+import type { ApiNotificationRuntime } from './notifications/notifications-runtime.module.js';
 import type { ApiRateLimit } from './rate-limit/rate-limit.module.js';
-import type { ApiArtifactRuntime } from './artifacts/runtime.module.js';
+import type { ApiArtifactRuntime } from './artifacts/artifacts-runtime.module.js';
 
 export type ApiApplicationDependencies = Readonly<{
   logger: StructuredLogger;

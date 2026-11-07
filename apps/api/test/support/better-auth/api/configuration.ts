@@ -1,10 +1,10 @@
 import { DEFAULT_INSTANCE_LIMITS } from '../../../../src/platform/config/instance-limits.js';
 import { DEFAULT_CODE_SETTINGS } from '@pertexo/node-sdk';
-import type { ApiIdentityConfig } from '../../../../src/platform/config/identity.js';
+import type { ApiIdentityConfig } from '../../../../src/platform/config/identity-config.js';
 
 import type { DatabaseConfig } from '@pertexo/database/testing';
 
-import type { ApiConfig } from '../../../../src/platform/config/api.js';
+import type { ApiConfig } from '../../../../src/platform/config/api-config.js';
 
 import { redisUrl, origin, invitationKeys } from './environment.js';
 import type { ApiFixtureOptions } from './contract.js';

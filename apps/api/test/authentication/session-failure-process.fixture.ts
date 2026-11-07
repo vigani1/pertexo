@@ -3,8 +3,8 @@ import {
   createWorkspaceDatabase,
   parseDatabaseConfig,
 } from '@pertexo/database/platform';
-import { createApiIdentityRuntime } from '../../dist/platform/identity/runtime.module.js';
-import { LocalAuthenticationMailSink } from '../../src/authentication/mail/delivery.js';
+import { createApiIdentityRuntime } from '../../dist/platform/identity/identity-runtime.module.js';
+import { LocalAuthenticationMailSink } from '../../src/authentication/mail/authentication-mail.js';
 import { assembleApiApplication } from '../../dist/app.js';
 import { RedisRateLimitRuntime } from '@pertexo/rate-limit/server';
 import { apiConfig } from '../support/better-auth/api/configuration.js';

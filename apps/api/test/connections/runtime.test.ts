@@ -4,8 +4,8 @@ import type {
 } from '@pertexo/database/platform';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { createApiConnectionRuntime } from '../../src/platform/connections/runtime.module.js';
-import type { ApiIdentityRuntime } from '../../src/platform/identity/runtime.module.js';
+import { createApiConnectionRuntime } from '../../src/platform/connections/connections-runtime.module.js';
+import type { ApiIdentityRuntime } from '../../src/platform/identity/identity-runtime.module.js';
 
 const outside = vi.hoisted(() => ({
   database: vi.fn(),

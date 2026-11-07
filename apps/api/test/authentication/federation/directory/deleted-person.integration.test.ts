@@ -4,7 +4,7 @@ import {
   betterAuthIntegrationEnabled,
   browserFrom,
 } from '../../../support/better-auth/real-api.support.js';
-import { createDirectoryFixture } from './provisioning/fixture.js';
+import { createDirectoryFixture } from './directory-provisioning.fixture.js';
 
 describe.skipIf(!betterAuthIntegrationEnabled)(
   'a person the directory deleted, on the real API and PostgreSQL',

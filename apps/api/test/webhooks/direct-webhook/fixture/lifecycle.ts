@@ -24,12 +24,12 @@ import { Pool } from 'pg';
 import { vi } from 'vitest';
 import { createTestApiApplication } from '../../../support/api-application.js';
 import { createInitialCheckpoint } from '@pertexo/core/runs';
-import type { ApiConfig } from '../../../../src/platform/config/api.js';
+import type { ApiConfig } from '../../../../src/platform/config/api-config.js';
 import {
   createApiIdentityRuntime,
   type ApiIdentityRuntime,
-} from '../../../../src/platform/identity/runtime.module.js';
-import { createCoreWorkflowAuthoringDatabase } from '../../../../src/platform/workflow/runtime.module.js';
+} from '../../../../src/platform/identity/identity-runtime.module.js';
+import { createCoreWorkflowAuthoringDatabase } from '../../../../src/platform/workflow/workflow-runtime.module.js';
 import { WebhookManagementService } from '../../../../src/webhooks/management/webhook-management.service.js';
 import { dropDisconnectedDatabase } from '../../../support/disposable-database.js';
 import {

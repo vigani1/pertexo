@@ -2,8 +2,8 @@ import { runPorts } from '../support/run-ports.js';
 import type { DatabaseConfig } from '@pertexo/database/platform';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { ApiIdentityRuntime } from '../../src/platform/identity/runtime.module.js';
-import { createApiWorkflowRuntime } from '../../src/platform/workflow/runtime.module.js';
+import type { ApiIdentityRuntime } from '../../src/platform/identity/identity-runtime.module.js';
+import { createApiWorkflowRuntime } from '../../src/platform/workflow/workflow-runtime.module.js';
 
 const outside = vi.hoisted(() => ({
   authoring: vi.fn(),

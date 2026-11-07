@@ -9,7 +9,7 @@ import { context } from '../http/connections.controller.js';
 import type { ConnectionRequest } from '../connection-request.js';
 import { ConnectionSharingUseCases } from './connection-sharing.service.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
-import { connectionFailure } from '../../problems/context/normalize.js';
+import { connectionFailure } from '../../problems/context/normalize-context-errors.js';
 
 @UseInterceptors(domainErrors(connectionFailure))
 @Controller()

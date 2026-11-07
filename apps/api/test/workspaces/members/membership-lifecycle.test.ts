@@ -1,5 +1,5 @@
-import { toProblem } from '../../../src/problems/registry.js';
-import { workspaceFailure } from '../../../src/problems/context/normalize.js';
+import { toProblem } from '../../../src/problems/api-problem-registry.js';
+import { workspaceFailure } from '../../../src/problems/context/normalize-context-errors.js';
 import { WorkspaceMembershipCommandConflictError } from '@pertexo/core/tenant-access';
 import { describe, expect, it, vi } from 'vitest';
 

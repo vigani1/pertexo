@@ -6,9 +6,9 @@ import type {
   SessionCookieBoundary,
   SessionIssueInput,
   SessionIssueResult,
-} from '../../identity/ports.js';
+} from '../../identity/identity-ports.js';
 import type { SafeClientMetadata } from '../../identity/identity-session.types.js';
-import type { SignInEvidence } from '../../identity/ports.js';
+import type { SignInEvidence } from '../../identity/identity-ports.js';
 import type { BetterAuthRuntime } from './better-auth.runtime.js';
 import type { BetterAuthSessionDelivery } from './trusted-sessions.js';
 

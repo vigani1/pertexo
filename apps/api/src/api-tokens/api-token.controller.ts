@@ -32,7 +32,7 @@ import {
 import { RateLimit } from '../platform/rate-limit/metadata.js';
 import { ApiTokenManagement } from './api-token.service.js';
 import { domainErrors } from '../platform/http/problems/interceptor.js';
-import { workspaceFailure } from '../problems/context/normalize.js';
+import { workspaceFailure } from '../problems/context/normalize-context-errors.js';
 
 @UseInterceptors(domainErrors(workspaceFailure))
 @Controller()

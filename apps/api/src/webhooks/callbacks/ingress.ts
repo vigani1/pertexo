@@ -1,5 +1,5 @@
 import { ArtifactMetadataNotFoundError } from '@pertexo/core/artifacts';
-import { toProblem } from '../../problems/registry.js';
+import { toProblem } from '../../problems/api-problem-registry.js';
 import { hasHttpStatus } from '../../platform/http/problems/status.js';
 import { randomUUID } from 'node:crypto';
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';

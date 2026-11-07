@@ -4,7 +4,10 @@ import {
   validateApplicationKeyRing,
 } from '@pertexo/secrets/server';
 
-import type { ApiIdentityConfig, IdentityEnvironment } from './identity.js';
+import type {
+  ApiIdentityConfig,
+  IdentityEnvironment,
+} from './identity-config.js';
 
 /*
  * Parsers for the credential- and key-bearing identity sections. Their errors

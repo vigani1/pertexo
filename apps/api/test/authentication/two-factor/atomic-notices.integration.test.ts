@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { APIError } from 'better-auth/api';
 import { describe, expect, it } from 'vitest';
 import { createApplicationSecretEnvelope } from '@pertexo/secrets/server';
-import { DurableAuthenticationMail } from '../../../src/authentication/mail/delivery.js';
+import { DurableAuthenticationMail } from '../../../src/authentication/mail/authentication-mail.js';
 import {
   betterAuthIntegrationEnabled,
   useBetterAuthRealApi,

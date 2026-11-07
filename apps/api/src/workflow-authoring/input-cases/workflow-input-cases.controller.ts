@@ -13,7 +13,7 @@ import { WorkflowHeaderError } from '../http/preconditions.js';
 import type { WorkflowAuthoringRequest } from '../workflow-transport.js';
 import { WorkflowInputCasesUseCase } from './workflow-input-cases.service.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
-import { inputCaseFailure } from '../../problems/context/normalize.js';
+import { inputCaseFailure } from '../../problems/context/normalize-context-errors.js';
 
 type Request = WorkflowAuthoringRequest & AbortableRequest;
 

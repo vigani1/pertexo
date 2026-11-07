@@ -8,8 +8,8 @@ import { expect, vi } from 'vitest';
 import { createTestApiApplication } from '../../support/api-application.js';
 import type { ConnectionDependencies } from '../../../src/connections/index.js';
 import type { IdentityWorkspaceDependencies } from '../../../src/workspaces/index.js';
-import type { ApiConnectionRuntime } from '../../../src/platform/connections/runtime.module.js';
-import type { ApiIdentityRuntime } from '../../../src/platform/identity/runtime.module.js';
+import type { ApiConnectionRuntime } from '../../../src/platform/connections/connections-runtime.module.js';
+import type { ApiIdentityRuntime } from '../../../src/platform/identity/identity-runtime.module.js';
 import {
   createApiPlatformFixture,
   createStubIdentityRuntime,

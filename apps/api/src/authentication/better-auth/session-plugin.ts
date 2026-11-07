@@ -1,4 +1,4 @@
-import { isSecurityMutationPath } from './transactions/response.js';
+import { isSecurityMutationPath } from './transactions/security-transaction.js';
 import { insertSystemMail } from '@pertexo/secrets/server';
 import {
   isAuthenticationSessionAllowed,
@@ -16,15 +16,15 @@ import {
 } from 'better-auth/api';
 import { setSessionCookie, deleteSessionCookie } from 'better-auth/cookies';
 import type { Pool } from 'pg';
-import type { AuthenticationTransactions } from './transactions/context.js';
+import type { AuthenticationTransactions } from './transactions/authentication-transactions.js';
 import { z } from 'zod';
 
 import type {
   AuthenticationMail,
   AuthenticationSecurityNotice,
-} from '../mail/delivery.js';
+} from '../mail/authentication-mail.js';
 import type { SocialProviderGateway } from '../social-provider.types.js';
-import { accountSecurityEndpoints } from '../account-security/endpoints.js';
+import { accountSecurityEndpoints } from '../account-security/account-security-endpoints.js';
 import { requireDoubleSubmitCsrf } from './csrf.js';
 import {
   twoFactorRouteGuard,

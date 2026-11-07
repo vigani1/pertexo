@@ -6,7 +6,7 @@ import pg from 'pg';
 import { describe, expect, it, vi } from 'vitest';
 
 import { createApiApplication } from '../../src/app.js';
-import { parseApiConfig } from '../../src/platform/config/api.js';
+import { parseApiConfig } from '../../src/platform/config/api-config.js';
 import {
   apiBaseUrl,
   betterAuthIntegrationEnabled,
