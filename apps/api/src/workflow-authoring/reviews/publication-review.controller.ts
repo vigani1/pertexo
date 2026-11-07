@@ -1,3 +1,4 @@
+import { traceparent } from '../../platform/http/tracing-headers.js';
 import { Controller, Req, UseInterceptors } from '@nestjs/common';
 import {
   publicationReviewRoutes as routes,
@@ -6,10 +7,7 @@ import {
 import { In, Route } from '../../workspaces/http/route.js';
 import { withRequestOperationSignal } from '../../platform/http/index.js';
 import { parseStrongIfMatch } from '../http/preconditions.js';
-import {
-  requestHeaderValue,
-  singleRequestHeader,
-} from '../../platform/http/request-headers.js';
+import { requestHeaderValue } from '../../platform/http/request-headers.js';
 import { projectAuthenticatedWorkspaceContext } from '../../workspaces/request/authenticated-context.js';
 import type { WorkflowAuthoringRequest } from '../workflow-transport.js';
 import { PublicationReviewUseCase } from './publication-review.service.js';
@@ -93,10 +91,9 @@ export class PublicationReviewController {
   }
 }
 function context(request: WorkflowAuthoringRequest, workspaceId: string) {
-  const traceparent = singleRequestHeader(request.headers, 'traceparent');
   return {
     ...projectAuthenticatedWorkspaceContext(request, workspaceId),
     routeWorkspaceId: workspaceId,
-    ...(traceparent === undefined ? {} : { traceparent }),
+    ...traceparent(request),
   };
 }

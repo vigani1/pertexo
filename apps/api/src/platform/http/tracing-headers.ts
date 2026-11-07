@@ -9,7 +9,7 @@ const traceparentSchema = z
   .refine((value) => value.slice(36, 52) !== '0'.repeat(16));
 
 export function traceparent(
-  request: Readonly<{ headers: RequestHeaders }>,
+  request: Readonly<{ headers?: RequestHeaders }>,
 ): Readonly<{ traceparent?: string }> {
   const value = singleRequestHeader(request.headers, 'traceparent');
   return value === undefined

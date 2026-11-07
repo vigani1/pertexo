@@ -1,9 +1,9 @@
+import { traceparent } from '../../platform/http/tracing-headers.js';
 import { Controller, Req, UseInterceptors } from '@nestjs/common';
 import {
   workflowRunRoutes as routes,
   type RouteInput,
 } from '@pertexo/contracts/server';
-import { singleRequestHeader } from '../../platform/http/request-headers.js';
 import { In, Route } from '../../workspaces/http/route.js';
 import { authenticatedRequestIdentifiers } from '../../workspaces/request/authenticated-context.js';
 import { caller, type WorkflowRunsRequest } from '../http/request-context.js';
@@ -38,7 +38,6 @@ export class RunRecoveryController {
     @Req() request: WorkflowRunsRequest,
     @In() { params, body, idempotencyKey }: RouteInput<typeof routes.recover>,
   ) {
-    const traceparent = singleRequestHeader(request.headers, 'traceparent');
     return this.recover.execute({
       ...caller(request, params),
       runId: params.runId,
@@ -53,7 +52,7 @@ export class RunRecoveryController {
         : { acknowledgeUnknownOutcome: body.acknowledgeUnknownOutcome }),
       idempotencyKey,
       ...authenticatedRequestIdentifiers(request),
-      ...(traceparent === undefined ? {} : { traceparent }),
+      ...traceparent(request),
     });
   }
 }

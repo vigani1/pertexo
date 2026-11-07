@@ -1,3 +1,4 @@
+import { traceparent } from '../platform/http/tracing-headers.js';
 import { Controller, Req, Res, UseInterceptors } from '@nestjs/common';
 import {
   nodeTestingRoutes as routes,
@@ -8,7 +9,6 @@ import { projectAuthenticatedWorkspaceContext } from '../workspaces/request/auth
 import type { IdentityWorkspaceRequest } from '../workspaces/workspace-transport.js';
 import { In, Route } from '../workspaces/http/route.js';
 import { requestIdempotencyKey } from '../platform/http/index.js';
-import { singleRequestHeader } from '../platform/http/request-headers.js';
 import {
   GetPreviewRunUseCase,
   TestWorkflowNodeUseCase,
@@ -58,7 +58,6 @@ export class NodeTestingController {
     const idempotencyKey = executing
       ? requestIdempotencyKey(request.headers)
       : undefined;
-    const traceparent = singleRequestHeader(request.headers, 'traceparent');
     const result = await this.testNode.execute({
       ...projectAuthenticatedWorkspaceContext(request, params.workspaceId),
       routeWorkspaceId: params.workspaceId,
@@ -66,7 +65,7 @@ export class NodeTestingController {
       nodeId: params.nodeId,
       request: body,
       ...(idempotencyKey === undefined ? {} : { idempotencyKey }),
-      ...(traceparent === undefined ? {} : { traceparent }),
+      ...traceparent(request),
     });
     if (executing) response.status(202);
     return result;
