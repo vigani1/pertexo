@@ -14,7 +14,7 @@ import {
   createNoticeMailStore,
   createWorkspaceInboxFoldStore,
 } from '@pertexo/core/inbox';
-import { createApplicationSecretEnvelope } from '@pertexo/secrets/server';
+import { createMailEnvelope } from './config/mail-settings.js';
 import { RedisWorkspaceInboxHintPublisher } from '@pertexo/queue/server';
 import type {
   StructuredLogger,
@@ -236,7 +236,11 @@ function systemMailProvider(
         config.database,
         dependencies.databaseRuntime,
       );
-      const envelope = createApplicationSecretEnvelope(mail.encryption);
+      const envelope = createMailEnvelope(
+        mail.encryption,
+        'AUTH_MAIL_KEY',
+        'AUTH_MAIL_PREVIOUS_KEYS',
+      );
       const sender = mail.noticeSender;
       const notices =
         sender === undefined

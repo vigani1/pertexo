@@ -1,3 +1,7 @@
+import {
+  StartupSettingError,
+  describeProcessFailure,
+} from '@pertexo/observability/startup';
 import { describe, expect, it, vi } from 'vitest';
 import { createApplicationSecretEnvelope } from '@pertexo/secrets/server';
 import {
@@ -40,30 +44,35 @@ describe('privileged two-factor recovery', () => {
         ['--email', 'ada@example.test', '--backup-code', 'anything'],
         environment,
       ),
-    ).toThrow('Two-factor recovery configuration is invalid');
+    ).toThrow(StartupSettingError);
   });
   it.each([
-    { AUTH_MAIL_MODE: 'local' },
-    { AUTH_MAIL_KEY: undefined },
-    { DATABASE_URL: 'not-a-database-url' },
-    { OPERATOR_ACTOR_REF: undefined },
-    { OPERATOR_REASON: '' },
-    { PUBLIC_WEB_ORIGIN: 'http://app.example.test' },
-  ])(
-    'refuses incomplete or unsafe deployed configuration without exposing credentials: %j',
-    (overrides) => {
+    ['AUTH_MAIL_MODE', { AUTH_MAIL_MODE: 'local' }],
+    ['AUTH_MAIL_KEY', { AUTH_MAIL_KEY: undefined }],
+    ['DATABASE_URL', { DATABASE_URL: 'not-a-database-url' }],
+    ['OPERATOR_ACTOR_REF', { OPERATOR_ACTOR_REF: undefined }],
+    ['OPERATOR_REASON', { OPERATOR_REASON: '' }],
+    ['PUBLIC_WEB_ORIGIN', { PUBLIC_WEB_ORIGIN: 'http://app.example.test' }],
+  ] as const)(
+    'refuses incomplete or unsafe %s without exposing credentials',
+    (setting, overrides) => {
       expect(() =>
         parseTwoFactorRecoveryConfig(['--email', 'ada@example.test'], {
           ...environment,
           ...overrides,
         }),
-      ).toThrow('Two-factor recovery configuration is invalid');
+      ).toThrow(StartupSettingError);
       try {
         parseTwoFactorRecoveryConfig(['--email', 'ada@example.test'], {
           ...environment,
           ...overrides,
         });
       } catch (error) {
+        expect(error).toMatchObject({ setting });
+        const detail = describeProcessFailure(error);
+        expect(detail).toContain(setting);
+        expect(detail).not.toContain('private-database-password');
+        expect(detail).not.toContain(environment.AUTH_MAIL_KEY);
         expect(String(error)).not.toContain('private-database-password');
         expect(String(error)).not.toContain(environment.AUTH_MAIL_KEY);
       }
