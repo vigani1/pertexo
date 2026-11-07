@@ -23,3 +23,13 @@ export class QueuePublicationUnavailableError extends Error {
     );
   }
 }
+
+export class QueueWriteTimedOutError extends Error {
+  public override readonly name = 'QueueWriteTimedOutError';
+
+  public constructor() {
+    super(
+      'Queue write readiness check timed out. Check Redis latency and connectivity, then retry the readiness check.',
+    );
+  }
+}

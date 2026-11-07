@@ -10,6 +10,7 @@ export { normalizeRedisEndpoint } from './redis/endpoint.js';
 export {
   QueueNotReadyError,
   QueuePublicationUnavailableError,
+  QueueWriteTimedOutError,
   createQueueProducer,
   jobIdForOutboxEvent,
   type QueueProducer,

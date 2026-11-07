@@ -1,4 +1,7 @@
-import { QueuePublicationUnavailableError } from '@pertexo/queue/server';
+import {
+  QueuePublicationUnavailableError,
+  QueueWriteTimedOutError,
+} from '@pertexo/queue/server';
 import { rm, writeFile } from 'node:fs/promises';
 
 import type { BeforeApplicationShutdown } from '@nestjs/common';
@@ -144,7 +147,8 @@ export class WorkerReadinessMonitor implements BeforeApplicationShutdown {
       this.safeLog(
         'warn',
         'worker.readiness_check_failed',
-        error instanceof QueuePublicationUnavailableError
+        error instanceof QueuePublicationUnavailableError ||
+          error instanceof QueueWriteTimedOutError
           ? { recovery: error.message }
           : {},
         error,
