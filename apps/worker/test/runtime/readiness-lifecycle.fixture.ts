@@ -29,11 +29,3 @@ export function marker(): WorkerReadinessMarker & {
 export function idleRuntime() {
   return { checkReadiness: vi.fn().mockResolvedValue(undefined) } as never;
 }
-
-export function resetAppsWorkerTestRuntimeReadinessLifecycleWorkerReadinessLifecycleFixture() {
-  vi.clearAllMocks();
-}
-
-export function cleanAppsWorkerTestRuntimeReadinessLifecycleWorkerReadinessLifecycleFixture() {
-  vi.useRealTimers();
-}
