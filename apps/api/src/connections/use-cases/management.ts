@@ -34,10 +34,6 @@ import type {
 } from '../connection-request.js';
 import type { ConnectionResponse } from '../connection-request.js';
 
-export { TestConnectionUseCase } from './test-connection.js';
-export type { TestConnectionCommand } from './test-connection.js';
-export { LookupSlackChannelsUseCase } from '../failure-notifications/slack-channel-lookup.js';
-
 export type CreateConnectionCommand = ConnectionCommandInput &
   Readonly<{
     request: z.output<typeof connectionCreateRequestSchema>;

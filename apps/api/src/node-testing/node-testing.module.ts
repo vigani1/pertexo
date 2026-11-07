@@ -10,10 +10,8 @@ import type { DynamicModule, Provider } from '@nestjs/common';
 import { NodeTestingController } from './node-testing.controller.js';
 import type { NodeTestingDependencies } from './ports.js';
 import { WORKSPACE_AUTHORIZATION } from '../workspaces/tokens.js';
-import {
-  GetPreviewRunUseCase,
-  TestWorkflowNodeUseCase,
-} from './node-testing.service.js';
+import { GetPreviewRunUseCase } from './previews/read.js';
+import { TestWorkflowNodeUseCase } from './node-testing.service.js';
 
 @Module({})
 // Nest dynamic modules require a class container.

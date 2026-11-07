@@ -12,10 +12,8 @@ import type {
   ListWorkflowVersionsUseCase,
   ValidateWorkflowDraftUseCase,
 } from '../src/workflow-authoring/workflow-authoring.service.js';
-import type {
-  GetPreviewRunUseCase,
-  TestWorkflowNodeUseCase,
-} from '../src/node-testing/node-testing.service.js';
+import type { GetPreviewRunUseCase } from '../src/node-testing/previews/read.js';
+import type { TestWorkflowNodeUseCase } from '../src/node-testing/node-testing.service.js';
 import type {
   AuthenticatedRequestSession,
   IdentityWorkspaceRequest,

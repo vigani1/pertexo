@@ -14,11 +14,11 @@ import {
   CreateConnectionUseCase,
   GetConnectionUseCase,
   ListConnectionsUseCase,
-  LookupSlackChannelsUseCase,
   RevokeConnectionUseCase,
   RotateConnectionSecretUseCase,
-  TestConnectionUseCase,
 } from '../../../src/connections/use-cases/management.js';
+import { LookupSlackChannelsUseCase } from '../../../src/connections/failure-notifications/slack-channel-lookup.js';
+import { TestConnectionUseCase } from '../../../src/connections/use-cases/test-connection.js';
 import { WORKSPACE_AUTHORIZATION } from '../../../src/workspaces/tokens.js';
 import { FakeIdentityModule } from '../../support/identity-module.js';
 import {

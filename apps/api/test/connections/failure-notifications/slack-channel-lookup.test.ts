@@ -15,7 +15,7 @@ import type {
   ConnectionLookupPersistence,
   ConnectionSlackClient,
 } from '../../../src/connections/ports.js';
-import { LookupSlackChannelsUseCase } from '../../../src/connections/use-cases/management.js';
+import { LookupSlackChannelsUseCase } from '../../../src/connections/failure-notifications/slack-channel-lookup.js';
 import {
   actor,
   actorId,

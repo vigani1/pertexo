@@ -160,6 +160,6 @@ export function preferenceStore() {
   } satisfies NoticePreferencesStore;
 }
 
-export async function cleanAppsApiTestNotificationsModuleTestModuleTestTsFixture() {
+export async function closeNotificationFixture() {
   await Promise.all(openApplications.splice(0).map((app) => app.close()));
 }

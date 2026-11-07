@@ -9,3 +9,8 @@ export * from './ports.js';
 export * from './telemetry.js';
 export * from './connection-request.js';
 export * from './use-cases/management.js';
+export {
+  TestConnectionUseCase,
+  type TestConnectionCommand,
+} from './use-cases/test-connection.js';
+export { LookupSlackChannelsUseCase } from './failure-notifications/slack-channel-lookup.js';

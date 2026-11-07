@@ -23,11 +23,11 @@ import {
   CreateConnectionUseCase,
   GetConnectionUseCase,
   ListConnectionsUseCase,
-  LookupSlackChannelsUseCase,
   RevokeConnectionUseCase,
   RotateConnectionSecretUseCase,
-  TestConnectionUseCase,
 } from './use-cases/management.js';
+import { LookupSlackChannelsUseCase } from './failure-notifications/slack-channel-lookup.js';
+import { TestConnectionUseCase } from './use-cases/test-connection.js';
 
 function oauth2Providers({
   oauth2,

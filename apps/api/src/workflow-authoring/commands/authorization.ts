@@ -1,3 +1,4 @@
+import { ACTIVE_WORKSPACE_STATUSES } from '@pertexo/policy';
 import {
   authorizeWorkspaceOperation,
   BROWSABLE_WORKSPACE_STATUSES,
@@ -25,7 +26,7 @@ export async function authorize(
     capability,
     access,
     disclosure: 'not_found',
-    allowedWorkspaceStatuses: ['active'],
+    allowedWorkspaceStatuses: ACTIVE_WORKSPACE_STATUSES,
     ...(input.authorizedWorkspace === undefined
       ? {}
       : { authorizedWorkspace: input.authorizedWorkspace }),
@@ -69,7 +70,7 @@ export async function authorizeAuthoringOperation(
     allowedWorkspaceStatuses:
       capability === 'workflow:read'
         ? BROWSABLE_WORKSPACE_STATUSES
-        : ['active'],
+        : ACTIVE_WORKSPACE_STATUSES,
     ...(input.signal === undefined ? {} : { signal: input.signal }),
     ...(input.authorizedWorkspace === undefined
       ? {}

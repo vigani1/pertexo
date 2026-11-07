@@ -14,7 +14,7 @@ import type {
 import {
   TestConnectionUseCase,
   type TestConnectionCommand,
-} from '../../src/connections/use-cases/management.js';
+} from '../../src/connections/use-cases/test-connection.js';
 import { authorizeWorkspace } from '../../src/authorization/index.js';
 import {
   actor,
