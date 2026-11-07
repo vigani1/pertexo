@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
+import { createNodeAttemptRunStore } from '../../../src/attempts/node-attempt-run.store.js';
 import {
-  createNodeAttemptRunStore,
   NodeAttemptDispatchBindingMismatchError,
   NodeAttemptStateCorruptError,
   NodeAttemptConnectionFenceError,
   NodeAttemptReconciliationRequiredError,
-} from '../../../src/testing.js';
+} from '../../../src/attempts/node-attempt.errors.js';
 import {
   asAdmin,
   parseDatabaseConfig,

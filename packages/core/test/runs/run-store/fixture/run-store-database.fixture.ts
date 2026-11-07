@@ -1,7 +1,7 @@
 import { Pool } from 'pg';
 import { afterAll, beforeAll } from 'vitest';
 
-import { createNodeAttemptRunStore } from '../../../../src/testing.js';
+import { createNodeAttemptRunStore } from '../../../../src/attempts/node-attempt-run.store.js';
 import {
   parseDatabaseConfig,
   migrateDatabase,

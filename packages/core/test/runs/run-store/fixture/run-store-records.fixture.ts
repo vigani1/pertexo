@@ -3,7 +3,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { parseWorkspaceId } from '@pertexo/database/primitives';
 import { databaseSchema } from '@pertexo/database/testing';
-import { lockRunAcceptanceCommand } from '../../../../src/testing.js';
+import { lockRunAcceptanceCommand } from '../../../../src/runs/commands/acceptance/lock.repository.js';
 
 import {
   workerBaseUrl,

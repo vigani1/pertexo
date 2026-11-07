@@ -11,7 +11,7 @@ import {
   workspaceMemberships,
   createDisposableDatabaseFixture,
 } from '@pertexo/database/testing';
-import { createIdentityWorkspaceStore } from '../../src/testing.js';
+import { createIdentityWorkspaceStore } from '../../src/tenant-access/identity-workspace.store.js';
 import { createWorkspaceInboxFoldStore } from '../../src/inbox/folding/workspace-inbox-fold.store.js';
 import { persistWorkspaceInboxEvent } from '../../src/inbox/folding/events.repository.js';
 import { createWorkspaceInboxStore } from '../../src/inbox/threads/workspace-inbox.store.js';

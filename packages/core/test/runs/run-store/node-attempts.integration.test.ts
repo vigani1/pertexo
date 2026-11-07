@@ -31,7 +31,7 @@ import {
   seedSlackDispatchPublication,
   admitWaitAttempt,
 } from './node-attempts.fixture.js';
-import { NodeAttemptReconciliationRequiredError } from '../../../src/testing.js';
+import { NodeAttemptReconciliationRequiredError } from '../../../src/attempts/node-attempt.errors.js';
 import { createOperatorCommandStore } from '../../../src/operator/operator-command.store.js';
 import { isConnectionFenceCurrent } from '../../../src/connections/runtime/credential-use.repository.js';
 

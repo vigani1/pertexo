@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, expect } from 'vitest';
 
-import { createNotificationDestinationStore } from '../../src/testing.js';
+import { createNotificationDestinationStore } from '../../src/notifications/destinations/notification-destination.store.js';
 import {
   actorId,
   apiBaseUrl,

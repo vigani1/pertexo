@@ -3,7 +3,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 
 import { IdempotencyConflictError } from '@pertexo/database/platform';
-import { WorkspaceMemberRemovalCommandConflictError } from '../../src/testing.js';
+import { WorkspaceMemberRemovalCommandConflictError } from '../../src/tenant-access/tenant-access.errors.js';
 import { useIdentityCommandDatabase } from './command.support.js';
 
 const database = useIdentityCommandDatabase('member_removal');

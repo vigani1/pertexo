@@ -1,10 +1,8 @@
 import { Pool } from 'pg';
 import { describe, expect, it, vi } from 'vitest';
 
-import {
-  createNodeAttemptRunStore,
-  type NodeAttemptLease,
-} from '../../src/testing.js';
+import { createNodeAttemptRunStore } from '../../src/attempts/node-attempt-run.store.js';
+import type { NodeAttemptLease } from '../../src/attempts/node-attempt.js';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
 import { NodeAttemptOutputInvalidError } from '../../src/attempts/node-attempt.errors.js';
 import { StoredExecutionValueInvalidError } from '@pertexo/node-sdk';

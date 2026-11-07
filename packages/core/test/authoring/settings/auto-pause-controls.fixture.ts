@@ -7,10 +7,8 @@ import {
   parseDatabaseConfig,
   createDisposableDatabaseFixture,
 } from '@pertexo/database/testing';
-import {
-  createIdentityWorkspaceStore,
-  createWorkflowAuthoringStore,
-} from '../../../src/testing.js';
+import { createIdentityWorkspaceStore } from '../../../src/tenant-access/identity-workspace.store.js';
+import { createWorkflowAuthoringStore } from '../../../src/authoring/workflows/workflow-authoring.store.js';
 
 import { createWorkflowTriggerPauseFoldStore } from '../../../src/triggers/pause/fold.store.js';
 

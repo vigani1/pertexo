@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { FailureNotificationStateError } from '../../src/testing.js';
+import { FailureNotificationStateError } from '../../src/notifications/failure-notification.errors.js';
 import {
   accessedSecretVersions,
   appendAddress,

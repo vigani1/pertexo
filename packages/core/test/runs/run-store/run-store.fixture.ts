@@ -13,17 +13,19 @@ import {
   migrateDatabase,
   dropDisconnectedDatabase,
 } from '@pertexo/database/testing';
+import { CoordinatorRunStateCorruptError } from '../../../src/runs/state-errors.js';
+import { createFailureNotificationStore } from '../../../src/notifications/failure-notification.store.js';
 import {
-  CoordinatorRunStateCorruptError,
-  createFailureNotificationStore,
   createDeadlineWakeupScanner,
   createDueNodeWakeupScanner,
-  createNodeAttemptRunStore,
+} from '../../../src/runs/wakeups/scanners.js';
+import { createNodeAttemptRunStore } from '../../../src/attempts/node-attempt-run.store.js';
+import {
   NodeAttemptDeliveryMismatchError,
   NodeAttemptConnectionFenceError,
   NodeAttemptDispatchBindingMismatchError,
   NodeAttemptStateCorruptError,
-} from '../../../src/testing.js';
+} from '../../../src/attempts/node-attempt.errors.js';
 import { createTestRunStore } from '../../support/run-advance-store.js';
 
 export { actorId } from './fixture/context.js';
