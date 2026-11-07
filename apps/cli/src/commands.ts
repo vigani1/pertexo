@@ -63,8 +63,8 @@ export async function executeAutomationCommand(
       ? {}
       : await readCommandJson(command.bodyFile);
   const headers = commandHeaders(command);
-  const get = (path: `/v1/${string}`) =>
-    client.request({ path, signal, effect: 'read' });
+  const get = (path: `/v1/${string}`, requestSignal = signal) =>
+    client.request({ path, signal: requestSignal, effect: 'read' });
   const post = (
     path: `/v1/${string}`,
     effect: 'read' | 'write',
@@ -140,7 +140,7 @@ export async function executeAutomationCommand(
       return responseValue(await get(run(command.runId)));
     case 'runs wait':
       return waitForRun(
-        () => get(run(command.runId)),
+        (waitSignal) => get(run(command.runId), waitSignal),
         command.timeoutSeconds,
         signal,
       );
@@ -188,32 +188,63 @@ const LONGEST_POLL_MS = 15_000;
 
 /** A failed run is still an answer; the script reads `run.status` from the output. */
 async function waitForRun(
-  read: () => Promise<AutomationHttpResponse>,
+  read: (signal: AbortSignal) => Promise<AutomationHttpResponse>,
   timeoutSeconds: number,
   signal: AbortSignal,
 ): Promise<object> {
   const deadline = Date.now() + timeoutSeconds * 1_000;
-  for (
-    let pause = FIRST_POLL_MS;
-    ;
-    pause = Math.min(pause * 2, LONGEST_POLL_MS)
-  ) {
-    const response = await read();
-    const status = runStatus.safeParse(response.body).data?.run.status;
-    if (status === undefined)
-      throw new AutomationCommandError(
-        'cli.invalid_response',
-        'The server response has no run status.',
+  const timeout = new AbortController();
+  const timer = setTimeout(() => {
+    timeout.abort();
+  }, timeoutSeconds * 1_000);
+  const waitSignal = AbortSignal.any([signal, timeout.signal]);
+  let status = 'pending';
+  try {
+    for (
+      let pause = FIRST_POLL_MS;
+      ;
+      pause = Math.min(pause * 2, LONGEST_POLL_MS)
+    ) {
+      const response = await read(waitSignal);
+      // A response completing after the deadline is not a successful bounded wait.
+      if (timeout.signal.aborted || Date.now() >= deadline)
+        throw waitTimedOut(status, timeoutSeconds);
+      const observed = runStatus.safeParse(response.body).data?.run.status;
+      if (observed === undefined)
+        throw new AutomationCommandError(
+          'cli.invalid_response',
+          'The server response has no run status.',
+        );
+      status = observed;
+      if (SETTLED_STATUSES.has(status)) return responseValue(response);
+      await sleep(
+        Math.min(pause, Math.max(0, deadline - Date.now())),
+        undefined,
+        { signal: waitSignal },
       );
-    if (SETTLED_STATUSES.has(status)) return responseValue(response);
-    const remaining = deadline - Date.now();
-    if (remaining <= 0)
+    }
+  } catch (error: unknown) {
+    if (signal.aborted)
       throw new AutomationCommandError(
-        'cli.wait_timed_out',
-        `The run was still ${status} after ${String(timeoutSeconds)} seconds. It keeps going; wait again or read it with runs get.`,
+        'cli.transport_failure',
+        'Command interrupted.',
       );
-    await sleep(Math.min(pause, remaining), undefined, { signal });
+    if (timeout.signal.aborted || Date.now() >= deadline)
+      throw waitTimedOut(status, timeoutSeconds);
+    throw error;
+  } finally {
+    clearTimeout(timer);
   }
+}
+
+function waitTimedOut(
+  status: string,
+  timeoutSeconds: number,
+): AutomationCommandError {
+  return new AutomationCommandError(
+    'cli.wait_timed_out',
+    `The run was still ${status} after ${String(timeoutSeconds)} seconds. It keeps going; wait again or read it with runs get.`,
+  );
 }
 
 function commandHeaders(command: AutomationArguments) {
