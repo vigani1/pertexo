@@ -177,8 +177,10 @@ describe.runIf(betterAuthIntegrationEnabled)(
         .query(`create function public.reject_native_proof() returns trigger language plpgsql as $$ begin raise exception 'private-storage-error: %', new.identifier; end $$;
       create trigger reject_native_proof before insert on app.auth_verifications for each row execute function public.reject_native_proof()`);
       let result: Awaited<ReturnType<typeof resetInProcess>>;
+      let absent: Awaited<ReturnType<typeof resetInProcess>>;
       try {
         result = await resetInProcess(databaseUrl, email);
+        absent = await resetInProcess(databaseUrl, 'absent-reset@example.test');
       } finally {
         await api
           .database()
@@ -188,10 +190,23 @@ describe.runIf(betterAuthIntegrationEnabled)(
       }
       expect(result.code).toBe(0);
       expect(result.response).toMatchObject({
-        status: 500,
-        body: { status: 500, code: 'internal.unexpected' },
+        status: 200,
+        body: {
+          status: true,
+          message:
+            'If this email exists in our system, check your email for the reset link',
+        },
       });
+      expect(absent.code).toBe(0);
+      expect(absent.response).toMatchObject({
+        status: 200,
+        body: (result.response as { body: unknown }).body,
+      });
+      expect(absent.stdout + absent.stderr).toBe('');
       for (const text of [
+        absent.stdout,
+        absent.stderr,
+        JSON.stringify(absent.response),
         result.stdout,
         result.stderr,
         JSON.stringify(result.response),
@@ -230,7 +245,6 @@ describe.runIf(betterAuthIntegrationEnabled)(
       });
       expect(result.response).toMatchObject({
         requestId: records[0]?.requestId,
-        body: { requestId: records[0]?.requestId },
       });
       expect(
         (
