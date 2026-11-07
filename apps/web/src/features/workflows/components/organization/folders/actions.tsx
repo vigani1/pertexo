@@ -44,6 +44,7 @@ export function FolderActionDialog({
   /** After a confirmed change, e.g. leaving a folder that was just deleted. */
   onDone: (action: FolderAction) => void;
 }>) {
+  const [reviewed, setReviewed] = useState(action);
   const command = useWorkflowOrganizationCommand({
     apiClient,
     userId,
@@ -64,10 +65,9 @@ export function FolderActionDialog({
   useEffect(() => {
     if (!succeeded || announced.current === command.result) return;
     announced.current = command.result;
-    notifications.success({ title: DONE[action.kind] });
-    onDone(action);
-  }, [succeeded, notifications, onDone, action, command.result]);
-  const [reviewed, setReviewed] = useState(action);
+    notifications.success({ title: DONE[reviewed.kind] });
+    onDone(reviewed);
+  }, [succeeded, notifications, onDone, reviewed, command.result]);
   const latest =
     reviewed.kind === 'create'
       ? undefined

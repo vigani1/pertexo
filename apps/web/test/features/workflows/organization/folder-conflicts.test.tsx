@@ -1,3 +1,5 @@
+import { useState } from 'react';
+import type { FolderAction } from '@/features/workflows/components/organization/folders/shelf';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import {
@@ -82,6 +84,8 @@ it.each(['rename', 'move', 'delete'] as const)(
               ...operations,
               revision: 3,
               name: 'Current Operations',
+              parentId: kind === 'delete' ? finance.id : operations.parentId,
+              depth: kind === 'delete' ? 2 : operations.depth,
             };
             return problem(409, 'workflow.folder_revision_conflict');
           }
@@ -94,19 +98,27 @@ it.each(['rename', 'move', 'delete'] as const)(
       ),
     );
     function Editor() {
+      const [finished, setFinished] = useState<FolderAction>();
       const reader = useQuery(
         workflowFoldersQueryOptions(apiClient, userId, workspace.id),
       );
       return reader.data ? (
-        <FolderActionDialog
-          apiClient={apiClient}
-          userId={userId}
-          workspace={workspace}
-          folders={reader.data.items}
-          action={{ kind, folder: operations }}
-          onClose={() => undefined}
-          onDone={() => undefined}
-        />
+        <>
+          <FolderActionDialog
+            apiClient={apiClient}
+            userId={userId}
+            workspace={workspace}
+            folders={reader.data.items}
+            action={{ kind, folder: operations }}
+            onClose={() => undefined}
+            onDone={setFinished}
+          />
+          {finished === undefined ? null : (
+            <output aria-label="Completed folder action">
+              {JSON.stringify(finished)}
+            </output>
+          )}
+        </>
       ) : null;
     }
     render(
@@ -133,11 +145,13 @@ it.each(['rename', 'move', 'delete'] as const)(
       await user.click(await screen.findByRole('option', { name: 'Finance' }));
     }
     await user.click(await screen.findByRole('button', { name: submit }));
-    await user.click(
-      await screen.findByRole('button', {
-        name: 'Keep edits and use latest revision',
-      }),
-    );
+    const review = await screen.findByRole('button', {
+      name: 'Keep edits and use latest revision',
+    });
+    await waitFor(() => {
+      expect(review).toBeEnabled();
+    });
+    await user.click(review);
     if (kind === 'rename')
       expect(screen.getByLabelText('Name')).toHaveValue('My retained name');
     await user.click(screen.getByRole('button', { name: submit }));
@@ -145,6 +159,13 @@ it.each(['rename', 'move', 'delete'] as const)(
       expect(bodies).toHaveLength(2);
     });
     expect(bodies[1]).toMatchObject({ expectedFolderRevision: 3 });
+    if (kind === 'delete') {
+      const completed = await screen.findByLabelText('Completed folder action');
+      expect(JSON.parse(completed.textContent) as unknown).toMatchObject({
+        kind: 'delete',
+        folder: { id: operations.id, parentId: finance.id, revision: 3 },
+      });
+    }
     if (kind === 'rename')
       expect(bodies[1]).toMatchObject({ name: 'My retained name' });
     if (kind === 'move')

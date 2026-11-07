@@ -5,7 +5,6 @@ import { StaleLine } from '@/components/patterns/states/stale-line';
 import {
   Empty,
   EmptyActions,
-  EmptyDescription,
   EmptyMedia,
   EmptyTitle,
 } from '@/components/ui/empty';
@@ -148,14 +147,13 @@ export function FailedReadState({
         <StatusGlyph tone="failure" className="size-6" />
       </EmptyMedia>
       <EmptyTitle>{title}</EmptyTitle>
-      <EmptyDescription>{readFailureReason(error)}</EmptyDescription>
       <EmptyActions>
         <ReadRecovery
           error={error}
           resource={title}
           retrying={retrying}
           retry={retry}
-          message={null}
+          message={readFailureReason(error)}
           label="Try again"
         />
       </EmptyActions>

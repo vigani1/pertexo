@@ -327,11 +327,16 @@ it('keeps edited grants through a real conflict and uses the reviewed current re
   expect(
     await screen.findByRole('region', { name: 'Current saved sharing' }),
   ).toBeVisible();
-  await event.click(
-    await screen.findByRole('button', {
-      name: 'Keep edits and use latest revision',
-    }),
-  );
+  const review = await screen.findByRole('button', {
+    name: 'Keep edits and use latest revision',
+  });
+  await waitFor(() => {
+    expect(review).toBeEnabled();
+  });
+  expect(
+    screen.queryByText('Saving sharing didn’t work. Try again.'),
+  ).not.toBeInTheDocument();
+  await event.click(review);
   expect(screen.getByRole('button', { name: 'Remove Jane' })).toBeVisible();
   await event.click(screen.getByRole('button', { name: 'Save' }));
   await waitFor(() => {
