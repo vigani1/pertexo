@@ -134,17 +134,33 @@ export function SamlProviderForm({
           <ProviderRevisionNotice
             organization={organization}
             locked={locked}
-            canReview={organization.revision !== baseRevision}
+            revisionRead={command.revisionRead}
+            onRetry={() => {
+              void command.refreshCurrent();
+            }}
+            canReview={
+              organization.revision !== baseRevision &&
+              command.revisionRead?.kind !== 'read-failed'
+            }
             onKeepEdits={() => {
               setBaseRevision(organization.revision);
               command.reset();
             }}
             onReload={() => {
-              fields.reset(initial(provider));
-              setEnabled(provider?.enabled ?? false);
-              setJit(provider?.configuration.jitEnabled ?? false);
-              setBaseRevision(organization.revision);
-              command.reset();
+              void command.refreshCurrent().then((current) => {
+                const latest = current?.organization;
+                if (latest === undefined || latest === null) return;
+                const saved = latest.providers.find(
+                  (item) => item.id === provider?.id,
+                );
+                if (provider !== undefined && saved === undefined) return;
+                if (saved !== undefined && saved.kind !== 'saml') return;
+                fields.reset(initial(saved));
+                setEnabled(saved?.enabled ?? false);
+                setJit(saved?.configuration.jitEnabled ?? false);
+                setBaseRevision(latest.revision);
+                command.reset();
+              });
             }}
           />
         ) : null}

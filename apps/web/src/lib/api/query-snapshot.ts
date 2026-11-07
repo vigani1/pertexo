@@ -31,12 +31,33 @@ export function isRevisionConflict(cause: unknown): boolean {
   );
 }
 
-export async function recoverRevisionConflict(
+export type SnapshotRead<Value> =
+  | Readonly<{ kind: 'refreshed'; value: Value }>
+  | Readonly<{ kind: 'read-failed'; error: unknown }>;
+
+/** A retained cached value is not evidence that the current read succeeded. */
+export async function refreshQuerySnapshot<Value>(
+  cache: QueryClient,
+  queryKey: QueryKey,
+): Promise<SnapshotRead<Value>> {
+  const value = await reconcileQuerySnapshot<Value>(cache, queryKey, {
+    kind: 'read',
+  });
+  return value === undefined
+    ? {
+        kind: 'read-failed',
+        error:
+          cache.getQueryState(queryKey)?.error ??
+          new Error('Current settings could not be read.'),
+      }
+    : { kind: 'refreshed', value };
+}
+
+export async function recoverRevisionConflict<Value = unknown>(
   cache: QueryClient,
   queryKey: QueryKey,
   cause: unknown,
-): Promise<boolean> {
-  if (!isRevisionConflict(cause)) return false;
-  await reconcileQuerySnapshot(cache, queryKey, { kind: 'read' });
-  return true;
+): Promise<SnapshotRead<Value> | Readonly<{ kind: 'not-conflict' }>> {
+  if (!isRevisionConflict(cause)) return { kind: 'not-conflict' };
+  return refreshQuerySnapshot<Value>(cache, queryKey);
 }

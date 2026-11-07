@@ -1,3 +1,4 @@
+import { ReadRecovery } from '@/components/patterns/states/read-recovery';
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/ui/notice';
@@ -68,41 +69,49 @@ export function FolderActionDialog({
     notifications.success({ title: DONE[reviewed.kind] });
     onDone(reviewed);
   }, [succeeded, notifications, onDone, reviewed, command.result]);
-  const latest =
-    reviewed.kind === 'create'
-      ? undefined
-      : folders.find((folder) => folder.id === reviewed.folder.id);
-  const needsReview =
-    reviewed.kind !== 'create' &&
-    reviewed.kind !== 'share' &&
-    (command.revisionConflict === true ||
-      latest?.revision !== reviewed.folder.revision);
-  const revisionReview = needsReview ? (
-    <Notice
-      tone="warning"
-      action={
-        <Button
-          type="button"
-          variant="outline"
-          disabled={
-            command.pending ||
-            latest === undefined ||
-            latest.revision === reviewed.folder.revision
-          }
-          onClick={() => {
-            if (latest === undefined) return;
-            setReviewed({ ...reviewed, folder: latest });
-            command.reset();
-          }}
-        >
-          Keep edits and use latest revision
-        </Button>
-      }
-    >
-      This folder changed. Current folder: {latest?.name ?? 'unavailable'}. Your
-      edits are kept.
-    </Notice>
-  ) : undefined;
+  const { latest, needsReview } = folderRevisionState(
+    reviewed,
+    folders,
+    command.revisionConflict,
+  );
+  const revisionReview =
+    needsReview && reviewed.kind !== 'create' ? (
+      <Notice
+        tone="warning"
+        action={
+          <Button
+            type="button"
+            variant="outline"
+            disabled={
+              command.pending ||
+              command.revisionRead?.kind === 'read-failed' ||
+              latest === undefined ||
+              latest.revision === reviewed.folder.revision
+            }
+            onClick={() => {
+              if (latest === undefined) return;
+              setReviewed({ ...reviewed, folder: latest });
+              command.reset();
+            }}
+          >
+            Keep edits and use latest revision
+          </Button>
+        }
+      >
+        This folder changed. Current folder: {latest?.name ?? 'unavailable'}.
+        Your edits are kept.
+        {command.revisionRead?.kind === 'read-failed' ? (
+          <ReadRecovery
+            error={command.revisionRead.error}
+            resource="current folder settings"
+            retrying={command.pending}
+            retry={() => {
+              void command.retryRevisionRead();
+            }}
+          />
+        ) : null}
+      </Notice>
+    ) : undefined;
   const guardedCommand = { ...command, revisionConflict: needsReview };
   const scope = { workspaceId: workspace.id, revisionReview };
   switch (reviewed.kind) {
@@ -146,4 +155,20 @@ export function FolderActionDialog({
         />
       );
   }
+}
+
+function folderRevisionState(
+  reviewed: FolderAction,
+  folders: readonly WorkflowFolder[],
+  conflict: boolean | undefined,
+) {
+  const latest =
+    reviewed.kind === 'create'
+      ? undefined
+      : folders.find((folder) => folder.id === reviewed.folder.id);
+  const needsReview =
+    reviewed.kind !== 'create' &&
+    reviewed.kind !== 'share' &&
+    (conflict === true || latest?.revision !== reviewed.folder.revision);
+  return { latest, needsReview };
 }
