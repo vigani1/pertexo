@@ -76,7 +76,11 @@ const TRANSPORT_HEADERS = new Set([
 ]);
 
 function validatePath(path: string): void {
-  if (path !== '/v1' && !path.startsWith('/v1/'))
+  const normalized = new URL(path, 'https://api.invalid').pathname;
+  if (
+    (path !== '/v1' && !path.startsWith('/v1/')) ||
+    (normalized !== '/v1' && !normalized.startsWith('/v1/'))
+  )
     throw protocolError('API requests must use a same-origin /v1 path.');
   if (
     path.includes('\\') ||
@@ -271,7 +275,6 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
         credentials: 'same-origin',
         signal: call.signal,
       });
-      call.stopTimer();
       if (!response.ok)
         throw await errorForResponse(response, request.decodeProblem);
       if (mediaType(response) !== request.response.mediaType) {
@@ -288,6 +291,7 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
           requestId: requestIdFrom(response),
         });
       }
+      call.stopTimer();
       return Object.freeze({
         body: response.body,
         close: () => {

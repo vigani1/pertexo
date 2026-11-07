@@ -83,9 +83,10 @@ export function formatDayHeading(value: string, now = Date.now()): string {
   if (date === undefined) return MISSING;
   const startOfToday = new Date(now);
   startOfToday.setHours(0, 0, 0, 0);
-  const dayMs = 86_400_000;
+  const startOfYesterday = new Date(startOfToday);
+  startOfYesterday.setDate(startOfYesterday.getDate() - 1);
   if (date.getTime() >= startOfToday.getTime()) return 'Today';
-  if (date.getTime() >= startOfToday.getTime() - dayMs) return 'Yesterday';
+  if (date.getTime() >= startOfYesterday.getTime()) return 'Yesterday';
   return dayHeadingFormatter.format(date);
 }
 
