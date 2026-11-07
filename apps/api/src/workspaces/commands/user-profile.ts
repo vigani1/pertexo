@@ -9,11 +9,9 @@ import {
   type IdentityWorkspaceTelemetry,
 } from '../telemetry.js';
 import type { userProfileUpdateRequestSchema } from '../workspace-transport.js';
-import {
-  userProfileResponseSchema,
-  userProfileUpdateResponseSchema,
-  type UserProfileResponse,
-  type UserProfileUpdateResponse,
+import type {
+  UserProfileResponse,
+  UserProfileUpdateResponse,
 } from '../workspace-transport.js';
 
 type ProfilePersistence = Pick<
@@ -25,7 +23,7 @@ type ProfilePersistence = Pick<
 export function projectUserProfile(
   user: UserProfilePersistenceRecord,
 ): UserProfileResponse {
-  return userProfileResponseSchema.parse({
+  return {
     id: user.id,
     email: user.email,
     displayName: user.displayName,
@@ -33,7 +31,7 @@ export function projectUserProfile(
     revision: user.profileRevision,
     createdAt: user.createdAt.toISOString(),
     updatedAt: user.updatedAt.toISOString(),
-  });
+  };
 }
 
 /**
@@ -63,11 +61,11 @@ export class UpdateUserProfileUseCase {
           expectedRevision: request.expectedRevision,
           idempotencyKey: input.idempotencyKey,
         });
-        return userProfileUpdateResponseSchema.parse({
+        return {
           profile: projectUserProfile(result.user),
           changed: result.changed,
           replayed: result.replayed,
-        });
+        };
       },
     );
   }
