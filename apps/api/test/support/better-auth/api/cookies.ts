@@ -8,7 +8,8 @@ function setCookies(reply: Reply): string[] {
 }
 
 export function setCookie(reply: Reply, name: string): string {
-  const cookie = setCookies(reply).find((value) =>
+  // Each fixture cookie name has one scope; later headers replace earlier ones.
+  const cookie = setCookies(reply).findLast((value) =>
     value.startsWith(`${name}=`),
   );
   const value = cookie?.split(';', 1)[0]?.slice(name.length + 1);
