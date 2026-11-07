@@ -1,6 +1,6 @@
 import { Queue } from 'bullmq';
 import type { JobsOptions } from 'bullmq';
-import { Redis } from 'ioredis';
+import { Redis, ReplyError } from 'ioredis';
 import { bounded, TIMED_OUT } from './consumption/deadline.js';
 import { QUEUE_CLASS_DEFAULTS } from './jobs/defaults.js';
 import { jobIdForOutboxEvent } from './jobs/job-id.js';
@@ -25,6 +25,7 @@ import { parseProducerOptions } from './publication/configuration.js';
 import {
   QueueNotReadyError,
   QueuePublicationUnavailableError,
+  QueueWriteTimedOutError,
 } from './publication/queue-producer.errors.js';
 
 export {
@@ -37,6 +38,7 @@ export {
 export {
   QueueNotReadyError,
   QueuePublicationUnavailableError,
+  QueueWriteTimedOutError,
 } from './publication/queue-producer.errors.js';
 export { jobIdForOutboxEvent } from './jobs/job-id.js';
 function createQueues(redis: Redis): QueueMap {
@@ -197,10 +199,13 @@ export class BullMqQueueProducer implements QueueProducer {
       await this.withTimeout(
         this.redis.set('pertexo:queue:write-readiness', '1', 'PX', 10_000),
         Math.max(1, deadline - Date.now()),
-        new QueuePublicationUnavailableError(),
+        new QueueWriteTimedOutError(),
       );
-    } catch {
-      throw new QueuePublicationUnavailableError();
+    } catch (error: unknown) {
+      if (error instanceof QueueWriteTimedOutError) throw error;
+      if (error instanceof ReplyError)
+        throw new QueuePublicationUnavailableError();
+      throw new QueueNotReadyError();
     }
   }
 

@@ -70,7 +70,10 @@ const mocks = vi.hoisted(() => {
 
 vi.mock('bullmq', () => ({ Queue: mocks.Queue }));
 
-vi.mock('ioredis', () => ({ Redis: mocks.Redis, default: mocks.Redis }));
+vi.mock('ioredis', async (importOriginal) => {
+  const { ReplyError } = await importOriginal<{ ReplyError: unknown }>();
+  return { Redis: mocks.Redis, default: mocks.Redis, ReplyError };
+});
 
 export const IDS = {
   workspaceId: '11111111-1111-4111-8111-111111111111',

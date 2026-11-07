@@ -30,6 +30,21 @@ describe('BullMQ queue producer', () => {
     expect(mocks.Redis).not.toHaveBeenCalled();
   });
 
+  it('keeps a lost write connection distinct from Redis refusing publication', async () => {
+    const producer = createQueueProducer({
+      redisUrl: 'redis://localhost:6379/0',
+    });
+    try {
+      redisClient().set.mockRejectedValue(new Error('Connection is closed.'));
+      await expect(producer.waitUntilReady()).rejects.toMatchObject({
+        name: 'QueueNotReadyError',
+        message: 'Queue producer Redis connection is not ready',
+      });
+    } finally {
+      await producer.close();
+    }
+  });
+
   it('routes validated jobs and applies centralized transport defaults', async () => {
     const producer = createQueueProducer({
       redisUrl: 'redis://localhost:6379/0',
