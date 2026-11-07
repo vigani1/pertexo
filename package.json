@@ -74,6 +74,18 @@
         "entry": [
           "src/identity/main.ts"
         ]
+      },
+      "packages/queue": {
+        "includeEntryExports": true
+      },
+      "packages/rate-limit": {
+        "includeEntryExports": true
+      },
+      "packages/artifact-store": {
+        "includeEntryExports": true
+      },
+      "packages/observability": {
+        "includeEntryExports": true
       }
     }
   },

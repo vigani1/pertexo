@@ -1,7 +1,7 @@
 import { metrics } from '@opentelemetry/api';
 import type { Meter } from '@opentelemetry/api';
 
-export const OBJECT_STORE_METRIC_NAME = Object.freeze({
+const OBJECT_STORE_METRIC_NAME = Object.freeze({
   requestCount: 'pertexo.object_store.request.count',
   requestDuration: 'pertexo.object_store.request.duration',
   safetyViolationCount: 'pertexo.object_store.safety.violation.count',
@@ -46,7 +46,7 @@ export interface ObjectStoreObserver {
   observeSafetyViolation(observation: ObjectStoreSafetyObservation): void;
 }
 
-export function createOpenTelemetryObjectStoreObserver(
+function createOpenTelemetryObjectStoreObserver(
   options: Readonly<{ meter?: Meter }> = {},
 ): ObjectStoreObserver {
   const meter =

@@ -1,12 +1,23 @@
-export * from './startup.js';
-export * from './logger.js';
-export * from './nest-runtime.js';
-export * from './telemetry/queue-tracing.js';
-export * from './wait-for-delay-or-stop.js';
-export * from './telemetry/transport-metrics.js';
-export { ShutdownCoordinator } from './lifecycle/shutdown.js';
+export type { StructuredLogger } from './logger.js';
+export type { TelemetryLifecycle } from './telemetry/telemetry.runtime.js';
 export {
   measureOperation,
   NOOP_OPERATION_TELEMETRY,
-  type OperationTelemetry,
 } from './telemetry/measurement.js';
+export type { OperationTelemetry } from './telemetry/measurement.js';
+export { ShutdownCoordinator } from './lifecycle/shutdown.js';
+export {
+  NestLoggerAdapter,
+  createNestObservabilityRegistration,
+} from './nest-runtime.js';
+export { createStructuredLogger } from './logger.js';
+export { describeProcessFailure } from './process-error-classification.js';
+export type {
+  TransportMetrics,
+  TransportJob,
+  TransportErrorClass,
+} from './telemetry/transport/transport-metrics.types.js';
+export { createQueueTraceRunner } from './telemetry/queue-tracing.js';
+export { redactCredentialFields } from './logging/redaction.js';
+export { createTransportMetrics } from './telemetry/transport-metrics.js';
+export { createOpenTelemetrySdk } from './telemetry/telemetry.runtime.js';

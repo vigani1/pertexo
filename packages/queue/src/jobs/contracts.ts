@@ -182,7 +182,7 @@ export const QUEUE_JOB_REGISTRY = Object.freeze({
 
 for (const entry of Object.values(QUEUE_JOB_REGISTRY)) Object.freeze(entry);
 
-export class UnknownQueueJobError extends Error {
+class UnknownQueueJobError extends Error {
   public override readonly name = 'UnknownQueueJobError';
 
   public constructor(jobName: unknown) {

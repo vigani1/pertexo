@@ -2,8 +2,10 @@ import { fileURLToPath } from 'node:url';
 
 import type { OperatorCommandStore } from '@pertexo/core/operator';
 import type * as OperatorDatabaseModule from '@pertexo/core/operator';
-import type { StructuredLogger } from '@pertexo/observability/server';
-import type * as LoggingModule from '@pertexo/observability/server';
+import type {
+  StructuredLogger,
+  createStructuredLogger,
+} from '@pertexo/observability/server';
 import type { createTelemetryLifecycle } from '@pertexo/observability/startup';
 
 import type * as OperatorRunModule from './run.js';
@@ -23,7 +25,7 @@ export interface OperatorCommandBootstrapModules {
     typeof OperatorDatabaseModule,
     'createOperatorCommandStore'
   >;
-  readonly logging: Pick<typeof LoggingModule, 'createStructuredLogger'>;
+  readonly logging: { createStructuredLogger: typeof createStructuredLogger };
 }
 
 export interface OperatorCommandBootstrapDependencies {

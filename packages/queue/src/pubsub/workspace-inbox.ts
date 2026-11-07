@@ -34,7 +34,7 @@ export interface WorkspaceInboxHintPublisher {
   close(): Promise<void>;
 }
 
-export class WorkspaceInboxHintConfigurationError extends Error {
+class WorkspaceInboxHintConfigurationError extends Error {
   public override readonly name = 'WorkspaceInboxHintConfigurationError';
 }
 export class WorkspaceInboxHintPublishError extends Error {
