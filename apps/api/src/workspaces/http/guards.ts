@@ -1,3 +1,5 @@
+import type { FastifyReply } from 'fastify';
+import { serializeCsrfCookie } from '../../authentication/better-auth/transport/authentication-credentials.js';
 import { hasAuthorizationHeader } from '../../authentication/automation/headers.js';
 import type { AuthorizationHeaderSource } from '../../authentication/automation/headers.js';
 import { Inject, Injectable, mixin } from '@nestjs/common';
@@ -58,7 +60,27 @@ export class SessionAuthenticationGuard implements CanActivate {
     if (rawToken === undefined) {
       return throwApplicationError(applicationError('auth.unauthenticated'));
     }
-    const session = await this.sessions.authenticate(rawToken);
+    const session = await this.sessions.authenticate(rawToken, {
+      ...(request.method === 'GET'
+        ? {
+            cookieBoundary: {
+              writeSessionCookieHeaders: (cookies, policy) => {
+                const reply = context
+                  .switchToHttp()
+                  .getResponse<FastifyReply>();
+                reply.header('set-cookie', [
+                  ...cookies,
+                  serializeCsrfCookie({
+                    secure: policy.secure,
+                    sameSite: policy.sameSite,
+                    maxAgeSeconds: policy.maxAgeSeconds,
+                  }),
+                ]);
+              },
+            },
+          }
+        : {}),
+    });
     request.identitySession = session;
     request.reauthorizeIdentitySession = (signal) =>
       this.sessions.authenticate(rawToken, { signal });

@@ -122,7 +122,10 @@ export interface IdentitySessionAuthority {
   ): Promise<SessionIssueResult>;
   authenticate(
     cookieValue: string,
-    options?: Readonly<{ signal?: AbortSignal }>,
+    options?: Readonly<{
+      signal?: AbortSignal;
+      cookieBoundary?: SessionCookieBoundary;
+    }>,
   ): Promise<AuthenticatedSession>;
   revoke(cookieValue: string): Promise<void>;
   /** Writes the cookies of a session another transaction installed. */

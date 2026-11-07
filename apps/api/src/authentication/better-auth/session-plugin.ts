@@ -83,6 +83,23 @@ export function createTrustedSessionPlugin(
       ],
       after: [
         {
+          matcher: () => true,
+          handler: createAuthMiddleware(async (context) => {
+            const renewed = context.context.newSession;
+            const cookies =
+              context.context.responseHeaders?.getSetCookie() ?? [];
+            // A before-hook session read can refresh storage before endpoint middleware.
+            if (
+              renewed !== null &&
+              !cookies.some((cookie) =>
+                cookie.startsWith('pertexo_session='),
+              ) &&
+              (await isAuthenticationSessionAllowed(pool, renewed.session.id))
+            )
+              await setSessionCookie(context, renewed);
+          }),
+        },
+        {
           matcher: (context) =>
             context.path === '/two-factor/disable' ||
             context.path === '/sign-in/email' ||
