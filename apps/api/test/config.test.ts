@@ -66,7 +66,9 @@ describe('parseApiConfig', () => {
           CONNECTION_ENCRYPTION_MODE: 'local',
           CONNECTION_LOCAL_KEY: Buffer.alloc(32).toString('base64'),
         }),
-      ).toThrow('forbidden when deployed');
+      ).toThrow(
+        /CONNECTION_ENCRYPTION_MODE.*Use self-managed or KMS encryption when deployed/u,
+      );
     },
   );
 
@@ -93,7 +95,7 @@ describe('parseApiConfig', () => {
         BETTER_AUTH_SECRET:
           'standalone-better-auth-secret-at-least-32-characters',
       }),
-    ).toThrow('PUBLIC_WEB_ORIGIN is required for Better Auth');
+    ).toThrow(/PUBLIC_WEB_ORIGIN.*set PUBLIC_WEB_ORIGIN/u);
   });
 
   it('rejects secure browser cookies on an HTTP public origin', () => {
@@ -106,7 +108,9 @@ describe('parseApiConfig', () => {
         PUBLIC_WEB_ORIGIN: 'http://127.0.0.1:5173',
         SESSION_COOKIE_SECURE: 'true',
       }),
-    ).toThrow('Secure session cookies require an HTTPS public web origin');
+    ).toThrow(
+      /PUBLIC_WEB_ORIGIN.*use an HTTPS public web origin for secure session cookies/u,
+    );
   });
 
   it('accepts one complete production environment', () => {
@@ -131,7 +135,7 @@ describe('parseApiConfig', () => {
     delete environment.TRUST_PROXY_CIDRS;
 
     expect(() => parseApiConfig(environment)).toThrow(
-      'TRUST_PROXY_CIDRS is required when deployed',
+      /TRUST_PROXY_CIDRS.*configure the trusted proxy/u,
     );
   });
 
@@ -150,7 +154,9 @@ describe('parseApiConfig', () => {
         ...validDeployedEnvironment(),
         SESSION_COOKIE_SECURE: 'false',
       }),
-    ).toThrow('Secure session cookies are required when deployed');
+    ).toThrow(
+      /SESSION_COOKIE_SECURE.*enable secure session cookies when deployed/u,
+    );
   });
 
   it('rejects SameSite=None with an insecure test cookie independently', () => {
@@ -164,7 +170,9 @@ describe('parseApiConfig', () => {
         SESSION_COOKIE_SAME_SITE: 'none',
         SESSION_COOKIE_SECURE: 'false',
       }),
-    ).toThrow('SameSite=None requires secure session cookies');
+    ).toThrow(
+      /SESSION_COOKIE_SAME_SITE.*enable secure session cookies or select/u,
+    );
   });
 
   it('sanitizes malformed previous-key JSON independently', () => {
@@ -300,7 +308,7 @@ describe('parseApiConfig', () => {
         DATABASE_URL: 'postgresql://pertexo_app:secret@localhost:5432/pertexo',
         NODE_ENV: 'staging',
       }),
-    ).toThrow('Better Auth configuration is incomplete');
+    ).toThrow(/BETTER_AUTH_SECRET.*set BETTER_AUTH_SECRET/u);
   });
 
   it('parses and freezes complete identity configuration', () => {
@@ -399,7 +407,7 @@ describe('parseApiConfig', () => {
           'arn:aws:kms:eu-central-1:123456789012:key/example',
         CONNECTION_KMS_REGION: 'eu-central-1',
       }),
-    ).toThrow('REDIS_URL is required when deployed');
+    ).toThrow(/REDIS_URL.*configure a Redis connection URL/u);
   });
 
   it('rejects partial connection KMS configuration without exposing the key reference', () => {
@@ -413,7 +421,11 @@ describe('parseApiConfig', () => {
     } catch (error: unknown) {
       message = error instanceof Error ? error.message : String(error);
     }
-    expect(message).toBe('Connection KMS configuration is incomplete');
+    expect(message).toContain('CONNECTION_KMS_KEY_REFERENCE');
+    expect(message).toContain('CONNECTION_KMS_REGION');
+    expect(message).toContain(
+      'select one connection encryption mode and configure its matching keys or KMS settings',
+    );
     expect(message).not.toContain(keyReference);
   });
 
@@ -437,7 +449,7 @@ describe('parseApiConfig', () => {
         CONNECTION_KMS_ENDPOINT: 'http://kms.example.test',
         REDIS_URL: 'rediss://redis.example.test:6380/0',
       }),
-    ).toThrow('HTTPS connection KMS endpoint is required when deployed');
+    ).toThrow(/CONNECTION_KMS_ENDPOINT.*HTTPS endpoints when deployed/u);
   });
 });
 describe('parseApiConfig identity boundary', () => {
@@ -445,17 +457,17 @@ describe('parseApiConfig identity boundary', () => {
     [
       'an invitation key without its version',
       { INVITATION_TOKEN_KEY: Buffer.alloc(32, 8).toString('base64') },
-      'Invitation token encryption configuration is incomplete',
+      /INVITATION_TOKEN_KEY.*configure both invitation key settings/u,
     ],
     [
       'an invitation key version without its key',
       { INVITATION_TOKEN_KEY_VERSION: 'invite-v1' },
-      'Invitation token encryption configuration is incomplete',
+      /INVITATION_TOKEN_KEY.*configure both invitation key settings/u,
     ],
     [
       'a public web origin with a path',
       { PUBLIC_WEB_ORIGIN: 'https://app.example.test/app' },
-      'PUBLIC_WEB_ORIGIN must be an origin without a path',
+      /PUBLIC_WEB_ORIGIN.*use an origin without a path, query or fragment/u,
     ],
     [
       'durable mail settings while mail delivery is local',
@@ -504,14 +516,14 @@ describe('parseApiConfig identity boundary', () => {
         DATABASE_URL: 'postgresql://pertexo_app:secret@localhost:5432/pertexo',
         SESSION_TTL_MILLIS: '60000',
       }),
-    ).toThrow('Better Auth configuration is incomplete');
+    ).toThrow(/BETTER_AUTH_SECRET.*set BETTER_AUTH_SECRET/u);
   });
 
   it.each([
     [
       'an HTTP public web origin',
       { ...validDeployedEnvironment(), PUBLIC_WEB_ORIGIN: 'http://app.test' },
-      'HTTPS public web origin is required when deployed',
+      /PUBLIC_WEB_ORIGIN.*use an HTTPS public web origin when deployed/u,
     ],
     [
       'local authentication mail',
@@ -523,17 +535,17 @@ describe('parseApiConfig identity boundary', () => {
         ),
         AUTH_MAIL_MODE: 'local',
       },
-      'Durable authentication mail is required when deployed',
+      /AUTH_MAIL_MODE.*configure durable authentication mail when deployed/u,
     ],
     [
       'a missing Better Auth secret',
       deployedEnvironmentWithout('BETTER_AUTH_SECRET'),
-      'Better Auth configuration is incomplete',
+      /BETTER_AUTH_SECRET.*set BETTER_AUTH_SECRET/u,
     ],
     [
       'a missing invitation token key',
       deployedEnvironmentWithout('INVITATION_TOKEN_KEY'),
-      'Invitation token encryption configuration is incomplete',
+      /INVITATION_TOKEN_KEY.*configure both invitation key settings/u,
     ],
   ])('rejects a deployment with %s', (_name, environment, message) => {
     expect(() => parseApiConfig(environment)).toThrow(message);
@@ -643,7 +655,7 @@ describe('parseApiConfig identity boundary', () => {
   it('requires a public web origin when deployed', () => {
     expect(() =>
       parseApiConfig(deployedEnvironmentWithout('PUBLIC_WEB_ORIGIN')),
-    ).toThrow('PUBLIC_WEB_ORIGIN is required for Better Auth');
+    ).toThrow(/PUBLIC_WEB_ORIGIN.*set PUBLIC_WEB_ORIGIN/u);
   });
 
   it('secures cookies on an HTTPS origin', () => {
