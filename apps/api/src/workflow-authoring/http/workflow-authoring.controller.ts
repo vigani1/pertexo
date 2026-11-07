@@ -1,3 +1,4 @@
+import { traceparent } from '../../platform/http/tracing-headers.js';
 import { Controller, Req, Res, UseInterceptors } from '@nestjs/common';
 import {
   authoringRoutes as routes,
@@ -28,7 +29,7 @@ import {
   SaveWorkflowDraftUseCase,
   ValidateWorkflowDraftUseCase,
 } from '../workflow-authoring.service.js';
-import { requestContext, traceparent } from './context.js';
+import { requestContext } from './context.js';
 import { parseStrongIfMatch } from './preconditions.js';
 
 @UseInterceptors(domainErrors(authoringFailure))

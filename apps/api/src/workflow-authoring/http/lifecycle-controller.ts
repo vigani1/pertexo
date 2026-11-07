@@ -1,9 +1,10 @@
+import { traceparent } from '../../platform/http/tracing-headers.js';
 import {
   lifecycleRoutes as routes,
   type RouteInput,
 } from '@pertexo/contracts/server';
 import { In, Route } from '../../workspaces/http/route.js';
-import { requestContext, traceparent } from './context.js';
+import { requestContext } from './context.js';
 
 import { Controller, Req, Res, UseInterceptors } from '@nestjs/common';
 import { withRequestOperationSignal } from '../../platform/http/request-operation-signal.js';
