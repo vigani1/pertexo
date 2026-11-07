@@ -13,7 +13,7 @@ import {
 } from '@pertexo/contracts/server';
 import type { FastifyReply } from 'fastify';
 
-import { singleRequestHeader } from '../../platform/http/request-headers.js';
+import { traceparent } from '../../platform/http/tracing-headers.js';
 import { In, Route } from '../../workspaces/http/route.js';
 
 import { authenticatedSession } from '../../workspaces/index.js';
@@ -234,11 +234,4 @@ function requestIdentifiers(request: WorkflowRunsRequest): Readonly<{
   traceId?: string;
 }> {
   return authenticatedRequestIdentifiers(request);
-}
-
-function traceparent(
-  request: WorkflowRunsRequest,
-): Readonly<{ traceparent?: string }> {
-  const value = singleRequestHeader(request.headers, 'traceparent');
-  return value === undefined ? {} : { traceparent: value };
 }
