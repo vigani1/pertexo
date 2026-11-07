@@ -5,8 +5,10 @@ import {
   classifyProcessError,
   describeProcessFailure,
 } from '@pertexo/observability/startup';
-import type { StructuredLogger } from '@pertexo/observability/server';
-import type * as LoggingModule from '@pertexo/observability/server';
+import type {
+  StructuredLogger,
+  createStructuredLogger,
+} from '@pertexo/observability/server';
 
 import type * as ApiApplicationModule from './app.js';
 import {
@@ -24,7 +26,7 @@ export interface ApiBootstrapModules {
     typeof ApiApplicationModule,
     'createApiApplication'
   >;
-  readonly logging: Pick<typeof LoggingModule, 'createStructuredLogger'>;
+  readonly logging: { createStructuredLogger: typeof createStructuredLogger };
 }
 
 export interface ApiBootstrapDependencies {

@@ -5,8 +5,10 @@ import {
   classifyProcessError,
   describeProcessFailure,
 } from '@pertexo/observability/startup';
-import type { StructuredLogger } from '@pertexo/observability/server';
-import type * as LoggingModule from '@pertexo/observability/server';
+import type {
+  StructuredLogger,
+  createStructuredLogger,
+} from '@pertexo/observability/server';
 
 import type * as WorkerApplicationModule from './app.js';
 import { parseWorkerConfig, type WorkerConfig } from './config/worker.js';
@@ -27,7 +29,7 @@ export interface WorkerBootstrapModules {
     typeof WorkerApplicationModule,
     'createWorkerApplication'
   >;
-  readonly logging: Pick<typeof LoggingModule, 'createStructuredLogger'>;
+  readonly logging: { createStructuredLogger: typeof createStructuredLogger };
 }
 
 export interface WorkerBootstrapDependencies {

@@ -31,10 +31,7 @@ export {
   type QueueStateObservation,
   type QueueProducer,
 } from './publication/queue-producer.types.js';
-export {
-  QueueConfigurationError,
-  QueueNotReadyError,
-} from './publication/queue-producer.errors.js';
+export { QueueNotReadyError } from './publication/queue-producer.errors.js';
 export { jobIdForOutboxEvent } from './jobs/job-id.js';
 function createQueues(redis: Redis): QueueMap {
   return {

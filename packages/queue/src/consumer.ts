@@ -25,8 +25,6 @@ export {
   type QueueConsumer,
 } from './consumption/queue-consumer.types.js';
 export {
-  QueueConsumerConfigurationError,
-  QueueConsumerNotReadyError,
   QueueJobTimeoutError,
   QueueConsumerDrainError,
 } from './consumption/queue-consumer.errors.js';

@@ -7,15 +7,10 @@ export {
 export { LocalRateLimiter } from './local-rate-limiter.js';
 export {
   AbuseRateLimitPolicy,
-  RATE_LIMIT_ENDPOINT_CLASSES,
   type RateLimitDecision,
-  type RateLimitDimension,
   type RateLimitDimensionKind,
   type RateLimitEndpointClass,
   type RateLimitFailureMode,
   type RateLimitSubject,
 } from './policy.js';
-export {
-  RedisRateLimitRuntime,
-  type RedisRateLimitRuntimeOptions,
-} from './redis-runtime.js';
+export { RedisRateLimitRuntime } from './redis-runtime.js';
