@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => {
   }
 
   interface RedisClient {
+    set: ReturnType<typeof vi.fn>;
     status: string;
     on: (event: string, listener: () => void) => RedisClient;
     emit: (event: string) => boolean;
@@ -38,6 +39,7 @@ const mocks = vi.hoisted(() => {
         for (const listener of listeners.get(event) ?? []) listener();
         return true;
       }),
+      set: vi.fn(() => Promise.resolve('OK')),
       quit: vi.fn(() => Promise.resolve('OK')),
       disconnect: vi.fn((): unknown => undefined),
     };
