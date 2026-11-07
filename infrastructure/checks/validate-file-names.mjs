@@ -1,6 +1,7 @@
 import {
   isExecutionAreaFile,
   isExecutionAreaEntry,
+  isRuntimeApplicationFile,
 } from './execution-area-rules.mjs';
 import console from 'node:console';
 import { lstat, readdir, readFile } from 'node:fs/promises';
@@ -11,10 +12,10 @@ import { pathToFileURL } from 'node:url';
 import ts from 'typescript';
 
 const root = path.resolve(import.meta.dirname, '../..');
-const codeExtension = /\.(?:ts|tsx|mts|cts|js|jsx|mjs|cjs)$/u;
+const codeExtension = /\.(?:ts|tsx|mts|cts|js|jsx|mjs|cjs|sh|py|c)$/u;
 const words = '[a-z0-9]+(?:-[a-z0-9]+)*';
 const basenamePattern = new RegExp(
-  `^${words}(?:\\.${words})*\\.(?:ts|tsx|mts|cts|js|jsx|mjs|cjs)$`,
+  `^${words}(?:\\.${words})*\\.(?:ts|tsx|mts|cts|js|jsx|mjs|cjs|sh|py|c)$`,
   'u',
 );
 const productionDirectory = new RegExp(`^${words}$`, 'u');
@@ -66,7 +67,15 @@ const vagueExecutionSubjects = new Set([
   'index',
 ]);
 const excluded = new Set(['node_modules', 'dist', 'coverage', '.git']);
-const roots = ['src', 'test', 'e2e', 'e2e-live'];
+const roots = ['src', 'test', 'e2e', 'e2e-live', 'native', 'python'];
+const vagueRuntimeSubjects = new Set([
+  'app',
+  'config',
+  'run',
+  'files',
+  'http',
+  'arguments',
+]);
 
 /** Validate a module's name and the two filename promises requiring syntax. */
 export function validateFileName(file, text) {
@@ -88,7 +97,12 @@ export function validateFileName(file, text) {
       );
   if (isExecutionAreaFile(file)) {
     const subject = stem.split('.')[0];
-    if (vagueExecutionSubjects.has(subject) && !isExecutionAreaEntry(file))
+    if (
+      (vagueExecutionSubjects.has(subject) ||
+        (isRuntimeApplicationFile(file) &&
+          vagueRuntimeSubjects.has(subject))) &&
+      !isExecutionAreaEntry(file)
+    )
       report(
         'FN008',
         'Execution modules and fixtures name their concrete subject.',

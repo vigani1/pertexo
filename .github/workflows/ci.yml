@@ -128,7 +128,7 @@ jobs:
       - name: Deployment checks and test tools
         run:
           node --test infrastructure/single-server/test/*.test.mjs
-          infrastructure/testing/*.test.mjs
+          infrastructure/ecs/test/*.test.mjs infrastructure/testing/*.test.mjs
       - name: Lint
         run: pnpm lint
       - name: Typecheck

@@ -129,14 +129,6 @@ const applicationAreas = {
     'governance',
     'artifacts',
   ],
-  worker: [
-    'runs',
-    'attempts',
-    'triggers',
-    'transport',
-    'previews',
-    'retention',
-  ],
 };
 
 // These completed batch D cuts also cover areas outside the execution cohort.
@@ -157,9 +149,20 @@ export function executionAreaDependencyAllowed(from, to) {
   );
 }
 
+const runtimeApplications = new Set(['worker', 'code-runner', 'ops', 'cli']);
+
+export function isRuntimeApplicationFile(file) {
+  const [kind, workspace, lane] = file.split('/');
+  return (
+    kind === 'apps' &&
+    runtimeApplications.has(workspace) &&
+    ['src', 'test', 'native', 'python'].includes(lane)
+  );
+}
+
 export function isExecutionAreaFile(file) {
   const [kind, workspace, lane, area] = file.split('/');
-  if (kind === 'infrastructure') return true;
+  if (kind === 'infrastructure' || isRuntimeApplicationFile(file)) return true;
   if (!['src', 'test'].includes(lane)) return false;
   if (
     kind === 'packages' &&

@@ -76,7 +76,7 @@ describeFaults('Redis refusing writes while a step finishes', () => {
     expect(stack.sink.calls('oom')).toHaveLength(1);
   });
 
-  it('keeps the same worker process, since readiness sees a healthy Redis', () => {
+  it('keeps the same worker process while Redis refuses queue writes', () => {
     expect(stack.worker.exits).toEqual([]);
   });
 });
