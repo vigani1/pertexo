@@ -1,12 +1,14 @@
 export type IdentityErrorCode =
   | 'identity.email_unverified'
   | 'identity.session_invalid'
+  | 'identity.csrf_malformed'
   | 'identity.csrf_failed'
   | 'identity.session_not_fresh';
 
 const SAFE_MESSAGES: Readonly<Record<IdentityErrorCode, string>> = {
   'identity.email_unverified': 'The signed-in email is not verified.',
   'identity.session_invalid': 'The session is invalid.',
+  'identity.csrf_malformed': 'The CSRF cookie encoding is invalid.',
   'identity.csrf_failed': 'The request could not be verified.',
   'identity.session_not_fresh': 'Sign in again to continue.',
 };
