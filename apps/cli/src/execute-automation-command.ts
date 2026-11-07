@@ -201,7 +201,7 @@ async function waitForRun(
     timeout.abort();
   }, timeoutSeconds * 1_000);
   const waitSignal = AbortSignal.any([signal, timeout.signal]);
-  let status = 'pending';
+  let status: string | undefined;
   try {
     for (
       let pause = FIRST_POLL_MS;
@@ -241,12 +241,16 @@ async function waitForRun(
 }
 
 function waitTimedOut(
-  status: string,
+  status: string | undefined,
   timeoutSeconds: number,
 ): AutomationCommandError {
+  const detail =
+    status === undefined
+      ? `No run status was received within ${String(timeoutSeconds)} seconds.`
+      : `Waiting stopped after ${String(timeoutSeconds)} seconds; the last reported run status was ${status}.`;
   return new AutomationCommandError(
     'cli.wait_timed_out',
-    `The run was still ${status} after ${String(timeoutSeconds)} seconds. It keeps going; wait again or read it with runs get.`,
+    `${detail} Any run still in progress keeps going; wait again or read it with runs get.`,
   );
 }
 

@@ -9,7 +9,14 @@ const workspace = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const runId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 const credential = `ptx_1.${workspace}.${runId}.${'A'.repeat(43)}`;
 
-it.each(['headers', 'body', 'hung', 'quick', 'interrupted'] as const)(
+it.each([
+  'headers',
+  'body',
+  'hung',
+  'running',
+  'quick',
+  'interrupted',
+] as const)(
   'bounds the compiled runs wait command with a %s response',
   async (mode) => {
     let requestedAt = 0;
@@ -24,13 +31,14 @@ it.each(['headers', 'body', 'hung', 'quick', 'interrupted'] as const)(
       timers.push(
         setTimeout(
           () => {
+            const status = mode === 'running' ? 'running' : 'succeeded';
             response.end(
               mode === 'body'
                 ? '{"status":"succeeded"}}'
-                : '{"run":{"status":"succeeded"}}',
+                : JSON.stringify({ run: { status } }),
             );
           },
-          mode === 'quick' ? 10 : 1800,
+          mode === 'quick' || mode === 'running' ? 10 : 1800,
         ),
       );
     });
@@ -92,7 +100,14 @@ it.each(['headers', 'body', 'hung', 'quick', 'interrupted'] as const)(
             : 'cli.wait_timed_out',
         );
         expect(stderr).not.toContain(credential);
-        if (mode !== 'interrupted') expect(stderr).toContain('keeps going');
+        if (mode !== 'interrupted') {
+          expect(stderr).toContain('keeps going');
+          expect(stderr).toContain(
+            mode === 'running'
+              ? 'last reported run status was running'
+              : 'No run status was received',
+          );
+        }
       }
     } finally {
       clearTimeout(watchdog);
