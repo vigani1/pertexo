@@ -42,6 +42,7 @@ export function WorkflowDiscussion(props: DiscussionProps) {
         hasNextPage={query.hasNextPage}
         loading={query.isFetchingNextPage}
         failed={query.isFetchNextPageError}
+        error={query.error}
         onLoadMore={() => void query.fetchNextPage()}
       />
       <QueryView query={query} resource="This discussion" />

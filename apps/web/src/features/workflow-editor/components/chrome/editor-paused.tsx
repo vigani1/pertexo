@@ -1,3 +1,4 @@
+import { SignInAction } from '@/components/patterns/states/sign-in-action';
 import { Link } from '@tanstack/react-router';
 import { ShieldAlertIcon } from 'lucide-react';
 import { ProgressButton } from '@/components/ui/progress-button';
@@ -43,6 +44,7 @@ export function EditorPaused({
           are still here.
         </SystemStateDescription>
         <SystemStateActions>
+          <SignInAction />
           <ProgressButton
             type="button"
             pending={verifying}

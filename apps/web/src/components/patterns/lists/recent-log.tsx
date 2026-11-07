@@ -138,6 +138,7 @@ export function RecentLog<Item>({
         hasNextPage={query.hasNextPage}
         loading={query.isFetchingNextPage}
         failed={query.isFetchNextPageError}
+        error={query.error}
         onLoadMore={() => void query.fetchNextPage()}
       />
     </section>

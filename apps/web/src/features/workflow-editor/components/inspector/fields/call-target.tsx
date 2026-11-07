@@ -117,6 +117,7 @@ export function CallTargetField({
             hasNextPage={versions.hasNextPage}
             loading={versions.isFetchingNextPage}
             failed={versions.isFetchNextPageError}
+            error={versions.error}
             onLoadMore={() => void versions.fetchNextPage()}
           />
         </>
@@ -232,6 +233,7 @@ function ChildWorkflowField({
         hasNextPage={workflows.hasNextPage}
         loading={workflows.isFetchingNextPage}
         failed={workflows.isFetchNextPageError}
+        error={workflows.error}
         onLoadMore={() => void workflows.fetchNextPage()}
       />
       <QueryView query={workflows} resource="Workflows" loading={null} />

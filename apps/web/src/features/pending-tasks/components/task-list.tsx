@@ -97,6 +97,7 @@ export function TaskList({
                 hasNextPage={query.hasNextPage}
                 loading={query.isFetchingNextPage}
                 failed={query.isFetchNextPageError}
+                error={query.error}
                 subject="requests"
                 onLoadMore={() => void query.fetchNextPage()}
               />

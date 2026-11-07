@@ -169,6 +169,7 @@ export function DirectoryPeople({
         hasNextPage={people.hasNextPage}
         loading={people.isFetchingNextPage}
         failed={people.isFetchNextPageError}
+        error={people.error}
         onLoadMore={() => void people.fetchNextPage()}
       />
       {review === undefined ? null : (

@@ -1,3 +1,4 @@
+import { RETRY_WINDOW_ENDED } from '@/lib/api/commands/command-retry';
 import { DialogFooter } from '@/components/ui/dialog';
 import { useState } from 'react';
 import type { FailureNotificationDestinationResponse } from '@pertexo/contracts';
@@ -31,10 +32,18 @@ export function DestinationTest({
   const test = useDestinationTest(scope, destination);
   const uncertain = test.phase === 'unsure';
   const pending = test.phase === 'running';
-  const idleSendLabel = uncertain ? 'Check result' : 'Send test';
+  let idleSendLabel = uncertain ? 'Check result' : 'Send test';
+  let accessibleLabel = uncertain
+    ? `Check test result for ${label}`
+    : `Send test to ${label}`;
+  if (test.expired) {
+    idleSendLabel = 'Start a new attempt';
+    accessibleLabel = `Start a new attempt for ${label}`;
+  }
   const send = () => {
     setConfirming(false);
-    test.run();
+    if (test.expired) test.startNewAttempt();
+    else test.run();
   };
   return (
     <div className="col-span-full w-full max-w-sm min-w-0 pt-2">
@@ -47,13 +56,9 @@ export function DestinationTest({
           variant="outline"
           size="sm"
           disabled={disabled || pending}
-          aria-label={
-            uncertain
-              ? `Check test result for ${label}`
-              : `Send test to ${label}`
-          }
+          aria-label={accessibleLabel}
           onClick={() => {
-            if (uncertain) send();
+            if (uncertain && !test.expired) send();
             else setConfirming(true);
           }}
         >
@@ -70,11 +75,18 @@ export function DestinationTest({
         aria-atomic="true"
         className="mt-2 text-xs text-muted-foreground"
       >
-        <DestinationTestResult
-          phase={test.phase}
-          label={label}
-          failure={test.failure}
-        />
+        {test.expired ? (
+          <p>
+            {RETRY_WINDOW_ENDED} Check the destination before sending another
+            test.
+          </p>
+        ) : (
+          <DestinationTestResult
+            phase={test.phase}
+            label={label}
+            failure={test.failure}
+          />
+        )}
       </div>
       <Dialog open={confirming} onOpenChange={setConfirming}>
         <DialogContent>

@@ -1,12 +1,6 @@
 import { isApiError } from '@/lib/api/error';
 
-export function isUnauthenticated(error: unknown): boolean {
-  return (
-    isApiError(error) &&
-    error.kind === 'problem' &&
-    error.problem?.code === 'auth.unauthenticated'
-  );
-}
+export { isSessionExpired as isUnauthenticated } from '@/lib/api/error';
 
 export function logoutErrorMessage(error: unknown): string {
   if (isApiError(error) && error.kind === 'network')

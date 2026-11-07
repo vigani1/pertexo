@@ -1,3 +1,4 @@
+import { ReadRecovery } from '../states/read-recovery';
 import { Notice } from '@/components/ui/notice';
 import { ProgressButton } from '@/components/ui/progress-button';
 
@@ -10,6 +11,7 @@ export function LoadMore({
   hasNextPage,
   loading,
   failed,
+  error,
   disabled = false,
   onLoadMore,
   label = 'Load more',
@@ -19,6 +21,7 @@ export function LoadMore({
   hasNextPage: boolean;
   loading: boolean;
   failed: boolean;
+  error?: unknown;
   disabled?: boolean;
   onLoadMore: () => void;
   /** Tells two lists on one page apart, e.g. "Load more invitations". */
@@ -27,22 +30,35 @@ export function LoadMore({
   if (!hasNextPage && !failed) return null;
   return (
     <div className="flex flex-col items-center gap-2 pt-2">
-      <ProgressButton
-        type="button"
-        variant="outline"
-        className="min-w-32"
-        pending={loading}
-        disabled={disabled}
-        pendingLabel="Loading…"
-        onClick={onLoadMore}
-      >
-        {failed ? 'Retry next page' : label}
-      </ProgressButton>
       {failed ? (
         <Notice tone="destructive">
-          More {subject} couldn’t be loaded. The ones above are unchanged.
+          <ReadRecovery
+            message={
+              error === undefined
+                ? `More ${subject} couldn’t be loaded. The ones above are unchanged.`
+                : undefined
+            }
+            error={error}
+            resource={`More ${subject}`}
+            retrying={loading}
+            disabled={disabled}
+            retry={onLoadMore}
+            label="Retry next page"
+          />
         </Notice>
-      ) : null}
+      ) : (
+        <ProgressButton
+          type="button"
+          variant="outline"
+          className="min-w-32"
+          pending={loading}
+          disabled={disabled}
+          pendingLabel="Loading…"
+          onClick={onLoadMore}
+        >
+          {label}
+        </ProgressButton>
+      )}
     </div>
   );
 }

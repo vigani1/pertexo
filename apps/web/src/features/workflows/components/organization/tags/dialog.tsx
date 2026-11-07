@@ -141,6 +141,7 @@ function TagsDialogContent({ apiClient, userId, workspace, onClose }: Props) {
             hasNextPage={tags.hasNextPage}
             loading={tags.isFetchingNextPage || locked}
             failed={tags.isFetchNextPageError}
+            error={tags.error}
             label="Show more tags"
             onLoadMore={() => {
               if (!locked) void tags.fetchNextPage();

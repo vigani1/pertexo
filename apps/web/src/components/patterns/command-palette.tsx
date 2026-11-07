@@ -36,6 +36,7 @@ export function CommandPalette({
   groups,
   resolveQuery,
   onQueryChange,
+  search,
 }: Readonly<{
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -43,6 +44,11 @@ export function CommandPalette({
   resolveQuery?: (query: string) => CommandGroup | undefined;
   /** Lets a caller search the server for what's being typed. */
   onQueryChange?: (query: string) => void;
+  search?:
+    | undefined
+    | Readonly<{ status: 'loading' }>
+    | Readonly<{ status: 'failed'; feedback: ReactNode }>
+    | Readonly<{ status: 'ready' }>;
 }>) {
   const [query, setQueryState] = useState('');
   function setQuery(next: string) {
@@ -98,9 +104,19 @@ export function CommandPalette({
             <Kbd className="pointer-coarse:hidden">Esc</Kbd>
           </label>
           {/* Always mounted; it only has children while nothing matches. */}
-          <Autocomplete.Empty className="px-4 py-8 text-sm text-muted-foreground empty:hidden">
-            Nothing matches “{query}”.
-          </Autocomplete.Empty>
+          {search?.status === 'loading' ? (
+            <p role="status" className="px-4 py-3 text-sm">
+              Searching workflows…
+            </p>
+          ) : null}
+          {search?.status === 'failed' ? (
+            <div className="px-4 py-3">{search.feedback}</div>
+          ) : null}
+          {search === undefined || search.status === 'ready' ? (
+            <Autocomplete.Empty className="px-4 py-8 text-sm text-muted-foreground empty:hidden">
+              Nothing matches “{query}”.
+            </Autocomplete.Empty>
+          ) : null}
           {/* The list fades at its bottom edge, so a cut row reads as more. */}
           <Autocomplete.List className="max-h-[min(26rem,60svh)] overflow-y-auto overscroll-contain p-2 [mask-image:linear-gradient(to_bottom,black_calc(100%-1.5rem),transparent)] data-empty:p-0">
             {(group: CommandGroup) => (

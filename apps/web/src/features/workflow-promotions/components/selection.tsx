@@ -138,6 +138,7 @@ export function PromotionSelection({
         hasNextPage={candidates.hasNextPage}
         loading={candidates.isFetchingNextPage}
         failed={candidates.isFetchNextPageError}
+        error={candidates.error}
         onLoadMore={() => void candidates.fetchNextPage()}
       />
       {selections.length > 0 ? (

@@ -1,3 +1,6 @@
+import type { ReadQuery } from '@/components/patterns/states/query-view';
+import { ReadRecovery } from '@/components/patterns/states/read-recovery';
+import { isAccessLost } from '@/lib/api/error-copy';
 import { useState } from 'react';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
@@ -64,10 +67,11 @@ export function WorkspaceCommandPalette({
 
   const places = workspacePlaces({ workspace, navigate });
 
+  const searchQuery = typed === '' ? workflows : found;
   const shown =
-    typed === ''
-      ? (workflows.data?.pages ?? []).flatMap((page) => page.items)
-      : (found.data?.pages ?? []).flatMap((page) =>
+    searchQuery.isError && isAccessLost(searchQuery.error)
+      ? []
+      : (searchQuery.data?.pages ?? []).flatMap((page) =>
           page.items.map((item) => ('workflow' in item ? item.workflow : item)),
         );
   const workflowItems: CommandItem[] = shown.map((workflow) => ({
@@ -82,46 +86,29 @@ export function WorkspaceCommandPalette({
       }),
   }));
 
-  const accountItems: CommandItem[] = [
-    {
-      id: 'switch-theme',
-      label: 'Switch theme',
-      keywords: 'appearance system light dark',
-      icon: <SunMoonIcon />,
+  if (typed !== '' && found.hasNextPage)
+    workflowItems.push({
+      id: 'all-search-results',
+      label: `See all results for “${typed}”`,
+      keywords: typed,
       onSelect: () => {
-        setThemeOpen(true);
-      },
-    },
-    ...workspaces
-      .filter((candidate) => candidate.id !== workspaceId)
-      .map((candidate) => ({
-        id: `workspace-${candidate.id}`,
-        label: `Switch to ${candidate.name}`,
-        icon: <LayoutGridIcon />,
-        onSelect: () =>
-          void navigate({
-            to: '/w/$workspaceId',
-            params: { workspaceId: candidate.id },
-          }),
-      })),
-    {
-      id: 'account',
-      label: 'Account & security',
-      keywords: 'password sessions sign-in methods email',
-      icon: <ShieldCheckIcon />,
-      onSelect: () =>
         void navigate({
-          to: '/w/$workspaceId/account',
+          to: '/w/$workspaceId/workflows',
           params: { workspaceId },
-        }),
+          search: { query: typed, view: 'all' },
+        });
+      },
+    });
+  const searchState = paletteSearchState(searchQuery);
+  const accountItems = workspaceAccountItems({
+    workspaces,
+    workspaceId,
+    navigate,
+    onLogout,
+    onTheme: () => {
+      setThemeOpen(true);
     },
-    {
-      id: 'sign-out',
-      label: 'Sign out',
-      icon: <LogOutIcon />,
-      onSelect: onLogout,
-    },
-  ];
+  });
 
   const groups: CommandGroup[] = [
     { label: 'Go to', items: places },
@@ -137,6 +124,7 @@ export function WorkspaceCommandPalette({
         open={open}
         onOpenChange={onOpenChange}
         groups={groups}
+        search={can('workflow:read') ? searchState : undefined}
         onQueryChange={setTyped}
         resolveQuery={(query) => {
           if (!can('run:read')) return undefined;
@@ -244,4 +232,81 @@ function workspacePlaces({
     },
   ];
   return items.filter((item) => canOpenPlace(workspace, item));
+}
+
+function paletteSearchState(query: ReadQuery<unknown>) {
+  if (query.isPending) return { status: 'loading' as const };
+  if (!query.isError) return { status: 'ready' as const };
+  return {
+    status: 'failed' as const,
+    feedback: (
+      <>
+        {query.data === undefined ? null : (
+          <p>Showing earlier search results.</p>
+        )}
+        <ReadRecovery
+          error={query.error}
+          resource="Workflow search"
+          retrying={query.isFetching}
+          retry={() => {
+            void query.refetch();
+          }}
+        />
+      </>
+    ),
+  };
+}
+function workspaceAccountItems({
+  workspaces,
+  workspaceId,
+  navigate,
+  onLogout,
+  onTheme,
+}: Readonly<{
+  workspaces: readonly AccessibleWorkspace[];
+  workspaceId: string;
+  navigate: ReturnType<typeof useNavigate>;
+  onLogout: () => void;
+  onTheme: () => void;
+}>): CommandItem[] {
+  return [
+    {
+      id: 'switch-theme',
+      label: 'Switch theme',
+      keywords: 'appearance system light dark',
+      icon: <SunMoonIcon />,
+      onSelect: () => {
+        onTheme();
+      },
+    },
+    ...workspaces
+      .filter((candidate) => candidate.id !== workspaceId)
+      .map((candidate) => ({
+        id: `workspace-${candidate.id}`,
+        label: `Switch to ${candidate.name}`,
+        icon: <LayoutGridIcon />,
+        onSelect: () =>
+          void navigate({
+            to: '/w/$workspaceId',
+            params: { workspaceId: candidate.id },
+          }),
+      })),
+    {
+      id: 'account',
+      label: 'Account & security',
+      keywords: 'password sessions sign-in methods email',
+      icon: <ShieldCheckIcon />,
+      onSelect: () =>
+        void navigate({
+          to: '/w/$workspaceId/account',
+          params: { workspaceId },
+        }),
+    },
+    {
+      id: 'sign-out',
+      label: 'Sign out',
+      icon: <LogOutIcon />,
+      onSelect: onLogout,
+    },
+  ];
 }

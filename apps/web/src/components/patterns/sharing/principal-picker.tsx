@@ -149,6 +149,7 @@ export function SharingPrincipalPicker({
         hasNextPage={principals.hasNextPage}
         loading={principals.isFetchingNextPage}
         failed={principals.isFetchNextPageError}
+        error={principals.error}
         disabled={disabled}
         onLoadMore={() => {
           if (!disabled) void principals.fetchNextPage();

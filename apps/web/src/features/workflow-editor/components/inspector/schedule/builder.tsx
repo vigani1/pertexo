@@ -6,7 +6,7 @@ import {
   describeDaylightSaving,
   describeRecurrence,
 } from '@/features/catalog/presentation.public';
-import { canonicalizeJson } from '@/lib/canonical-json';
+import { canonicalJson } from '@pertexo/workflow-model';
 import type { NodeConfig } from '../../../model/inspector/draft';
 import {
   fieldControlId,
@@ -71,7 +71,7 @@ export function ScheduleBuilder({
     value: config,
     format: (value) => draftFromConfig(value, schema, fallbackTimezone),
     parse: (draft) => configFromDraft(draft, schema),
-    equals: (left, right) => canonicalizeJson(left) === canonicalizeJson(right),
+    equals: (left, right) => canonicalJson(left) === canonicalJson(right),
     commit: (next) => {
       form.commit({ config: next }, `${form.nodeId}:${SCHEDULE_FIELD}`);
     },

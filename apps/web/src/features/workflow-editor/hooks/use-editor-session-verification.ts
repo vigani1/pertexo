@@ -11,7 +11,10 @@ import {
   isSessionIdentityChangedError,
   isSessionIdentityUnverifiedError,
 } from '@/features/auth/session/identity.public';
-import { currentUserQueryOptions } from '@/features/auth/session/auth-session-queries.public';
+import {
+  currentUserQueryOptions,
+  isUnauthenticated,
+} from '@/features/auth/session/auth-session-queries.public';
 import { subscribeSessionChanges } from '@/features/auth/session/sync.public';
 import { isApiError } from '@/lib/api/error';
 import { isUncertainOutcome } from '@/lib/api/error-copy';
@@ -73,10 +76,12 @@ export function useEditorSessionVerification({
   );
 
   const observedIdentityChanged =
-    (currentUser.data !== undefined && currentUser.data.id !== userId) ||
-    (isApiError(currentUser.error) && currentUser.error.status === 401);
-  const pauseReason =
-    sessionPause ?? (observedIdentityChanged ? 'changed' : undefined);
+    currentUser.data !== undefined && currentUser.data.id !== userId;
+  let observedPause: PauseReason | undefined = observedIdentityChanged
+    ? 'changed'
+    : undefined;
+  if (isUnauthenticated(currentUser.error)) observedPause = 'unverified';
+  const pauseReason = sessionPause ?? observedPause;
 
   useLayoutEffect(() => {
     const current = lifecycle.current;

@@ -56,3 +56,12 @@ export function protocolError(
 ) {
   return new ApiError({ kind: 'protocol', message, ...options });
 }
+
+/** A protected API session ended; provider credential refusals do not end it. */
+export function isSessionExpired(error: unknown): boolean {
+  return (
+    isApiError(error) &&
+    error.kind === 'problem' &&
+    error.problem?.code === 'auth.unauthenticated'
+  );
+}

@@ -2,7 +2,7 @@ import type { ScheduleStepConfig } from '@pertexo/contracts';
 import { use, useEffect, useEffectEvent, useState } from 'react';
 import { isApiError } from '@/lib/api/error';
 import { describeReadError } from '@/lib/api/error-copy';
-import { canonicalizeJson } from '@/lib/canonical-json';
+import { canonicalJson } from '@pertexo/workflow-model';
 import { previewScheduleRuns } from '../data/schedule-preview.api';
 import { SchedulePreviewScope } from '../model/schedule-preview-scope';
 
@@ -35,9 +35,7 @@ export function useSchedulePreview(
 ): SchedulePreview {
   const scope = use(SchedulePreviewScope);
   const key =
-    config === undefined || scope === null
-      ? undefined
-      : canonicalizeJson(config);
+    config === undefined || scope === null ? undefined : canonicalJson(config);
   const [attempt, setAttempt] = useState(0);
   const [settled, setSettled] = useState<Settled>();
 
