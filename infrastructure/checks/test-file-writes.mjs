@@ -1,3 +1,5 @@
+import path from 'node:path';
+
 import ts from 'typescript';
 
 const writeOperations = new Set([
@@ -37,10 +39,33 @@ export function validateTestFileWrites(file, source) {
     ts.forEachChild(node, collect);
   };
   collect(source);
-  const fixed = (node, seen = new Set()) => {
+  const literal = (expression, seen = new Set()) => {
+    const node = unwrap(expression);
+    if (!node) return undefined;
+    if (ts.isStringLiteralLike(node)) return node.text;
+    if (ts.isIdentifier(node) && !seen.has(node.text)) {
+      const values = bindings.get(node.text);
+      if (values?.length === 1)
+        return literal(values[0], new Set([...seen, node.text]));
+    }
+    if (ts.isCallExpression(node)) {
+      const operation = pathOperation(node, source, imports);
+      if (operation === undefined) return undefined;
+      const parts = node.arguments.map((argument) => literal(argument, seen));
+      if (parts.some((part) => part === undefined)) return undefined;
+      // A relative resolve depends on the process cwd, which isn't a literal.
+      if (operation === 'resolve' && !parts.some(path.posix.isAbsolute))
+        return undefined;
+      return path.posix[operation](...parts);
+    }
+    return undefined;
+  };
+  const fixed = (expression, seen = new Set()) => {
+    const node = unwrap(expression);
     if (!node) return false;
-    if (ts.isStringLiteralLike(node))
-      return /^\/(?:private\/)?tmp(?:\/|$)/u.test(node.text);
+    const destination = literal(node, seen);
+    if (destination !== undefined)
+      return /^\/(?:private\/)?tmp(?:\/|$)/u.test(destination);
     if (ts.isTemplateExpression(node))
       return (
         fixed(node.head, seen) ||
@@ -62,9 +87,7 @@ export function validateTestFileWrites(file, source) {
       return fixed(node.left, seen) || fixed(node.right, seen);
     if (
       ts.isCallExpression(node) &&
-      ['join', 'resolve'].includes(
-        node.expression.getText(source).split('.').at(-1),
-      )
+      pathOperation(node, source, imports) !== undefined
     )
       return fixed(node.arguments[0], seen);
     return false;
@@ -106,4 +129,23 @@ export function validateTestFileWrites(file, source) {
   };
   inspect(source);
   return errors;
+}
+
+function unwrap(node) {
+  while (
+    node &&
+    (ts.isParenthesizedExpression(node) ||
+      ts.isAsExpression(node) ||
+      ts.isSatisfiesExpression(node) ||
+      ts.isNonNullExpression(node) ||
+      ts.isTypeAssertionExpression(node))
+  )
+    node = node.expression;
+  return node;
+}
+
+function pathOperation(node, source, imports) {
+  const name = unwrap(node.expression).getText(source).split('.').at(-1);
+  const operation = imports.get(name) ?? name;
+  return ['join', 'resolve'].includes(operation) ? operation : undefined;
 }
