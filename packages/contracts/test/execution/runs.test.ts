@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 
 import {
   workflowRunCancelRequestSchema,
-  workflowRecoveryRequestSchema,
   workflowNodeRunSummarySchema,
   workflowRunListQuerySchema,
   workflowRunReplayRequestSchema,
@@ -12,6 +11,7 @@ import {
   workflowRunStatisticsResponseSchema,
   WORKFLOW_RUN_STATISTICS_WORKFLOW_LIMIT,
 } from '../../src/schemas/execution/runs.js';
+import { workflowRecoveryRequestSchema } from '../../src/schemas/execution/recovery.js';
 import { workflowRunsOpenApiDocument } from '../../src/server.js';
 
 describe('workflow-run public contracts', () => {

@@ -5,9 +5,11 @@ import {
   workflowNodeRunParamsSchema,
   workflowRunInputResponseSchema,
   workflowRunParamsSchema,
+} from '../../schemas/execution/runs.js';
+import {
   workflowStepHealthResponseSchema,
   workflowStepRunsResponseSchema,
-} from '../../schemas/execution/runs.js';
+} from '../../schemas/execution/step-history.js';
 import {
   workflowStepHealthParamsSchema,
   workflowStepRunsParamsSchema,

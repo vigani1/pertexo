@@ -7,8 +7,6 @@ import { z } from 'zod';
 import { problemResponse } from '../openapi-primitives.js';
 import {
   lastRunEventIdHeaderSchema,
-  workflowRecoveryPreviewSchema,
-  workflowRecoveryRequestSchema,
   workflowRunCancelRequestSchema,
   workflowRunCancelResponseSchema,
   workflowRunListParamsSchema,
@@ -23,6 +21,10 @@ import {
   workflowRunStatisticsQuerySchema,
   workflowRunStatisticsResponseSchema,
 } from '../../schemas/execution/runs.js';
+import {
+  workflowRecoveryPreviewSchema,
+  workflowRecoveryRequestSchema,
+} from '../../schemas/execution/recovery.js';
 import { defineRoute, named } from '../define.js';
 import {
   capability,
