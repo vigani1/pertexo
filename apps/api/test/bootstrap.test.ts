@@ -28,7 +28,7 @@ import {
   EMPTY_DEFINITION_CATALOG,
   workflowCompatibilityReport,
 } from '@pertexo/workflow-model/server';
-import { createDraftRepresentationTag } from '../src/workflow-authoring/http/etag.js';
+import { workflowDraftRepresentationTag } from '@pertexo/workflow-model/server';
 import { createBetterAuthFixtureApplication } from './support/better-auth/fixture-application.js';
 import { FixtureResourceOwner } from './browser/harness/resource-owner.js';
 import {
@@ -797,7 +797,7 @@ describe('API bootstrap ownership and health', () => {
       });
       expect(checked.statusCode).toBe(200);
       expect(checked.headers.etag).toBe(
-        createDraftRepresentationTag({
+        workflowDraftRepresentationTag({
           workflowId: draft.workflowId,
           revision: draft.revision,
           graph,

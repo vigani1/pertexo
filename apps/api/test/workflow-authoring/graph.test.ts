@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import {
   parseWorkflowGraphDraft,
   validateWorkflowGraph,
-} from '../../src/workflow-authoring/graph.js';
+} from '@pertexo/workflow-model';
 
 describe('workflow authoring validation seam', () => {
   it('accepts the canonical empty draft and rejects malformed graph input', () => {

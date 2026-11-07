@@ -16,7 +16,7 @@ import {
 } from '../../src/platform/workflow/compatibility.js';
 import { serializeWorkflowValidation } from '../../src/workflow-authoring/http/serializers.js';
 
-import { createDraftRepresentationTag } from '../../src/workflow-authoring/http/etag.js';
+import { workflowDraftRepresentationTag } from '@pertexo/workflow-model/server';
 import { withRequestOperationSignal } from '../../src/platform/http/request-operation-signal.js';
 
 const valid = {
@@ -129,7 +129,7 @@ describe('authoring API admission adapter', () => {
       compatibility: draft.compatibility,
     });
     expect(result.representationTag).toBe(
-      createDraftRepresentationTag({
+      workflowDraftRepresentationTag({
         workflowId: draft.workflowId,
         revision: draft.revision,
         graph,

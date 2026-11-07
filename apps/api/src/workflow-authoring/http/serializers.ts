@@ -18,14 +18,12 @@ import {
   type WorkflowValidateResponse,
   type WorkflowVersionResponse,
   type WorkflowVersionsResponse,
-} from '../workflow-transport.js';
-import { parseWorkflowGraphDraft } from '../graph.js';
-import type { validateWorkflowGraph } from '../graph.js';
+} from '@pertexo/contracts';
+import { parseWorkflowGraphDraft } from '@pertexo/workflow-model';
+import type { validateWorkflowGraph } from '@pertexo/workflow-model';
 import { AuthoringValidationUnavailableError } from '@pertexo/workflow-model/server';
-import {
-  createDraftRepresentationTag,
-  type DraftRepresentation,
-} from './etag.js';
+import { workflowDraftRepresentationTag } from '@pertexo/workflow-model/server';
+type DraftRepresentation = Parameters<typeof workflowDraftRepresentationTag>[0];
 
 export type WorkflowDraftResult = Readonly<{
   body: ReturnType<typeof workflowDraftResponseSchema.parse>;
@@ -91,7 +89,7 @@ export function serializeWorkflowDraft(
       compatibility: draft.compatibility,
       updatedAt: draft.updatedAt.toISOString(),
     }),
-    representationTag: createDraftRepresentationTag(representation),
+    representationTag: workflowDraftRepresentationTag(representation),
   });
 }
 
@@ -114,7 +112,7 @@ export function serializeWorkflowValidation(
     throw new AuthoringValidationUnavailableError('report_limit');
   return Object.freeze({
     body: parsed.data,
-    representationTag: createDraftRepresentationTag({
+    representationTag: workflowDraftRepresentationTag({
       workflowId: draft.workflowId,
       revision: draft.revision,
       graph: draft.graphJson,

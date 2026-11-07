@@ -29,7 +29,7 @@ import {
   SaveWorkflowDraftUseCase,
   ValidateWorkflowDraftUseCase,
 } from '../workflow-authoring.service.js';
-import { requestContext } from './context.js';
+import { projectAuthenticatedWorkspaceContext } from '../../workspaces/request/authenticated-context.js';
 import { parseStrongIfMatch } from './preconditions.js';
 
 @UseInterceptors(domainErrors(authoringFailure))
@@ -72,7 +72,7 @@ export class WorkflowAuthoringController {
         }),
       );
     }
-    const context = requestContext(request, workspaceId);
+    const context = projectAuthenticatedWorkspaceContext(request, workspaceId);
     return this.listWorkflows.execute({
       ...context,
       routeWorkspaceId: workspaceId,
@@ -92,7 +92,7 @@ export class WorkflowAuthoringController {
     @Res({ passthrough: true }) response: WorkflowResponse,
   ) {
     const { workspaceId } = params;
-    const context = requestContext(request, workspaceId);
+    const context = projectAuthenticatedWorkspaceContext(request, workspaceId);
     const result = await this.createWorkflow.execute({
       ...context,
       routeWorkspaceId: workspaceId,
@@ -128,7 +128,7 @@ export class WorkflowAuthoringController {
           }),
       );
     return this.getWorkflow.execute({
-      ...requestContext(request, route.workspaceId),
+      ...projectAuthenticatedWorkspaceContext(request, route.workspaceId),
       routeWorkspaceId: route.workspaceId,
       workflowId: route.workflowId,
       ...(projection.include === undefined
@@ -144,7 +144,10 @@ export class WorkflowAuthoringController {
     @Res({ passthrough: true }) response: ConditionalWorkflowResponse,
   ) {
     const route = params;
-    const context = requestContext(request, route.workspaceId);
+    const context = projectAuthenticatedWorkspaceContext(
+      request,
+      route.workspaceId,
+    );
     const result = await this.getDraft.execute({
       ...context,
       routeWorkspaceId: route.workspaceId,
@@ -169,7 +172,10 @@ export class WorkflowAuthoringController {
   ) {
     const route = params;
     const input = body;
-    const context = requestContext(request, route.workspaceId);
+    const context = projectAuthenticatedWorkspaceContext(
+      request,
+      route.workspaceId,
+    );
     const result = await this.saveDraft.execute({
       ...context,
       routeWorkspaceId: route.workspaceId,
@@ -190,7 +196,10 @@ export class WorkflowAuthoringController {
     @Res({ passthrough: true }) response: WorkflowResponse,
   ) {
     const route = params;
-    const context = requestContext(request, route.workspaceId);
+    const context = projectAuthenticatedWorkspaceContext(
+      request,
+      route.workspaceId,
+    );
     const result = await withRequestOperationSignal(request, (signal) =>
       this.validateDraft.execute({
         ...context,
@@ -209,7 +218,10 @@ export class WorkflowAuthoringController {
     @In() { params, idempotencyKey }: RouteInput<typeof routes.publish>,
   ) {
     const route = params;
-    const context = requestContext(request, route.workspaceId);
+    const context = projectAuthenticatedWorkspaceContext(
+      request,
+      route.workspaceId,
+    );
     return withRequestOperationSignal(request, (signal) =>
       this.publishWorkflow.execute({
         ...context,

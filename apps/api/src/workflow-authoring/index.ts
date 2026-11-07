@@ -6,7 +6,6 @@ export * from './commands/lifecycle.js';
 export * from './commands/rename.js';
 export * from './commands/restore-version.js';
 
-export * from './http/etag.js';
 export * from './workflow-authoring.module.js';
 export * from './ports.js';
 export * from './http/preconditions.js';

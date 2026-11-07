@@ -10,7 +10,7 @@ import {
   ValidateWorkflowDraftUseCase,
   InvalidWorkflowCursorError,
 } from '../../src/workflow-authoring/workflow-authoring.service.js';
-import { createDraftRepresentationTag } from '../../src/workflow-authoring/http/etag.js';
+import { workflowDraftRepresentationTag } from '@pertexo/workflow-model/server';
 import {
   authorizeWorkspace,
   createActorContext,
@@ -169,7 +169,7 @@ describe('workflow authoring application seams', () => {
 
   it('restores a version through one atomic command preserving the original tag', async () => {
     const store = persistence();
-    const representationTag = createDraftRepresentationTag({
+    const representationTag = workflowDraftRepresentationTag({
       workflowId,
       revision: 1,
       graph,
@@ -212,7 +212,7 @@ describe('workflow authoring application seams', () => {
       access,
       disclosure: 'not_found',
     });
-    const representationTag = createDraftRepresentationTag({
+    const representationTag = workflowDraftRepresentationTag({
       workflowId,
       revision: 1,
       graph,
@@ -472,7 +472,7 @@ describe('workflow authoring application seams', () => {
   it('forwards optional bounds and request trace context through public use cases', async () => {
     const store = persistence();
     const access = authorization();
-    const representationTag = createDraftRepresentationTag({
+    const representationTag = workflowDraftRepresentationTag({
       workflowId,
       revision: 1,
       graph,
@@ -556,7 +556,7 @@ describe('workflow authoring application seams', () => {
       routeWorkspaceId: workspaceId,
       workflowId,
     });
-    const expected = createDraftRepresentationTag({
+    const expected = workflowDraftRepresentationTag({
       workflowId,
       revision: 1,
       graph,
@@ -792,7 +792,7 @@ describe('workflow authoring application seams', () => {
   });
 
   it('reports a CAS conflict revision and ETag from one persistence snapshot', async () => {
-    const currentEtag = createDraftRepresentationTag({
+    const currentEtag = workflowDraftRepresentationTag({
       workflowId,
       revision: 2,
       graph,
@@ -808,7 +808,7 @@ describe('workflow authoring application seams', () => {
         actor,
         routeWorkspaceId: workspaceId,
         workflowId,
-        representationTag: createDraftRepresentationTag({
+        representationTag: workflowDraftRepresentationTag({
           workflowId,
           revision: 1,
           graph,
@@ -858,7 +858,7 @@ describe('workflow authoring application seams', () => {
       }),
     ).resolves.toMatchObject({ body: { workflowId } });
 
-    const representationTag = createDraftRepresentationTag({
+    const representationTag = workflowDraftRepresentationTag({
       workflowId,
       revision: 1,
       graph,

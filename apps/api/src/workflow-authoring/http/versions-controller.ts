@@ -3,7 +3,7 @@ import {
   type RouteInput,
 } from '@pertexo/contracts/server';
 import { In, Route } from '../../workspaces/http/route.js';
-import { requestContext } from './context.js';
+import { projectAuthenticatedWorkspaceContext } from '../../workspaces/request/authenticated-context.js';
 
 import { Controller, Req, Res, UseInterceptors } from '@nestjs/common';
 
@@ -34,7 +34,10 @@ export class WorkflowVersionsController {
     @Res({ passthrough: true }) response: WorkflowResponse,
   ) {
     const route = params;
-    const context = requestContext(request, route.workspaceId);
+    const context = projectAuthenticatedWorkspaceContext(
+      request,
+      route.workspaceId,
+    );
     const result = await this.restoreWorkflowVersion.execute({
       ...context,
       routeWorkspaceId: route.workspaceId,
@@ -57,7 +60,10 @@ export class WorkflowVersionsController {
   ) {
     const route = params;
     const input = query;
-    const context = requestContext(request, route.workspaceId);
+    const context = projectAuthenticatedWorkspaceContext(
+      request,
+      route.workspaceId,
+    );
     return this.listVersions.execute({
       ...context,
       routeWorkspaceId: route.workspaceId,
