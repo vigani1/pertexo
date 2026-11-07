@@ -280,7 +280,8 @@ try {
  RESET ROLE;
  INSERT INTO public.recovery_fixture VALUES ${artifacts.map((a) => `('${a.workspaceId}','${a.artifactId}','${a.sha256}',${a.artifactId === bundle.pages[0].artifactId ? "'" + JSON.stringify(bundle) + "'::jsonb" : 'NULL'})`).join(',')};`,
   );
-  // Stream into the file: a dump read into memory grows past execFileSync's buffer.
+  // Dump stdout streams directly to disk; the helper also file-backs piped
+  // stderr so verbose diagnostics cannot overflow a synchronous child buffer.
   const dumpFile = openSync(join(directory, 'database.dump'), 'w');
   try {
     docker(

@@ -18,7 +18,19 @@ function fixture(run) {
   const directory = mkdtempSync(join(tmpdir(), 'pertexo-recovery-output-'));
   writeFileSync(
     join(directory, 'docker'),
-    `#!${process.execPath}\nconst fs = require('node:fs');\nconst size = process.argv[2] === 'small' ? 12 : 2 * 1024 * 1024;\nfs.writeFileSync(1, Buffer.alloc(size, 'o'));\nif (process.argv[2] === 'progress') fs.writeFileSync(2, Buffer.alloc(size, 'e'));\n`,
+    `#!${process.execPath}
+const fs = require('node:fs');
+const mode = process.argv[2];
+const size = mode === 'small' || mode === 'stderr-only' ? 12 : 2 * 1024 * 1024;
+fs.writeFileSync(1, Buffer.alloc(size, 'o'));
+if (['progress', 'dump', 'dump-failure', 'stderr-only'].includes(mode)) {
+  fs.writeFileSync(2, Buffer.alloc(2 * 1024 * 1024, 'e'));
+}
+if (mode === 'dump-failure') {
+  fs.writeFileSync(2, 'owned dump failure diagnostic');
+  process.exitCode = 23;
+}
+`,
     { mode: 0o700 },
   );
   const env = {
@@ -68,7 +80,63 @@ test('recovery captures only explicitly requested small command answers', () => 
       'o'.repeat(12),
     );
     assert.throws(() => docker(['large'], { env, captureOutput: true }), {
-      code: 'ENOBUFS',
+      code: 'DOCKER_OUTPUT_LIMIT',
+      message:
+        'Docker stdout exceeded the 65536-byte capture limit. Use a streamed output file for larger results.',
     });
+  });
+});
+
+test('recovery dump streams 2 MiB of stderr with stdout directed to the dump file', () => {
+  fixture((directory, env) => {
+    const output = openSync(join(directory, 'database.dump'), 'w');
+    try {
+      docker(['dump'], {
+        env,
+        encoding: null,
+        stdio: ['ignore', output, 'pipe'],
+      });
+    } finally {
+      closeSync(output);
+    }
+    assert.equal(
+      readFileSync(join(directory, 'database.dump')).length,
+      2 * 1024 * 1024,
+    );
+  });
+});
+
+test('recovery dump preserves the failed exit and a bounded useful stderr diagnostic', () => {
+  fixture((directory, env) => {
+    const output = openSync(join(directory, 'database.dump'), 'w');
+    try {
+      assert.throws(
+        () =>
+          docker(['dump-failure'], {
+            env,
+            encoding: null,
+            stdio: ['ignore', output, 'pipe'],
+          }),
+        (error) => {
+          assert.equal(error.status, 23);
+          assert.notEqual(error.code, 'ENOBUFS');
+          assert.match(error.message, /owned dump failure diagnostic/);
+          assert.match(String(error.stderr), /stderr truncated/);
+          assert.ok(error.stderr.length < 66 * 1024);
+          return true;
+        },
+      );
+    } finally {
+      closeSync(output);
+    }
+  });
+});
+
+test('recovery captures a small answer even when stderr exceeds 2 MiB', () => {
+  fixture((_directory, env) => {
+    assert.equal(
+      docker(['stderr-only'], { env, captureOutput: true }),
+      'o'.repeat(12),
+    );
   });
 });
