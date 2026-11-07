@@ -55,6 +55,29 @@ describe.runIf(betterAuthIntegrationEnabled)(
           'private, no-store',
         );
       }
+      const native = await api.send('GET', '/v1/auth/account-security', {
+        browser,
+      });
+      expect(native.statusCode, native.payload).toBe(200);
+      expect(native.headers['cache-control']).toContain('no-store');
+      const created = await api.send('POST', `/v1/workspaces/${id}/workflows`, {
+        browser,
+        headers: { 'idempotency-key': randomUUID() },
+        payload: { name: 'Conditional privacy' },
+      });
+      expect(created.statusCode, created.payload).toBe(201);
+      const workflowId = created.json<{ workflow: { id: string } }>().workflow
+        .id;
+      const draft = `/v1/workspaces/${id}/workflows/${workflowId}/draft`;
+      const read = await api.send('GET', draft, { browser });
+      expect(read.statusCode, read.payload).toBe(200);
+      expect(read.headers.etag).toBeTypeOf('string');
+      const conditional = await api.send('GET', draft, {
+        browser,
+        headers: { 'if-none-match': String(read.headers.etag) },
+      });
+      expect(conditional.statusCode, conditional.payload).toBe(304);
+      expect(conditional.headers['cache-control']).toBe('private, no-store');
       const publicReply = await api.send('GET', '/health/live');
       expect(publicReply.statusCode).toBe(200);
       expect(publicReply.headers['cache-control']).not.toBe(

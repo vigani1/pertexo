@@ -1008,3 +1008,23 @@ test('keeps the SDK transaction dialect as a database protocol adapter', () => {
     [],
   );
 });
+
+test('keeps removed workflow forwarding modules out of API dependencies', () => {
+  for (const retired of [
+    'graph',
+    'http/context',
+    'http/etag',
+    'workflow-transport',
+  ]) {
+    for (const kind of ['', 'type ']) {
+      const target = `apps/api/src/workflow-authoring/${retired}.ts`;
+      assert.match(
+        validateModuleImports({
+          [target]: 'export interface Example {}',
+          'apps/api/src/workflow-runs/example.ts': `import ${kind}{ Example } from '../workflow-authoring/${retired}.js';`,
+        }).join('\n'),
+        /removed workflow forwarding module/u,
+      );
+    }
+  }
+});

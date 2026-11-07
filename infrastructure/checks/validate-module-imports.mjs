@@ -344,6 +344,18 @@ export function validateModuleImports(sources) {
       }
       if (!specifier.startsWith('.') && !specifier.startsWith('@/')) return;
       const target = resolveTarget(specifier);
+      if (
+        file.startsWith('apps/api/src/') &&
+        [
+          'apps/api/src/workflow-authoring/graph.ts',
+          'apps/api/src/workflow-authoring/http/context.ts',
+          'apps/api/src/workflow-authoring/http/etag.ts',
+          'apps/api/src/workflow-authoring/workflow-transport.ts',
+        ].includes(target)
+      )
+        errors.push(
+          `${file}: removed workflow forwarding module: ${specifier}`,
+        );
       const areaViolation = coreAreaViolation(file, specifier, namedFiles);
       if (areaViolation !== undefined) errors.push(`${file}: ${areaViolation}`);
       if (runtime && target !== undefined) dependencies.push(target);

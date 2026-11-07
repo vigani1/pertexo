@@ -107,6 +107,12 @@ const coreAreas = new Set([
 ]);
 const applicationAreas = {
   api: [
+    'connections',
+    'data-tables',
+    'notifications',
+    'workspaces',
+    'workspace-variables',
+    'catalog',
     'authentication',
     'authorization',
     'identity',
@@ -201,6 +207,9 @@ export function isExecutionAreaEntry(file) {
       workspace === 'api' &&
       [
         'artifacts',
+        'catalog',
+        'connections',
+        'workspaces',
         'node-testing',
         'workflow-authoring',
         'authentication',
