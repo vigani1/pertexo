@@ -10,8 +10,11 @@ import {
 } from '../../routes/execution/node-testing.js';
 import { routePaths, routeSchemas } from '../../routes/openapi.js';
 import { nodeSideEffectDisclosureSchema } from '../../schemas/execution/node-testing.js';
-import { authenticatedComponents, problemResponse } from '../../routes/openapi-primitives.js';
-import { projectContractSchema } from '../schema-projection.js';
+import {
+  authenticatedComponents,
+  problemResponse,
+} from '../../routes/openapi-primitives.js';
+import { projectContractSchema } from '../../routes/schema-projection.js';
 
 const routes = [
   ...Object.values(stepSampleRoutes),

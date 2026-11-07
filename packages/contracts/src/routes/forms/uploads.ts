@@ -1,9 +1,6 @@
 import { z } from 'zod';
 
-import {
-  problemResponse,
-  responseReference,
-} from '../openapi-primitives.js';
+import { problemResponse, responseReference } from '../openapi-primitives.js';
 import {
   formFinalizeUploadRequestSchema,
   formUploadRequestSchema,

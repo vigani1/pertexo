@@ -5,10 +5,7 @@ import {
   type WorkspaceStatusList,
 } from '@pertexo/policy';
 
-import {
-  problemResponse,
-  responseReference,
-} from '../openapi-primitives.js';
+import { problemResponse, responseReference } from '../openapi-primitives.js';
 import type { RouteAccess } from '../define.js';
 
 export const WORKSPACE = '/v1/workspaces/{workspaceId}';

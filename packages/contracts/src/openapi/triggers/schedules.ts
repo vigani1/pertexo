@@ -2,7 +2,10 @@ import { sharedProblemResponses } from '../problem-responses.js';
 import { apiProblemSchema } from '../../errors/api-problem.js';
 import { routePaths, routeSchemas } from '../../routes/openapi.js';
 import { scheduleRoutes } from '../../routes/triggers/schedules.js';
-import { authenticatedComponents, jsonSchema } from '../../routes/openapi-primitives.js';
+import {
+  authenticatedComponents,
+  jsonSchema,
+} from '../../routes/openapi-primitives.js';
 
 const routes = Object.values(scheduleRoutes);
 

@@ -10,7 +10,7 @@ import {
   problemResponse,
   queryParameter,
 } from '../../routes/openapi-primitives.js';
-import { projectContractSchema } from '../schema-projection.js';
+import { projectContractSchema } from '../../routes/schema-projection.js';
 export function federationContractSchemas() {
   return {
     ...routeSchemas(Object.values(federationRoutes)),

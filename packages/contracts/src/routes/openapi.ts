@@ -12,7 +12,7 @@ import {
   pathParameter,
   queryParameter,
 } from './openapi-primitives.js';
-import { projectContractSchema } from '../openapi/schema-projection.js';
+import { projectContractSchema } from './schema-projection.js';
 import {
   routePathParameters,
   type NamedSchema,

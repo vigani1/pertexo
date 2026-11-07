@@ -1,4 +1,7 @@
-import { pathParameter, responseReference } from '../../routes/openapi-primitives.js';
+import {
+  pathParameter,
+  responseReference,
+} from '../../routes/openapi-primitives.js';
 
 /** Capture through a draft's temporary test URL, outside Nest; the listener's own routes are declared. */
 const ingress = {

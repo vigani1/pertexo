@@ -6,10 +6,7 @@ import {
   type WorkspaceStatusList,
 } from '@pertexo/policy';
 
-import {
-  problemResponse,
-  responseReference,
-} from '../openapi-primitives.js';
+import { problemResponse, responseReference } from '../openapi-primitives.js';
 import type { z } from 'zod';
 
 import * as membership from '../../schemas/identity/membership.js';
