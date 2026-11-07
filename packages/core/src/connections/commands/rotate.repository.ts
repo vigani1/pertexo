@@ -84,6 +84,7 @@ export async function rotateConnectionSecret(
   if (connection.authType !== authType)
     throw new ConnectionUnavailableError(
       'Connection authentication type cannot be changed by rotation',
+      'authentication_type',
     );
   if (connection.currentSecretVersionId !== expected)
     throw new ConnectionSecretVersionConflictError(

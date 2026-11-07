@@ -101,9 +101,21 @@ export const connectionProblems = [
         'A test of this connection is already running. Wait for it to finish.',
     });
   }),
-  errorRegistration(ConnectionUnavailableError, () => {
-    return applicationError('connection.revoked', {
-      safeDetail: 'The connection is not available.',
+  errorRegistration(ConnectionUnavailableError, (error) => {
+    if (error.reason === 'revoked')
+      return applicationError('connection.revoked', {
+        safeDetail: 'The connection is not available.',
+      });
+    const remedies = {
+      authentication_type:
+        'Rotation cannot change the authentication type. Use the existing type or create another connection.',
+      settings_changed:
+        'The connection settings changed. Reload, then try again.',
+      unavailable:
+        'The connection is unavailable for this operation. Reload and choose an active connection.',
+    };
+    return applicationError('connection.conflict', {
+      safeDetail: remedies[error.reason],
     });
   }),
   errorRegistration(ConnectionSecretEncryptionError, (error) => {

@@ -55,6 +55,9 @@ export async function markConnectionTestDispatched(
   )
     throw new ConnectionUnavailableError(
       'Connection changed before test dispatch',
+      connection?.status === CONNECTION_STATUS.revoked
+        ? 'revoked'
+        : 'settings_changed',
     );
   const [revision] = await db
     .select({
@@ -72,6 +75,7 @@ export async function markConnectionTestDispatched(
   if (healthRevision === undefined)
     throw new ConnectionUnavailableError(
       'Connection health revision is unavailable',
+      'unavailable',
     );
   const marked = await db
     .update(records)

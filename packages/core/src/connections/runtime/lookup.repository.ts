@@ -34,6 +34,9 @@ export async function resolveConnectionLookupSecret(
   )
     throw new ConnectionUnavailableError(
       'Connection is not available for lookups',
+      connection.status === CONNECTION_STATUS.revoked
+        ? 'revoked'
+        : 'unavailable',
     );
   const [row] = await drizzle(client)
     .select(sealedFields)
