@@ -52,6 +52,33 @@ describe.runIf(betterAuthIntegrationEnabled)(
         organizationBrowser: browserFrom(linked),
       };
     }
+    it('renders the current stored organization provider name as an organization method', async () => {
+      const f = await person();
+      const read = async () =>
+        (
+          await api.send('GET', '/v1/auth/account-security', {
+            browser: f.browser,
+          })
+        )
+          .json<{
+            methods: { provider: string; kind: string; label?: string }[];
+          }>()
+          .methods.find((method) => method.provider === f.providerId);
+      expect(await read()).toMatchObject({
+        kind: 'organization',
+        label: 'Fixture OIDC',
+      });
+      await api
+        .database()
+        .query('update app.auth_providers set name=$1 where id=$2', [
+          'Renamed organization provider',
+          f.providerId,
+        ]);
+      expect(await read()).toMatchObject({
+        kind: 'organization',
+        label: 'Renamed organization provider',
+      });
+    });
     const unlink = (browser: Browser, methodId: string) =>
       api.send('POST', '/v1/auth/account-security/methods/unlink', {
         browser,
