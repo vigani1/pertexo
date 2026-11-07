@@ -1,3 +1,4 @@
+import { registerReceiveShutdown } from './platform/http/receive-shutdown.js';
 import { registerCallbackIngress } from './webhooks/callbacks/ingress.js';
 import { registerDirectoryTransport } from './authentication/federation/provisioning/transport/register-directory-transport.js';
 import type { WorkspaceDatabase } from '@pertexo/database/platform';
@@ -73,6 +74,10 @@ export async function assembleApiApplication(
         ? false
         : [...config.trustedProxyCidrs],
   });
+  registerReceiveShutdown(
+    fastifyAdapter.getInstance(),
+    HTTP_RECEIVE_TIMEOUT_MS,
+  );
   let application: NestFastifyApplication;
   try {
     application = await NestFactory.create<NestFastifyApplication>(
