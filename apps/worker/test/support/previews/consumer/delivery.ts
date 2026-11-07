@@ -9,7 +9,7 @@ import type {
   AcceptedDelivery,
   PreviewRuntimeReady,
   PublishedPreviewDelivery,
-} from './contract.js';
+} from './preview-consumer.types.js';
 import { waitFor, previewState } from './queries.js';
 
 export async function withPublishedPreviewDelivery<T>(

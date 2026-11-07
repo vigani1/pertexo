@@ -8,8 +8,8 @@ import type {
 } from '@pertexo/observability/server';
 import type { createTelemetryLifecycle } from '@pertexo/observability/startup';
 
-import type * as OperatorRunModule from './run.js';
-import type { OperatorCommandConfig } from './config.js';
+import type * as OperatorRunModule from './execute-operator-command.js';
+import type { OperatorCommandConfig } from './operator-config.js';
 
 type ShutdownSignal = 'SIGINT' | 'SIGTERM';
 
@@ -39,7 +39,7 @@ async function loadModules(): Promise<OperatorCommandBootstrapModules> {
   const [database, logging, command] = await Promise.all([
     import('@pertexo/core/operator'),
     import('@pertexo/observability/server'),
-    import('./run.js'),
+    import('./execute-operator-command.js'),
   ]);
   return { command, database, logging };
 }
@@ -57,7 +57,7 @@ export async function bootstrapOperatorCommand(
 ): Promise<void> {
   const config =
     dependencies.config ??
-    (await import('./config.js')).parseOperatorCommandConfig();
+    (await import('./operator-config.js')).parseOperatorCommandConfig();
   const startup = await import('@pertexo/observability/startup');
   const telemetry = (
     dependencies.createTelemetryLifecycle ?? startup.createTelemetryLifecycle

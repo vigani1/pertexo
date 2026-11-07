@@ -8,7 +8,7 @@ import type { QueueConsumerObserver } from '@pertexo/queue/server';
 import type { WorkerConfig } from '../../config/worker.js';
 import { closeOwners } from '../../runtime/scanner.js';
 import { failureNotificationDeliveryFactories } from '../../notifications/failure-composition.js';
-import { workspaceInvitationDeliveryFactories } from '../../identity/invitation-delivery.js';
+import { workspaceInvitationDeliveryFactories } from '../../mail/invitation-delivery.js';
 import {
   createMaintenanceRuntime,
   type MaintenanceRuntime,

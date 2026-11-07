@@ -208,7 +208,7 @@ it('accepts ARM images on an ARM server', (t) => {
     newCommit,
   );
 });
-// ops-05, docs-deps-product-05: common.sh compares the image to the literal arm64.
+// ops-05, docs-deps-product-05: release-operations.sh compares the image to the literal arm64.
 it('accepts x86 images on an x86 server', (t) => {
   const f = fixture(t);
   const result = f.run({ FIXTURE_HOST_ARCH: 'amd64' });

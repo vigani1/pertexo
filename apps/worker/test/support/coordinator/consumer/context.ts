@@ -39,7 +39,7 @@ import {
   setupFixture,
   restoreServicesAndCleanupFixture,
 } from './lifecycle.js';
-import type { CoordinatorIntegrationFixture } from './contract.js';
+import type { CoordinatorIntegrationFixture } from './coordinator-consumer.types.js';
 
 export async function waitFor<T>(
   operation: () => Promise<T>,

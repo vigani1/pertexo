@@ -3,7 +3,10 @@ import { describeProcessFailure } from '@pertexo/observability/server';
 import { parseWorkerConfig } from '../../src/config/worker.js';
 import { parseInvitationDeliveryConfig } from '../../src/config/invitation-delivery.js';
 import { parseSystemMailDeliveryConfig } from '../../src/config/system-mail.js';
-import { requiredEnvironment, callbackEnvironment } from './worker/fixture.js';
+import {
+  requiredEnvironment,
+  callbackEnvironment,
+} from './worker-environment.fixture.js';
 
 const privateValue = 'relative-private-person@example.test';
 const mail = {

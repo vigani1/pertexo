@@ -219,13 +219,14 @@ test('Code runner can use only the credential-free SDK workspace dependency', ()
   ])
     assert.match(
       validateModuleImports({
-        'apps/code-runner/src/app.ts': `import '${specifier}';`,
+        'apps/code-runner/src/runner-application.ts': `import '${specifier}';`,
       }).join('\n'),
       /Code runner may depend only/u,
     );
   assert.deepEqual(
     validateModuleImports({
-      'apps/code-runner/src/app.ts': "import '@pertexo/node-sdk/server';",
+      'apps/code-runner/src/runner-application.ts':
+        "import '@pertexo/node-sdk/server';",
     }),
     [],
   );

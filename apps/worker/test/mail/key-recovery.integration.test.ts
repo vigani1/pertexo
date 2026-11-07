@@ -17,7 +17,7 @@ import {
   storeConfig,
   prepareDeliveryIntegrationTestTsFixture,
   closeDeliveryIntegrationTestTsFixture,
-} from './delivery/fixture.js';
+} from './system-mail-delivery.fixture.js';
 
 const first = { version: 'v1', key: Buffer.alloc(32, 1).toString('base64') };
 const second = { version: 'v2', key: Buffer.alloc(32, 2).toString('base64') };

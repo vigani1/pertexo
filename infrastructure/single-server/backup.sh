@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 [[ $# == 0 ]] || { echo 'usage: backup.sh' >&2; exit 64; }
-source "$(dirname "$0")/common.sh"
+source "$(dirname "$0")/release-operations.sh"
 work=''
 serving=()
 resume_serving() {

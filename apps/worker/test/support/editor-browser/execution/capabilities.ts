@@ -1,5 +1,5 @@
 import { createTestArtifactScratch } from '../../infrastructure/artifact-scratch.js';
-import { createEditorCodeRuntime } from '../code/runtime.js';
+import { createEditorCodeRuntime } from '../code-runtime.fixture.js';
 
 import { createArtifactDestination } from '../../../attempts/artifacts/http-destination.js';
 import { parseArtifactStoreConfig } from '@pertexo/artifact-store/server';
@@ -17,7 +17,7 @@ import { createCuratedTemplateQualificationTransports } from '../../curated-temp
 import { createEditorControlledHttpTarget } from '../controlled-http.js';
 import { createEditorResendMailbox } from '../notifications/resend-mailbox.js';
 
-import type { EditorWorkerExecution } from './contract.js';
+import type { EditorWorkerExecution } from './editor-execution.types.js';
 import {
   codeCase,
   webhookResponseCase,

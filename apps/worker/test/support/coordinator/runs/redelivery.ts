@@ -20,7 +20,10 @@ import {
   workerUrl,
   workspaceId,
 } from './scope.js';
-import type { AcceptedRun, CoordinatorRedeliveryHarness } from './contract.js';
+import type {
+  AcceptedRun,
+  CoordinatorRedeliveryHarness,
+} from './coordinator-runs.types.js';
 
 export async function createCoordinatorRedeliveryHarness(
   accepted: AcceptedRun,

@@ -7,7 +7,7 @@ import type {
   EditorWorkerCapabilities,
   EditorWorkerHttpClient,
   EditorWorkerAttemptContext,
-} from './contract.js';
+} from './editor-execution.types.js';
 import { artifactInputs, emailAttachments } from './environment.js';
 
 export function editorAttemptDependencies(context: EditorWorkerAttemptContext) {

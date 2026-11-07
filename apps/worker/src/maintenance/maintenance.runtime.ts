@@ -32,7 +32,7 @@ import {
   type Owner,
   type ScannerRuntime,
 } from '../runtime/scanner.js';
-import type { WorkspaceInvitationDeliveryHandler } from '../identity/invitation-delivery.js';
+import type { WorkspaceInvitationDeliveryHandler } from '../mail/invitation-delivery.js';
 import {
   maintenanceDeliveryHandler,
   type MaintenanceHandlers,

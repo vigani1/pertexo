@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   createWorkerApplication,
   type WorkerApplicationCompositionFactories,
-} from '../src/app.js';
+} from '../src/worker-application.js';
 import { parseWorkerConfig } from '../src/config/worker.js';
 import { WorkerReadinessMonitor } from '../src/runtime/health/readiness-monitor.js';
 import { WorkerDrainState } from '../src/runtime/shutdown/drain-state.js';

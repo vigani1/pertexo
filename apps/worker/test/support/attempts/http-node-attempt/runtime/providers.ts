@@ -12,7 +12,7 @@ import type { NodeExecutionRegistry } from '@pertexo/workflow-engine/server';
 
 import { createHttpProviderTelemetry } from '../../../../../src/providers/telemetry.js';
 
-import type { HttpNodeAttemptProofRuntimeOptions } from './contract.js';
+import type { HttpNodeAttemptProofRuntimeOptions } from './node-attempt-runtime.types.js';
 
 export function createHttpProofProviders(
   options: HttpNodeAttemptProofRuntimeOptions,

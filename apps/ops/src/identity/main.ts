@@ -4,8 +4,8 @@ import {
 } from '@pertexo/observability/startup';
 import { fileURLToPath } from 'node:url';
 import { createTwoFactorRecoveryStore } from '@pertexo/core/identity';
-import { parseTwoFactorRecoveryConfig } from './config.js';
-import { disableTwoFactor } from './run.js';
+import { parseTwoFactorRecoveryConfig } from './two-factor-recovery-config.js';
+import { disableTwoFactor } from './disable-two-factor.js';
 
 export async function runTwoFactorRecovery(): Promise<void> {
   const config = parseTwoFactorRecoveryConfig();

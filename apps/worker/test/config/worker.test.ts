@@ -4,7 +4,7 @@ import {
   requiredEnvironment,
   callbackEnvironment,
   databaseEnvironment,
-} from './worker/fixture.js';
+} from './worker-environment.fixture.js';
 import { DEFAULT_CODE_SETTINGS, codeRunnerSocketPath } from '@pertexo/node-sdk';
 import { readFileSync } from 'node:fs';
 import { parseEnv } from 'node:util';

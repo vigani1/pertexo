@@ -1,6 +1,6 @@
 import { writeFile, unlink } from 'node:fs/promises';
-import { startCodeRunner } from './app.js';
-import { parseRunnerConfig } from './config.js';
+import { startCodeRunner } from './runner-application.js';
+import { parseRunnerConfig } from './runner-config.js';
 
 try {
   const config = parseRunnerConfig();

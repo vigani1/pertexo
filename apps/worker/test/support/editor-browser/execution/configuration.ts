@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import type { EditorWorkerSetup } from './contract.js';
+import type { EditorWorkerSetup } from './editor-execution.types.js';
 import {
   controlledHttp,
   curatedTemplates,

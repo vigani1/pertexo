@@ -1,4 +1,4 @@
-import type { Closeable, OwnedResource } from './contract.js';
+import type { Closeable, OwnedResource } from './workflow-lifecycle.types.js';
 
 export function createLifecycleResourceOwners(resources: OwnedResource[]) {
   const registerResource = <Resource extends object>(

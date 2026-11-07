@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-void import('./run.js')
+void import('./run-automation-cli.js')
   .then(({ runAutomationCli }) => runAutomationCli(process.argv.slice(2)))
   .catch(() => {
     process.stderr.write(

@@ -10,7 +10,7 @@ import {
   type LifecycleProjection,
   type RunSnapshot,
   type LifecycleOutboxEvent,
-} from './contract.js';
+} from './workflow-lifecycle.types.js';
 import { withTransaction } from './transactions.js';
 
 export function createLifecycleReads(

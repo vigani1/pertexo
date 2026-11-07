@@ -23,7 +23,7 @@ import {
   registryPreparedAttempt,
   WORKFLOW_ID,
   TRACEPARENT,
-} from '../support/attempts/handler.js';
+} from '../support/attempts/node-attempt-handler.fixture.js';
 import {
   heartbeatCancellationHandler,
   STORED_CHECKPOINT,

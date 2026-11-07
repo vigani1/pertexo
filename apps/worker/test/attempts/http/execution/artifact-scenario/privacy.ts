@@ -14,8 +14,8 @@ import {
 } from '../../../../support/attempts/http-node-attempt.js';
 
 import type { ArtifactScenario } from './context.js';
-import type { proveArtifactHttpRedelivery } from './http.js';
-import type { HttpEvidence } from './http.js';
+import type { proveArtifactHttpRedelivery } from './artifact-http.fixture.js';
+import type { HttpEvidence } from './artifact-http.fixture.js';
 import type { proveArtifactSlackRedelivery } from './slack.js';
 import type { proveArtifactEmailRetry } from './email.js';
 

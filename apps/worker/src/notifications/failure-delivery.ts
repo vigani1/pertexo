@@ -6,13 +6,16 @@ import {
 import { assertNever } from '@pertexo/workflow-model';
 import type { FailureNotificationDeliveryResult } from '@pertexo/workflow-model';
 import type { FailureNotificationDeliveryCapability } from './failure-handler.js';
-import { settleUnresolvedDelivery, canceled } from './delivery/outcomes.js';
+import {
+  settleUnresolvedDelivery,
+  canceled,
+} from './delivery/failure-notification-outcomes.js';
 import {
   type DeliveryInput,
   type DeliveryDependencies,
   deliverSlack,
   deliverEmail,
-} from './delivery/transport.js';
+} from './delivery/failure-notification-transport.js';
 
 export function createProviderFailureNotificationDelivery(
   dependencies: DeliveryDependencies,

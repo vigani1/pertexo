@@ -9,8 +9,8 @@ import {
   type SystemMailInput,
 } from '@pertexo/secrets/server';
 import type { TwoFactorRecoveryStore } from '@pertexo/core/identity';
-import { parseTwoFactorRecoveryConfig } from '../../src/identity/config.js';
-import { disableTwoFactor } from '../../src/identity/run.js';
+import { parseTwoFactorRecoveryConfig } from '../../src/identity/two-factor-recovery-config.js';
+import { disableTwoFactor } from '../../src/identity/disable-two-factor.js';
 
 const environment = {
   DATABASE_URL:

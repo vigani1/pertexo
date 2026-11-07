@@ -36,7 +36,7 @@ import {
 import type {
   OwnedResource,
   WorkflowLifecycleWorkerEnvironment,
-} from './workflow-lifecycle/contract.js';
+} from './workflow-lifecycle/workflow-lifecycle.types.js';
 import {
   databaseUrl,
   quoteIdentifier,
@@ -63,7 +63,7 @@ export {
   type RunSnapshot,
   type LifecycleOutboxEvent,
   type WorkflowLifecycleWorkerEnvironment,
-} from './workflow-lifecycle/contract.js';
+} from './workflow-lifecycle/workflow-lifecycle.types.js';
 export function createWorkflowLifecycleWorkerEnvironment(): WorkflowLifecycleWorkerEnvironment {
   const databaseName = `pertexo_test_worker_lifecycle_${randomUUID().replaceAll('-', '')}`;
   const apiConfig = parseDatabaseConfig({

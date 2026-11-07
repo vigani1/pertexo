@@ -3,7 +3,7 @@ import { PLATFORM_NODE_CATALOG } from '@pertexo/node-catalog';
 import type {
   Query,
   CoordinatorWorkflowFixtureIdentities,
-} from './contract.js';
+} from './coordinator-workflows.types.js';
 import {
   linearGraph,
   branchGraph,

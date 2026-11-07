@@ -5,7 +5,7 @@ import type { TelemetryLifecycle } from '@pertexo/observability/startup';
 import pg from 'pg';
 import { describe, expect, it, vi } from 'vitest';
 
-import { createWorkerApplication } from '../../src/app.js';
+import { createWorkerApplication } from '../../src/worker-application.js';
 import { parseWorkerConfig } from '../../src/config/worker.js';
 import { WorkerReadiness } from '../../src/runtime/health/readiness.js';
 

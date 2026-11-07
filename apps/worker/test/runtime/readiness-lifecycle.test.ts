@@ -6,7 +6,7 @@ import {
   marker,
   idleRuntime,
   type SetReady,
-} from './readiness-lifecycle/fixture.js';
+} from './readiness-lifecycle.fixture.js';
 import { WorkerReadinessMonitor } from '../../src/runtime/health/readiness-monitor.js';
 import { WorkerReadiness } from '../../src/runtime/health/readiness.js';
 import { WorkerDrainState } from '../../src/runtime/shutdown/drain-state.js';

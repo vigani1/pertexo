@@ -1,5 +1,5 @@
 import { setTimeout as delay } from 'node:timers/promises';
-import type { RunnerConfig } from '../config.js';
+import type { RunnerConfig } from '../runner-config.js';
 import { resolveCodePackages } from './packages.js';
 import { startTaskSlot, type TaskSlot } from './slot.js';
 

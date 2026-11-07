@@ -21,7 +21,7 @@ import {
   workflowVersionId,
   workspaceId,
 } from './scope.js';
-import type { AcceptedRun } from './contract.js';
+import type { AcceptedRun } from './coordinator-runs.types.js';
 
 export async function cancelFixtureRun(
   runId: string,

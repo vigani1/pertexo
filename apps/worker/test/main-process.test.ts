@@ -1,5 +1,5 @@
 import { requireCurrentWorkerBuild } from './support/infrastructure/worker-build.js';
-import { requiredEnvironment } from './config/worker/fixture.js';
+import { requiredEnvironment } from './config/worker-environment.fixture.js';
 import { spawn, type ChildProcess } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 

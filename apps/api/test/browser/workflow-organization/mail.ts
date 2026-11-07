@@ -76,7 +76,7 @@ export async function createOrganizationInvitationDelivery(
   }>;
   const compiled: unknown = await import(
     new URL(
-      '../../../../worker/dist/identity/invitation-delivery.js',
+      '../../../../worker/dist/mail/invitation-delivery.js',
       import.meta.url,
     ).href
   );

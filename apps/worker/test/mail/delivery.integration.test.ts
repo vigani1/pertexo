@@ -8,7 +8,7 @@ import {
   workerBaseUrl,
   databaseUrl,
   storeConfig,
-} from './delivery/fixture.js';
+} from './system-mail-delivery.fixture.js';
 import { randomUUID } from 'node:crypto';
 import {
   createSystemMailEnqueueStore,

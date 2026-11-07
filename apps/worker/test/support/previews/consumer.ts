@@ -16,7 +16,7 @@ export {
   type AcceptedDelivery,
   type PublishedPreviewDelivery,
   type AcceptedWorkflowDelivery,
-} from './consumer/contract.js';
+} from './consumer/preview-consumer.types.js';
 export {
   acceptanceInput,
   acceptDelivery,

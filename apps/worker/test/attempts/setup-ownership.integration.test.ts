@@ -23,7 +23,7 @@ import {
   admitProviderScenario,
   attemptJob,
   closeProofRuntime,
-} from './http/http.fixture.js';
+} from './http/http-node-attempt.fixture.js';
 import { createHttpNodeAttemptProofRuntime } from '../support/attempts/http-node-attempt.runtime.js';
 
 installHttpNodeAttemptFixture();

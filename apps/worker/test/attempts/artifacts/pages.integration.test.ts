@@ -25,7 +25,7 @@ import {
   artifactDestinationUrl,
 } from './http-destination.js';
 import { runWithCleanup } from '../../support/infrastructure/test-operation.js';
-import { assertPagedHttpSource } from './paging/http.js';
+import { assertPagedHttpSource } from './paging-http.fixture.js';
 import { headerConnection } from '../../support/attempts/header-connection.js';
 
 const enabled =

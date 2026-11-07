@@ -10,7 +10,7 @@ import type {
   createStructuredLogger,
 } from '@pertexo/observability/server';
 
-import type * as WorkerApplicationModule from './app.js';
+import type * as WorkerApplicationModule from './worker-application.js';
 import { parseWorkerConfig, type WorkerConfig } from './config/worker.js';
 import { boundedBackgroundTask } from './runtime/background-task-deadline.js';
 import { WorkerProcessShutdown } from './runtime/shutdown/process.js';
@@ -45,7 +45,7 @@ export interface WorkerBootstrapDependencies {
 async function loadModules(): Promise<WorkerBootstrapModules> {
   const [logging, application] = await Promise.all([
     import('@pertexo/observability/server'),
-    import('./app.js'),
+    import('./worker-application.js'),
   ]);
   return { application, logging };
 }

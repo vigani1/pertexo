@@ -1,7 +1,7 @@
 import { createCallbackStore } from '@pertexo/core/runs';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
 import { createCallbackTokenKeys } from '@pertexo/secrets/server';
-import { createCallbackRuntime } from '../../../../src/attempts/callbacks/callback.runtime.js';
+import { createCallbackRuntime } from '../../../../src/attempts/callback.runtime.js';
 import { fixture } from '../../calls/calls.fixture.js';
 
 export function callbackResources(origin = 'http://127.0.0.1:9000') {

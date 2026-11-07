@@ -21,7 +21,7 @@ import {
   storeConfig,
   prepareDeliveryIntegrationTestTsFixture,
   closeDeliveryIntegrationTestTsFixture,
-} from './delivery/fixture.js';
+} from './system-mail-delivery.fixture.js';
 
 let admin: Pool;
 let store: ReturnType<typeof createSystemMailDeliveryStore>;

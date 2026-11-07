@@ -3,7 +3,7 @@
 # whole server is down, which is what an outside uptime monitor is for.
 set -Eeuo pipefail
 [[ $# == 0 ]] || { echo 'usage: check.sh' >&2; exit 64; }
-source "$(dirname "$0")/common.sh"
+source "$(dirname "$0")/release-operations.sh"
 [[ -f "$BETA_STATE_DIR/current" ]] || { echo 'No release is installed yet'; exit 0; }
 # A deploy or backup stops the app on purpose. Holding the lock here would make a
 # real one fail, so this only looks, and looks again before reporting.
