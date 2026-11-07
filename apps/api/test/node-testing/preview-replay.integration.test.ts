@@ -10,6 +10,71 @@ describe.runIf(betterAuthIntegrationEnabled)(
   'retained step-test replay',
   () => {
     const api = useBetterAuthRealApi('preview_replay');
+    it('retains immediate pinned success and its replay after the pin is removed', async () => {
+      const f = await createPreviewBoundary(api);
+      const revision = await f.save();
+      const sample = `${f.draft}/nodes/set/sample`;
+      const pin = await api.send('PUT', sample, {
+        browser: f.browser,
+        headers: { 'idempotency-key': randomUUID() },
+        payload: {
+          expectedDraftRevision: revision,
+          expectedSampleId: null,
+          source: { kind: 'json', value: { greeting: 'frozen' } },
+        },
+      });
+      expect(pin.statusCode, pin.payload).toBe(200);
+      const sampleId = pin.json<{ sampleId: string }>().sampleId;
+      const key = randomUUID();
+      const execute = () =>
+        api.send('POST', `${f.draft}/nodes/set/test`, {
+          browser: f.browser,
+          headers: { 'idempotency-key': key },
+          payload: {
+            mode: 'test_execute',
+            expectedRevision: revision,
+            expectedSampleId: sampleId,
+            input: { kind: 'manual', value: {} },
+            acknowledgeSideEffects: true,
+          },
+        });
+      const accepted = await execute();
+      expect(accepted.statusCode, accepted.payload).toBe(202);
+      expect(accepted.json()).toMatchObject({
+        preview: {
+          status: 'succeeded',
+          pinnedSampleId: sampleId,
+          output: { kind: 'inline', value: { greeting: 'frozen' } },
+        },
+      });
+      const id = accepted.json<{ preview: { id: string } }>().preview.id;
+      const removed = await api.send('DELETE', sample, {
+        browser: f.browser,
+        headers: { 'idempotency-key': randomUUID() },
+        payload: {
+          expectedDraftRevision: revision,
+          expectedSampleId: sampleId,
+        },
+      });
+      expect(removed.statusCode, removed.payload).toBe(200);
+      const read = await api.send('GET', `${f.root}/previews/${id}`, {
+        browser: f.browser,
+      });
+      expect(read.statusCode, read.payload).toBe(200);
+      const replay = await execute();
+      expect(replay.statusCode, replay.payload).toBe(202);
+      expect(replay.json()).toMatchObject({
+        replayed: true,
+        preview: read.json<{ preview: unknown }>().preview,
+      });
+      const work = await api
+        .database()
+        .query(
+          'select (select count(*)::int from app.preview_attempts where preview_run_id=$1) attempts, (select count(*)::int from app.outbox_events where aggregate_id=$1) jobs',
+          [id],
+        );
+      expect(work.rows).toEqual([{ attempts: 0, jobs: 0 }]);
+    });
     it.each([
       'running',
       'succeeded',
