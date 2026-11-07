@@ -30,6 +30,9 @@ type PreviewAcceptanceView = Pick<
   | 'pinnedSampleId'
   | 'output'
   | 'completedAt'
+  | 'startedAt'
+  | 'safeErrorCode'
+  | 'errorSummary'
   | 'codeDiagnostics'
 >;
 
@@ -69,8 +72,11 @@ export function previewAcceptanceResponse(
         preview.output === undefined || preview.output === null
           ? null
           : previewOutputResponse(preview.output),
-      safeErrorCode: null,
-      startedAt: null,
+      ...(preview.errorSummary === undefined
+        ? {}
+        : { errorSummary: preview.errorSummary }),
+      safeErrorCode: preview.safeErrorCode ?? null,
+      startedAt: preview.startedAt?.toISOString() ?? null,
       completedAt: preview.completedAt?.toISOString() ?? null,
     },
   });
