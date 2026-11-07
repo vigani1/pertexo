@@ -171,6 +171,42 @@ describe('browser API transport', () => {
     await vi.advanceTimersByTimeAsync(25);
     await timed;
   });
+  it('preserves timeout classification during an event-stream refusal body read', async () => {
+    vi.useFakeTimers();
+    let transportSignal: AbortSignal | undefined;
+    const hanging = problemResponse(commonProblem());
+    vi.spyOn(hanging, 'text').mockImplementation(
+      () =>
+        new Promise((_resolve, reject) => {
+          transportSignal?.addEventListener(
+            'abort',
+            () => {
+              reject(new DOMException('aborted', 'AbortError'));
+            },
+            { once: true },
+          );
+        }),
+    );
+    const client = createApiClient({
+      fetch: vi.fn<typeof globalThis.fetch>((_input, init) => {
+        transportSignal = init?.signal ?? undefined;
+        return Promise.resolve(hanging);
+      }),
+      readCsrfToken: () => undefined,
+    });
+    const timed = expectApiError(
+      client.stream({
+        path: '/v1/examples',
+        timeoutMs: 25,
+        response: { kind: 'stream', mediaType: 'text/event-stream' },
+      }),
+      'timeout',
+    );
+
+    await vi.advanceTimersByTimeAsync(25);
+    expect(transportSignal?.aborted).toBe(true);
+    await timed;
+  });
   it('rejects cross-origin paths, transport headers and missing CSRF before fetch', async () => {
     const fetch = fetchMock(jsonResponse({}));
     const client = createApiClient({ fetch, readCsrfToken: () => undefined });
@@ -296,7 +332,7 @@ describe('native streamed downloads', () => {
     expect(submitted[0]?.payload.get('csrfToken')).toBe(csrfToken);
     expect(document.querySelector('form')).toBeNull();
   });
-  it('refuses unsafe paths and absent CSRF before starting a download', () => {
+  it('refuses absent CSRF before starting a download', () => {
     const submit = vi.spyOn(HTMLFormElement.prototype, 'submit');
     const client = createApiClient({
       fetch: vi.fn(),
@@ -305,9 +341,27 @@ describe('native streamed downloads', () => {
     expect(() => {
       client.download({ path: '/v1/example/export', body: {} });
     }).toThrow(/CSRF/u);
-    expect(() => {
-      client.download({ path: '/v1/../export', body: {} });
-    }).toThrow();
+
     expect(submit).not.toHaveBeenCalled();
   });
+});
+
+describe('download path normalization', () => {
+  it.each(['/v1/../export', '/v1/%2e%2e/export', '/v1/./../export'] as const)(
+    'refuses %s with valid CSRF before submitting',
+    (path) => {
+      const submit = vi
+        .spyOn(HTMLFormElement.prototype, 'submit')
+        .mockImplementation(() => undefined);
+      const client = createApiClient({
+        fetch: vi.fn(),
+        readCsrfToken: () => csrfToken,
+      });
+      expect(() => {
+        client.download({ path, body: {} });
+      }).toThrow();
+      expect(submit).not.toHaveBeenCalled();
+      vi.restoreAllMocks();
+    },
+  );
 });

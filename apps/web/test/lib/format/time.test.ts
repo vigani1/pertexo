@@ -42,3 +42,13 @@ describe('formatMoment', () => {
     expect(formatMoment(lastWeek)).not.toBe(formatClock(lastWeek));
   });
 });
+
+describe('local calendar day headings across daylight saving', () => {
+  it.each([
+    [new Date(2026, 9, 26, 12), new Date(2026, 9, 25, 0, 30), 'Yesterday'],
+    [new Date(2026, 2, 30, 12), new Date(2026, 2, 28, 23, 30), 'Mar 28'],
+  ])('groups %s by calendar date', async (now, event, heading) => {
+    const { formatDayHeading } = await import('@/lib/format/time');
+    expect(formatDayHeading(event.toISOString(), now.getTime())).toBe(heading);
+  });
+});
