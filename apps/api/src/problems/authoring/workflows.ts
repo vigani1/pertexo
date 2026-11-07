@@ -33,7 +33,7 @@ import { InvalidWorkflowCursorError } from '../../workflow-authoring/cursor.js';
 import {
   InvalidWorkflowGraphError,
   WorkflowGraphContractError,
-} from '../../workflow-authoring/graph.js';
+} from '@pertexo/workflow-model';
 
 export const workflowProblems = [
   errorRegistration(WorkflowPromotionError, (error) => {

@@ -1,9 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  createDraftRepresentationTag,
-  type DraftRepresentation,
-} from '../../../src/workflow-authoring/http/etag.js';
+import { workflowDraftRepresentationTag } from '@pertexo/workflow-model/server';
+type DraftRepresentation = Parameters<typeof workflowDraftRepresentationTag>[0];
 
 const graph = {
   nodes: [],
@@ -26,8 +24,8 @@ function representation(
 
 describe('workflow authoring strong draft ETag', () => {
   it('is deterministic for equivalent object key order and quoted as a strong tag', () => {
-    const first = createDraftRepresentationTag(representation());
-    const second = createDraftRepresentationTag(
+    const first = workflowDraftRepresentationTag(representation());
+    const second = workflowDraftRepresentationTag(
       representation({
         graph: { settings: {}, edges: [], nodes: [] },
       }),
@@ -37,19 +35,19 @@ describe('workflow authoring strong draft ETag', () => {
   });
 
   it('changes for workflow, revision, graph, or compatibility identity', () => {
-    const baseline = createDraftRepresentationTag(representation());
+    const baseline = workflowDraftRepresentationTag(representation());
     expect(
-      createDraftRepresentationTag(
+      workflowDraftRepresentationTag(
         representation({
           workflowId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
         }),
       ),
     ).not.toBe(baseline);
     expect(
-      createDraftRepresentationTag(representation({ revision: 2 })),
+      workflowDraftRepresentationTag(representation({ revision: 2 })),
     ).not.toBe(baseline);
     expect(
-      createDraftRepresentationTag(
+      workflowDraftRepresentationTag(
         representation({
           graph: {
             ...graph,
@@ -59,7 +57,7 @@ describe('workflow authoring strong draft ETag', () => {
       ),
     ).not.toBe(baseline);
     expect(
-      createDraftRepresentationTag(
+      workflowDraftRepresentationTag(
         representation({
           compatibilityFingerprint:
             'wf-compat:sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',

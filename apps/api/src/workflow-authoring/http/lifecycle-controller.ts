@@ -4,7 +4,7 @@ import {
   type RouteInput,
 } from '@pertexo/contracts/server';
 import { In, Route } from '../../workspaces/http/route.js';
-import { requestContext } from './context.js';
+import { projectAuthenticatedWorkspaceContext } from '../../workspaces/request/authenticated-context.js';
 
 import { Controller, Req, Res, UseInterceptors } from '@nestjs/common';
 import { withRequestOperationSignal } from '../../platform/http/request-operation-signal.js';
@@ -62,7 +62,7 @@ export class WorkflowLifecycleController {
   ) {
     const route = params;
     return this.renameWorkflow.execute({
-      ...requestContext(request, route.workspaceId),
+      ...projectAuthenticatedWorkspaceContext(request, route.workspaceId),
       routeWorkspaceId: route.workspaceId,
       workflowId: route.workflowId,
       request: body,
@@ -82,7 +82,10 @@ export class WorkflowLifecycleController {
       input.source.kind === 'draft'
         ? parseStrongIfMatch(requestHeaderValue(request.headers, 'if-match'))
         : undefined;
-    const context = requestContext(request, route.workspaceId);
+    const context = projectAuthenticatedWorkspaceContext(
+      request,
+      route.workspaceId,
+    );
     const result = await withRequestOperationSignal(request, (signal) =>
       this.duplicateWorkflow.execute({
         ...context,
@@ -113,7 +116,10 @@ export class WorkflowLifecycleController {
     >,
   ) {
     const route = params;
-    const context = requestContext(request, route.workspaceId);
+    const context = projectAuthenticatedWorkspaceContext(
+      request,
+      route.workspaceId,
+    );
     return this.transitionLifecycle.execute({
       command,
       ...context,

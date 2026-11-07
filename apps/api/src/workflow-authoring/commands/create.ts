@@ -3,7 +3,7 @@ import {
   commandCredential,
   type WorkspaceAuthorizationSource,
 } from '../../authorization/index.js';
-import { EMPTY_WORKFLOW_GRAPH } from '../graph.js';
+import { EMPTY_WORKFLOW_GRAPH } from '@pertexo/workflow-model';
 
 import type { WorkflowApplicationInput } from '../ports.js';
 import {
@@ -11,7 +11,7 @@ import {
   WORKFLOW_AUTHORING_OPERATION,
   type WorkflowAuthoringTelemetry,
 } from '../telemetry.js';
-import type { workflowCreateRequestSchema } from '../workflow-transport.js';
+import type { workflowCreateRequestSchema } from '@pertexo/contracts';
 
 import {
   serializeWorkflowCreate,

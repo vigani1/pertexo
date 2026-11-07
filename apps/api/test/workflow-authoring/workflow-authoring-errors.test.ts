@@ -27,7 +27,7 @@ import { InvalidWorkflowCursorError } from '../../src/workflow-authoring/cursor.
 import {
   InvalidWorkflowGraphError,
   WorkflowGraphContractError,
-} from '../../src/workflow-authoring/graph.js';
+} from '@pertexo/workflow-model';
 import { WorkflowHeaderError } from '../../src/workflow-authoring/http/preconditions.js';
 import { AuthorizationError } from '../../src/authorization/index.js';
 

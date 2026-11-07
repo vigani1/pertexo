@@ -1,4 +1,5 @@
-import { parseWorkflowGraphDraft } from './graph.js';
+import { WorkflowRevisionConflictError } from '@pertexo/core/authoring';
+import { parseWorkflowGraphDraft } from '@pertexo/workflow-model';
 import type { WorkspaceAuthorizationSource } from '../authorization/index.js';
 import {
   decodeVersionCursor,
@@ -15,7 +16,7 @@ import {
 import type {
   WorkflowSummary,
   WorkflowVersionsResponse,
-} from './workflow-transport.js';
+} from '@pertexo/contracts';
 import type { WorkflowApplicationInput } from './ports.js';
 import type { WorkflowDraftRecord } from '@pertexo/core/authoring';
 import { WorkflowNotFoundError } from '@pertexo/core/authoring';
@@ -28,7 +29,7 @@ import {
   type WorkflowDraftResult,
   type WorkflowValidationResult,
 } from './http/serializers.js';
-import { createDraftRepresentationTag } from './http/etag.js';
+import { workflowDraftRepresentationTag } from '@pertexo/workflow-model/server';
 import { workflowTemplateOriginProjectionResponseSchema } from '@pertexo/contracts';
 import {
   applicationError,
@@ -37,7 +38,6 @@ import {
 import {
   authorizeWorkflowRead,
   type AuthoringPersistence,
-  revisionConflict,
   authorize,
 } from './commands/authorization.js';
 export { InvalidWorkflowCursorError };
@@ -211,14 +211,14 @@ export class SaveWorkflowDraftUseCase {
         await authorize(input, 'workflow:update', this.authorization);
         const graph = parseWorkflowGraphDraft(input.graph);
         const current = await this.currentDraft(input);
-        const currentTag = createDraftRepresentationTag({
+        const currentTag = workflowDraftRepresentationTag({
           workflowId: current.workflowId,
           revision: current.revision,
           graph: current.graphJson,
           compatibilityFingerprint: current.compatibility.fingerprint,
         });
         if (currentTag !== input.representationTag)
-          throw revisionConflict(current, currentTag);
+          throw new WorkflowRevisionConflictError(current.revision, currentTag);
         const saved = await this.persistence.saveDraft({
           workspaceId: input.routeWorkspaceId,
           workflowId: input.workflowId,

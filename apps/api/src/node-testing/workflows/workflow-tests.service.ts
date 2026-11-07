@@ -20,21 +20,21 @@ export class WorkflowTestsUseCase {
     private readonly authorization: WorkspaceAuthorizationSource,
   ) {}
   async prepare(input: Input) {
-    await this.authorize(input);
+    await authorizeWorkflowTesting(this.authorization, input);
     return workflowTestPreparationSchema.parse(
-      await this.store.prepare(this.scope(input)),
+      await this.store.prepare(workflowTestScope(input)),
     );
   }
   async list(input: Input) {
-    await this.authorize(input);
+    await authorizeWorkflowTesting(this.authorization, input);
     return workflowTestListSchema.parse(
-      await this.store.list(this.scope(input)),
+      await this.store.list(workflowTestScope(input)),
     );
   }
   async get(input: Input & { runId: string }) {
-    await this.authorize(input);
+    await authorizeWorkflowTesting(this.authorization, input);
     return workflowTestDetailSchema.parse(
-      await this.store.get({ ...this.scope(input), runId: input.runId }),
+      await this.store.get({ ...workflowTestScope(input), runId: input.runId }),
     );
   }
   async start(
@@ -43,10 +43,10 @@ export class WorkflowTestsUseCase {
       idempotencyKey: string;
     },
   ) {
-    await this.authorize(input);
+    await authorizeWorkflowTesting(this.authorization, input);
     return workflowTestAcceptedSchema.parse(
       await this.store.start({
-        ...this.scope(input),
+        ...workflowTestScope(input),
         idempotencyKey: input.idempotencyKey,
         request: input.request,
       }),
@@ -54,14 +54,11 @@ export class WorkflowTestsUseCase {
   }
   /** Core decides who may stop this test: only it knows who started it. */
   async cancel(input: Input & { runId: string }) {
-    await this.authorize(input);
-    await this.store.cancel({ ...this.scope(input), runId: input.runId });
+    await authorizeWorkflowTesting(this.authorization, input);
+    await this.store.cancel({
+      ...workflowTestScope(input),
+      runId: input.runId,
+    });
     return { canceled: true };
-  }
-  private scope(input: Input) {
-    return workflowTestScope(input);
-  }
-  private authorize(input: Input) {
-    return authorizeWorkflowTesting(this.authorization, input);
   }
 }

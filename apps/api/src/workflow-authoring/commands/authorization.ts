@@ -9,19 +9,10 @@ import type {
   WorkflowAuthoringPersistence,
   WorkflowApplicationInput,
 } from '../ports.js';
-import type { WorkflowDraftRecord } from '@pertexo/core/authoring';
-import { WorkflowRevisionConflictError } from '@pertexo/core/authoring';
 
 export type AuthoringPersistence<
   Method extends keyof WorkflowAuthoringPersistence,
 > = Pick<WorkflowAuthoringPersistence, Method>;
-
-export function revisionConflict(
-  draft: WorkflowDraftRecord,
-  currentEtag: string,
-): WorkflowRevisionConflictError {
-  return new WorkflowRevisionConflictError(draft.revision, currentEtag);
-}
 
 export async function authorize(
   input: WorkflowApplicationInput,
