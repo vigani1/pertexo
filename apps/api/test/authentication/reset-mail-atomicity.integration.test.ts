@@ -49,9 +49,9 @@ describe.runIf(betterAuthIntegrationEnabled)(
     it('commits a reset proof and encrypted mail together, or neither when durable mail cannot be saved', async () => {
       const email = `${randomUUID()}@example.test`;
       await api.signUp(email, '/login?verified=true');
-      const reset = () =>
+      const reset = (address = email) =>
         api.send('POST', '/v1/auth/request-password-reset', {
-          payload: { email, redirectTo: '/reset-password' },
+          payload: { email: address, redirectTo: '/reset-password' },
         });
       const counts = async () =>
         (
@@ -64,7 +64,15 @@ describe.runIf(betterAuthIntegrationEnabled)(
       create trigger reject_reset_mail before insert on app.system_mail_deliveries for each row execute function public.reject_reset_mail()`);
       try {
         const failed = await reset();
-        expect(failed.statusCode).toBe(500);
+        const absent = await reset('absent-reset@example.test');
+        expect(failed.statusCode).toBe(200);
+        expect(absent.statusCode).toBe(200);
+        expect(failed.json()).toEqual(absent.json());
+        expect(failed.json()).toEqual({
+          status: true,
+          message:
+            'If this email exists in our system, check your email for the reset link',
+        });
         expect(await counts()).toEqual({ proofs: 0, mail: 0 });
         expect(
           api
