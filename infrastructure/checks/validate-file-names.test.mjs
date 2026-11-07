@@ -390,6 +390,9 @@ for (const area of [
 }
 test('preserves the intentional API auth and HTTP interfaces', () => {
   for (const file of [
+    'catalog/index.ts',
+    'connections/index.ts',
+    'workspaces/index.ts',
     'authentication/index.ts',
     'authorization/index.ts',
     'identity/index.ts',
@@ -397,3 +400,25 @@ test('preserves the intentional API auth and HTTP interfaces', () => {
   ])
     assert.deepEqual(check(`apps/api/src/${file}`), []);
 });
+
+for (const area of [
+  'connections',
+  'data-tables',
+  'notifications',
+  'workspaces',
+  'workspace-variables',
+  'catalog',
+]) {
+  test(`batch G part 2 requires concrete names in ${area}`, () => {
+    for (const lane of ['src', 'test'])
+      for (const name of [
+        'fixture.ts',
+        'contract.ts',
+        'support.ts',
+        'service.test.ts',
+      ])
+        assert.ok(
+          rules(`apps/api/${lane}/${area}/peer/${name}`).includes('FN008'),
+        );
+  });
+}

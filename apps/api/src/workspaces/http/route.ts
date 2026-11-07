@@ -233,7 +233,7 @@ function guardFor({
 }
 
 /** Establish privacy before authentication, so refusals carry it too. */
-class PrivateResponseCacheGuard implements CanActivate {
+export class PrivateResponseCacheGuard implements CanActivate {
   public canActivate(context: ExecutionContext): boolean {
     const route = declaredRoute(context);
     context

@@ -43,6 +43,14 @@ const CSRF_IN_THE_HANDLER = new Set([
 // Raw bytes or someone else's protocol: Fastify routes, documented by hand.
 const OUTSIDE_NEST = /^[A-Z]+ \/(?:hooks\/|v1\/auth\/)/u;
 
+// These protocol handlers predate @Route and write their stricter cache policy directly.
+// Token HTTP privacy is covered by api-tokens/api.integration.test.ts.
+const CUSTOM_PRIVATE_CACHE = new Set([
+  'GET /v1/token',
+  'POST /v1/invitation-acceptance/complete',
+  'POST /v1/invitation-acceptance/session',
+]);
+
 const key = ({ method, path }: WalkedRoute) => `${method} ${path}`;
 
 function documentedOperations(): ReadonlyMap<string, readonly string[]> {
@@ -91,6 +99,17 @@ describe('every API route against its rules and its document', () => {
         .filter(({ signIn }) => signIn === 'none')
         .map(key)
         .filter((route) => !PUBLIC_ROUTES.has(route)),
+    ).toEqual([]);
+  });
+
+  it('protects authenticated declarations with the shared or stricter existing cache policy', () => {
+    expect(
+      routes
+        .filter(
+          ({ signIn, privateCache }) => signIn !== 'none' && !privateCache,
+        )
+        .map(key)
+        .filter((route) => !CUSTOM_PRIVATE_CACHE.has(route)),
     ).toEqual([]);
   });
 
