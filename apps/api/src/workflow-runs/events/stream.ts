@@ -148,50 +148,64 @@ function frameForEvent(
   return { data, event: event.type, id: event.sequence, visibilityPath };
 }
 
-async function nextOrAbort<T>(
+/** One outstanding iterator read, even across many durable reconciliation intervals. */
+function notificationWaiter<T>(
   iterator: AsyncIterator<T>,
   signal: AbortSignal,
-): Promise<IteratorResult<T> | typeof ABORTED | typeof RECONCILE> {
-  if (signal.aborted) {
-    return ABORTED;
-  }
-
-  return new Promise((resolve, reject) => {
-    const onAbort = (): void => {
-      clearTimeout(timer);
-      resolve(ABORTED);
-    };
-    const timer = setTimeout(() => {
-      signal.removeEventListener('abort', onAbort);
-      resolve(RECONCILE);
-    }, DURABLE_RECONCILIATION_MS);
-    signal.addEventListener('abort', onAbort, { once: true });
-    let next: PromiseLike<IteratorResult<T>>;
-    try {
-      next = iterator.next();
-    } catch (error: unknown) {
-      clearTimeout(timer);
-      signal.removeEventListener('abort', onAbort);
-      // Iterator adapters may throw arbitrary values; identity is intentional.
-      // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
-      reject(error);
-      return;
+) {
+  type Outcome =
+    | { failed: false; value: IteratorResult<T> }
+    | { failed: true; error: unknown };
+  let pending = false;
+  let outcome: Outcome | undefined;
+  let wake = (): void => undefined;
+  return (): Promise<IteratorResult<T> | typeof ABORTED | typeof RECONCILE> => {
+    if (signal.aborted) return Promise.resolve(ABORTED);
+    if (!pending) {
+      pending = true;
+      void Promise.resolve()
+        .then(() => iterator.next())
+        .then(
+          (value) => {
+            outcome = { failed: false, value };
+            wake();
+          },
+          (error: unknown) => {
+            outcome = { failed: true, error };
+            wake();
+          },
+        );
     }
-    void Promise.resolve(next).then(
-      (result) => {
+    return new Promise((resolve, reject) => {
+      const cleanup = (): void => {
         clearTimeout(timer);
         signal.removeEventListener('abort', onAbort);
-        resolve(result);
-      },
-      (error: unknown) => {
-        clearTimeout(timer);
-        signal.removeEventListener('abort', onAbort);
-        // Iterator adapters may reject with arbitrary values; preserve identity.
-        // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
-        reject(error);
-      },
-    );
-  });
+        wake = () => undefined;
+      };
+      const onAbort = (): void => {
+        cleanup();
+        resolve(ABORTED);
+      };
+      const timer = setTimeout(() => {
+        cleanup();
+        resolve(RECONCILE);
+      }, DURABLE_RECONCILIATION_MS);
+      wake = () => {
+        if (outcome === undefined) return;
+        const result = outcome;
+        outcome = undefined;
+        pending = false;
+        cleanup();
+        if (result.failed) {
+          // Iterator adapters may reject with arbitrary values; preserve identity.
+          // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
+          reject(result.error);
+        } else resolve(result.value);
+      };
+      signal.addEventListener('abort', onAbort, { once: true });
+      wake();
+    });
+  };
 }
 
 /**
@@ -261,8 +275,7 @@ export async function* streamRunEventFrames(
   try {
     const liveIterator = subscription[Symbol.asyncIterator]();
     iterator = liveIterator;
-    let pendingNext:
-      Promise<IteratorResult<LiveRunEventNotification>> | undefined;
+    const nextNotification = notificationWaiter(liveIterator, input.signal);
     let shouldBackfill = true;
     let backfillPath: SseRunEventFrame['visibilityPath'] =
       identity.lastEventId === 0 ? 'initial_backfill' : 'reconnect_backfill';
@@ -272,15 +285,12 @@ export async function* streamRunEventFrames(
         shouldBackfill = false;
       }
 
-      pendingNext ??= Promise.resolve().then(() => liveIterator.next());
-      const pending = pendingNext;
-      const next = await nextOrAbort({ next: () => pending }, input.signal);
+      const next = await nextNotification();
       if (next === RECONCILE) {
         shouldBackfill = true;
         backfillPath = 'recovery_backfill';
         continue;
       }
-      pendingNext = undefined;
       if (next === ABORTED || (next.done ?? false)) {
         return;
       }
