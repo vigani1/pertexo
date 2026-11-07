@@ -1,4 +1,4 @@
-import { problemResponse } from './primitives.js';
+import { problemResponse } from '../routes/openapi-primitives.js';
 
 export const sharedProblemResponses = Object.freeze({
   BadRequest: problemResponse('Invalid request'),

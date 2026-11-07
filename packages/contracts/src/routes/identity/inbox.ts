@@ -4,7 +4,7 @@ import {
 } from '@pertexo/policy';
 import { z } from 'zod';
 
-import { responseReference } from '../../openapi/primitives.js';
+import { responseReference } from '../openapi-primitives.js';
 import {
   workspaceInboxListQuerySchema,
   workspaceInboxListResponseSchema,

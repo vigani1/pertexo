@@ -3,7 +3,7 @@ import {
   UNPURGED_WORKSPACE_STATUSES,
 } from '@pertexo/policy';
 import { z } from 'zod';
-import { problemResponse } from '../../openapi/primitives.js';
+import { problemResponse } from '../openapi-primitives.js';
 import * as schemas from '../../schemas/identity/federation/settings.js';
 import { named as projected } from '../define.js';
 const reading = {

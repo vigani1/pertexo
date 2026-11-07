@@ -1,4 +1,4 @@
-import { pathParameter, problemResponse } from '../primitives.js';
+import { pathParameter, problemResponse } from '../../routes/openapi-primitives.js';
 const parameters = [
   pathParameter('endpointKey', {
     type: 'string',

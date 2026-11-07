@@ -9,7 +9,7 @@ import {
   jsonResponse,
   problemResponse,
   queryParameter,
-} from '../primitives.js';
+} from '../../routes/openapi-primitives.js';
 import { projectContractSchema } from '../schema-projection.js';
 export function federationContractSchemas() {
   return {

@@ -6,7 +6,7 @@ import {
   authenticatedComponents,
   jsonSchema,
   problemResponse,
-} from '../primitives.js';
+} from '../../routes/openapi-primitives.js';
 import { apiProblemSchema } from '../../errors/api-problem.js';
 import { routePaths, routeSchemas } from '../../routes/openapi.js';
 import { workflowRunRoutes } from '../../routes/execution/runs.js';

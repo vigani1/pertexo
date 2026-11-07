@@ -28,7 +28,7 @@ import {
   jsonSchema,
   problemResponse,
   responseReference,
-} from '../primitives.js';
+} from '../../routes/openapi-primitives.js';
 
 /**
  * Sign-in, browser-session and account-security operations of the

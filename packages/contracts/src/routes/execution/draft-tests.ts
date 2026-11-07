@@ -1,7 +1,7 @@
 import {
   problemResponse,
   responseReference,
-} from '../../openapi/primitives.js';
+} from '../openapi-primitives.js';
 import {
   workflowTestSuiteAcceptedSchema,
   workflowTestSuiteCaseParamsSchema,

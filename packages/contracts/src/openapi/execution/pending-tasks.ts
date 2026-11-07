@@ -4,7 +4,7 @@ import {
   pendingTaskDetailSchema,
   pendingTaskSummarySchema,
 } from '../../schemas/execution/pending-tasks.js';
-import { jsonSchema } from '../primitives.js';
+import { jsonSchema } from '../../routes/openapi-primitives.js';
 
 const routes = Object.values(pendingTaskRoutes);
 

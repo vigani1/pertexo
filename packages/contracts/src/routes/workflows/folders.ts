@@ -1,11 +1,11 @@
-import { problemResponse } from '../../openapi/primitives.js';
+import { problemResponse } from '../openapi-primitives.js';
 import { workflowIdParamSchema } from '../../schemas/workflows/authoring.js';
 import * as folders from '../../schemas/workflows/organization-folders.js';
 import * as sharing from '../../schemas/workflows/sharing.js';
 import { projected, reading, session, workspaceParams } from './access.js';
 const participating = session('workflow:read');
 
-import { responseReference } from '../../openapi/primitives.js';
+import { responseReference } from '../openapi-primitives.js';
 import { defineRoute } from '../define.js';
 const sharedProblems1 = {
   '400': responseReference('BadRequest'),

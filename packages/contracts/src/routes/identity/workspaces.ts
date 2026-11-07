@@ -9,7 +9,7 @@ import {
 import {
   problemResponse,
   responseReference,
-} from '../../openapi/primitives.js';
+} from '../openapi-primitives.js';
 import type { z } from 'zod';
 
 import * as membership from '../../schemas/identity/membership.js';

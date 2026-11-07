@@ -13,7 +13,7 @@ const presenceParams = workflowIdParamSchema
   .extend({ tabId: z.uuid() })
   .strict();
 
-import { responseReference } from '../../openapi/primitives.js';
+import { responseReference } from '../openapi-primitives.js';
 import { defineRoute } from '../define.js';
 const sharedProblems1 = {
   '400': responseReference('BadRequest'),

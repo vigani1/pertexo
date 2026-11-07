@@ -2,7 +2,7 @@ import * as schemas from '../../schemas/workflows/authoring.js';
 import { projected, reading, updating } from './access.js';
 const automationReading = { ...reading, auth: 'session_or_token' } as const;
 
-import { responseReference } from '../../openapi/primitives.js';
+import { responseReference } from '../openapi-primitives.js';
 import { defineRoute } from '../define.js';
 export const versionRoutes = {
   restoreVersion: defineRoute({

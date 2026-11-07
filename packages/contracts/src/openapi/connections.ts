@@ -23,7 +23,7 @@ import {
   problemResponse,
   queryParameter,
   responseReference,
-} from './primitives.js';
+} from '../routes/openapi-primitives.js';
 
 const { slackChannels, ...beforeCallback } = connectionRoutes;
 const routes = [

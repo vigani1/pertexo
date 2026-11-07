@@ -8,7 +8,7 @@ import {
   jsonSchema,
   problemResponse,
   responseReference,
-} from '../primitives.js';
+} from '../../routes/openapi-primitives.js';
 import {
   invitationAcceptanceCompleteRequestSchema,
   invitationAcceptanceJourneySchema,

@@ -12,7 +12,7 @@ import {
   problemResponse,
   responseReference,
   webhookContentTypeHeaderParameter,
-} from '../primitives.js';
+} from '../../routes/openapi-primitives.js';
 
 function pathParameter(name: string, pattern: string) {
   return openApiPathParameter(name, { type: 'string', pattern });
