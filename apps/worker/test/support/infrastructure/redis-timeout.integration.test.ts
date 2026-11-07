@@ -35,17 +35,18 @@ describe.skipIf(!integration)(
         const source = `import { createRedisTestNamespace } from ${JSON.stringify(namespaceModule)};
 import { registerTestResourceCleanup } from ${JSON.stringify(cleanupModule)};
 const namespace = createRedisTestNamespace(process.env.REDIS_URL, 9, 'timeout-regression');
-it('times out after owning Redis', async (context) => {
-  const close = registerTestResourceCleanup(context, () => namespace.close());
-  try {
-    await namespace.acquire();
+let close: () => Promise<void>;
+beforeEach(async (context) => {
+  close = registerTestResourceCleanup(context, () => namespace.close());
+  await namespace.acquire();
     const { Redis } = await import(${JSON.stringify(require.resolve('ioredis'))});
     const client = new Redis(namespace.redisUrl);
     try { await client.set('timeout-marker', 'must-be-flushed'); } finally { await client.quit(); }
     const { writeFile } = await import('node:fs/promises');
     await writeFile(${JSON.stringify(join(directory, 'seeded'))}, 'seeded');
-    await new Promise(() => {});
-  } finally { await close(); }
+});
+it('times out after owning Redis', async () => {
+  try { await new Promise(() => {}); } finally { await close(); }
 }, 250);
 `;
         await writeFile(fixture, source);
