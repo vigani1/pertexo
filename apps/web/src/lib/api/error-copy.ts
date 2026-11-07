@@ -1,4 +1,4 @@
-import { isApiError, type ApiError } from './error';
+import { isApiError, isSessionExpired, type ApiError } from './error';
 
 // Generic, human wording for failures every feature shares. Features keep
 // their own messages for domain-specific codes and fall back to these.
@@ -46,7 +46,7 @@ export function describeReadError(error: unknown, resource: string): string {
   if (isApiError(error)) {
     const storedDefinition = storedTableFailureReason(error);
     if (storedDefinition !== undefined) return storedDefinition;
-    if (error.status === 401) return 'Your session ended. Sign in again.';
+    if (isSessionExpired(error)) return 'Your session ended. Sign in again.';
     if (error.status === 403)
       return `Your role no longer has access to ${resource.toLowerCase()} here.`;
     if (error.kind === 'network')

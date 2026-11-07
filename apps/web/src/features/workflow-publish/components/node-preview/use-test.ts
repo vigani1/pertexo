@@ -1,5 +1,6 @@
+import { useCommandAttempt } from '@/lib/api/commands/use-command-attempt';
+import { RETRY_WINDOW_ENDED } from '@/lib/api/commands/command-retry';
 import {
-  canResend,
   isUnconfirmedCommand,
   newCommandKey,
   type CommandKey,
@@ -75,7 +76,7 @@ export function useNodeTest(options: NodeTestOptions) {
     setChecked(undefined);
   const [error, setError] = useState<string>();
   const [recoveryPending, setRecoveryPending] = useState(false);
-  const attempt = useRef<TestAttempt | undefined>(undefined);
+  const attempt = useCommandAttempt<TestAttempt>();
   const operation = useRef(0);
   const activeRequest = useRef<AbortController | undefined>(undefined);
 
@@ -118,14 +119,10 @@ export function useNodeTest(options: NodeTestOptions) {
     const { controller, isCurrent } = begin('run');
     let accepted = false;
     try {
-      // Past its window a held test is forgotten; the person asked for a new one.
-      if (attempt.current !== undefined && !canResend(attempt.current))
-        attempt.current = undefined;
-      if (attempt.current === undefined) setRecoveryPending(false);
-      const command =
-        attempt.current ?? (await newNodeTestAttempt(context, input));
-      if (!isCurrent()) return;
-      attempt.current = command;
+      const command = await attempt.getOrCreate(() =>
+        newNodeTestAttempt(context, input),
+      );
+      if (!isCurrent() || command === undefined) return;
       const response = await executeWorkflowNodePreview(
         apiClient,
         workspaceId,
@@ -133,7 +130,7 @@ export function useNodeTest(options: NodeTestOptions) {
         { ...command, signal: controller.signal },
       );
       if (!isCurrent()) return;
-      attempt.current = undefined;
+      attempt.clear();
       setRecoveryPending(false);
       setPreview(response.preview);
       accepted = true;
@@ -156,25 +153,9 @@ export function useNodeTest(options: NodeTestOptions) {
           : commandErrorMessage(cause, 'the test'),
       );
       if (!accepted) {
-        if (!isUnconfirmedCommand(cause)) attempt.current = undefined;
-        setRecoveryPending(attempt.current !== undefined);
+        if (!isUnconfirmedCommand(cause)) attempt.clear();
+        setRecoveryPending(attempt.current() !== undefined);
       }
-    } finally {
-      if (isCurrent()) setPending(undefined);
-    }
-  }
-
-  async function resume() {
-    if (preview === undefined || previewTerminalStatuses.has(preview.status))
-      return;
-    const { controller, isCurrent } = begin('run');
-    try {
-      await finishNodeTest(context, preview, {
-        signal: controller.signal,
-        isCurrent,
-      });
-    } catch (cause) {
-      fail(isCurrent, cause, observationErrorMessage(cause));
     } finally {
       if (isCurrent()) setPending(undefined);
     }
@@ -195,13 +176,20 @@ export function useNodeTest(options: NodeTestOptions) {
     pending,
     check: checked?.context === checkContext ? checked.result : undefined,
     preview,
-    error,
+    error: attempt.expired ? RETRY_WINDOW_ENDED : error,
     recoveryPending,
+    expired: attempt.expired,
+    startNewAttempt: () => {
+      attempt.clear();
+      setRecoveryPending(false);
+      setChecked(undefined);
+      setError(undefined);
+    },
     observing:
       preview !== undefined && !previewTerminalStatuses.has(preview.status),
     checkSetup: (inputText: string) => checkNodeSetup(context, inputText),
     runTest,
-    resume,
+    resume: () => resumeNodeTest(context, preview),
     inputChanged,
   } as const;
 }
@@ -303,4 +291,24 @@ async function finishNodeTest(
   setPreview(observed);
   onFinished?.(observed);
   if (observed.status === 'succeeded') onSucceeded?.(observed);
+}
+
+async function resumeNodeTest(
+  context: NodeTestContext,
+  preview: PreviewRunSummary | undefined,
+) {
+  const { begin, fail, setPending } = context;
+  if (preview === undefined || previewTerminalStatuses.has(preview.status))
+    return;
+  const { controller, isCurrent } = begin('run');
+  try {
+    await finishNodeTest(context, preview, {
+      signal: controller.signal,
+      isCurrent,
+    });
+  } catch (cause) {
+    fail(isCurrent, cause, observationErrorMessage(cause));
+  } finally {
+    if (isCurrent()) setPending(undefined);
+  }
 }

@@ -1,4 +1,4 @@
-import { canonicalizeJson } from '@/lib/canonical-json';
+import { canonicalJson } from '@pertexo/workflow-model';
 
 /** What a new run starts with: its input and an optional deadline. */
 export type RunIntent = Readonly<{
@@ -35,7 +35,7 @@ export function toRunIntent(input: string, deadline: string): RunIntent {
 
 /** One text per intent, so an exact retry can tell whether anything changed. */
 export function normalizeRunIntent(intent: RunIntent): string {
-  return canonicalizeJson({
+  return canonicalJson({
     deadlineAt: intent.deadlineAt ?? null,
     value: intent.value,
     ...(intent.expectedPublishedVersionId === undefined

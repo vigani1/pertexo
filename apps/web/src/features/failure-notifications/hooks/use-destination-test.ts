@@ -1,10 +1,9 @@
+import { useCommandAttempt } from '@/lib/api/commands/use-command-attempt';
 import {
-  canResend,
   isUnconfirmedCommand,
   newCommandKey,
   type CommandKey,
 } from '@/lib/api/commands/command-retry';
-import { useRef } from 'react';
 import type { FailureNotificationDestinationResponse } from '@pertexo/contracts';
 import { isApiError } from '@/lib/api/error';
 import {
@@ -57,32 +56,41 @@ export function useDestinationTest(
   destination: FailureNotificationDestinationResponse,
 ) {
   const mutation = useTestFailureNotificationDestinationMutation(scope);
-  const attempt = useRef<Command | undefined>(undefined);
+  const attempt = useCommandAttempt<Command>();
   const phase = phaseOf(mutation);
   async function send(command: Command) {
     try {
-      await mutation.mutateAsync(command);
-    } catch {
+      const result = await mutation.mutateAsync(command);
+      if (result.outcome.ok || !UNKNOWN_CODES.has(result.outcome.errorCode))
+        attempt.clear();
+    } catch (cause) {
+      if (!isUnconfirmedCommand(cause) || failedOnOurSide(cause))
+        attempt.clear();
       // The mutation result owns the visible thread and outcome.
     }
   }
-  function run() {
+  async function run() {
     if (mutation.isPending) return;
-    // Past its window a held test is forgotten; a test may simply run again.
-    const command =
-      phase === 'unsure' &&
-      attempt.current !== undefined &&
-      canResend(attempt.current)
-        ? attempt.current
-        : {
-            destinationId: destination.id,
-            expectedVersion: destination.currentVersion,
-            ...newCommandKey(),
-          };
-    attempt.current = command;
+    const command = await attempt.getOrCreate(() => ({
+      destinationId: destination.id,
+      expectedVersion: destination.currentVersion,
+      ...newCommandKey(),
+    }));
+    if (command === undefined) return;
     void send(command);
   }
-  return { phase, run, failure: failureOf(mutation, destination) };
+  return {
+    phase,
+    expired: attempt.expired,
+    run: () => {
+      void run();
+    },
+    startNewAttempt: () => {
+      attempt.clear();
+      void run();
+    },
+    failure: failureOf(mutation, destination),
+  };
 }
 
 /** What went wrong in words, so a refusal or our own failure isn't blamed on the destination. */

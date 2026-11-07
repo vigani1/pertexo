@@ -320,6 +320,7 @@ function InboxThreadResults({
         hasNextPage={threads.hasNextPage}
         loading={threads.isFetchingNextPage}
         failed={threads.isFetchNextPageError}
+        error={threads.error}
         onLoadMore={() => {
           void threads.fetchNextPage();
         }}

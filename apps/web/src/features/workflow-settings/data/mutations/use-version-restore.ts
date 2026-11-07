@@ -16,7 +16,7 @@ import { restoreWorkflowVersion } from '@/features/workflow-versions/public';
 import { isApiError } from '@/lib/api/error';
 import { describeCommandError } from '@/lib/api/error-copy';
 import type { ApiClient } from '@/lib/api/client';
-import { canonicalizeJson } from '@/lib/canonical-json';
+import { canonicalJson } from '@pertexo/workflow-model';
 
 export type RestoreRecovery =
   'check-outcome' | 'retry-original' | 'confirm-replacement';
@@ -201,8 +201,8 @@ async function reconcileRestoreAttempt(
   try {
     const current = await getWorkflowDraft(apiClient, workspaceId, workflowId);
     if (
-      canonicalizeJson(current.draft.graph) ===
-      canonicalizeJson(attempt.version.graph)
+      canonicalJson(current.draft.graph) ===
+      canonicalJson(attempt.version.graph)
     )
       return { recoveryCopyId: null };
     attempt.replacementEtag = current.etag;

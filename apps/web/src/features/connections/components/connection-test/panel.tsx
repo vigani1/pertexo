@@ -1,3 +1,4 @@
+import { Button } from '@/components/ui/button';
 import { useId, useState } from 'react';
 import { connectionTestRequestSchema } from '@pertexo/contracts';
 import type {
@@ -96,7 +97,10 @@ export function ConnectionTestPanel({
 }: Readonly<{
   provider: ProviderKey;
   authType?: ConnectionResponse['authType'];
-  test: Pick<ConnectionTest, 'phase' | 'result' | 'error'>;
+  test: Pick<
+    ConnectionTest,
+    'phase' | 'result' | 'error' | 'expired' | 'startNewAttempt'
+  >;
   onRun: (request: ConnectionTestRequest) => void;
   disabled?: boolean;
 }>) {
@@ -195,13 +199,24 @@ export function ConnectionTestPanel({
           )}
         </Field>
       ) : null}
+      {test.expired ? (
+        <Button
+          type="button"
+          onClick={() => {
+            setAcknowledged(false);
+            test.startNewAttempt();
+          }}
+        >
+          Start a new attempt
+        </Button>
+      ) : null}
       <ProgressButton
         type="button"
         variant="default"
         className="self-start"
         pending={running}
         pendingLabel="Testing…"
-        disabled={disabled}
+        disabled={disabled || test.expired}
         onClick={() => {
           const next = request();
           if (next !== undefined) onRun(next);

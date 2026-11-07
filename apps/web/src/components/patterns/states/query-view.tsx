@@ -1,7 +1,7 @@
+import { ReadRecovery } from './read-recovery';
+import { useReadRetry } from '@/lib/hooks/use-read-retry';
 import type { ReactNode } from 'react';
-import { RefreshCwIcon, RotateCcwIcon } from 'lucide-react';
 import { StaleLine } from '@/components/patterns/states/stale-line';
-import { Button } from '@/components/ui/button';
 import {
   Empty,
   EmptyActions,
@@ -12,11 +12,7 @@ import {
 import { Notice } from '@/components/ui/notice';
 import { SkeletonLines } from '@/components/ui/skeleton';
 import { StatusGlyph } from '@/components/ui/status';
-import {
-  describeReadError,
-  isAccessLost,
-  readFailureReason,
-} from '@/lib/api/error-copy';
+import { isAccessLost, readFailureReason } from '@/lib/api/error-copy';
 
 /** The part of a TanStack query result that decides what a read shows. */
 export type ReadQuery<Data> = Readonly<{
@@ -71,7 +67,10 @@ export function QueryView<Data>({
   failure?: (error: unknown) => ReactNode;
   children?: (data: Data) => ReactNode;
 }>) {
-  const retry = () => void query.refetch();
+  const waitSeconds = useReadRetry(query.error);
+  const retry = () => {
+    if (waitSeconds === 0 && !query.isFetching) void query.refetch();
+  };
   if (query.isError) {
     const explained = failure?.(query.error);
     if (explained !== undefined && explained !== null) return explained;
@@ -97,22 +96,13 @@ export function QueryView<Data>({
         retry,
       });
     return (
-      <Notice
-        tone="destructive"
-        action={
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled={query.isFetching}
-            onClick={retry}
-          >
-            <RotateCcwIcon aria-hidden="true" data-icon="inline-start" />
-            {query.isFetching ? 'Trying again…' : 'Retry'}
-          </Button>
-        }
-      >
-        {describeReadError(query.error, resource)}
+      <Notice tone="destructive">
+        <ReadRecovery
+          error={query.error}
+          resource={resource}
+          retrying={query.isFetching}
+          retry={retry}
+        />
       </Notice>
     );
   }
@@ -128,6 +118,7 @@ export function QueryView<Data>({
           updatedAt={query.dataUpdatedAt}
           retrying={query.isFetching}
           onRetry={retry}
+          error={query.error}
         />
       ) : null}
       {content}
@@ -159,14 +150,14 @@ export function FailedReadState({
       <EmptyTitle>{title}</EmptyTitle>
       <EmptyDescription>{readFailureReason(error)}</EmptyDescription>
       <EmptyActions>
-        <Button
-          type="button"
-          variant="outline"
-          disabled={retrying}
-          onClick={retry}
-        >
-          {retrying ? 'Trying again…' : 'Try again'}
-        </Button>
+        <ReadRecovery
+          error={error}
+          resource={title}
+          retrying={retrying}
+          retry={retry}
+          message={null}
+          label="Try again"
+        />
       </EmptyActions>
     </Empty>
   );
@@ -178,30 +169,25 @@ export function FailedReadState({
  */
 export function InlineFailedRead({
   text,
+  error,
   retrying,
   retry,
 }: Readonly<{
-  /** "Couldn’t load Code diagnostics." */
   text: string;
+  error: unknown;
   retrying: boolean;
   retry: () => void;
 }>) {
   return (
-    <div
-      role="alert"
-      className="flex flex-wrap items-center gap-2 text-[0.8rem] text-muted-foreground"
-    >
-      <span>{text}</span>
-      <Button
-        type="button"
-        size="xs"
-        variant="ghost"
-        disabled={retrying}
-        onClick={retry}
-      >
-        <RefreshCwIcon aria-hidden="true" />
-        Try again
-      </Button>
+    <div role="alert" className="text-[0.8rem] text-muted-foreground">
+      <ReadRecovery
+        error={error}
+        resource="This data"
+        message={text}
+        retrying={retrying}
+        retry={retry}
+        label="Try again"
+      />
     </div>
   );
 }

@@ -1,6 +1,5 @@
+import { ReadRecovery } from './read-recovery';
 import type { ReactNode } from 'react';
-import { RefreshCwIcon } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { StatusGlyph } from '@/components/ui/status';
 import { formatShortTime } from '@/lib/format/time';
 import { cn } from '@/lib/class-names';
@@ -11,6 +10,7 @@ import { cn } from '@/lib/class-names';
  * `children` adds one short sentence, e.g. that unsaved edits are kept.
  */
 export function StaleLine({
+  error,
   updatedAt,
   retrying,
   onRetry,
@@ -18,6 +18,7 @@ export function StaleLine({
   children,
 }: Readonly<{
   /** When the data on screen was fetched, in epoch milliseconds. */
+  error?: unknown;
   updatedAt: number;
   retrying: boolean;
   onRetry: () => void;
@@ -44,17 +45,14 @@ export function StaleLine({
         </time>
         .{children === undefined ? null : <> {children}</>}
       </span>
-      <Button
-        type="button"
-        size="xs"
-        variant="ghost"
-        className="text-warning"
-        disabled={retrying}
-        onClick={onRetry}
-      >
-        <RefreshCwIcon aria-hidden="true" />
-        {retrying ? 'Retrying…' : 'Retry'}
-      </Button>
+      <ReadRecovery
+        error={error}
+        resource="Latest results"
+        retrying={retrying}
+        retry={onRetry}
+        message={null}
+        pendingLabel="Retrying…"
+      />
     </div>
   );
 }

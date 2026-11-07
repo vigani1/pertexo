@@ -101,6 +101,7 @@ export function InvitationsPanel({
         hasNextPage={query.hasNextPage}
         loading={query.isFetchingNextPage}
         failed={query.isFetchNextPageError}
+        error={query.error}
         onLoadMore={() => void query.fetchNextPage()}
       />
       <InvitationActionDialog

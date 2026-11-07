@@ -5,7 +5,7 @@ import {
   diffWorkflowGraphs as diffGraphs,
 } from '@/features/workflow-drafts/public';
 import { stepLabel } from '../shape';
-import { canonicalizeJson } from '@/lib/canonical-json';
+import { canonicalJson } from '@pertexo/workflow-model';
 
 export type VersionStepChange = Readonly<{
   id: string;
@@ -58,10 +58,10 @@ export function diffWorkflowGraphs(
     detail: describeStepChange(change.aspects),
   }));
   const contractChanged =
-    canonicalizeJson(previous.callable ?? null) !==
-    canonicalizeJson(current.callable ?? null);
+    canonicalJson(previous.callable ?? null) !==
+    canonicalJson(current.callable ?? null);
   const settingsChanged =
-    canonicalizeJson(previous.settings) !== canonicalizeJson(current.settings);
+    canonicalJson(previous.settings) !== canonicalJson(current.settings);
   const lines: GraphChange[] = [
     ...diff.notes.map((note) => ({ ...note, target: 'note' as const })),
     ...added.map((item) => ({

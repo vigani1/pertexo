@@ -227,6 +227,7 @@ function InputCaseList({
         hasNextPage={query.hasNextPage}
         loading={query.isFetchingNextPage}
         failed={query.isFetchNextPageError}
+        error={query.error}
         disabled={locked}
         onLoadMore={() => {
           if (!locked) void query.fetchNextPage();

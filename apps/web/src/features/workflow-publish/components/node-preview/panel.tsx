@@ -125,7 +125,11 @@ export function NodeTestPanel(props: NodeTestPanelProps) {
           }}
         />
       )}
-      <Button type="button" disabled={!model.canRun} onClick={model.run}>
+      <Button
+        type="button"
+        disabled={!model.canRun || model.test.expired}
+        onClick={model.run}
+      >
         {model.test.pending === 'run' ? (
           <LoadingOrb />
         ) : (
@@ -133,6 +137,17 @@ export function NodeTestPanel(props: NodeTestPanelProps) {
         )}
         {runLabel({ test: model.test, pinned: model.pinned })}
       </Button>
+      {model.test.expired ? (
+        <Button
+          type="button"
+          onClick={() => {
+            model.test.startNewAttempt();
+            model.setAcknowledgedContext(undefined);
+          }}
+        >
+          Start a new attempt
+        </Button>
+      ) : null}
       <TestResult
         preview={model.test.preview}
         apiClient={model.apiClient}

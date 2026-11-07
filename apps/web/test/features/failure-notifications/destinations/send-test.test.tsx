@@ -1,7 +1,7 @@
-import { screen, within } from '@testing-library/react';
+import { act, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { HttpResponse, http } from 'msw';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { coldStart } from '../../../support/fixtures/run';
 import { mockServer } from '../../../support/mock-server';
@@ -114,4 +114,40 @@ describe('sending a test to an alert destination', () => {
     ).toBeVisible();
     expect(new Set(calls).size).toBe(1);
   });
+});
+
+afterEach(() => vi.restoreAllMocks());
+it('explains expired recovery and requires another send confirmation for a new attempt', async () => {
+  let now = Date.now();
+  vi.spyOn(Date, 'now').mockImplementation(() => now);
+  const { calls, event } = await sendTest(() =>
+    HttpResponse.json({
+      connection,
+      outcome: {
+        ok: false,
+        httpStatus: null,
+        errorCode: 'connection.test.network_failed',
+      },
+    }),
+  );
+  await screen.findByRole('button', { name: `Check test result for ${label}` });
+  now += 86_400_000;
+  act(() => {
+    document.dispatchEvent(new Event('visibilitychange'));
+  });
+  const start = await screen.findByRole('button', {
+    name: `Start a new attempt for ${label}`,
+  });
+  expect(screen.getByText(/retry window has ended/)).toBeVisible();
+  expect(calls).toHaveLength(1);
+  await event.click(start);
+  expect(calls).toHaveLength(1);
+  await event.click(
+    within(await screen.findByRole('dialog')).getByRole('button', {
+      name: 'Send test',
+    }),
+  );
+  await screen.findByRole('button', { name: `Check test result for ${label}` });
+  expect(calls).toHaveLength(2);
+  expect(calls[1]).not.toBe(calls[0]);
 });

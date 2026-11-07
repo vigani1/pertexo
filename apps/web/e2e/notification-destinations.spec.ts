@@ -174,6 +174,54 @@ test('creates, versions and disables a notification destination', async ({
     page.getByText('#C0123456789 via Incident Slack', { exact: true }),
   ).toBeVisible();
 
+  const attempts: (string | null)[] = [];
+  await page.route(
+    `**/v1/workspaces/${workspaceId}/failure-notification-destinations/${destinationId}/test`,
+    (route) => {
+      attempts.push(route.request().headers()['idempotency-key'] ?? null);
+      return route.fulfill({
+        json: {
+          connection,
+          outcome: {
+            ok: false,
+            httpStatus: null,
+            errorCode: 'connection.test.network_failed',
+          },
+        },
+      });
+    },
+  );
+  await page.clock.install();
+  await page
+    .getByRole('button', {
+      name: 'Send test to #C0123456789 via Incident Slack',
+    })
+    .click();
+  await page
+    .getByRole('dialog')
+    .getByRole('button', { name: 'Send test', exact: true })
+    .click();
+  await expect(
+    page.getByRole('button', {
+      name: 'Check test result for #C0123456789 via Incident Slack',
+    }),
+  ).toBeVisible();
+  await page.clock.setSystemTime(Date.now() + 86_400_001);
+  await page.clock.runFor(1_100);
+  await expect(page.getByText(/retry window has ended/)).toBeVisible();
+  expect(attempts).toHaveLength(1);
+  await page
+    .getByRole('button', {
+      name: 'Start a new attempt for #C0123456789 via Incident Slack',
+    })
+    .click();
+  expect(attempts).toHaveLength(1);
+  await page
+    .getByRole('dialog')
+    .getByRole('button', { name: 'Send test', exact: true })
+    .click();
+  await expect.poll(() => attempts.length).toBe(2);
+  expect(attempts[1]).not.toBe(attempts[0]);
   await page.getByRole('button', { name: /^Edit #C0123456789/u }).click();
   await expect(
     lens.getByText(/Version 1 · saving creates version 2/u),

@@ -89,6 +89,7 @@ export function ConnectionUsage({
             hasNextPage={usage.hasNextPage}
             loading={usage.isFetchingNextPage}
             failed={usage.isFetchNextPageError}
+            error={usage.error}
             onLoadMore={() => void usage.fetchNextPage()}
           />
         </>

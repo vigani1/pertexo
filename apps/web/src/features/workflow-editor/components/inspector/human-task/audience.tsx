@@ -115,6 +115,7 @@ export function AudienceField({
         hasNextPage={members.hasNextPage}
         loading={members.isFetchingNextPage}
         failed={members.isFetchNextPageError}
+        error={members.error}
         onLoadMore={() => void members.fetchNextPage()}
       />
       {audience.memberIds.length === 0 ? null : (
