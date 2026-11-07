@@ -17,7 +17,7 @@ import {
   application,
   session,
   preferenceStore,
-} from './module/fixture.js';
+} from './notification-module-fixture.js';
 import type {
   InboxHintSignal,
   InboxHintSource,

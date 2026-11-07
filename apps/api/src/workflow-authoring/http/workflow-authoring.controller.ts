@@ -19,7 +19,7 @@ import type {
   ConditionalWorkflowResponse,
   WorkflowAuthoringRequest,
   WorkflowResponse,
-} from '../workflow-transport.js';
+} from '../workflow-authoring-request.js';
 import {
   CreateWorkflowUseCase,
   GetWorkflowDraftUseCase,

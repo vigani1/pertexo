@@ -1,8 +1,8 @@
 import { vi } from 'vitest';
 
-import { nodeIdentityCrypto } from '../../../../src/identity/index.js';
-import { InvitationAcceptanceUseCase } from '../../../../src/workspaces/index.js';
-import type { IdentityWorkspacePersistence } from '../../../../src/workspaces/ports.js';
+import { nodeIdentityCrypto } from '../../../src/identity/index.js';
+import { InvitationAcceptanceUseCase } from '../../../src/workspaces/index.js';
+import type { IdentityWorkspacePersistence } from '../../../src/workspaces/ports.js';
 
 export const workspaceId = '11111111-1111-4111-8111-111111111111';
 

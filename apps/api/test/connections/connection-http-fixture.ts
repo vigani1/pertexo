@@ -5,16 +5,16 @@ import type {
 } from '@pertexo/core/testing';
 
 import { expect, vi } from 'vitest';
-import { createTestApiApplication } from '../../support/api-application.js';
-import type { ConnectionDependencies } from '../../../src/connections/index.js';
-import type { IdentityWorkspaceDependencies } from '../../../src/workspaces/index.js';
-import type { ApiConnectionRuntime } from '../../../src/platform/connections/connections-runtime.module.js';
-import type { ApiIdentityRuntime } from '../../../src/platform/identity/identity-runtime.module.js';
+import { createTestApiApplication } from '../support/api-application.js';
+import type { ConnectionDependencies } from '../../src/connections/index.js';
+import type { IdentityWorkspaceDependencies } from '../../src/workspaces/index.js';
+import type { ApiConnectionRuntime } from '../../src/platform/connections/connections-runtime.module.js';
+import type { ApiIdentityRuntime } from '../../src/platform/identity/identity-runtime.module.js';
 import {
   createApiPlatformFixture,
   createStubIdentityRuntime,
   createStubApiWorkflowRuntime,
-} from '../../support/api-platform.fixture.js';
+} from '../support/api-platform.fixture.js';
 
 export const actorId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 

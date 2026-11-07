@@ -4,7 +4,7 @@ import type {
   IdentityWorkspacePersistence,
   UserProfilePersistenceRecord,
   WorkspaceAuthorizationReader,
-} from '../ports.js';
+} from './ports.js';
 
 /** Keep internal profile/workspace fields and absent access behind the application boundary. */
 export function createIdentityWorkspaceAdapter(

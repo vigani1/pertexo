@@ -33,7 +33,7 @@ import {
   encryptionSignal,
   toResponse,
   type ConnectionCommandInput,
-} from '../use-cases/support.js';
+} from '../use-cases/connection-serialization.js';
 import {
   OAuth2EndpointRefusedError,
   OAuth2ProviderUnavailableError,

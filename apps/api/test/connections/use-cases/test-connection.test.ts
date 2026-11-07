@@ -16,7 +16,7 @@ import {
   command,
   secretVersionId,
   sealed,
-} from './test-connection/fixture.js';
+} from './test-connection-fixture.js';
 import { ConnectionSecretEncryptionError } from '@pertexo/secrets/server';
 import type { SecureHttpRequest } from '@pertexo/secrets/server';
 

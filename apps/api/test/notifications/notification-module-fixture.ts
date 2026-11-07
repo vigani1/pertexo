@@ -1,7 +1,7 @@
 import type { Role } from '@pertexo/policy';
-import { registerWorkflowPortabilityJsonParser } from '../../../src/workflow-authoring/portability/json-parser.js';
-import { registerNoticeUnsubscribeTransport } from '../../../src/notifications/preferences/transport.js';
-import type { NoticePreferencesService } from '../../../src/notifications/preferences/notice-preferences.service.js';
+import { registerWorkflowPortabilityJsonParser } from '../../src/workflow-authoring/portability/json-parser.js';
+import { registerNoticeUnsubscribeTransport } from '../../src/notifications/preferences/transport.js';
+import type { NoticePreferencesService } from '../../src/notifications/preferences/notice-preferences.service.js';
 import type {
   NoticePreferencesStore,
   WorkspaceInboxStore,
@@ -11,12 +11,12 @@ import { FastifyAdapter } from '@nestjs/platform-fastify';
 import { Test } from '@nestjs/testing';
 import { vi } from 'vitest';
 
-import { NotificationsModule } from '../../../src/notifications/notifications.module.js';
-import type { InboxHintSource } from '../../../src/notifications/inbox-hint-hub.js';
-import { WorkspaceInboxService } from '../../../src/notifications/workspace-inbox.service.js';
+import { NotificationsModule } from '../../src/notifications/notifications.module.js';
+import type { InboxHintSource } from '../../src/notifications/inbox-hint-hub.js';
+import { WorkspaceInboxService } from '../../src/notifications/workspace-inbox.service.js';
 
-import { APPLICATION_ERROR_MAPPERS } from '../../../src/application-errors.js';
-import { HttpPlatformModule } from '../../../src/platform/http/http-platform.module.js';
+import { APPLICATION_ERROR_MAPPERS } from '../../src/application-errors.js';
+import { HttpPlatformModule } from '../../src/platform/http/http-platform.module.js';
 
 export const actorId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 

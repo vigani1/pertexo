@@ -2,7 +2,7 @@ import type { ConnectionSharingRequest } from '@pertexo/contracts';
 import type { ConnectionSharingStore } from '@pertexo/core/connections';
 import type { WorkspaceAuthorizationSource } from '../../workspaces/ports.js';
 import { authorizeConnectionOperation } from '../authorization.js';
-import type { ConnectionCommandInput } from '../use-cases/support.js';
+import type { ConnectionCommandInput } from '../use-cases/connection-serialization.js';
 import {
   CONNECTION_OPERATION,
   NOOP_CONNECTION_TELEMETRY,

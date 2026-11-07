@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { enabled, invitationKeys } from './real-api/environment.js';
-import { createWorkspaceApiFixture } from './real-api/fixture.js';
+import { createWorkspaceApiFixture } from './real-api/workspace-api-fixture.js';
 import {
   workflowSummaryResponseSchema,
   workflowRunListResponseSchema,
@@ -26,7 +26,7 @@ import {
 } from './real-api/cookies.js';
 import { withTimeout, openHttpEventStream } from './real-api/streams.js';
 import { expectProblem } from './real-api/assertions.js';
-import type { SessionCookies } from './real-api/contract.js';
+import type { SessionCookies } from './real-api/workspace-api-fixture.types.js';
 import { createApplicationSecretEnvelope } from '@pertexo/secrets/server';
 
 describe.runIf(enabled)('Phase 1 real PostgreSQL API identity slice', () => {

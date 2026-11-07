@@ -48,7 +48,7 @@ export {
 export {
   type PublishWorkflowInput,
   PublishWorkflowUseCase,
-} from './publication/publish.js';
+} from './publish-workflow.js';
 export type ListWorkflowsInput = WorkflowApplicationInput &
   Readonly<{
     limit?: number;

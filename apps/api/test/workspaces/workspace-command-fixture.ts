@@ -1,8 +1,8 @@
 import { vi } from 'vitest';
 
-import { createActorContext } from '../../../src/authorization/index.js';
+import { createActorContext } from '../../src/authorization/index.js';
 
-import type { WorkspaceAccess } from '../../../src/authorization/index.js';
+import type { WorkspaceAccess } from '../../src/authorization/index.js';
 
 export const actorId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 

@@ -2,7 +2,7 @@ import { withRequestOperationSignal } from '../../platform/http/request-operatio
 import { projectAuthenticatedWorkspaceContext } from '../../workspaces/request/authenticated-context.js';
 import type { WorkflowOrganizationInput } from './authority.js';
 
-import type { WorkflowAuthoringRequest } from '../workflow-transport.js';
+import type { WorkflowAuthoringRequest } from '../workflow-authoring-request.js';
 
 /** Shared scoped cancellation/error translation, never manual HTTP formatting. */
 export async function withWorkflowOrganizationRequest<T>(

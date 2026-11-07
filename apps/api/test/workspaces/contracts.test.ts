@@ -88,7 +88,7 @@ import {
   invitationAcceptanceReceiptSchema,
   identityWorkspaceOpenApiDocument,
 } from '../../src/workspaces/index.js';
-import { generated } from './contracts/fixture.js';
+import { generated } from './workspace-contract-fixture.js';
 
 type DocumentedOperation = Readonly<{
   requestBody: Readonly<{

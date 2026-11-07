@@ -23,9 +23,9 @@ import {
 import type {
   ConnectionHealthFixtureOptions,
   ConnectionHealthFixtureState,
-} from './fixture/contract.js';
+} from './fixture/connection-health-fixture.types.js';
 import { phase } from './fixture/process.js';
-import { executeConnectionHealthCommand } from './fixture/commands.js';
+import { executeConnectionHealthCommand } from './fixture/connection-health-commands.js';
 import { createConnectionHealthControl } from './fixture/server.js';
 import { seedConnectionHealthFixture } from './fixture/seed.js';
 

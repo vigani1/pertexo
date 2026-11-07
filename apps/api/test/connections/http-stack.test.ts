@@ -20,7 +20,7 @@ import {
   connectionPayload,
   destinationPath,
   destinationPayload,
-} from './http-stack/fixture.js';
+} from './connection-http-fixture.js';
 import {
   ConnectionSharingRevisionConflictError,
   ConnectionNotFoundError,
