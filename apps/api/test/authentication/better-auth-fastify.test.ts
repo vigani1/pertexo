@@ -390,6 +390,7 @@ describe('Better Auth Fastify bridge', () => {
         socialProviders: ['google'],
       },
       () => Promise.resolve(true),
+      allowingRateLimit,
     );
     registerBetterAuthHandler(application, {
       publicOrigin: 'https://pertexo.test',

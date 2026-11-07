@@ -1,3 +1,4 @@
+import type { AuthenticationDiagnostics } from './diagnostics.js';
 import { randomBytes } from 'node:crypto';
 import { issuePasswordResetProof } from '@pertexo/core/identity';
 import { createAuthEndpoint, originCheck } from 'better-auth/api';
@@ -10,6 +11,7 @@ import type { AuthenticationMail } from '../mail/delivery.js';
 export function createPasswordResetPlugin(
   pool: Pool,
   mail: AuthenticationMail,
+  diagnostics: AuthenticationDiagnostics,
 ) {
   return {
     id: 'pertexo-password-reset',
@@ -30,26 +32,34 @@ export function createPasswordResetPlugin(
           ],
         },
         async (context) => {
-          const token = randomBytes(24).toString('base64url');
-          const callback = encodeURIComponent(context.body.redirectTo ?? '');
-          const url = `${context.context.baseURL}/reset-password/${token}?callbackURL=${callback}`;
-          const issued = await issuePasswordResetProof(pool, {
-            email: context.body.email,
-            token,
-            prepareMail: (recipient, expiresAt) =>
-              mail.preparePasswordReset?.({
-                recipient: recipient.email,
-                displayName: recipient.displayName,
-                url,
-                expiresAt,
-              }),
-          });
-          if (issued !== undefined && !issued.queued)
-            await mail.sendPasswordReset({
-              recipient: issued.recipient.email,
-              displayName: issued.recipient.displayName,
-              url,
+          // Comparable bounded work for all addresses, including absent credentials.
+          await context.context.password.hash(
+            randomBytes(32).toString('base64url'),
+          );
+          try {
+            const token = randomBytes(24).toString('base64url');
+            const callback = encodeURIComponent(context.body.redirectTo ?? '');
+            const url = `${context.context.baseURL}/reset-password/${token}?callbackURL=${callback}`;
+            const issued = await issuePasswordResetProof(pool, {
+              email: context.body.email,
+              token,
+              prepareMail: (recipient, expiresAt) =>
+                mail.preparePasswordReset?.({
+                  recipient: recipient.email,
+                  displayName: recipient.displayName,
+                  url,
+                  expiresAt,
+                }),
             });
+            if (issued !== undefined && !issued.queued)
+              await mail.sendPasswordReset({
+                recipient: issued.recipient.email,
+                displayName: issued.recipient.displayName,
+                url,
+              });
+          } catch {
+            diagnostics.passwordResetFailure();
+          }
           return context.json({
             status: true,
             message:

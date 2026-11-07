@@ -44,7 +44,8 @@ export const identityEnvironmentShape = {
   SESSION_TTL_MILLIS: z.coerce
     .number()
     .int()
-    .positive()
+    .min(1_000)
+    .multipleOf(1_000)
     .default(24 * 60 * 60_000),
 } satisfies z.ZodRawShape;
 
@@ -117,20 +118,20 @@ export function parseIdentityConfig(
   });
   if (scope.deployed && environment.AUTH_MAIL_MODE !== 'durable')
     throw new Error('Durable authentication mail is required when deployed');
-  try {
-    return Object.freeze({
-      publicWebOrigin,
-      automationTokensEnabled: environment.AUTOMATION_TOKENS_ENABLED,
-      ...invitationTokenEncryption(environment),
-      ...parseFederationEncryption(environment),
-      session,
-      betterAuth: betterAuthConfig(environment, secret),
-    } satisfies ApiIdentityConfig);
-  } catch {
-    // Configuration errors are deliberately sanitized because this boundary
-    // parses provider credentials and encryption keys.
-    throw new Error('Identity configuration is invalid');
-  }
+  return Object.freeze({
+    publicWebOrigin,
+    automationTokensEnabled: environment.AUTOMATION_TOKENS_ENABLED,
+    ...parseIdentitySection(
+      'INVITATION_TOKEN_KEY / INVITATION_TOKEN_KEY_VERSION / INVITATION_TOKEN_PREVIOUS_KEYS',
+      () => invitationTokenEncryption(environment),
+    ),
+    ...parseIdentitySection(
+      'AUTH_FEDERATION_KEY / AUTH_FEDERATION_KEY_VERSION / AUTH_FEDERATION_PREVIOUS_KEYS',
+      () => parseFederationEncryption(environment),
+    ),
+    session,
+    betterAuth: betterAuthConfig(environment, secret),
+  } satisfies ApiIdentityConfig);
 }
 
 function identityScope(
@@ -227,7 +228,10 @@ function betterAuthConfig(
   environment: IdentityEnvironment,
   secret: string,
 ): ApiIdentityConfig['betterAuth'] {
-  const durableMail = parseDurableAuthenticationMail(environment);
+  const durableMail = parseIdentitySection(
+    'AUTH_MAIL_MODE / AUTH_MAIL_FROM / AUTH_MAIL_KEY / AUTH_MAIL_KEY_VERSION / AUTH_MAIL_PREVIOUS_KEYS',
+    () => parseDurableAuthenticationMail(environment),
+  );
   // Local mail reaches a developer only as printed links; staging and
   // production require durable mail, and tests read the sink directly.
   const printLocalMailLinks =
@@ -253,4 +257,14 @@ function normalizedOrigin(value: string): string {
   if (invalidWebOrigin)
     throw new Error('PUBLIC_WEB_ORIGIN must be an origin without a path');
   return parsed.origin;
+}
+
+function parseIdentitySection<T>(settings: string, parse: () => T): T {
+  try {
+    return parse();
+  } catch {
+    throw new Error(
+      `${settings} (invalid_configuration): supply matching settings and valid keys; check the identity configuration guide.`,
+    );
+  }
 }

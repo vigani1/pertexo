@@ -1,3 +1,4 @@
+import { browserCsrfRefusal } from '../../identity/csrf.js';
 import { recordAuthenticationFailure } from '../journeys/failures.js';
 import { randomUUID } from 'node:crypto';
 
@@ -78,7 +79,8 @@ export class AccountLinking {
   }
 
   private async start(request: Request): Promise<Response> {
-    if (!validCsrf(request.headers)) return problem(403);
+    const csrfRefusal = browserCsrfRefusal(request.headers);
+    if (csrfRefusal !== undefined) return problem(csrfRefusal);
     const session = await this.input.authenticate(request);
     if (session === undefined) return problem(401);
     if (!session.emailVerified) return problem(403);
@@ -346,17 +348,6 @@ export class AccountLinking {
       status: 302,
       headers: { location: url.toString() },
     });
-  }
-}
-
-function validCsrf(headers: Headers): boolean {
-  const token = headers.get('x-csrf-token');
-  const cookie = readCookie(headers, 'pertexo_csrf');
-  if (token === null || cookie === undefined || token.length < 32) return false;
-  try {
-    return token === decodeURIComponent(cookie);
-  } catch {
-    return false;
   }
 }
 

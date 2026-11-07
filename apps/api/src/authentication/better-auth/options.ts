@@ -27,6 +27,7 @@ type PertexoBetterAuthInput = Readonly<{
   baseUrl: string;
   secret: string;
   secureCookies: boolean;
+  sessionSameSite?: 'lax' | 'strict' | 'none';
   sessionTtlSeconds: number;
   trustedOrigins: readonly string[];
   mail: AuthenticationMail;
@@ -135,7 +136,7 @@ export function createPertexoBetterAuth(input: PertexoBetterAuthInput) {
       : { socialProviders: input.socialProviders }),
     plugins: [
       createTwoFactorPlugin(),
-      createPasswordResetPlugin(pool, input.mail),
+      createPasswordResetPlugin(pool, input.mail, input.diagnostics),
       createTrustedSessionPlugin(pool, input.availableLinkProviders, {
         organizationProtocols: input.availableOrganizationProtocols ?? [],
         mail: input.mail,
@@ -146,6 +147,7 @@ export function createPertexoBetterAuth(input: PertexoBetterAuthInput) {
     databaseHooks: identityChangeHooks(pool, input.transactions),
     disabledPaths: [...DISABLED_NATIVE_PATHS],
     advanced: cookiePolicy({
+      sessionSameSite: input.sessionSameSite ?? 'lax',
       secureCookies: input.secureCookies,
       // The security instance only has a connection inside a request's transaction,
       // so its check at boot has none and reports a false error. The plain instance
@@ -260,7 +262,12 @@ function identityChangeHooks(
 function cookiePolicy({
   secureCookies,
   validateSchema,
-}: Readonly<{ secureCookies: boolean; validateSchema: boolean }>) {
+  sessionSameSite,
+}: Readonly<{
+  secureCookies: boolean;
+  validateSchema: boolean;
+  sessionSameSite: 'lax' | 'strict' | 'none';
+}>) {
   return {
     // The pinned Kysely adapter supports joins; its emulation catch writes raw errors to console.
     database: { generateId: () => randomUUID(), validateSchema, joins: true },
@@ -272,7 +279,7 @@ function cookiePolicy({
     defaultCookieAttributes: {
       httpOnly: true,
       secure: secureCookies,
-      sameSite: 'lax',
+      sameSite: sessionSameSite,
       path: '/',
     },
     cookies: {

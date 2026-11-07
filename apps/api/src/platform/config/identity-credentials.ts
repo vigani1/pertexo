@@ -43,22 +43,22 @@ export function parseAuthenticationProviders(
   environment: IdentityEnvironment,
 ): ApiIdentityConfig['betterAuth']['providers'] {
   const google = authenticationProviderPair(
-    'Google',
+    'AUTH_GOOGLE',
     environment.AUTH_GOOGLE_CLIENT_ID,
     environment.AUTH_GOOGLE_CLIENT_SECRET,
   );
   const github = authenticationProviderPair(
-    'GitHub',
+    'AUTH_GITHUB',
     environment.AUTH_GITHUB_CLIENT_ID,
     environment.AUTH_GITHUB_CLIENT_SECRET,
   );
   const microsoft = authenticationProviderPair(
-    'Microsoft',
+    'AUTH_MICROSOFT',
     environment.AUTH_MICROSOFT_CLIENT_ID,
     environment.AUTH_MICROSOFT_CLIENT_SECRET,
   );
   const apple = authenticationProviderPair(
-    'Apple',
+    'AUTH_APPLE',
     environment.AUTH_APPLE_CLIENT_ID,
     environment.AUTH_APPLE_CLIENT_SECRET,
   );
@@ -86,7 +86,9 @@ function authenticationProviderPair(
 ): Readonly<{ clientId: string; clientSecret: string }> | undefined {
   if (clientId === undefined && clientSecret === undefined) return undefined;
   if (clientId === undefined || clientSecret === undefined)
-    throw new Error(`${provider} authentication configuration is incomplete`);
+    throw new Error(
+      `${provider}_CLIENT_ID / ${provider}_CLIENT_SECRET (incomplete_pair): supply both settings or remove both.`,
+    );
   return Object.freeze({ clientId, clientSecret });
 }
 

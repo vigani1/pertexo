@@ -39,3 +39,32 @@ export class DoubleSubmitCsrfPolicy {
     }
   }
 }
+
+/** Decode the wire cookie once before applying the shared proof policy. */
+export function browserCsrfRefusal(
+  headers: Headers | undefined,
+): 400 | 403 | undefined {
+  const raw = headers
+    ?.get('cookie')
+    ?.split(';')
+    .map((part) => part.trim())
+    .find((part) => part.startsWith('pertexo_csrf='))
+    ?.slice('pertexo_csrf='.length);
+  let cookieToken: string | undefined;
+  try {
+    cookieToken = raw === undefined ? undefined : decodeURIComponent(raw);
+  } catch {
+    return 400;
+  }
+  const headerToken = headers?.get('x-csrf-token') ?? undefined;
+  try {
+    new DoubleSubmitCsrfPolicy().assertMutationAllowed({
+      method: 'POST',
+      ...(cookieToken === undefined ? {} : { cookieToken }),
+      ...(headerToken === undefined ? {} : { headerToken }),
+    });
+    return undefined;
+  } catch {
+    return 403;
+  }
+}

@@ -1,26 +1,12 @@
 import { APIError } from 'better-auth/api';
+import { browserCsrfRefusal } from '../../identity/csrf.js';
 
-/**
- * Better Auth state-changing routes reuse the application's double-submit
- * CSRF pair: the `x-csrf-token` header must match the `pertexo_csrf` cookie.
- */
+/** Adapt the shared browser proof refusal to the SDK protocol. */
 export function requireDoubleSubmitCsrf(headers: Headers | undefined): void {
-  const supplied = headers?.get('x-csrf-token');
-  const cookie = headers?.get('cookie');
-  const expected = cookie
-    ?.split(';')
-    .map((part) => part.trim())
-    .find((part) => part.startsWith('pertexo_csrf='))
-    ?.slice('pertexo_csrf='.length);
-  const invalidCsrfProof =
-    supplied === null ||
-    supplied === undefined ||
-    expected === undefined ||
-    supplied.length < 32 ||
-    supplied !== decodeURIComponent(expected);
-  if (invalidCsrfProof)
-    throw new APIError('FORBIDDEN', {
-      code: 'CSRF_TOKEN_INVALID',
+  const status = browserCsrfRefusal(headers);
+  if (status !== undefined)
+    throw new APIError(status === 400 ? 'BAD_REQUEST' : 'FORBIDDEN', {
+      code: status === 400 ? 'INVALID_BODY' : 'CSRF_TOKEN_INVALID',
       message: 'The request could not be verified.',
     });
 }
