@@ -1,3 +1,4 @@
+import { readCredentialPasswordHash } from '@pertexo/core/identity';
 import type { StructuredLogger } from '@pertexo/observability/server';
 import { AuthenticationDiagnostics } from './diagnostics.js';
 import { samlTransportAvailable } from '../federation/protocol/saml/configuration.js';
@@ -224,14 +225,8 @@ async function verifyCredentialPassword(
   userId: string,
   password: string,
 ): Promise<boolean> {
-  const credential = await pool.query<{ password: string | null }>(
-    `select password from app.auth_accounts
-      where user_id=$1 and provider_id='credential'`,
-    [userId],
-  );
-  const hash = credential.rows[0]?.password;
+  const hash = await readCredentialPasswordHash(pool, userId);
   return (
-    hash !== null &&
     hash !== undefined &&
     (await auth.$context).password.verify({ hash, password })
   );
