@@ -28,8 +28,17 @@ export class DoubleSubmitCsrfPolicy {
     if (!mutationMethods.has(input.method.toUpperCase())) return;
     let cookieToken: string;
     let headerToken: string;
+    let decoded: string | undefined;
     try {
-      cookieToken = csrfTokenSchema.parse(input.cookieToken);
+      decoded =
+        input.cookieToken === undefined
+          ? undefined
+          : decodeURIComponent(input.cookieToken);
+    } catch {
+      throw new IdentityError('identity.csrf_malformed');
+    }
+    try {
+      cookieToken = csrfTokenSchema.parse(decoded);
       headerToken = csrfTokenSchema.parse(input.headerToken);
     } catch {
       throw new IdentityError('identity.csrf_failed');
@@ -50,21 +59,18 @@ export function browserCsrfRefusal(
     .map((part) => part.trim())
     .find((part) => part.startsWith('pertexo_csrf='))
     ?.slice('pertexo_csrf='.length);
-  let cookieToken: string | undefined;
-  try {
-    cookieToken = raw === undefined ? undefined : decodeURIComponent(raw);
-  } catch {
-    return 400;
-  }
   const headerToken = headers?.get('x-csrf-token') ?? undefined;
   try {
     new DoubleSubmitCsrfPolicy().assertMutationAllowed({
       method: 'POST',
-      ...(cookieToken === undefined ? {} : { cookieToken }),
+      ...(raw === undefined ? {} : { cookieToken: raw }),
       ...(headerToken === undefined ? {} : { headerToken }),
     });
     return undefined;
-  } catch {
-    return 403;
+  } catch (error: unknown) {
+    return error instanceof IdentityError &&
+      error.code === 'identity.csrf_malformed'
+      ? 400
+      : 403;
   }
 }
