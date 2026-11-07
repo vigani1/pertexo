@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { parse } from 'yaml';
-import { it } from './support/it.mjs';
+import { it } from 'node:test';
 import {
   codeContainerLimits,
   parseCodeSettings,

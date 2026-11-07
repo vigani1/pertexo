@@ -16,7 +16,7 @@ import {
   parseCodeSettings,
 } from '../../../packages/node-sdk/dist/index.js';
 import { parseApiConfig } from '../../../apps/api/dist/platform/config/api.js';
-import { it } from './support/it.mjs';
+import { it } from 'node:test';
 
 // What a stranger reads and relies on. These check claims against the real scripts
 // wherever a claim can be checked. A person following the page on a new server is

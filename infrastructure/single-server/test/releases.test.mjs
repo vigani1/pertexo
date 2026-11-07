@@ -11,7 +11,7 @@ import {
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { test } from 'node:test';
-import { it } from './support/it.mjs';
+import { it } from 'node:test';
 
 const git = (cwd, ...args) =>
   execFileSync(

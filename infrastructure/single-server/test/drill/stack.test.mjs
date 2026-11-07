@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { randomBytes, randomUUID } from 'node:crypto';
 import { after, before, describe } from 'node:test';
-import { it } from '../support/it.mjs';
+import { it } from 'node:test';
 import { createClient } from './support/client.mjs';
 import { PUBLIC_HOSTS } from './support/overlay.mjs';
 import { mustDocker, waitFor } from './support/process.mjs';

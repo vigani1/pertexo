@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync, existsSync } from 'node:fs';
 import { parse } from 'yaml';
 import { test } from 'node:test';
-import { it } from './support/it.mjs';
+import { it } from 'node:test';
 
 // CI can't be run from here, so these read the workflow files for the promises the
 // operator depends on. What only a real run can prove is listed in the batch notes.
