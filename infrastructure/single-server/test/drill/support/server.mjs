@@ -118,7 +118,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends git curl ca-cer
   const quote = (value) => `'${value.replaceAll("'", "'\\''")}'`;
   const composeFor = (commit, args, options) =>
     exec(
-      `source ${scripts}/common.sh; select_release ${commit}; compose ${args.map(quote).join(' ')}`,
+      `source ${scripts}/release-operations.sh; select_release ${commit}; compose ${args.map(quote).join(' ')}`,
       options,
     );
   const server = {
@@ -220,7 +220,10 @@ async function installRepository(server) {
   const write = (name, content) =>
     mustExec(`cat > tree/${singleServer}/${name}`, { input: content });
   await write('compose.yaml', compose);
-  await write('common.sh', overlayCommonScript(read('common.sh'), settings));
+  await write(
+    'release-operations.sh',
+    overlayCommonScript(read('release-operations.sh'), settings),
+  );
   for (const name of ['deploy.sh', 'restore.sh'])
     await write(name, overlayNetworkName(read(name), settings));
   await write('Caddyfile', overlayCaddyfile(read('Caddyfile')));

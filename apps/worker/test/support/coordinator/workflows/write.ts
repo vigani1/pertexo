@@ -8,7 +8,7 @@ import type {
   Query,
   WorkflowIdentity,
   StructuredForEachKind,
-} from './contract.js';
+} from './coordinator-workflows.types.js';
 import { setNode } from './nodes.js';
 import { linearGraph } from './graphs/basic.js';
 import { forEachGraph } from './graphs/loops.js';

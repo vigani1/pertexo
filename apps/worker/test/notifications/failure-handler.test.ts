@@ -10,7 +10,7 @@ import {
   readyClaim,
   store,
   readyDeliveryResult,
-} from './failure-handler/fixture.js';
+} from './failure-handler.fixture.js';
 
 describe('failure notification handler', () => {
   it('delivers loaded immutable context and persists a bounded result', async () => {

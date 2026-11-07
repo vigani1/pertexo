@@ -1,13 +1,13 @@
 import { randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { parseOperatorCommandConfig } from '../src/config.js';
+import { parseOperatorCommandConfig } from '../src/operator-config.js';
 
 // The page's examples go through the CLI's own parser, so they can't drift from it.
 // docs-deps-product-15: operators had no instructions for any mutating command.
 const commandTypes = [
   ...readFileSync(
-    new URL('../src/config.ts', import.meta.url),
+    new URL('../src/operator-config.ts', import.meta.url),
     'utf8',
   ).matchAll(/OPERATOR_COMMAND_TYPE: z\.literal\('([^']+)'\)/gu),
 ].map((match) => match[1] ?? '');

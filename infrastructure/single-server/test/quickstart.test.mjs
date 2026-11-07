@@ -94,9 +94,10 @@ it('runs the same pinned images as a real install', () => {
   for (const service of ['proxy', 'postgres', 'redis', 'storage'])
     assert.equal(quick[service].image, real[service].image, service);
   assert.ok(
-    readFileSync('infrastructure/single-server/common.sh', 'utf8').includes(
-      quick['storage-setup'].image,
-    ) ||
+    readFileSync(
+      'infrastructure/single-server/release-operations.sh',
+      'utf8',
+    ).includes(quick['storage-setup'].image) ||
       readFileSync('infrastructure/single-server/deploy.sh', 'utf8').includes(
         quick['storage-setup'].image,
       ),

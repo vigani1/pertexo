@@ -7,7 +7,10 @@ import {
   workspaceId,
 } from '../../../../support/attempts/http-node-attempt.js';
 
-import { fixtureEncryption, readArtifactIds } from '../../http.fixture.js';
+import {
+  fixtureEncryption,
+  readArtifactIds,
+} from '../../http-node-attempt.fixture.js';
 
 export async function createArtifactScenario() {
   const encryption = fixtureEncryption;

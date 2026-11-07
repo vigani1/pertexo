@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { createWorkspaceInvitationDeliveryStore } from '@pertexo/core/tenant-access';
-import { createWorkspaceInvitationDeliveryHandler } from '../../src/identity/invitation-delivery.js';
+import { createWorkspaceInvitationDeliveryHandler } from '../../src/mail/invitation-delivery.js';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   createApplicationSecretEnvelope,

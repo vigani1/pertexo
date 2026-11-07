@@ -8,7 +8,7 @@ import {
   codeTaskSchema,
   type CodeResult,
 } from '@pertexo/node-sdk';
-import type { RunnerConfig } from '../config.js';
+import type { RunnerConfig } from '../runner-config.js';
 import type { createTaskProcessPool } from '../process/pool.js';
 import {
   readCodeFrame as readFrame,

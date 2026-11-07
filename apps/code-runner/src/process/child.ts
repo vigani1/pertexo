@@ -1,4 +1,4 @@
-import { boundedCodeText } from '../execution/text.js';
+import { boundedCodeText } from '../execution/text-primitives.js';
 import { createWriteStream, writeSync } from 'node:fs';
 import { types } from 'node:util';
 import type { CodeTask, CodeErrorCode } from '@pertexo/node-sdk';
@@ -10,7 +10,7 @@ import {
   RefusedCodeModule,
 } from '../execution/modules.js';
 import { readCodeFrame as readFrame } from '@pertexo/node-sdk/server';
-import type { ChildBoot } from './boot.js';
+import type { ChildBoot } from './child-boot.types.js';
 
 const nativeProcess: NodeJS.Process = process;
 const getDescriptor = Object.getOwnPropertyDescriptor;

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { createFailureNotificationHandler } from '../../src/notifications/failure-handler.js';
-import { delivery, store } from './failure-handler/fixture.js';
+import { delivery, store } from './failure-handler.fixture.js';
 
 describe('notification delivery result boundary', () => {
   it('classifies an invalid provider result before writing a typed retry completion', async () => {

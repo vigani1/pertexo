@@ -32,7 +32,10 @@ import {
   workflowVersionId,
   workspaceId,
 } from './scope.js';
-import type { AcceptedRun, AcceptedReplayRun } from './contract.js';
+import type {
+  AcceptedRun,
+  AcceptedReplayRun,
+} from './coordinator-runs.types.js';
 
 async function acceptFixtureRun(
   input: Readonly<{

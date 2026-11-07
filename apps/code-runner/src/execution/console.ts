@@ -1,4 +1,4 @@
-import { boundedCodeText } from './text.js';
+import { boundedCodeText } from './text-primitives.js';
 import { writeSync } from 'node:fs';
 import { Buffer } from 'node:buffer';
 import { encodeCodeJson, quote, type JsonBounds } from './encode.js';

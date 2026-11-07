@@ -55,8 +55,8 @@ jobs:
             ghcr.io/vigani1/pertexo:"$tag" --input-type=module --eval \
             "await Promise.all([
               import('./apps/api/dist/app.js'),
-              import('./apps/worker/dist/app.js'),
-              import('./apps/ops/dist/run.js'),
+              import('./apps/worker/dist/worker-application.js'),
+              import('./apps/ops/dist/execute-operator-command.js'),
               import('./packages/database/dist/migrations.js')
             ])"
           node infrastructure/single-server/backup/verify-runtime.mjs ghcr.io/vigani1/pertexo:"$tag"

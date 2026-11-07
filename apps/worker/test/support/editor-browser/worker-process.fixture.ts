@@ -27,7 +27,7 @@ import {
 import type {
   EditorBrowserWorkerConfiguration,
   EditorBrowserWorkerState,
-} from './execution/contract.js';
+} from './execution/editor-execution.types.js';
 import {
   scheduleCase,
   errorWorkflowCase,

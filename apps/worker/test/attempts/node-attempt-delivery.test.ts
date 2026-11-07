@@ -21,7 +21,7 @@ import {
   executionHandler,
   executionStore,
   registryPreparedAttempt,
-} from '../support/attempts/handler.js';
+} from '../support/attempts/node-attempt-handler.fixture.js';
 import { STORED_CHECKPOINT } from './node-attempt-delivery.fixture.js';
 import type { NodeExecutionRegistry } from '@pertexo/workflow-engine/server';
 

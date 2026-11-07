@@ -8,7 +8,7 @@ import type {
 } from '@pertexo/observability/server';
 import type { QueueProducer } from '@pertexo/queue/server';
 
-import type { WorkerApplicationCompositionFactories } from '../../src/app.js';
+import type { WorkerApplicationCompositionFactories } from '../../src/worker-application.js';
 import type { NodeAttemptRuntime } from '../../src/attempts/delivery/node-attempt.runtime.js';
 import type { WorkerConfig } from '../../src/config/worker.js';
 import type { MaintenanceRuntime } from '../../src/maintenance/maintenance.runtime.js';

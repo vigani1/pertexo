@@ -1,4 +1,4 @@
-import { codeTextSlice, codeTextStartsWith } from './text.js';
+import { codeTextSlice, codeTextStartsWith } from './text-primitives.js';
 import { createRequire, isBuiltin, registerHooks } from 'node:module';
 import { realpathSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';

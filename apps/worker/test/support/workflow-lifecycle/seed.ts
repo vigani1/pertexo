@@ -3,7 +3,7 @@ import { lockManualFixtureClient } from '../attempts/manual-start.js';
 
 import type { PoolClient } from 'pg';
 
-import type { LifecycleIds } from './contract.js';
+import type { LifecycleIds } from './workflow-lifecycle.types.js';
 
 export async function seedWorkflowRows(
   client: PoolClient,

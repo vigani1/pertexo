@@ -14,7 +14,7 @@ a deploy or backup, and refuses while a restore or migration is unfinished:
 ```sh
 bash
 export PERTEXO_BETA_ROOT=/opt/pertexo
-source /opt/pertexo/repository/infrastructure/single-server/common.sh
+source /opt/pertexo/repository/infrastructure/single-server/release-operations.sh
 ```
 
 Every command needs these, shown in each example below:

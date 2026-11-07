@@ -13,7 +13,7 @@ import {
   projection,
   registryPreparedAttempt,
   lease,
-} from '../support/attempts/handler.js';
+} from '../support/attempts/node-attempt-handler.fixture.js';
 
 describe('atomic attempt connection health forwarding', () => {
   it('captures connection health only after an accepted dispatch', async () => {

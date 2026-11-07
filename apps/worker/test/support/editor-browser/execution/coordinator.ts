@@ -1,11 +1,11 @@
-import { createEditorNotifications } from '../notifications/runtime.js';
+import { createEditorNotifications } from '../notification-runtime.fixture.js';
 import { createMaintenanceRuntime } from '../../../../src/maintenance/maintenance.runtime.js';
 
 import { parseDatabaseConfig } from '@pertexo/database/testing';
 
 import { curatedCoordinatorConsumerFactory } from '../../curated-templates/coordinator-diagnostic.js';
 
-import type { EditorWorkerExecution } from './contract.js';
+import type { EditorWorkerExecution } from './editor-execution.types.js';
 import { errorWorkflowCase, curatedTemplates } from './environment.js';
 import { testCoordinatorRuntime } from '../../runtime-factories.js';
 

@@ -12,7 +12,7 @@ import {
   context,
   successfulSlackDelivery,
   sealed,
-} from './failure-delivery/fixture.js';
+} from './failure-delivery.fixture.js';
 
 describe('provider failure notification delivery', () => {
   it.each(['slack', 'email'] as const)(

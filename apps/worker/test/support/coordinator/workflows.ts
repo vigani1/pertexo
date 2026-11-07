@@ -1,7 +1,7 @@
 export {
   type CoordinatorWorkflowFixtureIdentities,
   type StructuredForEachKind,
-} from './workflows/contract.js';
+} from './workflows/coordinator-workflows.types.js';
 export {
   insertCompiledWorkflow,
   seedCallableWorkflow,

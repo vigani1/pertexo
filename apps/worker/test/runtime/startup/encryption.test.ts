@@ -3,7 +3,7 @@ import { Readable } from 'node:stream';
 import { randomUUID } from 'node:crypto';
 import { describe, expect, it, vi } from 'vitest';
 import { createConnectionEnvelopeEncryption } from '@pertexo/secrets/server';
-import { createWorkerApplication } from '../../../src/app.js';
+import { createWorkerApplication } from '../../../src/worker-application.js';
 import { parseWorkerConfig } from '../../../src/config/worker.js';
 import { workerEnvironment } from '../../support/worker-environment.js';
 

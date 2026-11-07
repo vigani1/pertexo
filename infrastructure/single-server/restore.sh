@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 [[ $# == 2 ]] || { echo 'usage: restore.sh <YYYYMMDDTHHMMSSZ> <full-commit>' >&2; exit 64; }
-source "$(dirname "$0")/common.sh"
+source "$(dirname "$0")/release-operations.sh"
 check_commit "$2"
 operation_lock
 [[ ! -f "$BETA_STATE_DIR/current" ]] || { echo 'Restore requires a fresh stack' >&2; exit 1; }

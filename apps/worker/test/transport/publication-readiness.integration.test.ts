@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { Redis } from 'ioredis';
 import { afterAll, beforeAll, expect, it } from 'vitest';
 import { WorkerReadinessMonitor } from '../../src/runtime/health/readiness-monitor.js';
-import { logger } from '../runtime/readiness-lifecycle/fixture.js';
+import { logger } from '../runtime/readiness-lifecycle.fixture.js';
 import {
   describeIntegration,
   prepareWorkerPostgreSQLRedisTransportProofFixture,

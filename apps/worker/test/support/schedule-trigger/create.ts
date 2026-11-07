@@ -17,7 +17,7 @@ import { Pool, type QueryResult, type QueryResultRow } from 'pg';
 import { dropDisconnectedDatabase } from '../infrastructure/disposable-database.js';
 import { createRedisTestNamespace } from '../infrastructure/redis-test-namespace.js';
 import { scheduleAuthoringOptions } from './authoring.js';
-import type { ScheduleTriggerFixture } from './contract.js';
+import type { ScheduleTriggerFixture } from './schedule-trigger.types.js';
 
 export function createScheduleTriggerFixture(
   environment: NodeJS.ProcessEnv = process.env,

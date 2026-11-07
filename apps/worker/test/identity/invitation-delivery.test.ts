@@ -5,7 +5,7 @@ import type { SystemMailClient } from '@pertexo/secrets/server';
 import { JOB_NAME, type QueueHandlerContext } from '@pertexo/queue/server';
 import { describe, expect, it, vi } from 'vitest';
 
-import { createWorkspaceInvitationDeliveryHandler } from '../../src/identity/invitation-delivery.js';
+import { createWorkspaceInvitationDeliveryHandler } from '../../src/mail/invitation-delivery.js';
 
 const WORKSPACE_ID = '11111111-1111-4111-8111-111111111111';
 const INVITATION_ID = '22222222-2222-4222-8222-222222222222';

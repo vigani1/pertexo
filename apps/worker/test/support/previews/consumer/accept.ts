@@ -20,7 +20,10 @@ import {
   workflowVersionId,
 } from './environment.js';
 import { apiPool, withOwner } from './lifecycle.js';
-import type { AcceptedDelivery, AcceptedWorkflowDelivery } from './contract.js';
+import type {
+  AcceptedDelivery,
+  AcceptedWorkflowDelivery,
+} from './preview-consumer.types.js';
 
 let acceptanceSequence = 0;
 

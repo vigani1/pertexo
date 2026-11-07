@@ -1,7 +1,7 @@
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { expect, it } from 'vitest';
-import { requiredEnvironment } from './worker/fixture.js';
+import { requiredEnvironment } from './worker-environment.fixture.js';
 
 const key = Buffer.alloc(32, 4).toString('base64');
 const secret = 'private-mail-provider-credential';

@@ -286,7 +286,7 @@ the first failed command:
 ```sh
 bash
 export PERTEXO_BETA_ROOT=/opt/pertexo
-source /opt/pertexo/repository/infrastructure/single-server/common.sh
+source /opt/pertexo/repository/infrastructure/single-server/release-operations.sh
 select_release "$(cat /opt/pertexo/state/current)"
 compose ps
 compose logs --tail 100 api worker proxy

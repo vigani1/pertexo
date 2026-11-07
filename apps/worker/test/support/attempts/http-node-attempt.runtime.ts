@@ -29,12 +29,12 @@ import {
   redisUrl,
   workerUrl,
 } from './http-node-attempt.js';
-import type { HttpNodeAttemptProofRuntimeOptions } from './http-node-attempt/runtime/contract.js';
+import type { HttpNodeAttemptProofRuntimeOptions } from './http-node-attempt/runtime/node-attempt-runtime.types.js';
 import { createHttpProofProviders } from './http-node-attempt/runtime/providers.js';
 import { createHttpProofResourceOwners } from './http-node-attempt/runtime/ownership.js';
 import { testNodeAttemptRuntime } from '../runtime-factories.js';
 
-export { type HttpNodeAttemptProofRuntimeOptions } from './http-node-attempt/runtime/contract.js';
+export { type HttpNodeAttemptProofRuntimeOptions } from './http-node-attempt/runtime/node-attempt-runtime.types.js';
 export async function createHttpNodeAttemptProofRuntime(
   encryption: ConnectionEnvelopeEncryption,
   options: HttpNodeAttemptProofRuntimeOptions = {},

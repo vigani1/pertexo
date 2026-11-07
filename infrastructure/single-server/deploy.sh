@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 [[ $# == 1 ]] || { echo 'usage: deploy.sh <vX.Y.Z | latest | full-commit>' >&2; exit 64; }
-source "$(dirname "$0")/common.sh"
+source "$(dirname "$0")/release-operations.sh"
 check_release_name "$1"
 operation_lock
 [[ ! -f "$BETA_STATE_DIR/restore-fence" ]] || { echo 'Restore is incomplete; use a fresh stack' >&2; exit 1; }

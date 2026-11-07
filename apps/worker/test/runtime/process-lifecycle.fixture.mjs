@@ -1,6 +1,6 @@
 import { Test } from '@nestjs/testing';
 import { createDatabaseRuntime } from '@pertexo/database/platform';
-import { createWorkerApplication } from '../../dist/app.js';
+import { createWorkerApplication } from '../../dist/worker-application.js';
 import { WORKSPACE_INBOX_RUNTIME } from '../../dist/notifications/inbox-runtime.js';
 import { WORKSPACE_DATABASE } from '../../dist/platform/database/database.module.js';
 import { RETENTION_RUNTIME } from '../../dist/retention/retention.runtime.js';

@@ -97,7 +97,7 @@ two-hour statement limit and the normal lock limit:
 
 ```bash
 (
-  source /opt/pertexo/repository/infrastructure/single-server/common.sh
+  source /opt/pertexo/repository/infrastructure/single-server/release-operations.sh
   operation_lock
   require_no_ops
   select_release "$(cat "$BETA_STATE_DIR/migration-fence")"

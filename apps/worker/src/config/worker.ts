@@ -34,7 +34,7 @@ import {
   parseInvitationDeliveryConfig,
   type InvitationDeliveryConfig,
 } from './invitation-delivery.js';
-import { workerConfigSchema } from './worker/environment.js';
+import { workerConfigSchema } from './worker-environment.schemas.js';
 
 export type WorkerConfig = Readonly<
   z.output<typeof workerConfigSchema> & {

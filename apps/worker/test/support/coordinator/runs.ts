@@ -2,7 +2,7 @@ export {
   type AcceptedRun,
   type AcceptedReplayRun,
   type CoordinatorRedeliveryHarness,
-} from './runs/contract.js';
+} from './runs/coordinator-runs.types.js';
 export {
   acceptRun,
   acceptReplayRun,

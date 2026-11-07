@@ -1,4 +1,4 @@
-import type { EdgeTuple } from './contract.js';
+import type { EdgeTuple } from './coordinator-workflows.types.js';
 
 export function edgesFromTuples(edges: readonly EdgeTuple[]) {
   return edges.map(
