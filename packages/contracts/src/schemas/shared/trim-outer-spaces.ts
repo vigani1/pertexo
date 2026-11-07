@@ -1,5 +1,3 @@
-export { utf8ByteLength } from '@pertexo/workflow-model';
-
 /** Remove leading and trailing U+0020 only, in linear time. */
 export function trimSpaces(value: string): string {
   let start = 0;

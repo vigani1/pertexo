@@ -1,3 +1,5 @@
+import * as schemas1 from '../../../src/schemas/workflows/organization-folders.js';
+import * as schemas2 from '../../../src/schemas/workflows/organization.js';
 import { describe, expect, it } from 'vitest';
 import * as schemas from '../../../src/schemas/workflows/authoring.js';
 
@@ -11,13 +13,13 @@ import {
 
 describe('accepted folder and general-bulk public contracts', () => {
   it('pins hierarchy and explicit selection bounds', () => {
-    expect(schemas.WORKFLOW_FOLDER_LIMITS).toEqual({
+    expect(schemas1.WORKFLOW_FOLDER_LIMITS).toEqual({
       nameBytes: 128,
       depth: 4,
       foldersPerWorkspace: 256,
       bulkItems: 50,
     });
-    expect(Object.isFrozen(schemas.WORKFLOW_FOLDER_LIMITS)).toBe(true);
+    expect(Object.isFrozen(schemas1.WORKFLOW_FOLDER_LIMITS)).toBe(true);
   });
 
   it('trims only U+0020, retains Unicode/display case and enforces UTF-8 name bytes', () => {
@@ -29,7 +31,7 @@ describe('accepted folder and general-bulk public contracts', () => {
       'a'.repeat(128),
       'é'.repeat(64),
     ]) {
-      expect(schemas.workflowFolderNameInputSchema.parse(`  ${name}  `)).toBe(
+      expect(schemas1.workflowFolderNameInputSchema.parse(`  ${name}  `)).toBe(
         name,
       );
     }
@@ -45,14 +47,14 @@ describe('accepted folder and general-bulk public contracts', () => {
       'Ops\u007f',
     ])
       expect(
-        schemas.workflowFolderNameInputSchema.safeParse(name).success,
+        schemas1.workflowFolderNameInputSchema.safeParse(name).success,
         name,
       ).toBe(false);
-    expect(schemas.workflowFolderNameSchema.safeParse(' Ops ').success).toBe(
+    expect(schemas1.workflowFolderNameSchema.safeParse(' Ops ').success).toBe(
       false,
     );
     expect(
-      schemas.workflowFolderCreateRequestSchema.parse({
+      schemas1.workflowFolderCreateRequestSchema.parse({
         name: '  Ops  ',
         parentId: b.toUpperCase(),
       }),
@@ -62,23 +64,23 @@ describe('accepted folder and general-bulk public contracts', () => {
   it('requires exact bounded folder payloads and safe revisions without internal sibling fields', () => {
     const commands = [
       [
-        schemas.workflowFolderCreateRequestSchema,
+        schemas1.workflowFolderCreateRequestSchema,
         { name: 'Ops', parentId: null },
       ],
       [
-        schemas.workflowFolderRenameRequestSchema,
+        schemas1.workflowFolderRenameRequestSchema,
         { name: 'Ops', expectedFolderRevision: 1 },
       ],
       [
-        schemas.workflowFolderMoveRequestSchema,
+        schemas1.workflowFolderMoveRequestSchema,
         { parentId: null, expectedFolderRevision: 1 },
       ],
       [
-        schemas.workflowFolderDeleteRequestSchema,
+        schemas1.workflowFolderDeleteRequestSchema,
         { expectedFolderRevision: 1 },
       ],
       [
-        schemas.workflowFolderPlacementRequestSchema,
+        schemas1.workflowFolderPlacementRequestSchema,
         { folderId: null, expectedOrganizationRevision: 1 },
       ],
     ] as const;
@@ -100,12 +102,12 @@ describe('accepted folder and general-bulk public contracts', () => {
     }
     for (const revision of [0, -1, 1.5, '1', null, Number.MAX_SAFE_INTEGER + 1])
       expect(
-        schemas.workflowFolderDeleteRequestSchema.safeParse({
+        schemas1.workflowFolderDeleteRequestSchema.safeParse({
           expectedFolderRevision: revision,
         }).success,
       ).toBe(false);
     expect(
-      schemas.workflowFolderDeleteRequestSchema.parse({
+      schemas1.workflowFolderDeleteRequestSchema.parse({
         expectedFolderRevision: Number.MAX_SAFE_INTEGER,
       }),
     ).toEqual({ expectedFolderRevision: Number.MAX_SAFE_INTEGER });
@@ -114,10 +116,10 @@ describe('accepted folder and general-bulk public contracts', () => {
   it('bounds ascending hierarchy inventory, root depth and exact command responses', () => {
     for (const valid of [[], [folder]])
       expect(
-        schemas.workflowFolderListResponseSchema.parse({ items: valid }).items,
+        schemas1.workflowFolderListResponseSchema.parse({ items: valid }).items,
       ).toEqual(valid);
     expect(
-      schemas.workflowFolderListResponseSchema.parse({
+      schemas1.workflowFolderListResponseSchema.parse({
         items: [folder, { ...folder, id: b, parentId: a, depth: 4 }],
       }).items,
     ).toHaveLength(2);
@@ -140,10 +142,10 @@ describe('accepted folder and general-bulk public contracts', () => {
       { items: [], nextCursor: null },
     ])
       expect(
-        schemas.workflowFolderListResponseSchema.safeParse(value).success,
+        schemas1.workflowFolderListResponseSchema.safeParse(value).success,
       ).toBe(false);
     expect(
-      schemas.workflowFolderListResponseSchema.parse({
+      schemas1.workflowFolderListResponseSchema.parse({
         items: Array.from({ length: 256 }, (_, index) => ({
           ...folder,
           id: idAt(index),
@@ -151,13 +153,13 @@ describe('accepted folder and general-bulk public contracts', () => {
       }).items,
     ).toHaveLength(256);
     expect(
-      schemas.workflowFolderCreateResponseSchema.parse({
+      schemas1.workflowFolderCreateResponseSchema.parse({
         folder,
         replayed: false,
       }),
     ).toEqual({ folder, replayed: false });
     expect(
-      schemas.workflowFolderDeleteResponseSchema.safeParse({
+      schemas1.workflowFolderDeleteResponseSchema.safeParse({
         folderId: a,
         deleted: true,
         replayed: true,
@@ -165,7 +167,7 @@ describe('accepted folder and general-bulk public contracts', () => {
       }).success,
     ).toBe(false);
     expect(
-      schemas.workflowFolderPlacementResponseSchema.parse({
+      schemas1.workflowFolderPlacementResponseSchema.parse({
         workflowId: a,
         folderId: null,
         organizationRevision: 2,
@@ -193,11 +195,12 @@ describe('accepted folder and general-bulk public contracts', () => {
       organizationRevision: 1,
       isFavorite: false,
     };
-    expect(schemas.workflowOrganizationSchema.parse(metadata)).toEqual(
+    expect(schemas2.workflowOrganizationSchema.parse(metadata)).toEqual(
       metadata,
     );
     expect(
-      schemas.workflowFolderListQuerySchema.safeParse({ limit: '256' }).success,
+      schemas1.workflowFolderListQuerySchema.safeParse({ limit: '256' })
+        .success,
     ).toBe(false);
   });
 
@@ -211,7 +214,7 @@ describe('accepted folder and general-bulk public contracts', () => {
       })),
     };
     expect(
-      schemas.workflowOrganizationBulkRequestSchema.parse(request),
+      schemas1.workflowOrganizationBulkRequestSchema.parse(request),
     ).toEqual({ operation: 'replace_tags', tagIds: [a, b], items });
     expect(request.tagIds).toEqual([b.toUpperCase(), a]);
     for (const value of [
@@ -240,11 +243,11 @@ describe('accepted folder and general-bulk public contracts', () => {
       },
     ])
       expect(
-        schemas.workflowOrganizationBulkRequestSchema.safeParse(value).success,
+        schemas1.workflowOrganizationBulkRequestSchema.safeParse(value).success,
       ).toBe(false);
     for (const count of [50, 51])
       expect(
-        schemas.workflowOrganizationBulkRequestSchema.safeParse({
+        schemas1.workflowOrganizationBulkRequestSchema.safeParse({
           operation: 'move',
           folderId: null,
           items: Array.from({ length: count }, (_, index) => ({

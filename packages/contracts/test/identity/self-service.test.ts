@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
+import { authenticationReturnPathSchema } from '../../src/schemas/identity/authentication.js';
 import {
-  authenticationReturnPathSchema,
   invitationAcceptanceSessionRequestSchema,
   userDisplayNameSchema,
   userProfileResponseSchema,

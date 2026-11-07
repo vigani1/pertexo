@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 import { connectionResponseFields } from './connection-fields.js';
-import { utf8ByteLength } from './shared/trim-outer-spaces.js';
+import { utf8ByteLength } from '@pertexo/workflow-model';
 
 /** A provider returns the browser here, so this is what people register with it. */
 export const OAUTH2_CALLBACK_PATH = '/v1/connections/oauth2/callback';
