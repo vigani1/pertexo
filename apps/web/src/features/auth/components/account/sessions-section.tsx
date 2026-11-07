@@ -1,3 +1,4 @@
+import { DialogFooter } from '@/components/ui/dialog';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { DialogClose } from '@/components/ui/dialog';
 import type { AccountSecuritySessionsResponse } from '@pertexo/contracts';
@@ -7,7 +8,6 @@ import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import {
   ConfirmDialog,
-  ConfirmationFooter,
   ConfirmationDetails,
 } from '@/components/patterns/actions/confirm-dialog';
 import { Button } from '@/components/ui/button';
@@ -175,7 +175,7 @@ function EndSessionDialog({
       onSubmit={onConfirm}
       submitDisabled={busy}
       footer={
-        <ConfirmationFooter>
+        <DialogFooter>
           <DialogClose
             disabled={busy}
             render={<Button type="button" variant="ghost" />}
@@ -190,7 +190,7 @@ function EndSessionDialog({
           >
             Sign out
           </ProgressButton>
-        </ConfirmationFooter>
+        </DialogFooter>
       }
     >
       <ConfirmationDetails

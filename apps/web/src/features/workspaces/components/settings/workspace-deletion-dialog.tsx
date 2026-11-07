@@ -1,10 +1,10 @@
+import { DialogFooter } from '@/components/ui/dialog';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { DialogClose } from '@/components/ui/dialog';
 import { useId, useState } from 'react';
 import { workspaceDeletionRequestSchema } from '@pertexo/contracts';
 import {
   ConfirmDialog,
-  ConfirmationFooter,
   ConfirmationDetails,
 } from '@/components/patterns/actions/confirm-dialog';
 import { Button } from '@/components/ui/button';
@@ -98,7 +98,7 @@ export function WorkspaceDeletionDialog({
       onSubmit={confirmationRetry?.onRetry ?? submit}
       submitDisabled={pending}
       footer={
-        <ConfirmationFooter>
+        <DialogFooter>
           {confirmationRetry === undefined ? (
             <DialogClose
               disabled={pending || retryAvailable}
@@ -126,7 +126,7 @@ export function WorkspaceDeletionDialog({
           >
             {confirmationRetry === undefined ? 'Delete workspace' : 'Try again'}
           </ProgressButton>
-        </ConfirmationFooter>
+        </DialogFooter>
       }
     >
       <ConfirmationDetails

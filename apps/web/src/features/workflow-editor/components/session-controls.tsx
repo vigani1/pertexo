@@ -1,3 +1,4 @@
+import { DialogFooter } from '@/components/ui/dialog';
 import { useEditorSession } from '../model/state/context';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { DialogClose } from '@/components/ui/dialog';
@@ -11,7 +12,6 @@ import {
 } from '@/features/workflow-publish/public';
 import {
   ConfirmDialog,
-  ConfirmationFooter,
   ConfirmationDetails,
 } from '@/components/patterns/actions/confirm-dialog';
 import { EditorCommandBar } from './chrome/editor-command-bar';
@@ -132,7 +132,7 @@ export function SessionDialogs({
         onSubmit={actions.confirmRemoval}
         submitDisabled={paused}
         footer={
-          <ConfirmationFooter>
+          <DialogFooter>
             <DialogClose render={<Button type="button" variant="ghost" />}>
               Cancel
             </DialogClose>
@@ -144,7 +144,7 @@ export function SessionDialogs({
             >
               Remove failure path
             </ProgressButton>
-          </ConfirmationFooter>
+          </DialogFooter>
         }
       >
         <ConfirmationDetails

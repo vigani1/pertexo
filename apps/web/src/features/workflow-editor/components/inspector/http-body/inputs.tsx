@@ -1,13 +1,11 @@
+import { DialogFooter } from '@/components/ui/dialog';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { DialogClose } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { useScratchForm } from '../use-draft-field';
 import { useState, type ReactNode } from 'react';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import {
-  ConfirmDialog,
-  ConfirmationFooter,
-} from '@/components/patterns/actions/confirm-dialog';
+import { ConfirmDialog } from '@/components/patterns/actions/confirm-dialog';
 import type { FileUploadScope } from '@/features/artifacts/public';
 import type { GraphLevel, WorkflowNode } from '../../../model/graph/scopes';
 import type { NodeFormApi } from '../../../model/inspector/node-form';
@@ -146,7 +144,7 @@ function BodyInputs(props: BodyInputsProps) {
           model.setConfirmation(undefined);
         }}
         footer={
-          <ConfirmationFooter>
+          <DialogFooter>
             <DialogClose render={<Button type="button" variant="ghost" />}>
               Cancel
             </DialogClose>
@@ -157,7 +155,7 @@ function BodyInputs(props: BodyInputsProps) {
             >
               {model.pending?.confirmLabel ?? 'Replace'}
             </ProgressButton>
-          </ConfirmationFooter>
+          </DialogFooter>
         }
       ></ConfirmDialog>
     </div>

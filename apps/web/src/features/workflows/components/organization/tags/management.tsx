@@ -1,3 +1,4 @@
+import { DialogFooter } from '@/components/ui/dialog';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { DialogClose } from '@/components/ui/dialog';
 import { TagNameActions, TagNameField } from './name-fields';
@@ -9,7 +10,6 @@ import { useEffect, useId, useRef, useState } from 'react';
 import { HashIcon } from 'lucide-react';
 import {
   ConfirmDialog,
-  ConfirmationFooter,
   ConfirmationDetails,
 } from '@/components/patterns/actions/confirm-dialog';
 import { useFieldValidation } from '@/components/ui/use-field-validation';
@@ -217,7 +217,7 @@ function TagDeleteConfirmation({
       onSubmit={command.retryAvailable ? command.retry : onDelete}
       submitDisabled={confirmBlocked}
       footer={
-        <ConfirmationFooter>
+        <DialogFooter>
           <DialogClose
             disabled={command.pending || command.retryAvailable}
             render={<Button type="button" variant="ghost" />}
@@ -233,7 +233,7 @@ function TagDeleteConfirmation({
           >
             {command.retryAvailable ? 'Try again' : 'Delete tag'}
           </ProgressButton>
-        </ConfirmationFooter>
+        </DialogFooter>
       }
     >
       <ConfirmationDetails

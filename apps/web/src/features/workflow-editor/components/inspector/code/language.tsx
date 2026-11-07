@@ -1,3 +1,4 @@
+import { DialogFooter } from '@/components/ui/dialog';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { DialogClose } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -7,10 +8,7 @@ import {
   CODE_LANGUAGE_CHOICES,
   CODE_LANGUAGE_PRESENTATION,
 } from './presentation';
-import {
-  ConfirmDialog,
-  ConfirmationFooter,
-} from '@/components/patterns/actions/confirm-dialog';
+import { ConfirmDialog } from '@/components/patterns/actions/confirm-dialog';
 import { Field, FieldLabel } from '@/components/ui/field';
 import { ChoiceSelect } from '../fields/choice-select';
 import {
@@ -66,7 +64,7 @@ export function CodeLanguageField({
         }}
         submitDisabled={!form.editable}
         footer={
-          <ConfirmationFooter>
+          <DialogFooter>
             <DialogClose render={<Button type="button" variant="ghost" />}>
               Cancel
             </DialogClose>
@@ -78,7 +76,7 @@ export function CodeLanguageField({
             >
               Switch language
             </ProgressButton>
-          </ConfirmationFooter>
+          </DialogFooter>
         }
       ></ConfirmDialog>
     </>

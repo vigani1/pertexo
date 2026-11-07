@@ -1,3 +1,4 @@
+import { DialogFooter } from '@/components/ui/dialog';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { DialogClose } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -7,10 +8,7 @@ import type {
   WebhookTriggerHealthResponse,
   WebhookAuthentication,
 } from '@pertexo/contracts';
-import {
-  ConfirmDialog,
-  ConfirmationFooter,
-} from '@/components/patterns/actions/confirm-dialog';
+import { ConfirmDialog } from '@/components/patterns/actions/confirm-dialog';
 import { useNotifications } from '@/components/ui/use-notifications';
 import type { ApiClient } from '@/lib/api/client';
 import {
@@ -125,7 +123,7 @@ export function WebhooksSection(props: WebhooksSectionProps) {
         }
         submitDisabled={model.webhook.pending?.command === 'rotate-endpoint'}
         footer={
-          <ConfirmationFooter>
+          <DialogFooter>
             <DialogClose
               disabled={model.webhook.pending?.command === 'rotate-endpoint'}
               render={<Button type="button" variant="ghost" />}
@@ -140,7 +138,7 @@ export function WebhooksSection(props: WebhooksSectionProps) {
             >
               Rotate URL
             </ProgressButton>
-          </ConfirmationFooter>
+          </DialogFooter>
         }
       ></ConfirmDialog>
       <RotateSecretDialog

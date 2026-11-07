@@ -935,10 +935,11 @@ object or reservation disappeared. Artifact list UI is not assumed available.
   never for a zero count or a legend. The Core is the exception: it always
   drifts, slowly when nothing runs (`CORE_IDLE_ENERGY`), and quickens with live
   work, because a frozen orb reads as a stalled app. Loaders never stand still.
-  CSS loops use the `motion-loop` variant and canvases `useStillCanvases`: both
-  hold still only under reduced motion, where the loading orb fades in place
-  instead. Canvases draw 30 frames a second and pause off-screen and in hidden
-  tabs; a visible window without focus keeps moving.
+  CSS loops use the `motion-loop` variant and canvases
+  `usePrefersReducedMotion`: both hold still only under reduced motion, where
+  the loading orb fades in place instead. Canvases draw 30 frames a second and
+  pause off-screen and in hidden tabs; a visible window without focus keeps
+  moving.
 - The legacy aurora uses huge `150vmax` layers and blur: preserve the
   appearance, not that unmeasured cost. Bound effects to their container;
   provide static border and opaque glass fallbacks. No animated glow on every
@@ -1055,9 +1056,9 @@ Features map their own enums to a `StatusTone` in their `model/` (for example
 #### Shared building blocks
 
 Dialog action rows use `DialogFooter` from `components/ui/dialog.tsx`, including
-`ConfirmationFooter`, `ActionDialog` and `SheetFooter`. Put Cancel/Close first,
-then supporting actions, then the primary action; DOM and visual order agree.
-Use `FileDrop` from `components/ui/file-drop.tsx` for native file selection and
+`DialogFooter`, `ActionDialog` and `SheetFooter`. Put Cancel/Close first, then
+supporting actions, then the primary action; DOM and visual order agree. Use
+`FileDrop` from `components/ui/file-drop.tsx` for native file selection and
 drag-and-drop; features retain their own validation, limits and upload status.
 Phone controls have 44 px hit targets; small checkbox/switch artwork keeps an
 invisible expanded hit area. The Build route preserves the editor’s existing

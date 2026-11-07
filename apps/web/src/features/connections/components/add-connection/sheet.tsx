@@ -1,3 +1,4 @@
+import { DialogFooter } from '@/components/ui/dialog';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { DialogClose } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -8,10 +9,7 @@ import {
   type CommandKey,
 } from '@/lib/api/commands/command-retry';
 import { useId, useRef, useState } from 'react';
-import {
-  ConfirmDialog,
-  ConfirmationFooter,
-} from '@/components/patterns/actions/confirm-dialog';
+import { ConfirmDialog } from '@/components/patterns/actions/confirm-dialog';
 import type { ConnectionResponse } from '@pertexo/contracts';
 import {
   Sheet,
@@ -172,7 +170,7 @@ export function AddConnectionSheet(props: AddConnectionSheetProps) {
           model.close();
         }}
         footer={
-          <ConfirmationFooter>
+          <DialogFooter>
             <DialogClose render={<Button type="button" variant="ghost" />}>
               Keep editing
             </DialogClose>
@@ -183,7 +181,7 @@ export function AddConnectionSheet(props: AddConnectionSheetProps) {
             >
               Discard
             </ProgressButton>
-          </ConfirmationFooter>
+          </DialogFooter>
         }
       ></ConfirmDialog>
     </Sheet>

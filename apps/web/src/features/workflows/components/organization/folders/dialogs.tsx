@@ -1,3 +1,4 @@
+import { DialogFooter } from '@/components/ui/dialog';
 import { DialogClose } from '@/components/ui/dialog';
 import { useId, useState, type ReactNode } from 'react';
 import {
@@ -7,7 +8,6 @@ import {
 import { ActionDialog } from '@/components/patterns/actions/dialog';
 import {
   ConfirmDialog,
-  ConfirmationFooter,
   ConfirmationDetails,
 } from '@/components/patterns/actions/confirm-dialog';
 import { Button } from '@/components/ui/button';
@@ -308,7 +308,7 @@ export function FolderDeleteDialog({
       }
       submitDisabled={command.pending || command.revisionConflict === true}
       footer={
-        <ConfirmationFooter>
+        <DialogFooter>
           {confirmationRetry === undefined ? (
             <DialogClose
               disabled={command.pending}
@@ -336,7 +336,7 @@ export function FolderDeleteDialog({
           >
             {confirmationRetry === undefined ? 'Delete folder' : 'Try again'}
           </ProgressButton>
-        </ConfirmationFooter>
+        </DialogFooter>
       }
     >
       {revisionReview}

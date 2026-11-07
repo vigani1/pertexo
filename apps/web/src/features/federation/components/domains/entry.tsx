@@ -1,10 +1,10 @@
+import { DialogFooter } from '@/components/ui/dialog';
 import { DialogClose } from '@/components/ui/dialog';
 import { domainConfirmationCopy, domainStatus } from './copy';
 import { useState } from 'react';
 import type { FederationSettings } from '@pertexo/contracts';
 import {
   ConfirmDialog,
-  ConfirmationFooter,
   ConfirmationDetails,
 } from '@/components/patterns/actions/confirm-dialog';
 import { Button } from '@/components/ui/button';
@@ -249,7 +249,7 @@ function DomainConfirmation({
       }
       submitDisabled={confirmBlocked}
       footer={
-        <ConfirmationFooter>
+        <DialogFooter>
           {confirmationRetry === undefined ? (
             <DialogClose
               disabled={model.command.pending}
@@ -280,7 +280,7 @@ function DomainConfirmation({
               ? model.confirmationCopy.confirmLabel
               : 'Try again'}
           </ProgressButton>
-        </ConfirmationFooter>
+        </DialogFooter>
       }
     >
       <ConfirmationDetails

@@ -1,3 +1,4 @@
+import { DialogFooter } from '@/components/ui/dialog';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { DialogClose } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -6,7 +7,6 @@ import { usePublicationReview } from './use-publication-review';
 import { RunInputUpload } from './file-input';
 import {
   ConfirmDialog,
-  ConfirmationFooter,
   ConfirmationDetails,
 } from '@/components/patterns/actions/confirm-dialog';
 import { useCallback, useState } from 'react';
@@ -105,7 +105,7 @@ function RunInputDialogContent(props: RunInputDialogContentProps) {
       onSubmit={model.submit}
       submitDisabled={model.pending || model.availability.confirmDisabled}
       footer={
-        <ConfirmationFooter>
+        <DialogFooter>
           <DialogClose
             disabled={model.availability.locked}
             render={<Button type="button" variant="ghost" />}
@@ -123,7 +123,7 @@ function RunInputDialogContent(props: RunInputDialogContentProps) {
               ? 'Retry same run'
               : 'Start published version'}
           </ProgressButton>
-        </ConfirmationFooter>
+        </DialogFooter>
       }
     >
       <ConfirmationDetails

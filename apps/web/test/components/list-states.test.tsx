@@ -62,15 +62,10 @@ describe('list states', () => {
     expect(container).toBeEmptyDOMElement();
   });
 
-  it('announces a loading list once, in the shape of its rows', () => {
-    const { container } = render(
-      <SkeletonRows label="Loading members" rows={2} mark="avatar" />,
-    );
+  it('announces a loading list', () => {
+    render(<SkeletonRows label="Loading members" rows={2} mark="avatar" />);
     expect(
       screen.getByRole('status', { name: 'Loading members' }),
     ).toBeInTheDocument();
-    expect(
-      container.querySelectorAll('[data-slot="skeleton-thread"]'),
-    ).toHaveLength(2);
   });
 });

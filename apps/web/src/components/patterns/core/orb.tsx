@@ -1,9 +1,7 @@
+import { usePrefersReducedMotion } from '@/lib/hooks/use-prefers-reduced-motion';
 import { useEffect, useRef } from 'react';
 import { cn } from '@/lib/class-names';
-import {
-  useCanvasRenderer,
-  useStillCanvases,
-} from '@/lib/hooks/use-canvas-renderer';
+import { useCanvasRenderer } from '@/lib/hooks/use-canvas-renderer';
 import { CoreOrbScene, type CoreOrbState } from './orb-scene';
 
 export type { CoreOrbState };
@@ -29,7 +27,7 @@ export function CoreOrb({
   className?: string;
 }>) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const deviceStill = useStillCanvases();
+  const deviceStill = usePrefersReducedMotion();
   const { renderer: sceneRef, refresh } = useCanvasRenderer({
     canvasRef,
     createRenderer: (canvas) => {

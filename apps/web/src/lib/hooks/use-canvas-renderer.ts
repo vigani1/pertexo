@@ -23,15 +23,6 @@ const FRAME_INTERVAL_MS = 1000 / 30;
 // second frame instead of skipping to every third.
 const FRAME_SLACK_MS = 2;
 
-/**
- * Whether decorative drawings hold still: only when the person asked to
- * minimise motion. A frozen orb reads as a stalled app, so phones animate too;
- * the loop below already stops for canvases no one can see.
- */
-export function useStillCanvases(): boolean {
-  return usePrefersReducedMotion();
-}
-
 export type CanvasHandle<Renderer> = Readonly<{
   renderer: RefObject<Renderer | null>;
   /**
@@ -66,7 +57,7 @@ export function useCanvasRenderer<Renderer extends CanvasRenderer>({
   }> | null>(null);
   // Reads the caller's latest props when the renderer is (re)created.
   const create = useEffectEvent(createRenderer);
-  const still = useStillCanvases() || !animate;
+  const still = usePrefersReducedMotion() || !animate;
   const isStill = useEffectEvent(() => still);
 
   useEffect(() => {

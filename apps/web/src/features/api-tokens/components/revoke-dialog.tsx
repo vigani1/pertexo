@@ -1,3 +1,4 @@
+import { DialogFooter } from '@/components/ui/dialog';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { DialogClose } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -5,7 +6,6 @@ import { useRef, useState } from 'react';
 import type { ApiTokenMetadata } from '@pertexo/contracts';
 import {
   ConfirmDialog,
-  ConfirmationFooter,
   ConfirmationDetails,
 } from '@/components/patterns/actions/confirm-dialog';
 import type { ApiClient } from '@/lib/api/client';
@@ -74,7 +74,7 @@ export function RevokeTokenDialog({
       onSubmit={revoke}
       submitDisabled={mutation.isPending}
       footer={
-        <ConfirmationFooter>
+        <DialogFooter>
           {!uncertain ? (
             <DialogClose
               disabled={mutation.isPending}
@@ -102,7 +102,7 @@ export function RevokeTokenDialog({
           >
             {!uncertain ? 'Revoke token' : 'Try again'}
           </ProgressButton>
-        </ConfirmationFooter>
+        </DialogFooter>
       }
     >
       <ConfirmationDetails

@@ -241,11 +241,23 @@ function FolderAudience({
 }
 
 function SaveState({ editor }: Readonly<{ editor: Editor }>) {
+  const current = editor.reader.isSuccess ? editor.reader.data : undefined;
   return (
     <>
       {editor.stale ? (
         <SharingRevisionNotice
           subject="access this folder"
+          latest={
+            current !== undefined
+              ? {
+                  mode: current.mode,
+                  people: current.grants.map((grant) => ({
+                    id: grantId(grant),
+                    label: `${current.labels?.[grantId(grant)] ?? 'Former member or group'} — ${grant.access === 'editor' ? 'Can edit' : 'Can view'}`,
+                  })),
+                }
+              : undefined
+          }
           canReview={editor.canReview}
           locked={editor.locked}
           onReview={editor.review}

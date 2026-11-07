@@ -1,9 +1,7 @@
+import { DialogFooter } from '@/components/ui/dialog';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { DialogClose } from '@/components/ui/dialog';
-import {
-  ConfirmDialog,
-  ConfirmationFooter,
-} from '@/components/patterns/actions/confirm-dialog';
+import { ConfirmDialog } from '@/components/patterns/actions/confirm-dialog';
 import { Button } from '@/components/ui/button';
 import type { LeaveReason } from '../../hooks/use-leave-guard';
 
@@ -57,7 +55,7 @@ export function LeaveEditorDialog({
       onSubmit={canSave ? onSaveAndLeave : leave}
       submitDisabled={saving}
       footer={
-        <ConfirmationFooter>
+        <DialogFooter>
           <DialogClose
             disabled={saving}
             render={<Button type="button" variant="ghost" />}
@@ -86,7 +84,7 @@ export function LeaveEditorDialog({
           >
             {canSave ? 'Save and leave' : 'Leave anyway'}
           </ProgressButton>
-        </ConfirmationFooter>
+        </DialogFooter>
       }
     ></ConfirmDialog>
   );
@@ -111,7 +109,7 @@ export function UnfinishedEditDialog({
       description="A field in the step panel isn’t valid yet, so it hasn’t been saved. Stay to fix it, or discard it and continue."
       onSubmit={onDiscard}
       footer={
-        <ConfirmationFooter>
+        <DialogFooter>
           <DialogClose render={<Button type="button" variant="ghost" />}>
             Stay
           </DialogClose>
@@ -122,7 +120,7 @@ export function UnfinishedEditDialog({
           >
             Discard edit
           </ProgressButton>
-        </ConfirmationFooter>
+        </DialogFooter>
       }
     ></ConfirmDialog>
   );

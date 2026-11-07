@@ -1,12 +1,10 @@
+import { DialogFooter } from '@/components/ui/dialog';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { DialogClose } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
 import type { ScheduleTriggerHealthResponse } from '@pertexo/contracts';
-import {
-  ConfirmDialog,
-  ConfirmationFooter,
-} from '@/components/patterns/actions/confirm-dialog';
+import { ConfirmDialog } from '@/components/patterns/actions/confirm-dialog';
 import { Notice } from '@/components/ui/notice';
 import { useNotifications } from '@/components/ui/use-notifications';
 import type { ApiClient } from '@/lib/api/client';
@@ -119,7 +117,7 @@ export function SchedulesSection({
         }
         submitDisabled={schedule.pendingTriggerId !== undefined}
         footer={
-          <ConfirmationFooter>
+          <DialogFooter>
             <DialogClose
               disabled={schedule.pendingTriggerId !== undefined}
               render={<Button type="button" variant="ghost" />}
@@ -134,7 +132,7 @@ export function SchedulesSection({
             >
               Turn off
             </ProgressButton>
-          </ConfirmationFooter>
+          </DialogFooter>
         }
       ></ConfirmDialog>
     </>
