@@ -1,3 +1,4 @@
+import type { WorkspaceVariablesStore } from '@pertexo/core/variables';
 import type {
   createPreviewRunStore,
   WorkflowTestStore,
@@ -22,4 +23,5 @@ export type NodeTestingDependencies = Readonly<{
   authorization: WorkspaceAuthorizationSource;
   persistence: NodeTestingPersistence;
   expressionEvaluator: ExpressionEvaluator;
+  variables?: Pick<WorkspaceVariablesStore, 'read'>;
 }>;

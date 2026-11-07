@@ -1,3 +1,4 @@
+import type { WorkspaceVariablesStore } from '@pertexo/core/variables';
 import {
   nodeValidationResponseSchema,
   type NodeTestRequest,
@@ -60,6 +61,8 @@ export type NodeTestUseCaseInput = Readonly<{
 export type Authorization = WorkspaceAuthorizationSource;
 
 export class TestWorkflowNodeUseCase {
+  // Variable reads retain their own workspace authority; preview acceptance rechecks it.
+  // eslint-disable-next-line max-params
   public constructor(
     private readonly persistence: Pick<
       NodeTestingPersistence,
@@ -68,6 +71,7 @@ export class TestWorkflowNodeUseCase {
     private readonly authorization: Authorization,
     private readonly now: () => Date = () => new Date(),
     private readonly expressionEvaluator?: ExpressionEvaluator,
+    private readonly variables?: Pick<WorkspaceVariablesStore, 'read'>,
   ) {}
 
   public async execute(
@@ -99,6 +103,13 @@ export class TestWorkflowNodeUseCase {
     const prepared = await prepareNodeValidation({
       graph,
       nodeId: input.nodeId,
+      variables:
+        (
+          await this.variables?.read({
+            workspaceId: input.routeWorkspaceId,
+            actorId: input.actor.actorId,
+          })
+        )?.values ?? {},
       ...(this.expressionEvaluator === undefined
         ? {}
         : { expressionEvaluator: this.expressionEvaluator }),

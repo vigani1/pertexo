@@ -56,6 +56,7 @@ export class NodeTestingModule {
           dependencies.authorization,
           undefined,
           dependencies.expressionEvaluator,
+          dependencies.variables,
         ),
       },
       {

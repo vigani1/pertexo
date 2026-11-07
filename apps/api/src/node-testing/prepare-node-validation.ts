@@ -1,3 +1,4 @@
+import type { WorkspaceVariableValues } from '@pertexo/workflow-model';
 import { UUID_PATTERN } from '@pertexo/workflow-model';
 import { resolvePlatformNodeDefinition } from '@pertexo/node-catalog';
 import {
@@ -171,6 +172,7 @@ type NodeValidationInput = Readonly<{
   graph: WorkflowGraph;
   nodeId: string;
   sampleInput?: JsonValue;
+  variables?: WorkspaceVariableValues;
   deferInput?: boolean;
   pinnedSample?: boolean;
   expressionEvaluator?: ExpressionEvaluator;
@@ -235,7 +237,7 @@ async function resolveNodeMappings(
     if (source === undefined) continue;
     const resolution = await resolveValueSource(
       source,
-      { runInput, nodeOutputs: {} },
+      { runInput, nodeOutputs: {}, variables: input.variables ?? {} },
       input.expressionEvaluator,
     );
     if (resolution.kind === 'value') mapped[key] = resolution.value;
