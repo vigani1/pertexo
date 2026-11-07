@@ -158,3 +158,7 @@ export {
   createSystemMailDeliveryHandler,
   type SystemMailDeliveryHandler,
 } from './mail/deliver-system-mail.js';
+
+export { SystemMailConfigurationError } from './mail/config.js';
+
+export { ApplicationKeyConfigurationError } from './encryption/key-ring.js';

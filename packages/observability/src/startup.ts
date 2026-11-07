@@ -22,4 +22,7 @@ export {
   clientDatabaseConfig,
 } from './lifecycle/database-config.js';
 
-export { StartupSettingError } from './startup-setting.errors.js';
+export {
+  StartupSettingError,
+  parseStartupSettings,
+} from './startup-setting.errors.js';

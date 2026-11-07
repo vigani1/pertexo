@@ -1,15 +1,15 @@
-import { StartupSettingError } from '@pertexo/observability/startup';
+import {
+  StartupSettingError,
+  parseStartupSettings,
+} from '@pertexo/observability/startup';
+import { readMailPreviousKeys, parseMailTransport } from './mail-settings.js';
 import { z } from 'zod';
 
 import {
   applicationKeyVersionSchema,
-  parseApplicationPreviousKeys,
   type ApplicationKeyRing,
 } from '@pertexo/secrets/server';
-import {
-  parseSystemMailConfig,
-  type SystemMailConfig,
-} from '@pertexo/secrets/server';
+import type { SystemMailConfig } from '@pertexo/secrets/server';
 
 export type InvitationDeliveryConfig = Readonly<{
   delivery: SystemMailConfig;
@@ -43,46 +43,52 @@ export function parseInvitationDeliveryConfig(
     )
   )
     return undefined;
-  const parsed = z
-    .object({
-      fromEmail: z.email().max(320),
-      webOrigin: z.url(),
-      timeoutMillis: z.coerce
+  const parsed = parseStartupSettings(
+    z.object({
+      INVITATION_EMAIL_FROM: z.email().max(320),
+      PUBLIC_WEB_ORIGIN: z.url(),
+      INVITATION_EMAIL_TIMEOUT_MILLIS: z.coerce
         .number()
         .int()
         .min(100)
         .max(30_000)
         .default(5_000),
-      key: z.string().min(1),
-      version: applicationKeyVersionSchema,
-      previous: z.string().optional(),
-    })
-    .strict()
-    .parse({
-      fromEmail: environment.INVITATION_EMAIL_FROM,
-      webOrigin: environment.PUBLIC_WEB_ORIGIN,
-      timeoutMillis: environment.INVITATION_EMAIL_TIMEOUT_MILLIS,
-      key: environment.INVITATION_TOKEN_KEY,
-      version: environment.INVITATION_TOKEN_KEY_VERSION,
-      previous: environment.INVITATION_TOKEN_PREVIOUS_KEYS,
-    });
-  const url = new URL(parsed.webOrigin);
+      INVITATION_TOKEN_KEY: z.string().min(1),
+      INVITATION_TOKEN_KEY_VERSION: applicationKeyVersionSchema,
+      INVITATION_TOKEN_PREVIOUS_KEYS: z.string().optional(),
+    }),
+    environment,
+    {
+      INVITATION_EMAIL_FROM: 'email_required',
+      PUBLIC_WEB_ORIGIN: 'http_origin_required',
+      INVITATION_EMAIL_TIMEOUT_MILLIS: 'timeout_required',
+      INVITATION_TOKEN_KEY: 'application_key_required',
+      INVITATION_TOKEN_KEY_VERSION: 'key_version_required',
+      INVITATION_TOKEN_PREVIOUS_KEYS: 'previous_keys_required',
+    },
+  );
+  const url = new URL(parsed.PUBLIC_WEB_ORIGIN);
   if (url.pathname !== '/' || url.search !== '' || url.hash !== '')
     throw new StartupSettingError('PUBLIC_WEB_ORIGIN', 'http_origin_required');
   if (deployed && url.protocol !== 'https:')
     throw new StartupSettingError('PUBLIC_WEB_ORIGIN', 'https_required');
-  const previous = parseApplicationPreviousKeys(parsed.previous);
   return Object.freeze({
-    delivery: parseSystemMailConfig(environment, {
+    delivery: parseMailTransport(environment, {
       apiKeyName: 'INVITATION_EMAIL_API_KEY',
       deployed,
     }),
-    fromEmail: parsed.fromEmail,
+    fromEmail: parsed.INVITATION_EMAIL_FROM,
     webOrigin: url.origin,
-    timeoutMillis: parsed.timeoutMillis,
+    timeoutMillis: parsed.INVITATION_EMAIL_TIMEOUT_MILLIS,
     tokenEncryption: Object.freeze({
-      current: Object.freeze({ version: parsed.version, key: parsed.key }),
-      previous,
+      current: Object.freeze({
+        version: parsed.INVITATION_TOKEN_KEY_VERSION,
+        key: parsed.INVITATION_TOKEN_KEY,
+      }),
+      previous: readMailPreviousKeys(
+        'INVITATION_TOKEN_PREVIOUS_KEYS',
+        parsed.INVITATION_TOKEN_PREVIOUS_KEYS,
+      ),
     }),
   });
 }

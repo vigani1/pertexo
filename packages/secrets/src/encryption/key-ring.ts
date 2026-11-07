@@ -1,5 +1,15 @@
 import { z } from 'zod';
 
+export class ApplicationKeyConfigurationError extends TypeError {
+  public override readonly name = 'ApplicationKeyConfigurationError';
+  public constructor(
+    public readonly section: 'current' | 'previous',
+    message: string,
+  ) {
+    super(message);
+  }
+}
+
 export const applicationKeyVersionSchema = z
   .string()
   .regex(/^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$/u);
@@ -24,7 +34,10 @@ export function parseApplicationPreviousKeys(
     assertUniqueVersions(keys);
     return Object.freeze(keys.map((key) => Object.freeze(key)));
   } catch {
-    throw new TypeError('Previous application keys are invalid');
+    throw new ApplicationKeyConfigurationError(
+      'previous',
+      'Previous application keys are invalid',
+    );
   }
 }
 
@@ -32,7 +45,10 @@ function assertUniqueVersions(keys: readonly ApplicationKey[]): void {
   const versions = new Set<string>();
   for (const entry of keys) {
     if (versions.has(entry.version))
-      throw new TypeError('Application key versions must be unique');
+      throw new ApplicationKeyConfigurationError(
+        'previous',
+        'Application key versions must be unique',
+      );
     versions.add(entry.version);
   }
 }
@@ -63,10 +79,23 @@ export function validateApplicationKeyRing(
     })
     .strict()
     .safeParse(config);
-  if (!parsed.success) throw new TypeError('Application key ring is invalid');
+  if (!parsed.success)
+    throw new ApplicationKeyConfigurationError(
+      parsed.error.issues[0]?.path[0] === 'previous' ? 'previous' : 'current',
+      'Application key ring is invalid',
+    );
   const entries = [parsed.data.current, ...parsed.data.previous];
   assertUniqueVersions(entries);
-  for (const entry of entries) decodeApplicationKey(entry.key).fill(0);
+  for (const [index, entry] of entries.entries()) {
+    try {
+      decodeApplicationKey(entry.key).fill(0);
+    } catch {
+      throw new ApplicationKeyConfigurationError(
+        index === 0 ? 'current' : 'previous',
+        'Application secret key must encode exactly 32 bytes',
+      );
+    }
+  }
   return Object.freeze({
     current: Object.freeze(parsed.data.current),
     previous: Object.freeze(

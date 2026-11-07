@@ -1,7 +1,8 @@
 import { createSystemMailClient } from '../mail/system-mail-client.js';
 import type { WorkspaceInvitationDeliveryStore } from '@pertexo/core/tenant-access';
 import { createWorkspaceInvitationDeliveryStore } from '@pertexo/core/tenant-access';
-import { createApplicationSecretEnvelope } from '@pertexo/secrets/server';
+import { createMailEnvelope } from '../config/mail-settings.js';
+import type { ApplicationKeyRing } from '@pertexo/secrets/server';
 import {
   systemMailFailureCode,
   SYSTEM_MAIL_FAILURE_GUIDANCE,
@@ -14,7 +15,12 @@ import type {
 import type { QueueDelivery, QueueHandlerContext } from '@pertexo/queue/server';
 export const workspaceInvitationDeliveryFactories = Object.freeze({
   store: createWorkspaceInvitationDeliveryStore,
-  envelope: createApplicationSecretEnvelope,
+  envelope: (keys: ApplicationKeyRing) =>
+    createMailEnvelope(
+      keys,
+      'INVITATION_TOKEN_KEY',
+      'INVITATION_TOKEN_PREVIOUS_KEYS',
+    ),
   email: createSystemMailClient,
   create: createWorkspaceInvitationDeliveryHandler,
 });

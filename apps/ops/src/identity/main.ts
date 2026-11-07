@@ -1,3 +1,7 @@
+import {
+  StartupSettingError,
+  describeProcessFailure,
+} from '@pertexo/observability/startup';
 import { fileURLToPath } from 'node:url';
 import { createTwoFactorRecoveryStore } from '@pertexo/core/identity';
 import { parseTwoFactorRecoveryConfig } from './config.js';
@@ -19,11 +23,12 @@ if (
   process.argv[1] !== undefined &&
   fileURLToPath(import.meta.url) === process.argv[1]
 ) {
-  void runTwoFactorRecovery().catch(() => {
-    // Configuration and database errors may contain credentials; print no exception payload.
-    process.stderr.write(
-      'Two-factor recovery failed. Check the command arguments, application database access and authentication-mail configuration.\n',
-    );
+  void runTwoFactorRecovery().catch((error: unknown) => {
+    const detail =
+      error instanceof StartupSettingError
+        ? describeProcessFailure(error)
+        : 'Database access failed. Check DATABASE_URL is reachable and the application role has access, then retry the recovery command.';
+    process.stderr.write(`Two-factor recovery failed: ${detail}\n`);
     process.exitCode = 1;
   });
 }
