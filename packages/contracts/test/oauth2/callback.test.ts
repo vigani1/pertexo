@@ -11,7 +11,7 @@ import {
   oauth2StepFailureCodeSchema,
 } from '../../src/schemas/oauth2-connections.js';
 
-import { connectionFields } from './fixture.js';
+import { connectionFields } from './oauth2.fixture.js';
 
 const STATE = `${'A'.repeat(22)}.${'b'.repeat(43)}`;
 

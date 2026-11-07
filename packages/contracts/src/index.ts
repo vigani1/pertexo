@@ -293,7 +293,7 @@ export {
   workflowPromotionResultSchema,
   type WorkflowPromotionApply,
   type WorkflowPromotionResult,
-} from './schemas/workflows/promotions/commands.js';
+} from './schemas/workflows/promotions/promotion-commands.js';
 export {
   workflowPromotionPageQuerySchema,
   workflowPromotionCandidatesSchema,

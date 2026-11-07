@@ -2,7 +2,7 @@ import { storageTextSchema } from '@pertexo/workflow-model';
 import { FEDERATION_LIMITS } from '@pertexo/workflow-model';
 export { FEDERATION_LIMITS };
 import { z } from 'zod';
-import { utf8ByteLength } from '../../shared/text.js';
+import { utf8ByteLength } from '../../shared/trim-outer-spaces.js';
 import { delegatedWorkspaceRoleSchema } from '../membership.js';
 
 export const federationProtocolSchema = z.enum(['oidc', 'saml']);

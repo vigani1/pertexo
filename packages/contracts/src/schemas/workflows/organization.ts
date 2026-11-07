@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { strictlyAscendingIdentifiers } from './organization-order.js';
-import { trimSpaces, utf8ByteLength } from '../shared/text.js';
+import { trimSpaces, utf8ByteLength } from '../shared/trim-outer-spaces.js';
 
 /** ADR064 bounds are product contracts, never caller-configurable quotas. */
 export const WORKFLOW_ORGANIZATION_LIMITS = Object.freeze({

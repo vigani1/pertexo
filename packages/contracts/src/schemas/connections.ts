@@ -2,7 +2,7 @@ import { signingKeyCredentialSchema } from '@pertexo/node-sdk';
 import { CONNECTION_SHARE_LIMIT } from '@pertexo/workflow-model';
 export { signingKeyCredentialSchema } from '@pertexo/node-sdk';
 import { z } from 'zod';
-import { utf8ByteLength } from './shared/text.js';
+import { utf8ByteLength } from './shared/trim-outer-spaces.js';
 
 import { isSupportedHttpFieldValue } from './shared/http-field-value.js';
 import {

@@ -1,7 +1,7 @@
 import { storageTextSchema } from '@pertexo/workflow-model';
 import { audienceReviewSchema } from './sharing.js';
 import { z } from 'zod';
-import { trimSpaces, utf8ByteLength } from '../shared/text.js';
+import { trimSpaces, utf8ByteLength } from '../shared/trim-outer-spaces.js';
 import { strictlyAscendingIdentifiers } from './organization-order.js';
 import {
   workflowOrganizationRevisionSchema,
