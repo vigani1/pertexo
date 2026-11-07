@@ -1,6 +1,7 @@
 import type { IdentityWorkspaceStore } from '@pertexo/core/tenant-access';
 import type { ApiTokenScope } from '@pertexo/contracts';
 import {
+  ALL_WORKSPACE_STATUSES,
   AUTHORIZATION_CAPABILITIES,
   BROWSABLE_WORKSPACE_STATUSES,
   ROLES,
@@ -23,13 +24,7 @@ export const MEMBERSHIP_STATUSES = Object.freeze([
   'removed',
 ] as const);
 
-export const WORKSPACE_STATUSES = Object.freeze([
-  'active',
-  'suspended',
-  'pending_deletion',
-  'purging',
-  'deleted',
-] as const);
+export const WORKSPACE_STATUSES = ALL_WORKSPACE_STATUSES;
 
 export type WorkspaceStatus = (typeof WORKSPACE_STATUSES)[number];
 

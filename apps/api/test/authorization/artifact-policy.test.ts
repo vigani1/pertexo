@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { hasCapability } from '../../src/authorization/policy.js';
+import { hasCapability } from '@pertexo/policy';
 import { ROLES } from '../../src/authorization/workspace-authorization.js';
 
 describe('artifact workspace capability policy', () => {

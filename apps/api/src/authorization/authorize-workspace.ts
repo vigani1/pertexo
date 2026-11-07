@@ -10,7 +10,7 @@ import type {
   WorkspaceAccess,
   WorkspaceStatus,
 } from './workspace-authorization.js';
-import { hasCapability } from './policy.js';
+import { hasCapability } from '@pertexo/policy';
 
 export type AuthorizationErrorCode =
   | 'auth.unauthenticated'
