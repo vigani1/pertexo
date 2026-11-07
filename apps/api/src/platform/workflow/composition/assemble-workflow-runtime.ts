@@ -68,6 +68,7 @@ export function assembleWorkflowRuntime({
     }),
     nodeTestingDependencies: Object.freeze({
       persistence: nodeTesting.persistence,
+      variables: metadataRuntime.variables,
       authorization: identityRuntime.dependencies.authorization,
       expressionEvaluator,
     }),
