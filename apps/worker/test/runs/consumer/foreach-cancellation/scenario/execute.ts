@@ -60,9 +60,9 @@ export function createForEachScenario(options: ForEachScenarioContext) {
     await declarationJob?.remove();
     await executeDuplicateAttempt(declaration);
 
-    // The parallel scenario proves declaration-outcome recovery before consumption.
-    // Every scenario below still recovers its reserved batch in a fresh process.
-    if (mode === 'complete') await eraseRedisAndRestart();
+    // Recover the durable declaration outcome before the coordinator consumes it
+    // in every mode: structured bodies and serial/parallel reservations differ.
+    await eraseRedisAndRestart();
     const declarationContinuation = await waitForCoordinatorOutbox(
       accepted.runId,
       coordinatorOutboxes,

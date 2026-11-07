@@ -100,10 +100,10 @@ export async function assertSerialLoopRecovery(context: ForEachPhaseContext) {
         await retention.close();
       }
     }
-    // The primary serial case recovers a compacted mid-loop checkpoint. All
-    // variants recover their reserved batch and replay retired receipts below.
-    if (mode === 'serial_complete' && ordinal === 0)
-      await eraseRedisAndRestart();
+    // Each serial/condition/switch/nested shape resumes after compaction while
+    // still active. Iterations 1 and 2 then execute on the fresh process; receipt
+    // replay after loop completion below proves a different property.
+    if (ordinal === 0) await eraseRedisAndRestart();
     await executeDuplicateAttempt(finishedAttempt);
     await expect(readHistory()).resolves.toEqual(history);
   }
