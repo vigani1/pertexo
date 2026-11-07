@@ -6,7 +6,7 @@ import { z } from 'zod';
 
 import { restartEditorBrowserWorker } from '../../../browser/harness/worker-restart.js';
 
-import type { ConnectionHealthCommandContext } from './contract.js';
+import type { ConnectionHealthCommandContext } from './connection-health-fixture.types.js';
 
 const abandonedClaimSchema = z
   .object({

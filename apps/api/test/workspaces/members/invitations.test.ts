@@ -30,7 +30,7 @@ import {
   invitationRecord,
   acceptanceUseCase,
   pendingIntent,
-} from './invitations/fixture.js';
+} from './member-invitation-fixture.js';
 
 describe('workspace invitation use cases', () => {
   it('maps unresolved delivery to a truthful recoverable problem', () => {

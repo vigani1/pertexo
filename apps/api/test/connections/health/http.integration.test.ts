@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import { connectionUsageResponseSchema } from '@pertexo/contracts';
 import { betterAuthIntegrationEnabled } from '../../support/better-auth/real-api.support.js';
-import { useConnectionHealthFixture } from './fixture.js';
+import { useConnectionHealthFixture } from './connection-health-fixture.js';
 
 describe.skipIf(!betterAuthIntegrationEnabled)(
   'real connection health and authorized usage HTTP',

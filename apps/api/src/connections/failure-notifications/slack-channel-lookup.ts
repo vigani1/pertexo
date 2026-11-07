@@ -31,7 +31,7 @@ import {
 import {
   encryptionSignal,
   type ConnectionCommandInput,
-} from '../use-cases/support.js';
+} from '../use-cases/connection-serialization.js';
 
 /** ADR 046: per call and for the whole request, both bounded by the caller. */
 const LOOKUP_CALL_TIMEOUT_MILLIS = 5_000;

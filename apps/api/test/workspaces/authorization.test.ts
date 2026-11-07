@@ -11,7 +11,11 @@ import {
   AuthorizationError,
   authorizeWorkspaceOperation,
 } from '../../src/authorization/index.js';
-import { workspaceId, actor, access } from './authorization/fixture.js';
+import {
+  workspaceId,
+  actor,
+  access,
+} from './workspace-authorization-fixture.js';
 
 describe('workspace authorization policy', () => {
   it('exposes the canonical roles, statuses, and fixed capabilities', () => {

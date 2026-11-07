@@ -4,22 +4,22 @@ import { canonicalJson } from '@pertexo/workflow-model';
 import {
   commandCredential,
   type WorkspaceAuthorizationSource,
-} from '../../authorization/index.js';
+} from '../authorization/index.js';
 
 import {
   WORKFLOW_AUTHORING_OPERATION,
   NOOP_WORKFLOW_AUTHORING_TELEMETRY,
   type WorkflowAuthoringTelemetry,
-} from '../telemetry.js';
+} from './telemetry.js';
 import type { WorkflowPublishResponse } from '@pertexo/contracts';
 
-import { serializeWorkflowPublication } from '../http/serializers.js';
+import { serializeWorkflowPublication } from './http/serializers.js';
 
-import type { WorkflowResourceInput } from '../workflow-authoring.service.js';
+import type { WorkflowResourceInput } from './workflow-authoring.service.js';
 import {
   type AuthoringPersistence,
   authorize,
-} from '../commands/authorization.js';
+} from './commands/authorization.js';
 
 export type PublishWorkflowInput = WorkflowResourceInput &
   Readonly<{

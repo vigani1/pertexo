@@ -1,10 +1,10 @@
-import type { TestConnectionCommand } from '../../../../src/connections/use-cases/test-connection.js';
+import type { TestConnectionCommand } from '../../../src/connections/use-cases/test-connection.js';
 import type { ConnectionRecord } from '@pertexo/core/testing';
 
 import { vi } from 'vitest';
 
-import type { ConnectionTestPersistence } from '../../../../src/connections/ports.js';
-import { createActorContext } from '../../../../src/authorization/index.js';
+import type { ConnectionTestPersistence } from '../../../src/connections/ports.js';
+import { createActorContext } from '../../../src/authorization/index.js';
 
 const actorId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 

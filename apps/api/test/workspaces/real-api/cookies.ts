@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import type { SessionCookies } from './contract.js';
+import type { SessionCookies } from './workspace-api-fixture.types.js';
 
 /** The session cookie stays encoded, as a browser would send it back. */
 export function sessionCookies(

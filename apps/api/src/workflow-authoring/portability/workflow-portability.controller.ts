@@ -12,7 +12,7 @@ import { projectAuthenticatedWorkspaceContext } from '../../workspaces/request/a
 import type {
   WorkflowAuthoringRequest,
   WorkflowResponse,
-} from '../workflow-transport.js';
+} from '../workflow-authoring-request.js';
 import {
   ExportWorkflowUseCase,
   ImportWorkflowUseCase,

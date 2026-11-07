@@ -1,7 +1,7 @@
 import { expect } from 'vitest';
 
 import { lists, root, workflow } from './paths.js';
-import type { Read } from './reads.js';
+import type { Read } from './suspended-workspace-reads.js';
 
 const answers = (body: unknown) => {
   expect(body).toBeTypeOf('object');

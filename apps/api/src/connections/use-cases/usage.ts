@@ -14,7 +14,7 @@ import {
 } from '../../authorization/index.js';
 import { authorizeConnectionOperation } from '../authorization.js';
 import { InvalidConnectionCursorError } from '../cursor.js';
-import type { ConnectionCommandInput } from './support.js';
+import type { ConnectionCommandInput } from './connection-serialization.js';
 import {
   CONNECTION_OPERATION,
   NOOP_CONNECTION_TELEMETRY,

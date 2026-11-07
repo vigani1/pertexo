@@ -33,7 +33,7 @@ import {
   logger,
   telemetry,
 } from './environment.js';
-import type { SessionCookies } from './contract.js';
+import type { SessionCookies } from './workspace-api-fixture.types.js';
 import { config } from './configuration.js';
 import { sessionCookies, rawCookieValue, mutationHeaders } from './cookies.js';
 import { emptyWorkflowGraph } from './graphs.js';

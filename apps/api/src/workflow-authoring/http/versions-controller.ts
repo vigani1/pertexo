@@ -15,7 +15,7 @@ import { RestoreWorkflowVersionUseCase } from '../commands/restore-version.js';
 import type {
   WorkflowAuthoringRequest,
   WorkflowResponse,
-} from '../workflow-transport.js';
+} from '../workflow-authoring-request.js';
 import { ListWorkflowVersionsUseCase } from '../workflow-authoring.service.js';
 import { parseStrongIfMatch } from './preconditions.js';
 @UseInterceptors(domainErrors(authoringFailure))

@@ -22,7 +22,7 @@ import {
   toListResponse,
   toResponse,
   type ConnectionCommandInput,
-} from './support.js';
+} from './connection-serialization.js';
 import {
   CONNECTION_OPERATION,
   NOOP_CONNECTION_TELEMETRY,

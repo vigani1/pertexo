@@ -6,7 +6,7 @@ import type {
   ConnectionHealthFixtureOptions,
   ConnectionHealthFixtureState,
   ConnectionHealthApi,
-} from './contract.js';
+} from './connection-health-fixture.types.js';
 
 export function createConnectionHealthControl(
   input: Readonly<{

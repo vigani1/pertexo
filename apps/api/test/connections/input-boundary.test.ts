@@ -6,7 +6,7 @@ import {
   connectionUrl,
   connectionPayload,
   authenticatedHeaders,
-} from './http-stack/fixture.js';
+} from './connection-http-fixture.js';
 
 afterEach(cleanConnectionsRealNestHTTPStackFixture);
 

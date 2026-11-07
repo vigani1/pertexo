@@ -18,7 +18,7 @@ import {
   READS_OPEN_UNTIL_PURGE,
   expectShown,
   type Read,
-} from './suspended/reads.js';
+} from './suspended/suspended-workspace-reads.js';
 import { AUTHORING_WRITES } from './suspended/authoring-writes.js';
 import { WRITES, durableWorkspaceFacts } from './suspended/writes.js';
 import {

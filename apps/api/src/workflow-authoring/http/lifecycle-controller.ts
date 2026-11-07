@@ -21,7 +21,7 @@ import { authoringFailure } from '../../problems/context/normalize-context-error
 import type {
   WorkflowAuthoringRequest,
   WorkflowResponse,
-} from '../workflow-transport.js';
+} from '../workflow-authoring-request.js';
 @UseInterceptors(domainErrors(authoringFailure))
 @Controller()
 export class WorkflowLifecycleController {

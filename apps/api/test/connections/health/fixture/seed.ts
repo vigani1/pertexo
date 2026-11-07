@@ -10,7 +10,7 @@ import {
 import type {
   ConnectionHealthFixtureState,
   ConnectionHealthApi,
-} from './contract.js';
+} from './connection-health-fixture.types.js';
 
 export async function seedConnectionHealthFixture(
   input: Readonly<{

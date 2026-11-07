@@ -36,7 +36,7 @@ import {
   SessionAuthenticationGuard,
 } from '../../../../src/workspaces/index.js';
 
-import type { WorkflowAuthoringRequest } from '../../../../src/workflow-authoring/workflow-transport.js';
+import type { WorkflowAuthoringRequest } from '../../../../src/workflow-authoring/workflow-authoring-request.js';
 
 export const workspaceId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 

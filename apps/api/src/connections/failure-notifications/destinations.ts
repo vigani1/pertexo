@@ -21,7 +21,7 @@ import {
 import {
   hashRequest,
   type ConnectionCommandInput,
-} from '../use-cases/support.js';
+} from '../use-cases/connection-serialization.js';
 
 function databaseCommand(input: DestinationCommandInput) {
   return {

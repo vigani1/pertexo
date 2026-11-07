@@ -9,7 +9,7 @@ import {
   databaseBarrier,
   waitForDatabaseBlock,
 } from '../../support/postgres-barrier.js';
-import { invitationApi } from './invitation-boundaries/fixture.js';
+import { invitationApi } from './invitation-boundary-fixture.js';
 
 describe.runIf(betterAuthIntegrationEnabled)(
   'invitation authority at HTTP and database boundaries',

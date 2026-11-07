@@ -6,7 +6,7 @@ import {
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
 import { authoringFailure } from '../../problems/context/normalize-context-errors.js';
 import { In, Route } from '../../workspaces/http/route.js';
-import type { WorkflowAuthoringRequest } from '../workflow-transport.js';
+import type { WorkflowAuthoringRequest } from '../workflow-authoring-request.js';
 import { WorkflowOrganizationCommandsUseCase } from './organization-commands.service.js';
 import { withWorkflowOrganizationRequest } from './http.js';
 import { WorkflowOrganizationReadsUseCase } from './organization-reads.service.js';

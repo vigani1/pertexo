@@ -7,7 +7,7 @@ import {
   setCookie,
   useBetterAuthRealApi,
   type Browser,
-} from '../../../support/better-auth/real-api.support.js';
+} from '../../support/better-auth/real-api.support.js';
 
 export function invitationApi(suite: string) {
   const api = useBetterAuthRealApi(suite);

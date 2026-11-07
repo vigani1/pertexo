@@ -21,7 +21,7 @@ import {
   persistence,
   activeAccess,
   actor,
-} from './use-cases/fixture.js';
+} from './workspace-command-fixture.js';
 import { WorkspaceLifecycleConflictError } from '@pertexo/core/testing';
 import { authorizeWorkspace } from '../../src/authorization/index.js';
 

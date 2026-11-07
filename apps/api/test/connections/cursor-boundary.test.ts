@@ -4,7 +4,7 @@ import {
   cleanConnectionsRealNestHTTPStackFixture,
   connectionUrl,
   authenticatedHeaders,
-} from './http-stack/fixture.js';
+} from './connection-http-fixture.js';
 
 afterEach(cleanConnectionsRealNestHTTPStackFixture);
 describe('connection cursor request boundary', () => {

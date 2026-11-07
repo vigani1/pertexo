@@ -7,7 +7,7 @@ import {
   decodeConnectionUsageCursor,
 } from '../../../src/connections/use-cases/usage.js';
 import { InvalidConnectionCursorError } from '../../../src/connections/cursor.js';
-import { toResponse } from '../../../src/connections/use-cases/support.js';
+import { toResponse } from '../../../src/connections/use-cases/connection-serialization.js';
 import {
   actor,
   actorId,

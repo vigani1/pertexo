@@ -10,7 +10,7 @@ import { withRequestOperationSignal } from '../../platform/http/index.js';
 import type { AbortableRequest } from '../../platform/http/request-operation-signal.js';
 import { requestHeaderValue } from '../../platform/http/request-headers.js';
 import { WorkflowHeaderError } from '../http/preconditions.js';
-import type { WorkflowAuthoringRequest } from '../workflow-transport.js';
+import type { WorkflowAuthoringRequest } from '../workflow-authoring-request.js';
 import { WorkflowInputCasesUseCase } from './workflow-input-cases.service.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
 import { inputCaseFailure } from '../../problems/context/normalize-context-errors.js';

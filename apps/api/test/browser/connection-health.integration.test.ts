@@ -5,7 +5,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { describe, expect, it } from 'vitest';
 import { FixtureResourceOwner } from './harness/resource-owner.js';
 import { ownEditorBrowserProcess } from './harness/process.js';
-import { useConnectionHealthFixture } from '../connections/health/fixture.js';
+import { useConnectionHealthFixture } from '../connections/health/connection-health-fixture.js';
 import { liveWebOrigin, liveWebPort } from './web-origin.js';
 
 const enabled = process.env.CONNECTION_HEALTH_BROWSER_INTEGRATION === 'true';

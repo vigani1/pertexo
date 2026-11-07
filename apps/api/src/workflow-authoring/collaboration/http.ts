@@ -1,6 +1,6 @@
 import { withRequestOperationSignal } from '../../platform/http/index.js';
 import { projectAuthenticatedWorkspaceContext } from '../../workspaces/request/authenticated-context.js';
-import type { WorkflowAuthoringRequest } from '../workflow-transport.js';
+import type { WorkflowAuthoringRequest } from '../workflow-authoring-request.js';
 
 export async function collaborationOperation<
   Route extends { workspaceId: string },

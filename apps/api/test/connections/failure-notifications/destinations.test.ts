@@ -20,7 +20,7 @@ import { ConnectionsModule } from '../../../src/connections/connections.module.j
 import { WORKSPACE_AUTHORIZATION } from '../../../src/workspaces/tokens.js';
 import { FakeIdentityModule } from '../../support/identity-module.js';
 import { ownerAccess, routeHarness } from '../../support/route-harness.js';
-import { hashRequest } from '../../../src/connections/use-cases/support.js';
+import { hashRequest } from '../../../src/connections/use-cases/connection-serialization.js';
 import {
   actorId,
   workspaceId,
@@ -30,7 +30,7 @@ import {
   command,
   persistence,
   connectionId,
-} from './destinations/fixture.js';
+} from './destination-fixture.js';
 import { FailureNotificationDestinationError } from '@pertexo/core/testing';
 
 describe('failure notification destination API seams', () => {

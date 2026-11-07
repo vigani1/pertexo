@@ -8,7 +8,7 @@ import { withRequestOperationSignal } from '../../platform/http/index.js';
 import type { AbortableRequest } from '../../platform/http/request-operation-signal.js';
 import { WorkflowConcurrencyUseCase } from './concurrency.js';
 import { asker } from './asker.js';
-import type { WorkflowAuthoringRequest } from '../workflow-transport.js';
+import type { WorkflowAuthoringRequest } from '../workflow-authoring-request.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
 import { authoringFailure } from '../../problems/context/normalize-context-errors.js';
 
