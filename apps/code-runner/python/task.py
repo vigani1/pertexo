@@ -86,7 +86,7 @@ def main():
             send({"truncated": True}, 1)
 
     def encode_output(value):
-        seen = set()
+        ancestors = set()
         members = 0
 
         def visit(item, depth):
@@ -100,9 +100,9 @@ def main():
                 return
             if item_type not in (dict, list):
                 raise InvalidOutput("Return only JSON dictionaries, lists, strings, numbers, booleans or None.")
-            if depth > budget["depth"] or id(item) in seen:
-                raise InvalidOutput("Output exceeds JSON depth bounds or repeats an object reference.")
-            seen.add(id(item))
+            if depth > budget["depth"] or id(item) in ancestors:
+                raise InvalidOutput("Output exceeds JSON depth bounds or contains a cycle.")
+            ancestors.add(id(item))
             members += len(item)
             if members > budget["members"]:
                 raise InvalidOutput("Output has too many JSON members. Return less data.")
@@ -114,6 +114,7 @@ def main():
             else:
                 for child in item:
                     visit(child, depth + 1)
+            ancestors.remove(id(item))
         visit(value, 1)
         encoded = dumps(value, ensure_ascii=False, allow_nan=False,
                         separators=(",", ":"))
