@@ -29,6 +29,9 @@ export type PreviewReplayRecord = Readonly<{
   pinnedSampleId?: string | null;
   output?: ReturnType<typeof parseStoredExecutionValue> | null;
   completedAt?: Date | null;
+  startedAt?: Date | null;
+  safeErrorCode?: string | null;
+  errorSummary?: string;
   createdAt: Date;
   expiresAt: Date;
 }>;

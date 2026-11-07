@@ -53,6 +53,9 @@ export async function resolvePreviewReplay(
       outputRef: previewRuns.outputRef,
       createdAt: previewRuns.createdAt,
       completedAt: previewRuns.completedAt,
+      startedAt: previewRuns.startedAt,
+      safeErrorCode: previewRuns.safeErrorCode,
+      errorSummary: previewAttempts.errorSummary,
       codeDiagnostics: previewAttempts.codeDiagnostics,
       expiresAt: previewRuns.expiresAt,
     })
@@ -79,22 +82,18 @@ export async function resolvePreviewReplay(
   const {
     outputRef,
     pinnedSampleId,
-    completedAt,
     codeDiagnostics,
+    errorSummary,
     ...summary
   } = replay;
   return Object.freeze({
     ...summary,
-    ...(codeDiagnostics === null ? {} : { codeDiagnostics: codeDiagnostics }),
-    ...(pinnedSampleId === null
-      ? {}
-      : {
-          pinnedSampleId,
-          completedAt,
-          output: decodeStoredValue(() => parseStoredExecutionValue(outputRef)),
-        }),
-    status: replay.status,
-    sideEffectClass: replay.sideEffectClass,
-    dryRun: replay.dryRun,
+    ...(errorSummary === null ? {} : { errorSummary }),
+    ...(codeDiagnostics === null ? {} : { codeDiagnostics }),
+    ...(pinnedSampleId === null ? {} : { pinnedSampleId }),
+    output:
+      outputRef === null
+        ? null
+        : decodeStoredValue(() => parseStoredExecutionValue(outputRef)),
   });
 }
