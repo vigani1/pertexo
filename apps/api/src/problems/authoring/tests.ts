@@ -24,7 +24,7 @@ export const nodeTestProblems = [
         safeDetail:
           'The saved draft changed. Refresh the draft and prepare the step test again.',
       });
-    if (error.reason === 'deadline')
+    if (error.reason === 'deadline' || error.reason === 'retention')
       return applicationError('workflow.invalid', {
         safeDetail: 'The prepared step test expired. Prepare the test again.',
       });
