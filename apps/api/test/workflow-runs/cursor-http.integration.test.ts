@@ -62,9 +62,9 @@ describe.runIf(betterAuthIntegrationEnabled)('run continuation errors', () => {
     ]) {
       const response = await api.send('GET', path, { browser: f.browser });
       expect(response.statusCode, response.payload).toBe(400);
+      expect(response.json<{ detail: string }>().detail).toMatch(/restart/i);
       expect(response.json()).toMatchObject({
         code: 'request.invalid',
-        detail: expect.stringMatching(/restart/i),
       });
     }
   });
