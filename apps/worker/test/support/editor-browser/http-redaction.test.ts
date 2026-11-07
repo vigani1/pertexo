@@ -83,9 +83,9 @@ it('the actual Vitest error formatter never emits endpoint, signature or connect
     reporter.logger.printError(
       new Error(`Owned HTTP dispatch rejected: ${credential}`),
     );
-    expect(() => { assertWorkerReportIsSafe(output, [credential]); }).toThrow(
-      'Worker report contains sensitive material.',
-    );
+    expect(() => {
+      assertWorkerReportIsSafe(output, [credential]);
+    }).toThrow('Worker report contains sensitive material.');
   } finally {
     try {
       await target.close();
