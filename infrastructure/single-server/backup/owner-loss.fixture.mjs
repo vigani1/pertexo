@@ -10,11 +10,13 @@ import {
   rm,
   cp,
 } from 'node:fs/promises';
-import { openSync, closeSync } from 'node:fs';
+import { openSync, closeSync, existsSync } from 'node:fs';
 import { resolve, join } from 'node:path';
 import pg from 'pg';
 import { eraseArtifact } from '../../../packages/core/dist/lifecycle/artifacts/erase.js';
 import { docker } from './docker-command.mjs';
+
+const STARTUP_TIMEOUT_MS = 120_000;
 
 async function until(check, message, milliseconds = 10000) {
   const end = Date.now() + milliseconds;
@@ -149,27 +151,51 @@ fs.writeFileSync(file, String(time)); console.log(new Date(time).toISOString().r
       { workspaceId: 'fixture', artifactId: 'fixture' },
       { timeoutMs: 2000 },
     );
-  const dumpBlocked = () =>
-    docker(
-      [
-        'exec',
-        databaseContainer,
-        'psql',
-        '-U',
-        'postgres',
-        '-d',
-        'pertexo',
-        '-At',
-        '-c',
-        "select count(*) from pg_stat_activity where application_name='pg_dump' and wait_event_type='Lock'",
-      ],
-      { captureOutput: true },
-    ).trim() !== '0';
+  const failIfShellExited = async ({ child }) => {
+    if (child.exitCode !== null || child.signalCode !== null)
+      throw new Error(
+        `Backup shell exited during startup (code ${child.exitCode}, signal ${child.signalCode}):\n${await readFile(`${root}/shell.log`, 'utf8')}`,
+      );
+  };
+  const dumpBlocked = async () => {
+    const { rows } = await pool.query(
+      "select exists (select 1 from pg_stat_activity where application_name='pg_dump' and wait_event_type='Lock') as blocked",
+    );
+    return rows[0].blocked;
+  };
   try {
+    // This fixture observes a superuser dump through its maintenance connection.
+    const { rows } = await pool.query('select current_user as role');
+    docker([
+      'exec',
+      databaseContainer,
+      'psql',
+      '-U',
+      'postgres',
+      '-d',
+      'pertexo',
+      '-v',
+      'ON_ERROR_STOP=1',
+      '-c',
+      `grant pg_read_all_stats to "${rows[0].role.replaceAll('"', '""')}" with inherit true`,
+    ]);
     await blocker.query('begin');
     await blocker.query('lock table app.artifacts in access exclusive mode');
     const first = start();
-    await until(dumpBlocked, 'Backup did not reach the blocked real pg_dump');
+    const startupAt = Date.now();
+    await until(
+      async () => {
+        await failIfShellExited(first);
+        const blocked = await dumpBlocked();
+        await failIfShellExited(first);
+        return blocked;
+      },
+      'Backup did not reach the blocked real pg_dump',
+      STARTUP_TIMEOUT_MS,
+    );
+    console.log(
+      `Blocked pg_dump observed after ${Date.now() - startupAt} ms (startup bound ${STARTUP_TIMEOUT_MS} ms)`,
+    );
     assert.equal(await erase(), false, 'erasure defers during the dump');
     assert.equal(deleted, false);
     const killedAt = Date.now();
@@ -189,7 +215,10 @@ fs.writeFileSync(file, String(time)); console.log(new Date(time).toISOString().r
       `SIGKILL backup shell: deletion released and erasure resumed in ${Date.now() - killedAt} ms`,
     );
     await blocker.query('rollback');
-    await until(() => !dumpBlocked(), 'Orphan dump did not finish');
+    await until(
+      async () => !(await dumpBlocked()),
+      'Orphan dump did not finish',
+    );
     const next = start();
     await until(
       () => next.child.exitCode !== null,
@@ -217,8 +246,18 @@ fs.writeFileSync(file, String(time)); console.log(new Date(time).toISOString().r
     );
     await blocker.query('begin');
     await blocker.query('lock table app.artifacts in access exclusive mode');
+    await rm(`${root}/dump.started`, { force: true });
     const timed = start();
-    await until(dumpBlocked, 'Deadline test did not reach the blocked pg_dump');
+    await until(
+      async () => {
+        // The persistent launch marker survives a deadline that expires between polls.
+        if (existsSync(`${root}/dump.started`)) return true;
+        await failIfShellExited(timed);
+        return false;
+      },
+      'Deadline test did not launch pg_dump',
+      STARTUP_TIMEOUT_MS,
+    );
     await until(
       () => timed.child.exitCode !== null,
       'Dump deadline did not terminate the backup',
@@ -235,7 +274,10 @@ fs.writeFileSync(file, String(time)); console.log(new Date(time).toISOString().r
       'One-second dump deadline failed the backup and released deletion while its shell remained alive',
     );
     await blocker.query('rollback');
-    await until(() => !dumpBlocked(), 'Timed-out dump did not finish');
+    await until(
+      async () => !(await dumpBlocked()),
+      'Timed-out dump did not finish',
+    );
   } catch (error) {
     console.error(await readFile(`${root}/shell.log`, 'utf8'));
     throw error;
