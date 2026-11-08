@@ -1,5 +1,4 @@
 import { ReadRecovery } from '../states/read-recovery';
-import { describeReadError } from '@/lib/api/error-copy';
 import { Notice } from '@/components/ui/notice';
 import { ProgressButton } from '@/components/ui/progress-button';
 
@@ -35,11 +34,12 @@ export function LoadMore({
       {failed ? (
         <Notice tone="destructive">
           <ReadRecovery
-            message={`${
+            message={
               error === undefined
                 ? `More ${subject} couldn’t be loaded.`
-                : describeReadError(error, `More ${subject}`)
-            } The ones above are unchanged.`}
+                : undefined
+            }
+            note="The ones above are unchanged."
             error={error}
             resource={`More ${subject}`}
             retrying={loading}

@@ -12,6 +12,7 @@ export function ReadRecovery({
   retrying,
   retry,
   message,
+  note,
   label = 'Retry',
   pendingLabel = 'Trying again…',
   disabled = false,
@@ -21,6 +22,12 @@ export function ReadRecovery({
   retrying: boolean;
   retry: () => void;
   message?: ReactNode;
+  /**
+   * A sentence that stays true whatever the cause, such as what is already
+   * shown being unchanged. It follows the final cause, including the session
+   * and rate-limit wording that replaces `message`.
+   */
+  note?: string;
   label?: string;
   pendingLabel?: string;
   disabled?: boolean;
@@ -54,7 +61,10 @@ export function ReadRecovery({
   );
   return (
     <div className="flex min-w-0 flex-wrap items-center gap-2">
-      <span>{description}</span>
+      <span>
+        {description}
+        {note === undefined ? null : ` ${note}`}
+      </span>
       {action}
       {expired ? <SignInAction /> : null}
       {inaccessible ? (

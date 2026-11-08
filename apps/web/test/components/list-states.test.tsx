@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { LoadMore } from '../../src/components/patterns/lists/load-more';
@@ -64,6 +64,79 @@ describe('list states', () => {
     expect(screen.getByRole('alert')).toHaveTextContent(
       'More versions couldn’t be reached. Check your connection and try again. The ones above are unchanged.',
     );
+    expect(
+      screen.getByRole('button', { name: 'Retry next page' }),
+    ).toBeEnabled();
+  });
+
+  it('keeps the loaded rows reassurance through a rate-limit wait', () => {
+    vi.useFakeTimers();
+    try {
+      render(
+        <LoadMore
+          subject="versions"
+          hasNextPage
+          loading={false}
+          failed
+          error={
+            new ApiError({
+              kind: 'problem',
+              status: 429,
+              message: 'Too many requests',
+              retryAfterMs: 2_000,
+            })
+          }
+          onLoadMore={vi.fn()}
+        />,
+      );
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        'Too many requests. Try again in 2 s. The ones above are unchanged.',
+      );
+
+      act(() => {
+        vi.advanceTimersByTime(2_000);
+      });
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        'Too many requests. You can try again now. The ones above are unchanged.',
+      );
+      expect(
+        screen.getByRole('button', { name: 'Retry next page' }),
+      ).toBeEnabled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('keeps the loaded rows reassurance when the session ended', () => {
+    render(
+      <LoadMore
+        subject="runs"
+        hasNextPage
+        loading={false}
+        failed
+        error={
+          new ApiError({
+            kind: 'problem',
+            status: 401,
+            message: 'Authentication required',
+            problem: {
+              type: 'urn:pertexo:problem:auth.unauthenticated',
+              title: 'Authentication required',
+              status: 401,
+              code: 'auth.unauthenticated',
+              requestId: 'request-signed-out',
+            },
+          })
+        }
+        onLoadMore={vi.fn()}
+      />,
+    );
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'Your session ended. Sign in again. The ones above are unchanged.',
+    );
+    expect(
+      screen.getByRole('link', { name: /^Sign in again/ }),
+    ).toBeInTheDocument();
     expect(
       screen.getByRole('button', { name: 'Retry next page' }),
     ).toBeEnabled();
