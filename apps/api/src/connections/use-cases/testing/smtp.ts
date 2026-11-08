@@ -89,3 +89,10 @@ export function assertEmailTestProfile(
       'This connection uses Resend. Accept its test email before testing.',
     );
 }
+
+export function systemMailTestUnavailable() {
+  return requestInputError(
+    ['destinationId'],
+    'Server-mail alerts are sent when a workflow fails. Connection tests are unavailable for this destination.',
+  );
+}

@@ -36,10 +36,12 @@ export function createFixtureConnectionRuntime(
   {
     identityRuntime,
     applicationSecret,
+    systemMailAvailable = false,
     services,
   }: Readonly<{
     identityRuntime: ApiIdentityRuntime;
     applicationSecret: string;
+    systemMailAvailable?: boolean;
     services: FixtureConnectionServices;
   }>,
 ): ApiConnectionRuntime {
@@ -49,6 +51,7 @@ export function createFixtureConnectionRuntime(
   return Object.freeze({
     dependencies: Object.freeze({
       applicationSecret,
+      systemMailAvailable,
       ...(services.smtpPolicy === undefined
         ? {}
         : { smtpPolicy: services.smtpPolicy }),

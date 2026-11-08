@@ -36,6 +36,7 @@ export type DirectoryUserProfile = Readonly<{
 }>;
 export type DestinationConfig = FailureNotificationDestinationConfig;
 export type StoredDestinationConfig =
+  | Omit<Extract<DestinationConfig, { kind: 'system_mail' }>, 'kind'>
   | Omit<Extract<DestinationConfig, { kind: 'email' }>, 'kind'>
   | Omit<Extract<DestinationConfig, { kind: 'slack' }>, 'kind'>;
 export type FailureNotificationClaimResult = Readonly<{

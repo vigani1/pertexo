@@ -44,6 +44,9 @@ export function createSystemMailDeliveryHandler(
     ) => void;
     now?: () => Date;
     random?: () => number;
+    failureAlerts?: Readonly<{
+      authorize(id: string, toEmail: string): Promise<boolean>;
+    }>;
     notices?: Readonly<{
       prepare(signal?: AbortSignal): Promise<number>;
       authorize(id: string): Promise<boolean>;
@@ -148,16 +151,8 @@ async function deliverClaim(
         : { unsubscribeUrl: message.unsubscribeUrl }),
       idempotencyKey: `authentication-mail:${claim.id}`,
       timeoutMillis: dependencies.timeoutMillis,
-      beforeDispatch: async () => {
-        if (
-          claim.purpose === 'workspace_notice' &&
-          (dependencies.notices === undefined ||
-            !(await dependencies.notices.authorize(claim.id)))
-        ) {
-          authorization.superseded = true;
-          throw new Error('Notice no longer eligible');
-        }
-      },
+      beforeDispatch: () =>
+        authorizeDispatch(dependencies, claim, message.toEmail, authorization),
       ...(signal === undefined ? {} : { signal }),
     });
   } catch {
@@ -165,7 +160,10 @@ async function deliverClaim(
       await dependencies.store.settle({
         ...claimIdentity(claim),
         outcome: 'failed',
-        failureCode: 'notice.superseded',
+        failureCode:
+          claim.purpose === 'workflow_failure_alert'
+            ? 'failure_alert.superseded'
+            : 'notice.superseded',
       });
       return;
     }
@@ -188,7 +186,10 @@ async function deliverClaim(
     await dependencies.store.settle({
       ...claimIdentity(claim),
       outcome: 'failed',
-      failureCode: 'notice.superseded',
+      failureCode:
+        claim.purpose === 'workflow_failure_alert'
+          ? 'failure_alert.superseded'
+          : 'notice.superseded',
     });
     return;
   }
@@ -253,4 +254,25 @@ function claimIdentity(claim: SystemMailDeliveryClaim) {
     leaseToken: claim.leaseToken,
     leaseGeneration: claim.leaseGeneration,
   } as const;
+}
+
+async function authorizeDispatch(
+  dependencies: Parameters<typeof createSystemMailDeliveryHandler>[0],
+  claim: SystemMailDeliveryClaim,
+  toEmail: string,
+  authorization: { superseded: boolean },
+): Promise<void> {
+  let permitted = true;
+  if (claim.purpose === 'workflow_failure_alert')
+    permitted =
+      dependencies.failureAlerts !== undefined &&
+      (await dependencies.failureAlerts.authorize(claim.id, toEmail));
+  else if (claim.purpose === 'workspace_notice')
+    permitted =
+      dependencies.notices !== undefined &&
+      (await dependencies.notices.authorize(claim.id));
+  if (!permitted) {
+    authorization.superseded = true;
+    throw new Error('System mail no longer eligible');
+  }
 }

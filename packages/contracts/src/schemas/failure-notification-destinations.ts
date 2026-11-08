@@ -5,7 +5,11 @@ import {
   FailureNotificationDestinationConfigSchema,
 } from '@pertexo/workflow-model';
 
-const failureNotificationDestinationKindSchema = z.enum(['slack', 'email']);
+const failureNotificationDestinationKindSchema = z.enum([
+  'slack',
+  'email',
+  'system_mail',
+]);
 const failureNotificationDestinationStatusSchema = z.enum([
   'enabled',
   'disabled',
@@ -37,6 +41,17 @@ export const failureNotificationDestinationResponseSchema = z
   .strict();
 export const failureNotificationDestinationListResponseSchema = z
   .object({
+    systemMail: z
+      .discriminatedUnion('available', [
+        z.object({ available: z.literal(true) }).strict(),
+        z
+          .object({
+            available: z.literal(false),
+            reason: z.string().min(1).max(300),
+          })
+          .strict(),
+      ])
+      .optional(),
     nextCursor: z.uuid().nullable().optional(),
     items: z
       .array(failureNotificationDestinationResponseSchema)

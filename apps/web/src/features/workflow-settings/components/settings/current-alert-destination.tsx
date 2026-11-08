@@ -11,8 +11,11 @@ import {
 function ConnectionHealthLink({
   workspaceId,
   connectionId,
-}: Readonly<{ workspaceId: string | undefined; connectionId: string }>) {
-  if (workspaceId === undefined) return null;
+}: Readonly<{
+  workspaceId: string | undefined;
+  connectionId: string | undefined;
+}>) {
+  if (workspaceId === undefined || connectionId === undefined) return null;
   return (
     <Link
       to="/w/$workspaceId/connections"
@@ -35,11 +38,13 @@ export function CurrentAlertDestination({
   destination,
   connectionNames,
   channelNames,
+  memberNames,
   workspaceId,
 }: Readonly<{
   destination: FailureNotificationDestinationResponse | null;
   connectionNames: ReadonlyMap<string, string>;
   channelNames: ChannelNames;
+  memberNames?: ReadonlyMap<string, string>;
   workspaceId?: string;
 }>) {
   if (destination === null)
@@ -49,7 +54,12 @@ export function CurrentAlertDestination({
         Failures of this workflow aren’t announced anywhere.
       </p>
     );
-  const label = describeDestination(destination, connectionNames, channelNames);
+  const label = describeDestination(
+    destination,
+    connectionNames,
+    channelNames,
+    memberNames,
+  );
   const note = channelNameNote(destination, channelNames);
   if (destination.status === 'disabled')
     return (
@@ -60,7 +70,11 @@ export function CurrentAlertDestination({
         </Notice>
         <ConnectionHealthLink
           workspaceId={workspaceId}
-          connectionId={destination.config.connectionId}
+          connectionId={
+            destination.config.kind === 'system_mail'
+              ? undefined
+              : destination.config.connectionId
+          }
         />
       </div>
     );
@@ -76,7 +90,11 @@ export function CurrentAlertDestination({
       )}
       <ConnectionHealthLink
         workspaceId={workspaceId}
-        connectionId={destination.config.connectionId}
+        connectionId={
+          destination.config.kind === 'system_mail'
+            ? undefined
+            : destination.config.connectionId
+        }
       />
     </div>
   );

@@ -22,6 +22,9 @@ export async function getFailureNotificationDestinations(
 ) {
   const items: FailureNotificationDestinationResponse[] = [];
   let afterId: string | undefined;
+  let systemMail: ReturnType<
+    typeof failureNotificationDestinationListResponseSchema.parse
+  >['systemMail'];
   do {
     const page = await apiClient.request({
       path: `${destinationsPath(workspaceId)}${afterId === undefined ? '' : `?afterId=${encodeURIComponent(afterId)}`}`,
@@ -33,9 +36,10 @@ export async function getFailureNotificationDestinations(
       },
     });
     items.push(...page.items);
+    systemMail = page.systemMail;
     afterId = page.nextCursor ?? undefined;
   } while (afterId !== undefined);
-  return { items };
+  return { items, systemMail };
 }
 
 export function createFailureNotificationDestination(

@@ -1,3 +1,4 @@
+import { requestInputError } from '../../platform/http/request-input.js';
 import { errorRegistration } from '../../platform/http/problems/error-registry.js';
 import {
   ConnectionConflictError,
@@ -60,6 +61,13 @@ export const connectionProblems = [
     });
   }),
   errorRegistration(FailureNotificationDestinationError, (error) => {
+    if (error.code === 'recipient_unavailable')
+      return applicationError('request.invalid', {
+        cause: requestInputError(
+          ['memberId'],
+          'Choose a current workspace member.',
+        ),
+      });
     if (error.code === 'not_found') {
       return applicationError('resource.not_found');
     }

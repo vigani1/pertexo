@@ -1,3 +1,4 @@
+import { createFailureNotificationMailAuthorizer } from '@pertexo/core/notifications';
 import { reportUnavailableMailKey } from './mail/report-unavailable-mail-key.js';
 import { createSystemMailClient } from './mail/system-mail-client.js';
 import { sealNoticeMail } from './mail/notice-content.js';
@@ -266,7 +267,13 @@ function systemMailProvider(
                 },
               },
             );
+      const failureAlerts = createFailureNotificationMailAuthorizer(
+        config.database,
+        config.retention.maintenanceDatabase,
+        dependencies.databaseRuntime,
+      );
       const handler = createSystemMailDeliveryHandler({
+        failureAlerts,
         ...(notices === undefined ? {} : { notices }),
         store,
         envelope,
@@ -288,6 +295,7 @@ function systemMailProvider(
           close: async () => {
             await store.close();
             await notices?.close();
+            await failureAlerts.close();
           },
         },
         mail.pollIntervalMillis,

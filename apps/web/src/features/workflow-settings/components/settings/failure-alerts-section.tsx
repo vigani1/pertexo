@@ -1,3 +1,4 @@
+import { useAlertMembers } from '@/features/failure-notifications/alert-members.public';
 import { ExpiredAttemptNotice } from '@/components/patterns/states/expired-attempt-notice';
 import { holdsCapability } from '@/features/workspaces/availability.public';
 import { useState } from 'react';
@@ -52,12 +53,13 @@ function destinationOptions(
   list: FailureNotificationDestinationList | undefined,
   names: ReadonlyMap<string, string>,
   channelNames: ChannelNames,
+  memberNames: ReadonlyMap<string, string>,
 ) {
   return (list?.items ?? [])
     .filter((destination) => destination.status === 'enabled')
     .map((destination) => ({
       value: destination.id,
-      label: describeDestination(destination, names, channelNames),
+      label: describeDestination(destination, names, channelNames, memberNames),
     }));
 }
 
@@ -106,14 +108,26 @@ function useAlertChoices({
   const current = shownData(policy);
   const currentDestination = current?.destination ?? null;
   const listed = shownData(destinations);
+  const allDestinations = [
+    ...(currentDestination === null ? [] : [currentDestination]),
+    ...(listed?.items ?? []),
+  ];
+  const addressed = useAlertMembers(
+    { apiClient, userId, workspaceId: workspace.id },
+    enabled &&
+      allDestinations.some((destination) => destination.kind === 'system_mail'),
+  );
+  const memberNames = new Map(
+    addressed.members.map((member) => [
+      member.userId,
+      `${member.displayName} · ${member.email}`,
+    ]),
+  );
   const channelNames = useSlackChannelNames({
     apiClient,
     userId,
     workspaceId: workspace.id,
-    channels: destinationChannels([
-      ...(currentDestination === null ? [] : [currentDestination]),
-      ...(listed?.items ?? []),
-    ]),
+    channels: destinationChannels(allDestinations),
     enabled: enabled && can('connection:use'),
   });
   const names = connections.data ?? NO_NAMES;
@@ -123,7 +137,8 @@ function useAlertChoices({
     current,
     connectionNames: names,
     channelNames,
-    options: destinationOptions(listed, names, channelNames),
+    memberNames,
+    options: destinationOptions(listed, names, channelNames, memberNames),
   } as const;
 }
 
@@ -260,6 +275,7 @@ export function FailureAlertsSection({
                 destination={current.destination}
                 connectionNames={choices.connectionNames}
                 channelNames={choices.channelNames}
+                memberNames={choices.memberNames}
                 {...(workspace.capabilities.includes('connection:read')
                   ? { workspaceId: workspace.id }
                   : {})}

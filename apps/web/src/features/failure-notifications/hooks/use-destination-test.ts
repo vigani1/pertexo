@@ -121,7 +121,7 @@ function failureOf(
   if (mutation.isError) return destinationCommandError(mutation.error, 'test');
   if (mutation.data === undefined || mutation.data.outcome.ok) return undefined;
   const { title, detail } = describeTestOutcome(
-    destination.kind,
+    destination.kind === 'system_mail' ? 'email' : destination.kind,
     mutation.data.outcome,
   );
   return `${title} ${detail}`;

@@ -76,7 +76,9 @@ export function DestinationTest({
         <p role="status">Try again in {test.waitSeconds} s.</p>
       ) : null}
       <TestThread
-        provider={destination.kind}
+        provider={
+          destination.kind === 'system_mail' ? 'email' : destination.kind
+        }
         phase={test.phase}
         className="mt-3 h-20"
       />

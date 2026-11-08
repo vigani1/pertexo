@@ -71,6 +71,7 @@ export type ConnectionOAuth2Dependencies = Readonly<{
 
 export type ConnectionDependencies = Readonly<{
   applicationSecret: string;
+  systemMailAvailable?: boolean;
   persistence: ConnectionPersistence;
   authorization: WorkspaceAuthorizationSource;
   encryption: ConnectionSecretEncryptionPort;

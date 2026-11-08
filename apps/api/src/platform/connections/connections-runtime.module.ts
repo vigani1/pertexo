@@ -54,10 +54,12 @@ export async function createApiConnectionRuntime(
     applicationSecret,
     oauth2,
     smtpPolicy,
+    systemMailAvailable,
     runtime,
   }: Readonly<{
     identityRuntime: ApiIdentityRuntime;
     applicationSecret: string;
+    systemMailAvailable?: boolean;
     oauth2?: Readonly<{
       publicWebOrigin: string;
       allowedPrivateNetworks: readonly AllowedPrivateNetwork[];
@@ -106,6 +108,7 @@ export async function createApiConnectionRuntime(
     return Object.freeze({
       dependencies: Object.freeze({
         applicationSecret,
+        systemMailAvailable: systemMailAvailable ?? false,
         ...(smtpPolicy === undefined ? {} : { smtpPolicy }),
         persistence: database,
         destinationPersistence: destinationDatabase,

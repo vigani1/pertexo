@@ -18,8 +18,11 @@ export function describeDestination(
   destination: Destination,
   connectionNames: ReadonlyMap<string, string>,
   channelNames: ChannelNames = noChannelNames,
+  memberNames: ReadonlyMap<string, string> = new Map(),
 ): string {
   const { config } = destination;
+  if (config.kind === 'system_mail')
+    return `${memberNames.get(config.memberId) ?? `Member ${config.memberId.slice(0, 8)}`} via this server's mail`;
   const target =
     config.kind === 'email'
       ? `Email to ${config.toEmail}`

@@ -1,3 +1,4 @@
+import type { FailureNotificationMailSealer } from './delivery/system-mail.types.js';
 import {
   acquireDatabasePool,
   type DatabaseConfig,
@@ -25,11 +26,13 @@ export type FailureNotificationStore = ReturnType<
 export function createFailureNotificationStore(
   config: DatabaseConfig,
   runtime?: DatabaseRuntime,
+  options: Readonly<{ systemMail?: FailureNotificationMailSealer }> = {},
 ) {
   const lease = acquireDatabasePool(config, runtime, { role: 'worker' });
   const { pool } = lease;
   return Object.freeze({
-    claimDelivery: (input: ClaimDeliveryInput) => claimDelivery(pool, input),
+    claimDelivery: (input: ClaimDeliveryInput) =>
+      claimDelivery(pool, input, options.systemMail),
     completeDelivery: (input: CompleteDeliveryInput) =>
       completeDelivery(pool, input),
     loadDestination: (input: LoadDestinationInput) =>

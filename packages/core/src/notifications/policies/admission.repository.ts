@@ -1,3 +1,5 @@
+import { destinationConfigSql } from '../destinations/notification-destinations.repository.js';
+import { readSystemMailRecipient } from '../delivery/system-mail-recipient.repository.js';
 import {
   eligibleNotificationConnection,
   eligibleNotificationDestination,
@@ -18,7 +20,7 @@ type ResolvedFailureNotificationPolicy = Readonly<{
   destinationId: string;
   destinationConfigVersion: number;
   sideEffectClass: 'idempotent_with_key' | 'unsafe';
-  connectionSecretVersionId: string;
+  connectionSecretVersionId: string | null;
 }>;
 
 /** The connection a stored destination version names, or null if it names none. */
@@ -42,6 +44,7 @@ export async function resolveWorkflowFailureNotificationPolicy(
       destination_status: destinations.status,
       side_effect_class: versions.sideEffectClass,
       kind: versions.kind,
+      config: destinationConfigSql,
     })
     .from(policy)
     .innerJoin(
@@ -71,6 +74,24 @@ export async function resolveWorkflowFailureNotificationPolicy(
         alias(destinations, getTableName(destinations)),
       ],
     });
+  if (destination?.config.kind === 'system_mail') {
+    const memberId = destination.config.memberId;
+    if (
+      destination.destination_status !== 'enabled' ||
+      (await readSystemMailRecipient(
+        transaction.db,
+        transaction.workspaceId,
+        memberId,
+      )) === undefined
+    )
+      return undefined;
+    return {
+      destinationId: destination.destination_id,
+      destinationConfigVersion: destination.current_config_version,
+      sideEffectClass: destination.side_effect_class,
+      connectionSecretVersionId: null,
+    };
+  }
   if (!eligibleNotificationDestination(destination)) return undefined;
 
   const [connection] = await transaction.db

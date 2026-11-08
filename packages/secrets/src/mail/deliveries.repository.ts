@@ -16,7 +16,7 @@ import { randomUUID } from 'node:crypto';
 import type { Pool, PoolClient } from 'pg';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { systemMailDeliveries } from '@pertexo/database/schema';
-import { compareClaims } from './claim-order.js';
+import { BACKGROUND_MAIL_PURPOSES, compareClaims } from './claim-order.js';
 import type {
   SystemMailClaimRequest,
   SystemMailDeliveryClaim,
@@ -77,7 +77,7 @@ export async function claimMail(
         ),
       )
       .orderBy(
-        asc(sql`${delivery.purpose}='workspace_notice'`),
+        asc(inArray(delivery.purpose, BACKGROUND_MAIL_PURPOSES)),
         asc(delivery.nextAttemptAt),
         asc(delivery.id),
       )

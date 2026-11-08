@@ -78,7 +78,10 @@ beforeEach(async () => {
 
 async function queue(
   fields: Readonly<Record<string, unknown>> = {},
-  purpose: 'verification' | 'workspace_notice' = 'verification',
+  purpose:
+    | 'verification'
+    | 'workspace_notice'
+    | 'workflow_failure_alert' = 'verification',
 ): Promise<string> {
   const id = randomUUID();
   await enqueue.enqueue({
@@ -135,7 +138,7 @@ const identity = (claimed: Awaited<ReturnType<typeof claimOne>>) => ({
 });
 
 describe('claiming system mail', () => {
-  it('takes everything but workspace notices first, then the oldest due', async () => {
+  it('takes security mail before personal notices, then the oldest due', async () => {
     const notice = await queue(
       { next_attempt_at: new Date(Date.now() - 2 * HOUR) },
       'workspace_notice',
@@ -148,6 +151,20 @@ describe('claiming system mail', () => {
     const claims = await claim();
 
     expect(claims.map(({ id }) => id)).toEqual([older, newer, notice]);
+  });
+
+  it('keeps security mail ahead of older workflow alerts in small and full batches', async () => {
+    const alert = await queue(
+      { next_attempt_at: new Date(Date.now() - 2 * HOUR) },
+      'workflow_failure_alert',
+    );
+    const security = await queue({
+      next_attempt_at: new Date(Date.now() - HOUR),
+    });
+    expect((await claim(1)).map(({ id }) => id)).toEqual([security]);
+    expect((await row(alert)).status).toBe('queued');
+    const nextSecurity = await queue();
+    expect((await claim()).map(({ id }) => id)).toEqual([nextSecurity, alert]);
   });
 
   it('leaves a notice behind when a smaller batch fills with other mail', async () => {

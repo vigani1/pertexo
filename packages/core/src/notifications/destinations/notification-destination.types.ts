@@ -3,6 +3,7 @@ import type { FailureNotificationDestinationConfig } from '@pertexo/workflow-mod
 export type DestinationConfig = FailureNotificationDestinationConfig;
 
 export type StoredDestinationConfig =
+  | Omit<Extract<DestinationConfig, { kind: 'system_mail' }>, 'kind'>
   | Omit<Extract<DestinationConfig, { kind: 'email' }>, 'kind'>
   | Omit<Extract<DestinationConfig, { kind: 'slack' }>, 'kind'>;
 
@@ -10,7 +11,7 @@ export type StoredDestinationConfig =
 export type FailureNotificationDestinationRecord = Readonly<{
   id: string;
   workspaceId: string;
-  kind: 'slack' | 'email';
+  kind: DestinationConfig['kind'];
   status: 'enabled' | 'disabled';
   currentVersion: number;
   config: FailureNotificationDestinationConfig;

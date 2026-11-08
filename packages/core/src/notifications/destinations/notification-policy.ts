@@ -19,13 +19,17 @@ export function eligibleNotificationDestination(
     | Readonly<{
         connection_id: string | null;
         destination_status: string;
-        kind: NotificationKind;
+        kind: NotificationKind | 'system_mail';
         side_effect_class: string;
       }>
     | undefined,
-): destination is NonNullable<typeof destination> & { connection_id: string } {
+): destination is NonNullable<typeof destination> & {
+  connection_id: string;
+  kind: NotificationKind;
+} {
   return (
     destination?.connection_id != null &&
+    destination.kind !== 'system_mail' &&
     destination.destination_status === 'enabled' &&
     (destination.side_effect_class ===
       notificationProviderRequirements[destination.kind].sideEffectClass ||
@@ -55,9 +59,10 @@ export function eligibleNotificationConnection(
 }
 
 export function notificationSideEffectClass(
-  kind: NotificationKind,
+  kind: NotificationKind | 'system_mail',
   authType: string,
 ): 'unsafe' | 'idempotent_with_key' {
+  if (kind === 'system_mail') return 'idempotent_with_key';
   return authType === 'smtp'
     ? 'unsafe'
     : notificationProviderRequirements[kind].sideEffectClass;

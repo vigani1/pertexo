@@ -1,3 +1,6 @@
+import { sealFailureAlert } from '../../mail/failure-alert-content.js';
+import { createMailEnvelope } from '../../config/mail-settings.js';
+import type { FailureNotificationMailSealer } from '@pertexo/core/notifications';
 import { createSmtpEmailClient } from '../../providers/smtp-email.js';
 import { StartupSettingError } from '@pertexo/observability/startup';
 import type { Provider } from '@nestjs/common';
@@ -37,7 +40,9 @@ export function maintenanceDeliveries(
   config: WorkerConfig,
 ): Readonly<{ notification: boolean; invitation: boolean }> {
   return {
-    notification: config.connectionEncryption !== undefined,
+    notification:
+      config.connectionEncryption !== undefined ||
+      config.systemMailDelivery?.noticeSender !== undefined,
     invitation: config.invitationDelivery !== undefined,
   };
 }
@@ -68,6 +73,32 @@ export async function createOwnedMaintenanceRuntime(
   const deliveryFactories = factories.notificationDelivery;
   try {
     let failureNotificationDelivery;
+    let failureNotificationSystemMail:
+      FailureNotificationMailSealer | undefined;
+    const mail = config.systemMailDelivery;
+    const sender = mail?.noticeSender;
+    if (mail !== undefined && sender !== undefined) {
+      const envelope = createMailEnvelope(
+        mail.encryption,
+        'AUTH_MAIL_KEY',
+        'AUTH_MAIL_PREVIOUS_KEYS',
+      );
+      failureNotificationSystemMail = (input) =>
+        sealFailureAlert(
+          envelope,
+          sender.fromEmail,
+          sender.publicWebOrigin,
+          input,
+        );
+      failureNotificationDelivery = {
+        deliver: () =>
+          Promise.resolve({
+            kind: 'definite_failure' as const,
+            safeErrorCode: 'delivery.connection_unavailable',
+            possiblyDispatched: false as const,
+          }),
+      };
+    }
     const encryptionConfig = config.connectionEncryption;
     if (encryptionConfig !== undefined) {
       if (config.publicWebOrigin === undefined)
@@ -128,6 +159,9 @@ export async function createOwnedMaintenanceRuntime(
       ...(workspaceInvitationDelivery === undefined
         ? {}
         : { workspaceInvitationDelivery }),
+      ...(failureNotificationSystemMail === undefined
+        ? {}
+        : { failureNotificationSystemMail }),
       deliveryOwners: [notificationStore, encryptionRuntime, invitationStore],
     });
   } catch (error: unknown) {

@@ -1,3 +1,4 @@
+import { useAlertMembers } from '../hooks/use-alert-members';
 import { DestinationTest } from './destination-test';
 import type {
   ConnectionResponse,
@@ -28,14 +29,23 @@ export function DestinationRow({
   canManage: boolean;
   onEdit: (destinationId: string) => void;
 }>) {
+  const { members } = useAlertMembers(
+    scope,
+    destination.kind === 'system_mail',
+  );
   const { label, connectionProblem, channelNote } = describeDestination(
     destination,
     connections,
     channelNames,
+    members,
   );
   return (
     <li className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3.5 gap-y-2 border-t border-border py-3.5 first:border-t-0 sm:grid-cols-[auto_minmax(0,1fr)_auto_auto]">
-      <ProviderTile provider={destination.kind} />
+      <ProviderTile
+        provider={
+          destination.kind === 'system_mail' ? 'email' : destination.kind
+        }
+      />
       <div className="min-w-0">
         <p className="truncate text-sm font-semibold">{label}</p>
         <p className="truncate text-xs text-muted-foreground">
@@ -74,7 +84,7 @@ export function DestinationRow({
           Edit
         </Button>
       ) : null}
-      {canManage ? (
+      {canManage && destination.kind !== 'system_mail' ? (
         <DestinationTest
           key={`${destination.id}:${String(destination.currentVersion)}`}
           scope={scope}

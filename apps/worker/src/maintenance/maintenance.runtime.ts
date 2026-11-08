@@ -1,3 +1,4 @@
+import type { FailureNotificationMailSealer } from '@pertexo/core/notifications';
 import { errorWorkflowFactories } from '../notifications/error-workflow.js';
 import type { OperatorRunReplayStore } from '@pertexo/core/operator';
 import type { ErrorWorkflowStore } from '@pertexo/core/runs';
@@ -76,6 +77,7 @@ type MaintenanceOptions = Readonly<{
   observer?: QueueConsumerObserver;
   redisUrl: string;
   failureNotificationDelivery?: FailureNotificationDeliveryCapability;
+  failureNotificationSystemMail?: FailureNotificationMailSealer;
   workspaceInvitationDelivery?: WorkspaceInvitationDeliveryHandler;
   /** Resources the deliveries use; the runtime closes them once built. */
   deliveryOwners?: readonly Owner[];
@@ -119,6 +121,9 @@ export async function createMaintenanceRuntime(
       failureNotificationStore = factories.notifications.store(
         options.database,
         options.databaseRuntime,
+        options.failureNotificationSystemMail === undefined
+          ? {}
+          : { systemMail: options.failureNotificationSystemMail },
       );
       failureNotification = factories.notifications.handler({
         store: failureNotificationStore,

@@ -169,3 +169,28 @@ retries and SMTP reconciliation apply; completion records provider acceptance,
 not enqueue acknowledgment. This extends the existing stored format and needs
 no new subsystem, role, CI job or ADR. SMTP connections ship in their own
 commits before this destination.
+
+### Server-mail failure destinations (batch I implementation)
+
+`system_mail` is a destination variant containing one member ID and no
+connection or free-form address. The existing system-mail purpose union and
+constraint gain `workflow_failure_alert` in an additive migration without row
+rewrites. No new queue or stored message format is introduced.
+
+The failure intent's ID is the durable mail delivery ID. Queue insertion and
+intent ownership commit atomically. The existing mail leases, retries, expiry
+and reconciliation own provider work; the existing failure-alert recovery pass
+completes the intent only after real provider acceptance. A queued message is
+not a delivered alert.
+
+Recipients come from current membership and a verified account address. The
+worker rechecks that address and membership immediately before dispatch against
+the pinned destination version. A removed/suspended member, changed address,
+changed destination version or disabled destination invalidates queued mail.
+Later failed runs use the current destination. Shared alerts ignore personal
+email preferences. The UI reports unavailable instance mail explicitly. These
+are the lead-authorized design decisions of 2026-11-08.
+
+Security mail retains priority in that shared queue, as ADR 040 and F27 require.
+Failure alerts join personal notices in the background tier; the same purpose
+list controls SQL claim selection and returned-claim ordering.
