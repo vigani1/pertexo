@@ -52,6 +52,7 @@ export function useWorkflowTests({
   const [preparation, setPreparation] = useState<WorkflowTestPreparation>();
   const [preparing, setPreparing] = useState(false);
   const [preparationError, setPreparationError] = useState<string>();
+  const preparationFence = usePreparationFence(lifetime);
   const { history, snapshot, progress, activeId, selectRun, blocked } =
     useTestHistory({ scope, enabled });
   async function signal() {
@@ -91,6 +92,7 @@ export function useWorkflowTests({
   async function prepare() {
     if (preparing || start.pending || start.uncertain) return;
     start.reset();
+    preparationFence.renew();
     setPreparing(true);
     setPreparationError(undefined);
     setPreparation(undefined);
@@ -137,7 +139,12 @@ export function useWorkflowTests({
     suites,
     loadTriggerInput: (nodeId: string) =>
       loadTriggerSample(
-        { scope, lifetime, signal, onError: setPreparationError },
+        {
+          scope,
+          signal,
+          isCurrent: preparationFence.capture(),
+          onError: setPreparationError,
+        },
         nodeId,
       ),
     scope,
@@ -165,25 +172,44 @@ export function useWorkflowTests({
 }
 export type WorkflowTests = ReturnType<typeof useWorkflowTests>;
 
+/**
+ * Each Prepare starts a new preparation. A read captures the one it began for
+ * and stops counting once the hook unmounts or a newer preparation starts.
+ */
+function usePreparationFence(lifetime: RefObject<AbortController | undefined>) {
+  const generation = useRef(0);
+  return {
+    renew: () => {
+      generation.current += 1;
+    },
+    capture: () => {
+      const captured = generation.current;
+      return () =>
+        commandIsLive(lifetime.current) && generation.current === captured;
+    },
+  };
+}
+
 async function loadTriggerSample(
   {
     scope,
-    lifetime,
     signal,
+    isCurrent,
     onError,
   }: Readonly<{
     scope: WorkflowTestScope;
-    lifetime: RefObject<AbortController | undefined>;
     signal: () => Promise<AbortSignal>;
+    /** False once the hook unmounts or a newer preparation replaced this one. */
+    isCurrent: () => boolean;
     onError: (message: string) => void;
   }>,
   nodeId: string,
 ) {
   try {
     const sample = await getStepSample(scope, nodeId, await signal());
-    return commandIsLive(lifetime.current) ? sample.output : undefined;
+    return isCurrent() ? sample.output : undefined;
   } catch (error) {
-    if (commandIsLive(lifetime.current))
+    if (isCurrent())
       onError(describeCommandError(error, 'loading the trigger sample'));
     return undefined;
   }
