@@ -79,4 +79,44 @@ describe('workspace deletion visibility', () => {
     expect(await screen.findByText(/The link is wrong/u)).toBeVisible();
     expect(screen.queryByText(/Deletion finished/u)).not.toBeInTheDocument();
   });
+  it('does not infer deletion completion from a failed refresh and recovers through another status read', async () => {
+    let outcome: 'purging' | 'unavailable' | 'gone' = 'purging';
+    mockServer.use(
+      http.get('http://pertexo.test/v1/workspaces', () =>
+        outcome === 'unavailable'
+          ? new HttpResponse(null, { status: 503 })
+          : HttpResponse.json({
+              items:
+                outcome === 'gone' ? [] : [{ ...workspace, status: 'purging' }],
+              nextCursor: null,
+            }),
+      ),
+      ...authenticatedHandlers(),
+    );
+    renderApp(`/w/${workspaceId}`);
+    const user = userEvent.setup();
+    await screen.findByRole('heading', {
+      name: 'This workspace is being deleted',
+    });
+    outcome = 'unavailable';
+    await user.click(
+      screen.getByRole('button', { name: 'Refresh deletion status' }),
+    );
+    const retry = await screen.findByRole('button', { name: 'Retry' });
+    expect(
+      screen.getByRole('heading', { name: 'This workspace is being deleted' }),
+    ).toBeVisible();
+    expect(
+      screen.queryByText(
+        'Deletion finished. This workspace and its data are gone.',
+      ),
+    ).not.toBeInTheDocument();
+    outcome = 'gone';
+    await user.click(retry);
+    expect(
+      await screen.findByText(
+        'Deletion finished. This workspace and its data are gone.',
+      ),
+    ).toBeVisible();
+  });
 });
