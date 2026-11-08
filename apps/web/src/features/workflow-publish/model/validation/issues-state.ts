@@ -15,6 +15,7 @@ export type IssuesState = Readonly<{
   groups: readonly WorkflowIssueGroup[] | undefined;
   /** The report describes an earlier draft than the one on screen. */
   stale: boolean;
+  publicationRefused?: boolean;
 }>;
 
 export type WorkflowIssuesView = IssuesState &
@@ -62,6 +63,7 @@ export function workflowIssuesView(
     error: publication.validationError,
     groups,
     stale,
+    publicationRefused: validation?.publicationRefused === true,
     blockingGroups: stale ? [] : (validationGroups ?? []),
     countsByNode: issueCountsByNode(
       groupWorkflowFindings([

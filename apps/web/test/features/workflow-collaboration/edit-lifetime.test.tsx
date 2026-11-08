@@ -99,6 +99,82 @@ it('asks before opening another discussion and keeps text and URL when staying',
   );
 });
 
+it('blocks leaving pending and unconfirmed discussion commands, then lets a confirmed retry open its discussion', async () => {
+  let release!: () => void;
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const attempts: { key: string | null; body: unknown }[] = [];
+  mockServer.use(
+    http.post(rootPath, async ({ request }) => {
+      attempts.push({
+        key: request.headers.get('idempotency-key'),
+        body: await request.json(),
+      });
+      if (attempts.length === 1) {
+        await held;
+        return HttpResponse.error();
+      }
+      return HttpResponse.json({
+        threadId,
+        commentId: commentId(22),
+        revision: 1,
+        replayed: true,
+        deleted: false,
+        threadDeleted: false,
+      });
+    }),
+  );
+  const { event, router } = mountComments(false);
+  try {
+    await event.click(
+      await screen.findByRole('button', { name: 'New discussion' }),
+    );
+    await event.type(
+      screen.getByRole('textbox', { name: 'New discussion' }),
+      'Keep this submitted discussion',
+    );
+    await event.click(screen.getByRole('button', { name: 'Post comment' }));
+    await event.click(
+      screen.getByRole('button', { name: /Open this discussion/u }),
+    );
+    let guard = await screen.findByRole('dialog', {
+      name: 'Resolve the discussion change before leaving',
+    });
+    expect(
+      within(guard).queryByRole('button', { name: 'Discard and leave' }),
+    ).not.toBeInTheDocument();
+    await event.click(within(guard).getByRole('button', { name: 'Stay here' }));
+    release();
+    await screen.findByRole('button', { name: 'Retry the same action' });
+    await event.click(
+      screen.getByRole('button', { name: /Open this discussion/u }),
+    );
+    guard = await screen.findByRole('dialog', {
+      name: 'Resolve the discussion change before leaving',
+    });
+    expect(
+      within(guard).queryByRole('button', { name: 'Discard and leave' }),
+    ).not.toBeInTheDocument();
+    await event.click(within(guard).getByRole('button', { name: 'Stay here' }));
+    expect(router.state.location.href).toBe('/comments');
+    await event.click(
+      screen.getByRole('button', { name: 'Retry the same action' }),
+    );
+    await screen.findByRole('textbox', { name: 'Reply' });
+    expect(router.state.location.href).toContain(`thread=${threadId}`);
+    expect(attempts).toHaveLength(2);
+    expect(attempts[1]).toEqual(attempts[0]);
+    expect(attempts[0]?.body).toEqual({
+      body: 'Keep this submitted discussion',
+      mentionUserIds: [],
+      stepId: null,
+    });
+  } finally {
+    release();
+  }
+});
+
 function mountComments(discussion: boolean) {
   let count = 20;
   const edits: unknown[] = [];

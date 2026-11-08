@@ -1,10 +1,8 @@
-import { Suspense, type ComponentProps } from 'react';
-import type { AccessibleWorkspace, WorkflowSummary } from '@pertexo/contracts';
+import type { WorkflowDraftActionProps } from '../workflow-draft-action-props';
+import { Suspense } from 'react';
 import { lazyPiece } from '@/components/patterns/app-update/lazy';
 import { AppUpdatedDialog } from '@/components/patterns/app-update/notice';
 import { Button } from '@/components/ui/button';
-import type { DialogContent } from '@/components/ui/dialog';
-import type { ApiClient } from '@/lib/api/client';
 
 // Loaded on first open: the workflow bar is on every hub page and in its
 // loading state, so a static import put the whole dialog in the first load.
@@ -24,19 +22,7 @@ export function WorkflowExportAction({
   triggerClassName,
   finalFocus,
   scope,
-}: Readonly<{
-  workflow: WorkflowSummary;
-  blocked?: boolean;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  triggerClassName?: string;
-  finalFocus?: ComponentProps<typeof DialogContent>['finalFocus'];
-  scope: Readonly<{
-    apiClient: ApiClient;
-    userId: string;
-    workspace: AccessibleWorkspace;
-  }>;
-}>) {
+}: WorkflowDraftActionProps) {
   const { apiClient, userId, workspace } = scope;
 
   if (!workspace.capabilities.includes('workflow:read')) return null;

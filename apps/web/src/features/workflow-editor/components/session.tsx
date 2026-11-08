@@ -1,3 +1,4 @@
+import { SaveFailureNotice } from './chrome/save-state';
 import { EditorSessionProvider } from '../model/state/provider';
 import type { EditorSession } from '../model/state/session';
 import { Notice } from '@/components/ui/notice';
@@ -118,6 +119,7 @@ export function WorkflowEditorSession({
           bottomLens={(chrome) =>
             paused ? null : (
               <IssuesLens
+                workspaceId={workspace.id}
                 open={chrome.issuesOpen}
                 state={issues}
                 graph={graph}
@@ -130,6 +132,7 @@ export function WorkflowEditorSession({
           }
           banner={
             <>
+              <SaveFailureNotice />
               {!canUpdate ? (
                 <Notice>
                   View-only access. Ask a workspace owner or admin for access to
