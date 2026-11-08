@@ -188,6 +188,7 @@ copy_objects() {
 # The helper image contains the same pinned rclone transport as the shell wrapper.
 backup_helper() {
   local options=(--env-file "$BETA_STATE_DIR/rclone.env")
+  if [[ ${1:-} == -i ]]; then options+=(-i); shift; fi
   if [[ ${1:-} == --cidfile ]]; then options+=("$1" "$2"); shift 2; fi
   local script=$1
   shift

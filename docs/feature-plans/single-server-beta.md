@@ -228,7 +228,9 @@ before starting target services, keeps the fresh-target guards and restore fence
 and accepts legacy plaintext points as a one-way compatibility path. Delete old
 plaintext points after verifying an encrypted restore. Existing qualification
 covers crypt, incrementality, shared retention, live deletion and legacy restore;
-focused core integration covers deferred erasure. No new CI job or ADR.
+focused core integration covers deferred erasure. No new CI job or ADR. The capture helper watches a shell-owned stdin pipe; EOF
+after shell loss closes its session even without a trap. The dump wait also has
+a configurable one-hour deadline (`BACKUP_DUMP_TIMEOUT_SECONDS`, 1–86400).
 Owner provider and full-host restore drills remain slice 6.
 
 Slice 5 adds manual-only main dispatch with a full commit SHA, verifies the latest

@@ -474,6 +474,19 @@ to recognize arbitrary transformations. Hashes, encryption, custom encodings and
 more than four JSON-string escaping layers are not covered. A service must not
 return credentials in those forms if the response will be retained.
 
+## Interrupted backups and dump deadline
+
+The capture helper keeps the deletion pause only while the backup shell owns an
+open stdin pipe. If the shell is killed, including SIGKILL or an OOM kill, EOF
+terminates the helper and closes its PostgreSQL session. Retention and purge can
+then erase bytes on their next pass; an abandoned point is never completed.
+
+`BACKUP_DUMP_TIMEOUT_SECONDS` limits the time from capture readiness until the
+dump finishes. Its default is 3600 seconds (one hour); set an integer from 1 to
+86400 in `.env.production` if a measured dump needs a different limit. On expiry,
+the helper exits, releases deletion, and the backup fails without publishing
+COMPLETE. The deadline is a backstop for a stalled dump, not a service stop.
+
 ## Backup encryption keys and rotation
 
 `generate-secrets.mjs` generates `BACKUP_CRYPT_PASSWORD` and `BACKUP_CRYPT_SALT`.

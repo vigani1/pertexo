@@ -4,6 +4,7 @@ set -Eeuo pipefail
 source "$(dirname "$0")/release-operations.sh"
 work=''
 capture_pid=''
+dump_pid=''
 # A dead-man switch notices the night nothing arrives; /fail says so sooner.
 report_outcome() {
   local url
@@ -16,6 +17,8 @@ report_outcome() {
 finish() {
   result=$?
   trap - EXIT
+  exec 8>&-
+  [[ -z $dump_pid ]] || kill "$dump_pid" 2>/dev/null || true
   if [[ -n $work && -f "$work/capture.cid" ]]; then
     docker rm -f "$(cat "$work/capture.cid")" >/dev/null 2>&1 || true
   fi
@@ -49,16 +52,27 @@ if grep -qx "$prefix/" "$work/points"; then
 fi
 : > "$work/STARTED"
 rclone copyto /backup/STARTED "crypt:$prefix/STARTED"
-backup_helper --cidfile "$work/capture.cid" capture.mjs capture /backup &
+mkfifo "$work/owner.pipe"
+# Only this shell owns the writer; neither the helper nor the dump inherits it.
+backup_helper -i --cidfile "$work/capture.cid" capture.mjs capture /backup < "$work/owner.pipe" 9>&- &
 capture_pid=$!
+exec 8>"$work/owner.pipe"
 while [[ ! -f "$work/capture.ready" ]]; do
   kill -0 "$capture_pid" 2>/dev/null || { wait "$capture_pid"; echo 'Artifact capture exited before the dump' >&2; exit 1; }
-  sleep 0.1
+  sleep 0.1 8>&- 9>&-
 done
-compose exec -T postgres sh -c 'export PGPASSWORD="$POSTGRES_PASSWORD"; exec pg_dump --no-password --format=custom --username="$POSTGRES_USER" --dbname="$POSTGRES_DB"' > "$work/database.dump"
+compose exec -T postgres sh -c 'export PGPASSWORD="$POSTGRES_PASSWORD"; exec pg_dump --no-password --format=custom --username="$POSTGRES_USER" --dbname="$POSTGRES_DB"' > "$work/database.dump" 8>&- 9>&- &
+dump_pid=$!
+while kill -0 "$dump_pid" 2>/dev/null; do
+  kill -0 "$capture_pid" 2>/dev/null || { echo 'Artifact capture ended before the dump completed' >&2; exit 1; }
+  sleep 0.1 8>&- 9>&-
+done
+wait "$dump_pid"
+dump_pid=''
 printf '%s\n' "$SERVICE_VERSION" > "$work/release.txt"
 : > "$work/dump.done"
 wait "$capture_pid"
+exec 8>&-
 capture_pid=''
 (cd "$work"; sha256sum database.dump release.txt objects.count objects.json) > "$work/SHA256SUMS"
 for file in database.dump release.txt objects.count objects.json SHA256SUMS; do
