@@ -149,15 +149,15 @@ prepare_release() {
 
 prepare_backup() {
   docker run --rm --network none --read-only --user "$(id -u):$(id -g)" \
-    -v "$config:/run/pertexo.env:ro" -v "$BETA_STATE_DIR:/prepared" \
+    -v "$config:/run/pertexo.env:ro" -v "$work:/prepared" \
     -v "$release/infrastructure/single-server/backup:/workspace/infrastructure/single-server/backup:ro" \
     "ghcr.io/vigani1/pertexo:$SERVICE_VERSION" node --env-file=/run/pertexo.env infrastructure/single-server/backup/prepare.mjs /prepared
-  source_bucket=$(cat "$BETA_STATE_DIR/source-bucket")
-  backup_bucket=$(cat "$BETA_STATE_DIR/backup-bucket")
+  source_bucket=$(cat "$work/source-bucket")
+  backup_bucket=$(cat "$work/backup-bucket")
 }
 rclone() {
   docker run --rm --read-only --tmpfs /tmp --user "$(id -u):$(id -g)" \
-    --network pertexo-beta_private --env-file "$BETA_STATE_DIR/rclone.env" \
+    --network pertexo-beta_private --env-file "$work/rclone.env" \
     -v "$work:/backup" \
     rclone/rclone:1.75.2@sha256:2687085f718d3c628f7fdfb77c52a1d344332aed543110bb88088f2c70d43eb5 "$@"
 }
@@ -187,7 +187,7 @@ copy_objects() {
 
 # The helper image contains the same pinned rclone transport as the shell wrapper.
 backup_helper() {
-  local options=(--env-file "$BETA_STATE_DIR/rclone.env")
+  local options=(--env-file "$work/rclone.env")
   if [[ ${1:-} == -i ]]; then options+=(-i); shift; fi
   if [[ ${1:-} == --cidfile ]]; then options+=("$1" "$2"); shift 2; fi
   local script=$1
@@ -202,4 +202,10 @@ backup_helper() {
 verify_backup_key() {
   [[ -n $(config_value BACKUP_CRYPT_PASSWORD) && -n $(config_value BACKUP_CRYPT_SALT) ]] || { echo 'Provide BACKUP_CRYPT_PASSWORD and BACKUP_CRYPT_SALT from the separately held settings file' >&2; return 1; }
   backup_helper key-check.mjs
+}
+
+# The operation lock excludes any reader before stale secret copies are removed.
+clear_stale_backup_configs() {
+  rm -f "$BETA_STATE_DIR/rclone.env" \
+    "$BETA_STATE_DIR"/.backup.*/rclone.env "$BETA_STATE_DIR"/.restore.*/rclone.env
 }

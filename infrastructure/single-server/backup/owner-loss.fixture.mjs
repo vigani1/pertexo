@@ -178,6 +178,13 @@ fs.writeFileSync(file, String(time)); console.log(new Date(time).toISOString().r
     assert.equal(signal, 'SIGKILL');
     await until(erase, 'Killed backup shell retained the deletion lock', 3000);
     assert.equal(deleted, true, 'deferred erasure resumes');
+    assert.deepEqual(
+      (await readdir(`${root}/state`, { recursive: true })).filter((name) =>
+        name.endsWith('rclone.env'),
+      ),
+      [],
+      'EOF removes operation crypt config',
+    );
     console.log(
       `SIGKILL backup shell: deletion released and erasure resumed in ${Date.now() - killedAt} ms`,
     );
@@ -192,6 +199,13 @@ fs.writeFileSync(file, String(time)); console.log(new Date(time).toISOString().r
     const [status] = await next.done;
     assert.equal(status, 0, await readFile(`${root}/shell.log`, 'utf8'));
     assert.ok((await readFile(`${root}/state/last-backup`, 'utf8')).trim());
+    assert.deepEqual(
+      (await readdir(`${root}/state`, { recursive: true })).filter((name) =>
+        name.endsWith('rclone.env'),
+      ),
+      [],
+      'completed backup removes operation crypt config',
+    );
     console.log('A new full backup completed after SIGKILL of the prior shell');
     const settings = await readFile(`${root}/.env.production`, 'utf8');
     await writeFile(

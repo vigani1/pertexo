@@ -56,8 +56,12 @@ settings; do not replace installed application keys with newly generated ones.
 Put both in the server's mode-600 `.env.production` for unattended backup, and
 keep the original settings file in your password manager or offline recovery
 storage, separately from the backup bucket. Neither key is uploaded or logged.
-The rclone obscured values in local `state/rclone.env` are also secret: obscuring
-is reversible. These keys encrypt backup contents and file names through standard
+The reversible rclone config is also secret. Each operation creates it with mode
+0600 inside its private `state/.backup.*` or `state/.restore.*` directory, then
+removes that directory on success or error, including failed preparation. Capture
+also removes its config on shell EOF or dump-deadline expiry. The next backup or
+restore removes legacy `state/rclone.env` and config files left in abandoned
+operation directories; the operation lock makes this cleanup safe. These keys encrypt backup contents and file names through standard
 [rclone crypt](https://rclone.org/crypt/), layered over the existing S3 remote.
 Keep the application encryption key rings separately too.
 

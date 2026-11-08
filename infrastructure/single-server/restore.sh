@@ -4,12 +4,13 @@ set -Eeuo pipefail
 source "$(dirname "$0")/release-operations.sh"
 check_commit "$2"
 operation_lock
+clear_stale_backup_configs
 [[ ! -f "$BETA_STATE_DIR/current" ]] || { echo 'Restore requires a fresh stack' >&2; exit 1; }
 require_no_ops
 prepare_release "$2"
-prepare_backup
 work=$(mktemp -d "$BETA_STATE_DIR/.restore.XXXXXX")
 trap 'rm -rf "$work"' EXIT
+prepare_backup
 point=$(recovery_points validate "$1")
 prefix="pertexo-beta/$point"
 if [[ -f "$BETA_STATE_DIR/restore-fence" && $(cat "$BETA_STATE_DIR/restore-fence") != "$point" ]]; then

@@ -31,12 +31,13 @@ trap finish EXIT
 trap 'exit 130' INT
 trap 'exit 143' TERM
 operation_lock
+clear_stale_backup_configs
 [[ -f "$BETA_STATE_DIR/current" && ! -f "$BETA_STATE_DIR/migration-fence" && ! -f "$BETA_STATE_DIR/restore-fence" ]] || { echo 'A settled current release is required for backup' >&2; exit 1; }
 select_release "$(cat "$BETA_STATE_DIR/current")"
 require_no_ops
 [[ -n $(config_value BACKUP_CRYPT_PASSWORD) && -n $(config_value BACKUP_CRYPT_SALT) ]] || { echo 'Provide BACKUP_CRYPT_PASSWORD and BACKUP_CRYPT_SALT from the separately held settings file' >&2; exit 1; }
-prepare_backup
 work=$(mktemp -d "$BETA_STATE_DIR/.backup.XXXXXX")
+prepare_backup
 point=$(date -u +%Y%m%dT%H%M%SZ)
 prefix="pertexo-beta/$point"
 rclone lsf "backup:$backup_bucket/encrypted" --max-depth 1 > "$work/store"
