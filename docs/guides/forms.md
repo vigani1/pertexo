@@ -138,11 +138,20 @@ has neither redirect nor thank-you settings.
 ## Public links
 
 An editor can **Enable public link** in the published Form setup. Anyone holding
-that link can send responses. Editors can return to the published Form setup anytime to view and copy the full URL or scan its QR code. Older links created before retrievable links were introduced cannot be shown again; regenerate once to make the new link retrievable. Regenerating requires confirmation and invalidates the old link, including links posted on pages and QR codes. Replace those with the new link. Viewers cannot see public link capabilities.
-Pertexo stores its digest, not its plaintext key. Losing the link requires
-**Regenerate link**, which immediately invalidates the previous one. **Turn public
-access off** also revokes it immediately. Replacing or removing the published
-Form entry revokes its old grant; adding a Form again does not revive old links.
+that link can send responses. Editors can return there at any time to view and
+copy the saved URL or scan its QR code, even if they lost their own copy.
+Viewers cannot see public link capabilities.
+
+Pertexo stores a digest for checking access and an encrypted copy for retrieving
+the link. Only legacy links, made before encrypted copies were saved, cannot be
+shown again. Choose **Regenerate link** once to replace a legacy link with a
+new link that can be retrieved later.
+**Regenerating immediately breaks existing links**, including those posted on
+pages or in QR codes. Replace them with the new link.
+
+**Turn public access off** also revokes the link immediately. Replacing or
+removing the published Form entry revokes its old grant; adding a Form again
+does not revive old links.
 
 The key is in the URL fragment and travels to the API in a redacted header. Public
 pages use no-referrer/no-store behavior. A public response confirms acceptance
