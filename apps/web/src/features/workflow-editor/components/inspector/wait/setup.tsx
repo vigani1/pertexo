@@ -1,3 +1,4 @@
+import { useScratchForm } from '../use-draft-field';
 import { CallbackSetup } from './callback';
 import {
   callbackWaitConfigSchema,
@@ -14,9 +15,13 @@ import { DurationField } from '../fields/duration';
 
 export function WaitSetup({
   config,
-  form,
+  form: parentForm,
 }: Readonly<{ config: NodeConfig; form: NodeFormApi }>) {
+  const { form, hasScratch } = useScratchForm(parentForm);
   const callback = config.mode === 'callback';
+  const description = callback
+    ? 'The run pauses here until another service calls this step’s URL.'
+    : 'Test runs skip the wait, so you don’t have to sit through it.';
   return (
     <>
       <Field>
@@ -25,7 +30,7 @@ export function WaitSetup({
         </FieldLabel>
         <ChoiceSelect
           value={callback ? 'callback' : 'duration'}
-          disabled={!form.editable}
+          disabled={!form.editable || hasScratch}
           choices={[
             { value: 'duration', label: 'A duration has passed' },
             { value: 'callback', label: 'Called back' },
@@ -48,9 +53,9 @@ export function WaitSetup({
           control={{ id: fieldControlId(form.nodeId, 'wait-mode') }}
         />
         <FieldDescription>
-          {callback
-            ? 'The run pauses here until another service calls this step’s URL.'
-            : 'Test runs skip the wait, so you don’t have to sit through it.'}
+          {hasScratch
+            ? 'Fix the unfinished edit before changing how this step waits.'
+            : description}
         </FieldDescription>
       </Field>
       <DurationField

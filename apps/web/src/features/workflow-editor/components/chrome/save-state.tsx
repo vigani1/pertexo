@@ -1,3 +1,4 @@
+import { useId } from 'react';
 import { formatShortTime } from '@/lib/format/time';
 import { useOnlineStatus } from '@/lib/hooks/use-online-status';
 import { cn } from '@/lib/class-names';
@@ -23,7 +24,7 @@ export function SaveState({
     <span
       role="status"
       aria-live="polite"
-      className="inline-flex h-9 w-44 min-w-0 max-w-full shrink-0 max-sm:flex-1 max-sm:min-h-11 items-center gap-1 pointer-coarse:h-10"
+      className="inline-flex min-h-9 min-w-0 max-w-full flex-wrap items-center gap-1 pointer-coarse:min-h-10"
     >
       <span aria-hidden="true">·</span>
       <Sentence
@@ -112,11 +113,12 @@ function InlineAction({
   title?: string | undefined;
   onClick: () => void;
 }>) {
+  const descriptionId = useId();
   return (
     <span
       title={title}
       className={cn(
-        'inline-flex min-w-0 items-center gap-1',
+        'inline-flex min-w-0 flex-wrap items-center gap-1',
         tone === 'warning' ? 'text-warning' : 'text-destructive',
       )}
     >
@@ -125,9 +127,15 @@ function InlineAction({
         type="button"
         className="inline-flex shrink-0 items-center underline decoration-current/40 underline-offset-2 outline-none hover:decoration-current focus-ring pointer-coarse:min-h-10"
         onClick={onClick}
+        aria-describedby={title === undefined ? undefined : descriptionId}
       >
         {action}
       </button>
+      {title === undefined ? null : (
+        <span id={descriptionId} className="basis-full text-xs">
+          {title}
+        </span>
+      )}
     </span>
   );
 }

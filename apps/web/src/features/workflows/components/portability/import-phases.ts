@@ -32,6 +32,7 @@ export type ImportPhaseContext = Readonly<{
   command: ReturnType<typeof useWorkflowImportCommand>;
   validation: ReturnType<typeof useFieldValidation<string>>;
   intent: RefObject<number>;
+  sourceIntent: RefObject<number>;
   resetBusy: RefObject<boolean>;
   clear: () => void;
   invalidate: () => void;
@@ -94,7 +95,7 @@ export async function chooseImportFile(
     setBindings,
     setReading,
     validation,
-    intent,
+    sourceIntent,
     lifetime,
     setError,
   }: ImportPhaseContext,
@@ -109,14 +110,15 @@ export async function chooseImportFile(
   setReading(false);
   validation.reset();
   if (file === undefined) return;
-  const epoch = intent.current;
+  const epoch = sourceIntent.current;
   const request = lifetime.begin();
   setReading(true);
   try {
     const parsed = await readPortableWorkflowFile(file);
-    if (request.current() && epoch === intent.current) setManifest(parsed);
+    if (request.current() && epoch === sourceIntent.current)
+      setManifest(parsed);
   } catch (failure) {
-    if (request.current() && epoch === intent.current)
+    if (request.current() && epoch === sourceIntent.current)
       setError(
         failure instanceof Error
           ? failure.message
@@ -124,7 +126,7 @@ export async function chooseImportFile(
       );
   } finally {
     request.done();
-    if (request.current() && epoch === intent.current) setReading(false);
+    if (request.current() && epoch === sourceIntent.current) setReading(false);
   }
 }
 
