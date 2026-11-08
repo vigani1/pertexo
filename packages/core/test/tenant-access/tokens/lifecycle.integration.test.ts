@@ -240,10 +240,23 @@ describe('persisted personal API tokens', () => {
       workspaceId: owner.workspaceId,
       pageSize: 1,
     });
-    expect(steps.indexOf('api_tokens')).toBeGreaterThanOrEqual(0);
-    expect(steps.indexOf('api_tokens')).toBeLessThan(
-      steps.indexOf('workspace_memberships'),
-    );
+    expect(steps).toContain('api_tokens');
+    // Memberships go only when the purge finishes, after every row step.
+    expect(
+      (
+        await admin.query(
+          'select user_id from app.workspace_memberships where workspace_id=$1',
+          [owner.workspaceId],
+        )
+      ).rows,
+    ).toEqual([]);
+    expect(
+      (
+        await admin.query('select status from app.workspaces where id=$1', [
+          owner.workspaceId,
+        ])
+      ).rows,
+    ).toEqual([{ status: 'deleted' }]);
     expect(
       (
         await admin.query(
