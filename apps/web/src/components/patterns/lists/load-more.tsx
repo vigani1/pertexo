@@ -1,10 +1,12 @@
 import { ReadRecovery } from '../states/read-recovery';
+import { describeReadError } from '@/lib/api/error-copy';
 import { Notice } from '@/components/ui/notice';
 import { ProgressButton } from '@/components/ui/progress-button';
 
 /**
  * The next page of a list: one button that loads it (and retries it after a
- * failure) and one line when it failed. What is already shown never changes.
+ * failure) and one line when it failed, giving the cause and confirming that
+ * what is already shown never changes.
  */
 export function LoadMore({
   subject,
@@ -33,11 +35,11 @@ export function LoadMore({
       {failed ? (
         <Notice tone="destructive">
           <ReadRecovery
-            message={
+            message={`${
               error === undefined
-                ? `More ${subject} couldn’t be loaded. The ones above are unchanged.`
-                : undefined
-            }
+                ? `More ${subject} couldn’t be loaded.`
+                : describeReadError(error, `More ${subject}`)
+            } The ones above are unchanged.`}
             error={error}
             resource={`More ${subject}`}
             retrying={loading}
