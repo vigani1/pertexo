@@ -28,6 +28,7 @@ export class StoredKeyVerificationError extends Error {
   }
 }
 
+/** Connection-purpose keys include saved form links, bound to their workflow context. */
 export async function verifyStoredEncryptionKeys(
   config: ConnectionEnvelopeEncryptionConfig,
   records: AsyncIterable<StoredEncryptionKey>,

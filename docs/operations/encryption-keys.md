@@ -1,7 +1,7 @@
 # Encryption keys
 
-Pertexo encrypts stored connection and webhook credentials. A fresh install uses
-self-managed keys from `generate-secrets.mjs`: a private 32-byte master key and version
+Pertexo encrypts stored connection and webhook credentials and saved public
+form links. A fresh install uses self-managed keys from `generate-secrets.mjs`: a private 32-byte master key and version
 `1`, with no AWS account. Save the key and its version in your password manager.
 
 To use AWS KMS instead, generate with `--encryption=kms`, supply
@@ -23,8 +23,12 @@ To rotate self-managed keys, save a new random key with a new version, move the
 old current pair into `CONNECTION_SELF_MANAGED_PREVIOUS_KEYS` (JSON
 `[{"version":"1","key":"<old key>"}]`), then use the normal deployment procedure.
 Deployment stops writers and verifies retained wrapped data keys before
-restarting both processes with the same ring. Keep all versions needed by live
-rows and by retained backups; the ring allows at most eight previous keys.
+restarting both processes with the same ring. This inventory includes connection
+secret versions, OAuth tokens, webhook secrets, unexpired webhook test events,
+and saved public form link capabilities. Form links use the connection encryption
+purpose and are included in the connection-key count. Legacy hash-only links
+have no encrypted copy and need no retained encryption key. Keep all versions
+needed by live rows and by retained backups; the ring allows at most eight previous keys.
 Rewrapping, retirement and provider migration are deferred. Switching providers
 with retained secrets fails verification.
 
