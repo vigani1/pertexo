@@ -13,6 +13,13 @@ import { SkeletonLines } from '@/components/ui/skeleton';
 import { StatusGlyph } from '@/components/ui/status';
 import { isAccessLost, readFailureReason } from '@/lib/api/error-copy';
 
+/** What a feature's own failure explanation needs to keep Retry working. */
+export type ReadFailureRecovery = Readonly<{
+  resource: string;
+  retrying: boolean;
+  retry: () => void;
+}>;
+
 /** The part of a TanStack query result that decides what a read shows. */
 export type ReadQuery<Data> = Readonly<{
   data: Data | undefined;
@@ -63,7 +70,7 @@ export function QueryView<Data>({
    * A failure the feature explains itself, such as lost access. What it
    * returns replaces the data, even data loaded earlier.
    */
-  failure?: (error: unknown) => ReactNode;
+  failure?: (error: unknown, recovery: ReadFailureRecovery) => ReactNode;
   children?: (data: Data) => ReactNode;
 }>) {
   const waitSeconds = useReadRetry(query.error);
@@ -71,7 +78,11 @@ export function QueryView<Data>({
     if (waitSeconds === 0 && !query.isFetching) void query.refetch();
   };
   if (query.isError) {
-    const explained = failure?.(query.error);
+    const explained = failure?.(query.error, {
+      resource,
+      retrying: query.isFetching,
+      retry,
+    });
     if (explained !== undefined && explained !== null) return explained;
   }
   // An authoritative "you can't see this" hides data loaded earlier.
