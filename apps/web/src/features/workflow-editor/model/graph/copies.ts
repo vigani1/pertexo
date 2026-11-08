@@ -247,9 +247,9 @@ function copiedSource(
 /**
  * AST-selected static references; literal text and computed lookups keep
  * their meaning. A reference counts only where it reads the expression's
- * root: `$$` always does, while `$` and bare names do only outside the
- * places JSONata evaluates against each item (later path steps, filters,
- * sorts and grouping). Anything else is left alone and asks for review.
+ * root: `$$` always does, while `$` and bare names do only where the context
+ * is still the root (not in later path steps, filters, sorts, grouping or
+ * transforms). Anything else is left alone and asks for review.
  */
 function visitExpressionReferences(
   value: unknown,
@@ -281,11 +281,12 @@ function visitExpressionReferences(
     if (output !== undefined && step !== undefined)
       found({ ...step, root: output });
   }
+  const keepsRoot = atRoot && ROOT_CONTEXT_TYPES.has(String(value.type));
   for (const [key, child] of Object.entries(value))
     visitExpressionReferences(
       child,
       found,
-      atRoot && !ITEM_CONTEXT_KEYS.has(key),
+      keepsRoot && !ITEM_CONTEXT_KEYS.has(key),
     );
 }
 
@@ -301,6 +302,24 @@ function stepName(
     ? { nodeId: target.value, end: target.position }
     : undefined;
 }
+
+/**
+ * Node types whose operands JSONata evaluates in the same context as the node
+ * (a lambda body keeps the context it was defined in). Every other node, such
+ * as a transform's pattern and update, may run against items, so references
+ * beneath it are not taken as root references.
+ */
+const ROOT_CONTEXT_TYPES = new Set([
+  'apply',
+  'binary',
+  'bind',
+  'block',
+  'condition',
+  'function',
+  'lambda',
+  'partial',
+  'unary',
+]);
 
 /** Parts of a step JSONata evaluates once per item, not against the root. */
 const ITEM_CONTEXT_KEYS = new Set(['stages', 'predicate', 'group', 'terms']);
