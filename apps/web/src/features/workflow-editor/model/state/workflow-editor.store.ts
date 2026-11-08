@@ -19,7 +19,11 @@ type EditorConflict = Readonly<{
 /** Where saving stands; a failure always has its reason, a conflict both drafts. */
 type SaveState =
   | Readonly<{ status: 'clean' | 'dirty' | 'saving' }>
-  | Readonly<{ status: 'failed' | 'uncertain'; error: string }>
+  | Readonly<{
+      status: 'failed' | 'uncertain';
+      error: string;
+      recovery?: 'retry' | 'access' | 'edit' | 'wait';
+    }>
   | Readonly<{ status: 'conflict'; conflict: EditorConflict }>;
 
 /** Consecutive live edits of one field within this window undo together. */
@@ -71,7 +75,11 @@ export type EditorActions = Readonly<{
     savedGeneration: number,
     savedAt?: string,
   ) => void;
-  reportFailure: (message: string, uncertain: boolean) => void;
+  reportFailure: (
+    message: string,
+    uncertain: boolean,
+    recovery?: 'retry' | 'access' | 'edit' | 'wait',
+  ) => void;
   reportConflict: (conflict: EditorConflict) => void;
   discardLocalAndUseRemote: () => void;
   /** Saves this graph over theirs, from their revision. */
@@ -193,8 +201,10 @@ export function createEditorStore(
           },
         });
       },
-      reportFailure: (error, uncertain) => {
-        set({ save: { status: uncertain ? 'uncertain' : 'failed', error } });
+      reportFailure: (error, uncertain, recovery = 'retry') => {
+        set({
+          save: { status: uncertain ? 'uncertain' : 'failed', error, recovery },
+        });
       },
       reportConflict: (conflict) => {
         set({ save: { status: 'conflict', conflict } });

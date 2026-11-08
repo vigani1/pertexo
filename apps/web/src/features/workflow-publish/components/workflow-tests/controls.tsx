@@ -95,12 +95,14 @@ export function WorkflowTestActions({
   inputBlocked,
   acknowledged,
   onSubmit,
+  onClose,
   onPrepare,
 }: Readonly<{
   tests: WorkflowTests;
   inputBlocked: boolean;
   acknowledged: boolean;
   onSubmit: () => void;
+  onClose: () => void;
   onPrepare: () => void;
 }>) {
   const locked = tests.start.pending || tests.start.uncertain;
@@ -122,9 +124,7 @@ export function WorkflowTestActions({
         <Button
           variant="outline"
           disabled={locked && !tests.start.expired}
-          onClick={() => {
-            tests.setOpen(false);
-          }}
+          onClick={onClose}
         >
           Close
         </Button>

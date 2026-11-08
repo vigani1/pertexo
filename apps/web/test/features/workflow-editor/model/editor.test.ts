@@ -1,3 +1,4 @@
+import { browserDefinitions } from '../../../support/fixtures/node-catalog';
 import {
   addDefinitionNode,
   linkWorkflowNodes,
@@ -104,6 +105,7 @@ describe('workflow editor input mapping rows', () => {
         target: 'target',
         targetHandle: 'in',
       },
+      browserDefinitions(),
       'source-target',
     );
     if (connected === null) throw new Error('expected connected graph');

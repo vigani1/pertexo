@@ -1,5 +1,11 @@
 import {
+  commentDraftChanged,
+  commentDraftState,
+  type CommentDraftChange,
+} from '../model/comment-draft';
+import {
   useId,
+  useEffect,
   useLayoutEffect,
   useRef,
   useState,
@@ -31,6 +37,8 @@ import {
 export function CommentForm({
   scope,
   title,
+  draftKey,
+  onDraftChange,
   initial,
   buildCommand,
   onSaved,
@@ -40,6 +48,8 @@ export function CommentForm({
 }: {
   scope: CollaborationScope;
   title: string;
+  draftKey: string;
+  onDraftChange: CommentDraftChange;
   initial?: Readonly<{ body: string; mentions: readonly MentionPerson[] }>;
   buildCommand: (body: WorkflowCommentBody) => DiscussionCommand;
   onSaved: (result: WorkflowCommentCommandResult) => void;
@@ -56,21 +66,42 @@ export function CommentForm({
   // Typing "@na" offers members, like Slack and Linear; picking one writes
   // "@Name" into the comment and adds the mention.
   const [typed, setTyped] = useState<TypedMention>();
-  const textarea = useRef<HTMLTextAreaElement>(null);
-  const caretAfterMention = useRef<number>(undefined);
-  useLayoutEffect(() => {
-    // After the name is written, typing goes on right behind it.
-    const caret = caretAfterMention.current;
-    if (caret === undefined || textarea.current === null) return;
-    caretAfterMention.current = undefined;
-    textarea.current.focus();
-    textarea.current.setSelectionRange(caret, caret);
-  }, [body]);
-  const command = useDiscussionCommand(scope, (result) => {
-    setBody('');
-    setMentions([]);
-    onSaved(result);
-  });
+  const { textarea, placeCaret } = useCommentCaret(body);
+  const command = useDiscussionCommand(
+    scope,
+    (result) => {
+      onDraftChange(draftKey, 'clean');
+      setBody('');
+      setMentions([]);
+      onSaved(result);
+    },
+    (status) => {
+      onDraftChange(
+        draftKey,
+        commentDraftState(commentDraftChanged(body, mentions, initial), status),
+      );
+    },
+  );
+  useEffect(
+    () => () => {
+      onDraftChange(draftKey, 'clean');
+    },
+    [onDraftChange, draftKey],
+  );
+  function changeBody(next: string) {
+    setBody(next);
+    onDraftChange(
+      draftKey,
+      commentDraftChanged(next, mentions, initial) ? 'dirty' : 'clean',
+    );
+  }
+  function changeMentions(next: readonly MentionPerson[]) {
+    setMentions(next);
+    onDraftChange(
+      draftKey,
+      commentDraftChanged(body, next, initial) ? 'dirty' : 'clean',
+    );
+  }
   const locked = disabled || command.pending || command.uncertain;
   function submit(event: React.SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -87,8 +118,6 @@ export function CommentForm({
     setValidation(undefined);
     void command.send(buildCommand(parsed.data));
   }
-  const idleSubmitLabel =
-    initial === undefined ? 'Post comment' : 'Save comment';
   return (
     <form onSubmit={submit} className="space-y-3">
       {children?.(locked)}
@@ -105,7 +134,7 @@ export function CommentForm({
         aria-describedby={validation === undefined ? undefined : id + '-error'}
         ref={textarea}
         onChange={(event) => {
-          setBody(event.target.value);
+          changeBody(event.target.value);
           setTyped(
             typedMention(event.target.value, event.target.selectionStart),
           );
@@ -117,23 +146,19 @@ export function CommentForm({
           }
         }}
       />
-      {validation === undefined ? null : (
-        <p id={id + '-error'} role="alert" className="text-sm text-destructive">
-          {validation}
-        </p>
-      )}
+      <CommentValidation id={id} message={validation} />
       <MentionPicker
         scope={scope}
         selected={mentions}
-        onChange={setMentions}
+        onChange={changeMentions}
         disabled={locked}
         typed={typed?.query}
         onPicked={(person) => {
           if (typed === undefined) return;
           const caret = textarea.current?.selectionStart ?? body.length;
           const next = insertMention(body, typed, caret, person.displayName);
-          caretAfterMention.current = next.caret;
-          setBody(next.text);
+          placeCaret(next.caret);
+          changeBody(next.text);
           setTyped(undefined);
         }}
       />
@@ -141,21 +166,88 @@ export function CommentForm({
         Plain text · Visible to members who can read this workflow
       </p>
       <DiscussionFeedback command={command} />
-      <div className="flex flex-wrap gap-2">
-        <Button type="submit" disabled={locked || body.trim().length === 0}>
-          {command.pending ? 'Saving…' : idleSubmitLabel}
-        </Button>
-        {onCancel === undefined ? null : (
-          <Button
-            type="button"
-            variant="ghost"
-            disabled={locked}
-            onClick={onCancel}
-          >
-            Cancel
-          </Button>
-        )}
-      </div>
+      <CommentFormActions
+        pending={command.pending}
+        locked={locked}
+        empty={body.trim().length === 0}
+        label={commentSubmitLabel(initial !== undefined)}
+        onCancel={
+          onCancel === undefined
+            ? undefined
+            : () => {
+                onDraftChange(draftKey, 'clean');
+                onCancel();
+              }
+        }
+      />
     </form>
   );
+}
+
+function CommentFormActions({
+  pending,
+  locked,
+  empty,
+  label,
+  onCancel,
+}: Readonly<{
+  pending: boolean;
+  locked: boolean;
+  empty: boolean;
+  label: string;
+  onCancel: (() => void) | undefined;
+}>) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      <Button type="submit" disabled={locked || empty}>
+        {pending ? 'Saving…' : label}
+      </Button>
+      {onCancel === undefined ? null : (
+        <Button
+          type="button"
+          variant="ghost"
+          disabled={locked}
+          onClick={onCancel}
+        >
+          Cancel
+        </Button>
+      )}
+    </div>
+  );
+}
+
+function useCommentCaret(body: string) {
+  const textarea = useRef<HTMLTextAreaElement>(null);
+  const caretAfterMention = useRef<number>(undefined);
+  useLayoutEffect(() => {
+    // After the name is written, typing goes on right behind it.
+    const caret = caretAfterMention.current;
+    if (caret === undefined || textarea.current === null) return;
+    caretAfterMention.current = undefined;
+    textarea.current.focus();
+    textarea.current.setSelectionRange(caret, caret);
+  }, [body]);
+
+  return {
+    textarea,
+    placeCaret: (caret: number) => {
+      caretAfterMention.current = caret;
+    },
+  };
+}
+
+function CommentValidation({
+  id,
+  message,
+}: Readonly<{ id: string; message: string | undefined }>) {
+  if (message === undefined) return null;
+  return (
+    <p id={id + '-error'} role="alert" className="text-sm text-destructive">
+      {message}
+    </p>
+  );
+}
+
+function commentSubmitLabel(editing: boolean): string {
+  return editing ? 'Save comment' : 'Post comment';
 }

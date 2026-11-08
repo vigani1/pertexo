@@ -11,10 +11,14 @@ import type { WorkflowCommentCommandResult } from '@pertexo/contracts';
 export function useDiscussionCommand(
   scope: CollaborationScope,
   onSuccess?: (result: WorkflowCommentCommandResult) => void,
+  onProgress?: (
+    status: Readonly<{ pending: boolean; uncertain: boolean }>,
+  ) => void,
 ) {
   const cache = useQueryClient();
   const command = useRetainedCommand(
     async (body: DiscussionCommand, key: string) => {
+      onProgress?.({ pending: true, uncertain: false });
       try {
         return await sendDiscussion(scope, body, key);
       } catch (error) {
@@ -25,6 +29,10 @@ export function useDiscussionCommand(
           await cache.invalidateQueries({
             queryKey: collaborationKeys.scope(scope),
           });
+        onProgress?.({
+          pending: false,
+          uncertain: true,
+        });
         throw error;
       }
     },
@@ -34,7 +42,13 @@ export function useDiscussionCommand(
       });
       onSuccess?.(result);
     },
-    { action: 'saving this discussion' },
+    {
+      action: 'saving this discussion',
+      onRefused: () => {
+        onProgress?.({ pending: false, uncertain: false });
+        return Promise.resolve();
+      },
+    },
   );
   return {
     ...command,

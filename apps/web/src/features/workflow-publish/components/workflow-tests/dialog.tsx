@@ -1,7 +1,7 @@
 import { ConfirmationDetails } from '@/components/patterns/actions/confirm-dialog';
 import { useRunInput } from '@/features/workflow-runs/input.public';
 import { WorkflowTestActions } from './controls';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type {
   AccessibleWorkspace,
   WorkflowSummary,
@@ -34,13 +34,11 @@ type WorkflowTestDialogProps = Readonly<{
 
 export function WorkflowTestDialog(props: WorkflowTestDialogProps) {
   const model = useWorkflowTestForm(props);
-  const trigger = model.trigger;
   return (
     <Dialog
       open={model.tests.open}
       onOpenChange={(open) => {
-        if (!model.locked || model.tests.start.expired)
-          model.tests.setOpen(open);
+        if (!model.locked || model.tests.start.expired) model.setOpen(open);
       }}
     >
       <DialogContent className="flex h-[44rem] flex-col gap-4 overflow-hidden max-sm:[&_button]:min-h-11 max-sm:[&_button]:min-w-11">
@@ -75,10 +73,10 @@ export function WorkflowTestDialog(props: WorkflowTestDialogProps) {
                     editing={model.editingCase}
                     onEditingChange={model.setEditingCase}
                     onLoad={(loaded) => {
-                      model.input.reset(JSON.stringify(loaded.input, null, 2));
+                      model.replaceInput(JSON.stringify(loaded.input, null, 2));
                     }}
                     onAccessLost={() => {
-                      model.input.reset();
+                      model.replaceInput();
                     }}
                     scope={{
                       workspace: model.workspace,
@@ -86,23 +84,7 @@ export function WorkflowTestDialog(props: WorkflowTestDialogProps) {
                     }}
                   />
                 )}
-                {trigger === undefined ? null : (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    disabled={model.locked}
-                    onClick={() => {
-                      void model.tests
-                        .loadTriggerInput(trigger.id)
-                        .then((value) => {
-                          if (value !== undefined)
-                            model.input.reset(JSON.stringify(value, null, 2));
-                        });
-                    }}
-                  >
-                    Use trigger’s pinned sample
-                  </Button>
-                )}
+                <TriggerSampleControl model={model} />
                 <LabelledField
                   id="workflow-test-input"
                   label="Test input (JSON)"
@@ -115,7 +97,7 @@ export function WorkflowTestDialog(props: WorkflowTestDialogProps) {
                       ref={model.input.validation.register('input')}
                       value={model.input.input}
                       onChange={(event) => {
-                        model.input.changeInput(event.currentTarget.value);
+                        model.changeInput(event.currentTarget.value);
                       }}
                       disabled={model.locked}
                       autoComplete="off"
@@ -163,10 +145,16 @@ export function WorkflowTestDialog(props: WorkflowTestDialogProps) {
           <WorkflowTestActions
             tests={model.tests}
             inputBlocked={
-              model.editingCase || model.cases.pending || model.cases.uncertain
+              model.editingCase ||
+              model.cases.pending ||
+              model.cases.uncertain ||
+              model.sampleState.kind === 'loading'
             }
             acknowledged={model.acknowledged}
             onSubmit={() => void model.submit()}
+            onClose={() => {
+              model.setOpen(false);
+            }}
             onPrepare={() => {
               model.setAcknowledged(false);
               model.input.validation.reset();
@@ -179,6 +167,58 @@ export function WorkflowTestDialog(props: WorkflowTestDialogProps) {
   );
 }
 
+function TriggerSampleControl({
+  model,
+}: Readonly<{ model: ReturnType<typeof useWorkflowTestForm> }>) {
+  const trigger = model.trigger;
+  return (
+    <>
+      {trigger === undefined ? null : (
+        <Button
+          type="button"
+          variant="outline"
+          disabled={model.locked || model.sampleState.kind === 'loading'}
+          onClick={() => {
+            void model.loadTriggerInput();
+          }}
+        >
+          {model.sampleState.kind === 'loading'
+            ? 'Loading pinned sample…'
+            : 'Use trigger’s pinned sample'}
+        </Button>
+      )}
+      {model.sampleState.kind === 'loading' ? (
+        <p role="status">
+          Loading the trigger’s pinned sample. You can keep editing your input.
+        </p>
+      ) : null}
+      {model.sampleState.kind === 'ready' ? (
+        <Notice
+          action={
+            <Button
+              type="button"
+              variant="outline"
+              disabled={model.locked}
+              onClick={model.applyTriggerInput}
+            >
+              Apply loaded sample
+            </Button>
+          }
+        >
+          The pinned sample is ready. Your edited input is kept.
+        </Notice>
+      ) : null}
+      {model.sampleState.kind === 'applied' ? (
+        <p role="status">Pinned sample loaded.</p>
+      ) : null}
+    </>
+  );
+}
+
+type TriggerInputSample =
+  | Readonly<{ kind: 'idle' | 'loading' | 'applied' }>
+  | Readonly<{ kind: 'ready'; value: unknown }>;
+
 function useWorkflowTestForm({
   tests,
   workspace,
@@ -186,6 +226,27 @@ function useWorkflowTestForm({
   graph,
 }: WorkflowTestDialogProps) {
   const input = useRunInput();
+  const [sampleResult, setSampleResult] = useState<
+    Readonly<{
+      preparation: WorkflowTests['preparation'];
+      sample: TriggerInputSample;
+    }>
+  >({ preparation: tests.preparation, sample: { kind: 'idle' } });
+  const sampleState: TriggerInputSample =
+    sampleResult.preparation === tests.preparation
+      ? sampleResult.sample
+      : { kind: 'idle' };
+  function setSampleState(sample: TriggerInputSample) {
+    setSampleResult({ preparation: tests.preparation, sample });
+  }
+  const sampleGeneration = useRef(0);
+  const inputRevision = useRef(0);
+  useEffect(() => {
+    // A closed or newly prepared dialog no longer owns the outstanding read.
+    return () => {
+      sampleGeneration.current += 1;
+    };
+  }, [tests.open, tests.preparation]);
   const [acknowledged, setAcknowledged] = useState(false);
   const [editingCase, setEditingCase] = useState(false);
   const cases = useInputCases({
@@ -202,6 +263,41 @@ function useWorkflowTestForm({
       isWorkflowTriggerDefinition(node.definition) &&
       tests.preparation?.samples.some((pin) => pin.nodeId === node.id),
   );
+  function setOpen(open: boolean) {
+    if (!open) {
+      sampleGeneration.current += 1;
+      setSampleState({ kind: 'idle' });
+    }
+    tests.setOpen(open);
+  }
+  function changeInput(text: string) {
+    inputRevision.current += 1;
+    input.changeInput(text);
+  }
+  function replaceInput(text = '{}') {
+    inputRevision.current += 1;
+    input.reset(text);
+  }
+  async function loadTriggerInput() {
+    if (trigger === undefined || locked) return;
+    const generation = ++sampleGeneration.current;
+    const revision = inputRevision.current;
+    setSampleState({ kind: 'loading' });
+    const value = await tests.loadTriggerInput(trigger.id);
+    if (generation !== sampleGeneration.current) return;
+    if (value === undefined) setSampleState({ kind: 'idle' });
+    else if (revision !== inputRevision.current)
+      setSampleState({ kind: 'ready', value });
+    else {
+      replaceInput(JSON.stringify(value, null, 2));
+      setSampleState({ kind: 'applied' });
+    }
+  }
+  function applyTriggerInput() {
+    if (sampleState.kind !== 'ready' || locked) return;
+    replaceInput(JSON.stringify(sampleState.value, null, 2));
+    setSampleState({ kind: 'applied' });
+  }
   async function submit() {
     const intent = input.read();
     if (intent === undefined) return;
@@ -219,6 +315,12 @@ function useWorkflowTestForm({
 
   return {
     tests,
+    sampleState,
+    setOpen,
+    loadTriggerInput,
+    applyTriggerInput,
+    changeInput,
+    replaceInput,
     locked,
     workflow,
     cases,

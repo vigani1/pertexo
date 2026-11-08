@@ -5,14 +5,17 @@ import {
   newCommandKey,
   type CommandKey,
 } from '@/lib/api/commands/command-retry';
-import type { PublicationReview } from '@pertexo/contracts';
+import type {
+  PublicationReview,
+  WorkflowValidateResponse,
+} from '@pertexo/contracts';
 import { requestPublicationReview } from '../reviews/publication-review.api';
 import { publicationReviewKeys } from '../reviews/publication-review.queries';
 import { useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import type { ApiClient } from '@/lib/api/client';
 import { publishWorkflow } from '../workflow-publish.api';
-import { workflowPublishKeys } from '../workflow-publish.queries';
+import { invalidatePublishedWorkflow } from '../workflow-publish.queries';
 import { commandErrorMessage } from './command-utils';
 import {
   useWorkflowDraftValidation,
@@ -22,7 +25,10 @@ import {
 type PublicationCommand =
   Readonly<{ kind: 'publish' }> | Readonly<{ kind: 'review'; note: string }>;
 type PublishAttempt = SavedDraft &
-  Readonly<{ command: PublicationCommand }> &
+  Readonly<{
+    command: PublicationCommand;
+    report: WorkflowValidateResponse;
+  }> &
   CommandKey;
 
 export type PublicationReceipt = SavedDraft &
@@ -166,6 +172,7 @@ export function useWorkflowPublication({
       return result;
     } catch (error) {
       if (owner.current !== publishOwner) return failed;
+      draftValidation.recordPublicationRefusal(error, publishAttempt.current);
       const failure = publicationFailure({
         error,
         dispatched,
@@ -249,7 +256,7 @@ async function preparePublicationAttempt(
     );
     return 'blocked';
   }
-  return { ...saved, ...newCommandKey(), command };
+  return { ...saved, ...newCommandKey(), command, report: checked.report };
 }
 
 function invalidateAfterPublication(
@@ -258,16 +265,11 @@ function invalidateAfterPublication(
   workflowId: string,
   result: Extract<PublishResult, { kind: 'published' | 'review_requested' }>,
 ) {
-  void queryClient.invalidateQueries({
-    queryKey:
-      result.kind === 'review_requested'
-        ? publicationReviewKeys.scope(scope)
-        : workflowPublishKeys.latestVersion(
-            scope.userId,
-            scope.workspaceId,
-            workflowId,
-          ),
-  });
+  if (result.kind === 'review_requested')
+    void queryClient.invalidateQueries({
+      queryKey: publicationReviewKeys.scope(scope),
+    });
+  else void invalidatePublishedWorkflow(queryClient, scope, workflowId);
 }
 
 function heldAttemptExpired(attempt: PublishAttempt | undefined): boolean {

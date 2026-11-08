@@ -1,8 +1,7 @@
 import { isApiError } from '@/lib/api/error';
 import { commandErrorMessage } from '../../data/mutations/command-utils';
 import { inboxKeys } from '@/features/inbox/inbox-queries.public';
-import { workflowKeys } from '@/features/workflows/workflows-queries.public';
-import { workflowPublishKeys } from '../../data/workflow-publish.queries';
+import { invalidatePublishedWorkflow } from '../../data/workflow-publish.queries';
 import { useId } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import type {
@@ -56,16 +55,7 @@ export function ReviewDecision({
       await cache.invalidateQueries({
         queryKey: publicationReviewKeys.scope(scope),
       });
-      await cache.invalidateQueries({
-        queryKey: workflowKeys.scope(scope.userId, scope.workspaceId),
-      });
-      await cache.invalidateQueries({
-        queryKey: workflowPublishKeys.latestVersion(
-          scope.userId,
-          scope.workspaceId,
-          request.workflowId,
-        ),
-      });
+      await invalidatePublishedWorkflow(cache, scope, request.workflowId);
       await cache.invalidateQueries({
         queryKey: inboxKeys.scope(scope.userId, scope.workspaceId),
       });

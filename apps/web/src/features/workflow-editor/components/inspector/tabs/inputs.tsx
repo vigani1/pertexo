@@ -85,8 +85,8 @@ export function InputsTab(props: InputsTabProps) {
         fileScope={workspaceScope}
         loopPorts={props.loopPorts}
         links={links}
-        rawInputs={(form) => (
-          <MappedInputsTab {...mapping} form={form} links={links} />
+        rawInputs={({ form, node, links }) => (
+          <MappedInputsTab {...mapping} node={node} form={form} links={links} />
         )}
       />
     );

@@ -329,6 +329,12 @@ function performEditorAction({
       const result = duplicateWorkflowNodes(state.graph, action.nodeIds);
       if (result.nodeIds.length === 0) return;
       state.transact(result.graph);
+      if (result.expressionReviewNeeded)
+        notifications.info({
+          title: 'Review copied expressions',
+          description:
+            'Expressions that choose a step dynamically keep their original lookup. Review those expressions before running the copies.',
+        });
       if (!state.inspectorScratch) state.selectNodes(result.nodeIds);
       return;
     }

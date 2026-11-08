@@ -1,4 +1,8 @@
-import { infiniteQueryOptions, queryOptions } from '@tanstack/react-query';
+import {
+  infiniteQueryOptions,
+  queryOptions,
+  keepPreviousData,
+} from '@tanstack/react-query';
 import {
   COLLABORATION_LIMITS,
   type WorkflowCommentListQuery,
@@ -49,6 +53,7 @@ export function discussionQuery(
       threadId,
       anchor,
     ],
+    placeholderData: keepPreviousData,
     initialPageParam: null as string | null,
     queryFn: ({ signal, pageParam }) =>
       readDiscussion({ scope, threadId, before: pageParam, anchor, signal }),

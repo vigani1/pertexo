@@ -1,3 +1,4 @@
+import type { CommentDraftChange } from '../model/comment-draft';
 import { useId, useState } from 'react';
 import type {
   WorkflowComment,
@@ -27,6 +28,7 @@ interface Edit {
 }
 interface ComposerProps {
   scope: CollaborationScope;
+  onDraftChange: CommentDraftChange;
   target: NewThread | Edit | { kind: 'reply'; threadId: string };
   onSaved: (result: WorkflowCommentCommandResult) => void;
   onCancel?: (() => void) | undefined;
@@ -44,6 +46,7 @@ export function CommentComposer(props: ComposerProps) {
     <CommentForm
       {...props}
       title="Reply"
+      draftKey={`reply:${threadId}`}
       buildCommand={(body) => ({ kind: 'reply', threadId, body })}
     />
   );
@@ -63,6 +66,7 @@ function NewDiscussionComposer({
     <CommentForm
       {...props}
       title="New discussion"
+      draftKey="new-discussion"
       buildCommand={(body) => ({
         kind: 'create',
         body: { ...body, stepId: stepId === WHOLE_WORKFLOW ? null : stepId },
@@ -105,6 +109,7 @@ function EditCommentComposer({
     <CommentForm
       {...props}
       title="Edit comment"
+      draftKey={`edit:${target.comment.id}`}
       initial={target.comment}
       buildCommand={(body) => ({
         kind: 'edit',

@@ -47,13 +47,41 @@ export type BodyValidation = Readonly<
 >;
 
 export function bodyValue(node: WorkflowNode): HttpBodyValue | undefined {
-  if (node.config.multipart === undefined)
-    return { multipart: undefined, inputMappings: node.inputMappings };
+  if (node.config.multipart === undefined) {
+    const requestKeys = new Set(httpRequestPlaceholders(node));
+    return {
+      multipart: undefined,
+      inputMappings: Object.fromEntries(
+        Object.entries(node.inputMappings).filter(
+          ([key]) => !requestKeys.has(key),
+        ),
+      ),
+    };
+  }
   const result = httpMultipartConfigSchema.safeParse(node.config.multipart);
   return result.success
-    ? { multipart: result.data, inputMappings: node.inputMappings }
+    ? {
+        multipart: result.data,
+        inputMappings: Object.fromEntries(
+          Object.entries(node.inputMappings).filter(([key]) =>
+            result.data.parts.some((part) => part.inputKey === key),
+          ),
+        ),
+      }
     : undefined;
 }
+/** Mappings outside the body stay editable when form parts own their inputs. */
+export function httpRequestMappings(
+  node: WorkflowNode,
+): WorkflowNode['inputMappings'] {
+  const body = bodyValue(node);
+  if (body === undefined) return node.inputMappings;
+  const bodyKeys = new Set(Object.keys(body.inputMappings));
+  return Object.fromEntries(
+    Object.entries(node.inputMappings).filter(([key]) => !bodyKeys.has(key)),
+  );
+}
+
 export function bodyDraft(value: HttpBodyValue): HttpBodyDraft {
   if (value.multipart === undefined)
     return { mode: 'raw', mappings: value.inputMappings };
@@ -212,7 +240,7 @@ export function applyBodyValue(value: HttpBodyValue, node: WorkflowNode) {
               })),
             },
           },
-    inputMappings: value.inputMappings,
+    inputMappings: { ...httpRequestMappings(node), ...value.inputMappings },
   };
 }
 

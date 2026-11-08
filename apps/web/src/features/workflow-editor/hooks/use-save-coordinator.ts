@@ -31,7 +31,12 @@ export function useSaveCoordinator({
     });
     // A verified editor can resume with work queued before its identity pause.
     const status = store.getState().save.status;
-    if (status === 'dirty' || status === 'saving' || status === 'uncertain')
+    if (
+      status === 'dirty' ||
+      status === 'saving' ||
+      status === 'uncertain' ||
+      status === 'failed'
+    )
       coordinator.schedule();
     // A save that went unconfirmed while offline goes again on reconnect.
     const resume = () => {

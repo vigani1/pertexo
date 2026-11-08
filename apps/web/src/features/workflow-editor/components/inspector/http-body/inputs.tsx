@@ -11,6 +11,7 @@ import type { GraphLevel, WorkflowNode } from '../../../model/graph/scopes';
 import type { NodeFormApi } from '../../../model/inspector/node-form';
 import {
   bodyValue,
+  httpRequestMappings,
   newFormPart,
   populatedSource,
   type FormPartDraft,
@@ -30,7 +31,13 @@ type Props = Readonly<{
   fileScope: FileUploadScope | undefined;
   loopPorts: readonly string[];
   links: ReactNode;
-  rawInputs: (form: NodeFormApi) => ReactNode;
+  rawInputs: (
+    options: Readonly<{
+      form: NodeFormApi;
+      node: WorkflowNode;
+      links: ReactNode;
+    }>,
+  ) => ReactNode;
 }>;
 export function HttpBodyInputs(props: Props) {
   const value = bodyValue(props.node);
@@ -41,7 +48,11 @@ export function HttpBodyInputs(props: Props) {
           These form settings cannot be shown without changing them. Review
           multipart in Setup → Edit as JSON.
         </p>
-        {props.rawInputs(props.form)}
+        {props.rawInputs({
+          form: props.form,
+          node: props.node,
+          links: props.links,
+        })}
       </div>
     );
   return <BodyInputs {...props} value={value} />;
@@ -56,7 +67,11 @@ function BodyInputs(props: BodyInputsProps) {
         <ToggleGroup
           aria-label="Body type"
           value={[model.draft.text.mode]}
-          disabled={!model.form.editable || model.rawScratch}
+          disabled={
+            !model.form.editable ||
+            model.rawScratch ||
+            !model.draft.validation.ok
+          }
           onValueChange={(values) => {
             const next = values[0];
             if (next === 'raw' || next === 'multipart') model.mode(next);
@@ -75,7 +90,11 @@ function BodyInputs(props: BodyInputsProps) {
         ) : null}
       </div>
       {model.draft.text.mode === 'raw' ? (
-        model.rawInputs(model.rawForm)
+        model.rawInputs({
+          form: model.rawForm,
+          node: model.node,
+          links: model.links,
+        })
       ) : (
         <>
           <MultipartParts
@@ -121,6 +140,22 @@ function BodyInputs(props: BodyInputsProps) {
               loopPorts: model.loopPorts,
             }}
           />
+          <section
+            aria-labelledby={`http-request-inputs-${model.node.id}`}
+            className="flex flex-col gap-3"
+          >
+            <h3
+              id={`http-request-inputs-${model.node.id}`}
+              className="text-sm font-semibold"
+            >
+              Address and header inputs
+            </h3>
+            {model.rawInputs({
+              form: model.requestForm,
+              node: model.requestNode,
+              links: null,
+            })}
+          </section>
           {model.links}
         </>
       )}
@@ -178,6 +213,8 @@ function useBodyInputs({
     draft.change(next, key);
   }
   const { form: rawForm, hasScratch: rawScratch } = useScratchForm(form);
+  const requestNode = { ...node, inputMappings: httpRequestMappings(node) };
+  const requestForm = requestInputsForm(rawForm);
   const [confirmation, setConfirmation] = useState<
     | Readonly<{
         signature: string;
@@ -282,6 +319,8 @@ function useBodyInputs({
     bodyAllowed,
     rawInputs,
     rawForm,
+    requestNode,
+    requestForm,
     parts,
     node,
     graph,
@@ -297,4 +336,28 @@ function useBodyInputs({
     store,
     value,
   } as const;
+}
+
+function requestInputsForm(rawForm: NodeFormApi): NodeFormApi {
+  return {
+    ...rawForm,
+    commit: (update, key) => {
+      rawForm.commit((current) => {
+        const projected = {
+          ...current,
+          inputMappings: httpRequestMappings(current),
+        };
+        const patch = typeof update === 'function' ? update(projected) : update;
+        return patch.inputMappings === undefined
+          ? patch
+          : {
+              ...patch,
+              inputMappings: {
+                ...bodyValue(current)?.inputMappings,
+                ...patch.inputMappings,
+              },
+            };
+      }, key);
+    },
+  };
 }

@@ -1,6 +1,11 @@
+import type { NodeDefinitionCatalogItem } from '@pertexo/contracts';
 import type { Connection, Edge, FinalConnectionState } from '@xyflow/react';
 import { useCallback } from 'react';
-import { linkWorkflowNodes, type PortRef } from '../../model/graph/commands';
+import {
+  canStartWorkflowLink,
+  linkWorkflowNodes,
+  type PortRef,
+} from '../../model/graph/commands';
 import type { useEditorStoreApi } from '../../model/state/context';
 import { canLinkSteps } from '../../model/graph/scopes';
 import { gestureEndPoint, portDropSource } from '../../model/quick-add';
@@ -13,10 +18,12 @@ import type { Position } from './projection';
  */
 export function useLinkGestures({
   store,
+  definitions,
   editable,
   onPortDrop,
 }: Readonly<{
   store: ReturnType<typeof useEditorStoreApi>;
+  definitions: readonly NodeDefinitionCatalogItem[];
   editable: boolean;
   onPortDrop: (from: PortRef, point: Position) => void;
 }>) {
@@ -25,33 +32,41 @@ export function useLinkGestures({
       const graph = store.getState().graph;
       return (
         canLinkSteps(graph, link.source, link.target) &&
-        linkWorkflowNodes(graph, {
-          source: link.source,
-          target: link.target,
-          sourceHandle: link.sourceHandle ?? null,
-          targetHandle: link.targetHandle ?? null,
-        }) !== null
+        linkWorkflowNodes(
+          graph,
+          {
+            source: link.source,
+            target: link.target,
+            sourceHandle: link.sourceHandle ?? null,
+            targetHandle: link.targetHandle ?? null,
+          },
+          definitions,
+        ) !== null
       );
     },
-    [store],
+    [store, definitions],
   );
   const onConnect = useCallback(
     (link: Connection) => {
       if (!editable) return;
       const state = store.getState();
-      const next = linkWorkflowNodes(state.graph, link);
+      const next = linkWorkflowNodes(state.graph, link, definitions);
       if (next !== null) state.transact(next);
     },
-    [editable, store],
+    [editable, store, definitions],
   );
   const onConnectEnd = useCallback(
     (event: MouseEvent | TouchEvent, state: FinalConnectionState) => {
       const point = gestureEndPoint(event);
       if (!editable || point === null) return;
       const from = portDropSource({ state, endedOverStep: isOverStep(point) });
-      if (from !== null) onPortDrop(from, point);
+      if (
+        from !== null &&
+        canStartWorkflowLink(store.getState().graph, from, definitions)
+      )
+        onPortDrop(from, point);
     },
-    [editable, onPortDrop],
+    [editable, onPortDrop, store, definitions],
   );
   return { isValidConnection, onConnect, onConnectEnd } as const;
 }

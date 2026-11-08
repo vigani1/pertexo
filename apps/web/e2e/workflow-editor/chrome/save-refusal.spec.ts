@@ -50,10 +50,14 @@ for (const width of [375, 1280]) {
     );
     await expect(reason).toBeVisible();
     await expect(
+      page.getByText(
+        'Ask a workspace owner to restore editing access. Your changes are kept here.',
+        { exact: true },
+      ),
+    ).toBeVisible();
+    await expect(
       page.getByRole('button', { name: 'Retry', exact: true }),
-    ).toHaveAccessibleDescription(
-      'Your role no longer allows editing this workflow.',
-    );
+    ).toHaveCount(0);
     expect(remote.revision).toBe(1);
     expect(
       await page.evaluate(

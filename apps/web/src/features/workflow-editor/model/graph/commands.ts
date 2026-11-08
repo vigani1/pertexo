@@ -1,4 +1,9 @@
-import { inspectWorkflowFailureRoutes } from '@pertexo/workflow-model';
+import { connectionPorts } from '../step-card';
+import { findDefinition } from './adapter';
+import {
+  inspectWorkflowFailureRoutes,
+  WORKFLOW_FAILURE_PORT,
+} from '@pertexo/workflow-model';
 import type {
   NodeDefinitionCatalogItem,
   WorkflowGraphContract,
@@ -262,13 +267,33 @@ function changesNode(node: WorkflowNode, update: WorkflowNodeUpdate): boolean {
 export function linkWorkflowNodes(
   graph: WorkflowGraphContract,
   link: Connection,
+  definitions: readonly NodeDefinitionCatalogItem[],
   id: string = crypto.randomUUID(),
 ): WorkflowGraphContract | null {
   const { source, sourceHandle, target, targetHandle } = link;
   if (sourceHandle === null || targetHandle === null) return null;
   const scope = scopeOf(graph, source);
   if (scope === undefined || !canLinkSteps(graph, source, target)) return null;
-  const duplicate = levelAt(graph, scope)?.edges.some((edge) => {
+  const level = levelAt(graph, scope);
+  if (level === undefined) return null;
+  const targetNode = level.nodes.find((node) => node.id === target);
+  if (targetNode === undefined) return null;
+  const inputs = connectionPorts(
+    targetNode,
+    findDefinition(definitions, targetNode),
+    level,
+    'inputs',
+  );
+  if (
+    !canStartWorkflowLink(
+      graph,
+      { nodeId: source, port: sourceHandle },
+      definitions,
+    ) ||
+    !inputs.includes(targetHandle)
+  )
+    return null;
+  const duplicate = level.edges.some((edge) => {
     const isSameLink =
       edge.source.nodeId === source &&
       edge.source.port === sourceHandle &&
@@ -276,7 +301,7 @@ export function linkWorkflowNodes(
       edge.target.port === targetHandle;
     return isSameLink;
   });
-  if (duplicate !== false) return null;
+  if (duplicate) return null;
   const edge = {
     id,
     source: { nodeId: source, port: sourceHandle },
@@ -287,6 +312,27 @@ export function linkWorkflowNodes(
     edges: [...level.edges, edge],
   }));
   return inspectWorkflowFailureRoutes(next).kind === 'invalid' ? null : next;
+}
+
+/** New links and linked insertion share the source instance's configured ports. */
+export function canStartWorkflowLink(
+  graph: WorkflowGraphContract,
+  from: PortRef,
+  definitions: readonly NodeDefinitionCatalogItem[],
+): boolean {
+  const scope = scopeOf(graph, from.nodeId);
+  const level = scope === undefined ? undefined : levelAt(graph, scope);
+  const node = level?.nodes.find((candidate) => candidate.id === from.nodeId);
+  if (node === undefined || level === undefined) return false;
+  return (
+    from.port === WORKFLOW_FAILURE_PORT ||
+    connectionPorts(
+      node,
+      findDefinition(definitions, node),
+      level,
+      'outputs',
+    ).includes(from.port)
+  );
 }
 
 /** One card width and a gap to the right of `node`, on the same row. */

@@ -32,6 +32,7 @@ export function SaveState({
         online={online}
         savedAt={savedAt}
         error={'error' in save ? save.error : null}
+        recovery={'recovery' in save ? save.recovery : undefined}
         onRetry={onRetry}
         onReview={onReview}
       />
@@ -46,7 +47,9 @@ function Sentence({
   error,
   onRetry,
   onReview,
+  recovery,
 }: Readonly<{
+  recovery?: 'retry' | 'access' | 'edit' | 'wait' | undefined;
   status: EditorState['save']['status'];
   online: boolean;
   savedAt: string | null;
@@ -87,12 +90,11 @@ function Sentence({
     case 'failed':
     case 'uncertain':
       return (
-        <InlineAction
-          tone={status === 'failed' ? 'destructive' : 'warning'}
-          label={status === 'failed' ? 'Couldn’t save' : 'Save unconfirmed'}
-          action="Retry"
-          title={error ?? undefined}
-          onClick={onRetry}
+        <SaveFailure
+          status={status}
+          recovery={recovery}
+          error={error}
+          onRetry={onRetry}
         />
       );
     case 'dirty':
@@ -137,5 +139,42 @@ function InlineAction({
         </span>
       )}
     </span>
+  );
+}
+
+function saveRecoveryAdvice(recovery: 'access' | 'edit' | 'wait'): string {
+  if (recovery === 'access')
+    return 'Ask a workspace owner to restore editing access. Your changes are kept here.';
+  if (recovery === 'edit')
+    return 'Correct the step setup to save your draft. Your changes are kept here.';
+  return 'Saving resumes automatically after the wait.';
+}
+
+function SaveFailure({
+  status,
+  recovery,
+  error,
+  onRetry,
+}: Readonly<{
+  status: 'failed' | 'uncertain';
+  recovery?: 'retry' | 'access' | 'edit' | 'wait' | undefined;
+  error: string | null;
+  onRetry: () => void;
+}>) {
+  if (recovery !== undefined && recovery !== 'retry')
+    return (
+      <span className="text-destructive" title={error ?? undefined}>
+        <span>Couldn’t save · {error}</span>
+        <span className="block text-xs">{saveRecoveryAdvice(recovery)}</span>
+      </span>
+    );
+  return (
+    <InlineAction
+      tone={status === 'failed' ? 'destructive' : 'warning'}
+      label={status === 'failed' ? 'Couldn’t save' : 'Save unconfirmed'}
+      action="Retry"
+      title={error ?? undefined}
+      onClick={onRetry}
+    />
   );
 }

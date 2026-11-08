@@ -1,3 +1,9 @@
+import { useEffect, useState } from 'react';
+import type { WorkflowComment } from '@pertexo/contracts';
+import {
+  commentDraftState,
+  type CommentDraftChange,
+} from '../model/comment-draft';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import type { WorkflowCommentThread } from '@pertexo/contracts';
 import { Button } from '@/components/ui/button';
@@ -19,10 +25,19 @@ interface DiscussionProps {
   steps: readonly { id: string; label: string }[];
   onClose: () => void;
   onLatest: () => void;
+  onDraftChange: CommentDraftChange;
+  onReveal: (comment: string) => void;
 }
 export function WorkflowDiscussion(props: DiscussionProps) {
   const { scope, threadId, anchor, onClose, onLatest } = props;
   const query = useInfiniteQuery(discussionQuery(scope, threadId, anchor));
+  const [retained, setRetained] = useState<
+    ReadonlyMap<string, WorkflowComment>
+  >(() => new Map());
+  const comments = query.data?.pages.flatMap((page) => page.comments) ?? [];
+  const visible = new Map(comments.map((comment) => [comment.id, comment]));
+  for (const [id, comment] of retained)
+    if (!visible.has(id)) visible.set(id, comment);
   const thread = query.data?.pages[0]?.thread;
   if (thread === undefined)
     return (
@@ -34,48 +49,63 @@ export function WorkflowDiscussion(props: DiscussionProps) {
       </div>
     );
   return (
-    <section aria-label="Discussion" className="space-y-5">
-      <DiscussionHeader {...props} thread={thread} />
-      <LoadMore
-        subject="comments"
-        label="Older comments"
-        hasNextPage={query.hasNextPage}
-        loading={query.isFetchingNextPage}
-        failed={query.isFetchNextPageError}
-        error={query.error}
-        onLoadMore={() => void query.fetchNextPage()}
-      />
-      <QueryView query={query} resource="This discussion" />
-      <ol className="space-y-3">
-        {query.data?.pages
-          .flatMap((page) => page.comments)
-          .slice()
-          .reverse()
-          .map((comment) => (
-            <DiscussionComment
-              key={comment.id}
+    <QueryView query={query} resource="This discussion">
+      {() => (
+        <section aria-label="Discussion" className="space-y-5">
+          <DiscussionHeader {...props} thread={thread} />
+          <LoadMore
+            subject="comments"
+            label="Older comments"
+            hasNextPage={query.hasNextPage}
+            loading={query.isFetchingNextPage}
+            failed={query.isFetchNextPageError}
+            error={query.error}
+            onLoadMore={() => void query.fetchNextPage()}
+          />
+          <ol className="space-y-3">
+            {[...visible.values()]
+              .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+              .map((comment) => (
+                <DiscussionComment
+                  key={comment.id}
+                  scope={scope}
+                  paused={props.paused}
+                  comment={comment}
+                  highlighted={comment.id === anchor}
+                  onDraftChange={props.onDraftChange}
+                  onActiveChange={(active) => {
+                    setRetained((previous) => {
+                      const next = new Map(previous);
+                      if (active) next.set(comment.id, comment);
+                      else next.delete(comment.id);
+                      return next;
+                    });
+                  }}
+                  outsidePage={!comments.some((item) => item.id === comment.id)}
+                  onReveal={() => {
+                    props.onReveal(comment.id);
+                  }}
+                  onDeleted={onLatest}
+                />
+              ))}
+          </ol>
+          {!props.paused && thread.status === 'resolved' ? (
+            <p className="text-sm text-muted-foreground">
+              Reopen this discussion to reply. Your unfinished reply is kept.
+            </p>
+          ) : null}
+          {props.paused ? null : (
+            <CommentComposer
               scope={scope}
-              paused={props.paused}
-              comment={comment}
-              highlighted={comment.id === anchor}
-              onDeleted={onLatest}
+              onDraftChange={props.onDraftChange}
+              target={{ kind: 'reply', threadId }}
+              onSaved={onLatest}
+              disabled={thread.status === 'resolved'}
             />
-          ))}
-      </ol>
-      {!props.paused && thread.status === 'resolved' ? (
-        <p className="text-sm text-muted-foreground">
-          Reopen this discussion to reply. Your unfinished reply is kept.
-        </p>
-      ) : null}
-      {props.paused ? null : (
-        <CommentComposer
-          scope={scope}
-          target={{ kind: 'reply', threadId }}
-          onSaved={onLatest}
-          disabled={thread.status === 'resolved'}
-        />
+          )}
+        </section>
       )}
-    </section>
+    </QueryView>
   );
 }
 function DiscussionHeader({
@@ -87,8 +117,23 @@ function DiscussionHeader({
   onClose,
   onLatest,
   thread,
+  onDraftChange,
 }: DiscussionProps & { thread: WorkflowCommentThread }) {
-  const command = useDiscussionCommand(scope);
+  const command = useDiscussionCommand(
+    scope,
+    () => {
+      onDraftChange('discussion-status', 'clean');
+    },
+    (status) => {
+      onDraftChange('discussion-status', commentDraftState(false, status));
+    },
+  );
+  useEffect(
+    () => () => {
+      onDraftChange('discussion-status', 'clean');
+    },
+    [onDraftChange],
+  );
   const step = steps.find((item) => item.id === thread.stepId);
   return (
     <>

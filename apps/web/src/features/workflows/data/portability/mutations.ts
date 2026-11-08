@@ -20,11 +20,15 @@ type Attempt = CommandKey & {
   body: WorkflowImportRequest;
   workflowId?: string;
 };
-export interface WorkflowImportCommandState {
-  kind: 'editable' | 'sending' | 'uncertain' | 'confirmed';
-  error?: string;
-  workflowId?: string;
-}
+type ImportRefusal = Readonly<{
+  message: string;
+  recovery: 'preview' | 'none';
+}>;
+export type WorkflowImportCommandState =
+  | Readonly<{ kind: 'editable'; failure?: ImportRefusal }>
+  | Readonly<{ kind: 'sending' }>
+  | Readonly<{ kind: 'uncertain'; error: string }>
+  | Readonly<{ kind: 'confirmed'; workflowId: string }>;
 
 export function useWorkflowImportCommand(
   apiClient: ApiClient,
@@ -52,7 +56,8 @@ export function useWorkflowImportCommand(
     try {
       await lifetime.verify({ signal: request.signal, creating: true });
       if (!request.current()) return;
-      if (command.workflowId === undefined) {
+      let createdWorkflowId = command.workflowId;
+      if (createdWorkflowId === undefined) {
         phase = 'mutation';
         const result = await importWorkflow({
           apiClient,
@@ -62,6 +67,7 @@ export function useWorkflowImportCommand(
           signal: request.signal,
         });
         command.workflowId = result.workflowId;
+        createdWorkflowId = result.workflowId;
       }
       phase = 'accepted';
       if (!request.current()) return;
@@ -76,7 +82,7 @@ export function useWorkflowImportCommand(
         }),
       ]);
       if (!request.current()) return;
-      setState({ kind: 'confirmed', workflowId: command.workflowId });
+      setState({ kind: 'confirmed', workflowId: createdWorkflowId });
     } catch (error) {
       if (!request.current() || lifetime.accessFailure(error)) return;
       const requiresIntentRecovery = importNeedsRecovery({
@@ -96,7 +102,7 @@ export function useWorkflowImportCommand(
         attempt.current = undefined;
         setState({
           kind: 'editable',
-          error: describeCommandError(error, 'importing this workflow'),
+          failure: importRefusal(error),
         });
       }
     } finally {
@@ -121,7 +127,10 @@ export function useWorkflowImportCommand(
         void send(current);
       else {
         attempt.current = undefined;
-        setState({ kind: 'editable', error: RETRY_WINDOW_ENDED });
+        setState({
+          kind: 'editable',
+          failure: { message: RETRY_WINDOW_ENDED, recovery: 'none' },
+        });
       }
     },
   };
@@ -147,4 +156,31 @@ function importNeedsRecovery({
       (state.kind === 'uncertain' ||
         (phase === 'mutation' && isUnconfirmedCommand(error))))
   );
+}
+
+function importRefusal(cause: unknown): ImportRefusal {
+  if (
+    isApiError(cause) &&
+    cause.problem?.code === 'workflow.portability_compatibility_conflict'
+  )
+    return {
+      message:
+        cause.problem.detail ??
+        'The destination catalog changed. Preview this import again before creating its draft.',
+      recovery: 'preview',
+    };
+  if (
+    isApiError(cause) &&
+    cause.problem?.code === 'workflow.portability_invalid'
+  )
+    return {
+      message:
+        cause.problem.detail ??
+        'The imported content needs repair. Preview it again and review the compatibility findings.',
+      recovery: 'preview',
+    };
+  return {
+    message: describeCommandError(cause, 'importing this workflow'),
+    recovery: 'none',
+  };
 }

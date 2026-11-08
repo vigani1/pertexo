@@ -39,7 +39,11 @@ export function workflowIssuesView(
   const validationGroups =
     validation === undefined
       ? undefined
-      : groupWorkflowIssues(validation.report, graph);
+      : groupWorkflowIssues(
+          validation.report,
+          graph,
+          validation.publicationRefused ? 'publication' : 'validation',
+        );
   const warnings = [...connectionIssues, ...unreachableStepIssues(graph)];
   const groups =
     validationGroups === undefined && warnings.length === 0
