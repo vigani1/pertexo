@@ -80,6 +80,13 @@ Workspace deletion follows this exact lifecycle:
 5. Completion writes a non-sensitive deletion-ledger tombstone and transitions
    the workspace to `deleted`. Partial purge remains visible and retryable.
 
+Current members see a read-only “being deleted” state throughout the purge.
+Memberships are removed in the same transaction that marks the workspace
+`deleted`, after tenant rows and stored objects have been erased. Only a browser
+session that observed the purge shows completion when discovery stops returning
+the workspace. A fresh visit through an old link receives the ordinary not-found
+answer; no retained ownership record is needed for that visit.
+
 Legally retained audit or billing facts are minimized or anonymized according
 to launch policy. Backup copies are beyond serving use and expire only through
 normal backup rotation. The non-sensitive deletion ledger survives primary

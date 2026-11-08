@@ -27,9 +27,6 @@ import {
 beforeAll(beforeAllFixture1);
 afterAll(afterAllFixture2);
 describe('workspace purge', () => {
-  it('retains memberships until the last row-deletion step so members can observe purging', () => {
-    expect(PURGE_STEPS.at(-1)?.name).toBe('workspace_memberships');
-  });
   it('removes directory-managed grants in other linked workspaces before deleting the control organization', async () => {
     const control = await createWorkspace(),
       linked = await createWorkspace();
@@ -362,6 +359,7 @@ describe('workspace purge', () => {
        order by 1`,
     );
     const covered = new Set([
+      'workspace_memberships', // Removed atomically with the final tombstone.
       ...PURGE_STEPS.map(({ name }) => name),
       ...PURGE_PRESERVED_TABLES,
       ...PURGE_DERIVED_TABLES,
