@@ -1,3 +1,4 @@
+import type { createSmtpClient } from '@pertexo/secrets/server';
 import { createConnectionStore } from '@pertexo/core/connections';
 import { createNotificationDestinationStore } from '@pertexo/core/notifications';
 import type { DatabaseConfig } from '@pertexo/database/platform';
@@ -26,6 +27,7 @@ export type FixtureConnectionServices = Readonly<{
   http?: ConnectionHttpClient;
   slack?: ConnectionSlackClient;
   email?: ConnectionEmailClient;
+  smtpPolicy?: NonNullable<Parameters<typeof createSmtpClient>[1]>;
 }>;
 
 /** Real persistence and authorization, with the outside services replaced. */
@@ -47,6 +49,9 @@ export function createFixtureConnectionRuntime(
   return Object.freeze({
     dependencies: Object.freeze({
       applicationSecret,
+      ...(services.smtpPolicy === undefined
+        ? {}
+        : { smtpPolicy: services.smtpPolicy }),
       persistence: database,
       destinationPersistence: destinations,
       usagePersistence: database,

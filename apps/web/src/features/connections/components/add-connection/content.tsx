@@ -6,7 +6,7 @@ import type { FieldValidation } from '@/components/ui/use-field-validation';
 import type { useOAuth2Consent } from '../../hooks/use-oauth2-consent';
 import { connectionCommandError } from '../../model/connection-errors';
 import { isOAuth2Connection } from '../../model/oauth2-copy';
-import type { ProviderKey } from '../../model/connection-providers';
+import type { ConnectionChoice } from '../../model/connection-providers';
 import type {
   CredentialDraft,
   SavedCredential,
@@ -31,8 +31,8 @@ export function StepBody({
 }: Readonly<{
   id: string;
   step: AddStep;
-  provider: ProviderKey | undefined;
-  onChoose: (provider: ProviderKey) => void;
+  provider: ConnectionChoice | undefined;
+  onChoose: (provider: ConnectionChoice) => void;
   fields: Readonly<{
     useOAuth2: boolean;
     onUseOAuth2: (useOAuth2: boolean) => void;
@@ -83,6 +83,18 @@ export function StepBody({
   if (step === 'credential')
     return (
       <div className="flex flex-col gap-5">
+        {provider === 'email' || provider === 'smtp' ? (
+          <RadioChoice
+            label="Send email with"
+            value={provider}
+            disabled={disabled}
+            options={[
+              { value: 'email', label: 'Resend' },
+              { value: 'smtp', label: 'SMTP' },
+            ]}
+            onChange={onChoose}
+          />
+        ) : null}
         {provider === 'http' ? (
           <RadioChoice
             label="How this connection signs in"
@@ -107,11 +119,12 @@ export function StepBody({
         />
       </div>
     );
+  const authType = useOAuth2 ? 'oauth2' : undefined;
   return (
     <NameStep
       id={id}
       provider={provider}
-      authType={useOAuth2 ? 'oauth2' : undefined}
+      authType={provider === 'smtp' ? 'smtp' : authType}
       name={name}
       disabled={disabled}
       validation={nameValidation}

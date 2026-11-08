@@ -25,7 +25,7 @@ export const currentDestinationSql = and(
   eq(destination.kind, version.kind),
   eq(version.sideEffectClass, intent.sideEffectClass),
   eq(connection.providerKey, version.kind),
-  sql`${connection.authType}=case ${version.kind} when 'slack' then ${notificationProviderRequirements.slack.authType} else ${notificationProviderRequirements.email.authType} end`,
+  sql`(${connection.authType}=case ${version.kind} when 'slack' then ${notificationProviderRequirements.slack.authType} else ${notificationProviderRequirements.email.authType} end or (${version.kind}='email' and ${connection.authType}='smtp' and ${version.sideEffectClass}='unsafe'))`,
   eq(connection.status, 'active'),
   eq(connection.currentSecretVersionId, deliveredSecret),
 );

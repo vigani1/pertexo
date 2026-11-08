@@ -1,9 +1,9 @@
 import { PlusIcon } from 'lucide-react';
 import { cn } from '@/lib/class-names';
 import {
-  PROVIDER_KEYS,
+  CONNECTION_CHOICES,
   PROVIDERS,
-  type ProviderKey,
+  type ConnectionChoice,
 } from '../model/connection-providers';
 import { ProviderTile } from './provider-tile';
 
@@ -17,14 +17,14 @@ export function ProviderSockets({
   onConnect,
 }: Readonly<{
   layout?: 'row' | 'stack';
-  onConnect: (provider: ProviderKey) => void;
+  onConnect: (provider: ConnectionChoice) => void;
 }>) {
   return (
     <ul
       aria-label="Services you can connect"
       className={cn('grid gap-3', layout === 'row' && 'lg:grid-cols-3')}
     >
-      {PROVIDER_KEYS.map((provider) => (
+      {CONNECTION_CHOICES.map((provider) => (
         <li key={provider}>
           <button
             type="button"

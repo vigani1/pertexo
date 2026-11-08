@@ -75,3 +75,5 @@ export {
 export { PROVIDER_RETRY_FAILURE } from './providers/retry-after-failure.js';
 
 export { SLACK_REJECTIONS } from './slack/rejection-policy.js';
+
+export { smtpCredentialSchema } from '@pertexo/contracts';

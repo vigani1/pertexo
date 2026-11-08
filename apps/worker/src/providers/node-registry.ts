@@ -1,3 +1,5 @@
+import { createSmtpEmailClient } from './smtp-email.js';
+import type { createSmtpClient } from '@pertexo/secrets/server';
 import {
   createPlatformNodeRegistry as assemblePlatformNodeRegistry,
   type PlatformNodeRegistryDependencies,
@@ -11,6 +13,10 @@ import { createNodeProviderHttpClient } from './http-client.js';
 /** Worker composition owns live provider clients and their safe network policy. */
 export function createPlatformNodeRegistry(
   dependencies: Partial<PlatformNodeRegistryDependencies> = {},
+  smtpPolicy: NonNullable<Parameters<typeof createSmtpClient>[1]> = {
+    allowedPrivateNetworks: [],
+    allowPlaintext: false,
+  },
 ) {
   return assemblePlatformNodeRegistry({
     ...dependencies,
@@ -22,6 +28,7 @@ export function createPlatformNodeRegistry(
     },
     emailSendNotification: dependencies.emailSendNotification ?? {
       client: createResendClient(createNodeProviderHttpClient()),
+      smtp: createSmtpEmailClient(smtpPolicy),
     },
   });
 }

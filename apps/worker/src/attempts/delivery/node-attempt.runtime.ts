@@ -1,3 +1,4 @@
+import type { createSmtpClient } from '@pertexo/secrets/server';
 import type { CallbackKeyConfig } from '@pertexo/secrets/server';
 import type { WorkerCodeRunnerConfig } from '../code/client.js';
 import { createNodeAttemptRunStore } from '@pertexo/core/attempts';
@@ -99,6 +100,7 @@ export type NodeAttemptRuntimeOptions = Readonly<{
   heartbeatIntervalMillis: number;
   /** The HTTP request step's private-network policy. */
   httpRequest?: SecureHttpAddressPolicy;
+  smtpPolicy?: NonNullable<Parameters<typeof createSmtpClient>[1]>;
   leaseDurationSeconds: number;
   observer?: QueueConsumerObserver;
   preview?: PreviewAttemptRuntimeDependency;
@@ -116,7 +118,10 @@ export type NodeAttemptRuntimeFactories = Readonly<{
   previewHandler: typeof createPreviewAttemptHandler;
   previewTelemetry: () => PreviewTelemetry;
   reader: typeof createWorkflowExecutionReader;
-  registry: (httpRequest?: SecureHttpAddressPolicy) => NodeExecutionRegistry;
+  registry: (
+    httpRequest?: SecureHttpAddressPolicy,
+    smtpPolicy?: NonNullable<Parameters<typeof createSmtpClient>[1]>,
+  ) => NodeExecutionRegistry;
   runFailures: typeof createRunFailureStore;
   runStore: typeof createNodeAttemptRunStore;
 }>;
@@ -130,13 +135,16 @@ const productionFactories: NodeAttemptRuntimeFactories = {
   previewHandler: createPreviewAttemptHandler,
   previewTelemetry: createProductionPreviewTelemetry,
   reader: createWorkflowExecutionReader,
-  registry: (httpRequest) =>
-    createPlatformNodeRegistry({
-      httpRequest: { httpClient: createNodeProviderHttpClient(httpRequest) },
-      httpRequestTelemetry: createHttpProviderTelemetry(),
-      slackSendMessageTelemetry: createSlackProviderTelemetry(),
-      emailSendNotificationTelemetry: createEmailProviderTelemetry(),
-    }),
+  registry: (httpRequest, smtpPolicy) =>
+    createPlatformNodeRegistry(
+      {
+        httpRequest: { httpClient: createNodeProviderHttpClient(httpRequest) },
+        httpRequestTelemetry: createHttpProviderTelemetry(),
+        slackSendMessageTelemetry: createSlackProviderTelemetry(),
+        emailSendNotificationTelemetry: createEmailProviderTelemetry(),
+      },
+      smtpPolicy,
+    ),
   runFailures: createRunFailureStore,
   runStore: createNodeAttemptRunStore,
 };
@@ -161,7 +169,7 @@ async function createProductionNodeAttemptRuntime(
     catalog: composeExecutableCatalog(PLATFORM_NODE_CATALOG),
     expressionEvaluator,
   });
-  const registry = factories.registry(options.httpRequest);
+  const registry = factories.registry(options.httpRequest, options.smtpPolicy);
   const runStore = factories.runStore(
     options.database,
     options.databaseRuntime,

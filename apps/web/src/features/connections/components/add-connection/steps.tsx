@@ -8,7 +8,7 @@ import {
   connectionNameError,
   describeConnectionKind,
   PROVIDERS,
-  type ProviderKey,
+  type ConnectionChoice,
 } from '../../model/connection-providers';
 import type { SavedCredential } from '../../model/credential-draft';
 import type { ConnectionTest } from '../connection-test/use-command';
@@ -62,7 +62,7 @@ export function NameStep({
   uncertain,
 }: Readonly<{
   id: string;
-  provider: ProviderKey;
+  provider: ConnectionChoice;
   authType: ConnectionResponse['authType'] | undefined;
   name: string;
   disabled: boolean;

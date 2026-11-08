@@ -139,6 +139,7 @@ describe('parseWorkerConfig', () => {
     ).toEqual({
       artifactScratchDirectory: '/var/lib/pertexo/artifact-scratch',
       httpRequest: { allowedPrivateNetworks: [] },
+      smtpPolicy: { allowedPrivateNetworks: [], allowPlaintext: false },
       codeRunner: {
         settings: DEFAULT_CODE_SETTINGS,
         socketPath: codeRunnerSocketPath({

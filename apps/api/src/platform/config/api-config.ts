@@ -137,6 +137,7 @@ export type ApiNodeEnvironment = (typeof API_NODE_ENVIRONMENTS)[number];
 export type ApiConfig = Readonly<{
   /** Where OAuth2 token requests may reach besides the public internet. */
   httpAllowedPrivateNetworks?: readonly AllowedPrivateNetwork[];
+  smtpAllowPlaintext?: boolean;
   callbacks?: CallbackKeyConfig;
   capacity: InstanceCapacity;
   webhookEndpointBurstLimit: number;
@@ -204,6 +205,15 @@ export function parseApiConfig(
     () => parseCallbackKeyConfig(environment, { deployed }),
   );
   return Object.freeze({
+    smtpAllowPlaintext: parseConfigurationSection(
+      'SMTP_ALLOW_PLAINTEXT',
+      'use true or false; defaults to false.',
+      () =>
+        z
+          .enum(['true', 'false'])
+          .default('false')
+          .parse(environment.SMTP_ALLOW_PLAINTEXT) === 'true',
+    ),
     httpAllowedPrivateNetworks: parseConfigurationSection(
       'HTTP_ALLOWED_PRIVATE_NETWORKS',
       'use comma-separated IPv4 or IPv6 CIDRs, or remove this setting to allow public addresses only.',

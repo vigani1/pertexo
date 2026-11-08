@@ -273,7 +273,7 @@ function ConnectionsSession({
         steps={[
           {
             title: 'Connect a service',
-            body: 'Add a Slack bot token, an API’s headers, a Resend API key or a signing key. It’s stored encrypted, and nobody, including you, can see it again.',
+            body: 'Add a Slack bot token, an API’s headers, a Resend API key, an SMTP login or a signing key. It’s stored encrypted, and nobody, including you, can see it again.',
           },
           {
             title: 'Keep it working',

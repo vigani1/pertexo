@@ -1,3 +1,4 @@
+import { createSmtpEmailClient } from '../../providers/smtp-email.js';
 import { StartupSettingError } from '@pertexo/observability/startup';
 import type { Provider } from '@nestjs/common';
 import type { FailureNotificationStore } from '@pertexo/core/notifications';
@@ -85,6 +86,12 @@ export async function createOwnedMaintenanceRuntime(
         encryption: encryptionRuntime.encryption,
         slack: deliveryFactories.slack(httpClient),
         email: deliveryFactories.email(httpClient),
+        smtp: createSmtpEmailClient(
+          config.smtpPolicy ?? {
+            allowedPrivateNetworks: [],
+            allowPlaintext: false,
+          },
+        ),
         workerId: config.nodeAttempt.workerId,
         publicWebOrigin: config.publicWebOrigin,
       });

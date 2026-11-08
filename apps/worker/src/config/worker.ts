@@ -1,3 +1,4 @@
+import type { createSmtpClient } from '@pertexo/secrets/server';
 import {
   StartupSettingError,
   parseStartupSettings,
@@ -44,6 +45,7 @@ export type WorkerConfig = Readonly<
     artifactScratchDirectory: string;
     codeRunner: WorkerCodeRunnerConfig;
     httpRequest: SecureHttpAddressPolicy;
+    smtpPolicy?: NonNullable<Parameters<typeof createSmtpClient>[1]>;
     retention: RetentionConfig;
     connectionEncryption?: ConnectionEnvelopeEncryptionConfig;
     invitationDelivery?: InvitationDeliveryConfig;
@@ -127,14 +129,23 @@ export function parseWorkerConfig(
         'CONNECTION_ENCRYPTION_MODE',
         'required_when_deployed',
       );
+    const allowedPrivateNetworks = parseAllowedPrivateNetworks(
+      raw.HTTP_ALLOWED_PRIVATE_NETWORKS,
+    );
     return Object.freeze({
       ...result.data,
       ...(publicWebOrigin === undefined ? {} : { publicWebOrigin }),
       ...(callbacks === undefined ? {} : { callbacks }),
+      smtpPolicy: {
+        allowedPrivateNetworks: allowedPrivateNetworks,
+        allowPlaintext:
+          z
+            .enum(['true', 'false'])
+            .default('false')
+            .parse(raw.SMTP_ALLOW_PLAINTEXT) === 'true',
+      },
       httpRequest: Object.freeze({
-        allowedPrivateNetworks: parseAllowedPrivateNetworks(
-          raw.HTTP_ALLOWED_PRIVATE_NETWORKS,
-        ),
+        allowedPrivateNetworks,
       }),
       codeRunner: {
         settings: parseCodeSettings(raw),

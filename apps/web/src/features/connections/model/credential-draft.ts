@@ -1,4 +1,12 @@
 import {
+  smtpCredential,
+  emptySmtpDraft,
+  smtpDraftErrors,
+  SMTP_FIELDS,
+  type SmtpDraft,
+  type SmtpField,
+} from './smtp-draft';
+import {
   signingKeyCredentialSchema,
   httpHeadersCredentialSchema,
   resendApiKeyCredentialSchema,
@@ -8,7 +16,7 @@ import {
 import type { ApiProblemIssue } from '@pertexo/contracts';
 import type { FieldErrors } from '@/components/ui/use-field-validation';
 import type { ConnectionCredential } from '../data/connections.api';
-import type { ProviderKey } from './connection-providers';
+import type { ConnectionChoice } from './connection-providers';
 import {
   emptyOAuth2Draft,
   oauth2DraftErrors,
@@ -19,7 +27,7 @@ import {
 } from './oauth2-draft';
 
 /** What a form fills in: a provider's own credential, or HTTP's other way in. */
-export type CredentialKind = ProviderKey | 'oauth2';
+export type CredentialKind = ConnectionChoice | 'oauth2';
 
 export type HeaderRow = Readonly<{ id: string; name: string; value: string }>;
 
@@ -29,9 +37,11 @@ export type CredentialDraft =
   | Readonly<{ provider: 'slack'; botToken: string }>
   | Readonly<{ provider: 'http'; headers: readonly HeaderRow[] }>
   | Readonly<{ provider: 'email'; apiKey: string; fromEmail: string }>
-  | OAuth2Draft;
+  | OAuth2Draft
+  | SmtpDraft;
 
 export type CredentialField =
+  | SmtpField
   | OAuth2Field
   | 'signingKey'
   | 'botToken'
@@ -49,6 +59,8 @@ const SLACK_TOKEN_FORMAT =
 /** Whether anything secret has been typed or pasted into the draft. */
 export function credentialDraftHasSecret(draft: CredentialDraft): boolean {
   switch (draft.provider) {
+    case 'smtp':
+      return draft.password !== '';
     case 'signing':
       return draft.signingKey !== '';
     case 'slack':
@@ -67,6 +79,8 @@ export function emptyCredentialDraft(
   createId: () => string,
 ): CredentialDraft {
   switch (provider) {
+    case 'smtp':
+      return emptySmtpDraft();
     case 'signing':
       return { provider, signingKey: '' };
     case 'slack':
@@ -202,6 +216,8 @@ export function credentialErrors(
   draft: CredentialDraft,
 ): FieldErrors<CredentialField> {
   switch (draft.provider) {
+    case 'smtp':
+      return smtpDraftErrors(draft);
     case 'signing':
       return signingKeyCredentialSchema.safeParse({
         type: 'hmac_key',
@@ -240,6 +256,8 @@ export function toConnectionCredential(
   draft: CredentialDraft,
 ): ConnectionCredential {
   switch (draft.provider) {
+    case 'smtp':
+      return smtpCredential(draft);
     case 'signing':
       return { type: 'hmac_key', signingKey: draft.signingKey };
     case 'slack':
@@ -280,6 +298,7 @@ export function toCreateRequest(
     case 'slack_bot_token':
       return { providerKey: 'slack', name, credential };
     case 'resend_api_key':
+    case 'smtp':
       return { providerKey: 'email', name, credential };
     case 'http_headers':
     case 'oauth2':
@@ -295,10 +314,15 @@ export function credentialServerErrors(
   if (draft.provider === 'oauth2') return oauth2ServerErrors(issues);
   const errors: Partial<Record<CredentialField, string>> = {};
   for (const issue of issues) {
-    const path = issue.path.split('.');
+    const path = issue.path.replace(/^\//u, '').replaceAll('/', '.').split('.');
     if (path[0] !== 'credential') continue;
     const field = path[1];
     switch (draft.provider) {
+      case 'smtp': {
+        const smtpField = SMTP_FIELDS.find((candidate) => candidate === field);
+        if (smtpField !== undefined) errors[smtpField] = issue.message;
+        break;
+      }
       case 'signing':
         if (field === 'signingKey')
           errors.signingKey = 'Use valid Unicode text of 1–4,096 UTF-8 bytes.';
@@ -342,6 +366,11 @@ export function describeSavedCredential(
   draft: CredentialDraft,
 ): SavedCredential {
   switch (draft.provider) {
+    case 'smtp':
+      return {
+        term: 'SMTP',
+        value: `${draft.host}:${draft.port} · sends from ${draft.fromEmail}`,
+      };
     case 'signing':
       return { term: 'Key', value: 'Stored encrypted' };
     case 'slack':

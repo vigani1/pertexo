@@ -338,3 +338,38 @@ it('answers 401 only for a signed-out session or a refused public webhook', () =
     'webhook.authentication_failed',
   ]);
 });
+
+describe('SMTP email connections', () => {
+  it('accepts an SMTP credential for email without exposing its password in a response', () => {
+    const result = connectionCreateRequestSchema.safeParse({
+      providerKey: 'email',
+      name: 'Workspace relay',
+      credential: {
+        type: 'smtp',
+        host: 'smtp.example.test',
+        port: 587,
+        security: 'starttls',
+        username: 'ada',
+        password: 'private-smtp-password',
+        fromEmail: 'alerts@example.test',
+        fromName: 'Workspace alerts',
+      },
+    });
+    expect(result.success).toBe(true);
+    const response = connectionResponseSchema.safeParse({
+      ...connection,
+      providerKey: 'email',
+      authType: 'smtp',
+    });
+    expect(response.success).toBe(true);
+    expect(JSON.stringify(response)).not.toContain('private-smtp-password');
+  });
+  it('accepts a test without consenting to send a message', () => {
+    expect(
+      connectionTestRequestSchema.safeParse({
+        providerKey: 'email',
+        transport: 'smtp',
+      }).success,
+    ).toBe(true);
+  });
+});

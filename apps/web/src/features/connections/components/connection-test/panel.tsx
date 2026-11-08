@@ -75,13 +75,14 @@ function TestOutcome({
         {test.error}
       </Notice>
     );
-  return (
-    <p className="text-sm text-muted-foreground">
-      {authType === 'oauth2'
-        ? 'Pertexo gets a token and calls an address with it to see whether it works.'
-        : INTRO[provider]}
-    </p>
-  );
+  let intro = INTRO[provider];
+  if (authType === 'smtp')
+    intro =
+      'Pertexo connects, upgrades TLS when required, authenticates and quits. No email is sent.';
+  else if (authType === 'oauth2')
+    intro =
+      'Pertexo gets a token and calls an address with it to see whether it works.';
+  return <p className="text-sm text-muted-foreground">{intro}</p>;
 }
 
 /**
@@ -111,6 +112,7 @@ export function ConnectionTestPanel({
   const running = test.phase === 'running';
 
   function request(): ConnectionTestRequest | undefined {
+    if (authType === 'smtp') return { providerKey: 'email', transport: 'smtp' };
     if (provider === 'signing') return { providerKey: 'signing' };
     if (provider === 'slack') return { providerKey: 'slack' };
     if (provider === 'http')
@@ -162,7 +164,7 @@ export function ConnectionTestPanel({
           )}
         </LabelledField>
       ) : null}
-      {provider === 'email' ? (
+      {provider === 'email' && authType !== 'smtp' ? (
         <Field
           data-invalid={acknowledgementError === undefined ? undefined : true}
         >

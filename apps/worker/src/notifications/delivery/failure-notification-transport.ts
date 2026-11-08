@@ -1,3 +1,6 @@
+import { smtpCredentialSchema } from '@pertexo/integrations';
+import { z } from 'zod';
+import type { SmtpEmailClient } from '@pertexo/integrations/server';
 import { createHash } from 'node:crypto';
 import {
   resolvedResendApiKeyCredentialSchema as resendCredentialSchema,
@@ -33,6 +36,7 @@ export type DeliveryDependencies = Readonly<{
   encryption: Pick<ConnectionEnvelopeEncryption, 'open'>;
   slack: Pick<SlackClient, 'sendMessage'>;
   email: Pick<ResendClient, 'sendNotification'>;
+  smtp?: SmtpEmailClient;
   workerId: string;
   publicWebOrigin: string;
 }>;
@@ -149,10 +153,14 @@ export async function deliverEmail(
   }
 
   try {
-    let credential: ReturnType<typeof resendCredentialSchema.parse>;
+    const emailCredentialSchema = z.discriminatedUnion('type', [
+      resendCredentialSchema,
+      smtpCredentialSchema,
+    ]);
+    let credential: z.output<typeof emailCredentialSchema>;
     try {
       const decoded = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
-      credential = resendCredentialSchema.parse(JSON.parse(decoded) as unknown);
+      credential = emailCredentialSchema.parse(JSON.parse(decoded) as unknown);
     } catch {
       return settleUnresolvedDelivery(
         {
@@ -183,6 +191,12 @@ export async function deliverEmail(
         }),
       )
       .digest('hex')}`;
+    if (credential.type === 'smtp')
+      return await deliverSmtp(dependencies, destination, input, {
+        credential,
+        message,
+        binding,
+      });
     try {
       return settleUnresolvedDelivery(
         emailResult(
@@ -228,4 +242,66 @@ export async function deliverEmail(
   } finally {
     bytes.fill(0);
   }
+}
+
+async function deliverSmtp(
+  dependencies: DeliveryDependencies,
+  destination: EmailDestination,
+  input: DeliveryInput,
+  {
+    credential,
+    message,
+    binding,
+  }: Readonly<{
+    credential: z.output<typeof smtpCredentialSchema>;
+    message: Readonly<{ subject: string; text: string }>;
+    binding: string;
+  }>,
+): Promise<FailureNotificationDeliveryResult> {
+  if (input.deliveryUnresolved)
+    return {
+      kind: 'outcome_unknown',
+      safeErrorCode: 'delivery.smtp_unconfirmed',
+      possiblyDispatched: true,
+    };
+  if (dependencies.smtp === undefined)
+    return {
+      kind: 'definite_failure',
+      safeErrorCode: 'delivery.smtp_unavailable',
+      possiblyDispatched: false,
+    };
+  const result = await dependencies.smtp.sendNotification(credential, {
+    fromEmail: credential.fromEmail,
+    toEmail: destination.toEmail,
+    subject: message.subject,
+    text: message.text,
+    idempotencyKey: input.idempotencyKey,
+    timeoutMillis: TIMEOUT_MILLIS,
+    signal: input.signal,
+    beforeDispatch: () =>
+      dependencies.store.fenceDispatch({
+        workspaceId: input.workspaceId,
+        intentId: input.intentId,
+        attemptNumber: input.attemptNumber,
+        destinationIdentity: destination,
+        deliveryBinding: binding,
+        signal: input.signal,
+      }),
+  });
+  if (result.kind === 'submitted')
+    return { kind: 'delivered', possiblyDispatched: true };
+  const safeErrorCode = `delivery.smtp_${result.failure.category}`;
+  if (result.kind === 'unknown')
+    return {
+      kind: 'outcome_unknown',
+      safeErrorCode,
+      possiblyDispatched: true,
+    };
+  if (result.kind === 'retryable')
+    return { kind: 'retry', safeErrorCode, possiblyDispatched: false };
+  return {
+    kind: 'definite_failure',
+    safeErrorCode,
+    possiblyDispatched: false,
+  };
 }

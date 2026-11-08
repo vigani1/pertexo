@@ -1,3 +1,5 @@
+import type { NodeArtifactRuntime } from '@pertexo/node-sdk/server';
+import type { Readable } from 'node:stream';
 export type SystemMailConfig =
   | Readonly<{ mode: 'resend'; apiKey: string }>
   | Readonly<{
@@ -10,6 +12,15 @@ export type SystemMailConfig =
 
 export type SystemMailMessage = Readonly<{
   fromEmail: string;
+  fromName?: string;
+  mime?: Readonly<{
+    attachments: readonly Readonly<{
+      filename: string;
+      contentType: string;
+      content: Readable;
+    }>[];
+    spool: NonNullable<NodeArtifactRuntime['spool']>;
+  }>;
   toEmail: string;
   subject: string;
   text: string;

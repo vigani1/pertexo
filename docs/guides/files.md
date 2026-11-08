@@ -395,7 +395,8 @@ or other-workspace file fails as the usual file problem; more than 10 files
 fails as too many attachments and more than 6 MB of files as attachments too
 large. Nothing is sent in those cases. The 6 MB leaves room for the message
 inside the 10 MB request ceiling every outgoing file body shares. The message
-and its files go through worker scratch to Resend as one request.
+and its files use the selected email connection: a spooled request for Resend,
+or a MIME message streamed through the same bounded scratch spool for SMTP.
 
 For example, to email the weekly report:
 
@@ -419,7 +420,7 @@ The step's output names what it sent, never the contents:
 Run detail shows those files as the same chips. Sending doesn't copy a file or
 extend its storage; the run that references it keeps it, as for any step input.
 A retry reuses the step's provider idempotency key with byte-identical content,
-so Resend delivers one email. HTML bodies, several recipients, inline images and
+so the selected email service accepts one message. HTML bodies, several recipients, inline images and
 files from URLs that aren't stored files are not supported.
 
 ## What is checked and what can repeat

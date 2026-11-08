@@ -42,7 +42,29 @@ export function needsReconnecting({
   );
 }
 
+const SMTP_FAILURES: Readonly<Record<string, TestOutcomeCopy>> = {
+  'connection.smtp_network': {
+    title: 'Cannot connect.',
+    detail: 'Check the SMTP host, port and operator network allowlist.',
+  },
+  'connection.smtp_tls': {
+    title: 'TLS failed.',
+    detail:
+      'Check the security mode, certificate and operator plaintext policy.',
+  },
+  'connection.smtp_authentication': {
+    title: 'Authentication failed.',
+    detail: 'Check the username and password.',
+  },
+  'connection.smtp_sender_rejected': {
+    title: 'Sender refused.',
+    detail: 'Check the from address and relay sending policy.',
+  },
+};
 const FAILURE_REASONS: Readonly<Record<string, string>> = {
+  ...Object.fromEntries(
+    Object.entries(SMTP_FAILURES).map(([code, copy]) => [code, copy.title]),
+  ),
   'connection.credential_rejected': 'credential rejected',
   'connection.slack_account_inactive': 'Slack account inactive',
   'connection.slack_token_expired': 'Slack token expired',
@@ -198,9 +220,16 @@ export function describeTestOutcome(
   outcome: ConnectionTestResponse['outcome'],
   authType?: ConnectionResponse['authType'],
 ): TestOutcomeCopy {
+  if (!outcome.ok && authType === 'smtp') {
+    const smtpFailure = SMTP_FAILURES[outcome.errorCode];
+    if (smtpFailure !== undefined) return smtpFailure;
+  }
   if (outcome.ok)
     return {
-      title: SUCCESS_TITLES[provider],
+      title:
+        authType === 'smtp'
+          ? 'SMTP connection works.'
+          : SUCCESS_TITLES[provider],
       detail:
         provider === 'http'
           ? `It answered ${String(outcome.httpStatus)}, so the ${authType === 'oauth2' ? 'token works' : 'headers work'}.`

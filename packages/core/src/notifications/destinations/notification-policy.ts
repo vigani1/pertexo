@@ -1,3 +1,4 @@
+import { connectionFitsSlot } from '@pertexo/workflow-model';
 export const notificationProviderRequirements = Object.freeze({
   email: Object.freeze({
     authType: 'resend_api_key',
@@ -26,8 +27,10 @@ export function eligibleNotificationDestination(
   return (
     destination?.connection_id != null &&
     destination.destination_status === 'enabled' &&
-    destination.side_effect_class ===
-      notificationProviderRequirements[destination.kind].sideEffectClass
+    (destination.side_effect_class ===
+      notificationProviderRequirements[destination.kind].sideEffectClass ||
+      (destination.kind === 'email' &&
+        destination.side_effect_class === 'unsafe'))
   );
 }
 
@@ -44,7 +47,18 @@ export function eligibleNotificationConnection(
   const requirements = notificationProviderRequirements[kind];
   return (
     connection?.status === 'active' &&
-    connection.provider_key === requirements.providerKey &&
-    connection.auth_type === requirements.authType
+    connectionFitsSlot(
+      { providerKey: connection.provider_key, authType: connection.auth_type },
+      requirements,
+    )
   );
+}
+
+export function notificationSideEffectClass(
+  kind: NotificationKind,
+  authType: string,
+): 'unsafe' | 'idempotent_with_key' {
+  return authType === 'smtp'
+    ? 'unsafe'
+    : notificationProviderRequirements[kind].sideEffectClass;
 }

@@ -12,6 +12,7 @@ export {
   slackBotTokenCredentialSchema,
   slackChannelLookupResponseSchema,
   resendApiKeyCredentialSchema,
+  smtpCredentialSchema,
   type ConnectionResponse,
   type ConnectionListResponse,
   type ConnectionTestResponse,

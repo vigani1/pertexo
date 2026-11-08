@@ -12,6 +12,7 @@ export const CONNECTION_AUTH_TYPE = {
   httpHeaders: 'http_headers',
   slackBotToken: 'slack_bot_token',
   resendApiKey: 'resend_api_key',
+  smtp: 'smtp',
   oauth2: 'oauth2',
 } as const;
 
@@ -42,7 +43,9 @@ export function connectionFitsSlot(
   return (
     connection.authType === slot.authType ||
     (slot.authType === CONNECTION_AUTH_TYPE.httpHeaders &&
-      connection.authType === CONNECTION_AUTH_TYPE.oauth2)
+      connection.authType === CONNECTION_AUTH_TYPE.oauth2) ||
+    (slot.authType === CONNECTION_AUTH_TYPE.resendApiKey &&
+      connection.authType === CONNECTION_AUTH_TYPE.smtp)
   );
 }
 

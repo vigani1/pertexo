@@ -3,7 +3,7 @@ import { sql } from 'drizzle-orm';
 import { QueryBuilder } from 'drizzle-orm/pg-core';
 import type { Pool } from 'pg';
 
-export const EXPECTED_MIGRATION_HEAD = '0115_form_capability.sql';
+export const EXPECTED_MIGRATION_HEAD = '0116_smtp_and_server_mail.sql';
 const MINIMUM_POSTGRES_MAJOR = 18;
 
 /**

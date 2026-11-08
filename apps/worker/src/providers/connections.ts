@@ -1,3 +1,4 @@
+import { connectionFitsSlot } from '@pertexo/workflow-model';
 import {
   CONNECTION_AUTH_TYPE,
   ConnectionOAuth2NotConnectedError,
@@ -77,6 +78,7 @@ async function assertSecretCurrent(
     input.expectedAuthType !== CONNECTION_AUTH_TYPE.httpHeaders &&
     input.expectedAuthType !== CONNECTION_AUTH_TYPE.slackBotToken &&
     input.expectedAuthType !== CONNECTION_AUTH_TYPE.resendApiKey &&
+    input.expectedAuthType !== CONNECTION_AUTH_TYPE.smtp &&
     input.expectedAuthType !== CONNECTION_AUTH_TYPE.oauth2;
   if (unsupportedAuthType) throw new ProviderCredentialInvalidError();
   try {
@@ -168,7 +170,12 @@ export function createProviderConnectionRuntimeFactory(
             throw new ProviderCredentialInvalidError();
           throw error;
         }
-        if (resolved.connection.authType !== input.expectedAuthType)
+        if (
+          !connectionFitsSlot(resolved.connection, {
+            providerKey: input.expectedProviderKey,
+            authType: input.expectedAuthType,
+          })
+        )
           throw new ProviderCredentialInvalidError();
         return openSecret(encryption, context.workspaceId, input, resolved);
       },

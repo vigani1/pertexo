@@ -44,7 +44,8 @@ function testedWhen(value: string | null | undefined): string {
 export function ConnectionFacts({
   connection,
 }: Readonly<{ connection: ConnectionResponse }>) {
-  const provider = PROVIDERS[connection.providerKey];
+  const provider =
+    PROVIDERS[connection.authType === 'smtp' ? 'smtp' : connection.providerKey];
   const { health } = connection;
   const word = credentialWord(connection.providerKey, connection.authType);
   const credentialLabel = `${word.charAt(0).toUpperCase()}${word.slice(1)}`;

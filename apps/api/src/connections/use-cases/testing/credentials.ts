@@ -4,6 +4,7 @@ import {
   signingKeyCredentialSchema,
   httpHeadersCredentialSchema,
   resendApiKeyCredentialSchema,
+  smtpCredentialSchema,
   slackBotTokenCredentialSchema,
 } from '../../connection-request.js';
 
@@ -17,6 +18,7 @@ export function decodeCredential(plaintext: Uint8Array) {
         return signingKeyCredentialSchema.parse(value);
       if (value.type === 'slack_bot_token')
         return slackBotTokenCredentialSchema.parse(value);
+      if (value.type === 'smtp') return smtpCredentialSchema.parse(value);
       if (value.type === 'resend_api_key')
         return resendApiKeyCredentialSchema.parse(value);
     }
