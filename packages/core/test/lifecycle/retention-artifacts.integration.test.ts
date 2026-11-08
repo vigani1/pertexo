@@ -969,3 +969,43 @@ describe('retention artifact reclamation', () => {
     await expect(readCapacity()).resolves.toEqual(before);
   });
 });
+
+it('defers byte erasure while an online backup holds the deletion lock and resumes afterwards', async () => {
+  const id = randomUUID();
+  const pool = new Pool({ connectionString: maintenanceUrl, max: 1 });
+  const client = await pool.connect();
+  await beforeEachFixture1();
+  await insertExpiredPendingUserUpload(id, 'a');
+  const retention = createRunArtifactRetentionCoordinator(
+    parseDatabaseConfig({ connectionString: maintenanceUrl, max: 2 }),
+    { delete: () => Promise.resolve(), head: () => Promise.resolve(null) },
+  );
+  try {
+    await client.query(
+      "select pg_advisory_lock(hashtextextended('pertexo.backup.artifact-deletion',0))",
+    );
+    expect(await retention.processNext()).toMatchObject({
+      artifactId: id,
+      status: 'waiting',
+    });
+    expect(await readCapacity()).toEqual({ chargedCount: 1, chargedBytes: 10 });
+    await client.query(
+      "select pg_advisory_unlock(hashtextextended('pertexo.backup.artifact-deletion',0))",
+    );
+    await withOwnerTransaction((connection) =>
+      connection.query(
+        'update app.artifacts set retention_retry_at=null where id=$1',
+        [id],
+      ),
+    );
+    expect(await retention.processNext()).toMatchObject({
+      artifactId: id,
+      status: 'completed',
+    });
+    expect(await readCapacity()).toEqual({ chargedCount: 0, chargedBytes: 0 });
+  } finally {
+    client.release(true);
+    await pool.end();
+    await retention.close();
+  }
+});

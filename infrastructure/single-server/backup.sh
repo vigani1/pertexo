@@ -3,14 +3,7 @@ set -Eeuo pipefail
 [[ $# == 0 ]] || { echo 'usage: backup.sh' >&2; exit 64; }
 source "$(dirname "$0")/release-operations.sh"
 work=''
-serving=()
-resume_serving() {
-  [[ ${#serving[@]} -gt 0 ]] || return 0
-  local resumed=("${serving[@]}") wait_app=true
-  [[ ${#resumed[@]} == "${#writer_services[@]}" ]] || wait_app=false
-  serving=()
-  compose up -d --no-deps --wait --wait-timeout 180 "${resumed[@]}" && { [[ $wait_app == false ]] || wait_for_app; }
-}
+capture_pid=''
 # A dead-man switch notices the night nothing arrives; /fail says so sooner.
 report_outcome() {
   local url
@@ -23,7 +16,10 @@ report_outcome() {
 finish() {
   result=$?
   trap - EXIT
-  resume_serving || result=1
+  if [[ -n $work && -f "$work/capture.cid" ]]; then
+    docker rm -f "$(cat "$work/capture.cid")" >/dev/null 2>&1 || true
+  fi
+  [[ -z $capture_pid ]] || wait "$capture_pid" 2>/dev/null || true
   [[ -z $work ]] || rm -rf "$work"
   report_outcome "$result"
   exit "$result"
@@ -35,37 +31,45 @@ operation_lock
 [[ -f "$BETA_STATE_DIR/current" && ! -f "$BETA_STATE_DIR/migration-fence" && ! -f "$BETA_STATE_DIR/restore-fence" ]] || { echo 'A settled current release is required for backup' >&2; exit 1; }
 select_release "$(cat "$BETA_STATE_DIR/current")"
 require_no_ops
+[[ -n $(config_value BACKUP_CRYPT_PASSWORD) && -n $(config_value BACKUP_CRYPT_SALT) ]] || { echo 'Provide BACKUP_CRYPT_PASSWORD and BACKUP_CRYPT_SALT from the separately held settings file' >&2; exit 1; }
 prepare_backup
 work=$(mktemp -d "$BETA_STATE_DIR/.backup.XXXXXX")
 point=$(date -u +%Y%m%dT%H%M%SZ)
 prefix="pertexo-beta/$point"
-rclone lsf "backup:$backup_bucket" --dirs-only --recursive --max-depth 2 > "$work/points"
+rclone lsf "backup:$backup_bucket/encrypted" --max-depth 1 > "$work/store"
+if [[ ! -s "$work/store" ]]; then
+  printf 'Pertexo encrypted backups\n' > "$work/KEYCHECK"
+  rclone copyto /backup/KEYCHECK crypt:KEYCHECK
+fi
+verify_backup_key
+rclone lsf "crypt:" --dirs-only --recursive --max-depth 2 > "$work/points"
+rclone lsf "backup:$backup_bucket" --dirs-only --recursive --max-depth 2 >> "$work/points"
 if grep -qx "$prefix/" "$work/points"; then
   echo 'That recovery point already exists; refusing overwrite' >&2; exit 1
 fi
-running=$(compose ps --services --status running)
-for service in "${writer_services[@]}"; do
-  if grep -qx "$service" <<< "$running"; then serving+=("$service"); fi
+: > "$work/STARTED"
+rclone copyto /backup/STARTED "crypt:$prefix/STARTED"
+backup_helper --cidfile "$work/capture.cid" capture.mjs capture /backup &
+capture_pid=$!
+while [[ ! -f "$work/capture.ready" ]]; do
+  kill -0 "$capture_pid" 2>/dev/null || { wait "$capture_pid"; echo 'Artifact capture exited before the dump' >&2; exit 1; }
+  sleep 0.1
 done
-compose stop "${writer_services[@]}"
-# No serving writer or public presigned upload can change the matched snapshot.
 compose exec -T postgres sh -c 'export PGPASSWORD="$POSTGRES_PASSWORD"; exec pg_dump --no-password --format=custom --username="$POSTGRES_USER" --dbname="$POSTGRES_DB"' > "$work/database.dump"
 printf '%s\n' "$SERVICE_VERSION" > "$work/release.txt"
-copied=$(copy_objects backup "$point")
-printf '%s\n' "$copied" > "$work/objects.count"
-(cd "$work"; sha256sum database.dump release.txt objects.count) > "$work/SHA256SUMS"
-for file in database.dump release.txt objects.count SHA256SUMS; do
-  rclone copyto "/backup/$file" "backup:$backup_bucket/$prefix/$file"
+: > "$work/dump.done"
+wait "$capture_pid"
+capture_pid=''
+(cd "$work"; sha256sum database.dump release.txt objects.count objects.json) > "$work/SHA256SUMS"
+for file in database.dump release.txt objects.count objects.json SHA256SUMS; do
+  rclone copyto "/backup/$file" "crypt:$prefix/$file"
 done
-if [[ "$copied" != 0 ]]; then
-  rclone check --download "source:$source_bucket" "backup:$backup_bucket/$prefix/objects"
-fi
 : > "$work/COMPLETE"
-rclone copyto /backup/COMPLETE "backup:$backup_bucket/$prefix/COMPLETE"
+rclone copyto /backup/COMPLETE "crypt:$prefix/COMPLETE"
 # check.sh reads this file's age. Nothing else depends on it.
 printf '%s\n' "$point" > "$BETA_STATE_DIR/last-backup"
-resume_serving
-# Artifact mtimes can predate this snapshot; retention uses the recovery-point date.
+backup_helper capture.mjs collect
+# Old plaintext points keep their existing expiry; shared objects belong to crypt.
 recovery_points expired /backup/points > "$work/expired"
 while IFS= read -r expired; do
   rclone purge "backup:$backup_bucket/$expired"

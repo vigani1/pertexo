@@ -1,4 +1,6 @@
 # syntax=docker/dockerfile:1.7
+FROM rclone/rclone:1.75.2@sha256:2687085f718d3c628f7fdfb77c52a1d344332aed543110bb88088f2c70d43eb5 AS backup-transport
+
 FROM node:24.22.0-bookworm-slim@sha256:a5f4366e834695d5f363b920c104953a535d3a9864d1bdf74566a0ebe01daee5 AS build
 WORKDIR /workspace
 RUN corepack enable && corepack prepare pnpm@11.22.0 --activate
@@ -58,6 +60,7 @@ FROM node:24.22.0-bookworm-slim@sha256:a5f4366e834695d5f363b920c104953a535d3a986
 ARG SOURCE_COMMIT=unknown
 LABEL org.opencontainers.image.source="https://github.com/vigani1/pertexo" \
   org.opencontainers.image.revision=$SOURCE_COMMIT
+COPY --from=backup-transport /usr/local/bin/rclone /usr/local/bin/rclone
 ENV NODE_ENV=production
 WORKDIR /workspace
 RUN apt-get update && apt-get install --yes --no-install-recommends \

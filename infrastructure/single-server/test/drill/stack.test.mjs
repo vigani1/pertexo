@@ -249,10 +249,39 @@ describe('the single-server stack, through its real scripts', () => {
     });
   });
 
-  it('backup.sh completes a recovery point', async () => {
-    backup = await withApiMovedDuring(server, () => server.script('backup.sh'));
+  it('backup.sh completes a recovery point without restarting serving containers', async () => {
+    const before = await compose([
+      'ps',
+      '-q',
+      '--status',
+      'running',
+      'api',
+      'worker',
+      'proxy',
+    ]);
+    const identities = async () =>
+      mustDocker([
+        'inspect',
+        '--format',
+        '{{.Id}} {{.State.StartedAt}}',
+        ...before.trim().split('\n'),
+      ]);
+    const started = await identities();
+    backup = await server.script('backup.sh');
     assert.equal(backup.status, 0, backup.stdout + backup.stderr);
-    assert.ok(backup.apiMoved);
+    assert.equal(
+      await compose([
+        'ps',
+        '-q',
+        '--status',
+        'running',
+        'api',
+        'worker',
+        'proxy',
+      ]),
+      before,
+    );
+    assert.equal(await identities(), started);
     assert.match(backup.stdout, /Completed recovery point: \S+/u);
   });
 

@@ -205,20 +205,31 @@ secure-cookie and encryption gates remain enforced (the later self-managed
 plan amends the original KMS-only production restriction). HTTPS sign-in and real provider
 smoke tests still belong to owner-assisted slice 6.
 
-Slice 4 implements matched recovery points, exact-metadata SDK object transfers,
-rclone byte verification, 14-day retention, a nightly systemd timer and a guarded
-fresh-stack restore. Capture pauses API, worker and public ingress under the
-same lock as deploy and operator commands, and resumes the previously running
-services on failure. Hashes, release identity and object count accompany a
-completion marker published last. An incomplete restore blocks serving until a
-fresh recovery succeeds. Local qualification restores the repository schema,
-all workspace rows, grants and forced RLS into a fresh PostgreSQL instance, and
-checks artifact bytes and metadata through the unchanged adapter. The later
-self-managed encryption qualification restores retained connection/webhook
-secrets under two private key versions, verifies separately supplied keys and
-rejects wrong/missing keys before serving. Recovery payloads contain no master
-keys or private env files. The real
-backup endpoint, installed timer and owner restore drill remain slice 6.
+Slice 4 now takes online, encrypted recovery points (batch I, ops-14/WK1).
+The operation lock excludes deploy, restore and operator commands, while serving
+continues. Pre-copy immutable objects, acquire the PostgreSQL session advisory
+lock shared with retention and purge, take the consistent `pg_dump`, then copy
+missing objects and record the current object manifest. Release the deletion
+pause before uploading the dump and publishing COMPLETE last. Erasure tries a
+shared lock outside transactions and defers until the next pass when busy.
+
+Pinned rclone crypt encrypts both contents and names under `encrypted/` in the
+existing backup bucket. Each point holds a dump, release, count, SHA-256 hashes
+and `objects.json`; shared object bodies and metadata are encrypted once. Check
+newly copied bytes by downloading them; preserve exact S3 metadata at restore.
+Keep 14 days and collect shared objects only when no retained completed point
+needs them. A missing retained manifest aborts collection. Reserve a point before
+capture so same-second retries cannot overwrite it.
+
+Generate BACKUP_CRYPT_PASSWORD and BACKUP_CRYPT_SALT with generate-secrets.mjs;
+keep the original settings offline, separate from the bucket. Key rotation starts
+a new empty bucket and retains old keys for old points. Restore checks the key
+before starting target services, keeps the fresh-target guards and restore fence,
+and accepts legacy plaintext points as a one-way compatibility path. Delete old
+plaintext points after verifying an encrypted restore. Existing qualification
+covers crypt, incrementality, shared retention, live deletion and legacy restore;
+focused core integration covers deferred erasure. No new CI job or ADR.
+Owner provider and full-host restore drills remain slice 6.
 
 Slice 5 adds manual-only main dispatch with a full commit SHA, verifies the latest
 successful main push CI run and its native ARM publisher, and sends only a
@@ -253,14 +264,11 @@ deployment is configured here; those remain owner-assisted slice 6.
      including Ubuntu's iptables rules for 80 and 443, SSH keys only,
      unattended upgrades), first launch, deploy, rollback and `ops` commands.
 4. **Backups.**
-   - `backup.sh`: nightly `pg_dump` (custom format, superuser) and an exact-metadata
-     streaming copy of the bucket using the existing AWS SDK to any S3-compatible
-     store. Pinned rclone uploads database files, compares
-     downloaded bytes and removes expired recovery points. Each recovery point has its own dated prefix. Pause serving
-     writers and public storage ingress while capturing the matching database
-     and objects, then resume them even if backup fails. Publish a completion
-     marker only after both copies succeed; incomplete copies are not restore
-     candidates.
+   - `backup.sh`: online custom-format `pg_dump`, immutable shared objects,
+     exact metadata and a per-point manifest, all encrypted with pinned rclone
+     crypt. Pre-copy before pausing deletion; serving never stops. Publish
+     COMPLETE only after copies and hashes succeed. Collect only objects no
+     retained completed manifest needs. Legacy plaintext points remain readable.
    - Keep 14 days.
    - `restore.sh` into a fresh stack.
    - A systemd timer.

@@ -619,3 +619,37 @@ describe('workspace purge', () => {
     }
   });
 });
+
+it('defers workspace object erasure during backup and resumes without a transaction', async () => {
+  const workspaceId = await createWorkspace();
+  await makeWorkspaceDueForPurge(adminUrl, workspaceId);
+  const pendingObjects = new Set([workspaceId]);
+  const purge = coordinator({
+    purgeWorkspacePage: (input: { workspaceId: string }) => {
+      pendingObjects.delete(input.workspaceId);
+      return Promise.resolve({ completed: true, deletedCount: 1 });
+    },
+  });
+  const pool = new Pool({ connectionString: maintenanceUrl, max: 1 });
+  const client = await pool.connect();
+  try {
+    await client.query(
+      "select pg_advisory_lock(hashtextextended('pertexo.backup.artifact-deletion',0))",
+    );
+    for (let pass = 0; pass < 40; pass++) {
+      const result = await purge.processNext();
+      if (result.status === 'progressed' && result.step === 'objects') break;
+    }
+    expect(pendingObjects.has(workspaceId)).toBe(true);
+    await client.query(
+      "select pg_advisory_unlock(hashtextextended('pertexo.backup.artifact-deletion',0))",
+    );
+    for (let pass = 0; pass < 40 && pendingObjects.has(workspaceId); pass++)
+      await purge.processNext();
+    expect(pendingObjects.has(workspaceId)).toBe(false);
+  } finally {
+    client.release(true);
+    await pool.end();
+    await purge.close();
+  }
+});

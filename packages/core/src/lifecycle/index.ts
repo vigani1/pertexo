@@ -36,3 +36,5 @@ export type {
   RequestWorkspaceLifecycleOperationInput,
   WorkspaceLifecycleOperation,
 } from './deletion/workspace-lifecycle.types.js';
+
+export { withBackupDeletionPause } from './artifacts/backup-deletion-lock.repository.js';

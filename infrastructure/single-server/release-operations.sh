@@ -184,3 +184,21 @@ copy_objects() {
     -v "$release/infrastructure/single-server/backup:/workspace/infrastructure/single-server/backup:ro" \
     "ghcr.io/vigani1/pertexo:$SERVICE_VERSION" node --env-file=/run/pertexo.env infrastructure/single-server/backup/copy-objects.mjs "$@"
 }
+
+# The helper image contains the same pinned rclone transport as the shell wrapper.
+backup_helper() {
+  local options=(--env-file "$BETA_STATE_DIR/rclone.env")
+  if [[ ${1:-} == --cidfile ]]; then options+=("$1" "$2"); shift 2; fi
+  local script=$1
+  shift
+  docker run --rm --read-only --tmpfs /tmp --user "$(id -u):$(id -g)" \
+    "${options[@]}" --network pertexo-beta_private \
+    -v "$config:/run/pertexo.env:ro" -v "$work:/backup" \
+    -v "$release/infrastructure/single-server/backup:/workspace/infrastructure/single-server/backup:ro" \
+    "ghcr.io/vigani1/pertexo:$SERVICE_VERSION" node --env-file=/run/pertexo.env "infrastructure/single-server/backup/$script" "$@"
+}
+
+verify_backup_key() {
+  [[ -n $(config_value BACKUP_CRYPT_PASSWORD) && -n $(config_value BACKUP_CRYPT_SALT) ]] || { echo 'Provide BACKUP_CRYPT_PASSWORD and BACKUP_CRYPT_SALT from the separately held settings file' >&2; return 1; }
+  backup_helper key-check.mjs
+}

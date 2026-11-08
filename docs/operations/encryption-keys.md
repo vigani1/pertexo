@@ -47,3 +47,36 @@ production policy still disallows self-managed keys. Failed checks keep serving
 stopped.
 KMS verification checks provider compatibility, not IAM access or remote
 decryptability, so test a stored credential after your first deploy.
+
+## Backup encryption keys and rotation
+
+`generate-secrets.mjs` generates `BACKUP_CRYPT_PASSWORD` and `BACKUP_CRYPT_SALT`.
+For an existing installation, copy only these two new settings into the saved
+settings; do not replace installed application keys with newly generated ones.
+Put both in the server's mode-600 `.env.production` for unattended backup, and
+keep the original settings file in your password manager or offline recovery
+storage, separately from the backup bucket. Neither key is uploaded or logged.
+The rclone obscured values in local `state/rclone.env` are also secret: obscuring
+is reversible. These keys encrypt backup contents and file names through standard
+[rclone crypt](https://rclone.org/crypt/), layered over the existing S3 remote.
+Keep the application encryption key rings separately too.
+
+To rotate, create a new empty backup bucket, change `BACKUP_STORE_BUCKET`, and
+replace both crypt settings with newly generated values in the server and offline
+settings. Take a backup and verify a restore before retiring the old store.
+Rotation starts a new store; it does not re-encrypt old points. Retain each old
+bucket's settings and keys until its recovery points are deleted. Do not change
+keys in a populated bucket. Retention runs only on the currently configured store;
+track and delete retired stores yourself after their recovery window.
+
+On a fresh replacement or drill host, supply the settings for the chosen bucket
+and its original crypt keys, then run `restore.sh <UTC-point> <full-commit>` as
+shown in [Recovery](recovery.md). Missing or wrong crypt keys refuse before target
+services start or data is restored, naming `BACKUP_CRYPT_PASSWORD` and
+`BACKUP_CRYPT_SALT`. Lost keys cannot be recovered from the bucket.
+
+Points created before this change remain readable from their old plaintext
+`pertexo-beta/<UTC-point>/` prefix with the same restore command and original
+application keys; they do not require crypt keys. New points are always encrypted.
+This is a one-way recovery path: delete old unencrypted points once an encrypted
+point has been restored and verified. Keep the bucket private while they remain.

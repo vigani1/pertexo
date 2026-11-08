@@ -166,6 +166,8 @@ BACKUP_STORE_ACCESS_KEY_ID=
 BACKUP_STORE_SECRET_ACCESS_KEY=
 ```
 
+Set both backup crypt keys described below before the first backup.
+
 The endpoint must differ from your artifact endpoint. Take one backup by hand, then
 turn on the nightly timer:
 
@@ -178,20 +180,23 @@ sudo systemctl enable --now pertexo-backup.timer
 systemctl list-timers pertexo-backup.timer
 ```
 
-A backup runs at 03:00 UTC, and a missed one runs when the host returns. **The app stops
-for the length of each backup**, because the database and files have to match. Plan for
-that; its length grows with your data. It resumes on its own, even if the backup fails.
+A backup runs at 03:00 UTC, and a missed one runs when the host returns. The app
+keeps serving throughout. The first pass copies immutable objects not yet saved.
+Then only artifact byte deletion pauses while an online consistent `pg_dump` and
+a final object pass capture a matched point. Retention and workspace purge defer
+erasure to their next pass; uploads and workflow execution continue.
 
-Each `pertexo-beta/<YYYYMMDDTHHMMSSZ>/` prefix contains `database.dump`, `release.txt`,
-`objects.count`, `SHA256SUMS`, `objects/` and a `COMPLETE` marker published last. Only
-completed points are usable, and a new point never overwrites an existing prefix.
-Retention deletes known dated prefixes older than 14 days, including incomplete attempts,
-using the point's date rather than the file's. An empty artifact catalog is valid.
+Under the encrypted store, each `pertexo-beta/<YYYYMMDDTHHMMSSZ>/` prefix holds
+`database.dump`, `release.txt`, `objects.count`, `objects.json`, `SHA256SUMS`, a
+reservation marker and a `COMPLETE` marker published last. The manifest names
+shared encrypted object bodies and their exact metadata and SHA-256 hashes.
+Only completed points are usable; same-second retries refuse to overwrite a
+reserved point. New objects are checked by downloading them once. Old objects
+are not copied again. An empty artifact catalog is valid.
 
-**These backups aren't encrypted by the scripts**, and they hold run history and personal
-data. Keep the bucket private and turn on your provider's encryption at rest. Keep the
-settings file and encryption keys separately: the backup alone can't recover encrypted
-credentials. A deleted workspace stays in the backups until they expire.
+Retention removes known recovery points older than 14 days, including incomplete
+attempts. Shared objects are deleted only when no kept completed point needs them.
+A missing or damaged kept manifest stops collection before deletion.
 
 OAuth2 connections are in the backup with their tokens, sealed like every other
 credential. A service that rotates refresh tokens may have moved on since the backup
@@ -468,3 +473,36 @@ As with secret masking in CI systems, this is a bounded guarantee, not a promise
 to recognize arbitrary transformations. Hashes, encryption, custom encodings and
 more than four JSON-string escaping layers are not covered. A service must not
 return credentials in those forms if the response will be retained.
+
+## Backup encryption keys and rotation
+
+`generate-secrets.mjs` generates `BACKUP_CRYPT_PASSWORD` and `BACKUP_CRYPT_SALT`.
+For an existing installation, copy only these two new settings into the saved
+settings; do not replace installed application keys with newly generated ones.
+Put both in the server's mode-600 `.env.production` for unattended backup, and
+keep the original settings file in your password manager or offline recovery
+storage, separately from the backup bucket. Neither key is uploaded or logged.
+The rclone obscured values in local `state/rclone.env` are also secret: obscuring
+is reversible. These keys encrypt backup contents and file names through standard
+[rclone crypt](https://rclone.org/crypt/), layered over the existing S3 remote.
+Keep the application encryption key rings separately too.
+
+To rotate, create a new empty backup bucket, change `BACKUP_STORE_BUCKET`, and
+replace both crypt settings with newly generated values in the server and offline
+settings. Take a backup and verify a restore before retiring the old store.
+Rotation starts a new store; it does not re-encrypt old points. Retain each old
+bucket's settings and keys until its recovery points are deleted. Do not change
+keys in a populated bucket. Retention runs only on the currently configured store;
+track and delete retired stores yourself after their recovery window.
+
+On a fresh replacement or drill host, supply the settings for the chosen bucket
+and its original crypt keys, then run `restore.sh <UTC-point> <full-commit>` as
+shown in [Recovery](recovery.md). Missing or wrong crypt keys refuse before target
+services start or data is restored, naming `BACKUP_CRYPT_PASSWORD` and
+`BACKUP_CRYPT_SALT`. Lost keys cannot be recovered from the bucket.
+
+Points created before this change remain readable from their old plaintext
+`pertexo-beta/<UTC-point>/` prefix with the same restore command and original
+application keys; they do not require crypt keys. New points are always encrypted.
+This is a one-way recovery path: delete old unencrypted points once an encrypted
+point has been restored and verified. Keep the bucket private while they remain.

@@ -153,6 +153,7 @@ export function createRunArtifactRetentionCoordinator(
         return Object.freeze({ artifactId, status: 'referenced', workspaceId });
 
       const erased = await eraseArtifact(
+        pool,
         artifacts,
         { artifactId, workspaceId },
         {
