@@ -108,3 +108,14 @@ export function uploadFailure(
     retryable: true,
   };
 }
+
+/** Failed uploads release their slot so a replacement can be attached. */
+export function availableUploadSlots(
+  maxFiles: number,
+  rows: readonly UploadRow[],
+): number {
+  return Math.max(
+    0,
+    maxFiles - rows.filter((row) => row.phase !== 'failed').length,
+  );
+}

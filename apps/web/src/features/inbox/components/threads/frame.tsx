@@ -56,7 +56,7 @@ export function NoticeFrame({
         <StatusGlyph tone={tone} />
       </span>
       <div className="flex min-w-0 flex-col gap-0.5">
-        <div className="flex min-w-0 items-baseline gap-x-3">
+        <div className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-1 sm:flex-nowrap">
           {title}
           {/* The ring already draws the glyph; the word keeps its colour. */}
           <span

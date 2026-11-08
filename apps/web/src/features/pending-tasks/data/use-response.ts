@@ -97,6 +97,18 @@ export function useTaskResponse(
     if (!mutation.isError) return undefined;
     if (uncertain)
       return `We couldn’t confirm the ${responseName}. Retry the same ${responseName} to recover the result before changing anything.`;
+    if (isApiError(mutation.error)) {
+      if (mutation.error.problem?.code === 'pending_task.expired')
+        return 'This request expired. Refresh to see its current state.';
+      if (mutation.error.problem?.code === 'pending_task.already_resolved')
+        return 'Someone already responded. Refresh to see the recorded decision.';
+      if (mutation.error.problem?.code === 'pending_task.run_closed')
+        return 'This run is no longer waiting for a response. Refresh to see its current state.';
+      if (mutation.error.problem?.code === 'pending_task.not_eligible')
+        return 'You can no longer respond to this request. Ask an eligible workspace member.';
+      if (mutation.error.problem?.code === 'pending_task.self_decision')
+        return 'Another eligible person must decide this request.';
+    }
     return describeCommandError(
       mutation.error,
       `recording this ${responseName}`,
@@ -105,6 +117,13 @@ export function useTaskResponse(
   return {
     send,
     pending: mutation.isPending,
+    cause: mutation.error,
+    refresh: () => {
+      void cache.refetchQueries({
+        queryKey: taskQueryOptions(scope, taskId).queryKey,
+        exact: true,
+      });
+    },
     uncertain,
     error: errorMessage(),
     retry: () => {

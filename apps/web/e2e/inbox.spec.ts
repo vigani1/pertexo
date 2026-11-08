@@ -215,3 +215,56 @@ for (const width of [1280, 390])
       listOnNotices?.y ?? 0,
     );
   });
+
+for (const width of [375, 1280])
+  test(`keeps long failure-alert destinations identifiable at ${String(width)}px`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 800 });
+    await mockInbox(page);
+    const names = [
+      'Supplier alert destination',
+      'Customer billing destination',
+    ];
+    await page.route(
+      `**/v1/workspaces/${workspaceId}/notifications?**`,
+      (route) =>
+        route.fulfill({
+          json: {
+            items: names.map((name, index) => ({
+              id: index === 0 ? importId : billingId,
+              noticeKind: 'failure_alert_attention',
+              subjectId: index === 0 ? importId : billingId,
+              name,
+              workflowId: null,
+              occurrenceCount: 1,
+              firstOccurredAt: timestamp.replace('.000Z', '.000000Z'),
+              latestOccurredAt: timestamp.replace('.000Z', '.000000Z'),
+              limits: [],
+              revision: '7',
+              unread: true,
+            })),
+            nextCursor: null,
+            revision: '7',
+          },
+        }),
+    );
+    await page.goto(`/w/${workspaceId}/inbox`);
+    for (const name of names) {
+      const title = page.getByRole('link', {
+        name: `Failure alerts aren’t reaching ${name}`,
+        exact: true,
+      });
+      await expect(title).toBeVisible();
+      if (width === 375) {
+        const bounds = await title.boundingBox();
+        expect(bounds?.width).toBeGreaterThan(180);
+        expect(bounds?.height).toBeGreaterThan(30);
+      }
+      expect(
+        await title.evaluate(
+          (element) => element.scrollWidth <= element.clientWidth,
+        ),
+      ).toBe(true);
+    }
+  });

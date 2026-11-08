@@ -23,8 +23,12 @@ export function TokenList({
   return (
     <ul aria-label="Your API tokens" className="grid gap-3">
       {tokens.map((token) => {
-        const status = TOKEN_STATUS[token.status];
-        const live = token.status === 'active';
+        const effectiveStatus =
+          token.status === 'active' && nowMs >= Date.parse(token.expiresAt)
+            ? 'expired'
+            : token.status;
+        const status = TOKEN_STATUS[effectiveStatus];
+        const live = effectiveStatus === 'active';
         return (
           <li
             key={token.id}

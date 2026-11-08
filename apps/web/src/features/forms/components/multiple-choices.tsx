@@ -1,3 +1,4 @@
+import type { RefCallback } from 'react';
 import type { FormField } from '@pertexo/workflow-model';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Field, FieldDescription, FieldError } from '@/components/ui/field';
@@ -9,7 +10,9 @@ export function MultipleChoices({
   error,
   disabled,
   onChange,
+  inputRef,
 }: Readonly<{
+  inputRef?: RefCallback<HTMLElement> | undefined;
   field: Extract<FormField, { type: 'multi_select' }>;
   id: string;
   value: readonly string[];
@@ -37,12 +40,13 @@ export function MultipleChoices({
           {field.label}
           {field.required ? '' : ' (optional)'}
         </legend>
-        {field.options.map((option) => (
+        {field.options.map((option, index) => (
           <label
             key={option}
             className="flex min-w-0 items-start gap-2 text-sm"
           >
             <Checkbox
+              ref={index === 0 ? inputRef : undefined}
               checked={selected.has(option)}
               disabled={
                 disabled || (!selected.has(option) && value.length >= maximum)

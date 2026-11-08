@@ -314,7 +314,6 @@ export const PURGE_STEPS: readonly PurgeStep[] = Object.freeze([
     workspaceInvitationAcceptanceIntents,
     workspaceInvitationDeliveryAttempts,
     workspaceInvitations,
-    workspaceMemberships,
   ].map(deleteRows),
   {
     // Previews chain to their prior preview; leaves go first.
@@ -354,4 +353,6 @@ export const PURGE_STEPS: readonly PurgeStep[] = Object.freeze([
     name: 'failure_notification_destinations',
     run: purgeDestinations,
   },
+  // Keep current-member discovery available until every other row step finishes.
+  deleteRows(workspaceMemberships),
 ]);

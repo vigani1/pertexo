@@ -1,3 +1,4 @@
+import { canonicalJson } from '@pertexo/workflow-model';
 import {
   workspaceVariableValuesSchema,
   workspaceVariableDescriptionsSchema,
@@ -129,4 +130,22 @@ function rowValue(row: VariableRow): string | number | boolean {
   if (row.type === 'number') return Number(row.value);
   if (row.type === 'boolean') return row.value === 'true';
   return row.value;
+}
+
+/** Invalid drafts are unsaved too; descriptions belong to the same replacement. */
+export function variableDraftChanged(
+  base: Readonly<{
+    values: WorkspaceVariableValues;
+    descriptions: Readonly<Record<string, string>>;
+  }>,
+  draft: ReturnType<typeof readVariableRows>,
+): boolean {
+  return (
+    draft.values === undefined ||
+    canonicalJson({
+      values: draft.values,
+      descriptions: draft.descriptions,
+    }) !==
+      canonicalJson({ values: base.values, descriptions: base.descriptions })
+  );
 }

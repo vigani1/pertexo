@@ -246,12 +246,11 @@ describe('Replay while the run’s input is still loading', () => {
     expect(bodies).toEqual([sent(RUN_INPUT)]);
   });
 
-  // Nobody's input is on its way any more, and the dialog says to enter one.
   it.each([
     ['refused', 403],
     ['broken', 500],
   ])(
-    'lets a replay through once the read has %s',
+    'requires a successful saved-input retry after the read has %s',
     async (_name, status) => {
       mockServer.use(
         http.get(`${apiBase}/runs/:runId/input`, () =>
@@ -263,18 +262,24 @@ describe('Replay while the run’s input is still loading', () => {
       );
       const { event, dialog, router } = await openReplay();
 
-      await waitFor(
-        () => {
-          expect(
-            dialog.getByRole('button', { name: 'Replay run' }),
-          ).toBeEnabled();
-        },
-        { timeout: 15_000 },
+      const retry = await dialog.findByRole('button', {
+        name: 'Retry saved input',
+      });
+      expect(dialog.getByRole('button', { name: 'Replay run' })).toBeDisabled();
+      expect(bodies).toEqual([]);
+      mockServer.use(
+        http.get(`${apiBase}/runs/:runId/input`, () =>
+          HttpResponse.json({ input: { kind: 'inline', value: RUN_INPUT } }),
+        ),
+      );
+      await event.click(retry);
+      await waitFor(() =>
+        expect(dialog.getByLabelText(LABEL)).toHaveValue(RUN_INPUT_TEXT),
       );
       await event.click(dialog.getByRole('button', { name: 'Replay run' }));
 
       await opened(router);
-      expect(bodies).toEqual([sent({})]);
+      expect(bodies).toEqual([sent(RUN_INPUT)]);
     },
     30_000,
   );

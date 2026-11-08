@@ -2,7 +2,8 @@ import { OAUTH2_CALLBACK_PATH } from '@pertexo/contracts';
 import type { FastifyInstance } from 'fastify';
 
 /**
- * API responses are data, never pages. `/hooks` and `/v1/auth` reach the API
+ * API data and native audit-export recovery pages share an inert browser policy.
+ * `/hooks` and `/v1/auth` reach the API
  * without passing nginx and share the app's origin, so a browser opening one
  * must have nothing it could run: no scripts, no origin, no framing.
  */

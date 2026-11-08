@@ -52,6 +52,7 @@ export function InputResponse({
       {task.status === 'pending' ? (
         <FormResponse
           fields={task.fields}
+          serverError={command.cause}
           initialValues={task.prefill}
           pending={command.pending}
           disabled={!task.canRespond || command.uncertain}
@@ -72,7 +73,11 @@ export function InputResponse({
               >
                 Retry same response
               </Button>
-            ) : undefined
+            ) : (
+              <Button type="button" variant="outline" onClick={command.refresh}>
+                Refresh request
+              </Button>
+            )
           }
         >
           {command.error}

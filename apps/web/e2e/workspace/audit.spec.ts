@@ -158,3 +158,74 @@ for (const width of [1280, 375]) {
     });
   });
 }
+
+for (const width of [375, 1280])
+  test(`recovers a refused native audit export in its download tab at ${String(width)}px`, async ({
+    page,
+    context,
+  }) => {
+    await page.setViewportSize({ width, height: 800 });
+    await installEditorRoutes(page, remoteDraft(), {
+      accessibleWorkspace: {
+        ...workspace,
+        capabilities: [...workspace.capabilities, 'audit:read'],
+      },
+    });
+    await addCsrfCookie(context);
+    const root = `/v1/workspaces/${workspaceId}/governance`;
+    await context.route(`**${root}/audit?*`, (route) =>
+      route.fulfill({ json: { items: [], nextCursor: null } }),
+    );
+    await context.route(`**${root}/settings`, (route) =>
+      route.fulfill({ json: { revision: 1, auditRetentionDays: 365 } }),
+    );
+    let exports = 0;
+    await context.route(`**${root}/audit/export`, (route) => {
+      exports++;
+      expect(route.request().method()).toBe('POST');
+      const body = new URLSearchParams(route.request().postData() ?? '');
+      expect(body.get('csrfToken')).toBeTruthy();
+      expect(body.get('payload')).toBe('{}');
+      return exports === 1
+        ? route.fulfill({
+            status: 503,
+            contentType: 'text/html; charset=utf-8',
+            headers: {
+              'content-security-policy':
+                "default-src 'none'; frame-ancestors 'none'; sandbox",
+            },
+            body: `<!doctype html><html lang="en"><head><meta name="viewport" content="width=device-width, initial-scale=1"></head><body><main><h1>Audit export couldn’t be downloaded</h1><p>The download could not be completed. Return to Audit and try exporting again.</p><p>Error ID: <code>export-support-id</code></p><a href="/w/${workspaceId}/settings/audit">Return to Audit to try again</a></main></body></html>`,
+          })
+        : route.fulfill({
+            status: 200,
+            headers: {
+              'content-type': 'text/csv',
+              'content-disposition': 'attachment; filename="audit.csv"',
+            },
+            body: 'action\nworkspace.created\n',
+          });
+    });
+    await page.goto(`/w/${workspaceId}/settings/audit`);
+    const opened = page.waitForEvent('popup');
+    await page.getByRole('button', { name: 'Export', exact: true }).click();
+    const failure = await opened;
+    await expect(
+      failure.getByRole('heading', {
+        name: 'Audit export couldn’t be downloaded',
+      }),
+    ).toBeVisible();
+    await expect(
+      failure.getByText('export-support-id', { exact: true }),
+    ).toBeVisible();
+    await expect(failure.getByText('internal.unexpected')).toHaveCount(0);
+    await expect(
+      failure.getByRole('link', { name: 'Return to Audit to try again' }),
+    ).toHaveAttribute('href', `/w/${workspaceId}/settings/audit`);
+    await failure.close();
+    const completed = page.waitForEvent('download');
+    await page.getByRole('button', { name: 'Export', exact: true }).click();
+    const download = await completed;
+    expect(download.suggestedFilename()).toBe('audit.csv');
+    expect(await download.failure()).toBeNull();
+    expect(exports).toBe(2);
+  });

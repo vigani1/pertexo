@@ -139,3 +139,16 @@ export type AccountSecurityResponse = z.output<
 export type AccountSecurityLinkStartRequest = z.input<
   typeof accountSecurityLinkStartRequestSchema
 >;
+
+/** Native endpoints may return extra provider fields; these are the owned acknowledgments. */
+export const nativeAuthenticationAcknowledgmentSchema = z.object({
+  status: z.literal(true),
+});
+const nativeAuthenticationUserSchema = z.object({ id: z.uuid() });
+export const nativeRegistrationResponseSchema = z.object({
+  user: nativeAuthenticationUserSchema.nullable(),
+});
+export const nativeSignInResponseSchema = z.union([
+  z.object({ twoFactorRedirect: z.literal(true) }),
+  z.object({ user: nativeAuthenticationUserSchema }),
+]);

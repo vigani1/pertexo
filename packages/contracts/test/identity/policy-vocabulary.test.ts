@@ -1,7 +1,7 @@
 import {
   ALL_WORKSPACE_STATUSES,
   AUTHORIZATION_CAPABILITIES,
-  UNPURGED_WORKSPACE_STATUSES,
+  DISCOVERABLE_WORKSPACE_STATUSES,
 } from '@pertexo/policy';
 import { describe, expect, it } from 'vitest';
 
@@ -28,9 +28,9 @@ describe('workspace transport uses the policy vocabulary', () => {
     },
   );
   it.each(ALL_WORKSPACE_STATUSES)(
-    'offers %s only when policy calls it unpurged',
+    'offers %s only when policy calls it discoverable',
     (status) => {
-      const unpurged = new Set<string>(UNPURGED_WORKSPACE_STATUSES);
+      const discoverable = new Set<string>(DISCOVERABLE_WORKSPACE_STATUSES);
       expect(
         accessibleWorkspaceSchema.safeParse({
           ...workspace,
@@ -39,7 +39,7 @@ describe('workspace transport uses the policy vocabulary', () => {
           role: 'owner',
           capabilities: [],
         }).success,
-      ).toBe(unpurged.has(status));
+      ).toBe(discoverable.has(status));
     },
   );
   it.each(AUTHORIZATION_CAPABILITIES)(

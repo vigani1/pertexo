@@ -39,7 +39,7 @@ import {
   connectionKeys,
   connectionsInfiniteQueryOptions,
 } from '../data/connections.queries';
-import { connectionAccessLost } from '../model/connection-access';
+import { isReadAccessLost } from '@/lib/api/read-denial';
 import type { ConnectionsSearch } from '../model/connections-search';
 import { roleLimitSentence, whoCan } from '@/features/workspaces/roles.public';
 import { sentenceStart } from '@/lib/format/sentence';
@@ -224,7 +224,7 @@ function ConnectionsSession({
         description="This server has no connection encryption provider configured. Enable local connection encryption for development, or configure AWS KMS on the server. Alerts need a connection too."
       />
     );
-  if (connections.isError && connectionAccessLost(connections.error))
+  if (connections.isError && isReadAccessLost(connections.error))
     return (
       <UnavailablePage
         heading="Connections"

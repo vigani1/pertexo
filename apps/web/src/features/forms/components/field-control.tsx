@@ -1,3 +1,4 @@
+import type { RefCallback } from 'react';
 import { MultipleChoices } from './multiple-choices';
 import type { FormField } from '@pertexo/workflow-model';
 import { LabelledField } from '@/components/ui/field';
@@ -14,7 +15,9 @@ export function FormFieldControl({
   error,
   disabled,
   onChange,
+  inputRef,
 }: Readonly<{
+  inputRef?: RefCallback<HTMLElement>;
   field: FormField;
   id: string;
   value: FormDraftValue | undefined;
@@ -27,6 +30,7 @@ export function FormFieldControl({
       <MultipleChoices
         field={field}
         id={id}
+        inputRef={inputRef}
         value={typeof value === 'object' ? value : []}
         error={error}
         disabled={disabled}
@@ -46,6 +50,7 @@ export function FormFieldControl({
           return (
             <Checkbox
               {...control}
+              ref={inputRef}
               checked={value === true}
               disabled={disabled}
               onCheckedChange={(checked) => {
@@ -58,6 +63,7 @@ export function FormFieldControl({
           return (
             <select
               {...control}
+              ref={inputRef}
               className="h-9 w-full rounded-md border border-input bg-background px-3 text-base focus-visible:outline-2 focus-visible:outline-ring md:text-sm"
               value={text}
               onChange={(event) => {
@@ -77,6 +83,7 @@ export function FormFieldControl({
           return (
             <DateInput
               control={control}
+              inputRef={inputRef}
               value={text}
               disabled={disabled}
               onChange={onChange}
@@ -87,6 +94,7 @@ export function FormFieldControl({
           return (
             <Textarea
               {...control}
+              ref={inputRef}
               value={text}
               maxLength={10000}
               rows={4}
@@ -99,6 +107,7 @@ export function FormFieldControl({
         return (
           <Input
             {...control}
+            ref={inputRef}
             type={INPUT_TYPES[field.type] ?? 'text'}
             {...(field.type === 'number'
               ? { step: 'any' }

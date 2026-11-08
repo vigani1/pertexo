@@ -27,6 +27,9 @@ import {
 beforeAll(beforeAllFixture1);
 afterAll(afterAllFixture2);
 describe('workspace purge', () => {
+  it('retains memberships until the last row-deletion step so members can observe purging', () => {
+    expect(PURGE_STEPS.at(-1)?.name).toBe('workspace_memberships');
+  });
   it('removes directory-managed grants in other linked workspaces before deleting the control organization', async () => {
     const control = await createWorkspace(),
       linked = await createWorkspace();

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type RefCallback } from 'react';
 import { PaperclipIcon } from 'lucide-react';
 import {
   Field,
@@ -14,7 +14,7 @@ import {
   acceptSummary,
   type FileField,
 } from '../../model/files';
-import type { UploadRow } from '../../model/uploads';
+import { availableUploadSlots, type UploadRow } from '../../model/uploads';
 import { FileRow } from './row';
 
 /**
@@ -30,7 +30,9 @@ export function FileFieldControl({
   onAdd,
   onRemove,
   onRetry,
+  inputRef,
 }: Readonly<{
+  inputRef?: RefCallback<HTMLElement> | undefined;
   field: FileField;
   id: string;
   rows: readonly UploadRow[];
@@ -42,11 +44,14 @@ export function FileFieldControl({
   onRetry: (key: string) => void;
 }>) {
   const [leftOut, setLeftOut] = useState(0);
-  const { fallback, removeButton, removing } =
-    useRemovalFocus<HTMLInputElement>();
+  const {
+    fallback: fallbackRef,
+    removeButton,
+    removing,
+  } = useRemovalFocus<HTMLInputElement>();
   const taken = rows.filter((row) => row.phase !== 'failed');
   const attached = taken.length;
-  const full = attached >= field.maxFiles;
+  const full = availableUploadSlots(field.maxFiles, rows) === 0;
   const settled = full && taken.every((row) => row.phase === 'ready');
   const summaryId = `${id}-accepts`;
   const helpId = field.help === '' ? undefined : `${id}-help`;
@@ -61,7 +66,10 @@ export function FileFieldControl({
         {field.required ? '' : ' (optional)'}
       </FieldLabel>
       <FileDrop
-        ref={fallback}
+        ref={(element) => {
+          fallbackRef.current = element;
+          if (rows.length === 0) inputRef?.(element);
+        }}
         id={id}
         // The field announces each file itself, below.
         announces={false}
@@ -119,12 +127,16 @@ export function FileFieldControl({
           aria-label={`${field.label} files`}
           className="flex min-w-0 flex-col gap-2"
         >
-          {rows.map((row) => (
+          {rows.map((row, index) => (
             <FileRow
               key={row.key}
               row={row}
               disabled={disabled}
-              removeRef={removeButton(row.key)}
+              retryBlocked={full}
+              removeRef={(element) => {
+                removeButton(row.key)(element);
+                if (index === 0) inputRef?.(element);
+              }}
               onRemove={() => {
                 setLeftOut(0);
                 removing(
@@ -166,6 +178,7 @@ function DropPrompt({
   settled,
   attached,
 }: Readonly<{
+  inputRef?: RefCallback<HTMLElement> | undefined;
   field: FileField;
   dragging: boolean;
   full: boolean;

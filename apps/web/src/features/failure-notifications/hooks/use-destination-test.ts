@@ -1,3 +1,8 @@
+import { useQueryClient } from '@tanstack/react-query';
+import { useReadRetry } from '@/lib/hooks/use-read-retry';
+import { failureNotificationDestinationKeys } from '../data/failure-notifications.queries';
+import { isDestinationConflict } from '../model/failure-notification-errors';
+import { destinationCommandError } from '../model/failure-notification-errors';
 import { useCommandAttempt } from '@/lib/api/commands/use-command-attempt';
 import {
   isUnconfirmedCommand,
@@ -57,6 +62,8 @@ export function useDestinationTest(
 ) {
   const mutation = useTestFailureNotificationDestinationMutation(scope);
   const attempt = useCommandAttempt<Command>();
+  const cache = useQueryClient();
+  const waitSeconds = useReadRetry(mutation.error);
   const phase = phaseOf(mutation);
   async function send(command: Command) {
     try {
@@ -81,6 +88,17 @@ export function useDestinationTest(
   }
   return {
     phase,
+    waitSeconds,
+    permissionLost: isApiError(mutation.error) && mutation.error.status === 403,
+    conflict: isDestinationConflict(mutation.error),
+    reload: () => {
+      void cache.refetchQueries({
+        queryKey: failureNotificationDestinationKeys.scope(
+          scope.userId,
+          scope.workspaceId,
+        ),
+      });
+    },
     expired: attempt.expired,
     run: () => {
       void run();
@@ -100,6 +118,7 @@ function failureOf(
 ): string | undefined {
   if (failedOnOurSide(mutation.error))
     return 'Pertexo couldn’t send the test. The problem is on Pertexo’s side, not with this destination. Try again.';
+  if (mutation.isError) return destinationCommandError(mutation.error, 'test');
   if (mutation.data === undefined || mutation.data.outcome.ok) return undefined;
   const { title, detail } = describeTestOutcome(
     destination.kind,

@@ -46,6 +46,7 @@ export const workspaceScopeRoute = createRoute({
   path: '/w/$workspaceId',
   // A cold start: the Core gathers while the session and workspace resolve.
   pendingComponent: WorkspaceBootPage,
+  component: lazyRoute(() => import('./shell/scope'), 'WorkspaceScopeRoute'),
   beforeLoad: async ({ context, params, location }) => {
     const user = await loadCurrentUser(context, location.pathname);
     const workspace = await findWorkspace(context, user.id, params.workspaceId);

@@ -209,6 +209,7 @@ export function PhoneFailureNotice({
     <section aria-label={`Why ${row.label} failed`} className="-mt-3">
       <StepError
         code={row.safeErrorCode}
+        summary={row.errorSummary}
         workspace={workspace}
         definitionKey={row.definitionKey}
       />

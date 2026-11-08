@@ -68,12 +68,14 @@ export function NeedsAttention({
   items,
   state,
   moreFailedRuns,
+  moreWorkflows = false,
 }: Readonly<{
   workspace: AccessibleWorkspace;
   items: readonly AttentionItem[];
   state: HomeBlockState;
   /** Some problem-run reads hit their page limit. */
   moreFailedRuns: boolean;
+  moreWorkflows?: boolean;
 }>) {
   const shown = items.slice(0, NEEDS_ATTENTION_LIMIT);
   const canReadRuns = workspace.capabilities.includes('run:read');
@@ -97,10 +99,16 @@ export function NeedsAttention({
     >
       {shown.length === 0 ? (
         <div className="flex items-center gap-3 border-t border-surface-ink/6 py-3.5">
-          <StatusGlyph tone="success" />
+          <StatusGlyph tone={moreWorkflows ? 'attention' : 'success'} />
           <p className="text-sm">
-            <span className="font-semibold">All clear.</span>{' '}
-            <span className="text-muted-foreground">Nothing needs you.</span>
+            <span className="font-semibold">
+              {moreWorkflows ? 'No issues in loaded workflows.' : 'All clear.'}
+            </span>{' '}
+            <span className="text-muted-foreground">
+              {moreWorkflows
+                ? 'Review older workflows too.'
+                : 'Nothing needs you.'}
+            </span>
           </p>
         </div>
       ) : (
@@ -128,6 +136,21 @@ export function NeedsAttention({
           ))}
         </ul>
       )}
+      {moreWorkflows ? (
+        <p className="border-t border-surface-ink/6 pt-2 text-xs text-subtle-foreground">
+          <span>
+            Only loaded workflows were checked. Older workflows may need
+            attention.
+          </span>{' '}
+          <Link
+            to="/w/$workspaceId/workflows"
+            params={{ workspaceId: workspace.id }}
+            className="underline"
+          >
+            Review all workflows
+          </Link>
+        </p>
+      ) : null}
       {items.length > NEEDS_ATTENTION_LIMIT || moreFailedRuns ? (
         <p className="border-t border-surface-ink/6 pt-2 text-xs text-subtle-foreground">
           {items.length > NEEDS_ATTENTION_LIMIT

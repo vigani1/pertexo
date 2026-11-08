@@ -1,7 +1,7 @@
 import { infiniteQueryOptions, queryOptions } from '@tanstack/react-query';
 import { isNotFound } from '@/lib/api/error-copy';
 import type { ApiClient } from '@/lib/api/client';
-import { forgetDeniedConnections } from '../model/connection-access';
+import { forgetDeniedSnapshots } from '@/lib/api/read-denial';
 import {
   getAllConnections,
   getConnection,
@@ -98,7 +98,7 @@ export function connectionsInfiniteQueryOptions(
           signal,
         });
       } catch (error: unknown) {
-        await forgetDeniedConnections(
+        await forgetDeniedSnapshots(
           client,
           connectionKeys.scope(userId, workspaceId),
           queryKey,
@@ -126,7 +126,7 @@ export function connectionDiscoveryQueryOptions(
       try {
         return await getAllConnections(apiClient, workspaceId, signal);
       } catch (error: unknown) {
-        await forgetDeniedConnections(
+        await forgetDeniedSnapshots(
           client,
           connectionKeys.scope(userId, workspaceId),
           queryKey,
@@ -156,7 +156,7 @@ export function editorConnectionsQueryOptions(
       try {
         return await getAllConnections(apiClient, workspaceId, signal);
       } catch (error) {
-        await forgetDeniedConnections(
+        await forgetDeniedSnapshots(
           client,
           connectionKeys.scope(userId, workspaceId),
           connectionKeys.editor(userId, workspaceId),
@@ -188,7 +188,7 @@ export function connectionDetailQueryOptions(
           signal,
         );
       } catch (error: unknown) {
-        await forgetDeniedConnections(
+        await forgetDeniedSnapshots(
           client,
           connectionKeys.scope(userId, workspaceId),
           queryKey,
@@ -224,7 +224,7 @@ export function connectionUsageQueryOptions(
         );
       } catch (error: unknown) {
         // Workflow-read loss denies usage, not otherwise authorized connection metadata.
-        await forgetDeniedConnections(client, queryKey, queryKey, error);
+        await forgetDeniedSnapshots(client, queryKey, queryKey, error);
         throw error;
       }
     },

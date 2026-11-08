@@ -13,9 +13,11 @@ export function FileRow({
   row,
   disabled,
   removeRef,
+  retryBlocked = false,
   onRemove,
   onRetry,
 }: Readonly<{
+  retryBlocked?: boolean;
   row: UploadRow;
   disabled: boolean;
   removeRef?: Ref<HTMLButtonElement>;
@@ -58,7 +60,12 @@ export function FileRow({
             variant="ghost"
             size="icon-sm"
             className="max-sm:size-11"
-            disabled={disabled}
+            disabled={disabled || retryBlocked}
+            title={
+              retryBlocked
+                ? 'Remove another file before retrying this upload.'
+                : undefined
+            }
             aria-label={`Retry ${row.name}`}
             onClick={onRetry}
           >

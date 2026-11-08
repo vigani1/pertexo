@@ -8,7 +8,7 @@ const SIZE = 112;
 const CENTRE = SIZE / 2;
 
 /**
- * Runs at once as a wheel: one bead per slot around the count in progress.
+ * Runs at once as a wheel: proportional shares around the count in progress.
  * A running slot glows, one held for a queued run about to start is a
  * violet ring, a free one a hollow bead. An idle workspace reads as a calm
  * full wheel of free slots, never as an empty box.
@@ -19,6 +19,10 @@ export function SlotWheel({
   const occupied = execution.activeCapacityConsumed;
   const total = Math.max(occupied, execution.policy.activeRunLimit ?? occupied);
   const shown = Math.min(VISIBLE_SLOTS, Math.max(total, 1));
+  const runningBeads =
+    total === 0 ? 0 : Math.round((execution.activeRuns / total) * shown);
+  const occupiedBeads =
+    total === 0 ? 0 : Math.round((occupied / total) * shown);
   const radius = shown > 12 ? 46 : 42;
   const bead = shown > 12 ? 4 : 6;
   return (
@@ -42,8 +46,8 @@ export function SlotWheel({
           const angle = (index / shown) * Math.PI * 2 - Math.PI / 2;
           const x = CENTRE + Math.cos(angle) * radius;
           const y = CENTRE + Math.sin(angle) * radius;
-          const running = index < execution.activeRuns;
-          const held = !running && index < occupied;
+          const running = index < runningBeads;
+          const held = !running && index < occupiedBeads;
           return (
             <circle
               key={index}

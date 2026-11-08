@@ -55,7 +55,9 @@ export function DestinationTest({
           type="button"
           variant="outline"
           size="sm"
-          disabled={disabled || pending}
+          disabled={
+            disabled || pending || test.permissionLost || test.waitSeconds > 0
+          }
           aria-label={accessibleLabel}
           onClick={() => {
             if (uncertain && !test.expired) send();
@@ -65,6 +67,14 @@ export function DestinationTest({
           {pending ? 'Sending…' : idleSendLabel}
         </Button>
       </div>
+      {test.conflict ? (
+        <Button type="button" variant="outline" onClick={test.reload}>
+          Reload destination
+        </Button>
+      ) : null}
+      {test.waitSeconds > 0 ? (
+        <p role="status">Try again in {test.waitSeconds} s.</p>
+      ) : null}
       <TestThread
         provider={destination.kind}
         phase={test.phase}

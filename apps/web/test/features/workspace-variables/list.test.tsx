@@ -152,3 +152,39 @@ describe('workspace variables list', () => {
     expect(within(added).getByLabelText('Name')).toBeVisible();
   });
 });
+
+it('protects edited variables through navigation and discards only after an explicit choice', async () => {
+  const writes = fixtures();
+  const app = renderApp(`/w/${workspaceId}/settings/variables`);
+  const user = userEvent.setup();
+  await user.click(
+    await screen.findByRole('button', { name: 'Edit CURRENCY' }),
+  );
+  const row = screen.getByRole('region', { name: 'CURRENCY' });
+  const input = within(row).getByLabelText('Value');
+  await user.clear(input);
+  await user.type(input, 'UNSAVED');
+  const [home] = screen.getAllByRole('link', { name: 'Home' });
+  if (home === undefined) throw new Error('Home navigation is missing');
+  await user.click(home);
+  const dialog = await screen.findByRole('dialog', {
+    name: 'Leave unsaved variables?',
+  });
+  await user.click(
+    within(dialog).getByRole('button', { name: 'Keep editing' }),
+  );
+  expect(input).toHaveValue('UNSAVED');
+  expect(app.router.state.location.pathname).toBe(
+    `/w/${workspaceId}/settings/variables`,
+  );
+  await user.click(home);
+  await user.click(
+    within(await screen.findByRole('dialog')).getByRole('button', {
+      name: 'Discard and leave',
+    }),
+  );
+  await waitFor(() => {
+    expect(app.router.state.location.pathname).toBe(`/w/${workspaceId}`);
+  });
+  expect(writes).toEqual([]);
+});

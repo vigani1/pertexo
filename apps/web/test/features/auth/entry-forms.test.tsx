@@ -283,3 +283,70 @@ describe('sign-in family forms', () => {
     expect(screen.queryByLabelText('New password')).toBeNull();
   });
 });
+
+it.each([false, true])(
+  'removes a captured reset proof from URL and history while preserving the %s outcome',
+  async (succeed) => {
+    const sent: unknown[] = [];
+    mockServer.use(
+      signedOut,
+      capabilities(),
+      http.post(
+        '*/v1/auth/account-security/password/reset',
+        async ({ request }) => {
+          sent.push(await request.json());
+          return succeed
+            ? HttpResponse.json({ status: true })
+            : problem(400, 'auth.reset_link_invalid');
+        },
+      ),
+    );
+    const app = renderApp('/reset-password?token=one-time-secret');
+    const user = userEvent.setup();
+    await user.type(
+      await screen.findByLabelText('New password'),
+      'a new secure password',
+    );
+    expect(app.router.state.location.href).toBe('/reset-password');
+    await user.type(
+      screen.getByLabelText('Confirm new password'),
+      'a new secure password',
+    );
+    await user.click(screen.getByRole('button', { name: 'Reset password' }));
+    await screen.findByRole('heading', {
+      name: succeed ? 'Password changed' : 'This reset link has expired',
+    });
+    expect(sent).toEqual([
+      { token: 'one-time-secret', newPassword: 'a new secure password' },
+    ]);
+    expect(app.router.state.location.href).toBe('/reset-password');
+    expect(app.router.history.length).toBe(1);
+  },
+);
+
+it('does not announce a completed password change for a malformed success body', async () => {
+  mockServer.use(
+    signedOut,
+    capabilities(),
+    http.post('*/v1/auth/account-security/password/reset', () =>
+      HttpResponse.json({}),
+    ),
+  );
+  renderApp('/reset-password?token=malformed-response-proof');
+  const user = userEvent.setup();
+  await user.type(
+    await screen.findByLabelText('New password'),
+    'a new secure password',
+  );
+  await user.type(
+    screen.getByLabelText('Confirm new password'),
+    'a new secure password',
+  );
+  await user.click(screen.getByRole('button', { name: 'Reset password' }));
+  expect(await screen.findByRole('alert')).toHaveTextContent(
+    /couldn’t confirm/u,
+  );
+  expect(
+    screen.queryByRole('heading', { name: 'Password changed' }),
+  ).not.toBeInTheDocument();
+});

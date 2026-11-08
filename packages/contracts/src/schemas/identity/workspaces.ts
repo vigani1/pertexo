@@ -1,6 +1,6 @@
 import {
   ALL_WORKSPACE_STATUSES,
-  UNPURGED_WORKSPACE_STATUSES,
+  DISCOVERABLE_WORKSPACE_STATUSES,
   AUTHORIZATION_CAPABILITIES,
 } from '@pertexo/policy';
 import { storageTextSchema } from '@pertexo/workflow-model';
@@ -285,7 +285,7 @@ export const accessibleWorkspacesQuerySchema = z
 const workspaceCapabilitySchema = z.enum(AUTHORIZATION_CAPABILITIES);
 export const accessibleWorkspaceSchema = workspaceResponseSchema
   .extend({
-    status: z.enum(UNPURGED_WORKSPACE_STATUSES),
+    status: z.enum(DISCOVERABLE_WORKSPACE_STATUSES),
     revision: workspaceRevisionSchema,
     role: workspaceRoleSchema,
     capabilities: z

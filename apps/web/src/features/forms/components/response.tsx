@@ -1,6 +1,14 @@
+import { isApiError } from '@/lib/api/error';
+import { useFieldValidation } from '@/components/ui/use-field-validation';
 import { FormFieldControl } from './field-control';
 import { FileFieldControl } from './files/field';
-import { useId, useState, type SubmitEvent } from 'react';
+import {
+  useEffect,
+  useEffectEvent,
+  useId,
+  useState,
+  type SubmitEvent,
+} from 'react';
 import {
   parseFormValues,
   FormValuesInvalidError,
@@ -26,7 +34,9 @@ export function FormResponse({
   submitLabel = 'Send response',
   initialValues,
   uploads: target,
+  serverError,
 }: Readonly<{
+  serverError?: unknown;
   fields: readonly FormField[];
   onSubmit: (values: FormValues) => Promise<void>;
   pending?: boolean;
@@ -41,9 +51,21 @@ export function FormResponse({
   const [draft, setDraft] = useState<FormDraft>(() =>
     draftFromValues(initialValues),
   );
-  const [errors, setErrors] = useState<
-    readonly Readonly<{ name: string; message: string }>[]
-  >([]);
+  const validation = useFieldValidation<string>();
+  const showServerError = useEffectEvent((cause: unknown) => {
+    if (!isApiError(cause)) return;
+    const known = new Set(fields.map((field) => field.name));
+    const issues = cause.problem?.errors?.filter((issue) =>
+      known.has(issue.path),
+    );
+    if (issues !== undefined && issues.length > 0)
+      validation.showErrors(
+        Object.fromEntries(issues.map((issue) => [issue.path, issue.message])),
+      );
+  });
+  useEffect(() => {
+    showServerError(serverError);
+  }, [serverError]);
   async function submit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     if (disabled || pending || uploads.pending) return;
@@ -59,21 +81,21 @@ export function FormResponse({
       });
     } catch (error) {
       if (error instanceof FormValuesInvalidError) {
-        setErrors(error.fields);
+        validation.submit(
+          Object.fromEntries(
+            error.fields.map((issue) => [issue.name, issue.message]),
+          ),
+        );
         return;
       }
       throw error;
     }
-    setErrors([]);
+    validation.reset();
     await onSubmit(values);
   }
-  const errorByName = new Map(
-    errors.map((issue) => [issue.name, issue.message]),
-  );
   function clearError(name: string) {
-    setErrors((previous) =>
-      previous.filter((issue) => issue.name !== name && issue.name !== ''),
-    );
+    validation.change(name, undefined);
+    validation.change('', undefined);
   }
   function change(name: string, value: FormDraftValue) {
     setDraft((previous) => ({ ...previous, [name]: value }));
@@ -96,9 +118,10 @@ export function FormResponse({
               key={field.id}
               field={field}
               id={`${id}-${field.name}`}
+              inputRef={validation.register(field.name)}
               rows={uploads.rows[field.name] ?? []}
               disabled={disabled || pending}
-              error={errorByName.get(field.name)}
+              error={validation.error(field.name)}
               onAdd={(files) => {
                 clearError(field.name);
                 return uploads.add(field, files);
@@ -114,9 +137,10 @@ export function FormResponse({
               key={field.id}
               field={field}
               id={`${id}-${field.name}`}
+              inputRef={validation.register(field.name)}
               value={draft[field.name]}
               disabled={disabled || pending}
-              error={errorByName.get(field.name)}
+              error={validation.error(field.name)}
               onChange={(value) => {
                 change(field.name, value);
               }}
@@ -124,8 +148,8 @@ export function FormResponse({
           ),
         )}
       </fieldset>
-      {errorByName.has('') ? (
-        <Notice tone="destructive">{errorByName.get('')}</Notice>
+      {validation.error('') !== undefined ? (
+        <Notice tone="destructive">{validation.error('')}</Notice>
       ) : null}
       <div className="flex min-h-9 flex-wrap items-center gap-x-4 gap-y-2">
         <ProgressButton

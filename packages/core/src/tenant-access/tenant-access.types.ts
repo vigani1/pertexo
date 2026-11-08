@@ -1,3 +1,4 @@
+import type { DISCOVERABLE_WORKSPACE_STATUSES } from '@pertexo/policy';
 import type { DirectoryMembershipSource } from '@pertexo/contracts';
 import type { DelegatedRole, Role } from '@pertexo/policy';
 import type {
@@ -255,7 +256,7 @@ export type AccessibleWorkspaceRecord = Readonly<{
   id: string;
   name: string;
   slug: string;
-  status: Extract<WorkspaceStatus, 'active' | 'suspended' | 'pending_deletion'>;
+  status: (typeof DISCOVERABLE_WORKSPACE_STATUSES)[number];
   revision: number;
   role: Role;
   createdAt: Date;

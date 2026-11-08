@@ -1,5 +1,5 @@
+import { isUnconfirmedCommand } from '@/lib/api/commands/command-retry';
 import {
-  isUncertain,
   creationError,
   type CreationError,
 } from '../../model/creation-feedback';
@@ -160,7 +160,7 @@ export function useWorkspaceCreation({
           await clearCreationIdentity(context, scope);
           return false;
         }
-        if (isUncertain(error)) {
+        if (isUnconfirmedCommand(error)) {
           transition({
             kind: 'uncertain',
             attempt,

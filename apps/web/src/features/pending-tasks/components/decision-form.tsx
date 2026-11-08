@@ -86,7 +86,11 @@ export function DecisionForm({
               >
                 Retry same decision
               </Button>
-            ) : undefined
+            ) : (
+              <Button type="button" variant="outline" onClick={command.refresh}>
+                Refresh request
+              </Button>
+            )
           }
         >
           {command.error}

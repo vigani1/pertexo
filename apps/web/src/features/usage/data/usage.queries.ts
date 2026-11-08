@@ -7,7 +7,7 @@ import {
 } from '@/features/workflow-runs/workflow-runs-queries.public';
 import type { ApiClient } from '@/lib/api/client';
 import { getUsageCapacity, getUsageTrends } from './usage.api';
-import { forgetDeniedSnapshots } from '../model/usage-access';
+import { forgetDeniedSnapshots } from '@/lib/api/read-denial';
 
 export function usageCapacityQueryOptions(
   apiClient: ApiClient,

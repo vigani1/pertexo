@@ -25,7 +25,7 @@ import {
   usageActivityQueryOptions,
   usageCapacityQueryOptions,
 } from '../data/usage.queries';
-import { accessLost } from '../model/usage-access';
+import { isReadAccessLost } from '@/lib/api/read-denial';
 import { parseUsageSearch, type UsageSearch } from '../usage-search.public';
 
 const windows = {
@@ -82,9 +82,13 @@ export function UsagePage({
   });
   // Do not retain forbidden figures on permission/state loss, even if Query has a previous snapshot.
   const capacityData =
-    canReadCapacity && !accessLost(capacity.error) ? capacity.data : undefined;
+    canReadCapacity && !isReadAccessLost(capacity.error)
+      ? capacity.data
+      : undefined;
   const activityData =
-    canReadRuns && !accessLost(activity.error) ? activity.data : undefined;
+    canReadRuns && !isReadAccessLost(activity.error)
+      ? activity.data
+      : undefined;
   const asOf = olderOf(capacityData?.asOf, activityData?.asOf);
   return (
     <div className="flex flex-col gap-6">

@@ -10,7 +10,7 @@ import {
 } from '@pertexo/database/primitives';
 import {
   BROWSABLE_WORKSPACE_STATUSES,
-  UNPURGED_WORKSPACE_STATUSES,
+  DISCOVERABLE_WORKSPACE_STATUSES,
 } from '@pertexo/policy';
 import {
   users,
@@ -28,7 +28,6 @@ import type {
   ListWorkspaceMembersInput,
   WorkspaceAccessRecord,
   WorkspaceMembersPage,
-  WorkspaceStatus,
 } from '../tenant-access.types.js';
 import { withWorkspaceAccess } from '../../shared/workspace-access.js';
 import { DEFAULT_PAGE_LIMIT } from '../state.js';
@@ -47,9 +46,9 @@ async function listAccessibleWorkspaces(
         id: workspaces.id,
         name: workspaces.name,
         slug: workspaces.slug,
-        // The status predicate excludes purging/deleted workspaces from this page.
+        // Finished deletion is undiscoverable; current members can observe purging.
         status: sql<
-          Extract<WorkspaceStatus, 'active' | 'suspended' | 'pending_deletion'>
+          (typeof DISCOVERABLE_WORKSPACE_STATUSES)[number]
         >`${workspaces.status}`,
         revision: workspaces.revision,
         role: workspaceMemberships.role,
@@ -72,7 +71,7 @@ async function listAccessibleWorkspaces(
         and(
           eq(workspaceMemberships.userId, actorId),
           eq(workspaceMemberships.status, 'active'),
-          inArray(workspaces.status, UNPURGED_WORKSPACE_STATUSES),
+          inArray(workspaces.status, DISCOVERABLE_WORKSPACE_STATUSES),
           sql`(${after ?? null}::uuid is null or ${workspaces.id}>${after ?? null}::uuid)`,
         ),
       )

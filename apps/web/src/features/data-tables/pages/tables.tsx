@@ -99,7 +99,8 @@ export function DataTablesPage({
           rowLimit={quotas?.rowLimit}
           workspaceId={workspace.id}
         />
-      ) : (
+      ) : null}
+      {tableId !== undefined && query.data !== undefined ? (
         <TableDetail
           unavailableName={unavailable?.name}
           scope={scope}
@@ -108,7 +109,7 @@ export function DataTablesPage({
           pending={query.isPending}
           editable={editable}
         />
-      )}
+      ) : null}
       <TableDialogs
         scope={scope}
         table={table}
