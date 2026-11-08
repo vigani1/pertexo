@@ -382,11 +382,13 @@ try {
         ([key]) => !key.startsWith('RCLONE_CONFIG_CRYPT_'),
       ),
     );
-    if (keys === 'wrong')
+    if (keys === 'wrong' || keys === 'wrong-salt')
       Object.assign(env, {
         ...cryptKeys,
-        RCLONE_CONFIG_CRYPT_PASSWORD: rclone(['obscure', '-'], {
-          input: 'wrong-password',
+        [keys === 'wrong-salt'
+          ? 'RCLONE_CONFIG_CRYPT_PASSWORD2'
+          : 'RCLONE_CONFIG_CRYPT_PASSWORD']: rclone(['obscure', '-'], {
+          input: 'wrong-key-material',
           captureOutput: true,
         }).trim(),
       });
