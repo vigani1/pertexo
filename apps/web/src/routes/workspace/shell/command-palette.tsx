@@ -1,6 +1,6 @@
 import type { ReadQuery } from '@/components/patterns/states/query-view';
 import { ReadRecovery } from '@/components/patterns/states/read-recovery';
-import { isAccessLost } from '@/lib/api/error-copy';
+import { shownData } from '@/lib/api/error-copy';
 import { useState } from 'react';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
@@ -68,12 +68,9 @@ export function WorkspaceCommandPalette({
   const places = workspacePlaces({ workspace, navigate });
 
   const searchQuery = typed === '' ? workflows : found;
-  const shown =
-    searchQuery.isError && isAccessLost(searchQuery.error)
-      ? []
-      : (searchQuery.data?.pages ?? []).flatMap((page) =>
-          page.items.map((item) => ('workflow' in item ? item.workflow : item)),
-        );
+  const shown = (shownData(searchQuery)?.pages ?? []).flatMap((page) =>
+    page.items.map((item) => ('workflow' in item ? item.workflow : item)),
+  );
   const workflowItems: CommandItem[] = shown.map((workflow) => ({
     id: `workflow-${workflow.id}`,
     label: workflow.name,
