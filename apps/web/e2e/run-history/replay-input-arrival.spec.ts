@@ -30,7 +30,13 @@ for (const initialRead of ['success', 'failure'] as const) {
     const requested = new Promise<void>((resolve) => {
       arrived = resolve;
     });
+    let reads = 0;
     await page.route(`**/runs/${firstRunId}/input`, async (route) => {
+      reads += 1;
+      if (reads > 1) {
+        await route.fallback();
+        return;
+      }
       arrived();
       await held;
       if (initialRead === 'success') await route.fallback();
@@ -74,10 +80,28 @@ for (const initialRead of ['success', 'failure'] as const) {
         element.form?.requestSubmit(),
       );
       expect(posts).toEqual([]);
-      // A fill begun here must wait for editability, including a failed read.
-      const filling = editor.fill(replacement);
+      // A successful arrival unlocks the queued fill. A failed read requires
+      // explicit recovery before either editing or sending becomes available.
+      const filling =
+        initialRead === 'success' ? editor.fill(replacement) : undefined;
       release();
-      await filling;
+      if (initialRead === 'failure') {
+        const retry = dialog.getByRole('button', { name: 'Retry saved input' });
+        await expect(retry).toBeVisible();
+        await expect(editor).toBeDisabled();
+        await expect(submit).toBeDisabled();
+        await submit.evaluate((element: HTMLButtonElement) =>
+          element.form?.requestSubmit(),
+        );
+        expect(posts).toEqual([]);
+        await retry.click();
+        await expect(editor).toBeEnabled();
+        expect(JSON.parse(await editor.inputValue())).toEqual({
+          incident: 'INC-41',
+        });
+        expect(reads).toBe(2);
+      }
+      await (filling ?? editor.fill(replacement));
       await expect(editor).toHaveValue(replacement);
       await editor.focus();
       await page.keyboard.press('ControlOrMeta+A');
