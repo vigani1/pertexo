@@ -1,5 +1,6 @@
 import { UnavailableDataTable } from '../components/unavailable';
 import { QueryView } from '@/components/patterns/states/query-view';
+import { shownData } from '@/lib/api/error-copy';
 import { isAdministrativeRole } from '@pertexo/policy';
 import { useState } from 'react';
 import { ArrowLeftIcon } from 'lucide-react';
@@ -45,11 +46,13 @@ export function DataTablesPage({
     workspace.status === 'active' &&
     workspace.capabilities.includes('workflow:update');
   const admin = editable && isAdministrativeRole(workspace.role);
-  const table = query.data?.tables.find((item) => item.id === tableId);
-  const unavailable = query.data?.unavailableTables?.find(
+  // Definitions a refresh says are no longer readable leave the page.
+  const data = shownData(query);
+  const table = data?.tables.find((item) => item.id === tableId);
+  const unavailable = data?.unavailableTables?.find(
     (item) => item.id === tableId,
   );
-  const quotas = query.data?.quotas;
+  const quotas = data?.quotas;
   return (
     <div className="flex min-w-0 max-w-7xl flex-col gap-6">
       <PageHeader>
@@ -94,13 +97,13 @@ export function DataTablesPage({
       <QueryView query={query} resource="Data tables" />
       {tableId === undefined ? (
         <TableCollection
-          tables={query.data?.tables}
-          unavailableTables={query.data?.unavailableTables}
+          tables={data?.tables}
+          unavailableTables={data?.unavailableTables}
           rowLimit={quotas?.rowLimit}
           workspaceId={workspace.id}
         />
       ) : null}
-      {tableId !== undefined && query.data !== undefined ? (
+      {tableId !== undefined && data !== undefined ? (
         <TableDetail
           unavailableName={unavailable?.name}
           scope={scope}
