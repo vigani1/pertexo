@@ -190,3 +190,124 @@ it('keeps an attached file visible after a safe server refusal and focuses Remov
   expect(screen.queryByText('invoice.pdf')).not.toBeInTheDocument();
   expect(screen.getByLabelText('Invoice')).toBeEnabled();
 });
+
+it('retains a completed upload across coordinated capacity refusal and sends it again with a fresh command key', async () => {
+  const { FormPage } = await import('@/features/forms/pages/published-form');
+  const { QueryClientProvider } = await import('@tanstack/react-query');
+  const { createQueryClient } = await import('@/app/query-client');
+  const publicId = '11111111-1111-4111-8111-111111111111';
+  const versionId = '22222222-2222-4222-8222-222222222222';
+  const uploadId = '33333333-3333-4333-8333-333333333333';
+  const path = `http://pertexo.test/v1/forms/${publicId}`;
+  const metadata = {
+    id: uploadId,
+    filename: 'invoice.pdf',
+    byteLength: 9,
+    mediaType: 'application/pdf',
+    status: 'available',
+    expiresAt: '2027-01-01T00:00:00.000Z',
+  };
+  const writes: { body: unknown; key: string | null }[] = [];
+  let uploads = 0;
+  mockServer.use(
+    http.get(path, () =>
+      HttpResponse.json({
+        versionId,
+        form: {
+          title: 'Invoice',
+          instructions: '',
+          fields: [
+            {
+              id: 'invoice',
+              name: 'invoice',
+              label: 'Invoice',
+              type: 'file',
+              accept: ['documents'],
+              maxFiles: 1,
+            },
+          ],
+        },
+      }),
+    ),
+    http.post(`${path}/uploads`, () => {
+      uploads++;
+      return HttpResponse.json({
+        upload: { ...metadata, status: 'pending' },
+        transfer: {
+          method: 'PUT',
+          url: store,
+          headers: {},
+          expiresAt: metadata.expiresAt,
+          expiresInSeconds: 900,
+        },
+        replayed: false,
+      });
+    }),
+    http.post(`${path}/uploads/${uploadId}/finalize`, () =>
+      HttpResponse.json(metadata),
+    ),
+    http.post(`${path}/submit`, async ({ request }) => {
+      writes.push({
+        body: await request.json(),
+        key: request.headers.get('idempotency-key'),
+      });
+      return HttpResponse.json(
+        writes.length === 1
+          ? {
+              accepted: false,
+              coordinated: true,
+              eventId: publicId,
+              outcome: 'refused',
+              status: 'refused',
+              reason: 'coordination_full',
+              replayed: false,
+            }
+          : { accepted: true, replayed: false, thankYouMessage: 'Received' },
+      );
+    }),
+  );
+  storeAccepts();
+  render(
+    <QueryClientProvider client={createQueryClient()}>
+      <FormPage
+        scope={{
+          apiClient: createApiClient({
+            fetch: testFetch,
+            readCsrfToken: () => undefined,
+          }),
+          target: {
+            kind: 'public',
+            publicId,
+            capability: 'a'.repeat(43),
+            authority: 'b'.repeat(64),
+          },
+        }}
+      />
+    </QueryClientProvider>,
+  );
+  const user = userEvent.setup();
+  await user.upload(
+    await screen.findByLabelText('Invoice'),
+    file('invoice.pdf'),
+  );
+  await screen.findByText(/· Attached$/u);
+  await user.click(screen.getByRole('button', { name: 'Send response' }));
+  await screen.findByText(
+    'The workspace has too many pending events or active keys. Try again shortly.',
+  );
+  expect(
+    screen.getByRole('button', { name: 'Remove invoice.pdf' }),
+  ).toBeEnabled();
+  await user.click(screen.getByRole('button', { name: 'Send response' }));
+  expect(
+    await screen.findByRole('heading', { name: 'Response sent' }),
+  ).toBeVisible();
+  expect(uploads).toBe(1);
+  expect(writes).toHaveLength(2);
+  expect(writes[0]?.key).toBeTruthy();
+  expect(writes[1]?.key).not.toBe(writes[0]?.key);
+  expect(writes.map((write) => write.body)).toEqual([
+    { versionId, values: { invoice: [uploadId] } },
+    { versionId, values: { invoice: [uploadId] } },
+  ]);
+});
