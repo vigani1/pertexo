@@ -166,7 +166,7 @@ test('published member and public forms start real runs; captured member input c
     .getByRole('button', { name: 'Enable public link', exact: true })
     .click();
   const link = await page
-    .getByLabel('Save this link now', { exact: true })
+    .getByLabel('Public form link', { exact: true })
     .inputValue();
   expect(link).toContain('/forms/');
   const publicContext = await browser.newContext({
@@ -341,8 +341,14 @@ test('published member and public forms start real runs; captured member input c
     await page
       .getByRole('button', { name: 'Regenerate link', exact: true })
       .click();
+    await page
+      .getByRole('button', {
+        name: 'Regenerate and invalidate old link',
+        exact: true,
+      })
+      .click();
     await expect(
-      page.getByLabel('Save this link now', { exact: true }),
+      page.getByLabel('Public form link', { exact: true }),
     ).not.toHaveValue(link);
     await publicPage.goto(link);
     await publicPage.reload();

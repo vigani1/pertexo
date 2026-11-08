@@ -55,25 +55,19 @@ function SharedFormAccess({
 }: Readonly<{ scope: MemberFormScope; access: FormAccess }>) {
   const cache = useQueryClient();
   const [confirming, setConfirming] = useState(false);
+  const [issuedAccess, setIssuedAccess] = useState<FormAccess>();
   const command = useRetainedCommand(
     (body: FormAccessRequest, key: string) => setFormAccess(scope, body, key),
-    async () => {
+    async (result) => {
       setConfirming(false);
       await cache.invalidateQueries({
         queryKey: formAccessQueryOptions(scope).queryKey,
       });
+      setIssuedAccess(result.capability ? result : undefined);
     },
   );
   const disabled = command.pending || command.uncertain;
-  const url =
-    access.access === 'public' && access.publicId !== null && access.capability
-      ? new URL(
-          `/forms/${encodeURIComponent(access.publicId)}`,
-          window.location.origin,
-        )
-      : undefined;
-  if (url !== undefined) url.hash = access.capability ?? '';
-  const link = url?.toString();
+  const link = visibleFormLink(access, issuedAccess);
   return (
     <section className="flex min-w-0 flex-col gap-3 border-t border-border pt-4">
       <h3 className="font-medium">Who can open this form</h3>
@@ -99,7 +93,7 @@ function SharedFormAccess({
         <>
           <p className="text-xs text-muted-foreground">
             {link === undefined
-              ? 'This older link can’t be shown again. Regenerate it once to save a copy you can view here anytime.'
+              ? 'This link can’t be shown again. Regenerate it to get a new link.'
               : 'Anyone holding this link can send responses.'}
           </p>
           <div className="flex flex-wrap gap-2">
@@ -146,20 +140,12 @@ function SharedFormAccess({
         </Button>
       )}
       {link === undefined ? null : (
-        <LabelledField
-          id={`${scope.workflowId}-public-form-link`}
-          label="Public form link"
-          description="Editors can return here to copy this link anytime."
-        >
-          {(control) => (
-            <div className="flex min-w-0 gap-2">
-              <Input {...control} readOnly value={link} />
-              <CopyButton value={link} label="Copy form link" />
-            </div>
-          )}
-        </LabelledField>
+        <PublicFormLink
+          link={link}
+          workflowId={scope.workflowId}
+          oneTime={!access.capability}
+        />
       )}
-      {link === undefined ? null : <FormLinkQr link={link} />}
       <RegenerateFormLink
         open={confirming}
         setOpen={setConfirming}
@@ -196,7 +182,11 @@ function SharedFormAccess({
   );
 }
 
-function FormLinkQr({ link }: Readonly<{ link: string }>) {
+function PublicFormLink({
+  link,
+  workflowId,
+  oneTime,
+}: Readonly<{ link: string; workflowId: string; oneTime: boolean }>) {
   const { data, size } = encode(link);
   const path = data
     .flatMap((row, y) =>
@@ -206,16 +196,34 @@ function FormLinkQr({ link }: Readonly<{ link: string }>) {
     )
     .join('');
   return (
-    <svg
-      role="img"
-      aria-label="Public form QR code"
-      viewBox={`0 0 ${String(size + 8)} ${String(size + 8)}`}
-      className="size-48 max-w-full"
-      shapeRendering="crispEdges"
-    >
-      <rect width="100%" height="100%" fill="white" />
-      <path d={path} fill="black" />
-    </svg>
+    <>
+      <LabelledField
+        id={`${workflowId}-public-form-link`}
+        label={oneTime ? 'Save this link now' : 'Public form link'}
+        description={
+          oneTime
+            ? 'This server can’t show this link again. Copy and save it now.'
+            : 'Editors can return here to copy this link anytime.'
+        }
+      >
+        {(control) => (
+          <div className="flex min-w-0 gap-2">
+            <Input {...control} readOnly value={link} />
+            <CopyButton value={link} label="Copy form link" />
+          </div>
+        )}
+      </LabelledField>
+      <svg
+        role="img"
+        aria-label="Public form QR code"
+        viewBox={`0 0 ${String(size + 8)} ${String(size + 8)}`}
+        className="size-48 max-w-full"
+        shapeRendering="crispEdges"
+      >
+        <rect width="100%" height="100%" fill="white" />
+        <path d={path} fill="black" />
+      </svg>
+    </>
   );
 }
 
@@ -256,4 +264,21 @@ function RegenerateFormLink({
       }
     />
   );
+}
+
+/** A command-only capability is usable only while GET still names that revision. */
+function visibleFormLink(access: FormAccess, issued: FormAccess | undefined) {
+  if (access.access !== 'public' || access.publicId === null) return undefined;
+  const capability =
+    access.capability ??
+    (issued?.revision === access.revision && issued.publicId === access.publicId
+      ? issued.capability
+      : undefined);
+  if (!capability) return undefined;
+  const url = new URL(
+    `/forms/${encodeURIComponent(access.publicId)}`,
+    window.location.origin,
+  );
+  url.hash = capability;
+  return url.toString();
 }

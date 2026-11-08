@@ -139,13 +139,19 @@ has neither redirect nor thank-you settings.
 
 An editor can **Enable public link** in the published Form setup. Anyone holding
 that link can send responses. Editors can return there at any time to view and
-copy the saved URL or scan its QR code, even if they lost their own copy.
+copy the saved URL or scan its QR code, even if they lost their own copy, when
+connection encryption is configured on the server.
 Viewers cannot see public link capabilities.
 
-Pertexo stores a digest for checking access and an encrypted copy for retrieving
-the link. Only legacy links, made before encrypted copies were saved, cannot be
-shown again. Choose **Regenerate link** once to replace a legacy link with a
-new link that can be retrieved later.
+Pertexo stores a digest for checking access and, when connection encryption is
+available, an encrypted copy for retrieving the link. **On a server without
+connection encryption, public links are shown only once.** Copy and save the
+link when enabling or regenerating it; it cannot be retrieved later on that
+server. Existing public links continue to work even when encryption is unavailable.
+
+Links without encrypted copies, including legacy links, cannot be shown again.
+**Regenerate link** creates a replacement. With connection encryption configured,
+the replacement can be retrieved later; without it, save the new link now.
 **Regenerating immediately breaks existing links**, including those posted on
 pages or in QR codes. Replace them with the new link.
 

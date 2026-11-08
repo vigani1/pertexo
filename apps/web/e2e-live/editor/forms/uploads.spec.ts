@@ -201,7 +201,7 @@ test('form and input request uploads reach the run as files that Read file reads
     .getByRole('button', { name: 'Enable public link', exact: true })
     .click();
   const link = await page
-    .getByLabel('Save this link now', { exact: true })
+    .getByLabel('Public form link', { exact: true })
     .inputValue();
 
   // A public responder: no session, only the link.

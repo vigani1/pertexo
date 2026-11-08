@@ -93,7 +93,7 @@ it('explains a legacy link and confirms the consequence before regenerating', as
   );
   mount();
   expect(
-    await screen.findByText(/This older link can’t be shown again/u),
+    await screen.findByText(/This link can’t be shown again/u),
   ).toBeVisible();
   const user = userEvent.setup();
   await user.click(screen.getByRole('button', { name: 'Regenerate link' }));
@@ -163,4 +163,55 @@ it('keeps retry reachable after a confirmed regeneration loses its acknowledgeme
   expect(await screen.findByLabelText('Public form link')).toHaveValue(
     `${window.location.origin}/forms/${id}#${token}`,
   );
+});
+it('shows a command-issued link once when GET has no copy, including after regeneration', async () => {
+  let revision = 0;
+  let access = 'members';
+  let issued = '';
+  mockServer.use(
+    http.get(path, () =>
+      HttpResponse.json({
+        access,
+        publicId: revision === 0 ? null : id,
+        revision,
+        capability: null,
+      }),
+    ),
+    http.post(path, async ({ request }) => {
+      const body = (await request.json()) as { capability: string };
+      issued = body.capability;
+      revision++;
+      access = 'public';
+      return HttpResponse.json({
+        access,
+        publicId: id,
+        revision,
+        capability: issued,
+      });
+    }),
+  );
+  const user = userEvent.setup();
+  const view = mount();
+  await user.click(
+    await screen.findByRole('button', { name: 'Enable public link' }),
+  );
+  expect(await screen.findByLabelText('Save this link now')).toHaveValue(
+    `${window.location.origin}/forms/${id}#${issued}`,
+  );
+  expect(screen.getByRole('button', { name: 'Copy form link' })).toBeVisible();
+  const first = issued;
+  view.unmount();
+  mount();
+  expect(
+    await screen.findByText(/This link can’t be shown again/u),
+  ).toBeVisible();
+  expect(screen.queryByLabelText('Save this link now')).not.toBeInTheDocument();
+  await user.click(screen.getByRole('button', { name: 'Regenerate link' }));
+  await user.click(
+    screen.getByRole('button', { name: 'Regenerate and invalidate old link' }),
+  );
+  expect(await screen.findByLabelText('Save this link now')).toHaveValue(
+    `${window.location.origin}/forms/${id}#${issued}`,
+  );
+  expect(issued).not.toBe(first);
 });
