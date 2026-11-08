@@ -283,4 +283,36 @@ describe('Replay while the run’s input is still loading', () => {
     },
     30_000,
   );
+  it('keeps replay blocked through a second failed saved-input recovery before sending the recovered input', async () => {
+    let reads = 0;
+    mockServer.use(
+      http.get(`${apiBase}/runs/:runId/input`, () => {
+        reads++;
+        return reads < 3
+          ? new HttpResponse(null, { status: 503 })
+          : HttpResponse.json({ input: { kind: 'inline', value: RUN_INPUT } });
+      }),
+    );
+    const { event, dialog, router } = await openReplay();
+    await event.click(
+      await dialog.findByRole('button', { name: 'Retry saved input' }),
+    );
+    await waitFor(() => {
+      expect(reads).toBe(2);
+    });
+    const retry = await dialog.findByRole('button', {
+      name: 'Retry saved input',
+    });
+    await waitFor(() => expect(retry).toBeEnabled());
+    expect(dialog.getByRole('button', { name: 'Replay run' })).toBeDisabled();
+    expect(dialog.getByLabelText(LABEL)).toBeDisabled();
+    expect(bodies).toEqual([]);
+    await event.click(retry);
+    await waitFor(() =>
+      expect(dialog.getByLabelText(LABEL)).toHaveValue(RUN_INPUT_TEXT),
+    );
+    await event.click(dialog.getByRole('button', { name: 'Replay run' }));
+    await opened(router);
+    expect(bodies).toEqual([sent(RUN_INPUT)]);
+  });
 });
