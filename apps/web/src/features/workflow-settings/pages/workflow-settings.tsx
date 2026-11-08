@@ -14,7 +14,7 @@ import { LifecycleSection } from '../components/settings/lifecycle-section';
 import { RunDurationSection } from '../components/settings/run-duration-section';
 import { AutoPauseSection } from '../components/settings/auto-pause-section';
 import { ConcurrencySection } from '../components/settings/concurrency-section';
-import { visibleSettingsData } from '../model/settings-query';
+import { shownData } from '@/lib/api/error-copy';
 
 type SettingsPageProps = Readonly<{
   apiClient: ApiClient;
@@ -61,7 +61,7 @@ function SettingsSession({
           <NoticeSubjectActions
             scope={{ apiClient, userId: user.id, workspaceId: workspace.id }}
             subject={{ subjectKind: 'workflow', subjectId: workflowId }}
-            name={visibleSettingsData(summary)?.name ?? 'this workflow'}
+            name={shownData(summary)?.name ?? 'this workflow'}
           />
         </SettingsSection>
       ) : null}
@@ -87,7 +87,7 @@ function SettingsSession({
         apiClient={apiClient}
         userId={user.id}
         workspace={workspace}
-        workflow={visibleSettingsData(summary)}
+        workflow={shownData(summary)}
       />
       <ConcurrencySection
         apiClient={apiClient}

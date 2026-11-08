@@ -26,8 +26,8 @@ import {
   errorTargetsQuery,
 } from '../../data/error-workflow/error-workflow.queries';
 import { useErrorWorkflowCommand } from '../../data/error-workflow/use-command';
-import { visibleSettingsData } from '../../model/settings-query';
 import { settingsReadFailure } from '../settings-read-failure';
+import { shownData } from '@/lib/api/error-copy';
 
 type Scope = Readonly<{
   apiClient: ApiClient;
@@ -167,7 +167,7 @@ function useErrorWorkflowForm({
     ),
   );
   const available =
-    visibleSettingsData(targets)?.pages.flatMap((page) => page.items) ?? [];
+    shownData(targets)?.pages.flatMap((page) => page.items) ?? [];
   const command = useErrorWorkflowCommand(
     scope.apiClient,
     scope.userId,

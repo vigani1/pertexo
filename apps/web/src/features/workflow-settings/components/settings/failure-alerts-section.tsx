@@ -29,13 +29,13 @@ import {
 import type { ApiClient } from '@/lib/api/client';
 import { describeDestination } from '../../model/destination-label';
 import { useFailureNotificationCommands } from '../../data/mutations/use-notification-commands';
-import { visibleSettingsData } from '../../model/settings-query';
 import { failureNotificationPolicyQueryOptions } from '../../data/workflow-settings.queries';
 import { SettingsSection } from '@/components/patterns/settings/section';
 import { QueryView } from '@/components/patterns/states/query-view';
 import { settingsReadFailure } from '../settings-read-failure';
 import { CurrentAlertDestination } from './current-alert-destination';
 import { roleLimitSentence } from '@/features/workspaces/roles.public';
+import { shownData } from '@/lib/api/error-copy';
 
 const NO_NAMES: ReadonlyMap<string, string> = new Map();
 
@@ -103,9 +103,9 @@ function useAlertChoices({
     ),
     enabled,
   });
-  const current = visibleSettingsData(policy);
+  const current = shownData(policy);
   const currentDestination = current?.destination ?? null;
-  const listed = visibleSettingsData(destinations);
+  const listed = shownData(destinations);
   const channelNames = useSlackChannelNames({
     apiClient,
     userId,

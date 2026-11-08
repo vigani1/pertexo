@@ -11,9 +11,9 @@ import type { ApiClient } from '@/lib/api/client';
 import { formatDateTime } from '@/lib/format/time';
 import { workflowAutoPauseQueryOptions } from '../data/auto-pause.queries';
 import { useAutoPauseCommand } from '../data/mutations/use-auto-pause-command';
-import { visibleSettingsData } from '../model/settings-query';
 import { QueryView } from '@/components/patterns/states/query-view';
 import { settingsReadFailure } from './settings-read-failure';
+import { shownData } from '@/lib/api/error-copy';
 
 function PausedStateNotice({
   workspaceId,
@@ -126,7 +126,7 @@ export function WorkflowPausedBanner({
   const query = useQuery(
     workflowAutoPauseQueryOptions(apiClient, userId, workspace.id, workflowId),
   );
-  const settings = visibleSettingsData(query);
+  const settings = shownData(query);
   const command = useAutoPauseCommand(
     apiClient,
     userId,
