@@ -71,3 +71,50 @@ it('lets an expired uncertain provider save inspect current settings and explici
   expect(await screen.findByText('Provider editor closed')).toBeVisible();
   expect(writes).toBe(1);
 });
+
+it('keeps an expired provider draft and an exit available when inspecting current settings fails', async () => {
+  let writes = 0;
+  let readFails = true;
+  mockServer.use(
+    http.put('*/v1/workspaces/:workspaceId/sso/providers/:providerId', () => {
+      writes++;
+      return HttpResponse.error();
+    }),
+    http.get('*/v1/workspaces/:workspaceId/sso', () =>
+      readFails
+        ? new HttpResponse(null, { status: 503 })
+        : HttpResponse.json(settings),
+    ),
+  );
+  renderInRouter(<Editor />);
+  const user = userEvent.setup();
+  const name = await screen.findByLabelText('Provider name');
+  await user.clear(name);
+  await user.type(name, 'Keep this through failed inspection');
+  await user.click(screen.getByRole('button', { name: 'Save provider' }));
+  await screen.findByRole('button', { name: 'Retry same request' });
+  vi.spyOn(Date, 'now').mockReturnValue(Date.now() + 86_400_001);
+  await act(async () => {
+    document.dispatchEvent(new Event('visibilitychange'));
+    await Promise.resolve();
+  });
+  await user.click(
+    await screen.findByRole('button', { name: 'Check current settings' }),
+  );
+  const retry = await screen.findByRole('button', { name: 'Retry' });
+  expect(name).toHaveValue('Keep this through failed inspection');
+  expect(
+    screen.queryByText('Current provider settings'),
+  ).not.toBeInTheDocument();
+  expect(
+    screen.getByRole('button', { name: 'Discard and close' }),
+  ).toBeEnabled();
+  expect(writes).toBe(1);
+  readFails = false;
+  await user.click(retry);
+  expect(await screen.findByText('Current provider settings')).toBeVisible();
+  expect(name).toHaveValue('Keep this through failed inspection');
+  await user.click(screen.getByRole('button', { name: 'Discard and close' }));
+  expect(await screen.findByText('Provider editor closed')).toBeVisible();
+  expect(writes).toBe(1);
+});
