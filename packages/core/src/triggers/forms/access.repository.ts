@@ -1,3 +1,4 @@
+import type { SealedConnectionSecret } from '@pertexo/secrets/server';
 import {
   rethrowQueryFailure,
   claimCommand,
@@ -71,6 +72,8 @@ export async function changeFormAccess(
       publicId: generatePersistedId(),
       access: input.access,
       capabilityHash: digest,
+      sealedCapability:
+        input.access === 'public' ? input.sealedCapability : null,
       revision: 1,
       nodeId,
     })
@@ -79,6 +82,8 @@ export async function changeFormAccess(
       set: {
         access: input.access,
         capabilityHash: digest,
+        sealedCapability:
+          input.access === 'public' ? input.sealedCapability : null,
         nodeId,
         revision: sql`${workflowForms.revision}+1`,
         updatedAt: sql`clock_timestamp()`,
@@ -100,4 +105,22 @@ export async function changeFormAccess(
   });
   await completeCommand(client, command, changed);
   return changed;
+}
+
+/** The managing flow calls this only after checking workflow:update in the folder. */
+export async function readSealedFormCapability(
+  client: PoolClient,
+  input: Readonly<{ workspaceId: string; workflowId: string }>,
+): Promise<SealedConnectionSecret | null> {
+  const [row] = await drizzle(client)
+    .select({ sealedCapability: workflowForms.sealedCapability })
+    .from(workflowForms)
+    .where(
+      and(
+        eq(workflowForms.workspaceId, input.workspaceId),
+        eq(workflowForms.workflowId, input.workflowId),
+      ),
+    )
+    .catch(rethrowQueryFailure);
+  return (row?.sealedCapability ?? null) as SealedConnectionSecret | null;
 }

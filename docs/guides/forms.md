@@ -138,7 +138,7 @@ has neither redirect nor thank-you settings.
 ## Public links
 
 An editor can **Enable public link** in the published Form setup. Anyone holding
-that link can send responses. The full URL is shown once: save it securely.
+that link can send responses. Editors can return to the published Form setup anytime to view and copy the full URL or scan its QR code. Older links created before retrievable links were introduced cannot be shown again; regenerate once to make the new link retrievable. Regenerating requires confirmation and invalidates the old link, including links posted on pages and QR codes. Replace those with the new link. Viewers cannot see public link capabilities.
 Pertexo stores its digest, not its plaintext key. Losing the link requires
 **Regenerate link**, which immediately invalidates the previous one. **Turn public
 access off** also revokes it immediately. Replacing or removing the published

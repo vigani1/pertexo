@@ -1,3 +1,6 @@
+import type { FolderScope } from '../../shared/folder-access.types.js';
+import { workflowAccessible } from '../../shared/resources/workflow-access.repository.js';
+import type { SealedConnectionSecret } from '@pertexo/secrets/server';
 import { lockWorkspaceRunAdmission } from '../../shared/workspace-fence.repository.js';
 import {
   withTenantScopedClient,
@@ -42,7 +45,11 @@ import type {
 } from './form-admission.types.js';
 import { authorizeForm, readFormVersion } from './form-versions.repository.js';
 import { discoverPublicForm } from './discover.repository.js';
-import { readFormAccess, changeFormAccess } from './access.repository.js';
+import {
+  readFormAccess,
+  readSealedFormCapability,
+  changeFormAccess,
+} from './access.repository.js';
 import { submitForm } from './submit.repository.js';
 export type FormStore = ReturnType<typeof createFormStore>;
 
@@ -188,7 +195,7 @@ async function submitFormEvent(
 function withFormManager<T>(
   pool: Pool,
   input: FormScope & Readonly<{ actorId: string }>,
-  work: (client: PoolClient) => Promise<T>,
+  work: (client: PoolClient, scope: FolderScope) => Promise<T>,
 ): Promise<T> {
   return withWorkflowAccess(
     pool,
@@ -222,10 +229,23 @@ async function readFormHistory(
 function readManagedFormAccess(
   pool: Pool,
   input: ReadFormAccessInput,
-): Promise<FormAccess> {
-  return withFormManager(pool, input, async (client) => {
+): Promise<
+  FormAccess & Readonly<{ sealedCapability: SealedConnectionSecret | null }>
+> {
+  return withFormManager(pool, input, async (client, scope) => {
     await readFormVersion(client, input, 'read', { allowPaused: true });
-    return readFormAccess(client, input);
+    const access = await readFormAccess(client, input);
+    if (
+      !(await workflowAccessible(client, scope, {
+        ...input,
+        capability: 'workflow:update',
+      }))
+    )
+      return { ...access, sealedCapability: null };
+    return {
+      ...access,
+      sealedCapability: await readSealedFormCapability(client, input),
+    };
   });
 }
 

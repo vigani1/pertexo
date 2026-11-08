@@ -1,3 +1,4 @@
+import type { ConnectionSecretEncryptionPort } from '../connections/ports.js';
 import { Module, type DynamicModule } from '@nestjs/common';
 import type { FormStore } from '@pertexo/core/triggers';
 import type { WorkspaceAuthorizationSource } from '../workspaces/ports.js';
@@ -10,7 +11,13 @@ import { WORKSPACE_AUTHORIZATION } from '../workspaces/tokens.js';
 // eslint-disable-next-line @typescript-eslint/no-extraneous-class
 export class FormsModule {
   static register(
-    store: FormStore,
+    {
+      store,
+      encryption,
+    }: Readonly<{
+      store: FormStore;
+      encryption?: ConnectionSecretEncryptionPort | undefined;
+    }>,
     authorization: WorkspaceAuthorizationSource,
     identityModule: DynamicModule,
     admission: DynamicModule,
@@ -20,7 +27,7 @@ export class FormsModule {
       imports: [identityModule, admission],
       controllers: [MemberFormsController, PublicFormsController],
       providers: [
-        { provide: FormService, useValue: new FormService(store) },
+        { provide: FormService, useValue: new FormService(store, encryption) },
         { provide: WORKSPACE_AUTHORIZATION, useValue: authorization },
       ],
     };

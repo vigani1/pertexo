@@ -1,3 +1,4 @@
+import type { ConnectionSecretEncryptionPort } from '../../connections/ports.js';
 import { buildWorkflowTestExecutable } from '@pertexo/workflow-engine/server';
 import { createNodeTestingRuntime } from './composition/node-testing.runtime.js';
 import { GovernanceModule } from '../../governance/governance.module.js';
@@ -182,6 +183,7 @@ export class WorkflowRuntimeModule {
     runtime: ApiWorkflowRuntime,
     identityModule: DynamicModule,
     admission: DynamicModule,
+    formEncryption?: ConnectionSecretEncryptionPort,
   ): DynamicModule {
     return {
       module: WorkflowRuntimeModule,
@@ -229,7 +231,7 @@ export class WorkflowRuntimeModule {
           ? []
           : [
               FormsModule.register(
-                runtime.forms,
+                { store: runtime.forms, encryption: formEncryption },
                 runtime.dependencies.authorization,
                 identityModule,
                 admission,

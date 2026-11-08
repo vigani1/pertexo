@@ -11,7 +11,32 @@ import {
   useBetterAuthRealApi,
 } from '../support/better-auth/real-api.support.js';
 
-const api = useBetterAuthRealApi('public_forms');
+const logs: unknown[] = [];
+const capture = (...args: unknown[]) => {
+  logs.push(args);
+};
+const api = useBetterAuthRealApi('public_forms', {
+  logger: {
+    debug: capture,
+    error: capture,
+    fatal: capture,
+    info: capture,
+    trace: capture,
+    warn: capture,
+  },
+  connections: {
+    config: {
+      mode: 'self-managed',
+      encryption: {
+        current: {
+          version: 'forms-test',
+          key: Buffer.alloc(32, 21).toString('base64'),
+        },
+        previous: [],
+      },
+    },
+  },
+});
 async function ownerWorkspace() {
   const email = `${randomUUID()}@example.test`;
   await api.signUp(email, '/login?verified=true');
@@ -31,7 +56,11 @@ async function ownerWorkspace() {
     },
   });
   expect(created.statusCode).toBe(201);
-  return { actorId: owner.id, workspaceId: created.json<{ id: string }>().id };
+  return {
+    browser,
+    actorId: owner.id,
+    workspaceId: created.json<{ id: string }>().id,
+  };
 }
 async function publicForm(scope: { actorId: string; workspaceId: string }) {
   const workflowId = randomUUID(),
@@ -71,7 +100,7 @@ async function publicForm(scope: { actorId: string; workspaceId: string }) {
     );
   await api.database().query(
     `insert into app.workflow_versions(id,workspace_id,workflow_id,version_number,graph_json,checksum,executable_json,published_by)
-    values($1,$2,$3,1,$4,$5,$6,$7)`,
+    values($1,$2,$3,1,$4::json,$5,$6::json,$7)`,
     [
       versionId,
       scope.workspaceId,
@@ -98,7 +127,7 @@ async function publicForm(scope: { actorId: string; workspaceId: string }) {
       createHash('sha256').update(capability).digest('hex'),
     ],
   );
-  return { versionId, publicId, capability };
+  return { workflowId, versionId, publicId, capability };
 }
 const send = (form: Awaited<ReturnType<typeof publicForm>>) =>
   api.send('POST', `/v1/forms/${form.publicId}/submit`, {
@@ -112,6 +141,138 @@ const send = (form: Awaited<ReturnType<typeof publicForm>>) =>
 describe.runIf(betterAuthIntegrationEnabled)(
   'public form HTTP admission',
   () => {
+    it('retrieves sealed links only for workflow editors, keeps legacy links alive, and never records the capability in receipts or logs', async () => {
+      const scope = await ownerWorkspace();
+      const form = await publicForm(scope);
+      const path = `/v1/workspaces/${scope.workspaceId}/workflows/${form.workflowId}/form/access`;
+      const legacy = await api.send('GET', path, { browser: scope.browser });
+      expect(legacy.statusCode, legacy.payload).toBe(200);
+      expect(legacy.json()).toMatchObject({ capability: null });
+      expect((await send(form)).statusCode).toBe(200);
+      const capability = randomBytes(32).toString('base64url');
+      const change = await api.send('POST', path, {
+        browser: scope.browser,
+        headers: { 'idempotency-key': 'retrievable' },
+        payload: { access: 'public', capability, expectedRevision: 1 },
+      });
+      expect(change.statusCode, change.payload).toBe(200);
+      expect(change.payload).not.toContain(capability);
+      const stale = await api.send('POST', path, {
+        browser: scope.browser,
+        headers: { 'idempotency-key': 'stale' },
+        payload: { access: 'public', capability, expectedRevision: 0 },
+      });
+      expect(stale.statusCode).toBe(409);
+      const row = (
+        await api
+          .database()
+          .query(
+            'select capability_hash,sealed_capability from app.workflow_forms where workflow_id=$1',
+            [form.workflowId],
+          )
+      ).rows[0] as Record<string, unknown>;
+      expect(row.sealed_capability).toMatchObject({
+        ciphertext: expect.any(String) as unknown,
+      });
+      expect(JSON.stringify(row)).not.toContain(capability);
+      for (const role of ['owner', 'admin', 'builder', 'operator', 'viewer']) {
+        await api
+          .database()
+          .query(
+            'update app.workspace_memberships set role=$1 where workspace_id=$2 and user_id=$3',
+            [role, scope.workspaceId, scope.actorId],
+          );
+        const shown = await api.send('GET', path, { browser: scope.browser });
+        if (['owner', 'admin', 'builder'].includes(role)) {
+          expect(shown.statusCode, shown.payload).toBe(200);
+          expect(shown.json()).toMatchObject({ capability });
+        } else {
+          expect(shown.statusCode).toBe(404);
+          expect(shown.payload).not.toContain(capability);
+        }
+      }
+      await api
+        .database()
+        .query(
+          "update app.workspace_memberships set role='owner' where workspace_id=$1 and user_id=$2",
+          [scope.workspaceId, scope.actorId],
+        );
+      const folderId = randomUUID();
+      await api
+        .database()
+        .query(
+          "insert into app.workflow_folders(workspace_id,id,name,name_key,access_mode) values($1,$2,'Restricted','restricted','restricted')",
+          [scope.workspaceId, folderId],
+        );
+      await api
+        .database()
+        .query(
+          'insert into app.workflow_organization_state(workspace_id,workflow_id,folder_id) values($1,$2,$3) on conflict(workspace_id,workflow_id) do update set folder_id=excluded.folder_id',
+          [scope.workspaceId, form.workflowId, folderId],
+        );
+      await api
+        .database()
+        .query(
+          "insert into app.workflow_folder_grants(id,workspace_id,folder_id,user_id,access) values($1,$2,$3,$4,'viewer')",
+          [randomUUID(), scope.workspaceId, folderId, scope.actorId],
+        );
+      await api
+        .database()
+        .query(
+          "update app.workspace_memberships set role='builder' where workspace_id=$1 and user_id=$2",
+          [scope.workspaceId, scope.actorId],
+        );
+      const restricted = await api.send('GET', path, {
+        browser: scope.browser,
+      });
+      expect(restricted.statusCode, restricted.payload).toBe(200);
+      expect(restricted.json()).toMatchObject({ capability: null });
+      expect(restricted.payload).not.toContain(capability);
+      await api
+        .database()
+        .query(
+          "update app.workflow_folder_grants set access='editor' where folder_id=$1",
+          [folderId],
+        );
+      const editable = await api.send('GET', path, { browser: scope.browser });
+      expect(editable.statusCode, editable.payload).toBe(200);
+      expect(editable.json()).toMatchObject({ capability });
+      await api
+        .database()
+        .query(
+          "update app.workspace_memberships set role='owner' where workspace_id=$1 and user_id=$2",
+          [scope.workspaceId, scope.actorId],
+        );
+      const receipts = await api
+        .database()
+        .query(
+          'select to_jsonb(receipt) as value from app.idempotency_records receipt where workspace_id=$1',
+          [scope.workspaceId],
+        );
+      expect(JSON.stringify(receipts.rows)).not.toContain(capability);
+      expect(JSON.stringify(logs)).not.toContain(capability);
+      expect((await send(form)).statusCode).toBe(404);
+      const current = await api.send('GET', path, { browser: scope.browser });
+      const revoked = await api.send('POST', path, {
+        browser: scope.browser,
+        headers: { 'idempotency-key': 'revoke' },
+        payload: {
+          access: 'members',
+          expectedRevision: current.json<{ revision: number }>().revision,
+        },
+      });
+      expect(revoked.statusCode, revoked.payload).toBe(200);
+      expect(
+        (
+          await api
+            .database()
+            .query(
+              'select capability_hash,sealed_capability from app.workflow_forms where workflow_id=$1',
+              [form.workflowId],
+            )
+        ).rows,
+      ).toEqual([{ capability_hash: null, sealed_capability: null }]);
+    }, 30_000);
     it('enforces the shared workspace budget across forms without exposing run identity or admitting the refused response', async () => {
       const scope = await ownerWorkspace();
       const forms = await Promise.all(

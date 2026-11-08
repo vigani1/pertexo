@@ -6,6 +6,7 @@ import {
   foreignKey,
   index,
   integer,
+  jsonb,
   primaryKey,
   timestamp,
   unique,
@@ -27,6 +28,8 @@ export const workflowForms = appSchema.table(
       .$type<FormAccess['access']>()
       .notNull()
       .default('members'),
+    sealedCapability:
+      jsonb('sealed_capability').$type<Record<string, string>>(),
     capabilityHash: char('capability_hash', { length: 64 }),
     revision: integer().notNull().default(1),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
@@ -43,6 +46,10 @@ export const workflowForms = appSchema.table(
       columns: [table.workspaceId, table.workflowId],
       foreignColumns: [workflows.workspaceId, workflows.id],
     }).onDelete('cascade'),
+    check(
+      'workflow_forms_sealed_capability_valid',
+      sql`sealed_capability IS NULL OR capability_hash IS NOT NULL`,
+    ),
     check('workflow_forms_revision_positive', sql`revision>0`),
     check(
       'workflow_forms_access_valid',

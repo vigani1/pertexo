@@ -28,7 +28,14 @@ it('keeps credential-to-scope discovery narrow while returning standing for core
       ).rows;
     const before = await state();
     await upgrade();
-    expect(await state()).toEqual(before);
+    expect(await state()).toEqual(
+      before.map(({ state }) => ({
+        state: {
+          ...(state as Record<string, unknown>),
+          sealed_capability: null,
+        },
+      })),
+    );
     const client = await admin.connect();
     try {
       await client.query('begin');

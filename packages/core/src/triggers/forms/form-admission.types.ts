@@ -1,3 +1,4 @@
+import type { SealedConnectionSecret } from '@pertexo/secrets/server';
 import type {
   parseFormValues,
   FormValuesInvalidError,
@@ -40,7 +41,11 @@ export type FormHistoryInput = FormScope &
   }>;
 export type ReadFormAccessInput = FormScope & Readonly<{ actorId: string }>;
 export type SetFormAccessInput = FormScope &
-  FormAccessRequest &
+  (
+    | Extract<FormAccessRequest, { access: 'members' }>
+    | (Extract<FormAccessRequest, { access: 'public' }> &
+        Readonly<{ sealedCapability: SealedConnectionSecret }>)
+  ) &
   Readonly<{ actorId: string; idempotencyKey: string }>;
 
 export type PreparedFormEvent =

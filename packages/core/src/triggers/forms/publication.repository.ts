@@ -22,6 +22,7 @@ export async function revokeRemovedFormAccess(
     .set({
       access: 'members',
       capabilityHash: null,
+      sealedCapability: null,
       revision: sql`${workflowForms.revision}+1`,
       updatedAt: sql`clock_timestamp()`,
     })

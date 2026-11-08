@@ -201,6 +201,7 @@ function registerFeatureModules(
         dependencies.workflowRuntime,
         identityModule,
         admissionModule,
+        dependencies.connectionRuntime?.dependencies.encryption,
       ),
     );
 

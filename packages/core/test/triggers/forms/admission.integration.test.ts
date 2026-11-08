@@ -294,7 +294,11 @@ it('keeps the public identity and exact access receipt across disable and re-ena
     revision: 3,
   });
   await expect(store.setAccess(firstCommand)).resolves.toEqual(initial);
-  await expect(store.access(f)).resolves.toEqual(enabled);
+  const { sealedCapability, ...currentAccess } = await store.access(f);
+  expect(currentAccess).toEqual(enabled);
+  expect(sealedCapability).toMatchObject({
+    ciphertext: expect.any(String) as unknown,
+  });
   if (initial.publicId === null)
     throw new Error('Public identity is unavailable');
   await expect(
