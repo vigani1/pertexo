@@ -1,5 +1,5 @@
 import { installPresenceRoutes } from '../../test/support/browser/mock-reads';
-import type { Page } from '@playwright/test';
+import type { Locator, Page } from '@playwright/test';
 import { test as base } from '../../test/support/temporary-test-path';
 
 export {
@@ -68,4 +68,15 @@ export async function chooseTestAction(
       .getByRole('button', { name: 'More test actions', exact: true })
       .click();
   await page.getByRole('menuitem', { name: action, exact: true }).click();
+}
+
+/**
+ * Saves a dialog with Enter after its focused control was removed. The dialog
+ * restores focus over the next frame, so wait until Save is actionable or the
+ * key lands on the dialog itself.
+ */
+export async function saveWithEnter(scope: Locator) {
+  const save = scope.getByRole('button', { name: 'Save', exact: true });
+  await save.click({ trial: true });
+  await save.press('Enter');
 }

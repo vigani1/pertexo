@@ -3,7 +3,7 @@ import {
   folderSharingRequestSchema,
 } from '@pertexo/contracts';
 import type { TestInfo } from '@playwright/test';
-import { expect, test, type Page } from '../support/fixtures';
+import { expect, saveWithEnter, test, type Page } from '../support/fixtures';
 import { mappingGraph } from '../workflow-editor/graph';
 import {
   addCsrfCookie,
@@ -231,9 +231,7 @@ for (const theme of ['light', 'dark'] as const)
       await share
         .getByRole('button', { name: 'Keep edits and use latest revision' })
         .click();
-      await share
-        .getByRole('button', { name: 'Save', exact: true })
-        .press('Enter');
+      await saveWithEnter(share);
       await expect.poll(() => shares).toBe(1);
       await expect(share).toBeHidden();
       await shelf.getByRole('button', { name: 'Actions for Finance' }).click();
@@ -345,9 +343,7 @@ for (const theme of ['light', 'dark'] as const)
       await expect(
         details.getByRole('button', { name: 'Remove Operations owner' }),
       ).toBeVisible();
-      await details
-        .getByRole('button', { name: 'Save', exact: true })
-        .press('Enter');
+      await saveWithEnter(details);
       await expect.poll(() => connectionShares).toBe(1);
       // Saving returns to the connection's details.
       await expect(
