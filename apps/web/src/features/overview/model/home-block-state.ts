@@ -1,3 +1,5 @@
+import { isAccessLost } from '@/lib/api/error-copy';
+
 /** What a Home block shows: its loading, failure and staleness. */
 export type HomeBlockState = Readonly<{
   pending: boolean;
@@ -28,7 +30,9 @@ export function queryBlockState(query: BlockQuery): HomeBlockState {
 
 /**
  * A block that merges several reads: its evidence is complete when all have data,
- * and any failed read shows the retry, which re-reads only the failed ones.
+ * and any failed read shows the retry, which re-reads only the failed ones. As
+ * in `QueryView`, an answer that access is gone (signed out, forbidden, not
+ * found) hides data loaded earlier instead of showing it as stale.
  */
 export function mergedBlockState(
   main: BlockQuery,
@@ -36,11 +40,13 @@ export function mergedBlockState(
 ): HomeBlockState {
   const all = [main, ...others];
   const failed = all.filter((query) => query.isError);
+  const denied = failed.find((query) => isAccessLost(query.error));
   return {
     pending: all.some((query) => query.isPending),
-    error: failed[0]?.error,
+    error: (denied ?? failed[0])?.error,
     failed: failed.length > 0,
-    hasData: all.every((query) => query.data !== undefined),
+    hasData:
+      denied === undefined && all.every((query) => query.data !== undefined),
     retrying: all.some((query) => query.isRefetching),
     updatedAt: Math.min(...all.map((query) => query.dataUpdatedAt)),
     onRetry: () => {
