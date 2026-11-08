@@ -87,6 +87,8 @@ it('lists discussions but offers no new one while paused', async () => {
 it('shows a discussion but offers no way to change it while paused', async () => {
   renderInRouter(
     <WorkflowDiscussion
+      onDraftChange={() => undefined}
+      onReveal={() => undefined}
       paused
       scope={scopeReturning(discussion)}
       threadId={threadId}

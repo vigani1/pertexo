@@ -1,3 +1,4 @@
+import { browserDefinitions } from '../../../support/fixtures/node-catalog';
 import {
   createWorkflowNodeFixture,
   createWorkflowEdgeFixture,
@@ -204,20 +205,28 @@ describe('failure path graph commands', () => {
       edges: current.edges.filter((e) => e.id !== 'failure'),
     };
     expect(
-      linkWorkflowNodes(ordinary, {
-        source: 'source',
-        sourceHandle: '__failure',
-        target: 'handler',
-        targetHandle: 'in',
-      }),
+      linkWorkflowNodes(
+        ordinary,
+        {
+          source: 'source',
+          sourceHandle: '__failure',
+          target: 'handler',
+          targetHandle: 'in',
+        },
+        browserDefinitions(),
+      ),
     ).not.toBeNull();
     expect(
-      linkWorkflowNodes(current, {
-        source: 'stop',
-        sourceHandle: 'out',
-        target: 'handler',
-        targetHandle: 'in',
-      }),
+      linkWorkflowNodes(
+        current,
+        {
+          source: 'stop',
+          sourceHandle: 'out',
+          target: 'handler',
+          targetHandle: 'in',
+        },
+        browserDefinitions(),
+      ),
     ).toBeNull();
   });
 });

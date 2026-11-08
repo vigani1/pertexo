@@ -28,14 +28,15 @@ export function resolveWorkflowValidationTarget(
   issue: WorkflowValidationIssue,
   graph: WorkflowGraphContract,
 ): WorkflowValidationTarget | undefined {
-  const indexed = /^\$\.nodes\[(\d+)\](?:\.(.*))?$/u.exec(issue.path);
+  const path = issue.path.startsWith('$') ? issue.path : `$.${issue.path}`;
+  const indexed = /^\$\.nodes\[(\d+)\](?:\.(.*))?$/u.exec(path);
   if (indexed !== null) {
     const node = graph.nodes[Number(indexed[1])];
     return node === undefined
       ? undefined
       : targetForRemainder(node.id, indexed[2]);
   }
-  return targetIn(graph, '$', issue.path);
+  return targetIn(graph, '$', path);
 }
 
 function targetIn(

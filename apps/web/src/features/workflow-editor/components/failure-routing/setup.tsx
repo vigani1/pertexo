@@ -157,12 +157,16 @@ function HandlerChoices({
             onClick={() => {
               const state = store.getState();
               if (state.save.status === 'conflict') return;
-              const next = linkWorkflowNodes(state.graph, {
-                source: source.id,
-                sourceHandle: WORKFLOW_FAILURE_PORT,
-                target: target.nodeId,
-                targetHandle: target.port,
-              });
+              const next = linkWorkflowNodes(
+                state.graph,
+                {
+                  source: source.id,
+                  sourceHandle: WORKFLOW_FAILURE_PORT,
+                  target: target.nodeId,
+                  targetHandle: target.port,
+                },
+                definitions,
+              );
               if (next === null) return;
               state.transact(next);
               onClose();

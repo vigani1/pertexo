@@ -25,11 +25,15 @@ export type WorkflowIssueGroup = Readonly<{
 export function groupWorkflowIssues(
   report: WorkflowValidateResponse,
   graph: WorkflowGraphContract,
+  source: 'validation' | 'publication' = 'validation',
 ): readonly WorkflowIssueGroup[] {
   const issues: WorkflowIssue[] = [
     ...report.issues.map((issue, index) => ({
       id: `issue-${String(index)}`,
-      message: describeValidationIssue(issue),
+      message:
+        source === 'publication'
+          ? issue.message
+          : describeValidationIssue(issue),
       target: resolveWorkflowValidationTarget(issue, graph),
     })),
     ...report.compatibility.issues.map((issue, index) => ({

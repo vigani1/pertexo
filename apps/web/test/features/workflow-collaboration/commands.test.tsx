@@ -184,6 +184,8 @@ it('keeps an edited comment and its original revision when a newer reply or edit
   const scope = scopeFor(fetch);
   const { queryClient } = renderInRouter(
     <WorkflowDiscussion
+      onDraftChange={() => undefined}
+      onReveal={() => undefined}
       scope={scope}
       threadId={threadId}
       anchor={undefined}
@@ -328,6 +330,8 @@ it('offers Edit and Delete only on the comments the person wrote', async () => {
   );
   renderInRouter(
     <WorkflowDiscussion
+      onDraftChange={() => undefined}
+      onReveal={() => undefined}
       scope={scopeFor(fetch)}
       threadId={threadId}
       anchor={undefined}

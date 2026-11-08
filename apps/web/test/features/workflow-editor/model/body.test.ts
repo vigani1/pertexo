@@ -1,3 +1,4 @@
+import { browserDefinitions } from '../../../support/fixtures/node-catalog';
 import {
   addBodyStep,
   addDefinitionNode,
@@ -207,6 +208,7 @@ describe('body graph commands', () => {
         target: 'check',
         targetHandle: 'in',
       },
+      browserDefinitions(),
       'back',
     );
     expect(wired === null ? [] : ids(bodyOf(wired).edges)).toEqual([
@@ -214,20 +216,28 @@ describe('body graph commands', () => {
       'back',
     ]);
     expect(
-      linkWorkflowNodes(graph, {
-        source: 'start',
-        sourceHandle: 'out',
-        target: 'check',
-        targetHandle: 'in',
-      }),
+      linkWorkflowNodes(
+        graph,
+        {
+          source: 'start',
+          sourceHandle: 'out',
+          target: 'check',
+          targetHandle: 'in',
+        },
+        browserDefinitions(),
+      ),
     ).toBeNull();
     expect(
-      linkWorkflowNodes(graph, {
-        source: 'check',
-        sourceHandle: 'out',
-        target: 'reserve',
-        targetHandle: 'in',
-      }),
+      linkWorkflowNodes(
+        graph,
+        {
+          source: 'check',
+          sourceHandle: 'out',
+          target: 'reserve',
+          targetHandle: 'in',
+        },
+        browserDefinitions(),
+      ),
     ).toBeNull();
   });
   it('removes body steps with their connections and restores them into the body', () => {

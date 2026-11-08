@@ -1,3 +1,4 @@
+import { connectionPorts } from '../../model/step-card';
 import type { NodeDefinitionCatalogItem } from '@pertexo/contracts';
 import type { Connection } from '@xyflow/react';
 import { LinkIcon, XIcon } from 'lucide-react';
@@ -43,10 +44,18 @@ export function IncomingLinks({
   const sourcePorts =
     source === undefined
       ? []
-      : (findDefinition(definitions, source)?.ports.outputs ?? []);
-  const targetPorts =
-    findDefinition(definitions, node)?.ports.inputs ??
-    Object.keys(node.inputMappings);
+      : connectionPorts(
+          source,
+          findDefinition(definitions, source),
+          graph,
+          'outputs',
+        );
+  const targetPorts = connectionPorts(
+    node,
+    findDefinition(definitions, node),
+    graph,
+    'inputs',
+  );
   const others = graph.nodes.filter((candidate) => candidate.id !== node.id);
   return (
     <section
@@ -164,8 +173,14 @@ function LinkStepForm({
   const { sourceId, sourcePort, targetPort } = selection;
   const { setSourceId, setSourcePort, setTargetPort, setWiring, onConnect } =
     commands;
+  const unavailable =
+    (sourcePort !== null && !sourcePorts.includes(sourcePort)) ||
+    (targetPort !== null && !targetPorts.includes(targetPort));
   const linkIncomplete =
-    sourceId === null || sourcePort === null || targetPort === null;
+    sourceId === null ||
+    sourcePort === null ||
+    targetPort === null ||
+    unavailable;
   return (
     <FieldGroup className="gap-3 rounded-lg border border-surface-ink/7 bg-recess-ink/18 p-3">
       <Field>
@@ -189,6 +204,12 @@ function LinkStepForm({
           control={{ id: `link-source-${nodeId}` }}
         />
       </Field>
+      {unavailable ? (
+        <p role="alert" className="text-sm text-warning">
+          This port is no longer configured. Choose an available input and
+          output.
+        </p>
+      ) : null}
       <div className="grid grid-cols-2 gap-2">
         <Field>
           <FieldLabel htmlFor={`link-output-${nodeId}`}>From output</FieldLabel>

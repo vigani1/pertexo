@@ -1,3 +1,4 @@
+import { reconcileQuerySnapshot } from '@/lib/api/query-snapshot';
 import { useCallback, useMemo } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { ApiClient } from '@/lib/api/client';
@@ -50,8 +51,10 @@ export function useEditorSavePipeline({
     // hands back lands there and coming back to Build shows the latest save.
     // A read already in flight may predate the save, so it can't land after.
     const remember = async (draft: WorkflowDraftSnapshot) => {
-      await queryClient.cancelQueries({ queryKey: draftKey, exact: true });
-      queryClient.setQueryData(draftKey, draft);
+      await reconcileQuerySnapshot(queryClient, draftKey, {
+        kind: 'accepted',
+        value: draft,
+      });
       return draft;
     };
     return {
@@ -76,6 +79,12 @@ export function useEditorSavePipeline({
           ? (error.retryAfterMs ?? RATE_LIMITED_WAIT_MS)
           : undefined,
       message: editorSaveErrorMessage,
+      recovery: (error) => {
+        if (!isApiError(error)) return 'retry';
+        if (error.status === 401 || error.status === 403) return 'access';
+        if (error.status === 422) return 'edit';
+        return error.status === 429 ? 'wait' : 'retry';
+      },
     };
   }, [apiClient, queryClient, userId, verifyOwner, workflowId, workspaceId]);
   const flushSave = useSaveCoordinator({
@@ -120,10 +129,18 @@ function editorSaveErrorMessage(error: unknown): string {
   if (!isApiError(error)) return 'Your changes couldn’t be saved.';
   if (error.kind === 'network' || error.kind === 'timeout')
     return 'We couldn’t confirm the save. Your changes are still here.';
+  if (error.status === 401)
+    return 'Verify your account to resume saving. Your changes are kept here.';
   if (error.status === 403)
     return 'Your role no longer allows editing this workflow.';
-  if (error.status === 422)
+  if (error.status === 422) {
+    if (
+      error.problem?.code === 'workflow.invalid' &&
+      error.problem.errors?.length
+    )
+      return error.problem.errors.map((issue) => issue.message).join(' ');
     return 'The server rejected this draft. Check the step setup and try again.';
+  }
   if (error.status === 429)
     return 'Too many saves in a short time. Saving again shortly.';
   return 'Your changes couldn’t be saved. They’re still here.';

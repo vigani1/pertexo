@@ -27,6 +27,8 @@ export function WorkflowImportActions({
   }>;
 }>) {
   const { accessDenied, checkingAccess, canImport } = access;
+  const createdId =
+    commandState.kind === 'confirmed' ? commandState.workflowId : undefined;
 
   return (
     <DialogFooter className="mt-5">
@@ -36,9 +38,7 @@ export function WorkflowImportActions({
           : 'Cancel'}
       </Button>
       {children}
-      {commandState.kind === 'confirmed' &&
-      commandState.workflowId !== undefined &&
-      !accessDenied ? (
+      {createdId !== undefined && !accessDenied ? (
         <>
           <ProgressButton
             variant="outline"
@@ -51,8 +51,7 @@ export function WorkflowImportActions({
           <Button
             variant="primary"
             onClick={() => {
-              if (commandState.workflowId !== undefined)
-                onOpenWorkflow(commandState.workflowId);
+              onOpenWorkflow(createdId);
             }}
           >
             Open imported workflow
@@ -87,7 +86,10 @@ export function WorkflowImportFeedback({
   error: string | undefined;
   denied: boolean;
 }>) {
-  const failure = state.error ?? error;
+  let failure = error;
+  if (state.kind === 'editable' && state.failure !== undefined)
+    failure = state.failure.message;
+  if (state.kind === 'uncertain') failure = state.error;
   return (
     <>
       {failure === undefined ? null : (

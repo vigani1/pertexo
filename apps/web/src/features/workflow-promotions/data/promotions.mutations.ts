@@ -1,3 +1,4 @@
+import { workspaceReadScope } from '@/lib/api/workspace-scope';
 import {
   promotionFailureMessage,
   requiresPromotionReview,
@@ -32,8 +33,13 @@ export function usePromotionApply(
         throw error;
       }
     },
-    async () => {
-      await cache.invalidateQueries({ queryKey: promotionKeys.scope(scope) });
+    async (result) => {
+      await Promise.all([
+        cache.invalidateQueries({ queryKey: promotionKeys.scope(scope) }),
+        cache.invalidateQueries({
+          queryKey: workspaceReadScope(scope.userId, result.targetWorkspaceId),
+        }),
+      ]);
     },
     {
       action: 'promoting these workflows',

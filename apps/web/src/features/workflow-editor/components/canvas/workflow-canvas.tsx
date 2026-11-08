@@ -243,7 +243,12 @@ function useCanvasInteraction({
     [store],
   );
 
-  const linkGestures = useLinkGestures({ store, editable, onPortDrop });
+  const linkGestures = useLinkGestures({
+    store,
+    definitions,
+    editable,
+    onPortDrop,
+  });
 
   const actions = useMemo(
     () => ({ editable, removeEdge: onRemoveEdge, addToBody: onAddToBody }),

@@ -1,3 +1,4 @@
+import { ExpiredAttemptNotice } from '@/components/patterns/states/expired-attempt-notice';
 import { holdsCapability } from '@/features/workspaces/availability.public';
 import { useState } from 'react';
 import type { AccessibleWorkspace } from '@pertexo/contracts';
@@ -276,9 +277,14 @@ export function FailureAlertsSection({
               </p>
             }
           />
-          {commands.error === undefined ? null : (
-            <Notice tone="destructive">{commands.error}</Notice>
-          )}
+          <AlertCommandFeedback
+            commands={commands}
+            onConfirmed={() => {
+              notifications.success({
+                title: 'Failure alert change confirmed',
+              });
+            }}
+          />
           {choices.options.length === 0 &&
           (choices.current?.destination ?? null) === null ? null : (
             <DestinationPicker
@@ -301,5 +307,41 @@ export function FailureAlertsSection({
         </>
       )}
     </SettingsSection>
+  );
+}
+
+function AlertCommandFeedback({
+  commands,
+  onConfirmed,
+}: Readonly<{
+  commands: ReturnType<typeof useFailureNotificationCommands>;
+  onConfirmed: () => void;
+}>) {
+  if (commands.expired)
+    return <ExpiredAttemptNotice onNewAttempt={commands.startNewAttempt} />;
+  if (commands.error === undefined) return null;
+  return (
+    <Notice
+      tone={commands.uncertain ? 'warning' : 'destructive'}
+      action={
+        commands.uncertain ? (
+          <ProgressButton
+            type="button"
+            variant="outline"
+            pending={commands.pending}
+            pendingLabel="Retrying…"
+            onClick={() => {
+              void commands.retry().then((confirmed) => {
+                if (confirmed) onConfirmed();
+              });
+            }}
+          >
+            Retry same alert change
+          </ProgressButton>
+        ) : undefined
+      }
+    >
+      {commands.error}
+    </Notice>
   );
 }

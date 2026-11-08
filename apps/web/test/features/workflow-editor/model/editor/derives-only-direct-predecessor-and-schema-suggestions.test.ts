@@ -1,3 +1,4 @@
+import { browserDefinitions } from '../../../../support/fixtures/node-catalog';
 import { projectWorkflowGraph } from '@/features/workflow-editor/model/graph/adapter';
 
 import {
@@ -56,6 +57,7 @@ describe('workflow editor mapping sources and fields', () => {
         target: 'middle',
         targetHandle: 'in',
       },
+      browserDefinitions(),
       'source-middle',
     );
     const connected = linkWorkflowNodes(
@@ -66,6 +68,7 @@ describe('workflow editor mapping sources and fields', () => {
         target: 'target',
         targetHandle: 'in',
       },
+      browserDefinitions(),
       'middle-target',
     );
     expect(directPredecessorOptions(connected ?? third, 'target')).toEqual([
@@ -220,6 +223,7 @@ describe('workflow editor graph transitions', () => {
     const connected = linkWorkflowNodes(
       second,
       { source: 'a', sourceHandle: 'out', target: 'b', targetHandle: 'in' },
+      browserDefinitions(),
       'edge-a-b',
     );
     expect(connected?.edges).toHaveLength(1);

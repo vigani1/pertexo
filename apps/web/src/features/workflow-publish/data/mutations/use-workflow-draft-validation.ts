@@ -9,6 +9,7 @@ import { commandErrorMessage } from './command-utils';
 
 export type ValidationResult = Readonly<{
   report: WorkflowValidateResponse;
+  publicationRefused?: true;
   etag: string;
   requestedEtag: string;
   generation: number;
@@ -40,11 +41,11 @@ export function useWorkflowDraftValidation({
   ensureSaved: () => Promise<SavedDraft>;
   isSavedDraftCurrent: (saved: SavedDraft) => boolean;
 }>) {
+  const [refusal, setRefusal] = useState<ValidationResult>();
   const [validation, setValidation] = useState<ValidationResult>();
   // The check in flight, if any: it clears only its own marker, so a check
   // from an earlier scope can't end a newer one's wait.
   const [checking, setChecking] = useState<symbol>();
-  const validationPending = checking !== undefined;
   const [validationError, setValidationError] = useState<string>();
   const [validationBlockedUntil, setValidationBlockedUntil] =
     useState<number>();
@@ -82,7 +83,7 @@ export function useWorkflowDraftValidation({
     setValidation(result);
     validationOwner.current = checkOwner;
     setValidationError(undefined);
-    return result;
+    return sameDraft(refusal, saved) ? refusal : result;
   }
 
   async function validate() {
@@ -123,7 +124,9 @@ export function useWorkflowDraftValidation({
     const inFlight = await validationInFlight.current;
     if (owner.current !== publishOwner) return undefined;
     assertValidationAvailable();
-    const known = inFlight ?? validation;
+    const known = sameDraft(refusal, saved)
+      ? refusal
+      : (inFlight ?? validation);
     const validationStillCurrent =
       known?.generation === saved.generation &&
       validationOwner.current === publishOwner &&
@@ -144,12 +147,8 @@ export function useWorkflowDraftValidation({
   }
 
   function recordValidationCooldown(error: unknown) {
-    const seconds = retryAfterSeconds(error);
-    const unavailable =
-      isApiError(error) &&
-      error.problem?.code === 'workflow.validation_unavailable';
-    if (seconds !== undefined || unavailable) {
-      const deadline = Date.now() + Math.max(5, seconds ?? 1) * 1_000;
+    const deadline = validationRetryDeadline(error);
+    if (deadline !== undefined) {
       validationDeadline.current = Math.max(
         validationDeadline.current,
         deadline,
@@ -159,8 +158,15 @@ export function useWorkflowDraftValidation({
   }
 
   return {
-    validation,
-    validationPending,
+    validation: refusalReport(refusal, validation),
+    recordPublicationRefusal: (
+      error: unknown,
+      saved: CheckedDraft | undefined,
+    ) => {
+      const refused = publicationRefusal(error, saved);
+      if (refused !== undefined) setRefusal(refused);
+    },
+    validationPending: checking !== undefined,
     validationError,
     validationBlockedUntil,
     validate,
@@ -169,4 +175,60 @@ export function useWorkflowDraftValidation({
     recordValidationCooldown,
     resetValidation,
   };
+}
+
+function sameDraft(
+  checked: ValidationResult | undefined,
+  saved: SavedDraft,
+): boolean {
+  return (
+    checked?.etag === saved.etag &&
+    checked.generation === saved.generation &&
+    checked.revision === saved.revision
+  );
+}
+
+function refusalReport(
+  refusal: ValidationResult | undefined,
+  validation: ValidationResult | undefined,
+) {
+  return refusal !== undefined &&
+    (validation === undefined || sameDraft(refusal, validation))
+    ? refusal
+    : validation;
+}
+function publicationRefusal(
+  error: unknown,
+  saved:
+    (SavedDraft & Readonly<{ report: WorkflowValidateResponse }>) | undefined,
+): ValidationResult | undefined {
+  if (
+    saved === undefined ||
+    !isApiError(error) ||
+    error.problem?.code !== 'workflow.invalid' ||
+    !error.problem.errors?.length
+  )
+    return undefined;
+  return {
+    ...saved,
+    requestedEtag: saved.etag,
+    publicationRefused: true,
+    report: {
+      ...saved.report,
+      valid: false,
+      issues: [...error.problem.errors],
+    },
+  };
+}
+
+type CheckedDraft = SavedDraft & Readonly<{ report: WorkflowValidateResponse }>;
+
+function validationRetryDeadline(error: unknown): number | undefined {
+  const seconds = retryAfterSeconds(error);
+  const unavailable =
+    isApiError(error) &&
+    error.problem?.code === 'workflow.validation_unavailable';
+  return seconds !== undefined || unavailable
+    ? Date.now() + Math.max(5, seconds ?? 1) * 1000
+    : undefined;
 }

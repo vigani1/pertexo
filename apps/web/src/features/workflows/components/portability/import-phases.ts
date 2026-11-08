@@ -132,6 +132,7 @@ export async function chooseImportFile(
 
 export async function checkImportPreview({
   apiClient,
+  command,
   workspaceId,
   template,
   setupValues,
@@ -161,6 +162,7 @@ export async function checkImportPreview({
     !validation.submit({ name: workflowNameError(name), ...setupErrors });
   if (importSubmissionBlocked) return;
   if (configuredManifest === undefined) return;
+  command.clear();
   const epoch = intent.current;
   const request = lifetime.begin();
   setPreview(undefined);

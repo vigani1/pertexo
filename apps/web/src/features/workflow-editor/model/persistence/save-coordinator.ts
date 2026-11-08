@@ -14,6 +14,7 @@ export type SaveCoordinatorTransport = Readonly<{
   /** How long a refusal asks the editor to wait before saving again. */
   retryAfterMs: (error: unknown) => number | undefined;
   message: (error: unknown) => string;
+  recovery?: (error: unknown) => 'retry' | 'access' | 'edit' | 'wait';
 }>;
 
 /**
@@ -105,7 +106,13 @@ export function createSaveCoordinator(
           store.getState().reportFailure(transport.message(error), true);
         }
       } else {
-        store.getState().reportFailure(transport.message(error), false);
+        store
+          .getState()
+          .reportFailure(
+            transport.message(error),
+            false,
+            transport.recovery?.(error),
+          );
         // A rate limit says when to come back, so saving resumes by itself.
         const wait = transport.retryAfterMs(error);
         if (wait !== undefined) {

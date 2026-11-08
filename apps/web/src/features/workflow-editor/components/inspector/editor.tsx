@@ -1,3 +1,4 @@
+import type { NodeDefinitionCatalogItem } from '@pertexo/contracts';
 import { WebhookTestListener } from '@/features/workflow-publish/webhook-tests.public';
 import { useNavigate } from '@tanstack/react-router';
 
@@ -144,6 +145,7 @@ export function EditorInspector({
       {...(renderStepRuns === undefined ? {} : { renderRuns: renderStepRuns })}
       actions={inspectorActions({
         store,
+        definitions,
         navigate,
         selectedNodeId,
         copyStepId,
@@ -263,6 +265,7 @@ function previewUnavailable(
 
 function inspectorActions({
   store,
+  definitions,
   navigate,
   selectedNodeId,
   copyStepId,
@@ -288,6 +291,7 @@ function inspectorActions({
     actions: ReturnType<typeof useEditorActions>;
   } & {
     store: ReturnType<typeof useEditorStoreApi>;
+    definitions: readonly NodeDefinitionCatalogItem[];
     navigate: ReturnType<typeof useNavigate>;
     selectedNodeId: string | null;
     copyStepId: () => void;
@@ -318,7 +322,7 @@ function inspectorActions({
     onClose,
     onConnect: (link: Connection) => {
       const state = store.getState();
-      const next = linkWorkflowNodes(state.graph, link);
+      const next = linkWorkflowNodes(state.graph, link, definitions);
       if (next !== null) state.transact(next);
     },
     onRemoveEdge,

@@ -180,7 +180,10 @@ function WorkflowImportSession({
                 disabled={!draft.complete || draft.reading}
                 onClick={() => void draft.checkPreview()}
               >
-                Preview import
+                {draft.commandState.kind === 'editable' &&
+                draft.commandState.failure?.recovery === 'preview'
+                  ? 'Preview again'
+                  : 'Preview import'}
               </ProgressButton>
             ) : null}
           </WorkflowImportActions>

@@ -4,11 +4,9 @@ import {
   WorkflowEditingPresence,
 } from '@/features/workflow-collaboration/presence.public';
 import { useStepDiscussions } from '@/features/workflow-collaboration/discussions.public';
-import { useQueryClient } from '@tanstack/react-query';
 import { Link, useLoaderData, useNavigate } from '@tanstack/react-router';
 import { buttonVariants } from '@/components/ui/button-variants';
 import { WorkflowEditorPage } from '@/features/workflow-editor/public';
-import { workflowSettingsKeys } from '@/features/workflow-settings/workflow-settings-queries.public';
 import { WorkflowPausedBanner } from '@/features/workflow-settings/auto-pause.public';
 import { ResourceNotFound } from '../root/status/pages';
 import { useWorkflowHubScope } from './hub/scope';
@@ -20,7 +18,6 @@ export function WorkflowBuildRoute() {
     from: '/w/$workspaceId/workflows/$workflowId/',
   });
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
   const stepDiscussions = useStepDiscussions();
   if (!found)
     return (
@@ -60,16 +57,6 @@ export function WorkflowBuildRoute() {
         void navigate({
           to: '/w/$workspaceId/runs/$runId',
           params: { workspaceId: workspace.id, runId },
-        });
-      }}
-      // Versions, Triggers and Settings read what a publish changes.
-      onPublished={() => {
-        void queryClient.invalidateQueries({
-          queryKey: workflowSettingsKeys.root(
-            user.id,
-            workspace.id,
-            workflowId,
-          ),
         });
       }}
       scope={{

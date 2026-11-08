@@ -76,7 +76,9 @@ for (const width of [1280, 375])
     await dialog
       .getByRole('button', { name: 'Publish v1', exact: true })
       .click();
-    await expect(dialog.getByText(message, { exact: true })).toBeVisible();
+    await expect(
+      dialog.getByText(message, { exact: true }).first(),
+    ).toBeVisible();
     expect(remote.graph).toEqual(savedGraph);
     expect(
       await page.evaluate(
@@ -86,15 +88,30 @@ for (const width of [1280, 375])
     await page.screenshot({
       path: temporaryTestPath(`pertexo-variable-publish-${String(width)}.png`),
     });
+    await page.keyboard.press('Escape');
+    if (width < 1024)
+      await page
+        .getByRole('navigation', { name: 'Editor panels' })
+        .getByRole('button', { name: 'Add step', exact: true })
+        .click();
+    await addStep(page, /Set fields/u).click();
+    await expect.poll(() => remote.revision).toBe(3);
+    const correctedGraph = structuredClone(remote.graph);
+    if (width < 1024)
+      await page
+        .getByRole('navigation', { name: 'Editor panels' })
+        .getByRole('button', { name: 'Canvas', exact: true })
+        .click();
+    await page.getByRole('button', { name: 'Publish v1', exact: true }).click();
     await dialog
-      .getByRole('button', { name: 'Try again', exact: true })
+      .getByRole('button', { name: 'Publish v1', exact: true })
       .click();
     await expect(dialog).toBeHidden();
     await expect(page.getByText('v1 is live', { exact: true })).toBeVisible();
     expect(keys).toHaveLength(2);
     expect(keys[0]).toBeTruthy();
     expect(keys[1]).not.toBe(keys[0]);
-    expect(remote.graph).toEqual(savedGraph);
+    expect(remote.graph).toEqual(correctedGraph);
   });
 
 for (const width of [375, 990, 1440]) {

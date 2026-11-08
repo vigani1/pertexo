@@ -1,9 +1,11 @@
+import { graphSteps } from '@/features/workflow-drafts/public';
 import jsonata from 'jsonata';
-import { remapCallbackReferences } from '@pertexo/workflow-model';
+import { isRecord, remapCallbackReferences } from '@pertexo/workflow-model';
 import type { WorkflowGraphContract } from '@pertexo/contracts';
 import { cardSize, overlaps, settleBodyLayout } from './for-each-body-layout';
 import {
   groupByScope,
+  findStep,
   mapLevel,
   scopeOf,
   type GraphLevel,
@@ -28,7 +30,11 @@ export function duplicateWorkflowNodes(
   nodeIds: readonly string[],
   createId: CreateId = () => crypto.randomUUID(),
   offset?: Position,
-): Readonly<{ graph: WorkflowGraphContract; nodeIds: readonly string[] }> {
+): Readonly<{
+  graph: WorkflowGraphContract;
+  nodeIds: readonly string[];
+  expressionReviewNeeded: boolean;
+}> {
   let next = graph;
   const copied: string[] = [];
   for (const group of groupByScope(nodeIds, (id) => scopeOf(graph, id)))
@@ -42,7 +48,19 @@ export function duplicateWorkflowNodes(
       },
       settleBodyLayout,
     );
-  return { graph: next, nodeIds: copied };
+  const copiedRoots = copied.flatMap((id) => {
+    const node = findStep(next, id);
+    return node === undefined ? [] : [node];
+  });
+  const expressionReviewNeeded = graphSteps({ nodes: copiedRoots }).some(
+    ({ node }) =>
+      Object.values(node.inputMappings).some(
+        (source) =>
+          source.kind === 'expression' &&
+          hasDynamicStepReferences(source.expression),
+      ),
+  );
+  return { graph: next, nodeIds: copied, expressionReviewNeeded };
 }
 
 function copySteps<Level extends GraphLevel>(
@@ -174,12 +192,36 @@ function copyEdges(
   });
 }
 
-function copyCallbackBindings(
+function copyExpression(
   expression: string,
   ids: ReadonlyMap<string, string>,
 ): string {
   try {
-    return remapCallbackReferences(expression, jsonata(expression).ast(), ids);
+    const callbacks = remapCallbackReferences(
+      expression,
+      jsonata(expression).ast(),
+      ids,
+    );
+    const edits: { start: number; end: number; value: string }[] = [];
+    visitExpressionReferences(jsonata(callbacks).ast(), (reference) => {
+      const replacement = ids.get(reference.nodeId);
+      if (replacement === undefined) return;
+      const token =
+        /(?:"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|`[^`]*`|[A-Za-z_$][\w$]*)$/u.exec(
+          callbacks.slice(0, reference.end),
+        );
+      if (token !== null)
+        edits.push({
+          start: reference.end - token[0].length,
+          end: reference.end,
+          value: JSON.stringify(replacement),
+        });
+    });
+    let result = callbacks;
+    for (const edit of edits.sort((left, right) => right.start - left.start))
+      result =
+        result.slice(0, edit.start) + edit.value + result.slice(edit.end);
+    return result;
   } catch {
     return expression;
   }
@@ -197,7 +239,102 @@ function copiedSource(
   if (source.kind === 'expression')
     return {
       ...source,
-      expression: copyCallbackBindings(source.expression, idMap),
+      expression: copyExpression(source.expression, idMap),
     };
   return source;
+}
+
+/** AST-selected static references; literal text and computed lookups keep their meaning. */
+function visitExpressionReferences(
+  value: unknown,
+  found: (
+    reference: Readonly<{ nodeId: string; end: number; root: unknown }>,
+  ) => void,
+): void {
+  if (Array.isArray(value)) {
+    for (const child of value) visitExpressionReferences(child, found);
+    return;
+  }
+  if (!isRecord(value)) return;
+  if (value.type === 'path' && Array.isArray(value.steps)) {
+    const [root, target] = value.steps as unknown[];
+    const output = outputRoot(root);
+    if (
+      output !== undefined &&
+      isRecord(target) &&
+      target.type === 'name' &&
+      typeof target.value === 'string' &&
+      typeof target.position === 'number'
+    )
+      found({ nodeId: target.value, end: target.position, root: output });
+  }
+  const arguments_ = lookupArguments(value);
+  if (arguments_ !== undefined) {
+    const [root, target] = arguments_;
+    const output = outputRoot(root);
+    if (
+      output !== undefined &&
+      isRecord(target) &&
+      target.type === 'string' &&
+      typeof target.value === 'string' &&
+      typeof target.position === 'number'
+    )
+      found({ nodeId: target.value, end: target.position, root: output });
+  }
+  for (const child of Object.values(value))
+    visitExpressionReferences(child, found);
+}
+
+function lookupArguments(
+  value: Record<string, unknown>,
+): readonly unknown[] | undefined {
+  return value.type === 'function' &&
+    isRecord(value.procedure) &&
+    value.procedure.type === 'variable' &&
+    value.procedure.value === 'lookup' &&
+    Array.isArray(value.arguments)
+    ? value.arguments
+    : undefined;
+}
+
+function outputRoot(value: unknown): unknown {
+  if (isOutputRoot(value)) return value;
+  if (
+    isRecord(value) &&
+    value.type === 'path' &&
+    Array.isArray(value.steps) &&
+    value.steps.length === 1 &&
+    isOutputRoot(value.steps[0])
+  )
+    return value.steps[0];
+  return undefined;
+}
+
+function isOutputRoot(value: unknown): boolean {
+  if (!isRecord(value)) return false;
+  return (
+    value.type === 'name' &&
+    (value.value === 'nodeOutputs' || value.value === 'nodeFailures')
+  );
+}
+
+function hasDynamicStepReferences(expression: string): boolean {
+  try {
+    const ast: unknown = jsonata(expression).ast();
+    const staticRoots = new Set<unknown>();
+    visitExpressionReferences(ast, ({ root }) => {
+      staticRoots.add(root);
+    });
+    function dynamic(value: unknown): boolean {
+      if (Array.isArray(value)) return value.some(dynamic);
+      if (!isRecord(value)) return false;
+      return (
+        (isOutputRoot(value) && !staticRoots.has(value)) ||
+        Object.values(value).some(dynamic)
+      );
+    }
+    return dynamic(ast);
+  } catch {
+    return true;
+  }
 }

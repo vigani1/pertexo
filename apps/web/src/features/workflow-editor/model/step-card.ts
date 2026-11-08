@@ -63,6 +63,27 @@ export function shownPorts(
   return ports.filter((port) => shown.has(port) || port === DEFAULT_PORT);
 }
 
+/** Ports that can accept new links; repair-only orphan handles stay out. */
+export function connectionPorts(
+  node: WorkflowNode,
+  definition: NodeDefinitionCatalogItem | undefined,
+  level: GraphLevel,
+  side: Side,
+): readonly string[] {
+  if (definition === undefined) return [];
+  const ports = definition.ports[side];
+  const taskPorts =
+    side === 'outputs' ? pendingTaskOutputPorts(node) : undefined;
+  if (taskPorts !== undefined) {
+    const allowed = new Set(taskPorts);
+    return ports.filter((port) => allowed.has(port));
+  }
+  const configured = configuredPorts(node, definition, level, side);
+  return configured === undefined
+    ? ports
+    : ports.filter((port) => configured.ids.has(port) || port === DEFAULT_PORT);
+}
+
 const noTitles: ReadonlyMap<string, string> = new Map();
 
 /**
