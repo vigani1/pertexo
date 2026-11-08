@@ -201,10 +201,14 @@ async function loadTriggerSample(
     signal: () => Promise<AbortSignal>;
     /** False once the hook unmounts or a newer preparation replaced this one. */
     isCurrent: () => boolean;
-    onError: (message: string) => void;
+    /** Sets the preparation's notice; `undefined` clears it. */
+    onError: (message: string | undefined) => void;
   }>,
   nodeId: string,
 ) {
+  // Loading is offered only once a preparation succeeded, so the notice can
+  // only hold an earlier sample load's failure, which this attempt replaces.
+  onError(undefined);
   try {
     const sample = await getStepSample(scope, nodeId, await signal());
     return isCurrent() ? sample.output : undefined;
