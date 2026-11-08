@@ -47,6 +47,10 @@ it.each([
     'nodeOutputs.unrelated.items[nodeOutputs.source.amount = 3].name',
   ],
   [
+    'a transform update',
+    '(nodeOutputs.unrelated.items ~> | $ | {"x": nodeOutputs.source.amount} |)[0].x = 3 ? "keep"',
+  ],
+  [
     'a mapped block',
     '$map(nodeOutputs.unrelated.items, function($v){$v.($.nodeOutputs.source.amount)})[0] = 3 ? "keep"',
   ],
