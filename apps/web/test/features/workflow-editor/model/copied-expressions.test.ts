@@ -6,6 +6,10 @@ import { duplicateWorkflowNodes } from '@/features/workflow-editor/model/graph/c
 it.each([
   'nodeOutputs."source"."amount"',
   '$lookup(nodeOutputs,"source").amount',
+  '$.nodeOutputs.source.amount',
+  '$$.nodeOutputs."source".amount',
+  '$lookup($.nodeOutputs,"source").amount',
+  '$lookup($$.nodeOutputs,"source").amount',
 ])(
   'calculates copied %s references while preserving literal text and unrelated references',
   async (reference) => {
@@ -29,8 +33,19 @@ it.each([
         },
       }),
     ).toEqual({ amount: 200, literal: 'nodeOutputs.source', other: 7 });
+    expect(copied.expressionReviewNeeded).toBe(false);
   },
 );
+
+it('asks for review when a copied expression chooses its step at run time', () => {
+  let next = 0;
+  const copied = duplicateWorkflowNodes(
+    expressionChain('$lookup($.nodeOutputs, "sou" & "rce").amount'),
+    ['source', 'consumer'],
+    () => `copy-${String(++next)}`,
+  );
+  expect(copied.expressionReviewNeeded).toBe(true);
+});
 
 it('calculates references inside a copied For each from its copied body steps', async () => {
   const chain = expressionChain('nodeOutputs."source"."amount"');
