@@ -4,6 +4,7 @@ import {
   afterAllFixture2,
   beforeAllFixture1,
   fixture,
+  openStoredCapability,
   store,
 } from './admission/admission.fixture.js';
 import { purgeWorkspace } from '../../support/workspace-purge.js';
@@ -66,7 +67,13 @@ it('allows exactly one concurrent regeneration and keeps only its link usable', 
   expect(
     outcomes.filter((result) => result.status === 'rejected'),
   ).toMatchObject([{ reason: { name: 'FormAccessConflictError' } }]);
-  expect((await store.access(f)).revision).toBe(access.revision + 1);
+  const current = await store.access(f);
+  expect(current.revision).toBe(access.revision + 1);
+  // The editor reopens the winner's link, not a loser's or the original.
+  const winner =
+    capabilities[outcomes.findIndex((r) => r.status === 'fulfilled')];
+  if (current.sealedCapability === null) throw new Error('Missing stored link');
+  expect(await openStoredCapability(f, current.sealedCapability)).toBe(winner);
   await expect(
     store.discover({ publicId: access.publicId, capability: original }),
   ).rejects.toMatchObject({ name: 'FormUnavailableError' });
