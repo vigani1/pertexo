@@ -6,7 +6,7 @@ import { AppUpdatedDialog } from '@/components/patterns/app-update/notice';
 import { Button } from '@/components/ui/button';
 import type { DialogContent } from '@/components/ui/dialog';
 import type { ApiClient } from '@/lib/api/client';
-import { canDuplicateWorkflow } from '../model/duplicate/allowed';
+import { canDuplicateWorkflow } from '../../model/duplicate/allowed';
 
 // Loaded on first open, like the export dialog beside it in the workflow bar.
 const WorkflowDuplicateDialog = lazyPiece(

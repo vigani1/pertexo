@@ -12,7 +12,7 @@ import { TestResultBar } from './chrome/test-result-bar';
 import { EditorLayout } from './editor-layout';
 import { WorkspaceSurface, WorkspaceOverlay } from './workspace-surfaces';
 import { WorkspaceInspector } from './workspace-inspector';
-import { useEditorWorkflowTests } from '../hooks/use-editor-workflow-tests';
+import { useEditorWorkflowTests } from '../hooks/publication/use-editor-workflow-tests';
 
 import { useCanvasOverlays } from './workspace-canvas';
 import { useWorkspaceChrome } from '../hooks/use-workspace-chrome';

@@ -15,7 +15,7 @@ import {
 } from '@/components/ui/select';
 import { Notice } from '@/components/ui/notice';
 import type { CollaborationScope } from '../data/collaboration.api';
-import { CommentForm } from '../forms/comment';
+import { CommentForm } from '../forms/comment-form';
 interface NewThread {
   kind: 'create';
   stepId: string | null;

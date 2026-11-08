@@ -23,7 +23,7 @@ import {
   type WorkflowRowActions,
 } from '../list/workflow-row-actions';
 import { WorkflowRows, WorkflowListFooter } from '../list/workflow-rows';
-import { canEditOrganization } from './editing';
+import { canEditOrganization } from '../../model/organization/selection-editing';
 import { WorkflowOrganizationDialog } from './dialog';
 import { WorkflowOrganizationRowMenu } from './row-menu';
 

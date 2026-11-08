@@ -16,10 +16,10 @@ import { Field, FieldLabel, FieldDescription } from '@/components/ui/field';
 import {
   failureLink,
   failureTargetOptions,
-} from '../../model/failure-routing/commands';
+} from '../../model/failure-routing/failure-routing-commands';
 import { canOwnFailureLink } from '../../model/failure-routing/eligibility';
 import { stepTitle } from '../../model/graph/adapter';
-import { linkWorkflowNodes } from '../../model/graph/commands';
+import { linkWorkflowNodes } from '../../model/graph/workflow-graph-commands';
 import type { EditorStore } from '../../model/state/workflow-editor.store';
 
 type Node = WorkflowGraphContract['nodes'][number];

@@ -28,7 +28,7 @@ import {
   useEditorSession,
 } from '../../model/state/context';
 import { stepTitle } from '../../model/graph/adapter';
-import { linkWorkflowNodes } from '../../model/graph/commands';
+import { linkWorkflowNodes } from '../../model/graph/workflow-graph-commands';
 import { findStep, levelOf } from '../../model/graph/scopes';
 import { inlineOutputBytes } from '../../model/step-card';
 import type { useEditorActions } from '../../hooks/use-editor-actions';

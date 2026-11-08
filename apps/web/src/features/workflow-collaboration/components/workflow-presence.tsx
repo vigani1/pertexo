@@ -19,7 +19,10 @@ import {
   type CollaborationScope,
 } from '../data/collaboration.api';
 import { presenceQuery } from '../data/collaboration.queries';
-import { PresenceContext, useWorkflowPresence } from '../model/context';
+import {
+  PresenceContext,
+  useWorkflowPresence,
+} from '../model/discussion-context';
 import { VIEWING_PRESENCE, type EditingPresence } from '../model/presence';
 // One identity per page load, never carried over: sessionStorage would hand it to a
 // duplicated tab, hiding that real other tab's unsaved work, and the lease's sequence

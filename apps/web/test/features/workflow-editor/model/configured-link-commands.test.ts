@@ -3,7 +3,7 @@ import { workflowGraphSchema } from '@pertexo/contracts';
 import {
   linkWorkflowNodes,
   canStartWorkflowLink,
-} from '@/features/workflow-editor/model/graph/commands';
+} from '@/features/workflow-editor/model/graph/workflow-graph-commands';
 import { shownPorts } from '@/features/workflow-editor/model/step-card';
 import { browserDefinitions } from '../../../support/fixtures/node-catalog';
 

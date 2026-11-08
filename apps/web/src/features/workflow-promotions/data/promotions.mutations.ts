@@ -2,7 +2,7 @@ import { workspaceReadScope } from '@/lib/api/workspace-scope';
 import {
   promotionFailureMessage,
   requiresPromotionReview,
-} from '../model/failures';
+} from '../model/promotion-failures';
 import { useQueryClient } from '@tanstack/react-query';
 import type { WorkflowPromotionApply } from '@pertexo/contracts';
 import { useRetainedCommand } from '@/lib/api/commands/use-retained';

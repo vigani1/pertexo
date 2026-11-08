@@ -16,7 +16,7 @@ import {
   WorkflowImportFeedback,
 } from './import-actions';
 import { WorkflowImportSourceFields } from './source-fields';
-import { useImportDraft } from './use-import-draft';
+import { useImportDraft } from '../../forms/workflow-import';
 import { PortabilityAccessDeniedDialog } from './access-denied-dialog';
 
 type WorkflowImportDialogProps = Readonly<{

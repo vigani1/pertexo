@@ -8,7 +8,7 @@ import {
   addWorkflowNote,
   removeWorkflowNote,
   updateWorkflowNote,
-} from '../../../model/notes/commands';
+} from '../../../model/notes/note-commands';
 
 export function useNoteActions() {
   const store = useEditorStoreApi();

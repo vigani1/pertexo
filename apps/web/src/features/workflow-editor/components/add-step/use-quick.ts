@@ -1,6 +1,6 @@
 import { WORKFLOW_FAILURE_PORT } from '@pertexo/workflow-model';
 import { canOwnFailureLink } from '../../model/failure-routing/eligibility';
-import { failureLink } from '../../model/failure-routing/commands';
+import { failureLink } from '../../model/failure-routing/failure-routing-commands';
 import type { NodeDefinitionCatalogItem } from '@pertexo/contracts';
 import { useReactFlow } from '@xyflow/react';
 import { useState } from 'react';
@@ -12,7 +12,10 @@ import {
 } from '../../model/graph/for-each-body-layout';
 import type { EditorStore } from '../../model/state/workflow-editor.store';
 import { findDefinition } from '../../model/graph/adapter';
-import { positionAfter, type PortRef } from '../../model/graph/commands';
+import {
+  positionAfter,
+  type PortRef,
+} from '../../model/graph/workflow-graph-commands';
 import { levelSinks } from '../../model/graph/order';
 import {
   findStep,

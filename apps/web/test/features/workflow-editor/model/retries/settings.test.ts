@@ -8,7 +8,7 @@ import {
   stepRetryMode,
 } from '@/features/workflow-editor/model/inspector/retries/draft';
 import type { NodeFormApi } from '@/features/workflow-editor/model/inspector/node-form';
-import { updateWorkflowNode } from '@/features/workflow-editor/model/graph/commands';
+import { updateWorkflowNode } from '@/features/workflow-editor/model/graph/workflow-graph-commands';
 
 const action: WorkflowGraphContract['nodes'][number] = {
   id: 'step',

@@ -21,19 +21,19 @@ import {
   duplicateWorkflow,
   getWorkflowDuplicateDraft,
   type WorkflowDuplicateAttempt,
-} from '../data/workflows.api';
-import { workflowKeys } from '../data/workflows.queries';
-import { workflowOrganizationKeys } from '../data/organization/workflow-organization.queries';
+} from '../../data/workflows.api';
+import { workflowKeys } from '../../data/workflows.queries';
+import { workflowOrganizationKeys } from '../../data/organization/workflow-organization.queries';
 import {
   duplicateFailureState,
   type DuplicatePhase,
   type DuplicateState,
   duplicateWindowEnded,
-} from '../model/duplicate/state';
+} from '../../model/duplicate/duplicate-command-state';
 import {
   isDuplicateAccessLoss,
   observeDuplicateAccessLoss,
-} from '../model/duplicate/access-loss';
+} from '../../model/duplicate/access-loss';
 import { useDuplicateAuthority } from './use-duplicate-authority';
 
 type DuplicateAttempt = WorkflowDuplicateAttempt &

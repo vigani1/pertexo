@@ -6,7 +6,7 @@ import {
   linkWorkflowNodes,
   moveWorkflowNode,
   updateWorkflowNode,
-} from '@/features/workflow-editor/model/graph/commands';
+} from '@/features/workflow-editor/model/graph/workflow-graph-commands';
 
 import { removeWorkflowNode } from '@/features/workflow-editor/model/graph/removal';
 

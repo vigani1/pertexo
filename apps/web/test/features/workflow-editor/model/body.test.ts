@@ -6,7 +6,7 @@ import {
   linkWorkflowNodes,
   moveWorkflowNodes,
   updateWorkflowNode,
-} from '@/features/workflow-editor/model/graph/commands';
+} from '@/features/workflow-editor/model/graph/workflow-graph-commands';
 
 import { displayPositions } from '@/features/workflow-editor/model/graph/for-each-body-layout';
 

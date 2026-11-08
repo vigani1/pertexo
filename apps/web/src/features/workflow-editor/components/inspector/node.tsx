@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useEditorStore, useEditorStoreApi } from '../../model/state/context';
 import type { EditorFocusTarget } from '../../hooks/use-editor-actions';
 import type { InspectorTab } from '../../hooks/use-inspector-navigation';
-import { updateWorkflowNode } from '../../model/graph/commands';
+import { updateWorkflowNode } from '../../model/graph/workflow-graph-commands';
 import {
   findStep,
   isForEach,

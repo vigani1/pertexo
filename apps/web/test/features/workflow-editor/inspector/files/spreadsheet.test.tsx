@@ -11,7 +11,7 @@ import {
   LastTestContext,
   type RecordedTest,
 } from '@/features/workflow-editor/hooks/use-last-test';
-import { updateWorkflowNode } from '@/features/workflow-editor/model/graph/commands';
+import { updateWorkflowNode } from '@/features/workflow-editor/model/graph/workflow-graph-commands';
 import type { NodeFormApi } from '@/features/workflow-editor/model/inspector/node-form';
 import {
   EditorStoreContext,

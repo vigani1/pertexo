@@ -1,5 +1,5 @@
 import { WorkflowOrganizationFilters } from '@/features/workflows/components/organization/filters';
-import { useOrganizationList } from '@/features/workflows/hooks/use-organization-list';
+import { useOrganizationList } from '@/features/workflows/hooks/organization/use-organization-list';
 import { userId, workspaceId } from '../../list/fixtures';
 import { apiClient, folderId, tagId, workspace } from './records';
 export function Probe({

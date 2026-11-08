@@ -1,4 +1,4 @@
-import { describeTriggerRepair } from './state';
+import { describeTriggerRepair } from './trigger-state';
 import type {
   ScheduleOccurrenceResponse,
   ScheduleTriggerHealthResponse,

@@ -1,7 +1,7 @@
 import type { AccessibleWorkspace } from '@pertexo/contracts';
 import type { ApiClient } from '@/lib/api/client';
 import type { WorkflowListSearch } from '../model/list-view';
-import { useOrganizationList } from './use-organization-list';
+import { useOrganizationList } from './organization/use-organization-list';
 
 /** Which of the list's four states is on screen. */
 function listState({

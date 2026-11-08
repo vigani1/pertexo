@@ -19,9 +19,9 @@ import { Notice } from '@/components/ui/notice';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { useFieldValidation } from '@/components/ui/use-field-validation';
 import type { ApiClient } from '@/lib/api/client';
-import { workflowNameError } from '../model/rename';
-import { useWorkflowDuplicate } from '../hooks/use-workflow-duplicate';
-import { canDuplicateWorkflow } from '../model/duplicate/allowed';
+import { workflowNameError } from '../../model/rename';
+import { useWorkflowDuplicate } from '../../hooks/duplicate/use-workflow-duplicate';
+import { canDuplicateWorkflow } from '../../model/duplicate/allowed';
 
 type WorkflowDuplicateDialogProps = Readonly<{
   workflow: WorkflowSummary;

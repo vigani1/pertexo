@@ -4,7 +4,7 @@ import {
   freePosition,
   moveWorkflowNodes,
   updateWorkflowNode,
-} from '@/features/workflow-editor/model/graph/commands';
+} from '@/features/workflow-editor/model/graph/workflow-graph-commands';
 
 import { duplicateWorkflowNodes } from '@/features/workflow-editor/model/graph/copies';
 

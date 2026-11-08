@@ -1,8 +1,8 @@
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { workflowOrganizationListResponseSchema } from '@pertexo/contracts';
 import type { ApiClient } from '@/lib/api/client';
-import { workflowListQueryOptions } from '../data/organization/workflow-organization.queries';
-import type { WorkflowListSearch } from '../model/list-view';
+import { workflowListQueryOptions } from '../../data/organization/workflow-organization.queries';
+import type { WorkflowListSearch } from '../../model/list-view';
 import {
   isOrganizationReadDenied,
   useOrganizationReadLifetime,

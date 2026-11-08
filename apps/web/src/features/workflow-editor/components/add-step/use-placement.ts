@@ -15,7 +15,7 @@ import {
   addStepAfter,
   freePosition,
   positionAfter,
-} from '../../model/graph/commands';
+} from '../../model/graph/workflow-graph-commands';
 import { loopOf, scopeOf, type ScopePath } from '../../model/graph/scopes';
 import { findDefinition } from '../../model/graph/adapter';
 import { openOutputPort } from '../../model/quick-add';

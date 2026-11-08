@@ -1,1 +1,1 @@
-export { WorkflowCommentsPage } from './pages/comments';
+export { WorkflowCommentsPage } from './pages/workflow-comments';

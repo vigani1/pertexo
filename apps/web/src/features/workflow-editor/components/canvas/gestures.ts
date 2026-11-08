@@ -5,7 +5,7 @@ import {
   canStartWorkflowLink,
   linkWorkflowNodes,
   type PortRef,
-} from '../../model/graph/commands';
+} from '../../model/graph/workflow-graph-commands';
 import type { useEditorStoreApi } from '../../model/state/context';
 import { canLinkSteps } from '../../model/graph/scopes';
 import { gestureEndPoint, portDropSource } from '../../model/quick-add';

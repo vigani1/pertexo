@@ -15,7 +15,7 @@ import {
   updateWorkflowNote,
   moveWorkflowNotes,
   removeWorkflowNote,
-} from '@/features/workflow-editor/model/notes/commands';
+} from '@/features/workflow-editor/model/notes/note-commands';
 import {
   noteFields,
   noteFieldErrors,

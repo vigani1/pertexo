@@ -4,7 +4,7 @@ import {
   useEditorStore,
   useEditorStoreApi,
 } from '../../../model/state/context';
-import { moveWorkflowNotes } from '../../../model/notes/commands';
+import { moveWorkflowNotes } from '../../../model/notes/note-commands';
 import {
   noteIdFromFlowId,
   noteFlowId,

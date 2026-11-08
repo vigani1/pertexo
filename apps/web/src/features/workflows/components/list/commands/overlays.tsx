@@ -1,8 +1,8 @@
-import type { useImportDraft } from '../../portability/use-import-draft';
+import type { useImportDraft } from '../../../forms/workflow-import';
 import type { AccessibleWorkspace, WorkflowSummary } from '@pertexo/contracts';
 import type { ApiClient } from '@/lib/api/client';
 import { NewWorkflowSheet } from '../../creation/new-workflow-sheet';
-import { WorkflowDuplicateDialog } from '../../workflow-duplicate-dialog';
+import { WorkflowDuplicateDialog } from '../../duplicate/workflow-duplicate-dialog';
 import { WorkflowExportDialog } from '../../portability/workflow-export-dialog';
 import { WorkflowImportDialog } from '../../portability/workflow-import-dialog';
 import { WorkflowDialogs, type LifecycleTarget } from './dialogs';

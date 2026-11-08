@@ -1,4 +1,4 @@
-import { PublicationControls } from './publication/controls';
+import { PublicationControls } from './publication/publication-controls';
 import type { ReactNode } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { workflowRunVersionQueryOptions } from '@/features/workflow-runs/workflow-runs-queries.public';

@@ -15,7 +15,7 @@ import type { ApiClient } from '@/lib/api/client';
 import {
   commandErrorMessage,
   parseCommandJson,
-} from '../../data/mutations/command-utils';
+} from '../../data/mutations/workflow-command-feedback';
 import {
   observePreview,
   previewTerminalStatuses,

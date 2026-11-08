@@ -11,7 +11,7 @@ import { summarizePublish } from '@/features/workflow-publish/model/publication/
 import { ConflictCompareDialog } from '@/features/workflow-editor/components/chrome/conflict-compare-dialog';
 import { createEditorStore } from '@/features/workflow-editor/model/state/workflow-editor.store';
 import { EditorStoreContext } from '@/features/workflow-editor/model/state/context';
-import { PromotionReview } from '@/features/workflow-promotions/components/review';
+import { PromotionReview } from '@/features/workflow-promotions/components/promotion-review';
 import { VersionDiffSummary } from '@/features/workflow-settings/components/versions/diff-summary';
 import { renderInRouter } from '../../../support/render-in-router';
 

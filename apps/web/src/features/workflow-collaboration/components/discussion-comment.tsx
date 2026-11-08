@@ -15,8 +15,8 @@ import {
 import { formatDateTime } from '@/lib/format/time';
 import type { CollaborationScope } from '../data/collaboration.api';
 import { useDiscussionCommand } from '../data/collaboration.mutations';
-import { CommentComposer } from './composer';
-import { DiscussionFeedback } from './command-feedback';
+import { CommentComposer } from './comment-composer';
+import { DiscussionFeedback } from './discussion-feedback';
 export function DiscussionComment({
   scope,
   paused = false,

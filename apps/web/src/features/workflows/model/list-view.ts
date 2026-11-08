@@ -1,7 +1,7 @@
 import type { WorkflowListQuery, WorkflowSummary } from '@pertexo/contracts';
 import { workflowOrganizationListQuerySchema } from '@pertexo/contracts';
 import type { StatusTone } from '@/components/ui/status';
-import { describeWorkflowState } from './state';
+import { describeWorkflowState } from './workflow-state';
 
 export type WorkflowView = 'active' | 'archived' | 'all';
 export type WorkflowSort = 'updated' | 'created';

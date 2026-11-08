@@ -24,7 +24,7 @@ import type {
   DiscussionCommand,
 } from '../data/collaboration.api';
 import { useDiscussionCommand } from '../data/collaboration.mutations';
-import { DiscussionFeedback } from '../components/command-feedback';
+import { DiscussionFeedback } from '../components/discussion-feedback';
 import {
   MentionPicker,
   type MentionPerson,

@@ -9,7 +9,7 @@ import {
   organizationEditAttempt,
   organizationOutcomeText,
   canEditOrganization,
-} from '@/features/workflows/components/organization/editing';
+} from '@/features/workflows/model/organization/selection-editing';
 import {
   workspaceId,
   workflowId,

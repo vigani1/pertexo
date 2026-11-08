@@ -8,10 +8,10 @@ import {
   getWorkflowDraft,
   saveWorkflowDraft,
   type WorkflowDraftSnapshot,
-} from '../data/workflow-editor.api';
-import { workflowDraftKeys } from '../data/workflow-editor.queries';
-import type { EditorStore } from '../model/state/workflow-editor.store';
-import type { SaveCoordinatorTransport } from '../model/persistence/save-coordinator';
+} from '../../data/workflow-editor.api';
+import { workflowDraftKeys } from '../../data/workflow-editor.queries';
+import type { EditorStore } from '../../model/state/workflow-editor.store';
+import type { SaveCoordinatorTransport } from '../../model/persistence/save-coordinator';
 import { useSaveCoordinator } from './use-save-coordinator';
 
 export type SavedDraftIdentity = Readonly<{

@@ -11,9 +11,9 @@ import {
 
 import { workflowOrganizationKeys } from '@/features/workflows/data/organization/workflow-organization.queries';
 
-import { useOrganizationList } from '@/features/workflows/hooks/use-organization-list';
+import { useOrganizationList } from '@/features/workflows/hooks/organization/use-organization-list';
 
-import { useWorkflowOrganizationCommand } from '@/features/workflows/hooks/use-workflow-organization-command';
+import { useWorkflowOrganizationCommand } from '@/features/workflows/hooks/organization/use-workflow-organization-command';
 
 import type { WorkflowListSearch } from '@/features/workflows/model/list-view';
 

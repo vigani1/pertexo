@@ -14,7 +14,7 @@ import { isApiError } from '@/lib/api/error';
 import { importWorkflow } from './workflow-portability.api';
 import { workflowKeys } from '../workflows.queries';
 import { workflowOrganizationKeys } from '../organization/workflow-organization.queries';
-import type { usePortabilityLifetime } from '../../components/portability/use-lifetime';
+import type { usePortabilityLifetime } from '../../components/portability/use-portability-lifetime';
 
 type Attempt = CommandKey & {
   body: WorkflowImportRequest;

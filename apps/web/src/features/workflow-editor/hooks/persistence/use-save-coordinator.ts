@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef } from 'react';
-import type { EditorStore } from '../model/state/workflow-editor.store';
+import type { EditorStore } from '../../model/state/workflow-editor.store';
 import {
   createSaveCoordinator,
   type SaveCoordinatorTransport,
-} from '../model/persistence/save-coordinator';
+} from '../../model/persistence/save-coordinator';
 
 export function useSaveCoordinator({
   store,

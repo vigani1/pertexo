@@ -14,9 +14,9 @@ import { QueryView } from '@/components/patterns/states/query-view';
 import type { CollaborationScope } from '../data/collaboration.api';
 import { discussionQuery } from '../data/collaboration.queries';
 import { useDiscussionCommand } from '../data/collaboration.mutations';
-import { DiscussionComment } from './comment';
-import { CommentComposer } from './composer';
-import { DiscussionFeedback } from './command-feedback';
+import { DiscussionComment } from './discussion-comment';
+import { CommentComposer } from './comment-composer';
+import { DiscussionFeedback } from './discussion-feedback';
 interface DiscussionProps {
   paused?: boolean | undefined;
   scope: CollaborationScope;

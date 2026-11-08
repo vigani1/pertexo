@@ -3,7 +3,7 @@ import {
   addDefinitionNode,
   linkWorkflowNodes,
   updateWorkflowNode,
-} from '@/features/workflow-editor/model/graph/commands';
+} from '@/features/workflow-editor/model/graph/workflow-graph-commands';
 
 import {
   changeInputMappingKind,

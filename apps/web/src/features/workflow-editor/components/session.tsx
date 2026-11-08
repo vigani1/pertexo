@@ -14,8 +14,8 @@ import { EditorWorkspace } from './editor-workspace';
 import { isStartTrigger } from '../model/step-catalog';
 import { useCanvasEffects } from '../hooks/use-canvas-effects';
 import { useEditorStoreApi } from '../model/state/context';
-import { useEditorOwnership } from '../hooks/use-editor-ownership';
-import { useEditorPublication } from '../hooks/use-editor-publication';
+import { useEditorOwnership } from '../hooks/ownership/use-editor-ownership';
+import { useEditorPublication } from '../hooks/publication/use-editor-publication';
 import { useEditorActions } from '../hooks/use-editor-actions';
 
 /**
