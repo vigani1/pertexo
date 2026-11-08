@@ -11,7 +11,7 @@ import {
 import { Notice } from '@/components/ui/notice';
 import { SkeletonLines } from '@/components/ui/skeleton';
 import { StatusGlyph } from '@/components/ui/status';
-import { isAccessLost, readFailureReason } from '@/lib/api/error-copy';
+import { readFailureReason, shownData } from '@/lib/api/error-copy';
 
 /** What a feature's own failure explanation needs to keep Retry working. */
 export type ReadFailureRecovery = Readonly<{
@@ -86,8 +86,7 @@ export function QueryView<Data>({
     if (explained !== undefined && explained !== null) return explained;
   }
   // An authoritative "you can't see this" hides data loaded earlier.
-  const data =
-    query.isError && isAccessLost(query.error) ? undefined : query.data;
+  const data = shownData(query);
   if (data === undefined) {
     if (query.isPending)
       return (

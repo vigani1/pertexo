@@ -1,4 +1,4 @@
-import { isAccessLost } from '@/lib/api/error-copy';
+import { isAccessLost, shownData } from '@/lib/api/error-copy';
 
 /** What a Home block shows: its loading, failure and staleness. */
 export type HomeBlockState = Readonly<{
@@ -45,8 +45,7 @@ export function mergedBlockState(
     pending: all.some((query) => query.isPending),
     error: (denied ?? failed[0])?.error,
     failed: failed.length > 0,
-    hasData:
-      denied === undefined && all.every((query) => query.data !== undefined),
+    hasData: all.every((query) => shownData(query) !== undefined),
     retrying: all.some((query) => query.isRefetching),
     updatedAt: Math.min(...all.map((query) => query.dataUpdatedAt)),
     onRetry: () => {

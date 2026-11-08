@@ -26,6 +26,7 @@ import { HomeLoom } from '../components/home-loom';
 import { RecentlyChanged } from '../components/recently-changed';
 import { isNewWorkspace, type FirstThreadFacts } from '../model/first-thread';
 import { roleLimitSentence } from '@/features/workspaces/roles.public';
+import { shownData } from '@/lib/api/error-copy';
 
 /**
  * Home answers three questions at a glance: what's running (the Loom),
@@ -110,7 +111,7 @@ export function HomePage({
     <div className="flex flex-col gap-10">
       <HomeHeader
         workspace={workspace}
-        statistics={statistics.data}
+        statistics={shownData(statistics)}
         refreshing={refreshing}
         onRefresh={refresh}
         onOpenSearch={onOpenSearch}
