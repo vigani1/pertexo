@@ -1,4 +1,5 @@
 import { QueryView } from '@/components/patterns/states/query-view';
+import { shownData } from '@/lib/api/error-copy';
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { DataTableDefinition } from '@pertexo/contracts';
@@ -64,7 +65,9 @@ export function DataTableRows({
     });
   }
   const locked = command.pending || command.uncertain;
-  const shown = rows.data?.rows.length ?? 0;
+  // Rows a refresh says are no longer readable leave the grid.
+  const page = shownData(rows);
+  const shown = page?.rows.length ?? 0;
   return (
     <div className="grid min-w-0 gap-3">
       <RowsToolbar
@@ -90,7 +93,7 @@ export function DataTableRows({
         {/* Relative keeps hidden labels inside the scroller, not past the page. */}
         <RowsGrid
           table={table}
-          page={rows.data}
+          page={page}
           filtered={query.filters.length > 0}
           pending={rows.isPending}
           editable={editable}
@@ -106,7 +109,7 @@ export function DataTableRows({
           query={query}
           shown={shown}
           pending={rows.isPending}
-          hasMore={rows.data?.hasMore ?? false}
+          hasMore={page?.hasMore ?? false}
           onPrevious={() => {
             setQuery((current) => ({
               ...current,
