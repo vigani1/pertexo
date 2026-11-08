@@ -115,6 +115,27 @@ it('does not show a retired sample-read failure in a newly prepared test', async
   ).not.toBeInTheDocument();
 });
 
+it('clears a failed sample load after the person successfully loads the sample again', async () => {
+  const { event, release } = mountTriggerInput('first');
+  await prepareAndLoad(event);
+  release();
+  await screen.findByText(
+    /We couldn’t confirm whether loading the trigger sample/u,
+  );
+  await event.click(
+    screen.getByRole('button', { name: 'Use trigger’s pinned sample' }),
+  );
+  expect(await screen.findByText('Pinned sample loaded.')).toBeVisible();
+  expect(
+    screen.getByRole('textbox', { name: 'Test input (JSON)' }),
+  ).toHaveValue(JSON.stringify({ customer: 'old pin' }, null, 2));
+  expect(
+    screen.queryByText(
+      /We couldn’t confirm whether loading the trigger sample/u,
+    ),
+  ).not.toBeInTheDocument();
+});
+
 async function prepareAndLoad(event: ReturnType<typeof userEvent.setup>) {
   await event.click(await screen.findByRole('button', { name: 'Prepare' }));
   await event.click(
@@ -122,7 +143,7 @@ async function prepareAndLoad(event: ReturnType<typeof userEvent.setup>) {
   );
 }
 
-function mountTriggerInput(failSample = false) {
+function mountTriggerInput(failSample: boolean | 'first' = false) {
   const sampleId = '11111111-1111-4111-8111-111111111111';
   let release: (() => void) | undefined;
   const held = new Promise<void>((resolve) => {
@@ -147,7 +168,8 @@ function mountTriggerInput(failSample = false) {
       async () => {
         reads += 1;
         await held;
-        if (failSample) return HttpResponse.error();
+        if (failSample === true || (failSample === 'first' && reads === 1))
+          return HttpResponse.error();
         return HttpResponse.json({
           sample: {
             id: sampleId,
