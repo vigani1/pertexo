@@ -453,6 +453,14 @@ git tag -d v0.0.9 v0.0.10 >/dev/null
       '--remove-orphans',
     ]);
     assert.equal(wiped.status, 0, wiped.stderr);
+    // The real off-server store survives server loss. Restart only its stand-ins;
+    // target data services and their volumes must still be absent at preflight.
+    const outside = await server.composeFor(release, [
+      'up',
+      '-d',
+      'drill-backup-proxy',
+    ]);
+    assert.equal(outside.status, 0, outside.stderr);
     await server.mustExec('rm -rf state/* state/.[!.]*');
 
     const restored = await server.script('restore.sh', [point, release]);
