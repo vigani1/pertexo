@@ -1,5 +1,5 @@
 import { QueryView } from '@/components/patterns/states/query-view';
-import { shownData } from '@/lib/api/error-copy';
+import { readAccessLost, shownData } from '@/lib/api/error-copy';
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { DataTableDefinition } from '@pertexo/contracts';
@@ -127,7 +127,8 @@ export function DataTableRows({
       <RowsDialogs
         scope={scope}
         table={table}
-        editing={editing}
+        // An open editor holds a row the refused refresh no longer shows.
+        editing={readAccessLost(rows) ? undefined : editing}
         importing={importing}
         onEditingClose={() => {
           setEditing(undefined);

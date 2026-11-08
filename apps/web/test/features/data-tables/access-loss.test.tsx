@@ -1,4 +1,5 @@
-import { act, screen } from '@testing-library/react';
+import { act, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { HttpResponse, http } from 'msw';
 import { expect, it } from 'vitest';
 import type { DataTableDefinition } from '@pertexo/contracts';
@@ -118,6 +119,74 @@ it.each([
     else expect(screen.queryByText('Item 1')).not.toBeInTheDocument();
   },
 );
+
+it.each([
+  [401, false],
+  [403, false],
+  [404, false],
+  [503, true],
+] as const)(
+  'after a %s refresh, an open row editor keeps the row only when access remains',
+  async (status, kept) => {
+    let failing = false;
+    mockServer.use(
+      http.post(
+        '*/v1/workspaces/:workspaceId/data-tables/:tableId/rows/query',
+        () =>
+          failing
+            ? problem(status, refusalCode(status), 'Refused')
+            : HttpResponse.json({
+                rows: [
+                  {
+                    id: '01900000-0000-7000-8000-000000000010',
+                    revision: 1,
+                    values: { reference: 'Item 1' },
+                  },
+                ],
+                affected: 0,
+                hasMore: false,
+              }),
+      ),
+    );
+    const { queryClient } = renderInRouter(
+      <DataTableRows
+        scope={{
+          apiClient: client(),
+          userId,
+          workspaceId: '01900000-0000-7000-8000-000000000002',
+        }}
+        table={table}
+        editable
+      />,
+    );
+    expect(await screen.findByText('Item 1')).toBeVisible();
+    await userEvent
+      .setup()
+      .click(screen.getByRole('button', { name: /^Edit$/u }));
+    expect(await screen.findByDisplayValue('Item 1')).toBeVisible();
+
+    failing = true;
+    await act(async () => {
+      await queryClient.refetchQueries();
+    });
+
+    if (kept)
+      await waitFor(() => {
+        expect(screen.getByDisplayValue('Item 1')).toBeVisible();
+      });
+    else
+      await waitFor(() => {
+        expect(screen.queryByDisplayValue('Item 1')).not.toBeInTheDocument();
+      });
+  },
+);
+
+function refusalCode(status: 401 | 403 | 404 | 503) {
+  if (status === 401) return 'auth.unauthenticated';
+  if (status === 403) return 'auth.forbidden';
+  if (status === 404) return 'resource.not_found';
+  return 'internal.unexpected';
+}
 
 function client() {
   return createApiClient({

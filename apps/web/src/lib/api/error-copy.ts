@@ -30,11 +30,18 @@ export function isAccessLost(error: unknown): boolean {
   return isApiError(error) && [401, 403, 404].includes(error.status ?? 0);
 }
 
+/** A read whose latest answer says access is gone. */
+export function readAccessLost(
+  read: Readonly<{ isError: boolean; error: unknown }>,
+): boolean {
+  return read.isError && isAccessLost(read.error);
+}
+
 /** A read's data, unless its latest answer says access is gone. */
 export function shownData<Data>(
   read: Readonly<{ data: Data | undefined; isError: boolean; error: unknown }>,
 ): Data | undefined {
-  return read.isError && isAccessLost(read.error) ? undefined : read.data;
+  return readAccessLost(read) ? undefined : read.data;
 }
 
 /** Whole seconds to wait before retrying a rate-limited request. */
