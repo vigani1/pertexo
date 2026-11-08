@@ -1,3 +1,4 @@
+import { NotificationsProvider } from '@/components/ui/toast';
 import { useConnectionSharingEditor } from '@/features/connections/hooks/use-sharing-editor';
 import { discoveryHandlers } from '../workflows/list/fixtures';
 import { act, render, screen, waitFor } from '@testing-library/react';
@@ -65,7 +66,9 @@ function setup() {
   const done = vi.fn();
   render(
     <QueryClientProvider client={cache}>
-      <SharingHarness />
+      <NotificationsProvider>
+        <SharingHarness />
+      </NotificationsProvider>
     </QueryClientProvider>,
   );
   return {
@@ -141,73 +144,117 @@ it('keeps unsaved members on refetch and offers an explicit reload after a confl
   await event.click(screen.getByRole('button', { name: 'Cancel' }));
   expect(f.done).toHaveBeenCalledOnce();
 });
-it('loads a refused sharing revision and resubmits retained people only after review', async () => {
-  const f = setup();
-  const bodies: unknown[] = [];
-  mockServer.use(
-    http.post(
-      `${api}/connections/${connectionId}/sharing`,
-      async ({ request }) => {
-        bodies.push(await request.json());
-        if (bodies.length === 1) {
-          f.update({
+it.each([false, true])(
+  'loads a refused sharing revision and resubmits retained people only after review (read fails: %s)',
+  async (failRead) => {
+    const f = setup();
+    const bodies: unknown[] = [];
+    let readFailed = false;
+    if (failRead)
+      mockServer.use(
+        http.get(`${api}/connections/${connectionId}/sharing`, () => {
+          if (bodies.length === 0)
+            return HttpResponse.json({
+              connectionId,
+              mode: 'workspace',
+              revision: 1,
+              members: [],
+            });
+          if (!readFailed) {
+            readFailed = true;
+            return HttpResponse.json(
+              {
+                type: 'about:blank',
+                title: 'Sharing unavailable',
+                status: 503,
+                code: 'internal.unexpected',
+                requestId: 'sharing-read-failed',
+              },
+              {
+                status: 503,
+                headers: { 'content-type': 'application/problem+json' },
+              },
+            );
+          }
+          return HttpResponse.json({
             connectionId,
             mode: 'workspace',
             revision: 2,
             members: [],
           });
-          return HttpResponse.json(
-            {
-              type: 'about:blank',
-              title: 'Sharing changed',
-              status: 409,
-              code: 'connection.conflict',
-              requestId: 'sharing-conflict',
-            },
-            {
-              status: 409,
-              headers: { 'content-type': 'application/problem+json' },
-            },
-          );
-        }
-        const result = {
-          connectionId,
-          mode: 'restricted' as const,
-          revision: 3,
-          members: [{ userId, label: 'Jane', active: true }],
-        };
-        f.update(result);
-        return HttpResponse.json({ ...result, replayed: false });
-      },
-    ),
-  );
-  const event = userEvent.setup();
-  await event.click(
-    await screen.findByRole('radio', { name: /Only people you choose/ }),
-  );
-  await event.click(await screen.findByRole('button', { name: 'Add Jane' }));
-  await event.click(screen.getByRole('button', { name: 'Save' }));
-  expect(
-    await screen.findByRole('region', { name: 'Current saved sharing' }),
-  ).toBeVisible();
-  const review = await screen.findByRole('button', {
-    name: 'Keep edits and use latest revision',
-  });
-  await waitFor(() => {
-    expect(review).toBeEnabled();
-  });
-  expect(
-    screen.queryByText('Saving sharing didn’t work. Try again.'),
-  ).not.toBeInTheDocument();
-  await event.click(review);
-  expect(screen.getByRole('button', { name: 'Remove Jane' })).toBeVisible();
-  await event.click(screen.getByRole('button', { name: 'Save' }));
-  await waitFor(() => {
-    expect(bodies).toHaveLength(2);
-  });
-  expect(bodies[1]).toEqual({
-    mode: 'restricted',
-    expectedSharingRevision: 2,
-    userIds: [userId],
-  });
-});
+        }),
+      );
+    mockServer.use(
+      http.post(
+        `${api}/connections/${connectionId}/sharing`,
+        async ({ request }) => {
+          bodies.push(await request.json());
+          if (bodies.length === 1) {
+            f.update({
+              connectionId,
+              mode: 'workspace',
+              revision: 2,
+              members: [],
+            });
+            return HttpResponse.json(
+              {
+                type: 'about:blank',
+                title: 'Sharing changed',
+                status: 409,
+                code: 'connection.conflict',
+                requestId: 'sharing-conflict',
+              },
+              {
+                status: 409,
+                headers: { 'content-type': 'application/problem+json' },
+              },
+            );
+          }
+          const result = {
+            connectionId,
+            mode: 'restricted' as const,
+            revision: 3,
+            members: [{ userId, label: 'Jane', active: true }],
+          };
+          f.update(result);
+          return HttpResponse.json({ ...result, replayed: false });
+        },
+      ),
+    );
+    const event = userEvent.setup();
+    await event.click(
+      await screen.findByRole('radio', { name: /Only people you choose/ }),
+    );
+    await event.click(await screen.findByRole('button', { name: 'Add Jane' }));
+    await event.click(screen.getByRole('button', { name: 'Save' }));
+    if (failRead) {
+      expect(await screen.findByText('sharing-read-failed')).toBeVisible();
+      expect(screen.getByRole('button', { name: 'Remove Jane' })).toBeVisible();
+      expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
+      await event.click(screen.getByRole('button', { name: 'Retry' }));
+    }
+    expect(
+      await screen.findByRole('region', { name: 'Current saved sharing' }),
+    ).toBeVisible();
+    const review = await screen.findByRole('button', {
+      name: 'Keep edits and use latest revision',
+    });
+    await waitFor(() => {
+      expect(review).toBeEnabled();
+    });
+    expect(
+      screen.queryByText('Saving sharing didn’t work. Try again.'),
+    ).not.toBeInTheDocument();
+    await event.click(review);
+    expect(screen.getByRole('button', { name: 'Remove Jane' })).toBeVisible();
+    await event.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => {
+      expect(bodies).toHaveLength(2);
+    });
+    expect(bodies[1]).toEqual({
+      mode: 'restricted',
+      expectedSharingRevision: 2,
+      userIds: [userId],
+    });
+  },
+);

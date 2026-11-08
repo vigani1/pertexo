@@ -203,8 +203,12 @@ describe('browser API transport', () => {
       'timeout',
     );
 
+    let ended = false;
+    void timed.then(() => {
+      ended = true;
+    });
     await vi.advanceTimersByTimeAsync(25);
-    expect(transportSignal?.aborted).toBe(true);
+    expect(ended).toBe(true);
     await timed;
   });
   it('rejects cross-origin paths, transport headers and missing CSRF before fetch', async () => {

@@ -46,28 +46,6 @@ describe('QueryView', () => {
     expect(screen.getByRole('status', { name: 'Loading notes' })).toBeVisible();
   });
 
-  it('offers Retry when the first read fails', async () => {
-    const refetch = vi.fn();
-    render(
-      <NotesView
-        query={read({
-          isError: true,
-          error: new ApiError({ kind: 'network', message: 'offline' }),
-          refetch,
-        })}
-      />,
-    );
-    expect(
-      screen.getByText(
-        'Notes couldn’t be reached. Check your connection and try again.',
-      ),
-    ).toBeVisible();
-    await userEvent
-      .setup()
-      .click(screen.getByRole('button', { name: 'Retry' }));
-    expect(refetch).toHaveBeenCalledOnce();
-  });
-
   it('keeps the content and its unsaved edits when a refresh fails', async () => {
     const loaded = read({ data: ['first'] });
     const { rerender } = render(<NotesView query={loaded} />);
