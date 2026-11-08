@@ -15,7 +15,10 @@ import { parseDatabaseConfig } from '@pertexo/database/platform';
 import { admin, createFamily } from '../../../lifecycle/calls/calls.fixture.js';
 import { apiUrl, userId } from '../../../lifecycle/retention.support.js';
 
-import { createConnectionEnvelopeEncryption } from '@pertexo/secrets/server';
+import {
+  createConnectionEnvelopeEncryption,
+  type SealedConnectionSecret,
+} from '@pertexo/secrets/server';
 import type { FormAccessRequest } from '@pertexo/contracts';
 const encryption = createConnectionEnvelopeEncryption({
   mode: 'self-managed',
@@ -200,6 +203,24 @@ export function beforeAllFixture1() {
       return real.setAccess({ ...input, sealedCapability });
     },
   };
+}
+
+/** The link a stored sealed copy opens to, as the editor would read it. */
+export async function openStoredCapability(
+  input: Readonly<{ workspaceId: string; workflowId: string }>,
+  sealed: SealedConnectionSecret,
+): Promise<string> {
+  return new TextDecoder().decode(
+    await encryption.open(
+      sealed,
+      {
+        workspaceId: input.workspaceId,
+        connectionId: input.workflowId,
+        secretVersionId: input.workflowId,
+      },
+      new AbortController().signal,
+    ),
+  );
 }
 
 export function afterAllFixture2() {
