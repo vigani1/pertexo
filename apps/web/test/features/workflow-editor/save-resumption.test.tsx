@@ -18,7 +18,7 @@ import {
   workflowApi,
 } from '../../support/fixtures/workflow-editor';
 
-it.each(['queued', 'accepted'] as const)(
+it.each(['queued', 'accepted', 'accepted-read-failure'] as const)(
   'automatically saves a %s edit after verification resumes',
   async (phase) => {
     const graph = { nodes: [], edges: [], settings: {} };
@@ -27,10 +27,11 @@ it.each(['queued', 'accepted'] as const)(
     let remote = graph;
     let revision = 1;
     let started = false;
+    let reads = 0;
     mockServer.use(
       http.put(`${workflowApi}/draft`, async ({ request }) => {
         started = true;
-        if (phase === 'accepted' && revision === 1) {
+        if (phase !== 'queued' && revision === 1) {
           remote = changed;
           revision = 2;
           await new Promise<void>((resolve) => {
@@ -67,11 +68,14 @@ it.each(['queued', 'accepted'] as const)(
           headers: { etag: etagB },
         });
       }),
-      http.get(`${workflowApi}/draft`, () =>
-        HttpResponse.json(draftBody(remote, revision), {
+      http.get(`${workflowApi}/draft`, () => {
+        reads += 1;
+        if (phase === 'accepted-read-failure' && reads === 1)
+          return HttpResponse.error();
+        return HttpResponse.json(draftBody(remote, revision), {
           headers: { etag: revision === 1 ? etagA : etagB },
-        }),
-      ),
+        });
+      }),
     );
     const apiClient = createApiClient({
       fetch: testFetch,
@@ -104,7 +108,7 @@ it.each(['queued', 'accepted'] as const)(
     act(() => {
       store.getState().transact(changed);
     });
-    if (phase === 'accepted')
+    if (phase !== 'queued')
       await waitFor(
         () => {
           expect(started).toBe(true);
@@ -113,6 +117,20 @@ it.each(['queued', 'accepted'] as const)(
       );
     hook.rerender({ paused: true });
     hook.rerender({ paused: false });
+    if (phase === 'accepted-read-failure') {
+      await waitFor(
+        () => {
+          expect(store.getState().save.status).toBe('uncertain');
+        },
+        { timeout: 4000 },
+      );
+      expect(store.getState().graph).toEqual(changed);
+      expect(remote).toEqual(changed);
+      expect(store.getState().revision).toBe(1);
+      await act(async () => {
+        await hook.result.current.flushSave();
+      });
+    }
     await waitFor(
       () => {
         expect(store.getState().save.status).toBe('clean');

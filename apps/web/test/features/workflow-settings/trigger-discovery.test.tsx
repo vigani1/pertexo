@@ -5,7 +5,14 @@ import { expect, it } from 'vitest';
 import { mockServer } from '../../support/mock-server';
 import { renderApp } from '../../support/render-app';
 import { coldStart } from '../../support/fixtures/run';
-import { installQueries, workflowApi, problem } from './fixtures';
+import {
+  installQueries,
+  workflowApi,
+  problem,
+  version,
+  versionId,
+  stepNode,
+} from './fixtures';
 import { triggersPath } from './triggers/fixture';
 
 it('offers recovery for failed publication discovery without claiming there are no triggers', async () => {
@@ -35,3 +42,61 @@ it('offers recovery for failed publication discovery without claiming there are 
   expect(reads).toBeGreaterThan(previousReads);
   expect(screen.getByRole('heading', { name: 'Schedules' })).toBeVisible();
 });
+
+it.each([
+  [403, 'auth.forbidden'],
+  [404, 'workflow.not_found'],
+  [429, 'request.rate_limited'],
+] as const)(
+  'recovers Form discovery after a %s refusal without claiming trigger absence',
+  async (status, code) => {
+    installQueries();
+    let refused = true;
+    mockServer.use(
+      http.get(`${workflowApi}/triggers`, () =>
+        HttpResponse.json({ items: [] }),
+      ),
+      http.get(`${workflowApi}/triggers/schedules`, () =>
+        HttpResponse.json({ items: [] }),
+      ),
+      http.get(`${workflowApi}/versions`, () =>
+        refused
+          ? problem(status, code)
+          : HttpResponse.json({
+              items: [
+                version(versionId, 1, {
+                  nodes: [stepNode('form', 'core.form')],
+                  edges: [],
+                  settings: {},
+                }),
+              ],
+              nextCursor: null,
+            }),
+      ),
+    );
+    const view = renderApp(triggersPath);
+    if (status === 429)
+      await screen.findByRole('button', { name: 'Retry' }, coldStart);
+    else await screen.findByText(/This isn’t available to you/u, {}, coldStart);
+    expect(
+      screen.queryByText('This version has no trigger'),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/Runs start only when someone runs the workflow/u),
+    ).not.toBeInTheDocument();
+    refused = false;
+    if (status === 429)
+      await userEvent
+        .setup()
+        .click(screen.getByRole('button', { name: 'Retry' }));
+    else {
+      view.unmount();
+      renderApp(triggersPath);
+    }
+    expect(await screen.findByRole('heading', { name: 'Form' })).toBeVisible();
+    expect(screen.getByRole('link', { name: 'Open Build' })).toBeVisible();
+    expect(
+      screen.queryByText('This version has no trigger'),
+    ).not.toBeInTheDocument();
+  },
+);
