@@ -74,10 +74,16 @@ it.each([
             }),
       ),
     );
-    const view = renderApp(triggersPath);
-    if (status === 429)
-      await screen.findByRole('button', { name: 'Retry' }, coldStart);
-    else await screen.findByText(/This isn’t available to you/u, {}, coldStart);
+    renderApp(triggersPath);
+    const retry = await screen.findByRole(
+      'button',
+      { name: 'Retry' },
+      coldStart,
+    );
+    if (status !== 429) {
+      expect(screen.getByText(/This isn’t available to you/u)).toBeVisible();
+      expect(screen.getByRole('link', { name: 'Go to Home' })).toBeVisible();
+    }
     expect(
       screen.queryByText('This version has no trigger'),
     ).not.toBeInTheDocument();
@@ -85,14 +91,7 @@ it.each([
       screen.queryByText(/Runs start only when someone runs the workflow/u),
     ).not.toBeInTheDocument();
     refused = false;
-    if (status === 429)
-      await userEvent
-        .setup()
-        .click(screen.getByRole('button', { name: 'Retry' }));
-    else {
-      view.unmount();
-      renderApp(triggersPath);
-    }
+    await userEvent.setup().click(retry);
     expect(await screen.findByRole('heading', { name: 'Form' })).toBeVisible();
     expect(screen.getByRole('link', { name: 'Open Build' })).toBeVisible();
     expect(
