@@ -90,9 +90,10 @@ it('gives a failed save its reason and drops it once a save succeeds', () => {
     store.getState().beginSave();
     store.getState().reportFailure('Too many saves in a short time.', false);
   });
+  expect(screen.getByText('Too many saves in a short time.')).toBeVisible();
   expect(
-    screen.getByTitle('Too many saves in a short time.'),
-  ).toHaveTextContent('Couldn’t save');
+    screen.getByRole('button', { name: 'Retry' }),
+  ).toHaveAccessibleDescription('Too many saves in a short time.');
   act(() => {
     store.getState().beginSave();
     store

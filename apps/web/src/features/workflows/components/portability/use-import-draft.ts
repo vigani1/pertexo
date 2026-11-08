@@ -59,10 +59,12 @@ export function useImportDraft(
   const [fileGeneration, setFileGeneration] = useState(0);
   const resetBusy = useRef(false);
   const intent = useRef(0);
+  const sourceIntent = useRef(0);
   const commandClear = useRef<() => void>(() => undefined);
   const validation = useFieldValidation<string>();
   const clear = useCallback(() => {
     intent.current += 1;
+    sourceIntent.current += 1;
     setManifest(undefined);
     setTemplate(undefined);
     setSetupValues([]);
@@ -124,6 +126,7 @@ export function useImportDraft(
     command,
     validation,
     intent,
+    sourceIntent,
     resetBusy,
     clear,
     invalidate,
@@ -163,11 +166,14 @@ export function useImportDraft(
     setPreview(undefined);
     setError(undefined);
   }
-  const chooseFile = (file: File | undefined) =>
-    chooseImportFile(context, file);
+  const chooseFile = (file: File | undefined) => {
+    sourceIntent.current += 1;
+    return chooseImportFile(context, file);
+  };
   const checkPreview = () => checkImportPreview(context);
   function chooseTemplate(next: CuratedTemplate) {
     if (locked) return;
+    sourceIntent.current += 1;
     invalidate();
     validation.reset();
     setTemplate(next);

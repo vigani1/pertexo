@@ -105,3 +105,24 @@ it('saves an amount and unit as whole seconds, keeps the amount when the unit ch
     '{"durationSeconds":259200}',
   );
 });
+
+it('keeps unfinished duration text visible until it is corrected before switching mode', async () => {
+  render(<Wait />);
+  const user = userEvent.setup();
+  const duration = screen.getByRole('textbox', { name: 'Wait for' });
+  await user.clear(duration);
+  await user.type(duration, 'unfinished');
+  await user.tab();
+  expect(screen.getByRole('combobox', { name: 'Wait until' })).toBeDisabled();
+  expect(duration).toHaveValue('unfinished');
+  expect(screen.getByLabelText('Saved configuration')).toHaveTextContent(
+    '{"durationSeconds":60}',
+  );
+  await user.clear(duration);
+  await user.type(duration, '2');
+  await user.tab();
+  expect(screen.getByRole('combobox', { name: 'Wait until' })).toBeEnabled();
+  await user.click(screen.getByRole('combobox', { name: 'Wait until' }));
+  await user.click(await screen.findByRole('option', { name: 'Called back' }));
+  expect(screen.getByRole('textbox', { name: 'Give up after' })).toBeVisible();
+});
