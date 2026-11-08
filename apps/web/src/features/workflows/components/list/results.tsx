@@ -4,7 +4,7 @@ import { SkeletonThread } from '@/components/ui/skeleton';
 import { WorkflowRowsSkeleton } from './workflow-rows';
 import { WorkflowListError } from './states';
 import { WorkflowListEmpty } from './empty';
-import { canEditOrganization } from '../organization/editing';
+import { canEditOrganization } from '../../model/organization/selection-editing';
 import { WorkflowOrganizedResults } from '../organization/workflow-organized-results';
 import type { useWorkflowList } from '../../hooks/use-workflow-list';
 import type { WorkflowListSearch } from '../../model/list-view';

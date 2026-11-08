@@ -1,7 +1,7 @@
 import { describeDestination } from '@/features/workflow-settings/model/destination-label';
 import { describeDelivery } from '@/features/workflow-settings/model/triggers/delivery-outcome';
 import { extractEndpointKey } from '@/features/workflow-settings/model/triggers/endpoint-key';
-import { describeTriggerState } from '@/features/workflow-settings/model/triggers/state';
+import { describeTriggerState } from '@/features/workflow-settings/model/triggers/trigger-state';
 import { versionSteps } from '@/features/workflow-settings/model/versions/steps';
 import {
   diffWorkflowGraphs,

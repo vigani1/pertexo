@@ -9,7 +9,7 @@ import type { ApiClient } from '@/lib/api/client';
 import { cn } from '@/lib/class-names';
 import { WorkflowActivationState } from './header/activation-state';
 import { WorkflowNameWithDialog } from './workflow-name-field';
-import { WorkflowDuplicateAction } from './workflow-duplicate-action';
+import { WorkflowDuplicateAction } from './duplicate/workflow-duplicate-action';
 import { WorkflowExportAction } from './portability/export-action';
 import { WorkflowTemplateOrigin } from './templates/origin';
 import { InputCasesAction } from './input-cases/action';

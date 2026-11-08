@@ -1,7 +1,7 @@
 import { Link } from '@tanstack/react-router';
 import type { AccessibleWorkspace, WorkflowSummary } from '@pertexo/contracts';
 import { Status } from '@/components/ui/status';
-import { describeWorkflowState } from '../../model/state';
+import { describeWorkflowState } from '../../model/workflow-state';
 
 /** An endpoint needs a builder's action; it is not background activation. */
 export function WorkflowActivationState({

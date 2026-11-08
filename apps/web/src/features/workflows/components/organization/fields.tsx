@@ -11,7 +11,10 @@ import { Notice } from '@/components/ui/notice';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { useFieldValidation } from '@/components/ui/use-field-validation';
-import { canEditOrganization, type OrganizationOperation } from './editing';
+import {
+  canEditOrganization,
+  type OrganizationOperation,
+} from '../../model/organization/selection-editing';
 import { WorkflowFolderPicker } from './folders/picker';
 import { ADMINISTRATORS } from '@/features/workspaces/roles.public';
 

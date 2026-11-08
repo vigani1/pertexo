@@ -14,7 +14,7 @@ import {
   newCommandKey,
   type CommandKey,
 } from '@/lib/api/commands/command-retry';
-import { commandErrorMessage } from './command-utils';
+import { commandErrorMessage } from './workflow-command-feedback';
 
 type RunAttempt = Readonly<{
   intent: RunIntent;

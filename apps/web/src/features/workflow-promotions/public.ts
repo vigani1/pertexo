@@ -1,1 +1,1 @@
-export { WorkflowPromotionPage } from './pages/promotion';
+export { WorkflowPromotionPage } from './pages/workflow-promotion';

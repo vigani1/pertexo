@@ -10,7 +10,7 @@ import {
 import { useRetainedCommand } from '@/lib/api/commands/use-retained';
 import { describeCommandError } from '@/lib/api/error-copy';
 import { isApiError, UserFacingError } from '@/lib/api/error';
-import { commandErrorMessage } from '../data/mutations/command-utils';
+import { commandErrorMessage } from '../data/mutations/workflow-command-feedback';
 import type { WorkflowTestScope } from '../data/workflow-tests/workflow-tests.api';
 import { workflowTestsKey } from '../data/workflow-tests/workflow-tests.queries';
 import {

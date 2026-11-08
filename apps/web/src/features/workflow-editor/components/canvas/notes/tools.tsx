@@ -26,7 +26,7 @@ import {
   inset,
   revealedViewport,
 } from '../../../model/canvas/framing';
-import { boundedNotePosition } from '../../../model/notes/commands';
+import { boundedNotePosition } from '../../../model/notes/note-commands';
 import { NoteForm } from './form';
 import { useNoteActions } from './use-actions';
 

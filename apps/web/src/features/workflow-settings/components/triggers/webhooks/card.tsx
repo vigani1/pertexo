@@ -10,7 +10,7 @@ import { formatDateTime, formatRelativeTime } from '@/lib/format/time';
 import {
   describeTriggerRepair,
   describeTriggerState,
-} from '../../../model/triggers/state';
+} from '../../../model/triggers/trigger-state';
 import {
   WEBHOOK_ACTIONS,
   type UncertainWebhookCommand,

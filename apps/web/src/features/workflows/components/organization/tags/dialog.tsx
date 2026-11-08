@@ -13,7 +13,7 @@ import {
   freezeWorkflowOrganizationAttempt,
   type WorkflowOrganizationAttempt,
 } from '../../../model/organization/requests';
-import { useWorkflowOrganizationCommand } from '../../../hooks/use-workflow-organization-command';
+import { useWorkflowOrganizationCommand } from '../../../hooks/organization/use-workflow-organization-command';
 import { TagManagement } from './management';
 import { WorkflowTagCleanup } from './cleanup';
 import { ADMINISTRATORS } from '@/features/workspaces/roles.public';

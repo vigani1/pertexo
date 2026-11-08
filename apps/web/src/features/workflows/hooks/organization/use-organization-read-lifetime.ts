@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { isApiError, type ApiError } from '@/lib/api/error';
 import { watchWorkspaceReadDenial } from '@/lib/api/read-denial';
-import { workflowOrganizationKeys } from '../data/organization/workflow-organization.queries';
+import { workflowOrganizationKeys } from '../../data/organization/workflow-organization.queries';
 
 export function isOrganizationReadDenied(error: unknown): error is ApiError {
   return isApiError(error) && [401, 403, 404].includes(error.status ?? 0);

@@ -24,16 +24,16 @@ import {
 import {
   freezeWorkflowOrganizationAttempt,
   type WorkflowOrganizationAttempt,
-} from '../model/organization/requests';
-import { sendWorkflowOrganizationCommand } from '../data/organization/workflow-organization.api';
-import { workflowOrganizationKeys } from '../data/organization/workflow-organization.queries';
-import { workflowKeys } from '../data/workflows.queries';
-import type { RequiredRole } from '../data/organization/authority';
-import { allowed } from '../data/organization/authority';
-import { accessLost } from '../data/organization/authority';
-import { clearOrganizationQueries } from '../data/organization/authority';
-import { verifyCurrentAuthority } from '../data/organization/authority';
-import { observeAuthority } from '../data/organization/authority';
+} from '../../model/organization/requests';
+import { sendWorkflowOrganizationCommand } from '../../data/organization/workflow-organization.api';
+import { workflowOrganizationKeys } from '../../data/organization/workflow-organization.queries';
+import { workflowKeys } from '../../data/workflows.queries';
+import type { RequiredRole } from '../../data/organization/authority';
+import { allowed } from '../../data/organization/authority';
+import { accessLost } from '../../data/organization/authority';
+import { clearOrganizationQueries } from '../../data/organization/authority';
+import { verifyCurrentAuthority } from '../../data/organization/authority';
+import { observeAuthority } from '../../data/organization/authority';
 
 export type WorkflowOrganizationCommandResult = Awaited<
   ReturnType<typeof sendWorkflowOrganizationCommand>

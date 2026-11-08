@@ -1,5 +1,5 @@
 import { isApiError } from '@/lib/api/error';
-import { commandErrorMessage } from '../../data/mutations/command-utils';
+import { commandErrorMessage } from '../../data/mutations/workflow-command-feedback';
 import { inboxKeys } from '@/features/inbox/inbox-queries.public';
 import { invalidatePublishedWorkflow } from '../../data/workflow-publish.queries';
 import { useId } from 'react';

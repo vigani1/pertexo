@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import type { ApiClient } from '@/lib/api/client';
-import { verifyDuplicateAuthority } from '../model/duplicate/access-loss';
+import { verifyDuplicateAuthority } from '../../model/duplicate/access-loss';
 
 export function useDuplicateAuthority({
   apiClient,

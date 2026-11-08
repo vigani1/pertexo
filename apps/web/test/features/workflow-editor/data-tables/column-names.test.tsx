@@ -13,7 +13,7 @@ import {
   useEditorStore,
 } from '@/features/workflow-editor/model/state/context';
 import { createEditorStore } from '@/features/workflow-editor/model/state/workflow-editor.store';
-import { updateWorkflowNode } from '@/features/workflow-editor/model/graph/commands';
+import { updateWorkflowNode } from '@/features/workflow-editor/model/graph/workflow-graph-commands';
 import type { NodeFormApi } from '@/features/workflow-editor/model/inspector/node-form';
 import { step, link } from '../../../support/fixtures/for-each';
 const amountColumn = {

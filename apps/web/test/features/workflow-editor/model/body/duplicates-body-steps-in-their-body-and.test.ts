@@ -1,4 +1,4 @@
-import { updateWorkflowNode } from '@/features/workflow-editor/model/graph/commands';
+import { updateWorkflowNode } from '@/features/workflow-editor/model/graph/workflow-graph-commands';
 
 import { duplicateWorkflowNodes } from '@/features/workflow-editor/model/graph/copies';
 

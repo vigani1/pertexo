@@ -3,7 +3,7 @@ import type {
   WorkflowValidateResponse,
 } from '@pertexo/contracts';
 import { describe, expect, it } from 'vitest';
-import { commandErrorMessage } from '@/features/workflow-publish/data/mutations/command-utils';
+import { commandErrorMessage } from '@/features/workflow-publish/data/mutations/workflow-command-feedback';
 import { groupWorkflowIssues } from '@/features/workflow-publish/model/validation/issues';
 import { ApiError } from '@/lib/api/error';
 

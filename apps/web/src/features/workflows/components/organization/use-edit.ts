@@ -16,13 +16,13 @@ import {
   workflowOrganizationProjectionQueryOptions,
   workflowTagsInfiniteQueryOptions,
 } from '../../data/organization/workflow-organization.queries';
-import { useWorkflowOrganizationCommand } from '../../hooks/use-workflow-organization-command';
+import { useWorkflowOrganizationCommand } from '../../hooks/organization/use-workflow-organization-command';
 import {
   canEditOrganization,
   organizationEditAttempt,
   validOrganizationSelection,
   type OrganizationOperation,
-} from './editing';
+} from '../../model/organization/selection-editing';
 import { ADMINISTRATORS } from '@/features/workspaces/roles.public';
 
 export type Props = Readonly<{

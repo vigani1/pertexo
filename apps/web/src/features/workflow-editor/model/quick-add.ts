@@ -1,6 +1,6 @@
 import type { NodeDefinitionCatalogItem } from '@pertexo/contracts';
 import type { FinalConnectionState } from '@xyflow/react';
-import type { PortRef } from './graph/commands';
+import type { PortRef } from './graph/workflow-graph-commands';
 import type { GraphLevel } from './graph/scopes';
 
 // Quick add: a step created after another one and linked from one of its

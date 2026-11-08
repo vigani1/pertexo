@@ -14,9 +14,9 @@ import type {
 import { Button } from '@/components/ui/button';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import type { CollaborationScope } from '../data/collaboration.api';
-import { CommentComposer } from '../components/composer';
-import { WorkflowDiscussion } from '../components/discussion';
-import { DiscussionThreads } from '../components/thread-list';
+import { CommentComposer } from '../components/comment-composer';
+import { WorkflowDiscussion } from '../components/workflow-discussion';
+import { DiscussionThreads } from '../components/discussion-thread-list';
 interface Search {
   thread?: string | undefined;
   comment?: string | undefined;

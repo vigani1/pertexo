@@ -1,6 +1,6 @@
 import { ConfirmationDetails } from '@/components/patterns/actions/confirm-dialog';
 import { useRunInput } from '@/features/workflow-runs/input.public';
-import { WorkflowTestActions } from './controls';
+import { WorkflowTestActions } from './workflow-test-controls';
 import { useEffect, useRef, useState } from 'react';
 import type {
   AccessibleWorkspace,

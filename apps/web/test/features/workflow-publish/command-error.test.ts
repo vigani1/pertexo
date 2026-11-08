@@ -1,7 +1,7 @@
 import { recoveryError } from '@/features/workflow-runs/model/commands/recovery';
 import { expect, it } from 'vitest';
 import { ApiError } from '@/lib/api/error';
-import { commandErrorMessage } from '@/features/workflow-publish/data/mutations/command-utils';
+import { commandErrorMessage } from '@/features/workflow-publish/data/mutations/workflow-command-feedback';
 import type { ApiProblemCode, ApiProblemIssue } from '@pertexo/contracts';
 function failure(code: ApiProblemCode, errors: readonly ApiProblemIssue[]) {
   return new ApiError({

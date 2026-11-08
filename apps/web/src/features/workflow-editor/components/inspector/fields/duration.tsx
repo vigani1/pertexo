@@ -15,7 +15,7 @@ import {
   fieldControlId,
   type NodeFormApi,
 } from '../../../model/inspector/node-form';
-import { ChoiceSelect } from '../fields/choice-select';
+import { ChoiceSelect } from './choice-select';
 import { useInspectorDraftField } from '../use-draft-field';
 
 const UNITS = [

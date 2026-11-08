@@ -4,7 +4,7 @@ import { http, HttpResponse } from 'msw';
 import { expect, it } from 'vitest';
 import { createQueryClient } from '@/app/query-client';
 import { createApiClient } from '@/lib/api/client';
-import { useEditorSavePipeline } from '@/features/workflow-editor/hooks/use-editor-save-pipeline';
+import { useEditorSavePipeline } from '@/features/workflow-editor/hooks/persistence/use-editor-save-pipeline';
 import { createEditorStore } from '@/features/workflow-editor/model/state/workflow-editor.store';
 import { mockServer } from '../../support/mock-server';
 import { testFetch } from '../../support/render-app';

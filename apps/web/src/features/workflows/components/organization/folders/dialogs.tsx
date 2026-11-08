@@ -16,7 +16,7 @@ import { Input } from '@/components/ui/input';
 import { Notice } from '@/components/ui/notice';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { useFieldValidation } from '@/components/ui/use-field-validation';
-import type { WorkflowOrganizationCommand } from '../../../hooks/use-workflow-organization-command';
+import type { WorkflowOrganizationCommand } from '../../../hooks/organization/use-workflow-organization-command';
 import type { useAudienceMove } from '../../../hooks/use-audience-move';
 import { folderMoveDestinations } from '../../../model/organization/folder-navigation';
 import { AudienceMoveReview } from './audience-review';

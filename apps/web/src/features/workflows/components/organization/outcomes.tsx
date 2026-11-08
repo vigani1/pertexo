@@ -2,7 +2,7 @@ import type {
   WorkflowOrganizationProjectionResponse,
   WorkflowOrganizationBulkItemOutcome,
 } from '@pertexo/contracts';
-import { organizationOutcomeText } from './editing';
+import { organizationOutcomeText } from '../../model/organization/selection-editing';
 
 /** Ordered receipts explain this command, never replace current metadata. */
 export function WorkflowOrganizationOutcomes({

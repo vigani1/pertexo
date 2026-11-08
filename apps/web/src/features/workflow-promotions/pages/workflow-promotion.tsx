@@ -4,13 +4,13 @@ import {
 } from '@/features/workspaces/availability.public';
 import { usePromotionApply } from '../data/promotions.mutations';
 import { QueryView } from '@/components/patterns/states/query-view';
-import { PromotionActionFields } from '../components/action-fields';
+import { PromotionActionFields } from '../components/promotion-action-fields';
 import { PromotionCommandFeedback } from '../components/command-feedback';
 import {
   promotionReviewIsCurrent,
   promotionActionLabel,
   promotionCanApply,
-} from '../model/review';
+} from '../model/promotion-review';
 import { useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import type {
@@ -28,12 +28,12 @@ import { ProgressButton } from '@/components/ui/progress-button';
 import { previewPromotion, type PromotionScope } from '../data/promotions.api';
 import { promotionSettingsQuery } from '../data/promotions.queries';
 import { promotionSelections } from '../model/search';
-import { PromotionTarget } from '../components/target';
-import { PromotionLink } from '../components/link';
-import { PromotionSelection } from '../components/selection';
-import { PromotionConfirmation } from '../components/confirmation';
-import { PromotionResult } from '../components/result';
-import { PromotionHistory } from '../components/history';
+import { PromotionTarget } from '../components/promotion-target';
+import { PromotionLink } from '../components/workspace-promotion-link';
+import { PromotionSelection } from '../components/promotion-selection';
+import { PromotionConfirmation } from '../components/promotion-confirmation';
+import { PromotionResult } from '../components/promotion-result';
+import { PromotionHistory } from '../components/promotion-history';
 
 interface PromotionPageProps {
   scope: PromotionScope;

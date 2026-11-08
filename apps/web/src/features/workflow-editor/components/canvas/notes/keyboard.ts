@@ -3,7 +3,7 @@ import {
   WORKFLOW_NOTE_LIMITS as limits,
   type WorkflowNote,
 } from '@pertexo/workflow-model';
-import { boundedNotePosition } from '../../../model/notes/commands';
+import { boundedNotePosition } from '../../../model/notes/note-commands';
 import type { useNoteActions } from './use-actions';
 
 const arrowDeltas: Readonly<

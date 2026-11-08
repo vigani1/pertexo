@@ -26,7 +26,7 @@ import type {
   NodeDefinitionCatalogItem,
 } from '@pertexo/contracts';
 import type { WorkflowFlowEdge } from '../../model/graph/adapter';
-import type { PortRef } from '../../model/graph/commands';
+import type { PortRef } from '../../model/graph/workflow-graph-commands';
 import { useEditorStoreApi } from '../../model/state/context';
 import { STEP_DRAG_TYPE } from '../../model/step-catalog';
 import { CanvasActionsContext } from '../../model/canvas/actions-context';

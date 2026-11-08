@@ -1,7 +1,7 @@
 import type { WorkflowGraphContract } from '@pertexo/contracts';
 import { describe, expect, it, vi } from 'vitest';
 
-import { addDefinitionNode } from '@/features/workflow-editor/model/graph/commands';
+import { addDefinitionNode } from '@/features/workflow-editor/model/graph/workflow-graph-commands';
 import {
   createEditorStore,
   shownConflict,

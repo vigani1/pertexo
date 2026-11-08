@@ -5,7 +5,7 @@ import { Notice } from '@/components/ui/notice';
 import type { AccessibleWorkspace, WorkflowFolder } from '@pertexo/contracts';
 import type { ApiClient } from '@/lib/api/client';
 import { useNotifications } from '@/components/ui/use-notifications';
-import { useWorkflowOrganizationCommand } from '../../../hooks/use-workflow-organization-command';
+import { useWorkflowOrganizationCommand } from '../../../hooks/organization/use-workflow-organization-command';
 import { useAudienceMove } from '../../../hooks/use-audience-move';
 import type { FolderAction } from './shelf';
 import {

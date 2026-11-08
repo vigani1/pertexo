@@ -14,7 +14,7 @@ import {
   type CanvasDecorations,
   type WorkflowFlowNode,
 } from '../../model/graph/adapter';
-import { moveWorkflowNodes } from '../../model/graph/commands';
+import { moveWorkflowNodes } from '../../model/graph/workflow-graph-commands';
 import { useEditorStore, useEditorStoreApi } from '../../model/state/context';
 
 export type Position = Readonly<{ x: number; y: number }>;

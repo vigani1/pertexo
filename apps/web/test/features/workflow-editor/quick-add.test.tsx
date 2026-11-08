@@ -1,7 +1,7 @@
 import {
   addStepAfter,
   positionAfter,
-} from '@/features/workflow-editor/model/graph/commands';
+} from '@/features/workflow-editor/model/graph/workflow-graph-commands';
 
 import {
   followingSteps,

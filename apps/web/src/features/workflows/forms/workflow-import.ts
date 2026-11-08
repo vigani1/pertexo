@@ -3,7 +3,7 @@ import {
   chooseImportFile,
   checkImportPreview,
   type ImportPhaseContext,
-} from './import-phases';
+} from './workflow-import-phases';
 import {
   useCallback,
   useEffect,
@@ -23,19 +23,19 @@ import type {
 } from '@pertexo/workflow-model';
 import { useFieldValidation } from '@/components/ui/use-field-validation';
 import type { ApiClient } from '@/lib/api/client';
-import { workflowNameError } from '../../model/rename';
+import { workflowNameError } from '../model/rename';
 import {
   connectionSlotKey,
   optionalConnectionSlots,
-} from '../../model/portability';
+} from '../model/portability';
 import { authoringCatalogQueryOptions } from '@/features/catalog/catalog-queries.public';
-import { usePortabilityLifetime } from './use-lifetime';
-import { useWorkflowImportCommand } from '../../data/portability/mutations';
+import { usePortabilityLifetime } from '../components/portability/use-portability-lifetime';
+import { useWorkflowImportCommand } from '../data/portability/mutations';
 import {
   configureTemplate,
   templateOrigin,
   type CuratedTemplate,
-} from '../../model/templates/curated-setup';
+} from '../model/templates/curated-setup';
 
 /** Owns source edits, preview validity and the lifetime of a retained import. */
 // eslint-disable-next-line max-lines-per-function -- Keep the single import form and retry owner together; async phases live in import-phases.

@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { stepDiscussionsQuery } from '../data/collaboration.queries';
-import { useWorkflowPresence } from '../model/context';
+import { useWorkflowPresence } from '../model/discussion-context';
 
 const NONE: ReadonlyMap<string, number> = new Map();
 

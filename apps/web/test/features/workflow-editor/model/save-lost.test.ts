@@ -2,7 +2,7 @@ import type { WorkflowGraphContract } from '@pertexo/contracts';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { WorkflowDraftSnapshot } from '@/features/workflow-editor/data/workflow-editor.api';
-import { addDefinitionNode } from '@/features/workflow-editor/model/graph/commands';
+import { addDefinitionNode } from '@/features/workflow-editor/model/graph/workflow-graph-commands';
 import { createSaveCoordinator } from '@/features/workflow-editor/model/persistence/save-coordinator';
 import {
   createEditorStore,

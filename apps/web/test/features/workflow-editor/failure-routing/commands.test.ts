@@ -6,13 +6,13 @@ import {
 import { describe, expect, it } from 'vitest';
 import type { WorkflowGraphContract } from '@pertexo/contracts';
 import { inspectWorkflowFailureRoutes } from '@pertexo/workflow-model';
-import { failureRemoval } from '@/features/workflow-editor/model/failure-routing/commands';
+import { failureRemoval } from '@/features/workflow-editor/model/failure-routing/failure-routing-commands';
 import { canOwnFailureLink } from '@/features/workflow-editor/model/failure-routing/eligibility';
 import {
   removeWorkflowElements,
   restoreWorkflowElements,
 } from '@/features/workflow-editor/model/graph/removal';
-import { linkWorkflowNodes } from '@/features/workflow-editor/model/graph/commands';
+import { linkWorkflowNodes } from '@/features/workflow-editor/model/graph/workflow-graph-commands';
 import { duplicateWorkflowNodes } from '@/features/workflow-editor/model/graph/copies';
 import { projectWorkflowGraph } from '@/features/workflow-editor/model/graph/adapter';
 import { createEditorStore } from '@/features/workflow-editor/model/state/workflow-editor.store';

@@ -7,16 +7,16 @@ import type {
 import type { ApiClient } from '@/lib/api/client';
 import type { useFieldValidation } from '@/components/ui/use-field-validation';
 import { describeCommandError } from '@/lib/api/error-copy';
-import { workflowNameError } from '../../model/rename';
-import { readPortableWorkflowFile } from '../../model/portability';
-import { previewWorkflowImport } from '../../data/portability/workflow-portability.api';
-import type { usePortabilityLifetime } from './use-lifetime';
-import type { useWorkflowImportCommand } from '../../data/portability/mutations';
+import { workflowNameError } from '../model/rename';
+import { readPortableWorkflowFile } from '../model/portability';
+import { previewWorkflowImport } from '../data/portability/workflow-portability.api';
+import type { usePortabilityLifetime } from '../components/portability/use-portability-lifetime';
+import type { useWorkflowImportCommand } from '../data/portability/mutations';
 import {
   setupValueError,
   templateOrigin,
   type CuratedTemplate,
-} from '../../model/templates/curated-setup';
+} from '../model/templates/curated-setup';
 export type ImportPhaseContext = Readonly<{
   apiClient: ApiClient;
   workspaceId: string;

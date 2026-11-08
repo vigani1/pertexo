@@ -27,7 +27,7 @@ import {
   readWorkflowExportSource,
 } from '../../data/portability/workflow-portability.api';
 import { downloadPortableWorkflow } from '../../model/portability';
-import { usePortabilityLifetime } from './use-lifetime';
+import { usePortabilityLifetime } from './use-portability-lifetime';
 import { PortableGraphReview } from './portable-graph-review';
 import { PortabilityAccessDeniedDialog } from './access-denied-dialog';
 

@@ -3,5 +3,5 @@ export {
   WorkflowPresenceSummary,
   WorkflowPresenceWarning,
   WorkflowEditingPresence,
-} from './components/presence';
+} from './components/workflow-presence';
 export type { EditingPresence } from './model/presence';

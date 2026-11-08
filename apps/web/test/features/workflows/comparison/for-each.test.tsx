@@ -11,7 +11,7 @@ import { createEditorStore } from '@/features/workflow-editor/model/state/workfl
 import { PublishChanges } from '@/features/workflow-publish/components/publication/publish-changes';
 import { ReviewCandidate } from '@/features/workflow-publish/components/reviews/candidate';
 import { summarizePublish } from '@/features/workflow-publish/model/publication/summary';
-import { PromotionReview } from '@/features/workflow-promotions/components/review';
+import { PromotionReview } from '@/features/workflow-promotions/components/promotion-review';
 import { VersionDiffSummary } from '@/features/workflow-settings/components/versions/diff-summary';
 import { diffWorkflowGraphs } from '@/features/workflows/comparison.public';
 import { renderInRouter } from '../../../support/render-in-router';

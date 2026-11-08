@@ -1,4 +1,4 @@
-import { failureRemoval } from '../model/failure-routing/commands';
+import { failureRemoval } from '../model/failure-routing/failure-routing-commands';
 import {
   useCallback,
   useState,

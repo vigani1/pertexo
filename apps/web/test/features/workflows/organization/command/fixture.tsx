@@ -1,7 +1,7 @@
 import {
   useWorkflowOrganizationCommand,
   type WorkflowOrganizationCommandOptions,
-} from '@/features/workflows/hooks/use-workflow-organization-command';
+} from '@/features/workflows/hooks/organization/use-workflow-organization-command';
 import type { WorkflowOrganizationAttempt } from '@/features/workflows/model/organization/requests';
 import { createApiClient } from '@/lib/api/client';
 import {
