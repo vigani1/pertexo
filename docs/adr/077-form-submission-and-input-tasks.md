@@ -3,6 +3,9 @@
 - **Status:** accepted under the owner's autonomous feature instruction
 - **Date:** 2026-10-15
 - **Plan:** [F11](../feature-plans/11-forms-and-resume-input.md)
+- **Amended 2026-11-08:** public links are no longer shown only once. A sealed
+  copy lets editors reopen them; see
+  [Show public form links again](../feature-plans/public-form-link.md).
 
 ## Context
 
@@ -25,8 +28,9 @@ and exact captured input; changing either starts through the form again, preserv
 server ownership of the recorded submitter and time.
 
 Member access is default and requires current active membership. Explicit public
-access uses a random 256-bit bearer capability, stored only as a digest in a
-workspace-scoped workflow grant. A browser-fragment link supplies a redacted API
+access uses a random 256-bit bearer capability, stored as a digest in a
+workspace-scoped workflow grant, plus a sealed copy that only editors can open
+(links made before 2026-11-08 have the digest only). A browser-fragment link supplies a redacted API
 header; disable/regenerate invalidates old capabilities atomically. A narrowly
 granted discovery function returns workspace/workflow identity only; every actual
 read/admission rechecks the grant and current workflow inside tenant isolation.
@@ -57,8 +61,9 @@ and public capabilities retain their existing behavior.
 
 Forms have one immutable schema and one retained submission, with explicit public
 revocation and safe stale-schema behavior. Input requests reuse durable human
-waiting without another service or task mechanism. Public links are shown once;
-losing one requires regeneration. Schema and capability readers require additive
+waiting without another service or task mechanism. Editors can reopen a public
+link at any time; only a link made before the sealed copy existed needs one
+regeneration. Schema and capability readers require additive
 migration and matching API/worker rollout. No files, email, anonymous mid-run
 response, arbitrary HTML/scripts, CAPTCHA or new infrastructure is introduced.
 
