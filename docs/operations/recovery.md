@@ -23,7 +23,8 @@ Choose a completed point and the full commit recorded in its `release.txt`:
 Restore verifies the completion marker, fixed-file SHA-256 hashes and matching
 release before writing. It bootstraps roles and storage permissions, restores
 PostgreSQL in one transaction before any application migration, copies artifact
-bytes and metadata, checks the object count and compares downloaded bytes. It
+bytes with their exact manifest metadata, checks the object count and SHA-256
+hashes. Legacy plaintext points use their original full object tree and byte check. It
 authenticates all retained self-managed wrapped data keys before clearing the
 restore fence. Wrong key bytes or a missing historical version keep the fence
 and serving stopped. Master keys and the production env file are never copied
@@ -46,7 +47,9 @@ The repository recovery qualification downloads the matched dump from storage
 and restores it into fresh PostgreSQL targets. It checks retained connection
 and webhook secrets under current/previous keys, wrong and missing keys,
 webhook-only inventory, schema ownership, RLS and artifact bytes/metadata. It
-also verifies that only the fixed recovery files and object tree were uploaded.
+also verifies encrypted names and bodies, incremental copies, shared-object
+retention and restoration after deletion from the live store, alongside the legacy
+plaintext object-tree path.
 Restricted folder and connection modes, grants, original member identities,
 workflow relationships and sharing revisions must survive the same restore, with
 forced workspace isolation intact. Callback material is reopened with the
@@ -54,3 +57,36 @@ separately supplied versioned token keys.
 The existing production-image check exercises both encryption configurations.
 These isolated fixtures verify repository behavior; only a drill proves your own backup
 provider and server.
+
+## Backup encryption keys and rotation
+
+`generate-secrets.mjs` generates `BACKUP_CRYPT_PASSWORD` and `BACKUP_CRYPT_SALT`.
+For an existing installation, copy only these two new settings into the saved
+settings; do not replace installed application keys with newly generated ones.
+Put both in the server's mode-600 `.env.production` for unattended backup, and
+keep the original settings file in your password manager or offline recovery
+storage, separately from the backup bucket. Neither key is uploaded or logged.
+The rclone obscured values in local `state/rclone.env` are also secret: obscuring
+is reversible. These keys encrypt backup contents and file names through standard
+[rclone crypt](https://rclone.org/crypt/), layered over the existing S3 remote.
+Keep the application encryption key rings separately too.
+
+To rotate, create a new empty backup bucket, change `BACKUP_STORE_BUCKET`, and
+replace both crypt settings with newly generated values in the server and offline
+settings. Take a backup and verify a restore before retiring the old store.
+Rotation starts a new store; it does not re-encrypt old points. Retain each old
+bucket's settings and keys until its recovery points are deleted. Do not change
+keys in a populated bucket. Retention runs only on the currently configured store;
+track and delete retired stores yourself after their recovery window.
+
+On a fresh replacement or drill host, supply the settings for the chosen bucket
+and its original crypt keys, then run `restore.sh <UTC-point> <full-commit>` as
+shown in [Recovery](recovery.md). Missing or wrong crypt keys refuse before target
+services start or data is restored, naming `BACKUP_CRYPT_PASSWORD` and
+`BACKUP_CRYPT_SALT`. Lost keys cannot be recovered from the bucket.
+
+Points created before this change remain readable from their old plaintext
+`pertexo-beta/<UTC-point>/` prefix with the same restore command and original
+application keys; they do not require crypt keys. New points are always encrypted.
+This is a one-way recovery path: delete old unencrypted points once an encrypted
+point has been restored and verified. Keep the bucket private while they remain.

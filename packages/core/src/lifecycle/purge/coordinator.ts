@@ -1,3 +1,4 @@
+import { withArtifactErasure } from '../artifacts/backup-deletion-lock.repository.js';
 import { and, asc, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { workspaceMemberships, workspaces } from '@pertexo/database/schema';
@@ -92,12 +93,14 @@ export function createWorkspacePurgeCoordinator(
       if (!('rowsPurged' in rows)) return rows;
       const workspaceId = rows.rowsPurged;
       // Stored objects go after rows and outside any transaction.
-      const objects = await objectStore.purgeWorkspacePage({
-        maxObjects: options.objectPageSize,
-        signal: withDeadline(signal, options.objectTimeoutMs),
-        workspaceId,
-      });
-      if (!objects.completed)
+      const objects = await withArtifactErasure(pool, () =>
+        objectStore.purgeWorkspacePage({
+          maxObjects: options.objectPageSize,
+          signal: withDeadline(signal, options.objectTimeoutMs),
+          workspaceId,
+        }),
+      );
+      if (!objects?.completed)
         return Object.freeze({
           status: 'progressed' as const,
           workspaceId,

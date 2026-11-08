@@ -14,6 +14,8 @@ process.stderr.write(
 );
 const hex = () => randomBytes(32).toString('hex');
 const values = {
+  BACKUP_CRYPT_PASSWORD: hex(),
+  BACKUP_CRYPT_SALT: hex(),
   CONNECTION_ENCRYPTION_MODE: mode,
   BETTER_AUTH_SECRET: hex(),
   AUTH_FEDERATION_KEY: randomBytes(32).toString('base64'),

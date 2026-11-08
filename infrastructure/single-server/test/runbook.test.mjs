@@ -311,7 +311,7 @@ it('the data policy promises the retention and protection backups really have', 
   assert.match(row, new RegExp(`\\b${days} days\\b`, 'u'));
   assert.doesNotMatch(policy, /\b35 days\b/u);
   assert.doesNotMatch(policy, /cross-region copies|WAL archives/u);
-  const scriptsEncrypt = /\bage\b|gpg|--encrypt|openssl enc/u.test(
+  const scriptsEncrypt = /crypt:|\bage\b|gpg|--encrypt|openssl enc/u.test(
     readFileSync('infrastructure/single-server/backup.sh', 'utf8'),
   );
   if (!scriptsEncrypt) assert.doesNotMatch(row, /encrypted/iu);

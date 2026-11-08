@@ -1,3 +1,5 @@
+import { qualifyCapture } from './capture.fixture.mjs';
+import { qualifyOnlineRecovery } from './online.fixture.mjs';
 import { docker } from './docker-command.mjs';
 import { seedSharingRecoveryFixture } from './sharing.fixture.mjs';
 import { seedOAuth2RecoveryFixture } from './oauth2.fixture.mjs';
@@ -282,25 +284,28 @@ try {
   );
   // Dump stdout streams directly to disk; the helper also file-backs piped
   // stderr so verbose diagnostics cannot overflow a synchronous child buffer.
-  const dumpFile = openSync(join(directory, 'database.dump'), 'w');
-  try {
-    docker(
-      [
-        'exec',
-        sourceDb,
-        'pg_dump',
-        '-U',
-        'postgres',
-        '-d',
-        'pertexo',
-        '--format=custom',
-      ],
-      { encoding: null, stdio: ['ignore', dumpFile, 'pipe'] },
-    );
-  } finally {
-    closeSync(dumpFile);
-  }
-  const env = { RCLONE_CONFIG: '/dev/null' };
+  const takeDump = () => {
+    const dumpFile = openSync(join(directory, 'database.dump'), 'w');
+    try {
+      docker(
+        [
+          'exec',
+          sourceDb,
+          'pg_dump',
+          '-U',
+          'postgres',
+          '-d',
+          'pertexo',
+          '--format=custom',
+        ],
+        { encoding: null, stdio: ['ignore', dumpFile, 'pipe'] },
+      );
+    } finally {
+      closeSync(dumpFile);
+    }
+  };
+  takeDump();
+  let env = { RCLONE_CONFIG: '/dev/null' };
   for (const [remote, config, endpoint] of [
     ['SOURCE', source, 'http://storage:9000'],
     ['BACKUP', backup, 'http://destination:9000'],
@@ -335,6 +340,7 @@ try {
       [
         'run',
         '--rm',
+        '-i',
         '--network',
         network,
         '--read-only',
@@ -351,6 +357,50 @@ try {
       ],
       options,
     );
+  const cryptKeys = {
+    RCLONE_CONFIG_CRYPT_TYPE: 'crypt',
+    RCLONE_CONFIG_CRYPT_REMOTE: 'backup:pertexo-backups/encrypted',
+    RCLONE_CONFIG_CRYPT_FILENAME_ENCRYPTION: 'standard',
+    RCLONE_CONFIG_CRYPT_DIRECTORY_NAME_ENCRYPTION: 'true',
+    RCLONE_CONFIG_CRYPT_PASSWORD: rclone(['obscure', '-'], {
+      input: source.BACKUP_CRYPT_PASSWORD,
+      captureOutput: true,
+    }).trim(),
+    RCLONE_CONFIG_CRYPT_PASSWORD2: rclone(['obscure', '-'], {
+      input: source.BACKUP_CRYPT_SALT,
+      captureOutput: true,
+    }).trim(),
+  };
+  const rewriteKeys = (keys) => {
+    const current = Object.fromEntries(
+      Object.entries(env).filter(([key]) =>
+        key.startsWith('RCLONE_CONFIG_CRYPT_'),
+      ),
+    );
+    env = Object.fromEntries(
+      Object.entries(env).filter(
+        ([key]) => !key.startsWith('RCLONE_CONFIG_CRYPT_'),
+      ),
+    );
+    if (keys === 'wrong')
+      Object.assign(env, {
+        ...cryptKeys,
+        RCLONE_CONFIG_CRYPT_PASSWORD: rclone(['obscure', '-'], {
+          input: 'wrong-password',
+          captureOutput: true,
+        }).trim(),
+      });
+    else if (keys !== 'missing') Object.assign(env, keys);
+    writeFileSync(
+      envFile,
+      Object.entries(env)
+        .map(([key, value]) => `${key}=${value}\n`)
+        .join(''),
+      { mode: 0o600 },
+    );
+    return current;
+  };
+  rewriteKeys(cryptKeys);
   clients.push(
     ...[source, backup].map(
       (config) =>
@@ -375,6 +425,16 @@ try {
     bucket: 'pertexo-backups',
     prefix: 'pertexo-beta/20261013T030000Z/objects/',
   };
+  await qualifyCapture({
+    directory,
+    network,
+    source,
+    backup,
+    database: databaseEnvironments.get(sourceDb).DATABASE_MAINTENANCE_URL,
+    containers,
+    takeDump,
+    expected: artifacts.length,
+  });
   const point = 'backup:pertexo-backups/pertexo-beta/20261013T030000Z';
   const fixedFiles = [
     'database.dump',
@@ -458,6 +518,16 @@ try {
     for await (const chunk of download.body) chunks.push(chunk);
     assert.deepEqual(Buffer.concat(chunks), bodies.get(artifact.artifactId));
   }
+  const encryptedDump = await qualifyOnlineRecovery({
+    rclone,
+    raw: saved,
+    original,
+    store,
+    artifacts,
+    bodies,
+    directory,
+    rewriteKeys,
+  });
   const restoredTargets = [
     targetDb,
     await database('missing-key-db', false),
@@ -481,7 +551,7 @@ try {
         '--single-transaction',
         '--exit-on-error',
       ],
-      { input: restoredDump },
+      { input: target === targetDb ? encryptedDump : restoredDump },
     );
   assert.equal(
     sql(targetDb, 'SELECT count(*) FROM public.recovery_fixture;').trim(),

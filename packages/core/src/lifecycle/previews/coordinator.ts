@@ -141,6 +141,7 @@ export function createPreviewRetentionCoordinator(
 
       const { artifactId, previewRunId, workspaceId } = step;
       const erased = await eraseArtifact(
+        pool,
         artifacts,
         { artifactId, workspaceId },
         {

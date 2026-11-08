@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process';
 import { writeFile } from 'node:fs/promises';
 import { parseRecoveryStores } from './stores.mjs';
 const { source, backup: destination } = parseRecoveryStores(process.env);
@@ -19,6 +20,28 @@ const values = {
   BACKUP: fields(destination),
 };
 const lines = ['RCLONE_CONFIG=/dev/null'];
+const password = process.env.BACKUP_CRYPT_PASSWORD;
+const salt = process.env.BACKUP_CRYPT_SALT;
+if (password || salt) {
+  for (const name of ['BACKUP_CRYPT_PASSWORD', 'BACKUP_CRYPT_SALT']) {
+    if (!process.env[name] || /[\r\n]/u.test(process.env[name]))
+      throw new Error(`Provide ${name} from the separately held settings file`);
+  }
+  const obscure = (value) =>
+    execFileSync('rclone', ['obscure', '-'], {
+      input: value,
+      encoding: 'utf8',
+      stdio: ['pipe', 'pipe', 'pipe'],
+    }).trim();
+  values.CRYPT = {
+    TYPE: 'crypt',
+    REMOTE: `backup:${destination.bucket}/encrypted`,
+    FILENAME_ENCRYPTION: 'standard',
+    DIRECTORY_NAME_ENCRYPTION: 'true',
+    PASSWORD: obscure(password),
+    PASSWORD2: obscure(salt),
+  };
+}
 for (const [remote, settings] of Object.entries(values)) {
   for (const [field, value] of Object.entries(settings)) {
     if (/[\r\n]/u.test(value))

@@ -21,9 +21,13 @@ function fixture(t, restore = false) {
   const state = join(root, 'state');
   mkdirSync(bin);
   mkdirSync(state);
-  writeFileSync(join(root, '.env.production'), 'FIXTURE=true\n', {
-    mode: 0o600,
-  });
+  writeFileSync(
+    join(root, '.env.production'),
+    'FIXTURE=true\nBACKUP_CRYPT_PASSWORD=fixture-password\nBACKUP_CRYPT_SALT=fixture-salt\n',
+    {
+      mode: 0o600,
+    },
+  );
   writeFileSync(join(state, 'hosts.env'), 'APP_HOST=app.example.test\n');
   if (!restore) writeFileSync(join(state, 'current'), commit);
   const release = join(
@@ -44,7 +48,7 @@ function fixture(t, restore = false) {
   writeFileSync(
     join(bin, 'docker'),
     `#!/usr/bin/env python3
-import os, sys, json, hashlib
+import os, sys, json, hashlib, time
 from pathlib import Path
 args=sys.argv[1:]
 root=Path(os.environ['PERTEXO_BETA_ROOT'])
@@ -58,6 +62,20 @@ if args[0]=='image': print('arm64 ${commit}')
 if 'infrastructure/single-server/backup/prepare.mjs' in args:
  (root/'state/source-bucket').write_text('artifacts')
  (root/'state/backup-bucket').write_text('backups')
+if 'infrastructure/single-server/backup/capture.mjs' in args and 'capture' in args:
+ mounts=[args[i+1] for i,arg in enumerate(args) if arg=='-v']
+ work=Path(next(mount.split(':/backup')[0] for mount in mounts if ':/backup' in mount))
+ (work/'capture.ready').write_text('ready')
+ deadline=time.monotonic()+2
+ while not (work/'dump.done').exists():
+  if time.monotonic()>deadline: sys.exit(1)
+  time.sleep(.01)
+ (work/'objects.count').write_text(os.environ.get('COPIED','2')+'\\n')
+ (work/'objects.json').write_text('[]')
+if 'infrastructure/single-server/backup/key-check.mjs' in args and os.environ.get('KEY_WRONG'):
+ print('Provide BACKUP_CRYPT_PASSWORD and BACKUP_CRYPT_SALT',file=sys.stderr)
+ sys.exit(1)
+if 'infrastructure/single-server/backup/restore-objects.mjs' in args: print('2')
 if 'infrastructure/single-server/backup/copy-objects.mjs' in args: print(os.environ.get('COPIED','2'))
 if '/recovery-points.mjs' in args and 'validate' in args: print(args[-1])
 if 'compose' in args:
@@ -69,12 +87,18 @@ if 'compose' in args:
 if any('rclone/rclone:' in arg for arg in args):
  mounts=[args[i+1] for i,arg in enumerate(args) if arg=='-v']
  work=Path(next(mount.split(':/backup')[0] for mount in mounts if ':/backup' in mount))
+ if 'cat' in args:
+  if args[-1]=='crypt:KEYCHECK':
+   if os.environ.get('KEY_WRONG'): sys.exit(1)
+   print('Pertexo encrypted backups')
+  elif os.environ.get('ENCRYPTED') and args[-1].startswith('backup:'): sys.exit(1)
  if 'lsf' in args:
   if os.environ.get('COLLISION'): print('pertexo-beta/${point}/')
   if os.environ.get('OBJECTS_PRESENT'): print('existing-object')
  if 'copyto' in args and args[-1].startswith('/backup/'):
   filename=args[-1].split('/')[-1]
   values={'database.dump':b'database-fixture\\n','release.txt':b'${commit}\\n','objects.count':b'2\\n'}
+  if os.environ.get('ENCRYPTED'): values['objects.json']=b'[]'
   if filename=='SHA256SUMS':
    value=''.join(hashlib.sha256(body).hexdigest()+'  '+name+'\\n' for name,body in values.items()).encode()
    if os.environ.get('BAD_CHECKSUM'): value=b'corrupt'
@@ -128,43 +152,38 @@ if any('rclone/rclone:' in arg for arg in args):
   return { run, commands, state };
 }
 const resumed = (commands) =>
-  commands.some(
-    (args) =>
-      args.includes('--no-deps') &&
-      args.includes('--wait') &&
-      args.includes('api') &&
-      args.includes('worker') &&
-      args.includes('proxy'),
-  );
+  commands.some((args) => args.includes('up') && args.includes('api'));
 const completed = (commands) =>
   commands.some((args) => args.includes('/backup/COMPLETE'));
 
-test('backup publishes completion last and resumes the previously serving processes', (t) => {
+test('backup publishes completion last while serving continues without any stop', (t) => {
   const f = fixture(t);
   const result = f.run();
   assert.equal(result.status, 0, result.stderr);
   const commands = f.commands();
-  assert.ok(resumed(commands));
+  assert.equal(
+    commands.some((args) => args.includes('stop')),
+    false,
+  );
   const marker = commands.findIndex((args) =>
     args.includes('/backup/COMPLETE'),
   );
-  assert.ok(marker > commands.findIndex((args) => args.includes('check')));
+  assert.ok(marker > commands.findIndex((args) => args.includes('capture')));
   assert.ok(
     commands
       .slice(0, marker)
       .some((args) => args.some((arg) => arg.includes('pg_dump'))),
   );
 });
-test('capture, upload and byte-check failures resume serving without completing the point', (t) => {
-  for (const failure of [
-    'pg_dump',
-    'copy-objects.mjs',
-    '/backup/database.dump',
-    'check',
-  ]) {
+test('capture and upload failures leave serving running without completing the point', (t) => {
+  for (const failure of ['pg_dump', 'capture.mjs', '/backup/database.dump']) {
     const f = fixture(t);
     assert.equal(f.run({ FAIL_AT: failure }).status, 1);
-    assert.ok(resumed(f.commands()), failure);
+    assert.equal(
+      f.commands().some((args) => args.includes('stop')),
+      false,
+      failure,
+    );
     assert.equal(completed(f.commands()), false, failure);
   }
 });
@@ -257,4 +276,55 @@ test('restored keys are verified after data and objects; failure retains the res
       ),
   );
   assert.ok(check > commands.findIndex((args) => args.includes('restore')));
+});
+
+test('encrypted restore refuses missing or wrong keys before starting or writing target services', (t) => {
+  for (const settings of [
+    { ENCRYPTED: 'true', KEY_WRONG: 'true' },
+    { ENCRYPTED: 'true', BACKUP_CRYPT_PASSWORD: '' },
+  ]) {
+    const f = fixture(t, true);
+    const result = f.run(settings);
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /BACKUP_CRYPT_PASSWORD.*BACKUP_CRYPT_SALT/u);
+    assert.equal(
+      f
+        .commands()
+        .some(
+          (args) =>
+            args.includes('up') ||
+            args.some((arg) => arg.includes('pg_restore')),
+        ),
+      false,
+    );
+    assert.equal(existsSync(join(f.state, 'restore-fence')), false);
+  }
+});
+
+test('a matched encrypted restore validates its manifest and restores objects before clearing the fence', (t) => {
+  const f = fixture(t, true);
+  const result = f.run({ ENCRYPTED: 'true' });
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(existsSync(join(f.state, 'restore-fence')), false);
+  assert.ok(
+    f
+      .commands()
+      .some(
+        (args) =>
+          args.includes(
+            'infrastructure/single-server/backup/restore-objects.mjs',
+          ) && args.includes('validate'),
+      ),
+  );
+  assert.ok(
+    f
+      .commands()
+      .some(
+        (args) =>
+          args.includes(
+            'infrastructure/single-server/backup/restore-objects.mjs',
+          ) && args.includes('restore'),
+      ),
+  );
+  assert.equal(resumed(f.commands()), false);
 });

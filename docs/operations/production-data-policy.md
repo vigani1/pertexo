@@ -16,7 +16,7 @@ compliance. Whoever runs an install decides whether these suit their data and la
 | Run and trigger summaries | 90 days |
 | Audit log and connection events, including each credential use | The workspace's "Keep audit events" setting: 365 days by default, 30 to 2,555 |
 | Sign-in and message-transport security facts | 365 days. Evidence for incidents: read by an operator, not shown in the app |
-| Off-server backups (database dump and file copies) | 14 days |
+| Off-server backups (encrypted dump and shared objects) | 14 days |
 
 Idempotency and replay records remain at least as long as their operation's
 retry or replay window.
@@ -50,13 +50,48 @@ indexes, and external subscriptions. A deleted workspace stays in backups until 
 expire: `backup.sh` removes each recovery point older than 14 days, the next time it runs.
 So purged data can stay recoverable for up to 14 days afterward.
 
-Recovery points are private but **not encrypted by the scripts**. They hold full database
-dumps, including run history and personal data, and copies of files. Keep the bucket private
-and use your storage provider's encryption at rest. Encrypted connection credentials stay
-encrypted inside the dump, and their keys are never copied into a backup. Any copy you make
-by hand is yours to track and delete. Shared KMS keys follow their own controlled lifecycle
-and are not evidence that retained ciphertext still exists.
+New recovery points use rclone crypt to encrypt the full database dump, artifact
+bodies, metadata and file names before upload. Points share immutable objects;
+retention deletes a shared object only when no kept completed point references
+it. Deleted workspace data can therefore remain recoverable until the final
+referencing point expires. The bucket stays private. Application encryption keys
+and the private settings file are never copied into recovery points. Hand-made
+copies and retired backup buckets are the owner's responsibility to track and
+delete. Shared KMS keys follow their own controlled lifecycle.
 
 A restored database carries its own record of workspace deletion commands.
 Restoring an older backup can bring back a workspace whose later deletion is
 lost; repeat the deletion request after a restore.
+
+## Backup encryption keys and rotation
+
+`generate-secrets.mjs` generates `BACKUP_CRYPT_PASSWORD` and `BACKUP_CRYPT_SALT`.
+For an existing installation, copy only these two new settings into the saved
+settings; do not replace installed application keys with newly generated ones.
+Put both in the server's mode-600 `.env.production` for unattended backup, and
+keep the original settings file in your password manager or offline recovery
+storage, separately from the backup bucket. Neither key is uploaded or logged.
+The rclone obscured values in local `state/rclone.env` are also secret: obscuring
+is reversible. These keys encrypt backup contents and file names through standard
+[rclone crypt](https://rclone.org/crypt/), layered over the existing S3 remote.
+Keep the application encryption key rings separately too.
+
+To rotate, create a new empty backup bucket, change `BACKUP_STORE_BUCKET`, and
+replace both crypt settings with newly generated values in the server and offline
+settings. Take a backup and verify a restore before retiring the old store.
+Rotation starts a new store; it does not re-encrypt old points. Retain each old
+bucket's settings and keys until its recovery points are deleted. Do not change
+keys in a populated bucket. Retention runs only on the currently configured store;
+track and delete retired stores yourself after their recovery window.
+
+On a fresh replacement or drill host, supply the settings for the chosen bucket
+and its original crypt keys, then run `restore.sh <UTC-point> <full-commit>` as
+shown in [Recovery](recovery.md). Missing or wrong crypt keys refuse before target
+services start or data is restored, naming `BACKUP_CRYPT_PASSWORD` and
+`BACKUP_CRYPT_SALT`. Lost keys cannot be recovered from the bucket.
+
+Points created before this change remain readable from their old plaintext
+`pertexo-beta/<UTC-point>/` prefix with the same restore command and original
+application keys; they do not require crypt keys. New points are always encrypted.
+This is a one-way recovery path: delete old unencrypted points once an encrypted
+point has been restored and verified. Keep the bucket private while they remain.

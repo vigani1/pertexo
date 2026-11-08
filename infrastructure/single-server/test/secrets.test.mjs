@@ -211,3 +211,18 @@ test('preflight refuses an older self-managed target before opening the database
   assert.doesNotMatch(result.stderr, /inventory_unavailable/u);
   assert.ok(!result.stderr.includes(env.CONNECTION_SELF_MANAGED_KEY));
 });
+
+it('generates independent backup passphrase and salt in the saved settings without logging them', () => {
+  const result = spawnSync(
+    process.execPath,
+    ['infrastructure/single-server/generate-secrets.mjs'],
+    { encoding: 'utf8' },
+  );
+  assert.equal(result.status, 0);
+  const settings = parseEnv(result.stdout);
+  for (const name of ['BACKUP_CRYPT_PASSWORD', 'BACKUP_CRYPT_SALT']) {
+    assert.match(settings[name], /^[a-f0-9]{64}$/u);
+    assert.ok(!result.stderr.includes(settings[name]));
+  }
+  assert.notEqual(settings.BACKUP_CRYPT_PASSWORD, settings.BACKUP_CRYPT_SALT);
+});
