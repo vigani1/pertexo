@@ -4,7 +4,10 @@ import { useQueryClient } from '@tanstack/react-query';
 import { assertSessionIdentity } from '@/features/auth/session/identity.public';
 import { subscribeSessionChanges } from '@/features/auth/session/sync.public';
 import { getAllAccessibleWorkspaces } from '@/features/workspaces/workspaces-queries.public';
-import { watchWorkspaceReadDenial } from '@/lib/api/read-denial';
+import {
+  watchWorkspaceReadDenial,
+  type WorkspaceReadDenial,
+} from '@/lib/api/read-denial';
 import type { ApiClient } from '@/lib/api/client';
 import { isDuplicateAccessLoss } from '../../model/duplicate/access-loss';
 
@@ -19,7 +22,10 @@ export function usePortabilityLifetime(
   apiClient: ApiClient,
   userId: string,
   workspaceId: string,
-  clear: () => void,
+  {
+    clear,
+    readScope = 'workflow',
+  }: Readonly<{ clear: () => void; readScope?: PortabilityReadScope }>,
 ) {
   const queryClient = useQueryClient();
   const generation = useRef(0);
@@ -44,8 +50,7 @@ export function usePortabilityLifetime(
       queryClient,
       userId,
       workspaceId,
-      counts: ({ key, error }) =>
-        error.status === 401 || key.length === 0 || key[0] === 'workflows',
+      counts: (denial) => portabilityAuthorityLost(readScope, denial),
       denied: retire,
     });
     return () => {
@@ -55,7 +60,7 @@ export function usePortabilityLifetime(
       for (const controller of ownedControllers) controller.abort();
       ownedControllers.clear();
     };
-  }, [queryClient, userId, workspaceId, retire]);
+  }, [queryClient, userId, workspaceId, retire, readScope]);
   const begin = useCallback(() => {
     const controller = new AbortController();
     const epoch = generation.current;
@@ -106,4 +111,16 @@ export function usePortabilityLifetime(
     [retire],
   );
   return { denied, begin, verify, accessFailure };
+}
+
+type PortabilityReadScope = 'collection' | 'workflow';
+
+function portabilityAuthorityLost(
+  readScope: PortabilityReadScope,
+  { key, error }: WorkspaceReadDenial,
+): boolean {
+  if (error.status === 401 || key.length === 0) return true;
+  if (key[0] !== 'workflows') return false;
+  // Optional row previews cannot retire a collection-owned import.
+  return readScope === 'workflow' || key[1] !== 'shape';
 }
