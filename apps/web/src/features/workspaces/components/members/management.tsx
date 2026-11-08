@@ -17,7 +17,7 @@ import {
   type ManagedRole,
   type WorkspaceRole,
 } from '../../model/workspace-roles';
-import type { MemberCommandFeedback } from '../../data/mutations/members/use-command';
+import type { MemberCommandFeedback } from '../../data/mutations/members/use-member-command';
 import { useMemberRemovalCommand } from '../../data/mutations/members/use-removal-command';
 import { useMemberRoleCommand } from '../../data/mutations/members/use-role-command';
 import {
@@ -26,7 +26,11 @@ import {
   type MemberStatusDirection,
 } from '../../data/mutations/members/use-status-command';
 import { useOwnershipTransferCommand } from '../../data/mutations/members/use-ownership-transfer-command';
-import { MemberList, type MemberAction, type MemberRowControl } from './list';
+import {
+  MemberList,
+  type MemberAction,
+  type MemberRowControl,
+} from './member-list';
 import { MemberRemovalDialog } from './removal-dialog';
 import { MemberRoleDialog } from './role-dialog';
 import { MemberStatusDialog } from './status-dialog';

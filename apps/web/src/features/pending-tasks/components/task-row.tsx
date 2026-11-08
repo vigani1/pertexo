@@ -17,8 +17,8 @@ import {
   taskStatusLabel,
   taskTone,
   timedOutAfter,
-} from '../model/presentation';
-import { TaskDetailsLine } from './details';
+} from '../model/task-presentation';
+import { TaskDetailsLine } from './task-details';
 import { QuickDecision } from './quick-decision';
 
 /**

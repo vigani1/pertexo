@@ -4,8 +4,8 @@ import { LabelledField } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { useFieldValues } from '@/components/ui/use-field-validation';
-import type { FederationScope } from '../../data/settings.api';
-import { useFederationCommand } from '../../data/use-command';
+import type { FederationScope } from '../../data/federation-settings.api';
+import { useFederationCommand } from '../../data/federation-command.mutations';
 import { CommandFeedback } from '../command-feedback';
 export function CreateDomain({
   scope,

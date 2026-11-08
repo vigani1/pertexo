@@ -7,8 +7,8 @@ import type {
 } from '@pertexo/contracts';
 import { Notice } from '@/components/ui/notice';
 import { directoryQueryOptions } from '../../data/directory.queries';
-import { federationSettingsQueryOptions } from '../../data/settings.queries';
-import type { FederationScope } from '../../data/settings.api';
+import { federationSettingsQueryOptions } from '../../data/federation-settings.queries';
+import type { FederationScope } from '../../data/federation-settings.api';
 import { DirectoryCredentials } from './credentials';
 import { DirectoryMappingsEditor } from './mappings';
 import { DirectoryPeople } from './people';

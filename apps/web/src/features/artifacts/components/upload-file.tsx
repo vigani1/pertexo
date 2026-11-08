@@ -15,8 +15,8 @@ import { Notice } from '@/components/ui/notice';
 import { Status, type StatusTone } from '@/components/ui/status';
 import type { WorkspaceApiScope } from '@/lib/api/workspace-scope';
 import { useLatestRequest } from '@/lib/hooks/use-latest-request';
-import { useUpload } from '../hooks/use-upload';
-import type { FileReference, UploadPhase } from '../model/upload';
+import { useUpload } from '../hooks/use-artifact-upload';
+import type { FileReference, UploadPhase } from '../model/artifact-upload';
 
 export type FileUploadScope = WorkspaceApiScope;
 type Props = Readonly<{

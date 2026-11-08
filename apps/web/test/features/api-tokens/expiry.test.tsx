@@ -1,6 +1,6 @@
 import { act, render, screen } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
-import { TokenList } from '@/features/api-tokens/components/list';
+import { TokenList } from '@/features/api-tokens/components/token-list';
 import { apiTokenMetadataSchema } from '@pertexo/contracts';
 
 afterEach(() => vi.useRealTimers());

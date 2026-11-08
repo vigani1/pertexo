@@ -1,1 +1,1 @@
-export { NoticeUnsubscribePage } from './pages/unsubscribe';
+export { NoticeUnsubscribePage } from './pages/notice-unsubscribe';

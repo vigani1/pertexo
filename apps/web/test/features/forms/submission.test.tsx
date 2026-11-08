@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { HttpResponse, http } from 'msw';
 import { expect, it } from 'vitest';
 import { formConfigSchema } from '@pertexo/workflow-model';
-import { FormPage } from '@/features/forms/pages/form';
+import { FormPage } from '@/features/forms/pages/published-form';
 import { formQueryOptions } from '@/features/forms/data/forms.queries';
 import type { FormScope } from '@/features/forms/data/forms.api';
 import { createApiClient } from '@/lib/api/client';

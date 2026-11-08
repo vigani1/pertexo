@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { expect, it, vi } from 'vitest';
-import { AuditFilters } from '@/features/governance/components/filters';
+import { AuditFilters } from '@/features/governance/components/audit-filters';
 
 it('applies a person on Enter and narrows by what changed', async () => {
   const onApply = vi.fn(),

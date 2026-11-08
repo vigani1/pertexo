@@ -3,7 +3,7 @@ import type { PendingTaskSummary } from '@pertexo/contracts';
 import { Button } from '@/components/ui/button';
 import { ProgressButton } from '@/components/ui/progress-button';
 import type { TaskScope } from '../data/tasks.api';
-import { useTaskResponse } from '../data/use-response';
+import { useTaskResponse } from '../data/task-response.mutations';
 
 /**
  * Approve or reject from the list, without a comment; the request page

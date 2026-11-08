@@ -7,7 +7,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { HttpResponse, http } from 'msw';
 import { expect, it, vi } from 'vitest';
 import type { ConnectionSharing } from '@pertexo/contracts';
-import { ConnectionSharingPanel } from '@/features/connections/components/sharing/panel';
+import { ConnectionSharingPanel } from '@/features/connections/components/connection-sharing';
 import { createApiClient } from '@/lib/api/client';
 import { mockServer } from '../../support/mock-server';
 import { testFetch } from '../../support/render-app';

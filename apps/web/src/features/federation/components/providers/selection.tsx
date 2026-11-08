@@ -1,5 +1,5 @@
-import { ProviderForm } from './form';
-import type { ProviderEditorProps } from './editor';
+import { ProviderForm } from './provider-form';
+import type { ProviderEditorProps } from './provider-editor';
 export type ProviderSelection =
   | 'new-oidc'
   | 'new-saml'

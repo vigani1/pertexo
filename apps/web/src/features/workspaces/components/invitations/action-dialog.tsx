@@ -7,7 +7,7 @@ import {
   ConfirmDialog,
   ConfirmationDetails,
 } from '@/components/patterns/actions/confirm-dialog';
-import type { InvitationAction } from './list';
+import type { InvitationAction } from './invitation-list';
 
 export type InvitationSelection = Readonly<{
   invitation: WorkspaceInvitation;

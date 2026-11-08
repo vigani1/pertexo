@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { VariableUsageDialog } from '@/features/workspace-variables/components/usage';
+import { VariableUsageDialog } from '@/features/workspace-variables/components/variable-usage';
 import { createApiClient } from '@/lib/api/client';
 import { testFetch } from '../../../support/render-app';
 

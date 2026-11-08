@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/ui/notice';
 import { isApiError } from '@/lib/api/error';
 import type { GovernanceScope } from '../data/audit.api';
-import { useSettingForm } from '../hooks/use-setting-form';
+import { useSettingForm } from '../hooks/use-governance-setting-form';
 export function PublicationPolicy({
   scope,
   snapshot,

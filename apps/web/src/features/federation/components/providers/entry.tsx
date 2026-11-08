@@ -1,7 +1,7 @@
 import type { FederationSettings } from '@pertexo/contracts';
 import { Button } from '@/components/ui/button';
 import { Status } from '@/components/ui/status';
-import type { FederationScope } from '../../data/settings.api';
+import type { FederationScope } from '../../data/federation-settings.api';
 import { TestProvider } from './test';
 type Organization = NonNullable<FederationSettings['organization']>;
 type Provider = Organization['providers'][number];

@@ -1,6 +1,6 @@
 import { Notice } from '@/components/ui/notice';
 import { Button } from '@/components/ui/button';
-import type { FederationCommandState } from '../data/use-command';
+import type { FederationCommandState } from '../data/federation-command.mutations';
 export function CommandFeedback({
   command,
 }: Readonly<{

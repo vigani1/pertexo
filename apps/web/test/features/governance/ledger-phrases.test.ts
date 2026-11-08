@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { auditActionWords } from '@/features/governance/model/ledger';
+import { auditActionWords } from '@/features/governance/model/audit-ledger';
 
 it('names everyday actions instead of reading out their codes', () => {
   for (const [action, words] of [

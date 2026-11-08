@@ -192,7 +192,7 @@ test('web source restricts raw fetch to the transport adapter', () => {
     validateModuleImports({
       'apps/web/src/lib/api/client.ts':
         "export const load = () => globalThis.fetch('/v1/example');",
-      'apps/web/src/features/artifacts/data/upload.api.ts':
+      'apps/web/src/features/artifacts/data/artifact-upload.api.ts':
         "export const upload = () => fetch('https://objects.example.test/file', { credentials: 'omit' });",
     }),
     [],

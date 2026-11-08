@@ -5,7 +5,7 @@ import {
   variableMatches,
   variableRows,
   variableUnsaved,
-} from '@/features/workspace-variables/model/draft';
+} from '@/features/workspace-variables/model/variable-draft';
 it('keeps false, zero, empty text and multiline text with explicit types', () => {
   const values = { ZERO: 0, OFF: false, EMPTY: '', NOTE: 'Line 1\nLine 2' };
   expect(readVariableRows(variableRows(values))).toEqual({

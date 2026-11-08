@@ -3,7 +3,7 @@ import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { expect, it } from 'vitest';
 import type { AccessibleWorkspace } from '@pertexo/contracts';
-import { GovernanceSettings } from '@/features/governance/components/settings';
+import { GovernanceSettings } from '@/features/governance/components/governance-settings';
 import { governanceQueryOptions } from '@/features/governance/data/audit.queries';
 import { createApiClient } from '@/lib/api/client';
 import {

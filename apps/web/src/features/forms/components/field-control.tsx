@@ -2,7 +2,7 @@ import type { RefCallback } from 'react';
 import { MultipleChoices } from './multiple-choices';
 import type { FormField } from '@pertexo/workflow-model';
 import { LabelledField } from '@/components/ui/field';
-import type { FormDraftValue } from '../model/values';
+import type { FormDraftValue } from '../model/form-values';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';

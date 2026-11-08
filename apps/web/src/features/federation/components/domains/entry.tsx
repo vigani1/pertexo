@@ -12,8 +12,8 @@ import { ProgressButton } from '@/components/ui/progress-button';
 import { Status } from '@/components/ui/status';
 import { CopyButton } from '@/components/ui/copy-button';
 import { formatDateTime } from '@/lib/format/time';
-import type { FederationScope } from '../../data/settings.api';
-import { useFederationCommand } from '../../data/use-command';
+import type { FederationScope } from '../../data/federation-settings.api';
+import { useFederationCommand } from '../../data/federation-command.mutations';
 import { CommandFeedback } from '../command-feedback';
 type Organization = NonNullable<FederationSettings['organization']>;
 type DomainEntryProps = Readonly<{

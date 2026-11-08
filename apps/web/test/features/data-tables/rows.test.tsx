@@ -7,7 +7,7 @@ import {
   type DataTableWrite,
 } from '@pertexo/contracts';
 import { dataTableQuerySchema, type DataTableQuery } from '@pertexo/node-sdk';
-import { DataTableRows } from '@/features/data-tables/components/rows/view';
+import { DataTableRows } from '@/features/data-tables/components/rows/table-rows';
 import { createApiClient } from '@/lib/api/client';
 import { mockServer } from '../../support/mock-server';
 import { testFetch } from '../../support/render-app';

@@ -2,14 +2,14 @@ import { useEffect, useRef, useState } from 'react';
 import type { FormField } from '@pertexo/workflow-model';
 import { isApiError } from '@/lib/api/error';
 import { digestFile, transferFile } from '@/features/artifacts/public';
-import type { FormUploadTarget } from '../data/uploads.api';
-import { chosenFileProblem, type FileField } from '../model/files';
+import type { FormUploadTarget } from '../data/form-uploads.api';
+import { chosenFileProblem, type FileField } from '../model/form-files';
 import {
   uploadFailure,
   availableUploadSlots,
   type UploadRow,
   type UploadState,
-} from '../model/uploads';
+} from '../model/form-uploads';
 
 interface Entry {
   readonly field: FileField;

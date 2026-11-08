@@ -1,1 +1,1 @@
-export { FormPage } from './pages/form';
+export { FormPage } from './pages/published-form';

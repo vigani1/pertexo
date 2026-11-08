@@ -1,1 +1,1 @@
-export { NotificationPreferencesPage } from './pages/preferences';
+export { NotificationPreferencesPage } from './pages/notice-preferences';

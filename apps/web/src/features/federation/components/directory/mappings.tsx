@@ -22,7 +22,7 @@ import { Button } from '@/components/ui/button';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { Notice } from '@/components/ui/notice';
 import { useDirectoryCommand } from '../../data/directory.mutations';
-import type { FederationScope } from '../../data/settings.api';
+import type { FederationScope } from '../../data/federation-settings.api';
 import { CommandFeedback } from '../command-feedback';
 
 type Organization = NonNullable<FederationSettings['organization']>;

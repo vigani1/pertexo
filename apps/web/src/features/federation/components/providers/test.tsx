@@ -13,7 +13,7 @@ import { Notice } from '@/components/ui/notice';
 import { useLatestRequest } from '@/lib/hooks/use-latest-request';
 import { describeCommandError } from '@/lib/api/error-copy';
 import { startOrganizationProviderTest } from '../../data/sign-in.api';
-import type { FederationScope } from '../../data/settings.api';
+import type { FederationScope } from '../../data/federation-settings.api';
 type Organization = NonNullable<FederationSettings['organization']>;
 export function TestProvider({
   scope,

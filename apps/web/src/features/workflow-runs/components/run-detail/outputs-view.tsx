@@ -1,5 +1,5 @@
 import { useHistoryPage } from '../../hooks/use-history-page';
-import { HistoryPager } from './history/pager';
+import { HistoryPager } from './history-pager';
 import { RotateCcwIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { StatusGlyph } from '@/components/ui/status';

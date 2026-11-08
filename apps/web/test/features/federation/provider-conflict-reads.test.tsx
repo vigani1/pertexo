@@ -1,6 +1,6 @@
 import { NotificationsProvider } from '@/components/ui/toast';
-import { federationSettingsQueryOptions } from '@/features/federation/data/settings.queries';
-import { ProviderForm } from '@/features/federation/components/providers/form';
+import { federationSettingsQueryOptions } from '@/features/federation/data/federation-settings.queries';
+import { ProviderForm } from '@/features/federation/components/providers/provider-form';
 import { createApiClient } from '@/lib/api/client';
 import {
   QueryClient,

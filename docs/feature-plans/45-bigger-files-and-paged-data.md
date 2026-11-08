@@ -4,7 +4,7 @@ Status: **Delivered (2026-10-21)**. Slices 1–3 merged in #450, #452 and #453. 
 
 ## Current code and problem
 
-F04's checked worker file reader and HTTP request body stop at 1 MiB. The artifact store already streams objects, defaults to 10 MiB and has a separately configurable ceiling; the worker writer already spools up to 10 MiB. These are different limits, not permission for every consumer to accept 5 GiB. `apps/web/src/features/artifacts/model/upload.ts` buffers at most 1 MiB to hash an upload today.
+F04's checked worker file reader and HTTP request body stop at 1 MiB. The artifact store already streams objects, defaults to 10 MiB and has a separately configurable ceiling; the worker writer already spools up to 10 MiB. These are different limits, not permission for every consumer to accept 5 GiB. `apps/web/src/features/artifacts/model/artifact-upload.ts` buffers at most 1 MiB to hash an upload today.
 
 The SDK whole-invocation envelope is 1 MiB/depth 64/10,000 members, but **retained execution JSON is only 256 KiB**. Checkpoints are also capped at 256 KiB. Lists have 4,998 items. Raising just the SDK limit would fail persistence or inflate checkpoints, pins, browser queries and retries. Keep those bounds.
 

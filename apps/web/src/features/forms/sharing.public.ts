@@ -1,2 +1,2 @@
-export { FormAccessControl } from './components/access';
-export { FormEventHistory } from './components/history';
+export { FormAccessControl } from './components/form-access';
+export { FormEventHistory } from './components/form-history';

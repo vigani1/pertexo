@@ -16,7 +16,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { LabelledField } from '@/components/ui/field';
-import { fieldOfType } from '../model/fields';
+import { fieldOfType } from '../model/form-fields';
 import { FileFieldSetup } from './files/setup';
 
 const fieldTypes: readonly Readonly<{

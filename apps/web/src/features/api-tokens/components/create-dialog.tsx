@@ -16,8 +16,11 @@ import { Notice } from '@/components/ui/notice';
 import type { ApiClient } from '@/lib/api/client';
 import { useLatestRequest } from '@/lib/hooks/use-latest-request';
 import { createApiToken } from '../data/api-tokens.api';
-import { tokenCommandFeedback, uncertainTokenOutcome } from '../model/copy';
-import { CreateTokenForm } from '../forms/create';
+import {
+  tokenCommandFeedback,
+  uncertainTokenOutcome,
+} from '../model/token-copy';
+import { CreateTokenForm } from '../forms/create-token';
 import { TokenSecretReceipt } from './secret-receipt';
 
 type CreationView =

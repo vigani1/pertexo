@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { expect, it, vi } from 'vitest';
-import { FederationSettingsPage } from '@/features/federation/pages/settings';
+import { FederationSettingsPage } from '@/features/federation/pages/federation-settings';
 import { AuditPage } from '@/features/governance/pages/audit';
 import { createApiClient } from '@/lib/api/client';
 import { capabilitiesForRole } from '@pertexo/policy';

@@ -8,7 +8,7 @@ import { describeCommandError } from '@/lib/api/error-copy';
 import {
   readSamlMetadata,
   type FederationScope,
-} from '../../data/settings.api';
+} from '../../data/federation-settings.api';
 import { downloadSamlMetadata } from '../../model/download-metadata';
 import { Disclosure } from '@/components/ui/disclosure';
 function MetadataValue({

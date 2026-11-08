@@ -11,7 +11,7 @@ import {
 import {
   feedbackFor,
   type MemberCommandFeedback,
-} from '../../data/mutations/members/use-command';
+} from '../../data/mutations/members/use-member-command';
 
 /** The state of one member command that its confirmation shows. */
 export type MemberCommandView = Readonly<{

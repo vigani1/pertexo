@@ -6,8 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/ui/notice';
 import { ProgressButton } from '@/components/ui/progress-button';
 import type { TaskScope } from '../data/tasks.api';
-import { useTaskResponse } from '../data/use-response';
-import { blockedSentence } from '../model/presentation';
+import { useTaskResponse } from '../data/task-response.mutations';
+import { blockedSentence } from '../model/task-presentation';
 export function DecisionForm({
   task,
   scope,

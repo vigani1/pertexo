@@ -12,12 +12,12 @@ import { RecentLog } from '@/components/patterns/lists/recent-log';
 import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/ui/notice';
 import { describeCommandError } from '@/lib/api/error-copy';
-import { GovernanceSettings } from '../components/settings';
-import { AuditFilters } from '../components/filters';
-import { AuditEntry } from '../components/entry';
+import { GovernanceSettings } from '../components/governance-settings';
+import { AuditFilters } from '../components/audit-filters';
+import { AuditEntry } from '../components/audit-entry';
 import { auditQueryOptions } from '../data/audit.queries';
 import { exportAudit, type GovernanceScope } from '../data/audit.api';
-import { auditActionWords } from '../model/ledger';
+import { auditActionWords } from '../model/audit-ledger';
 import { whoCan } from '@/features/workspaces/roles.public';
 
 /** Who changed what, read as sentences, newest first and grouped by day. */

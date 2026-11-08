@@ -19,9 +19,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { isUnauthenticated } from '@/features/auth/session/identity.public';
 import { isApiError } from '@/lib/api/error';
 import type { ApiClient } from '@/lib/api/client';
-import { InvitationsPanel } from '../components/invitations/panel';
+import { InvitationsPanel } from '../components/invitations/invitations-panel';
 import { InvitePeopleSheet } from '../components/invitations/invite-people-sheet';
-import { MembersPanel } from '../components/members/panel';
+import { MembersPanel } from '../components/members/members-panel';
 import { RolesMatrix } from '../components/members/roles-matrix';
 import type { TeamSearch } from '../model/team-search';
 import {

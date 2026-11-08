@@ -3,7 +3,7 @@ import { File as NodeFile } from 'node:buffer';
 import { webcrypto } from 'node:crypto';
 import { afterEach, beforeEach, vi } from 'vitest';
 import { formFieldsSchema } from '@pertexo/workflow-model';
-import type { FormUploadTarget } from '@/features/forms/data/uploads.api';
+import type { FormUploadTarget } from '@/features/forms/data/form-uploads.api';
 import { mockServer } from '../../../support/mock-server';
 
 export const store =

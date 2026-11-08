@@ -5,7 +5,7 @@ import { http, HttpResponse } from 'msw';
 import { expect, it } from 'vitest';
 import type { ConnectionSharing, FolderSharing } from '@pertexo/contracts';
 import { NotificationsProvider } from '@/components/ui/toast';
-import { ConnectionSharingPanel } from '@/features/connections/components/sharing/panel';
+import { ConnectionSharingPanel } from '@/features/connections/components/connection-sharing';
 import { FolderShareDialog } from '@/features/workflows/components/organization/folders/share-dialog';
 import { useConnectionSharingEditor } from '@/features/connections/hooks/use-sharing-editor';
 import { createApiClient } from '@/lib/api/client';

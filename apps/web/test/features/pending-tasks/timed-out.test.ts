@@ -4,7 +4,7 @@ import {
   blockedSentence,
   taskOutcome,
   timedOutAfter,
-} from '@/features/pending-tasks/model/presentation';
+} from '@/features/pending-tasks/model/task-presentation';
 
 const window = {
   createdAt: '2026-10-20T09:00:00.000Z',
