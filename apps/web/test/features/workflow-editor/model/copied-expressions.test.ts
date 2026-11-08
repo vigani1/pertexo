@@ -37,6 +37,73 @@ it.each([
   },
 );
 
+it.each([
+  [
+    'a filter',
+    'nodeOutputs.unrelated.items[$.nodeOutputs.source.amount = 3].name',
+  ],
+  [
+    'a filter',
+    'nodeOutputs.unrelated.items[nodeOutputs.source.amount = 3].name',
+  ],
+  [
+    'a mapped block',
+    '$map(nodeOutputs.unrelated.items, function($v){$v.($.nodeOutputs.source.amount)})[0] = 3 ? "keep"',
+  ],
+])(
+  'keeps item data named like step outputs inside %s and asks for review',
+  async (_place, expression) => {
+    let next = 0;
+    const copied = duplicateWorkflowNodes(
+      chainReading(expression),
+      ['source', 'consumer'],
+      () => `copy-${String(++next)}`,
+    );
+    const copiedExpression = copied.graph.nodes.find(
+      (node) => node.id === copied.nodeIds[1],
+    )?.inputMappings.amount;
+    if (copiedExpression?.kind !== 'expression')
+      throw new Error('Expected the copied expression');
+    expect(
+      await jsonata(copiedExpression.expression).evaluate(itemOutputs),
+    ).toBe('keep');
+    expect(copied.expressionReviewNeeded).toBe(true);
+  },
+);
+
+it('follows a root reference written with $$ inside a filter', async () => {
+  let next = 0;
+  const copied = duplicateWorkflowNodes(
+    chainReading(
+      'nodeOutputs.unrelated.items[amount = $$.nodeOutputs.source.amount].name',
+    ),
+    ['source', 'consumer'],
+    () => `copy-${String(++next)}`,
+  );
+  const copiedExpression = copied.graph.nodes.find(
+    (node) => node.id === copied.nodeIds[1],
+  )?.inputMappings.amount;
+  if (copiedExpression?.kind !== 'expression')
+    throw new Error('Expected the copied expression');
+  expect(await jsonata(copiedExpression.expression).evaluate(itemOutputs)).toBe(
+    'copied',
+  );
+  expect(copied.expressionReviewNeeded).toBe(false);
+});
+
+const itemOutputs = {
+  nodeOutputs: {
+    source: { amount: 1 },
+    'copy-1': { amount: 100 },
+    unrelated: {
+      items: [
+        { nodeOutputs: { source: { amount: 3 } }, amount: 1, name: 'keep' },
+        { amount: 100, name: 'copied' },
+      ],
+    },
+  },
+};
+
 it('asks for review when a copied expression chooses its step at run time', () => {
   let next = 0;
   const copied = duplicateWorkflowNodes(
@@ -99,6 +166,12 @@ it('calculates references inside a copied For each from its copied body steps', 
 });
 
 function expressionChain(reference: string) {
+  return chainReading(
+    `{"amount": ${reference} * 2, "literal": "nodeOutputs.source", "other": nodeOutputs."unrelated"."amount"}`,
+  );
+}
+
+function chainReading(expression: string) {
   const step = (id: string, label: string) => ({
     id,
     label,
@@ -118,7 +191,7 @@ function expressionChain(reference: string) {
           amount: {
             kind: 'expression',
             language: 'jsonata',
-            expression: `{"amount": ${reference} * 2, "literal": "nodeOutputs.source", "other": nodeOutputs."unrelated"."amount"}`,
+            expression,
           },
         },
       },

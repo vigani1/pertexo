@@ -244,46 +244,66 @@ function copiedSource(
   return source;
 }
 
-/** AST-selected static references; literal text and computed lookups keep their meaning. */
+/**
+ * AST-selected static references; literal text and computed lookups keep
+ * their meaning. A reference counts only where it reads the expression's
+ * root: `$$` always does, while `$` and bare names do only outside the
+ * places JSONata evaluates against each item (later path steps, filters,
+ * sorts and grouping). Anything else is left alone and asks for review.
+ */
 function visitExpressionReferences(
   value: unknown,
   found: (
     reference: Readonly<{ nodeId: string; end: number; root: unknown }>,
   ) => void,
+  atRoot = true,
 ): void {
   if (Array.isArray(value)) {
-    for (const child of value) visitExpressionReferences(child, found);
+    for (const child of value) visitExpressionReferences(child, found, atRoot);
     return;
   }
   if (!isRecord(value)) return;
   if (value.type === 'path' && Array.isArray(value.steps)) {
-    const [root, target] = withoutContextRoot(value.steps as unknown[]);
-    const output = outputRoot(root);
-    if (
-      output !== undefined &&
-      isRecord(target) &&
-      target.type === 'name' &&
-      typeof target.value === 'string' &&
-      typeof target.position === 'number'
-    )
-      found({ nodeId: target.value, end: target.position, root: output });
+    const steps = value.steps as unknown[];
+    const [root, target] = workflowRootSteps(steps, atRoot) ?? [];
+    const step = stepName(target, 'name');
+    if (isOutputRoot(root) && step !== undefined) found({ ...step, root });
+    for (const [index, step] of steps.entries())
+      visitExpressionReferences(step, found, atRoot && index === 0);
+    visitExpressionReferences(value.group, found, false);
+    return;
   }
   const arguments_ = lookupArguments(value);
   if (arguments_ !== undefined) {
     const [root, target] = arguments_;
-    const output = outputRoot(root);
-    if (
-      output !== undefined &&
-      isRecord(target) &&
-      target.type === 'string' &&
-      typeof target.value === 'string' &&
-      typeof target.position === 'number'
-    )
-      found({ nodeId: target.value, end: target.position, root: output });
+    const output = outputRoot(root, atRoot);
+    const step = stepName(target, 'string');
+    if (output !== undefined && step !== undefined)
+      found({ ...step, root: output });
   }
-  for (const child of Object.values(value))
-    visitExpressionReferences(child, found);
+  for (const [key, child] of Object.entries(value))
+    visitExpressionReferences(
+      child,
+      found,
+      atRoot && !ITEM_CONTEXT_KEYS.has(key),
+    );
 }
+
+/** A literal step name in a reference, with where its token ends. */
+function stepName(
+  target: unknown,
+  type: 'name' | 'string',
+): Readonly<{ nodeId: string; end: number }> | undefined {
+  return isRecord(target) &&
+    target.type === type &&
+    typeof target.value === 'string' &&
+    typeof target.position === 'number'
+    ? { nodeId: target.value, end: target.position }
+    : undefined;
+}
+
+/** Parts of a step JSONata evaluates once per item, not against the root. */
+const ITEM_CONTEXT_KEYS = new Set(['stages', 'predicate', 'group', 'terms']);
 
 function lookupArguments(
   value: Record<string, unknown>,
@@ -297,28 +317,38 @@ function lookupArguments(
     : undefined;
 }
 
-function outputRoot(value: unknown): unknown {
-  if (isOutputRoot(value)) return value;
+function outputRoot(value: unknown, atRoot: boolean): unknown {
+  if (isOutputRoot(value)) return atRoot ? value : undefined;
   if (!isRecord(value) || value.type !== 'path' || !Array.isArray(value.steps))
     return undefined;
-  const steps = withoutContextRoot(value.steps as unknown[]);
-  return steps.length === 1 && isOutputRoot(steps[0]) ? steps[0] : undefined;
+  const steps = workflowRootSteps(value.steps as unknown[], atRoot);
+  return steps?.length === 1 && isOutputRoot(steps[0]) ? steps[0] : undefined;
 }
 
 /**
- * `$.nodeOutputs` and `$$.nodeOutputs` name the same outputs as a bare
- * `nodeOutputs`, so a leading plain `$` or `$$` is not part of the reference.
+ * The steps after a path's root qualifier, or `undefined` when the path
+ * doesn't start at the expression's root. `$$` is the root anywhere; a plain
+ * `$` or a bare first name is the root only where the context is.
  */
-function withoutContextRoot(steps: readonly unknown[]): readonly unknown[] {
+function workflowRootSteps(
+  steps: readonly unknown[],
+  atRoot: boolean,
+): readonly unknown[] | undefined {
   const [first] = steps;
-  const plainContext =
-    isRecord(first) &&
-    first.type === 'variable' &&
-    (first.value === '' || first.value === '$') &&
-    first.predicate === undefined &&
-    first.stages === undefined &&
-    first.group === undefined;
-  return plainContext ? steps.slice(1) : steps;
+  if (isPlainVariable(first, '$')) return steps.slice(1);
+  if (!atRoot) return undefined;
+  return isPlainVariable(first, '') ? steps.slice(1) : steps;
+}
+
+function isPlainVariable(step: unknown, name: '' | '$'): boolean {
+  return (
+    isRecord(step) &&
+    step.type === 'variable' &&
+    step.value === name &&
+    step.predicate === undefined &&
+    step.stages === undefined &&
+    step.group === undefined
+  );
 }
 
 function isOutputRoot(value: unknown): boolean {
