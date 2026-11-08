@@ -20,10 +20,14 @@ for (const width of [375, 1280]) {
     page,
     context,
   }, testInfo) => {
-    const tests = await openSmtpWizard(page, context, testInfo, width, {
-      ok: true,
-      httpStatus: 200,
-      errorCode: null,
+    const tests = await openSmtpWizard(page, context, {
+      testInfo,
+      width,
+      outcome: {
+        ok: true,
+        httpStatus: 200,
+        errorCode: null,
+      },
     });
     const form = page.getByRole('dialog');
     await fillServer(page);
@@ -53,10 +57,14 @@ for (const width of [375, 1280]) {
     page,
     context,
   }, testInfo) => {
-    const tests = await openSmtpWizard(page, context, testInfo, width, {
-      ok: false,
-      httpStatus: null,
-      errorCode: 'connection.smtp_tls',
+    const tests = await openSmtpWizard(page, context, {
+      testInfo,
+      width,
+      outcome: {
+        ok: false,
+        httpStatus: null,
+        errorCode: 'connection.smtp_tls',
+      },
     });
     const form = page.getByRole('dialog');
     await form.getByRole('button', { name: 'Continue' }).click();
@@ -87,9 +95,11 @@ for (const width of [375, 1280]) {
 async function openSmtpWizard(
   page: Page,
   context: BrowserContext,
-  testInfo: TestInfo,
-  width: number,
-  outcome: ProbeOutcome,
+  {
+    testInfo,
+    width,
+    outcome,
+  }: Readonly<{ testInfo: TestInfo; width: number; outcome: ProbeOutcome }>,
 ): Promise<() => number> {
   await page.setViewportSize({ width, height: 900 });
   const origin = testInfo.project.use.baseURL;
