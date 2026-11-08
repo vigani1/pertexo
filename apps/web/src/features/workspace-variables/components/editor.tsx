@@ -1,8 +1,8 @@
+import { VariableLeaveConfirmation } from './leave-confirmation';
 import { VariableFields, VariableSaveActions } from './fields';
 import { VariableEditorFeedback } from './feedback';
 import { useState, type Dispatch, type SetStateAction } from 'react';
 import { useQueryClient, type QueryClient } from '@tanstack/react-query';
-import { canonicalJson } from '@pertexo/workflow-model';
 import type {
   WorkspaceVariablesResponse,
   WorkspaceVariablesRequest,
@@ -13,6 +13,7 @@ import type { WorkspaceApiScope } from '@/lib/api/workspace-scope';
 import { variableKeys, variablesQueryOptions } from '../data/variables.queries';
 import {
   variableMatches,
+  variableDraftChanged,
   variableRows,
   readVariableRows,
   type VariableRow as Row,
@@ -63,39 +64,20 @@ export function VariablesEditor({
     },
   );
   const parsed = readVariableRows(draft.rows);
-  const changed =
-    parsed.values === undefined ||
-    canonicalJson({
-      values: parsed.values,
-      descriptions: parsed.descriptions,
-    }) !==
-      canonicalJson({
-        values: draft.base.values,
-        descriptions: draft.base.descriptions,
-      });
+  const changed = variableDraftChanged(draft.base, parsed);
   const locked = command.pending || command.uncertain || reloading;
   const visible = draft.rows.filter(
     (row) => open.has(row.id) || variableMatches(row, filter),
   );
   const removalId = inspect?.removeId;
   const serverChanged = snapshot.revision !== draft.base.revision;
-  const reload = () =>
-    reloadVariables({
-      scope,
-      cache,
-      command,
-      draft,
-      open,
-      locked,
-      setReloading,
-      setError,
-      setSaved,
-      setOpen,
-      setDraft,
-    });
 
   return (
     <>
+      <VariableLeaveConfirmation
+        dirty={changed || command.pending}
+        uncertain={command.uncertain}
+      />
       <form
         onSubmit={(event) => {
           event.preventDefault();
@@ -143,7 +125,19 @@ export function VariablesEditor({
           pending={command.pending}
           saved={saved}
           onReload={() => {
-            void reload();
+            void reloadVariables({
+              scope,
+              cache,
+              command,
+              draft,
+              open,
+              locked,
+              setReloading,
+              setError,
+              setSaved,
+              setOpen,
+              setDraft,
+            });
           }}
         />
       </form>

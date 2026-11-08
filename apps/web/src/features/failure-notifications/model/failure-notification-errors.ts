@@ -3,9 +3,10 @@ import { refusalWhoCan } from '@/features/workspaces/roles.public';
 import { isApiError } from '@/lib/api/error';
 import { describeCommandError } from '@/lib/api/error-copy';
 
-type DestinationCommand = 'create' | 'update' | 'enable' | 'disable';
+type DestinationCommand = 'create' | 'update' | 'enable' | 'disable' | 'test';
 
 const ACTIONS: Readonly<Record<DestinationCommand, string>> = {
+  test: 'sending this test',
   create: 'adding this destination',
   update: 'saving this destination',
   enable: 'turning these alerts on',
@@ -13,6 +14,7 @@ const ACTIONS: Readonly<Record<DestinationCommand, string>> = {
 };
 
 const UNCERTAIN: Readonly<Record<DestinationCommand, string>> = {
+  test: 'Delivery wasn’t confirmed. Check the destination before another test.',
   create:
     'We couldn’t confirm whether the destination was added. Try again — it can’t be added twice.',
   update:
@@ -37,6 +39,17 @@ export function destinationCommandError(
   command: DestinationCommand,
 ): string {
   if (isUnconfirmedCommand(error)) return UNCERTAIN[command];
+  if (command === 'test' && isApiError(error)) {
+    if (isDestinationConflict(error))
+      return (
+        error.problem?.detail ??
+        'This destination changed. Reload its latest version before testing again.'
+      );
+    if (error.status === 403)
+      return 'Your role can’t test alert destinations. Ask a workspace owner or administrator.';
+    if (error.status === 429)
+      return 'Too many requests. Wait before sending another test.';
+  }
   if (isDestinationConflict(error))
     return command === 'update'
       ? 'Someone changed this destination while you were editing. Load the latest version, then save again — your edits stay.'

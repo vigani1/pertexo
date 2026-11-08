@@ -23,6 +23,11 @@ export const UNPURGED_WORKSPACE_STATUSES = Object.freeze([
   ...BROWSABLE_WORKSPACE_STATUSES,
   'pending_deletion',
 ] as const);
+/** Current members can observe deletion until their membership is purged. */
+export const DISCOVERABLE_WORKSPACE_STATUSES = Object.freeze([
+  ...UNPURGED_WORKSPACE_STATUSES,
+  'purging',
+] as const);
 /**
  * For a flow that decides for itself what each status allows, so a member of a
  * workspace being purged gets that flow's answer rather than a denial.

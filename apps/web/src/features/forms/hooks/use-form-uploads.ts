@@ -6,6 +6,7 @@ import type { FormUploadTarget } from '../data/uploads.api';
 import { chosenFileProblem, type FileField } from '../model/files';
 import {
   uploadFailure,
+  availableUploadSlots,
   type UploadRow,
   type UploadState,
 } from '../model/uploads';
@@ -87,8 +88,10 @@ export function useFormUploads(target: FormUploadTarget | undefined) {
   /** Adds what fits; returns how many files were left out. */
   function add(field: FileField, files: readonly File[]): number {
     const current = latest.current[field.name] ?? [];
-    const taken = current.filter((row) => row.phase !== 'failed').length;
-    const fitting = files.slice(0, Math.max(0, field.maxFiles - taken));
+    const fitting = files.slice(
+      0,
+      availableUploadSlots(field.maxFiles, current),
+    );
     const added = fitting.map((file) => {
       const entry: Entry = {
         field,
@@ -141,7 +144,17 @@ export function useFormUploads(target: FormUploadTarget | undefined) {
 
   function retry(key: string) {
     const entry = entries.current.get(key);
-    if (entry !== undefined) void send(entry);
+    if (entry === undefined) return;
+    const current = latest.current[entry.field.name] ?? [];
+    const row = current.find((item) => item.key === key);
+    if (
+      row?.phase !== 'failed' ||
+      !row.retryable ||
+      availableUploadSlots(entry.field.maxFiles, current) === 0
+    )
+      return;
+    update(entry, { phase: 'checking' });
+    void send(entry);
   }
 
   return {

@@ -1,3 +1,4 @@
+import { forgetDeniedSnapshots } from '@/lib/api/read-denial';
 import {
   useMutation,
   useQueryClient,
@@ -19,10 +20,7 @@ import {
   type ConnectionCredential,
 } from './connections.api';
 import { connectionKeys } from './connections.queries';
-import {
-  connectionCommandAccessLost,
-  forgetDeniedConnections,
-} from '../model/connection-access';
+import { connectionCommandAccessLost } from '../model/connection-access';
 
 export type ConnectionMutationScope = Readonly<{
   apiClient: ApiClient;
@@ -120,7 +118,7 @@ export function useConnectionResultScope(scope: ConnectionMutationScope) {
       denied: (error: unknown) => {
         if (!isCurrent() || !connectionCommandAccessLost(error))
           return Promise.resolve();
-        return forgetDeniedConnections(
+        return forgetDeniedSnapshots(
           queryClient,
           connectionKeys.scope(scope.userId, scope.workspaceId),
           ['connection-command'],

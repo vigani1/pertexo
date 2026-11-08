@@ -75,7 +75,11 @@ export function OAuth2OverviewActions({
           </>
         ) : null}
       </div>
-      <OAuth2ConsentStatus state={consent.state} />
+      <OAuth2ConsentStatus
+        state={consent.state}
+        checking={consent.checking}
+        onCheckAgain={consent.checkAgain}
+      />
     </>
   );
 }

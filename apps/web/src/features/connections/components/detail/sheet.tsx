@@ -20,7 +20,7 @@ import {
 import { Status } from '@/components/ui/status';
 import { cn } from '@/lib/class-names';
 import { QueryView } from '@/components/patterns/states/query-view';
-import { connectionAccessLost } from '../../model/connection-access';
+import { isReadAccessLost } from '@/lib/api/read-denial';
 import type { ConnectionMutationScope } from '../../data/connections.mutations';
 import { connectionDetailQueryOptions } from '../../data/connections.queries';
 import {
@@ -304,7 +304,7 @@ function ConnectionDetailSession({
             resource="This connection"
             loading={<ConnectionLoading />}
             failure={(error) =>
-              connectionAccessLost(error) ? (
+              isReadAccessLost(error) ? (
                 <ConnectionUnreadable error={error} />
               ) : undefined
             }

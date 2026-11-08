@@ -1,4 +1,4 @@
-import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import { StatusGlyph, type StatusTone } from '@/components/ui/status';
 import { statusToneText } from '@/components/ui/status-tone';
@@ -10,7 +10,7 @@ import {
 } from '@/features/workflow-runs/workflow-runs-queries.public';
 import type { ApiClient } from '@/lib/api/client';
 import { HomeBlockBody } from './home-block';
-import { queryBlockState } from '../model/home-block-state';
+import { mergedBlockState } from '../model/home-block-state';
 import { loomCaption } from '../model/loom-caption';
 
 const windows = {
@@ -49,15 +49,11 @@ export function HomeLoom({
 }>) {
   const [windowKey, setWindowKey] = useState<LoomWindow>('1h');
   const selected = windows[windowKey];
-  // Switching the window keeps the last one drawn until the new one lands,
-  // so the page below never collapses and jumps back.
   const loom = useQuery({
     ...runLoomQueryOptions(apiClient, userId, workspaceId, selected.ms),
-    placeholderData: keepPreviousData,
   });
   const statistics = useQuery({
     ...loomStatisticsQueryOptions(apiClient, userId, workspaceId, windowKey),
-    placeholderData: keepPreviousData,
   });
   const laneTotals = useMemo(
     () =>
@@ -113,7 +109,10 @@ export function HomeLoom({
           ))}
         </ul>
       </div>
-      <HomeBlockBody title="Recent runs" state={queryBlockState(loom)}>
+      <HomeBlockBody
+        title="Recent runs"
+        state={mergedBlockState(loom, [statistics])}
+      >
         <RunLoom
           runs={loom.data?.runs ?? []}
           windowMs={selected.ms}

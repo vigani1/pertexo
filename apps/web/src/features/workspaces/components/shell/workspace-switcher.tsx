@@ -15,6 +15,7 @@ import { WorkspaceMark } from './workspace-mark';
 
 const STATUS_LABEL: Partial<Record<AccessibleWorkspace['status'], string>> = {
   suspended: 'Suspended',
+  purging: 'Being deleted',
   pending_deletion: 'Scheduled for deletion',
 };
 

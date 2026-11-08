@@ -2,7 +2,12 @@ import { isApiError, type ApiError } from '@/lib/api/error';
 import type { ApiClient } from '@/lib/api/client';
 import { verifiedSignInPath } from '../model/return-path';
 import type { SocialProvider } from '../model/social-provider';
-import { socialSignInStartedSchema } from '@pertexo/contracts';
+import {
+  nativeAuthenticationAcknowledgmentSchema,
+  nativeRegistrationResponseSchema,
+  nativeSignInResponseSchema,
+  socialSignInStartedSchema,
+} from '@pertexo/contracts';
 
 export class NativeAuthenticationError extends Error {
   public readonly status: number | undefined;
@@ -29,7 +34,8 @@ export class NativeAuthenticationError extends Error {
   }
 }
 
-type RequestInput = Readonly<{
+type RequestInput<Value> = Readonly<{
+  decode: (value: unknown) => Value;
   path: `/v1/auth/${string}`;
   body: Readonly<Record<string, unknown>>;
   signal?: AbortSignal;
@@ -37,7 +43,7 @@ type RequestInput = Readonly<{
 
 async function postAuthentication<Value>(
   apiClient: ApiClient,
-  input: RequestInput,
+  input: RequestInput<Value>,
 ): Promise<Value> {
   try {
     return await apiClient.request({
@@ -46,7 +52,7 @@ async function postAuthentication<Value>(
       body: input.body,
       csrf: 'external',
       ...(input.signal === undefined ? {} : { signal: input.signal }),
-      response: { kind: 'json', decode: (value) => value as Value },
+      response: { kind: 'json', decode: input.decode },
     });
   } catch (error) {
     if (input.signal?.aborted ?? false) throw error;
@@ -69,15 +75,15 @@ export async function signInWithEmail(
   input: Readonly<{ email: string; password: string }>,
   signal?: AbortSignal,
 ) {
-  const result = await postAuthentication<unknown>(apiClient, {
+  const result = await postAuthentication(apiClient, {
     path: '/v1/auth/sign-in/email',
+    decode: (value) => nativeSignInResponseSchema.parse(value),
     body: { ...input, callbackURL: '/workspaces' },
     ...(signal === undefined ? {} : { signal }),
   });
-  if (typeof result !== 'object' || result === null)
-    throw new TypeError('The sign-in response was invalid.');
   return {
-    twoFactorRedirect: Reflect.get(result, 'twoFactorRedirect') === true,
+    twoFactorRedirect:
+      'twoFactorRedirect' in result && result.twoFactorRedirect,
   };
 }
 
@@ -91,8 +97,9 @@ export function signUpWithEmail(
   }>,
   signal?: AbortSignal,
 ) {
-  return postAuthentication<unknown>(apiClient, {
+  return postAuthentication(apiClient, {
     path: '/v1/auth/sign-up/email',
+    decode: (value) => nativeRegistrationResponseSchema.parse(value),
     body: {
       name: input.displayName,
       email: input.email,
@@ -108,8 +115,9 @@ export function resendVerificationEmail(
   input: Readonly<{ email: string; returnTo?: string | undefined }>,
   signal?: AbortSignal,
 ) {
-  return postAuthentication<unknown>(apiClient, {
+  return postAuthentication(apiClient, {
     path: '/v1/auth/send-verification-email',
+    decode: (value) => nativeAuthenticationAcknowledgmentSchema.parse(value),
     body: {
       email: input.email,
       callbackURL: verifiedSignInPath(input.returnTo),
@@ -123,8 +131,9 @@ export function requestPasswordReset(
   email: string,
   signal?: AbortSignal,
 ) {
-  return postAuthentication<unknown>(apiClient, {
+  return postAuthentication(apiClient, {
     path: '/v1/auth/request-password-reset',
+    decode: (value) => nativeAuthenticationAcknowledgmentSchema.parse(value),
     body: { email, redirectTo: '/reset-password' },
     ...(signal === undefined ? {} : { signal }),
   });
@@ -135,8 +144,9 @@ export function resetPassword(
   input: Readonly<{ token: string; password: string }>,
   signal?: AbortSignal,
 ) {
-  return postAuthentication<unknown>(apiClient, {
+  return postAuthentication(apiClient, {
     path: '/v1/auth/account-security/password/reset',
+    decode: (value) => nativeAuthenticationAcknowledgmentSchema.parse(value),
     body: { token: input.token, newPassword: input.password },
     ...(signal === undefined ? {} : { signal }),
   });
@@ -151,8 +161,9 @@ export async function startSocialAuthentication(
 ): Promise<string> {
   const failed = new URLSearchParams({ socialError: 'true' });
   if (returnTo !== undefined) failed.set('returnTo', returnTo);
-  const value = await postAuthentication<unknown>(apiClient, {
+  const value = await postAuthentication(apiClient, {
     path: '/v1/auth/sign-in/social',
+    decode: (value) => socialSignInStartedSchema.parse(value),
     body: {
       provider,
       callbackURL: returnTo ?? '/workspaces',
@@ -160,10 +171,7 @@ export async function startSocialAuthentication(
     },
     ...(signal === undefined ? {} : { signal }),
   });
-  const decoded = socialSignInStartedSchema.safeParse(value);
-  if (!decoded.success)
-    throw new NativeAuthenticationError('The provider response was invalid.');
-  const parsed = new URL(decoded.data.url);
+  const parsed = new URL(value.url);
   const unsafeProviderUrl =
     parsed.username !== '' ||
     parsed.password !== '' ||

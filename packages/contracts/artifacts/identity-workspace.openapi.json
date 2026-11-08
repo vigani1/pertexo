@@ -2817,7 +2817,7 @@
     "/v1/workspaces/{workspaceId}/governance/audit/export": {
       "post": {
         "operationId": "exportAuditCsv",
-        "description": "At most 100,000 matching events. No snapshot guarantee. A failure after streaming starts aborts the download. Native form requests carry JSON payload and csrfToken fields; JSON requests use the CSRF header.",
+        "description": "At most 100,000 matching events. No snapshot guarantee. A failure after streaming starts aborts the download. Native form requests carry JSON payload and csrfToken fields; native HTML refusals show safe recovery in the download tab. JSON requests use the CSRF header and retain problem+json errors.",
         "security": [
           {
             "cookieSession": []
@@ -2895,6 +2895,11 @@
                 "schema": {
                   "$ref": "#/components/schemas/ApiProblem"
                 }
+              },
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
               }
             }
           },
@@ -2904,6 +2909,11 @@
               "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiProblem"
+                }
+              },
+              "text/html": {
+                "schema": {
+                  "type": "string"
                 }
               }
             }
@@ -2915,6 +2925,11 @@
                 "schema": {
                   "$ref": "#/components/schemas/ApiProblem"
                 }
+              },
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
               }
             }
           },
@@ -2924,6 +2939,11 @@
               "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiProblem"
+                }
+              },
+              "text/html": {
+                "schema": {
+                  "type": "string"
                 }
               }
             }
@@ -2935,6 +2955,11 @@
                 "schema": {
                   "$ref": "#/components/schemas/ApiProblem"
                 }
+              },
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
               }
             }
           },
@@ -2945,6 +2970,11 @@
                 "schema": {
                   "$ref": "#/components/schemas/ApiProblem"
                 }
+              },
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
               }
             }
           },
@@ -2954,6 +2984,11 @@
               "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiProblem"
+                }
+              },
+              "text/html": {
+                "schema": {
+                  "type": "string"
                 }
               }
             }
@@ -10270,7 +10305,8 @@
                   "enum": [
                     "active",
                     "suspended",
-                    "pending_deletion"
+                    "pending_deletion",
+                    "purging"
                   ]
                 },
                 "createdAt": {

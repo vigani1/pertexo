@@ -9,7 +9,7 @@ import { ProgressButton } from '@/components/ui/progress-button';
 import { Notice } from '@/components/ui/notice';
 import { SkeletonThread } from '@/components/ui/skeleton';
 import { describeReadError } from '@/lib/api/error-copy';
-import { accessLost } from '../model/usage-access';
+import { isReadAccessLost } from '@/lib/api/read-denial';
 
 /**
  * One section of the Usage page, laid out like every settings section, with
@@ -59,7 +59,7 @@ export function UsageSnapshot<Data>({
           </div>
         }
         failure={(error) =>
-          accessLost(error) ? (
+          isReadAccessLost(error) ? (
             <Notice tone="destructive">
               {describeReadError(error, title)}
             </Notice>

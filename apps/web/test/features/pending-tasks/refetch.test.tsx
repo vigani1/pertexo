@@ -277,3 +277,52 @@ it('tells a task responder to upload again when finalization expires', async () 
     screen.queryByRole('button', { name: 'Retry invoice.pdf' }),
   ).not.toBeInTheDocument();
 });
+
+it.each([
+  [
+    'pending_task.expired',
+    'This request expired. Refresh to see its current state.',
+  ],
+  [
+    'pending_task.already_resolved',
+    'Someone already responded. Refresh to see the recorded decision.',
+  ],
+] as const)(
+  'explains a definite %s decision refusal without losing the comment',
+  async (code, message) => {
+    mockServer.use(
+      ...identityHandlers(ownerWorkspace),
+      http.get(base, () =>
+        HttpResponse.json({ items: [], nextCursor: null, pendingCount: 0 }),
+      ),
+      http.get(`${base}/${taskId}`, () =>
+        HttpResponse.json({ task: detail() }),
+      ),
+      http.post(`${base}/${taskId}/decide`, () =>
+        HttpResponse.json(
+          {
+            type: `urn:pertexo:problem:${code}`,
+            title: 'Task unavailable',
+            status: 409,
+            code,
+            requestId: 'task-refusal',
+          },
+          {
+            status: 409,
+            headers: { 'content-type': 'application/problem+json' },
+          },
+        ),
+      ),
+    );
+    renderApp(`/w/${workspaceId}/requests/${taskId}`);
+    const actor = userEvent.setup();
+    const comment = await screen.findByLabelText('Comment (optional)');
+    await actor.type(comment, 'My decision context');
+    await actor.click(screen.getByRole('button', { name: 'Approve' }));
+    expect(await screen.findByText(message)).toBeVisible();
+    expect(comment).toHaveValue('My decision context');
+    expect(
+      screen.queryByRole('button', { name: 'Retry same decision' }),
+    ).not.toBeInTheDocument();
+  },
+);

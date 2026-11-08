@@ -205,68 +205,83 @@ describe('workspace creation', () => {
         expect(within(dialog).getByLabelText(focusedField)).toHaveFocus();
     },
   );
-  it('preserves the exact uncertain command through failed verification and retry', async () => {
-    let userReads = 0;
-    let postCount = 0;
-    const attempts: { body: unknown; key: string | null }[] = [];
-    let authoritativeWorkspaces: object[] = [];
-    mockServer.use(
-      http.get('http://pertexo.test/v1/users/me', () => {
-        userReads += 1;
-        if (userReads === 3)
-          return problem(503, 'service.unavailable', 'Identity unavailable');
-        return HttpResponse.json(user);
-      }),
-      http.get('http://pertexo.test/v1/workspaces', () =>
-        HttpResponse.json({ items: authoritativeWorkspaces, nextCursor: null }),
-      ),
-      http.post('http://pertexo.test/v1/workspaces', async ({ request }) => {
-        postCount += 1;
-        attempts.push({
-          body: await request.json(),
-          key: request.headers.get('idempotency-key'),
-        });
-        if (postCount === 1) return HttpResponse.error();
-        authoritativeWorkspaces = [createdWorkspace];
-        return HttpResponse.json(workspaceResponse(), { status: 201 });
-      }),
-    );
-    installWorkspaceDestination();
-    renderApp('/workspaces');
-    const dialog = await openCreation('first');
-    await userEvent
-      .setup()
-      .type(
-        within(dialog).getByLabelText('Workspace name'),
-        'Signal Operations',
+  it.each(['network', '502', '503'])(
+    'preserves the exact uncertain command through failed verification and retry after %s',
+    async (failure) => {
+      let userReads = 0;
+      let postCount = 0;
+      const attempts: { body: unknown; key: string | null }[] = [];
+      let authoritativeWorkspaces: object[] = [];
+      mockServer.use(
+        http.get('http://pertexo.test/v1/users/me', () => {
+          userReads += 1;
+          if (userReads === 3)
+            return problem(503, 'service.unavailable', 'Identity unavailable');
+          return HttpResponse.json(user);
+        }),
+        http.get('http://pertexo.test/v1/workspaces', () =>
+          HttpResponse.json({
+            items: authoritativeWorkspaces,
+            nextCursor: null,
+          }),
+        ),
+        http.post('http://pertexo.test/v1/workspaces', async ({ request }) => {
+          postCount += 1;
+          attempts.push({
+            body: await request.json(),
+            key: request.headers.get('idempotency-key'),
+          });
+          if (postCount === 1)
+            return failure === 'network'
+              ? HttpResponse.error()
+              : problem(
+                  Number(failure),
+                  'internal.unexpected',
+                  'Gateway unavailable',
+                );
+          authoritativeWorkspaces = [createdWorkspace];
+          return HttpResponse.json(workspaceResponse(), { status: 201 });
+        }),
       );
-    await userEvent
-      .setup()
-      .click(within(dialog).getByRole('button', { name: 'Create workspace' }));
-    expect(
-      await within(dialog).findByRole('button', {
-        name: 'Check again',
-      }),
-    ).toBeVisible();
+      installWorkspaceDestination();
+      renderApp('/workspaces');
+      const dialog = await openCreation('first');
+      await userEvent
+        .setup()
+        .type(
+          within(dialog).getByLabelText('Workspace name'),
+          'Signal Operations',
+        );
+      await userEvent
+        .setup()
+        .click(
+          within(dialog).getByRole('button', { name: 'Create workspace' }),
+        );
+      expect(
+        await within(dialog).findByRole('button', {
+          name: 'Check again',
+        }),
+      ).toBeVisible();
 
-    await userEvent
-      .setup()
-      .click(within(dialog).getByRole('button', { name: 'Check again' }));
-    expect(
-      await within(dialog).findByText(
-        /couldn’t confirm you’re still signed in/u,
-      ),
-    ).toBeVisible();
-    expect(postCount).toBe(1);
-    await userEvent
-      .setup()
-      .click(within(dialog).getByRole('button', { name: 'Check again' }));
-    expect(
-      await screen.findAllByRole('link', { name: 'Home', current: 'page' }),
-    ).not.toHaveLength(0);
-    expect(attempts).toHaveLength(2);
-    expect(attempts[1]).toEqual(attempts[0]);
-  });
+      await userEvent
+        .setup()
+        .click(within(dialog).getByRole('button', { name: 'Check again' }));
+      expect(
+        await within(dialog).findByText(
+          /couldn’t confirm you’re still signed in/u,
+        ),
+      ).toBeVisible();
+      expect(postCount).toBe(1);
+      await userEvent
+        .setup()
+        .click(within(dialog).getByRole('button', { name: 'Check again' }));
+      expect(
+        await screen.findAllByRole('link', { name: 'Home', current: 'page' }),
+      ).not.toHaveLength(0);
+      expect(attempts).toHaveLength(2);
+      expect(attempts[1]).toEqual(attempts[0]);
+    },
+  );
   it('keeps an uncertain request locked until it is checked or started over', async () => {
     let postCount = 0;
     installIdentity();

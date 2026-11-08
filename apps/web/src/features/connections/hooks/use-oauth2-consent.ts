@@ -2,12 +2,13 @@ import {
   oauth2CallbackLandingSchema,
   type ConnectionResponse,
 } from '@pertexo/contracts';
-import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { getConnection } from '../data/connections.api';
-import type { ConnectionMutationScope } from '../data/connections.mutations';
-import { connectionKeys } from '../data/connections.queries';
+import {
+  useConnectionResultScope,
+  type ConnectionMutationScope,
+} from '../data/connections.mutations';
 import { startOAuth2Authorization } from '../data/oauth2.api';
 import { connectionCommandError } from '../model/connection-errors';
 import { landingMessage, OAUTH2_CHANNEL } from '../model/oauth2-copy';
@@ -17,7 +18,8 @@ export type OAuth2ConsentState =
   | Readonly<{ kind: 'starting' }>
   | Readonly<{ kind: 'waiting' }>
   | Readonly<{ kind: 'blocked'; authorizationUrl: string }>
-  | Readonly<{ kind: 'failed'; message: string }>;
+  | Readonly<{ kind: 'failed'; message: string }>
+  | Readonly<{ kind: 'check-failed'; error: unknown }>;
 
 const grantTimeOf = (connection: ConnectionResponse): string | undefined =>
   connection.authType === 'oauth2' && connection.status === 'active'
@@ -39,7 +41,16 @@ export function useOAuth2Consent(
   connection: ConnectionResponse | undefined,
   onConnected: (connection: ConnectionResponse) => void,
 ) {
-  const queryClient = useQueryClient();
+  const resultScope = useConnectionResultScope(scope);
+  const [checking, setChecking] = useState(false);
+  const checkBusy = useRef(false);
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
   const [state, setState] = useState<OAuth2ConsentState>({ kind: 'idle' });
   const grantBefore = useRef<string | undefined>(undefined);
   const notifyConnected = useRef(onConnected);
@@ -48,34 +59,38 @@ export function useOAuth2Consent(
   }, [onConnected]);
   const connectionId = connection?.id;
 
-  const store = useCallback(
-    async (fresh: ConnectionResponse) => {
-      queryClient.setQueryData(
-        connectionKeys.detail(scope.userId, scope.workspaceId, fresh.id),
-        fresh,
-      );
-      await queryClient.invalidateQueries({
-        queryKey: connectionKeys.scope(scope.userId, scope.workspaceId),
-      });
-    },
-    [queryClient, scope.userId, scope.workspaceId],
-  );
-
   const refresh = useCallback(async () => {
-    if (connectionId === undefined) return;
-    const fresh = await getConnection(
-      scope.apiClient,
-      scope.workspaceId,
-      connectionId,
-    );
-    await store(fresh);
-    const grant = grantTimeOf(fresh);
-    if (grant === undefined || grant === grantBefore.current) return;
-    setState({ kind: 'idle' });
-    notifyConnected.current(fresh);
-  }, [connectionId, scope.apiClient, scope.workspaceId, store]);
+    if (connectionId === undefined || checkBusy.current) return;
+    const owner = resultScope();
+    checkBusy.current = true;
+    setChecking(true);
+    try {
+      const fresh = await getConnection(
+        scope.apiClient,
+        scope.workspaceId,
+        connectionId,
+      );
+      if (!mounted.current) return;
+      await owner.store(fresh);
+      const grant = grantTimeOf(fresh);
+      if (grant === undefined || grant === grantBefore.current) {
+        setState({ kind: 'waiting' });
+        return;
+      }
+      setState({ kind: 'idle' });
+      notifyConnected.current(fresh);
+    } catch (error) {
+      if (mounted.current) setState({ kind: 'check-failed', error });
+    } finally {
+      checkBusy.current = false;
+      if (mounted.current) setChecking(false);
+    }
+  }, [connectionId, scope.apiClient, scope.workspaceId, resultScope]);
 
-  const listening = state.kind === 'waiting' || state.kind === 'blocked';
+  const listening =
+    state.kind === 'waiting' ||
+    state.kind === 'blocked' ||
+    state.kind === 'check-failed';
   useEffect(() => {
     if (!listening) return undefined;
     const channel = new BroadcastChannel(OAUTH2_CHANNEL);
@@ -106,6 +121,7 @@ export function useOAuth2Consent(
 
   const connect = useCallback(() => {
     if (connection === undefined) return;
+    const owner = resultScope();
     grantBefore.current = grantTimeOf(connection);
     // Server to server has no sign-in page, so it opens no window.
     const popup = needsSignInWindow(connection)
@@ -119,9 +135,13 @@ export function useOAuth2Consent(
           scope.workspaceId,
           connection.id,
         );
+        if (!mounted.current) {
+          popup?.close();
+          return;
+        }
         if (started.kind === 'connected') {
           popup?.close();
-          await store(started.connection);
+          await owner.store(started.connection);
           setState({ kind: 'idle' });
           notifyConnected.current(started.connection);
           return;
@@ -139,13 +159,21 @@ export function useOAuth2Consent(
         setState({ kind: 'waiting' });
       } catch (error: unknown) {
         popup?.close();
+        if (!mounted.current) return;
         setState({
           kind: 'failed',
           message: connectionCommandError(error, 'connect', connection.name),
         });
       }
     })();
-  }, [connection, scope.apiClient, scope.workspaceId, store]);
+  }, [connection, scope.apiClient, scope.workspaceId, resultScope]);
 
-  return { state, connect } as const;
+  return {
+    state,
+    connect,
+    checking,
+    checkAgain: () => {
+      void refresh();
+    },
+  } as const;
 }

@@ -1,3 +1,4 @@
+import { registerAuditDownloadResponse } from './governance/audit-download-response.js';
 import { registerReceiveShutdown } from './platform/http/receive-shutdown.js';
 import { registerCallbackIngress } from './webhooks/callbacks/ingress.js';
 import { registerDirectoryTransport } from './authentication/federation/provisioning/transport/register-directory-transport.js';
@@ -110,6 +111,7 @@ export async function assembleApiApplication(
     const fastifyInstance: FastifyInstance = fastifyAdapter.getInstance();
     application.get(RouteTable).register(fastifyInstance);
     registerResponseSecurityHeaders(fastifyInstance);
+    registerAuditDownloadResponse(fastifyInstance);
     registerWorkflowPortabilityJsonParser(fastifyAdapter);
     registerNoticeUnsubscribeTransport(fastifyAdapter);
     registerDataTableExportTransport(fastifyAdapter);

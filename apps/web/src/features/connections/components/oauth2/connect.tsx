@@ -1,3 +1,4 @@
+import { ReadRecovery } from '@/components/patterns/states/read-recovery';
 import type { OAuth2ConnectionResponse } from '@pertexo/contracts';
 import { ExternalLinkIcon } from 'lucide-react';
 import { ProgressButton } from '@/components/ui/progress-button';
@@ -10,7 +11,13 @@ type Consent = ReturnType<typeof useOAuth2Consent>;
 /** Where a consent stands; nothing while no one has asked for one. */
 export function OAuth2ConsentStatus({
   state,
-}: Readonly<{ state: Consent['state'] }>) {
+  checking,
+  onCheckAgain,
+}: Readonly<{
+  state: Consent['state'];
+  checking: boolean;
+  onCheckAgain: () => void;
+}>) {
   switch (state.kind) {
     case 'idle':
     case 'starting':
@@ -34,6 +41,16 @@ export function OAuth2ConsentStatus({
             <ExternalLinkIcon aria-hidden="true" className="size-3.5" />
           </a>
         </Notice>
+      );
+    case 'check-failed':
+      return (
+        <ReadRecovery
+          error={state.error}
+          resource="connection completion"
+          retrying={checking}
+          retry={onCheckAgain}
+          label="Check connection again"
+        />
       );
     case 'failed':
       return (
@@ -68,7 +85,11 @@ export function OAuth2ConnectStep({
       >
         Connect
       </ProgressButton>
-      <OAuth2ConsentStatus state={consent.state} />
+      <OAuth2ConsentStatus
+        state={consent.state}
+        checking={consent.checking}
+        onCheckAgain={consent.checkAgain}
+      />
     </div>
   );
 }

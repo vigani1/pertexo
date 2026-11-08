@@ -79,7 +79,7 @@ export function ProviderRevisionNotice({
 type Provider = NonNullable<
   FederationSettings['organization']
 >['providers'][number];
-function CurrentProviderSettings({
+export function CurrentProviderSettings({
   provider,
 }: Readonly<{ provider: Provider }>) {
   const protocolFields: readonly (readonly [string, string])[] =

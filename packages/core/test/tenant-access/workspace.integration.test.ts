@@ -210,6 +210,39 @@ describe('identity/workspace persistence', () => {
     }
   });
 
+  it('keeps purging workspaces discoverable only to current members', async () => {
+    const target = await identityDatabase.createWorkspaceWithOwner({
+      name: 'Deleting workspace',
+      slug: `deleting-${randomUUID().slice(0, 12)}`,
+      ownerUserId,
+    });
+    const inspector = new Pool({ connectionString: adminDatabaseUrl, max: 1 });
+    try {
+      await inspector.query(
+        "update app.workspaces set status='purging', deletion_requested_at=clock_timestamp(), deletion_requested_by=$2, deletion_reason='Requested deletion', purge_after=clock_timestamp()+interval '30 days' where id=$1",
+        [target.id, ownerUserId],
+      );
+      const page = await identityDatabase.listAccessibleWorkspaces(ownerUserId);
+      expect(page.items).toContainEqual(
+        expect.objectContaining({ id: target.id, status: 'purging' }),
+      );
+      expect(
+        (await identityDatabase.listAccessibleWorkspaces(randomUUID())).items,
+      ).toEqual([]);
+      await inspector.query(
+        'delete from app.workspace_memberships where workspace_id=$1',
+        [target.id],
+      );
+      expect(
+        (
+          await identityDatabase.listAccessibleWorkspaces(ownerUserId)
+        ).items.map((item) => item.id),
+      ).not.toContain(target.id);
+    } finally {
+      await inspector.end();
+    }
+  });
+
   it('discovers only the actor active workspaces with stable keyset pagination', async () => {
     const second = await identityDatabase.createWorkspaceWithOwner({
       name: 'Second Accessible Workspace',

@@ -5,15 +5,6 @@ export type CreationError = Readonly<{
   message: string;
 }>;
 
-export function isUncertain(error: unknown) {
-  return (
-    isApiError(error) &&
-    (error.kind === 'network' ||
-      error.kind === 'timeout' ||
-      error.kind === 'protocol')
-  );
-}
-
 export function creationError(error: unknown): CreationError {
   if (isApiError(error)) {
     if (error.problem?.code === 'workspace.conflict')

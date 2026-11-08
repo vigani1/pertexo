@@ -12,7 +12,7 @@ import { Notice } from '@/components/ui/notice';
 import { formatDurationMs, formatDateTime } from '@/lib/format/time';
 import type { ApiClient } from '@/lib/api/client';
 import { usageTrendsQueryOptions } from '../data/usage.queries';
-import { accessLost } from '../model/usage-access';
+import { isReadAccessLost } from '@/lib/api/read-denial';
 import { UsageSnapshot } from '../components/usage-snapshot';
 import { DailyChart } from '../components/trends/daily-chart';
 import { WorkflowRankings } from '../components/trends/rankings';
@@ -35,7 +35,8 @@ export function UsageTrendsPage({
     ...usageTrendsQueryOptions(apiClient, user.id, workspace.id, period),
     enabled: allowed,
   });
-  const data = allowed && !accessLost(query.error) ? query.data : undefined;
+  const data =
+    allowed && !isReadAccessLost(query.error) ? query.data : undefined;
   return (
     <div className="flex flex-col gap-6">
       <PageHeader>

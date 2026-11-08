@@ -90,6 +90,7 @@ export function AttentionSection({
       )}
       state={mergedBlockState(main, others)}
       moreFailedRuns={hasMoreFailedRuns}
+      moreWorkflows={workflows.hasNextPage}
     />
   );
 }

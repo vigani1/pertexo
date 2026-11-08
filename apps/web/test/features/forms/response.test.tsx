@@ -195,3 +195,38 @@ it('enforces selection limits visibly without locking selected choices', async (
   await user.click(screen.getByRole('button', { name: 'Send response' }));
   expect(send).toHaveBeenCalledWith({ channels: ['SMS', 'Chat'] });
 });
+
+it.each([
+  [
+    { id: 'answer', name: 'answer', label: 'Answer', type: 'text' },
+    'textbox',
+    'Answer',
+  ],
+  [
+    {
+      id: 'answer',
+      name: 'answer',
+      label: 'Answer',
+      type: 'multi_select',
+      options: ['Email', 'SMS'],
+    },
+    'checkbox',
+    'Email',
+  ],
+] as const)(
+  'focuses the first invalid response control (%s)',
+  async (field, role, name) => {
+    render(
+      <FormResponse
+        fields={formFieldsSchema.parse([field])}
+        onSubmit={() =>
+          Promise.reject(new Error('Invalid response must not send'))
+        }
+      />,
+    );
+    await userEvent
+      .setup()
+      .click(screen.getByRole('button', { name: 'Send response' }));
+    expect(screen.getByRole(role, { name })).toHaveFocus();
+  },
+);

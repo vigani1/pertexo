@@ -49,6 +49,19 @@ export function FormPage({
   const command = useRetainedCommand(
     (body: FormSubmissionRequest, key: string) =>
       sendForm(scope, body, key, session),
+    undefined,
+    {
+      failureMessage: (cause) => {
+        if (!isApiError(cause)) return undefined;
+        if (cause.problem?.code === 'form.changed')
+          return 'This form changed. Reload the latest form before sending your response.';
+        if (cause.problem?.code === 'form.unavailable')
+          return 'This form is no longer available. Ask its owner for the current link.';
+        if (cause.problem?.code === 'form.invalid')
+          return 'Check the highlighted response fields before sending again.';
+        return undefined;
+      },
+    },
   );
   async function reload() {
     const loaded = await query.refetch();
@@ -56,7 +69,11 @@ export function FormPage({
   }
   if (command.data?.accepted)
     return <SubmissionReceipt scope={scope} receipt={command.data} />;
-  if (command.data !== undefined && 'coordinated' in command.data) {
+  if (
+    command.data !== undefined &&
+    'coordinated' in command.data &&
+    command.data.status !== 'refused'
+  ) {
     const look = describeCoordinatedEvent(command.data);
     return (
       <section className="flex flex-col gap-4">
@@ -175,6 +192,7 @@ function PublishedForm({
       ) : null}
       <FormResponse
         fields={form.fields}
+        serverError={command.cause}
         pending={command.pending}
         disabled={command.uncertain || changed || paused}
         submitLabel="Send response"
@@ -183,8 +201,9 @@ function PublishedForm({
       />
       {command.data?.accepted === false ? (
         <Notice tone="warning">
-          This workflow is busy. Try again shortly. Your response has not been
-          sent.
+          {'coordinated' in command.data
+            ? describeCoordinatedEvent(command.data).detail
+            : 'This workflow is busy. Try again shortly. Your response has not been sent.'}
         </Notice>
       ) : null}
       {command.error === undefined ? null : (

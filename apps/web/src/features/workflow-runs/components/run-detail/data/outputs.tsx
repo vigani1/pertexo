@@ -66,6 +66,7 @@ export function StepRunOutput({
     enabled: nodeRunId !== undefined,
   });
   const nothingYet =
+    !query.isError &&
     UNFINISHED.has(status) &&
     (query.data === undefined || query.data.kind === 'none');
   if (nodeRunId === undefined || nothingYet)

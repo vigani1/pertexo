@@ -50,6 +50,7 @@ const SUSPENDED_CAPABILITIES: ReadonlySet<Capability> = new Set<Capability>([
 export function withCurrentCapabilities(
   workspace: AccessibleWorkspace,
 ): AccessibleWorkspace {
+  if (workspace.status === 'purging') return { ...workspace, capabilities: [] };
   if (workspace.status !== 'suspended') return workspace;
   return {
     ...workspace,
@@ -93,6 +94,13 @@ export function workspaceAvailability(
   workspace: AccessibleWorkspace,
 ): WorkspaceAvailability {
   const openable = isWorkspaceOpenable(workspace);
+  if (workspace.status === 'purging')
+    return {
+      openable: true,
+      tone: 'attention',
+      status: 'Being deleted',
+      note: 'Deletion is in progress.',
+    };
   if (workspace.status === 'suspended')
     return {
       openable,

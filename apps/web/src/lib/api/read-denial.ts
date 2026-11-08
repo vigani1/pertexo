@@ -42,3 +42,27 @@ export function watchWorkspaceReadDenial({
     if (counts({ key: key.slice(scope.length), error })) denied(error);
   });
 }
+
+/** Read conflicts can end visibility even though command conflicts preserve authority. */
+export function isReadAccessLost(error: unknown): boolean {
+  return isApiError(error) && [401, 403, 404, 409].includes(error.status ?? 0);
+}
+
+/** Keep the rejecting read alive while canceled siblings lose their cached snapshots. */
+export async function forgetDeniedSnapshots(
+  client: QueryClient,
+  scope: readonly unknown[],
+  currentKey: readonly unknown[],
+  error: unknown,
+): Promise<void> {
+  if (!isReadAccessLost(error)) return;
+  const cache = client.getQueryCache();
+  const current = cache.find({ queryKey: currentKey, exact: true });
+  await client.cancelQueries({
+    queryKey: scope,
+    predicate: (query) => query !== current,
+  });
+  // setQueryData(undefined) is a no-op; explicitly forget without restarting the denied read.
+  for (const query of cache.findAll({ queryKey: scope }))
+    query.setState({ data: undefined, dataUpdatedAt: 0 });
+}

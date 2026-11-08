@@ -92,7 +92,7 @@ export const governanceRoutes = {
     access: { ...auditing, csrf: 'header_or_body' },
     rateLimit: 'data_table_export',
     description:
-      'At most 100,000 matching events. No snapshot guarantee. A failure after streaming starts aborts the download. Native form requests carry JSON payload and csrfToken fields; JSON requests use the CSRF header.',
+      'At most 100,000 matching events. No snapshot guarantee. A failure after streaming starts aborts the download. Native form requests carry JSON payload and csrfToken fields; native HTML refusals show safe recovery in the download tab. JSON requests use the CSRF header and retain problem+json errors.',
     body: filter,
     requestDocument: {
       required: true,
@@ -123,6 +123,17 @@ export const governanceRoutes = {
         content: { 'text/csv': { schema: { type: 'string' } } },
       },
     },
-    problems,
+    problems: Object.fromEntries(
+      Object.entries(problems).map(([status, response]) => [
+        status,
+        {
+          ...response,
+          content: {
+            ...response.content,
+            'text/html': { schema: { type: 'string' } },
+          },
+        },
+      ]),
+    ),
   }),
 };

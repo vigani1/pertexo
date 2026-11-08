@@ -2,8 +2,6 @@ import { DialogFooter } from '@/components/ui/dialog';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { DialogClose } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Link } from '@tanstack/react-router';
-import { Notice } from '@/components/ui/notice';
 import { ChoiceCards } from '@/components/patterns/choice-cards';
 import { GitBranchIcon, RotateCcwIcon } from 'lucide-react';
 import { workflowRunVersionQueryOptions } from '../../data/detail.queries';
@@ -24,7 +22,7 @@ import { useRunReplay } from '../../data/mutations/use-run-replay';
 import { useNewerPublishedVersion } from '../../hooks/use-newer-published-version';
 import { useRunInput } from '../../hooks/use-run-input';
 import { workflowRunInputQueryOptions } from '../../data/stored-values.queries';
-import { RunInputFields } from '../run-input-fields';
+import { ReplayInputPanel } from './replay-input-panel';
 
 function useSourceVersion({
   apiClient,
@@ -151,13 +149,6 @@ function ReplayVersionChoice({
 
 /** The original input as the text the field shows, while it's still kept. */
 /** Read only once the dialog opens: run input can be sensitive, and most never open it. */
-function useOriginalInput(
-  query: ReturnType<typeof workflowRunInputQueryOptions>,
-  open: boolean,
-) {
-  return useQuery({ ...query, enabled: open });
-}
-
 function originalInputText(data: WorkflowRunData | undefined) {
   return data?.kind === 'inline'
     ? JSON.stringify(data.value, null, 2)
@@ -258,10 +249,15 @@ export function ReplayRunDialog({
       onRunAccepted(runId);
     },
   });
-  const original = useOriginalInput(
-    workflowRunInputQueryOptions(apiClient, userId, workspaceId, sourceRunId),
-    open,
-  );
+  const original = useQuery({
+    ...workflowRunInputQueryOptions(
+      apiClient,
+      userId,
+      workspaceId,
+      sourceRunId,
+    ),
+    enabled: open,
+  });
   const originalText = originalInputText(original.data);
   const runInput = useReplayInput({
     originalText,
@@ -286,7 +282,9 @@ export function ReplayRunDialog({
   }
 
   const inputMissing =
-    (formReplay && originalText === undefined) || original.isPending;
+    (formReplay && originalText === undefined) ||
+    original.isPending ||
+    (original.isError && !replay.unconfirmed);
   const cannotStart = replay.expired || version.pending || inputMissing;
   return (
     <ConfirmDialog
@@ -325,35 +323,26 @@ export function ReplayRunDialog({
       >
         <ReplayVersionChoice
           version={version}
-          disabled={replay.pending || replay.unconfirmed || original.isPending}
+          disabled={
+            replay.pending ||
+            replay.unconfirmed ||
+            original.isPending ||
+            original.isError
+          }
         />
-        <p className="text-sm text-muted-foreground">
-          Replay keeps the source run’s workspace variables. Start a new run to
-          use current values.
-        </p>
-        <RunInputFields
-          idPrefix="replay-run"
-          inputLabel="Replay input (JSON)"
+        <ReplayInputPanel
+          original={original}
           runInput={runInput}
-          disabled={replay.pending || replay.unconfirmed || original.isPending}
-          inputReadOnly={formReplay}
+          locked={
+            replay.pending ||
+            replay.unconfirmed ||
+            original.isPending ||
+            original.isError
+          }
+          formReplay={formReplay}
+          workspaceId={workspaceId}
+          workflowId={workflowId}
         />
-        {formReplay ? (
-          <Notice
-            action={
-              <Link
-                to="/w/$workspaceId/forms/$workflowId"
-                params={{ workspaceId, workflowId }}
-                className="underline underline-offset-4"
-              >
-                Open workflow form
-              </Link>
-            }
-          >
-            The original fields, submitter and submission time stay fixed. If
-            the captured input expired, send a new response.
-          </Notice>
-        ) : null}
       </ConfirmationDetails>
     </ConfirmDialog>
   );

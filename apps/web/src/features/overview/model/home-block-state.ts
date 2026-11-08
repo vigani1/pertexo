@@ -27,7 +27,7 @@ export function queryBlockState(query: BlockQuery): HomeBlockState {
 }
 
 /**
- * A block that merges several reads: it has data once its main read does,
+ * A block that merges several reads: its evidence is complete when all have data,
  * and any failed read shows the retry, which re-reads only the failed ones.
  */
 export function mergedBlockState(
@@ -37,12 +37,12 @@ export function mergedBlockState(
   const all = [main, ...others];
   const failed = all.filter((query) => query.isError);
   return {
-    pending: main.isPending,
+    pending: all.some((query) => query.isPending),
     error: failed[0]?.error,
     failed: failed.length > 0,
-    hasData: main.data !== undefined,
+    hasData: all.every((query) => query.data !== undefined),
     retrying: all.some((query) => query.isRefetching),
-    updatedAt: main.dataUpdatedAt,
+    updatedAt: Math.min(...all.map((query) => query.dataUpdatedAt)),
     onRetry: () => {
       for (const query of failed) void query.refetch();
     },

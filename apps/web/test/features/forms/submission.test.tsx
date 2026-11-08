@@ -205,11 +205,103 @@ it.each([
     expect(await screen.findByText(detail, { exact: true })).toBeVisible();
     expect(screen.queryByRole('heading', { name: 'Response sent' })).toBeNull();
     expect(screen.queryByRole('link', { name: 'Continue' })).toBeNull();
-    await user.click(
-      screen.getByRole('button', { name: 'Send another response' }),
-    );
+    if (status === 'refused') {
+      expect(screen.getByLabelText('Message', { exact: true })).toHaveValue(
+        'Order update',
+      );
+    } else {
+      await user.click(
+        screen.getByRole('button', { name: 'Send another response' }),
+      );
+    }
     expect(
       await screen.findByLabelText('Message', { exact: true }),
     ).toBeVisible();
   },
 );
+
+it('keeps a coordinated capacity refusal editable and sends a fresh attempt with the retained answers', async () => {
+  const writes: { key: string | null; body: unknown }[] = [];
+  mockServer.use(
+    http.get(path, () => HttpResponse.json({ versionId, form })),
+    http.post(`${path}/submit`, async ({ request }) => {
+      writes.push({
+        key: request.headers.get('Idempotency-Key'),
+        body: await request.json(),
+      });
+      return HttpResponse.json(
+        writes.length === 1
+          ? {
+              accepted: false,
+              coordinated: true,
+              eventId: publicId,
+              outcome: 'refused',
+              status: 'refused',
+              reason: 'coordination_full',
+              replayed: false,
+            }
+          : { accepted: true, replayed: false, thankYouMessage: 'Received' },
+      );
+    }),
+  );
+  mount();
+  const user = userEvent.setup();
+  await user.type(
+    await screen.findByLabelText('Message', { exact: true }),
+    'Keep my answers',
+  );
+  await user.click(screen.getByRole('button', { name: 'Send response' }));
+  await screen.findByText(
+    'The workspace has too many pending events or active keys. Try again shortly.',
+  );
+  expect(screen.getByLabelText('Message', { exact: true })).toHaveValue(
+    'Keep my answers',
+  );
+  await user.click(screen.getByRole('button', { name: 'Send response' }));
+  await screen.findByRole('heading', { name: 'Response sent' });
+  expect(writes).toHaveLength(2);
+  expect(writes[1]?.key).not.toBe(writes[0]?.key);
+  expect(writes[1]?.body).toEqual(writes[0]?.body);
+});
+
+it('places a safe server field instruction on the retained response and focuses its correction', async () => {
+  mockServer.use(
+    http.get(path, () => HttpResponse.json({ versionId, form })),
+    http.post(`${path}/submit`, () =>
+      HttpResponse.json(
+        {
+          type: 'urn:pertexo:problem:form.invalid',
+          title: 'Check the form fields',
+          status: 400,
+          code: 'form.invalid',
+          requestId: 'field-refusal',
+          errors: [
+            {
+              path: 'message',
+              code: 'invalid_value',
+              message:
+                'A file is no longer available. Remove it and upload it again.',
+            },
+          ],
+        },
+        {
+          status: 400,
+          headers: { 'content-type': 'application/problem+json' },
+        },
+      ),
+    ),
+  );
+  mount();
+  const user = userEvent.setup();
+  const message = await screen.findByLabelText('Message', { exact: true });
+  await user.type(message, 'Retain these answers');
+  await user.click(screen.getByRole('button', { name: 'Send response' }));
+  expect(
+    await screen.findByText(
+      'A file is no longer available. Remove it and upload it again.',
+    ),
+  ).toBeVisible();
+  expect(message).toHaveValue('Retain these answers');
+  expect(message).toHaveAttribute('aria-invalid', 'true');
+  expect(message).toHaveFocus();
+});

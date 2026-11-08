@@ -1,6 +1,9 @@
 import { screen, within } from '@testing-library/react';
 import { expect, it } from 'vitest';
-import { StepExecutionHistory } from '@/features/workflow-runs/components/run-detail/execution-history';
+import {
+  StepExecutionHistory,
+  PhoneFailureNotice,
+} from '@/features/workflow-runs/components/run-detail/execution-history';
 import type { RunTimelineRow } from '@/features/workflow-runs/model/timeline/runs';
 import { renderInRouter } from '../../../support/render-in-router';
 import { fixtureWorkspace } from '../../../support/fixtures/run';
@@ -58,5 +61,36 @@ it.each(['execution.file_input', 'execution.attempt_invalid'])(
       else expect(within(entry).getByText(latest)).toBeVisible();
     }
     expect(screen.getAllByText(latest)).toHaveLength(1);
+  },
+);
+
+it.each(['failed', 'timed_out'] as const)(
+  'shows the safe step explanation in the phone notice for a %s run',
+  async (status) => {
+    renderInRouter(
+      <PhoneFailureNotice
+        run={{ status }}
+        workspace={workspace}
+        rows={[
+          {
+            key: 'send',
+            nodeId: 'send',
+            label: 'Send request',
+            status,
+            tone: 'failure',
+            statusLabel: 'Failed',
+            attempts: 1,
+            segments: [],
+            story: [],
+            outputs: [],
+            safeErrorCode: 'execution.attempt_invalid',
+            errorSummary: 'Add the required Authorization header.',
+          },
+        ]}
+      />,
+    );
+    expect(
+      await screen.findByText('Add the required Authorization header.'),
+    ).toBeVisible();
   },
 );
