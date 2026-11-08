@@ -1,3 +1,4 @@
+import { PublicationResources } from '../validation/publication-resources';
 import { QueryView } from '@/components/patterns/states/query-view';
 import { publicationAction } from '../../model/publication/action';
 import { useState } from 'react';
@@ -78,15 +79,7 @@ function summaryState({
   return loading ? 'loading' : 'error';
 }
 
-export function PublicationControls({
-  scope,
-  workflowId,
-  publication,
-  capabilities,
-  onPublished,
-  draft,
-  validation,
-}: Readonly<{
+type PublicationControlsProps = Readonly<{
   scope: ReviewScope;
   workflowId: string;
   publication: WorkflowPublication;
@@ -104,7 +97,17 @@ export function PublicationControls({
     emptyHint: ReturnType<typeof emptyDraftHint>;
     onFix: (target: WorkflowValidationTarget) => void;
   }>;
-}>) {
+}>;
+
+export function PublicationControls({
+  scope,
+  workflowId,
+  publication,
+  capabilities,
+  onPublished,
+  draft,
+  validation,
+}: PublicationControlsProps) {
   const { workflow, graph, revision, isSavedDraftCurrent, savedDraftCurrent } =
     draft;
 
@@ -197,12 +200,17 @@ export function PublicationControls({
             />
           ),
           suiteNotice: (
-            <SuitePublishNotice
-              scope={{ apiClient, userId, workspaceId, workflowId }}
-              savedDraftCurrent={savedDraftCurrent}
-              enabled={publishOpen}
-              capabilities={capabilities}
-            />
+            <>
+              <SuitePublishNotice
+                scope={{ apiClient, userId, workspaceId, workflowId }}
+                savedDraftCurrent={savedDraftCurrent}
+                enabled={publishOpen}
+                capabilities={capabilities}
+              />
+              {issues.publicationRefused && (
+                <PublicationResources workspaceId={workspaceId} />
+              )}
+            </>
           ),
         }}
         issues={{ blockingGroups: issues.blockingGroups, onFix }}

@@ -77,6 +77,9 @@ for (const width of [375, 1280])
     await expect(
       dialog.getByRole('button', { name: `Fix: ${messages[0]}` }),
     ).toBeVisible();
+    await expect(
+      dialog.getByRole('link', { name: 'Variables', exact: true }),
+    ).toHaveAttribute('href', `/w/${workspaceId}/settings/variables`);
     await page.keyboard.press('Escape');
     await page.getByRole('button', { name: /2 issues/u }).click();
     const issues = page.getByRole('region', { name: '2 issues', exact: true });

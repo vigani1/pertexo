@@ -1,7 +1,10 @@
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { expect, it, vi } from 'vitest';
-import { SaveState } from '@/features/workflow-editor/components/chrome/save-state';
+import {
+  SaveState,
+  SaveFailureNotice,
+} from '@/features/workflow-editor/components/chrome/save-state';
 import { EditorStoreContext } from '@/features/workflow-editor/model/state/context';
 import { createEditorStore } from '@/features/workflow-editor/model/state/workflow-editor.store';
 
@@ -14,6 +17,7 @@ it('announces save outcomes and keeps recovery actions with their owner', async 
   render(
     <EditorStoreContext value={store}>
       <SaveState onRetry={retry} onReview={review} />
+      <SaveFailureNotice />
     </EditorStoreContext>,
   );
   const status = screen.getByRole('status');
@@ -59,6 +63,7 @@ it('says unsaved work waits for the connection while offline', () => {
   render(
     <EditorStoreContext value={store}>
       <SaveState onRetry={vi.fn()} onReview={vi.fn()} />
+      <SaveFailureNotice />
     </EditorStoreContext>,
   );
   const status = screen.getByRole('status');
@@ -83,6 +88,7 @@ it('gives a failed save its reason and drops it once a save succeeds', () => {
   render(
     <EditorStoreContext value={store}>
       <SaveState onRetry={vi.fn()} onReview={vi.fn()} />
+      <SaveFailureNotice />
     </EditorStoreContext>,
   );
   const status = screen.getByRole('status');

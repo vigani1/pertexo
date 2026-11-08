@@ -1,3 +1,4 @@
+import { PublicationResources } from './publication-resources';
 import type { WorkflowGraphContract } from '@pertexo/contracts';
 import { RefreshCwIcon, XIcon } from 'lucide-react';
 import { useId } from 'react';
@@ -20,6 +21,7 @@ import { IssuesList } from './issues-list';
  */
 export function IssuesLens({
   open,
+  workspaceId,
   state,
   graph,
   triggersAvailable,
@@ -28,6 +30,7 @@ export function IssuesLens({
   onFix,
 }: Readonly<{
   open: boolean;
+  workspaceId?: string;
   state: IssuesState;
   graph: WorkflowGraphContract;
   /** The catalog offers a trigger to start an empty draft with. */
@@ -107,6 +110,10 @@ export function IssuesLens({
               onFix(target);
             }}
           />
+          <RefusedPublicationResources
+            state={state}
+            workspaceId={workspaceId}
+          />
         </div>
       ) : null}
     </section>
@@ -123,4 +130,12 @@ function describeState(state: IssuesState, count: number | undefined) {
     : '';
   if (count === 0) return `Nothing blocks publishing.${staleNote}`;
   return `Review these before publishing or running.${staleNote}`;
+}
+
+function RefusedPublicationResources({
+  state,
+  workspaceId,
+}: Readonly<{ state: IssuesState; workspaceId: string | undefined }>) {
+  if (!state.publicationRefused || workspaceId === undefined) return null;
+  return <PublicationResources workspaceId={workspaceId} />;
 }

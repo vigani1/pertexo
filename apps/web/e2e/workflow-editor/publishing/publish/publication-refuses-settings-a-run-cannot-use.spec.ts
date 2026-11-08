@@ -58,7 +58,11 @@ test('a publish refused for settings a run cannot use says why, publishes nothin
   const dialog = page.getByRole('dialog', { name: 'Publish v1', exact: true });
   await dialog.getByRole('button', { name: 'Publish v1', exact: true }).click();
 
-  await expect(dialog.getByText(refusal, { exact: true })).toBeVisible();
+  await expect(
+    dialog
+      .getByRole('region', { name: 'Blocking issues' })
+      .getByText(refusal, { exact: true }),
+  ).toBeVisible();
   expect(attempts).toBe(1);
   expect(remote.graph).toEqual(savedGraph);
   await expect(page.getByText(/^v1 is /u)).toHaveCount(0);
