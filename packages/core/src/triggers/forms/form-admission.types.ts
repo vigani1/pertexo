@@ -44,7 +44,7 @@ export type SetFormAccessInput = FormScope &
   (
     | Extract<FormAccessRequest, { access: 'members' }>
     | (Extract<FormAccessRequest, { access: 'public' }> &
-        Readonly<{ sealedCapability: SealedConnectionSecret }>)
+        Readonly<{ sealedCapability: SealedConnectionSecret | null }>)
   ) &
   Readonly<{ actorId: string; idempotencyKey: string }>;
 

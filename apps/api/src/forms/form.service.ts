@@ -1,8 +1,10 @@
+import { Logger } from '@nestjs/common';
 import type { FormStore, PublicFormGrant } from '@pertexo/core/triggers';
 import type { FormAccessRequest } from '@pertexo/contracts';
 import type { ConnectionSecretEncryptionPort } from '../connections/ports.js';
 
 export class FormService {
+  private readonly logger = new Logger(FormService.name);
   constructor(
     private readonly store: FormStore,
     private readonly encryption?: ConnectionSecretEncryptionPort,
@@ -22,8 +24,12 @@ export class FormService {
   async access(input: Parameters<FormStore['access']>[0]) {
     const { sealedCapability, ...access } = await this.store.access(input);
     if (sealedCapability === null) return { ...access, capability: null };
-    if (this.encryption === undefined)
-      throw new Error('Form capability encryption is unavailable');
+    if (this.encryption === undefined) {
+      this.logger.warn(
+        'Form capability encryption is unavailable; the saved public link cannot be shown.',
+      );
+      return { ...access, capability: null };
+    }
     const plaintext = await this.encryption.open(
       sealedCapability,
       capabilityContext(input),
@@ -43,8 +49,13 @@ export class FormService {
       FormAccessRequest,
   ) {
     if (input.access === 'members') return this.store.setAccess(input);
-    if (this.encryption === undefined)
-      throw new Error('Form capability encryption is unavailable');
+    if (this.encryption === undefined) {
+      const changed = await this.store.setAccess({
+        ...input,
+        sealedCapability: null,
+      });
+      return { ...changed, capability: input.capability };
+    }
     const plaintext = new TextEncoder().encode(input.capability);
     try {
       const sealedCapability = await this.encryption.seal(
