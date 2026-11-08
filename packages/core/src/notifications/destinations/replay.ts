@@ -8,7 +8,7 @@ const destinationReplaySchema = z
   .object({
     id: z.uuid(),
     workspaceId: z.uuid(),
-    kind: z.enum(['slack', 'email']),
+    kind: z.enum(['slack', 'email', 'system_mail']),
     status: z.enum(['enabled', 'disabled']),
     currentVersion: z.number().int().positive(),
     config: FailureNotificationDestinationConfigSchema,

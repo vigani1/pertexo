@@ -15,3 +15,9 @@ export type {} from './policies/admission.repository.js';
 export type {} from './delivery/evidence.repository.js';
 
 export type {} from './destinations/notification-policy.js';
+
+export { createFailureNotificationMailAuthorizer } from './delivery/system-mail-authorizer.store.js';
+export type {
+  FailureNotificationMailSealer,
+  FailureNotificationMailToSeal,
+} from './delivery/system-mail.types.js';

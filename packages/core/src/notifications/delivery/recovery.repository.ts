@@ -1,3 +1,4 @@
+import { reconcileSystemMail } from './system-mail-recovery.repository.js';
 import { z } from 'zod';
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
@@ -61,12 +62,14 @@ export function recoverFailureNotifications(
         await withWorkspaceScope(
           client,
           { workspaceId: claim.workspace_id },
-          (scoped) =>
-            persistRecovery(
+          async (scoped) => {
+            if (await reconcileSystemMail(scoped, claim)) return;
+            await persistRecovery(
               scoped,
               claim,
               decideRecovery(claim, bounds.maxAttempts),
-            ),
+            );
+          },
         );
       }
       return claims.rows.length;

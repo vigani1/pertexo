@@ -190,6 +190,7 @@ export class ConnectionsModule {
           dependencies.destinationPersistence,
           dependencies.applicationSecret,
           telemetry,
+          dependencies.systemMailAvailable,
         ),
       });
     if (dependencies.usagePersistence !== undefined)

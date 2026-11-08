@@ -73,7 +73,14 @@ describe('failure notification destination API seams', () => {
       updatedAt: '2026-08-25T10:00:00.000Z',
     };
     expect(created).toEqual(exactResponse);
-    expect(listed).toEqual({ items: [exactResponse], nextCursor: null });
+    expect(listed).toEqual({
+      items: [exactResponse],
+      nextCursor: null,
+      systemMail: {
+        available: false,
+        reason: 'This server has no system mail configured.',
+      },
+    });
     expect(fetched).toEqual(exactResponse);
     expect(appended).toEqual(exactResponse);
     expect(status).toEqual(exactResponse);

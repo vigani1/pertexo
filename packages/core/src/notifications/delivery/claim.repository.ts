@@ -1,3 +1,5 @@
+import { queueSystemMail } from './system-mail-queue.repository.js';
+import type { FailureNotificationMailSealer } from './system-mail.types.js';
 import { decodeStoredValue } from '../../shared/stored-values.js';
 import { createHash } from 'node:crypto';
 
@@ -28,6 +30,7 @@ import { auditFailureNotification as audit } from './evidence.repository.js';
 export function claimDelivery(
   pool: Pool,
   input: ClaimDeliveryInput,
+  seal?: FailureNotificationMailSealer,
 ): Promise<FailureNotificationClaimResult> {
   const { workspaceId, intentId, delivery, maxAttempts } = input;
   return withTenantScopedClient(
@@ -110,6 +113,14 @@ export function claimDelivery(
         throw new FailureNotificationStateError('Intent lifecycle is corrupt');
       const prepared = prepareNotificationClaim(row);
       const { attemptNumber } = prepared;
+      if (
+        await queueSystemMail(
+          client,
+          { ...input, attemptNumber, context: prepared.context },
+          seal,
+        )
+      )
+        return Object.freeze({ kind: 'busy' as const });
       const marked = await db
         .update(intents)
         .set({
@@ -219,9 +230,6 @@ function prepareNotificationClaim(row: FailureIntentRow) {
   const attemptNumber = row.delivery_attempts + 1;
   const connectionSecretVersionId =
     row.dispatched_secret_version_id ?? row.connection_secret_version_id;
-  // Missing persisted evidence must retain the worker's retry behavior.
-  if (connectionSecretVersionId === null)
-    throw new Error('Intent credential pin is missing');
 
   return { context, attemptNumber, connectionSecretVersionId };
 }
@@ -234,6 +242,10 @@ function readyNotificationClaim(
     connectionSecretVersionId,
   }: ReturnType<typeof prepareNotificationClaim>,
 ): Extract<FailureNotificationClaimResult, { kind: 'ready' }> {
+  // Missing persisted evidence must retain the worker's retry behavior.
+  if (connectionSecretVersionId === null)
+    throw new Error('Intent credential pin is missing');
+
   return Object.freeze({
     kind: 'ready' as const,
     attemptNumber,

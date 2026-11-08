@@ -430,6 +430,10 @@ describe('connections real Nest HTTP stack', () => {
     });
     expect(listed.statusCode).toBe(200);
     expect(listed.json()).toEqual({
+      systemMail: {
+        available: false,
+        reason: 'This server has no system mail configured.',
+      },
       nextCursor: null,
       items: [
         expect.objectContaining({ id: destinationId, currentVersion: 2 }),

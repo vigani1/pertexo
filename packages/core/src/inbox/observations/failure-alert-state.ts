@@ -49,9 +49,11 @@ export function failureAlertAttention({
   latestAlertUndelivered,
 }: FailureAlertFacts): Readonly<{ active: boolean; sourceRevision: string }> {
   const honourable =
-    eligibleNotificationDestination(destination) &&
-    eligibleNotificationConnection(destination.kind, connection) &&
-    connection.secret_exists;
+    destination.kind === 'system_mail'
+      ? destination.destination_status === 'enabled'
+      : eligibleNotificationDestination(destination) &&
+        eligibleNotificationConnection(destination.kind, connection) &&
+        connection.secret_exists;
   const policyStranded = hasPolicy && !honourable;
   const undelivered =
     destination.destination_status === 'enabled' && latestAlertUndelivered;

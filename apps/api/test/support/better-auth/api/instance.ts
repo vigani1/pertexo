@@ -173,11 +173,13 @@ export function useBetterAuthRealApi(
                   {
                     identityRuntime,
                     applicationSecret: identity.betterAuth.secret,
+                    systemMailAvailable: options.notificationMail !== undefined,
                   },
                 )
               : createFixtureConnectionRuntime(databaseConfig, {
                   identityRuntime,
                   applicationSecret: identity.betterAuth.secret,
+                  systemMailAvailable: options.notificationMail !== undefined,
                   services: options.connections.services(),
                 }),
             (runtime) => runtime.close(),

@@ -148,6 +148,7 @@ async function acquireIdentityWorkflows(
       {
         identityRuntime,
         applicationSecret: identity.betterAuth.secret,
+        systemMailAvailable: identity.betterAuth.durableMail !== undefined,
         smtpPolicy: {
           allowedPrivateNetworks: config.httpAllowedPrivateNetworks ?? [],
           allowPlaintext: config.smtpAllowPlaintext ?? false,

@@ -1,3 +1,4 @@
+import { useSystemMailAvailability } from '../hooks/use-system-mail-availability';
 import { useCommandAttempt } from '@/lib/api/commands/use-command-attempt';
 import { ExpiredAttemptNotice } from '@/components/patterns/states/expired-attempt-notice';
 import {
@@ -5,7 +6,7 @@ import {
   newCommandKey,
   type CommandKey,
 } from '@/lib/api/commands/command-retry';
-import { usableConnections } from '../model/destination-copy';
+import { canAddAlert } from '../model/destination-copy';
 import { useId, useState } from 'react';
 import type {
   ConnectionResponse,
@@ -46,6 +47,7 @@ import {
   destinationErrors,
   destinationServerErrors,
   toDestinationConfig,
+  destinationFormValues,
   type DestinationField,
 } from '../model/destination-copy';
 import {
@@ -88,12 +90,7 @@ function initialValues(
 ): DestinationValues {
   if (destination === undefined)
     return { kind: 'slack', connectionId: null, target: '' };
-  const { config } = destination;
-  return {
-    kind: config.kind,
-    connectionId: config.connectionId,
-    target: config.kind === 'slack' ? config.channelId : config.toEmail,
-  };
+  return destinationFormValues(destination.config);
 }
 
 /**
@@ -216,9 +213,11 @@ export function DestinationForm(props: DestinationFormProps) {
           <DestinationFields
             id={model.id}
             workspaceId={model.scope.workspaceId}
+            scope={model.scope}
+            systemMail={model.systemMail}
             editing={model.editing}
             disabled={model.mutation.isPending}
-            connections={model.connections}
+            connections={props.connections}
             channelHint={savedChannelHint(
               model.destination,
               model.values,
@@ -274,10 +273,7 @@ export function DestinationForm(props: DestinationFormProps) {
           variant="primary"
           pending={model.mutation.isPending}
           pendingLabel="Saving…"
-          disabled={
-            !model.editing &&
-            usableConnections(model.connections, model.values.kind).length === 0
-          }
+          disabled={!model.editing && !model.canAdd}
         >
           {submitLabel({ uncertain: model.uncertain, editing: model.editing })}
         </ProgressButton>
@@ -296,6 +292,7 @@ function useDestinationForm({
   onCancel,
 }: DestinationFormProps) {
   const id = useId();
+  const systemMail = useSystemMailAvailability(scope, destination);
   const notifications = useNotifications();
   const editing = destination !== undefined;
   const [values, setValues] = useState(() => initialValues(destination));
@@ -329,7 +326,10 @@ function useDestinationForm({
 
   async function submit() {
     if (mutation.isPending) return;
-    if (!validation.submit(errorsFor(values)) || values.connectionId === null)
+    if (
+      !validation.submit(errorsFor(values)) ||
+      (values.kind === 'system_mail' && !systemMail.available)
+    )
       return;
     const config = toDestinationConfig(
       values.kind,
@@ -377,6 +377,8 @@ function useDestinationForm({
 
   return {
     uncertain,
+    canAdd: canAddAlert(connections, values.kind, systemMail.available),
+    systemMail,
     attempt,
     submit,
     editing,
@@ -385,7 +387,6 @@ function useDestinationForm({
     scope,
     values,
     mutation,
-    connections,
     destination,
     channelNames,
     validation,

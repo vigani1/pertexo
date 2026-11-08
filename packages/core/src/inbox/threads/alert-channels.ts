@@ -3,4 +3,4 @@ import type { FailureNotificationDestinationConfig } from '@pertexo/workflow-mod
 /** What a failure alert notice calls the place alerts aren't reaching. */
 export const FAILURE_ALERT_CHANNEL_NAMES: Readonly<
   Record<FailureNotificationDestinationConfig['kind'], string>
-> = { slack: 'Slack', email: 'email' };
+> = { slack: 'Slack', email: 'email', system_mail: 'server mail' };

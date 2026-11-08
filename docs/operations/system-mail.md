@@ -114,3 +114,28 @@ for the socket; changing DNS cannot bypass the check. Metadata addresses remain
 blocked even with a broad allowlist. Keep the allowlist narrow because it also
 applies to other outbound connections. No second SMTP library or mail server is
 required.
+
+## Shared failure alerts using system mail
+
+The existing `AUTH_MAIL_FROM`, application mail key ring and system-mail
+transport also serve **Send with this server's mail** failure destinations.
+No additional provider credential or transport setting is required. Both the
+API's durable sign-in mail configuration and the worker's system-mail sender
+must be configured, just as for ordinary instance mail.
+
+The queue purpose `workflow_failure_alert` links a delivery to its failure
+intent by the same ID. Queueing and claiming that intent commit atomically.
+Existing delivery leases, twelve bounded attempts, expiry and reconciliation
+apply. The normal failure-alert recovery pass observes provider acceptance
+before marking the intent delivered, including after worker restart.
+
+Only a current workspace member's verified account address is eligible. The
+worker checks the member and queued address again immediately before dispatch,
+and checks that the reviewed destination version is still current and enabled.
+Removing a member, changing their address, editing or disabling the destination
+prevents the old queued message. Shared alerts do not use personal preferences
+or unsubscribe links.
+
+Sign-in and security mail keep priority over personal notices and shared failure
+alerts in this queue. Failure-alert volume cannot move an older workflow alert
+ahead of a due security message.

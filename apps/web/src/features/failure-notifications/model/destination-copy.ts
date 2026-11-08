@@ -20,6 +20,8 @@ function destinationTarget(
   config: FailureNotificationDestinationConfig,
   names: ChannelNames,
 ): Readonly<{ target: string; note: string | undefined }> {
+  if (config.kind === 'system_mail')
+    return { target: `Member ${config.memberId.slice(0, 8)}`, note: undefined };
   return config.kind === 'slack'
     ? describeChannel(
         config.channelId,
@@ -36,13 +38,32 @@ export function describeDestination(
   destination: Pick<FailureNotificationDestinationResponse, 'config'>,
   connections: readonly ConnectionResponse[],
   names: ChannelNames = new Map(),
+  members: readonly Readonly<{
+    userId: string;
+    email: string;
+    displayName: string;
+  }>[] = [],
 ): Readonly<{
   label: string;
   connectionProblem: string | undefined;
   channelNote: string | undefined;
 }> {
+  if (destination.config.kind === 'system_mail') {
+    const memberId = destination.config.memberId;
+    const member = members.find((person) => person.userId === memberId);
+    const target =
+      member === undefined
+        ? `Member ${memberId.slice(0, 8)}`
+        : `${member.displayName} · ${member.email}`;
+    return {
+      label: `${target} via this server's mail`,
+      connectionProblem: undefined,
+      channelNote: undefined,
+    };
+  }
+  const config = destination.config;
   const connection = connections.find(
-    (candidate) => candidate.id === destination.config.connectionId,
+    (candidate) => candidate.id === config.connectionId,
   );
   const via = connection?.name ?? 'a connection you can’t see';
   let connectionProblem: string | undefined;
@@ -75,6 +96,13 @@ function targetError(
   target: string,
 ): string | undefined {
   const value = target.trim().replace(/^#/u, '');
+  if (kind === 'system_mail')
+    return failureNotificationDestinationConfigSchema.safeParse({
+      kind,
+      memberId: value,
+    }).success
+      ? undefined
+      : 'Choose a workspace member.';
   if (value === '')
     return kind === 'slack'
       ? 'Enter the channel ID, like C0123456789.'
@@ -103,6 +131,7 @@ function connectionError(
   connectionId: string | null,
   connections: readonly ConnectionResponse[],
 ): string | undefined {
+  if (kind === 'system_mail') return undefined;
   const usable = usableConnections(connections, kind);
   if (usable.some((connection) => connection.id === connectionId))
     return undefined;
@@ -130,10 +159,15 @@ export function destinationErrors(
 /** The destination configuration for a form with no errors. */
 export function toDestinationConfig(
   kind: DestinationKind,
-  connectionId: string,
+  connectionId: string | null,
   target: string,
 ): FailureNotificationDestinationConfig {
   const value = target.trim().replace(/^#/u, '');
+  if (kind === 'system_mail')
+    return failureNotificationDestinationConfigSchema.parse({
+      kind,
+      memberId: value,
+    });
   return failureNotificationDestinationConfigSchema.parse(
     kind === 'slack'
       ? { kind, connectionId, channelId: value }
@@ -147,7 +181,17 @@ export function destinationServerErrors(
   issues: readonly ApiProblemIssue[],
 ): DestinationErrors {
   const errors: Partial<Record<DestinationField, string>> = {};
-  const targetField = kind === 'slack' ? 'channelId' : 'toEmail';
+  const targetField = {
+    slack: 'channelId',
+    email: 'toEmail',
+    system_mail: 'memberId',
+  }[kind];
+  if (kind === 'system_mail') {
+    for (const issue of issues)
+      if (issue.path.split(/[/.]/u).at(-1) === 'memberId')
+        errors.target = 'Choose a current workspace member.';
+    return errors;
+  }
   for (const issue of issues) {
     const field = issue.path.split('.').at(-1);
     if (field === 'connectionId')
@@ -160,4 +204,35 @@ export function destinationServerErrors(
           : 'This email address can’t receive alerts. Check it and try again.';
   }
   return errors;
+}
+
+/** The input draft for a saved destination; server mail has no connection. */
+export function destinationFormValues(
+  config: FailureNotificationDestinationConfig,
+) {
+  switch (config.kind) {
+    case 'system_mail':
+      return { kind: config.kind, connectionId: null, target: config.memberId };
+    case 'slack':
+      return {
+        kind: config.kind,
+        connectionId: config.connectionId,
+        target: config.channelId,
+      };
+    case 'email':
+      return {
+        kind: config.kind,
+        connectionId: config.connectionId,
+        target: config.toEmail,
+      };
+  }
+}
+
+export function canAddAlert(
+  connections: readonly ConnectionResponse[],
+  kind: DestinationKind,
+  systemMailAvailable: boolean,
+): boolean {
+  if (kind === 'system_mail') return systemMailAvailable;
+  return usableConnections(connections, kind).length > 0;
 }

@@ -57,7 +57,7 @@ const HOW_ALERTS_WORK: readonly HowItWorksStep[] = [
   },
   {
     title: 'Pertexo posts it',
-    body: 'To the Slack channel or email address chosen in that workflow’s Settings, through one of this workspace’s connections.',
+    body: 'To the destination chosen in that workflow’s Settings, through a workspace connection or this server’s mail.',
   },
   {
     title: 'Someone finds the run',

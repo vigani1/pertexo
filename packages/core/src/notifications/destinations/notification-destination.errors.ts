@@ -1,5 +1,5 @@
 export type FailureNotificationDestinationErrorCode =
-  'conflict' | 'idempotency_conflict' | 'not_found';
+  'conflict' | 'idempotency_conflict' | 'not_found' | 'recipient_unavailable';
 
 export class FailureNotificationDestinationError extends Error {
   public override readonly name = 'FailureNotificationDestinationError';

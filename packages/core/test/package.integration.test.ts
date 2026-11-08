@@ -1,5 +1,6 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
+import { fileURLToPath } from 'node:url';
 import { expect, it } from 'vitest';
 import { maintenanceUrl } from './lifecycle/retention.support.js';
 
@@ -42,4 +43,20 @@ it('the built lifecycle entry pauses erasure outside a transaction and releases 
     error: 'copy failed',
     released: true,
   });
+});
+
+it('loads the failure-alert authorization and durable notification store from the built entry', async () => {
+  const { stdout } = await promisify(execFile)(
+    process.execPath,
+    [
+      '--input-type=module',
+      '--eval',
+      `
+    import { createFailureNotificationStore, createFailureNotificationMailAuthorizer } from '@pertexo/core/notifications';
+    process.stdout.write(JSON.stringify([typeof createFailureNotificationStore, typeof createFailureNotificationMailAuthorizer]));
+  `,
+    ],
+    { cwd: fileURLToPath(new URL('..', import.meta.url)), timeout: 20_000 },
+  );
+  expect(JSON.parse(stdout)).toEqual(['function', 'function']);
 });

@@ -25,3 +25,7 @@ Resend's test continues to ask permission before sending its real test message.
 Use the connection in [Send email](email.md) or a shared email failure-alert
 destination. Replacing SMTP credentials requires all fields again; the password
 is never read back. Existing Resend connections keep working.
+
+Failure alerts can also use **Send with this server's mail**, with a current
+workspace member as recipient. That destination needs no connection. See
+[notifications](notifications.md#failure-alerts-through-this-server).

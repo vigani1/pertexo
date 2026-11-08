@@ -82,6 +82,10 @@ export function loadDestination(
           'Delivery destination is unavailable',
         );
       const config = row.config;
+      if (config.kind === 'system_mail')
+        throw new FailureNotificationStateError(
+          'System mail uses its durable queue',
+        );
       const connectionId = config.connectionId;
       const secretVersionId = row.secretVersionId;
       await recordCredentialAccess(client, {
@@ -180,6 +184,7 @@ export async function fenceDispatch(
         .catch(rethrowQueryFailure);
       if (
         source?.configVersion !== input.destinationIdentity.configVersion ||
+        source.config.kind === 'system_mail' ||
         source.config.connectionId !== input.destinationIdentity.connectionId ||
         source.secretVersionId !== input.destinationIdentity.secretVersionId
       )

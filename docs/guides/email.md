@@ -16,3 +16,7 @@ is unknown remains unknown and is never automatically sent again. Check the
 relay before explicitly replaying or retrying that step. A definite refusal before
 acceptance can use the existing retry policy. Resend retains its existing
 provider-idempotent behavior.
+
+For shared failure alerts without an email connection, choose **Send with this
+server's mail** in Alerts. It sends only to a chosen current workspace member's
+verified account address. See [notifications](notifications.md#failure-alerts-through-this-server).

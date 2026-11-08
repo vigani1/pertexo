@@ -130,3 +130,22 @@ destination in a workflow's failure-alert settings. SMTP sender and TLS settings
 come from the connection. These shared alerts are independent of personal email
 preferences. A successful delivery means the mail service accepted the message;
 an uncertain SMTP delivery is not automatically repeated.
+
+### Failure alerts through this server
+
+In **Alerts → Add destination**, choose **Send with this server's mail** and
+choose a workspace member. Each destination addresses one member and needs no
+email connection. The member's current verified account address is used; there
+is no free-form recipient field. Personal email preferences do not turn off a
+shared failure-alert destination.
+
+A member who leaves or is suspended stops receiving. A changed account address
+or edited destination invalidates already queued mail; a later failed run uses
+the current choice. Turning off the destination also prevents queued dispatch.
+When server mail is not configured, the option is unavailable and explains why.
+
+These alerts use the durable sign-in mail queue. Saving or queueing an alert is
+not delivery: it completes after the mail provider accepts it. Temporary errors
+retry through that queue. Uncertain SMTP acceptance requires reconciliation and
+is not automatically sent again. The connection-test action applies to
+connection-backed destinations; server-mail destinations deliver on run failure.

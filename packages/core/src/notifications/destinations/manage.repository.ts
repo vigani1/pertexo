@@ -1,3 +1,4 @@
+import { readSystemMailRecipient } from '../delivery/system-mail-recipient.repository.js';
 import { FailureNotificationDestinationError } from './notification-destination.errors.js';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import {
@@ -237,6 +238,20 @@ async function assertConnection(
   workspaceId: string,
   config: DestinationConfig,
 ): Promise<string> {
+  if (config.kind === 'system_mail') {
+    if (
+      (await readSystemMailRecipient(
+        drizzle(client),
+        workspaceId,
+        config.memberId,
+      )) === undefined
+    )
+      throw new FailureNotificationDestinationError(
+        'recipient_unavailable',
+        'Recipient is not a current workspace member',
+      );
+    return 'system_mail';
+  }
   const result = await drizzle(client)
     .select({
       auth_type: connections.authType,

@@ -1,3 +1,4 @@
+import { requestInputError } from '../../platform/http/request-input.js';
 import { FAILURE_NOTIFICATION_DESTINATION_LIST_LIMIT } from '@pertexo/workflow-model';
 import { Injectable } from '@nestjs/common';
 import {
@@ -106,11 +107,21 @@ export class FailureNotificationDestinationUseCases {
     private readonly database: NotificationDestinationStore,
     private readonly applicationSecret: string,
     private readonly telemetry: ConnectionTelemetry = NOOP_CONNECTION_TELEMETRY,
+    private readonly systemMailAvailable = false,
   ) {}
+
+  private assertSystemMail(kind: string): void {
+    if (kind === 'system_mail' && !this.systemMailAvailable)
+      throw requestInputError(
+        ['kind'],
+        'This server has no system mail configured.',
+      );
+  }
 
   public create(
     input: CreateFailureNotificationDestinationInput,
   ): Promise<FailureNotificationDestinationResponse> {
+    this.assertSystemMail(input.body.kind);
     return this.telemetry.measure(
       CONNECTION_OPERATION.destinationCreate,
       async () =>
@@ -139,6 +150,12 @@ export class FailureNotificationDestinationUseCases {
     });
     return {
       items: records.map(response),
+      systemMail: this.systemMailAvailable
+        ? { available: true }
+        : {
+            available: false,
+            reason: 'This server has no system mail configured.',
+          },
       nextCursor:
         records.length === FAILURE_NOTIFICATION_DESTINATION_LIST_LIMIT
           ? (records.at(-1)?.id ?? null)
@@ -158,6 +175,7 @@ export class FailureNotificationDestinationUseCases {
   public append(
     input: AppendFailureNotificationDestinationVersionInput,
   ): Promise<FailureNotificationDestinationResponse> {
+    this.assertSystemMail(input.body.config.kind);
     return this.telemetry.measure(
       CONNECTION_OPERATION.destinationAppend,
       async () =>

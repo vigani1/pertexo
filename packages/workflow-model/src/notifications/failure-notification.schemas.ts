@@ -8,6 +8,7 @@ const safeCodeSchema = z.string().regex(/^[a-z][a-z0-9._:-]{0,127}$/u);
 export const FailureNotificationDestinationConfigSchema = z.discriminatedUnion(
   'kind',
   [
+    z.object({ kind: z.literal('system_mail'), memberId: z.uuid() }).strict(),
     z
       .object({
         kind: z.literal('slack'),

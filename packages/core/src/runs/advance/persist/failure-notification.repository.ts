@@ -1,11 +1,12 @@
 import { notificationFailures } from '@pertexo/workflow-engine/server';
-import { and, eq, isNotNull, sql } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres';
 import {
   nodeRuns,
   workflowRuns,
   runFailureNotificationIntents,
   outboxEvents,
+  failureNotificationDestinationVersions as notificationVersions,
 } from '@pertexo/database/schema';
 import {
   rethrowQueryFailure,
@@ -324,7 +325,7 @@ function notificationSource(
           workflowRuns.failureNotificationSideEffectClass,
           record.pins.sideEffectClass,
         ),
-        isNotNull(workflowRuns.failureNotificationConnectionSecretVersionId),
+        sql`(${workflowRuns.failureNotificationConnectionSecretVersionId} is not null or exists(select 1 from ${notificationVersions} where ${notificationVersions.workspaceId}=${workflowRuns.workspaceId} and ${notificationVersions.destinationId}=${workflowRuns.failureNotificationDestinationId} and ${notificationVersions.version}=${workflowRuns.failureNotificationDestinationConfigVersion} and ${notificationVersions.kind}='system_mail'))`,
       ),
     );
 }

@@ -122,6 +122,8 @@ export class TestConnectionUseCase {
     input: Omit<TestConnectionCommand, 'connectionId' | 'request'>,
     destination: FailureNotificationDestinationResponse,
   ): Promise<ConnectionTestResponse> {
+    if (destination.config.kind === 'system_mail')
+      throw smtp.systemMailTestUnavailable();
     return this.run(
       {
         ...input,
