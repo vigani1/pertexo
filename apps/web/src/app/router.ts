@@ -1,12 +1,18 @@
 import {
   isUnauthenticated,
   currentUserQueryKey,
+  currentUserQueryOptions,
 } from '@/features/auth/session/auth-session-queries.public';
-import { createRouter, type RouterHistory } from '@tanstack/react-router';
+import {
+  createRouter,
+  isRedirect,
+  type RouterHistory,
+} from '@tanstack/react-router';
 import { hashKey, type QueryClient } from '@tanstack/react-query';
 import type { ApiClient } from '@/lib/api/client';
 import { PagePending } from '../routes/root/status/pending';
 import { routeTree } from '../routes/root/route-tree';
+import { loadCurrentUser } from '../routes/root/route-context';
 
 export function createAppRouter(
   queryClient: QueryClient,
@@ -35,9 +41,7 @@ export function createAppRouter(
     scrollRestoration: true,
     ...(history ? { history } : {}),
   });
-  // A read warmed without holding navigation found the session gone:
-  // reloading the current matches re-runs the workspace's session check,
-  // which signs out and sends the person to sign in.
+  // Verify component-read refusals without rewarming the same rejected resource forever.
   let recovering = false;
   revalidate = () => {
     if (recovering) return;
@@ -45,23 +49,37 @@ export function createAppRouter(
     const editorIsOpen = router.state.matches.some(
       (match) => match.routeId === '/w/$workspaceId/workflows/$workflowId',
     );
-    // The mounted editor observes this query and pauses without losing its draft.
+    const previous = queryClient.getQueryData(
+      currentUserQueryOptions(apiClient).queryKey,
+    );
+    // The editor observes identity and pauses with its draft intact. Other pages reuse
+    // the loader's account-change fence before updating their route context.
     const recovery = editorIsOpen
       ? queryClient.refetchQueries({
           queryKey: currentUserQueryKey,
           exact: true,
         })
-      : router.invalidate();
+      : loadCurrentUser({
+          queryClient,
+          apiClient,
+          onSessionExpired: revalidate,
+        }).then(
+          async (current) => {
+            if (current.id !== previous?.id) await router.invalidate();
+          },
+          async (error: unknown) => {
+            if (isRedirect(error)) await router.invalidate();
+          },
+        );
     void recovery.finally(() => {
       recovering = false;
     });
   };
   queryClient.getQueryCache().subscribe((event) => {
-    // The initial session loader owns its own redirect; invalidating it here would cancel that redirect.
+    // Identity loaders own their redirects; invalidating them from their own error cancels that redirect.
     if (
       event.type === 'updated' &&
-      event.query.queryHash === hashKey(currentUserQueryKey) &&
-      event.query.state.data === undefined
+      event.query.queryHash === hashKey(currentUserQueryKey)
     )
       return;
 
