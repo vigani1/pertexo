@@ -351,3 +351,43 @@ describe('settling system mail', () => {
     expect(settled.payload_ciphertext).toBeNull();
   });
 });
+
+it.each(['provider', 'lost_claim'] as const)(
+  'keeps %s uncertainty through a later definite failure and fences stale settlements',
+  async (source) => {
+    const id = await queue({}, 'workflow_failure_alert');
+    const first = await claimOne(id);
+    if (source === 'lost_claim') {
+      await admin.query(
+        "update app.system_mail_deliveries set lease_expires_at=clock_timestamp()-interval '1 second' where id=$1",
+        [id],
+      );
+    } else {
+      await store.settle({
+        ...identity(first),
+        outcome: 'retry',
+        uncertain: true,
+        retryAt: new Date(Date.now() - MINUTE),
+      });
+    }
+    const second = await claimOne(id);
+    expect(
+      await store.settle({ ...identity(first), outcome: 'submitted' }),
+    ).toBe(false);
+    expect(await store.settle({ ...identity(second), outcome: 'failed' })).toBe(
+      true,
+    );
+    expect(
+      (
+        await admin.query(
+          'select status,had_uncertain_attempt,payload_ciphertext from app.system_mail_deliveries where id=$1',
+          [id],
+        )
+      ).rows[0],
+    ).toEqual({
+      status: 'failed',
+      had_uncertain_attempt: true,
+      payload_ciphertext: null,
+    });
+  },
+);

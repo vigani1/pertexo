@@ -172,6 +172,7 @@ async function deliverClaim(
         ...claimIdentity(claim),
         outcome: 'reconciliation_required',
         failureCode: 'delivery.transport',
+        uncertain: true,
       });
       return;
     }
@@ -179,6 +180,7 @@ async function deliverClaim(
       now: now,
       random: random,
       failureCode: 'delivery.transport',
+      uncertain: true,
     });
     return;
   }
@@ -219,6 +221,7 @@ async function deliverClaim(
       ...claimIdentity(claim),
       outcome: 'reconciliation_required',
       failureCode,
+      uncertain: true,
     });
     return;
   }
@@ -236,7 +239,13 @@ function settleRetry(
     now,
     random,
     failureCode,
-  }: Readonly<{ now: () => Date; random: () => number; failureCode: string }>,
+    uncertain,
+  }: Readonly<{
+    now: () => Date;
+    random: () => number;
+    failureCode: string;
+    uncertain?: true;
+  }>,
 ): Promise<boolean> {
   const base = Math.min(3_600_000, 1_000 * 2 ** (claim.attemptCount - 1));
   const delay = Math.round(base + base * 0.25 * random());
@@ -244,6 +253,7 @@ function settleRetry(
     ...claimIdentity(claim),
     outcome: 'retry',
     failureCode,
+    ...(uncertain === undefined ? {} : { uncertain }),
     retryAt: new Date(now().getTime() + delay),
   });
 }

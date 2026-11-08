@@ -183,6 +183,14 @@ and reconciliation own provider work; the existing failure-alert recovery pass
 completes the intent only after real provider acceptance. A queued message is
 not a delivered alert.
 
+Alert recovery reads the delivery's durable `had_uncertain_attempt` fact, rather
+than inferring certainty from the final queue status. A lost claim or uncertain
+provider result sets that fact permanently for the retained delivery, including
+through expiry and payload cleanup. An expired unresolved claim remains possibly
+dispatched; exhausted definite failures are a definite dead letter. A submitted
+message is delivered. The additive defaulted column changes only alert recovery
+mapping; identity mail retains its existing statuses, leases and retry policy.
+
 Recipients come from current membership and a verified account address. The
 worker rechecks that address and membership immediately before dispatch against
 the pinned destination version. A removed/suspended member, changed address,

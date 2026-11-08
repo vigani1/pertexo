@@ -19,7 +19,11 @@ export async function reconcileSystemMail(
 ): Promise<boolean> {
   const db = drizzle(client);
   const [delivery] = await db
-    .select({ status: mail.status, failureCode: mail.failureCode })
+    .select({
+      status: mail.status,
+      failureCode: mail.failureCode,
+      hadUncertainAttempt: mail.hadUncertainAttempt,
+    })
     .from(mail)
     .where(
       and(eq(mail.id, claim.id), eq(mail.purpose, 'workflow_failure_alert')),
@@ -41,8 +45,7 @@ export async function reconcileSystemMail(
   }
   let status: 'delivered' | 'outcome_unknown' | 'dead_letter' = 'dead_letter';
   if (delivery.status === 'submitted') status = 'delivered';
-  else if (delivery.status === 'reconciliation_required')
-    status = 'outcome_unknown';
+  else if (delivery.hadUncertainAttempt) status = 'outcome_unknown';
   const possiblyDispatched = status !== 'dead_letter';
   const safeErrorCode = delivery.failureCode ?? undefined;
   await db

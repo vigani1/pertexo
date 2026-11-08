@@ -124,6 +124,7 @@ export const unsentAuthenticationMail = {
         .update(systemMailDeliveries)
         .set({
           status: sql`case when ${systemMailDeliveries.expiresAt}<=clock_timestamp() then 'expired' else 'reconciliation_required' end`,
+          hadUncertainAttempt: sql`${systemMailDeliveries.hadUncertainAttempt} or ${systemMailDeliveries.status}='outcome_unknown'`,
           payloadCiphertext: null,
           payloadNonce: null,
           payloadTag: null,
