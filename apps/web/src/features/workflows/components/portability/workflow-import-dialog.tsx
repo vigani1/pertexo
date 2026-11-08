@@ -20,6 +20,7 @@ import { useImportDraft } from './use-import-draft';
 import { PortabilityAccessDeniedDialog } from './access-denied-dialog';
 
 type WorkflowImportDialogProps = Readonly<{
+  draft?: ReturnType<typeof useImportDraft>;
   onClose: () => void;
   onCreated: (workflowId: string) => void;
   open?: boolean;
@@ -49,12 +50,20 @@ export function WorkflowImportDialog(props: WorkflowImportDialogProps) {
         onClose={props.onClose}
       />
     );
-  return (
-    <WorkflowImportSession
+  return props.draft === undefined ? (
+    <OwnedImportDialog
       key={`${props.scope.userId}:${props.scope.workspace.id}`}
       {...props}
     />
+  ) : (
+    <WorkflowImportSession {...props} draft={props.draft} />
   );
+}
+
+function OwnedImportDialog(props: WorkflowImportDialogProps) {
+  const { apiClient, userId, workspace } = props.scope;
+  const draft = useImportDraft(apiClient, userId, workspace, props.initialName);
+  return <WorkflowImportSession {...props} draft={draft} />;
 }
 
 function WorkflowImportSession({
@@ -63,12 +72,12 @@ function WorkflowImportSession({
   open = true,
   onReopen,
   example,
-  initialName = '',
+  draft,
   scope,
-}: WorkflowImportDialogProps) {
+}: WorkflowImportDialogProps &
+  Readonly<{ draft: ReturnType<typeof useImportDraft> }>) {
   const { apiClient, userId, workspace } = scope;
 
-  const draft = useImportDraft(apiClient, userId, workspace, initialName);
   // The example the dialog opened on is chosen once; after that, by hand.
   const [opening, setOpening] = useState(example);
   return (

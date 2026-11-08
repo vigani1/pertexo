@@ -1,3 +1,4 @@
+import type { useImportDraft } from '../../portability/use-import-draft';
 import type { AccessibleWorkspace, WorkflowSummary } from '@pertexo/contracts';
 import type { ApiClient } from '@/lib/api/client';
 import { NewWorkflowSheet } from '../../creation/new-workflow-sheet';
@@ -12,6 +13,7 @@ import {
 } from '../../../model/list-view';
 
 type ListOverlaysProps = Readonly<{
+  importDraft: ReturnType<typeof useImportDraft>;
   scope: Readonly<{
     apiClient: ApiClient;
     userId: string;
@@ -42,6 +44,7 @@ type ListOverlaysProps = Readonly<{
   }>;
 }>;
 export function WorkflowListOverlays({
+  importDraft,
   scope,
   creation,
   selection,
@@ -124,10 +127,10 @@ export function WorkflowListOverlays({
           }}
         />
       )}
-      {/* A file import and each example keep their own session, so a
-          retained file import isn't mixed with an example's setup. */}
+      {/* Source selection cannot replace the list-owned unresolved command. */}
       <WorkflowImportDialog
         key={`${userId}:${workspace.id}:${example ?? 'file'}:${exampleName}`}
+        draft={importDraft}
         open={importing}
         example={example}
         initialName={exampleName}

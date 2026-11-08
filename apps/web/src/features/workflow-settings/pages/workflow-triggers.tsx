@@ -1,3 +1,5 @@
+import { ReadRecovery } from '@/components/patterns/states/read-recovery';
+import { Notice } from '@/components/ui/notice';
 import type {
   AccessibleWorkspace,
   UserProfileResponse,
@@ -184,12 +186,13 @@ function TriggersSession({
   const schedules = useQuery(
     scheduleTriggersQueryOptions(apiClient, user.id, workspace.id, workflowId),
   );
-  const versions = useQuery(
-    workflowVersionsQueryOptions(apiClient, user.id, workspace.id, workflowId),
-  );
-  const summary = useQuery(
-    workflowSummaryQueryOptions(apiClient, user.id, workspace.id, workflowId),
-  );
+  const publication = useTriggerPublication({
+    apiClient,
+    user,
+    workspace,
+    workflowId,
+  });
+  const { versions, summary, form, onFailure, publicationKnown } = publication;
   const webhookItems = visibleSettingsData(webhooks)?.items;
   const scheduleItems = visibleSettingsData(schedules)?.items;
   const stepName = (
@@ -204,15 +207,6 @@ function TriggersSession({
     editable,
   };
 
-  // Form and failure triggers have nothing to manage here, but they still
-  // start runs, so the page must not claim the version has no trigger.
-  const kinds = publishedTriggerKinds(
-    versions.data?.items,
-    summary.data?.publishedVersionId,
-  );
-  const form = kinds?.includes('core.form') ?? false;
-  const onFailure = kinds?.includes('core.workflow_error') ?? false;
-
   // Only someone who can read webhooks knows the version has none.
   const needsFirstTrigger = hasNoPublishedTriggers({
     editable,
@@ -221,7 +215,7 @@ function TriggersSession({
     form,
     onFailure,
   });
-  if (needsFirstTrigger)
+  if (publicationKnown && needsFirstTrigger)
     return (
       <NoTriggers
         workspaceId={workspace.id}
@@ -231,6 +225,7 @@ function TriggersSession({
     );
   return (
     <div className="flex flex-col">
+      <PublicationDiscovery discovery={publication} />
       {form ? (
         <SettingsSection
           title="Form"
@@ -317,5 +312,72 @@ function hasNoPublishedTriggers({
 }>) {
   return (
     editable && webhookCount === 0 && scheduleCount === 0 && !form && !onFailure
+  );
+}
+
+function useTriggerPublication({
+  apiClient,
+  user,
+  workspace,
+  workflowId,
+}: TriggersPageProps) {
+  const versions = useQuery(
+    workflowVersionsQueryOptions(apiClient, user.id, workspace.id, workflowId),
+  );
+  const summary = useQuery(
+    workflowSummaryQueryOptions(apiClient, user.id, workspace.id, workflowId),
+  );
+  // Form and failure triggers have nothing to manage here, but they still
+  // start runs, so the page must not claim the version has no trigger.
+  const kinds = publishedTriggerKinds(
+    visibleSettingsData(versions)?.items,
+    visibleSettingsData(summary)?.publishedVersionId,
+  );
+  const form = kinds?.includes('core.form') ?? false;
+  const onFailure = kinds?.includes('core.workflow_error') ?? false;
+
+  const publicationKnown =
+    summary.isSuccess &&
+    !summary.isFetching &&
+    (summary.data.publishedVersionId === null ||
+      (versions.isSuccess && !versions.isFetching && kinds !== undefined));
+  return { versions, summary, kinds, form, onFailure, publicationKnown };
+}
+
+function PublicationDiscovery({
+  discovery,
+}: Readonly<{ discovery: ReturnType<typeof useTriggerPublication> }>) {
+  const { versions, summary, kinds } = discovery;
+  return (
+    <>
+      <QueryView
+        query={summary}
+        resource="The current publication"
+        failure={settingsReadFailure}
+      />
+      {summary.data?.publishedVersionId === null ? null : (
+        <QueryView
+          query={versions}
+          resource="The published version"
+          failure={settingsReadFailure}
+        />
+      )}
+      {summary.isSuccess &&
+      summary.data.publishedVersionId !== null &&
+      versions.isSuccess &&
+      kinds === undefined ? (
+        <Notice tone="warning">
+          <ReadRecovery
+            error={undefined}
+            resource="The published version"
+            message="The current published version is missing from the loaded versions. Reload it to discover its triggers."
+            retrying={summary.isFetching || versions.isFetching}
+            retry={() => {
+              void Promise.all([summary.refetch(), versions.refetch()]);
+            }}
+          />
+        </Notice>
+      ) : null}
+    </>
   );
 }

@@ -1,3 +1,4 @@
+import { useImportDraft } from '../components/portability/use-import-draft';
 import { WorkflowListResults } from '../components/list/results';
 import { WorkflowListOverlays } from '../components/list/commands/overlays';
 import { useRef, useState, type ComponentProps } from 'react';
@@ -62,6 +63,7 @@ function WorkflowListContent({
   // The example a start-from-example dialog opened on; none imports a file.
   const [example, setExample] = useState<string>();
   const [exampleName, setExampleName] = useState('');
+  const importDraft = useImportDraft(apiClient, user.id, workspace);
   const runner = useRunWorkflow({
     apiClient,
     userId: user.id,
@@ -74,8 +76,14 @@ function WorkflowListContent({
   }
 
   function openImport(nextExample?: string, name = '') {
-    setExampleName(name);
-    setExample(nextExample);
+    if (
+      !importDraft.locked &&
+      (nextExample !== example || name !== exampleName)
+    ) {
+      importDraft.resetSource(name);
+      setExampleName(name);
+      setExample(nextExample);
+    }
     setImporting(true);
   }
 
@@ -150,6 +158,7 @@ function WorkflowListContent({
         }}
       />
       <WorkflowListOverlays
+        importDraft={importDraft}
         scope={{ apiClient, userId: user.id, workspace }}
         creation={{
           canCreate,
