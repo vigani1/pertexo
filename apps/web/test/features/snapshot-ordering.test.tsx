@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { user as currentUser } from './workflows/list/fixtures';
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -25,8 +26,10 @@ it.each(['connection', 'folder'] as const)(
   'confirms %s sharing from a read started after acceptance',
   async (kind) => {
     let release: (() => void) | undefined;
+    let releaseConfirmation: (() => void) | undefined;
     let reads = 0;
     let saved = false;
+    let changedAgain = false;
     const original =
       kind === 'connection'
         ? {
@@ -61,6 +64,11 @@ it.each(['connection', 'folder'] as const)(
         });
         return json(original);
       }
+      if (reads === 3)
+        await new Promise<void>((resolve) => {
+          releaseConfirmation = resolve;
+        });
+      if (changedAgain) return json({ ...original, revision: 3 });
       return json(
         saved ? { ...original, mode: 'restricted', revision: 2 } : original,
       );
@@ -77,10 +85,14 @@ it.each(['connection', 'folder'] as const)(
       defaultOptions: { queries: { retry: false } },
     });
     function Connection() {
-      const editor = useConnectionSharingEditor(scope, resourceId);
+      const [confirmed, setConfirmed] = useState(false);
+      const editor = useConnectionSharingEditor(scope, resourceId, () => {
+        setConfirmed(true);
+      });
       return (
         <>
           <p>{editor.command.error}</p>
+          {confirmed ? <p>Sharing confirmed</p> : null}
           <output>
             {editor.snapshot?.mode}:{editor.snapshot?.revision}
           </output>
@@ -102,10 +114,14 @@ it.each(['connection', 'folder'] as const)(
       );
     }
     function Folder() {
-      const editor = useFolderSharingEditor(scope, resourceId);
+      const [confirmed, setConfirmed] = useState(false);
+      const editor = useFolderSharingEditor(scope, resourceId, () => {
+        setConfirmed(true);
+      });
       return (
         <>
           <p>{editor.command.error}</p>
+          {confirmed ? <p>Sharing confirmed</p> : null}
           <output>
             {editor.snapshot?.mode}:{editor.snapshot?.revision}
           </output>
@@ -149,8 +165,20 @@ it.each(['connection', 'folder'] as const)(
       release?.();
       await reading;
     });
+    await waitFor(() => {
+      expect(releaseConfirmation).toBeDefined();
+    });
+    expect(screen.queryByText('Sharing confirmed')).not.toBeInTheDocument();
+    act(() => {
+      releaseConfirmation?.();
+    });
     await screen.findByText('restricted:2');
-    expect(reads).toBeGreaterThanOrEqual(3);
+    await screen.findByText('Sharing confirmed');
+    changedAgain = true;
+    await act(async () => {
+      await cache.refetchQueries();
+    });
+    expect(await screen.findByText('workspace:3')).toBeVisible();
     cache.clear();
   },
 );
@@ -166,6 +194,7 @@ it('keeps accepted federation settings visible when an older settings read finis
       name: 'Accepted organization',
     },
   };
+  let changedAgain = false;
   const fetch = vi.fn<typeof globalThis.fetch>(async (_url, init) => {
     if (init?.method === 'POST') return json(accepted);
     reads += 1;
@@ -173,7 +202,18 @@ it('keeps accepted federation settings visible when an older settings read finis
       await new Promise<void>((resolve) => {
         release = resolve;
       });
-    return json(settings);
+    return json(
+      changedAgain
+        ? {
+            ...accepted,
+            organization: {
+              ...accepted.organization,
+              revision: 3,
+              name: 'Changed again on server',
+            },
+          }
+        : settings,
+    );
   });
   const scope = {
     apiClient: createApiClient({
@@ -232,5 +272,10 @@ it('keeps accepted federation settings visible when an older settings read finis
     cache.getQueryData(federationSettingsQueryOptions(scope).queryKey),
   ).toEqual(accepted);
   expect(screen.getByText('Accepted organization')).toBeVisible();
+  changedAgain = true;
+  await act(async () => {
+    await cache.refetchQueries();
+  });
+  expect(await screen.findByText('Changed again on server')).toBeVisible();
   cache.clear();
 });

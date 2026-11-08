@@ -60,7 +60,13 @@ function setup(status: number, designed = false) {
           }}
         />
       ) : null;
-    return <QueryView query={query} resource="Notes" />;
+    return (
+      <QueryView query={query} resource="Notes">
+        {(value) => (
+          <output aria-label="Server result">{JSON.stringify(value)}</output>
+        )}
+      </QueryView>
+    );
   }
   render(
     <QueryClientProvider client={cache}>
@@ -96,6 +102,34 @@ it('disables read retries until Retry-After has counted down', async () => {
   expect(
     screen.getByText('Too many requests. You can try again now.'),
   ).toBeVisible();
+  cache.clear();
+});
+it('retries a failed first read and displays the recovered server result', async () => {
+  vi.spyOn(document, 'hidden', 'get').mockReturnValue(false);
+  let now = Date.now();
+  vi.spyOn(Date, 'now').mockImplementation(() => now);
+  const { fetch, cache } = setup(500);
+  expect(await screen.findByText('full-safe-support-reference')).toBeVisible();
+  fetch.mockResolvedValueOnce(
+    new Response(JSON.stringify({ recovered: true }), {
+      headers: { 'content-type': 'application/json' },
+    }),
+  );
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  });
+  now += 2_100;
+  act(() => {
+    document.dispatchEvent(new Event('visibilitychange'));
+  });
+  const retry = await screen.findByRole('button', { name: 'Retry' });
+  await userEvent.setup().click(retry);
+  expect(await screen.findByLabelText('Server result')).toHaveTextContent(
+    '{"recovered":true}',
+  );
+  expect(
+    screen.queryByText('full-safe-support-reference'),
+  ).not.toBeInTheDocument();
   cache.clear();
 });
 it('retains the full safe support reference on a failed first read', async () => {

@@ -131,6 +131,10 @@ for (const width of [375, 1280]) {
     await installEditorRoutes(page, remoteDraft());
     let stage = 0;
     await page.route(`**/v1/workspaces/${workspaceId}/variables`, (route) => {
+      if (stage === 3)
+        return route.fulfill({
+          json: { revision: 1, values: {}, descriptions: {} },
+        });
       const status = [429, 500, 401][stage] ?? 401;
       const code = stage < 2 ? 'internal.unexpected' : 'auth.unauthenticated';
       return route.fulfill({
@@ -159,18 +163,41 @@ for (const width of [375, 1280]) {
       path: test.info().outputPath(`read-recovery-${String(width)}.png`),
     });
     stage = 2;
-    await page.route('**/v1/users/me', (route) =>
+    await page.route('**/v1/auth/capabilities', (route) =>
       route.fulfill({
-        status: 401,
-        contentType: 'application/problem+json',
         json: {
-          type: 'about:blank',
-          title: 'Session ended',
-          status: 401,
-          code: 'auth.unauthenticated',
-          requestId: 'expired-session',
+          password: {
+            enabled: true,
+            minimumLength: 12,
+            verificationRequired: true,
+          },
+          socialProviders: [],
+          signUp: 'open',
         },
       }),
+    );
+    await page.route('**/v1/auth/sign-in/email', (route) => {
+      expect(route.request().postDataJSON()).toMatchObject({
+        email: 'operator@example.test',
+        password: 'correct horse battery staple',
+      });
+      stage = 3;
+      return route.fulfill({ json: { redirect: false, token: null, user } });
+    });
+    await page.route('**/v1/users/me', (route) =>
+      stage === 3
+        ? route.fulfill({ json: user })
+        : route.fulfill({
+            status: 401,
+            contentType: 'application/problem+json',
+            json: {
+              type: 'about:blank',
+              title: 'Session ended',
+              status: 401,
+              code: 'auth.unauthenticated',
+              requestId: 'expired-session',
+            },
+          }),
     );
     await page.clock.fastForward(2_100);
     await page.getByRole('button', { name: 'Retry', exact: true }).click();
@@ -179,6 +206,18 @@ for (const width of [375, 1280]) {
     expect(url.searchParams.get('returnTo')).toBe(
       `/w/${workspaceId}/settings/variables`,
     );
+    await expect(
+      page.getByRole('heading', { name: 'Sign in to continue' }),
+    ).toBeVisible();
+    await page.getByLabel('Email').fill('operator@example.test');
+    await page
+      .getByLabel('Password', { exact: true })
+      .fill('correct horse battery staple');
+    await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+    await expect(page).toHaveURL(`/w/${workspaceId}/settings/variables`);
+    await expect(
+      page.getByText('No workspace variables configured.'),
+    ).toBeVisible();
   });
 }
 
