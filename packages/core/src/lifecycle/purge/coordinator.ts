@@ -1,6 +1,6 @@
 import { and, asc, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import { workspaces } from '@pertexo/database/schema';
+import { workspaceMemberships, workspaces } from '@pertexo/database/schema';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import type { z } from 'zod';
 import { claimPurgeWorkspace } from './directory.repository.js';
@@ -157,6 +157,12 @@ async function finishPurge(
       .catch(rethrowQueryFailure);
     // Another worker owns it, or has finished it.
     if (locked.length !== 1) return { status: 'idle' as const };
+    await scopeToWorkspace(client, workspaceId);
+    // Discovery must survive object erasure and disappear with the tombstone.
+    await drizzle(client)
+      .delete(workspaceMemberships)
+      .where(eq(workspaceMemberships.workspaceId, workspaceId))
+      .catch(rethrowQueryFailure);
     await assertNothingLeft(client, workspaceId);
     await drizzle(client)
       .update(workspaces)
