@@ -122,7 +122,7 @@ test('browses Call versions on demand while retaining an old exact pin', async (
   await page.getByRole('button', { name: 'Load more versions' }).click();
   await expect(
     page.getByText(
-      'More versions couldn’t be loaded. The ones above are unchanged.',
+      'More versions couldn’t be reached. Check your connection and try again. The ones above are unchanged.',
     ),
   ).toBeVisible();
   await expect(

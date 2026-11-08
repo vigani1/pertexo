@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { LoadMore } from '../../src/components/patterns/lists/load-more';
+import { ApiError } from '../../src/lib/api/error';
 import { SkeletonRows } from '../../src/components/ui/skeleton';
 
 describe('list states', () => {
@@ -43,6 +44,25 @@ describe('list states', () => {
     );
     expect(screen.getByRole('alert')).toHaveTextContent(
       'More members couldn’t be loaded. The ones above are unchanged.',
+    );
+    expect(
+      screen.getByRole('button', { name: 'Retry next page' }),
+    ).toBeEnabled();
+  });
+
+  it('names why the next page failed and keeps the loaded rows reassurance', () => {
+    render(
+      <LoadMore
+        subject="versions"
+        hasNextPage
+        loading={false}
+        failed
+        error={new ApiError({ kind: 'network', message: 'offline' })}
+        onLoadMore={vi.fn()}
+      />,
+    );
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'More versions couldn’t be reached. Check your connection and try again. The ones above are unchanged.',
     );
     expect(
       screen.getByRole('button', { name: 'Retry next page' }),
