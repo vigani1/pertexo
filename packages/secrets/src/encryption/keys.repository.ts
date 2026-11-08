@@ -1,9 +1,10 @@
 import type { StoredEncryptionKey } from './stored-encryption-key.types.js';
-import { and, asc, gt, sql } from 'drizzle-orm';
+import { and, asc, gt, isNotNull, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import {
   connectionOAuth2Tokens,
   connectionSecretVersions,
+  workflowForms,
   webhookTestEvents,
   webhookTriggerSecretVersions,
 } from '@pertexo/database/schema';
@@ -21,7 +22,7 @@ import {
 
 const PAGE_SIZE = 250;
 
-const inventories = [
+const columnInventories = [
   {
     kind: 'webhook',
     table: webhookTestEvents,
@@ -45,6 +46,34 @@ const inventories = [
     table: webhookTriggerSecretVersions,
     resource: webhookTriggerSecretVersions.triggerId,
     retained: undefined,
+  },
+] as const;
+
+const inventories = [
+  ...columnInventories.map(({ kind, table, resource, retained }) => ({
+    kind,
+    table,
+    retained,
+    selection: {
+      secretVersionId: table.id,
+      workspaceId: table.workspaceId,
+      resourceId: resource,
+      keyReference: table.kmsKeyReference,
+      encryptedDataKey: table.encryptedDataKey,
+    },
+  })),
+  {
+    // Form capabilities use connection envelopes with both context IDs bound to the workflow.
+    kind: 'connection',
+    table: workflowForms,
+    retained: isNotNull(workflowForms.sealedCapability),
+    selection: {
+      secretVersionId: workflowForms.workflowId,
+      workspaceId: workflowForms.workspaceId,
+      resourceId: workflowForms.workflowId,
+      keyReference: sql<string>`${workflowForms.sealedCapability}->>'kmsKeyReference'`,
+      encryptedDataKey: sql<string>`${workflowForms.sealedCapability}->>'encryptedDataKey'`,
+    },
   },
 ] as const;
 
@@ -121,21 +150,17 @@ async function* readKeys(
       for (;;) {
         signal.throwIfAborted();
         const page: Omit<StoredEncryptionKey, 'kind'>[] = await drizzle(client)
-          .select({
-            secretVersionId: inventory.table.id,
-            workspaceId: inventory.table.workspaceId,
-            resourceId: inventory.resource,
-            keyReference: inventory.table.kmsKeyReference,
-            encryptedDataKey: inventory.table.encryptedDataKey,
-          })
+          .select(inventory.selection)
           .from(inventory.table)
           .where(
             and(
               inventory.retained,
-              after === null ? undefined : gt(inventory.table.id, after),
+              after === null
+                ? undefined
+                : gt(inventory.selection.secretVersionId, after),
             ),
           )
-          .orderBy(asc(inventory.table.id))
+          .orderBy(asc(inventory.selection.secretVersionId))
           .limit(PAGE_SIZE);
         signal.throwIfAborted();
         for (const row of page) {
