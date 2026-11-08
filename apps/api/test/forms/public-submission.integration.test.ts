@@ -1,5 +1,6 @@
 import { randomBytes, randomUUID, createHash } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
+import { apiTokenCreateResponseSchema } from '@pertexo/contracts';
 import { CORE_NODE_CATALOG } from '@pertexo/nodes-core';
 import {
   buildWorkflowExecutable,
@@ -16,6 +17,7 @@ const capture = (...args: unknown[]) => {
   logs.push(args);
 };
 const api = useBetterAuthRealApi('public_forms', {
+  automationTokens: true,
   logger: {
     debug: capture,
     error: capture,
@@ -272,6 +274,74 @@ describe.runIf(betterAuthIntegrationEnabled)(
             )
         ).rows,
       ).toEqual([{ capability_hash: null, sealed_capability: null }]);
+    }, 30_000);
+    it('never gives narrow tokens, another workspace or a removed member the retrievable link', async () => {
+      const scope = await ownerWorkspace();
+      const form = await publicForm(scope);
+      const path = `/v1/workspaces/${scope.workspaceId}/workflows/${form.workflowId}/form/access`;
+      const capability = randomBytes(32).toString('base64url');
+      const changed = await api.send('POST', path, {
+        browser: scope.browser,
+        headers: { 'idempotency-key': 'matrix-link' },
+        payload: { access: 'public', capability, expectedRevision: 1 },
+      });
+      expect(changed.statusCode, changed.payload).toBe(200);
+      for (const scopes of [['workflow:read'], ['run:start']]) {
+        const created = await api.send(
+          'POST',
+          `/v1/workspaces/${scope.workspaceId}/api-tokens`,
+          {
+            browser: scope.browser,
+            headers: { 'idempotency-key': randomUUID() },
+            payload: { name: 'Narrow form reader', scopes },
+          },
+        );
+        expect(created.statusCode, created.payload).toBe(201);
+        const token = apiTokenCreateResponseSchema.parse(created.json());
+        if (token.replayed) throw new Error('Unexpected token replay');
+        const response = await api.send('GET', path, {
+          headers: { authorization: `Bearer ${token.secret}` },
+        });
+        expect(response.statusCode).toBeGreaterThanOrEqual(400);
+        expect(response.statusCode).toBeLessThan(500);
+        expect(response.payload).not.toContain(capability);
+      }
+      const other = await ownerWorkspace();
+      const crossed = await api.send(
+        'GET',
+        `/v1/workspaces/${other.workspaceId}/workflows/${form.workflowId}/form/access`,
+        { browser: other.browser },
+      );
+      expect(crossed.statusCode).toBe(404);
+      expect(crossed.payload).not.toContain(capability);
+      await api
+        .database()
+        .query(
+          "update app.workspace_memberships set status='removed' where workspace_id=$1 and user_id=$2",
+          [scope.workspaceId, scope.actorId],
+        );
+      for (const method of ['GET', 'POST'] as const) {
+        const response = await api.send(method, path, {
+          browser: scope.browser,
+          ...(method === 'POST'
+            ? {
+                headers: { 'idempotency-key': 'matrix-link' },
+                payload: { access: 'public', capability, expectedRevision: 1 },
+              }
+            : {}),
+        });
+        expect(response.statusCode).toBeGreaterThanOrEqual(400);
+        expect(response.statusCode).toBeLessThan(500);
+        expect(response.payload).not.toContain(capability);
+      }
+      const audit = await api
+        .database()
+        .query(
+          'select to_jsonb(fact) as value from app.audit_events fact where workspace_id=$1',
+          [scope.workspaceId],
+        );
+      expect(JSON.stringify(audit.rows)).not.toContain(capability);
+      expect(JSON.stringify(logs)).not.toContain(capability);
     }, 30_000);
     it('enforces the shared workspace budget across forms without exposing run identity or admitting the refused response', async () => {
       const scope = await ownerWorkspace();
