@@ -1,3 +1,4 @@
+import { NotificationsProvider } from '@/components/ui/toast';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -51,17 +52,19 @@ async function reloadFailingWith(failure: () => Response) {
   );
   render(
     <QueryClientProvider client={createQueryClient()}>
-      <NotificationPreferencesPage
-        scope={{
-          workspaceId,
-          userId,
-          apiClient: createApiClient({
-            fetch: testFetch,
-            readCsrfToken: () =>
-              'csrf-token-for-component-tests-12345678901234567890',
-          }),
-        }}
-      />
+      <NotificationsProvider>
+        <NotificationPreferencesPage
+          scope={{
+            workspaceId,
+            userId,
+            apiClient: createApiClient({
+              fetch: testFetch,
+              readCsrfToken: () =>
+                'csrf-token-for-component-tests-12345678901234567890',
+            }),
+          }}
+        />
+      </NotificationsProvider>
     </QueryClientProvider>,
   );
   const user = userEvent.setup();

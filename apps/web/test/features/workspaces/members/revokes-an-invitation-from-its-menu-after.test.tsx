@@ -222,7 +222,7 @@ describe('team: members', () => {
       .setup()
       .click(screen.getByRole('button', { name: 'Load more' }));
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      'More members couldn’t be loaded. The ones above are unchanged.',
+      'More members couldn’t be reached. Check your connection and try again. The ones above are unchanged.',
     );
     expect(screen.getByText('Ada Operator')).toBeVisible();
   });
