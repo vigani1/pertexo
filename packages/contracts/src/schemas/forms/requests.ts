@@ -52,6 +52,7 @@ export const formAccessSchema = z
   .object({
     access: z.enum(['members', 'public']),
     publicId: z.uuid().nullable(),
+    capability: formCapabilitySchema.nullable().optional(),
     revision: z.number().int().nonnegative(),
   })
   .strict();

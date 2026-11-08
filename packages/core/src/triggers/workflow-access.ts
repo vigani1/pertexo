@@ -7,7 +7,10 @@ import {
   type WorkspaceActor,
 } from '../shared/workspace-access.js';
 import { WorkspaceAccessDeniedError } from '../shared/workspace-access.errors.js';
-import type { WorkflowResourceCapability } from '../shared/folder-access.types.js';
+import type {
+  FolderScope,
+  WorkflowResourceCapability,
+} from '../shared/folder-access.types.js';
 import { workflowAccessible } from '../shared/resources/workflow-access.repository.js';
 
 /**
@@ -28,7 +31,7 @@ export async function withWorkflowAccess<T>(
       folderCapability: WorkflowResourceCapability;
       denied: () => Error;
     }>,
-  work: (client: PoolClient) => Promise<T>,
+  work: (client: PoolClient, scope: FolderScope) => Promise<T>,
 ): Promise<T> {
   const { workspaceId, actorId, workflowId } = actor;
   try {
@@ -50,7 +53,7 @@ export async function withWorkflowAccess<T>(
           }))
         )
           throw denied();
-        return work(client);
+        return work(client, scope);
       },
     );
   } catch (error) {

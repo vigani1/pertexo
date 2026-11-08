@@ -107,7 +107,8 @@ export const formRoutes = {
     cacheControl: noStore,
     success: {
       status: 200,
-      description: 'Current link access, without capability material',
+      description:
+        'Current link access; capability is available only to workflow editors',
       body: access,
     },
     problems: formProblems,

@@ -1,3 +1,5 @@
+import { encode } from 'uqr';
+import { ConfirmDialog } from '@/components/patterns/actions/confirm-dialog';
 import { isApiError } from '@/lib/api/error';
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -52,34 +54,26 @@ function SharedFormAccess({
   access,
 }: Readonly<{ scope: MemberFormScope; access: FormAccess }>) {
   const cache = useQueryClient();
-  const [shownLink, setShownLink] =
-    useState<Readonly<{ url: string; revision: number }>>();
+  const [confirming, setConfirming] = useState(false);
   const command = useRetainedCommand(
     (body: FormAccessRequest, key: string) => setFormAccess(scope, body, key),
-    async (result, body) => {
+    async () => {
+      setConfirming(false);
       await cache.invalidateQueries({
         queryKey: formAccessQueryOptions(scope).queryKey,
       });
-      const current = cache.getQueryData(
-        formAccessQueryOptions(scope).queryKey,
-      );
-      if (
-        body.access === 'public' &&
-        result.publicId !== null &&
-        current?.revision === result.revision
-      ) {
-        const url = new URL(
-          `/forms/${encodeURIComponent(result.publicId)}`,
-          window.location.origin,
-        );
-        url.hash = body.capability;
-        setShownLink({ url: url.toString(), revision: result.revision });
-      } else setShownLink(undefined);
     },
   );
   const disabled = command.pending || command.uncertain;
-  const link =
-    shownLink?.revision === access.revision ? shownLink.url : undefined;
+  const url =
+    access.access === 'public' && access.publicId !== null && access.capability
+      ? new URL(
+          `/forms/${encodeURIComponent(access.publicId)}`,
+          window.location.origin,
+        )
+      : undefined;
+  if (url !== undefined) url.hash = access.capability ?? '';
+  const link = url?.toString();
   return (
     <section className="flex min-w-0 flex-col gap-3 border-t border-border pt-4">
       <h3 className="font-medium">Who can open this form</h3>
@@ -104,20 +98,18 @@ function SharedFormAccess({
       {access.access === 'public' ? (
         <>
           <p className="text-xs text-muted-foreground">
-            Public links are shown once. Regenerating invalidates the old link.
+            {link === undefined
+              ? 'This older link can’t be shown again. Regenerate it once to save a copy you can view here anytime.'
+              : 'Anyone holding this link can send responses.'}
           </p>
           <div className="flex flex-wrap gap-2">
             <Button
               type="button"
               variant="outline"
               disabled={disabled}
-              onClick={() =>
-                void command.send({
-                  access: 'public',
-                  capability: newCapability(),
-                  expectedRevision: access.revision,
-                })
-              }
+              onClick={() => {
+                setConfirming(true);
+              }}
             >
               Regenerate link
             </Button>
@@ -156,8 +148,8 @@ function SharedFormAccess({
       {link === undefined ? null : (
         <LabelledField
           id={`${scope.workflowId}-public-form-link`}
-          label="Save this link now"
-          description="It is shown only after this change. Anyone holding it can send responses."
+          label="Public form link"
+          description="Editors can return here to copy this link anytime."
         >
           {(control) => (
             <div className="flex min-w-0 gap-2">
@@ -167,6 +159,20 @@ function SharedFormAccess({
           )}
         </LabelledField>
       )}
+      {link === undefined ? null : <FormLinkQr link={link} />}
+      <RegenerateFormLink
+        open={confirming}
+        setOpen={setConfirming}
+        disabled={disabled}
+        onConfirm={() => {
+          setConfirming(false);
+          return command.send({
+            access: 'public',
+            capability: newCapability(),
+            expectedRevision: access.revision,
+          });
+        }}
+      />
       {command.error === undefined ? null : (
         <Notice
           tone={command.uncertain ? 'warning' : 'destructive'}
@@ -187,5 +193,67 @@ function SharedFormAccess({
         </Notice>
       )}
     </section>
+  );
+}
+
+function FormLinkQr({ link }: Readonly<{ link: string }>) {
+  const { data, size } = encode(link);
+  const path = data
+    .flatMap((row, y) =>
+      row.flatMap((dark, x) =>
+        dark ? [`M${String(x + 4)} ${String(y + 4)}h1v1h-1z`] : [],
+      ),
+    )
+    .join('');
+  return (
+    <svg
+      role="img"
+      aria-label="Public form QR code"
+      viewBox={`0 0 ${String(size + 8)} ${String(size + 8)}`}
+      className="size-48 max-w-full"
+      shapeRendering="crispEdges"
+    >
+      <rect width="100%" height="100%" fill="white" />
+      <path d={path} fill="black" />
+    </svg>
+  );
+}
+
+function RegenerateFormLink({
+  open,
+  setOpen,
+  disabled,
+  onConfirm,
+}: Readonly<{
+  open: boolean;
+  setOpen: (open: boolean) => void;
+  disabled: boolean;
+  onConfirm: () => unknown;
+}>) {
+  return (
+    <ConfirmDialog
+      state={{ open, onOpenChange: setOpen, locked: disabled }}
+      title="Regenerate public form link?"
+      description="This invalidates the old link. Existing pages and QR codes using it will stop working. Replace them with the new link."
+      submitDisabled={disabled}
+      onSubmit={onConfirm}
+      footer={
+        <div className="flex flex-wrap justify-end gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            disabled={disabled}
+            onClick={() => {
+              setOpen(false);
+            }}
+          >
+            Cancel
+          </Button>
+          <Button type="submit" disabled={disabled}>
+            Regenerate and invalidate old link
+          </Button>
+        </div>
+      }
+    />
   );
 }

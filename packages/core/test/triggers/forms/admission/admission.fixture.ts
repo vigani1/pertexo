@@ -15,7 +15,25 @@ import { parseDatabaseConfig } from '@pertexo/database/platform';
 import { admin, createFamily } from '../../../lifecycle/calls/calls.fixture.js';
 import { apiUrl, userId } from '../../../lifecycle/retention.support.js';
 
-export let store: ReturnType<typeof createFormStore>;
+import { createConnectionEnvelopeEncryption } from '@pertexo/secrets/server';
+import type { FormAccessRequest } from '@pertexo/contracts';
+const encryption = createConnectionEnvelopeEncryption({
+  mode: 'self-managed',
+  encryption: {
+    current: { version: 'test', key: Buffer.alloc(32, 42).toString('base64') },
+    previous: [],
+  },
+}).encryption;
+type AccessInput = Omit<
+  Parameters<ReturnType<typeof createFormStore>['setAccess']>[0],
+  'access' | 'capability' | 'sealedCapability'
+> &
+  FormAccessRequest;
+export let store: Omit<ReturnType<typeof createFormStore>, 'setAccess'> & {
+  setAccess(
+    input: AccessInput,
+  ): ReturnType<ReturnType<typeof createFormStore>['setAccess']>;
+};
 
 export async function submitForm(...args: Parameters<typeof store.submit>) {
   const result = await store.submit(...args);
@@ -157,7 +175,7 @@ export async function insertFormRevision(
 }
 
 export function beforeAllFixture1() {
-  store = createFormStore(
+  const real = createFormStore(
     parseDatabaseConfig({ connectionString: apiUrl, max: 4 }),
     (version) => ({
       checkpoint: createCheckpoint({
@@ -167,6 +185,21 @@ export function beforeAllFixture1() {
       }),
     }),
   );
+  store = {
+    ...real,
+    setAccess: async (input: AccessInput) => {
+      if (input.access === 'members') return real.setAccess(input);
+      const sealedCapability = await encryption.seal(
+        new TextEncoder().encode(input.capability),
+        {
+          workspaceId: input.workspaceId,
+          connectionId: input.workflowId,
+          secretVersionId: input.workflowId,
+        },
+      );
+      return real.setAccess({ ...input, sealedCapability });
+    },
+  };
 }
 
 export function afterAllFixture2() {
