@@ -79,12 +79,10 @@ export function useImportDraft(
     setFileGeneration((previous) => previous + 1);
     commandClear.current();
   }, []);
-  const lifetime = usePortabilityLifetime(
-    apiClient,
-    userId,
-    workspace.id,
+  const lifetime = usePortabilityLifetime(apiClient, userId, workspace.id, {
     clear,
-  );
+    readScope: 'collection',
+  });
   const command = useWorkflowImportCommand(
     apiClient,
     userId,

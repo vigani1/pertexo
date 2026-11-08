@@ -231,7 +231,7 @@ function useExportSource({
     apiClient,
     userId,
     workspace.id,
-    clear,
+    { clear },
   );
   const versionId = source.kind === 'version' ? source.versionId : undefined;
   useEffect(() => {
