@@ -176,7 +176,13 @@ export async function qualifyOnlineRecovery({
   ]);
   const dump = readFileSync(`${directory}/encrypted-restored.dump`);
   assert.deepEqual(dump, readFileSync(`${directory}/database.dump`));
-  const keys = rewriteKeys('wrong');
+  const keys = rewriteKeys('wrong-salt');
+  await assert.rejects(
+    verifyBackupKey(run),
+    /BACKUP_CRYPT_PASSWORD.*BACKUP_CRYPT_SALT/u,
+    'the right password with the wrong salt must refuse recovery',
+  );
+  rewriteKeys('wrong');
   await assert.rejects(
     verifyBackupKey(run),
     /BACKUP_CRYPT_PASSWORD.*BACKUP_CRYPT_SALT/u,
