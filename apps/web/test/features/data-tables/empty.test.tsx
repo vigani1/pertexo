@@ -1,8 +1,8 @@
 import { render, screen } from '@testing-library/react';
 import { expect, it } from 'vitest';
 import type { DataTableDefinition } from '@pertexo/contracts';
-import { RowsGrid } from '@/features/data-tables/components/rows/grid';
-import { RowsPager } from '@/features/data-tables/components/rows/pager';
+import { RowsGrid } from '@/features/data-tables/components/rows/row-grid';
+import { RowsPager } from '@/features/data-tables/components/rows/row-pager';
 import { TableCollection } from '@/features/data-tables/components/overview';
 
 const table: DataTableDefinition = {

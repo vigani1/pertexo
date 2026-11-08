@@ -1,1 +1,1 @@
-export { FederationSettingsPage } from './pages/settings';
+export { FederationSettingsPage } from './pages/federation-settings';

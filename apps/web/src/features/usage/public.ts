@@ -1,2 +1,2 @@
-export { UsagePage } from './pages/usage';
-export { UsageTrendsPage } from './pages/trends';
+export { UsagePage } from './pages/workspace-usage';
+export { UsageTrendsPage } from './pages/usage-trends';

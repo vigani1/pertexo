@@ -3,8 +3,8 @@ import { Link } from '@tanstack/react-router';
 import { CheckIcon, HistoryIcon } from 'lucide-react';
 import { describeInboxThread } from '../../model/inbox-thread.js';
 import { FailureLane } from './failure-lane';
-import { NoticeAction, NoticeFrame } from './frame';
-import { noticeLinkClass } from './link-class';
+import { NoticeAction, NoticeFrame } from './thread-frame';
+import { noticeLinkClass } from './notice-link';
 
 /**
  * One failing workflow: what went wrong on one line and its last 30 days as

@@ -1,5 +1,5 @@
 import { cn } from '@/lib/class-names';
-import type { UploadPhase } from '../../model/uploads';
+import type { UploadPhase } from '../../model/form-uploads';
 
 const CENTER = 14;
 const RADIUS = 11;

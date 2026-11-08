@@ -15,7 +15,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { useDirectoryCommand } from '../../data/directory.mutations';
-import type { FederationScope } from '../../data/settings.api';
+import type { FederationScope } from '../../data/federation-settings.api';
 import { CommandFeedback } from '../command-feedback';
 
 export function DirectoryWorkspaceLinks({

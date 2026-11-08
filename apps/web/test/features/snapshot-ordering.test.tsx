@@ -10,8 +10,8 @@ import {
 import { expect, it, vi } from 'vitest';
 import { useConnectionSharingEditor } from '@/features/connections/hooks/use-sharing-editor';
 import { useFolderSharingEditor } from '@/features/workflows/hooks/use-folder-sharing';
-import { useFederationCommand } from '@/features/federation/data/use-command';
-import { federationSettingsQueryOptions } from '@/features/federation/data/settings.queries';
+import { useFederationCommand } from '@/features/federation/data/federation-command.mutations';
+import { federationSettingsQueryOptions } from '@/features/federation/data/federation-settings.queries';
 import { createApiClient } from '@/lib/api/client';
 import {
   json,

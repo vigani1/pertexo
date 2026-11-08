@@ -20,11 +20,11 @@ import {
   SheetDescription,
   SheetBody,
 } from '@/components/ui/sheet';
-import { notificationSubscriptionQueryOptions } from '../../data/preferences.queries';
+import { notificationSubscriptionQueryOptions } from '../../data/notice-preferences.queries';
 import {
   replaceNotificationSubscription,
   type NoticeSubject,
-} from '../../data/preferences.api';
+} from '../../data/notice-preferences.api';
 import { inboxKeys } from '../../data/inbox.queries';
 import { NotificationSaveFeedback } from './feedback';
 function SubscriptionEditor({

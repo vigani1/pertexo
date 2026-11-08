@@ -3,8 +3,8 @@ import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { expect, it } from 'vitest';
 import { formFieldsSchema } from '@pertexo/workflow-model';
-import { FormResponse } from '@/features/forms/components/response';
-import { uploadTarget } from '@/features/forms/data/uploads.api';
+import { FormResponse } from '@/features/forms/components/form-response';
+import { uploadTarget } from '@/features/forms/data/form-uploads.api';
 import { createApiClient } from '@/lib/api/client';
 import { testFetch } from '../../../support/render-app';
 import { mockServer } from '../../../support/mock-server';
@@ -84,7 +84,7 @@ it('offers retry only when the failed file has room beside its replacement', asy
 });
 
 it('keeps an attached file visible after a safe server refusal and focuses Remove so it can be replaced', async () => {
-  const { FormPage } = await import('@/features/forms/pages/form');
+  const { FormPage } = await import('@/features/forms/pages/published-form');
   const { QueryClientProvider } = await import('@tanstack/react-query');
   const { createQueryClient } = await import('@/app/query-client');
   const publicId = '11111111-1111-4111-8111-111111111111';

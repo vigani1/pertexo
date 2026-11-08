@@ -1,1 +1,1 @@
-export { WorkspaceVariablesPage } from './pages/settings';
+export { WorkspaceVariablesPage } from './pages/variable-settings';

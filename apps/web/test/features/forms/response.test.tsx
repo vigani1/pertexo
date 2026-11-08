@@ -2,7 +2,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { expect, it, vi } from 'vitest';
 import { formFieldsSchema } from '@pertexo/workflow-model';
-import { FormResponse } from '@/features/forms/components/response';
+import { FormResponse } from '@/features/forms/components/form-response';
 const fields = formFieldsSchema.parse([
   { id: 'amount', name: 'amount', label: 'Amount', type: 'number' },
   { id: 'ready', name: 'ready', label: 'Ready', type: 'boolean' },

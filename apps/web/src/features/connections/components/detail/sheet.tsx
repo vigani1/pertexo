@@ -1,5 +1,5 @@
 import { useConnectionSharingEditor } from '../../hooks/use-sharing-editor';
-import { ConnectionSharingPanel } from '../sharing/panel';
+import { ConnectionSharingPanel } from '../connection-sharing';
 import { NoticeSubjectActions } from '@/features/inbox/subscriptions.public';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';

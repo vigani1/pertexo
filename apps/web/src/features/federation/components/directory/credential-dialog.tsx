@@ -20,7 +20,7 @@ import { useLatestRequest } from '@/lib/hooks/use-latest-request';
 import { isUnconfirmedCommand } from '@/lib/api/commands/command-retry';
 import { describeCommandError } from '@/lib/api/error-copy';
 import { createDirectoryCredential } from '../../data/directory.api';
-import type { FederationScope } from '../../data/settings.api';
+import type { FederationScope } from '../../data/federation-settings.api';
 
 type View =
   | Readonly<{ kind: 'form'; error?: string }>

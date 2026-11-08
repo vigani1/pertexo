@@ -3,7 +3,7 @@ import type { DataTableQuery } from '@pertexo/node-sdk';
 import { PlusIcon, RefreshCwIcon, UploadIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { LoadingOrb } from '@/components/ui/loading-orb';
-import { ExportTableRows } from '../transfer/export';
+import { ExportTableRows } from '../export-table';
 import type { TableScope } from '../../data/tables.api';
 import { DataTableFilters, DataTableSort } from '../filters';
 

@@ -3,7 +3,7 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { createApiClient } from '@/lib/api/client';
-import { useWorkspaceLifecycleCommand } from '@/features/workspaces/data/mutations/lifecycle/use-command';
+import { useWorkspaceLifecycleCommand } from '@/features/workspaces/data/mutations/lifecycle/use-workspace-lifecycle-command';
 import { useLeaveWorkspaceCommand } from '@/features/workspaces/data/mutations/lifecycle/use-leave-workspace-command';
 
 const workspaceId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';

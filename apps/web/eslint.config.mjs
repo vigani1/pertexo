@@ -159,7 +159,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ['src/features/artifacts/data/upload.api.ts'],
+    files: ['src/features/artifacts/data/artifact-upload.api.ts'],
     rules: {
       'no-restricted-syntax': [
         'error',

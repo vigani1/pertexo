@@ -1,7 +1,7 @@
 import { NotificationsProvider } from '@/components/ui/toast';
 import { render, screen } from '@testing-library/react';
 import { expect, it, vi } from 'vitest';
-import { AuditEntry } from '@/features/governance/components/entry';
+import { AuditEntry } from '@/features/governance/components/audit-entry';
 
 it.each([
   ['outcome_unknown', 'Outcome unknown'],

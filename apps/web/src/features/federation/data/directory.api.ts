@@ -9,7 +9,7 @@ import {
   type DirectoryPeopleQuery,
   type DirectoryAdoptionQuery,
 } from '@pertexo/contracts';
-import type { FederationScope } from './settings.api';
+import type { FederationScope } from './federation-settings.api';
 
 const base = (scope: FederationScope): `/v1${string}` =>
   `/v1/workspaces/${encodeURIComponent(scope.workspaceId)}/sso/directory`;

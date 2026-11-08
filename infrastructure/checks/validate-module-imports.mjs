@@ -26,7 +26,7 @@ const applicationDatabaseEntries = new Set([
 ]);
 const webRawFetchOwners = new Set([
   'apps/web/src/lib/api/client.ts',
-  'apps/web/src/features/artifacts/data/upload.api.ts',
+  'apps/web/src/features/artifacts/data/artifact-upload.api.ts',
 ]);
 
 function isRuntimeImport(statement) {

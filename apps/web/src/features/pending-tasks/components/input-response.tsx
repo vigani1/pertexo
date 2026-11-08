@@ -6,9 +6,9 @@ import { ResponseFiles } from '@/features/artifacts/public';
 import { Notice } from '@/components/ui/notice';
 import { Button } from '@/components/ui/button';
 import { formatDateTime } from '@/lib/format/time';
-import { useTaskResponse } from '../data/use-response';
+import { useTaskResponse } from '../data/task-response.mutations';
 import { taskUploadTarget, type TaskScope } from '../data/tasks.api';
-import { blockedSentence } from '../model/presentation';
+import { blockedSentence } from '../model/task-presentation';
 export function InputResponse({
   task,
   scope,

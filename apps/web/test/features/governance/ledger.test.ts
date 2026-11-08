@@ -1,6 +1,6 @@
 import type { AuditEvent } from '@pertexo/contracts';
 import { describe, expect, it } from 'vitest';
-import { describeAuditEvent } from '@/features/governance/model/ledger';
+import { describeAuditEvent } from '@/features/governance/model/audit-ledger';
 
 function event(overrides: Partial<AuditEvent>): AuditEvent {
   return {

@@ -10,7 +10,10 @@ import {
 } from '@/components/patterns/actions/confirm-dialog';
 import type { ApiClient } from '@/lib/api/client';
 import { useTokenRevocation } from '../data/api-tokens.mutations';
-import { tokenCommandFeedback, uncertainTokenOutcome } from '../model/copy';
+import {
+  tokenCommandFeedback,
+  uncertainTokenOutcome,
+} from '../model/token-copy';
 
 export function RevokeTokenDialog({
   apiClient,

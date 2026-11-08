@@ -1,2 +1,2 @@
 export { PendingTasks } from './components/task-list';
-export { TaskDetailsLine } from './components/details';
+export { TaskDetailsLine } from './components/task-details';

@@ -1,4 +1,4 @@
-import { StepCodeDiagnostics } from './code/diagnostics';
+import { StepCodeDiagnostics } from './run-diagnostics';
 import { StepExecutionHistory } from './execution-history';
 export { StepError } from './execution-history';
 import type { ReactNode } from 'react';

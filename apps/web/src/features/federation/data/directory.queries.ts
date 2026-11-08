@@ -4,8 +4,8 @@ import {
   readDirectoryPeople,
   readAdoptionPreview,
 } from './directory.api';
-import { federationSettingsQueryOptions } from './settings.queries';
-import type { FederationScope } from './settings.api';
+import { federationSettingsQueryOptions } from './federation-settings.queries';
+import type { FederationScope } from './federation-settings.api';
 import type { DirectoryAdoptionQuery } from '@pertexo/contracts';
 
 const directoryKey = (scope: FederationScope) =>

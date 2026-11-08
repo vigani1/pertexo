@@ -3,7 +3,7 @@ import { Link } from '@tanstack/react-router';
 import { Button } from '@/components/ui/button';
 import type { ApiClient } from '@/lib/api/client';
 import { InboxLens, RESEND_COOLDOWN_SECONDS } from '../components/inbox/lens';
-import { SignUpLens } from '../components/sign-up/lens';
+import { SignUpLens } from '../components/sign-up-lens';
 import {
   AuthLens,
   AuthLensDescription,

@@ -9,12 +9,12 @@ import { LabelledField } from '@/components/ui/field';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ProviderRevisionNotice } from './revision-notice';
 import { useFieldValues } from '@/components/ui/use-field-validation';
-import { useFederationCommand } from '../../data/use-command';
+import { useFederationCommand } from '../../data/federation-command.mutations';
 import {
   ProviderDialog,
   ProviderFooter,
   type ProviderEditorProps,
-} from './editor';
+} from './provider-editor';
 type Provider = Extract<
   NonNullable<FederationSettings['organization']>['providers'][number],
   { kind: 'saml' }

@@ -27,8 +27,8 @@ import {
 import {
   replaceNotificationDefaults,
   replaceNotificationPreferences,
-} from '../../data/preferences.api';
-import { notificationPreferencesQueryOptions } from '../../data/preferences.queries';
+} from '../../data/notice-preferences.api';
+import { notificationPreferencesQueryOptions } from '../../data/notice-preferences.queries';
 import { inboxKeys } from '../../data/inbox.queries';
 import { NotificationSaveFeedback } from './feedback';
 function initial(snapshot: NoticePreferencesResponse, target: Target) {

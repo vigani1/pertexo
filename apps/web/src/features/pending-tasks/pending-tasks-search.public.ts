@@ -1,1 +1,1 @@
-export { parseTaskSearch } from './model/presentation';
+export { parseTaskSearch } from './model/task-presentation';

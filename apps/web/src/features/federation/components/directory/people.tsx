@@ -18,7 +18,7 @@ import {
   SelectItem,
 } from '@/components/ui/select';
 import { directoryPeopleQueryOptions } from '../../data/directory.queries';
-import type { FederationScope } from '../../data/settings.api';
+import type { FederationScope } from '../../data/federation-settings.api';
 import { DirectoryAdoptionDialog } from './adoption-dialog';
 
 function personStatus(

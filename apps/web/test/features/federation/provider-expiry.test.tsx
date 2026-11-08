@@ -3,7 +3,7 @@ import { act, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { afterEach, expect, it, vi } from 'vitest';
-import { ProviderForm } from '@/features/federation/components/providers/form';
+import { ProviderForm } from '@/features/federation/components/providers/provider-form';
 import { createApiClient } from '@/lib/api/client';
 import { renderInRouter } from '../../support/render-in-router';
 import { testFetch } from '../../support/render-app';

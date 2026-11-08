@@ -13,8 +13,8 @@ import {
   acceptAttribute,
   acceptSummary,
   type FileField,
-} from '../../model/files';
-import { availableUploadSlots, type UploadRow } from '../../model/uploads';
+} from '../../model/form-files';
+import { availableUploadSlots, type UploadRow } from '../../model/form-uploads';
 import { FileRow } from './row';
 
 /**

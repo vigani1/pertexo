@@ -7,7 +7,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { expect, it, vi } from 'vitest';
 import { PublicationPolicy } from '@/features/governance/components/publication-policy';
-import { AuditRetention } from '@/features/governance/components/retention';
+import { AuditRetention } from '@/features/governance/components/audit-retention';
 import { governanceQueryOptions } from '@/features/governance/data/audit.queries';
 import { createApiClient } from '@/lib/api/client';
 

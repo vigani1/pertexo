@@ -2,8 +2,8 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useRetainedCommand } from '@/lib/api/commands/use-retained';
 import { isApiError } from '@/lib/api/error';
 import { applyDirectoryCommand, type DirectoryCommand } from './directory.api';
-import { federationSettingsQueryOptions } from './settings.queries';
-import type { FederationScope } from './settings.api';
+import { federationSettingsQueryOptions } from './federation-settings.queries';
+import type { FederationScope } from './federation-settings.api';
 import { directoryQueryOptions } from './directory.queries';
 import type { DirectorySettings } from '@pertexo/contracts';
 

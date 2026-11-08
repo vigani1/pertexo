@@ -7,7 +7,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/class-names';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import { FILE_GROUPS, type FileField } from '../../model/files';
+import { FILE_GROUPS, type FileField } from '../../model/form-files';
 import { FileGroupGlyph } from './glyph';
 
 const MEBIBYTE = 1_048_576;

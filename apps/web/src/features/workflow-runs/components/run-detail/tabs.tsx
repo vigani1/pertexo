@@ -1,5 +1,5 @@
 import { useHistoryPage } from '../../hooks/use-history-page';
-import { HistoryPager } from './history/pager';
+import { HistoryPager } from './history-pager';
 import type {
   WorkflowGraphContract,
   WorkflowRunEvent,

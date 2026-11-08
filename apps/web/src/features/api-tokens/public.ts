@@ -1,1 +1,1 @@
-export { ApiTokensPage } from './pages/settings';
+export { ApiTokensPage } from './pages/token-settings';

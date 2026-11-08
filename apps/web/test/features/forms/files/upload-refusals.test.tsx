@@ -2,8 +2,8 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { expect, it, vi } from 'vitest';
 import { apiProblemSchema } from '@pertexo/contracts';
-import { FormResponse } from '@/features/forms/components/response';
-import type { FormUploadTarget } from '@/features/forms/data/uploads.api';
+import { FormResponse } from '@/features/forms/components/form-response';
+import type { FormUploadTarget } from '@/features/forms/data/form-uploads.api';
 import { ApiError } from '@/lib/api/error';
 import { fields, file, storeAccepts, target, stubWebCrypto } from './fixture';
 

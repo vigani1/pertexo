@@ -3,7 +3,10 @@ import type { ApiClient } from '@/lib/api/client';
 import { newCommandKey } from '@/lib/api/commands/command-retry';
 import type { ManagedRole } from '../../../model/workspace-roles';
 import { changeWorkspaceMemberRole } from '../../workspaces.api';
-import { useMemberCommand, type MemberCommandAttempt } from './use-command';
+import {
+  useMemberCommand,
+  type MemberCommandAttempt,
+} from './use-member-command';
 
 type RoleAttempt = MemberCommandAttempt & Readonly<{ role: ManagedRole }>;
 

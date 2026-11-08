@@ -6,8 +6,8 @@ import { Link } from '@tanstack/react-router';
 import type { ComponentProps, MouseEvent, ReactNode } from 'react';
 import { ArrowRightIcon, CheckIcon } from 'lucide-react';
 import { TaskDetailsLine } from '@/features/pending-tasks/public';
-import { NoticeAction, NoticeFrame } from './frame';
-import { noticeLinkClass } from './link-class';
+import { NoticeAction, NoticeFrame } from './thread-frame';
+import { noticeLinkClass } from './notice-link';
 import { InboxThreadRow } from './row';
 const labels = {
   workflow_auto_paused: 'Workflow auto-paused',

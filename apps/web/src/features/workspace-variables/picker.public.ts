@@ -1,1 +1,1 @@
-export { VariablePicker } from './components/picker';
+export { VariablePicker } from './components/variable-picker';

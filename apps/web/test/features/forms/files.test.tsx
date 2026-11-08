@@ -14,9 +14,9 @@ import {
   formFieldsSchema,
   type FormField,
 } from '@pertexo/workflow-model';
-import { FormResponse } from '@/features/forms/components/response';
+import { FormResponse } from '@/features/forms/components/form-response';
 import { FormFieldsEditor } from '@/features/forms/components/field-editor';
-import type { FormUploadTarget } from '@/features/forms/data/uploads.api';
+import type { FormUploadTarget } from '@/features/forms/data/form-uploads.api';
 import { ApiError } from '@/lib/api/error';
 import {
   fields,
