@@ -28,6 +28,14 @@ export function MultipleChoices({
   const errorId = error === undefined ? undefined : `${id}-error`;
   const describedBy =
     [limitId, helpId, errorId].filter(Boolean).join(' ') || undefined;
+  const isLocked = (option: string) =>
+    !selected.has(option) && value.length >= maximum;
+  // Correction focus goes to the first choice the person can still change;
+  // at the selection limit, the unselected ones are disabled.
+  const focusIndex = Math.max(
+    0,
+    field.options.findIndex((option) => !isLocked(option)),
+  );
   return (
     <Field data-invalid={error === undefined ? undefined : true}>
       <fieldset
@@ -46,11 +54,9 @@ export function MultipleChoices({
             className="flex min-w-0 items-start gap-2 text-sm"
           >
             <Checkbox
-              ref={index === 0 ? inputRef : undefined}
+              ref={index === focusIndex ? inputRef : undefined}
               checked={selected.has(option)}
-              disabled={
-                disabled || (!selected.has(option) && value.length >= maximum)
-              }
+              disabled={disabled || isLocked(option)}
               onCheckedChange={(checked) => {
                 const next = new Set(selected);
                 if (checked) next.add(option);
