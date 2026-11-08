@@ -188,8 +188,12 @@ jobs:
     if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     # The worker leg runs three suite shards on one runner (run-worker-suite.mjs): up
-    # to 12.5 minutes plus the build when the runner is busy. The limit catches hangs.
-    timeout-minutes: ${{ matrix.group == 'worker' && 20 || 15 }}
+    # to 12.5 minutes plus the build when the runner is busy. The services leg runs its
+    # suites and then storage and backup qualification: 10 to 13 minutes. The limit
+    # catches hangs.
+    timeout-minutes:
+      ${{ (matrix.group == 'worker' || matrix.group == 'services') && 20 || 15
+      }}
     strategy:
       fail-fast: false
       matrix:
