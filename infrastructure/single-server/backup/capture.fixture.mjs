@@ -1,3 +1,5 @@
+import { qualifyOwnerLoss } from './owner-loss.fixture.mjs';
+import { spawn } from 'node:child_process';
 import assert from 'node:assert/strict';
 import { access, readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
@@ -14,6 +16,7 @@ export async function qualifyCapture({
   containers,
   takeDump,
   expected,
+  databaseContainer,
 }) {
   const clone =
     'rclone/rclone:1.75.2@sha256:2687085f718d3c628f7fdfb77c52a1d344332aed543110bb88088f2c70d43eb5';
@@ -93,6 +96,7 @@ export async function qualifyCapture({
   const id = docker(
     [
       'create',
+      '-i',
       ...args,
       '--env-file',
       `${directory}/capture-rclone.env`,
@@ -106,7 +110,9 @@ export async function qualifyCapture({
     { captureOutput: true },
   ).trim();
   containers.push(id);
-  docker(['start', id]);
+  const attached = spawn('docker', ['start', '-ai', id], {
+    stdio: ['pipe', 'ignore', 'inherit'],
+  });
   const deadline = Date.now() + 60000;
   for (;;) {
     try {
@@ -115,10 +121,10 @@ export async function qualifyCapture({
     } catch (error) {
       if (error.code !== 'ENOENT') throw error;
     }
-    const running = docker(['inspect', '--format', '{{.State.Running}}', id], {
+    const running = docker(['inspect', '--format', '{{.State.Status}}', id], {
       captureOutput: true,
     }).trim();
-    if (running !== 'true')
+    if (running !== 'running' && running !== 'created')
       throw new Error(
         'Capture failed: ' + docker(['logs', id], { captureOutput: true }),
       );
@@ -145,6 +151,7 @@ export async function qualifyCapture({
     takeDump();
     await writeFile(`${directory}/dump.done`, 'done');
     const status = docker(['wait', id], { captureOutput: true }).trim();
+    attached.stdin.end();
     assert.equal(status, '0', docker(['logs', id], { captureOutput: true }));
     assert.equal(
       (
@@ -160,12 +167,37 @@ export async function qualifyCapture({
   assert.equal(
     JSON.parse(await readFile(`${directory}/objects.json`, 'utf8')).length,
     expected,
+    databaseContainer,
   );
   assert.equal(
     (await readFile(`${directory}/objects.count`, 'utf8')).trim(),
     String(expected),
   );
+  const pauseMilliseconds = Date.now() - pausedAt;
+  await writeFile(`${directory}/KEYCHECK`, 'Pertexo encrypted backups\n');
+  docker([
+    'run',
+    '--rm',
+    '--network',
+    network,
+    '--env-file',
+    `${directory}/rclone.env`,
+    '-v',
+    `${directory}:/backup`,
+    clone,
+    'copyto',
+    '/backup/KEYCHECK',
+    'crypt:KEYCHECK',
+  ]);
+  await qualifyOwnerLoss({
+    directory,
+    network,
+    environment,
+    nodeImage,
+    database,
+    databaseContainer,
+  });
   console.log(
-    `Installed capture: real prepare/crypt, pre-copy, online pg_dump and deletion lock release passed; zero service stops; paused deletion ${Date.now() - pausedAt} ms`,
+    `Installed capture: real prepare/crypt, pre-copy, online pg_dump and deletion lock release passed; zero service stops; paused deletion ${pauseMilliseconds} ms`,
   );
 }

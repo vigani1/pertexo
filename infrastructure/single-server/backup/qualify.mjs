@@ -434,6 +434,7 @@ try {
     containers,
     takeDump,
     expected: artifacts.length,
+    databaseContainer: sourceDb,
   });
   const point = 'backup:pertexo-backups/pertexo-beta/20261013T030000Z';
   const fixedFiles = [
