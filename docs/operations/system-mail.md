@@ -94,3 +94,23 @@ mail after a permanent refusal. Temporary failures retry within the message's
 existing validity window. For unknown SMTP outcomes, establish acceptance with
 the provider before requesting another message; the worker never resends blindly.
 
+
+## SMTP workflow connections
+
+Workspace SMTP connections reuse the system SMTP adapter, with separate sealed
+workspace credentials. They do not inherit the operator's system-mail password
+or sender. Both the API and worker default `SMTP_ALLOW_PLAINTEXT` to `false`.
+To permit security mode None for trusted relays, explicitly set it to `true` in
+both processes. Only `true` and `false` are accepted. This setting does not weaken
+certificate validation for either encrypted mode, and does not change the
+existing system-mail TLS configuration rules. The single-server Compose profile
+passes this setting to both API and worker.
+
+SMTP workflow hosts use the same resolved-address policy as HTTP requests. A
+local relay is blocked by default. Permit only its address or network through
+`HTTP_ALLOWED_PRIVATE_NETWORKS`, for example `192.168.1.20/32`, in API and worker.
+DNS answers are checked at each connection and the selected address is pinned
+for the socket; changing DNS cannot bypass the check. Metadata addresses remain
+blocked even with a broad allowlist. Keep the allowlist narrow because it also
+applies to other outbound connections. No second SMTP library or mail server is
+required.

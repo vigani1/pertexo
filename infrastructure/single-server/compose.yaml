@@ -74,6 +74,7 @@ services:
     environment:
       <<: [*environment, *code-settings]
       HTTP_ALLOWED_PRIVATE_NETWORKS: ${HTTP_ALLOWED_PRIVATE_NETWORKS:-}
+      SMTP_ALLOW_PLAINTEXT: ${SMTP_ALLOW_PLAINTEXT:-false}
       AUTOMATION_TOKENS_ENABLED: ${AUTOMATION_TOKENS_ENABLED:-false}
       AUTH_MAIL_MODE: durable
       AUTH_SIGN_UP_MODE: ${AUTH_SIGN_UP_MODE:-invitation}
@@ -151,6 +152,7 @@ services:
       DATABASE_MAINTENANCE_URL: ${DATABASE_MAINTENANCE_URL:?}
       INVITATION_EMAIL_FROM: ${INVITATION_EMAIL_FROM:?}
       HTTP_ALLOWED_PRIVATE_NETWORKS: ${HTTP_ALLOWED_PRIVATE_NETWORKS:-}
+      SMTP_ALLOW_PLAINTEXT: ${SMTP_ALLOW_PLAINTEXT:-false}
     volumes:
       - code-socket:/run/pertexo-code
       - type: volume

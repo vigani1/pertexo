@@ -217,7 +217,9 @@ keep the existing mail senders and encryption keys. SMTP does not require Resend
 credentials. See
 [system mail operations](docs/operations/system-mail.md#system-mail-resend-or-smtp)
 for configuration, delivery uncertainty and switching providers safely. Workflow
-Email steps and workspace Alerts still use their workspace Resend connections.
+Email steps and workspace Alerts can use workspace Resend or SMTP connections.
+See [connections](docs/guides/connections.md) and
+[sending email](docs/guides/email.md).
 
 Human decisions in workflows: [approvals guide](docs/guides/approvals.md).
 

@@ -105,3 +105,14 @@ This context informs the outcome, not Pertexo's implementation or billing policy
 Evidence log: none for this new plan. Existing foundations above are not completion
 of the proposed increment. Mark genuinely inapplicable rows with a reason rather
 than fabricating work.
+
+## Authorized SMTP email connection follow-up (2026-11-08)
+
+Product-ux-15 adds an Email (SMTP) choice alongside Resend for the existing Send
+email step and shared email failure alerts. Reuse the existing system SMTP
+adapter, sealed connection secrets, outbound address policy and network
+allowlist. Require explicit `SMTP_ALLOW_PLAINTEXT=true` for mode None and warn in
+the form. The connection probe connects, requires the selected TLS mode,
+authenticates and quits without sending a message. Actual sends report safe
+sender-refusal diagnostics. Preserve unknown SMTP outcomes without automatic
+resending. The server-mail destination is authorized separately in F09.

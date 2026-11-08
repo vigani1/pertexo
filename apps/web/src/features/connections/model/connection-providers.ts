@@ -1,13 +1,16 @@
 import type { ConnectionResponse } from '@pertexo/contracts';
 
 export type ProviderKey = ConnectionResponse['providerKey'];
+/** A picker choice can name a credential variant within a stored provider. */
+export type ConnectionChoice = ProviderKey | 'smtp';
 
-export const PROVIDER_KEYS = [
+export const CONNECTION_CHOICES = [
   'slack',
   'http',
   'email',
+  'smtp',
   'signing',
-] as const satisfies readonly ProviderKey[];
+] as const satisfies readonly ConnectionChoice[];
 
 type ProviderCopy = Readonly<{
   /** The provider as people know it. */
@@ -22,7 +25,7 @@ type ProviderCopy = Readonly<{
   usedBy: string;
 }>;
 
-export const PROVIDERS: Readonly<Record<ProviderKey, ProviderCopy>> = {
+export const PROVIDERS: Readonly<Record<ConnectionChoice, ProviderCopy>> = {
   signing: {
     name: 'Signing key',
     purpose: 'Create HMAC signatures locally',
@@ -51,6 +54,13 @@ export const PROVIDERS: Readonly<Record<ProviderKey, ProviderCopy>> = {
     connectTitle: 'Connect Email · Resend',
     usedBy: 'Send email steps and email alerts',
   },
+  smtp: {
+    name: 'Email (SMTP)',
+    purpose: 'Send email through an SMTP relay',
+    credential: 'SMTP login',
+    connectTitle: 'Connect Email (SMTP)',
+    usedBy: 'Send email steps and email alerts',
+  },
 };
 
 const PROVIDER_BY_CREDENTIAL: Readonly<
@@ -60,6 +70,7 @@ const PROVIDER_BY_CREDENTIAL: Readonly<
   slack_bot_token: 'slack',
   http_headers: 'http',
   resend_api_key: 'email',
+  smtp: 'email',
   oauth2: 'http',
 };
 
@@ -75,24 +86,27 @@ export function providerForCredential(
   )?.[1];
 }
 
-export function isProviderKey(value: unknown): value is ProviderKey {
-  return PROVIDER_KEYS.some((key) => key === value);
+export function isConnectionChoice(value: unknown): value is ConnectionChoice {
+  return CONNECTION_CHOICES.some((key) => key === value);
 }
 
 /** The stored credential in words: OAuth2 is HTTP's other way to sign in. */
 export function credentialWord(
-  provider: ProviderKey,
+  provider: ConnectionChoice,
   authType?: ConnectionResponse['authType'],
 ): string {
-  return authType === 'oauth2' ? 'OAuth2' : PROVIDERS[provider].credential;
+  if (authType === 'smtp') return 'SMTP';
+  if (authType === 'resend_api_key') return 'Resend API key';
+  if (authType === 'oauth2') return 'OAuth2';
+  return PROVIDERS[provider].credential;
 }
 
 /** Provider and stored credential in words, e.g. "Slack · bot token". */
 export function describeConnectionKind(
-  provider: ProviderKey,
+  provider: ConnectionChoice,
   authType?: ConnectionResponse['authType'],
 ): string {
-  return `${PROVIDERS[provider].name} · ${credentialWord(provider, authType)}`;
+  return `${PROVIDERS[authType === 'smtp' ? 'smtp' : provider].name} · ${credentialWord(provider, authType)}`;
 }
 
 export function connectionNameError(name: string): string | undefined {
@@ -103,16 +117,17 @@ export function connectionNameError(name: string): string | undefined {
   return undefined;
 }
 
-const NAME_NOUNS: Readonly<Record<ProviderKey, string>> = {
+const NAME_NOUNS: Readonly<Record<ConnectionChoice, string>> = {
   signing: 'signing key',
   slack: 'Slack',
   http: 'API',
   email: 'email',
+  smtp: 'SMTP',
 };
 
 /** A starting name from the workspace and provider, e.g. "Northwind Ops Slack". */
 export function suggestConnectionName(
-  provider: ProviderKey,
+  provider: ConnectionChoice,
   workspaceName: string,
 ): string {
   const noun = NAME_NOUNS[provider];

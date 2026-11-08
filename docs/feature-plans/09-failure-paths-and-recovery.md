@@ -147,3 +147,25 @@ explicit scope/provenance rules. Artifact-aware recovery, changed-version prefix
 reuse, provider reconciliation and an explicit per-step safe-to-repeat setting
 remain deferred. No cross-run exactly-once guarantee or speculative subsystem.
 See the [error workflow guide](../guides/error-workflows.md).
+
+## SMTP and server-mail alert destinations (2026-11-08)
+
+Authorized follow-up for product-ux-15: add Email (SMTP) connections beside
+Resend, usable by Send email and shared failure alerts. Reuse the system SMTP
+transport and apply the existing outbound address policy at connection time.
+Plain SMTP requires an explicit operator opt-in and a visible warning.
+
+A shared alert may instead use this server's durable system mail without a
+connection. Each `system_mail` destination selects one current workspace member
+by user ID, never a free-form address. Derive the account address from membership
+and check it immediately before dispatch against the pinned destination version.
+Removed members stop receiving; personal email preferences do not control shared
+alerts. Explain unavailability when system mail is not configured.
+
+Extend the existing queue's purpose with `workflow_failure_alert` using an
+additive constraint migration that rewrites no existing rows. Reuse the failure
+intent ID as delivery ID and enqueue atomically with the intent. Existing leases,
+retries and SMTP reconciliation apply; completion records provider acceptance,
+not enqueue acknowledgment. This extends the existing stored format and needs
+no new subsystem, role, CI job or ADR. SMTP connections ship in their own
+commits before this destination.

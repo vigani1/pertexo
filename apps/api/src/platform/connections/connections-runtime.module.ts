@@ -1,3 +1,4 @@
+import type { createSmtpClient } from '@pertexo/secrets/server';
 import {
   isAllowedPrivateAddress,
   normalizeUrlHostname,
@@ -52,6 +53,7 @@ export async function createApiConnectionRuntime(
     identityRuntime,
     applicationSecret,
     oauth2,
+    smtpPolicy,
     runtime,
   }: Readonly<{
     identityRuntime: ApiIdentityRuntime;
@@ -60,6 +62,7 @@ export async function createApiConnectionRuntime(
       publicWebOrigin: string;
       allowedPrivateNetworks: readonly AllowedPrivateNetwork[];
     }>;
+    smtpPolicy?: NonNullable<Parameters<typeof createSmtpClient>[1]>;
     runtime?: DatabaseRuntime | undefined;
   }>,
 ): Promise<ApiConnectionRuntime> {
@@ -103,6 +106,7 @@ export async function createApiConnectionRuntime(
     return Object.freeze({
       dependencies: Object.freeze({
         applicationSecret,
+        ...(smtpPolicy === undefined ? {} : { smtpPolicy }),
         persistence: database,
         destinationPersistence: destinationDatabase,
         usagePersistence: database,

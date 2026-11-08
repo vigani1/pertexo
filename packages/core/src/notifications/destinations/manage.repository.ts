@@ -10,7 +10,10 @@ import { and, eq, gt, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
 
-import { notificationProviderRequirements } from './notification-policy.js';
+import {
+  notificationSideEffectClass,
+  eligibleNotificationConnection,
+} from './notification-policy.js';
 import {
   audit,
   claimNotificationCommand,
@@ -65,7 +68,7 @@ export async function createDestination(
   });
   if (replay.kind === 'replay')
     return decodeFailureNotificationDestinationReplay(replay.result);
-  await assertConnection(client, input.workspaceId, config);
+  const authType = await assertConnection(client, input.workspaceId, config);
   await drizzle(client)
     .insert(destination)
     .values({
@@ -81,6 +84,7 @@ export async function createDestination(
     workspaceId: input.workspaceId,
     destinationId,
     version: 1,
+    sideEffectClass: notificationSideEffectClass(config.kind, authType),
     config,
     actorId: input.actorId,
   });
@@ -134,12 +138,13 @@ export async function appendDestinationVersion(
       'conflict',
       'Destination version conflict',
     );
-  await assertConnection(client, input.workspaceId, config);
+  const authType = await assertConnection(client, input.workspaceId, config);
   const next = current.currentVersion + 1;
   await insertVersion(client, {
     workspaceId: input.workspaceId,
     destinationId: current.id,
     version: next,
+    sideEffectClass: notificationSideEffectClass(config.kind, authType),
     config,
     actorId: input.actorId,
   });
@@ -231,9 +236,13 @@ async function assertConnection(
   client: PoolClient,
   workspaceId: string,
   config: DestinationConfig,
-): Promise<void> {
+): Promise<string> {
   const result = await drizzle(client)
-    .select({ id: connections.id })
+    .select({
+      auth_type: connections.authType,
+      provider_key: connections.providerKey,
+      status: connections.status,
+    })
     .from(connections)
     .where(
       and(
@@ -241,19 +250,16 @@ async function assertConnection(
         eq(connections.id, config.connectionId),
         eq(connections.status, 'active'),
         eq(connections.providerKey, config.kind),
-        eq(
-          connections.authType,
-          notificationProviderRequirements[config.kind].authType,
-        ),
       ),
     )
     .for('share')
     .catch(rethrowQueryFailure);
-  if (result.length !== 1)
+  if (!eligibleNotificationConnection(config.kind, result[0]))
     throw new FailureNotificationDestinationError(
       'not_found',
       'Connection is not visible',
     );
+  return result[0].auth_type;
 }
 
 async function insertVersion(
@@ -262,6 +268,7 @@ async function insertVersion(
     workspaceId: string;
     destinationId: string;
     version: number;
+    sideEffectClass: 'unsafe' | 'idempotent_with_key';
     config: DestinationConfig;
     actorId: string;
   }>,
@@ -274,7 +281,7 @@ async function insertVersion(
       destinationId: input.destinationId,
       version: input.version,
       kind,
-      sideEffectClass: notificationProviderRequirements[kind].sideEffectClass,
+      sideEffectClass: input.sideEffectClass,
       config,
       createdBy: input.actorId,
     })

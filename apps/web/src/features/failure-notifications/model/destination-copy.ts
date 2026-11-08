@@ -109,7 +109,7 @@ function connectionError(
   if (usable.length === 0)
     return kind === 'slack'
       ? 'Add a Slack connection first, then pick it here.'
-      : 'Add a Resend email connection first, then pick it here.';
+      : 'Add a Resend or SMTP email connection first, then pick it here.';
   return kind === 'slack'
     ? 'Choose the Slack connection that posts the alert.'
     : 'Choose the email connection that sends the alert.';

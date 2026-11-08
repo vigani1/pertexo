@@ -169,11 +169,35 @@ export const resendApiKeyCredentialSchema = z
   .strict()
   .readonly();
 
+export const smtpCredentialSchema = z
+  .object({
+    type: z.literal('smtp'),
+    host: z.union([z.ipv4(), z.ipv6(), z.hostname().max(253)]),
+    port: z.number().int().min(1).max(65535),
+    security: z.enum(['implicit', 'starttls', 'none']),
+    username: z
+      .string()
+      .min(1)
+      .max(1024)
+      .regex(/^[^\r\n\0]+$/u),
+    password: z.string().min(1).max(4096),
+    fromEmail: emailMailboxSchema,
+    fromName: z
+      .string()
+      .min(1)
+      .max(128)
+      .regex(/^[^\r\n\0]+$/u)
+      .optional(),
+  })
+  .strict()
+  .readonly();
+
 const connectionCredentialSchema = z.discriminatedUnion('type', [
   signingKeyCredentialSchema,
   httpHeadersCredentialSchema,
   slackBotTokenCredentialSchema,
   resendApiKeyCredentialSchema,
+  smtpCredentialSchema,
   oauth2CredentialSchema,
 ]);
 
@@ -203,7 +227,10 @@ export const connectionCreateRequestSchema = z.discriminatedUnion(
       .object({
         providerKey: z.literal('email'),
         name: connectionNameSchema,
-        credential: resendApiKeyCredentialSchema,
+        credential: z.discriminatedUnion('type', [
+          resendApiKeyCredentialSchema,
+          smtpCredentialSchema,
+        ]),
       })
       .strict()
       .readonly(),
@@ -265,6 +292,10 @@ export const connectionTestRequestSchema = z.union([
   httpConnectionTestRequestSchema,
   slackConnectionTestRequestSchema,
   emailConnectionTestRequestSchema,
+  z
+    .object({ providerKey: z.literal('email'), transport: z.literal('smtp') })
+    .strict()
+    .readonly(),
 ]);
 
 export const connectionResponseSchema = z.union([
@@ -276,6 +307,7 @@ export const connectionResponseSchema = z.union([
         'http_headers',
         'slack_bot_token',
         'resend_api_key',
+        'smtp',
       ]),
     })
     .strict()

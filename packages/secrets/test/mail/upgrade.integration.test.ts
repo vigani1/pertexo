@@ -50,7 +50,7 @@ it('preserves mail identities through the rename and old messages through subseq
       "insert into app.authentication_mail_deliveries(id,purpose,expires_at,payload_ciphertext,payload_nonce,payload_tag,payload_key_version) values($1,'workspace_notice',clock_timestamp()+interval '1 day','preserved-ciphertext','nonce','tag','old-key')",
       [id],
     );
-    const row = await admin.query(
+    const row = await admin.query<Record<string, unknown>>(
       'select * from app.authentication_mail_deliveries where id=$1',
       [id],
     );
@@ -63,7 +63,7 @@ it('preserves mail identities through the rename and old messages through subseq
         )
       ).rows,
       columns: (
-        await inspector.query(
+        await inspector.query<{ attnum: number; attacl: string | null }>(
           'select attnum,attacl from pg_attribute where attrelid=$1::regclass and attnum>0 order by attnum',
           [table],
         )
@@ -95,7 +95,14 @@ it('preserves mail identities through the rename and old messages through subseq
     );
     const after = await catalog('app.system_mail_deliveries');
     expect(after.relation).toEqual(before.relation);
-    expect(after.columns).toEqual(before.columns);
+    expect(after.columns).toEqual([
+      ...before.columns,
+      {
+        attnum: before.columns.length + 1,
+        attacl:
+          '{pertexo_app=w/pertexo_owner,pertexo_maintenance=w/pertexo_owner}',
+      },
+    ]);
     expect(after.indexes).toEqual(before.indexes);
     expect(
       (
@@ -104,7 +111,9 @@ it('preserves mail identities through the rename and old messages through subseq
           [id],
         )
       ).rows,
-    ).toEqual(row.rows);
+    ).toEqual(
+      row.rows.map((value) => ({ ...value, had_uncertain_attempt: false })),
+    );
     expect(
       (
         await admin.query(

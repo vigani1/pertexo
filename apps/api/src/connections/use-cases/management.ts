@@ -1,4 +1,5 @@
 import type { z } from 'zod';
+import { requestInputError } from '../../platform/http/request-input.js';
 import { ConnectionNotFoundError } from '@pertexo/core/connections';
 import { generatePersistedId } from '@pertexo/database/platform';
 import type { OAuth2Credential } from '@pertexo/contracts';
@@ -140,6 +141,8 @@ export class GetConnectionUseCase {
 
 export class CreateConnectionUseCase {
   private readonly encryption: Pick<ConnectionSecretEncryptionPort, 'seal'>;
+  private readonly smtpPolicy:
+    Readonly<{ allowPlaintext: boolean }> | undefined;
   private readonly applicationSecret: string;
   private readonly telemetry: ConnectionTelemetry;
   private readonly oauth2: OAuth2EndpointPolicyHolder | undefined;
@@ -151,14 +154,17 @@ export class CreateConnectionUseCase {
       applicationSecret,
       telemetry = NOOP_CONNECTION_TELEMETRY,
       oauth2,
+      smtpPolicy,
     }: Readonly<{
       encryption: Pick<ConnectionSecretEncryptionPort, 'seal'>;
       applicationSecret: string;
       telemetry?: ConnectionTelemetry | undefined;
       oauth2?: OAuth2EndpointPolicyHolder | undefined;
+      smtpPolicy?: Readonly<{ allowPlaintext: boolean }> | undefined;
     }>,
   ) {
     this.encryption = encryption;
+    this.smtpPolicy = smtpPolicy;
     this.applicationSecret = applicationSecret;
     this.telemetry = telemetry;
     this.oauth2 = oauth2;
@@ -168,6 +174,7 @@ export class CreateConnectionUseCase {
     return this.telemetry.measure(CONNECTION_OPERATION.create, async () => {
       await authorizeConnectionOperation(input, this.authorization);
       const { request } = input;
+      assertSmtpSecurity(request.credential, this.smtpPolicy);
       if (request.credential.type === 'oauth2')
         assertOAuth2Endpoints(request.credential, this.oauth2);
       const requestHash = hashRequest(
@@ -231,6 +238,8 @@ export class CreateConnectionUseCase {
 
 export class RotateConnectionSecretUseCase {
   private readonly encryption: Pick<ConnectionSecretEncryptionPort, 'seal'>;
+  private readonly smtpPolicy:
+    Readonly<{ allowPlaintext: boolean }> | undefined;
   private readonly applicationSecret: string;
   private readonly telemetry: ConnectionTelemetry;
   private readonly oauth2: OAuth2EndpointPolicyHolder | undefined;
@@ -242,14 +251,17 @@ export class RotateConnectionSecretUseCase {
       applicationSecret,
       telemetry = NOOP_CONNECTION_TELEMETRY,
       oauth2,
+      smtpPolicy,
     }: Readonly<{
       encryption: Pick<ConnectionSecretEncryptionPort, 'seal'>;
       applicationSecret: string;
       telemetry?: ConnectionTelemetry | undefined;
       oauth2?: OAuth2EndpointPolicyHolder | undefined;
+      smtpPolicy?: Readonly<{ allowPlaintext: boolean }> | undefined;
     }>,
   ) {
     this.encryption = encryption;
+    this.smtpPolicy = smtpPolicy;
     this.applicationSecret = applicationSecret;
     this.telemetry = telemetry;
     this.oauth2 = oauth2;
@@ -261,6 +273,7 @@ export class RotateConnectionSecretUseCase {
     return this.telemetry.measure(CONNECTION_OPERATION.rotate, async () => {
       await authorizeConnectionOperation(input, this.authorization);
       const { request } = input;
+      assertSmtpSecurity(request.credential, this.smtpPolicy);
       if (request.credential.type === 'oauth2')
         assertOAuth2Endpoints(request.credential, this.oauth2);
       const secretVersionId = generatePersistedId();
@@ -350,4 +363,19 @@ export class RevokeConnectionUseCase {
       );
     });
   }
+}
+
+function assertSmtpSecurity(
+  credential: CreateConnectionCommand['request']['credential'],
+  policy: Readonly<{ allowPlaintext: boolean }> | undefined,
+): void {
+  if (
+    credential.type === 'smtp' &&
+    credential.security === 'none' &&
+    !policy?.allowPlaintext
+  )
+    throw requestInputError(
+      ['credential', 'security'],
+      'Plain SMTP is disabled on this server. Use TLS or ask the operator to enable SMTP_ALLOW_PLAINTEXT.',
+    );
 }

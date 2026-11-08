@@ -1,3 +1,4 @@
+import * as smtp from './testing/smtp.js';
 import { ProviderHttpError } from '@pertexo/integrations/server';
 import type { FailureNotificationDestinationResponse } from '@pertexo/contracts';
 import { randomUUID } from 'node:crypto';
@@ -61,6 +62,7 @@ export type TestConnectionCommand = ConnectionCommandInput &
   }>;
 
 export class TestConnectionUseCase {
+  private readonly smtpPolicy: smtp.SmtpTestPolicy | undefined;
   private readonly encryption: ConnectionSecretEncryptionPort;
   private readonly httpClient: ConnectionHttpClient;
   private readonly applicationSecret: string;
@@ -80,6 +82,7 @@ export class TestConnectionUseCase {
       slackClient,
       emailClient,
       oauth2,
+      smtpPolicy,
     }: Readonly<{
       encryption: ConnectionSecretEncryptionPort;
       httpClient: ConnectionHttpClient;
@@ -89,8 +92,10 @@ export class TestConnectionUseCase {
         Pick<ConnectionSlackClient, 'authTest' | 'sendMessage'> | undefined;
       emailClient?: ConnectionEmailClient | undefined;
       oauth2?: ConnectionOAuth2Dependencies | undefined;
+      smtpPolicy?: smtp.SmtpTestPolicy | undefined;
     }>,
   ) {
+    this.smtpPolicy = smtpPolicy;
     this.encryption = encryption;
     this.httpClient = httpClient;
     this.applicationSecret = applicationSecret;
@@ -296,6 +301,15 @@ export class TestConnectionUseCase {
       beforeDispatch: () => Promise<void>;
     }>,
   ): Promise<ConnectionTestOutcome> {
+    smtp.assertEmailTestProfile(credential.type, request, destination);
+    if (credential.type === 'smtp')
+      return smtp.testSmtpConnection(credential, this.smtpPolicy, {
+        command: input,
+        destination,
+        timeoutMillis: CONNECTION_TEST_TIMEOUT_MILLIS,
+        signal,
+        beforeDispatch,
+      });
     if (expectedProviderKey === 'email') {
       if (
         credential.type !== 'resend_api_key' ||

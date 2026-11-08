@@ -63,11 +63,14 @@ export function nodeAttemptRuntimeProvider(
       let previewInvoker: ReturnType<typeof createPlatformPreviewNodeInvoker>;
       try {
         previewInvoker = factories.createPreviewInvoker({
-          registry: createPlatformNodeRegistry({
-            httpRequest: {
-              httpClient: createNodeProviderHttpClient(config.httpRequest),
+          registry: createPlatformNodeRegistry(
+            {
+              httpRequest: {
+                httpClient: createNodeProviderHttpClient(config.httpRequest),
+              },
             },
-          }),
+            config.smtpPolicy,
+          ),
         });
       } catch (error: unknown) {
         return closePreviewStoreAfterFailure(previewRunStore, error);
@@ -111,6 +114,9 @@ async function composeNodeAttemptRuntime(
     ...(databaseRuntime === undefined ? {} : { databaseRuntime }),
     heartbeatIntervalMillis: config.nodeAttempt.heartbeatIntervalMillis,
     httpRequest: config.httpRequest,
+    ...(config.smtpPolicy === undefined
+      ? {}
+      : { smtpPolicy: config.smtpPolicy }),
     leaseDurationSeconds: config.nodeAttempt.leaseDurationSeconds,
     observer,
     preview: { invoker: preview.invoker, runStore: preview.runStore },

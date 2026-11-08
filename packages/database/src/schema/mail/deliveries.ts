@@ -1,6 +1,7 @@
 import {
   type PgTableExtraConfigValue,
   bigint,
+  boolean,
   check,
   index,
   integer,
@@ -13,6 +14,7 @@ import { sql } from 'drizzle-orm';
 import { appSchema } from '../namespace.js';
 
 export type SystemMailPurpose =
+  | 'workflow_failure_alert'
   | 'workspace_notice'
   | 'two_factor_disabled'
   | 'recovery_code_sign_in'
@@ -37,6 +39,9 @@ export const systemMailDeliveries = appSchema.table(
       .default(sql`clock_timestamp()`)
       .notNull(),
     attemptCount: integer('attempt_count').default(0).notNull(),
+    hadUncertainAttempt: boolean('had_uncertain_attempt')
+      .default(false)
+      .notNull(),
     leaseOwner: varchar('lease_owner', { length: 128 }),
     leaseToken: uuid('lease_token'),
     leaseGeneration: bigint('lease_generation', { mode: 'number' })
@@ -83,7 +88,7 @@ export const systemMailDeliveries = appSchema.table(
     ),
     check(
       'system_mail_purpose_valid',
-      sql`((purpose)::text = ANY (ARRAY[('verification'::character varying)::text, ('password_reset'::character varying)::text, ('email_change_confirmation'::character varying)::text, ('workspace_notice'::character varying)::text, ('two_factor_disabled'::character varying)::text, ('recovery_code_sign_in'::character varying)::text]))`,
+      sql`((purpose)::text = ANY (ARRAY[('workflow_failure_alert'::character varying)::text, ('verification'::character varying)::text, ('password_reset'::character varying)::text, ('email_change_confirmation'::character varying)::text, ('workspace_notice'::character varying)::text, ('two_factor_disabled'::character varying)::text, ('recovery_code_sign_in'::character varying)::text]))`,
     ),
     check(
       'system_mail_status_valid',

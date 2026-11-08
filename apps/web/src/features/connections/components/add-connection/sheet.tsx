@@ -33,7 +33,7 @@ import {
   connectionNameError,
   PROVIDERS,
   suggestConnectionName,
-  type ProviderKey,
+  type ConnectionChoice,
 } from '../../model/connection-providers';
 import {
   credentialDraftHasSecret,
@@ -48,7 +48,7 @@ import { StepIndicator, type AddStep } from './steps';
 import { StepBody } from './content';
 import { AddConnectionFooter } from './content';
 
-export type AddConnectionRequest = ProviderKey | 'any';
+export type AddConnectionRequest = ConnectionChoice | 'any';
 
 const DESCRIPTIONS: Readonly<Record<AddStep, string>> = {
   provider: 'Choose what Pertexo should plug into.',
@@ -88,7 +88,11 @@ export function AddConnectionSheet(props: AddConnectionSheetProps) {
               ? 'Add a connection'
               : PROVIDERS[model.provider].connectTitle}
           </SheetTitle>
-          <SheetDescription>{DESCRIPTIONS[model.step]}</SheetDescription>
+          <SheetDescription>
+            {model.step === 'credential' && model.provider === 'smtp'
+              ? 'Enter the settings supplied by your SMTP operator.'
+              : DESCRIPTIONS[model.step]}
+          </SheetDescription>
           <StepIndicator step={model.step} />
         </SheetHeader>
         <SheetBody>
@@ -207,7 +211,7 @@ function useAddConnectionForm({
 }: AddConnectionSheetProps) {
   const id = useId();
   const notifications = useNotifications();
-  const [chosen, setChosen] = useState<ProviderKey>();
+  const [chosen, setChosen] = useState<ConnectionChoice>();
   const [stepState, setStep] = useState<AddStep>();
   const [nameInput, setNameInput] = useState<string>();
   const [created, setCreated] = useState<ConnectionResponse>();
@@ -305,6 +309,8 @@ function useAddConnectionForm({
       return;
     }
     setStep('test');
+    if (connection.authType === 'smtp')
+      test.run(connection, { providerKey: 'email', transport: 'smtp' });
     if (
       connection.providerKey === 'slack' ||
       connection.providerKey === 'signing'

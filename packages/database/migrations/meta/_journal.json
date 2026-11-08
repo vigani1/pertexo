@@ -813,6 +813,13 @@
       "when": 1794137903082,
       "tag": "0115_form_capability",
       "breakpoints": true
+    },
+    {
+      "idx": 116,
+      "version": "7",
+      "when": 1794163381541,
+      "tag": "0116_smtp_and_server_mail",
+      "breakpoints": true
     }
   ]
 }

@@ -121,3 +121,12 @@ existing coordinated procedure: stop old API/workers, apply migration 0017,
 then start matching readers before producing new notification payloads. Queued
 ciphertext, lease/reconciliation state, role grants and provider retry identities
 are preserved. Do not restart older binaries against the renamed table.
+
+## Shared email failure alerts
+
+In workspace **Alerts**, an email destination may use a workspace Resend or SMTP
+connection. Select the connection and the recipient address, then select that
+destination in a workflow's failure-alert settings. SMTP sender and TLS settings
+come from the connection. These shared alerts are independent of personal email
+preferences. A successful delivery means the mail service accepted the message;
+an uncertain SMTP delivery is not automatically repeated.

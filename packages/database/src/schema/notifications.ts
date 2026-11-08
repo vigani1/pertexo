@@ -48,7 +48,7 @@ export const failureNotificationDestinations = appSchema.table(
   (table): PgTableExtraConfigValue[] => [
     check(
       'failure_notification_destinations_kind_valid',
-      sql`((kind)::text = ANY (ARRAY[('slack'::character varying)::text, ('email'::character varying)::text]))`,
+      sql`((kind)::text = ANY (ARRAY[('slack'::character varying)::text, ('email'::character varying)::text, ('system_mail'::character varying)::text]))`,
     ),
     check(
       'failure_notification_destinations_status_valid',
@@ -113,15 +113,15 @@ export const failureNotificationDestinationVersions = appSchema.table(
   (table): PgTableExtraConfigValue[] => [
     check(
       'failure_notification_destination_versions_config_strict',
-      sql`(((jsonb_typeof(config) = 'object'::text) AND ((((kind)::text = 'slack'::text) AND (jsonb_typeof((config -> 'connectionId'::text)) = 'string'::text) AND (jsonb_typeof((config -> 'channelId'::text)) = 'string'::text) AND (((config - 'connectionId'::text) - 'channelId'::text) = '{}'::jsonb) AND ((config ->> 'connectionId'::text) ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'::text) AND ((config ->> 'channelId'::text) ~ '^[CDGU][A-Z0-9]{1,79}$'::text)) OR (((kind)::text = 'email'::text) AND (jsonb_typeof((config -> 'connectionId'::text)) = 'string'::text) AND (jsonb_typeof((config -> 'toEmail'::text)) = 'string'::text) AND (((config - 'connectionId'::text) - 'toEmail'::text) = '{}'::jsonb) AND ((config ->> 'connectionId'::text) ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'::text) AND ((length((config ->> 'toEmail'::text)) >= 3) AND (length((config ->> 'toEmail'::text)) <= 254)) AND ((config ->> 'toEmail'::text) ~ '^[!-~]+@[A-Za-z0-9.-]+$'::text)))) IS TRUE)`,
+      sql`(((jsonb_typeof(config) = 'object'::text) AND (((kind='system_mail') AND jsonb_typeof(config->'memberId')='string' AND config-'memberId'='{}'::jsonb AND (config->>'memberId') ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$') OR (((kind)::text = 'slack'::text) AND (jsonb_typeof((config -> 'connectionId'::text)) = 'string'::text) AND (jsonb_typeof((config -> 'channelId'::text)) = 'string'::text) AND (((config - 'connectionId'::text) - 'channelId'::text) = '{}'::jsonb) AND ((config ->> 'connectionId'::text) ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'::text) AND ((config ->> 'channelId'::text) ~ '^[CDGU][A-Z0-9]{1,79}$'::text)) OR (((kind)::text = 'email'::text) AND (jsonb_typeof((config -> 'connectionId'::text)) = 'string'::text) AND (jsonb_typeof((config -> 'toEmail'::text)) = 'string'::text) AND (((config - 'connectionId'::text) - 'toEmail'::text) = '{}'::jsonb) AND ((config ->> 'connectionId'::text) ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'::text) AND ((length((config ->> 'toEmail'::text)) >= 3) AND (length((config ->> 'toEmail'::text)) <= 254)) AND ((config ->> 'toEmail'::text) ~ '^[!-~]+@[A-Za-z0-9.-]+$'::text)))) IS TRUE)`,
     ),
     check(
       'failure_notification_destination_versions_kind_valid',
-      sql`((kind)::text = ANY (ARRAY[('slack'::character varying)::text, ('email'::character varying)::text]))`,
+      sql`((kind)::text = ANY (ARRAY[('slack'::character varying)::text, ('email'::character varying)::text, ('system_mail'::character varying)::text]))`,
     ),
     check(
       'failure_notification_destination_versions_side_effect_valid',
-      sql`((((kind)::text = 'slack'::text) AND ((side_effect_class)::text = 'unsafe'::text)) OR (((kind)::text = 'email'::text) AND ((side_effect_class)::text = 'idempotent_with_key'::text)))`,
+      sql`(((kind='system_mail') AND (side_effect_class='idempotent_with_key')) OR (((kind)::text = 'slack'::text) AND ((side_effect_class)::text = 'unsafe'::text)) OR (((kind)::text = 'email'::text) AND ((side_effect_class)::text IN ('idempotent_with_key'::text, 'unsafe'::text))))`,
     ),
     check(
       'failure_notification_destination_versions_version_positive',

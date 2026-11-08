@@ -1,4 +1,4 @@
-import type { z } from 'zod';
+import { z } from 'zod';
 
 // Input that failed its schema. Unlike any other parse failure (a stored row,
 // a response), its issues describe only what the caller sent.
@@ -27,4 +27,14 @@ export function requestInputCause(
   error: unknown,
 ): Readonly<{ cause?: unknown }> {
   return isRequestInputError(error) ? { cause: error } : {};
+}
+
+/** A field policy refusal belongs to caller input just as a failed shape does. */
+export function requestInputError(
+  path: readonly PropertyKey[],
+  message: string,
+): z.ZodError {
+  const error = new z.ZodError([{ code: 'custom', path: [...path], message }]);
+  requestInputErrors.add(error);
+  return error;
 }

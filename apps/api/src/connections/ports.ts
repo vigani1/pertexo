@@ -1,3 +1,4 @@
+import type { createSmtpClient } from '@pertexo/secrets/server';
 import type {
   ConnectionSharingStore,
   ConnectionLookupStore,
@@ -81,4 +82,5 @@ export type ConnectionDependencies = Readonly<{
   usagePersistence?: ConnectionUsageStore;
   sharingPersistence?: ConnectionSharingStore;
   oauth2?: ConnectionOAuth2Dependencies;
+  smtpPolicy?: NonNullable<Parameters<typeof createSmtpClient>[1]>;
 }>;

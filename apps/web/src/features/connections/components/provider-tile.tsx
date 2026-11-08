@@ -6,13 +6,14 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/class-names';
-import type { ProviderKey } from '../model/connection-providers';
+import type { ConnectionChoice } from '../model/connection-providers';
 
-const ICONS: Readonly<Record<ProviderKey, LucideIcon>> = {
+const ICONS: Readonly<Record<ConnectionChoice, LucideIcon>> = {
   signing: KeyRoundIcon,
   slack: HashIcon,
   http: GlobeIcon,
   email: MailIcon,
+  smtp: MailIcon,
 };
 
 /** The provider's small square tile: the same mark in rows, sockets and lenses. */
@@ -21,7 +22,7 @@ export function ProviderTile({
   size = 'md',
   className,
 }: Readonly<{
-  provider: ProviderKey;
+  provider: ConnectionChoice;
   size?: 'sm' | 'md' | 'lg';
   className?: string;
 }>) {

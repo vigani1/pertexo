@@ -6370,7 +6370,8 @@
                         "hmac_key",
                         "http_headers",
                         "slack_bot_token",
-                        "resend_api_key"
+                        "resend_api_key",
+                        "smtp"
                       ]
                     },
                     "status": {
@@ -7649,7 +7650,8 @@
                   "hmac_key",
                   "http_headers",
                   "slack_bot_token",
-                  "resend_api_key"
+                  "resend_api_key",
+                  "smtp"
                 ]
               },
               "status": {

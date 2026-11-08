@@ -1,3 +1,6 @@
+import { smtpCredentialSchema } from '@pertexo/contracts';
+import { z } from 'zod';
+import { requireSmtpAccepted, type SmtpEmailClient } from './smtp.js';
 import type {
   NodeConnectionRuntime,
   NodeExecutionInvocation,
@@ -37,6 +40,7 @@ export interface EmailSendNotificationExecutorTelemetry {
 
 export type EmailSendNotificationExecutorDependencies = Readonly<{
   client: Pick<ResendClient, 'sendNotification'>;
+  smtp?: SmtpEmailClient;
   telemetry?: EmailSendNotificationExecutorTelemetry;
 }>;
 
@@ -47,9 +51,11 @@ const NOOP_TELEMETRY: EmailSendNotificationExecutorTelemetry = Object.freeze({
 type ResolvedEmailConnection = Awaited<
   ReturnType<NonNullable<NodeExecutionRuntime['connections']>['resolve']>
 >;
-type EmailCredential = ReturnType<
-  typeof resolvedResendApiKeyCredentialSchema.parse
->;
+const emailCredentialSchema = z.discriminatedUnion('type', [
+  resolvedResendApiKeyCredentialSchema,
+  smtpCredentialSchema,
+]);
+type EmailCredential = z.output<typeof emailCredentialSchema>;
 type IdempotentEmailRuntime = NodeExecutionRuntime &
   Readonly<{ providerIdempotencyKey: string }>;
 
@@ -72,12 +78,12 @@ async function withEmailCredential<T>(
     if (
       resolved.connectionId !== connectionId ||
       resolved.providerKey !== 'email' ||
-      resolved.authType !== 'resend_api_key'
+      !['resend_api_key', 'smtp'].includes(resolved.authType)
     )
       throw dispatchIdentityFailure(runtime, 'configuration');
     let credential: EmailCredential;
     try {
-      credential = resolvedResendApiKeyCredentialSchema.parse(
+      credential = emailCredentialSchema.parse(
         JSON.parse(
           new TextDecoder('utf-8', { fatal: true }).decode(resolved.secret),
         ),
@@ -147,6 +153,45 @@ async function execute(
       connectionId,
       runtime,
       async (credential) => {
+        if (credential.type === 'smtp') {
+          if (runtime.providerDispatchUnresolved ?? false)
+            throw failure('outcome_unknown', 'provider', {
+              possiblyDispatched: true,
+            });
+          if (dependencies.smtp === undefined)
+            throw dispatchIdentityFailure(runtime, 'configuration');
+          const result = await dependencies.smtp.sendNotification(credential, {
+            fromEmail: credential.fromEmail,
+            toEmail: input.toEmail,
+            subject: input.subject,
+            text: input.text,
+            ...(attachments.files.length === 0
+              ? {}
+              : {
+                  attachments: {
+                    files: attachments.files,
+                    spool: attachments.spool,
+                  },
+                }),
+            idempotencyKey: runtime.providerIdempotencyKey,
+            timeoutMillis: config.timeoutMillis,
+            signal: invocation.signal,
+            beforeDispatch: createProviderBeforeDispatch({
+              assertCurrent,
+              connectionId,
+              expectedProviderKey: 'email',
+              expectedAuthType: 'smtp',
+              secretVersionId: resolved.secretVersionId,
+              signal: invocation.signal,
+              runtime,
+            }),
+          });
+          requireSmtpAccepted(result, runtime);
+          return emailSendNotificationOutputSchema.parse({
+            emailId: runtime.attemptId,
+            ...sentAttachments(attachments.planned),
+          });
+        }
         let result;
         try {
           result = await dependencies.client.sendNotification({

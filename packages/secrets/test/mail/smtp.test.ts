@@ -8,6 +8,7 @@ import {
   type SMTPServerAuthenticationResponse,
 } from 'smtp-server';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { parseAllowedPrivateNetworks } from '../../src/outbound-http/transport/address-policy.js';
 import { createSmtpClient } from '../../src/mail/smtp.js';
 import { parseSystemMailConfig } from '../../src/mail/config.js';
 import type {
@@ -93,6 +94,126 @@ const message = (
 });
 
 describe('real SMTP system mail sessions', () => {
+  it('checks a relay and authenticates without submitting a message', async () => {
+    const fixture = await server({ allowInsecureAuth: true });
+    const client = createSmtpClient({
+      ...fixture.config,
+      auth: { user: 'ada', pass: 'smtp-secret' },
+    });
+    expect(await client.verify({ timeoutMillis: 2000 })).toEqual({
+      kind: 'submitted',
+      reference: '',
+    });
+    expect(fixture.messages).toEqual([]);
+    expect(fixture.authenticate).toHaveBeenCalledOnce();
+  });
+
+  it('refuses an internal relay unless the operator allows its resolved address', async () => {
+    const fixture = await server();
+    const refused = createSmtpClient(fixture.config, {
+      allowedPrivateNetworks: [],
+      allowPlaintext: true,
+    });
+    expect(await refused.verify({ timeoutMillis: 2000 })).toEqual({
+      kind: 'failed',
+      failure: { category: 'network' },
+    });
+    const permitted = createSmtpClient(fixture.config, {
+      allowedPrivateNetworks: parseAllowedPrivateNetworks('127.0.0.1/32'),
+      allowPlaintext: true,
+    });
+    expect(await permitted.verify({ timeoutMillis: 2000 })).toEqual({
+      kind: 'submitted',
+      reference: '',
+    });
+    expect(fixture.messages).toEqual([]);
+  });
+
+  it('refuses plaintext by default even at an allowed relay', async () => {
+    const fixture = await server();
+    const client = createSmtpClient(fixture.config, {
+      allowedPrivateNetworks: parseAllowedPrivateNetworks('127.0.0.1/32'),
+      allowPlaintext: false,
+    });
+    expect(await client.verify({ timeoutMillis: 2000 })).toEqual({
+      kind: 'failed',
+      failure: { category: 'tls' },
+    });
+  });
+
+  it('sends the configured sender name, envelope, subject and text without credentials in receipts', async () => {
+    const fixture = await server({ allowInsecureAuth: true });
+    const result = await createSmtpClient({
+      ...fixture.config,
+      auth: { user: 'ada', pass: 'secret-never-in-receipt' },
+    }).sendNotification(
+      message({
+        fromName: 'Workspace alerts',
+        subject: 'Workflow failed',
+        text: 'Check your workflow run.',
+      }),
+    );
+    expect(result.kind).toBe('submitted');
+    const mime = fixture.messages[0]?.toString();
+    expect(mime).toContain('From: Workspace alerts <security@example.test>');
+    expect(mime).toContain('To: ada@example.test');
+    expect(mime).toContain('Subject: Workflow failed');
+    expect(mime).toContain('Check your workflow run.');
+    expect(JSON.stringify(result)).not.toContain('secret-never-in-receipt');
+    expect(mime).not.toContain('secret-never-in-receipt');
+  });
+
+  it('reports a required TLS upgrade failure without submitting mail', async () => {
+    const fixture = await server();
+    expect(
+      await createSmtpClient({ ...fixture.config, tls: 'starttls' }).verify({
+        timeoutMillis: 2000,
+      }),
+    ).toMatchObject({ failure: { category: 'tls' } });
+    expect(fixture.messages).toEqual([]);
+  });
+  it('reports authentication failure without exposing the server reply', async () => {
+    const fixture = await server({
+      allowInsecureAuth: true,
+      onAuth: (_auth, _session, callback) => {
+        callback(
+          Object.assign(new Error('private-provider-reply'), {
+            responseCode: 535,
+          }),
+        );
+      },
+    });
+    const result = await createSmtpClient({
+      ...fixture.config,
+      auth: { user: 'ada', pass: 'private-password' },
+    }).verify({ timeoutMillis: 2000 });
+    expect(result).toMatchObject({ failure: { category: 'authentication' } });
+    expect(JSON.stringify(result)).not.toMatch(
+      /private-provider-reply|private-password/u,
+    );
+    expect(fixture.messages).toEqual([]);
+  });
+  it('reports sender refusal safely on delivery', async () => {
+    const fixture = await server({
+      onMailFrom: (_address, _session, callback) => {
+        callback(
+          Object.assign(new Error('private-sender-reply'), {
+            responseCode: 550,
+          }),
+        );
+      },
+    });
+    const result = await createSmtpClient(fixture.config).sendNotification(
+      message(),
+    );
+    expect(result).toMatchObject({
+      kind: 'failed',
+      failure: { category: 'sender_rejected' },
+    });
+    expect(JSON.stringify(result)).not.toContain('private-sender-reply');
+    expect(fixture.messages).toEqual([]);
+  });
+
   it('submits a single-recipient MIME message with a stable correlation reference', async () => {
     const fixture = await server();
     const input = message();

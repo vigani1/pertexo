@@ -41,7 +41,7 @@ export function ReplaceCredentialForm({
   const notifications = useNotifications();
   const oauth2 = isOAuth2Connection(connection) ? connection.oauth2 : undefined;
   const credential = useCredentialForm(
-    oauth2 === undefined ? connection.providerKey : 'oauth2',
+    replacementCredentialKind(connection),
     oauth2 === undefined ? undefined : draftFromSettings(oauth2.settings),
   );
   const [baseVersion, setBaseVersion] = useState(connection.secretVersionId);
@@ -190,4 +190,10 @@ function replaceLabel({
   if (uncertain) return 'Try again';
   if (replacingNewer) return 'Use my credential';
   return oauth2 ? 'Save settings' : 'Replace credential';
+}
+
+function replacementCredentialKind(connection: ConnectionResponse) {
+  return connection.authType === 'smtp' || connection.authType === 'oauth2'
+    ? connection.authType
+    : connection.providerKey;
 }

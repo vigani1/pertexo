@@ -190,6 +190,7 @@ describe('parseApiConfig', () => {
     });
 
     expect(config).toEqual({
+      smtpAllowPlaintext: false,
       capacity: {
         activeRunLimit: 20,
         queuedRunLimit: 10_000,
@@ -241,6 +242,7 @@ describe('parseApiConfig', () => {
     });
 
     expect(config).toEqual({
+      smtpAllowPlaintext: false,
       capacity: {
         activeRunLimit: 20,
         queuedRunLimit: 10_000,
