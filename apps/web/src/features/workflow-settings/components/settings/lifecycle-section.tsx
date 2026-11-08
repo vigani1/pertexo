@@ -17,10 +17,10 @@ import {
   QueryView,
   type ReadQuery,
 } from '@/components/patterns/states/query-view';
-import { visibleSettingsData } from '../../model/settings-query';
 import { SettingsSection } from '@/components/patterns/settings/section';
 import { settingsReadFailure } from '../settings-read-failure';
 import { roleLimitSentence } from '@/features/workspaces/roles.public';
+import { shownData } from '@/lib/api/error-copy';
 
 /** Where the workflow is now, what archiving or restoring does, and the button. */
 function LifecycleCard({
@@ -103,7 +103,7 @@ export function LifecycleSection({
 }>) {
   const queryClient = useQueryClient();
   const [intent, setIntent] = useState<LifecycleIntent>();
-  const workflow = visibleSettingsData(query);
+  const workflow = shownData(query);
   const canManage = workspace.capabilities.includes('workflow:publish');
 
   return (

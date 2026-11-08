@@ -11,8 +11,8 @@ import {
   QueryView,
   type ReadQuery,
 } from '@/components/patterns/states/query-view';
-import { visibleSettingsData } from '../../model/settings-query';
 import { settingsReadFailure } from '../settings-read-failure';
+import { shownData } from '@/lib/api/error-copy';
 
 function Moment({ label, value }: Readonly<{ label: string; value: string }>) {
   return (
@@ -53,7 +53,7 @@ export function IdentitySection({
   workspace: AccessibleWorkspace;
   query: ReadQuery<WorkflowSummary>;
 }>) {
-  const workflow = visibleSettingsData(query);
+  const workflow = shownData(query);
   return (
     <SettingsSection
       title="Identity"

@@ -16,7 +16,6 @@ import {
 import { workflowSummaryQueryOptions } from '@/features/workflows/workflows-queries.public';
 import type { ApiClient } from '@/lib/api/client';
 import { cn } from '@/lib/class-names';
-import { visibleSettingsData } from '../model/settings-query';
 import { SettingsSection } from '@/components/patterns/settings/section';
 import { QueryView } from '@/components/patterns/states/query-view';
 import { settingsReadFailure } from '../components/settings-read-failure';
@@ -29,6 +28,7 @@ import {
   webhookTriggersQueryOptions,
   workflowVersionsQueryOptions,
 } from '../data/workflow-settings.queries';
+import { shownData } from '@/lib/api/error-copy';
 
 type TriggersPageProps = Readonly<{
   apiClient: ApiClient;
@@ -193,8 +193,8 @@ function TriggersSession({
     workflowId,
   });
   const { versions, summary, form, onFailure, publicationKnown } = publication;
-  const webhookItems = visibleSettingsData(webhooks)?.items;
-  const scheduleItems = visibleSettingsData(schedules)?.items;
+  const webhookItems = shownData(webhooks)?.items;
+  const scheduleItems = shownData(schedules)?.items;
   const stepName = (
     trigger: Readonly<{ workflowVersionId: string; nodeId: string }>,
     fallback: string,
@@ -330,8 +330,8 @@ function useTriggerPublication({
   // Form and failure triggers have nothing to manage here, but they still
   // start runs, so the page must not claim the version has no trigger.
   const kinds = publishedTriggerKinds(
-    visibleSettingsData(versions)?.items,
-    visibleSettingsData(summary)?.publishedVersionId,
+    shownData(versions)?.items,
+    shownData(summary)?.publishedVersionId,
   );
   const form = kinds?.includes('core.form') ?? false;
   const onFailure = kinds?.includes('core.workflow_error') ?? false;

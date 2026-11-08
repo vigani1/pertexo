@@ -24,7 +24,6 @@ import {
 } from '@/components/ui/empty';
 import { workflowSummaryQueryOptions } from '@/features/workflows/workflows-queries.public';
 import type { ApiClient } from '@/lib/api/client';
-import { visibleSettingsData } from '../model/settings-query';
 import { SettingsSection } from '@/components/patterns/settings/section';
 import { QueryView } from '@/components/patterns/states/query-view';
 import { settingsReadFailure } from '../components/settings-read-failure';
@@ -33,6 +32,7 @@ import { VersionCompareSheet } from '../components/versions/compare-sheet';
 import { VersionPreviewSheet } from '../components/versions/preview-sheet';
 import { VersionTimeline } from '../components/versions/timeline';
 import { workflowVersionsQueryOptions } from '../data/workflow-settings.queries';
+import { shownData } from '@/lib/api/error-copy';
 
 type Version = WorkflowVersionResponse;
 
@@ -173,9 +173,9 @@ export function WorkflowVersionsPage({
     workflowSummaryQueryOptions(apiClient, user.id, workspace.id, workflowId),
   );
   const [overlay, setOverlay] = useState<VersionOverlay>({ kind: 'none' });
-  const workflow = visibleSettingsData(summary);
+  const workflow = shownData(summary);
   const canRestore = workspace.capabilities.includes('workflow:update');
-  const items = visibleSettingsData(versions)?.items;
+  const items = shownData(versions)?.items;
   const liveVersionId = summary.data?.publishedVersionId ?? null;
   const archived = summary.data?.lifecycleStatus === 'archived';
   const live = items?.find((version) => version.id === liveVersionId);
