@@ -257,7 +257,7 @@ function visitExpressionReferences(
   }
   if (!isRecord(value)) return;
   if (value.type === 'path' && Array.isArray(value.steps)) {
-    const [root, target] = value.steps as unknown[];
+    const [root, target] = withoutContextRoot(value.steps as unknown[]);
     const output = outputRoot(root);
     if (
       output !== undefined &&
@@ -299,15 +299,26 @@ function lookupArguments(
 
 function outputRoot(value: unknown): unknown {
   if (isOutputRoot(value)) return value;
-  if (
-    isRecord(value) &&
-    value.type === 'path' &&
-    Array.isArray(value.steps) &&
-    value.steps.length === 1 &&
-    isOutputRoot(value.steps[0])
-  )
-    return value.steps[0];
-  return undefined;
+  if (!isRecord(value) || value.type !== 'path' || !Array.isArray(value.steps))
+    return undefined;
+  const steps = withoutContextRoot(value.steps as unknown[]);
+  return steps.length === 1 && isOutputRoot(steps[0]) ? steps[0] : undefined;
+}
+
+/**
+ * `$.nodeOutputs` and `$$.nodeOutputs` name the same outputs as a bare
+ * `nodeOutputs`, so a leading plain `$` or `$$` is not part of the reference.
+ */
+function withoutContextRoot(steps: readonly unknown[]): readonly unknown[] {
+  const [first] = steps;
+  const plainContext =
+    isRecord(first) &&
+    first.type === 'variable' &&
+    (first.value === '' || first.value === '$') &&
+    first.predicate === undefined &&
+    first.stages === undefined &&
+    first.group === undefined;
+  return plainContext ? steps.slice(1) : steps;
 }
 
 function isOutputRoot(value: unknown): boolean {
