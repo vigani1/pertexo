@@ -45,8 +45,9 @@ function required(text, pattern, replacement, what) {
 }
 
 export function overlayCommonScript(source, { project }) {
-  const trust =
-    '-e NODE_EXTRA_CA_CERTS=/drill-tls/ca.crt -e RCLONE_CA_CERT=/drill-tls/ca.crt -v "$beta_root/drill-tls:/drill-tls:ro"';
+  // Local stand-ins should report transport failures without production retry delays.
+  const transport =
+    '-e RCLONE_LOW_LEVEL_RETRIES=1 -e RCLONE_RETRIES=1 -e RCLONE_TIMEOUT=10s -e RCLONE_CONTIMEOUT=5s -e NODE_EXTRA_CA_CERTS=/drill-tls/ca.crt -e RCLONE_CA_CERT=/drill-tls/ca.crt -v "$beta_root/drill-tls:/drill-tls:ro"';
   let text = source;
   text = required(
     text,
@@ -75,14 +76,20 @@ export function overlayCommonScript(source, { project }) {
   text = required(
     text,
     /rclone\(\) \{\n {2}docker run /u,
-    `rclone() {\n  docker run ${trust} `,
+    `rclone() {\n  docker run ${transport} `,
     'the rclone helper',
   );
   text = required(
     text,
     /copy_objects\(\) \{\n {2}docker run /u,
-    `copy_objects() {\n  docker run ${trust} `,
+    `copy_objects() {\n  docker run ${transport} `,
     'the object copy helper',
+  );
+  text = required(
+    text,
+    /backup_helper\(\) \{[\s\S]*?\n {2}docker run /u,
+    (match) => `${match}${transport} `,
+    'the backup runtime helper',
   );
   return text;
 }

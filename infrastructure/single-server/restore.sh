@@ -20,13 +20,16 @@ running=$(compose ps --services --status running)
 for service in "${runtime_services[@]}"; do
   if grep -qx "$service" <<< "$running"; then echo 'Serving containers must be absent for a fresh restore' >&2; exit 1; fi
 done
+# Read the off-server point before creating any target services or volumes.
+backup_network=bridge
 remote="backup:$backup_bucket/$prefix"
 encrypted=false
-if ! rclone cat "$remote/COMPLETE" >/dev/null 2>&1; then
+# cat can succeed with no output for a missing S3 object; COMPLETE is empty.
+if [[ $(rclone lsf "$remote" --files-only --max-depth 1 --include COMPLETE) != COMPLETE ]]; then
   verify_backup_key
   remote="crypt:$prefix"
   encrypted=true
-  rclone cat "$remote/COMPLETE" >/dev/null
+  [[ $(rclone lsf "$remote" --files-only --max-depth 1 --include COMPLETE) == COMPLETE ]] || { echo 'Recovery point is incomplete: COMPLETE is missing' >&2; exit 1; }
 fi
 files=(database.dump release.txt objects.count)
 [[ $encrypted == false ]] || files+=(objects.json)
@@ -44,6 +47,7 @@ if [[ $encrypted == true ]]; then
   [[ $actual == "$expected" ]] || { echo 'Recovery point manifest count mismatch' >&2; exit 1; }
 fi
 compose up -d --wait --wait-timeout 120 postgres redis storage
+unset backup_network
 relations=$(compose exec -T postgres sh -c 'export PGPASSWORD="$POSTGRES_PASSWORD"; exec psql --no-password --username="$POSTGRES_USER" --dbname="$POSTGRES_DB" -At -v ON_ERROR_STOP=1' <<'SQL'
 SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
 WHERE n.nspname NOT IN ('pg_catalog','information_schema') AND n.nspname !~ '^pg_'

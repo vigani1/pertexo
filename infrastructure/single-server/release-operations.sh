@@ -157,7 +157,7 @@ prepare_backup() {
 }
 rclone() {
   docker run --rm --read-only --tmpfs /tmp --user "$(id -u):$(id -g)" \
-    --network pertexo-beta_private --env-file "$work/rclone.env" \
+    --network "${backup_network:-pertexo-beta_private}" --env-file "$work/rclone.env" \
     -v "$work:/backup" \
     rclone/rclone:1.75.2@sha256:2687085f718d3c628f7fdfb77c52a1d344332aed543110bb88088f2c70d43eb5 "$@"
 }
@@ -193,7 +193,7 @@ backup_helper() {
   local script=$1
   shift
   docker run --rm --read-only --tmpfs /tmp --user "$(id -u):$(id -g)" \
-    "${options[@]}" --network pertexo-beta_private \
+    "${options[@]}" --network "${backup_network:-pertexo-beta_private}" \
     -v "$config:/run/pertexo.env:ro" -v "$work:/backup" \
     -v "$release/infrastructure/single-server/backup:/workspace/infrastructure/single-server/backup:ro" \
     "ghcr.io/vigani1/pertexo:$SERVICE_VERSION" node --env-file=/run/pertexo.env "infrastructure/single-server/backup/$script" "$@"

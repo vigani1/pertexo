@@ -63,6 +63,12 @@ elif fail and any(fail in arg for arg in args):
   (prepared/'rclone.env').write_text('RCLONE_CONFIG_CRYPT_PASSWORD=partial-fixture')
   (prepared/'rclone.env').chmod(0o600)
  sys.exit(1)
+if os.environ.get('RESTORE') and args[0]=='run' and '--network' in args:
+ network=args[args.index('--network')+1]
+ if network=='pertexo-beta_private' and not (root/'target-started').exists():
+  print('target network does not exist before services start', file=sys.stderr)
+  sys.exit(125)
+if 'compose' in args and 'up' in args: (root/'target-started').touch()
 if args[0]=='version': print('arm64')
 if args[0]=='image': print('arm64 ${commit}')
 if 'infrastructure/single-server/backup/prepare.mjs' in args:
@@ -100,8 +106,9 @@ if any('rclone/rclone:' in arg for arg in args):
   if args[-1]=='crypt:KEYCHECK':
    if os.environ.get('KEY_WRONG'): sys.exit(1)
    print('Pertexo encrypted backups')
-  elif os.environ.get('ENCRYPTED') and args[-1].startswith('backup:'): sys.exit(1)
  if 'lsf' in args:
+  if '--include' in args and 'COMPLETE' in args and not os.environ.get('MISSING_COMPLETE'):
+   if not os.environ.get('ENCRYPTED') or any(arg.startswith('crypt:') for arg in args): print('COMPLETE')
   if os.environ.get('COLLISION'): print('pertexo-beta/${point}/')
   if os.environ.get('OBJECTS_PRESENT'): print('existing-object')
  if 'copyto' in args and args[-1].startswith('/backup/'):
@@ -237,7 +244,7 @@ test('fresh restore completes without migrations or starting serving containers'
 });
 test('incomplete, corrupt and populated recovery targets are rejected before pg_restore', (t) => {
   for (const env of [
-    { FAIL_AT: '/COMPLETE' },
+    { MISSING_COMPLETE: 'true' },
     { BAD_CHECKSUM: 'true' },
     { RELATIONS: '1' },
     { OBJECTS_PRESENT: 'true' },
@@ -308,6 +315,18 @@ test('encrypted restore refuses missing or wrong keys before starting or writing
     );
     assert.equal(existsSync(join(f.state, 'restore-fence')), false);
   }
+});
+
+test('an encrypted point without COMPLETE refuses before starting target services', (t) => {
+  const f = fixture(t, true);
+  const result = f.run({ ENCRYPTED: 'true', MISSING_COMPLETE: 'true' });
+  assert.equal(result.status, 1, result.stderr);
+  assert.match(result.stderr, /COMPLETE is missing/u);
+  assert.equal(
+    f.commands().some((args) => args.includes('up')),
+    false,
+  );
+  assert.equal(existsSync(join(f.state, 'restore-fence')), false);
 });
 
 test('a matched encrypted restore validates its manifest and restores objects before clearing the fence', (t) => {

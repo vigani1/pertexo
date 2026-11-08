@@ -25,6 +25,7 @@ const DOCKER_CLI =
   'docker:29-cli@sha256:5e6baf67325a79f64ed3bed6863954d5e05d0f3d4e57cbdb14809346814bbfdb';
 const RC_IMAGE =
   'rustfs/rc:v0.1.36@sha256:ab024bfebee49a750ce886b4c70963ccd9ddaa03f491704a90710641d7a26699';
+const BACKUP_TIMEOUT_SECONDS = 90;
 const repositoryRoot = new URL('../../../../../', import.meta.url).pathname;
 
 export const project = process.env.DRILL_PROJECT ?? 'pertexo-b1-singleserver';
@@ -126,9 +127,21 @@ RUN apt-get update && apt-get install -y --no-install-recommends git curl ca-cer
     exec,
     mustExec,
     composeFor,
-    /** Runs an operator script exactly as the runbook does. */
-    script: (name, args = [], options) =>
-      exec(`${scripts}/${name} ${args.map(quote).join(' ')}`, options),
+    /** Runs the real operator script, bounding backups within the drill budget. */
+    script: async (name, args = [], options) => {
+      const command = `${scripts}/${name} ${args.map(quote).join(' ')}`;
+      if (name !== 'backup.sh') return exec(command, options);
+      // Bound the server-side process too: killing only docker exec leaves it alive.
+      const result = await exec(
+        `timeout --kill-after=5s ${BACKUP_TIMEOUT_SECONDS}s ${command}`,
+        { ...options, timeout: (BACKUP_TIMEOUT_SECONDS + 10) * 1000 },
+      );
+      if (result.status !== 0)
+        console.error(
+          `Backup failed (status ${result.status}, drill bound ${BACKUP_TIMEOUT_SECONDS}s):\n${result.stdout}\n${result.stderr}`,
+        );
+      return result;
+    },
     current: () => mustExec('cat state/current'),
     containerOf: async (service) =>
       mustDocker([
@@ -225,7 +238,14 @@ async function installRepository(server) {
     overlayCommonScript(read('release-operations.sh'), settings),
   );
   for (const name of ['deploy.sh', 'restore.sh'])
-    await write(name, overlayNetworkName(read(name), settings));
+    await write(
+      name,
+      // The drill's off-server stand-in resolves on its private Docker network.
+      overlayNetworkName(read(name), settings).replace(
+        'backup_network=bridge',
+        `backup_network=${network}`,
+      ),
+    );
   await write('Caddyfile', overlayCaddyfile(read('Caddyfile')));
   const commit = (message) =>
     mustExec(
