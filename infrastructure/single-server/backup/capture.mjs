@@ -1,3 +1,4 @@
+import { rmSync } from 'node:fs';
 import { access, writeFile } from 'node:fs/promises';
 import { setTimeout } from 'node:timers/promises';
 import { parseMaintenanceDatabaseConfig } from '../../../packages/database/dist/platform/index.js';
@@ -17,7 +18,11 @@ if (mode === 'collect') {
   // Process exit closes the session even when work or a child transport is stuck.
   const stop = (message) => {
     console.error(message);
-    process.exit(1);
+    try {
+      rmSync(`${directory}/rclone.env`, { force: true });
+    } finally {
+      process.exit(1);
+    }
   };
   const ownerLost = () =>
     stop('Backup shell stdin closed; releasing artifact deletion');

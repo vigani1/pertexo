@@ -6,6 +6,7 @@ import {
   writeFileSync,
   readFileSync,
   existsSync,
+  readdirSync,
   rmSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -56,12 +57,20 @@ with open(os.environ['FIXTURE_LOG'],'a') as log: log.write(json.dumps(args)+'\\n
 fail=os.environ.get('FAIL_AT','')
 if fail=='encryption/verify.mjs':
  if 'infrastructure/single-server/encryption/verify.mjs' in args: sys.exit(1)
-elif fail and any(fail in arg for arg in args): sys.exit(1)
+elif fail and any(fail in arg for arg in args):
+ if 'infrastructure/single-server/backup/prepare.mjs' in args:
+  prepared=Path(next(args[i+1].split(':/prepared')[0] for i,arg in enumerate(args) if arg=='-v' and args[i+1].endswith(':/prepared')))
+  (prepared/'rclone.env').write_text('RCLONE_CONFIG_CRYPT_PASSWORD=partial-fixture')
+  (prepared/'rclone.env').chmod(0o600)
+ sys.exit(1)
 if args[0]=='version': print('arm64')
 if args[0]=='image': print('arm64 ${commit}')
 if 'infrastructure/single-server/backup/prepare.mjs' in args:
- (root/'state/source-bucket').write_text('artifacts')
- (root/'state/backup-bucket').write_text('backups')
+ prepared=Path(next(args[i+1].split(':/prepared')[0] for i,arg in enumerate(args) if arg=='-v' and args[i+1].endswith(':/prepared')))
+ (prepared/'source-bucket').write_text('artifacts')
+ (prepared/'backup-bucket').write_text('backups')
+ (prepared/'rclone.env').write_text('RCLONE_CONFIG_CRYPT_PASSWORD=fixture-obscured')
+ (prepared/'rclone.env').chmod(0o600)
 if 'infrastructure/single-server/backup/capture.mjs' in args and 'capture' in args:
  mounts=[args[i+1] for i,arg in enumerate(args) if arg=='-v']
  work=Path(next(mount.split(':/backup')[0] for mount in mounts if ':/backup' in mount))
@@ -328,3 +337,37 @@ test('a matched encrypted restore validates its manifest and restores objects be
   );
   assert.equal(resumed(f.commands()), false);
 });
+
+for (const [name, restore, settings, status] of [
+  ['successful backup', false, {}, 0],
+  ['failed backup upload', false, { FAIL_AT: '/backup/database.dump' }, 1],
+  ['successful encrypted restore', true, { ENCRYPTED: 'true' }, 0],
+  ['failed restore checksum', true, { BAD_CHECKSUM: 'true' }, 1],
+  ['failed backup preparation', false, { FAIL_AT: 'backup/prepare.mjs' }, 1],
+  ['failed restore preparation', true, { FAIL_AT: 'backup/prepare.mjs' }, 1],
+]) {
+  test(`no rclone config remains after ${name}, including the legacy state copy`, (t) => {
+    const f = fixture(t, restore);
+    writeFileSync(
+      join(f.state, 'rclone.env'),
+      'RCLONE_CONFIG_CRYPT_PASSWORD=retired-fixture',
+      { mode: 0o600 },
+    );
+    for (const name of ['.backup.abandoned', '.restore.abandoned']) {
+      mkdirSync(join(f.state, name));
+      writeFileSync(
+        join(f.state, name, 'rclone.env'),
+        'RCLONE_CONFIG_CRYPT_PASSWORD=abandoned-fixture',
+        { mode: 0o600 },
+      );
+    }
+    const result = f.run(settings);
+    assert.equal(result.status, status, result.stderr);
+    assert.deepEqual(
+      readdirSync(f.state, { recursive: true }).filter((name) =>
+        name.endsWith('rclone.env'),
+      ),
+      [],
+    );
+  });
+}

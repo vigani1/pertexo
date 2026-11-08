@@ -222,7 +222,10 @@ needs them. A missing retained manifest aborts collection. Reserve a point befor
 capture so same-second retries cannot overwrite it.
 
 Generate BACKUP_CRYPT_PASSWORD and BACKUP_CRYPT_SALT with generate-secrets.mjs;
-keep the original settings offline, separate from the bucket. Key rotation starts
+keep the original settings offline, separate from the bucket. Prepare reversible
+rclone credentials only inside the private operation directory, remove them on
+completion or error, and clear legacy/abandoned config copies under the operation
+lock at the next backup or restore. Key rotation starts
 a new empty bucket and retains old keys for old points. Restore checks the key
 before starting target services, keeps the fresh-target guards and restore fence,
 and accepts legacy plaintext points as a one-way compatibility path. Delete old
