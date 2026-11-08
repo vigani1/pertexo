@@ -90,9 +90,31 @@ it('preserves mail identities through the rename and old messages through subseq
       '0017_system_mail_deliveries.sql',
     ]);
     expect(await catalog('app.system_mail_deliveries')).toEqual(before);
-    expect(await migrateDatabase(migration)).toEqual(
-      await expectedMigrationsAfter(17),
+    for (const name of await readdir(MIGRATIONS_DIRECTORY))
+      if (name.endsWith('.sql') && name <= '0115_form_capability.sql')
+        await copyFile(join(MIGRATIONS_DIRECTORY, name), join(directory, name));
+    expect(await migrateDatabase(migration, directory)).toEqual(
+      (await expectedMigrationsAfter(17)).filter(
+        (name) => name <= '0115_form_capability.sql',
+      ),
     );
+    const beforeUpgrade = (
+      await admin.query(
+        'select ctid::text from app.system_mail_deliveries where id=$1',
+        [id],
+      )
+    ).rows;
+    expect(await migrateDatabase(migration)).toEqual([
+      '0116_smtp_and_server_mail.sql',
+    ]);
+    expect(
+      (
+        await admin.query(
+          'select ctid::text from app.system_mail_deliveries where id=$1',
+          [id],
+        )
+      ).rows,
+    ).toEqual(beforeUpgrade);
     const after = await catalog('app.system_mail_deliveries');
     expect(after.relation).toEqual(before.relation);
     expect(after.columns).toEqual([

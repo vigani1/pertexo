@@ -89,6 +89,8 @@ export async function claimMail(
     .update(delivery)
     .set({
       status: 'outcome_unknown',
+      // A lost claim may have reached the provider, even if a later attempt is definite.
+      hadUncertainAttempt: sql`${delivery.hadUncertainAttempt} or ${candidates.status}='outcome_unknown'`,
       leaseOwner: workerId,
       leaseToken,
       leaseGeneration: sql`${delivery.leaseGeneration}+1`,
@@ -155,6 +157,7 @@ export async function settleMail(
     .update(delivery)
     .set({
       status: sql`case when ${outcome}<>'retry' then ${outcome} when ${retry.allowed} then 'retry' else 'reconciliation_required' end`,
+      hadUncertainAttempt: sql`${delivery.hadUncertainAttempt} or ${input.uncertain === true}`,
       // Opening a payload never attempted delivery, so it must not exhaust retries.
       attemptCount: sql`case when ${payloadUnavailable} then ${delivery.attemptCount}-1 else ${delivery.attemptCount} end`,
       nextAttemptAt: sql`case when ${outcome}='retry' then ${retryAt}::timestamptz else ${delivery.nextAttemptAt} end`,

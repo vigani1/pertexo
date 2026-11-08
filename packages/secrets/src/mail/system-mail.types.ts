@@ -34,6 +34,7 @@ export type SystemMailSettlement = Readonly<{
   leaseToken: string;
   leaseGeneration: number;
   failureCode?: string;
+  uncertain?: true;
 }> &
   (
     | Readonly<{

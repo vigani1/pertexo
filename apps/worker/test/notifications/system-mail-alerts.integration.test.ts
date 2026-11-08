@@ -3,6 +3,7 @@ import { SMTPServer } from 'smtp-server';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
 import * as notifications from '@pertexo/core/notifications';
+import { createRetentionStore } from '@pertexo/core/lifecycle';
 import {
   createApplicationSecretEnvelope,
   createSystemMailDeliveryStore,
@@ -195,7 +196,7 @@ describe.runIf(fixture.enabled)(
     async function state(intentId: string) {
       return (
         await fixture.workerQuery(
-          'select status,safe_error_code from app.run_failure_notification_intents where id=$1',
+          'select status,safe_error_code,possibly_dispatched from app.run_failure_notification_intents where id=$1',
           [intentId],
         )
       )[0];
@@ -248,7 +249,88 @@ describe.runIf(fixture.enabled)(
       await store.close();
       store = createStore();
       await reconcile(f.intentId);
-      expect(await state(f.intentId)).toMatchObject({ status: 'delivered' });
+      expect(await state(f.intentId)).toMatchObject({
+        status: 'delivered',
+        possibly_dispatched: true,
+      });
+      expect(
+        (
+          await fixture.ownerQuery(
+            'select * from app.system_mail_deliveries where id=$1',
+            [f.intentId],
+          )
+        )[0],
+      ).toMatchObject({ status: 'submitted', had_uncertain_attempt: false });
+    });
+    it('preserves possible acceptance when an unresolved claim expires during downtime', async () => {
+      const f = await prepare();
+      await f.claim();
+      expect(
+        await mail.claim({ workerId: 'crashed-alert', limit: 1 }),
+      ).toHaveLength(1);
+      await fixture.ownerQuery(
+        "update app.system_mail_deliveries set created_at=clock_timestamp()-interval '2 hours',expires_at=clock_timestamp()-interval '1 hour',lease_expires_at=clock_timestamp()-interval '1 second' where id=$1",
+        [f.intentId],
+      );
+      const retention = createRetentionStore(maintenance(), { pageSize: 10 });
+      try {
+        await retention.enforce();
+        await retention.enforce();
+      } finally {
+        await retention.close();
+      }
+      expect(
+        (
+          await fixture.ownerQuery(
+            'select status,payload_ciphertext from app.system_mail_deliveries where id=$1',
+            [f.intentId],
+          )
+        )[0],
+      ).toEqual({ status: 'expired', payload_ciphertext: null });
+      await reconcile(f.intentId);
+      expect(await state(f.intentId)).toMatchObject({
+        status: 'outcome_unknown',
+        possibly_dispatched: true,
+      });
+    });
+    it('records a definite dead letter when definite failures exhaust the shared queue', async () => {
+      const f = await prepare();
+      await f.claim();
+      const definite = createSystemMailDeliveryHandler({
+        store: mail,
+        envelope,
+        timeoutMillis: 3000,
+        workerId: 'definite-failure',
+        failureAlerts: { authorize },
+        email: {
+          deduplicates: false,
+          sendNotification: () =>
+            Promise.resolve({
+              kind: 'retryable',
+              failure: { category: 'network' },
+            }),
+        },
+      });
+      for (let attempt = 0; attempt < 12; attempt += 1) {
+        expect(await definite.runOnce()).toBe(1);
+        await fixture.ownerQuery(
+          "update app.system_mail_deliveries set next_attempt_at=clock_timestamp()-interval '1 second' where id=$1",
+          [f.intentId],
+        );
+      }
+      expect(
+        (
+          await fixture.ownerQuery(
+            'select status,attempt_count from app.system_mail_deliveries where id=$1',
+            [f.intentId],
+          )
+        )[0],
+      ).toEqual({ status: 'reconciliation_required', attempt_count: 12 });
+      await reconcile(f.intentId);
+      expect(await state(f.intentId)).toMatchObject({
+        status: 'dead_letter',
+        possibly_dispatched: false,
+      });
     });
     it('retains an uncertain provider result for reconciliation and never sends it again', async () => {
       const f = await prepare();
