@@ -238,6 +238,12 @@ export function useImportDraft(
     unresolved:
       !lifetime.denied &&
       (command.state.kind === 'sending' || command.state.kind === 'uncertain'),
+    resetSource: (name: string) => {
+      if (locked) return;
+      clear();
+      setName(name);
+      customName.current = name.trim() !== '';
+    },
     chooseTemplate,
     chooseFile,
     changeName,
