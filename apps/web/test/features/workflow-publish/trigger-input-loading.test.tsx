@@ -93,6 +93,28 @@ it('shows progress, prevents competing loads and applies a sample when input has
   expect(reads()).toBe(1);
 });
 
+it('does not show a retired sample-read failure in a newly prepared test', async () => {
+  const { event, release, sampleSettled } = mountTriggerInput(true);
+  await prepareAndLoad(event);
+  await event.click(screen.getByRole('button', { name: 'Close' }));
+  await event.click(screen.getByRole('button', { name: 'Prepare' }));
+  const input = await screen.findByRole('textbox', {
+    name: 'Test input (JSON)',
+  });
+  await event.clear(input);
+  await event.type(input, '{{"newPreparation":true}');
+  await act(async () => {
+    release();
+    await sampleSettled;
+  });
+  expect(input).toHaveValue('{"newPreparation":true}');
+  expect(
+    screen.queryByText(
+      /We couldn’t confirm whether loading the trigger sample/u,
+    ),
+  ).not.toBeInTheDocument();
+});
+
 async function prepareAndLoad(event: ReturnType<typeof userEvent.setup>) {
   await event.click(await screen.findByRole('button', { name: 'Prepare' }));
   await event.click(
@@ -100,7 +122,7 @@ async function prepareAndLoad(event: ReturnType<typeof userEvent.setup>) {
   );
 }
 
-function mountTriggerInput() {
+function mountTriggerInput(failSample = false) {
   const sampleId = '11111111-1111-4111-8111-111111111111';
   let release: (() => void) | undefined;
   const held = new Promise<void>((resolve) => {
@@ -125,6 +147,7 @@ function mountTriggerInput() {
       async () => {
         reads += 1;
         await held;
+        if (failSample) return HttpResponse.error();
         return HttpResponse.json({
           sample: {
             id: sampleId,
