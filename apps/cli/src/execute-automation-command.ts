@@ -220,11 +220,13 @@ async function waitForRun(
         );
       status = observed;
       if (SETTLED_STATUSES.has(status)) return responseValue(response);
-      await sleep(
-        Math.min(pause, Math.max(0, deadline - Date.now())),
-        undefined,
-        { signal: waitSignal },
-      );
+      const remaining = deadline - Date.now();
+      // A poll at or past the deadline couldn't count, so don't send one:
+      // wait out the deadline and report the timeout.
+      await sleep(Math.max(0, Math.min(pause, remaining)), undefined, {
+        signal: waitSignal,
+      });
+      if (remaining <= pause) throw waitTimedOut(status, timeoutSeconds);
     }
   } catch (error: unknown) {
     if (signal.aborted)
