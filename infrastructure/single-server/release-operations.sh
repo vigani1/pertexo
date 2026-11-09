@@ -46,7 +46,7 @@ select_release() {
   release="$beta_root/releases/$SERVICE_VERSION"
   [[ -f "$release/infrastructure/single-server/compose.yaml" ]] || { echo 'Release sources missing' >&2; exit 1; }
   runtime_services=(api worker web proxy)
-  writer_services=(api worker proxy)
+  writer_services=(api proxy)
   if [[ -f "$release/apps/code-runner/package.json" ]]; then
     runtime_services+=(code-runner)
     writer_services+=(code-runner)
