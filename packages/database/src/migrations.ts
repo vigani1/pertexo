@@ -181,17 +181,21 @@ export async function migrateDatabase(
       `);
     });
 
-    const known = new Set(names);
     const recorded = await client.query<{ name: string; checksum: string }>(
       'select name,checksum from pertexo_internal.schema_migrations',
     );
-    const appliedChecksums = new Map(
+    let appliedChecksums = new Map(
       recorded.rows.map((row) => [row.name, row.checksum]),
     );
-    if (recorded.rows.some((row) => !known.has(row.name)))
-      throw new Error(
-        'Database was migrated from an older migration history; recreate it',
+    if (recorded.rows.some((row) => !names.includes(row.name))) {
+      const checksum = await adoptPreBaselineHistory(
+        transaction,
+        recorded.rows,
+        migrationsDirectory,
+        new Set(names),
       );
+      appliedChecksums = new Map([['0000_baseline.sql', checksum]]);
+    }
     for (const name of names) {
       const sql = await readFile(path.join(migrationsDirectory, name), 'utf8');
       const checksum = createHash('sha256').update(sql).digest('hex');
@@ -284,4 +288,46 @@ async function runMigrationTransaction<T>(
     await client.query('rollback').catch(() => undefined);
     throw error;
   }
+}
+
+async function adoptPreBaselineHistory(
+  transaction: Parameters<typeof runMigrationTransaction>[0],
+  rows: readonly { name: string; checksum: string }[],
+  migrationsDirectory: string,
+  known: ReadonlySet<string>,
+): Promise<string> {
+  const { client } = transaction;
+  const history = JSON.parse(
+    await readFile(
+      new URL('../migrations/pre-baseline-history.json', import.meta.url),
+      'utf8',
+    ),
+  ) as { name: string; checksum: string }[];
+  const historicalChecksums = new Map(
+    history.map((row) => [row.name, row.checksum]),
+  );
+  for (const row of rows) {
+    const expected = historicalChecksums.get(row.name);
+    if (expected === undefined)
+      throw new Error(`Unknown applied migration: ${row.name}`);
+    if (expected !== row.checksum)
+      throw new Error(`Applied migration checksum changed: ${row.name}`);
+  }
+  if (rows.length !== history.length)
+    throw new Error(
+      'Partial pre-baseline migration history: upgrade to the last pre-baseline release [RELEASE TO BE TAGGED] first, then upgrade again',
+    );
+  const baseline = '0000_baseline.sql';
+  if (!known.has(baseline)) throw new Error('Baseline migration is missing');
+  const checksum = createHash('sha256')
+    .update(await readFile(path.join(migrationsDirectory, baseline), 'utf8'))
+    .digest('hex');
+  await runMigrationTransaction(transaction, async () => {
+    await client.query('delete from pertexo_internal.schema_migrations');
+    await client.query(
+      'insert into pertexo_internal.schema_migrations(name,checksum) values($1,$2)',
+      [baseline, checksum],
+    );
+  });
+  return checksum;
 }

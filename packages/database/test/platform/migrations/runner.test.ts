@@ -150,7 +150,7 @@ describe('migration runner resource ownership', () => {
     postgres.connect.mockResolvedValue({ query, release: vi.fn() });
 
     await expect(migrateDatabase(config, directory)).rejects.toThrow(
-      'Database was migrated from an older migration history; recreate it',
+      'Unknown applied migration: 0001_rls_probe.sql',
     );
   });
 
