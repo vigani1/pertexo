@@ -156,11 +156,6 @@ export const failureNotificationDestinationVersions = appSchema.table(
         failureNotificationDestinations.kind,
       ],
     }).onDelete('restrict'),
-    index('failure_notification_destination_versions_workspace_idx').on(
-      table.workspaceId,
-      table.destinationId,
-      table.version.desc().nullsFirst(),
-    ),
   ],
 );
 
