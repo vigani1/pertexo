@@ -6,9 +6,12 @@ one before you start.
 
 ## How to upgrade
 
-1. Check that encrypted backups are configured and working. `deploy.sh` captures
-   a fresh recovery point before deploying a settled existing install and refuses
-   to migrate if that backup fails. A fresh install has nothing to capture. A retry
+1. Check that encrypted backups are configured and working. `deploy.sh` checks
+   the selected image’s pending migrations against recorded history under the
+   operation lock, before stopping writers. When migrations are pending, it requires
+   a fresh encrypted recovery point; missing backup configuration or a failed backup
+   stops the upgrade. With no pending migrations, application-only and same-commit
+   deployments skip the backup. A fresh install has nothing to capture. A retry
    with a migration fence keeps the original pre-migration recovery point.
 
    To also take a manual recovery point before updating the control scripts:
