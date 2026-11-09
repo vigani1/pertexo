@@ -1,3 +1,4 @@
+import { applicationSettings } from './support/application-settings.mjs';
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
 import {
@@ -33,7 +34,7 @@ function fixture(t) {
   const bin = join(root, 'bin');
   const state = join(root, 'state');
   for (const directory of [bin, state]) mkdirSync(directory);
-  writeFileSync(join(root, '.env.production'), 'FIXTURE=true\n', {
+  writeFileSync(join(root, '.env.production'), applicationSettings, {
     mode: 0o600,
   });
   const origin = join(root, 'origin.git');
