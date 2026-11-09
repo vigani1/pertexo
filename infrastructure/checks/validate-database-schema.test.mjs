@@ -23,6 +23,18 @@ test('types every migration-owned application table', async () => {
   });
 });
 
+test('inventories formatted chained table declarations', () => {
+  assert.deepEqual(
+    validateDatabaseSchemaSources({
+      ...validSources,
+      schemaSource: `export const first = appSchema
+      .table('first_table').enableRLS();
+      export const second = appSchema . table ('second_table').enableRLS();`,
+    }),
+    { tableCount: 2 },
+  );
+});
+
 test('validates a minimal typed inventory', () => {
   assert.deepEqual(validateDatabaseSchemaSources(validSources), {
     tableCount: 2,

@@ -112,12 +112,12 @@ it('upgrades a populated standalone test without changing its source identity or
       {
         relname: 'workflow_test_suite_cases',
         relrowsecurity: true,
-        relforcerowsecurity: true,
+        relforcerowsecurity: false,
       },
       {
         relname: 'workflow_test_suites',
         relrowsecurity: true,
-        relforcerowsecurity: true,
+        relforcerowsecurity: false,
       },
     ]);
   } finally {

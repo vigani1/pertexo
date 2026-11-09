@@ -112,10 +112,10 @@ it('upgrades populated human tasks without changing their decisions or context',
     expect(
       (
         await owner.query(
-          "select relforcerowsecurity from pg_class where oid='app.pending_run_tasks'::regclass",
+          "select relrowsecurity,relforcerowsecurity from pg_class where oid='app.pending_run_tasks'::regclass",
         )
       ).rows,
-    ).toEqual([{ relforcerowsecurity: true }]);
+    ).toEqual([{ relrowsecurity: true, relforcerowsecurity: false }]);
   } finally {
     await owner.end();
     if (created) await database.drop();

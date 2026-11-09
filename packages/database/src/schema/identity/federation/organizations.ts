@@ -39,38 +39,40 @@ export const authOrganizations = appSchema.table(
   ],
 );
 
-export const authOrganizationWorkspaces = appSchema.table(
-  'auth_organization_workspaces',
-  {
-    workspaceId: uuid('workspace_id').primaryKey(),
-    organizationId: uuid('organization_id').notNull(),
-    defaultRole: text('default_role')
-      .$type<DelegatedRole>()
-      .notNull()
-      .default('viewer'),
-    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
-      .notNull()
-      .default(sql`clock_timestamp()`),
-  },
-  (table) => [
-    index('auth_organization_workspace_org_idx').on(table.organizationId),
-    unique('auth_organization_workspace_identity_unique').on(
-      table.organizationId,
-      table.workspaceId,
-    ),
-    foreignKey({
-      name: 'auth_organization_workspace_org_fk',
-      columns: [table.organizationId],
-      foreignColumns: [authOrganizations.id],
-    }).onDelete('cascade'),
-    foreignKey({
-      name: 'auth_organization_workspace_workspace_fk',
-      columns: [table.workspaceId],
-      foreignColumns: [workspaces.id],
-    }).onDelete('cascade'),
-    check(
-      'auth_organization_workspace_role_valid',
-      sql`default_role in ('viewer','builder','operator','admin')`,
-    ),
-  ],
-);
+export const authOrganizationWorkspaces = appSchema
+  .table(
+    'auth_organization_workspaces',
+    {
+      workspaceId: uuid('workspace_id').primaryKey(),
+      organizationId: uuid('organization_id').notNull(),
+      defaultRole: text('default_role')
+        .$type<DelegatedRole>()
+        .notNull()
+        .default('viewer'),
+      createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
+        .notNull()
+        .default(sql`clock_timestamp()`),
+    },
+    (table) => [
+      index('auth_organization_workspace_org_idx').on(table.organizationId),
+      unique('auth_organization_workspace_identity_unique').on(
+        table.organizationId,
+        table.workspaceId,
+      ),
+      foreignKey({
+        name: 'auth_organization_workspace_org_fk',
+        columns: [table.organizationId],
+        foreignColumns: [authOrganizations.id],
+      }).onDelete('cascade'),
+      foreignKey({
+        name: 'auth_organization_workspace_workspace_fk',
+        columns: [table.workspaceId],
+        foreignColumns: [workspaces.id],
+      }).onDelete('cascade'),
+      check(
+        'auth_organization_workspace_role_valid',
+        sql`default_role in ('viewer','builder','operator','admin')`,
+      ),
+    ],
+  )
+  .enableRLS();

@@ -7,7 +7,7 @@ import { expect, it } from 'vitest';
 import { migrateDatabase, MIGRATIONS_DIRECTORY } from '../../src/migrations.js';
 import { createDisposableDatabaseFixture } from '../../src/testing/postgres/disposable-database.js';
 
-it('backfills stable IDs without changing populated rows or published graphs and retains forced RLS', async () => {
+it('backfills stable IDs without changing populated rows or published graphs and retains workspace RLS', async () => {
   const adminUrl =
     process.env.DATABASE_ADMIN_URL ??
     'postgresql://postgres:pertexo-local-superuser@localhost:5432/postgres';
@@ -136,7 +136,7 @@ it('backfills stable IDs without changing populated rows or published graphs and
           "select relrowsecurity,relforcerowsecurity from pg_class where oid='app.workspace_data_tables'::regclass",
         )
       ).rows,
-    ).toEqual([{ relrowsecurity: true, relforcerowsecurity: true }]);
+    ).toEqual([{ relrowsecurity: true, relforcerowsecurity: false }]);
   } finally {
     await admin?.end();
     await fixture.drop();
