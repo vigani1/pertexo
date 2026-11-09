@@ -28,6 +28,11 @@ export const SQL_FUNCTION_ALLOWLIST = Object.freeze({
     reason:
       'Owner-approved Batch D exception: necessary descriptor precheck for text owners; the shared SDK shape is tested against deployed guards.',
   },
+  'app.check_execution_value_bytes()': {
+    category: 'constraints',
+    reason:
+      'Enforce existing execution-value byte limits only when the stored column is written.',
+  },
   'app.claim_due_node_run_wakeups(integer)': {
     category: 'queue claiming',
     reason:

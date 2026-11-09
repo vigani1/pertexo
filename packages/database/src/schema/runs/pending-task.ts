@@ -78,10 +78,6 @@ export const pendingRunTasks = appSchema.table(
       sql`jsonb_typeof(config) = 'object' AND octet_length(config::text) <= 16384`,
     ),
     check(
-      'pending_run_tasks_output_bounded',
-      sql`output_ref IS NULL OR octet_length(output_ref::text) <= 4194304`,
-    ),
-    check(
       'pending_run_tasks_context_bounded',
       sql`jsonb_typeof(context) = 'object' AND octet_length(context::text) <= 73728`,
     ),

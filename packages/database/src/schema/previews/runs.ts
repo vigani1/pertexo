@@ -125,16 +125,8 @@ export const previewRuns = appSchema.table(
       sql`((idempotency_key_hash ~ '^[0-9a-f]{64}$'::text) AND (request_hash ~ '^[0-9a-f]{64}$'::text))`,
     ),
     check(
-      'preview_runs_input_bounded',
-      sql`(octet_length((input_ref)::text) <= 4194304)`,
-    ),
-    check(
       'preview_runs_integration_identity_consistent',
       sql`((((provider_key IS NULL) AND (operation_key IS NULL)) OR ((provider_key IS NOT NULL) AND (operation_key IS NOT NULL) AND ((provider_key)::text ~ '^[a-z][a-z0-9._:-]{0,63}$'::text) AND ((operation_key)::text ~ '^[a-z][a-z0-9._:-]{0,127}$'::text))) IS TRUE)`,
-    ),
-    check(
-      'preview_runs_node_bounded',
-      sql`(octet_length((executable_node_json)::text) <= 2097152)`,
     ),
     check(
       'preview_runs_node_id_bounded',
@@ -143,10 +135,6 @@ export const previewRuns = appSchema.table(
     check(
       'preview_runs_node_object',
       sql`(json_typeof(executable_node_json) = 'object'::text)`,
-    ),
-    check(
-      'preview_runs_output_bounded',
-      sql`((output_ref IS NULL) OR (octet_length((output_ref)::text) <= 4194304))`,
     ),
     check(
       'preview_runs_output_truth',

@@ -3,7 +3,7 @@ import { sql } from 'drizzle-orm';
 import { QueryBuilder } from 'drizzle-orm/pg-core';
 import type { Pool } from 'pg';
 
-export const EXPECTED_MIGRATION_HEAD = '0120_redundant_indexes.sql';
+export const EXPECTED_MIGRATION_HEAD = '0121_execution_value_size_guards.sql';
 const MINIMUM_POSTGRES_MAJOR = 18;
 
 /**
