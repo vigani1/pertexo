@@ -79,6 +79,7 @@ for (const { mode, transport } of ['kms', 'self-managed'].flatMap((mode) =>
               { version: '0', key: Buffer.alloc(32, 7).toString('base64') },
             ]),
           }),
+      POSTGRES_SHARED_BUFFERS: mode === 'kms' ? '' : '256MB',
       SERVICE_VERSION: 'b'.repeat(40),
       BETA_STATE_DIR: directory,
     };
@@ -104,6 +105,11 @@ for (const { mode, transport } of ['kms', 'self-managed'].flatMap((mode) =>
           'json',
         ],
         { env: { ...environment, ...hosts }, encoding: 'utf8' },
+      ),
+    );
+    assert.ok(
+      config.services.postgres.command.includes(
+        `shared_buffers=${mode === 'kms' ? '128MB' : '256MB'}`,
       ),
     );
     const api = parseApiConfig(config.services.api.environment);
