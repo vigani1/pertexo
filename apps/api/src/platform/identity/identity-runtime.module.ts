@@ -66,10 +66,12 @@ export async function createApiIdentityRuntime(
   databaseConfig: DatabaseConfig,
   {
     runtime,
+    maintenanceDatabase,
     authenticationMail,
     logger,
   }: Readonly<{
     logger: StructuredLogger;
+    maintenanceDatabase: DatabaseConfig;
     runtime?: DatabaseRuntime;
     authenticationMail?: AuthenticationMail;
   }>,
@@ -86,11 +88,9 @@ export async function createApiIdentityRuntime(
     const tokenDatabase = resources.own(
       createApiTokenStore(databaseConfig, runtime),
     );
-    const directory = resources.own(
-      createDirectoryStore(databaseConfig, runtime),
-    );
+    const directory = resources.own(createDirectoryStore(maintenanceDatabase));
     const federationStore = resources.own(
-      createFederationManagementStore(databaseConfig, runtime),
+      createFederationManagementStore(maintenanceDatabase),
     );
     const federationEnvelope =
       config.federationEncryption === undefined
@@ -132,6 +132,7 @@ export async function createApiIdentityRuntime(
       logger,
       config,
       databaseConfig,
+      maintenanceDatabase,
       runtime,
       authenticationMail,
       acquire: (resource) => resources.own(resource),

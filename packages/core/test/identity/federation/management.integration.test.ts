@@ -380,8 +380,38 @@ describe('organization federation management', () => {
       "insert into app.auth_accounts(id,user_id,provider_id,account_id,password) values($1,$2::uuid,'credential',$3,'test-password-hash')",
       [key(), scope.actorId, scope.actorId],
     );
+    for (const password of [null, '']) {
+      await db.asAdmin(
+        "update app.auth_accounts set password=$2 where user_id=$1 and provider_id='credential'",
+        [scope.actorId, password],
+      );
+      await expect(
+        db
+          .federation()
+          .configureEnforcement({ ...command, expectedRevision: 3 }),
+      ).rejects.toHaveProperty('reason', 'recovery_required');
+    }
+    await db.asAdmin(
+      "update app.auth_accounts set password='test-password-hash' where user_id=$1 and provider_id='credential'",
+      [scope.actorId],
+    );
     await expect(
       db.federation().configureEnforcement({ ...command, expectedRevision: 3 }),
     ).rejects.toHaveProperty('reason', 'provider_untested');
+    const extra = key();
+    await db.asAdmin(
+      "insert into app.auth_accounts(id,user_id,provider_id,account_id,password) values($1,$2,'credential',$3,null)",
+      [extra, scope.actorId, key()],
+    );
+    await expect(
+      db.federation().configureEnforcement({ ...command, expectedRevision: 3 }),
+    ).rejects.toHaveProperty('reason', 'provider_untested');
+    await db.asAdmin(
+      "update app.auth_accounts set password='second-hash' where id=$1",
+      [extra],
+    );
+    await expect(
+      db.federation().configureEnforcement({ ...command, expectedRevision: 3 }),
+    ).rejects.toHaveProperty('reason', 'recovery_required');
   });
 });

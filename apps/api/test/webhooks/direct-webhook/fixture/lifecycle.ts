@@ -1,3 +1,4 @@
+import { maintenanceDatabase } from '../../../support/maintenance-database.js';
 import { DEFAULT_INSTANCE_LIMITS } from '../../../../src/platform/config/instance-limits.js';
 import { createWebhookTestEventStore } from '@pertexo/core/triggers';
 import { WebhookTestEventService } from '../../../../src/webhooks/test-events/webhook-test-event.service.js';
@@ -178,7 +179,7 @@ async function createFixture(): Promise<FixtureResourceOwner> {
           },
         },
         apiConfig,
-        { logger },
+        { maintenanceDatabase: maintenanceDatabase(apiConfig), logger },
       ),
       (runtime) => runtime.close(),
     );
@@ -239,6 +240,7 @@ async function createFixture(): Promise<FixtureResourceOwner> {
         DEFAULT_INSTANCE_LIMITS.webhookEndpointBurstLimit,
       codeSettings: DEFAULT_CODE_SETTINGS,
       database: apiConfig,
+      maintenanceDatabase: maintenanceDatabase(apiConfig),
       host: '127.0.0.1',
       nodeEnv: 'test',
       observability: {

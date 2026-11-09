@@ -34,7 +34,7 @@ async function setup() {
       controlWorkspaceId: workspaceId,
       credentialId,
     },
-    pool = db.authenticationPool();
+    pool = db.organizationPool();
   const one = await createDirectoryUser(pool, principal, {
     userName: 'MixedCase',
     externalId: 'ExactID',

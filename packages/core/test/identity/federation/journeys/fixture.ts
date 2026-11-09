@@ -58,7 +58,7 @@ export async function setup(jitEnabled = false) {
   if (providerId === undefined || organizationId === undefined)
     throw new Error('Missing provider');
   const commands = new OrganizationSignInCommands({
-    pool: db.authenticationPool(),
+    pool: db.organizationPool(),
     sessionTtlSeconds: 3600,
   });
   return {

@@ -19,6 +19,7 @@ export type IdentityCommandFixture = Readonly<{
   federation: (
     replica?: 0 | 1,
   ) => ReturnType<typeof createFederationManagementStore>;
+  organizationPool: (replica?: 0 | 1) => Pool;
   authenticationPool: (replica?: 0 | 1) => Pool;
   identity: () => ReturnType<typeof createIdentityWorkspaceStore>;
   /** Runs superuser SQL across tenant policies, for arrangement and inspection only. */
@@ -48,7 +49,7 @@ export function useIdentityCommandDatabase(
     'postgresql://postgres:pertexo-local-superuser@localhost:5432/postgres';
   const fixture = createDisposableDatabaseFixture({
     adminUrl,
-    connectRoles: ['pertexo_migration', 'pertexo_app', 'pertexo_app'],
+    connectRoles: ['pertexo_migration', 'pertexo_app', 'pertexo_maintenance'],
     databaseName: `pertexo_test_${suite}_${randomUUID().replaceAll('-', '')}`,
     ownerRole: 'pertexo_owner',
   });
@@ -60,6 +61,11 @@ export function useIdentityCommandDatabase(
     process.env.DATABASE_URL ??
       'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo',
   );
+  const maintenanceUrl = fixture.databaseUrl(
+    process.env.DATABASE_MAINTENANCE_URL ??
+      'postgresql://pertexo_maintenance:pertexo-local-maintenance@localhost:5432/pertexo',
+  );
+  const organizationPools: (Pool | undefined)[] = [];
   let identity: ReturnType<typeof createIdentityWorkspaceStore> | undefined;
   const federation: (
     ReturnType<typeof createFederationManagementStore> | undefined
@@ -94,6 +100,7 @@ export function useIdentityCommandDatabase(
   afterAll(async () => {
     const closing = await Promise.allSettled([
       identity?.close(),
+      ...organizationPools.map((pool) => pool?.end()),
       ...federation.map((store) => store?.close()),
       tenant?.close(),
       owner?.end(),
@@ -113,8 +120,13 @@ export function useIdentityCommandDatabase(
   return Object.freeze({
     federation: (replica = 0) =>
       (federation[replica] ??= createFederationManagementStore(
-        parseDatabaseConfig({ connectionString: apiUrl, max: 1 }),
+        parseDatabaseConfig({ connectionString: maintenanceUrl, max: 1 }),
       )),
+    organizationPool: (replica = 0) =>
+      (organizationPools[replica] ??= new Pool({
+        connectionString: maintenanceUrl,
+        max: 1,
+      })),
     authenticationPool: (replica = 0) =>
       replica === 0
         ? required(api)

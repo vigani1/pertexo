@@ -1,3 +1,4 @@
+import { maintenanceDatabase } from '../../support/maintenance-database.js';
 import { captureLocalAuthenticationMail } from '../../support/better-auth/mail-capture.js';
 import { randomUUID } from 'node:crypto';
 
@@ -75,6 +76,7 @@ export function createWorkspaceApiFixture() {
       const identityRuntime = owner.acquire(
         'identity runtime',
         await createApiIdentityRuntime(identityConfig, databaseConfig, {
+          maintenanceDatabase: maintenanceDatabase(databaseConfig),
           logger,
           authenticationMail: mail,
         }),

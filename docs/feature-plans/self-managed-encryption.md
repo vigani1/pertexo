@@ -159,7 +159,7 @@ introduce exports only with real callers in the same PR.
 | integrations `webhooks/crypto.ts`, `server.ts` | Share the provider for webhook secrets; expose only the server interfaces the callers actually need. |
 | database `platform/encryption/keys.repository.ts` (new), `platform/index.ts` | Read-only, bounded stream of retained wrapped-key records using the existing maintenance role and pool runtime. No encryption, JSON-envelope decoding or provider-selection rules in SQL. |
 | worker `runtime/startup/verify-encryption.ts` (new), `app.ts` | Compose repository and verifier before Nest context creation; close startup resources on success/failure. Use `config.retention.maintenanceDatabase`; never start a polling loop or dispatcher before verification. |
-| API `platform/config/api.ts` and runtime factories | Pass the shared typed configuration to connection/webhook runtimes. Do not add maintenance credentials to the API. |
+| API `platform/config/api.ts` and runtime factories | Pass the shared typed configuration to connection/webhook runtimes. Key verification stays outside the API. The 2026-11-09 ADR 003 follow-up separately authorizes its organization provisioning maintenance connection. |
 | infrastructure `single-server/encryption/verify.mjs` (new) | Thin release-image wrapper around compiled database/integrations interfaces. Read-only preflight, safe output, timeout and cleanup. Run in the existing on-demand ops container; no new service or general-purpose ops command. |
 | infrastructure Compose, `storage/prepare.mjs`, generator and examples | Supply identical canonical settings to API/worker, conditionally require provider settings through the real parsers, and keep private file permissions. |
 | infrastructure deploy/restore/qualification and operations docs | Gate serving/recovery, exercise the public setup path and explain key custody. Keep encryption policy out of shell scripts. |
@@ -380,7 +380,7 @@ authorization for this feature; merge by rebase only after existing CI is green.
 | Database authority and lifetime | Real app login cannot gain global reads; maintenance can read both tables; snapshot, timeout, abort and iterator cancellation release resources. |
 | Provider mismatch | KMS rows block self-managed startup; self-managed/legacy rows block KMS startup; no row mutation or new secrets written. |
 | Deployment | KMS defaults still parse; self-managed needs no AWS encryption settings; both runtime env files match; unused fields omitted; verification precedes all serving starts and preserves migration uncertainty. |
-| Lifecycle | Worker verifier runs before Nest factories; no worker background task on failure; API startup does not depend on worker health and receives no maintenance URL. |
+| Lifecycle | Worker verifier runs before Nest factories; no worker background task on failure; API startup does not depend on worker health; its maintenance URL is used only by the organization provisioning flows authorized in the 2026-11-09 ADR 003 follow-up. |
 | Restore | Correct separately supplied ring works; wrong/missing key preserves restore fence; secret bytes usable after real database/object restoration. |
 | Custody and leakage | Generator stdout parses as dotenv; warnings only stderr; keys absent from backup payload, logs, web environment and image layers. |
 | KMS regressions | Existing SDK call arguments, associated context, timeouts, credential resolution and encryption tests remain unchanged; metadata scan is not presented as an AWS permission test. |

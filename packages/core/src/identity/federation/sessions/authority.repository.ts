@@ -38,6 +38,7 @@ import {
 async function readAuthenticationPolicy(
   client: PoolClient,
   userId: string,
+  credentialAuthority: 'app' | 'maintenance' = 'app',
 ): Promise<AuthenticationPolicy> {
   const [account] = await drizzle(client)
     .select({
@@ -101,20 +102,27 @@ async function readAuthenticationPolicy(
     );
     passwordPresent =
       controlOwner &&
-      (
-        await drizzle(client)
-          .select({ one: sql`1` })
-          .from(authAccounts)
-          .where(
-            and(
-              eq(authAccounts.userId, userId),
-              eq(authAccounts.providerId, 'credential'),
-              isNotNull(authAccounts.password),
-              sql`length(${authAccounts.password})>0`,
-            ),
-          )
-          .catch(rethrowQueryFailure)
-      ).length === 1;
+      (credentialAuthority === 'maintenance'
+        ? (
+            await client.query<{ count: number }>(
+              'select app.password_credential_count($1::uuid) count',
+              [userId],
+            )
+          ).rows[0]?.count === 1
+        : (
+            await drizzle(client)
+              .select({ one: sql`1` })
+              .from(authAccounts)
+              .where(
+                and(
+                  eq(authAccounts.userId, userId),
+                  eq(authAccounts.providerId, 'credential'),
+                  isNotNull(authAccounts.password),
+                  sql`length(${authAccounts.password})>0`,
+                ),
+              )
+              .catch(rethrowQueryFailure)
+          ).length === 1);
   }
   return accountPolicy({
     ...account,
@@ -126,8 +134,13 @@ export async function canCreateAuthenticationSession(
   client: PoolClient,
   userId: string,
   proof: SessionAuthenticationProof,
+  credentialAuthority: 'app' | 'maintenance' = 'app',
 ): Promise<boolean> {
-  const policy = await readAuthenticationPolicy(client, userId);
+  const policy = await readAuthenticationPolicy(
+    client,
+    userId,
+    credentialAuthority,
+  );
   let provider: CurrentProvider | undefined;
   if (proof.method === 'organization') {
     const [row] = await drizzle(client)
@@ -169,6 +182,7 @@ export async function canCreateAuthenticationSession(
 export async function readEligibleAuthenticationSession(
   client: PoolClient,
   sessionId: string,
+  credentialAuthority: 'app' | 'maintenance' = 'app',
 ): Promise<AuthenticationSession | undefined> {
   const [session] = await drizzle(client)
     .select({
@@ -188,7 +202,14 @@ export async function readEligibleAuthenticationSession(
     .catch(rethrowQueryFailure);
   if (session === undefined) return undefined;
   const proof = sessionProof(session);
-  if (!(await canCreateAuthenticationSession(client, session.user_id, proof)))
+  if (
+    !(await canCreateAuthenticationSession(
+      client,
+      session.user_id,
+      proof,
+      credentialAuthority,
+    ))
+  )
     return undefined;
   return { id: session.id, userId: session.user_id, proof };
 }

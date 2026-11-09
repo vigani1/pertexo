@@ -84,7 +84,14 @@ export async function completeFederationJourney(
     providerId: attempt.provider.id,
     providerRevision: attempt.provider.revision,
   } as const;
-  if (!(await canCreateAuthenticationSession(client, user.id, proof)))
+  if (
+    !(await canCreateAuthenticationSession(
+      client,
+      user.id,
+      proof,
+      'maintenance',
+    ))
+  )
     throw new SignInProofRejectedError();
   if (
     !(await bindVerifiedAccount(client, {
@@ -134,6 +141,7 @@ async function completeProviderTest(
   const source = await readEligibleAuthenticationSession(
     client,
     attempt.ownerSessionId,
+    'maintenance',
   );
   if (source?.userId !== attempt.ownerUserId)
     throw new SignInProofRejectedError();

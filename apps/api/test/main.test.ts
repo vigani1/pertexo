@@ -6,6 +6,8 @@ import { bootstrapApi, type ApiBootstrapModules } from '../src/main.js';
 import { parseApiConfig } from '../src/platform/config/api-config.js';
 
 const config = parseApiConfig({
+  DATABASE_MAINTENANCE_URL:
+    'postgresql://pertexo_maintenance:secret@localhost:5432/pertexo',
   DATABASE_URL: 'postgresql://api:secret@localhost:5432/pertexo',
   HOST: '127.0.0.1',
   NODE_ENV: 'test',

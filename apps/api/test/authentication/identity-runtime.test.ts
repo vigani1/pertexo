@@ -1,3 +1,4 @@
+import { maintenanceDatabase } from '../support/maintenance-database.js';
 import { silent } from '../support/better-auth/api/environment.js';
 import * as identityStores from '@pertexo/core/identity';
 import * as tenantAccessStores from '@pertexo/core/tenant-access';
@@ -111,7 +112,10 @@ describe('identity runtime composition', () => {
     const runtime = await createApiIdentityRuntime(
       identityConfig,
       databaseConfig,
-      { logger: silent },
+      {
+        maintenanceDatabase: maintenanceDatabase(databaseConfig),
+        logger: silent,
+      },
     );
     await runtime.close();
     for (const close of closes) expect(close()).toHaveBeenCalledOnce();
@@ -124,7 +128,10 @@ describe('identity runtime composition', () => {
     const runtime = await createApiIdentityRuntime(
       identityConfig,
       databaseConfig,
-      { logger: silent },
+      {
+        maintenanceDatabase: maintenanceDatabase(databaseConfig),
+        logger: silent,
+      },
     );
 
     await Promise.all([runtime.close(), runtime.close()]);
@@ -140,7 +147,10 @@ describe('identity runtime composition', () => {
     const runtime = await createApiIdentityRuntime(
       identityConfig,
       databaseConfig,
-      { logger: silent },
+      {
+        maintenanceDatabase: maintenanceDatabase(databaseConfig),
+        logger: silent,
+      },
     );
 
     await expect(runtime.close()).rejects.toThrow(
@@ -163,6 +173,7 @@ describe('identity runtime composition', () => {
 
     await expect(
       createApiIdentityRuntime(identityConfig, databaseConfig, {
+        maintenanceDatabase: maintenanceDatabase(databaseConfig),
         logger: silent,
       }),
     ).rejects.toBe(compositionFailure);

@@ -29,12 +29,18 @@ beforeAll(async () => {
       'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo',
   );
   url.pathname = `/${String(row?.name)}`;
-  const config = () =>
-    parseDatabaseConfig({ connectionString: url.toString(), max: 3 });
   pool = new Pool({ connectionString: url.toString(), max: 3 });
-  federation = createFederationManagementStore(config());
-  directory = createDirectoryStore(config());
-  signIn = new OrganizationSignInCommands({ pool, sessionTtlSeconds: 3_600 });
+  const maintenance = db.organizationPool();
+  const organizationConfig = parseDatabaseConfig({
+    connectionString: maintenance.options.connectionString ?? '',
+    max: 3,
+  });
+  federation = createFederationManagementStore(organizationConfig);
+  directory = createDirectoryStore(organizationConfig);
+  signIn = new OrganizationSignInCommands({
+    pool: maintenance,
+    sessionTtlSeconds: 3_600,
+  });
 });
 
 afterAll(async () => {

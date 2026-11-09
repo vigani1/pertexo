@@ -53,7 +53,7 @@ async function setup() {
     'insert into app.auth_provisioning_credentials(id,organization_id,name,secret_digest,created_by) values($1,$2,$3,$4,$5)',
     [credentialId, organizationId, 'Fixture', digest, owner.id],
   );
-  const pool = db.authenticationPool();
+  const pool = db.organizationPool();
   const principal = await authenticateDirectory(pool, organizationId, digest);
   return {
     owner,

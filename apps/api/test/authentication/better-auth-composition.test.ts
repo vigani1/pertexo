@@ -1,3 +1,4 @@
+import { maintenanceDatabase } from '../support/maintenance-database.js';
 import { silent } from '../support/better-auth/api/environment.js';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -65,6 +66,7 @@ function compose(
       betterAuth: configured,
     },
     databaseConfig,
+    maintenanceDatabase: maintenanceDatabase(databaseConfig),
     runtime: undefined,
     authenticationMail: undefined,
     logger: silent,

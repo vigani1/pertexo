@@ -363,7 +363,7 @@ describe('durable organization sign-in', () => {
       }),
     ).resolves.toEqual({ kind: 'failed' });
     const replica = new OrganizationSignInCommands({
-      pool: db.authenticationPool(1),
+      pool: db.organizationPool(1),
       sessionTtlSeconds: 3600,
     });
     const results = await Promise.all([

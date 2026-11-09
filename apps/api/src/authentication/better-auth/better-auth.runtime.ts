@@ -65,6 +65,7 @@ export type BetterAuthRuntimeConfig = Readonly<{
   /** Local provider fixtures may use this seam; production uses pinned providers. */
   linkProviderGateway?: SocialProviderGateway;
   federation?: Readonly<{
+    database: BetterAuthRuntimeConfig['database'];
     envelope: ApplicationSecretEnvelope;
     oidcGateway?: OidcProofGateway;
     samlGateway?: SamlProofGateway;
@@ -83,7 +84,7 @@ export type BetterAuthRuntime = Readonly<{
 type DeliverSessionCookies = (token: string) => Promise<readonly string[]>;
 
 /**
- * Owns Better Auth's one PostgreSQL pool and the policy-bearing configuration.
+ * Owns Better Auth's app pool and the optional organization maintenance pool and the policy-bearing configuration.
  * Application authorization continues to resolve through Pertexo's user and
  * membership records; Better Auth owns credentials and browser sessions only.
  */
@@ -170,8 +171,17 @@ export function createBetterAuthRuntime(
     deliver,
   });
 
+  // Organization provisioning locks and projects several workspaces atomically.
+  const organizationPool =
+    config.federation === undefined
+      ? pool
+      : new Pool({
+          ...config.federation.database,
+          application_name: 'pertexo-api-organization-sign-in',
+        });
+  if (organizationPool !== pool) surviveConnectionLoss(organizationPool);
   const federation = new OrganizationSignIn({
-    pool,
+    pool: organizationPool,
     baseUrl: config.baseUrl,
     secret: config.secret,
     secureCookies: config.secureCookies,
@@ -220,7 +230,11 @@ export function createBetterAuthRuntime(
     }),
     sessions,
     signUp,
-    close: () => (closePromise ??= pool.end()),
+    close: () =>
+      (closePromise ??= Promise.all([
+        pool.end(),
+        ...(organizationPool === pool ? [] : [organizationPool.end()]),
+      ]).then(() => undefined)),
   });
 }
 

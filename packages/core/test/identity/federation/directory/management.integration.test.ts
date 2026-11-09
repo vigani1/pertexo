@@ -33,7 +33,7 @@ async function setup() {
   });
   if (settings.organization === null) throw new Error('Missing organization');
   const scope = { workspaceId, actorId: owner.id },
-    pool = db.authenticationPool();
+    pool = db.organizationPool();
   return { scope, owner, pool, organizationId: settings.organization.id };
 }
 async function machine(f: Awaited<ReturnType<typeof setup>>) {
