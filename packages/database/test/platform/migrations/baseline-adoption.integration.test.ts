@@ -81,7 +81,7 @@ it('adopts the full history without executing baseline SQL, retaining data and a
   });
 });
 
-it.each(['partial', 'unknown', 'checksum'] as const)(
+it.each(['partial', 'baseline-only', 'unknown', 'checksum'] as const)(
   'refuses %s history without changing its receipts or data',
   async (kind) => {
     await withUpgradeDatabase(122, async ({ admin, config, directory }) => {
@@ -89,6 +89,10 @@ it.each(['partial', 'unknown', 'checksum'] as const)(
       if (kind === 'partial')
         await admin.query(
           "delete from pertexo_internal.schema_migrations where name like '0122_%'",
+        );
+      if (kind === 'baseline-only')
+        await admin.query(
+          "delete from pertexo_internal.schema_migrations where name <> '0000_baseline.sql'",
         );
       if (kind === 'unknown')
         await admin.query(
@@ -108,6 +112,7 @@ it.each(['partial', 'unknown', 'checksum'] as const)(
       await writeFile(join(directory, '0000_baseline.sql'), 'select 1/0;');
       await expect(migrateDatabase(config, directory)).rejects.toThrow(
         {
+          'baseline-only': 'upgrade to the last pre-baseline release',
           partial: 'upgrade to the last pre-baseline release',
           unknown: 'Unknown applied migration',
           checksum: 'Applied migration checksum changed',

@@ -184,18 +184,12 @@ export async function migrateDatabase(
     const recorded = await client.query<{ name: string; checksum: string }>(
       'select name,checksum from pertexo_internal.schema_migrations',
     );
-    let appliedChecksums = new Map(
-      recorded.rows.map((row) => [row.name, row.checksum]),
+    const appliedChecksums = await readAppliedHistory(
+      transaction,
+      recorded.rows,
+      migrationsDirectory,
+      names,
     );
-    if (recorded.rows.some((row) => !names.includes(row.name))) {
-      const checksum = await adoptPreBaselineHistory(
-        transaction,
-        recorded.rows,
-        migrationsDirectory,
-        new Set(names),
-      );
-      appliedChecksums = new Map([['0000_baseline.sql', checksum]]);
-    }
     for (const name of names) {
       const sql = await readFile(path.join(migrationsDirectory, name), 'utf8');
       const checksum = createHash('sha256').update(sql).digest('hex');
@@ -290,12 +284,12 @@ async function runMigrationTransaction<T>(
   }
 }
 
-async function adoptPreBaselineHistory(
+async function readAppliedHistory(
   transaction: Parameters<typeof runMigrationTransaction>[0],
   rows: readonly { name: string; checksum: string }[],
   migrationsDirectory: string,
-  known: ReadonlySet<string>,
-): Promise<string> {
+  names: readonly string[],
+): Promise<Map<string, string>> {
   const { client } = transaction;
   const history = JSON.parse(
     await readFile(
@@ -306,6 +300,22 @@ async function adoptPreBaselineHistory(
   const historicalChecksums = new Map(
     history.map((row) => [row.name, row.checksum]),
   );
+  const baseline = '0000_baseline.sql';
+  const checksum = names.includes(baseline)
+    ? createHash('sha256')
+        .update(
+          await readFile(path.join(migrationsDirectory, baseline), 'utf8'),
+        )
+        .digest('hex')
+    : undefined;
+  const legacyBaseline = rows.some(
+    (row) =>
+      row.name === baseline &&
+      row.checksum === historicalChecksums.get(baseline) &&
+      row.checksum !== checksum,
+  );
+  if (!legacyBaseline && rows.every((row) => names.includes(row.name)))
+    return new Map(rows.map((row) => [row.name, row.checksum]));
   for (const row of rows) {
     const expected = historicalChecksums.get(row.name);
     if (expected === undefined)
@@ -317,11 +327,7 @@ async function adoptPreBaselineHistory(
     throw new Error(
       'Partial pre-baseline migration history: upgrade to the last pre-baseline release [RELEASE TO BE TAGGED] first, then upgrade again',
     );
-  const baseline = '0000_baseline.sql';
-  if (!known.has(baseline)) throw new Error('Baseline migration is missing');
-  const checksum = createHash('sha256')
-    .update(await readFile(path.join(migrationsDirectory, baseline), 'utf8'))
-    .digest('hex');
+  if (checksum === undefined) throw new Error('Baseline migration is missing');
   await runMigrationTransaction(transaction, async () => {
     await client.query('delete from pertexo_internal.schema_migrations');
     await client.query(
@@ -329,5 +335,5 @@ async function adoptPreBaselineHistory(
       [baseline, checksum],
     );
   });
-  return checksum;
+  return new Map([[baseline, checksum]]);
 }
