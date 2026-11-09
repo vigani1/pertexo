@@ -23,21 +23,66 @@ You need one server with at least:
 - 4 GB of memory
 - 40 GB of disk
 
-The memory leaves room for the Code runner's default ceiling of 2,912 MiB, a limit
-that isn't reserved while idle, plus about 1 GB for everything else. These sizes are
-a starting point, not a load-tested promise: watch memory and disk once real work
-runs, and allow more for lots of files or long retention.
+The supported minimum is **4 GiB and 2 vCPUs**, qualified on ARM64 Linux under
+Docker cgroups with the example's **64 MiB Code heap and one Code slot**. The API
+and worker each have a 512 MiB container cap, no additional swap allowance, and a
+256 MiB V8 heap. The Code container ceiling for this preset is 1,872 MiB; it is not
+reserved while idle. Existing installs retaining the 128 MiB / two-slot Code
+preset need a larger memory budget: that runner ceiling alone is 2,912 MiB.
 
-`POSTGRES_SHARED_BUFFERS` in `.env.production` controls PostgreSQL's shared
-buffer cache. The default is `128MB`, chosen within the roughly 1 GB left on
-the minimum host after the Code runner's ceiling. Budget the database together
-with the API, worker, operating-system cache and concurrent Code executions;
-do not assign a quarter of total host RAM to PostgreSQL without subtracting
-those consumers. A larger host can raise this setting, for example to `256MB`,
-after checking its actual free memory under load. It takes effect when the
-PostgreSQL container is recreated. Keep `work_mem` at its `4MB` default until
-query measurements justify a change: it is allocated per query operation,
-not once for the whole server.
+`POSTGRES_SHARED_BUFFERS` defaults to `128MB`. Budget the database together with
+the other services rather than assigning it a quarter of total host RAM. A larger
+host can raise it, for example to `256MB`, after checking free memory under load.
+It takes effect when PostgreSQL is recreated. Keep `work_mem` at `4MB` until query
+measurements justify changing it: that memory is allocated per operation.
+
+### Qualification method and limits
+
+The J1 qualification used a Compose override with these caps. They sum to exactly
+4,096 MiB and 2 vCPUs, including the two serving-independent administration
+services. Each memory+swap limit equalled its memory limit. API/worker heaps were
+256 MiB. The defaults above retain the API/worker memory limits; the other caps
+below describe the qualification fixture.
+
+| Service | Memory (MiB) | CPU quota |
+| --- | ---: | ---: |
+| API | 512 | 0.50 |
+| Worker | 512 | 0.30 |
+| Code runner | 1,872 | 0.50 |
+| PostgreSQL | 256 | 0.20 |
+| Redis | 128 | 0.05 |
+| Storage | 256 | 0.05 |
+| Web | 32 | 0.05 |
+| Proxy | 32 | 0.05 |
+| Migration | 240 | 0.15 |
+| Ops | 256 | 0.15 |
+| **Total** | **4,096** | **2.00** |
+
+The load publishes eight new webhook→Code→end workflows in two groups of four,
+sends 40 signed webhook deliveries in bursts of ten, and saves/validates an editor
+draft 15 times concurrently. Run completion is observed with one aggregate database
+query every two seconds, avoiding 40 artificial run-page polling clients. Code
+steps execute real JavaScript in the hardened runner. Docker stats are sampled
+about every three seconds, Docker OOM events are recorded continuously, and the
+API/worker native readiness probe results and restart counts are inspected.
+
+The initial allocation gave Code only 0.25 vCPU and used 40 polling observers:
+38/40 runs succeeded, two ended `code.runner_unavailable`, and no OOM occurred.
+Reallocating the same 4 GiB / 2 vCPUs and reducing observer traffic completed all
+40 runs in the defined load. No application deadline or revocation interval was
+relaxed. The retained evidence and reproducible load scripts are in the J1 audit's
+`evidence/batch-j1/` directory.
+
+This is a supported minimum for that bounded workload, not a maximum-capacity
+claim. Cgroups constrain individual services, not an entire VM: they do not pin
+cores or reproduce an operating system, disk bandwidth or every noisy neighbour.
+Browser rendering, the test driver, operator bootstrap tools and off-server mail
+and backup stand-ins are outside the serving-service budget. Stats sampling can
+miss short peaks and excludes reclaimable file cache; OOM events cover cgroup
+kills. Larger files, longer retention, larger graphs, more viewers, extra Code
+packages or more Code slots need fresh capacity measurements and extra headroom.
+The 40 GB disk starting size is for a small fresh install, not a measured storage
+capacity guarantee. Keep the disk and backup-age alerts enabled.
 
 Migration 0122 lowers autovacuum's size-dependent vacuum/insert factor to
 `0.02` and analyze factor to `0.01` for `workflow_runs`, `node_runs`,
@@ -452,10 +497,10 @@ the supported AMD64 or ARM64 image are required. A missing hardening prerequisit
 refuses startup; a deployed worker refuses a development process runner before
 sending run data.
 
-The example enables Code with a 128 MB V8 heap, 30-second instance maximum,
-5-second step default and two slots. `storage/prepare.mjs` derives container
+The example enables Code with a 64 MiB V8 heap, 30-second instance maximum,
+5-second step default and one slot. `storage/prepare.mjs` derives container
 memory, CPU and PID bounds from the `CODE_*` settings; the default memory ceiling
-is 2,912 MiB, including native/V8 and manager headroom. This is a ceiling, not
+is 1,872 MiB for this preset, including native/V8 and manager headroom. This is a ceiling, not
 reserved idle memory. Each process also has a hard data-memory bound and active
 RSS monitoring; the heap setting alone does not bound native allocations.
 Change settings through the normal deployment procedure so the API, worker and
