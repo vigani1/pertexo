@@ -28,6 +28,28 @@ that isn't reserved while idle, plus about 1 GB for everything else. These sizes
 a starting point, not a load-tested promise: watch memory and disk once real work
 runs, and allow more for lots of files or long retention.
 
+`POSTGRES_SHARED_BUFFERS` in `.env.production` controls PostgreSQL's shared
+buffer cache. The default is `128MB`, chosen within the roughly 1 GB left on
+the minimum host after the Code runner's ceiling. Budget the database together
+with the API, worker, operating-system cache and concurrent Code executions;
+do not assign a quarter of total host RAM to PostgreSQL without subtracting
+those consumers. A larger host can raise this setting, for example to `256MB`,
+after checking its actual free memory under load. It takes effect when the
+PostgreSQL container is recreated. Keep `work_mem` at its `4MB` default until
+query measurements justify a change: it is allocated per query operation,
+not once for the whole server.
+
+Migration 0122 lowers autovacuum's size-dependent vacuum/insert factor to
+`0.02` and analyze factor to `0.01` for `workflow_runs`, `node_runs`,
+`node_attempts`, `run_checkpoints`, `run_events`, `outbox_events` and
+`inbox_receipts`. Small-table thresholds stay at PostgreSQL defaults. For
+150,000 estimated rows, ordinary vacuum becomes eligible after 3,050 changed
+rows rather than 30,050, and analyze after 1,550 rather than 15,050. Eligibility
+is not a time guarantee; workers still follow PostgreSQL's scheduling cycle.
+Check `pg_stat_user_tables` for `n_dead_tup`, `last_autovacuum` and
+`last_autoanalyze`, alongside host memory and disk latency, once a real workload
+runs. The migration changes maintenance settings without rewriting rows.
+
 Use a recent Linux with cgroup v2; Ubuntu 24.04 is what this is tested on. Then:
 
 1. Install Docker Engine and the Compose plugin using

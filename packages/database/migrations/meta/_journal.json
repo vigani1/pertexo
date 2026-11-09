@@ -855,6 +855,13 @@
       "when": 1794195359217,
       "tag": "0121_execution_value_size_guards",
       "breakpoints": true
+    },
+    {
+      "idx": 122,
+      "version": "7",
+      "when": 1794195840273,
+      "tag": "0122_hot_table_maintenance",
+      "breakpoints": true
     }
   ]
 }
