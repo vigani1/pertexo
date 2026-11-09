@@ -59,8 +59,9 @@ REVOKE EXECUTE ON FUNCTION app.claim_due_run_failure_notification_recoveries(int
 GRANT EXECUTE ON FUNCTION app.claim_due_run_failure_notification_recoveries(integer) TO {{maintenance_role}};
 
 -- Claims retain their existing transactions and locks under the maintenance login.
-GRANT UPDATE ON app.node_runs, app.workflow_runs, app.trigger_schedules,
+GRANT UPDATE ON app.node_runs, app.trigger_schedules,
   app.run_failure_notification_intents TO {{maintenance_role}};
+GRANT UPDATE(deadline_wakeup_at) ON app.workflow_runs TO {{maintenance_role}};
 GRANT INSERT, UPDATE ON app.workspace_inbox_threads TO {{maintenance_role}};
 GRANT INSERT ON app.run_failure_notification_audit_facts TO {{maintenance_role}};
 GRANT USAGE ON SEQUENCE app.workspace_inbox_revision_seq TO {{maintenance_role}};

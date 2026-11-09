@@ -37,7 +37,7 @@ export function seedSharingRecoveryFixture(sql, database) {
         'connectionMode',(select access_mode from app.connections where workspace_id='${source.connectionWorkspace}' and id='${source.connection}'),
         'sharingRevision',(select sharing_revision from app.connections where workspace_id='${source.connectionWorkspace}' and id='${source.connection}'),
         'connectionShares',(select count(*) from app.connection_shares where workspace_id='${source.connectionWorkspace}' and connection_id='${source.connection}' and user_id='${member}'),
-        'forcedFences',(select bool_and(relforcerowsecurity) from pg_class where oid=any(array['app.workflow_folder_grants'::regclass,'app.connection_shares'::regclass])));`,
+        'rowSecurity',(select json_build_object('enabled',bool_and(relrowsecurity),'forced',bool_or(relforcerowsecurity)) from pg_class where oid=any(array['app.workflow_folder_grants'::regclass,'app.connection_shares'::regclass])));`,
         ).trim(),
       );
       assert.deepEqual(facts, {
@@ -47,7 +47,7 @@ export function seedSharingRecoveryFixture(sql, database) {
         connectionMode: 'restricted',
         sharingRevision: 2,
         connectionShares: 1,
-        forcedFences: true,
+        rowSecurity: { enabled: true, forced: false },
       });
       const foreign = sql(
         target,

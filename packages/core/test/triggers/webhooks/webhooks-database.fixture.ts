@@ -1,3 +1,4 @@
+import { maintenanceConfig } from '../../../../../infrastructure/testing/worker-databases.mjs';
 import { createHash } from 'node:crypto';
 
 import { Pool, type QueryResultRow } from 'pg';
@@ -54,6 +55,8 @@ export let readinessPool: Pool;
 export let workerReadinessPool: Pool;
 
 export let workerPool: Pool;
+
+export let maintenancePool: Pool;
 
 export let authoring: WorkflowAuthoringStore;
 
@@ -114,6 +117,7 @@ export async function beforeAllFixture1() {
     max: 1,
   });
   workerPool = new Pool({ connectionString: url(workerBaseUrl), max: 1 });
+  maintenancePool = new Pool({ ...maintenanceConfig(workerConfig), max: 1 });
   identity = createIdentityWorkspaceStore(apiConfig);
   reconciliation = createWorkflowTriggerReconciliationStore(workerConfig);
   schedules = createScheduleTriggerStore(apiConfig);
@@ -248,6 +252,7 @@ export async function afterAllFixture2() {
     settle(readinessPool, (resource) => resource.end()),
     settle(workerReadinessPool, (resource) => resource.end()),
     settle(workerPool, (resource) => resource.end()),
+    settle(maintenancePool, (resource) => resource.end()),
   ]);
   const admin = new Pool({ connectionString: adminUrl, max: 1 });
   try {

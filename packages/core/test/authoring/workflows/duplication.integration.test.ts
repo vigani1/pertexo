@@ -694,8 +694,8 @@ describe('same-workspace workflow duplication through the runtime database role'
       const original = await source(database, graph);
       const input = await command(original.workflowId, database);
       const secrets = await queryAsOwner(
-        'select id,ciphertext from app.connection_secret_versions order by id',
-        [],
+        'select id,ciphertext from app.connection_secret_versions where workspace_id=$1 order by id',
+        [workspaceId],
         workspaceId,
       );
       expect(secrets).toHaveLength(1);
@@ -703,8 +703,8 @@ describe('same-workspace workflow duplication through the runtime database role'
       expect((await facts(copied.workflowId)).graph).toEqual(graph);
       expect(
         await queryAsOwner(
-          'select id,ciphertext from app.connection_secret_versions order by id',
-          [],
+          'select id,ciphertext from app.connection_secret_versions where workspace_id=$1 order by id',
+          [workspaceId],
           workspaceId,
         ),
       ).toEqual(secrets);

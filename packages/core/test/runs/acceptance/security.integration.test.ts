@@ -145,7 +145,7 @@ describe('workflow run persistence security and compatibility', () => {
     }
   });
 
-  it('forces RLS and grants only the acceptance operations to runtime roles', async () => {
+  it('enables RLS without FORCE and grants only the acceptance operations to runtime roles', async () => {
     const owner = new Pool({ connectionString: migrationUrl, max: 1 });
     try {
       const security = await owner.query<{
@@ -173,7 +173,7 @@ describe('workflow run persistence security and compatibility', () => {
       expect(security.rows).toHaveLength(4);
       expect(
         security.rows.every(
-          (row) => row.relrowsecurity && row.relforcerowsecurity,
+          (row) => row.relrowsecurity && !row.relforcerowsecurity,
         ),
       ).toBe(true);
 
@@ -268,7 +268,7 @@ describe('workflow run persistence security and compatibility', () => {
     }
   });
 
-  it('forces entitlement RLS and denies serving-role entitlement mutation', async () => {
+  it('enables entitlement RLS without FORCE and denies serving-role entitlement mutation', async () => {
     const owner = new Pool({ connectionString: migrationUrl, max: 1 });
     try {
       await owner.query('begin');
@@ -289,7 +289,7 @@ describe('workflow run persistence security and compatibility', () => {
       expect(
         catalog.rows.every(
           ({ relrowsecurity, relforcerowsecurity }) =>
-            relrowsecurity && relforcerowsecurity,
+            relrowsecurity && !relforcerowsecurity,
         ),
       ).toBe(true);
       const grants = await owner.query<{

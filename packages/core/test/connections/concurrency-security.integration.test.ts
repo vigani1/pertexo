@@ -377,7 +377,7 @@ describe('connection concurrency and security', () => {
     }
   });
 
-  it('forces RLS, hides other workspaces, and withholds history mutation from the app role', async () => {
+  it('enables RLS without FORCE, hides other workspaces, and withholds history mutation from the app role', async () => {
     const input = createInput();
     await connections.api.createConnection(input);
     await expect(
@@ -451,9 +451,9 @@ describe('connection concurrency and security', () => {
       `);
       expect(grants.rows[0]).toEqual({
         api_secret_update: false,
-        events_force_rls: true,
+        events_force_rls: false,
         events_rls: true,
-        secrets_force_rls: true,
+        secrets_force_rls: false,
         secrets_rls: true,
         worker_secret_select: true,
       });

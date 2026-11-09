@@ -8,6 +8,7 @@ import {
   versionId,
   reconciliation,
   ownerQuery,
+  maintenancePool,
   publishTriggerWorkflow,
   actorId,
   hash,
@@ -375,7 +376,7 @@ describe('generic webhook database seam', () => {
         checkpointFactory,
       }),
     ).rejects.toBeInstanceOf(WebhookDeliveryIneligibleError);
-    const claimed = await workerQuery<{
+    const claimed = await maintenancePool.query<{
       lease_token: string;
       trigger_id: string;
     }>(
@@ -390,10 +391,10 @@ describe('generic webhook database seam', () => {
         isScheduleClaimEligible(transaction, claim),
       ),
     ).resolves.toBe(false);
-    await workerQuery('select app.release_trigger_schedule_claim($1,$2)', [
-      claim.trigger_id,
-      claim.lease_token,
-    ]);
+    await maintenancePool.query(
+      'select app.release_trigger_schedule_claim($1,$2)',
+      [claim.trigger_id, claim.lease_token],
+    );
     await expect(
       schedules.setEnabled({
         workspaceId,
@@ -1160,7 +1161,7 @@ describe('generic webhook database seam', () => {
          where workspace_id=$1 and trigger_id=$2`,
       [workspaceId, resources.scheduleId],
     );
-    const claimed = await workerQuery<{
+    const claimed = await maintenancePool.query<{
       lease_token: string;
       trigger_id: string;
     }>(
@@ -1171,10 +1172,10 @@ describe('generic webhook database seam', () => {
     if (claim === undefined) throw new Error('Paused schedule claim missing');
     expect(claim.trigger_id).toBe(resources.scheduleId);
     await expect(pausedNow(claim)).resolves.toBe(true);
-    await workerQuery('select app.release_trigger_schedule_claim($1,$2)', [
-      claim.trigger_id,
-      claim.lease_token,
-    ]);
+    await maintenancePool.query(
+      'select app.release_trigger_schedule_claim($1,$2)',
+      [claim.trigger_id, claim.lease_token],
+    );
     const controls = authoring.autoPause;
     const scope = { workspaceId, workflowId: pausedWorkflowId, actorId };
     await controls.resumeWorkflow({
@@ -1190,7 +1191,7 @@ describe('generic webhook database seam', () => {
         runInput: { event: 'after-resume' },
       }),
     ).resolves.toMatchObject({ replayed: false });
-    const resumedClaim = await workerQuery<{
+    const resumedClaim = await maintenancePool.query<{
       trigger_id: string;
       lease_token: string;
     }>(
@@ -1202,10 +1203,10 @@ describe('generic webhook database seam', () => {
       throw new Error('Resumed schedule claim missing');
     expect(resumed.trigger_id).toBe(resources.scheduleId);
     await expect(pausedNow(resumed)).resolves.toBe(false);
-    await workerQuery('select app.release_trigger_schedule_claim($1,$2)', [
-      resumed.trigger_id,
-      resumed.lease_token,
-    ]);
+    await maintenancePool.query(
+      'select app.release_trigger_schedule_claim($1,$2)',
+      [resumed.trigger_id, resumed.lease_token],
+    );
 
     // A person's disabled resources remain disabled through pause, archive,
     // restore and resume. Only the separate pause state is cleared.

@@ -259,7 +259,7 @@ describe('workflow run API persistence', () => {
     );
   });
 
-  it('records production-shaped name-filter work under normal planner settings', async () => {
+  it('records name-filter reference work and verifies real listing under normal planner settings', async () => {
     await ownerQuery(
       `insert into app.workflows
          (id, workspace_id, name, lifecycle_status, activation_status, created_by)
@@ -413,7 +413,6 @@ describe('workflow run API persistence', () => {
     expect(evidence.absent.Plan['Actual Rows']).toBe(50);
     expect(evidence.selective.Plan['Actual Rows']).toBe(50);
     expect(evidence.common.Plan['Actual Rows']).toBe(50);
-    expect(evidence.noMatch.Plan['Actual Rows']).toBe(0);
     expect(evidence.combined.Plan['Actual Rows']).toBe(50);
     expect(evidence.deep.Plan['Actual Rows']).toBe(50);
     const measured = Object.fromEntries(
@@ -431,8 +430,35 @@ describe('workflow run API persistence', () => {
       expect(measured[scenario]?.rootSharedBufferTouches).toBeGreaterThan(0);
       expect(measured[scenario]?.nodeTypes.length).toBeGreaterThan(0);
     }
-    expect(measured.noMatch?.outputRowInstances).toBe(0);
+    // UUID policies can change join order; only the root describes returned rows.
+    expect(evidence.noMatch.Plan['Actual Rows']).toBe(0);
     expect(measured.noMatch?.rejectedRowInstances).toBeGreaterThan(0);
+    console.log('RUN_NAME_FILTER_WORK', JSON.stringify(measured));
+    for (const input of [
+      {},
+      { workflowNamePrefix: 'Selective' },
+      { workflowNamePrefix: 'Common' },
+      { workflowNamePrefix: 'Missing' },
+      { workflowNamePrefix: 'Common', status: 'failed' as const },
+      {
+        workflowNamePrefix: 'Common',
+        after: {
+          createdAt: '2026-09-01T00:00:02.500000Z',
+          id: 'ffffffff-ffff-4fff-8fff-ffffffffffff',
+        },
+      },
+    ]) {
+      const page = await database.list({
+        workspaceId,
+        actorId,
+        includeWorkflowName: true,
+        limit: 50,
+        ...input,
+      });
+      expect(page.items).toHaveLength(
+        input.workflowNamePrefix === 'Missing' ? 0 : 50,
+      );
+    }
   }, 15_000);
 
   it('commits a stale rejection, preserves it after republication, and conflicts on changed intent', async () => {

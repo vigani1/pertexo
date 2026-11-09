@@ -213,12 +213,20 @@ export function createWorkerTransportTestEnvironment() {
     createTransportDispatchControls({ dispatcherUrl, redisUrl });
   const { deferred, bounded } = createTransportProofWaits(ownedDeferreds);
   const cleanup = async (): Promise<void> => {
-    const pool = new Pool({ connectionString: migrationUrl, max: 1 });
+    const cleanupDatabaseUrl = new URL(adminUrl);
+    cleanupDatabaseUrl.pathname = `/${databaseName}`;
+    const pool = new Pool({
+      connectionString: cleanupDatabaseUrl.toString(),
+      max: 1,
+    });
     let client: PoolClient | undefined;
     try {
       client = await pool.connect();
       await client.query('begin');
-      await client.query('set local role pertexo_owner');
+      await client.query('set local role pertexo_app');
+      await client.query("select set_config('app.workspace_id',$1,true)", [
+        workspaceId,
+      ]);
       for (const table of [
         'queue_duplicate_probe_provider_effects',
         'queue_duplicate_probe_provider_intents',
@@ -226,6 +234,14 @@ export function createWorkerTransportTestEnvironment() {
         'queue_duplicate_probe_usage',
         'queue_duplicate_probe_events',
         'queue_duplicate_probe_attempts',
+      ]) {
+        await client.query(`delete from app.${table} where workspace_id = $1`, [
+          workspaceId,
+        ]);
+      }
+      // Probe tables deliberately FORCE their app policy; production tables use owner bypass.
+      await client.query('set local role pertexo_owner');
+      for (const table of [
         'inbox_receipts',
         'outbox_events',
         'workflow_runs',

@@ -6,6 +6,7 @@ export {
   readinessPool,
   workerReadinessPool,
   workerPool,
+  maintenancePool,
   authoring,
   ownerQuery,
   beforeAllFixture1,

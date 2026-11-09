@@ -236,10 +236,16 @@ export async function startOAuth2Harness(
       build(clientId, overrides),
       clientSecret,
     );
-    if (response.status !== 201)
+    if (response.status !== 201) {
+      const requestId = response.headers.get('x-request-id');
+      const logs =
+        requestId === null
+          ? []
+          : stack.apiProcess.linesMentioning([requestId], 'error');
       throw new Error(
-        `Create answered ${String(response.status)}: ${JSON.stringify(response.json).slice(0, 300)}`,
+        `Create answered ${String(response.status)}: ${JSON.stringify(response.json).slice(0, 300)}${logs.length === 0 ? '' : `\n${logs.join('\n')}`}`,
       );
+    }
     const body = response.json as { id: string; secretVersionId: string };
     return {
       id: body.id,

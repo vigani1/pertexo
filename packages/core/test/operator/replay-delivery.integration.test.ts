@@ -1,3 +1,4 @@
+import { Pool } from 'pg';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
 import { randomUUID } from 'node:crypto';
 
@@ -12,11 +13,19 @@ const schedule = createScheduleTriggerTestEnvironment({
 });
 const { ownerQuery, versionId, workerQuery, workspaceId } = schedule;
 let sourceRunId = '';
+let replayRuntime: Pool;
 
 beforeAll(async () => {
   sourceRunId = await schedule.initialize();
+  replayRuntime = new Pool({
+    connectionString: schedule.apiConnectionString,
+    max: 1,
+  });
 });
-afterAll(() => schedule.close());
+afterAll(async () => {
+  await replayRuntime.end();
+  await schedule.close();
+});
 
 async function requested() {
   const commandId = randomUUID();
@@ -251,36 +260,40 @@ describe('failing a replay', () => {
 
 it('rolls back a replay canceled while its request is locked and lets the same delivery retry once', async () => {
   const world = await requested();
-  const blocker = await schedule.worker.connect();
-  await blocker.query('begin');
-  await blocker.query("select set_config('app.workspace_id',$1,true)", [
-    workspaceId,
-  ]);
-  expect(
-    (
-      await blocker.query(
-        'select command_id from app.operator_run_replay_requests where command_id=$1 for update',
-        [world.commandId],
-      )
-    ).rowCount,
-  ).toBe(1);
+  const blocker = await replayRuntime.connect();
   let locked = true;
   const unlock = async () => {
     if (!locked) return;
     locked = false;
-    await blocker.query('rollback');
-    blocker.release();
+    try {
+      await blocker.query('rollback');
+    } finally {
+      blocker.release();
+    }
   };
   const controller = new AbortController();
-  const replaying = schedule.replayStore
-    .replay({
-      commandId: world.commandId,
-      delivery: world.delivery,
-      workspaceId,
-      signal: controller.signal,
-    })
-    .catch((error: unknown) => error);
+  let replaying: Promise<unknown> = Promise.resolve();
   try {
+    await blocker.query('begin');
+    await blocker.query("select set_config('app.workspace_id',$1,true)", [
+      workspaceId,
+    ]);
+    expect(
+      (
+        await blocker.query(
+          'select command_id from app.operator_run_replay_requests where command_id=$1 for update',
+          [world.commandId],
+        )
+      ).rowCount,
+    ).toBe(1);
+    replaying = schedule.replayStore
+      .replay({
+        commandId: world.commandId,
+        delivery: world.delivery,
+        workspaceId,
+        signal: controller.signal,
+      })
+      .catch((error: unknown) => error);
     await expect
       .poll(async () => {
         await blocker.query('select pg_stat_clear_snapshot()');

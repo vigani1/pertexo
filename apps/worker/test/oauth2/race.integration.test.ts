@@ -73,8 +73,21 @@ describeOAuth2('two real workers refreshing one connection', () => {
   /** Back to how each test starts: only the first worker takes work. */
   const reset = async (): Promise<void> => {
     first.signal('SIGCONT');
+    // Run completion precedes health delivery, which holds the workspace lock.
+    // Freezing that consumer mid-transaction blocks the next API connection write.
+    await expect
+      .poll(
+        async () => {
+          const [row] = await harness.stack.sql<{ pending: number }>(
+            'select count(*)::integer pending from app.connection_health_observations where workspace_id=$1 and applied_at is null',
+            [owner.workspaceId],
+          );
+          return row?.pending;
+        },
+        { timeout: COMMIT_LIMIT_MS },
+      )
+      .toBe(0);
     second.signal('SIGSTOP');
-    await Promise.resolve();
   };
 
   const attemptOwner = async (runId: string): Promise<string | null> => {

@@ -29,7 +29,7 @@ beforeAll(beforeAllFixture1);
 beforeEach(beforeEachFixture2);
 afterAll(afterAllFixture3);
 describe('artifact metadata lifecycle', () => {
-  it('forces RLS and withholds destructive table privileges from serving roles', async () => {
+  it('enables RLS without FORCE and withholds destructive table privileges from serving roles', async () => {
     const pool = new Pool({ connectionString: migrationUrl, max: 1 });
     const client = await pool.connect();
     try {
@@ -67,7 +67,7 @@ describe('artifact metadata lifecycle', () => {
           api_truncate: false,
           api_update: false,
           api_update_status: true,
-          relforcerowsecurity: true,
+          relforcerowsecurity: false,
           relrowsecurity: true,
           worker_delete: false,
           worker_truncate: false,
