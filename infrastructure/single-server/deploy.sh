@@ -23,6 +23,8 @@ if [[ -f "$BETA_STATE_DIR/current" && ! -f "$BETA_STATE_DIR/migration-fence" ]];
     exit 1
   fi
 fi
+# Keep the runner alive until the worker has finished its in-flight Code work.
+compose stop worker
 compose stop "${writer_services[@]}"
 # Existing volumes skip initdb scripts. Grant before migrations can remove policies.
 # ON_ERROR_STOP and the deploy's errexit keep writers stopped if provisioning fails.
@@ -58,6 +60,7 @@ if ! verify_encryption; then
   echo 'Encryption verification failed: serving remains stopped; correct the configured keys' >&2; exit 1
 fi
 if ! compose up -d --no-deps --wait --wait-timeout 180 "${runtime_services[@]}" || ! wait_for_app; then
+  compose stop worker
   compose stop "${runtime_services[@]}"
   if [[ $no_migration == true && -n "$previous" && "$previous" != "$commit" ]]; then
     select_release "$previous"

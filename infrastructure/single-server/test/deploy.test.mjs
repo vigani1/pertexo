@@ -662,3 +662,16 @@ test('retry after failed migration retains the completed recovery point', (t) =>
     false,
   );
 });
+
+test('drains the worker before stopping the Code runner', (t) => {
+  const f = fixture(t);
+  const app = join(f.directory, 'releases', newCommit, 'apps/code-runner');
+  mkdirSync(app, { recursive: true });
+  writeFileSync(join(app, 'package.json'), '{}');
+  const result = f.run();
+  assert.equal(result.status, 0, result.stderr);
+  const stops = f.commands().filter((c) => c.args.includes('stop'));
+  const worker = stops.findIndex((c) => c.args.includes('worker'));
+  const runner = stops.findIndex((c) => c.args.includes('code-runner'));
+  assert.ok(worker >= 0 && runner > worker);
+});
