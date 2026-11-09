@@ -1,4 +1,4 @@
-import { EXPECTED_MIGRATION_HEAD } from '../../../../packages/database/dist/testing.js';
+import { RUNTIME_IMAGE } from './support/images.mjs';
 import assert from 'node:assert/strict';
 import { randomBytes, randomUUID } from 'node:crypto';
 import { after, before, describe } from 'node:test';
@@ -45,6 +45,7 @@ const file = randomBytes(2_048);
 
 describe('the single-server stack, through its real scripts', () => {
   let server;
+  let expectedMigrationHead;
   let client;
   let workspaceId;
   let webhook;
@@ -152,6 +153,20 @@ describe('the single-server stack, through its real scripts', () => {
     );
   before(async () => {
     server = await createServer();
+    // CI builds the runtime image, but never builds workspace packages on the host.
+    expectedMigrationHead = await mustDocker([
+      'run',
+      '--rm',
+      '--read-only',
+      '--network',
+      'none',
+      '--entrypoint',
+      'node',
+      RUNTIME_IMAGE,
+      '--input-type=module',
+      '-e',
+      "import { readdirSync } from 'node:fs'; process.stdout.write(readdirSync('packages/database/migrations').filter((name) => name.endsWith('.sql')).sort().at(-1))",
+    ]);
     await configure(server);
   });
   after(async () => {
@@ -459,7 +474,7 @@ describe('the single-server stack, through its real scripts', () => {
           'select max(name) from pertexo_internal.schema_migrations',
         )
       ).trim(),
-      EXPECTED_MIGRATION_HEAD,
+      expectedMigrationHead,
     );
     assert.equal(
       (await postgres('select count(*) from app.workflow_runs')).trim(),

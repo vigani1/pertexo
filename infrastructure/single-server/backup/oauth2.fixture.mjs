@@ -71,14 +71,14 @@ export async function seedOAuth2RecoveryFixture(sql, database, environment) {
         'client',(select settings->>'clientId' from app.connection_oauth2_clients where connection_id='${connection}'),
         'token',(select id from app.connection_oauth2_tokens where connection_id='${connection}'),
         'pending',(select count(*) from app.connection_oauth2_authorizations where connection_id='${connection}'),
-        'forcedFences',(select bool_and(relforcerowsecurity) from pg_class where oid=any(array['app.connection_oauth2_clients'::regclass,'app.connection_oauth2_tokens'::regclass,'app.connection_oauth2_authorizations'::regclass])));`,
+        'rowSecurity',(select json_build_object('enabled',bool_and(relrowsecurity),'forced',bool_or(relforcerowsecurity)) from pg_class where oid=any(array['app.connection_oauth2_clients'::regclass,'app.connection_oauth2_tokens'::regclass,'app.connection_oauth2_authorizations'::regclass])));`,
         ).trim(),
       );
       assert.deepEqual(facts, {
         client: 'restored',
         token,
         pending: 1,
-        forcedFences: true,
+        rowSecurity: { enabled: true, forced: false },
       });
       const foreign = sql(
         target,

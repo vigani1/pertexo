@@ -99,8 +99,18 @@ describe.runIf(betterAuthIntegrationEnabled)(
         truncated: false,
         error: { message: summary, line: 7 },
       };
-      const startedAt = new Date().toISOString();
-      const completedAt = new Date(Date.now() + 1000).toISOString();
+      // Host milliseconds can precede PostgreSQL's creation time for this row.
+      const {
+        rows: [clock],
+      } = await api
+        .database()
+        .query<{ millis: number }>(
+          'select extract(epoch from clock_timestamp())::double precision * 1000 millis',
+        );
+      if (clock === undefined)
+        throw new Error('Preview fixture clock is unavailable');
+      const startedAt = new Date(clock.millis + 1000).toISOString();
+      const completedAt = new Date(clock.millis + 2000).toISOString();
       await api
         .database()
         .query(

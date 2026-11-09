@@ -88,33 +88,39 @@ describe('OAuth2 connection storage', () => {
     return [a, b];
   };
 
-  // S28, D3: forced row security with the three policies of migration 0051.
-  it.each(OAUTH2_TABLES)('S28 %s forces row security', async (table) => {
-    const { rows } = await admin.query<{
-      relrowsecurity: boolean;
-      relforcerowsecurity: boolean;
-    }>(
-      `select c.relrowsecurity, c.relforcerowsecurity
+  // Step 6 keeps app isolation without FORCE or owner/maintenance policies.
+  it.each(OAUTH2_TABLES)(
+    'S28 %s enables row security without FORCE',
+    async (table) => {
+      const { rows } = await admin.query<{
+        relrowsecurity: boolean;
+        relforcerowsecurity: boolean;
+      }>(
+        `select c.relrowsecurity, c.relforcerowsecurity
          from pg_class c join pg_namespace n on n.oid=c.relnamespace
         where n.nspname='app' and c.relname=$1`,
-      [table],
-    );
-    expect(rows).toEqual([{ relrowsecurity: true, relforcerowsecurity: true }]);
-  });
+        [table],
+      );
+      expect(rows).toEqual([
+        { relrowsecurity: true, relforcerowsecurity: false },
+      ]);
+    },
+  );
 
-  // S28, D3: one workspace-scoped policy each for app, owner and maintenance.
-  it.each(OAUTH2_TABLES)('S28 %s has the three policies', async (table) => {
-    const { rows } = await admin.query<{ roles: string[] }>(
-      `select roles::text[] as roles from pg_policies
+  // The owner bypasses its tables; maintenance uses BYPASSRLS.
+  it.each(OAUTH2_TABLES)(
+    'S28 %s has only the app workspace policy',
+    async (table) => {
+      const { rows } = await admin.query<{ roles: string[] }>(
+        `select roles::text[] as roles from pg_policies
           where schemaname='app' and tablename=$1 order by policyname`,
-      [table],
-    );
-    expect(rows.flatMap(({ roles }) => roles).sort()).toEqual([
-      'pertexo_app',
-      'pertexo_maintenance',
-      'pertexo_owner',
-    ]);
-  });
+        [table],
+      );
+      expect(rows.flatMap(({ roles }) => roles).sort()).toEqual([
+        'pertexo_app',
+      ]);
+    },
+  );
 
   // D3: app role reads and writes; maintenance only reads and deletes.
   it.each(OAUTH2_TABLES)('D3 %s grants', async (table) => {
