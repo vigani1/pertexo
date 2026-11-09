@@ -1,3 +1,4 @@
+import { maintenanceConfig } from '../../../../infrastructure/testing/worker-databases.mjs';
 import { randomUUID } from 'node:crypto';
 
 import { createWorkspaceInboxFoldStore } from '@pertexo/core/inbox';
@@ -48,7 +49,7 @@ beforeAll(async () => {
     await server.query(`create database "${databaseName}" owner pertexo_owner`);
     await server.query(`revoke all on database "${databaseName}" from public`);
     await server.query(
-      `grant connect on database "${databaseName}" to pertexo_migration, pertexo_app, pertexo_app`,
+      `grant connect on database "${databaseName}" to pertexo_migration, pertexo_app, pertexo_maintenance`,
     );
   } finally {
     await server.end();
@@ -151,10 +152,12 @@ it('folds a pending failure into its thread and hints the workspace', async () =
   const diagnostics = { cycleFailed: vi.fn(), hintFailed: vi.fn() };
   const runtime = createWorkspaceInboxRuntime(
     createWorkspaceInboxFoldStore(
-      parseDatabaseConfig({
-        connectionString: databaseUrl(workerBaseUrl),
-        max: 2,
-      }),
+      maintenanceConfig(
+        parseDatabaseConfig({
+          connectionString: databaseUrl(workerBaseUrl),
+          max: 2,
+        }),
+      ),
     ),
     new RedisWorkspaceInboxHintPublisher({ redisUrl }),
     { foldBatchSize: 100, foldPollMillis: 100 },

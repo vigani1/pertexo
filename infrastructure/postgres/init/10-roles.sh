@@ -46,8 +46,9 @@ SELECT format(
 WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = :'app_user')\gexec
 ALTER ROLE :"app_user" PASSWORD :'app_password';
 
+-- The shared role SQL below owns the maintenance BYPASSRLS attribute.
 SELECT format(
-  'CREATE ROLE %I LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION NOBYPASSRLS',
+  'CREATE ROLE %I LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION',
   :'maintenance_user'
 )
 WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = :'maintenance_user')\gexec
@@ -68,3 +69,7 @@ GRANT USAGE, CREATE ON SCHEMA public TO :"owner_user";
 GRANT USAGE ON SCHEMA public TO :"app_user", :"maintenance_user";
 
 SQL
+
+psql --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" \
+  --set ON_ERROR_STOP=1 --set maintenance_user="$POSTGRES_MAINTENANCE_USER" \
+  --file "$(dirname "${BASH_SOURCE[0]}")/roles/maintenance.sql"

@@ -147,7 +147,9 @@ beforeAll(async () => {
         ],
       );
     }
-    await owner.query('alter table app.workflow_runs force row level security');
+    await owner.query(
+      'alter table app.workflow_runs no force row level security',
+    );
     await owner.query('commit');
   } catch (error: unknown) {
     const failures: unknown[] = [error];

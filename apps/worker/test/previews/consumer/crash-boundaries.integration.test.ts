@@ -1,3 +1,4 @@
+import { maintenanceConfig } from '../../../../../infrastructure/testing/worker-databases.mjs';
 import { describeIntegration } from './crash-boundaries/crash-boundaries.fixture.js';
 import { randomUUID } from 'node:crypto';
 import { createPreviewAttemptRunStore } from '@pertexo/core/previews';
@@ -80,6 +81,11 @@ describeIntegration('preview dispatch crash boundaries', () => {
         await runWithCleanup(
           async () => {
             reconciliationRuntime = await createMaintenanceRuntime({
+              maintenanceDatabase: maintenanceConfig(
+                parseDatabaseConfig({
+                  connectionString: databaseUrl(workerUrl),
+                }),
+              ),
               database: parseDatabaseConfig({
                 connectionString: databaseUrl(workerUrl),
               }),

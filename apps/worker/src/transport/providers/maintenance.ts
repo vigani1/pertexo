@@ -148,6 +148,7 @@ export async function createOwnedMaintenanceRuntime(
     }
     return await factories.runtime({
       database: config.database,
+      maintenanceDatabase: config.retention.maintenanceDatabase,
       ...(dependencies.databaseRuntime === undefined
         ? {}
         : { databaseRuntime: dependencies.databaseRuntime }),

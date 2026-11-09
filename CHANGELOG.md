@@ -5,6 +5,14 @@ to do to upgrade. See [Upgrading](docs/operations/upgrading.md). Versions follow
 `vMAJOR.MINOR.PATCH`; until `v1.0.0`, any minor version can need steps of its
 own.
 
+## Unreleased
+
+- Row security uses indexed UUID workspace comparisons. Cross-workspace scanners
+  use the maintenance login with BYPASSRLS; owner and maintenance policies and
+  FORCE are removed. Deploy provisions the role before migration 0117, failing
+  closed if the grant fails. Custom deployments must grant maintenance BYPASSRLS
+  as a superuser before migrating; see the single-server upgrade guide.
+
 ## v0.1.0 - 2026-10-31
 
 The first release anyone can install.

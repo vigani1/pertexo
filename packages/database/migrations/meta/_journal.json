@@ -820,6 +820,13 @@
       "when": 1794163381541,
       "tag": "0116_smtp_and_server_mail",
       "breakpoints": true
+    },
+    {
+      "idx": 117,
+      "version": "7",
+      "when": 1794170000000,
+      "tag": "0117_row_security",
+      "breakpoints": true
     }
   ]
 }

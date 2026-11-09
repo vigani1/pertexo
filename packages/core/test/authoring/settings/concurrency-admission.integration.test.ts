@@ -402,7 +402,7 @@ describe('current workflow concurrency and ordered production admission', () => 
       );
       await client.query('alter table app.workflow_runs enable trigger user');
       await client.query(
-        'alter table app.workflow_runs force row level security',
+        'alter table app.workflow_runs no force row level security',
       );
       await client.query('analyze app.workflow_runs');
       const run = await client.query<{

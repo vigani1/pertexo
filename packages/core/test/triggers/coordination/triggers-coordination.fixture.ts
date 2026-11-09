@@ -1,4 +1,6 @@
+import { maintenanceConfig } from '../../../../../infrastructure/testing/worker-databases.mjs';
 import { withTenantScopedClient } from '@pertexo/database/primitives';
+import { Pool } from 'pg';
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll } from 'vitest';
 import { CORE_NODE_CATALOG } from '@pertexo/nodes-core';
@@ -33,14 +35,19 @@ export const checkpointFactory = (version: Readonly<{ id: string }>) => ({
     nextEventSequence: 2,
   }),
 });
+export const maintenancePool = new Pool(maintenanceConfig(config));
 export let store: ReturnType<typeof createFormStore>;
 export let scanner: ReturnType<typeof createTriggerEventScanner>;
 beforeAll(() => {
   store = createFormStore(config, checkpointFactory);
-  scanner = createTriggerEventScanner(config);
+  scanner = createTriggerEventScanner(
+    config,
+    undefined,
+    maintenanceConfig(config),
+  );
 });
 afterAll(async () => {
-  await Promise.all([store.close(), scanner.close()]);
+  await Promise.all([store.close(), scanner.close(), maintenancePool.end()]);
 });
 export const key = { kind: 'run_input', path: '$.values.key' } as const;
 export async function fixture(policy: EventCoordinationPolicy) {

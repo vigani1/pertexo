@@ -158,7 +158,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends git curl ca-cer
   server.ca = await mustExec('cat drill-tls/ca.crt');
   server.releases = await installRepository(server);
   for (const release of Object.values(server.releases))
-    await tagRelease(release);
+    await tagRelease(
+      release,
+      release,
+      [server.releases.first, server.releases.broken].includes(release) &&
+        process.env.DRILL_LEGACY_RUNTIME_IMAGE
+        ? process.env.DRILL_LEGACY_RUNTIME_IMAGE
+        : RUNTIME_IMAGE,
+    );
   return server;
 }
 
@@ -252,9 +259,19 @@ async function installRepository(server) {
       `cd tree && git add -A && git -c user.name=drill -c user.email=drill@drill.test commit --quiet --allow-empty -m ${message} && git rev-parse HEAD`,
     );
   await mustExec('cd tree && git init --quiet -b main');
+  // The upgrade drill starts with the genuine 0116 runtime and migration set.
+  if (process.env.DRILL_LEGACY_RUNTIME_IMAGE)
+    await mustExec(
+      'mkdir -p pending-upgrade && mv tree/packages/database/migrations/0117_row_security.sql pending-upgrade/',
+    );
   const first = await commit('first');
   await write('compose.yaml', breakWebUpstream(compose));
   const broken = await commit('broken');
+  if (process.env.DRILL_LEGACY_RUNTIME_IMAGE)
+    await mustExec(
+      'mv pending-upgrade/0117_row_security.sql tree/packages/database/migrations/',
+    );
+
   await write('compose.yaml', compose);
   const repaired = await commit('repaired');
   await mustExec(`

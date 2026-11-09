@@ -189,7 +189,7 @@ export async function seedPurgeScenario(owner: Pool): Promise<PurgeSeed> {
       'preview_attempts',
       'artifact_links',
     ])
-      await owner.query(`alter table app.${table} force row level security`);
+      await owner.query(`alter table app.${table} no force row level security`);
     await owner.query('commit');
   } catch (error: unknown) {
     await owner.query('rollback');

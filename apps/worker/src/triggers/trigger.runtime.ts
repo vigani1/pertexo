@@ -40,6 +40,8 @@ export type TriggerRuntimeOptions = Readonly<{
   batchSize: number;
   backgroundTaskShutdownTimeoutMillis?: number;
   database: DatabaseConfig;
+  maintenanceDatabase: DatabaseConfig;
+  maintenanceDatabaseRuntime?: DatabaseRuntime;
   databaseRuntime?: DatabaseRuntime;
   leaseDurationSeconds: number;
   leaseOwner: string;
@@ -94,19 +96,18 @@ export async function createTriggerRuntime(
       options.database,
       options.databaseRuntime,
     );
-    scanner = factories.scanner(
-      options.database,
-      options.database,
-      options.databaseRuntime === undefined
+    scanner = factories.scanner(options.maintenanceDatabase, options.database, {
+      ...(options.databaseRuntime === undefined
         ? {}
-        : {
-            acceptance: options.databaseRuntime,
-            claim: options.databaseRuntime,
-          },
-    );
+        : { acceptance: options.databaseRuntime }),
+      ...(options.maintenanceDatabaseRuntime === undefined
+        ? {}
+        : { claim: options.maintenanceDatabaseRuntime }),
+    });
     coordination = factories.coordination(
       options.database,
       options.databaseRuntime,
+      options.maintenanceDatabase,
     );
     const handler = createTriggerReconciliationHandler({ reconciliation });
     consumer = factories.consumer({

@@ -68,13 +68,7 @@ const statusOf = async (url) => {
 describe('the web tier in front of the API', () => {
   before(async () => {
     await requireImages();
-    await mustDocker([
-      'network',
-      'create',
-      '--subnet',
-      '172.30.43.0/24',
-      network,
-    ]);
+    await mustDocker(['network', 'create', network]);
   });
   // Each case needs `api` to mean only its own container.
   afterEach(async () => {

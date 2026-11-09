@@ -30,7 +30,7 @@ export async function setLimit(limit: number | null, id = workflowId) {
        values($1,$2,'Concurrency proof',$3) on conflict(id) do nothing`,
       [id, workspaceA, workspaceCreatorId],
     );
-    await client.query('alter table app.workflows force row level security');
+    await client.query('alter table app.workflows no force row level security');
     // Setup uses the same authoritative serialization as the command owner.
     await client.query(
       'select 1 from app.workspace_execution_admission_counters where workspace_id=$1 for update',
@@ -62,7 +62,7 @@ export async function withConcurrencyControls<T>(
       [workspaceA, workspaceCreatorId],
     );
     await client.query(
-      'alter table app.workspace_memberships force row level security',
+      'alter table app.workspace_memberships no force row level security',
     );
   });
   const authoring = createWorkflowAuthoringStore(

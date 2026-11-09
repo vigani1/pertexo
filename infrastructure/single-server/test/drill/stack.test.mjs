@@ -163,6 +163,14 @@ describe('the single-server stack, through its real scripts', () => {
   it('deploy.sh installs a fresh server as the non-root login the runbook asks for', async () => {
     const deployed = await server.script('deploy.sh', [server.releases.first]);
     assert.equal(deployed.status, 0, deployed.stdout + deployed.stderr);
+    assert.equal(
+      (
+        await postgres(
+          "select rolbypassrls from pg_roles where rolname='pertexo_maintenance'",
+        )
+      ).trim(),
+      't',
+    );
     assert.match(deployed.stdout, /Healthy release/u);
     assert.equal(await server.current(), server.releases.first);
   });
@@ -394,6 +402,77 @@ describe('the single-server stack, through its real scripts', () => {
     assert.notEqual(attempted.status, 0, attempted.stdout);
     assert.equal(await server.current(), server.releases.first);
     assert.equal(await signedInStatus(), 200);
+  });
+
+  it('grants maintenance bypass on a populated upgrade and repeats deployment safely', async () => {
+    const before = await postgres('select count(*) from app.workflow_runs');
+    assert.ok(Number(before.trim()) > 0);
+    if (process.env.DRILL_LEGACY_RUNTIME_IMAGE)
+      assert.equal(
+        (
+          await postgres(
+            'select max(name) from pertexo_internal.schema_migrations',
+          )
+        ).trim(),
+        '0116_smtp_and_server_mail.sql',
+      );
+    await postgres(
+      'alter role pertexo_maintenance rename to pertexo_maintenance_unavailable',
+    );
+    try {
+      const head = await postgres(
+        'select max(name) from pertexo_internal.schema_migrations',
+      );
+      const failed = await server.script('deploy.sh', [
+        server.releases.repaired,
+      ]);
+      assert.notEqual(failed.status, 0);
+      assert.equal(
+        await postgres(
+          'select max(name) from pertexo_internal.schema_migrations',
+        ),
+        head,
+      );
+    } finally {
+      await postgres(
+        'alter role pertexo_maintenance_unavailable rename to pertexo_maintenance',
+      );
+    }
+    if (process.env.DRILL_LEGACY_RUNTIME_IMAGE)
+      await postgres('alter role pertexo_maintenance nobypassrls');
+    const upgraded = await server.script('deploy.sh', [
+      server.releases.repaired,
+    ]);
+    assert.equal(upgraded.status, 0, upgraded.stdout + upgraded.stderr);
+    assert.equal(
+      (
+        await postgres(
+          "select rolbypassrls from pg_roles where rolname='pertexo_maintenance'",
+        )
+      ).trim(),
+      't',
+    );
+    assert.equal(
+      (
+        await postgres(
+          'select max(name) from pertexo_internal.schema_migrations',
+        )
+      ).trim(),
+      '0117_row_security.sql',
+    );
+    assert.equal(
+      (await postgres('select count(*) from app.workflow_runs')).trim(),
+      before.trim(),
+    );
+    const repeated = await server.script('deploy.sh', [
+      server.releases.repaired,
+    ]);
+    assert.equal(repeated.status, 0, repeated.stdout + repeated.stderr);
+    assert.equal(
+      (await postgres('select count(*) from app.workflow_runs')).trim(),
+      before.trim(),
+    );
+    assert.deepEqual(await downloadFile(client, workspaceId, artifactId), file);
   });
 
   it('upgrades to a newer release and keeps the session and the data', async () => {

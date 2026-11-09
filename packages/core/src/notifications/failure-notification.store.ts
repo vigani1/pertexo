@@ -26,10 +26,19 @@ export type FailureNotificationStore = ReturnType<
 export function createFailureNotificationStore(
   config: DatabaseConfig,
   runtime?: DatabaseRuntime,
-  options: Readonly<{ systemMail?: FailureNotificationMailSealer }> = {},
+  options: Readonly<{
+    systemMail?: FailureNotificationMailSealer;
+    maintenance?: DatabaseConfig;
+  }> = {},
 ) {
   const lease = acquireDatabasePool(config, runtime, { role: 'worker' });
   const { pool } = lease;
+  const maintenance =
+    options.maintenance === undefined
+      ? undefined
+      : acquireDatabasePool(options.maintenance, undefined, {
+          role: 'maintenance',
+        });
   return Object.freeze({
     claimDelivery: (input: ClaimDeliveryInput) =>
       claimDelivery(pool, input, options.systemMail),
@@ -39,7 +48,15 @@ export function createFailureNotificationStore(
       loadDestination(pool, input),
     fenceDispatch: (input: FenceDispatchInput) => fenceDispatch(pool, input),
     recoverDue: (limit: number, maxAttempts: number, signal?: AbortSignal) =>
-      recoverFailureNotifications(pool, limit, maxAttempts, signal),
-    close: () => lease.close(),
+      recoverFailureNotifications(
+        maintenance?.pool ?? pool,
+        limit,
+        maxAttempts,
+        signal,
+      ),
+    close: async () => {
+      await lease.close();
+      await maintenance?.close();
+    },
   });
 }

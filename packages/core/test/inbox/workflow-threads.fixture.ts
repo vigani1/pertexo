@@ -1,3 +1,4 @@
+import { maintenanceConfig } from '../../../../infrastructure/testing/worker-databases.mjs';
 import { recordInboxFailureDay } from '../../src/inbox/failure-days.repository.js';
 import { createTestUser } from '../support/user.js';
 import type { Role } from '@pertexo/policy';
@@ -254,7 +255,9 @@ export async function beforeAllFixture1() {
     parseDatabaseConfig({ connectionString: apiUrl, max: 2 }),
   );
   fold = createWorkspaceInboxFoldStore(
-    parseDatabaseConfig({ connectionString: workerUrl, max: 6 }),
+    maintenanceConfig(
+      parseDatabaseConfig({ connectionString: workerUrl, max: 6 }),
+    ),
   );
   inbox = createWorkspaceInboxStore(
     parseDatabaseConfig({ connectionString: apiUrl, max: 2 }),

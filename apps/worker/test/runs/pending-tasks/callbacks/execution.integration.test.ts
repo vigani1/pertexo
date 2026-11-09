@@ -1,3 +1,4 @@
+import { maintenanceConfig } from '../../../../../../infrastructure/testing/worker-databases.mjs';
 import { restrictAcceptedWorkflows } from '../../../support/resources/sharing.js';
 import { callbackResources } from './callbacks.fixture.js';
 import { randomUUID } from 'node:crypto';
@@ -212,7 +213,7 @@ describe.runIf(fixture.enabled)('Callback waits through real workers', () => {
     const run = await accept(await publishGraph(graph(true)));
     const { config, store, keys, capabilities } = callbackResources();
     const workers = await runtime(undefined, capabilities);
-    const due = createDueNodeWakeupScanner(config);
+    const due = createDueNodeWakeupScanner(maintenanceConfig(config));
     try {
       await workers.until(async () => {
         expect(

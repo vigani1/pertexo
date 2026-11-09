@@ -11,3 +11,7 @@ export declare const parallelIntegrationSuite: Readonly<{
   setupFiles: string[];
 }>;
 export default function copyDatabases(): Promise<void>;
+
+export declare function maintenanceConfig<
+  T extends { readonly connectionString: string },
+>(config: T): T;

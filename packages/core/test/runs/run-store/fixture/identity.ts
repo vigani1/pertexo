@@ -151,9 +151,9 @@ export async function seedIdentityAndExecutables(): Promise<void> {
         actorId,
       ],
     );
-    await client.query('alter table app.workflows force row level security');
+    await client.query('alter table app.workflows no force row level security');
     await client.query(
-      'alter table app.workflow_versions force row level security',
+      'alter table app.workflow_versions no force row level security',
     );
     await client.query('set constraints all immediate');
     for (const table of [
@@ -162,6 +162,8 @@ export async function seedIdentityAndExecutables(): Promise<void> {
       'failure_notification_destinations',
       'failure_notification_destination_versions',
     ])
-      await client.query(`alter table app.${table} force row level security`);
+      await client.query(
+        `alter table app.${table} no force row level security`,
+      );
   });
 }

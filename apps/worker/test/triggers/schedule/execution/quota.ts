@@ -1,3 +1,4 @@
+import { maintenanceConfig } from '../../../../../../infrastructure/testing/worker-databases.mjs';
 import { createHash, randomUUID } from 'node:crypto';
 import { createOutboxDispatcherDatabase } from '@pertexo/core/testing';
 import { createQueueProducer, JOB_NAME } from '@pertexo/queue/server';
@@ -115,6 +116,7 @@ export async function assertScheduleQuotaRecovery(
 
   runtime = registerResource(
     await createTriggerRuntime({
+      maintenanceDatabase: maintenanceConfig(workerConfig),
       batchSize: 10,
       database: workerConfig,
       leaseDurationSeconds: 5,
@@ -249,6 +251,7 @@ export async function assertScheduleQuotaRecovery(
   );
 
   runtime = await createTriggerRuntime({
+    maintenanceDatabase: maintenanceConfig(workerConfig),
     batchSize: 10,
     database: workerConfig,
     leaseDurationSeconds: 5,

@@ -12,6 +12,10 @@ previous=''
 [[ ! -f "$BETA_STATE_DIR/current" ]] || previous=$(cat "$BETA_STATE_DIR/current")
 compose up -d --wait --wait-timeout 120 postgres redis storage
 compose stop "${writer_services[@]}"
+# Existing volumes skip initdb scripts. Grant before migrations can remove policies.
+# ON_ERROR_STOP and the deploy's errexit keep writers stopped if provisioning fails.
+compose exec -T postgres sh -c 'export PGPASSWORD="$POSTGRES_PASSWORD"; exec psql --no-password --username="$POSTGRES_USER" --dbname="$POSTGRES_DB" --set ON_ERROR_STOP=1 --set maintenance_user="$POSTGRES_MAINTENANCE_USER" --file=-' < "$(dirname "$0")/../postgres/init/roles/maintenance.sql"
+
 # This ephemeral administration client is never a serving service.
 if ! docker run --rm --read-only --tmpfs /tmp --user "$(id -u):$(id -g)" \
   --network pertexo-beta_private --env-file "$BETA_STATE_DIR/rc.env" \

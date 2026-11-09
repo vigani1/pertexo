@@ -28,7 +28,9 @@ export function createWorkspaceInboxFoldStore(
   const maintenance =
     maintenanceConfig === undefined
       ? undefined
-      : acquireDatabasePool(maintenanceConfig);
+      : acquireDatabasePool(maintenanceConfig, undefined, {
+          role: 'maintenance',
+        });
   const observer =
     maintenance === undefined
       ? undefined
@@ -47,7 +49,7 @@ export function createWorkspaceInboxFoldStore(
     /** Folds up to `limit` pending failures into their workflows' threads. */
     foldPending: (limit: number, signal?: AbortSignal) =>
       withPlatformTransaction(
-        pool,
+        maintenance?.pool ?? pool,
         (client) => foldInboxEvents(client, limit),
         options(signal),
       ),

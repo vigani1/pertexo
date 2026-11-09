@@ -81,7 +81,9 @@ export function createScheduleTriggerScanner(
     claim?: DatabaseRuntime;
   }> = {},
 ) {
-  const claimLease = acquireDatabasePool(claimConfig, runtimes.claim);
+  const claimLease = acquireDatabasePool(claimConfig, runtimes.claim, {
+    role: 'maintenance',
+  });
   let acceptanceLease: ReturnType<typeof acquireDatabasePool>;
   try {
     acceptanceLease = acquireDatabasePool(

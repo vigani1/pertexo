@@ -1,3 +1,4 @@
+import { maintenanceConfig } from '../../../../../infrastructure/testing/worker-databases.mjs';
 import { describe, it, expect } from 'vitest';
 
 import {
@@ -13,6 +14,10 @@ import {
   versionA,
   workerBaseUrl,
   workspaceA,
+  workspaceB,
+  workflowB,
+  versionB,
+  createDueNodeWakeupScanner,
 } from './run-store.fixture.js';
 
 describe('Coordinator durable wakeup invariants', () => {
@@ -24,8 +29,8 @@ describe('Coordinator durable wakeup invariants', () => {
       max: 1,
       ownerRole: 'pertexo_owner',
     });
-    const scannerA = createDeadlineWakeupScanner(config);
-    const scannerB = createDeadlineWakeupScanner(config);
+    const scannerA = createDeadlineWakeupScanner(maintenanceConfig(config));
+    const scannerB = createDeadlineWakeupScanner(maintenanceConfig(config));
     try {
       await scannerA.claimDueWakeups(100);
       const beforeDue = await asRuntime(workerBaseUrl, workspaceA, (client) =>
@@ -118,11 +123,11 @@ describe('Coordinator durable wakeup invariants', () => {
       ),
     );
     const scannerA = new Pool({
-      connectionString: databaseUrl(workerBaseUrl),
+      ...maintenanceConfig({ connectionString: databaseUrl(workerBaseUrl) }),
       max: 1,
     });
     const scannerB = new Pool({
-      connectionString: databaseUrl(workerBaseUrl),
+      ...maintenanceConfig({ connectionString: databaseUrl(workerBaseUrl) }),
       max: 1,
     });
     try {
@@ -218,4 +223,64 @@ describe('Coordinator durable wakeup invariants', () => {
       await Promise.all([scannerA.end(), scannerB.end()]);
     }
   });
+});
+
+it('claims due deadlines and node wakeups in both workspaces through maintenance', async () => {
+  const runs = [
+    { workspaceId: workspaceA },
+    {
+      workspaceId: workspaceB,
+      workflowId: workflowB,
+      workflowVersionId: versionB,
+    },
+  ];
+  const ids: string[] = [];
+  for (const scope of runs) {
+    const id = await insertRun({
+      ...scope,
+      status: 'waiting',
+      deadlineAt: '2099-01-01',
+    });
+    ids.push(id);
+    await asOwner(scope.workspaceId, async (client) => {
+      await client.query(
+        "update app.workflow_runs set created_at=clock_timestamp()-interval '1 minute',deadline_at=clock_timestamp()-interval '1 second' where id=$1",
+        [id],
+      );
+      await client.query(
+        `insert into app.node_runs(id,workspace_id,workflow_run_id,node_id,invocation_key,status,side_effect_class,wait_kind,resume_at)
+        values($1,$2,$3,'timer','timer','waiting','safe','node_wait',clock_timestamp()-interval '1 second')`,
+        [randomUUID(), scope.workspaceId, id],
+      );
+    });
+  }
+  const config = maintenanceConfig(
+    parseDatabaseConfig({
+      connectionString: databaseUrl(workerBaseUrl),
+      max: 1,
+    }),
+  );
+  const deadline = createDeadlineWakeupScanner(config);
+  const nodes = createDueNodeWakeupScanner(config);
+  try {
+    expect(await deadline.claimDueWakeups(100)).toBeGreaterThanOrEqual(2);
+    expect(await nodes.claimDueWakeups(100)).toBeGreaterThanOrEqual(2);
+    for (const [index, scope] of runs.entries()) {
+      const result = await asRuntime(
+        workerBaseUrl,
+        scope.workspaceId,
+        (client) =>
+          client.query<{ count: number }>(
+            'select count(*)::int count from app.outbox_events where aggregate_id=$1',
+            [ids[index]],
+          ),
+      );
+      expect(result.rows[0]?.count).toBe(2);
+    }
+    expect(await deadline.claimDueWakeups(100)).toBe(0);
+    expect(await nodes.claimDueWakeups(100)).toBe(0);
+  } finally {
+    await deadline.close();
+    await nodes.close();
+  }
 });

@@ -1,3 +1,4 @@
+import { maintenanceConfig } from '../../../../../infrastructure/testing/worker-databases.mjs';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { canonicalOutboxPayloadChecksum } from '@pertexo/database/primitives';
 import { createFailureNotificationStore } from '../../../src/notifications/failure-notification.store.js';
@@ -17,6 +18,15 @@ import {
 
 const store = createFailureNotificationStore(
   parseDatabaseConfig({ connectionString: databaseUrl(workerBaseUrl), max: 4 }),
+  undefined,
+  {
+    maintenance: maintenanceConfig(
+      parseDatabaseConfig({
+        connectionString: databaseUrl(workerBaseUrl),
+        max: 4,
+      }),
+    ),
+  },
 );
 afterAll(() => store.close());
 let other: Awaited<ReturnType<typeof seedNotificationDestination>>;

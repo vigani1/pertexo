@@ -261,7 +261,9 @@ describe('workflow run notification pinning', () => {
       );
       await client.query('set constraints all immediate');
       for (const table of protectedTables)
-        await client.query(`alter table app.${table} force row level security`);
+        await client.query(
+          `alter table app.${table} no force row level security`,
+        );
       await client.query('commit');
     } catch (error: unknown) {
       await client.query('rollback').catch(() => undefined);

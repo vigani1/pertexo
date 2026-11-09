@@ -1,3 +1,4 @@
+import { maintenanceConfig } from '../../../../infrastructure/testing/worker-databases.mjs';
 import type {
   ScheduleTriggerScanner,
   WorkflowTriggerReconciliationStore,
@@ -85,7 +86,7 @@ export function dependencies() {
   };
 }
 
-export const options = {
+const baseOptions = {
   database: {
     connectionString: 'postgresql://worker:secret@localhost:5432/pertexo',
     connectionTimeoutMillis: 5_000,
@@ -99,4 +100,9 @@ export const options = {
   batchSize: 10,
   leaseDurationSeconds: 30,
   redisUrl: 'redis://localhost:6379/0',
+};
+
+export const options = {
+  ...baseOptions,
+  maintenanceDatabase: maintenanceConfig(baseOptions.database),
 };

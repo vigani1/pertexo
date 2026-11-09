@@ -1,3 +1,4 @@
+import { maintenanceConfig } from '../../../../../infrastructure/testing/worker-databases.mjs';
 import { describe, it, expect } from 'vitest';
 import { Pool } from 'pg';
 import { readWorkflowNodeRunDiagnostics } from '../../../src/runs/queries/history/details.repository.js';
@@ -1678,11 +1679,13 @@ describe('Coordinator node-attempt persistence invariants', () => {
     });
     expect(proof.rows[0]?.resume_at).toBeInstanceOf(Date);
     const scanner = createDueNodeWakeupScanner(
-      parseDatabaseConfig({
-        connectionString: databaseUrl(workerBaseUrl),
-        max: 1,
-        ownerRole: 'pertexo_owner',
-      }),
+      maintenanceConfig(
+        parseDatabaseConfig({
+          connectionString: databaseUrl(workerBaseUrl),
+          max: 1,
+          ownerRole: 'pertexo_owner',
+        }),
+      ),
     );
     try {
       await scanner.claimDueWakeups(100);
@@ -1743,11 +1746,13 @@ describe('Coordinator node-attempt persistence invariants', () => {
     // the immutable checkpoint, so this intentionally crosses the real clock.
     await new Promise((resolve) => setTimeout(resolve, 1_050));
     const dueScanner = createDueNodeWakeupScanner(
-      parseDatabaseConfig({
-        connectionString: databaseUrl(workerBaseUrl),
-        max: 1,
-        ownerRole: 'pertexo_owner',
-      }),
+      maintenanceConfig(
+        parseDatabaseConfig({
+          connectionString: databaseUrl(workerBaseUrl),
+          max: 1,
+          ownerRole: 'pertexo_owner',
+        }),
+      ),
     );
     try {
       await dueScanner.claimDueWakeups(100);

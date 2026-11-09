@@ -1,3 +1,4 @@
+import { maintenanceConfig } from '../../../../../infrastructure/testing/worker-databases.mjs';
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
@@ -67,7 +68,7 @@ describe.runIf(fixture.enabled)('Request Input reconvergence', () => {
         max: 2,
       });
       const tasks = createPendingTaskStore(config),
-        due = createDueNodeWakeupScanner(config),
+        due = createDueNodeWakeupScanner(maintenanceConfig(config)),
         workers = await runtime();
       try {
         const run = await accept(version);

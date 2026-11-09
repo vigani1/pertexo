@@ -16,9 +16,13 @@ export async function requireImages() {
 }
 
 /** Publishes the built images under the names and revision deploy.sh verifies. */
-export async function tagRelease(tag, revision = tag) {
+export async function tagRelease(
+  tag,
+  revision = tag,
+  runtimeImage = RUNTIME_IMAGE,
+) {
   for (const [base, name] of [
-    [RUNTIME_IMAGE, 'pertexo'],
+    [runtimeImage, 'pertexo'],
     [WEB_IMAGE, 'pertexo-web'],
   ])
     await mustDocker(

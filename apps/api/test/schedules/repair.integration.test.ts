@@ -1,3 +1,4 @@
+import { maintenanceConfig } from '../../../../infrastructure/testing/worker-databases.mjs';
 import { randomUUID } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import {
@@ -106,7 +107,10 @@ describe.runIf(betterAuthIntegrationEnabled)(
       if (event === undefined) throw new Error('Publication event is missing');
       const reconciliation = createWorkflowTriggerReconciliationStore(config);
       const schedules = createScheduleTriggerStore(config);
-      const scanner = createScheduleTriggerScanner(config, config);
+      const scanner = createScheduleTriggerScanner(
+        maintenanceConfig(config),
+        config,
+      );
       try {
         const triggers = await reconciliation.reconcile({
           workspaceId,

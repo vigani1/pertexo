@@ -83,6 +83,7 @@ if args[0]=='image':
  print(template.replace('{{.Architecture}}',arch).replace('{{.Os}}','linux').replace('{{index .Config.Labels "org.opencontainers.image.revision"}}',revision))
 if 'infrastructure/single-server/encryption/verify.mjs' in args and os.environ.get('FIXTURE_ENCRYPTION_FAIL')=='true': sys.exit(1)
 if 'infrastructure/single-server/storage/prepare.mjs' in args and 'ghcr.io/vigani1/pertexo:${oldCommit}' in args and os.environ.get('FIXTURE_OLD_CONFIG_REJECTED')=='true': sys.exit(1)
+if 'exec' in args and 'postgres' in args and os.environ.get('FIXTURE_ROLE_GRANT_FAIL')=='true': sys.exit(1)
 if 'logs' in args: print(os.environ['FIXTURE_MIGRATION_LOG'])
 if '--exit-code-from' in args and os.environ.get('FIXTURE_MIGRATION_FAIL')=='true': sys.exit(1)
 if '--no-deps' in args and '--wait' in args and os.environ.get('SERVICE_VERSION')=='${newCommit}' and os.environ.get('FIXTURE_UNHEALTHY')=='true': sys.exit(1)
@@ -444,4 +445,24 @@ test('starts the Code service with its release and omits it when returning to a 
   );
   assert.equal(restored.length, 1);
   assert.ok(!restored[0].args.includes('code-runner'));
+});
+
+test('role provisioning failure leaves writers stopped before any migration', (t) => {
+  const f = fixture(t);
+  const result = f.run({ FIXTURE_ROLE_GRANT_FAIL: 'true' });
+  assert.equal(result.status, 1);
+  assert.equal(
+    f.commands().some((c) => c.args.includes('--exit-code-from')),
+    false,
+  );
+  assert.equal(
+    f
+      .commands()
+      .some((c) => c.args.includes('--no-deps') && c.args.includes('--wait')),
+    false,
+  );
+  assert.equal(
+    readFileSync(join(f.state, 'current'), 'utf8').trim(),
+    oldCommit,
+  );
 });

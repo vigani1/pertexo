@@ -1,3 +1,4 @@
+import { maintenanceConfig } from '../../../../../infrastructure/testing/worker-databases.mjs';
 import { createHash, randomUUID } from 'node:crypto';
 
 import {
@@ -312,9 +313,13 @@ describe('a schedule that cannot fire', () => {
       connectionString: schedule.apiConnectionString,
     });
     const acceptance = createDatabaseRuntime(config, { role: 'api' });
-    const scanner = createScheduleTriggerScanner(config, config, {
-      acceptance,
-    });
+    const scanner = createScheduleTriggerScanner(
+      maintenanceConfig(config),
+      config,
+      {
+        acceptance,
+      },
+    );
     const shutdown = new AbortController();
     const reason = new Error('the worker is stopping');
     acquireDatabasePool(config, acceptance).pool.once('release', () => {
@@ -353,7 +358,7 @@ describe('a schedule that cannot fire', () => {
       'app.store_trigger_schedule_retirement(uuid,uuid,text,text,timestamptz)';
     await ownerQuery(`revoke execute on function ${signature} from public`, []);
     await ownerQuery(
-      `revoke execute on function ${signature} from pertexo_app`,
+      `revoke execute on function ${signature} from pertexo_maintenance`,
       [],
     );
     try {
@@ -371,7 +376,7 @@ describe('a schedule that cannot fire', () => {
       expect(await leaseOf(first, broken.triggerId)).not.toBeNull();
     } finally {
       await ownerQuery(
-        `grant execute on function ${signature} to pertexo_app`,
+        `grant execute on function ${signature} to pertexo_maintenance`,
         [],
       );
     }

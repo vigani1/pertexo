@@ -1,3 +1,4 @@
+import { maintenanceConfig } from '../../../../../infrastructure/testing/worker-databases.mjs';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { randomUUID } from 'node:crypto';
 import { createScheduleTriggerScanner } from '../../../src/triggers/schedules/scanner.js';
@@ -44,7 +45,10 @@ async function republish(workflowId: string, intervalMinutes: number) {
   return (await workflowTriggerIds(workflowId)).scheduleId;
 }
 async function scan() {
-  const scanner = createScheduleTriggerScanner(apiConfig, apiConfig);
+  const scanner = createScheduleTriggerScanner(
+    maintenanceConfig(apiConfig),
+    apiConfig,
+  );
   try {
     return await scanner.scanDue({
       leaseOwner: 'republication',

@@ -331,7 +331,7 @@ describeIntegration('Retry and Wait outage recovery', () => {
           retry_events: '0',
         });
         const verificationScanner = createDueNodeWakeupScanner(
-          runtimeOptions.database,
+          runtimeOptions.maintenanceDatabase,
         );
         try {
           await expect(verificationScanner.claimDueWakeups(10)).resolves.toBe(
@@ -546,7 +546,9 @@ describeIntegration('Retry and Wait outage recovery', () => {
           where workspace_id=$1 and id=$2`,
         [workspaceId, accepted.runId],
       );
-      const scanner = createDeadlineWakeupScanner(database);
+      const scanner = createDeadlineWakeupScanner(
+        parseDatabaseConfig({ connectionString: databaseUrl(dispatcherUrl) }),
+      );
       try {
         await expect(scanner.claimDueWakeups(10)).resolves.toBe(1);
       } finally {

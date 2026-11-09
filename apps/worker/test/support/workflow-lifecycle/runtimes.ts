@@ -1,3 +1,4 @@
+import { maintenanceConfig } from '../../../../../infrastructure/testing/worker-databases.mjs';
 import {
   createOutboxDispatcherDatabase,
   createWorkflowTriggerReconciliationStore,
@@ -61,6 +62,7 @@ export function createLifecycleRuntimes(
     );
     const runtimePromise = testTriggerRuntime(
       {
+        maintenanceDatabase: maintenanceConfig(workerConfig),
         batchSize: 10,
         database: workerConfig,
         leaseDurationSeconds: 5,

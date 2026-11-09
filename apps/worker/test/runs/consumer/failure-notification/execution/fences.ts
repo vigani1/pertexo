@@ -1,7 +1,11 @@
 import { createFailureNotificationStore } from '@pertexo/core/testing';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
 
-import { databaseUrl, workerUrl } from '../failure-notification.fixture.js';
+import {
+  databaseUrl,
+  workerUrl,
+  dispatcherUrl,
+} from '../failure-notification.fixture.js';
 import type { FailureNotificationScenario } from './failure-notification-execution.types.js';
 import { assertPostgresLossBeforeFence } from './postgres-loss.js';
 import { assertProviderFenceDrain } from './provider-fence.js';
@@ -14,6 +18,13 @@ export async function qualifyNotificationFences(
       connectionString: databaseUrl(workerUrl),
       max: 2,
     }),
+    undefined,
+    {
+      maintenance: parseDatabaseConfig({
+        connectionString: databaseUrl(dispatcherUrl),
+        max: 2,
+      }),
+    },
   );
   try {
     await assertPostgresLossBeforeFence(scenario, store);

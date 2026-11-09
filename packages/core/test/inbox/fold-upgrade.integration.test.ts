@@ -1,3 +1,4 @@
+import { maintenanceConfig } from '../../../../infrastructure/testing/worker-databases.mjs';
 import { randomUUID } from 'node:crypto';
 import { copyFile, mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -106,10 +107,12 @@ it('upgrades pending events and private revisions, then folds them once through 
       ).rows,
     ).toEqual([{ thread_id: thread, read_revision: previous.revision }]);
     fold = createWorkspaceInboxFoldStore(
-      parseDatabaseConfig({
-        connectionString: fixture.databaseUrl(process.env.DATABASE_URL ?? ''),
-        max: 1,
-      }),
+      maintenanceConfig(
+        parseDatabaseConfig({
+          connectionString: fixture.databaseUrl(process.env.DATABASE_URL ?? ''),
+          max: 1,
+        }),
+      ),
     );
     const changes = await fold.foldPending(10);
     expect(changes).toHaveLength(1);

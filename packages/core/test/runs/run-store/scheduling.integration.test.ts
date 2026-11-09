@@ -1,3 +1,4 @@
+import { maintenanceConfig } from '../../../../../infrastructure/testing/worker-databases.mjs';
 import { describe, it, expect, vi } from 'vitest';
 import {
   asOwner,
@@ -430,6 +431,15 @@ describe('Coordinator scheduling and notification invariants', () => {
         max: 2,
         ownerRole: 'pertexo_owner',
       }),
+      undefined,
+      {
+        maintenance: maintenanceConfig(
+          parseDatabaseConfig({
+            connectionString: databaseUrl(workerBaseUrl),
+            max: 2,
+          }),
+        ),
+      },
     );
     try {
       await expect(rollbackReaderStore.recoverDue(10, 3)).resolves.toBe(1);
