@@ -1,3 +1,4 @@
+import { expectedMigrationsAfter } from '../../src/testing/expected-migrations.js';
 import { Pool } from 'pg';
 import { withTenantScopedClient } from '../../src/tenant-access/transactions.js';
 import { copyFile } from 'node:fs/promises';
@@ -40,7 +41,7 @@ it('upgrades populated 0116 data without loss and preserves app workspace isolat
       );
     const before = await snapshot();
     for (const rows of before) expect(rows.length).toBeGreaterThanOrEqual(2);
-    expect(await upgrade()).toEqual(['0117_row_security.sql']);
+    expect(await upgrade()).toEqual(await expectedMigrationsAfter(116));
     expect(await snapshot()).toEqual(before);
     const client = await admin.connect();
     try {

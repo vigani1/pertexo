@@ -29,8 +29,8 @@ beforeAll(async () => {
     'select current_database() as name',
   );
   const url = new URL(
-    process.env.DATABASE_URL ??
-      'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo',
+    process.env.DATABASE_MAINTENANCE_URL ??
+      'postgresql://pertexo_maintenance:pertexo-local-maintenance@localhost:5432/pertexo',
   );
   url.pathname = `/${String(row?.name)}`;
   databaseUrl = url.toString();

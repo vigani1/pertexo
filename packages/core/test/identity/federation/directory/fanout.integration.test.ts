@@ -24,7 +24,7 @@ it('projects maximum directory fan-out atomically without per-person round trips
     })
   ).organization;
   if (organization === null) throw new Error('Missing directory organization');
-  const issued = await createDirectoryCredential(db.authenticationPool(), {
+  const issued = await createDirectoryCredential(db.organizationPool(), {
     ...scope,
     name: 'Measure',
     expectedRevision: 1,
@@ -32,7 +32,7 @@ it('projects maximum directory fan-out atomically without per-person round trips
   });
   if (issued.replayed) throw new Error('Fresh credential replayed');
   const principal = await authenticateDirectory(
-    db.authenticationPool(),
+    db.organizationPool(),
     organization.id,
     createHash('sha256').update(issued.secret).digest('hex'),
   );
@@ -69,7 +69,7 @@ it('projects maximum directory fan-out atomically without per-person round trips
     ],
   );
   await withDirectoryTransaction(
-    db.authenticationPool(),
+    db.organizationPool(),
     principal,
     (client, current) => projectDirectoryMemberships(client, current),
   );
@@ -114,7 +114,7 @@ it('projects maximum directory fan-out atomically without per-person round trips
   )[0]?.lsn;
   const started = performance.now(),
     memoryBefore = process.memoryUsage().rss;
-  await replaceDirectoryMappings(db.authenticationPool(), {
+  await replaceDirectoryMappings(db.organizationPool(), {
     ...scope,
     mappings,
     expectedRevision: 11,
@@ -168,7 +168,7 @@ it('projects maximum directory fan-out atomically without per-person round trips
   const person = people[0];
   if (person === undefined) throw new Error('Missing fixture person');
   await db.sessions(person.id);
-  await replaceDirectoryMappings(db.authenticationPool(), {
+  await replaceDirectoryMappings(db.organizationPool(), {
     ...scope,
     mappings,
     expectedRevision: 12,
@@ -184,7 +184,7 @@ it('projects maximum directory fan-out atomically without per-person round trips
   );
   let returnedGroupMembers = 0;
   await withDirectoryTransaction(
-    db.authenticationPool(),
+    db.organizationPool(),
     principal,
     async (client, current) => {
       const reader: {

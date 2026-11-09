@@ -1,3 +1,4 @@
+import { maintenanceDatabase } from '../../maintenance-database.js';
 import { DEFAULT_INSTANCE_LIMITS } from '../../../../src/platform/config/instance-limits.js';
 import { DEFAULT_CODE_SETTINGS } from '@pertexo/node-sdk';
 import type { ApiIdentityConfig } from '../../../../src/platform/config/identity-config.js';
@@ -16,6 +17,7 @@ export function apiConfig(database: DatabaseConfig): ApiConfig {
       DEFAULT_INSTANCE_LIMITS.webhookEndpointBurstLimit,
     codeSettings: DEFAULT_CODE_SETTINGS,
     database,
+    maintenanceDatabase: maintenanceDatabase(database),
     host: '127.0.0.1',
     identity: {
       publicWebOrigin: origin,

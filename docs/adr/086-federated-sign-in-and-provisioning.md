@@ -52,8 +52,10 @@ owner administers authentication and provisioning using `workspace:manage`; this
 creates no organization role system. Each workspace has at most one identity
 organization. Its data remains workspace-scoped. The global authentication catalog
 is deliberately limited to domain/provider/directory identity and proof state,
-including group-to-linked-workspace policy mappings. Existing memberships and their
-directory source associations retain forced workspace row security;
+excluding workspace links and group-to-linked-workspace role mappings, which
+have workspace row security (2026-11-09 follow-up to ADR 003). Organization-wide
+transactions use the maintenance connection. Existing memberships and their
+directory source associations retain workspace row security;
 management rechecks the control-workspace owner under lock.
 
 Domain ownership requires single-use DNS TXT proof for the exact normalized domain.

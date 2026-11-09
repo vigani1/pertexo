@@ -110,6 +110,7 @@ function parseInstanceLimits(
 }
 
 const apiEnvironmentSchema = databaseClientEnvironmentSchema.extend({
+  DATABASE_MAINTENANCE_URL: databaseClientEnvironmentSchema.shape.DATABASE_URL,
   HOST: z.string().trim().min(1).default('0.0.0.0'),
   NODE_ENV: z.enum(API_NODE_ENVIRONMENTS).default('development'),
   LOG_LEVEL: z
@@ -158,6 +159,7 @@ export type ApiConfig = Readonly<{
     max: number;
     ownerRole: string;
   }>;
+  maintenanceDatabase: ApiConfig['database'];
   host: string;
   identity?: ApiIdentityConfig;
   nodeEnv: ApiNodeEnvironment;
@@ -232,6 +234,10 @@ export function parseApiConfig(
     ...(connections === undefined ? {} : { connections }),
     ...(connections === undefined ? {} : { webhooks: connections }),
     database: clientDatabaseConfig(parsed),
+    maintenanceDatabase: clientDatabaseConfig({
+      ...parsed,
+      DATABASE_URL: parsed.DATABASE_MAINTENANCE_URL,
+    }),
     host: parsed.HOST,
     ...(identity === undefined ? {} : { identity }),
     nodeEnv: parsed.NODE_ENV,

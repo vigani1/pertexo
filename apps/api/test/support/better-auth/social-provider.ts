@@ -31,6 +31,7 @@ export function useSocialProviderGateway(gateway: SocialProviderGateway) {
             ? {}
             : {
                 federation: {
+                  database: input.maintenanceDatabase,
                   envelope: createApplicationSecretEnvelope(
                     config.federationEncryption,
                   ),

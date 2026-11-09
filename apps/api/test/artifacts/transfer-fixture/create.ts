@@ -1,3 +1,4 @@
+import { maintenanceDatabase } from '../../support/maintenance-database.js';
 import { randomUUID } from 'node:crypto';
 import { createArtifactStore } from '@pertexo/artifact-store/server';
 import {
@@ -180,6 +181,7 @@ export async function createArtifactTransferApiFixture(): Promise<ArtifactTransf
     const identityRuntime = resources.acquire(
       'identity runtime',
       await createApiIdentityRuntime(config.identity, config.database, {
+        maintenanceDatabase: maintenanceDatabase(config.database),
         logger: logs.logger,
       }),
       (runtime) => runtime.close(),
