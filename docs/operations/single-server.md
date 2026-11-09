@@ -77,6 +77,21 @@ Run everything below as the `pertexo` login. The checkout holds the control scri
 Docker volumes of the `pertexo-beta` Compose project, so never run `down -v` on a
 serving install.
 
+The operator checkout needs Node 24 and pnpm 11 (the versions in `package.json`).
+After installing those tools, bootstrap its built validators before deploying:
+
+```sh
+cd /opt/pertexo/repository
+command pnpm install --frozen-lockfile
+command pnpm build:packages
+```
+
+Repeat that build after updating the operator checkout. The compatibility gate
+uses this built inspector against the **target image's** SQL/checksum and baseline
+adoption manifests. It compares every recorded receipt before stopping writers,
+including fenced retries and rollbacks. An adopted baseline cannot be rolled back
+to the old receipt history. No receipt is changed by preflight.
+
 ## 2. Point DNS at it
 
 Pick two names, one for the app and one for files, and point both at the server with

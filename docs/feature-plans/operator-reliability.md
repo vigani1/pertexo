@@ -12,8 +12,8 @@ changes are in scope.
   paths must not change its bind mount.
 - Report missing Compose settings before pulling release images. Conditional
   application configuration still needs full validation before pulls.
-- Pending: share the migrator's history/checksum compatibility rules with the
-  pre-stop release gate, preserving baseline adoption.
+- Share the migrator's history/checksum compatibility rules with the pre-stop
+  release gate, preserving baseline adoption and refusing incompatible fenced retries.
 - Pending: bound local release/image retention while preserving rollback and
   every retained recovery point's release references.
 - Pending: measure API/worker memory under load, set container budgets, and qualify
