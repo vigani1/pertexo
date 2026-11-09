@@ -268,3 +268,17 @@ summary crosses that interface. Error-origin flags propagate through Calls,
 replays and recovery to prevent notification loops. Settings belong to authoring,
 intent production/admission to core's `/runs`, and delivery to the worker’s
 existing maintenance runtime. See [the guide](guides/error-workflows.md).
+
+Before the first index on a populated large table, build a nontransactional
+migration path (CONCURRENTLY, recovery of invalid indexes); the runner wraps
+every file in a transaction today.
+
+The database catalog is recorded in `packages/database/schema.sql`. After adding
+any migration, build the packages, start the isolated PostgreSQL test stack and
+run `node infrastructure/checks/database-catalog.mjs --write` from the repository
+root with the stack's database environment. Commit the updated snapshot with the
+migration. Run the same command without `--write` to compare a freshly migrated
+disposable database with the snapshot. The database integration CI job runs this
+comparison. The script uses the stack's PostgreSQL `pg_dump`, retains ownership,
+privileges, policies, functions, triggers, comments and storage settings, and
+removes patch-version banners and random dump restriction tokens.
