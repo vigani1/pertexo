@@ -1,5 +1,5 @@
 import { codeContainerLimits } from '../../../packages/node-sdk/dist/index.js';
-import { writeFile, chmod } from 'node:fs/promises';
+import { writeFile, chmod, cp } from 'node:fs/promises';
 import { requireCompatibleRelease } from '../encryption/require-compatible-release.mjs';
 import { parseApiConfig } from '../../../apps/api/dist/platform/config/api-config.js';
 import { parseWorkerConfig } from '../../../apps/worker/dist/config/worker.js';
@@ -228,4 +228,11 @@ await output(
   optionalValues([...previous, 'SYSTEM_MAIL_TRANSPORT', ...mailNames]) +
     encryptionLines +
     callbackLines,
+);
+
+// A release path must never change PostgreSQL's container configuration.
+await cp(
+  new URL('../../postgres/init/', import.meta.url),
+  directory + '/postgres-init',
+  { recursive: true },
 );
