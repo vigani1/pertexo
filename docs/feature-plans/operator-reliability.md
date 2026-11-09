@@ -15,7 +15,9 @@ changes are in scope.
 - Validate required and conditional settings with the application parsers before
   pulling release images, using the built operator checkout.
 - Share the migrator's history/checksum compatibility rules with the pre-stop
-  release gate, preserving baseline adoption and refusing incompatible fenced retries.
+  release gate, preserving baseline adoption and refusing incompatible fenced retries
+  even when no healthy release marker exists. Receipt adoption requires fix-forward
+  recovery even when it applies no SQL.
 - Bound local release/image retention while preserving current/previous, running
   containers and every retained recovery point's release references.
 - Qualify publishing/readiness with 4 GiB / 2 vCPU service cgroups, record Docker

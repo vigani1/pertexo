@@ -140,7 +140,9 @@ if 'infrastructure/single-server/backup/capture.mjs' in args and 'capture' in ar
  (work/'objects.count').write_text('0\\n')
  (work/'objects.json').write_text('[]')
 if 'exec' in args and any('pg_dump' in arg for arg in args): print('database-fixture')
+if 'exec' in args and any('to_regclass' in arg for arg in args): print(os.environ.get('FIXTURE_HISTORY_EXISTS','t'))
 if 'exec' in args and any('json_agg(' in arg for arg in args):
+ if os.environ.get('FIXTURE_HISTORY_EXISTS')=='f': print('receipt table is absent',file=sys.stderr);sys.exit(1)
  rows=json.loads(os.environ.get('FIXTURE_REAL_HISTORY','[]'))
  print(json.dumps([row['name'] for row in rows] if any('json_agg(name' in arg for arg in args) else rows))
 if 'infrastructure/single-server/read-pending-migrations.mjs' in args:
@@ -878,4 +880,64 @@ test('cleanup refuses an unresolved migration or restore before removing release
     for (const commit of old)
       assert.ok(existsSync(join(f.directory, 'releases', commit)));
   }
+});
+
+test('database receipts gate a rollback even before a healthy current marker exists', (t) => {
+  const f = fixture(t);
+  rmSync(join(f.state, 'current'));
+  const result = f.run({
+    FIXTURE_REAL_HISTORY: JSON.stringify([
+      { name: '9999_future.sql', checksum: 'future' },
+    ]),
+  });
+  assert.notEqual(result.status, 0);
+  assert.equal(
+    f.commands().some((c) => c.args.includes('stop')),
+    false,
+  );
+  assert.equal(existsSync(join(f.state, 'current')), false);
+});
+
+test('an empty database is inspected without querying a missing receipt table', (t) => {
+  const f = fixture(t);
+  rmSync(join(f.state, 'current'));
+  const result = f.run({ FIXTURE_HISTORY_EXISTS: 'f' });
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(
+    f.commands().some((c) => c.args.some((arg) => arg.includes('json_agg('))),
+    false,
+  );
+});
+
+test('an indeterminate history lookup never becomes an empty-history deployment', (t) => {
+  const f = fixture(t);
+  const result = f.run({ FIXTURE_HISTORY_EXISTS: 'unexpected' });
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /presence could not be determined/u);
+  assert.equal(
+    f.commands().some((c) => c.args.includes('stop')),
+    false,
+  );
+});
+
+test('baseline receipt adoption fixes forward when the release is unhealthy even without SQL files applied', (t) => {
+  const f = fixture(t);
+  const result = f.run({
+    FIXTURE_PENDING_MIGRATIONS: '0000_baseline.sql',
+    FIXTURE_UNHEALTHY: 'true',
+  });
+  assert.notEqual(result.status, 0);
+  assert.equal(
+    f
+      .commands()
+      .some(
+        (c) =>
+          c.commit === oldCommit &&
+          c.args.includes('--wait') &&
+          c.args.includes('api'),
+      ),
+    false,
+  );
+  assert.ok(existsSync(join(f.state, 'migration-fence')));
+  assert.match(result.stderr, /fix forward/u);
 });
