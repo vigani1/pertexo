@@ -13,7 +13,7 @@ import { withTenantScopedClient } from '@pertexo/database/primitives';
 import { readFolderScope } from '../../../src/shared/folder-access-facts.repository.js';
 import { workflowAccessible } from '../../../src/shared/resources/workflow-access.repository.js';
 
-it('keeps populated folders workspace-shared and forces isolation on grant rows after upgrading', async () => {
+it('keeps populated folders workspace-shared and isolates grant rows without FORCE after upgrading', async () => {
   const adminUrl =
     process.env.DATABASE_ADMIN_URL ??
     'postgresql://postgres:pertexo-local-superuser@localhost:5432/postgres';
@@ -104,7 +104,7 @@ it('keeps populated folders workspace-shared and forces isolation on grant rows 
           "select relrowsecurity,relforcerowsecurity from pg_class where oid='app.workflow_folder_grants'::regclass",
         )
       ).rows,
-    ).toEqual([{ relrowsecurity: true, relforcerowsecurity: true }]);
+    ).toEqual([{ relrowsecurity: true, relforcerowsecurity: false }]);
     for (const [index, workspaceId] of workspaces.entries())
       await owner.query(
         "insert into app.workflow_folder_grants(id,workspace_id,folder_id,user_id,access) values($1,$2,$3,$4,'viewer')",

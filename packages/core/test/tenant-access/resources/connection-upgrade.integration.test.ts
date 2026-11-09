@@ -18,7 +18,7 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import { alias } from 'drizzle-orm/pg-core';
 import { connections as storedConnections } from '@pertexo/database/schema';
 
-it('keeps populated connections workspace-shared and forces isolation on shares after upgrading', async () => {
+it('keeps populated connections workspace-shared and isolates shares without FORCE after upgrading', async () => {
   const adminUrl =
     process.env.DATABASE_ADMIN_URL ??
     'postgresql://postgres:pertexo-local-superuser@localhost:5432/postgres';
@@ -118,7 +118,7 @@ it('keeps populated connections workspace-shared and forces isolation on shares 
           "select relrowsecurity,relforcerowsecurity from pg_class where oid='app.connection_shares'::regclass",
         )
       ).rows,
-    ).toEqual([{ relrowsecurity: true, relforcerowsecurity: true }]);
+    ).toEqual([{ relrowsecurity: true, relforcerowsecurity: false }]);
     for (const [index, workspaceId] of workspaces.entries())
       await owner.query(
         'insert into app.connection_shares(workspace_id,connection_id,user_id) values($1,$2,$3)',
