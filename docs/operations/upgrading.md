@@ -44,8 +44,7 @@ newer than `v0.9.0`. Check with [the smoke check](single-server.md#6-smoke-check
 ## Baseline transition: required release stop
 
 **Required stop: v0.2.0 — the final release containing migrations
-0000 through 0122. This placeholder must be filled before the baseline release
-ships.** Install that release successfully before upgrading an older server to a
+0000 through 0122.** Install that release successfully before upgrading an older server to a
 release containing the new baseline. This includes v0.1.0 servers and databases
 that recorded only the old `0000_baseline.sql`. Update the control scripts before
 both deployments, and keep the required encrypted recovery points.
