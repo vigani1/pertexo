@@ -1,5 +1,7 @@
 # Operator reliability and host sizing
 
+Status: implemented and measured; final checks and full self-host drill verify the batch.
+
 Batch J1 covers the supported single-server deployment. No new CI job or ECS
 changes are in scope.
 
@@ -21,7 +23,8 @@ changes are in scope.
   workload, allocation and limits of cgroup qualification. The worker RSS safety
   budget shares its container ceiling; its heap remains half that budget.
 - Measure only: per-viewer authorization polling and terminal stream lifetime.
-  Preserve revocation latency.
+  Results are recorded in `docs/operations/workflow-run-stream-capacity.md`; the
+  five-second authority lifetime and production stream behaviour are unchanged.
 
 Verification requires red/green regressions for each fix, `pnpm check`, all
 single-server unit tests, artifact-store unit/integration tests, and the full
