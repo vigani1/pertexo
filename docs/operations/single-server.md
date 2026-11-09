@@ -139,8 +139,12 @@ command pnpm build:packages
 Repeat that build after updating the operator checkout. The compatibility gate
 uses this built inspector against the **target image's** SQL/checksum and baseline
 adoption manifests. It compares every recorded receipt before stopping writers,
-including fenced retries and rollbacks. An adopted baseline cannot be rolled back
-to the old receipt history. No receipt is changed by preflight.
+including fenced retries and rollbacks. Existing receipts are inspected even
+before a first healthy release marker exists; a missing receipt table is read as
+an empty history. An adopted baseline cannot be rolled back
+to the old receipt history. No receipt is changed by preflight. Baseline adoption
+counts as a migration for recovery even when it applies no SQL: an unhealthy
+release must fix forward because an older image may not recognize its receipts.
 
 ## 2. Point DNS at it
 

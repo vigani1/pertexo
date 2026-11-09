@@ -69,6 +69,7 @@ if args[0]=='version' or args[0]=='info': print('aarch64' if 'Architecture' in '
 if args[0]=='image':
  template=args[args.index('--format')+1] if '--format' in args else ''
  print(template.replace('{{.Architecture}}','arm64').replace('{{index .Config.Labels "org.opencontainers.image.revision"}}',os.environ.get('SERVICE_VERSION','')))
+if 'exec' in args and any('to_regclass' in arg for arg in args): print('f')
 if 'logs' in args: print('Database already at migration head.')
 `,
     { mode: 0o755 },
