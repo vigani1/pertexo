@@ -57,7 +57,7 @@ it('preserves mail identities through the rename and old messages through subseq
     const inspector = admin;
     const catalog = async (table: string) => ({
       relation: (
-        await inspector.query(
+        await inspector.query<{ relforcerowsecurity: boolean }>(
           'select oid,relowner,relacl,relrowsecurity,relforcerowsecurity from pg_class where oid=$1::regclass',
           [table],
         )
@@ -104,9 +104,9 @@ it('preserves mail identities through the rename and old messages through subseq
         [id],
       )
     ).rows;
-    expect(await migrateDatabase(migration)).toEqual([
-      '0116_smtp_and_server_mail.sql',
-    ]);
+    expect(await migrateDatabase(migration)).toEqual(
+      await expectedMigrationsAfter(115),
+    );
     expect(
       (
         await admin.query(
@@ -116,7 +116,13 @@ it('preserves mail identities through the rename and old messages through subseq
       ).rows,
     ).toEqual(beforeUpgrade);
     const after = await catalog('app.system_mail_deliveries');
-    expect(after.relation).toEqual(before.relation);
+    // Step 6 removes FORCE row security; nothing else about the table changes.
+    expect(after.relation).toEqual(
+      before.relation.map((relation) => ({
+        ...relation,
+        relforcerowsecurity: false,
+      })),
+    );
     expect(after.columns).toEqual([
       ...before.columns,
       {
