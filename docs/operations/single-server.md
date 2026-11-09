@@ -514,6 +514,11 @@ Change settings through the normal deployment procedure so the API, worker and
 runner agree. `CODE_STEPS_ENABLED=false` blocks publication and execution of
 Code steps. Deploy first stops the worker and waits for its drain before stopping
 the Code runner. The same ordering applies if an unhealthy deployment is stopped.
+The drain is bounded: the worker waits up to 60 seconds for active steps, and
+Compose stops it after 90 seconds. A Code step that needs longer (up to
+`CODE_RUNNER_MAX_SECONDS`, 300 by default) is aborted at that point. Its attempt
+then follows the step's normal retry or failure rules after the deploy, so plan
+deploys outside long-running Code work, or expect those steps to rerun.
 
 PostgreSQL init scripts are prepared under `state/postgres-init` and mounted from
 that stable operator path. Changing release directories therefore does not change
