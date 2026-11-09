@@ -20,6 +20,14 @@ it('adopts the full history without executing baseline SQL, retaining data and a
   await withDatabase(async ({ admin, config, directory }) => {
     await recordLegacyHistory(admin);
     const ids = await seedWorkflow(admin);
+    await admin.query(
+      "insert into app.auth_sessions(id,user_id,token,expires_at) values($1,$1,'retained-session',clock_timestamp()+interval '1 day')",
+      [ids.ownerId],
+    );
+    await admin.query(
+      'create sequence app.retained_sequence start 4400; alter sequence app.retained_sequence owner to pertexo_owner',
+    );
+    await admin.query("select nextval('app.retained_sequence')");
     const before = (await admin.query('select * from app.workflows')).rows;
     const database = (
       await admin.query<{ name: string }>('select current_database() name')
@@ -124,7 +132,7 @@ it.each(['partial', 'baseline-only', 'unknown', 'checksum'] as const)(
           checksum: 'Applied migration checksum changed',
         }[kind],
       );
-      if (kind === 'baseline-only') {
+      if (kind === 'baseline-only' || kind === 'partial') {
         const cli = spawnSync(
           process.execPath,
           [fileURLToPath(new URL('../../../dist/migrate.js', import.meta.url))],
