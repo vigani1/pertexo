@@ -191,8 +191,21 @@ test('real cases CRUD, detached input, stale checked start and frozen accepted-c
     path: info.outputPath('input-cases-loaded-desktop.png'),
     fullPage: true,
   });
-  const second = await publish(page, path, 'Second input proof');
-  expect(second.versionId).not.toBe(first.versionId);
+  let second: Awaited<ReturnType<typeof publish>> | undefined;
+  // Publish after the browser commits its checked intent, before API admission.
+  // Publishing before the click lets the summary poll disable the stale case.
+  await page.route(
+    `**${path}/runs`,
+    async (route) => {
+      expect(route.request().postDataJSON()).toMatchObject({
+        expectedPublishedVersionId: first.versionId,
+        input: { proof: 'f02-real-input' },
+      });
+      second = await publish(page, path, 'Second input proof');
+      await route.continue();
+    },
+    { times: 1 },
+  );
   const staleResponse = page.waitForResponse(
     (response) =>
       response.request().method() === 'POST' &&
@@ -202,6 +215,8 @@ test('real cases CRUD, detached input, stale checked start and frozen accepted-c
     .getByRole('button', { name: 'Start published version' })
     .click();
   const rejected = await staleResponse;
+  if (second === undefined) throw new Error('Concurrent publication missing');
+  expect(second.versionId).not.toBe(first.versionId);
   expect(rejected.status()).toBe(409);
   expect(apiProblemSchema.parse(await rejected.json()).code).toBe(
     'workflow.published_version_conflict',
