@@ -16,9 +16,10 @@ changes are in scope.
   release gate, preserving baseline adoption and refusing incompatible fenced retries.
 - Bound local release/image retention while preserving current/previous, running
   containers and every retained recovery point's release references.
-- Pending: measure API/worker memory under load, set container budgets, and qualify
-  publishing/readiness on the smallest supported host. Current host sizing in the
-  runbook remains an estimate until qualification.
+- Qualify publishing/readiness with 4 GiB / 2 vCPU service cgroups, record Docker
+  stats/OOM/probes, and set measured API/worker budgets. The runbook records the
+  workload, allocation and limits of cgroup qualification. The worker RSS safety
+  budget shares its container ceiling; its heap remains half that budget.
 - Measure only: per-viewer authorization polling and terminal stream lifetime.
   Preserve revocation latency.
 

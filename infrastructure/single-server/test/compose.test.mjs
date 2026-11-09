@@ -123,6 +123,20 @@ for (const { mode, transport } of ['kms', 'self-managed'].flatMap((mode) =>
         .length > 0,
       true,
     );
+    for (const service of ['api', 'worker']) {
+      assert.equal(
+        Number(config.services[service].mem_limit),
+        512 * 1024 * 1024,
+      );
+      assert.equal(
+        Number(config.services[service].memswap_limit),
+        512 * 1024 * 1024,
+      );
+      assert.equal(
+        config.services[service].environment.NODE_OPTIONS,
+        '--max-old-space-size=256',
+      );
+    }
     const api = parseApiConfig(config.services.api.environment);
     assert.deepEqual(api.identity.betterAuth.providers.google, {
       clientId: environment.AUTH_GOOGLE_CLIENT_ID,
@@ -165,7 +179,10 @@ for (const { mode, transport } of ['kms', 'self-managed'].flatMap((mode) =>
       ...config.services.worker.environment,
       WORKER_INSTANCE_ID: 'fixture',
     });
-    assert.equal(worker.resourceSafety.maximumRssBytes, 768 * 1024 * 1024);
+    assert.equal(
+      worker.resourceSafety.maximumRssBytes,
+      Number(config.services.worker.mem_limit),
+    );
     assert.equal(
       config.services.worker.environment.NODE_OPTIONS,
       `--max-old-space-size=${String(worker.resourceSafety.maximumRssBytes / (2 * 1024 * 1024))}`,
