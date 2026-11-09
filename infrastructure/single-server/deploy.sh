@@ -82,3 +82,7 @@ printf '%s\n' "$commit" > "$BETA_STATE_DIR/current.next"
 mv "$BETA_STATE_DIR/current.next" "$BETA_STATE_DIR/current"
 rm -f "$BETA_STATE_DIR/migration-fence"
 printf 'Healthy release: %s\n' "$commit"
+
+if ! bash "$(dirname "$0")/prune.sh"; then
+  echo 'Local release cleanup deferred; rerun prune.sh after resolving its diagnostic.' >&2
+fi

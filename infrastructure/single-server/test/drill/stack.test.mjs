@@ -1,11 +1,11 @@
-import { RUNTIME_IMAGE } from './support/images.mjs';
+import { RUNTIME_IMAGE, tagRelease } from './support/images.mjs';
 import assert from 'node:assert/strict';
 import { randomBytes, randomUUID } from 'node:crypto';
 import { after, before, describe } from 'node:test';
 import { it } from 'node:test';
 import { createClient } from './support/client.mjs';
 import { PUBLIC_HOSTS } from './support/overlay.mjs';
-import { mustDocker, waitFor } from './support/process.mjs';
+import { docker, mustDocker, waitFor } from './support/process.mjs';
 import {
   downloadFile,
   createWorkspace,
@@ -715,6 +715,56 @@ git tag -d v0.0.9 v0.0.10 >/dev/null
       (await postgres('select count(*) from app.workflow_runs', 'app')).trim(),
       '0',
       'the app role sees no rows outside a workspace',
+    );
+  });
+  it('prunes real unreferenced images and sources while keeping recovery-referenced releases', async () => {
+    const unused = '1'.repeat(40);
+    const pinned = '2'.repeat(40);
+    for (const hash of [unused, pinned]) {
+      await tagRelease(hash, hash, RUNTIME_IMAGE);
+      await server.mustExec(
+        `mkdir -p releases/${hash}; touch -d '2000-01-01 UTC' releases/${hash}`,
+      );
+    }
+    const catalogue = `source repository/infrastructure/single-server/release-operations.sh
+select_release "$(cat state/current)"
+work=$(mktemp -d "$BETA_STATE_DIR/.prune-fixture.XXXXXX")
+trap 'rm -rf "$work"' EXIT
+prepare_backup
+`;
+    await server.mustExec(
+      catalogue +
+        `printf '%s\n' '${pinned}' > "$work/reference"
+rclone copyto /backup/reference crypt:pertexo-beta/20000101T000000Z/release.txt`,
+    );
+    const pruned = await server.script('prune.sh');
+    assert.equal(pruned.status, 0, pruned.stdout + pruned.stderr);
+    assert.equal((await server.exec(`test -d releases/${unused}`)).status, 1);
+    assert.equal((await server.exec(`test -d releases/${pinned}`)).status, 0);
+    for (const product of ['pertexo', 'pertexo-web']) {
+      assert.notEqual(
+        (
+          await docker([
+            'image',
+            'inspect',
+            `ghcr.io/vigani1/${product}:${unused}`,
+          ])
+        ).status,
+        0,
+      );
+      assert.equal(
+        (
+          await docker([
+            'image',
+            'inspect',
+            `ghcr.io/vigani1/${product}:${pinned}`,
+          ])
+        ).status,
+        0,
+      );
+    }
+    await server.mustExec(
+      catalogue + 'rclone purge crypt:pertexo-beta/20000101T000000Z',
     );
   });
 });

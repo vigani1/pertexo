@@ -90,3 +90,7 @@ while IFS= read -r expired; do
   rclone purge "backup:$backup_bucket/$expired"
 done < "$work/expired"
 printf 'Completed recovery point: %s\n' "$point"
+
+if ! bash "$(dirname "$0")/prune.sh"; then
+  echo 'Local release cleanup deferred; rerun prune.sh after resolving its diagnostic.' >&2
+fi

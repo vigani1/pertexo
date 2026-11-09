@@ -592,3 +592,34 @@ for cross-workspace jobs and operator commands. Serving requests, including
 organization management, SSO/SAML and SCIM, keep the app login and use verified
 transaction-local organization context. Do not inject maintenance credentials
 into the API or expose either connection URL to the web client.
+
+## Local release and image retention
+
+A successful deployment and a successful backup run `prune.sh` under the same
+operation lock. It retains the three most recently extracted releases, the
+recorded current and previous release, every release named by a retained encrypted
+or legacy recovery point (including incomplete points), and images used by any
+container. These references are exceptions to the three-release bound. Nightly
+backup expiry removes old recovery references; its subsequent cleanup can then
+remove those local releases. Remote recovery points and registry images are never
+deleted by local cleanup.
+
+Only SHA-named directories under `/opt/pertexo/releases` and their exact
+`ghcr.io/vigani1/pertexo:<sha>` / `pertexo-web:<sha>` tags are eligible. Cleanup does
+not run a global Docker prune or force-remove images. It refuses cleanup during
+an unresolved restore or migration. A failed catalogue read, wrong backup key, or
+removed backup configuration after a recorded backup defers all cleanup rather
+than treating unknown recovery references as empty. In-use image removal failures
+retain the source directory. The successful deploy/backup remains successful and
+prints a cleanup diagnostic; resolve it before disk pressure builds up.
+
+To retry independently as the operator:
+
+```sh
+bash /opt/pertexo/repository/infrastructure/single-server/prune.sh
+```
+
+Keep the off-server backup settings and keys available to read recovery references.
+On an install that has never configured backups, current/previous and the three
+recent releases are sufficient. Run the first configured backup to initialise its
+key check before expecting catalogue-based cleanup to succeed.

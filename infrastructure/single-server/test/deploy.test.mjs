@@ -4,6 +4,7 @@ import {
   mkdtempSync,
   cpSync,
   copyFileSync,
+  utimesSync,
   mkdirSync,
   writeFileSync,
   readFileSync,
@@ -121,6 +122,11 @@ host=os.environ.get('FIXTURE_HOST_ARCH','arm64')
 if args[0]=='version' or args[0]=='info' or args[:2]==['system','info']:
  print({'amd64':'x86_64','arm64':'aarch64'}[host] if 'Architecture' in ' '.join(args) else host); sys.exit(0)
 if args[-1]=='/bootstrap.sh' and os.environ.get('FIXTURE_SETUP_FAIL')=='true': sys.exit(1)
+if args[0]=='ps' and any(arg.startswith('ancestor=') and arg.endswith(os.environ.get('FIXTURE_IN_USE_SHA','never')) for arg in args): print('fixture-container')
+if 'lsf' in args and '--include' in args:
+ if os.environ.get('FIXTURE_PRUNE_CATALOG_FAIL')=='true': print('Recovery catalogue unavailable',file=sys.stderr);sys.exit(1)
+ if os.environ.get('FIXTURE_RECOVERY_RELEASE'): print('pertexo-beta/20261109T120000Z/release.txt')
+if 'cat' in args and any(arg.endswith('/release.txt') for arg in args): print(os.environ.get('FIXTURE_RECOVERY_RELEASE',''))
 if args[0]=='image':
  arch='amd64' if os.environ.get('FIXTURE_REVISION_BAD')=='true' else os.environ.get('FIXTURE_IMAGE_ARCH',host)
  revision=os.environ['SERVICE_VERSION']
@@ -175,10 +181,13 @@ if '--no-deps' in args and '--wait' in args and os.environ.get('SERVICE_VERSION'
       { mode: 0o755 },
     );
   }
-  const run = (changes = {}, commit = newCommit) =>
+  const run = (changes = {}, commit = newCommit, script = 'deploy.sh') =>
     spawnSync(
       'bash',
-      [resolve('infrastructure/single-server/deploy.sh'), commit],
+      [
+        resolve('infrastructure/single-server/' + script),
+        ...(script === 'deploy.sh' ? [commit] : []),
+      ],
       {
         env: {
           ...process.env,
@@ -204,7 +213,13 @@ if '--no-deps' in args and '--wait' in args and os.environ.get('SERVICE_VERSION'
           .split('\n')
           .map((line) => JSON.parse(line))
       : [];
-  return { run, commands, state, directory };
+  return {
+    run,
+    prune: (changes) => run(changes, newCommit, 'prune.sh'),
+    commands,
+    state,
+    directory,
+  };
 }
 
 test('records a healthy release only after migration and serving health', (t) => {
@@ -802,5 +817,79 @@ test('conditional app configuration is checked by the real schemas before image 
       f.commands().some((c) => c.args.includes('pull')),
       false,
     );
+  }
+});
+
+function oldReleases(f) {
+  return Array.from({ length: 6 }, (_, i) => {
+    const commit = (i + 1).toString(16).padStart(40, '0');
+    const path = join(f.directory, 'releases', commit);
+    mkdirSync(path);
+    utimesSync(path, 100000 + i, 100000 + i);
+    return commit;
+  });
+}
+
+test('successful deploy bounds local releases and protects recovery references and used images', (t) => {
+  const f = fixture(t);
+  const old = oldReleases(f);
+  writeFileSync(
+    join(f.directory, '.env.production'),
+    applicationSettings +
+      'BACKUP_STORE_ENDPOINT=https://backup.example.test\nBACKUP_CRYPT_PASSWORD=fixture-password\nBACKUP_CRYPT_SALT=fixture-salt\n',
+  );
+  const result = f.run({
+    FIXTURE_RECOVERY_RELEASE: old[0],
+    FIXTURE_IN_USE_SHA: old[1],
+  });
+  assert.equal(result.status, 0, result.stderr);
+  for (const commit of [oldCommit, newCommit, old[0], old[1], old[5]])
+    assert.ok(existsSync(join(f.directory, 'releases', commit)), commit);
+  for (const commit of old.slice(2, 5))
+    assert.equal(
+      existsSync(join(f.directory, 'releases', commit)),
+      false,
+      commit,
+    );
+  const removed = f
+    .commands()
+    .filter((c) => c.args[0] === 'image' && c.args[1] === 'rm')
+    .flatMap((c) => c.args);
+  assert.equal(
+    removed.some((v) => v.endsWith(old[0]) || v.endsWith(old[1])),
+    false,
+  );
+  assert.equal(removed.includes('--force'), false);
+});
+
+test('unavailable recovery catalogue leaves every old release available', (t) => {
+  const f = fixture(t);
+  const old = oldReleases(f);
+  writeFileSync(
+    join(f.directory, '.env.production'),
+    applicationSettings +
+      'BACKUP_STORE_ENDPOINT=https://backup.example.test\nBACKUP_CRYPT_PASSWORD=fixture-password\nBACKUP_CRYPT_SALT=fixture-salt\n',
+  );
+  const result = f.run({ FIXTURE_PRUNE_CATALOG_FAIL: 'true' });
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stderr, /cleanup|Cleanup/u);
+  for (const commit of old)
+    assert.ok(existsSync(join(f.directory, 'releases', commit)));
+  assert.equal(
+    f.commands().some((c) => c.args[0] === 'image' && c.args[1] === 'rm'),
+    false,
+  );
+});
+
+test('cleanup refuses an unresolved migration or restore before removing releases', (t) => {
+  for (const fence of ['migration-fence', 'restore-fence']) {
+    const f = fixture(t);
+    const old = oldReleases(f);
+    writeFileSync(join(f.state, fence), newCommit);
+    const result = f.prune();
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /incomplete/u);
+    for (const commit of old)
+      assert.ok(existsSync(join(f.directory, 'releases', commit)));
   }
 });
