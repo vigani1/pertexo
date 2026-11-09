@@ -675,3 +675,24 @@ test('drains the worker before stopping the Code runner', (t) => {
   const runner = stops.findIndex((c) => c.args.includes('code-runner'));
   assert.ok(worker >= 0 && runner > worker);
 });
+
+test('reports each missing required setting before pulling release images', (t) => {
+  const f = fixture(t);
+  writeFileSync(
+    join(
+      f.directory,
+      'releases',
+      newCommit,
+      'infrastructure/single-server/compose.yaml',
+    ),
+    'services:\n  api:\n    environment:\n      PUBLIC_WEB_ORIGIN: ${PUBLIC_WEB_ORIGIN:?}\n      AUTH_MAIL_FROM: ${AUTH_MAIL_FROM:?}\n',
+  );
+  const result = f.run({ PUBLIC_WEB_ORIGIN: '', AUTH_MAIL_FROM: '' });
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /PUBLIC_WEB_ORIGIN.*\.env.production/u);
+  assert.match(result.stderr, /AUTH_MAIL_FROM.*\.env.production/u);
+  assert.equal(
+    f.commands().some((c) => c.args.includes('pull')),
+    false,
+  );
+});

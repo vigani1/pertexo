@@ -123,6 +123,22 @@ validate_rollback_configuration() (
   compose config --quiet
 )
 
+# Read required names from Compose so adding a setting also adds its preflight.
+preflight_settings() {
+  local name missing=false
+  while IFS= read -r name; do
+    # These values are derived by storage/prepare.mjs, never supplied by operators.
+    case "$name" in
+      SERVICE_VERSION|APP_HOST|FILES_HOST|CODE_RUNNER_CONTAINER_*|CODE_RUNNER_MANAGER_HEAP_MB) continue ;;
+    esac
+    if [[ -z $(config_value "$name") ]]; then
+      printf '%s: set a non-empty value in %s before deploying.\n' "$name" "$config" >&2
+      missing=true
+    fi
+  done < <(grep -oE '\$\{[A-Z_0-9]+:\?' "$release/infrastructure/single-server/compose.yaml" | sed 's/^..//; s/:?$//' | sort -u)
+  [[ $missing == false ]]
+}
+
 prepare_release() {
   commit=$1
   repository="$beta_root/repository"
@@ -140,6 +156,7 @@ prepare_release() {
     mv "$staging" "$beta_root/releases/$commit"
   fi
   select_release "$commit"
+  preflight_settings
   host_architecture=$(docker version --format '{{.Server.Arch}}')
   for image in pertexo pertexo-web; do
     reference="ghcr.io/vigani1/$image:$commit"
