@@ -260,24 +260,26 @@ async function installRepository(server) {
       `cd tree && git add -A && git -c user.name=drill -c user.email=drill@drill.test commit --quiet --allow-empty -m ${message} && git rev-parse HEAD`,
     );
   await mustExec('cd tree && git init --quiet -b main');
-  // The upgrade drill starts with the genuine 0116 runtime and migration set.
+  // The first release's migration inventory comes from the actual pre-squash image.
   if (process.env.DRILL_LEGACY_RUNTIME_IMAGE)
     await mustExec(
-      [
-        'set -e',
-        'mkdir -p pending-upgrade',
-        'for migration in tree/packages/database/migrations/*.sql; do',
-        '  name=${migration##*/}',
-        '  if [[ ${name:0:4} > 0116 ]]; then mv "$migration" pending-upgrade/; fi',
-        'done',
-      ].join('\n'),
+      `set -e
+mv tree/packages/database/migrations pending-upgrade
+legacy_container=$(docker create "$DRILL_LEGACY_RUNTIME_IMAGE")
+trap 'docker rm "$legacy_container" >/dev/null' EXIT
+docker cp "$legacy_container:/workspace/packages/database/migrations" tree/packages/database/migrations`,
+      {
+        env: {
+          DRILL_LEGACY_RUNTIME_IMAGE: process.env.DRILL_LEGACY_RUNTIME_IMAGE,
+        },
+      },
     );
   const first = await commit('first');
   await write('compose.yaml', breakWebUpstream(compose));
   const broken = await commit('broken');
   if (process.env.DRILL_LEGACY_RUNTIME_IMAGE)
     await mustExec(
-      'mv pending-upgrade/*.sql tree/packages/database/migrations/',
+      'rm -rf tree/packages/database/migrations && mv pending-upgrade tree/packages/database/migrations',
     );
 
   await write('compose.yaml', compose);

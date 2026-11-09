@@ -1,10 +1,10 @@
 import { randomUUID } from 'node:crypto';
 import { expect, it } from 'vitest';
 import { seedReferenceIndexOwners } from '../artifacts/reference-index.fixture.js';
-import { withUpgradeDatabase } from '../platform/migrations/upgrade-fixture.js';
+import { withDatabase } from '../platform/migrations/upgrade-fixture.js';
 
 it('contains organization links and mappings without exposing unrelated workspace storage', async () => {
-  await withUpgradeDatabase(116, async ({ admin, upgrade }) => {
+  await withDatabase(async ({ admin }) => {
     const organizations: { id: string; workspaces: string[] }[] = [];
     for (let i = 0; i < 2; i++) {
       const a = await seedReferenceIndexOwners(admin),
@@ -41,7 +41,7 @@ it('contains organization links and mappings without exposing unrelated workspac
         )
       ).rows[0]?.count,
     ).toBeGreaterThanOrEqual(4);
-    await upgrade();
+
     const client = await admin.connect();
     try {
       await client.query("select set_config('app.workspace_id','',false)");

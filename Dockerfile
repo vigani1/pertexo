@@ -7,7 +7,7 @@ RUN corepack enable && corepack prepare pnpm@11.22.0 --activate
 RUN apt-get update && apt-get install --yes --no-install-recommends gcc libc6-dev linux-libc-dev \
   && rm -rf /var/lib/apt/lists/*
 COPY . .
-RUN pnpm install --frozen-lockfile && pnpm build \
+RUN --mount=type=cache,id=pertexo-step6-pnpm,target=/root/.local/share/pnpm/store pnpm install --frozen-lockfile && pnpm build \
   && gcc -std=c11 -Wall -Wextra -Werror -O2 -fstack-protector-strong -fPIE -pie \
     -D_FORTIFY_SOURCE=3 -Wl,-z,relro,-z,now \
     -o apps/code-runner/dist/launch apps/code-runner/native/launch.c
@@ -45,7 +45,7 @@ FROM node:24.22.0-bookworm-slim@sha256:a5f4366e834695d5f363b920c104953a535d3a986
 WORKDIR /workspace
 RUN corepack enable && corepack prepare pnpm@11.22.0 --activate
 COPY . .
-RUN pnpm install --prod --frozen-lockfile \
+RUN --mount=type=cache,id=pertexo-step6-pnpm,target=/root/.local/share/pnpm/store pnpm install --prod --frozen-lockfile \
   && find apps packages -type d \( -name src -o -name test -o -name coverage \) -prune -exec rm -rf '{}' + \
   && rm -rf apps/code-runner/native
 

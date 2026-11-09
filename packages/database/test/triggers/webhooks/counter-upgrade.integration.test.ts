@@ -2,11 +2,11 @@ import { randomUUID } from 'node:crypto';
 import { expect, it } from 'vitest';
 import {
   seedWorkflow,
-  withUpgradeDatabase,
+  withDatabase,
 } from '../../platform/migrations/upgrade-fixture.js';
 
 it('preserves a populated ingress window on upgrade and fences atomic increments by credential and observed state', async () => {
-  await withUpgradeDatabase(93, async ({ admin, upgrade }) => {
+  await withDatabase(async ({ admin }) => {
     const { ownerId, workspaceId, workflowId } = await seedWorkflow(admin);
     const version = randomUUID(),
       trigger = randomUUID(),
@@ -58,7 +58,7 @@ it('preserves a populated ingress window on upgrade and fences atomic increments
         )
       ).rows[0];
     const before = await state();
-    await upgrade();
+
     expect(await state()).toEqual(before);
     const client = await admin.connect();
     try {

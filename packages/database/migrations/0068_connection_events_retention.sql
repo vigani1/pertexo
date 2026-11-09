@@ -1,1 +1,0 @@
-CREATE INDEX "connection_events_time_idx" ON "app"."connection_events" USING btree ("created_at","id");

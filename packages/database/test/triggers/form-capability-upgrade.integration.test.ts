@@ -1,12 +1,12 @@
-import { expect, it } from 'vitest';
 import { randomUUID } from 'node:crypto';
+import { expect, it } from 'vitest';
 import {
   seedWorkflow,
-  withUpgradeDatabase,
+  withDatabase,
 } from '../platform/migrations/upgrade-fixture.js';
 
 it('preserves a legacy public link and permits sealed copies only with hashes', async () => {
-  await withUpgradeDatabase(114, async ({ admin, upgrade }) => {
+  await withDatabase(async ({ admin }) => {
     const { workspaceId, workflowId } = await seedWorkflow(admin);
     const publicId = randomUUID();
     const hash = 'a'.repeat(64);
@@ -14,7 +14,7 @@ it('preserves a legacy public link and permits sealed copies only with hashes', 
       `insert into app.workflow_forms(workspace_id,workflow_id,node_id,access,public_id,capability_hash) values($1,$2,'form','public',$3,$4)`,
       [workspaceId, workflowId, publicId, hash],
     );
-    await upgrade();
+
     const row = await admin.query(
       'select capability_hash,sealed_capability from app.workflow_forms where workflow_id=$1',
       [workflowId],

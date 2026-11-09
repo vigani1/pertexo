@@ -1,9 +1,9 @@
 import { randomUUID } from 'node:crypto';
 import { expect, it } from 'vitest';
-import { seedWorkflow, withUpgradeDatabase } from './upgrade-fixture.js';
+import { seedWorkflow, withDatabase } from './upgrade-fixture.js';
 
 it('keeps provider organization lookups indexed and rejects duplicate organization links after index cleanup', async () => {
-  await withUpgradeDatabase(119, async ({ admin, upgrade }) => {
+  await withDatabase(async ({ admin }) => {
     const { workspaceId } = await seedWorkflow(admin);
     await admin.query(
       `insert into app.auth_organizations(id,control_workspace_id,name) values($1,$1,'Organization')`,
@@ -12,7 +12,7 @@ it('keeps provider organization lookups indexed and rejects duplicate organizati
     const provider = randomUUID();
     const insert = `insert into app.auth_providers(id,organization_id,kind,name,issuer,configuration) values($1,$2,'saml','Provider','https://example.test','{}')`;
     await admin.query(insert, [provider, workspaceId]);
-    await upgrade();
+
     await admin.query('set enable_seqscan=off');
     const plan = JSON.stringify(
       (

@@ -13,8 +13,14 @@ try {
   const names = await readdir(
     new URL('../../packages/database/migrations/', import.meta.url),
   );
+  const retiredHistory = recorded.some((name) => !names.includes(name));
   const pending = names
-    .filter((name) => name.endsWith('.sql') && !applied.has(name))
+    .filter(
+      (name) =>
+        name.endsWith('.sql') &&
+        (!applied.has(name) ||
+          (retiredHistory && name === '0000_baseline.sql')),
+    )
     .sort();
   if (pending.length) process.stdout.write(`${pending.join('\n')}\n`);
 } catch (error) {

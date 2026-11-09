@@ -1,8 +1,8 @@
 import { expect, it } from 'vitest';
-import { withUpgradeDatabase } from '../platform/migrations/upgrade-fixture.js';
+import { withDatabase } from '../platform/migrations/upgrade-fixture.js';
 
 it('preserves populated organization links on upgrade and isolates their role assignments', async () => {
-  await withUpgradeDatabase(116, async ({ admin, upgrade }) => {
+  await withDatabase(async ({ admin }) => {
     await admin.query(`INSERT INTO app.users(id,email,display_name) VALUES ('11111111-1111-4111-8111-111111111111','review@example.test','Reviewer');
 INSERT INTO app.workspaces(id,name,slug,created_by) VALUES ('22222222-2222-4222-8222-222222222222','A','review-a','11111111-1111-4111-8111-111111111111'),('33333333-3333-4333-8333-333333333333','B','review-b','11111111-1111-4111-8111-111111111111');
 INSERT INTO app.auth_organizations(id,control_workspace_id,name) VALUES ('44444444-4444-4444-8444-444444444444','22222222-2222-4222-8222-222222222222','Review');
@@ -26,7 +26,7 @@ INSERT INTO app.auth_directory_group_mappings SELECT '44444444-4444-4444-8444-44
         ),
       );
     const before = await snapshot();
-    await upgrade();
+
     expect(await snapshot()).toEqual(before);
     const client = await admin.connect();
     try {

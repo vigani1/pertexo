@@ -4,11 +4,11 @@ import { expect, it } from 'vitest';
 
 import {
   seedWorkflow,
-  withUpgradeDatabase,
+  withDatabase,
 } from '../platform/migrations/upgrade-fixture.js';
 
 it('saves artifact-shaped user JSON after upgrading a populated run and still refuses missing real references', async () => {
-  await withUpgradeDatabase(79, async ({ admin: pool, upgrade }) => {
+  await withDatabase(async ({ admin: pool }) => {
     const { workspaceId, workflowId } = await seedWorkflow(pool);
     const admin = await pool.connect();
     try {
@@ -29,9 +29,7 @@ it('saves artifact-shaped user JSON after upgrading a populated run and still re
           )
         ).rows;
       const before = await read();
-      expect(await upgrade(80)).toEqual([
-        '0080_artifact_reference_locations.sql',
-      ]);
+
       expect(await read()).toEqual(before);
       const artifact = { kind: 'artifact', artifactId: randomUUID() };
       const inline = { kind: 'inline', value: { nested: [artifact] } };

@@ -2,11 +2,11 @@ import { randomUUID } from 'node:crypto';
 import { expect, it } from 'vitest';
 import {
   seedWorkflow,
-  withUpgradeDatabase,
+  withDatabase,
 } from '../platform/migrations/upgrade-fixture.js';
 
 it('does no derived-index extraction or replacement for reference-free bulk history', async () => {
-  await withUpgradeDatabase(Number.POSITIVE_INFINITY, async ({ admin }) => {
+  await withDatabase(async ({ admin }) => {
     const { workspaceId, workflowId } = await seedWorkflow(admin);
     const client = await admin.connect();
     try {

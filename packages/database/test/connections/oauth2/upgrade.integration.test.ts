@@ -1,15 +1,9 @@
 import { randomUUID } from 'node:crypto';
-import { copyFile, mkdtemp, readdir, rm } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
 
 import { Pool } from 'pg';
 import { expect, it } from 'vitest';
 
-import {
-  migrateDatabase,
-  MIGRATIONS_DIRECTORY,
-} from '../../../src/migrations.js';
+import { migrateDatabase } from '../../../src/migrations.js';
 import { createDisposableDatabaseFixture } from '../../../src/testing/postgres/disposable-database.js';
 
 import {
@@ -24,10 +18,6 @@ const migrationUrl =
   process.env.DATABASE_MIGRATION_URL ??
   'postgresql://pertexo_migration:pertexo-local-migration@localhost:5432/pertexo';
 
-/** The last migration before this feature, so the install below is a real old one. */
-const BEFORE_OAUTH2 = /^00(?:[0-5][0-9]|6[0-6])_.*\.sql$/u;
-
-// Plan, "Database": migration on a database with existing connections leaves them unchanged.
 it('the migration leaves existing connections unchanged', async () => {
   const fixture = createDisposableDatabaseFixture({
     adminUrl,
@@ -35,20 +25,18 @@ it('the migration leaves existing connections unchanged', async () => {
     databaseName: `pertexo_test_oauth2_upgrade_${randomUUID().replaceAll('-', '')}`,
     ownerRole: 'pertexo_owner',
   });
-  const directory = await mkdtemp(join(tmpdir(), 'pertexo-oauth2-upgrade-'));
+
   let admin: Pool | undefined;
   try {
     await fixture.create();
-    for (const name of await readdir(MIGRATIONS_DIRECTORY))
-      if (BEFORE_OAUTH2.test(name))
-        await copyFile(join(MIGRATIONS_DIRECTORY, name), join(directory, name));
+
     const config = {
       appRole: 'pertexo_app',
       ownerRole: 'pertexo_owner',
       maintenanceRole: 'pertexo_maintenance',
       connectionString: fixture.databaseUrl(migrationUrl),
     };
-    await migrateDatabase(config, directory);
+    await migrateDatabase(config);
     admin = new Pool({
       connectionString: fixture.databaseUrl(adminUrl),
       max: 1,
@@ -106,6 +94,5 @@ it('the migration leaves existing connections unchanged', async () => {
   } finally {
     await admin?.end();
     await fixture.drop();
-    await rm(directory, { recursive: true, force: true });
   }
 }, 120_000);

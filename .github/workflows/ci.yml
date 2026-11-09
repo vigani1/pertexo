@@ -526,7 +526,9 @@ jobs:
       ${{ !cancelled() && (github.event_name != 'pull_request' ||
       needs.self-host-changes.outputs.touched == 'true') }}
     runs-on: ${{ matrix.runner }}
-    timeout-minutes: 20
+    timeout-minutes: 35
+    env:
+      DRILL_LEGACY_RUNTIME_IMAGE: pertexo-drill-legacy:local
     strategy:
       fail-fast: false
       matrix:
@@ -538,6 +540,17 @@ jobs:
         uses: ./.github/actions/setup
       - name: Use the Docker Hub mirror
         uses: ./.github/actions/docker-mirror
+      - name: Build the pre-baseline image
+        run: |
+          set -euo pipefail
+          legacy_revision=$(node -p "JSON.parse(require('fs').readFileSync('packages/database/migrations/baseline-generation.json','utf8')).sourceCommit")
+          git fetch --no-tags origin "$legacy_revision"
+          legacy_context=$(mktemp -d)
+          trap 'rm -rf "$legacy_context"' EXIT
+          git archive "$legacy_revision" | tar -x -C "$legacy_context"
+          .github/scripts/retry-once.sh docker buildx build --load --target runtime \
+            --build-arg SOURCE_COMMIT="$legacy_revision" \
+            --tag "$DRILL_LEGACY_RUNTIME_IMAGE" "$legacy_context"
       - name: Build the images once
         run:
           .github/scripts/retry-once.sh node

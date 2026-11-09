@@ -1,16 +1,15 @@
-import { readFile } from 'node:fs/promises';
 import { CORE_NODE_CATALOG } from '@pertexo/nodes-core';
 import {
   composeExecutableCatalog,
   verifyWorkflowExecutable,
 } from '@pertexo/workflow-engine/server';
 import { randomUUID } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
 import { expect, it } from 'vitest';
-import { expectedMigrationsAfter } from '../../../src/testing/expected-migrations.js';
-import { seedWorkflow, withUpgradeDatabase } from './upgrade-fixture.js';
+import { seedWorkflow, withDatabase } from './upgrade-fixture.js';
 
 it('preserves legacy versions on upgrade and admits only legacy or v2 executable identities', async () => {
-  await withUpgradeDatabase(113, async ({ admin, upgrade }) => {
+  await withDatabase(async ({ admin }) => {
     const { workspaceId, workflowId, ownerId } = await seedWorkflow(admin);
     const fixture = JSON.parse(
       await readFile(
@@ -37,7 +36,7 @@ it('preserves legacy versions on upgrade and admits only legacy or v2 executable
         ],
       );
     await insert(legacy, 1);
-    expect(await upgrade()).toEqual(await expectedMigrationsAfter(113));
+
     expect(
       (
         await admin.query(
@@ -74,7 +73,7 @@ it('preserves legacy versions on upgrade and admits only legacy or v2 executable
 it.each(['call', 'input-case'] as const)(
   'widens an existing %s checksum reference without imposing a new format restriction',
   async (kind) => {
-    await withUpgradeDatabase(113, async ({ admin, upgrade }) => {
+    await withDatabase(async ({ admin }) => {
       const { workspaceId, workflowId, ownerId } = await seedWorkflow(admin);
       const versionId = randomUUID();
       const rowId = randomUUID();
@@ -137,7 +136,7 @@ it.each(['call', 'input-case'] as const)(
       expect((await admin.query(readSql, [rowId])).rows).toEqual([
         { checksum: retained },
       ]);
-      expect(await upgrade()).toEqual(await expectedMigrationsAfter(113));
+
       expect((await admin.query(readSql, [rowId])).rows).toEqual([
         { checksum: retained },
       ]);

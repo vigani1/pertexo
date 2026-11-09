@@ -1,1 +1,0 @@
-DROP TABLE "app"."rls_probe_records";

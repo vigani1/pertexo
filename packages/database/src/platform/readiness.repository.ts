@@ -1,9 +1,9 @@
-import type { DatabaseReadiness } from './database-platform.types.js';
 import { sql } from 'drizzle-orm';
 import { QueryBuilder } from 'drizzle-orm/pg-core';
 import type { Pool } from 'pg';
+import type { DatabaseReadiness } from './database-platform.types.js';
 
-export const EXPECTED_MIGRATION_HEAD = '0122_hot_table_maintenance.sql';
+export const EXPECTED_MIGRATION_HEAD = '0000_baseline.sql';
 const MINIMUM_POSTGRES_MAJOR = 18;
 
 /**

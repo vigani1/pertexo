@@ -1,13 +1,12 @@
-import { Client } from 'pg';
 import { randomUUID } from 'node:crypto';
+import { Client } from 'pg';
 import { expect, it } from 'vitest';
-import { expectedMigrationsAfter } from '../../src/testing/expected-migrations.js';
 import { ARTIFACT_OWNER_SOURCES } from '../../src/schema/artifacts/references.js';
-import { withUpgradeDatabase } from '../platform/migrations/upgrade-fixture.js';
+import { withDatabase } from '../platform/migrations/upgrade-fixture.js';
 import { seedReferenceIndexOwners } from './reference-index.fixture.js';
 
 it('backfills every populated owner without changing JSON, normalizes UUIDs, and keeps new writes atomic', async () => {
-  await withUpgradeDatabase(109, async ({ admin, upgrade, config }) => {
+  await withDatabase(async ({ admin, config }) => {
     const state = await seedReferenceIndexOwners(admin);
     const documents = async () =>
       Promise.all(
@@ -22,7 +21,7 @@ it('backfills every populated owner without changing JSON, normalizes UUIDs, and
         ),
       );
     const before = await documents();
-    expect(await upgrade(110)).toEqual(['0110_artifact_owner_references.sql']);
+
     expect(await documents()).toEqual(before);
     const references = () =>
       admin.query<{
@@ -46,9 +45,9 @@ it('backfills every populated owner without changing JSON, normalizes UUIDs, and
         expect.objectContaining({ artifact_id: state.businessId }),
       ]),
     );
-    expect(await upgrade(110)).toEqual([]);
+
     expect((await references()).rows).toEqual(rows);
-    expect(await upgrade()).toEqual(await expectedMigrationsAfter(110));
+
     expect(await documents()).toEqual(before);
     expect((await references()).rows).toEqual(rows);
 

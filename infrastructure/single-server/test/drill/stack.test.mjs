@@ -25,6 +25,7 @@ import {
   createServer,
   destroyServer,
   httpsPort,
+  project,
   withApiMovedDuring,
 } from './support/server.mjs';
 
@@ -490,6 +491,55 @@ describe('the single-server stack, through its real scripts', () => {
     assert.equal(await signedInStatus(), 200);
   });
 
+  it('refuses a partial pre-baseline history without changing its receipts, data or sessions', async () => {
+    if (!process.env.DRILL_LEGACY_RUNTIME_IMAGE) return;
+    const history = JSON.parse(
+      (
+        await postgres(
+          'select json_agg(m order by name) from pertexo_internal.schema_migrations m',
+        )
+      ).trim(),
+    );
+    const runs = await postgres('select count(*) from app.workflow_runs');
+    await postgres(
+      "delete from pertexo_internal.schema_migrations where name <> '0000_baseline.sql'",
+    );
+    const partial = await postgres(
+      'select json_agg(m order by name) from pertexo_internal.schema_migrations m',
+    );
+    try {
+      const refused = await server.exec(
+        `set -a
+. ./.env.production
+set +a
+docker run --rm --network "$DRILL_NETWORK" --env-file .env.production -e DATABASE_MIGRATION_URL="$DATABASE_MIGRATION_URL" "$DRILL_BASELINE_IMAGE" node packages/database/dist/migrate.js`,
+        {
+          env: {
+            DRILL_NETWORK: project + '_private',
+            DRILL_BASELINE_IMAGE: RUNTIME_IMAGE,
+          },
+        },
+      );
+      assert.notEqual(refused.status, 0);
+      assert.match(refused.stderr, /upgrade to the last pre-baseline release/u);
+      assert.equal(
+        await postgres(
+          'select json_agg(m order by name) from pertexo_internal.schema_migrations m',
+        ),
+        partial,
+      );
+      assert.equal(
+        await postgres('select count(*) from app.workflow_runs'),
+        runs,
+      );
+      assert.equal(await signedInStatus(), 200);
+    } finally {
+      const encoded = JSON.stringify(history).replaceAll("'", "''");
+      await postgres(`delete from pertexo_internal.schema_migrations;
+insert into pertexo_internal.schema_migrations select * from json_populate_recordset(null::pertexo_internal.schema_migrations, '${encoded}'::json)`);
+    }
+  });
+
   it('grants maintenance bypass on a populated upgrade and repeats deployment safely', async () => {
     const before = await postgres('select count(*) from app.workflow_runs');
     assert.ok(Number(before.trim()) > 0);
@@ -500,7 +550,7 @@ describe('the single-server stack, through its real scripts', () => {
             'select max(name) from pertexo_internal.schema_migrations',
           )
         ).trim(),
-        '0116_smtp_and_server_mail.sql',
+        '0122_hot_table_maintenance.sql',
       );
     // A fenced retry reaches provisioning even when its maintenance login is missing.
     // Settled deploys with pending migrations reject it during the earlier backup.

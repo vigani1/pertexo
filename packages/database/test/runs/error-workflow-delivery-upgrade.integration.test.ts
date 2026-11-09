@@ -3,11 +3,11 @@ import { expect, it } from 'vitest';
 import { canonicalOutboxPayloadChecksum } from '../../src/primitives.js';
 import {
   seedWorkflow,
-  withUpgradeDatabase,
+  withDatabase,
 } from '../platform/migrations/upgrade-fixture.js';
 
 it('keeps populated error-handler intent identity and makes its failed delivery recoverable on upgrade', async () => {
-  await withUpgradeDatabase(96, async ({ admin, upgrade }) => {
+  await withDatabase(async ({ admin }) => {
     const { ownerId, workspaceId, workflowId } = await seedWorkflow(admin);
     const versionId = randomUUID(),
       runId = randomUUID(),
@@ -42,8 +42,8 @@ it('keeps populated error-handler intent identity and makes its failed delivery 
     const payload = { workspaceId, sourceRunId: runId, outboxEventId: eventId };
     const checksum = canonicalOutboxPayloadChecksum(payload);
     await admin.query(
-      `insert into app.outbox_events(id,workspace_id,job_name,aggregate_type,aggregate_id,payload,payload_checksum,failed_at,last_error_code)
-      values($1,$2,'start-error-workflow','workflow-run',$3,$4,$5,clock_timestamp(),'delivery.never_confirmed')`,
+      `insert into app.outbox_events(id,workspace_id,job_name,aggregate_type,aggregate_id,payload,payload_checksum,failed_at,delivery_due_at,last_error_code)
+      values($1,$2,'start-error-workflow','workflow-run',$3,$4,$5,clock_timestamp(),clock_timestamp(),'delivery.never_confirmed')`,
       [eventId, workspaceId, runId, payload, checksum],
     );
     await admin.query(
@@ -57,7 +57,7 @@ it('keeps populated error-handler intent identity and makes its failed delivery 
         [runId],
       )
     ).rows;
-    await upgrade();
+
     expect(
       (
         await admin.query(

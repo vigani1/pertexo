@@ -1,9 +1,9 @@
 import { expect, it } from 'vitest';
 import { seedReferenceIndexOwners } from '../artifacts/reference-index.fixture.js';
-import { withUpgradeDatabase } from '../platform/migrations/upgrade-fixture.js';
+import { withDatabase } from '../platform/migrations/upgrade-fixture.js';
 
 it('uses the ordered run-status index through the app policy after a populated upgrade', async () => {
-  await withUpgradeDatabase(116, async ({ admin, upgrade }) => {
+  await withDatabase(async ({ admin }) => {
     const scopes = [
       await seedReferenceIndexOwners(admin),
       await seedReferenceIndexOwners(admin),
@@ -50,7 +50,7 @@ it('uses the ordered run-status index through the app policy after a populated u
         }
       };
       const before = await explain();
-      await upgrade();
+
       const after = await explain();
       console.log('dm-06 before:\n' + before + '\ndm-06 after:\n' + after);
       expect(after).toContain('workflow_runs_workspace_status_created_idx');

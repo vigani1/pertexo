@@ -1,2 +1,0 @@
-ALTER TABLE "app"."idempotency_records" DROP CONSTRAINT "idempotency_records_result_ref_bounded";--> statement-breakpoint
-ALTER TABLE "app"."idempotency_records" ADD CONSTRAINT "idempotency_records_result_ref_bounded" CHECK ((octet_length((result_ref)::text) <= 131072));

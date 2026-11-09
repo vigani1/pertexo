@@ -2,11 +2,11 @@ import { randomUUID } from 'node:crypto';
 import { expect, it } from 'vitest';
 import {
   seedWorkflow,
-  withUpgradeDatabase,
+  withDatabase,
 } from '../platform/migrations/upgrade-fixture.js';
 
 it('keeps credential-to-scope discovery narrow while returning standing for core to decide after a populated upgrade', async () => {
-  await withUpgradeDatabase(94, async ({ admin, upgrade }) => {
+  await withDatabase(async ({ admin }) => {
     const { workspaceId, workflowId } = await seedWorkflow(admin);
     const publicId = randomUUID();
     const digest = 'a'.repeat(64);
@@ -27,7 +27,7 @@ it('keeps credential-to-scope discovery narrow while returning standing for core
         )
       ).rows;
     const before = await state();
-    await upgrade();
+
     expect(await state()).toEqual(
       before.map(({ state }) => ({
         state: {

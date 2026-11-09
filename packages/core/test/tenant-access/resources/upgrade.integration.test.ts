@@ -1,15 +1,11 @@
+import { withTenantScopedClient } from '@pertexo/database/primitives';
+import {
+  createDisposableDatabaseFixture,
+  migrateDatabase,
+} from '@pertexo/database/testing';
 import { randomUUID } from 'node:crypto';
-import { copyFile, mkdtemp, readdir, rm } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
 import { Pool } from 'pg';
 import { expect, it } from 'vitest';
-import {
-  migrateDatabase,
-  MIGRATIONS_DIRECTORY,
-  createDisposableDatabaseFixture,
-} from '@pertexo/database/testing';
-import { withTenantScopedClient } from '@pertexo/database/primitives';
 import { readFolderScope } from '../../../src/shared/folder-access-facts.repository.js';
 import { workflowAccessible } from '../../../src/shared/resources/workflow-access.repository.js';
 
@@ -29,9 +25,7 @@ it('keeps populated folders workspace-shared and isolates grant rows without FOR
     ownerRole: 'pertexo_owner',
     connectRoles: ['pertexo_migration', 'pertexo_app', 'pertexo_maintenance'],
   });
-  const directory = await mkdtemp(
-    join(tmpdir(), 'pertexo-before-folder-sharing-'),
-  );
+
   const owner = new Pool({
     connectionString: database.databaseUrl(adminUrl),
     max: 1,
@@ -44,16 +38,14 @@ it('keeps populated folders workspace-shared and isolates grant rows without FOR
   try {
     await database.create();
     created = true;
-    for (const name of await readdir(MIGRATIONS_DIRECTORY))
-      if (/^\d{4}_.*\.sql$/u.test(name) && name < '0050_')
-        await copyFile(join(MIGRATIONS_DIRECTORY, name), join(directory, name));
+
     const config = {
       connectionString: database.databaseUrl(migrationUrl),
       ownerRole: 'pertexo_owner',
       appRole: 'pertexo_app',
       maintenanceRole: 'pertexo_maintenance',
     };
-    await migrateDatabase(config, directory);
+    await migrateDatabase(config);
     const actorId = randomUUID();
     await owner.query(
       "insert into app.users(id,email,display_name) values($1,$2,'Existing member')",
@@ -87,7 +79,7 @@ it('keeps populated folders workspace-shared and isolates grant rows without FOR
     const before = (
       await owner.query('select * from app.workflows order by id')
     ).rows;
-    expect(await migrateDatabase(config)).toContain('0050_folder_access.sql');
+
     expect(
       (await owner.query('select * from app.workflows order by id')).rows,
     ).toEqual(before);
@@ -138,6 +130,5 @@ it('keeps populated folders workspace-shared and isolates grant rows without FOR
     await api.end();
     await owner.end();
     if (created) await database.drop();
-    await rm(directory, { recursive: true, force: true });
   }
 }, 60_000);

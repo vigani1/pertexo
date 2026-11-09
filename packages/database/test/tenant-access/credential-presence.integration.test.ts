@@ -1,9 +1,8 @@
 import { expect, it } from 'vitest';
-import { withUpgradeDatabase } from '../platform/migrations/upgrade-fixture.js';
+import { withDatabase } from '../platform/migrations/upgrade-fixture.js';
 
 it('retires the unreleased maintenance presence lookup without granting hash access', async () => {
-  await withUpgradeDatabase(117, async ({ admin, upgrade }) => {
-    await upgrade();
+  await withDatabase(async ({ admin }) => {
     expect(
       (
         await admin.query(

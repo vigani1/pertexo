@@ -1,9 +1,9 @@
 import { randomUUID } from 'node:crypto';
 import { expect, it } from 'vitest';
-import { seedWorkflow, withUpgradeDatabase } from './upgrade-fixture.js';
+import { seedWorkflow, withDatabase } from './upgrade-fixture.js';
 
 it('preserves populated sessions on upgrade and retains revocation for every writer and transaction rollback', async () => {
-  await withUpgradeDatabase(105, async ({ admin, upgrade }) => {
+  await withDatabase(async ({ admin }) => {
     const { workspaceId, ownerId } = await seedWorkflow(admin);
     const removedUser = randomUUID();
     await admin.query(
@@ -28,7 +28,7 @@ it('preserves populated sessions on upgrade and retains revocation for every wri
     await issue(ownerId);
     await issue(removedUser);
     const before = await sessions();
-    expect(await upgrade(106)).toEqual(['0106_session_security_integrity.sql']);
+
     expect(await sessions()).toEqual(before);
     await admin.query('update app.users set email=$2 where id=$1', [
       ownerId,

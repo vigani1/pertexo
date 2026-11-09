@@ -46,7 +46,7 @@ const startWeb = async () => {
     '--tmpfs',
     '/etc/nginx/conf.d:uid=101,gid=101,mode=0755',
     '--publish',
-    '127.0.0.1::8080',
+    `127.0.0.1:${process.env.DRILL_HTTP_PORT ?? ''}:8080`,
     WEB_IMAGE,
   ]);
   const port = (await mustDocker(['port', id, '8080/tcp'])).split(':').at(-1);
@@ -140,7 +140,7 @@ describe('the web tier in front of the API', () => {
         '--tmpfs',
         '/etc/nginx/conf.d:uid=101,gid=101,mode=0755',
         '--publish',
-        '127.0.0.1::8080',
+        `127.0.0.1:${process.env.DRILL_HTTP_PORT ?? ''}:8080`,
         WEB_IMAGE,
       ]);
       const port = (await mustDocker(['port', id, '8080/tcp']))

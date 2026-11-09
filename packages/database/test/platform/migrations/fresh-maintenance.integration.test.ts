@@ -1,9 +1,8 @@
 import { expect, it } from 'vitest';
-import { withUpgradeDatabase } from './upgrade-fixture.js';
+import { withDatabase } from './upgrade-fixture.js';
 
 it('configures hot tables on an empty database without an upgrade prerequisite', async () => {
-  await withUpgradeDatabase(-1, async ({ admin, upgrade }) => {
-    await upgrade();
+  await withDatabase(async ({ admin }) => {
     const tables = [
       'workflow_runs',
       'node_runs',
@@ -29,3 +28,30 @@ it('configures hot tables on an empty database without an upgrade prerequisite',
       });
   });
 }, 60_000);
+
+it('seeds the instance limits and fair-dispatch cursor on the baseline', async () => {
+  await withDatabase(async ({ admin }) => {
+    expect(
+      (
+        await admin.query(
+          'select singleton,active_run_limit,queued_run_limit,artifact_count_limit,pending_task_limit from app.instance_capacity',
+        )
+      ).rows,
+    ).toEqual([
+      {
+        singleton: true,
+        active_run_limit: 20,
+        queued_run_limit: 10000,
+        artifact_count_limit: 10000,
+        pending_task_limit: 10000,
+      },
+    ]);
+    expect(
+      (
+        await admin.query(
+          'select singleton,last_workspace_id from app.outbox_fair_dispatch_cursor',
+        )
+      ).rows,
+    ).toEqual([{ singleton: true, last_workspace_id: null }]);
+  });
+});

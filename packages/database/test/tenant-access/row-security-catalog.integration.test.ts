@@ -1,6 +1,6 @@
 import type { Pool } from 'pg';
 import { expect, it } from 'vitest';
-import { withUpgradeDatabase } from '../platform/migrations/upgrade-fixture.js';
+import { withDatabase } from '../platform/migrations/upgrade-fixture.js';
 
 const a = '11111111-1111-4111-8111-111111111111';
 const b = '22222222-2222-4222-8222-222222222222';
@@ -15,7 +15,7 @@ const maintenanceOnlyTables = {
 } as const;
 
 it('isolates every catalog-discovered workspace policy and rejects malformed settings and cross-workspace writes', async () => {
-  await withUpgradeDatabase(116, async ({ admin, upgrade }) => {
+  await withDatabase(async ({ admin }) => {
     const appGrants = async () =>
       (
         await admin.query<{
@@ -28,7 +28,7 @@ it('isolates every catalog-discovered workspace policy and rejects malformed set
         )
       ).rows;
     const grantsBefore = await appGrants();
-    await upgrade();
+
     // Discover columns after upgrading, including tables added by future migrations.
     // Retain all other RLS tables too, so actor/prior-workspace policies stay covered.
     const changed = (

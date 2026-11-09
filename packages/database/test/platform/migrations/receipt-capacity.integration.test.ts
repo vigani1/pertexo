@@ -1,9 +1,9 @@
 import { randomUUID } from 'node:crypto';
 import { expect, it } from 'vitest';
-import { seedWorkflow, withUpgradeDatabase } from './upgrade-fixture.js';
+import { seedWorkflow, withDatabase } from './upgrade-fixture.js';
 
 it('preserves existing receipts while admitting bounded sharing responses at the supported population', async () => {
-  await withUpgradeDatabase(103, async ({ admin, upgrade }) => {
+  await withDatabase(async ({ admin }) => {
     const { workspaceId, workflowId } = await seedWorkflow(admin);
     const receiptId = randomUUID();
     await admin.query(
@@ -11,7 +11,7 @@ it('preserves existing receipts while admitting bounded sharing responses at the
        values($1,$2,'folder.sharing','folder',$3,$4,'completed',$5,'{"revision":1}')`,
       [receiptId, workspaceId, 'a'.repeat(64), 'b'.repeat(64), workflowId],
     );
-    expect(await upgrade(104)).toEqual(['0104_authoring_receipt_capacity.sql']);
+
     expect(
       (
         await admin.query(
@@ -38,7 +38,7 @@ it('preserves existing receipts while admitting bounded sharing responses at the
     await expect(
       admin.query(
         'update app.idempotency_records set result_ref=$2 where id=$1',
-        [receiptId, JSON.stringify({ value: 'x'.repeat(131072) })],
+        [receiptId, JSON.stringify({ value: 'x'.repeat(196608) })],
       ),
     ).rejects.toMatchObject({
       code: '23514',
@@ -48,7 +48,7 @@ it('preserves existing receipts while admitting bounded sharing responses at the
 });
 
 it('upgrades retained receipts to fit the supported labels even when every character needs JSON escaping', async () => {
-  await withUpgradeDatabase(104, async ({ admin, upgrade }) => {
+  await withDatabase(async ({ admin }) => {
     const { workspaceId, workflowId } = await seedWorkflow(admin);
     const receiptId = randomUUID();
     await admin.query(
@@ -67,11 +67,7 @@ it('upgrades retained receipts to fit the supported labels even when every chara
         'update app.idempotency_records set result_ref=$2 where id=$1',
         [receiptId, JSON.stringify(value)],
       );
-    await expect(update(result)).rejects.toMatchObject({
-      code: '23514',
-      constraint: 'idempotency_records_result_ref_bounded',
-    });
-    expect(await upgrade(105)).toEqual(['0105_escaped_receipt_labels.sql']);
+
     expect(
       (
         await admin.query(

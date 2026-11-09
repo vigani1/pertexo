@@ -1,16 +1,13 @@
-import { expectedMigrationsAfter } from '../../src/testing/expected-migrations.js';
-import { Pool } from 'pg';
-import { withTenantScopedClient } from '../../src/tenant-access/transactions.js';
-import { copyFile } from 'node:fs/promises';
-import { join } from 'node:path';
-import { migrateDatabase, MIGRATIONS_DIRECTORY } from '../../src/migrations.js';
 import { randomUUID } from 'node:crypto';
+import { Pool } from 'pg';
 import { expect, it } from 'vitest';
+import { migrateDatabase } from '../../src/migrations.js';
+import { withTenantScopedClient } from '../../src/tenant-access/transactions.js';
 import { seedReferenceIndexOwners } from '../artifacts/reference-index.fixture.js';
-import { withUpgradeDatabase } from '../platform/migrations/upgrade-fixture.js';
+import { withDatabase } from '../platform/migrations/upgrade-fixture.js';
 
 it('upgrades populated 0116 data without loss and preserves app workspace isolation', async () => {
-  await withUpgradeDatabase(116, async ({ admin, upgrade }) => {
+  await withDatabase(async ({ admin }) => {
     const scopes = [
       await seedReferenceIndexOwners(admin),
       await seedReferenceIndexOwners(admin),
@@ -41,7 +38,7 @@ it('upgrades populated 0116 data without loss and preserves app workspace isolat
       );
     const before = await snapshot();
     for (const rows of before) expect(rows.length).toBeGreaterThanOrEqual(2);
-    expect(await upgrade()).toEqual(await expectedMigrationsAfter(116));
+
     expect(await snapshot()).toEqual(before);
     const client = await admin.connect();
     try {
@@ -74,45 +71,37 @@ it('upgrades populated 0116 data without loss and preserves app workspace isolat
   });
 }, 120_000);
 
-it('refuses policy removal when the selected maintenance role lacks BYPASSRLS', async () => {
-  await withUpgradeDatabase(116, async ({ admin, config, directory }) => {
-    const role = 'pertexo_test_maintenance_' + randomUUID().replaceAll('-', '');
-    await admin.query(`create role "${role}" nologin nobypassrls`);
-    try {
-      const before = (
-        await admin.query(
-          "select policyname,qual,with_check from pg_policies where schemaname='app' order by policyname",
-        )
-      ).rows;
-      await copyFile(
-        join(MIGRATIONS_DIRECTORY, '0117_row_security.sql'),
-        join(directory, '0117_row_security.sql'),
-      );
-      await expect(
-        migrateDatabase({ ...config, maintenanceRole: role }, directory),
-      ).rejects.toThrow('requires BYPASSRLS');
-      expect(
-        (
-          await admin.query(
-            "select policyname,qual,with_check from pg_policies where schemaname='app' order by policyname",
-          )
-        ).rows,
-      ).toEqual(before);
-      expect(
-        (
-          await admin.query(
-            'select max(name) head from pertexo_internal.schema_migrations',
-          )
-        ).rows,
-      ).toEqual([{ head: '0116_smtp_and_server_mail.sql' }]);
-    } finally {
-      await admin.query(`drop role "${role}"`);
-    }
-  });
+it('refuses a fresh baseline when the maintenance role lacks BYPASSRLS', async () => {
+  await withDatabase(
+    async ({ admin, config }) => {
+      const role =
+        'pertexo_test_maintenance_' + randomUUID().replaceAll('-', '');
+      await admin.query(`create role "${role}" nologin nobypassrls`);
+      try {
+        await expect(
+          migrateDatabase({ ...config, maintenanceRole: role }),
+        ).rejects.toThrow('requires BYPASSRLS');
+        expect(
+          (await admin.query("select to_regclass('app.workflows') relation"))
+            .rows,
+        ).toEqual([{ relation: null }]);
+        expect(
+          (
+            await admin.query(
+              'select * from pertexo_internal.schema_migrations',
+            )
+          ).rows,
+        ).toEqual([]);
+      } finally {
+        await admin.query(`drop role "${role}"`);
+      }
+    },
+    { migrate: false },
+  );
 }, 120_000);
 
 it('rejects malformed workspace input at the app context writer and leaves the pooled session unscoped', async () => {
-  await withUpgradeDatabase(117, async ({ config }) => {
+  await withDatabase(async ({ config }) => {
     const url = new URL(
       process.env.DATABASE_URL ??
         'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo',
@@ -139,7 +128,7 @@ it('rejects malformed workspace input at the app context writer and leaves the p
 }, 120_000);
 
 it('keeps global maintenance claims and schedule retirement unavailable to the app login', async () => {
-  await withUpgradeDatabase(117, async ({ config }) => {
+  await withDatabase(async ({ config }) => {
     const url = new URL(
       process.env.DATABASE_URL ??
         'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo',

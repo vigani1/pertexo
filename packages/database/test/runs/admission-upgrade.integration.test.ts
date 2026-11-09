@@ -1,15 +1,15 @@
+import { createCheckpoint } from '@pertexo/workflow-engine/server';
 import { randomUUID } from 'node:crypto';
 import { Pool, type PoolClient } from 'pg';
 import { expect, it } from 'vitest';
-import { createCheckpoint } from '@pertexo/workflow-engine/server';
 import { canonicalOutboxPayloadChecksum } from '../../src/primitives.js';
 import {
   seedWorkflow,
-  withUpgradeDatabase,
+  withDatabase,
 } from '../platform/migrations/upgrade-fixture.js';
 
 it('retains populated run pins, receipts and reservations, and keeps SQL capacity atomic after policy moves to core', async () => {
-  await withUpgradeDatabase(99, async ({ admin, config, upgrade }) => {
+  await withDatabase(async ({ admin, config }) => {
     const { ownerId, workspaceId, workflowId } = await seedWorkflow(admin);
     const versionId = randomUUID(),
       activeId = randomUUID(),
@@ -137,7 +137,7 @@ it('retains populated run pins, receipts and reservations, and keeps SQL capacit
         order by table_name,column_name,grantee,privilege_type`)
         ).rows;
       const authority = await grants();
-      await upgrade(100);
+
       expect(await retained()).toEqual(before);
       expect(await grants()).toEqual(authority);
 
