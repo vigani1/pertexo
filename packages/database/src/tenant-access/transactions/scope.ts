@@ -1,14 +1,29 @@
 import { isIntegerInRange } from '../../platform/persisted-primitives.js';
 import type { PoolClient } from 'pg';
 
-import { workspaceIdSchema } from './input.js';
+import { scopeIdSchema } from './input.js';
 import type {
   WorkspaceId,
   TransactionScope,
 } from './workspace-transaction.types.js';
 
 export function parseWorkspaceId(value: string): WorkspaceId {
-  return workspaceIdSchema.parse(value) as WorkspaceId;
+  return scopeIdSchema.parse(value) as WorkspaceId;
+}
+
+/** Organization authority spans per-workspace projections but ends with this transaction. */
+export async function setOrganizationContext(
+  client: PoolClient,
+  organizationId: string | undefined,
+): Promise<void> {
+  const value =
+    organizationId === undefined ? '' : scopeIdSchema.parse(organizationId);
+  const result = await client.query<{ organization_id: string }>(
+    "select set_config('app.organization_id',$1,true) organization_id",
+    [value],
+  );
+  if (result.rows[0]?.organization_id !== value)
+    throw new Error('PostgreSQL organization context verification failed');
 }
 
 export async function installTransactionScope(
@@ -40,17 +55,30 @@ export async function installTransactionScope(
   );
 }
 
-export async function assertNoTenantContext(client: PoolClient): Promise<void> {
+export async function assertNoTenantContext(
+  client: PoolClient,
+  {
+    allowOrganizationContext = false,
+  }: { allowOrganizationContext?: boolean } = {},
+): Promise<void> {
   const result = await client.query<{
+    organization_id?: string | null;
     workspace_id: string | null;
     actor_id: string | null;
     discovery_scope: string | null;
   }>(
-    `select current_setting('app.workspace_id', true) as workspace_id,
+    `select current_setting('app.organization_id', true) as organization_id,
+            current_setting('app.workspace_id', true) as workspace_id,
             current_setting('app.actor_id', true) as actor_id,
             current_setting('app.discovery_scope', true) as discovery_scope`,
   );
   const row = result.rows[0];
+  if (
+    !allowOrganizationContext &&
+    row?.organization_id != null &&
+    row.organization_id !== ''
+  )
+    throw new Error('Pooled PostgreSQL client retained organization context');
   const hasWorkspaceContext =
     row?.workspace_id !== undefined &&
     row.workspace_id !== null &&

@@ -48,6 +48,7 @@ export {
 } from './tenant-access/transactions/workspace-transaction.types.js';
 export {
   installTransactionScope,
+  setOrganizationContext,
   parseWorkspaceId,
 } from './tenant-access/transactions/scope.js';
 export {
