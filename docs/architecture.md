@@ -188,8 +188,10 @@ curated template manifests before calling storage; acceptance still locks and
 rechecks the exact endpoint/version or draft binding in its transaction.
 
 All application tables are declared once under `packages/database/src/schema/`. Typed
-Drizzle reads/writes and typed `sql` statements share those definitions. Runtime
-code contains application rules; PostgreSQL retains constraints, forced
+Drizzle reads/writes and typed `sql` statements share those definitions. The
+[data dictionary](operations/data-dictionary.md) describes every table and key
+stored meanings. Runtime
+code contains application rules; PostgreSQL retains constraints,
 workspace row security, transactions, queue claims, atomic capacity counters and
 checkpoint revision checks. Claims spanning workspaces, integration/session
 guards over multiple writers and locks on rows the app may not update also

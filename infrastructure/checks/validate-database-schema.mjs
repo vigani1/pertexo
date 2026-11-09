@@ -30,16 +30,20 @@ export async function validateDatabaseSchemaOwnership() {
   const schemaNames = (await readdir(schemaDirectory, { recursive: true }))
     .filter((name) => name.endsWith('.ts'))
     .sort();
-  const schemaSource = (
-    await Promise.all([
-      readFile(schemaPath, 'utf8'),
-      ...schemaNames.map((name) =>
-        readFile(path.join(schemaDirectory, name), 'utf8'),
-      ),
-    ])
-  ).join('\n');
-
-  return validateDatabaseSchemaSources({ migrationSql, schemaSource });
+  const [dictionarySource, ...schemaSources] = await Promise.all([
+    readFile(
+      path.join(repositoryRoot, 'docs/operations/data-dictionary.md'),
+      'utf8',
+    ),
+    readFile(schemaPath, 'utf8'),
+    ...schemaNames.map((name) =>
+      readFile(path.join(schemaDirectory, name), 'utf8'),
+    ),
+  ]);
+  const schemaSource = schemaSources.join('\n');
+  const result = validateDatabaseSchemaSources({ migrationSql, schemaSource });
+  validateTableDictionary(liveTables(migrationSql), dictionarySource);
+  return result;
 }
 
 export function validateDatabaseSchemaSources({ migrationSql, schemaSource }) {
@@ -74,6 +78,21 @@ export function validateDatabaseSchemaSources({ migrationSql, schemaSource }) {
   return Object.freeze({ tableCount: migrationTables.size });
 }
 
+export function validateTableDictionary(tableNames, dictionarySource) {
+  const inventory = dictionarySource.match(/^## Tables\s*\n([\s\S]*)/mu)?.[1];
+  if (inventory === undefined)
+    throw new Error('Data dictionary requires a Tables section');
+  const documented = matches(inventory, /^\|\s*`([a-z0-9_]+)`\s*\|/gmu);
+  const missing = [...tableNames].filter((name) => !documented.has(name));
+  const stale = [...documented].filter((name) => !tableNames.has(name));
+  if (missing.length > 0)
+    throw new Error(
+      `Data dictionary missing live tables: ${missing.join(', ')}`,
+    );
+  if (stale.length > 0)
+    throw new Error(`Data dictionary has retired tables: ${stale.join(', ')}`);
+}
+
 /** Apply creates, drops and table renames in migration order. */
 function liveTables(migrationSql) {
   const tables = new Set();
@@ -106,7 +125,7 @@ if (process.argv[1] === new URL(import.meta.url).pathname) {
   validateDatabaseSchemaOwnership()
     .then(({ tableCount }) => {
       process.stdout.write(
-        `Database schema ownership verified: ${tableCount} migration tables, all typed.\n`,
+        `Database schema ownership verified: ${tableCount} migration tables, all typed and documented.\n`,
       );
     })
     .catch((error) => {
