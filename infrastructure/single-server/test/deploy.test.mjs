@@ -108,6 +108,9 @@ if 'infrastructure/single-server/backup/capture.mjs' in args and 'capture' in ar
  (work/'objects.count').write_text('0\\n')
  (work/'objects.json').write_text('[]')
 if 'exec' in args and any('pg_dump' in arg for arg in args): print('database-fixture')
+if 'exec' in args and any('json_agg(name' in arg for arg in args): print('[]')
+if 'infrastructure/single-server/read-pending-migrations.mjs' in args:
+ print(os.environ.get('FIXTURE_PENDING_MIGRATIONS','0001_example.sql' if os.environ.get('FIXTURE_MIGRATION_LOG','').startswith('Applied') else ''))
 if 'logs' in args: print(os.environ['FIXTURE_MIGRATION_LOG'])
 if '--exit-code-from' in args and os.environ.get('FIXTURE_MIGRATION_FAIL')=='true': sys.exit(1)
 if '--no-deps' in args and '--wait' in args and os.environ.get('SERVICE_VERSION')=='${newCommit}' and os.environ.get('FIXTURE_UNHEALTHY')=='true': sys.exit(1)
@@ -498,7 +501,10 @@ test('role provisioning failure leaves writers stopped before any migration', (t
 
 test('refuses to migrate an existing install when its pre-deploy backup fails', (t) => {
   const f = fixture(t);
-  const result = f.run({ FIXTURE_BACKUP_FAIL: 'true' });
+  const result = f.run({
+    FIXTURE_BACKUP_FAIL: 'true',
+    FIXTURE_PENDING_MIGRATIONS: '0001_example.sql',
+  });
   assert.notEqual(result.status, 0);
   assert.equal(
     readFileSync(join(f.state, 'current'), 'utf8').trim(),
@@ -512,7 +518,7 @@ test('refuses to migrate an existing install when its pre-deploy backup fails', 
 
 test('takes a recovery point before migrating a settled existing install', (t) => {
   const f = fixture(t);
-  const result = f.run();
+  const result = f.run({ FIXTURE_PENDING_MIGRATIONS: '0001_example.sql' });
   assert.equal(result.status, 0, result.stderr);
   const commands = f.commands();
   const backup = commands.findIndex((c) =>
@@ -554,10 +560,59 @@ test('does not replace the recovery point while resuming a fenced migration', (t
 
 test('starts stopped data services before taking the required recovery point', (t) => {
   const f = fixture(t);
-  const result = f.run({ FIXTURE_REQUIRE_DATA_UP: 'true' });
+  const result = f.run({
+    FIXTURE_REQUIRE_DATA_UP: 'true',
+    FIXTURE_PENDING_MIGRATIONS: '0001_example.sql',
+  });
   assert.equal(result.status, 0, result.stderr);
   assert.equal(
     readFileSync(join(f.state, 'current'), 'utf8').trim(),
     newCommit,
+  );
+});
+
+test('redeploys the current commit without optional backup configuration when no migrations are pending', (t) => {
+  const f = fixture(t);
+  writeFileSync(join(f.directory, '.env.production'), 'FIXTURE=true\n', {
+    mode: 0o600,
+  });
+  const result = f.run({}, oldCommit);
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(
+    readFileSync(join(f.state, 'current'), 'utf8').trim(),
+    oldCommit,
+  );
+  assert.equal(existsSync(join(f.state, 'last-backup')), false);
+});
+
+test('redeploys the current commit with a failing backup store when no migrations are pending', (t) => {
+  const f = fixture(t);
+  const result = f.run({ FIXTURE_BACKUP_FAIL: 'true' }, oldCommit);
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(
+    readFileSync(join(f.state, 'current'), 'utf8').trim(),
+    oldCommit,
+  );
+  assert.equal(existsSync(join(f.state, 'last-backup')), false);
+});
+
+test('explains why missing backup configuration blocks pending migrations', (t) => {
+  const f = fixture(t);
+  writeFileSync(join(f.directory, '.env.production'), 'FIXTURE=true\n', {
+    mode: 0o600,
+  });
+  const result = f.run({ FIXTURE_PENDING_MIGRATIONS: '0001_example.sql' });
+  assert.notEqual(result.status, 0);
+  assert.match(
+    result.stderr,
+    /Pending migrations require a successful encrypted recovery point/u,
+  );
+  assert.equal(
+    f.commands().some((c) => c.args.includes('--exit-code-from')),
+    false,
+  );
+  assert.equal(
+    f.commands().some((c) => c.args.includes('stop')),
+    false,
   );
 });

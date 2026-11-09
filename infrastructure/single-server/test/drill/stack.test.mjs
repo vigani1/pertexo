@@ -345,7 +345,34 @@ describe('the single-server stack, through its real scripts', () => {
     }
   });
 
-  it('refuses deployment when the recovery store rejects its credentials', async () => {
+  for (const configuration of [
+    'missing encryption settings',
+    'rejected store credentials',
+  ]) {
+    it(`redeploys the same commit with ${configuration}`, async () => {
+      const current = await server.current();
+      const edit =
+        configuration === 'missing encryption settings'
+          ? "sed -i '/^BACKUP_CRYPT_PASSWORD=/d; /^BACKUP_CRYPT_SALT=/d' .env.production"
+          : "sed -i 's/^BACKUP_STORE_SECRET_ACCESS_KEY=.*/BACKUP_STORE_SECRET_ACCESS_KEY=rejected-for-drill/' .env.production";
+      await server.mustExec(
+        `cp .env.production .env.production.before-noop-test && ${edit}`,
+      );
+      try {
+        const deployed = await server.script('deploy.sh', [current.trim()]);
+        assert.equal(deployed.status, 0, deployed.stdout + deployed.stderr);
+        assert.doesNotMatch(deployed.stdout, /Completed recovery point:/u);
+        assert.equal(await server.current(), current);
+        assert.equal(await signedInStatus(), 200);
+      } finally {
+        await server.mustExec(
+          'mv .env.production.before-noop-test .env.production',
+        );
+      }
+    });
+  }
+
+  it('requires recovery-store access only for a pending schema upgrade', async () => {
     const head = await postgres(
       'select max(name) from pertexo_internal.schema_migrations',
     );
@@ -354,10 +381,20 @@ describe('the single-server stack, through its real scripts', () => {
       "cp .env.production .env.production.before-backup-test && sed -i 's/^BACKUP_STORE_SECRET_ACCESS_KEY=.*/BACKUP_STORE_SECRET_ACCESS_KEY=rejected-for-drill/' .env.production",
     );
     try {
+      const pending = Boolean(process.env.DRILL_LEGACY_RUNTIME_IMAGE);
       const deployed = await server.script('deploy.sh', [
-        server.releases.repaired,
+        pending ? server.releases.repaired : current.trim(),
       ]);
-      assert.notEqual(deployed.status, 0, deployed.stdout);
+      if (pending) {
+        assert.notEqual(deployed.status, 0, deployed.stdout);
+        assert.match(
+          deployed.stderr,
+          /Pending migrations require a successful encrypted recovery point/u,
+        );
+      } else {
+        assert.equal(deployed.status, 0, deployed.stdout + deployed.stderr);
+        assert.doesNotMatch(deployed.stdout, /Completed recovery point:/u);
+      }
       assert.equal(await server.current(), current);
       assert.equal(
         await postgres(
@@ -466,7 +503,7 @@ describe('the single-server stack, through its real scripts', () => {
         '0116_smtp_and_server_mail.sql',
       );
     // A fenced retry reaches provisioning even when its maintenance login is missing.
-    // Ordinary settled deploys now reject that failure during the earlier backup.
+    // Settled deploys with pending migrations reject it during the earlier backup.
     await server.mustExec('cat > state/migration-fence', {
       input: `${server.releases.repaired}\n`,
     });
@@ -499,7 +536,9 @@ describe('the single-server stack, through its real scripts', () => {
       server.releases.repaired,
     ]);
     assert.equal(upgraded.status, 0, upgraded.stdout + upgraded.stderr);
-    assert.match(upgraded.stdout, /Completed recovery point: \S+/u);
+    if (process.env.DRILL_LEGACY_RUNTIME_IMAGE)
+      assert.match(upgraded.stdout, /Completed recovery point: \S+/u);
+    else assert.doesNotMatch(upgraded.stdout, /Completed recovery point:/u);
     assert.equal(
       (
         await postgres(
@@ -524,6 +563,7 @@ describe('the single-server stack, through its real scripts', () => {
       server.releases.repaired,
     ]);
     assert.equal(repeated.status, 0, repeated.stdout + repeated.stderr);
+    assert.doesNotMatch(repeated.stdout, /Completed recovery point:/u);
     assert.equal(
       (await postgres('select count(*) from app.workflow_runs')).trim(),
       before.trim(),
