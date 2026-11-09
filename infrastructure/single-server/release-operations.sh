@@ -73,7 +73,11 @@ wait_for_app() {
 }
 
 operation_lock() {
-  exec 9>"$BETA_STATE_DIR/operation.lock"
+  # Deploy's backup inherits this descriptor, retaining one lock through capture
+  # and migration. Reopening the file would contend with our own parent shell.
+  if [[ ! /dev/fd/9 -ef "$BETA_STATE_DIR/operation.lock" ]]; then
+    exec 9>"$BETA_STATE_DIR/operation.lock"
+  fi
   flock -n 9 || { echo 'Another operation is running' >&2; exit 1; }
 }
 

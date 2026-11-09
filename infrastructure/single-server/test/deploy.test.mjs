@@ -23,9 +23,13 @@ function fixture(t) {
   mkdirSync(bin);
   const state = join(directory, 'state');
   mkdirSync(state);
-  writeFileSync(join(directory, '.env.production'), 'FIXTURE=true\n', {
-    mode: 0o600,
-  });
+  writeFileSync(
+    join(directory, '.env.production'),
+    'FIXTURE=true\nBACKUP_CRYPT_PASSWORD=fixture-password\nBACKUP_CRYPT_SALT=fixture-salt\n',
+    {
+      mode: 0o600,
+    },
+  );
   writeFileSync(
     join(state, 'hosts.env'),
     'APP_HOST=app.example.test\nFILES_HOST=files.example.test\n',
@@ -68,7 +72,8 @@ exec ${execFileSync('sh', ['-c', 'command -v uname'], { encoding: 'utf8' }).trim
   writeFileSync(
     join(bin, 'docker'),
     `#!/usr/bin/env python3
-import os, sys, json
+import os, sys, json, time
+from pathlib import Path
 args=sys.argv[1:]
 with open(os.environ['FIXTURE_LOG'],'a') as log:
  log.write(json.dumps({'args':args,'commit':os.environ.get('SERVICE_VERSION')})+'\\n')
@@ -83,7 +88,26 @@ if args[0]=='image':
  print(template.replace('{{.Architecture}}',arch).replace('{{.Os}}','linux').replace('{{index .Config.Labels "org.opencontainers.image.revision"}}',revision))
 if 'infrastructure/single-server/encryption/verify.mjs' in args and os.environ.get('FIXTURE_ENCRYPTION_FAIL')=='true': sys.exit(1)
 if 'infrastructure/single-server/storage/prepare.mjs' in args and 'ghcr.io/vigani1/pertexo:${oldCommit}' in args and os.environ.get('FIXTURE_OLD_CONFIG_REJECTED')=='true': sys.exit(1)
-if 'exec' in args and 'postgres' in args and os.environ.get('FIXTURE_ROLE_GRANT_FAIL')=='true': sys.exit(1)
+if 'exec' in args and any('--file=-' in arg for arg in args) and os.environ.get('FIXTURE_ROLE_GRANT_FAIL')=='true': sys.exit(1)
+if 'infrastructure/single-server/backup/prepare.mjs' in args:
+ if os.environ.get('FIXTURE_BACKUP_FAIL')=='true': sys.exit(1)
+ prepared=Path(next(args[i+1].split(':/prepared')[0] for i,arg in enumerate(args) if arg=='-v' and args[i+1].endswith(':/prepared')))
+ (prepared/'source-bucket').write_text('artifacts')
+ (prepared/'backup-bucket').write_text('backups')
+ (prepared/'rclone.env').write_text('RCLONE_CONFIG_CRYPT_PASSWORD=fixture')
+if 'infrastructure/single-server/backup/capture.mjs' in args and 'capture' in args:
+ if os.environ.get('FIXTURE_REQUIRE_DATA_UP')=='true':
+  with open(os.environ['FIXTURE_LOG']) as file: commands=[json.loads(line)['args'] for line in file]
+  assert any('up' in command and 'postgres' in command and 'redis' in command and 'storage' in command for command in commands), 'database services must start before backup'
+ work=Path(next(args[i+1].split(':/backup')[0] for i,arg in enumerate(args) if arg=='-v' and ':/backup' in args[i+1]))
+ (work/'capture.ready').write_text('ready')
+ deadline=time.monotonic()+2
+ while not (work/'dump.done').exists():
+  if time.monotonic()>deadline: sys.exit(1)
+  time.sleep(.01)
+ (work/'objects.count').write_text('0\\n')
+ (work/'objects.json').write_text('[]')
+if 'exec' in args and any('pg_dump' in arg for arg in args): print('database-fixture')
 if 'logs' in args: print(os.environ['FIXTURE_MIGRATION_LOG'])
 if '--exit-code-from' in args and os.environ.get('FIXTURE_MIGRATION_FAIL')=='true': sys.exit(1)
 if '--no-deps' in args and '--wait' in args and os.environ.get('SERVICE_VERSION')=='${newCommit}' and os.environ.get('FIXTURE_UNHEALTHY')=='true': sys.exit(1)
@@ -98,6 +122,11 @@ if '--no-deps' in args and '--wait' in args and os.environ.get('SERVICE_VERSION'
       { mode: 0o755 },
     );
     writeFileSync(join(bin, 'flock'), '#!/bin/sh\nexit 0\n', { mode: 0o755 });
+    writeFileSync(
+      join(bin, 'sha256sum'),
+      `#!/usr/bin/env python3\nimport sys,hashlib\nfor name in sys.argv[1:]: print(hashlib.sha256(open(name,'rb').read()).hexdigest()+'  '+name)\n`,
+      { mode: 0o755 },
+    );
   }
   const run = (changes = {}, commit = newCommit) =>
     spawnSync(
@@ -464,5 +493,71 @@ test('role provisioning failure leaves writers stopped before any migration', (t
   assert.equal(
     readFileSync(join(f.state, 'current'), 'utf8').trim(),
     oldCommit,
+  );
+});
+
+test('refuses to migrate an existing install when its pre-deploy backup fails', (t) => {
+  const f = fixture(t);
+  const result = f.run({ FIXTURE_BACKUP_FAIL: 'true' });
+  assert.notEqual(result.status, 0);
+  assert.equal(
+    readFileSync(join(f.state, 'current'), 'utf8').trim(),
+    oldCommit,
+  );
+  assert.equal(
+    f.commands().some((c) => c.args.includes('--exit-code-from')),
+    false,
+  );
+});
+
+test('takes a recovery point before migrating a settled existing install', (t) => {
+  const f = fixture(t);
+  const result = f.run();
+  assert.equal(result.status, 0, result.stderr);
+  const commands = f.commands();
+  const backup = commands.findIndex((c) =>
+    c.args.includes('infrastructure/single-server/backup/prepare.mjs'),
+  );
+  assert.ok(backup >= 0);
+  const complete = commands.findIndex(
+    (c) =>
+      c.args.includes('copyto') &&
+      c.args.some((arg) => arg.endsWith('/COMPLETE')),
+  );
+  assert.ok(complete >= 0);
+  assert.ok(
+    complete < commands.findIndex((c) => c.args.includes('--exit-code-from')),
+  );
+  assert.match(
+    readFileSync(join(f.state, 'last-backup'), 'utf8').trim(),
+    /^\d{8}T\d{6}Z$/u,
+  );
+  assert.ok(
+    backup < commands.findIndex((c) => c.args.includes('--exit-code-from')),
+  );
+});
+
+test('does not replace the recovery point while resuming a fenced migration', (t) => {
+  const f = fixture(t);
+  writeFileSync(join(f.state, 'migration-fence'), newCommit);
+  const result = f.run();
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(
+    f
+      .commands()
+      .some((c) =>
+        c.args.includes('infrastructure/single-server/backup/prepare.mjs'),
+      ),
+    false,
+  );
+});
+
+test('starts stopped data services before taking the required recovery point', (t) => {
+  const f = fixture(t);
+  const result = f.run({ FIXTURE_REQUIRE_DATA_UP: 'true' });
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(
+    readFileSync(join(f.state, 'current'), 'utf8').trim(),
+    newCommit,
   );
 });

@@ -6,7 +6,12 @@ one before you start.
 
 ## How to upgrade
 
-1. Take a backup, so you have a recovery point from just before the upgrade:
+1. Check that encrypted backups are configured and working. `deploy.sh` captures
+   a fresh recovery point before deploying a settled existing install and refuses
+   to migrate if that backup fails. A fresh install has nothing to capture. A retry
+   with a migration fence keeps the original pre-migration recovery point.
+
+   To also take a manual recovery point before updating the control scripts:
 
    ```sh
    /opt/pertexo/repository/infrastructure/single-server/backup.sh
@@ -150,7 +155,7 @@ release by itself and prints `Unhealthy release returned to <commit>`.
 **The new release applied a migration.** There's no rollback across a schema change: the
 older images can't use the newer schema. If the release then fails, serving stays stopped and
 the script says so. Don't remove `state/migration-fence` to force it. Fix forward by deploying a
-fixed release, or restore the backup from step 1 with [Recovery](recovery.md), which loses
+fixed release, or restore the pre-deploy recovery point with [Recovery](recovery.md), which loses
 what happened since.
 
 **You want to go back on purpose.** Roll back to an earlier version with the same schema

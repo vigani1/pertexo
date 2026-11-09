@@ -52,6 +52,7 @@ describe('the single-server stack, through its real scripts', () => {
   let artifactId;
   let verificationLink;
   let backup;
+  let backupHeartbeatStart;
   let waitingRunId;
 
   const app = () =>
@@ -251,6 +252,7 @@ describe('the single-server stack, through its real scripts', () => {
 
   // ops-01: nginx used to keep the API's old address while health checks passed.
   it('still answers signed-in requests right after a redeploy', async () => {
+    await compose(['stop', 'postgres']);
     const redeployed = await withApiMovedDuring(server, () =>
       server.script('deploy.sh', [server.releases.first]),
     );
@@ -291,6 +293,9 @@ describe('the single-server stack, through its real scripts', () => {
         ...before.trim().split('\n'),
       ]);
     const started = await identities();
+    backupHeartbeatStart = (await receivedAlerts()).filter((request) =>
+      request.url.startsWith('/heartbeat'),
+    ).length;
     backup = await server.script('backup.sh');
     assert.equal(backup.status, 0, backup.stdout + backup.stderr);
     assert.equal(
@@ -316,9 +321,9 @@ describe('the single-server stack, through its real scripts', () => {
 
   // ops-07
   it('tells the dead-man switch about a completed backup', async () => {
-    const pings = (await receivedAlerts()).filter((request) =>
-      request.url.startsWith('/heartbeat'),
-    );
+    const pings = (await receivedAlerts())
+      .filter((request) => request.url.startsWith('/heartbeat'))
+      .slice(backupHeartbeatStart);
     assert.equal(pings.length, 1);
     assert.equal(pings[0].url, '/heartbeat');
   });
@@ -337,6 +342,34 @@ describe('the single-server stack, through its real scripts', () => {
       );
     } finally {
       await compose(['up', '-d', '--no-deps', 'drill-backup-proxy']);
+    }
+  });
+
+  it('refuses deployment when the recovery store rejects its credentials', async () => {
+    const head = await postgres(
+      'select max(name) from pertexo_internal.schema_migrations',
+    );
+    const current = await server.current();
+    await server.mustExec(
+      "cp .env.production .env.production.before-backup-test && sed -i 's/^BACKUP_STORE_SECRET_ACCESS_KEY=.*/BACKUP_STORE_SECRET_ACCESS_KEY=rejected-for-drill/' .env.production",
+    );
+    try {
+      const deployed = await server.script('deploy.sh', [
+        server.releases.repaired,
+      ]);
+      assert.notEqual(deployed.status, 0, deployed.stdout);
+      assert.equal(await server.current(), current);
+      assert.equal(
+        await postgres(
+          'select max(name) from pertexo_internal.schema_migrations',
+        ),
+        head,
+      );
+      assert.equal(await signedInStatus(), 200);
+    } finally {
+      await server.mustExec(
+        'mv .env.production.before-backup-test .env.production',
+      );
     }
   });
 
@@ -432,6 +465,11 @@ describe('the single-server stack, through its real scripts', () => {
         ).trim(),
         '0116_smtp_and_server_mail.sql',
       );
+    // A fenced retry reaches provisioning even when its maintenance login is missing.
+    // Ordinary settled deploys now reject that failure during the earlier backup.
+    await server.mustExec('cat > state/migration-fence', {
+      input: `${server.releases.repaired}\n`,
+    });
     await postgres(
       'alter role pertexo_maintenance rename to pertexo_maintenance_unavailable',
     );
@@ -453,6 +491,7 @@ describe('the single-server stack, through its real scripts', () => {
       await postgres(
         'alter role pertexo_maintenance_unavailable rename to pertexo_maintenance',
       );
+      await server.mustExec('rm state/migration-fence');
     }
     if (process.env.DRILL_LEGACY_RUNTIME_IMAGE)
       await postgres('alter role pertexo_maintenance nobypassrls');
@@ -460,6 +499,7 @@ describe('the single-server stack, through its real scripts', () => {
       server.releases.repaired,
     ]);
     assert.equal(upgraded.status, 0, upgraded.stdout + upgraded.stderr);
+    assert.match(upgraded.stdout, /Completed recovery point: \S+/u);
     assert.equal(
       (
         await postgres(

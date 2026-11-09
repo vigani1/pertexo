@@ -1,9 +1,14 @@
 import { docker, mustDocker } from './process.mjs';
 
+export const DRILL_PROJECT =
+  process.env.DRILL_PROJECT ?? 'pertexo-b1-singleserver';
+
 // The two product images are built once, by build-images.mjs, and every drill
 // reuses them: the machine that runs this may be shared.
-export const RUNTIME_IMAGE = 'pertexo-drill-runtime:local';
-export const WEB_IMAGE = 'pertexo-drill-web:local';
+export const RUNTIME_IMAGE =
+  process.env.DRILL_RUNTIME_IMAGE ?? 'pertexo-drill-runtime:local';
+export const WEB_IMAGE =
+  process.env.DRILL_WEB_IMAGE ?? 'pertexo-drill-web:local';
 
 export async function requireImages() {
   for (const image of [RUNTIME_IMAGE, WEB_IMAGE]) {
@@ -35,6 +40,8 @@ export async function tagRelease(
         `org.opencontainers.image.revision=${revision}`,
         '--label',
         'pertexo.drill=true',
+        '--label',
+        `pertexo.drill.project=${DRILL_PROJECT}`,
         '-',
       ],
       { input: `FROM ${base}\n` },
