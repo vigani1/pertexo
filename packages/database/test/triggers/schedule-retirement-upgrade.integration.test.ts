@@ -73,7 +73,7 @@ it('preserves populated schedules on upgrade and stores caller-chosen retirement
     const store = async (leaseToken: string) => {
       await client.query('begin');
       try {
-        await client.query('set local role pertexo_app');
+        await client.query('set local role pertexo_maintenance');
         const result = await client.query<{ stored: boolean }>(
           `select app.store_trigger_schedule_retirement($1,$2,'degraded','schedule.recurrence_invalid',clock_timestamp()+interval '60 seconds') stored`,
           [triggerId, leaseToken],

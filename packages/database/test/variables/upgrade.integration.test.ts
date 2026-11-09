@@ -180,10 +180,10 @@ it('backfills current and retained historical sets, fixed empty sets and purged 
       expect(
         (
           await admin.query(
-            "select relforcerowsecurity forced from pg_class where oid='app.preview_runs'::regclass",
+            "select relrowsecurity enabled,relforcerowsecurity forced from pg_class where oid='app.preview_runs'::regclass",
           )
         ).rows,
-      ).toEqual([{ forced: true }]);
+      ).toEqual([{ enabled: true, forced: false }]);
       expect(await upgrade()).toEqual([]);
     },
   );

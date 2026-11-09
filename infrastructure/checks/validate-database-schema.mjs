@@ -50,7 +50,7 @@ export function validateDatabaseSchemaSources({ migrationSql, schemaSource }) {
   const migrationTables = liveTables(migrationSql);
   const typedTables = matches(
     schemaSource,
-    /appSchema\.table\(\s*['"]([^'"]+)/gu,
+    /appSchema\s*\.\s*table\s*\(\s*['"]([^'"]+)/gu,
   );
 
   if (

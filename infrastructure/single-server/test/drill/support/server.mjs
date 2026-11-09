@@ -262,14 +262,21 @@ async function installRepository(server) {
   // The upgrade drill starts with the genuine 0116 runtime and migration set.
   if (process.env.DRILL_LEGACY_RUNTIME_IMAGE)
     await mustExec(
-      'mkdir -p pending-upgrade && mv tree/packages/database/migrations/0117_row_security.sql pending-upgrade/',
+      [
+        'set -e',
+        'mkdir -p pending-upgrade',
+        'for migration in tree/packages/database/migrations/*.sql; do',
+        '  name=${migration##*/}',
+        '  if [[ ${name:0:4} > 0116 ]]; then mv "$migration" pending-upgrade/; fi',
+        'done',
+      ].join('\n'),
     );
   const first = await commit('first');
   await write('compose.yaml', breakWebUpstream(compose));
   const broken = await commit('broken');
   if (process.env.DRILL_LEGACY_RUNTIME_IMAGE)
     await mustExec(
-      'mv pending-upgrade/0117_row_security.sql tree/packages/database/migrations/',
+      'mv pending-upgrade/*.sql tree/packages/database/migrations/',
     );
 
   await write('compose.yaml', compose);

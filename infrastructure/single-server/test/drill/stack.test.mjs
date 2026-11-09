@@ -1,3 +1,4 @@
+import { EXPECTED_MIGRATION_HEAD } from '../../../../packages/database/dist/testing.js';
 import assert from 'node:assert/strict';
 import { randomBytes, randomUUID } from 'node:crypto';
 import { after, before, describe } from 'node:test';
@@ -458,7 +459,7 @@ describe('the single-server stack, through its real scripts', () => {
           'select max(name) from pertexo_internal.schema_migrations',
         )
       ).trim(),
-      '0117_row_security.sql',
+      EXPECTED_MIGRATION_HEAD,
     );
     assert.equal(
       (await postgres('select count(*) from app.workflow_runs')).trim(),

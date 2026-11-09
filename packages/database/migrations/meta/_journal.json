@@ -834,6 +834,13 @@
       "when": 1794184409613,
       "tag": "0118_organization_maintenance",
       "breakpoints": true
+    },
+    {
+      "idx": 119,
+      "version": "7",
+      "when": 1794186600817,
+      "tag": "0119_auth_workspace_row_security",
+      "breakpoints": true
     }
   ]
 }

@@ -198,7 +198,7 @@ it('backfills every populated owner without changing JSON, normalizes UUIDs, and
     );
     expect(flags.rows).toHaveLength(14);
     expect(
-      flags.rows.every((row) => row.relrowsecurity && row.relforcerowsecurity),
+      flags.rows.every((row) => row.relrowsecurity && !row.relforcerowsecurity),
     ).toBe(true);
   });
 }, 60_000);
