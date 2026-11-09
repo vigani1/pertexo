@@ -14,8 +14,8 @@ changes are in scope.
   pulling release images, using the built operator checkout.
 - Share the migrator's history/checksum compatibility rules with the pre-stop
   release gate, preserving baseline adoption and refusing incompatible fenced retries.
-- Pending: bound local release/image retention while preserving rollback and
-  every retained recovery point's release references.
+- Bound local release/image retention while preserving current/previous, running
+  containers and every retained recovery point's release references.
 - Pending: measure API/worker memory under load, set container budgets, and qualify
   publishing/readiness on the smallest supported host. Current host sizing in the
   runbook remains an estimate until qualification.

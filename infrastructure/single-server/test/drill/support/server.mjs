@@ -292,7 +292,9 @@ cd ..
 rm -rf tree
 git clone --quiet ${root}/origin.git repository
 # Equivalent to the runbook's pnpm install/build bootstrap, using the exact built image.
-cp -a /workspace/node_modules repository/
+mkdir -p repository/node_modules
+# The runtime's private Node compile cache is not a dependency.
+tar -C /workspace/node_modules --exclude=./.tmp -cf - . | tar -C repository/node_modules -xf -
 for source in /workspace/packages/* /workspace/apps/*; do
   target="repository/$(basename "$(dirname "$source")")/$(basename "$source")"
   for built in dist node_modules; do
