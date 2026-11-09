@@ -82,10 +82,6 @@ export const previewAttempts = appSchema.table(
       sql`((lease_owner IS NULL) OR ((lease_owner)::text ~ '^[A-Za-z0-9._:-]{1,128}$'::text))`,
     ),
     check(
-      'preview_attempts_output_bounded',
-      sql`((output_ref IS NULL) OR (octet_length((output_ref)::text) <= 4194304))`,
-    ),
-    check(
       'preview_attempts_output_truth',
       sql`((((status)::text = 'succeeded'::text) AND (output_ref IS NOT NULL) AND (safe_error_code IS NULL)) OR (((status)::text <> 'succeeded'::text) AND (output_ref IS NULL)))`,
     ),

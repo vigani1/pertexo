@@ -176,16 +176,8 @@ export const workflowRuns = appSchema.table(
       sql`details_purged_at IS NULL OR variable_set_revision IS NULL`,
     ),
     check(
-      'workflow_runs_input_ref_bounded',
-      sql`((input_ref IS NULL) OR (octet_length((input_ref)::text) <= 4194304))`,
-    ),
-    check(
       'workflow_runs_input_ref_expiry_valid',
       sql`(((input_ref IS NULL) AND (input_ref_expires_at IS NULL)) OR ((input_ref IS NOT NULL) AND (input_ref_expires_at IS NOT NULL) AND (input_ref_expires_at > created_at) AND (input_ref_expires_at <= (created_at + '30 days'::interval))))`,
-    ),
-    check(
-      'workflow_runs_output_ref_bounded',
-      sql`((output_ref IS NULL) OR (octet_length((output_ref)::text) <= 4194304))`,
     ),
     check(
       'workflow_runs_replay_lineage_valid',

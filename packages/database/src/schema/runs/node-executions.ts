@@ -126,20 +126,12 @@ export const nodeRuns = appSchema.table(
       sql`(((due_wakeup_at IS NULL) OR (((status)::text = 'waiting'::text) AND (COALESCE(retry_due_at, resume_at) IS NOT NULL) AND (due_wakeup_at = COALESCE(retry_due_at, resume_at)))) IS TRUE)`,
     ),
     check(
-      'node_runs_input_ref_bounded',
-      sql`((input_ref IS NULL) OR (octet_length((input_ref)::text) <= 4194304))`,
-    ),
-    check(
       'node_runs_invocation_key_format',
       sql`(((invocation_key)::text ~ '^[A-Za-z0-9][A-Za-z0-9._:/#-]{0,255}$'::text) OR ((invocation_key)::text ~ '^([A-Za-z0-9_.!~*()''-]|%[0-9A-F]{2})+\\|([A-Za-z0-9_.!~*()''-]|%[0-9A-F]{2})+\\|b:([A-Za-z0-9_.!~*()''-]|%[0-9A-F]{2})*\\|i:([A-Za-z0-9_.!~*()''-]|%[0-9A-F]{2})*$'::text))`,
     ),
     check(
       'node_runs_node_id_format',
       sql`((node_id)::text ~ '^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$'::text)`,
-    ),
-    check(
-      'node_runs_output_ref_bounded',
-      sql`((output_ref IS NULL) OR (octet_length((output_ref)::text) <= 4194304))`,
     ),
     check(
       'node_runs_provider_dispatch_binding_format',
@@ -315,10 +307,6 @@ export const nodeAttempts = appSchema.table(
       sql`(((lease_owner IS NULL) AND (lease_expires_at IS NULL)) OR ((lease_owner IS NOT NULL) AND (lease_expires_at IS NOT NULL) AND ((status)::text = 'running'::text)))`,
     ),
     check('node_attempts_number_positive', sql`(attempt_number > 0)`),
-    check(
-      'node_attempts_output_ref_bounded',
-      sql`((output_ref IS NULL) OR (octet_length((output_ref)::text) <= 4194304))`,
-    ),
     check(
       'node_attempts_provider_key_valid',
       sql`(((side_effect_class)::text = 'idempotent_with_key'::text) = (provider_idempotency_key IS NOT NULL))`,
