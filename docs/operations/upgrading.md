@@ -43,7 +43,7 @@ newer than `v0.9.0`. Check with [the smoke check](single-server.md#6-smoke-check
 
 ## Baseline transition: required release stop
 
-**Required stop: [RELEASE TO BE TAGGED] — the final release containing migrations
+**Required stop: v0.2.0 — the final release containing migrations
 0000 through 0122. This placeholder must be filled before the baseline release
 ships.** Install that release successfully before upgrading an older server to a
 release containing the new baseline. This includes v0.1.0 servers and databases
@@ -59,7 +59,7 @@ then runs normally. Deployment treats this adoption as pending migration work an
 requires its encrypted recovery point before stopping writers.
 
 Partial history is refused without changing its receipts or application data,
-with a message to upgrade through **[RELEASE TO BE TAGGED]** first. Unknown files
+with a message to upgrade through **v0.2.0** first. Unknown files
 and checksum mismatches are also refused. Do not edit migration receipts or
 checksums to bypass the check. If the history is unexpected, resolve it against
 the installed release and its recovery point before retrying. A new, empty

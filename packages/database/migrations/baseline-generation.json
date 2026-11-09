@@ -1,6 +1,6 @@
 {
   "drizzleKit": "0.31.11",
-  "sourceCommit": "8cf2beed4f38b24b3aa18b86b7b74cb2e031479d",
+  "sourceCommit": "b34df882d209023b030394f8ecfc883aabea669a",
   "schemaSnapshotSha256": "b278729bbbbbb8c86efc2d04f6f3b85a473d4ef56e6c34272804841996739bdc",
   "drizzleSqlSha256": "ead5f8e7bb7fba3293de92c084fbefa6fe279b60647604e79dedec2eb6f72592",
   "generationCommand": "pnpm --filter @pertexo/database exec drizzle-kit generate --dialect=postgresql --schema='./src/schema/**/*.ts' --out=<empty-directory>",

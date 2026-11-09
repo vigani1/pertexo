@@ -146,7 +146,7 @@ it.each(['partial', 'baseline-only', 'unknown', 'checksum'] as const)(
         );
         expect(cli.status).toBe(1);
         expect(cli.stderr).toContain(
-          'upgrade to the last pre-baseline release [RELEASE TO BE TAGGED] first',
+          'upgrade to the last pre-baseline release v0.2.0 first',
         );
       }
       expect(

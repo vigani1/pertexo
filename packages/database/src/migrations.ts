@@ -78,7 +78,7 @@ export class PartialMigrationHistoryError extends Error {
 
   public constructor() {
     super(
-      'Partial pre-baseline migration history: upgrade to the last pre-baseline release [RELEASE TO BE TAGGED] first, then upgrade again',
+      'Partial pre-baseline migration history: upgrade to the last pre-baseline release v0.2.0 first, then upgrade again',
     );
   }
 }
