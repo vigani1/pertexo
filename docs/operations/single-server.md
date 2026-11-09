@@ -70,7 +70,12 @@ The initial allocation gave Code only 0.25 vCPU and used 40 polling observers:
 38/40 runs succeeded, two ended `code.runner_unavailable`, and no OOM occurred.
 Reallocating the same 4 GiB / 2 vCPUs and reducing observer traffic completed all
 40 runs in the defined load. No application deadline or revocation interval was
-relaxed. The retained evidence and reproducible load scripts are in the J1 audit's
+relaxed. With the authenticated browser editor open, all 40 runs completed during
+a 74.27-second load phase; sampled peak aggregate working set was 752.62 MiB
+(API 268.4 MiB, worker 162.3 MiB). All runs/publications/validations succeeded,
+with zero OOM, restart or readiness-probe failures. These are sampled working-set
+values, not reserved or worst-case resident memory. See the separate
+[terminal-stream measurements](workflow-run-stream-capacity.md) for viewer costs. The retained evidence and reproducible load scripts are in the J1 audit's
 `evidence/batch-j1/` directory.
 
 This is a supported minimum for that bounded workload, not a maximum-capacity
