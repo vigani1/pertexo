@@ -1,3 +1,4 @@
+import type { Pool } from 'pg';
 import { expect, it } from 'vitest';
 import { withUpgradeDatabase } from '../platform/migrations/upgrade-fixture.js';
 
@@ -5,15 +6,16 @@ const a = '11111111-1111-4111-8111-111111111111';
 const b = '22222222-2222-4222-8222-222222222222';
 const quote = (name: string) => `"${name.replaceAll('"', '""')}"`;
 
+// These tables remain default-deny for app, even with a valid workspace context.
+const maintenanceOnlyTables = {
+  webhook_endpoint_ingress_limits:
+    'Maintenance-only ingress counters; the app has no direct table privileges.',
+  workflow_trigger_failures:
+    'Maintenance-only trigger outcome storage; direct app privileges are intentionally absent.',
+} as const;
+
 it('isolates every catalog-discovered workspace policy and rejects malformed settings and cross-workspace writes', async () => {
   await withUpgradeDatabase(116, async ({ admin, upgrade }) => {
-    const changed = (
-      await admin.query<{ tablename: string }>(
-        `select distinct tablename from pg_policies where schemaname='app' order by tablename`,
-      )
-    ).rows;
-    expect(changed.length).toBeGreaterThan(100);
-    console.log(`Catalog isolation matrix: ${String(changed.length)} tables`);
     const appGrants = async () =>
       (
         await admin.query<{
@@ -27,16 +29,21 @@ it('isolates every catalog-discovered workspace policy and rejects malformed set
       ).rows;
     const grantsBefore = await appGrants();
     await upgrade();
-    expect(await appGrants()).toEqual(grantsBefore);
-    const actualTables = (
-      await admin.query<{ relname: string; relrowsecurity: boolean }>(
-        `select relname,relrowsecurity from pg_class where relnamespace='app'::regnamespace and relname=any($1)`,
-        [changed.map((row) => row.tablename)],
-      )
+    // Discover columns after upgrading, including tables added by future migrations.
+    // Retain all other RLS tables too, so actor/prior-workspace policies stay covered.
+    const changed = (
+      await admin.query<{ tablename: string }>(`
+      select c.relname tablename from pg_class c
+      where c.relnamespace='app'::regnamespace and c.relkind in ('r','p','f')
+        and (c.relrowsecurity or exists (
+          select 1 from pg_attribute a where a.attrelid=c.oid
+            and a.attname='workspace_id' and a.attnum>0 and not a.attisdropped
+        )) order by c.relname
+    `)
     ).rows;
-    expect(actualTables).toHaveLength(changed.length);
-    for (const table of actualTables)
-      expect(table.relrowsecurity, table.relname).toBe(true);
+    expect(changed.length).toBeGreaterThan(100);
+    console.log(`Catalog isolation matrix: ${String(changed.length)} tables`);
+    expect(await appGrants()).toEqual(grantsBefore);
     const policies = (
       await admin.query<{
         tablename: string;
@@ -45,9 +52,10 @@ it('isolates every catalog-discovered workspace policy and rejects malformed set
         qual: string | null;
         with_check: string | null;
       }>(
-        `select * from pg_policies where schemaname='app' and 'pertexo_app'=any(roles)`,
+        `select * from pg_policies where schemaname='app' and ('pertexo_app'=any(roles) or 'public'=any(roles))`,
       )
     ).rows;
+    await assertCatalogCoverage(admin, changed, policies);
     const client = await admin.connect();
     try {
       await client.query('create schema isolation_probe');
@@ -99,11 +107,17 @@ it('isolates every catalog-discovered workspace policy and rejects malformed set
                   [a],
                 )
               : client.query(`select id from ${target} order by id`);
-          if (context === 'malformed' && scoped)
+          const rejectsMalformed = ![
+            'auth_organization_workspaces',
+            'auth_directory_group_mappings',
+          ].includes(tablename);
+          if (context === 'malformed' && scoped && rejectsMalformed)
             await expect(read, tablename).rejects.toMatchObject({
               code: '22P02',
             });
-          else if (context === 'malformed') {
+          else if (context === 'malformed' && !rejectsMalformed) {
+            expect((await read).rows, tablename).toEqual([]);
+          } else if (context === 'malformed') {
             expect(await rowsOrInvalidUuid(read), tablename).toEqual([]);
           } else
             expect((await read).rows, tablename).toEqual(
@@ -138,6 +152,15 @@ it('isolates every catalog-discovered workspace policy and rejects malformed set
           ).rows,
           tablename,
         ).toEqual([]);
+        expect(
+          (
+            await client.query(
+              `delete from ${target} where workspace_id=$1 returning id`,
+              [b],
+            )
+          ).rows,
+          tablename,
+        ).toEqual([]);
         await client.query('rollback');
       }
       expect(
@@ -160,6 +183,41 @@ it('isolates every catalog-discovered workspace policy and rejects malformed set
     }
   });
 }, 120_000);
+
+/** Maintenance-only rows remain covered by default-deny and an explicit privilege check. */
+async function assertCatalogCoverage(
+  admin: Pool,
+  changed: readonly { tablename: string }[],
+  policies: readonly { tablename: string }[],
+): Promise<void> {
+  const actualTables = (
+    await admin.query<{ relname: string; relrowsecurity: boolean }>(
+      `select relname,relrowsecurity from pg_class where relnamespace='app'::regnamespace and relname=any($1)`,
+      [changed.map((row) => row.tablename)],
+    )
+  ).rows;
+  expect(actualTables).toHaveLength(changed.length);
+  for (const table of actualTables)
+    expect(table.relrowsecurity, table.relname).toBe(true);
+  for (const { tablename } of changed)
+    expect(
+      policies.some((p) => p.tablename === tablename) ||
+        Object.hasOwn(maintenanceOnlyTables, tablename),
+      tablename,
+    ).toBe(true);
+  for (const [tablename, reason] of Object.entries(maintenanceOnlyTables)) {
+    expect(reason.length).toBeGreaterThan(0);
+    expect(
+      changed.some((table) => table.tablename === tablename),
+      tablename,
+    ).toBe(true);
+    const access = await admin.query<{ allowed: boolean }>(
+      "select has_any_column_privilege('pertexo_app',$1::text,'SELECT,INSERT,UPDATE') or has_table_privilege('pertexo_app',$1::text,'DELETE') allowed",
+      [`app.${tablename}`],
+    );
+    expect(access.rows, tablename).toEqual([{ allowed: false }]);
+  }
+}
 
 /** A delegated policy can short-circuit before the UUID cast when no actor exists. */
 async function rowsOrInvalidUuid(query: Promise<{ rows: unknown[] }>) {
