@@ -201,3 +201,46 @@ integrationDescribe('ArtifactStore S3 integration', () => {
     }
   });
 });
+
+integrationDescribe('private storage transport', () => {
+  it('checks readiness without the public origin and signs browser URLs with it', async () => {
+    const config = parseArtifactStoreConfig({
+      ...process.env,
+      ARTIFACT_STORE_INTERNAL_ENDPOINT: process.env.ARTIFACT_STORE_ENDPOINT,
+      ARTIFACT_STORE_ENDPOINT: 'https://files.invalid',
+    });
+    const store = createArtifactStore(config);
+    const identity = { artifactId: randomUUID(), workspaceId: randomUUID() };
+    const body = Buffer.from('private transport');
+    try {
+      await expect(store.checkReadiness()).resolves.toEqual({
+        bucket: config.bucket,
+        region: config.region,
+      });
+      await store.put({
+        ...identity,
+        body: Readable.from([body]),
+        byteLength: body.length,
+        mediaType: 'text/plain',
+        sha256: createHash('sha256').update(body).digest('hex'),
+      });
+      const download = await store.beginDirectDownload({
+        ...identity,
+        expiresInSeconds: 300,
+      });
+      expect(new URL(download.url).origin).toBe('https://files.invalid');
+      const upload = await store.beginDirectUpload({
+        artifactId: randomUUID(),
+        workspaceId: identity.workspaceId,
+        byteLength: body.length,
+        mediaType: 'text/plain',
+        sha256: createHash('sha256').update(body).digest('hex'),
+        expiresInSeconds: 300,
+      });
+      expect(new URL(upload.url).origin).toBe('https://files.invalid');
+    } finally {
+      await store.delete(identity);
+      store.close();
+    }
+  });
+});

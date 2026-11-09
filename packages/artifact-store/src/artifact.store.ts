@@ -67,17 +67,30 @@ export function createArtifactStore(
         accessKeyId: config.accessKeyId,
         secretAccessKey: config.secretAccessKey,
       },
-      endpoint: config.endpoint,
+      endpoint: config.internalEndpoint ?? config.endpoint,
       forcePathStyle: config.forcePathStyle,
       region: config.region,
     });
+  // Signing uses the browser origin; server operations use the private transport.
+  const signingClient =
+    config.internalEndpoint === undefined
+      ? rawClient
+      : new S3Client({
+          credentials: {
+            accessKeyId: config.accessKeyId,
+            secretAccessKey: config.secretAccessKey,
+          },
+          endpoint: config.endpoint,
+          forcePathStyle: config.forcePathStyle,
+          region: config.region,
+        });
   const ownsClient =
     options.client === undefined || options.clientOwnership === 'owned';
   const client = new ObservedS3Client(rawClient, observer);
   const rawPresignPutObject: PutObjectPresigner =
     options.presignPutObject ??
     (async (request) =>
-      getSignedUrl(rawClient as S3Client, request.command, {
+      getSignedUrl(signingClient as S3Client, request.command, {
         expiresIn: request.expiresInSeconds,
         signableHeaders: new Set(request.signableHeaders),
         unhoistableHeaders: new Set(request.unhoistableHeaders),
@@ -89,7 +102,7 @@ export function createArtifactStore(
     client,
     presignPutObject,
     presignGetObject: createArtifactDownloadPresigner(
-      rawClient as S3Client,
+      signingClient as S3Client,
       observer,
       options.presignGetObject,
     ),

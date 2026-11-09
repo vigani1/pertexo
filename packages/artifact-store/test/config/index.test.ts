@@ -57,3 +57,14 @@ describe('parseArtifactStoreConfig', () => {
     expect(() => parseArtifactStoreConfig(environment)).toThrow();
   });
 });
+
+it('keeps the public signing origin separate from internal transport', () => {
+  const config = parseArtifactStoreConfig({
+    ...REQUIRED_ENVIRONMENT,
+    ARTIFACT_STORE_INTERNAL_ENDPOINT: 'http://storage:9000',
+  });
+  expect(config).toMatchObject({
+    endpoint: 'http://localhost:9090',
+    internalEndpoint: 'http://storage:9000',
+  });
+});
