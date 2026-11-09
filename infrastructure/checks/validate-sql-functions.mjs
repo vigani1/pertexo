@@ -56,6 +56,19 @@ export async function validateSqlFunctionInventory() {
     throw new Error(
       `SQL function allowlist has retired identities: ${missing.join(', ')}`,
     );
+  const adr = await readFile(
+    path.resolve(
+      import.meta.dirname,
+      '../../docs/adr/069-architecture-reset.md',
+    ),
+    'utf8',
+  );
+  for (const { category } of Object.values(SQL_FUNCTION_ALLOWLIST)) {
+    if (!adr.includes(`| ${category} |`))
+      throw new Error(
+        `ADR 069 does not document SQL storage category: ${category}`,
+      );
+  }
   return Object.freeze({ functionCount: functions.length });
 }
 

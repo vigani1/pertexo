@@ -16,7 +16,7 @@ export const SQL_FUNCTION_ALLOWLIST = Object.freeze({
   'app.artifact_capacity_transition()': {
     category: 'capacity counters',
     reason:
-      'Atomically charge/release artifact capacity and enforce immutable storage metadata.',
+      'Atomically charge/release artifact capacity; enforce immutable storage metadata and forbidden stored transitions, not deletion eligibility or timing.',
   },
   'app.artifact_owner_ids(jsonb,text)': {
     category: 'derived storage',
