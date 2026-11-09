@@ -10,8 +10,8 @@ changes are in scope.
   public DNS.
 - Prepare PostgreSQL init scripts under stable operator state; changing release
   paths must not change its bind mount.
-- Report missing Compose settings before pulling release images. Conditional
-  application configuration still needs full validation before pulls.
+- Validate required and conditional settings with the application parsers before
+  pulling release images, using the built operator checkout.
 - Share the migrator's history/checksum compatibility rules with the pre-stop
   release gate, preserving baseline adoption and refusing incompatible fenced retries.
 - Pending: bound local release/image retention while preserving rollback and

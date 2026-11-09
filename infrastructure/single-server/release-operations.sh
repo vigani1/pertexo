@@ -158,6 +158,8 @@ prepare_release() {
   fi
   select_release "$commit"
   preflight_settings
+  command -v node >/dev/null || { echo 'Install Node 24 and bootstrap the operator checkout before deploying; see docs/operations/single-server.md.' >&2; exit 1; }
+  node "$operator_root/infrastructure/single-server/storage/preflight.mjs" "$config"
   host_architecture=$(docker version --format '{{.Server.Arch}}')
   for image in pertexo pertexo-web; do
     reference="ghcr.io/vigani1/$image:$commit"
