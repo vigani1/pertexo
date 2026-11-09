@@ -181,9 +181,9 @@ for its CI, then tag that commit and push the tag.
 Between releases you can deploy any commit with images (`deploy.sh <full-commit>`). Those are
 tested less: nothing promises a commit's tests passed unless you check its CI run.
 
-## Migration 0111: Inbox failure-day history
+## Migration 0112: Inbox failure-day history
 
-Stop the API and workers before applying `0111_inbox_failure_days.sql` and keep
+Stop the API and workers before applying `0112_inbox_failure_days.sql` and keep
 them stopped until the new build is ready. The migration holds a share lock on
 retained runs while it backfills the last 30 UTC days into the daily projection.
 It reads all matching retained failures once; allow time proportional to that
