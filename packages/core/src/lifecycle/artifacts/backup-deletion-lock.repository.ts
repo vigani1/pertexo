@@ -18,7 +18,13 @@ export async function withBackupDeletionPause<T>(
       await client.query(`select pg_advisory_lock(${lock})`);
       return await work();
     } finally {
-      // Closing this dedicated session also releases the lock on any failure.
+      // Unlock before returning so erasure resumes at once: the server ends a
+      // closed session asynchronously. If the unlock itself fails, closing
+      // this dedicated session still releases the lock, and the work's own
+      // error must not be replaced by the unlock's.
+      await client
+        .query(`select pg_advisory_unlock(${lock})`)
+        .catch(() => undefined);
       client.release(true);
     }
   } finally {
