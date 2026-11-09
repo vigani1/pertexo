@@ -1,14 +1,7 @@
-import { expectedMigrationsAfter } from '../../../../src/testing/expected-migrations.js';
 import { randomUUID } from 'node:crypto';
-import { copyFile, mkdtemp, readdir, rm } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
 import { Pool } from 'pg';
 import { expect, it } from 'vitest';
-import {
-  migrateDatabase,
-  MIGRATIONS_DIRECTORY,
-} from '../../../../src/migrations.js';
+import { migrateDatabase } from '../../../../src/migrations.js';
 import { createDisposableDatabaseFixture } from '../../../../src/testing/postgres/disposable-database.js';
 
 it('upgrades populated human tasks without changing their decisions or context', async () => {
@@ -24,7 +17,7 @@ it('upgrades populated human tasks without changing their decisions or context',
     ownerRole: 'pertexo_owner',
     connectRoles: ['pertexo_migration', 'pertexo_app', 'pertexo_maintenance'],
   });
-  const directory = await mkdtemp(join(tmpdir(), 'pertexo-before-callbacks-'));
+
   const owner = new Pool({
     connectionString: database.databaseUrl(adminUrl),
     max: 1,
@@ -33,17 +26,14 @@ it('upgrades populated human tasks without changing their decisions or context',
   try {
     await database.create();
     created = true;
-    for (const name of await readdir(MIGRATIONS_DIRECTORY)) {
-      if (/^\d{4}_.*\.sql$/u.test(name) && name < '0048_')
-        await copyFile(join(MIGRATIONS_DIRECTORY, name), join(directory, name));
-    }
+
     const config = {
       connectionString: database.databaseUrl(migrationUrl),
       ownerRole: 'pertexo_owner',
       appRole: 'pertexo_app',
       maintenanceRole: 'pertexo_maintenance',
     };
-    await migrateDatabase(config, directory);
+    await migrateDatabase(config);
     const user = randomUUID(),
       workspace = randomUUID(),
       workflow = randomUUID(),
@@ -93,9 +83,7 @@ it('upgrades populated human tasks without changing their decisions or context',
         'select * from app.pending_run_tasks order by id',
       )
     ).rows;
-    expect(await migrateDatabase(config)).toEqual(
-      await expectedMigrationsAfter(47),
-    );
+
     const after = (
       await owner.query<Record<string, unknown>>(
         'select * from app.pending_run_tasks order by id',
@@ -119,6 +107,5 @@ it('upgrades populated human tasks without changing their decisions or context',
   } finally {
     await owner.end();
     if (created) await database.drop();
-    await rm(directory, { recursive: true, force: true });
   }
 }, 60_000);

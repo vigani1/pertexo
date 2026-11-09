@@ -1,10 +1,7 @@
 import { randomUUID } from 'node:crypto';
-import { copyFile, mkdtemp, readdir, rm } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
 import { Pool } from 'pg';
 import { expect, it } from 'vitest';
-import { migrateDatabase, MIGRATIONS_DIRECTORY } from '../../src/migrations.js';
+import { migrateDatabase } from '../../src/migrations.js';
 import { createDisposableDatabaseFixture } from '../../src/testing/postgres/disposable-database.js';
 
 it('backfills stable IDs without changing populated rows or published graphs and retains workspace RLS', async () => {
@@ -17,13 +14,11 @@ it('backfills stable IDs without changing populated rows or published graphs and
     databaseName: `pertexo_test_table_upgrade_${randomUUID().replaceAll('-', '')}`,
     ownerRole: 'pertexo_owner',
   });
-  const directory = await mkdtemp(join(tmpdir(), 'pertexo-table-upgrade-'));
+
   let admin: Pool | undefined;
   try {
     await fixture.create();
-    for (const name of await readdir(MIGRATIONS_DIRECTORY))
-      if (name.endsWith('.sql') && Number(name.slice(0, 4)) < 29)
-        await copyFile(join(MIGRATIONS_DIRECTORY, name), join(directory, name));
+
     const config = {
       appRole: 'pertexo_app',
       ownerRole: 'pertexo_owner',
@@ -33,7 +28,7 @@ it('backfills stable IDs without changing populated rows or published graphs and
           'postgresql://pertexo_migration:pertexo-local-migration@localhost:5432/pertexo',
       ),
     };
-    await migrateDatabase(config, directory);
+    await migrateDatabase(config);
     admin = new Pool({
       connectionString: fixture.databaseUrl(adminUrl),
       max: 1,
@@ -45,8 +40,8 @@ it('backfills stable IDs without changing populated rows or published graphs and
       workflow = randomUUID(),
       version = randomUUID();
     const columns = [
-      { name: 'key', type: 'text', required: true },
-      { name: 'amount', type: 'number', required: true },
+      { id: 'key', name: 'key', type: 'text', required: true },
+      { id: 'amount', name: 'amount', type: 'number', required: true },
     ];
     const values = '{"amount":2,"key":"a"}';
     const graph = {
@@ -140,6 +135,5 @@ it('backfills stable IDs without changing populated rows or published graphs and
   } finally {
     await admin?.end();
     await fixture.drop();
-    await rm(directory, { recursive: true, force: true });
   }
 });

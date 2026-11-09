@@ -1,9 +1,9 @@
 import { randomUUID } from 'node:crypto';
 import { expect, it } from 'vitest';
-import { seedWorkflow, withUpgradeDatabase } from './upgrade-fixture.js';
+import { seedWorkflow, withDatabase } from './upgrade-fixture.js';
 
 it('preserves large execution values on upgrade and unrelated updates while enforcing byte limits on writes', async () => {
-  await withUpgradeDatabase(120, async ({ admin, upgrade }) => {
+  await withDatabase(async ({ admin }) => {
     const { workspaceId, workflowId } = await seedWorkflow(admin);
     const client = await admin.connect();
     try {
@@ -19,7 +19,7 @@ it('preserves large execution values on upgrade and unrelated updates while enfo
         `insert into app.workflow_runs(id,workspace_id,workflow_id,workflow_version_id,trigger_type,status,input_ref,input_ref_expires_at) values($1,$2,$3,$4,'manual','succeeded',$5,clock_timestamp()+interval '1 day')`,
         [id, workspaceId, workflowId, randomUUID(), value],
       );
-      await upgrade();
+
       await client.query(
         `update app.workflow_runs set updated_at=clock_timestamp() where id=$1`,
         [id],

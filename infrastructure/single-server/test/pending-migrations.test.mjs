@@ -60,3 +60,14 @@ test('rejects invalid history without printing its contents', (t) => {
     assert.equal(result.stderr.includes(input), false);
   }
 });
+
+test('backs up before adopting a recorded history containing retired migration names', (t) => {
+  const result = image(t)(
+    JSON.stringify(['0000_baseline.sql', '0122_retired.sql']),
+  );
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(
+    result.stdout,
+    '0000_baseline.sql\n0001_first.sql\n0002_second.sql\n',
+  );
+});

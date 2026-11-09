@@ -1,12 +1,11 @@
 import type { Pool, PoolClient } from 'pg';
 import { expect, it } from 'vitest';
-import { expectedMigrationsAfter } from '../../src/testing/expected-migrations.js';
 import { ARTIFACT_OWNER_SOURCES } from '../../src/schema/artifacts/references.js';
-import { withUpgradeDatabase } from '../platform/migrations/upgrade-fixture.js';
+import { withDatabase } from '../platform/migrations/upgrade-fixture.js';
 import { seedReferenceIndexOwners } from './reference-index.fixture.js';
 
 it('keeps the index equal to a JSON recompute through writes to every owner family', async () => {
-  await withUpgradeDatabase(110, async ({ admin, upgrade }) => {
+  await withDatabase(async ({ admin }) => {
     const { workspaceId, artifactId, businessId, descriptor } =
       await seedReferenceIndexOwners(admin);
     const stored = async (connection: Pool | PoolClient = admin) =>
@@ -35,7 +34,7 @@ it('keeps the index equal to a JSON recompute through writes to every owner fami
     };
     const expected = await recompute();
     expect(expected).toHaveLength(58);
-    expect(await upgrade()).toEqual(await expectedMigrationsAfter(110));
+
     expect(await stored()).toEqual(expected);
     async function exerciseSlotTransitions(
       source: (typeof ARTIFACT_OWNER_SOURCES)[number],

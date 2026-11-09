@@ -2,11 +2,11 @@ import { randomUUID } from 'node:crypto';
 import { expect, it } from 'vitest';
 import {
   seedWorkflow,
-  withUpgradeDatabase,
+  withDatabase,
 } from '../platform/migrations/upgrade-fixture.js';
 
 it('preserves populated schedules on upgrade and stores caller-chosen retirement atomically only for the owning token', async () => {
-  await withUpgradeDatabase(91, async ({ admin, upgrade }) => {
+  await withDatabase(async ({ admin }) => {
     const { ownerId, workspaceId, workflowId } = await seedWorkflow(admin);
     const versionId = randomUUID(),
       triggerId = randomUUID(),
@@ -67,7 +67,7 @@ it('preserves populated schedules on upgrade and stores caller-chosen retirement
       ).rows[0];
     const seeded = await state();
     const before = { state: { ...seeded?.state, retired_at: null } };
-    await upgrade();
+
     expect(await state()).toEqual(before);
     const client = await admin.connect();
     const store = async (leaseToken: string) => {

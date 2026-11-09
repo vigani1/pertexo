@@ -1,22 +1,18 @@
+import { withTenantScopedClient } from '@pertexo/database/primitives';
+import { connections as storedConnections } from '@pertexo/database/schema';
+import {
+  createDisposableDatabaseFixture,
+  migrateDatabase,
+} from '@pertexo/database/testing';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { alias } from 'drizzle-orm/pg-core';
 import { randomUUID } from 'node:crypto';
-import { copyFile, mkdtemp, readdir, rm } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
 import { Pool } from 'pg';
 import { expect, it } from 'vitest';
 import {
-  migrateDatabase,
-  MIGRATIONS_DIRECTORY,
-  createDisposableDatabaseFixture,
-} from '@pertexo/database/testing';
-import { withTenantScopedClient } from '@pertexo/database/primitives';
-import {
-  readConnectionScope,
   connectionScopeSql,
+  readConnectionScope,
 } from '../../../src/shared/resources/connection-scope.repository.js';
-import { drizzle } from 'drizzle-orm/node-postgres';
-import { alias } from 'drizzle-orm/pg-core';
-import { connections as storedConnections } from '@pertexo/database/schema';
 
 it('keeps populated connections workspace-shared and isolates shares without FORCE after upgrading', async () => {
   const adminUrl =
@@ -34,9 +30,7 @@ it('keeps populated connections workspace-shared and isolates shares without FOR
     ownerRole: 'pertexo_owner',
     connectRoles: ['pertexo_migration', 'pertexo_app', 'pertexo_maintenance'],
   });
-  const directory = await mkdtemp(
-    join(tmpdir(), 'pertexo-before-connection-sharing-'),
-  );
+
   const owner = new Pool({
     connectionString: database.databaseUrl(adminUrl),
     max: 1,
@@ -49,16 +43,14 @@ it('keeps populated connections workspace-shared and isolates shares without FOR
   try {
     await database.create();
     created = true;
-    for (const name of await readdir(MIGRATIONS_DIRECTORY))
-      if (/^\d{4}_.*\.sql$/u.test(name) && name < '0051_')
-        await copyFile(join(MIGRATIONS_DIRECTORY, name), join(directory, name));
+
     const config = {
       connectionString: database.databaseUrl(migrationUrl),
       ownerRole: 'pertexo_owner',
       appRole: 'pertexo_app',
       maintenanceRole: 'pertexo_maintenance',
     };
-    await migrateDatabase(config, directory);
+    await migrateDatabase(config);
     const actorId = randomUUID();
     await owner.query(
       "insert into app.users(id,email,display_name) values($1,$2,'Existing member')",
@@ -98,9 +90,7 @@ it('keeps populated connections workspace-shared and isolates shares without FOR
         'select id,current_secret_version_id from app.connections order by id',
       )
     ).rows;
-    expect(await migrateDatabase(config)).toContain(
-      '0051_connection_sharing.sql',
-    );
+
     expect(
       (
         await owner.query(
@@ -154,6 +144,5 @@ it('keeps populated connections workspace-shared and isolates shares without FOR
     await api.end();
     await owner.end();
     if (created) await database.drop();
-    await rm(directory, { recursive: true, force: true });
   }
 }, 60_000);

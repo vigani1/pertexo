@@ -1,5 +1,15 @@
 // Broad test and migration-fixture surface; production code must use role-owned package subpaths instead.
 export {
+  parseDatabaseConfig,
+  parseMaintenanceDatabaseConfig,
+  parseMigrationConfig,
+  parseOperatorDatabaseConfig,
+} from './config.js';
+export type { DatabaseConfig, MigrationConfig } from './config.js';
+export { createWorkspaceDatabase } from './database.js';
+export type { WorkspaceDatabase } from './database.js';
+export { MIGRATIONS_DIRECTORY, migrateDatabase } from './migrations.js';
+export {
   canonicalOutboxPayloadChecksum,
   insertOutboxEvent,
 } from './outbox/events.repository.js';
@@ -7,26 +17,18 @@ export type {
   InsertedOutboxEvent,
   OutboxEventInput,
 } from './outbox/events.repository.js';
+export type { DatabaseReadiness } from './platform/database-platform.types.js';
+export { withDatabaseDeadlineBudget } from './platform/pool/policy.js';
 export {
-  parseDatabaseConfig,
-  parseMaintenanceDatabaseConfig,
-  parseMigrationConfig,
-  parseOperatorDatabaseConfig,
-} from './config.js';
-export type { DatabaseConfig, MigrationConfig } from './config.js';
-export {
-  createDatabasePool,
   DATABASE_METRIC_NAME,
+  createDatabasePool,
   type DatabasePoolOptions,
   type DatabasePoolRole,
 } from './platform/pool/telemetry/create-pool.js';
-export { createWorkspaceDatabase } from './database.js';
-export type { WorkspaceDatabase } from './database.js';
 export {
   EXPECTED_MIGRATION_HEAD,
   checkDatabaseReadiness,
 } from './platform/readiness.repository.js';
-export type { DatabaseReadiness } from './platform/database-platform.types.js';
 export {
   artifacts,
   auditEvents,
@@ -46,25 +48,23 @@ export {
   triggerSchedules,
   usageEvents,
   users,
-  workspaceMemberships,
-  workspaces,
-  workspaceCreationIdempotencyRecords,
-  workflowDrafts,
-  workflowIntegrationUsage,
-  workflowVersions,
-  workflows,
-  workflowRuns,
-  workflowTriggers,
   webhookTriggerDeliveries,
   webhookTriggerEndpoints,
   webhookTriggerReplayRecords,
   webhookTriggerSecretVersions,
+  workflowDrafts,
+  workflowIntegrationUsage,
+  workflowRuns,
+  workflowTriggers,
+  workflowVersions,
+  workflows,
+  workspaceCreationIdempotencyRecords,
+  workspaceMemberships,
+  workspaces,
 } from './schema.js';
-export { migrateDatabase, MIGRATIONS_DIRECTORY } from './migrations.js';
-export { withDatabaseDeadlineBudget } from './platform/pool/policy.js';
 export {
-  insertTokenRow,
   OAUTH2_TABLES,
+  insertTokenRow,
   rowCounts,
   seedOAuth2Connection,
   seedWorkspace,
@@ -75,4 +75,3 @@ export {
   createDisposableDatabaseFixture,
   dropDisconnectedDatabase,
 } from './testing/postgres/disposable-database.js';
-export { expectedMigrationsAfter } from './testing/expected-migrations.js';

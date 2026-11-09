@@ -1,9 +1,9 @@
 import { randomUUID } from 'node:crypto';
 import { expect, it } from 'vitest';
-import { seedWorkflow, withUpgradeDatabase } from './upgrade-fixture.js';
+import { seedWorkflow, withDatabase } from './upgrade-fixture.js';
 
 it('applies earlier vacuum and analyze thresholds to hot tables without changing retained executions', async () => {
-  await withUpgradeDatabase(121, async ({ admin, upgrade }) => {
+  await withDatabase(async ({ admin }) => {
     const { workspaceId, workflowId } = await seedWorkflow(admin);
     const id = randomUUID();
     await admin.query("select set_config('app.workspace_id',$1,false)", [
@@ -13,7 +13,7 @@ it('applies earlier vacuum and analyze thresholds to hot tables without changing
       `insert into app.workflow_runs(id,workspace_id,workflow_id,workflow_version_id,trigger_type,status) values($1,$2,$3,$4,'manual','succeeded')`,
       [id, workspaceId, workflowId, randomUUID()],
     );
-    await upgrade();
+
     expect(
       (await admin.query(`select id from app.workflow_runs where id=$1`, [id]))
         .rows,

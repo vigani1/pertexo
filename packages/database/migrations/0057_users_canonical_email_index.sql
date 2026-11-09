@@ -1,1 +1,0 @@
-CREATE INDEX "users_email_canonical_idx" ON "app"."users" USING btree (lower(normalize((email)::text,NFKC)));

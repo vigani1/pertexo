@@ -1,14 +1,7 @@
-import { expectedMigrationsAfter } from '../../../src/testing/expected-migrations.js';
 import { randomUUID } from 'node:crypto';
-import { mkdtemp, readdir, copyFile, rm } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
 import { Pool } from 'pg';
 import { expect, it } from 'vitest';
-import {
-  migrateDatabase,
-  MIGRATIONS_DIRECTORY,
-} from '../../../src/migrations.js';
+import { migrateDatabase } from '../../../src/migrations.js';
 import { createDisposableDatabaseFixture } from '../../../src/testing/postgres/disposable-database.js';
 
 it('upgrades password accounts with two-factor off, isolated auth grants and cascading factor deletion', async () => {
@@ -21,13 +14,11 @@ it('upgrades password accounts with two-factor off, isolated auth grants and cas
     databaseName: `pertexo_test_factor_${randomUUID().replaceAll('-', '')}`,
     ownerRole: 'pertexo_owner',
   });
-  const directory = await mkdtemp(join(tmpdir(), 'pertexo-factor-upgrade-'));
+
   let admin: Pool | undefined;
   try {
     await fixture.create();
-    for (const name of await readdir(MIGRATIONS_DIRECTORY))
-      if (name.endsWith('.sql') && name < '0040_')
-        await copyFile(join(MIGRATIONS_DIRECTORY, name), join(directory, name));
+
     const migration = {
       appRole: 'pertexo_app',
       ownerRole: 'pertexo_owner',
@@ -37,7 +28,7 @@ it('upgrades password accounts with two-factor off, isolated auth grants and cas
           'postgresql://pertexo_migration:pertexo-local-migration@localhost:5432/pertexo',
       ),
     };
-    await migrateDatabase(migration, directory);
+    await migrateDatabase(migration);
     admin = new Pool({
       connectionString: fixture.databaseUrl(adminUrl),
       max: 1,
@@ -52,9 +43,7 @@ it('upgrades password accounts with two-factor off, isolated auth grants and cas
       "insert into app.auth_accounts(id,user_id,account_id,provider_id,password) values($1,$2,$3,'credential','preserved-password-hash')",
       [accountId, id, id],
     );
-    expect(await migrateDatabase(migration)).toEqual(
-      await expectedMigrationsAfter(39),
-    );
+
     expect(
       (
         await admin.query(
@@ -109,6 +98,5 @@ it('upgrades password accounts with two-factor off, isolated auth grants and cas
   } finally {
     await admin?.end();
     await fixture.drop();
-    await rm(directory, { recursive: true, force: true });
   }
 }, 30_000);

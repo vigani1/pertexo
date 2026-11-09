@@ -1,19 +1,14 @@
-import { randomUUID } from 'node:crypto';
-import { mkdtemp, readdir, copyFile, rm } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
-import { Pool } from 'pg';
-import { expect, it } from 'vitest';
 import {
   createDisposableDatabaseFixture,
   migrateDatabase,
-  MIGRATIONS_DIRECTORY,
-  expectedMigrationsAfter,
   parseDatabaseConfig,
 } from '@pertexo/database/testing';
+import { randomUUID } from 'node:crypto';
+import { Pool } from 'pg';
+import { expect, it } from 'vitest';
 import { createSystemMailDeliveryStore } from '../../src/mail/system-mail.store.js';
 
-it('preserves mail identities through the rename and old messages through subsequent upgrades', async () => {
+it('claims sealed mail payloads from the baseline with narrow enqueue, settle and retention privileges', async () => {
   const adminUrl =
     process.env.DATABASE_ADMIN_URL ??
     'postgresql://postgres:pertexo-local-superuser@localhost:5432/postgres';
@@ -23,14 +18,12 @@ it('preserves mail identities through the rename and old messages through subseq
     databaseName: `pertexo_test_mail_upgrade_${randomUUID().replaceAll('-', '')}`,
     ownerRole: 'pertexo_owner',
   });
-  const directory = await mkdtemp(join(tmpdir(), 'pertexo-mail-upgrade-'));
+
   let admin: Pool | undefined;
   let worker: ReturnType<typeof createSystemMailDeliveryStore> | undefined;
   try {
     await fixture.create();
-    for (const name of await readdir(MIGRATIONS_DIRECTORY))
-      if (/^00(?:0[0-9]|1[0-6])_.*\.sql$/u.test(name))
-        await copyFile(join(MIGRATIONS_DIRECTORY, name), join(directory, name));
+
     const migration = {
       appRole: 'pertexo_app',
       ownerRole: 'pertexo_owner',
@@ -40,108 +33,23 @@ it('preserves mail identities through the rename and old messages through subseq
           'postgresql://pertexo_migration:pertexo-local-migration@localhost:5432/pertexo',
       ),
     };
-    await migrateDatabase(migration, directory);
+    await migrateDatabase(migration);
     admin = new Pool({
       connectionString: fixture.databaseUrl(adminUrl),
       max: 1,
     });
     const id = randomUUID();
     await admin.query(
-      "insert into app.authentication_mail_deliveries(id,purpose,expires_at,payload_ciphertext,payload_nonce,payload_tag,payload_key_version) values($1,'workspace_notice',clock_timestamp()+interval '1 day','preserved-ciphertext','nonce','tag','old-key')",
+      "insert into app.system_mail_deliveries(id,purpose,expires_at,payload_ciphertext,payload_nonce,payload_tag,payload_key_version) values($1,'workspace_notice',clock_timestamp()+interval '1 day','preserved-ciphertext','nonce','tag','old-key')",
       [id],
     );
     const row = await admin.query<Record<string, unknown>>(
-      'select * from app.authentication_mail_deliveries where id=$1',
+      'select * from app.system_mail_deliveries where id=$1',
       [id],
     );
-    const inspector = admin;
-    const catalog = async (table: string) => ({
-      relation: (
-        await inspector.query<{ relforcerowsecurity: boolean }>(
-          'select oid,relowner,relacl,relrowsecurity,relforcerowsecurity from pg_class where oid=$1::regclass',
-          [table],
-        )
-      ).rows,
-      columns: (
-        await inspector.query<{ attnum: number; attacl: string | null }>(
-          'select attnum,attacl from pg_attribute where attrelid=$1::regclass and attnum>0 order by attnum',
-          [table],
-        )
-      ).rows,
-      indexes: (
-        await inspector.query(
-          'select indexrelid from pg_index where indrelid=$1::regclass order by indexrelid',
-          [table],
-        )
-      ).rows,
-      constraints: (
-        await inspector.query(
-          'select oid,contype,confrelid from pg_constraint where conrelid=$1::regclass or confrelid=$1::regclass order by oid',
-          [table],
-        )
-      ).rows,
-    });
-    const before = await catalog('app.authentication_mail_deliveries');
-    await copyFile(
-      join(MIGRATIONS_DIRECTORY, '0017_system_mail_deliveries.sql'),
-      join(directory, '0017_system_mail_deliveries.sql'),
-    );
-    expect(await migrateDatabase(migration, directory)).toEqual([
-      '0017_system_mail_deliveries.sql',
+    expect(row.rows).toEqual([
+      expect.objectContaining({ id, had_uncertain_attempt: false }),
     ]);
-    expect(await catalog('app.system_mail_deliveries')).toEqual(before);
-    for (const name of await readdir(MIGRATIONS_DIRECTORY))
-      if (name.endsWith('.sql') && name <= '0115_form_capability.sql')
-        await copyFile(join(MIGRATIONS_DIRECTORY, name), join(directory, name));
-    expect(await migrateDatabase(migration, directory)).toEqual(
-      (await expectedMigrationsAfter(17)).filter(
-        (name) => name <= '0115_form_capability.sql',
-      ),
-    );
-    const beforeUpgrade = (
-      await admin.query(
-        'select ctid::text from app.system_mail_deliveries where id=$1',
-        [id],
-      )
-    ).rows;
-    expect(await migrateDatabase(migration)).toEqual(
-      await expectedMigrationsAfter(115),
-    );
-    expect(
-      (
-        await admin.query(
-          'select ctid::text from app.system_mail_deliveries where id=$1',
-          [id],
-        )
-      ).rows,
-    ).toEqual(beforeUpgrade);
-    const after = await catalog('app.system_mail_deliveries');
-    // Step 6 removes FORCE row security; nothing else about the table changes.
-    expect(after.relation).toEqual(
-      before.relation.map((relation) => ({
-        ...relation,
-        relforcerowsecurity: false,
-      })),
-    );
-    expect(after.columns).toEqual([
-      ...before.columns,
-      {
-        attnum: before.columns.length + 1,
-        attacl:
-          '{pertexo_app=w/pertexo_owner,pertexo_maintenance=w/pertexo_owner}',
-      },
-    ]);
-    expect(after.indexes).toEqual(before.indexes);
-    expect(
-      (
-        await admin.query(
-          'select * from app.system_mail_deliveries where id=$1',
-          [id],
-        )
-      ).rows,
-    ).toEqual(
-      row.rows.map((value) => ({ ...value, had_uncertain_attempt: false })),
-    );
     expect(
       (
         await admin.query(
@@ -184,6 +92,5 @@ it('preserves mail identities through the rename and old messages through subseq
     await worker?.close();
     await admin?.end();
     await fixture.drop();
-    await rm(directory, { recursive: true, force: true });
   }
 }, 60000);

@@ -1,15 +1,11 @@
-import { randomUUID } from 'node:crypto';
-import { copyFile, mkdtemp, readdir, rm } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
-import { Pool } from 'pg';
-import { expect, it } from 'vitest';
 import {
   createDisposableDatabaseFixture,
   migrateDatabase,
-  MIGRATIONS_DIRECTORY,
   parseDatabaseConfig,
 } from '@pertexo/database/testing';
+import { randomUUID } from 'node:crypto';
+import { Pool } from 'pg';
+import { expect, it } from 'vitest';
 import { createWorkflowTriggerPauseFoldStore } from '../../../src/triggers/pause/fold.store.js';
 
 it('continues a populated 0084 streak after upgrade and clears only its opaque carry when an older success arrives', async () => {
@@ -22,7 +18,7 @@ it('continues a populated 0084 streak after upgrade and clears only its opaque c
     connectRoles: ['pertexo_migration', 'pertexo_app', 'pertexo_maintenance'],
     ownerRole: 'pertexo_owner',
   });
-  const directory = await mkdtemp(join(tmpdir(), 'pertexo-pause-upgrade-'));
+
   const config = {
     appRole: 'pertexo_app',
     ownerRole: 'pertexo_owner',
@@ -39,10 +35,8 @@ it('continues a populated 0084 streak after upgrade and clears only its opaque c
   let fold: ReturnType<typeof createWorkflowTriggerPauseFoldStore> | undefined;
   try {
     await fixture.create();
-    for (const name of await readdir(MIGRATIONS_DIRECTORY))
-      if (/^\d{4}_.*\.sql$/u.test(name) && Number(name.slice(0, 4)) <= 84)
-        await copyFile(join(MIGRATIONS_DIRECTORY, name), join(directory, name));
-    await migrateDatabase(config, directory);
+
+    await migrateDatabase(config);
     const owner = randomUUID(),
       workspace = randomUUID(),
       workflow = randomUUID(),
@@ -62,8 +56,8 @@ it('continues a populated 0084 streak after upgrade and clears only its opaque c
         [id, workspace, owner],
       );
     await admin.query(
-      `insert into app.workflow_failure_streaks(workspace_id,workflow_id,consecutive_failures,last_run_id,last_ended_at,resumed_after)
-      values($1,$2,7,$3,'2026-10-01T01:00:00.123456Z','2026-09-30T00:00:00.123456Z'),($1,$4,0,null,null,null)`,
+      `insert into app.workflow_failure_streaks(workspace_id,workflow_id,consecutive_failures,legacy_failures,last_run_id,last_ended_at,resumed_after)
+      values($1,$2,7,7,$3,'2026-10-01T01:00:00.123456Z','2026-09-30T00:00:00.123456Z'),($1,$4,0,0,null,null,null)`,
       [workspace, workflow, randomUUID(), zero],
     );
     await admin.query(
@@ -154,6 +148,5 @@ it('continues a populated 0084 streak after upgrade and clears only its opaque c
     await fold?.close();
     await admin.end();
     await fixture.drop();
-    await rm(directory, { recursive: true, force: true });
   }
 }, 60_000);

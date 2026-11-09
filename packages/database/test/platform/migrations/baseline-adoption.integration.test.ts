@@ -2,10 +2,11 @@ import { execFileSync } from 'node:child_process';
 import { readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
+import type { Pool } from 'pg';
 import { expect, it } from 'vitest';
 
 import { migrateDatabase } from '../../../src/migrations.js';
-import { seedWorkflow, withUpgradeDatabase } from './upgrade-fixture.js';
+import { seedWorkflow, withDatabase } from './upgrade-fixture.js';
 
 const history = JSON.parse(
   await readFile(
@@ -15,7 +16,8 @@ const history = JSON.parse(
 ) as { name: string; checksum: string }[];
 
 it('adopts the full history without executing baseline SQL, retaining data and applying later migrations', async () => {
-  await withUpgradeDatabase(122, async ({ admin, config, directory }) => {
+  await withDatabase(async ({ admin, config, directory }) => {
+    await recordLegacyHistory(admin);
     const ids = await seedWorkflow(admin);
     const before = (await admin.query('select * from app.workflows')).rows;
     const database = (
@@ -51,7 +53,8 @@ it('adopts the full history without executing baseline SQL, retaining data and a
         .join('\n');
     const catalogBefore = catalog();
     const dataBefore = catalog('--data-only');
-    for (const row of history) await rm(join(directory, row.name));
+    for (const row of history)
+      await rm(join(directory, row.name), { force: true });
     await writeFile(join(directory, '0000_baseline.sql'), 'select 1/0;');
     await expect(migrateDatabase(config, directory)).resolves.toEqual([]);
     expect(catalog()).toEqual(catalogBefore);
@@ -84,7 +87,8 @@ it('adopts the full history without executing baseline SQL, retaining data and a
 it.each(['partial', 'baseline-only', 'unknown', 'checksum'] as const)(
   'refuses %s history without changing its receipts or data',
   async (kind) => {
-    await withUpgradeDatabase(122, async ({ admin, config, directory }) => {
+    await withDatabase(async ({ admin, config, directory }) => {
+      await recordLegacyHistory(admin);
       await seedWorkflow(admin);
       if (kind === 'partial')
         await admin.query(
@@ -108,7 +112,8 @@ it.each(['partial', 'baseline-only', 'unknown', 'checksum'] as const)(
         )
       ).rows;
       const data = (await admin.query('select * from app.workflows')).rows;
-      for (const row of history) await rm(join(directory, row.name));
+      for (const row of history)
+        await rm(join(directory, row.name), { force: true });
       await writeFile(join(directory, '0000_baseline.sql'), 'select 1/0;');
       await expect(migrateDatabase(config, directory)).rejects.toThrow(
         {
@@ -133,17 +138,28 @@ it.each(['partial', 'baseline-only', 'unknown', 'checksum'] as const)(
 );
 
 it('applies the baseline to an empty database', async () => {
-  await withUpgradeDatabase(-1, async ({ admin, config, directory }) => {
-    await writeFile(
-      join(directory, '0000_baseline.sql'),
-      'create table public.baseline_values(value integer); insert into public.baseline_values values(42);',
-    );
-    await expect(migrateDatabase(config, directory)).resolves.toEqual([
-      '0000_baseline.sql',
-    ]);
-    expect(
-      (await admin.query('select * from public.baseline_values')).rows,
-    ).toEqual([{ value: 42 }]);
-    await expect(migrateDatabase(config, directory)).resolves.toEqual([]);
-  });
+  await withDatabase(
+    async ({ admin, config, directory }) => {
+      await writeFile(
+        join(directory, '0000_baseline.sql'),
+        'create table public.baseline_values(value integer); insert into public.baseline_values values(42);',
+      );
+      await expect(migrateDatabase(config, directory)).resolves.toEqual([
+        '0000_baseline.sql',
+      ]);
+      expect(
+        (await admin.query('select * from public.baseline_values')).rows,
+      ).toEqual([{ value: 42 }]);
+      await expect(migrateDatabase(config, directory)).resolves.toEqual([]);
+    },
+    { migrate: false },
+  );
 });
+
+async function recordLegacyHistory(admin: Pool) {
+  await admin.query('delete from pertexo_internal.schema_migrations');
+  await admin.query(
+    'insert into pertexo_internal.schema_migrations(name,checksum) select name,checksum from jsonb_to_recordset($1::jsonb) as history(name text,checksum text)',
+    [JSON.stringify(history)],
+  );
+}

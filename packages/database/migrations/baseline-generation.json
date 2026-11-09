@@ -1,0 +1,15 @@
+{
+  "drizzleKit": "0.31.11",
+  "sourceCommit": "8cf2beed4f38b24b3aa18b86b7b74cb2e031479d",
+  "schemaSnapshotSha256": "b278729bbbbbb8c86efc2d04f6f3b85a473d4ef56e6c34272804841996739bdc",
+  "drizzleSqlSha256": "ead5f8e7bb7fba3293de92c084fbefa6fe279b60647604e79dedec2eb6f72592",
+  "generationCommand": "pnpm --filter @pertexo/database exec drizzle-kit generate --dialect=postgresql --schema='./src/schema/**/*.ts' --out=<empty-directory>",
+  "supplement": [
+    "Keep historical physical column order and renamed NOT NULL constraints.",
+    "Retain catalog functions, foreign keys, covering/partial indexes, triggers, policies, ACLs, reloptions and comments.",
+    "Use original ROW DISTINCT trigger predicates and partial-index expressions to preserve PostgreSQL expression trees.",
+    "Retain pertexo_internal.write_probe and the two singleton seeds.",
+    "Create pending_run_tasks_node_idx after general workspace indexes, preserving the historical empty-table FK plan."
+  ],
+  "catalogComparison": "Fresh baseline matches the committed 0122 schema.sql byte for byte."
+}

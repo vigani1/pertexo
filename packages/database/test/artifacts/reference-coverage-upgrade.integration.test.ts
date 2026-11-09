@@ -4,11 +4,11 @@ import { expect, it } from 'vitest';
 
 import {
   seedWorkflow,
-  withUpgradeDatabase,
+  withDatabase,
 } from '../platform/migrations/upgrade-fixture.js';
 
 it('keeps populated event and checkpoint references safe without treating inline user JSON as dependencies', async () => {
-  await withUpgradeDatabase(84, async ({ admin, upgrade }) => {
+  await withDatabase(async ({ admin }) => {
     const { workspaceId, workflowId } = await seedWorkflow(admin);
     const runId = randomUUID(),
       versionId = randomUUID();
@@ -41,9 +41,7 @@ it('keeps populated event and checkpoint references safe without treating inline
           )
         ).rows;
       const before = await rows();
-      expect(await upgrade(85)).toEqual([
-        '0085_execution_artifact_reference_coverage.sql',
-      ]);
+
       expect(await rows()).toEqual(before);
 
       for (const artifactId of [

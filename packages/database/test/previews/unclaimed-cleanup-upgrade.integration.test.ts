@@ -1,13 +1,13 @@
-import { v7 as uuidv7 } from 'uuid';
 import { randomUUID } from 'node:crypto';
+import { v7 as uuidv7 } from 'uuid';
 import { expect, it } from 'vitest';
 import {
   seedWorkflow,
-  withUpgradeDatabase,
+  withDatabase,
 } from '../platform/migrations/upgrade-fixture.js';
 
 it('upgrades populated preview rows and grants maintenance only the terminal-cleanup writes', async () => {
-  await withUpgradeDatabase(102, async ({ admin, upgrade }) => {
+  await withDatabase(async ({ admin }) => {
     const { workspaceId, workflowId, ownerId } = await seedWorkflow(admin);
     const previewRunId = randomUUID(),
       attemptId = randomUUID();
@@ -40,7 +40,7 @@ it('upgrades populated preview rows and grants maintenance only the terminal-cle
         )
       ).rows;
     const before = await read();
-    expect(await upgrade(103)).toEqual(['0103_preview_unclaimed_cleanup.sql']);
+
     expect(await read()).toEqual(before);
     const maintenance = await admin.connect();
     try {

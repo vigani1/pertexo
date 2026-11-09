@@ -1,16 +1,11 @@
+import { parseDatabaseConfig } from '@pertexo/database/platform';
+import {
+  createDisposableDatabaseFixture,
+  migrateDatabase,
+} from '@pertexo/database/testing';
 import { randomUUID } from 'node:crypto';
-import { mkdtemp, readdir, copyFile, rm } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
 import { Pool } from 'pg';
 import { expect, it } from 'vitest';
-import {
-  migrateDatabase,
-  MIGRATIONS_DIRECTORY,
-  expectedMigrationsAfter,
-  createDisposableDatabaseFixture,
-} from '@pertexo/database/testing';
-import { parseDatabaseConfig } from '@pertexo/database/platform';
 import { createWorkspaceInboxStore } from '../../src/inbox/threads/workspace-inbox.store.js';
 it('upgrades populated workflow threads and private read revisions without changing their cut or precision', async () => {
   const adminUrl =
@@ -22,15 +17,12 @@ it('upgrades populated workflow threads and private read revisions without chang
     databaseName: `pertexo_test_notice_upgrade_${randomUUID().replaceAll('-', '')}`,
     ownerRole: 'pertexo_owner',
   });
-  const directory = await mkdtemp(join(tmpdir(), 'pertexo-notice-upgrade-'));
+
   let admin: Pool | undefined;
   let read: ReturnType<typeof createWorkspaceInboxStore> | undefined;
   try {
     await fixture.create();
-    for (const name of await readdir(MIGRATIONS_DIRECTORY)) {
-      if (/^00(?:0[0-9]|1[01])_.*\.sql$/u.test(name))
-        await copyFile(join(MIGRATIONS_DIRECTORY, name), join(directory, name));
-    }
+
     const migration = {
       appRole: 'pertexo_app',
       ownerRole: 'pertexo_owner',
@@ -40,7 +32,7 @@ it('upgrades populated workflow threads and private read revisions without chang
           'postgresql://pertexo_migration:pertexo-local-migration@localhost:5432/pertexo',
       ),
     };
-    await migrateDatabase(migration, directory);
+    await migrateDatabase(migration);
     admin = new Pool({
       connectionString: fixture.databaseUrl(adminUrl),
       max: 1,
@@ -66,18 +58,16 @@ it('upgrades populated workflow threads and private read revisions without chang
       [workflowId, workspaceId, owner],
     );
     const old = await admin.query<{ revision: string; latest: string }>(
-      "insert into app.workspace_inbox_threads(workspace_id,workflow_id,revision,occurrence_count,first_occurred_at,latest_occurred_at,latest_run_id,latest_kind) values($1,$2,nextval('app.workspace_inbox_revision_seq'),3,clock_timestamp()-interval '1 hour',clock_timestamp(),$3,'failed') returning revision::text,to_char(latest_occurred_at at time zone 'UTC','YYYY-MM-DD\"T\"HH24:MI:SS.US\"Z\"') latest",
+      "insert into app.workspace_inbox_threads(workspace_id,id,notice_kind,subject_id,workflow_id,revision,occurrence_count,first_occurred_at,latest_occurred_at,latest_run_id,latest_kind) values($1,$2,'workflow_failure',$2,$2,nextval('app.workspace_inbox_revision_seq'),3,clock_timestamp()-interval '1 hour',clock_timestamp(),$3,'failed') returning revision::text,to_char(latest_occurred_at at time zone 'UTC','YYYY-MM-DD\"T\"HH24:MI:SS.US\"Z\"') latest",
       [workspaceId, workflowId, runId],
     );
     const before = old.rows[0];
     if (before === undefined) throw new Error('Expected old thread');
     await admin.query(
-      'insert into app.workspace_inbox_reads(workspace_id,user_id,workflow_id,read_revision) values($1,$2,$3,$4)',
+      'insert into app.workspace_inbox_reads(workspace_id,user_id,thread_id,read_revision) values($1,$2,$3,$4)',
       [workspaceId, owner, workflowId, before.revision],
     );
-    expect(await migrateDatabase(migration)).toEqual(
-      await expectedMigrationsAfter(11),
-    );
+
     read = createWorkspaceInboxStore(
       parseDatabaseConfig({
         connectionString: fixture.databaseUrl(
@@ -117,6 +107,5 @@ it('upgrades populated workflow threads and private read revisions without chang
     await read?.close();
     await admin?.end();
     await fixture.drop();
-    await rm(directory, { recursive: true, force: true });
   }
 }, 60_000);

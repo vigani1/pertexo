@@ -1,1 +1,0 @@
-CREATE INDEX "workflow_versions_reuse_idx" ON "app"."workflow_versions" USING btree ("workspace_id","workflow_id","checksum","version_number" DESC NULLS FIRST);

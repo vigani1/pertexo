@@ -3,11 +3,11 @@ import { expect, it } from 'vitest';
 import { canonicalOutboxPayloadChecksum } from '../../src/primitives.js';
 import {
   seedWorkflow,
-  withUpgradeDatabase,
+  withDatabase,
 } from '../platform/migrations/upgrade-fixture.js';
 
 it('retains a possibly dispatched notification on upgrade and exposes only a locked storage claim across workspaces', async () => {
-  await withUpgradeDatabase(98, async ({ admin, upgrade }) => {
+  await withDatabase(async ({ admin }) => {
     const { ownerId, workspaceId, workflowId } = await seedWorkflow(admin);
     const versionId = randomUUID(),
       connectionId = randomUUID(),
@@ -127,7 +127,7 @@ it('retains a possibly dispatched notification on upgrade and exposes only a loc
         ).rows,
       });
       const before = await retained();
-      await upgrade(99);
+
       expect(await retained()).toEqual(before);
       await client.query('begin');
       await client.query('set local role pertexo_app');
@@ -138,6 +138,14 @@ it('retains a possibly dispatched notification on upgrade and exposes only a loc
           )
         ).rows,
       ).toEqual([]);
+      await expect(
+        client.query(
+          'select * from app.claim_due_run_failure_notification_recoveries(10)',
+        ),
+      ).rejects.toMatchObject({ code: '42501' });
+      await client.query('rollback');
+      await client.query('begin');
+      await client.query('set local role pertexo_maintenance');
       expect(
         (
           await client.query(
@@ -154,13 +162,10 @@ it('retains a possibly dispatched notification on upgrade and exposes only a loc
           possibly_dispatched: true,
         },
       ]);
-      expect(
-        (
-          await client.query(
-            'select id from app.run_failure_notification_intents',
-          )
-        ).rows,
-      ).toEqual([]);
+      await client.query('rollback');
+      expect(await retained()).toEqual(before);
+      await client.query('begin');
+      await client.query('set local role pertexo_app');
       await client.query("select set_config('app.workspace_id',$1,true)", [
         workspaceId,
       ]);
@@ -172,15 +177,6 @@ it('retains a possibly dispatched notification on upgrade and exposes only a loc
           )
         ).rows,
       ).toEqual([{ status: 'dispatching', safe_error_code: null }]);
-      await client.query('rollback');
-      expect(await retained()).toEqual(before);
-      await client.query('begin');
-      await client.query('set local role pertexo_maintenance');
-      await expect(
-        client.query(
-          'select * from app.claim_due_run_failure_notification_recoveries(10)',
-        ),
-      ).rejects.toMatchObject({ code: '42501' });
       await client.query('rollback');
     } finally {
       await client.query('rollback');

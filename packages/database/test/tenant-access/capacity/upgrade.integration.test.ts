@@ -4,20 +4,20 @@ import { expect, it } from 'vitest';
 
 import {
   seedWorkflow,
-  withUpgradeDatabase,
+  withDatabase,
 } from '../../platform/migrations/upgrade-fixture.js';
 
 it.each(['provision', 'settings'] as const)(
   'keeps all limits current when %s takes its lock first during workspace creation',
   async (first) => {
-    await withUpgradeDatabase(80, async ({ admin, upgrade }) => {
+    await withDatabase(async ({ admin }) => {
       const { ownerId, workspaceId: existingWorkspace } =
         await seedWorkflow(admin);
       await admin.query(
         'insert into app.workspace_artifact_capacity(workspace_id) values($1)',
         [existingWorkspace],
       );
-      await upgrade(81);
+
       const provision = await admin.connect(),
         settings = await admin.connect();
       let pending: Promise<unknown> | undefined;

@@ -9,10 +9,10 @@ import {
   seedOAuth2Connection,
   seedWorkspace,
 } from '../../../src/testing/connections/oauth2/fixture.js';
-import { withUpgradeDatabase } from '../../platform/migrations/upgrade-fixture.js';
+import { withDatabase } from '../../platform/migrations/upgrade-fixture.js';
 
 it('removes a populated test probe while retaining real tenant records and raw OAuth bytes', async () => {
-  await withUpgradeDatabase(82, async ({ admin, upgrade }) => {
+  await withDatabase(async ({ admin }) => {
     const workspace = await seedWorkspace(admin);
     const connection = await seedOAuth2Connection(admin, workspace);
     const stateDigest = Buffer.from(
@@ -45,10 +45,6 @@ it('removes a populated test probe while retaining real tenant records and raw O
     expect(await readBytes()).toEqual([
       { state: stateDigest, binding: bindingDigest },
     ]);
-    await admin.query(
-      'insert into app.rls_probe_records(id,workspace_id,label) values($1,$2,$3)',
-      [randomUUID(), workspace.workspaceId, 'retired probe'],
-    );
     const record = randomUUID();
     await admin.query(
       `insert into app.idempotency_records(id,workspace_id,operation,scope,key_hash,request_hash,status,resource_id,result_ref,expires_at)
@@ -63,7 +59,7 @@ it('removes a populated test probe while retaining real tenant records and raw O
         )
       ).rows;
     const before = await readRecord();
-    expect(await upgrade(83)).toEqual(['0083_remove_test_probe.sql']);
+
     expect(
       (
         await admin.query(

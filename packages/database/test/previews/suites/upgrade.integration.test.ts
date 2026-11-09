@@ -1,14 +1,7 @@
-import { expectedMigrationsAfter } from '../../../src/testing/expected-migrations.js';
 import { randomUUID } from 'node:crypto';
-import { copyFile, mkdtemp, readdir, rm } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
 import { Pool } from 'pg';
 import { expect, it } from 'vitest';
-import {
-  migrateDatabase,
-  MIGRATIONS_DIRECTORY,
-} from '../../../src/migrations.js';
+import { migrateDatabase } from '../../../src/migrations.js';
 import { createDisposableDatabaseFixture } from '../../../src/testing/postgres/disposable-database.js';
 it('upgrades a populated standalone test without changing its source identity or legacy case charge', async () => {
   const adminUrl =
@@ -20,13 +13,11 @@ it('upgrades a populated standalone test without changing its source identity or
     databaseName: `pertexo_test_suite_upgrade_${randomUUID().replaceAll('-', '')}`,
     ownerRole: 'pertexo_owner',
   });
-  const directory = await mkdtemp(join(tmpdir(), 'pertexo-suite-upgrade-'));
+
   let admin: Pool | undefined;
   try {
     await fixture.create();
-    for (const name of await readdir(MIGRATIONS_DIRECTORY))
-      if (/^00(?:[01][0-9]|2[0-5])_.*\.sql$/u.test(name))
-        await copyFile(join(MIGRATIONS_DIRECTORY, name), join(directory, name));
+
     const config = {
       appRole: 'pertexo_app',
       ownerRole: 'pertexo_owner',
@@ -36,7 +27,7 @@ it('upgrades a populated standalone test without changing its source identity or
           'postgresql://pertexo_migration:pertexo-local-migration@localhost:5432/pertexo',
       ),
     };
-    await migrateDatabase(config, directory);
+    await migrateDatabase(config);
     admin = new Pool({
       connectionString: fixture.databaseUrl(adminUrl),
       max: 1,
@@ -72,8 +63,8 @@ it('upgrades a populated standalone test without changing its source identity or
       [run, workspace, workflow],
     );
     await admin.query(
-      "insert into app.workflow_test_snapshots(run_id,workspace_id,draft_revision,graph_json,checksum,executable_json,dispositions,pins,expires_at) values($1,$2,1,'{}',$3,'{}','{}','{}',clock_timestamp()+interval '7 days')",
-      [run, workspace, checksum],
+      "insert into app.workflow_test_snapshots(id,workspace_id,workflow_id,draft_revision,graph_json,checksum,executable_json,dispositions,pins,expires_at) values($1,$2,$4,1,'{}',$3,'{}','{}','{}',clock_timestamp()+interval '7 days')",
+      [run, workspace, checksum, workflow],
     );
     await admin.query(
       "insert into app.workflow_input_cases(id,workspace_id,workflow_id,workflow_version_id,version_checksum,name) values($1,$2,$3,$4,$5,'Legacy input')",
@@ -83,9 +74,7 @@ it('upgrades a populated standalone test without changing its source identity or
       "insert into app.workflow_input_case_payloads(workspace_id,case_id,revision,input,canonical_bytes) values($1,$2,1,'{}',2)",
       [workspace, inputCase],
     );
-    expect(await migrateDatabase(config)).toEqual(
-      await expectedMigrationsAfter(25),
-    );
+
     expect(
       (
         await admin.query(
@@ -123,6 +112,5 @@ it('upgrades a populated standalone test without changing its source identity or
   } finally {
     await admin?.end();
     await fixture.drop();
-    await rm(directory, { recursive: true, force: true });
   }
 });

@@ -12,14 +12,13 @@ import {
 import { createDisposableDatabaseFixture } from '../../../src/testing/postgres/disposable-database.js';
 
 /** Each caller owns its database, sessions and migration history, even in parallel suites. */
-export async function withUpgradeDatabase(
-  through: number,
+export async function withDatabase(
   work: (context: {
     admin: Pool;
     config: Parameters<typeof migrateDatabase>[0];
     directory: string;
-    upgrade: (through?: number) => Promise<readonly string[]>;
   }) => Promise<void>,
+  options: { migrate?: boolean } = {},
 ): Promise<void> {
   const adminUrl =
     process.env.DATABASE_ADMIN_URL ??
@@ -44,17 +43,18 @@ export async function withUpgradeDatabase(
         'postgresql://pertexo_migration:pertexo-local-migration@localhost:5432/pertexo',
     ),
   };
-  const upgrade = async (last = Number.POSITIVE_INFINITY) => {
-    for (const name of await readdir(MIGRATIONS_DIRECTORY)) {
-      if (/^\d{4}_.*\.sql$/u.test(name) && Number(name.slice(0, 4)) <= last)
-        await copyFile(join(MIGRATIONS_DIRECTORY, name), join(directory, name));
-    }
-    return migrateDatabase(config, directory);
-  };
   try {
     await fixture.create();
-    if (through >= 0) await upgrade(through);
-    await work({ admin, config, directory, upgrade });
+    if (options.migrate !== false) {
+      for (const name of await readdir(MIGRATIONS_DIRECTORY))
+        if (/^\d{4}_.*\.sql$/u.test(name))
+          await copyFile(
+            join(MIGRATIONS_DIRECTORY, name),
+            join(directory, name),
+          );
+      await migrateDatabase(config, directory);
+    }
+    await work({ admin, config, directory });
   } finally {
     await admin.end();
     await fixture.drop();

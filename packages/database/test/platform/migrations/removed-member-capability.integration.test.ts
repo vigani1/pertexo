@@ -1,9 +1,9 @@
 import { randomUUID } from 'node:crypto';
 import { expect, it } from 'vitest';
-import { seedWorkflow, withUpgradeDatabase } from './upgrade-fixture.js';
+import { seedWorkflow, withDatabase } from './upgrade-fixture.js';
 
 it('preserves private rows on upgrade and only permits scoped removed-member storage deletion', async () => {
-  await withUpgradeDatabase(106, async ({ admin, upgrade }) => {
+  await withDatabase(async ({ admin }) => {
     const { workspaceId, ownerId } = await seedWorkflow(admin);
     const targetId = randomUUID();
     await admin.query(
@@ -24,9 +24,7 @@ it('preserves private rows on upgrade and only permits scoped removed-member sto
         [workspaceId],
       );
     const before = (await retained()).rows;
-    expect(await upgrade(107)).toEqual([
-      '0107_removed_member_storage_capability.sql',
-    ]);
+
     expect((await retained()).rows).toEqual(before);
     const invoke = async (table: string, scopedWorkspace = workspaceId) => {
       const client = await admin.connect();

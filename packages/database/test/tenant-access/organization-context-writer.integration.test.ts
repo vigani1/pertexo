@@ -1,14 +1,14 @@
 import { Pool } from 'pg';
 import { expect, it } from 'vitest';
-import { withUpgradeDatabase } from '../platform/migrations/upgrade-fixture.js';
-import { withPlatformTransaction } from '../../src/tenant-access/transactions.js';
 import {
-  withWorkspaceScope,
   setOrganizationContext,
+  withWorkspaceScope,
 } from '../../src/primitives.js';
+import { withPlatformTransaction } from '../../src/tenant-access/transactions.js';
+import { withDatabase } from '../platform/migrations/upgrade-fixture.js';
 
 it('validates organization IDs and contains organization context within a transaction and its workspace projections', async () => {
-  await withUpgradeDatabase(117, async ({ config }) => {
+  await withDatabase(async ({ config }) => {
     const url = new URL(
       process.env.DATABASE_URL ??
         'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo',

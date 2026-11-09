@@ -1,11 +1,11 @@
 import { randomUUID } from 'node:crypto';
 import { expect, it } from 'vitest';
-import { seedWorkflow, withUpgradeDatabase } from './upgrade-fixture.js';
+import { seedWorkflow, withDatabase } from './upgrade-fixture.js';
 
 for (const role of ['pertexo_app', 'pertexo_maintenance', 'pertexo_owner'])
   for (const column of ['input_ref', 'output_ref'])
     it(`refuses oversized workflow ${column} inserts and updates as ${role}`, async () => {
-      await withUpgradeDatabase(122, async ({ admin }) => {
+      await withDatabase(async ({ admin }) => {
         const { workspaceId, workflowId } = await seedWorkflow(admin);
         const client = await admin.connect();
         const id = randomUUID();

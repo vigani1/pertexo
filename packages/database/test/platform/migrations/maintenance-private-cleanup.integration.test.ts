@@ -1,9 +1,9 @@
 import { randomUUID } from 'node:crypto';
 import { expect, it } from 'vitest';
-import { seedWorkflow, withUpgradeDatabase } from './upgrade-fixture.js';
+import { seedWorkflow, withDatabase } from './upgrade-fixture.js';
 
 it('preserves purge-worker authority to delete removed members private state without admitting active members', async () => {
-  await withUpgradeDatabase(108, async ({ admin, upgrade }) => {
+  await withDatabase(async ({ admin }) => {
     const { workspaceId, ownerId } = await seedWorkflow(admin);
     const removedId = randomUUID();
     await admin.query(
@@ -26,7 +26,7 @@ it('preserves purge-worker authority to delete removed members private state wit
         )
       ).rows;
     const before = await read();
-    await upgrade();
+
     expect(await read()).toEqual(before);
     const clean = async (userId: string) => {
       const client = await admin.connect();

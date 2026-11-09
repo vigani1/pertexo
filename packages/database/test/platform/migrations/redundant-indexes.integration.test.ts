@@ -1,8 +1,8 @@
 import { expect, it } from 'vitest';
-import { seedWorkflow, withUpgradeDatabase } from './upgrade-fixture.js';
+import { seedWorkflow, withDatabase } from './upgrade-fixture.js';
 
 it('removes redundant organization indexes without losing populated links or their indexed lookup', async () => {
-  await withUpgradeDatabase(119, async ({ admin, upgrade }) => {
+  await withDatabase(async ({ admin }) => {
     const { workspaceId } = await seedWorkflow(admin);
     await admin.query(
       `insert into app.auth_organizations(id,control_workspace_id,name) values($1,$1,'Retained organization')`,
@@ -12,7 +12,7 @@ it('removes redundant organization indexes without losing populated links or the
       `insert into app.auth_organization_workspaces(workspace_id,organization_id) values($1,$1)`,
       [workspaceId],
     );
-    await upgrade();
+
     expect(
       (
         await admin.query(

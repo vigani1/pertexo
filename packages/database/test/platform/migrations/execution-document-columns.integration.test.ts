@@ -1,9 +1,9 @@
 import { randomUUID } from 'node:crypto';
 import { expect, it } from 'vitest';
-import { seedWorkflow, withUpgradeDatabase } from './upgrade-fixture.js';
+import { seedWorkflow, withDatabase } from './upgrade-fixture.js';
 
 it('enforces every execution document limit for each role permitted to write it', async () => {
-  await withUpgradeDatabase(122, async ({ admin }) => {
+  await withDatabase(async ({ admin }) => {
     const { workspaceId, workflowId, ownerId } = await seedWorkflow(admin);
     const run = randomUUID(),
       version = randomUUID(),

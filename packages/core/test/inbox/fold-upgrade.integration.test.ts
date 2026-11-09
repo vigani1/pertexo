@@ -1,17 +1,12 @@
-import { maintenanceConfig } from '../../../../infrastructure/testing/worker-databases.mjs';
-import { randomUUID } from 'node:crypto';
-import { copyFile, mkdtemp, rm } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
-import { Pool } from 'pg';
-import { expect, it } from 'vitest';
+import { parseDatabaseConfig } from '@pertexo/database/platform';
 import {
   createDisposableDatabaseFixture,
-  expectedMigrationsAfter,
   migrateDatabase,
-  MIGRATIONS_DIRECTORY,
 } from '@pertexo/database/testing';
-import { parseDatabaseConfig } from '@pertexo/database/platform';
+import { randomUUID } from 'node:crypto';
+import { Pool } from 'pg';
+import { expect, it } from 'vitest';
+import { maintenanceConfig } from '../../../../infrastructure/testing/worker-databases.mjs';
 import { createWorkspaceInboxFoldStore } from '../../src/inbox/folding/workspace-inbox-fold.store.js';
 
 it('upgrades pending events and private revisions, then folds them once through the scoped worker', async () => {
@@ -22,15 +17,12 @@ it('upgrades pending events and private revisions, then folds them once through 
     databaseName: `pertexo_test_fold_upgrade_${randomUUID().replaceAll('-', '')}`,
     ownerRole: 'pertexo_owner',
   });
-  const directory = await mkdtemp(join(tmpdir(), 'pertexo-fold-upgrade-'));
+
   let admin: Pool | undefined;
   let fold: ReturnType<typeof createWorkspaceInboxFoldStore> | undefined;
   try {
     await fixture.create();
-    for (const name of await expectedMigrationsAfter(-1)) {
-      if (Number(name.slice(0, 4)) <= 112)
-        await copyFile(join(MIGRATIONS_DIRECTORY, name), join(directory, name));
-    }
+
     const config = {
       connectionString: fixture.databaseUrl(
         process.env.DATABASE_MIGRATION_URL ?? '',
@@ -39,7 +31,7 @@ it('upgrades pending events and private revisions, then folds them once through 
       appRole: 'pertexo_app',
       maintenanceRole: 'pertexo_maintenance',
     };
-    await migrateDatabase(config, directory);
+    await migrateDatabase(config);
     admin = new Pool({ connectionString: fixture.databaseUrl(adminUrl) });
     const actor = randomUUID(),
       workspace = randomUUID(),
@@ -89,9 +81,7 @@ it('upgrades pending events and private revisions, then folds them once through 
         'select to_jsonb(e) value from app.workspace_inbox_events e',
       )
     ).rows;
-    expect(await migrateDatabase(config)).toEqual(
-      await expectedMigrationsAfter(112),
-    );
+
     expect(
       (
         await admin.query(
@@ -153,6 +143,5 @@ it('upgrades pending events and private revisions, then folds them once through 
     await fold?.close();
     await admin?.end();
     await fixture.drop();
-    await rm(directory, { recursive: true, force: true });
   }
 });

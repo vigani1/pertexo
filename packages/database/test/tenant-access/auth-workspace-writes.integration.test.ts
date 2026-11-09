@@ -2,13 +2,13 @@ import { randomUUID } from 'node:crypto';
 import { expect, it } from 'vitest';
 import {
   seedWorkflow,
-  withUpgradeDatabase,
+  withDatabase,
 } from '../platform/migrations/upgrade-fixture.js';
 
 it.each(['auth_organization_workspaces', 'auth_directory_group_mappings'])(
   'refuses foreign inserts, deletes and workspace reassignment on real %s rows',
   async (table) => {
-    await withUpgradeDatabase(119, async ({ admin }) => {
+    await withDatabase(async ({ admin }) => {
       const a = await seedWorkflow(admin);
       const b = await seedWorkflow(admin);
       const c = await seedWorkflow(admin);
