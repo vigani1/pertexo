@@ -539,7 +539,7 @@ removing them. For deployments outside this script, a database superuser must ap
 `infrastructure/postgres/init/roles/maintenance.sql` with the `maintenance_user`
 psql variable before running migrations. The migration owner cannot grant this
 attribute. Keep the app login without BYPASSRLS; maintenance credentials are only
-for cross-workspace jobs, operator commands and the API organization management,
-SSO/SAML completion and SCIM transactions. Supply `DATABASE_MAINTENANCE_URL` to
-the API; its ordinary workspace flows and Better Auth adapter still use the app
-login. Never expose either connection URL to the web client.
+for cross-workspace jobs and operator commands. Serving requests, including
+organization management, SSO/SAML and SCIM, keep the app login and use verified
+transaction-local organization context. Do not inject maintenance credentials
+into the API or expose either connection URL to the web client.

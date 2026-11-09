@@ -63,7 +63,7 @@ export function createDirectoryStore(
   config: DatabaseConfig,
   runtime?: DatabaseRuntime,
 ) {
-  const lease = acquireDatabasePool(config, runtime, { role: 'maintenance' }),
+  const lease = acquireDatabasePool(config, runtime, { role: 'api' }),
     pool = lease.pool;
   return {
     close: () => lease.close(),

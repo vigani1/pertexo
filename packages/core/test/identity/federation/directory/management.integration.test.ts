@@ -1,3 +1,4 @@
+import { setOrganizationContext } from '@pertexo/database/primitives';
 import { createHash, randomUUID } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import { WorkspaceAccessDeniedError } from '../../../../src/shared/workspace-access.errors.js';
@@ -159,6 +160,7 @@ describe('directory ownership and command receipts', () => {
       adoptDirectoryMembership(f.pool, command),
     ).rejects.toHaveProperty('reason', 'invalid_value');
     await withPlatformTransaction(f.pool, async (client) => {
+      await setOrganizationContext(client, principal.organizationId);
       const organization = await lockDirectoryOrganization(
         client,
         f.organizationId,
@@ -217,6 +219,7 @@ describe('directory ownership and command receipts', () => {
       profile: { emails: [{ value: person.email, primary: true }] },
     });
     await withPlatformTransaction(f.pool, async (client) => {
+      await setOrganizationContext(client, principal.organizationId);
       const organization = await lockDirectoryOrganization(
         client,
         f.organizationId,

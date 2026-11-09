@@ -7,6 +7,7 @@ import { eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import {
   rethrowQueryFailure,
+  setOrganizationContext,
   withWorkspaceScope,
 } from '@pertexo/database/primitives';
 import { appendAuditFact } from '../../../governance/audit/facts.js';
@@ -40,6 +41,7 @@ export async function completeFederationJourney(
     input.browserDigest,
   );
   if (preview?.id !== input.attemptId) throw new SignInProofRejectedError();
+  await setOrganizationContext(client, preview.provider.organizationId);
   const organization = await lockDirectoryOrganization(
     client,
     preview.provider.organizationId,
@@ -84,14 +86,7 @@ export async function completeFederationJourney(
     providerId: attempt.provider.id,
     providerRevision: attempt.provider.revision,
   } as const;
-  if (
-    !(await canCreateAuthenticationSession(
-      client,
-      user.id,
-      proof,
-      'maintenance',
-    ))
-  )
+  if (!(await canCreateAuthenticationSession(client, user.id, proof)))
     throw new SignInProofRejectedError();
   if (
     !(await bindVerifiedAccount(client, {
@@ -141,7 +136,6 @@ async function completeProviderTest(
   const source = await readEligibleAuthenticationSession(
     client,
     attempt.ownerSessionId,
-    'maintenance',
   );
   if (source?.userId !== attempt.ownerUserId)
     throw new SignInProofRejectedError();

@@ -61,9 +61,9 @@ export function useIdentityCommandDatabase(
     process.env.DATABASE_URL ??
       'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo',
   );
-  const maintenanceUrl = fixture.databaseUrl(
-    process.env.DATABASE_MAINTENANCE_URL ??
-      'postgresql://pertexo_maintenance:pertexo-local-maintenance@localhost:5432/pertexo',
+  const organizationUrl = fixture.databaseUrl(
+    process.env.DATABASE_URL ??
+      'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo',
   );
   const organizationPools: (Pool | undefined)[] = [];
   let identity: ReturnType<typeof createIdentityWorkspaceStore> | undefined;
@@ -120,11 +120,11 @@ export function useIdentityCommandDatabase(
   return Object.freeze({
     federation: (replica = 0) =>
       (federation[replica] ??= createFederationManagementStore(
-        parseDatabaseConfig({ connectionString: maintenanceUrl, max: 1 }),
+        parseDatabaseConfig({ connectionString: organizationUrl, max: 1 }),
       )),
     organizationPool: (replica = 0) =>
       (organizationPools[replica] ??= new Pool({
-        connectionString: maintenanceUrl,
+        connectionString: organizationUrl,
         max: 1,
       })),
     authenticationPool: (replica = 0) =>

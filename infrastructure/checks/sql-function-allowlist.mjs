@@ -1,10 +1,5 @@
 // ADR 069 storage categories. Exceptions are the recorded owner decisions in batches D/E.
 export const SQL_FUNCTION_ALLOWLIST = Object.freeze({
-  'app.password_credential_count(uuid)': {
-    category: 'workspace isolation',
-    reason:
-      'Owner-authorized isolation lookup (2026-11-09): locked organization transactions receive only credential counts; maintenance cannot read hashes. Core retains enforcement decisions.',
-  },
   'app.apply_instance_capacity(integer,integer,integer)': {
     category: 'capacity counters',
     reason:

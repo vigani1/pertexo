@@ -54,7 +54,7 @@ organization. Its data remains workspace-scoped. The global authentication catal
 is deliberately limited to domain/provider/directory identity and proof state,
 excluding workspace links and group-to-linked-workspace role mappings, which
 have workspace row security (2026-11-09 follow-up to ADR 003). Organization-wide
-transactions use the maintenance connection. Existing memberships and their
+transactions retain the app login with a verified transaction-local organization context. Existing memberships and their
 directory source associations retain workspace row security;
 management rechecks the control-workspace owner under lock.
 

@@ -1,4 +1,3 @@
-import { maintenanceDatabase } from '../support/maintenance-database.js';
 import { createStructuredLogger } from '@pertexo/observability/server';
 import {
   createWorkspaceDatabase,
@@ -49,11 +48,7 @@ async function exercise(input: FailureRequest) {
   const identityRuntime = await createApiIdentityRuntime(
     config.identity,
     databaseConfig,
-    {
-      maintenanceDatabase: maintenanceDatabase(databaseConfig),
-      logger,
-      authenticationMail: new LocalAuthenticationMailSink(),
-    },
+    { logger, authenticationMail: new LocalAuthenticationMailSink() },
   );
   const rateLimit = new RedisRateLimitRuntime(input.redisUrl);
   let app: Awaited<ReturnType<typeof assembleApiApplication>> | undefined;

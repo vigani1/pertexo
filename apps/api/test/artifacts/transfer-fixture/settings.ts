@@ -1,4 +1,3 @@
-import { maintenanceDatabase } from '../../support/maintenance-database.js';
 import { DEFAULT_INSTANCE_LIMITS } from '../../../src/platform/config/instance-limits.js';
 import { DEFAULT_CODE_SETTINGS } from '@pertexo/node-sdk';
 
@@ -20,7 +19,6 @@ export function artifactApiConfig(): ApiConfig {
     codeSettings: DEFAULT_CODE_SETTINGS,
     artifacts: artifactStoreConfig(),
     database: artifactTransferDatabaseConfig,
-    maintenanceDatabase: maintenanceDatabase(artifactTransferDatabaseConfig),
     host: '127.0.0.1',
     identity: {
       publicWebOrigin: 'https://api.integration.test',

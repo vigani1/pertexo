@@ -29,7 +29,6 @@ export function composeBetterAuthRuntime(
     config: ApiIdentityConfig;
     logger: StructuredLogger;
     databaseConfig: DatabaseConfig;
-    maintenanceDatabase: DatabaseConfig;
     runtime: DatabaseRuntime | undefined;
     authenticationMail: AuthenticationMail | undefined;
     acquire: AcquireResource;
@@ -58,7 +57,6 @@ export function composeBetterAuthRuntime(
         ? {}
         : {
             federation: {
-              database: input.maintenanceDatabase,
               envelope: createApplicationSecretEnvelope(
                 config.federationEncryption,
               ),

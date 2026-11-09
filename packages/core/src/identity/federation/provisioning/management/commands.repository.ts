@@ -3,6 +3,7 @@ import { eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import {
   rethrowQueryFailure,
+  setOrganizationContext,
   claimCommand,
   completeCommand,
   withWorkspaceScope,
@@ -28,6 +29,7 @@ import {
 import { withWorkspaceAccess } from '../../../../shared/workspace-access.js';
 import {
   organizationForWorkspace,
+  authorizeOrganizationContext,
   recordFederationAudit,
 } from '../../management/authority.repository.js';
 import { advanceOrganization } from '../../management/commands.repository.js';
@@ -54,7 +56,9 @@ async function readManagedOrganization(
   workspaceId: string,
   role: Role,
 ): Promise<ManagedOrganization> {
-  const preview = await organizationForWorkspace(client, workspaceId);
+  const preview = await withWorkspaceScope(client, { workspaceId }, (scoped) =>
+    organizationForWorkspace(scoped, workspaceId),
+  );
   if (preview === undefined) throw new DirectoryError('not_found');
   await drizzle(client)
     .select({ id: authOrganizations.id })
@@ -62,7 +66,9 @@ async function readManagedOrganization(
     .where(eq(authOrganizations.id, preview.id))
     .for('share')
     .catch(rethrowQueryFailure);
-  const row = await organizationForWorkspace(client, workspaceId);
+  const row = await withWorkspaceScope(client, { workspaceId }, (scoped) =>
+    organizationForWorkspace(scoped, workspaceId),
+  );
   if (row?.id !== preview.id) throw new DirectoryError('not_found');
   return manageableOrganization(client, row, workspaceId, role);
 }
@@ -73,6 +79,7 @@ async function manageableOrganization(
   workspaceId: string,
   role: Role,
 ): Promise<ManagedOrganization> {
+  await setOrganizationContext(client, row.id);
   return {
     organization: {
       ...row,
@@ -184,7 +191,7 @@ export function runDirectoryCommand<
   return withPlatformTransaction(
     pool,
     async (client) => {
-      const preview = await organizationForWorkspace(client, input.workspaceId);
+      const preview = await authorizeOrganizationContext(client, input);
       if (preview?.control_workspace_id !== input.workspaceId)
         throw new DirectoryError('forbidden');
       const organization = await lockDirectoryOrganization(client, preview.id);

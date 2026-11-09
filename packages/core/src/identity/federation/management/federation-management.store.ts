@@ -61,7 +61,7 @@ export function createFederationManagementStore(
   config: DatabaseConfig,
   runtime?: DatabaseRuntime,
 ) {
-  const lease = acquireDatabasePool(config, runtime, { role: 'maintenance' });
+  const lease = acquireDatabasePool(config, runtime, { role: 'api' });
   /** Owners and admins read sign-in settings; the role decides what they may do with them. */
   const read = <T>(
     actor: WorkspaceActor,

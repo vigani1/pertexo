@@ -2,12 +2,13 @@ import { canonicalEmailDomainSql } from '../../canonical-email.js';
 import {
   workspaceMemberships,
   users,
+  authAccounts,
   authSessions,
   authProviderChecks,
   authProviders,
   authDomains,
 } from '@pertexo/database/schema';
-import { and, eq, inArray, ne, notExists, sql } from 'drizzle-orm';
+import { and, eq, inArray, isNotNull, ne, notExists, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import {
   rethrowQueryFailure,
@@ -54,12 +55,20 @@ async function requireRecoveryCredential(
       : await drizzle(client)
           .select({ id: users.id })
           .from(users)
+          .innerJoin(
+            authAccounts,
+            and(
+              eq(authAccounts.userId, users.id),
+              eq(authAccounts.providerId, 'credential'),
+            ),
+          )
           .where(
             and(
               eq(users.id, owner.user_id),
               eq(users.status, 'active'),
               eq(users.emailVerified, true),
-              sql`app.password_credential_count(${owner.user_id}::uuid)=1`,
+              isNotNull(authAccounts.password),
+              sql`length(${authAccounts.password})>0`,
             ),
           )
           .catch(rethrowQueryFailure);

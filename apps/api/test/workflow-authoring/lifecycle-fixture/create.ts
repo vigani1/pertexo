@@ -1,4 +1,3 @@
-import { maintenanceDatabase } from '../../support/maintenance-database.js';
 import { randomUUID } from 'node:crypto';
 
 import { createIdentityWorkspaceStore } from '@pertexo/core/testing';
@@ -59,12 +58,7 @@ export async function createWorkflowLifecycleApiFixture(): Promise<WorkflowLifec
       await createApiIdentityRuntime(
         identityConfig,
         workflowLifecycleDatabaseConfig,
-        {
-          maintenanceDatabase: maintenanceDatabase(
-            workflowLifecycleDatabaseConfig,
-          ),
-          logger,
-        },
+        { logger },
       ),
       (runtime) => runtime.close(),
     );

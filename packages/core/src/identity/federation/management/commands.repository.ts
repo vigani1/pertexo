@@ -3,6 +3,7 @@ import { eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import {
   rethrowQueryFailure,
+  setOrganizationContext,
   claimCommand,
   completeCommand,
   withWorkspaceScope,
@@ -20,6 +21,7 @@ import type { FederationScope } from './federation-management.types.js';
 import type { OrganizationRow } from './identity-organizations.repository.js';
 import {
   lockFederationWorkspace,
+  authorizeOrganizationContext,
   organizationForWorkspace,
 } from './authority.repository.js';
 import { projectOrganization } from './settings.repository.js';
@@ -80,6 +82,7 @@ export async function runFederationCommand(
       ].sort();
       for (const workspaceId of workspaceIds)
         await lockWorkspaceRow(client, workspaceId);
+      await authorizeOrganizationContext(client, input);
       const organization = await organizationForWorkspace(
         client,
         input.workspaceId,
@@ -103,6 +106,7 @@ export async function runFederationCommand(
       );
       if (replay !== null) return replay;
       const changedOrganization = await change(client);
+      await setOrganizationContext(client, changedOrganization.id);
       const result: FederationSettings = {
         configured: true,
         reason: null,

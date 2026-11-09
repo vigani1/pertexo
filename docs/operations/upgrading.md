@@ -185,9 +185,11 @@ pages read at most 30 rows per displayed workflow instead of recounting runs.
 The migration is transactional, so a timeout leaves the old data and migration
 head intact. Restart with the new build only after migration succeeds.
 
-Organization row-security follow-up: supply the existing
-`DATABASE_MAINTENANCE_URL` to the API as well as the worker. Migration 0118 grants
-the existing maintenance role the writes needed by organization management,
-SSO/SAML completion and SCIM projection. Deploy the matching API with the workspace-link and group-mapping policies;
-stop old API writers during migration as in the normal deploy flow. The Better Auth
-adapter and ordinary workspace flows still use `DATABASE_URL`.
+Organization request isolation: the API uses only `DATABASE_URL`.
+`DATABASE_MAINTENANCE_URL` remains a worker/operator credential and must not be
+injected into the API. Unreleased migrations 0118/0119 were revised before any
+production release: 0118 retires the rejected presence lookup without granting
+request privileges to maintenance; 0119 adds organization-scoped app policies to
+the two authentication workspace relations. Recreate test stacks built from the
+previous unreleased migration files. Normal deployments still stop writers and
+provision maintenance BYPASSRLS for worker/ops workloads before migrating.
