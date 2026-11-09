@@ -437,7 +437,13 @@ reserved idle memory. Each process also has a hard data-memory bound and active
 RSS monitoring; the heap setting alone does not bound native allocations.
 Change settings through the normal deployment procedure so the API, worker and
 runner agree. `CODE_STEPS_ENABLED=false` blocks publication and execution of
-Code steps. Runner unavailability follows the ordinary safe retry path.
+Code steps. Deploy first stops the worker and waits for its drain before stopping
+the Code runner. The same ordering applies if an unhealthy deployment is stopped.
+
+PostgreSQL init scripts are prepared under `state/postgres-init` and mounted from
+that stable operator path. Changing release directories therefore does not change
+the database mount. Existing installs need one container recreation when moving
+from the old release-relative mount; the data volume is preserved.
 
 HTTP Request steps reach only public addresses unless
 `HTTP_ALLOWED_PRIVATE_NETWORKS` lists CIDRs on your own network, such as

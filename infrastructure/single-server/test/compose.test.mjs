@@ -112,6 +112,17 @@ for (const { mode, transport } of ['kms', 'self-managed'].flatMap((mode) =>
         `shared_buffers=${mode === 'kms' ? '128MB' : '256MB'}`,
       ),
     );
+    assert.equal(
+      config.services.postgres.volumes.find(
+        (v) => v.target === '/docker-entrypoint-initdb.d',
+      ).source,
+      join(directory, 'postgres-init'),
+    );
+    assert.equal(
+      readFileSync(join(directory, 'postgres-init/10-roles.sh'), 'utf8')
+        .length > 0,
+      true,
+    );
     const api = parseApiConfig(config.services.api.environment);
     assert.deepEqual(api.identity.betterAuth.providers.google, {
       clientId: environment.AUTH_GOOGLE_CLIENT_ID,

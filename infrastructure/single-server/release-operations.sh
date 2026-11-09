@@ -110,6 +110,7 @@ prepare_configuration() {
   local prepared_directory=$1 parser_release=$2 parser_version=$3
   docker run --rm --network none --read-only --user "$(id -u):$(id -g)" \
     -v "$config:/run/pertexo.env:ro" -e SERVICE_VERSION="$SERVICE_VERSION" \
+    -v "$release/infrastructure/postgres/init:/workspace/infrastructure/postgres/init:ro" \
     -v "$prepared_directory:/prepared" -v "$release:/selected-release:ro" -v "$parser_release/infrastructure/single-server:/workspace/infrastructure/single-server:ro" \
     "ghcr.io/vigani1/pertexo:$parser_version" node --env-file=/run/pertexo.env infrastructure/single-server/storage/prepare.mjs /prepared /selected-release/infrastructure/single-server/encryption/verify.mjs
 }
