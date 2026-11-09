@@ -102,15 +102,21 @@ these records in place and ports 80 and 443 open.
 
 ## 3. Configure
 
-Create the settings file and add generated secrets to it. A fresh server has no Node,
-so the generator runs in a container:
+Create the settings file and add generated secrets with the bootstrapped Node runtime:
 
 ```sh
 cd /opt/pertexo
 install -m 600 repository/infrastructure/single-server/.env.production.example .env.production
-docker run --rm --read-only --network none --user "$(id -u)" \
-  -v "$PWD/repository/infrastructure/single-server/generate-secrets.mjs:/generate-secrets.mjs:ro" \
-  --entrypoint node ghcr.io/vigani1/pertexo:stable /generate-secrets.mjs >> .env.production
+node repository/infrastructure/single-server/generate-secrets.mjs >> .env.production
+```
+
+Deployment runs the API, worker and migration configuration parsers from the
+built operator checkout before pulling any images. This includes conditional SMTP,
+OAuth provider and encryption settings; diagnostics name the setting and give repair
+instructions without printing rejected values. To run this check separately:
+
+```sh
+node /opt/pertexo/repository/infrastructure/single-server/storage/preflight.mjs /opt/pertexo/.env.production
 ```
 
 Do this once. **Never rerun the generator over installed keys:** a new encryption key

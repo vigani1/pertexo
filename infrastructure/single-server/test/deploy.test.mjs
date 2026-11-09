@@ -18,6 +18,22 @@ import { it } from 'node:test';
 
 const oldCommit = 'a'.repeat(40);
 const newCommit = 'b'.repeat(40);
+const applicationSettings =
+  readFileSync('infrastructure/single-server/.env.production.example', 'utf8') +
+  '\n' +
+  execFileSync(
+    process.execPath,
+    [
+      'infrastructure/single-server/generate-secrets.mjs',
+      '--encryption=self-managed',
+    ],
+    { encoding: 'utf8' },
+  )
+    .split('\n')
+    .filter((line) => !line.startsWith('BACKUP_CRYPT_'))
+    .join('\n') +
+  '\nPUBLIC_WEB_ORIGIN=https://app.example.test\nARTIFACT_STORE_ENDPOINT=https://files.example.test\nAUTH_MAIL_FROM=auth@example.test\nINVITATION_EMAIL_FROM=invite@example.test\nAUTH_MAIL_EMAIL_API_KEY=fixture-key\nINVITATION_EMAIL_API_KEY=fixture-key\n';
+
 function fixture(t) {
   const directory = mkdtempSync(join(tmpdir(), 'pertexo-deploy-'));
   t.after(() => rmSync(directory, { recursive: true, force: true }));
@@ -27,7 +43,8 @@ function fixture(t) {
   mkdirSync(state);
   writeFileSync(
     join(directory, '.env.production'),
-    'FIXTURE=true\nBACKUP_CRYPT_PASSWORD=fixture-password\nBACKUP_CRYPT_SALT=fixture-salt\n',
+    applicationSettings +
+      'BACKUP_CRYPT_PASSWORD=fixture-password\nBACKUP_CRYPT_SALT=fixture-salt\n',
     {
       mode: 0o600,
     },
@@ -605,7 +622,7 @@ test('starts stopped data services before taking the required recovery point', (
 
 test('redeploys the current commit without optional backup configuration when no migrations are pending', (t) => {
   const f = fixture(t);
-  writeFileSync(join(f.directory, '.env.production'), 'FIXTURE=true\n', {
+  writeFileSync(join(f.directory, '.env.production'), applicationSettings, {
     mode: 0o600,
   });
   const result = f.run({}, oldCommit);
@@ -630,7 +647,7 @@ test('redeploys the current commit with a failing backup store when no migration
 
 test('explains why missing backup configuration blocks pending migrations', (t) => {
   const f = fixture(t);
-  writeFileSync(join(f.directory, '.env.production'), 'FIXTURE=true\n', {
+  writeFileSync(join(f.directory, '.env.production'), applicationSettings, {
     mode: 0o600,
   });
   const result = f.run({ FIXTURE_PENDING_MIGRATIONS: '0001_example.sql' });
@@ -652,7 +669,7 @@ test('explains why missing backup configuration blocks pending migrations', (t) 
 test('fresh install migrates without backup configuration or store access', (t) => {
   const f = fixture(t);
   rmSync(join(f.state, 'current'));
-  writeFileSync(join(f.directory, '.env.production'), 'FIXTURE=true\n', {
+  writeFileSync(join(f.directory, '.env.production'), applicationSettings, {
     mode: 0o600,
   });
   const result = f.run({
@@ -754,5 +771,36 @@ test('incompatible migration receipts leave writers running, including fenced ro
         oldCommit,
       );
     }
+  }
+});
+
+test('conditional app configuration is checked by the real schemas before image pulls', (t) => {
+  for (const [values, expected] of [
+    [
+      'SYSTEM_MAIL_TRANSPORT=smtp\nSYSTEM_MAIL_SMTP_HOST=\n',
+      /SYSTEM_MAIL_SMTP_HOST/u,
+    ],
+    [
+      'AUTH_GOOGLE_CLIENT_ID=fixture-client\nAUTH_GOOGLE_CLIENT_SECRET=\n',
+      /AUTH_GOOGLE/u,
+    ],
+    [
+      'CONNECTION_ENCRYPTION_MODE=kms\nCONNECTION_KMS_KEY_REFERENCE=\nCONNECTION_KMS_REGION=\n',
+      /CONNECTION/u,
+    ],
+  ]) {
+    const f = fixture(t);
+    writeFileSync(
+      join(f.directory, '.env.production'),
+      applicationSettings + values,
+    );
+    const result = f.run();
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, expected);
+    assert.match(result.stderr, /\.env.production/u);
+    assert.equal(
+      f.commands().some((c) => c.args.includes('pull')),
+      false,
+    );
   }
 });

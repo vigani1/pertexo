@@ -24,5 +24,6 @@ export {
 
 export {
   StartupSettingError,
+  describeStartupSettingError,
   parseStartupSettings,
 } from './startup-setting.errors.js';
