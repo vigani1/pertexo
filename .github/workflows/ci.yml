@@ -237,6 +237,9 @@ jobs:
           echo "EDITOR_BROWSER_OWNERSHIP_MANIFEST=$manifest" >> "$GITHUB_ENV"
       # Core's suite alone takes 8 to 12 minutes, depending on the runner, so it is
       # split into two shards: one shares this leg, the other runs in the core leg.
+      - name: Compare committed database catalog
+        if: matrix.group == 'database'
+        run: node infrastructure/checks/database-catalog.mjs
       - name: Database integration tests
         if: matrix.group == 'database'
         run: |
