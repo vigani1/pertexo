@@ -47,14 +47,6 @@ export function createApiPlatformFixture(migrationHead: string) {
       max: 5,
       ownerRole: 'pertexo_owner',
     },
-    maintenanceDatabase: {
-      connectionString:
-        'postgresql://pertexo_app:secret@localhost:5432/pertexo',
-      connectionTimeoutMillis: 5_000,
-      idleTimeoutMillis: 30_000,
-      max: 5,
-      ownerRole: 'pertexo_owner',
-    },
     host: '127.0.0.1',
     nodeEnv: 'test',
     observability: {

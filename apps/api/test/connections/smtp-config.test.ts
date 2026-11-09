@@ -1,8 +1,6 @@
 import { expect, it } from 'vitest';
 import { parseApiConfig } from '../../src/platform/config/api-config.js';
 const environment = {
-  DATABASE_MAINTENANCE_URL:
-    'postgresql://pertexo_maintenance:secret@localhost:5432/pertexo',
   DATABASE_URL: 'postgresql://pertexo_app:fixture@localhost:5432/pertexo',
 };
 

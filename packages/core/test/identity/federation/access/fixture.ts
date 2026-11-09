@@ -30,15 +30,15 @@ beforeAll(async () => {
   );
   url.pathname = `/${String(row?.name)}`;
   pool = new Pool({ connectionString: url.toString(), max: 3 });
-  const maintenance = db.organizationPool();
+  const organizationPool = db.organizationPool();
   const organizationConfig = parseDatabaseConfig({
-    connectionString: maintenance.options.connectionString ?? '',
+    connectionString: organizationPool.options.connectionString ?? '',
     max: 3,
   });
   federation = createFederationManagementStore(organizationConfig);
   directory = createDirectoryStore(organizationConfig);
   signIn = new OrganizationSignInCommands({
-    pool: maintenance,
+    pool: organizationPool,
     sessionTtlSeconds: 3_600,
   });
 });

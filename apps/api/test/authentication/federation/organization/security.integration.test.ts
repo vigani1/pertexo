@@ -15,6 +15,26 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
   'organization OIDC on the real API',
   () => {
     const api = useOrganizationApi('organization');
+    it('composes request database pools with the app login only', async () => {
+      const setup = await api.setup();
+      await api.ready(setup);
+      expect(
+        (
+          await api.send(
+            'GET',
+            `/v1/workspaces/${setup.workspaceId}/sso/directory`,
+            { browser: setup.owner },
+          )
+        ).statusCode,
+      ).toBe(200);
+      const roles = await api
+        .database()
+        .query<{ usename: string }>(
+          "select distinct usename from pg_stat_activity where datname=current_database() and usename not in ('postgres','pertexo_migration') order by usename",
+        );
+      expect(roles.rows).toEqual([{ usename: 'pertexo_app' }]);
+    });
+
     it('keeps owner readiness tests bound to the owner without creating users, accounts, grants or sessions', async () => {
       const setup = await api.setup();
       const before = await api

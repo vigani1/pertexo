@@ -9,7 +9,10 @@ import {
 } from '@pertexo/database/schema';
 import { and, asc, eq, inArray, isNotNull, isNull, or, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import { rethrowQueryFailure } from '@pertexo/database/primitives';
+import {
+  rethrowQueryFailure,
+  setOrganizationContext,
+} from '@pertexo/database/primitives';
 import type { Pool, PoolClient } from 'pg';
 import { withPlatformTransaction } from '@pertexo/database/platform';
 import { lockWorkspaceRow } from '../../../shared/authority.repository.js';
@@ -94,7 +97,7 @@ export async function authenticateDirectory(
     if (row === undefined) throw new DirectoryError('unauthorized');
     return {
       credentialId: row.credential_id,
-      organizationId,
+      organizationId: row.organization_id,
       controlWorkspaceId: row.control_workspace_id,
     };
   });
@@ -103,7 +106,7 @@ export async function authenticateDirectory(
 async function requireDirectoryCredential(
   client: PoolClient,
   principal: DirectoryPrincipal,
-): Promise<void> {
+) {
   const valid = await credentialQuery(client)
     .where(
       and(
@@ -118,7 +121,10 @@ async function requireDirectoryCredential(
       ),
     )
     .catch(rethrowQueryFailure);
-  if (valid.length !== 1) throw new DirectoryError('unauthorized');
+  const [credential] = valid;
+  if (valid.length !== 1 || credential === undefined)
+    throw new DirectoryError('unauthorized');
+  return credential;
 }
 
 /**
@@ -138,7 +144,8 @@ export function withDirectoryRead<T>(
       .where(eq(authOrganizations.id, principal.organizationId))
       .for('share')
       .catch(rethrowQueryFailure);
-    await requireDirectoryCredential(client, principal);
+    const credential = await requireDirectoryCredential(client, principal);
+    await setOrganizationContext(client, credential.organization_id);
     return read(client);
   });
 }
@@ -153,9 +160,11 @@ export function withDirectoryTransaction<T>(
   ) => Promise<T>,
 ): Promise<T> {
   return withPlatformTransaction(pool, async (client) => {
+    const credential = await requireDirectoryCredential(client, principal);
+    await setOrganizationContext(client, credential.organization_id);
     const organization = await lockDirectoryOrganization(
       client,
-      principal.organizationId,
+      credential.organization_id,
     );
     await requireDirectoryCredential(client, principal);
     const result = await change(client, organization);
@@ -194,6 +203,7 @@ function credentialQuery(client: PoolClient) {
   return drizzle(client)
     .select({
       credential_id: authProvisioningCredentials.id,
+      organization_id: authOrganizations.id,
       control_workspace_id: authOrganizations.controlWorkspaceId,
     })
     .from(authProvisioningCredentials)

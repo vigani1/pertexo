@@ -1,4 +1,3 @@
-import { maintenanceDatabase } from '../../support/maintenance-database.js';
 import { DEFAULT_INSTANCE_LIMITS } from '../../../src/platform/config/instance-limits.js';
 import { DEFAULT_CODE_SETTINGS } from '@pertexo/node-sdk';
 
@@ -34,7 +33,6 @@ export function apiConfig(): ApiConfig {
       DEFAULT_INSTANCE_LIMITS.webhookEndpointBurstLimit,
     codeSettings: DEFAULT_CODE_SETTINGS,
     database: workflowLifecycleDatabaseConfig,
-    maintenanceDatabase: maintenanceDatabase(workflowLifecycleDatabaseConfig),
     host: '127.0.0.1',
     identity: {
       publicWebOrigin: 'https://api.integration.test',

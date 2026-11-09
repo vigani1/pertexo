@@ -1,3 +1,4 @@
+import { setOrganizationContext } from '@pertexo/database/primitives';
 import { readFolderScope } from '../../../../src/shared/folder-access-facts.repository.js';
 import { withTenantScopedReadClient } from '@pertexo/database/primitives';
 import { randomUUID } from 'node:crypto';
@@ -71,6 +72,7 @@ async function bind(
   userId: string,
 ) {
   await withPlatformTransaction(f.pool, async (client) => {
+    await setOrganizationContext(client, f.principal.organizationId);
     const organization = await lockDirectoryOrganization(
       client,
       f.organizationId,

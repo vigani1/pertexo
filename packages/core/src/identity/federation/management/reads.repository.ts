@@ -7,6 +7,7 @@ import { and, asc, eq, gt, isNotNull, isNull, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import {
   findCommandResult,
+  setOrganizationContext,
   rethrowQueryFailure,
 } from '@pertexo/database/primitives';
 import type { FederationSettings } from '@pertexo/contracts';
@@ -33,6 +34,8 @@ export async function readFederationSettings(
     client,
     scope.workspaceId,
   );
+  if (organization !== undefined)
+    await setOrganizationContext(client, organization.id);
   return {
     configured: true,
     reason: null,

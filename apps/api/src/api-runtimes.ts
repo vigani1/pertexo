@@ -129,7 +129,6 @@ async function acquireIdentityWorkflows(
 ): Promise<ApiIdentityRuntime> {
   const identityRuntime = (runtimes.identityRuntime =
     await createApiIdentityRuntime(identity, config.database, {
-      maintenanceDatabase: config.maintenanceDatabase,
       runtime: databaseRuntime,
       logger,
     }));

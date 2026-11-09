@@ -207,9 +207,9 @@ beside the atomic capacity counters and admission locks.
 | `maintenance` | Cross-workspace dispatch, retention, lifecycle and operator work |
 
 `DATABASE_URL` is the app connection and `DATABASE_MAINTENANCE_URL` the
-maintenance connection. The API also uses maintenance for organization settings,
-SSO/SAML completion and SCIM projection, whose transactions span linked
-workspaces. Their explicit owner/credential/proof checks remain in core. Workspace transactions set their tenant context; API
+maintenance connection. Organization settings, SSO/SAML completion and SCIM use the app login with a
+verified transaction-local organization context; their individual workspace
+projection scopes and core authority checks remain intact. Workspace transactions set their tenant context; API
 authorization is separate from database isolation. Better Auth uses its
 dedicated adapter pool within the app role. Pool telemetry includes the existing
 eight metrics and queries `pg_stat_activity` for its owned backend PIDs;

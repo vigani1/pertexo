@@ -18,7 +18,7 @@ import {
   lockWorkspaceRow,
 } from '../../../../shared/authority.repository.js';
 import {
-  organizationForWorkspace,
+  authorizeOrganizationContext,
   recordFederationAudit,
 } from '../../management/authority.repository.js';
 import { advanceOrganization } from '../../management/commands.repository.js';
@@ -42,7 +42,7 @@ export async function unlinkDirectoryWorkspace(
   await withPlatformTransaction(pool, async (client) => {
     // The workspace remains the command's receipt authority even after unlinking.
     // Lock the receipt workspace before deciding whether the old link still exists.
-    const preview = await organizationForWorkspace(client, input.workspaceId);
+    const preview = await authorizeOrganizationContext(client, input);
     if (preview === undefined)
       await lockWorkspaceRow(client, input.workspaceId);
     const organization =

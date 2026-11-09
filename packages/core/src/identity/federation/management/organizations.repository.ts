@@ -6,7 +6,10 @@ import {
 } from '@pertexo/database/schema';
 import { count, eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import { rethrowQueryFailure } from '@pertexo/database/primitives';
+import {
+  rethrowQueryFailure,
+  withWorkspaceScope,
+} from '@pertexo/database/primitives';
 import { organizationSelection } from './identity-organizations.repository.js';
 import { FEDERATION_LIMITS } from '@pertexo/workflow-model';
 import { projectDirectoryMemberships } from '../provisioning/projection.repository.js';
@@ -53,10 +56,12 @@ export function createOrganization(
         .catch(rethrowQueryFailure);
       if (row === undefined)
         throw new Error('Organization creation returned no row');
-      await drizzle(client)
-        .insert(authOrganizationWorkspaces)
-        .values({ workspaceId: input.workspaceId, organizationId: id })
-        .catch(rethrowQueryFailure);
+      await withWorkspaceScope(client, input, async (scoped) => {
+        await drizzle(scoped)
+          .insert(authOrganizationWorkspaces)
+          .values({ workspaceId: input.workspaceId, organizationId: id })
+          .catch(rethrowQueryFailure);
+      });
       await recordFederationAudit(client, input, {
         action: 'identity.organization_created',
         targetId: id,
@@ -79,9 +84,10 @@ export function linkOrganizationWorkspace(
     change: async (client) => {
       const organization = await requireControlOrganization(client, input);
       assertOrganizationRevision(organization, input.expectedRevision);
-      const existing = await organizationForWorkspace(
+      const existing = await withWorkspaceScope(
         client,
-        input.targetWorkspaceId,
+        { workspaceId: input.targetWorkspaceId },
+        (scoped) => organizationForWorkspace(scoped, input.targetWorkspaceId),
       );
       if (existing !== undefined && existing.id !== organization.id)
         throw new FederationConflictError(

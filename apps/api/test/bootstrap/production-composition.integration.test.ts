@@ -53,8 +53,6 @@ describe.runIf(betterAuthIntegrationEnabled)(
         NODE_ENV: 'test',
         HOST: '127.0.0.1',
         PORT: '4399',
-        DATABASE_MAINTENANCE_URL:
-          'postgresql://pertexo_maintenance:secret@localhost:5432/pertexo',
         DATABASE_URL: url.toString(),
         REDIS_URL: redisUrl,
         BETTER_AUTH_SECRET: 'production-composition-secret-of-32-characters',

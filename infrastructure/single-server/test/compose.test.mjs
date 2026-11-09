@@ -255,7 +255,7 @@ for (const { mode, transport } of ['kms', 'self-managed'].flatMap((mode) =>
     }
     assert.equal(
       config.services.api.environment.DATABASE_MAINTENANCE_URL,
-      generated.DATABASE_MAINTENANCE_URL,
+      undefined,
     );
     assert.equal(config.services.api.depends_on.worker, undefined);
     const verification = parseEnv(

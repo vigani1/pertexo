@@ -1,7 +1,5 @@
 export function validDeployedEnvironment(): Record<string, string> {
   return {
-    DATABASE_MAINTENANCE_URL:
-      'postgresql://pertexo_maintenance:secret@localhost:5432/pertexo',
     DATABASE_URL: 'postgresql://pertexo_app:secret@localhost:5432/pertexo',
     NODE_ENV: 'production',
     OTEL_EXPORTER_OTLP_ENDPOINT: 'https://otel.example.test',
@@ -30,8 +28,6 @@ export function validDeployedEnvironment(): Record<string, string> {
 
 export function standaloneBetterAuthEnvironment(): Record<string, string> {
   return {
-    DATABASE_MAINTENANCE_URL:
-      'postgresql://pertexo_maintenance:secret@localhost:5432/pertexo',
     DATABASE_URL: 'postgresql://pertexo_app:secret@localhost:5432/pertexo',
     BETTER_AUTH_SECRET: 'standalone-better-auth-secret-at-least-32-characters',
     AUTH_MAIL_MODE: 'local',

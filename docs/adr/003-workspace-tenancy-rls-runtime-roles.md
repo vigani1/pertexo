@@ -3,18 +3,21 @@
 - **Status:** accepted; superseded in part by [ADR 069](069-architecture-reset.md)
 - **Date:** 2026-08-18
 
-## 2026-11-09 follow-up — organization provisioning
+## 2026-11-09 follow-up — organization request isolation
 
-The maintenance connection also runs existing organization settings, SSO/SAML
-completion and SCIM transactions: discovery and projection span several linked
-workspaces before installing individual workspace contexts. Their core authority
-checks and lock order remain intact. The ordinary Better Auth adapter stays on
-the app connection. Workspace links and group-role mappings are workspace data
-and receive app row security; organization-wide callers do not widen app access.
-The owner-authorized `app.password_credential_count(uuid)` isolation lookup returns
-only a credential count within the locked transaction. Maintenance alone may
-execute it and still cannot select password hashes. The app adapter retains its
-existing password access for verification/reset and cannot execute the lookup.
+Serving requests keep using the app login, including organization settings,
+OIDC/SAML completion and SCIM. The API receives no maintenance credential.
+`app.organization_id` is a UUID-validated transaction-local context for the
+organization's workspace links and group-role mappings. Existing workspace
+policies and per-workspace projection scopes remain intact; unrelated workflow
+storage gains no organization predicate.
+
+Context comes from an authorized workspace's stored organization link, a verified
+journey or a verified SCIM credential. Internal discovery may use existing read
+authority, while owner/credential rechecks still run under the existing locks
+before mutations or owner-only responses. Lock order and the transaction remain
+unchanged. The unreleased maintenance-only presence lookup and request grants
+are removed; domain enforcement uses its existing app-side credential reads.
 
 ## 2026-11-09 amendment — maintenance row security (dm-08)
 

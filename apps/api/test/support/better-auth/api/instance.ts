@@ -1,4 +1,3 @@
-import { maintenanceDatabase } from '../../maintenance-database.js';
 import type { ApiIdentityConfig } from '../../../../src/platform/config/identity-config.js';
 import { captureLocalAuthenticationMail } from '../mail-capture.js';
 import { randomUUID } from 'node:crypto';
@@ -133,7 +132,6 @@ export function useBetterAuthRealApi(
     identityRuntime = owner.acquire(
       'identity runtime',
       await createApiIdentityRuntime(identity, databaseConfig, {
-        maintenanceDatabase: maintenanceDatabase(databaseConfig),
         logger: options.logger ?? silent,
         authenticationMail: options.authenticationMail?.(mail) ?? mail,
       }),
@@ -316,11 +314,7 @@ export function useBetterAuthRealApi(
           : { federationEncryption: encryption }),
       },
       databaseConfig,
-      {
-        maintenanceDatabase: maintenanceDatabase(databaseConfig),
-        authenticationMail: mail,
-        logger: options.logger ?? silent,
-      },
+      { authenticationMail: mail, logger: options.logger ?? silent },
     );
     return owner.acquire('peer identity runtime', peer, (runtime) =>
       runtime.close(),
