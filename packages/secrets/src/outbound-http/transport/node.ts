@@ -17,7 +17,7 @@ import { SecureHttpClient, type SecureHttpAddressPolicy } from '../secure.js';
 
 export class NodeDnsResolver implements SecureHttpResolver {
   public async resolve(hostname: string): Promise<readonly ResolvedAddress[]> {
-    const answers = await lookup(hostname, { all: true, verbatim: true });
+    const answers = await lookup(hostname, { all: true, order: 'verbatim' });
     return Object.freeze(
       answers.map((answer) =>
         Object.freeze({

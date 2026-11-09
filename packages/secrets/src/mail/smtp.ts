@@ -268,7 +268,7 @@ async function resolveHost(host: string, input: SmtpCheck) {
   let aborted: (() => void) | undefined;
   try {
     return await Promise.race([
-      lookup(host, { all: true, verbatim: true }),
+      lookup(host, { all: true, order: 'verbatim' }),
       new Promise<never>((_resolve, reject) => {
         timeout = setTimeout(() => {
           reject(new Error('SMTP DNS deadline'));
