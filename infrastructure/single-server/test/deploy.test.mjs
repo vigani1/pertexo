@@ -616,3 +616,49 @@ test('explains why missing backup configuration blocks pending migrations', (t) 
     false,
   );
 });
+
+test('fresh install migrates without backup configuration or store access', (t) => {
+  const f = fixture(t);
+  rmSync(join(f.state, 'current'));
+  writeFileSync(join(f.directory, '.env.production'), 'FIXTURE=true\n', {
+    mode: 0o600,
+  });
+  const result = f.run({
+    FIXTURE_PENDING_MIGRATIONS: '0001_example.sql',
+    FIXTURE_BACKUP_FAIL: 'true',
+  });
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(
+    readFileSync(join(f.state, 'current'), 'utf8').trim(),
+    newCommit,
+  );
+  assert.equal(existsSync(join(f.state, 'last-backup')), false);
+});
+
+test('retry after failed migration retains the completed recovery point', (t) => {
+  const f = fixture(t);
+  assert.equal(
+    f.run({
+      FIXTURE_PENDING_MIGRATIONS: '0001_example.sql',
+      FIXTURE_MIGRATION_FAIL: 'true',
+    }).status,
+    1,
+  );
+  const point = readFileSync(join(f.state, 'last-backup'), 'utf8');
+  const before = f.commands().length;
+  const retry = f.run({
+    FIXTURE_PENDING_MIGRATIONS: '0001_example.sql',
+    FIXTURE_BACKUP_FAIL: 'true',
+  });
+  assert.equal(retry.status, 0, retry.stderr);
+  assert.equal(readFileSync(join(f.state, 'last-backup'), 'utf8'), point);
+  assert.equal(
+    f
+      .commands()
+      .slice(before)
+      .some((c) =>
+        c.args.includes('infrastructure/single-server/backup/prepare.mjs'),
+      ),
+    false,
+  );
+});
