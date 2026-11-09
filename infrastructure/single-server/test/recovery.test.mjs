@@ -1,3 +1,4 @@
+import { applicationSettings } from './support/application-settings.mjs';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import {
@@ -24,7 +25,8 @@ function fixture(t, restore = false) {
   mkdirSync(state);
   writeFileSync(
     join(root, '.env.production'),
-    'FIXTURE=true\nBACKUP_CRYPT_PASSWORD=fixture-password\nBACKUP_CRYPT_SALT=fixture-salt\n',
+    applicationSettings +
+      'BACKUP_CRYPT_PASSWORD=fixture-password\nBACKUP_CRYPT_SALT=fixture-salt\n',
     {
       mode: 0o600,
     },

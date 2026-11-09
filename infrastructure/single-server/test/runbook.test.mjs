@@ -1,7 +1,11 @@
+import { parseEnv } from 'node:util';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import {
   existsSync,
+  mkdirSync,
+  copyFileSync,
+  statSync,
   mkdtempSync,
   readFileSync,
   readdirSync,
@@ -192,8 +196,8 @@ it('walks through getting the first account in', () => {
   assert.match(first, /verif/iu);
 });
 
-// ops-06: "Run it with the pinned runtime image" gave no command, and a fresh server has no Node.
-it('gives a secrets command that works on a server with only Docker', () => {
+// The documented bootstrap supplies Node before any deployment image pull.
+it('executes the documented secrets command with the bootstrapped operator runtime', (t) => {
   const blocks = [...runbook().matchAll(/```(?:sh|bash)\n([\s\S]*?)```/gu)].map(
     (match) => match[1],
   );
@@ -201,8 +205,32 @@ it('gives a secrets command that works on a server with only Docker', () => {
     block.includes('generate-secrets.mjs'),
   );
   assert.ok(command, 'a shell block running the generator');
-  assert.match(command, /docker run/u);
-  assert.doesNotMatch(command, /^\s*node /mu);
+  const directory = mkdtempSync(join(tmpdir(), 'pertexo-runbook-bootstrap-'));
+  t.after(() => rmSync(directory, { recursive: true, force: true }));
+  const source = join(directory, 'repository/infrastructure/single-server');
+  mkdirSync(source, { recursive: true });
+  for (const file of ['generate-secrets.mjs', '.env.production.example'])
+    copyFileSync(
+      join('infrastructure/single-server', file),
+      join(source, file),
+    );
+  assert.ok(command.includes('cd /opt/pertexo'));
+  execFileSync(
+    'bash',
+    ['-c', command.replace('cd /opt/pertexo', 'cd "$PERTEXO_FIXTURE_ROOT"')],
+    {
+      env: { ...process.env, PERTEXO_FIXTURE_ROOT: directory },
+    },
+  );
+  const file = join(directory, '.env.production');
+  const settings = parseEnv(readFileSync(file, 'utf8'));
+  assert.equal(statSync(file).mode & 0o777, 0o600);
+  assert.equal(settings.CONNECTION_ENCRYPTION_MODE, 'self-managed');
+  assert.equal(
+    Buffer.from(settings.CONNECTION_SELF_MANAGED_KEY, 'base64').length,
+    32,
+  );
+  assert.equal(Buffer.from(settings.AUTH_MAIL_KEY, 'base64').length, 32);
   assert.doesNotMatch(command, /--encryption=kms/u);
   assert.doesNotMatch(
     readFileSync(
