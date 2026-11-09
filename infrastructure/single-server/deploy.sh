@@ -11,6 +11,11 @@ prepare_release "$commit"
 previous=''
 [[ ! -f "$BETA_STATE_DIR/current" ]] || previous=$(cat "$BETA_STATE_DIR/current")
 compose up -d --wait --wait-timeout 120 postgres redis storage
+# A fenced retry keeps the recovery point from before the first migration attempt.
+# A fresh install has no settled release to capture.
+if [[ -f "$BETA_STATE_DIR/current" && ! -f "$BETA_STATE_DIR/migration-fence" ]]; then
+  bash "$(dirname "$0")/backup.sh"
+fi
 compose stop "${writer_services[@]}"
 # Existing volumes skip initdb scripts. Grant before migrations can remove policies.
 # ON_ERROR_STOP and the deploy's errexit keep writers stopped if provisioning fails.

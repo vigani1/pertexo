@@ -12,7 +12,7 @@ Pertexo runs on any one Linux server with Docker, x86-64 or ARM64, at an HTTPS
 address, with the following:
 
 - one command to deploy, roll back, back up and restore;
-- nightly off-server backups;
+- nightly off-server backups and an enforced recovery point before a settled deployment;
 - deploys from GitHub after CI passes on `main`, turned on once the first
   launch has run cleanly for a week.
 

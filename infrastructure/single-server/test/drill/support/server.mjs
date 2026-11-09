@@ -13,6 +13,7 @@ import {
   overlayNetworkName,
 } from './overlay.mjs';
 import {
+  DRILL_PROJECT as project,
   RUNTIME_IMAGE,
   removeReleaseTags,
   requireImages,
@@ -28,7 +29,7 @@ const RC_IMAGE =
 const BACKUP_TIMEOUT_SECONDS = 90;
 const repositoryRoot = new URL('../../../../../', import.meta.url).pathname;
 
-export const project = process.env.DRILL_PROJECT ?? 'pertexo-b1-singleserver';
+export { project };
 export const httpPort = Number(process.env.DRILL_HTTP_PORT ?? 64480);
 export const httpsPort = Number(process.env.DRILL_HTTPS_PORT ?? 64443);
 const control = `${project}-control`;
@@ -463,24 +464,14 @@ export async function destroyServer() {
 async function removeReleaseTagsFromLabel() {
   const images = await run('docker', [
     'images',
+    '--filter',
+    `label=pertexo.drill.project=${project}`,
     '--format',
     '{{.Tag}}',
     'ghcr.io/vigani1/pertexo',
   ]);
-  const local = images.stdout
+  const owned = images.stdout
     .split('\n')
     .filter((tag) => /^[0-9a-f]{40}$/u.test(tag));
-  // Only images the drill labelled: none of these were ever pulled from a registry.
-  const labelled = [];
-  for (const tag of local) {
-    const base = await run('docker', [
-      'image',
-      'inspect',
-      '--format',
-      '{{index .Config.Labels "pertexo.drill"}}',
-      `ghcr.io/vigani1/pertexo:${tag}`,
-    ]);
-    if (base.stdout.trim() === 'true') labelled.push(tag);
-  }
-  await removeReleaseTags(labelled);
+  await removeReleaseTags(owned);
 }
