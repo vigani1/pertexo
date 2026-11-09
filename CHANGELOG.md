@@ -10,8 +10,7 @@ own.
 - Squash migrations through 0122 into one catalog-equivalent baseline. Existing
   installations with the complete matching history are adopted without
   recreating their database or changing data and sessions. Older installations
-  must first upgrade through **[RELEASE TO BE TAGGED]**, the final pre-baseline
-  release; see
+  must first upgrade through **v0.2.0**, the final pre-baseline release; see
   [Upgrading](docs/operations/upgrading.md#baseline-transition-required-release-stop).
 - Record the full PostgreSQL catalog in `packages/database/schema.sql` and
   compare every fresh migration with it in the existing database integration CI
