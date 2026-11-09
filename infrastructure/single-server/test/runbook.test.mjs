@@ -153,34 +153,45 @@ it('gives the install as one straight line, ahead of everything else', () => {
   }
 });
 
-// ops-06, ops-16: no size stated anywhere; the Code runner's own ceiling is 2,912 MiB.
+// The documented minimum must use the example configuration that operators actually parse.
 it('states a server size that fits what the stack actually reserves', () => {
   const sizing = section(runbook(), /siz|server/iu) ?? '';
   const cpus = /(\d+)\s*(?:v?CPUs?|cores?)/iu.exec(sizing);
   const memory =
-    /(\d+)\s*GB[^.\n]*?(?:RAM|memory)|(?:RAM|memory)[^.\n]*?(\d+)\s*GB/iu.exec(
+    /(\d+)\s*Gi?B[^.\n]*?(?:RAM|memory)|(?:RAM|memory)[^.\n]*?(\d+)\s*Gi?B/iu.exec(
       sizing,
     );
   const disk = /(\d+)\s*GB[^.\n]*?disk|disk[^.\n]*?(\d+)\s*GB/iu.exec(sizing);
   assert.ok(cpus, 'a CPU count');
   assert.ok(memory, 'a memory size');
   assert.ok(disk, 'a disk size');
-  const environment = {
-    CODE_STEPS_ENABLED: 'true',
-    CODE_RUNNER_MEMORY_MB: '128',
-    CODE_RUNNER_MAX_SECONDS: '30',
-    CODE_RUNNER_CONCURRENCY: '2',
-  };
   const example = readFileSync(
     'infrastructure/single-server/.env.production.example',
     'utf8',
   );
-  for (const [name] of Object.entries(environment))
-    assert.ok(example.includes(`${name}=${environment[name]}`), name);
+  const environment = parseEnv(example);
+  const expected = {
+    CODE_STEPS_ENABLED: 'true',
+    CODE_RUNNER_MEMORY_MB: '64',
+    CODE_RUNNER_MAX_SECONDS: '30',
+    CODE_RUNNER_CONCURRENCY: '1',
+  };
+  for (const [name, value] of Object.entries(expected)) {
+    assert.equal(environment[name], value, name);
+    assert.equal(
+      example.split('\n').filter((line) => line.startsWith(name + '=')).length,
+      1,
+      `${name} is defined once`,
+    );
+  }
   const codeCeiling = codeContainerLimits(
     parseCodeSettings(environment),
   ).memoryMiB;
-  // About 1 GB is what the other services used idle in the audit's drill.
+  assert.match(
+    sizing,
+    new RegExp(`${codeCeiling.toLocaleString('en-US')}\\s+MiB`),
+  );
+  // Keep at least a GiB beyond the runner ceiling for the measured serving processes.
   assert.ok(
     Number(memory[1] ?? memory[2]) * 1024 >= codeCeiling + 1024,
     `${memory[0]} leaves no room for ${codeCeiling} MiB of Code runner`,
