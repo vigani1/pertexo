@@ -23,6 +23,12 @@ Stable configuration, identity and immutable publication history are retained
 until their explicit lifecycle operation; a table's presence here does not claim
 a general retention period or a product UI reader.
 
+The executable schema starts at `packages/database/migrations/0000_baseline.sql`;
+`packages/database/schema.sql` records its full catalog. The baseline preserves
+all tables, constraints, functions, policies, triggers, grants and storage settings
+from the history through 0122. See [Database migrations](database-migrations.md)
+for generation, snapshot updates and the frozen adoption manifest.
+
 `pertexo_internal.schema_migrations` stores migration names, checksums and
 application times. It is runner bookkeeping and is outside the product schema.
 

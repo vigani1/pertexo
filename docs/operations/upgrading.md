@@ -4,6 +4,9 @@ Pertexo publishes numbered releases. [CHANGELOG.md](../../CHANGELOG.md) says wha
 one changed and anything you have to do. Read the entries between your version and the new
 one before you start.
 
+For the baseline release, complete the [required release stop](#baseline-transition-required-release-stop)
+before deploying it.
+
 ## How to upgrade
 
 1. Check that encrypted backups are configured and working. `deploy.sh` checks
@@ -38,6 +41,33 @@ Expect downtime of about a minute without a migration, and longer with one: serv
 before migrations run and starts after them. Versions sort as numbers, so `v0.10.0` is
 newer than `v0.9.0`. Check with [the smoke check](single-server.md#6-smoke-check) afterwards.
 
+## Baseline transition: required release stop
+
+**Required stop: [RELEASE TO BE TAGGED] — the final release containing migrations
+0000 through 0122. This placeholder must be filled before the baseline release
+ships.** Install that release successfully before upgrading an older server to a
+release containing the new baseline. This includes v0.1.0 servers and databases
+that recorded only the old `0000_baseline.sql`. Update the control scripts before
+both deployments, and keep the required encrypted recovery points.
+
+The baseline release does not recreate an existing database. If all 123 recorded
+names and SHA-256 checksums exactly match the frozen pre-baseline manifest, the
+runner adopts it: under the existing migration advisory lock, one transaction
+replaces only the migration receipts with the new baseline receipt. Stored data,
+sessions, schema, privileges and sequences remain unchanged. Any later migration
+then runs normally. Deployment treats this adoption as pending migration work and
+requires its encrypted recovery point before stopping writers.
+
+Partial history is refused without changing its receipts or application data,
+with a message to upgrade through **[RELEASE TO BE TAGGED]** first. Unknown files
+and checksum mismatches are also refused. Do not edit migration receipts or
+checksums to bypass the check. If the history is unexpected, resolve it against
+the installed release and its recovery point before retrying. A new, empty
+installation applies `0000_baseline.sql` normally.
+
+The [database migration guide](database-migrations.md) explains how subsequent
+migrations update the committed catalog snapshot.
+
 ## Migration 0117: maintenance row security
 
 Update the control scripts before deployment. `deploy.sh` now uses the existing
@@ -45,8 +75,9 @@ Postgres bootstrap superuser credentials to grant the maintenance login BYPASSRL
 after stopping writers and before migrating. The grant is idempotent and fresh
 initialization uses the same SQL. If it fails, serving remains stopped and no
 migration runs; fix the credentials or role configuration and rerun deployment.
-Migration 0117 independently checks the attribute before removing maintenance
-policies, and leaves the old policies intact on failure.
+The required pre-baseline release checks the attribute in migration 0117 before
+removing maintenance policies, leaving those policies intact on failure. A fresh
+baseline installation also refuses a maintenance role without BYPASSRLS.
 
 For custom deployment flows, apply
 `infrastructure/postgres/init/roles/maintenance.sql` as a database superuser with
