@@ -1,6 +1,7 @@
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import type { Pool } from 'pg';
 import { expect, it } from 'vitest';
@@ -123,6 +124,23 @@ it.each(['partial', 'baseline-only', 'unknown', 'checksum'] as const)(
           checksum: 'Applied migration checksum changed',
         }[kind],
       );
+      if (kind === 'baseline-only') {
+        const cli = spawnSync(
+          process.execPath,
+          [fileURLToPath(new URL('../../../dist/migrate.js', import.meta.url))],
+          {
+            env: {
+              ...process.env,
+              DATABASE_MIGRATION_URL: config.connectionString,
+            },
+            encoding: 'utf8',
+          },
+        );
+        expect(cli.status).toBe(1);
+        expect(cli.stderr).toContain(
+          'upgrade to the last pre-baseline release [RELEASE TO BE TAGGED] first',
+        );
+      }
       expect(
         (
           await admin.query(
