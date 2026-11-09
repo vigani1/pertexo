@@ -1,3 +1,4 @@
+import { maintenanceConfig } from '../../../../../infrastructure/testing/worker-databases.mjs';
 import { randomUUID } from 'node:crypto';
 import { createWorkspaceInboxFoldStore } from '../../../src/inbox/folding/workspace-inbox-fold.store.js';
 import { Pool } from 'pg';
@@ -238,7 +239,9 @@ describe('the reader', () => {
 
 describe('the bounded fold command', () => {
   it.each([0, -1, 1001])('refuses a claim bound of %s', async (limit) => {
-    const fold = own(createWorkspaceInboxFoldStore(config()));
+    const fold = own(
+      createWorkspaceInboxFoldStore(maintenanceConfig(config())),
+    );
     await expect(fold.foldPending(limit)).rejects.toMatchObject({
       code: '22023',
     });

@@ -1,3 +1,4 @@
+import { maintenanceConfig } from '../../../../../infrastructure/testing/worker-databases.mjs';
 import { beforeAll, afterAll, describe, it, expect } from 'vitest';
 import {
   fixture,
@@ -168,10 +169,12 @@ describe.runIf(fixture.enabled)(
       const run = await accept(version);
       const workers = await runtime();
       const due = createDueNodeWakeupScanner(
-        parseDatabaseConfig({
-          connectionString: fixture.databaseUrl(fixture.workerUrl),
-          max: 1,
-        }),
+        maintenanceConfig(
+          parseDatabaseConfig({
+            connectionString: fixture.databaseUrl(fixture.workerUrl),
+            max: 1,
+          }),
+        ),
       );
       try {
         await workers.until(async () => {
@@ -638,7 +641,7 @@ describe.runIf(fixture.enabled)(
       const run = await accept(version);
       const workers = await runtime();
       const config = workerDatabase();
-      const due = createDueNodeWakeupScanner(config);
+      const due = createDueNodeWakeupScanner(maintenanceConfig(config));
       const tasks = createPendingTaskStore(config);
       try {
         let taskId = '';
@@ -721,7 +724,7 @@ describe.runIf(fixture.enabled)(
       const run = await accept(version);
       const workers = await runtime();
       const config = workerDatabase();
-      const due = createDueNodeWakeupScanner(config);
+      const due = createDueNodeWakeupScanner(maintenanceConfig(config));
       const runs = createWorkflowRunDatabase(config);
       const nodeStatus = async (nodeId: string) =>
         (

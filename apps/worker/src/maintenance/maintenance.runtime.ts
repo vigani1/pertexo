@@ -72,6 +72,7 @@ const productionFactories: MaintenanceRuntimeFactories = {
 
 type MaintenanceOptions = Readonly<{
   database: DatabaseConfig;
+  maintenanceDatabase?: DatabaseConfig;
   databaseRuntime?: DatabaseRuntime;
   backgroundTaskShutdownTimeoutMillis?: number;
   observer?: QueueConsumerObserver;
@@ -121,9 +122,14 @@ export async function createMaintenanceRuntime(
       failureNotificationStore = factories.notifications.store(
         options.database,
         options.databaseRuntime,
-        options.failureNotificationSystemMail === undefined
-          ? {}
-          : { systemMail: options.failureNotificationSystemMail },
+        {
+          ...(options.maintenanceDatabase === undefined
+            ? {}
+            : { maintenance: options.maintenanceDatabase }),
+          ...(options.failureNotificationSystemMail === undefined
+            ? {}
+            : { systemMail: options.failureNotificationSystemMail }),
+        },
       );
       failureNotification = factories.notifications.handler({
         store: failureNotificationStore,

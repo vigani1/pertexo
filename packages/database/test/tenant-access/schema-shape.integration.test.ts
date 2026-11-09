@@ -166,7 +166,7 @@ describe('migrated schema shape contract', () => {
       ].includes(table.relname);
       if (table.has_workspace_id && !globalIdentityLink) {
         expect(table.relrowsecurity, table.relname).toBe(true);
-        expect(table.relforcerowsecurity, table.relname).toBe(true);
+        expect(table.relforcerowsecurity, table.relname).toBe(false);
       }
       if (globalIdentityLink) {
         expect(table.relrowsecurity, table.relname).toBe(false);

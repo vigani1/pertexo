@@ -1,3 +1,4 @@
+import { maintenanceConfig } from '../../../../../infrastructure/testing/worker-databases.mjs';
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, expect, it } from 'vitest';
 import { workflowDraftRepresentationTag } from '@pertexo/workflow-model/server';
@@ -99,7 +100,10 @@ async function expectFires(workflowId: string) {
     "update app.trigger_schedules set anchor_at=date_trunc('milliseconds',clock_timestamp())-interval '61 minutes', next_fire_at=date_trunc('milliseconds',clock_timestamp())-interval '1 minute' where trigger_id=$1",
     [scheduleId],
   );
-  const scanner = createScheduleTriggerScanner(apiConfig, apiConfig);
+  const scanner = createScheduleTriggerScanner(
+    maintenanceConfig(apiConfig),
+    apiConfig,
+  );
   try {
     await scanner.scanDue({
       leaseOwner: 'restored-publication',

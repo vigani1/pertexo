@@ -1,3 +1,4 @@
+import { maintenanceConfig } from '../../../../infrastructure/testing/worker-databases.mjs';
 import { queuedCheckpoint } from './checkpoint.js';
 import { createHash, randomUUID } from 'node:crypto';
 
@@ -157,13 +158,19 @@ export function createScheduleTriggerTestEnvironment(
     }
     await migrateDatabase(migrationConfig);
     owner = new Pool({ connectionString: url(migrationBaseUrl), max: 1 });
-    worker = new Pool({ connectionString: url(workerBaseUrl), max: 1 });
+    worker = new Pool({ ...maintenanceConfig(workerConfig), max: 1 });
     identity = createIdentityWorkspaceStore(apiConfig);
     reconciliation = createWorkflowTriggerReconciliationStore(apiConfig);
     schedules = createScheduleTriggerStore(apiConfig);
-    scannerOne = createScheduleTriggerScanner(workerConfig, apiConfig);
+    scannerOne = createScheduleTriggerScanner(
+      maintenanceConfig(workerConfig),
+      apiConfig,
+    );
     if (options.scannerCount === 2)
-      scannerTwo = createScheduleTriggerScanner(workerConfig, apiConfig);
+      scannerTwo = createScheduleTriggerScanner(
+        maintenanceConfig(workerConfig),
+        apiConfig,
+      );
     if (options.includeOperator === true) {
       operator = createOperatorCommandStore(
         parseDatabaseConfig({

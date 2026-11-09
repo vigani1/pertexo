@@ -25,6 +25,7 @@ export function triggerRuntimeProvider(
       return createTriggerRuntime({
         ...config.triggerRuntime,
         database: config.database,
+        maintenanceDatabase: config.retention.maintenanceDatabase,
         ...(dependencies.databaseRuntime === undefined
           ? {}
           : { databaseRuntime: dependencies.databaseRuntime }),

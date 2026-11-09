@@ -1,3 +1,4 @@
+import { maintenanceConfig } from '../../../../../infrastructure/testing/worker-databases.mjs';
 import { describe, it, expect } from 'vitest';
 import {
   asRuntime,
@@ -223,11 +224,13 @@ describe('Coordinator For Each persistence invariants', () => {
     ).resolves.toMatchObject({ kind: 'already_committed', revision: 1 });
 
     const scanner = createDueNodeWakeupScanner(
-      parseDatabaseConfig({
-        connectionString: databaseUrl(workerBaseUrl),
-        max: 1,
-        ownerRole: 'pertexo_owner',
-      }),
+      maintenanceConfig(
+        parseDatabaseConfig({
+          connectionString: databaseUrl(workerBaseUrl),
+          max: 1,
+          ownerRole: 'pertexo_owner',
+        }),
+      ),
     );
     try {
       await expect(scanner.claimDueWakeups(100)).resolves.toBe(0);

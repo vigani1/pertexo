@@ -523,3 +523,20 @@ Points created before this change remain readable from their old plaintext
 application keys; they do not require crypt keys. New points are always encrypted.
 This is a one-way recovery path: delete old unencrypted points once an encrypted
 point has been restored and verified. Keep the bucket private while they remain.
+
+### Row-security upgrade (migration 0117)
+
+Deploy normally with `deploy.sh`. After Postgres is ready and writers are stopped,
+deployment uses the bootstrap superuser credentials already configured on the
+Postgres container to grant the maintenance login `BYPASSRLS`. Fresh installs use
+the same SQL definition. Repeated deployment safely repeats the grant. No new
+service or credentials are needed.
+
+If provisioning fails, writers remain stopped and migrations do not run. Correct
+the Postgres bootstrap credentials or role configuration and rerun deployment.
+Do not remove maintenance policies manually: migration 0117 checks BYPASSRLS before
+removing them. For deployments outside this script, a database superuser must apply
+`infrastructure/postgres/init/roles/maintenance.sql` with the `maintenance_user`
+psql variable before running migrations. The migration owner cannot grant this
+attribute. Keep the app login without BYPASSRLS; maintenance credentials are only
+for cross-workspace jobs and operator commands.

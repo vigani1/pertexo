@@ -1,3 +1,4 @@
+import { maintenanceConfig } from '../../../../infrastructure/testing/worker-databases.mjs';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   beforeAllFixture1,
@@ -2165,7 +2166,11 @@ describe('generic webhook database seam', () => {
             )
           ).rows,
         ).toEqual([{ status: 'disabled' }]);
-      const scanner = createTriggerEventScanner(apiConfig);
+      const scanner = createTriggerEventScanner(
+        apiConfig,
+        undefined,
+        maintenanceConfig(apiConfig),
+      );
       try {
         await scanner.scanDue({ limit: 100, checkpointFactory });
       } finally {

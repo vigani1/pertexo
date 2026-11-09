@@ -5,6 +5,11 @@ it touches. These commands are for the rare case the product can't settle by its
 a crash that leaves it unsure whether a step already had its effect. They run from the
 [single-server install](single-server.md).
 
+The ops login is the maintenance role. From migration 0117 it has BYPASSRLS for
+cross-workspace work; table grants still limit its access. Deployment provisions
+that attribute before migration. Keep these credentials out of serving request
+connections; the app login remains subject to workspace row security.
+
 ## Before you start
 
 Use a shell you can throw away (the scripts turn on `set -e`, which closes it on the first

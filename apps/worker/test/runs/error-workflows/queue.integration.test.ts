@@ -1,3 +1,4 @@
+import { maintenanceConfig } from '../../../../../infrastructure/testing/worker-databases.mjs';
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { NodeExecutorFailure } from '@pertexo/node-sdk/server';
@@ -109,6 +110,7 @@ describe.runIf(fixture.enabled)(
             ],
           );
           maintenance = await createMaintenanceRuntime({
+            maintenanceDatabase: maintenanceConfig(database),
             database,
             redisUrl: fixture.redisUrl,
           });
@@ -155,6 +157,7 @@ describe.runIf(fixture.enabled)(
           const deadline = (await read())?.queue_wait_expires_at;
           await maintenance.close();
           maintenance = await createMaintenanceRuntime({
+            maintenanceDatabase: maintenanceConfig(database),
             database,
             redisUrl: fixture.redisUrl,
           });

@@ -1,3 +1,4 @@
+import { maintenanceConfig } from '../../../../infrastructure/testing/worker-databases.mjs';
 import { randomUUID } from 'node:crypto';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
 import { createWorkspaceInboxFoldStore } from '@pertexo/core/inbox';
@@ -100,7 +101,9 @@ describe.runIf(betterAuthIntegrationEnabled)(
       const workerUrl = new URL(process.env.DATABASE_URL ?? sourceUrl);
       workerUrl.pathname = new URL(sourceUrl).pathname;
       const fold = createWorkspaceInboxFoldStore(
-        parseDatabaseConfig({ connectionString: workerUrl.href, max: 1 }),
+        maintenanceConfig(
+          parseDatabaseConfig({ connectionString: workerUrl.href, max: 1 }),
+        ),
       );
       try {
         await fold.foldPending(100);

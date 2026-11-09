@@ -136,7 +136,7 @@ describe('connection health retention and tenant purge', () => {
         [evidence.lease.runId],
       );
       await client.query(
-        'alter table app.workflow_runs force row level security',
+        'alter table app.workflow_runs no force row level security',
       );
     });
     const retention = createRetentionStore(
@@ -174,27 +174,25 @@ describe('connection health retention and tenant purge', () => {
       await expect(applyHealthCommand(evidence.command)).resolves.toEqual({
         kind: 'duplicate',
       });
-      for (const forgedToken of [null, randomUUID()]) {
-        const unauthorized = await asOwner(workspaceA, async (client) => {
-          if (forgedToken !== null)
-            await client.query(
-              "select set_config('app.workspace_purge_delete_token',$1,true)",
-              [forgedToken],
-            );
-          return client.query(
+      // The owner bypasses RLS after 0117. Serving credentials remain fenced.
+      await expect(
+        asRuntime(workerBaseUrl, workspaceA, (client) =>
+          client.query(
             "delete from app.inbox_receipts where workspace_id=$1 and message_id=$2 and consumer_name='connection-health-worker' returning message_id",
             [workspaceA, evidence.command.delivery.outboxEventId],
-          );
-        });
-        expect(unauthorized.rowCount).toBe(0);
-        const update = await asOwner(workspaceA, (client) =>
+          ),
+        ),
+      ).rejects.toMatchObject({ code: '42501' });
+      const crossWorkspaceUpdate = await asRuntime(
+        workerBaseUrl,
+        randomUUID(),
+        (client) =>
           client.query(
             "update app.inbox_receipts set completed_at=clock_timestamp() where workspace_id=$1 and message_id=$2 and consumer_name='connection-health-worker' returning message_id",
             [workspaceA, evidence.command.delivery.outboxEventId],
           ),
-        );
-        expect(update.rowCount).toBe(0);
-      }
+      );
+      expect(crossWorkspaceUpdate.rowCount).toBe(0);
       expect(await readHealth(evidence.connection.connectionId)).toEqual(
         before,
       );

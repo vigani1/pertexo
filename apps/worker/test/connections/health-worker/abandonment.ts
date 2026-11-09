@@ -1,3 +1,4 @@
+import { maintenanceConfig } from '../../../../../infrastructure/testing/worker-databases.mjs';
 import { randomUUID } from 'node:crypto';
 import type { z } from 'zod';
 import {
@@ -42,6 +43,7 @@ export async function captureAbandonedHealthClaim(
       max: 2,
     });
     const maintenance = await createMaintenanceRuntime({
+      maintenanceDatabase: maintenanceConfig(database),
       database,
       redisUrl: redisUrl,
     });

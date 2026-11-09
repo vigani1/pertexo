@@ -1,3 +1,4 @@
+import { maintenanceConfig } from '../../../../../infrastructure/testing/worker-databases.mjs';
 import { expect, it } from 'vitest';
 import { createTriggerEventScanner } from '../../../src/triggers/coordination/event-scanner.store.js';
 import {
@@ -35,7 +36,11 @@ it('debounces to the latest complete input, clears replaced payloads and preserv
     ),
   ).toEqual(before);
   await due(f);
-  const restarted = createTriggerEventScanner(config);
+  const restarted = createTriggerEventScanner(
+    config,
+    undefined,
+    maintenanceConfig(config),
+  );
   try {
     await Promise.all([
       scan(),
@@ -221,3 +226,15 @@ it('releases each due event once with several workers racing', async () => {
   await scan();
   expect(await counts(f)).toMatchObject({ runs: 3 });
 }, 30_000);
+
+it('releases due coordinated events in two workspaces in one scan', async () => {
+  const first = await fixture({ mode: 'debounce', key, quietSeconds: 3600 });
+  const second = await fixture({ mode: 'debounce', key, quietSeconds: 3600 });
+  await first.submit('first');
+  await second.submit('second');
+  await due(first);
+  await due(second);
+  await scan();
+  expect(await counts(first)).toMatchObject({ runs: 1 });
+  expect(await counts(second)).toMatchObject({ runs: 1 });
+});

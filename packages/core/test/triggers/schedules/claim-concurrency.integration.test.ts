@@ -1,3 +1,4 @@
+import { maintenanceConfig } from '../../../../../infrastructure/testing/worker-databases.mjs';
 import { randomUUID } from 'node:crypto';
 
 import { Pool } from 'pg';
@@ -182,7 +183,9 @@ describe('schedule claim concurrency', () => {
     const control = new Pool({ connectionString: adminUrl, max: 2 });
     const blocker = await control.connect();
     const scanner = createScheduleTriggerScanner(
-      parseDatabaseConfig({ connectionString: workerUrl, max: 1 }),
+      maintenanceConfig(
+        parseDatabaseConfig({ connectionString: workerUrl, max: 1 }),
+      ),
       parseDatabaseConfig({ connectionString: apiUrl, max: 1 }),
     );
     const controller = new AbortController();

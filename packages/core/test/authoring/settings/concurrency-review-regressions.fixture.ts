@@ -57,7 +57,7 @@ export async function publishExecutableVersion(): Promise<void> {
       ],
     );
     await client.query(
-      'alter table app.workflow_versions force row level security',
+      'alter table app.workflow_versions no force row level security',
     );
   });
 }

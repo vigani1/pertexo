@@ -1,3 +1,4 @@
+import { maintenanceConfig } from '../../../../infrastructure/testing/worker-databases.mjs';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { createOutboxDispatcherDatabase } from '@pertexo/core/outbox';
@@ -325,6 +326,7 @@ async function construct(
   active();
   const maintenance = healthEnabled
     ? await createMaintenanceRuntime({
+        maintenanceDatabase: maintenanceConfig(database),
         database,
         redisUrl: namespace.redisUrl,
       })

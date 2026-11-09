@@ -313,7 +313,7 @@ it('delivers real personal notice mail, refuses revoked content before DATA, and
   const preferences = createNoticePreferencesStore(apiConfig, {
     emailAvailable: true,
   });
-  const fold = createWorkspaceInboxFoldStore(apiConfig);
+  const fold = createWorkspaceInboxFoldStore(maintenanceConfig);
   const envelope = createApplicationSecretEnvelope({
     current: {
       version: 'notice-v1',

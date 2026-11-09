@@ -1,3 +1,4 @@
+import { maintenanceConfig } from '../../../../../../../infrastructure/testing/worker-databases.mjs';
 import {
   createDeadlineWakeupScanner,
   createNodeAttemptRunStore,
@@ -74,10 +75,12 @@ export async function assertRunningLoopControl(context: ForEachPhaseContext) {
         [workspaceId, accepted.runId],
       );
       const scanner = createDeadlineWakeupScanner(
-        parseDatabaseConfig({
-          connectionString: databaseUrl(workerUrl),
-          max: 1,
-        }),
+        maintenanceConfig(
+          parseDatabaseConfig({
+            connectionString: databaseUrl(workerUrl),
+            max: 1,
+          }),
+        ),
       );
       try {
         await expect(scanner.claimDueWakeups(10)).resolves.toBe(1);

@@ -5,6 +5,7 @@ import {
   afterAllFixture2,
   asAdmin,
   apiUrl,
+  maintenanceUrl,
   fail,
   fold,
   pending,
@@ -101,7 +102,7 @@ it('skips another claim and returns its rolled-back events to the next fold', as
   const workspace = await seed();
   for (let i = 0; i < 3; i++)
     await fail(workspace.workspaceId, workspace.first);
-  const pool = new Pool({ connectionString: apiUrl, max: 1 });
+  const pool = new Pool({ connectionString: maintenanceUrl, max: 1 });
   const blocker = await pool.connect();
   try {
     await blocker.query('begin');
@@ -188,7 +189,7 @@ it('refuses invalid claim bounds and leaves the remaining events for a later bou
   const workspace = await seed();
   for (let index = 0; index < 3; index++)
     await fail(workspace.workspaceId, workspace.first);
-  const pool = new Pool({ connectionString: apiUrl, max: 1 });
+  const pool = new Pool({ connectionString: maintenanceUrl, max: 1 });
   try {
     for (const limit of [null, 0, -1, 1001]) {
       await expect(

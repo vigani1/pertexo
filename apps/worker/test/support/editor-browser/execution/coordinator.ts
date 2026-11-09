@@ -1,3 +1,4 @@
+import { maintenanceConfig } from '../../../../../../infrastructure/testing/worker-databases.mjs';
 import { createEditorNotifications } from '../notification-runtime.fixture.js';
 import { createMaintenanceRuntime } from '../../../../src/maintenance/maintenance.runtime.js';
 
@@ -60,6 +61,7 @@ export async function startEditorCoordinator(context: EditorWorkerExecution) {
   resources.coordinator = coordinator;
   if (errorWorkflowCase) {
     const maintenance = await createMaintenanceRuntime({
+      maintenanceDatabase: maintenanceConfig(database),
       database,
       redisUrl: namespace.redisUrl,
     });

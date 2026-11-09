@@ -17,7 +17,7 @@ function createWakeupScanner(
   config: DatabaseConfig,
   runtime?: DatabaseRuntime,
 ) {
-  const lease = acquireDatabasePool(config, runtime);
+  const lease = acquireDatabasePool(config, runtime, { role: 'maintenance' });
   return Object.freeze({
     claimDueWakeups: (limit: number, signal?: AbortSignal): Promise<number> =>
       withPlatformTransaction(

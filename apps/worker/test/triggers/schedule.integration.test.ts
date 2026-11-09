@@ -7,6 +7,7 @@ import {
   ownerQuery,
   redisUrl,
   workerConfig,
+  dispatcherConfig,
   workerQuery,
   workspaceId,
   queue,
@@ -218,10 +219,10 @@ describeIntegration('direct Schedule worker integration gate', () => {
     await runtime.close();
     transferResource(runtime);
     const scannerOne = registerResource(
-      createScheduleTriggerScanner(workerConfig, workerConfig),
+      createScheduleTriggerScanner(dispatcherConfig, workerConfig),
     );
     const scannerTwo = registerResource(
-      createScheduleTriggerScanner(workerConfig, workerConfig),
+      createScheduleTriggerScanner(dispatcherConfig, workerConfig),
     );
     const duplicateCheckpointFactory = () => ({
       checkpoint: createCheckpoint({

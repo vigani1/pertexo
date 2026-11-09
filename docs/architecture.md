@@ -203,7 +203,7 @@ beside the atomic capacity counters and admission locks.
 | Role          | Use                                                              |
 | ------------- | ---------------------------------------------------------------- |
 | `owner`       | Schema and migrations                                            |
-| `app`         | API and worker workspace transactions with forced row security   |
+| `app`         | API and worker workspace transactions with workspace row security   |
 | `maintenance` | Cross-workspace dispatch, retention, lifecycle and operator work |
 
 `DATABASE_URL` is the app connection and `DATABASE_MAINTENANCE_URL` the

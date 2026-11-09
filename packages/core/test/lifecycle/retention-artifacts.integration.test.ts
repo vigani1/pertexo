@@ -495,9 +495,11 @@ describe('retention artifact reclamation', () => {
           }),
         ],
       );
-      await owner.query('alter table app.artifacts force row level security');
       await owner.query(
-        'alter table app.workflow_runs force row level security',
+        'alter table app.artifacts no force row level security',
+      );
+      await owner.query(
+        'alter table app.workflow_runs no force row level security',
       );
       await owner.query('commit');
     } catch (error: unknown) {
@@ -658,7 +660,9 @@ describe('retention artifact reclamation', () => {
       expect(proof.rows).toEqual([
         { id: referencedArtifactId, retry_scheduled: true },
       ]);
-      await owner.query('alter table app.artifacts force row level security');
+      await owner.query(
+        'alter table app.artifacts no force row level security',
+      );
       await owner.query('rollback');
     } catch (error: unknown) {
       await owner.query('rollback').catch(() => undefined);

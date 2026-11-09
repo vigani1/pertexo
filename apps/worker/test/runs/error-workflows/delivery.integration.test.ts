@@ -1,3 +1,4 @@
+import { maintenanceConfig } from '../../../../../infrastructure/testing/worker-databases.mjs';
 import { createHash, randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { initialCheckpointFactory } from '@pertexo/core/runs';
@@ -160,6 +161,7 @@ describe.runIf(fixture.enabled)(
         );
         owners.push(() => attempts.close());
         let maintenance = await createMaintenanceRuntime({
+          maintenanceDatabase: maintenanceConfig(config(fixture.workerUrl, 6)),
           database: config(fixture.workerUrl, 6),
           redisUrl: fixture.redisUrl,
         });
@@ -284,6 +286,7 @@ describe.runIf(fixture.enabled)(
           30_000,
         );
         maintenance = await createMaintenanceRuntime({
+          maintenanceDatabase: maintenanceConfig(config(fixture.workerUrl, 6)),
           database: config(fixture.workerUrl, 6),
           redisUrl: fixture.redisUrl,
         });

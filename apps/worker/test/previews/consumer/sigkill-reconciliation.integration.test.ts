@@ -1,3 +1,4 @@
+import { maintenanceConfig } from '../../../../../infrastructure/testing/worker-databases.mjs';
 import { randomUUID } from 'node:crypto';
 
 import {
@@ -192,6 +193,11 @@ describeIntegration('preview SIGKILL reconciliation', () => {
     await runWithCleanup(
       async () => {
         reconciliationRuntime = await createMaintenanceRuntime({
+          maintenanceDatabase: maintenanceConfig(
+            parseDatabaseConfig({
+              connectionString: databaseUrl(workerUrl),
+            }),
+          ),
           database: parseDatabaseConfig({
             connectionString: databaseUrl(workerUrl),
           }),

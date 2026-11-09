@@ -30,6 +30,23 @@ Expect downtime of about a minute without a migration, and longer with one: serv
 before migrations run and starts after them. Versions sort as numbers, so `v0.10.0` is
 newer than `v0.9.0`. Check with [the smoke check](single-server.md#6-smoke-check) afterwards.
 
+## Migration 0117: maintenance row security
+
+Update the control scripts before deployment. `deploy.sh` now uses the existing
+Postgres bootstrap superuser credentials to grant the maintenance login BYPASSRLS,
+after stopping writers and before migrating. The grant is idempotent and fresh
+initialization uses the same SQL. If it fails, serving remains stopped and no
+migration runs; fix the credentials or role configuration and rerun deployment.
+Migration 0117 independently checks the attribute before removing maintenance
+policies, and leaves the old policies intact on failure.
+
+For custom deployment flows, apply
+`infrastructure/postgres/init/roles/maintenance.sql` as a database superuser with
+psql's `maintenance_user` variable set to the maintenance login before migrating.
+The migration owner cannot grant BYPASSRLS. Keep app credentials unprivileged.
+This upgrade preserves retained rows; allow a maintenance window for policy DDL
+and keep writers stopped until migration completes.
+
 ## Migration 0110: artifact reference backfill
 
 An upgrade crossing `0110_artifact_owner_references.sql` needs a maintenance window.

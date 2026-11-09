@@ -54,3 +54,13 @@ export default async function copyDatabases() {
 }
 
 export { WORKERS };
+
+/** Use the maintenance login against the same isolated database as an app fixture. */
+export function maintenanceConfig(config) {
+  const url = new URL(
+    process.env.DATABASE_MAINTENANCE_URL ??
+      'postgresql://pertexo_maintenance:pertexo-local-maintenance@localhost:5432/pertexo',
+  );
+  url.pathname = new URL(config.connectionString).pathname;
+  return { ...config, connectionString: url.toString() };
+}

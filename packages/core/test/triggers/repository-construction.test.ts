@@ -1,3 +1,4 @@
+import { maintenanceConfig } from '../../../../infrastructure/testing/worker-databases.mjs';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const database = vi.hoisted(() => ({
@@ -235,9 +236,13 @@ describe('trigger repository construction ownership', () => {
       monitorLockWaits: false,
     });
     expect(() =>
-      createScheduleTriggerScanner(config, acceptanceConfig, {
-        acceptance: wrongAcceptanceRuntime,
-      }),
+      createScheduleTriggerScanner(
+        maintenanceConfig(config),
+        acceptanceConfig,
+        {
+          acceptance: wrongAcceptanceRuntime,
+        },
+      ),
     ).toThrow('authority does not match');
     await Promise.resolve();
 
@@ -249,16 +254,20 @@ describe('trigger repository construction ownership', () => {
   });
 
   it('attempts both scanner closers and keeps borrowed runtimes open', async () => {
-    const claimRuntime = createDatabaseRuntime(config, {
+    const claimRuntime = createDatabaseRuntime(maintenanceConfig(config), {
       monitorLockWaits: false,
     });
     const acceptanceRuntime = createDatabaseRuntime(acceptanceConfig, {
       monitorLockWaits: false,
     });
-    const scanner = createScheduleTriggerScanner(config, acceptanceConfig, {
-      acceptance: acceptanceRuntime,
-      claim: claimRuntime,
-    });
+    const scanner = createScheduleTriggerScanner(
+      maintenanceConfig(config),
+      acceptanceConfig,
+      {
+        acceptance: acceptanceRuntime,
+        claim: claimRuntime,
+      },
+    );
 
     await scanner.close();
     expect(database.pools[0]?.end).not.toHaveBeenCalled();
@@ -269,7 +278,10 @@ describe('trigger repository construction ownership', () => {
   });
 
   it('attempts both owned scanner closers when each rejects', async () => {
-    const scanner = createScheduleTriggerScanner(config, acceptanceConfig);
+    const scanner = createScheduleTriggerScanner(
+      maintenanceConfig(config),
+      acceptanceConfig,
+    );
     const firstFailure = new Error('claim pool close failed');
     const secondFailure = new Error('acceptance pool close failed');
     database.pools[0]?.end.mockRejectedValueOnce(firstFailure);

@@ -1,3 +1,4 @@
+import { maintenanceConfig } from '../../../../infrastructure/testing/worker-databases.mjs';
 import { randomUUID } from 'node:crypto';
 
 import type {
@@ -119,6 +120,14 @@ describeIntegration('trigger lifecycle BullMQ consumer', () => {
       async () => {
         runtime = await testTriggerRuntime(
           {
+            maintenanceDatabase: maintenanceConfig({
+              connectionString:
+                'postgresql://unused:unused@localhost:5432/unused',
+              connectionTimeoutMillis: 1_000,
+              idleTimeoutMillis: 1_000,
+              max: 1,
+              ownerRole: 'pertexo_owner',
+            }),
             batchSize: 1,
             database: {
               connectionString:

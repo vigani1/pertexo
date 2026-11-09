@@ -1,3 +1,4 @@
+import { maintenanceConfig } from '../../../../infrastructure/testing/worker-databases.mjs';
 import { randomUUID } from 'node:crypto';
 import { SMTPServer } from 'smtp-server';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -61,6 +62,7 @@ let failSeal = false;
 let authorize: (id: string, toEmail: string) => Promise<boolean>;
 function createStore() {
   return notifications.createFailureNotificationStore(config(), undefined, {
+    maintenance: maintenanceConfig(config()),
     systemMail: (input) => {
       if (failSeal) throw new Error('Owned sealer unavailable');
       return sealFailureAlert(

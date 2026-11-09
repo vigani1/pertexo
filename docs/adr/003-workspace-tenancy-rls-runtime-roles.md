@@ -3,6 +3,27 @@
 - **Status:** accepted; superseded in part by [ADR 069](069-architecture-reset.md)
 - **Date:** 2026-08-18
 
+## 2026-11-09 amendment — maintenance row security (dm-08)
+
+Following data-model audit dm-08, section 6, the maintenance login receives
+`BYPASSRLS` for cross-workspace jobs. The app login remains subject to workspace
+row security. Tenant tables no longer force row security on their NOLOGIN owner;
+owner and maintenance policies are removed. This supersedes the FORCE and
+maintenance privilege requirements below. Table grants still bound maintenance
+access, and serving requests keep using the app login.
+
+Fresh initialization and deployment share the maintenance role grant. Deployment
+runs it as the existing bootstrap superuser after stopping writers and before
+migrations; a failed grant stops deployment. Migration 0117 also refuses to remove
+maintenance policies unless BYPASSRLS is already present. Scanners use maintenance
+connections and invoker claim functions, retaining their transactions and locks.
+Public lookup functions retain their existing restricted interfaces.
+
+Workspace predicates compare UUIDs. Missing or empty context sees no rows;
+malformed SQL context raises `22P02`. The transaction context writer validates a
+workspace UUID before installing it, so request paths cannot install malformed
+context through the transaction API.
+
 ## Context
 
 The workspace is the tenant and authorization boundary for workflows,

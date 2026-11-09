@@ -1,3 +1,4 @@
+import { maintenanceConfig } from '../../../../../../infrastructure/testing/worker-databases.mjs';
 import { requestText } from '../../../support/postgres/query-text.js';
 import { expect } from 'vitest';
 import { z } from 'zod';
@@ -221,7 +222,9 @@ export function createTestFailureNotificationStore(
       role: 'worker',
       monitorLockWaits: false,
     });
-    const repository = createFailureNotificationStore(config, runtime);
+    const repository = createFailureNotificationStore(config, runtime, {
+      maintenance: maintenanceConfig(config),
+    });
     return {
       applicationName,
       store: Object.freeze({
@@ -297,7 +300,9 @@ export function createTestFailureNotificationStore(
       });
       return {
         runtime: createdRuntime,
-        repository: createFailureNotificationStore(config, createdRuntime),
+        repository: createFailureNotificationStore(config, createdRuntime, {
+          maintenance: maintenanceConfig(config),
+        }),
       };
     } finally {
       Pool.prototype.connect = originalConnect as typeof Pool.prototype.connect;

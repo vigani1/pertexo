@@ -102,7 +102,9 @@ export async function createNotificationFixture(
     );
     await client.query('set constraints all immediate');
     for (const table of protectedTables)
-      await client.query(`alter table app.${table} force row level security`);
+      await client.query(
+        `alter table app.${table} no force row level security`,
+      );
     await client.query('commit');
     return { connectionId, destinationId, secretVersionId };
   } catch (error: unknown) {

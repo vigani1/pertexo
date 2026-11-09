@@ -8,6 +8,7 @@ import {
   expireWindow,
   finishRuns,
   apiPool,
+  maintenancePool,
 } from './triggers-coordination.fixture.js';
 it('serializes same-key races, preserves exact transport receipts, and counts each business event once', async () => {
   const f = await fixture({ mode: 'deduplicate', key, windowSeconds: 86400 });
@@ -145,7 +146,7 @@ it('discovers only bounded due identities without tenant payload and refuses inv
   await f.query(
     "update app.trigger_coordinated_events set due_at=clock_timestamp()-interval '1 second'",
   );
-  const discovered = await apiPool.query<{
+  const discovered = await maintenancePool.query<{
     workspace_id: string;
     event_id: string;
   }>('select * from app.discover_due_coordinated_events(1)');
@@ -156,9 +157,10 @@ it('discovers only bounded due identities without tenant payload and refuses inv
   ]);
   for (const limit of [null, 0, 101])
     await expect(
-      apiPool.query('select * from app.discover_due_coordinated_events($1)', [
-        limit,
-      ]),
+      maintenancePool.query(
+        'select * from app.discover_due_coordinated_events($1)',
+        [limit],
+      ),
     ).rejects.toMatchObject({ code: '22023' });
   const unscoped = await apiPool.query(
     'select input_ref from app.trigger_coordinated_events',

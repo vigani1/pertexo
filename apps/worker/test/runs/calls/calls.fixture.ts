@@ -1,3 +1,4 @@
+import { maintenanceConfig } from '../../../../../infrastructure/testing/worker-databases.mjs';
 import type { NodeExecutionCapabilityFactories } from '../../../src/attempts/execution/capabilities.js';
 import { createHash, randomUUID } from 'node:crypto';
 import { createDeadlineWakeupScanner } from '@pertexo/core/runs';
@@ -229,7 +230,7 @@ export async function runtime(
       },
     });
     owners.splice(0, 2, dispatcher);
-    const deadlines = createDeadlineWakeupScanner(database);
+    const deadlines = createDeadlineWakeupScanner(maintenanceConfig(database));
     owners.push(deadlines);
     await startWorkers();
     return {

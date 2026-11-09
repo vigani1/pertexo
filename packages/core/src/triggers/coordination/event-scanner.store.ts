@@ -23,13 +23,23 @@ export type TriggerEventScanner = ReturnType<typeof createTriggerEventScanner>;
 export function createTriggerEventScanner(
   config: DatabaseConfig,
   runtime?: DatabaseRuntime,
+  maintenanceConfig?: DatabaseConfig,
 ) {
   const lease = acquireDatabasePool(config, runtime);
+  const maintenance =
+    maintenanceConfig === undefined
+      ? undefined
+      : acquireDatabasePool(maintenanceConfig, undefined, {
+          role: 'maintenance',
+        });
   return {
-    close: () => lease.close(),
+    close: async () => {
+      await lease.close();
+      await maintenance?.close();
+    },
     async scanDue(input: ScanDueEventsInput) {
       const due = await withPlatformTransaction(
-        lease.pool,
+        maintenance?.pool ?? lease.pool,
         (client) =>
           drizzle(client)
             .execute<{ workspace_id: string; event_id: string }>(

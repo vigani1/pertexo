@@ -1,3 +1,4 @@
+import { maintenanceConfig } from '../../../../../../infrastructure/testing/worker-databases.mjs';
 import {
   createOutboxDispatcherDatabase,
   createScheduleTriggerScanner,
@@ -29,7 +30,7 @@ export async function startScheduleQualification(
 ) {
   const { logger, scanResults } = context;
   const runtimeScanner = registerResource(
-    createScheduleTriggerScanner(workerConfig, workerConfig),
+    createScheduleTriggerScanner(dispatcherConfig, workerConfig),
   );
   benchmark.benchmarkScanGate = createBenchmarkScanGate(
     process.env.PERTEXO_Q11_OPERATION_TIMING === '1',
@@ -37,6 +38,7 @@ export async function startScheduleQualification(
   const runtime = registerResource(
     await testTriggerRuntime(
       {
+        maintenanceDatabase: maintenanceConfig(workerConfig),
         batchSize: 10,
         database: workerConfig,
         leaseDurationSeconds: 5,

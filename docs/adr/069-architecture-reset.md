@@ -44,8 +44,9 @@ package).
    functions. Because nothing is launched, the migration history is squashed
    into one baseline and existing databases are recreated.
 4. **Three database roles:** `owner` (migrations), `app` (API and worker, row
-   security forced) and `maintenance` (cross-workspace jobs and operator
-   commands).
+   security) and `maintenance` (cross-workspace jobs and operator
+   commands). The [2026-11-09 amendment to ADR 003](003-workspace-tenancy-rls-runtime-roles.md#2026-11-09-amendment--maintenance-row-security-dm-08) records
+   maintenance BYPASSRLS and removal of FORCE.
 5. **One version of everything until launch.** No release cohorts or epochs,
    no numbered stored formats, every node available. Versioning returns with
    the first real format change after launch.

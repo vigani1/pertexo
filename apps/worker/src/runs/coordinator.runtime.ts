@@ -199,12 +199,12 @@ export async function createCoordinatorRuntime(
     );
     notifications = factories.notifications(options.redisUrl);
     dueWakeupScanner = factories.dueScanner(
-      options.database,
-      options.databaseRuntime,
+      options.maintenanceDatabase,
+      options.maintenanceDatabaseRuntime,
     );
     deadlineWakeupScanner = factories.deadlineScanner(
-      options.database,
-      options.databaseRuntime,
+      options.maintenanceDatabase,
+      options.maintenanceDatabaseRuntime,
     );
     testSuiteScanner = await factories.testSuiteScanner(
       options.database,

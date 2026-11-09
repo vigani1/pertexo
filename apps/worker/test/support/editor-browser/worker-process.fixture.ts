@@ -1,3 +1,4 @@
+import { maintenanceConfig } from '../../../../../infrastructure/testing/worker-databases.mjs';
 import type { createArtifactDestination } from '../../attempts/artifacts/http-destination.js';
 
 import { createEditorPreview } from './previews.js';
@@ -319,6 +320,7 @@ async function constructRuntimes(
   ) {
     for (const scanner of scheduleCase ? ['one', 'two'] : ['webhook']) {
       const trigger = await createTriggerRuntime({
+        maintenanceDatabase: maintenanceConfig(database),
         database,
         redisUrl: namespace.redisUrl,
         batchSize: 10,
