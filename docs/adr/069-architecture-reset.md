@@ -4,6 +4,43 @@
 - **Date:** 2026-10-08
 - **Plan:** [architecture reset plan](../architecture-reset-plan.md)
 
+## 2026-11-09 amendment — remaining SQL storage categories (dm-09)
+
+The function inventory in
+[`sql-function-allowlist.mjs`](../../infrastructure/checks/sql-function-allowlist.mjs)
+is checked against the current migration history and these categories. Every
+signature has its own reason; membership in a category alone does not justify a
+new function. The architecture check rejects retired signatures and categories
+that this ADR does not document.
+
+| Category | Permitted work |
+| --- | --- |
+| transactions | Row locks, atomic writes and transaction-local queue wakeups. |
+| workspace isolation | Context fences, personal-reader predicates and narrow pre-tenant capability lookups. |
+| queue claiming | Bounded skip-locked claims and token-fenced lease storage. |
+| capacity counters | Serialized reservations, transfers, releases and derived counts. |
+| constraints | Stored-value and reference integrity, including immutable metadata and forbidden transitions. |
+| security integrity | Previously owner-approved session revocation on identity or workspace standing changes, covering every writer. |
+| derived storage | Previously owner-approved artifact-reference index extraction and maintenance; source JSON remains authoritative. |
+
+The checkpoint version comparison remains a conditional storage update in the
+repository; it does not require a separate function category today. The last two
+rows record the existing Batch D/E exceptions, without broadening them.
+
+Auto-pause outcome classification and folding, Inbox grouping/windows/revisions,
+and webhook ingress window/reset/retry choices live in core. Migrations 0087,
+0094 and 0113 retire their SQL rule implementations. Maintenance now runs the
+cross-workspace claimers (ADR 003); lack of cross-workspace app writes is no
+longer a reason to retain those folds in SQL.
+
+`artifact_capacity_transition` keeps capacity accounting and storage invariants:
+immutable storage identity, no resurrection of a deleted row, and release only
+when a deletion transition is recorded. These constrain every writer, including
+purge and operator SQL. They do not choose visibility, expiry, eligibility for
+physical removal, or when to begin deleting; core owns those decisions. Moving
+these integrity checks out would permit illegal stored transitions and weaken
+the capacity protocol rather than relocate a product rule.
+
 ## Context
 
 Pertexo has not launched. Its foundation is sound: layered packages without
