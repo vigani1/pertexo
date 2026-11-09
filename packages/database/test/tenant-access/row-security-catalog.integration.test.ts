@@ -67,7 +67,7 @@ it('isolates every catalog-discovered workspace policy and rejects malformed set
         // Exercise the installed policies with populated rows independently of
         // unrelated product constraints; real stored rows are covered by the upgrade test.
         await client.query(
-          `create table ${target}(id int, workspace_id uuid, user_id uuid, actor_user_id uuid, status text, job_name text, published_at timestamptz, failed_at timestamptz, batch_id uuid, prior_workspace_id uuid)`,
+          `create table ${target}(id int, organization_id uuid, workspace_id uuid, user_id uuid, actor_user_id uuid, status text, job_name text, published_at timestamptz, failed_at timestamptz, batch_id uuid, prior_workspace_id uuid)`,
         );
         await client.query(`alter table ${target} enable row level security`);
         await client.query(

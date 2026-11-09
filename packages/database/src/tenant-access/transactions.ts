@@ -150,11 +150,11 @@ async function withInstalledScope<T>(
   scope: TransactionScope,
   operation: (client: PoolClient) => Promise<T>,
 ): Promise<T> {
-  await assertNoTenantContext(client);
+  await assertNoTenantContext(client, { allowOrganizationContext: true });
   const clear = async () => {
     await client.query(`select set_config('app.workspace_id','',true),
       set_config('app.actor_id','',true),set_config('app.discovery_scope','',true)`);
-    await assertNoTenantContext(client);
+    await assertNoTenantContext(client, { allowOrganizationContext: true });
   };
   await installTransactionScope(client, scope);
   await verifyTenantContext(client, scope, undefined);

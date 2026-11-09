@@ -1,3 +1,3 @@
 import { z } from 'zod';
 
-export const workspaceIdSchema = z.uuid();
+export const scopeIdSchema = z.uuid();
