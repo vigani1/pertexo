@@ -79,8 +79,10 @@ describe('the single-server stack, through its real scripts', () => {
       'sh',
       '-c',
       role === 'app'
-        ? `PGPASSWORD="$POSTGRES_APP_PASSWORD" psql -h 127.0.0.1 -U "$POSTGRES_APP_USER" -d "$POSTGRES_DB" -At -v ON_ERROR_STOP=1 -c "${sql}"`
-        : `PGPASSWORD="$POSTGRES_PASSWORD" psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -At -v ON_ERROR_STOP=1 -c "${sql}"`,
+        ? `PGPASSWORD="$POSTGRES_APP_PASSWORD" psql -h 127.0.0.1 -U "$POSTGRES_APP_USER" -d "$POSTGRES_DB" -At -v ON_ERROR_STOP=1 -c "$1"`
+        : `PGPASSWORD="$POSTGRES_PASSWORD" psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -At -v ON_ERROR_STOP=1 -c "$1"`,
+      '--',
+      sql,
     ]);
   const mailpit = async (path) =>
     JSON.parse(

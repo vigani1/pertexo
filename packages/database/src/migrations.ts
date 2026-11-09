@@ -72,6 +72,17 @@ export const MIGRATIONS_DIRECTORY = fileURLToPath(
   new URL('../migrations/', import.meta.url),
 );
 
+/** Fixed operator guidance is safe to expose at the CLI boundary. */
+export class PartialMigrationHistoryError extends Error {
+  public override readonly name = 'PartialMigrationHistoryError';
+
+  public constructor() {
+    super(
+      'Partial pre-baseline migration history: upgrade to the last pre-baseline release [RELEASE TO BE TAGGED] first, then upgrade again',
+    );
+  }
+}
+
 /** Names the file that stopped a migration, so a failed deploy has a reason. */
 export class MigrationFileFailedError extends Error {
   public override readonly name = 'MigrationFileFailedError';
@@ -323,10 +334,7 @@ async function readAppliedHistory(
     if (expected !== row.checksum)
       throw new Error(`Applied migration checksum changed: ${row.name}`);
   }
-  if (rows.length !== history.length)
-    throw new Error(
-      'Partial pre-baseline migration history: upgrade to the last pre-baseline release [RELEASE TO BE TAGGED] first, then upgrade again',
-    );
+  if (rows.length !== history.length) throw new PartialMigrationHistoryError();
   if (checksum === undefined) throw new Error('Baseline migration is missing');
   await runMigrationTransaction(transaction, async () => {
     await client.query('delete from pertexo_internal.schema_migrations');

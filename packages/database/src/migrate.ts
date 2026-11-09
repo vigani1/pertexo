@@ -2,7 +2,11 @@ import { fileURLToPath } from 'node:url';
 import { ZodError } from 'zod';
 
 import { parseMigrationConfig, type MigrationConfig } from './config.js';
-import { MigrationFileFailedError, migrateDatabase } from './migrations.js';
+import {
+  MigrationFileFailedError,
+  PartialMigrationHistoryError,
+  migrateDatabase,
+} from './migrations.js';
 
 export interface MigrationCliDependencies {
   readonly loadConfig?: () => MigrationConfig;
@@ -21,12 +25,14 @@ function classifyError(error: unknown): 'Error' | 'NonError' {
 
 /**
  * A failed statement's Postgres message says what's wrong and carries no
- * connection details. Config issues contain fixed setting paths and validator messages,
- * never their input. Other errors could carry anything, so only their system
+ * connection details. Partial-history guidance is fixed, with no database input.
+ * Config issues contain fixed setting paths and validator messages, never their input. Other errors could carry anything, so only their system
  * code is reported.
  */
 function failureDetails(error: unknown): Readonly<Record<string, unknown>> {
   try {
+    if (error instanceof PartialMigrationHistoryError)
+      return { reason: error.message };
     if (error instanceof MigrationFileFailedError)
       return {
         file: error.file,
