@@ -841,6 +841,13 @@
       "when": 1794190806240,
       "tag": "0119_auth_workspace_row_security",
       "breakpoints": true
+    },
+    {
+      "idx": 120,
+      "version": "7",
+      "when": 1794194422337,
+      "tag": "0120_redundant_indexes",
+      "breakpoints": true
     }
   ]
 }

@@ -42,9 +42,5 @@ export const transportSecurityAuditFacts = appSchema.table(
       table.workspaceId,
       table.messageId,
     ),
-    index('transport_security_audit_facts_workspace_time_idx').on(
-      table.workspaceId,
-      table.occurredAt.desc().nullsFirst(),
-    ),
   ],
 );

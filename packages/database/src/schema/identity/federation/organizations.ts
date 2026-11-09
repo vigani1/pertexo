@@ -4,7 +4,6 @@ import {
   check,
   foreignKey,
   integer,
-  index,
   text,
   timestamp,
   unique,
@@ -54,7 +53,6 @@ export const authOrganizationWorkspaces = appSchema
         .default(sql`clock_timestamp()`),
     },
     (table) => [
-      index('auth_organization_workspace_org_idx').on(table.organizationId),
       unique('auth_organization_workspace_identity_unique').on(
         table.organizationId,
         table.workspaceId,

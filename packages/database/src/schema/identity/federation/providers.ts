@@ -41,7 +41,6 @@ export const authProviders = appSchema.table(
       table.organizationId,
       table.id,
     ),
-    index('auth_provider_organization_idx').on(table.organizationId),
     foreignKey({
       name: 'auth_provider_organization_fk',
       columns: [table.organizationId],
