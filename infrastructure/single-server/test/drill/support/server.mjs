@@ -20,8 +20,6 @@ import {
   tagRelease,
 } from './images.mjs';
 
-const UBUNTU =
-  'ubuntu:24.04@sha256:fe81560990fae86dc4743202b2cb4d3df98d0bcf949173cecef15ce1127ef852';
 const DOCKER_CLI =
   'docker:29-cli@sha256:5e6baf67325a79f64ed3bed6863954d5e05d0f3d4e57cbdb14809346814bbfdb';
 const RC_IMAGE =
@@ -38,7 +36,7 @@ const filler = `${project}-filler`;
 const network = `${project}_private`;
 
 /**
- * A fresh Ubuntu server with a non-root `pertexo` login, Docker's CLI and no Node:
+ * A fresh Linux server with a non-root `pertexo` login and the built operator checkout:
  * what the runbook starts from. Its files live on a Docker volume so the daemon sees
  * ordinary Linux ownership and modes, on any host OS.
  */
@@ -54,10 +52,11 @@ export async function createServer() {
     volume,
   ]);
   await mustDocker(['build', '--quiet', '--tag', `${control}:local`, '-'], {
-    input: `FROM ${UBUNTU}
+    input: `FROM ${RUNTIME_IMAGE}
+USER root
 COPY --from=${DOCKER_CLI} /usr/local/bin/docker /usr/local/bin/docker
 COPY --from=${DOCKER_CLI} /usr/local/libexec/docker/cli-plugins/docker-compose /usr/local/libexec/docker/cli-plugins/docker-compose
-RUN apt-get update && apt-get install -y --no-install-recommends git curl ca-certificates openssl && useradd --uid 1001 --create-home pertexo
+RUN apt-get update && apt-get install -y --no-install-recommends git curl ca-certificates openssl && usermod --uid 1001 --home /home/pertexo --shell /bin/bash pertexo && mkdir -p /home/pertexo && chown pertexo:pertexo /home/pertexo
 `,
   });
   const socketGroup = await mustDocker([
@@ -292,6 +291,14 @@ git push --quiet origin main
 cd ..
 rm -rf tree
 git clone --quiet ${root}/origin.git repository
+# Equivalent to the runbook's pnpm install/build bootstrap, using the exact built image.
+cp -a /workspace/node_modules repository/
+for source in /workspace/packages/* /workspace/apps/*; do
+  target="repository/$(basename "$(dirname "$source")")/$(basename "$source")"
+  for built in dist node_modules; do
+    if [ -d "$source/$built" ]; then cp -a "$source/$built" "$target/"; fi
+  done
+done
 `);
   return { first, broken, repaired };
 }

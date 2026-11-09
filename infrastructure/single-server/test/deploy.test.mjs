@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
 import {
   mkdtempSync,
+  cpSync,
+  copyFileSync,
   mkdirSync,
   writeFileSync,
   readFileSync,
@@ -50,6 +52,27 @@ function fixture(t) {
       writeFileSync(join(release, 'encryption/verify.mjs'), 'fixture');
     }
   }
+  const inspection = join(directory, 'inspection');
+  mkdirSync(join(inspection, 'infrastructure/single-server'), {
+    recursive: true,
+  });
+  mkdirSync(join(inspection, 'packages/database/dist'), { recursive: true });
+  cpSync(
+    'packages/database/migrations',
+    join(inspection, 'packages/database/migrations'),
+    { recursive: true },
+  );
+  copyFileSync(
+    'packages/database/dist/migration-history.js',
+    join(inspection, 'packages/database/dist/migration-history.js'),
+  );
+  copyFileSync(
+    'infrastructure/single-server/read-pending-migrations.mjs',
+    join(
+      inspection,
+      'infrastructure/single-server/read-pending-migrations.mjs',
+    ),
+  );
   const log = join(directory, 'commands.jsonl');
   writeFileSync(join(bin, 'git'), '#!/bin/sh\nexit 0\n', { mode: 0o755 });
   // The host's architecture, however the script chooses to ask for it.
@@ -72,7 +95,7 @@ exec ${execFileSync('sh', ['-c', 'command -v uname'], { encoding: 'utf8' }).trim
   writeFileSync(
     join(bin, 'docker'),
     `#!/usr/bin/env python3
-import os, sys, json, time
+import os, sys, json, time, subprocess
 from pathlib import Path
 args=sys.argv[1:]
 with open(os.environ['FIXTURE_LOG'],'a') as log:
@@ -108,8 +131,12 @@ if 'infrastructure/single-server/backup/capture.mjs' in args and 'capture' in ar
  (work/'objects.count').write_text('0\\n')
  (work/'objects.json').write_text('[]')
 if 'exec' in args and any('pg_dump' in arg for arg in args): print('database-fixture')
-if 'exec' in args and any('json_agg(name' in arg for arg in args): print('[]')
+if 'exec' in args and any('json_agg(' in arg for arg in args):
+ rows=json.loads(os.environ.get('FIXTURE_REAL_HISTORY','[]'))
+ print(json.dumps([row['name'] for row in rows] if any('json_agg(name' in arg for arg in args) else rows))
 if 'infrastructure/single-server/read-pending-migrations.mjs' in args:
+ if 'FIXTURE_REAL_HISTORY' in os.environ:
+  sys.exit(subprocess.run([os.environ['FIXTURE_NODE'],os.environ['FIXTURE_INSPECTOR']],input=sys.stdin.read(),text=True).returncode)
  print(os.environ.get('FIXTURE_PENDING_MIGRATIONS','0001_example.sql' if os.environ.get('FIXTURE_MIGRATION_LOG','').startswith('Applied') else ''))
 if 'logs' in args: print(os.environ['FIXTURE_MIGRATION_LOG'])
 if '--exit-code-from' in args and os.environ.get('FIXTURE_MIGRATION_FAIL')=='true': sys.exit(1)
@@ -141,6 +168,11 @@ if '--no-deps' in args and '--wait' in args and os.environ.get('SERVICE_VERSION'
           PATH: bin + ':' + process.env.PATH,
           PERTEXO_BETA_ROOT: directory,
           FIXTURE_LOG: log,
+          FIXTURE_NODE: process.execPath,
+          FIXTURE_INSPECTOR: join(
+            inspection,
+            'infrastructure/single-server/read-pending-migrations.mjs',
+          ),
           FIXTURE_MIGRATION_LOG: 'Database already at migration head.',
           ...changes,
         },
@@ -695,4 +727,32 @@ test('reports each missing required setting before pulling release images', (t) 
     f.commands().some((c) => c.args.includes('pull')),
     false,
   );
+});
+
+test('incompatible migration receipts leave writers running, including fenced rollback', (t) => {
+  const baseline = JSON.parse(
+    readFileSync(
+      'packages/database/migrations/pre-baseline-history.json',
+      'utf8',
+    ),
+  )[0];
+  for (const rows of [
+    [{ name: '9999_future.sql', checksum: 'future' }],
+    [baseline],
+  ]) {
+    for (const fenced of [false, true]) {
+      const f = fixture(t);
+      if (fenced) writeFileSync(join(f.state, 'migration-fence'), newCommit);
+      const result = f.run({ FIXTURE_REAL_HISTORY: JSON.stringify(rows) });
+      assert.notEqual(result.status, 0);
+      assert.equal(
+        f.commands().some((c) => c.args.includes('stop')),
+        false,
+      );
+      assert.equal(
+        readFileSync(join(f.state, 'current'), 'utf8').trim(),
+        oldCommit,
+      );
+    }
+  }
 });

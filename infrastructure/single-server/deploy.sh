@@ -13,12 +13,13 @@ previous=''
 compose up -d --wait --wait-timeout 120 postgres redis storage
 # A fenced retry keeps the recovery point from before the first migration attempt.
 # A fresh install has no settled release to capture.
-if [[ -f "$BETA_STATE_DIR/current" && ! -f "$BETA_STATE_DIR/migration-fence" ]]; then
-  recorded_migrations=$(compose exec -T postgres sh -c 'export PGPASSWORD="$POSTGRES_PASSWORD"; exec psql --no-password --username="$POSTGRES_USER" --dbname="$POSTGRES_DB" --tuples-only --no-align --set ON_ERROR_STOP=1 --command="SELECT coalesce(json_agg(name ORDER BY name), '\''[]'\''::json) FROM pertexo_internal.schema_migrations"')
+if [[ -f "$BETA_STATE_DIR/current" ]]; then
+  recorded_migrations=$(compose exec -T postgres sh -c 'export PGPASSWORD="$POSTGRES_PASSWORD"; exec psql --no-password --username="$POSTGRES_USER" --dbname="$POSTGRES_DB" --tuples-only --no-align --set ON_ERROR_STOP=1 --command="SELECT coalesce(json_agg(json_build_object('\''name'\'',name,'\''checksum'\'',checksum) ORDER BY name), '\''[]'\''::json) FROM pertexo_internal.schema_migrations"')
   pending_migrations=$(compose run --rm --no-deps -T \
     -v "$(dirname "$0")/read-pending-migrations.mjs:/workspace/infrastructure/single-server/read-pending-migrations.mjs:ro" \
+    -v "$operator_root/packages/database/dist/migration-history.js:/workspace/packages/database/dist/migration-history.js:ro" \
     migration node infrastructure/single-server/read-pending-migrations.mjs <<< "$recorded_migrations")
-  if [[ -n "$pending_migrations" ]] && ! bash "$(dirname "$0")/backup.sh"; then
+  if [[ ! -f "$BETA_STATE_DIR/migration-fence" && -n "$pending_migrations" ]] && ! bash "$(dirname "$0")/backup.sh"; then
     echo 'Pending migrations require a successful encrypted recovery point; configure or repair backups before deploying.' >&2
     exit 1
   fi

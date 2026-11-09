@@ -1,27 +1,31 @@
 import { readFileSync } from 'node:fs';
-import { readdir } from 'node:fs/promises';
+import { fileURLToPath } from 'node:url';
+import { inspectMigrationHistory } from '../../packages/database/dist/migration-history.js';
 
 try {
   const recorded = JSON.parse(readFileSync(0, 'utf8'));
   if (
     !Array.isArray(recorded) ||
-    !recorded.every((name) => typeof name === 'string')
+    !recorded.every(
+      (row) =>
+        row !== null &&
+        typeof row === 'object' &&
+        typeof row.name === 'string' &&
+        typeof row.checksum === 'string',
+    )
   )
-    throw new Error('Recorded migration history must be an array of names');
-  const applied = new Set(recorded);
-  // This file is mounted into the selected image; its migration directory stays image-owned.
-  const names = await readdir(
+    throw new Error(
+      'Recorded migration history must contain names and checksums',
+    );
+  // Both manifests remain target-image owned, including on pre-baseline rollbacks.
+  const directory = fileURLToPath(
     new URL('../../packages/database/migrations/', import.meta.url),
   );
-  const retiredHistory = recorded.some((name) => !names.includes(name));
-  const pending = names
-    .filter(
-      (name) =>
-        name.endsWith('.sql') &&
-        (!applied.has(name) ||
-          (retiredHistory && name === '0000_baseline.sql')),
-    )
-    .sort();
+  const { pending } = await inspectMigrationHistory(
+    recorded,
+    directory,
+    directory,
+  );
   if (pending.length) process.stdout.write(`${pending.join('\n')}\n`);
 } catch (error) {
   const reason =

@@ -1,15 +1,19 @@
 import { createHash } from 'node:crypto';
-import { readdir, readFile } from 'node:fs/promises';
+import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { Pool, type PoolClient } from 'pg';
 
 import type { MigrationConfig } from './config.js';
+import {
+  inspectMigrationHistory,
+  migrationNames,
+} from './migration-history.js';
+export { PartialMigrationHistoryError } from './migration-history.js';
 
 // Stable application namespace for serializing Pertexo schema migrations.
 const MIGRATION_LOCK_ID = 7_166_118_812;
-const migrationNamePattern = /^\d{4}_[a-z0-9_]+\.sql$/u;
 const maximumPostgresTimeoutMs = 2_147_483_647;
 const migrationRunnerDefaults = Object.freeze({
   connectionTimeoutMs: 10_000,
@@ -72,17 +76,6 @@ export const MIGRATIONS_DIRECTORY = fileURLToPath(
   new URL('../migrations/', import.meta.url),
 );
 
-/** Fixed operator guidance is safe to expose at the CLI boundary. */
-export class PartialMigrationHistoryError extends Error {
-  public override readonly name = 'PartialMigrationHistoryError';
-
-  public constructor() {
-    super(
-      'Partial pre-baseline migration history: upgrade to the last pre-baseline release v0.2.0 first, then upgrade again',
-    );
-  }
-}
-
 /** Names the file that stopped a migration, so a failed deploy has a reason. */
 export class MigrationFileFailedError extends Error {
   public override readonly name = 'MigrationFileFailedError';
@@ -110,12 +103,6 @@ function renderMigration(sql: string, config: MigrationConfig): string {
       '{{maintenance_role}}',
       quoteIdentifier(config.maintenanceRole),
     );
-}
-
-async function migrationNames(directory: string): Promise<string[]> {
-  return (await readdir(directory))
-    .filter((name) => migrationNamePattern.test(name))
-    .sort();
 }
 
 export async function migrateDatabase(
@@ -199,7 +186,6 @@ export async function migrateDatabase(
       transaction,
       recorded.rows,
       migrationsDirectory,
-      names,
     );
     for (const name of names) {
       const sql = await readFile(path.join(migrationsDirectory, name), 'utf8');
@@ -299,49 +285,19 @@ async function readAppliedHistory(
   transaction: Parameters<typeof runMigrationTransaction>[0],
   rows: readonly { name: string; checksum: string }[],
   migrationsDirectory: string,
-  names: readonly string[],
 ): Promise<Map<string, string>> {
-  const { client } = transaction;
-  const history = JSON.parse(
-    await readFile(
-      new URL('../migrations/pre-baseline-history.json', import.meta.url),
-      'utf8',
-    ),
-  ) as { name: string; checksum: string }[];
-  const historicalChecksums = new Map(
-    history.map((row) => [row.name, row.checksum]),
-  );
-  const baseline = '0000_baseline.sql';
-  const checksum = names.includes(baseline)
-    ? createHash('sha256')
-        .update(
-          await readFile(path.join(migrationsDirectory, baseline), 'utf8'),
-        )
-        .digest('hex')
-    : undefined;
-  const legacyBaseline = rows.some(
-    (row) =>
-      row.name === baseline &&
-      row.checksum === historicalChecksums.get(baseline) &&
-      row.checksum !== checksum,
-  );
-  if (!legacyBaseline && rows.every((row) => names.includes(row.name)))
-    return new Map(rows.map((row) => [row.name, row.checksum]));
-  for (const row of rows) {
-    const expected = historicalChecksums.get(row.name);
-    if (expected === undefined)
-      throw new Error(`Unknown applied migration: ${row.name}`);
-    if (expected !== row.checksum)
-      throw new Error(`Applied migration checksum changed: ${row.name}`);
+  const inspection = await inspectMigrationHistory(rows, migrationsDirectory);
+  if (inspection.adoption !== undefined) {
+    const { name, checksum } = inspection.adoption;
+    await runMigrationTransaction(transaction, async () => {
+      await transaction.client.query(
+        'delete from pertexo_internal.schema_migrations',
+      );
+      await transaction.client.query(
+        'insert into pertexo_internal.schema_migrations(name,checksum) values($1,$2)',
+        [name, checksum],
+      );
+    });
   }
-  if (rows.length !== history.length) throw new PartialMigrationHistoryError();
-  if (checksum === undefined) throw new Error('Baseline migration is missing');
-  await runMigrationTransaction(transaction, async () => {
-    await client.query('delete from pertexo_internal.schema_migrations');
-    await client.query(
-      'insert into pertexo_internal.schema_migrations(name,checksum) values($1,$2)',
-      [baseline, checksum],
-    );
-  });
-  return new Map([[baseline, checksum]]);
+  return inspection.applied;
 }

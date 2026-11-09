@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 umask 077
+operator_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 beta_root=${PERTEXO_BETA_ROOT:-/opt/pertexo}
 export BETA_STATE_DIR="$beta_root/state"
 mkdir -p "$BETA_STATE_DIR" "$beta_root/releases"
