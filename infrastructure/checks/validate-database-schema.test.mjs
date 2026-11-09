@@ -4,6 +4,7 @@ import test from 'node:test';
 import {
   validateDatabaseSchemaOwnership,
   validateDatabaseSchemaSources,
+  validateTableDictionary,
 } from './validate-database-schema.mjs';
 
 const validSources = Object.freeze({
@@ -134,5 +135,35 @@ test('refuses a new SQL rule without an ADR 069 storage category', () => {
         LANGUAGE sql AS $$ SELECT true $$;`,
       }),
     /SQL function.*app\.decide_workflow_retry.*category/iu,
+  );
+});
+
+test('requires each live table in the dictionary and rejects retired entries', () => {
+  const tables = new Set(['first_table', 'second_table']);
+  assert.throws(
+    () =>
+      validateTableDictionary(tables, '## Tables\n| `first_table` | First |'),
+    /missing live tables: second_table/u,
+  );
+  assert.throws(
+    () =>
+      validateTableDictionary(
+        new Set(['first_table']),
+        '## Tables\n| `first_table` | First |\n| `retired_table` | Old |',
+      ),
+    /retired tables: retired_table/u,
+  );
+});
+
+test('keeps column explanations separate from the documented table inventory', () => {
+  assert.doesNotThrow(() =>
+    validateTableDictionary(
+      new Set(['first_table']),
+      '# Dictionary\n| `workspace_id` | Tenant identity |\n\n## Tables\n| `first_table`       | First |',
+    ),
+  );
+  assert.throws(
+    () => validateTableDictionary(new Set(['first_table']), '# Dictionary'),
+    /requires a Tables section/u,
   );
 });
