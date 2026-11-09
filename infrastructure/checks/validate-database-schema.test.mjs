@@ -1,3 +1,14 @@
+import { spawnSync } from 'node:child_process';
+import {
+  cpSync,
+  realpathSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
@@ -167,3 +178,78 @@ test('keeps column explanations separate from the documented table inventory', (
     /requires a Tables section/u,
   );
 });
+
+for (const scenario of [
+  'unlisted function',
+  'undocumented category',
+  'undocumented table',
+  'retired dictionary entry',
+])
+  test(`repository check rejects ${scenario}`, (t) => {
+    const root = realpathSync(
+      mkdtempSync(join(tmpdir(), 'pertexo-governance-')),
+    );
+    t.after(() => rmSync(root, { recursive: true, force: true }));
+    for (const path of [
+      'infrastructure/checks',
+      'packages/database/migrations',
+      'packages/database/src/schema',
+      'packages/database/src/schema.ts',
+      'docs',
+    ])
+      cpSync(path, join(root, path), { recursive: true });
+    const sql = scenario.includes('function') || scenario.includes('category');
+    const command = sql
+      ? 'validate-sql-functions.mjs'
+      : 'validate-database-schema.mjs';
+    const run = () =>
+      spawnSync(
+        process.execPath,
+        [join(root, 'infrastructure/checks', command)],
+        { encoding: 'utf8' },
+      );
+    assert.equal(run().status, 0);
+    if (scenario === 'unlisted function')
+      writeFileSync(
+        join(root, 'packages/database/migrations/9999_unreviewed.sql'),
+        'CREATE FUNCTION app.unreviewed_rule() RETURNS integer LANGUAGE sql AS $$ SELECT 1 $$;',
+      );
+    if (scenario === 'undocumented category') {
+      const path = join(root, 'docs/adr/069-architecture-reset.md');
+      writeFileSync(
+        path,
+        readFileSync(path, 'utf8').replace(
+          '| capacity counters |',
+          '| missing category |',
+        ),
+      );
+    }
+    if (scenario === 'undocumented table') {
+      writeFileSync(
+        join(root, 'packages/database/migrations/9999_unreviewed.sql'),
+        'CREATE TABLE app.undocumented(id uuid primary key);',
+      );
+      writeFileSync(
+        join(root, 'packages/database/src/schema/undocumented.ts'),
+        "export const undocumented = appSchema.table('undocumented');",
+      );
+    }
+    if (scenario === 'retired dictionary entry') {
+      const path = join(root, 'docs/operations/data-dictionary.md');
+      writeFileSync(
+        path,
+        readFileSync(path, 'utf8') + '\n| `retired_table` | Retired |\n',
+      );
+    }
+    const result = run();
+    assert.notEqual(result.status, 0, result.stdout);
+    assert.match(
+      result.stderr,
+      {
+        'unlisted function': /unreviewed_rule.*category/u,
+        'undocumented category': /does not document.*capacity counters/u,
+        'undocumented table': /missing live tables: undocumented/u,
+        'retired dictionary entry': /retired tables: retired_table/u,
+      }[scenario],
+    );
+  });
