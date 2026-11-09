@@ -20,7 +20,7 @@ Other pages: [Upgrading](upgrading.md), [Operator commands](operator-commands.md
 You need one server with at least:
 
 - 2 vCPUs
-- 4 GB of memory
+- 4 GiB of memory
 - 40 GB of disk
 
 The supported minimum is **4 GiB and 2 vCPUs**, qualified on ARM64 Linux under
