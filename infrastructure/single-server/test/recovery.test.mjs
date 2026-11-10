@@ -385,12 +385,26 @@ for (const [name, restore, settings, status] of [
         'RCLONE_CONFIG_CRYPT_PASSWORD=abandoned-fixture',
         { mode: 0o600 },
       );
+      for (const file of [
+        'transport.input',
+        'transport.stdout',
+        'transport.stderr',
+      ])
+        writeFileSync(join(f.state, name, file), 'abandoned-fixture', {
+          mode: 0o600,
+        });
     }
     const result = f.run(settings);
     assert.equal(result.status, status, result.stderr);
     assert.deepEqual(
       readdirSync(f.state, { recursive: true }).filter((name) =>
         name.endsWith('rclone.env'),
+      ),
+      [],
+    );
+    assert.deepEqual(
+      readdirSync(f.state, { recursive: true }).filter((name) =>
+        /transport\.(?:input|stdout|stderr)$/u.test(name),
       ),
       [],
     );

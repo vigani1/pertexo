@@ -1,4 +1,5 @@
-import { readFile, writeFile } from 'node:fs/promises';
+import { rclone } from './transport.mjs';
+import { writeFile } from 'node:fs/promises';
 import { parseRecoveryStores } from './stores.mjs';
 const { source, backup: destination } = parseRecoveryStores(process.env);
 const directory = process.argv[2];
@@ -26,13 +27,15 @@ if (password || salt) {
     if (!process.env[name] || /[\r\n]/u.test(process.env[name]))
       throw new Error(`Provide ${name} from the separately held settings file`);
   }
+  const obscure = async (value) =>
+    (await rclone(['obscure', '-'], { input: value })).trim();
   values.CRYPT = {
     TYPE: 'crypt',
     REMOTE: `backup:${destination.bucket}/encrypted`,
     FILENAME_ENCRYPTION: 'standard',
     DIRECTORY_NAME_ENCRYPTION: 'true',
-    PASSWORD: (await readFile(`${directory}/obscured-password`, 'utf8')).trim(),
-    PASSWORD2: (await readFile(`${directory}/obscured-salt`, 'utf8')).trim(),
+    PASSWORD: await obscure(password),
+    PASSWORD2: await obscure(salt),
   };
 }
 for (const [remote, settings] of Object.entries(values)) {

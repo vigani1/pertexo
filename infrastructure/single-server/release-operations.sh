@@ -206,19 +206,11 @@ rclone_image() {
   docker compose -f "$backup_tools/compose.yaml" config --images
 }
 prepare_backup() {
-  local image
-  image=$(rclone_image)
-  if [[ -n $(config_value BACKUP_CRYPT_PASSWORD) || -n $(config_value BACKUP_CRYPT_SALT) ]]; then
-    printf '%s' "$(config_value BACKUP_CRYPT_PASSWORD)" | docker run --rm -i --network none -v "$work:/backup" "$image" obscure - > "$work/obscured-password"
-    printf '%s' "$(config_value BACKUP_CRYPT_SALT)" | docker run --rm -i --network none -v "$work:/backup" "$image" obscure - > "$work/obscured-salt"
-  fi
-  docker run --rm --network none --read-only --user "$(id -u):$(id -g)" \
-    -v "$config:/run/pertexo.env:ro" -v "$work:/prepared" \
-    -v "$backup_tools:/workspace/infrastructure/single-server/backup:ro" \
-    "ghcr.io/vigani1/pertexo:$SERVICE_VERSION" node --env-file=/run/pertexo.env infrastructure/single-server/backup/prepare.mjs /prepared
+  backup_helper prepare.mjs /prepared
   source_bucket=$(cat "$work/source-bucket")
   backup_bucket=$(cat "$work/backup-bucket")
 }
+
 rclone() {
   docker run --rm --read-only --tmpfs /tmp --user "$(id -u):$(id -g)" \
     --network "${backup_network:-pertexo-beta_private}" --env-file "$work/rclone.env" \
@@ -255,14 +247,22 @@ backup_helper() (
   bash "$backup_tools/rclone-requests.sh" "$work" "${backup_network:-pertexo-beta_private}" "$(rclone_image)" < /dev/null 8>&- 9>&- &
   runner=$!
   trap '[[ ! -f "$work/transport.cid" ]] || docker rm -f "$(cat "$work/transport.cid")" >/dev/null 2>&1; kill "$runner" 2>/dev/null || true; wait "$runner" 2>/dev/null || true' EXIT
-  local options=(--env-file "$work/rclone.env")
+  local options=(--read-only)
   if [[ ${1:-} == -i ]]; then options+=(-i); shift; fi
   if [[ ${1:-} == --cidfile ]]; then options+=("$1" "$2"); shift 2; fi
   local script=$1
   shift
-  docker run --rm --read-only --tmpfs /tmp --user "$(id -u):$(id -g)" \
-    "${options[@]}" --network "${backup_network:-pertexo-beta_private}" \
-    -v "$config:/run/pertexo.env:ro" -v "$work:/backup" \
+  local directory=/backup
+  local network=${backup_network:-pertexo-beta_private}
+  if [[ $script == prepare.mjs ]]; then
+    directory=/prepared
+    network=none
+  else
+    options+=(--env-file "$work/rclone.env")
+  fi
+  docker run --rm --tmpfs /tmp --user "$(id -u):$(id -g)" \
+    "${options[@]}" --network "$network" -e BACKUP_TRANSPORT_DIRECTORY="$directory" \
+    -v "$config:/run/pertexo.env:ro" -v "$work:$directory" \
     -v "$backup_tools:/workspace/infrastructure/single-server/backup:ro" \
     "ghcr.io/vigani1/pertexo:$SERVICE_VERSION" node --env-file=/run/pertexo.env "infrastructure/single-server/backup/$script" "$@"
 )
@@ -275,5 +275,8 @@ verify_backup_key() {
 # The operation lock excludes any reader before stale secret copies are removed.
 clear_stale_backup_configs() {
   rm -f "$BETA_STATE_DIR/rclone.env" \
-    "$BETA_STATE_DIR"/.backup.*/rclone.env "$BETA_STATE_DIR"/.restore.*/rclone.env
+    "$BETA_STATE_DIR"/.backup.*/rclone.env "$BETA_STATE_DIR"/.restore.*/rclone.env \
+    "$BETA_STATE_DIR"/.backup.*/transport.input "$BETA_STATE_DIR"/.restore.*/transport.input \
+    "$BETA_STATE_DIR"/.backup.*/transport.stdout "$BETA_STATE_DIR"/.restore.*/transport.stdout \
+    "$BETA_STATE_DIR"/.backup.*/transport.stderr "$BETA_STATE_DIR"/.restore.*/transport.stderr
 }

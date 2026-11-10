@@ -1,12 +1,21 @@
 import assert from 'node:assert/strict';
-import { spawnSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, statSync, rmSync } from 'node:fs';
+import { spawn, spawnSync } from 'node:child_process';
+import {
+  mkdtempSync,
+  mkdirSync,
+  readFileSync,
+  statSync,
+  rmSync,
+  writeFileSync,
+  existsSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { parseEnv } from 'node:util';
 import { test } from 'node:test';
+import { once } from 'node:events';
 
-test('backup tools receive dedicated S3 credentials without KMS or mail secrets', (t) => {
+test('backup tools receive dedicated S3 credentials without KMS or mail secrets', async (t) => {
   const directory = mkdtempSync(join(tmpdir(), 'pertexo-backup-config-'));
   t.after(() => rmSync(directory, { recursive: true, force: true }));
   const environment = {
@@ -45,4 +54,87 @@ test('backup tools receive dedicated S3 credentials without KMS or mail secrets'
     0,
   );
   assert.notEqual(run({ BACKUP_STORE_BUCKET: '../other' }).status, 0);
+  const dotenv = join(directory, 'crypt.env');
+  writeFileSync(
+    dotenv,
+    "BACKUP_CRYPT_PASSWORD=phrase#comment\nBACKUP_CRYPT_SALT=' salt#\"value '\n",
+    { mode: 0o600 },
+  );
+  const inputEnvironment = { ...environment };
+  delete inputEnvironment.BACKUP_CRYPT_PASSWORD;
+  delete inputEnvironment.BACKUP_CRYPT_SALT;
+  mkdirSync(join(directory, 'bin'));
+  writeFileSync(
+    join(directory, 'bin/docker'),
+    `#!${process.execPath}
+const fs = require('node:fs');
+const args = process.argv.slice(2);
+if (args[0] === 'rm') process.exit(0);
+const work = require('node:path').dirname(args[args.indexOf('--cidfile') + 1]);
+fs.writeFileSync(work + '/transport.cid', 'fixture');
+const observed = work + '/observed-inputs';
+const previous = fs.existsSync(observed) ? fs.readFileSync(observed, 'utf8') : '';
+fs.appendFileSync(observed, JSON.stringify(fs.readFileSync(0, 'utf8')) + '\\n');
+process.stdout.write(previous ? 'fixture-obscured-salt' : 'fixture-obscured-password');
+`,
+    { mode: 0o755 },
+  );
+  const runner = spawn(
+    'bash',
+    [
+      'infrastructure/single-server/backup/rclone-requests.sh',
+      directory,
+      'owned-backup-network',
+      'rclone/rclone:pinned',
+    ],
+    {
+      env: { ...process.env, PATH: `${directory}/bin:${process.env.PATH}` },
+      stdio: 'ignore',
+    },
+  );
+  try {
+    const encrypted = spawnSync(
+      process.execPath,
+      [
+        `--env-file=${dotenv}`,
+        'infrastructure/single-server/backup/prepare.mjs',
+        directory,
+      ],
+      {
+        env: { ...inputEnvironment, BACKUP_TRANSPORT_DIRECTORY: directory },
+        encoding: 'utf8',
+        timeout: 10000,
+      },
+    );
+    assert.equal(encrypted.status, 0, encrypted.stderr);
+    assert.deepEqual(
+      readFileSync(join(directory, 'observed-inputs'), 'utf8')
+        .trim()
+        .split('\n')
+        .map(JSON.parse),
+      ['phrase', ' salt#"value '],
+    );
+    const prepared = parseEnv(
+      readFileSync(join(directory, 'rclone.env'), 'utf8'),
+    );
+    assert.equal(
+      prepared.RCLONE_CONFIG_CRYPT_PASSWORD,
+      'fixture-obscured-password',
+    );
+    assert.equal(
+      prepared.RCLONE_CONFIG_CRYPT_PASSWORD2,
+      'fixture-obscured-salt',
+    );
+    for (const file of [
+      'transport.input',
+      'transport.stdout',
+      'transport.stderr',
+    ]) {
+      assert.equal(existsSync(join(directory, file)), false, file);
+    }
+  } finally {
+    const exited = once(runner, 'exit');
+    runner.kill('SIGTERM');
+    await exited;
+  }
 });
