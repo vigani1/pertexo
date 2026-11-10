@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, it } from 'vitest';
+import { afterAll, beforeAll, expect, it, vi } from 'vitest';
 import {
   restoreServicesAndClose,
   setup,
@@ -82,7 +82,7 @@ describeIntegration('For Each cancellation recovery', () => {
       // module loading that otherwise dominated this test's runtime.
       const refillSpares = () => {
         while (spares.length < SPARE_WORKERS) {
-          const spare = loadWorkers();
+          const spare = loadForEachWorker(spawnForEachWorker());
           // A spare that fails to load is reported when it is taken.
           spare.catch(() => undefined);
           spares.push(spare);
@@ -101,131 +101,6 @@ describeIntegration('For Each cancellation recovery', () => {
           await owner.start();
           requireOpen();
           return owner;
-        } catch (startupError: unknown) {
-          let cleanupError: unknown;
-          await stopOwnedChild(owner).catch((error: unknown) => {
-            cleanupError = error;
-          });
-          if (cleanupError === undefined) throw startupError;
-          throw new AggregateError(
-            [startupError, cleanupError],
-            'For Each child startup failed',
-          );
-        }
-      };
-      const loadWorkers = async (): Promise<StartableChild> => {
-        const child = spawn(
-          process.execPath,
-          [
-            fileURLToPath(
-              new URL('./for-each-worker-process.fixture.mjs', import.meta.url),
-            ),
-          ],
-          {
-            cwd: fileURLToPath(new URL('../../..', import.meta.url)),
-            env: {
-              ...process.env,
-              FOR_EACH_DATABASE_URL: databaseUrl(workerUrl),
-              FOR_EACH_MAINTENANCE_DATABASE_URL: databaseUrl(dispatcherUrl),
-              FOR_EACH_REDIS_URL: redisUrl,
-            },
-            stdio: ['pipe', 'pipe', 'pipe'],
-          },
-        );
-        // The child closes its input after starting; a late close is harmless.
-        child.stdin.on('error', () => undefined);
-        const exit = new Promise<ChildExit>((resolve) => {
-          let settled = false;
-          const settle = (result: ChildExit): void => {
-            if (settled) return;
-            settled = true;
-            resolve(result);
-          };
-          child.once('error', (error) => {
-            settle({ code: null, error, signal: null });
-          });
-          child.once('exit', (code, signal) => {
-            settle({ code, signal });
-          });
-        });
-        const owner = Object.freeze({ child, exit });
-        let pendingLine = '';
-        let stderr = '';
-        let outputFailure: Error | undefined;
-        const reached = new Set<ChildStage>();
-        const observers = new Set<() => void>();
-        child.stdout.on('data', (chunk: Buffer) => {
-          pendingLine += chunk.toString();
-          if (Buffer.byteLength(pendingLine) > MAXIMUM_CHILD_OUTPUT_BYTES)
-            outputFailure = new Error(
-              'For Each child stdout frame is too large',
-            );
-          const lines = pendingLine.split('\n');
-          pendingLine = lines.pop() ?? '';
-          for (const line of lines) {
-            let parsed: unknown;
-            try {
-              parsed = JSON.parse(line);
-            } catch {
-              continue;
-            }
-            if (
-              typeof parsed !== 'object' ||
-              parsed === null ||
-              (parsed as { pid?: unknown }).pid !== child.pid
-            )
-              continue;
-            for (const stage of ['loaded', 'ready'] as const)
-              if ((parsed as Record<string, unknown>)[stage] === true)
-                reached.add(stage);
-          }
-          for (const observe of observers) observe();
-        });
-        child.stderr.on('data', (chunk: Buffer) => {
-          stderr = (stderr + chunk.toString()).slice(
-            -MAXIMUM_CHILD_OUTPUT_BYTES,
-          );
-        });
-        const reach = (stage: ChildStage) =>
-          new Promise<void>((resolve, reject) => {
-            let settled = false;
-            const timer = setTimeout(() => {
-              settle(new Error(`For Each child ${stage} timed out: ${stderr}`));
-            }, 10_000);
-            timer.unref();
-            const settle = (error?: Error): void => {
-              if (settled) return;
-              settled = true;
-              observers.delete(observe);
-              clearTimeout(timer);
-              if (error === undefined) resolve();
-              else reject(error);
-            };
-            const observe = (): void => {
-              if (outputFailure !== undefined) settle(outputFailure);
-              else if (reached.has(stage)) settle();
-            };
-            observers.add(observe);
-            observe();
-            void exit.then((result) => {
-              if (!reached.has(stage))
-                settle(
-                  result.error ??
-                    new Error(
-                      `For Each child exited before ${stage} (${String(result.code)}, ${String(result.signal)}): ${stderr}`,
-                    ),
-                );
-            });
-          });
-        try {
-          await reach('loaded');
-          return Object.freeze({
-            ...owner,
-            start: () => {
-              child.stdin.write('start\n');
-              return reach('ready');
-            },
-          });
         } catch (startupError: unknown) {
           let cleanupError: unknown;
           await stopOwnedChild(owner).catch((error: unknown) => {
@@ -279,4 +154,179 @@ describeIntegration('For Each cancellation recovery', () => {
       await close();
     }
   }, 120_000);
+
+  it('still bounds a requested worker startup by its stage deadline', async (context) => {
+    const owner = spawnForEachWorker();
+    const close = registerTestResourceCleanup(context, () =>
+      stopOwnedChild(owner),
+    );
+    try {
+      expect(owner.child.kill('SIGSTOP')).toBe(true);
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+      const worker = await loadForEachWorker(owner);
+      const started = worker.start().then(
+        () => ({ kind: 'started' as const }),
+        (error: unknown) => ({ kind: 'failed' as const, error }),
+      );
+      await vi.advanceTimersByTimeAsync(10_001);
+      vi.useRealTimers();
+      owner.child.stdin.end();
+      owner.child.kill('SIGCONT');
+      expect(await started).toMatchObject({
+        kind: 'failed',
+        error: { message: 'For Each child loaded timed out: ' },
+      });
+      expect(await owner.exit).toEqual({ code: 0, signal: null });
+    } finally {
+      vi.useRealTimers();
+      owner.child.stdin.end();
+      owner.child.kill('SIGCONT');
+      await close();
+    }
+  });
+
+  it('keeps an unrequested preload alive until startup is requested', async (context) => {
+    const owner = spawnForEachWorker();
+    const close = registerTestResourceCleanup(context, () =>
+      stopOwnedChild(owner),
+    );
+    try {
+      expect(owner.child.kill('SIGSTOP')).toBe(true);
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+      const observed = loadForEachWorker(owner).then(
+        (worker) => ({ kind: 'owned' as const, worker }),
+        (error: unknown) => ({ kind: 'failed' as const, error }),
+      );
+      await vi.advanceTimersByTimeAsync(10_001);
+      vi.useRealTimers();
+      owner.child.stdin.end();
+      owner.child.kill('SIGCONT');
+      expect(await observed).toMatchObject({ kind: 'owned' });
+      expect(await owner.exit).toEqual({ code: 0, signal: null });
+    } finally {
+      vi.useRealTimers();
+      owner.child.stdin.end();
+      owner.child.kill('SIGCONT');
+      await close();
+    }
+  });
 });
+
+function spawnForEachWorker() {
+  const child = spawn(
+    process.execPath,
+    [
+      fileURLToPath(
+        new URL('./for-each-worker-process.fixture.mjs', import.meta.url),
+      ),
+    ],
+    {
+      cwd: fileURLToPath(new URL('../../..', import.meta.url)),
+      env: {
+        ...process.env,
+        FOR_EACH_DATABASE_URL: databaseUrl(workerUrl),
+        FOR_EACH_MAINTENANCE_DATABASE_URL: databaseUrl(dispatcherUrl),
+        FOR_EACH_REDIS_URL: redisUrl,
+      },
+      stdio: ['pipe', 'pipe', 'pipe'],
+    },
+  );
+  // The child closes its input after starting; a late close is harmless.
+  child.stdin.on('error', () => undefined);
+  const exit = new Promise<ChildExit>((resolve) => {
+    let settled = false;
+    const settle = (result: ChildExit): void => {
+      if (settled) return;
+      settled = true;
+      resolve(result);
+    };
+    child.once('error', (error) => {
+      settle({ code: null, error, signal: null });
+    });
+    child.once('exit', (code, signal) => {
+      settle({ code, signal });
+    });
+  });
+  return Object.freeze({ child, exit });
+}
+
+function loadForEachWorker(
+  owner: ReturnType<typeof spawnForEachWorker>,
+): Promise<StartableChild> {
+  const { child, exit } = owner;
+  let pendingLine = '';
+  let stderr = '';
+  let outputFailure: Error | undefined;
+  const reached = new Set<ChildStage>();
+  const observers = new Set<() => void>();
+  child.stdout.on('data', (chunk: Buffer) => {
+    pendingLine += chunk.toString();
+    if (Buffer.byteLength(pendingLine) > MAXIMUM_CHILD_OUTPUT_BYTES)
+      outputFailure = new Error('For Each child stdout frame is too large');
+    const lines = pendingLine.split('\n');
+    pendingLine = lines.pop() ?? '';
+    for (const line of lines) {
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(line);
+      } catch {
+        continue;
+      }
+      if (
+        typeof parsed !== 'object' ||
+        parsed === null ||
+        (parsed as { pid?: unknown }).pid !== child.pid
+      )
+        continue;
+      for (const stage of ['loaded', 'ready'] as const)
+        if ((parsed as Record<string, unknown>)[stage] === true)
+          reached.add(stage);
+    }
+    for (const observe of observers) observe();
+  });
+  child.stderr.on('data', (chunk: Buffer) => {
+    stderr = (stderr + chunk.toString()).slice(-MAXIMUM_CHILD_OUTPUT_BYTES);
+  });
+  const reach = (stage: ChildStage) =>
+    new Promise<void>((resolve, reject) => {
+      let settled = false;
+      const timer = setTimeout(() => {
+        settle(new Error(`For Each child ${stage} timed out: ${stderr}`));
+      }, 10_000);
+      timer.unref();
+      const settle = (error?: Error): void => {
+        if (settled) return;
+        settled = true;
+        observers.delete(observe);
+        clearTimeout(timer);
+        if (error === undefined) resolve();
+        else reject(error);
+      };
+      const observe = (): void => {
+        if (outputFailure !== undefined) settle(outputFailure);
+        else if (reached.has(stage)) settle();
+      };
+      observers.add(observe);
+      observe();
+      void exit.then((result) => {
+        if (!reached.has(stage))
+          settle(
+            result.error ??
+              new Error(
+                `For Each child exited before ${stage} (${String(result.code)}, ${String(result.signal)}): ${stderr}`,
+              ),
+          );
+      });
+    });
+  // Prefetch time is not startup time: only charge the stage deadline when used.
+  return Promise.resolve(
+    Object.freeze({
+      ...owner,
+      start: async () => {
+        await reach('loaded');
+        child.stdin.write('start\n');
+        await reach('ready');
+      },
+    }),
+  );
+}
