@@ -223,7 +223,7 @@ describe('organization controller registered HTTP seam (fake session and persist
     expect(f.tags.createTag).not.toHaveBeenCalled();
   });
 
-  it('rejects private persistence response extensions without exposing them', async () => {
+  it('strips private persistence response extensions without exposing them', async () => {
     const f = await httpFixture();
     f.tags.createTag.mockResolvedValueOnce({
       ...tagResult,
@@ -236,8 +236,8 @@ describe('organization controller registered HTTP seam (fake session and persist
       headers,
       payload: { key: 'release' },
     });
-    expect(response.statusCode).toBe(400);
-    expect(response.json<{ code: string }>().code).toBe('request.invalid');
+    expect(response.statusCode).toBe(201);
+    expect(response.json()).toEqual(tagResult);
     expect(response.body).not.toContain('private-generation');
     expect(response.body).not.toContain('actorId');
   });

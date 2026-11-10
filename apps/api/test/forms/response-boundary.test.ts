@@ -99,21 +99,24 @@ describe('the declared form response boundary', () => {
       await app.close();
     }
   });
-  it('fails undeclared response fields in tests so contract drift is visible', async () => {
+  it('strips undeclared response fields in tests just as in production', async () => {
     vi.stubEnv('NODE_ENV', 'test');
     const app = await routeHarness({
       module: ReceiptModule,
       controllers: [ReceiptController],
     });
     try {
-      expect(
-        (
-          await app.send('POST', `/v1/forms/${id}/submit`, {
-            headers,
-            body: { versionId: id, values: {} },
-          })
-        ).statusCode,
-      ).toBe(500);
+      const response = await app.send('POST', `/v1/forms/${id}/submit`, {
+        headers,
+        body: { versionId: id, values: {} },
+      });
+      expect(response.statusCode).toBe(200);
+      expect(response.payload).not.toContain('private');
+      expect(response.json()).toEqual({
+        accepted: true,
+        thankYouMessage: 'Thanks',
+        replayed: false,
+      });
     } finally {
       await app.close();
     }
