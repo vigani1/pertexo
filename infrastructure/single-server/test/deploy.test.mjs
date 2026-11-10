@@ -156,7 +156,7 @@ if 'infrastructure/single-server/backup/prepare.mjs' in args:
  prepared=Path(next(args[i+1].split(':/prepared')[0] for i,arg in enumerate(args) if arg=='-v' and args[i+1].endswith(':/prepared')))
  (prepared/'source-bucket').write_text('artifacts')
  (prepared/'backup-bucket').write_text('backups')
- (prepared/'rclone.env').write_text('RCLONE_CONFIG_CRYPT_PASSWORD=fixture')
+ (prepared/'rclone.conf').write_text('RCLONE_CONFIG_CRYPT_PASSWORD=fixture')
 if 'infrastructure/single-server/backup/capture.mjs' in args and 'capture' in args:
  if os.environ.get('FIXTURE_REQUIRE_DATA_UP')=='true':
   with open(os.environ['FIXTURE_LOG']) as file: commands=[json.loads(line)['args'] for line in file]

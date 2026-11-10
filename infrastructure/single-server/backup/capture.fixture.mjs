@@ -84,7 +84,6 @@ export async function qualifyCapture({
       ],
       { stdio: 'inherit' },
     );
-    const originalConfig = await readFile(`${directory}/rclone.env`, 'utf8');
     docker([
       'run',
       '--rm',
@@ -96,22 +95,17 @@ export async function qualifyCapture({
       '/backup',
     ]);
     const prepared = (
-      await readFile(`${directory}/rclone.env`, 'utf8')
+      await readFile(`${directory}/rclone.conf`, 'utf8')
     ).replace(
-      'RCLONE_CONFIG_BACKUP_ENDPOINT=https://destination.test',
-      'RCLONE_CONFIG_BACKUP_ENDPOINT=http://destination:9000',
+      'endpoint = `https://destination.test`',
+      'endpoint = `http://destination:9000`',
     );
-    await writeFile(`${directory}/rclone.env`, originalConfig, { mode: 0o600 });
-    await writeFile(`${directory}/capture-rclone.env`, prepared, {
-      mode: 0o600,
-    });
+    await writeFile(`${directory}/rclone.conf`, prepared, { mode: 0o600 });
     const id = docker(
       [
         'create',
         '-i',
         ...args,
-        '--env-file',
-        `${directory}/capture-rclone.env`,
         nodeImage,
         'node',
         '--env-file=/run/pertexo.env',
@@ -193,8 +187,10 @@ export async function qualifyCapture({
       '--rm',
       '--network',
       network,
-      '--env-file',
-      `${directory}/rclone.env`,
+      '-v',
+      `${directory}/rclone.conf:/run/rclone.conf:ro`,
+      '-e',
+      'RCLONE_CONFIG=/run/rclone.conf',
       '-v',
       `${directory}:/backup`,
       clone,

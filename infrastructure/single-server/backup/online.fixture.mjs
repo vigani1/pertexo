@@ -176,23 +176,23 @@ export async function qualifyOnlineRecovery({
   ]);
   const dump = readFileSync(`${directory}/encrypted-restored.dump`);
   assert.deepEqual(dump, readFileSync(`${directory}/database.dump`));
-  const keys = rewriteKeys('wrong-salt');
+  const keys = await rewriteKeys('wrong-salt');
   await assert.rejects(
     verifyBackupKey(run),
     /BACKUP_CRYPT_PASSWORD.*BACKUP_CRYPT_SALT/u,
     'the right password with the wrong salt must refuse recovery',
   );
-  rewriteKeys('wrong');
+  await rewriteKeys('wrong');
   await assert.rejects(
     verifyBackupKey(run),
     /BACKUP_CRYPT_PASSWORD.*BACKUP_CRYPT_SALT/u,
   );
-  rewriteKeys('missing');
+  await rewriteKeys('missing');
   await assert.rejects(
     verifyBackupKey(run),
     /BACKUP_CRYPT_PASSWORD.*BACKUP_CRYPT_SALT/u,
   );
-  rewriteKeys(keys);
+  await rewriteKeys(keys);
   // Recreate the source from the encrypted point alone. Its oldest object is
   // no longer in the live store and is absent from the newer point.
   for (const entry of incremental.entries)

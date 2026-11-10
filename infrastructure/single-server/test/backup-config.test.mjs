@@ -11,7 +11,6 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { parseEnv } from 'node:util';
 import { test } from 'node:test';
 import { once } from 'node:events';
 import { writeContainerAdapter } from './rclone-container.fixture.mjs';
@@ -40,12 +39,12 @@ test('backup tools receive dedicated S3 credentials without KMS or mail secrets'
       { env: { ...environment, ...changes }, encoding: 'utf8' },
     );
   assert.equal(run({}).status, 0);
-  const values = parseEnv(readFileSync(join(directory, 'rclone.env'), 'utf8'));
-  assert.equal(values.RCLONE_CONFIG_SOURCE_ENDPOINT, 'http://storage:9000');
-  assert.equal(values.RCLONE_CONFIG_BACKUP_SECRET_ACCESS_KEY, 'backup-secret');
-  assert.equal(values.RCLONE_CONFIG_SOURCE_SECRET_ACCESS_KEY, 'app-secret');
-  assert.equal(values.AWS_SECRET_ACCESS_KEY, undefined);
-  assert.equal(statSync(join(directory, 'rclone.env')).mode & 0o777, 0o600);
+  const values = readFileSync(join(directory, 'rclone.conf'), 'utf8');
+  assert.match(values, /\[source\][\s\S]*endpoint = `http:\/\/storage:9000`/u);
+  assert.match(values, /\[backup\][\s\S]*secret_access_key = `backup-secret`/u);
+  assert.match(values, /\[source\][\s\S]*secret_access_key = `app-secret`/u);
+  assert.ok(!values.includes('must-not-reach-rclone'));
+  assert.equal(statSync(join(directory, 'rclone.conf')).mode & 0o777, 0o600);
   assert.notEqual(
     run({ BACKUP_STORE_ENDPOINT: 'http://remote.example.test' }).status,
     0,
@@ -112,17 +111,9 @@ process.stdout.write(previous ? 'fixture-obscured-salt' : 'fixture-obscured-pass
         .map(JSON.parse),
       ['phrase', ' salt#"value '],
     );
-    const prepared = parseEnv(
-      readFileSync(join(directory, 'rclone.env'), 'utf8'),
-    );
-    assert.equal(
-      prepared.RCLONE_CONFIG_CRYPT_PASSWORD,
-      'fixture-obscured-password',
-    );
-    assert.equal(
-      prepared.RCLONE_CONFIG_CRYPT_PASSWORD2,
-      'fixture-obscured-salt',
-    );
+    const prepared = readFileSync(join(directory, 'rclone.conf'), 'utf8');
+    assert.match(prepared, /password = `fixture-obscured-password`/u);
+    assert.match(prepared, /password2 = `fixture-obscured-salt`/u);
     for (const file of [
       'transport.input',
       'transport.stdout',

@@ -1,3 +1,4 @@
+import { writeRcloneConfig } from './rclone-config.mjs';
 import { qualifyCapture } from './capture.fixture.mjs';
 import { qualifyOnlineRecovery } from './online.fixture.mjs';
 import { docker } from './docker-command.mjs';
@@ -341,14 +342,16 @@ try {
       ),
     );
   }
-  const envFile = join(directory, 'rclone.env');
-  writeFileSync(
-    envFile,
-    Object.entries(env)
-      .map(([k, v]) => `${k}=${v}\n`)
-      .join(''),
-    { mode: 0o600 },
-  );
+  const envFile = join(directory, 'rclone.conf');
+  const saveConfig = async () => {
+    const remotes = {};
+    for (const [key, value] of Object.entries(env)) {
+      const match = /^RCLONE_CONFIG_([^_]+)_(.*)$/u.exec(key);
+      if (match) (remotes[match[1]] ??= {})[match[2]] = value;
+    }
+    await writeRcloneConfig(envFile, remotes);
+  };
+  await saveConfig();
   const rclone = (args, options = {}) =>
     docker(
       [
@@ -362,8 +365,10 @@ try {
         '/tmp',
         '--user',
         `${process.getuid()}:${process.getgid()}`,
-        '--env-file',
-        envFile,
+        '-v',
+        `${envFile}:/run/rclone.conf:ro`,
+        '-e',
+        'RCLONE_CONFIG=/run/rclone.conf',
         '-v',
         `${directory}:/backup`,
         clone,
@@ -385,7 +390,7 @@ try {
       captureOutput: true,
     }).trim(),
   };
-  const rewriteKeys = (keys) => {
+  const rewriteKeys = async (keys) => {
     const current = Object.fromEntries(
       Object.entries(env).filter(([key]) =>
         key.startsWith('RCLONE_CONFIG_CRYPT_'),
@@ -407,16 +412,10 @@ try {
         }).trim(),
       });
     else if (keys !== 'missing') Object.assign(env, keys);
-    writeFileSync(
-      envFile,
-      Object.entries(env)
-        .map(([key, value]) => `${key}=${value}\n`)
-        .join(''),
-      { mode: 0o600 },
-    );
+    await saveConfig();
     return current;
   };
-  rewriteKeys(cryptKeys);
+  await rewriteKeys(cryptKeys);
   clients.push(
     ...[source, backup].map(
       (config) =>

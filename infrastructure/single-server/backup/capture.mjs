@@ -19,7 +19,7 @@ if (mode === 'collect') {
   const stop = (message) => {
     console.error(message);
     try {
-      rmSync(`${directory}/rclone.env`, { force: true });
+      rmSync(`${directory}/rclone.conf`, { force: true });
     } finally {
       process.exit(1);
     }

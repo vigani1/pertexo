@@ -36,7 +36,11 @@ backup_helper_identity "$project" "$operation" "$instance"
 rm -f "$work/transport.ready"
 failure='Unable to start upstream rclone helper'
 options=(--network "$network")
-[[ $network == none ]] || options+=(--env-file "$work/rclone.env")
+if [[ $network == none ]]; then
+  options+=(-e RCLONE_CONFIG=/dev/null)
+else
+  options+=(-v "$work/rclone.conf:/run/rclone.conf:ro" -e RCLONE_CONFIG=/run/rclone.conf)
+fi
 rm -f "$work/transport.cid"
 docker run --rm --cidfile "$work/transport.cid" --read-only --tmpfs /tmp \
   --user "$(id -u):$(id -g)" "${options[@]}" -v "$work:/backup" \
