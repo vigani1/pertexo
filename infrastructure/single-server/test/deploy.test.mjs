@@ -1,6 +1,7 @@
 import { codeContainerLimits } from '../../../packages/node-sdk/dist/index.js';
 import { parseApiConfig } from '../../../apps/api/dist/platform/config/api-config.js';
 import { applicationSettings } from './support/application-settings.mjs';
+import { dockerHelperLifecycle } from './rclone-container.fixture.mjs';
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
 import {
@@ -111,6 +112,7 @@ exec ${execFileSync('sh', ['-c', 'command -v uname'], { encoding: 'utf8' }).trim
 import os, sys, json, time, subprocess, re
 from pathlib import Path
 args=sys.argv[1:]
+${dockerHelperLifecycle}
 with open(os.environ['FIXTURE_LOG'],'a') as log:
  resolved=next((args[i+1].split(':/run/resolved.json:ro')[0] for i,arg in enumerate(args[:-1]) if arg=='-v' and args[i+1].endswith(':/run/resolved.json:ro')),None)
  memory=json.loads(Path(resolved).read_text()).get('services',{}).get('worker',{}).get('environment',{}).get('CODE_RUNNER_MEMORY_MB') if resolved else None

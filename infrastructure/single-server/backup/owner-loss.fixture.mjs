@@ -32,6 +32,7 @@ export async function qualifyOwnerLoss({
   network,
   environment,
   nodeImage,
+  rcloneImage,
   database,
   databaseContainer,
 }) {
@@ -75,7 +76,7 @@ const fs = require('node:fs');
 const { spawnSync } = require('node:child_process');
 const c = JSON.parse(fs.readFileSync(process.env.BACKUP_ADAPTER, 'utf8'));
 let args = process.argv.slice(2);
-if (args[0] === 'ps') process.exit(0);
+if (args[0] === 'ps' && !args.some((arg) => arg.startsWith('label=io.pertexo.backup.'))) process.exit(0);
 if (args[0] === 'compose') {
   if (args.includes('--images')) { const r = spawnSync(c.realDocker, args, { stdio: 'inherit' }); process.exit(r.status ?? 1); }
   if (args.includes('ps')) { console.log('api\\nworker\\nproxy'); process.exit(0); }
@@ -88,6 +89,9 @@ if (args[0] === 'compose') {
   image = args.findIndex((arg) => arg === c.nodeImage || arg.startsWith('rclone/rclone:'));
   if (image >= 0) args.splice(image, 0, '-e', 'RCLONE_CONFIG_BACKUP_ENDPOINT=http://destination:9000');
   args = args.map((arg) => arg === 'pertexo-beta_private' ? c.network : arg);
+}
+if (args[0] === 'run' && args.some((arg) => arg.startsWith('rclone/rclone:')) && fs.existsSync(c.root + '/transport-start.fail')) {
+  console.error('Fixture denied upstream helper startup'); process.exit(125);
 }
 const result = spawnSync(c.realDocker, args, { stdio: 'inherit' });
 process.exit(result.status ?? 1);
@@ -235,6 +239,40 @@ fs.writeFileSync(file, String(time)); console.log(new Date(time).toISOString().r
       [],
       'completed backup removes operation crypt config',
     );
+    const published = (
+      await readFile(`${root}/state/last-backup`, 'utf8')
+    ).trim();
+    const payloadFiles = docker(
+      [
+        'run',
+        '--rm',
+        '--network',
+        network,
+        '--env-file',
+        `${directory}/rclone.env`,
+        rcloneImage,
+        'lsf',
+        `crypt:pertexo-beta/${published}`,
+        '--files-only',
+      ],
+      { captureOutput: true },
+    )
+      .trim()
+      .split('\n')
+      .sort();
+    assert.deepEqual(
+      payloadFiles,
+      [
+        'STARTED',
+        'COMPLETE',
+        'database.dump',
+        'release.txt',
+        'objects.count',
+        'objects.json',
+        'SHA256SUMS',
+      ].sort(),
+      'only the recovery payload is published, never private operation files',
+    );
     console.log('A new full backup completed after SIGKILL of the prior shell');
     const settings = await readFile(`${root}/.env.production`, 'utf8');
     await writeFile(
@@ -277,6 +315,126 @@ fs.writeFileSync(file, String(time)); console.log(new Date(time).toISOString().r
     await until(
       async () => !(await dumpBlocked()),
       'Timed-out dump did not finish',
+    );
+    await writeFile(`${root}/.env.production`, settings);
+    const completedPoints = () =>
+      docker(
+        [
+          'run',
+          '--rm',
+          '--network',
+          network,
+          '--env-file',
+          `${directory}/rclone.env`,
+          rcloneImage,
+          'lsf',
+          'crypt:pertexo-beta',
+          '--recursive',
+          '--files-only',
+          '--include',
+          '**/COMPLETE',
+        ],
+        { captureOutput: true },
+      )
+        .trim()
+        .split('\n')
+        .filter(Boolean)
+        .sort();
+    const completedBefore = completedPoints();
+    const recordedBefore = await readFile(`${root}/state/last-backup`, 'utf8');
+    await blocker.query('begin');
+    await blocker.query('lock table app.artifacts in access exclusive mode');
+    const interrupted = start();
+    await until(
+      async () => {
+        await failIfShellExited(interrupted);
+        return dumpBlocked();
+      },
+      'Transport failure case did not reach the real blocked dump',
+      STARTUP_TIMEOUT_MS,
+    );
+    assert.equal(
+      await erase(),
+      false,
+      'the live backup holds the deletion pause',
+    );
+    const running = docker(
+      ['ps', '-q', '--no-trunc', '--filter', `ancestor=${rcloneImage}`],
+      { captureOutput: true },
+    )
+      .trim()
+      .split('\n');
+    const transports = [];
+    for (const name of await readdir(`${root}/state`)) {
+      if (!name.startsWith('.backup.')) continue;
+      try {
+        const id = (
+          await readFile(`${root}/state/${name}/transport.cid`, 'utf8')
+        ).trim();
+        if (running.includes(id)) transports.push(id);
+      } catch (error) {
+        if (error.code !== 'ENOENT') throw error;
+      }
+    }
+    assert.equal(
+      transports.length,
+      1,
+      "only this fixture's active transfer is targeted",
+    );
+    docker(['rm', '-f', transports[0]], { captureOutput: true });
+    await until(
+      erase,
+      'A dead transport retained the backup deletion pause',
+      3000,
+    );
+    await until(
+      () => interrupted.child.exitCode !== null,
+      'A dead transport did not fail the backup',
+    );
+    const [interruptedStatus] = await interrupted.done;
+    assert.notEqual(interruptedStatus, 0);
+    assert.equal(
+      await readFile(`${root}/state/last-backup`, 'utf8'),
+      recordedBefore,
+    );
+    assert.deepEqual(
+      completedPoints(),
+      completedBefore,
+      'no partial recovery point is published',
+    );
+    await blocker.query('rollback');
+    await until(
+      async () => !(await dumpBlocked()),
+      'Interrupted dump did not finish',
+    );
+    console.log(
+      'Killed upstream transport: backup failed, deletion resumed and COMPLETE inventory stayed unchanged',
+    );
+
+    await writeFile(`${root}/transport-start.fail`, 'deny');
+    const denied = start();
+    await until(
+      () => denied.child.exitCode !== null,
+      'Helper startup failure did not fail the backup',
+    );
+    const [deniedStatus] = await denied.done;
+    assert.notEqual(deniedStatus, 0);
+    assert.equal(
+      await erase(),
+      true,
+      'startup failure leaves no deletion pause',
+    );
+    assert.equal(
+      await readFile(`${root}/state/last-backup`, 'utf8'),
+      recordedBefore,
+    );
+    assert.deepEqual(completedPoints(), completedBefore);
+    assert.match(
+      await readFile(`${root}/shell.log`, 'utf8'),
+      /Unable to start upstream rclone helper/u,
+    );
+    console.log(
+      'Denied upstream startup: clear failure, no deletion pause and no published recovery point',
     );
   } catch (error) {
     console.error(await readFile(`${root}/shell.log`, 'utf8'));

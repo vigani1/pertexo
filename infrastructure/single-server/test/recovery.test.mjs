@@ -1,4 +1,5 @@
 import { applicationSettings } from './support/application-settings.mjs';
+import { dockerHelperLifecycle } from './rclone-container.fixture.mjs';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import {
@@ -54,15 +55,13 @@ function fixture(t, restore = false) {
 import os, sys, json, hashlib, time, re
 from pathlib import Path
 args=sys.argv[1:]
+${dockerHelperLifecycle}
 root=Path(os.environ['PERTEXO_BETA_ROOT'])
 with open(os.environ['FIXTURE_LOG'],'a') as log: log.write(json.dumps(args)+'\\n')
-if '--cidfile' in args and 'node' in args:
- script=next(arg for arg in args if arg.endswith('.mjs'))
- Path(args[args.index('--cidfile')+1]).write_text('fixture-helper-'+Path(script).stem)
 fail=os.environ.get('FAIL_AT','')
 if fail=='encryption/verify.mjs':
  if 'infrastructure/single-server/encryption/verify.mjs' in args: sys.exit(1)
-elif fail and any(fail in arg for arg in args):
+elif fail and any(fail in arg or (fail.startswith('/backup/') and arg==fail[len('/backup'):]) for arg in args):
  if 'infrastructure/single-server/backup/prepare.mjs' in args:
   prepared=Path(next(args[i+1].split(':/prepared')[0] for i,arg in enumerate(args) if arg=='-v' and args[i+1].endswith(':/prepared')))
   (prepared/'rclone.env').write_text('RCLONE_CONFIG_CRYPT_PASSWORD=partial-fixture')
@@ -174,7 +173,22 @@ if any('rclone/rclone:' in arg for arg in args):
           .split('\n')
           .map((line) => JSON.parse(line))
       : [];
-  return { run, commands, state };
+  const runningHelpers = () =>
+    spawnSync(
+      join(bin, 'docker'),
+      [
+        'ps',
+        '--all',
+        '--quiet',
+        '--filter',
+        'label=io.pertexo.backup.helper=true',
+      ],
+      {
+        env: { ...process.env, PERTEXO_BETA_ROOT: root, FIXTURE_LOG: log },
+        encoding: 'utf8',
+      },
+    );
+  return { run, commands, state, runningHelpers };
 }
 const resumed = (commands) =>
   commands.some((args) => args.includes('up') && args.includes('api'));
@@ -435,17 +449,17 @@ test('each backup helper container is removed when its owning invocation finishe
   assert.ok(helpers.length >= 3);
   for (const args of helpers) {
     assert.ok(args.includes('--cidfile'), 'the host can remove every helper');
-    const script = args
-      .find((arg) => arg.endsWith('.mjs'))
-      .split('/')
-      .at(-1)
-      .replace('.mjs', '');
+    assert.ok(args.includes('io.pertexo.backup.helper=true'));
     assert.ok(
-      commands.some(
-        (command) =>
-          command[0] === 'rm' && command.includes(`fixture-helper-${script}`),
-      ),
-      script,
+      args.includes(`io.pertexo.backup.project=${join(f.state, '..')}`),
     );
+    assert.ok(args.includes('io.pertexo.backup.operation=backup'));
   }
+  const remaining = f.runningHelpers();
+  assert.equal(remaining.status, 0, remaining.stderr);
+  assert.equal(
+    remaining.stdout.trim(),
+    '',
+    'no owned runtime or transport helper remains',
+  );
 });

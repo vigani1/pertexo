@@ -1,5 +1,6 @@
 import { qualifyOwnerLoss } from './owner-loss.fixture.mjs';
 import { spawn } from 'node:child_process';
+import { once } from 'node:events';
 import assert from 'node:assert/strict';
 import { access, readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
@@ -206,6 +207,7 @@ export async function qualifyCapture({
       network,
       environment,
       nodeImage,
+      rcloneImage: clone,
       database,
       databaseContainer,
     });
@@ -222,6 +224,10 @@ export async function qualifyCapture({
     } catch {
       // The upstream container may already have removed itself.
     }
-    runner?.kill('SIGTERM');
+    if (runner && runner.exitCode === null && runner.signalCode === null) {
+      const closed = once(runner, 'exit');
+      runner.kill('SIGTERM');
+      await closed;
+    }
   }
 }
