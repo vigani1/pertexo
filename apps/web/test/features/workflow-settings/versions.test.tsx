@@ -1,3 +1,4 @@
+import { coldStart } from '../../support/fixtures/run';
 import { HttpResponse, http } from 'msw';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -77,7 +78,7 @@ describe('workflow versions tab', () => {
       renderApp(versionsPath);
       const event = userEvent.setup();
       await event.click(
-        await screen.findByRole('button', { name: 'More for v1' }),
+        await screen.findByRole('button', { name: 'More for v1' }, coldStart),
       );
       await event.click(
         await screen.findByRole('menuitem', { name: /Export/u }),

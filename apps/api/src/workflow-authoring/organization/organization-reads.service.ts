@@ -1,3 +1,4 @@
+import { credentialAllowsCapability } from '../../authorization/credentials.js';
 import type {
   workflowGetQuerySchema,
   workflowOrganizationListQuerySchema,
@@ -110,10 +111,14 @@ export class WorkflowOrganizationReadsUseCase {
       return serializeWorkflowList(
         page.items.map((item) => item.workflow),
         nextCursor,
+        credentialAllowsCapability(input.actor, 'run:read'),
       );
     return workflowOrganizationListResponseSchema.parse({
       items: page.items.map((item) => ({
-        workflow: serializeWorkflowSummary(item.workflow).workflow,
+        workflow: serializeWorkflowSummary(
+          item.workflow,
+          credentialAllowsCapability(input.actor, 'run:read'),
+        ).workflow,
         organization: item.organization,
       })),
       nextCursor,

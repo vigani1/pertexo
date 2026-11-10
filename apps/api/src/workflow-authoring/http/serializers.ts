@@ -19,7 +19,10 @@ import {
   type WorkflowVersionResponse,
   type WorkflowVersionsResponse,
 } from '@pertexo/contracts';
-import { parseWorkflowGraphDraft } from '@pertexo/workflow-model';
+import {
+  portableGraphDigest,
+  parseWorkflowGraphDraft,
+} from '@pertexo/workflow-model';
 import type { validateWorkflowGraph } from '@pertexo/workflow-model';
 import { AuthoringValidationUnavailableError } from '@pertexo/workflow-model/server';
 import { workflowDraftRepresentationTag } from '@pertexo/workflow-model/server';
@@ -42,26 +45,30 @@ export type WorkflowValidationResult = Readonly<{
 export function serializeWorkflowList(
   items: readonly WorkflowRecord[],
   nextCursor: string | null,
+  includeRecentRuns = false,
 ): Readonly<{ items: readonly WorkflowSummary[]; nextCursor: string | null }> {
   return workflowListResponseSchema.parse({
-    items: items.map(workflowSummary),
+    items: items.map((item) => workflowSummary(item, includeRecentRuns)),
     nextCursor,
   });
 }
 
-export function serializeWorkflowSummary(workflow: WorkflowRecord) {
+export function serializeWorkflowSummary(
+  workflow: WorkflowRecord,
+  includeRecentRuns = false,
+) {
   return workflowSummaryResponseSchema.parse({
-    workflow: workflowSummary(workflow),
+    workflow: workflowSummary(workflow, includeRecentRuns),
   });
 }
 
-export function serializeWorkflowCreate(
+export async function serializeWorkflowCreate(
   input: Readonly<{
     workflow: WorkflowRecord;
     draft: WorkflowDraftRecord;
   }>,
-): WorkflowCreateResult {
-  const draft = serializeWorkflowDraft(input.draft);
+): Promise<WorkflowCreateResult> {
+  const draft = await serializeWorkflowDraft(input.draft);
   return Object.freeze({
     body: workflowCreateResponseSchema.parse({
       workflow: workflowSummary(input.workflow),
@@ -71,9 +78,9 @@ export function serializeWorkflowCreate(
   });
 }
 
-export function serializeWorkflowDraft(
+export async function serializeWorkflowDraft(
   draft: WorkflowDraftRecord,
-): WorkflowDraftResult {
+): Promise<WorkflowDraftResult> {
   const graph = parseWorkflowGraphDraft(draft.graphJson);
   const representation: DraftRepresentation = {
     workflowId: draft.workflowId,
@@ -86,6 +93,7 @@ export function serializeWorkflowDraft(
       workflowId: draft.workflowId,
       revision: draft.revision,
       graph,
+      graphDigest: await portableGraphDigest(graph),
       compatibility: draft.compatibility,
       updatedAt: draft.updatedAt.toISOString(),
     }),
@@ -121,28 +129,42 @@ export function serializeWorkflowValidation(
   });
 }
 
-export function serializeWorkflowPublication(
+export async function serializeWorkflowPublication(
   version: WorkflowVersionRecord,
   { reused }: Readonly<{ reused: boolean }>,
-): WorkflowPublishResponse {
+): Promise<WorkflowPublishResponse> {
   return workflowPublishResponseSchema.parse({
-    version: workflowVersion(version),
+    version: await workflowVersion(version),
     reused,
   });
 }
 
-export function serializeWorkflowVersions(
+export async function serializeWorkflowVersions(
   items: readonly WorkflowVersionRecord[],
   nextCursor: string | null,
-): WorkflowVersionsResponse {
+): Promise<WorkflowVersionsResponse> {
   return workflowVersionsResponseSchema.parse({
-    items: items.map(workflowVersion),
+    items: await Promise.all(items.map(workflowVersion)),
     nextCursor,
   });
 }
 
-export function workflowSummary(workflow: WorkflowRecord): WorkflowSummary {
+export function workflowSummary(
+  workflow: WorkflowRecord,
+  includeRecentRuns = false,
+): WorkflowSummary {
   return {
+    ...(workflow.listSummary === undefined
+      ? {}
+      : {
+          listSummary: {
+            shape: workflow.listSummary.shape,
+            ...(includeRecentRuns &&
+            workflow.listSummary.recentRuns !== undefined
+              ? { recentRuns: workflow.listSummary.recentRuns }
+              : {}),
+          },
+        }),
     id: workflow.id,
     workspaceId: workflow.workspaceId,
     name: workflow.name,
@@ -160,14 +182,15 @@ export function workflowSummary(workflow: WorkflowRecord): WorkflowSummary {
   };
 }
 
-function workflowVersion(
+async function workflowVersion(
   version: WorkflowVersionRecord,
-): WorkflowVersionResponse {
+): Promise<WorkflowVersionResponse> {
   return workflowVersionResponseSchema.parse({
     id: version.id,
     workflowId: version.workflowId,
     versionNumber: version.versionNumber,
     graph: parseWorkflowGraphDraft(version.graphJson),
+    graphDigest: await portableGraphDigest(version.graphJson),
     checksum: version.checksum,
     publishedAt: version.publishedAt.toISOString(),
   });

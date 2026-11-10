@@ -36,9 +36,14 @@ describeIntegration(
         headers: { cookie: session.cookieHeader },
       });
       expect(draft.statusCode, draft.payload).toBe(200);
-      const digest = await portableGraphDigest(
-        draft.json<{ graph: WorkflowGraph }>().graph,
+      const reviewed = draft.json<{
+        graph: WorkflowGraph;
+        graphDigest: string;
+      }>();
+      expect(reviewed.graphDigest).toBe(
+        await portableGraphDigest(reviewed.graph),
       );
+      const digest = reviewed.graphDigest;
       const response = await fixture.application.inject({
         method: 'POST',
         url: `${base}/export`,

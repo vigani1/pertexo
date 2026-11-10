@@ -1,3 +1,4 @@
+import { readListSummaries } from '../workflows/reads/list-summary.repository.js';
 import { BROWSABLE_WORKSPACE_STATUSES, type Role } from '@pertexo/policy';
 import {
   and,
@@ -146,9 +147,15 @@ async function select(
     access,
     filters,
   });
+  const summaries = await readListSummaries(
+    client,
+    access,
+    projections.slice(0, input.limit).map((row) => row.workflow.id),
+  );
   const items = projections.slice(0, input.limit).map((row) => {
     const workflow = {
       ...row.workflow,
+      listSummary: summaries.get(row.workflow.id),
       resourceAccess: workflowActions(access, row.folderId),
     };
     const organization: WorkflowOrganizationMetadata = Object.freeze({

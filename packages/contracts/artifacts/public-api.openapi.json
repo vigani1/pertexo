@@ -10622,6 +10622,171 @@
                 ],
                 "additionalProperties": false
               },
+              "listSummary": {
+                "type": "object",
+                "properties": {
+                  "shape": {
+                    "type": "object",
+                    "properties": {
+                      "nodes": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "definition": {
+                              "type": "object",
+                              "properties": {
+                                "key": {
+                                  "type": "string"
+                                },
+                                "version": {
+                                  "type": "number"
+                                }
+                              },
+                              "required": [
+                                "key",
+                                "version"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "position": {
+                              "type": "object",
+                              "properties": {
+                                "x": {
+                                  "type": "number"
+                                },
+                                "y": {
+                                  "type": "number"
+                                }
+                              },
+                              "required": [
+                                "x",
+                                "y"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "label": {
+                              "type": "string"
+                            },
+                            "structured": {
+                              "type": "object",
+                              "properties": {
+                                "kind": {
+                                  "type": "string",
+                                  "const": "for_each"
+                                }
+                              },
+                              "required": [
+                                "kind"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "definition",
+                            "position"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "edges": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "source": {
+                              "type": "object",
+                              "properties": {
+                                "nodeId": {
+                                  "type": "string"
+                                },
+                                "port": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "nodeId",
+                                "port"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "target": {
+                              "type": "object",
+                              "properties": {
+                                "nodeId": {
+                                  "type": "string"
+                                },
+                                "port": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "nodeId",
+                                "port"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "source",
+                            "target"
+                          ],
+                          "additionalProperties": false
+                        }
+                      }
+                    },
+                    "required": [
+                      "nodes",
+                      "edges"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "recentRuns": {
+                    "maxItems": 20,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "queued",
+                            "running",
+                            "waiting",
+                            "succeeded",
+                            "failed",
+                            "canceled",
+                            "timed_out",
+                            "outcome_unknown"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        }
+                      },
+                      "required": [
+                        "status",
+                        "createdAt"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                },
+                "required": [
+                  "shape"
+                ],
+                "additionalProperties": false
+              },
               "publishedVersionId": {
                 "anyOf": [
                   {
@@ -10828,6 +10993,171 @@
                   ],
                   "additionalProperties": false
                 },
+                "listSummary": {
+                  "type": "object",
+                  "properties": {
+                    "shape": {
+                      "type": "object",
+                      "properties": {
+                        "nodes": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "definition": {
+                                "type": "object",
+                                "properties": {
+                                  "key": {
+                                    "type": "string"
+                                  },
+                                  "version": {
+                                    "type": "number"
+                                  }
+                                },
+                                "required": [
+                                  "key",
+                                  "version"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "position": {
+                                "type": "object",
+                                "properties": {
+                                  "x": {
+                                    "type": "number"
+                                  },
+                                  "y": {
+                                    "type": "number"
+                                  }
+                                },
+                                "required": [
+                                  "x",
+                                  "y"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "label": {
+                                "type": "string"
+                              },
+                              "structured": {
+                                "type": "object",
+                                "properties": {
+                                  "kind": {
+                                    "type": "string",
+                                    "const": "for_each"
+                                  }
+                                },
+                                "required": [
+                                  "kind"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "definition",
+                              "position"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "edges": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "source": {
+                                "type": "object",
+                                "properties": {
+                                  "nodeId": {
+                                    "type": "string"
+                                  },
+                                  "port": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "nodeId",
+                                  "port"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "target": {
+                                "type": "object",
+                                "properties": {
+                                  "nodeId": {
+                                    "type": "string"
+                                  },
+                                  "port": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "nodeId",
+                                  "port"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "source",
+                              "target"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "nodes",
+                        "edges"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "recentRuns": {
+                      "maxItems": 20,
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "queued",
+                              "running",
+                              "waiting",
+                              "succeeded",
+                              "failed",
+                              "canceled",
+                              "timed_out",
+                              "outcome_unknown"
+                            ]
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                          }
+                        },
+                        "required": [
+                          "status",
+                          "createdAt"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "shape"
+                  ],
+                  "additionalProperties": false
+                },
                 "publishedVersionId": {
                   "anyOf": [
                     {
@@ -10958,6 +11288,171 @@
                       "required": [
                         "canEdit",
                         "canPublish"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "listSummary": {
+                      "type": "object",
+                      "properties": {
+                        "shape": {
+                          "type": "object",
+                          "properties": {
+                            "nodes": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string"
+                                  },
+                                  "definition": {
+                                    "type": "object",
+                                    "properties": {
+                                      "key": {
+                                        "type": "string"
+                                      },
+                                      "version": {
+                                        "type": "number"
+                                      }
+                                    },
+                                    "required": [
+                                      "key",
+                                      "version"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  "position": {
+                                    "type": "object",
+                                    "properties": {
+                                      "x": {
+                                        "type": "number"
+                                      },
+                                      "y": {
+                                        "type": "number"
+                                      }
+                                    },
+                                    "required": [
+                                      "x",
+                                      "y"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  "label": {
+                                    "type": "string"
+                                  },
+                                  "structured": {
+                                    "type": "object",
+                                    "properties": {
+                                      "kind": {
+                                        "type": "string",
+                                        "const": "for_each"
+                                      }
+                                    },
+                                    "required": [
+                                      "kind"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "definition",
+                                  "position"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "edges": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string"
+                                  },
+                                  "source": {
+                                    "type": "object",
+                                    "properties": {
+                                      "nodeId": {
+                                        "type": "string"
+                                      },
+                                      "port": {
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": [
+                                      "nodeId",
+                                      "port"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  "target": {
+                                    "type": "object",
+                                    "properties": {
+                                      "nodeId": {
+                                        "type": "string"
+                                      },
+                                      "port": {
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": [
+                                      "nodeId",
+                                      "port"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "source",
+                                  "target"
+                                ],
+                                "additionalProperties": false
+                              }
+                            }
+                          },
+                          "required": [
+                            "nodes",
+                            "edges"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "recentRuns": {
+                          "maxItems": 20,
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "queued",
+                                  "running",
+                                  "waiting",
+                                  "succeeded",
+                                  "failed",
+                                  "canceled",
+                                  "timed_out",
+                                  "outcome_unknown"
+                                ]
+                              },
+                              "createdAt": {
+                                "type": "string",
+                                "format": "date-time",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                              }
+                            },
+                            "required": [
+                              "status",
+                              "createdAt"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "shape"
                       ],
                       "additionalProperties": false
                     },
@@ -11182,6 +11677,171 @@
                 "required": [
                   "canEdit",
                   "canPublish"
+                ],
+                "additionalProperties": false
+              },
+              "listSummary": {
+                "type": "object",
+                "properties": {
+                  "shape": {
+                    "type": "object",
+                    "properties": {
+                      "nodes": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "definition": {
+                              "type": "object",
+                              "properties": {
+                                "key": {
+                                  "type": "string"
+                                },
+                                "version": {
+                                  "type": "number"
+                                }
+                              },
+                              "required": [
+                                "key",
+                                "version"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "position": {
+                              "type": "object",
+                              "properties": {
+                                "x": {
+                                  "type": "number"
+                                },
+                                "y": {
+                                  "type": "number"
+                                }
+                              },
+                              "required": [
+                                "x",
+                                "y"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "label": {
+                              "type": "string"
+                            },
+                            "structured": {
+                              "type": "object",
+                              "properties": {
+                                "kind": {
+                                  "type": "string",
+                                  "const": "for_each"
+                                }
+                              },
+                              "required": [
+                                "kind"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "definition",
+                            "position"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "edges": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "source": {
+                              "type": "object",
+                              "properties": {
+                                "nodeId": {
+                                  "type": "string"
+                                },
+                                "port": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "nodeId",
+                                "port"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "target": {
+                              "type": "object",
+                              "properties": {
+                                "nodeId": {
+                                  "type": "string"
+                                },
+                                "port": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "nodeId",
+                                "port"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "source",
+                            "target"
+                          ],
+                          "additionalProperties": false
+                        }
+                      }
+                    },
+                    "required": [
+                      "nodes",
+                      "edges"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "recentRuns": {
+                    "maxItems": 20,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "queued",
+                            "running",
+                            "waiting",
+                            "succeeded",
+                            "failed",
+                            "canceled",
+                            "timed_out",
+                            "outcome_unknown"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        }
+                      },
+                      "required": [
+                        "status",
+                        "createdAt"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                },
+                "required": [
+                  "shape"
                 ],
                 "additionalProperties": false
               },
@@ -12142,6 +12802,11 @@
                 "description": "Structural workflow graph contract. Runtime validation additionally enforces aggregate node/edge, nesting-depth, and encoded-byte limits.",
                 "x-pertexo-runtime-bounds": true
               },
+              "graphDigest": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$",
+                "description": "Review the source graph, then echo this content identity as reviewedGraphDigest; draft writes still require the opaque ETag."
+              },
               "compatibility": {
                 "type": "object",
                 "properties": {
@@ -12280,6 +12945,171 @@
                 ],
                 "additionalProperties": false
               },
+              "listSummary": {
+                "type": "object",
+                "properties": {
+                  "shape": {
+                    "type": "object",
+                    "properties": {
+                      "nodes": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "definition": {
+                              "type": "object",
+                              "properties": {
+                                "key": {
+                                  "type": "string"
+                                },
+                                "version": {
+                                  "type": "number"
+                                }
+                              },
+                              "required": [
+                                "key",
+                                "version"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "position": {
+                              "type": "object",
+                              "properties": {
+                                "x": {
+                                  "type": "number"
+                                },
+                                "y": {
+                                  "type": "number"
+                                }
+                              },
+                              "required": [
+                                "x",
+                                "y"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "label": {
+                              "type": "string"
+                            },
+                            "structured": {
+                              "type": "object",
+                              "properties": {
+                                "kind": {
+                                  "type": "string",
+                                  "const": "for_each"
+                                }
+                              },
+                              "required": [
+                                "kind"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "definition",
+                            "position"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "edges": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "source": {
+                              "type": "object",
+                              "properties": {
+                                "nodeId": {
+                                  "type": "string"
+                                },
+                                "port": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "nodeId",
+                                "port"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "target": {
+                              "type": "object",
+                              "properties": {
+                                "nodeId": {
+                                  "type": "string"
+                                },
+                                "port": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "nodeId",
+                                "port"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "source",
+                            "target"
+                          ],
+                          "additionalProperties": false
+                        }
+                      }
+                    },
+                    "required": [
+                      "nodes",
+                      "edges"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "recentRuns": {
+                    "maxItems": 20,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "queued",
+                            "running",
+                            "waiting",
+                            "succeeded",
+                            "failed",
+                            "canceled",
+                            "timed_out",
+                            "outcome_unknown"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        }
+                      },
+                      "required": [
+                        "status",
+                        "createdAt"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                },
+                "required": [
+                  "shape"
+                ],
+                "additionalProperties": false
+              },
               "publishedVersionId": {
                 "anyOf": [
                   {
@@ -12390,6 +13220,171 @@
                 "required": [
                   "canEdit",
                   "canPublish"
+                ],
+                "additionalProperties": false
+              },
+              "listSummary": {
+                "type": "object",
+                "properties": {
+                  "shape": {
+                    "type": "object",
+                    "properties": {
+                      "nodes": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "definition": {
+                              "type": "object",
+                              "properties": {
+                                "key": {
+                                  "type": "string"
+                                },
+                                "version": {
+                                  "type": "number"
+                                }
+                              },
+                              "required": [
+                                "key",
+                                "version"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "position": {
+                              "type": "object",
+                              "properties": {
+                                "x": {
+                                  "type": "number"
+                                },
+                                "y": {
+                                  "type": "number"
+                                }
+                              },
+                              "required": [
+                                "x",
+                                "y"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "label": {
+                              "type": "string"
+                            },
+                            "structured": {
+                              "type": "object",
+                              "properties": {
+                                "kind": {
+                                  "type": "string",
+                                  "const": "for_each"
+                                }
+                              },
+                              "required": [
+                                "kind"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "definition",
+                            "position"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "edges": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "source": {
+                              "type": "object",
+                              "properties": {
+                                "nodeId": {
+                                  "type": "string"
+                                },
+                                "port": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "nodeId",
+                                "port"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "target": {
+                              "type": "object",
+                              "properties": {
+                                "nodeId": {
+                                  "type": "string"
+                                },
+                                "port": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "nodeId",
+                                "port"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "source",
+                            "target"
+                          ],
+                          "additionalProperties": false
+                        }
+                      }
+                    },
+                    "required": [
+                      "nodes",
+                      "edges"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "recentRuns": {
+                    "maxItems": 20,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "queued",
+                            "running",
+                            "waiting",
+                            "succeeded",
+                            "failed",
+                            "canceled",
+                            "timed_out",
+                            "outcome_unknown"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        }
+                      },
+                      "required": [
+                        "status",
+                        "createdAt"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                },
+                "required": [
+                  "shape"
                 ],
                 "additionalProperties": false
               },
@@ -12550,6 +13545,171 @@
                 "required": [
                   "canEdit",
                   "canPublish"
+                ],
+                "additionalProperties": false
+              },
+              "listSummary": {
+                "type": "object",
+                "properties": {
+                  "shape": {
+                    "type": "object",
+                    "properties": {
+                      "nodes": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "definition": {
+                              "type": "object",
+                              "properties": {
+                                "key": {
+                                  "type": "string"
+                                },
+                                "version": {
+                                  "type": "number"
+                                }
+                              },
+                              "required": [
+                                "key",
+                                "version"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "position": {
+                              "type": "object",
+                              "properties": {
+                                "x": {
+                                  "type": "number"
+                                },
+                                "y": {
+                                  "type": "number"
+                                }
+                              },
+                              "required": [
+                                "x",
+                                "y"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "label": {
+                              "type": "string"
+                            },
+                            "structured": {
+                              "type": "object",
+                              "properties": {
+                                "kind": {
+                                  "type": "string",
+                                  "const": "for_each"
+                                }
+                              },
+                              "required": [
+                                "kind"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "definition",
+                            "position"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "edges": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "source": {
+                              "type": "object",
+                              "properties": {
+                                "nodeId": {
+                                  "type": "string"
+                                },
+                                "port": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "nodeId",
+                                "port"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "target": {
+                              "type": "object",
+                              "properties": {
+                                "nodeId": {
+                                  "type": "string"
+                                },
+                                "port": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "nodeId",
+                                "port"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "source",
+                            "target"
+                          ],
+                          "additionalProperties": false
+                        }
+                      }
+                    },
+                    "required": [
+                      "nodes",
+                      "edges"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "recentRuns": {
+                    "maxItems": 20,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "queued",
+                            "running",
+                            "waiting",
+                            "succeeded",
+                            "failed",
+                            "canceled",
+                            "timed_out",
+                            "outcome_unknown"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        }
+                      },
+                      "required": [
+                        "status",
+                        "createdAt"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                },
+                "required": [
+                  "shape"
                 ],
                 "additionalProperties": false
               },
@@ -12727,6 +13887,171 @@
                 "required": [
                   "canEdit",
                   "canPublish"
+                ],
+                "additionalProperties": false
+              },
+              "listSummary": {
+                "type": "object",
+                "properties": {
+                  "shape": {
+                    "type": "object",
+                    "properties": {
+                      "nodes": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "definition": {
+                              "type": "object",
+                              "properties": {
+                                "key": {
+                                  "type": "string"
+                                },
+                                "version": {
+                                  "type": "number"
+                                }
+                              },
+                              "required": [
+                                "key",
+                                "version"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "position": {
+                              "type": "object",
+                              "properties": {
+                                "x": {
+                                  "type": "number"
+                                },
+                                "y": {
+                                  "type": "number"
+                                }
+                              },
+                              "required": [
+                                "x",
+                                "y"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "label": {
+                              "type": "string"
+                            },
+                            "structured": {
+                              "type": "object",
+                              "properties": {
+                                "kind": {
+                                  "type": "string",
+                                  "const": "for_each"
+                                }
+                              },
+                              "required": [
+                                "kind"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "definition",
+                            "position"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "edges": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "source": {
+                              "type": "object",
+                              "properties": {
+                                "nodeId": {
+                                  "type": "string"
+                                },
+                                "port": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "nodeId",
+                                "port"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "target": {
+                              "type": "object",
+                              "properties": {
+                                "nodeId": {
+                                  "type": "string"
+                                },
+                                "port": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "nodeId",
+                                "port"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "source",
+                            "target"
+                          ],
+                          "additionalProperties": false
+                        }
+                      }
+                    },
+                    "required": [
+                      "nodes",
+                      "edges"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "recentRuns": {
+                    "maxItems": 20,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "queued",
+                            "running",
+                            "waiting",
+                            "succeeded",
+                            "failed",
+                            "canceled",
+                            "timed_out",
+                            "outcome_unknown"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        }
+                      },
+                      "required": [
+                        "status",
+                        "createdAt"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                },
+                "required": [
+                  "shape"
                 ],
                 "additionalProperties": false
               },
@@ -13804,6 +15129,11 @@
             },
             "description": "Structural workflow graph contract. Runtime validation additionally enforces aggregate node/edge, nesting-depth, and encoded-byte limits.",
             "x-pertexo-runtime-bounds": true
+          },
+          "graphDigest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$",
+            "description": "Review the source graph, then echo this content identity as reviewedGraphDigest; draft writes still require the opaque ETag."
           },
           "compatibility": {
             "type": "object",
@@ -15711,6 +17041,11 @@
                 "description": "Structural workflow graph contract. Runtime validation additionally enforces aggregate node/edge, nesting-depth, and encoded-byte limits.",
                 "x-pertexo-runtime-bounds": true
               },
+              "graphDigest": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$",
+                "description": "Review the source graph, then echo this content identity as reviewedGraphDigest; draft writes still require the opaque ETag."
+              },
               "checksum": {
                 "type": "string",
                 "pattern": "^wf:sha256:(?:v2:)?[a-f0-9]{64}$"
@@ -16671,6 +18006,11 @@
                   },
                   "description": "Structural workflow graph contract. Runtime validation additionally enforces aggregate node/edge, nesting-depth, and encoded-byte limits.",
                   "x-pertexo-runtime-bounds": true
+                },
+                "graphDigest": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$",
+                  "description": "Review the source graph, then echo this content identity as reviewedGraphDigest; draft writes still require the opaque ETag."
                 },
                 "checksum": {
                   "type": "string",
@@ -19365,7 +20705,8 @@
           },
           "reviewedGraphDigest": {
             "type": "string",
-            "pattern": "^[a-f0-9]{64}$"
+            "pattern": "^[a-f0-9]{64}$",
+            "description": "Review the source graph, then echo this content identity as reviewedGraphDigest; draft writes still require the opaque ETag."
           }
         },
         "required": [

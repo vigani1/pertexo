@@ -8,7 +8,7 @@ import { describe, expect, it } from 'vitest';
 
 import { createUserFixture } from '../../../support/fixtures/identity';
 
-import { statisticsHandler } from '../../../support/fixtures/run';
+import { coldStart, statisticsHandler } from '../../../support/fixtures/run';
 
 import { mockServer } from '../../../support/mock-server';
 
@@ -70,7 +70,9 @@ describe('workflow list', () => {
       })),
     );
     renderApp(`/w/${workspaceId}/workflows`);
-    expect(await screen.findByText('Trigger needs setup')).toBeVisible();
+    expect(
+      await screen.findByText('Trigger needs setup', {}, coldStart),
+    ).toBeVisible();
     expect(
       screen.queryByText('Starting', { exact: true }),
     ).not.toBeInTheDocument();
@@ -173,16 +175,35 @@ describe('workflow list', () => {
   it('describes each row with a state word, its path and triggers, never its ID', async () => {
     mockServer.use(
       ...discoveryHandlers(),
-      draftHandler({
-        [workflowId]: graphOf([
-          { id: 'hook', key: 'core.webhook', x: 0 },
-          { id: 'check', key: 'core.validate', x: 280 },
-          { id: 'erp', key: 'http.request', label: 'Post to ERP', x: 560 },
-        ]),
-      }),
       listHandler(() => ({
         items: [
           summary(workflowId, 'Invoice intake', {
+            listSummary: {
+              shape: (() => {
+                const graph = graphOf([
+                  { id: 'hook', key: 'core.webhook', x: 0 },
+                  { id: 'check', key: 'core.validate', x: 280 },
+                  {
+                    id: 'erp',
+                    key: 'http.request',
+                    label: 'Post to ERP',
+                    x: 560,
+                  },
+                ]);
+                return {
+                  nodes: graph.nodes.map(
+                    ({ id, definition, position, label }) => ({
+                      id,
+                      definition,
+                      position,
+                      ...(label === undefined ? {} : { label }),
+                    }),
+                  ),
+                  edges: graph.edges,
+                };
+              })(),
+              recentRuns: [],
+            },
             activationStatus: 'active',
             webhookSetupRequired: false,
             publishedVersionId: versionId,
@@ -198,7 +219,11 @@ describe('workflow list', () => {
       })),
     );
     renderApp(`/w/${workspaceId}/workflows`);
-    const list = await screen.findByRole('list', { name: 'Workflows' });
+    const list = await screen.findByRole(
+      'list',
+      { name: 'Workflows' },
+      coldStart,
+    );
     const invoice = within(list).getByText('Invoice intake').closest('li');
     if (invoice === null) throw new Error('Expected the invoice row');
     expect(
@@ -268,8 +293,24 @@ describe('workflow list', () => {
       draftHandler(),
       listHandler(() => ({
         items: [
-          summary(workflowId, 'Invoice intake'),
-          summary(secondWorkflowId, 'Nightly sync'),
+          summary(workflowId, 'Invoice intake', {
+            listSummary: {
+              shape: { nodes: [], edges: [] },
+              recentRuns: runsOf[workflowId]?.map((run) => {
+                const value = run as { status: string; createdAt: string };
+                return { status: value.status, createdAt: value.createdAt };
+              }),
+            },
+          }),
+          summary(secondWorkflowId, 'Nightly sync', {
+            listSummary: {
+              shape: { nodes: [], edges: [] },
+              recentRuns: runsOf[secondWorkflowId]?.map((run) => {
+                const value = run as { status: string; createdAt: string };
+                return { status: value.status, createdAt: value.createdAt };
+              }),
+            },
+          }),
         ],
         nextCursor: null,
       })),
@@ -296,12 +337,7 @@ describe('workflow list', () => {
     expect(
       await screen.findByRole('img', { name: 'Recent runs: 1 succeeded' }),
     ).toBeInTheDocument();
-    expect(reads).toEqual(
-      expect.arrayContaining([
-        { workflowId, limit: '20' },
-        { workflowId: secondWorkflowId, limit: '20' },
-      ]),
-    );
+    expect(reads).toEqual([]);
     expect(screen.queryByText(/Recent runs covers/u)).not.toBeInTheDocument();
   });
   it('says a workflow that hasn’t run has no recent runs', async () => {

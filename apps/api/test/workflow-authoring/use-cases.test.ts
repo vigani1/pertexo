@@ -1,3 +1,4 @@
+import { portableGraphDigest } from '@pertexo/workflow-model';
 import { describe, expect, it, vi } from 'vitest';
 import {
   GetWorkflowUseCase,
@@ -958,6 +959,7 @@ describe('workflow authoring application seams', () => {
           workflowId,
           versionNumber: 1,
           graph,
+          graphDigest: await portableGraphDigest(graph),
           checksum: version().checksum,
           publishedAt: '2026-08-20T12:00:00.000Z',
         },

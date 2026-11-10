@@ -1,3 +1,5 @@
+import { workflowGraphDigestSchema } from './graph-digest.js';
+import { workflowListSummarySchema } from './list-summary.js';
 import { storageTextSchema } from '@pertexo/workflow-model';
 import { workflowExecutableChecksumSchema } from '@pertexo/workflow-model';
 
@@ -141,6 +143,7 @@ export const workflowSummarySchema = z
       .object({ canEdit: z.boolean(), canPublish: z.boolean() })
       .strict()
       .optional(),
+    listSummary: workflowListSummarySchema.optional(),
     publishedVersionId: z.uuid().nullable(),
     createdAt: z.iso.datetime(),
     updatedAt: z.iso.datetime(),
@@ -191,6 +194,7 @@ export const workflowDraftResponseSchema = z
     workflowId: workflowIdentifierSchema,
     revision: z.number().int().positive(),
     graph: workflowGraphSchema,
+    graphDigest: workflowGraphDigestSchema.optional(),
     compatibility: workflowCompatibilityReportSchema,
     updatedAt: z.iso.datetime(),
   })
@@ -209,6 +213,7 @@ export const workflowVersionResponseSchema = z
     workflowId: z.uuid(),
     versionNumber: z.number().int().positive(),
     graph: workflowGraphSchema,
+    graphDigest: workflowGraphDigestSchema.optional(),
     checksum: workflowExecutableChecksumSchema,
     publishedAt: z.iso.datetime(),
   })

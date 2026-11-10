@@ -1,3 +1,4 @@
+import type { WorkflowSummary } from '@pertexo/contracts';
 import type { WorkflowGraph } from '@pertexo/workflow-model';
 import type { workflowCompatibilityReport } from '@pertexo/workflow-model/server';
 import type {
@@ -23,6 +24,7 @@ export type WorkflowRecord = Readonly<
     | 'updatedAt'
   > & {
     webhookSetupRequired: boolean;
+    listSummary?: WorkflowSummary['listSummary'];
     resourceAccess?: Readonly<{ canEdit: boolean; canPublish: boolean }>;
   }
 >;

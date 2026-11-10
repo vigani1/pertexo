@@ -49,6 +49,7 @@ export function summary(
     workspaceId,
     name,
     nameRevision: 1,
+    listSummary: { shape: { nodes: [], edges: [] }, recentRuns: [] },
     lifecycleStatus: 'active',
     lifecycleRevision: 1,
     activationStatus: 'inactive',

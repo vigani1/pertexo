@@ -34,38 +34,6 @@ export function workflowRunsInfiniteQueryOptions(
   });
 }
 
-/**
- * One workflow's latest runs, newest first: its strip in the Workflows list,
- * whatever else the workspace has been running.
- */
-export function workflowLatestRunsQueryOptions({
-  apiClient,
-  userId,
-  workspaceId,
-  workflowId,
-  limit,
-}: Readonly<{
-  apiClient: ApiClient;
-  userId: string;
-  workspaceId: string;
-  workflowId: string;
-  limit: number;
-}>) {
-  return queryOptions({
-    queryKey: workflowRunKeys.latestOf(userId, workspaceId, workflowId, limit),
-    queryFn: async ({ signal }) =>
-      (
-        await getWorkflowRunsPage(
-          apiClient,
-          workspaceId,
-          { workflowId },
-          { limit, signal },
-        )
-      ).items,
-    staleTime: 30_000,
-  });
-}
-
 /** Whether the workspace has ever run anything (for the first-run guide). */
 export function anyRunQueryOptions(
   apiClient: ApiClient,

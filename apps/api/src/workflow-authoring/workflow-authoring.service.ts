@@ -1,3 +1,4 @@
+import { credentialAllowsCapability } from '../authorization/credentials.js';
 import { WorkflowRevisionConflictError } from '@pertexo/core/authoring';
 import { parseWorkflowGraphDraft } from '@pertexo/workflow-model';
 import type { WorkspaceAuthorizationSource } from '../authorization/index.js';
@@ -109,7 +110,11 @@ export class ListWorkflowsUseCase {
                 input.order,
                 input.pinsWorkflowId,
               );
-        return serializeWorkflowList(page.items, nextCursor);
+        return serializeWorkflowList(
+          page.items,
+          nextCursor,
+          credentialAllowsCapability(input.actor, 'run:read'),
+        );
       },
     );
   }

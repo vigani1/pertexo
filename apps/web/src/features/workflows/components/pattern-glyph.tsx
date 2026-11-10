@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import type { WorkflowGraphContract } from '@pertexo/contracts';
+import type { WorkflowShape } from '../model/shape';
 import { cn } from '@/lib/class-names';
 import { glyphEdgePath, layoutPatternGlyph } from '../model/shape';
 
@@ -32,7 +32,7 @@ export function PatternGlyph({
   flow,
   className,
 }: Readonly<{
-  graph: WorkflowGraphContract;
+  graph: WorkflowShape;
   size?: GlyphSize;
   muted?: boolean;
   flow?: keyof typeof FLOW_CLASS | undefined;
