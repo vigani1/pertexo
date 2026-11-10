@@ -19,9 +19,7 @@ finish() {
   trap - EXIT
   exec 8>&-
   [[ -z $dump_pid ]] || kill "$dump_pid" 2>/dev/null || true
-  if [[ -n $work && -f "$work/capture.cid" ]]; then
-    docker rm -f "$(cat "$work/capture.cid")" >/dev/null 2>&1 || true
-  fi
+  [[ -z $capture_pid ]] || kill "$capture_pid" 2>/dev/null || true
   [[ -z $capture_pid ]] || wait "$capture_pid" 2>/dev/null || true
   [[ -z $work ]] || rm -rf "$work"
   report_outcome "$result"
@@ -75,10 +73,13 @@ printf '%s\n' "$SERVICE_VERSION" > "$work/release.txt"
 wait "$capture_pid"
 exec 8>&-
 capture_pid=''
-(cd "$work"; sha256sum database.dump release.txt objects.count objects.json) > "$work/SHA256SUMS"
-for file in database.dump release.txt objects.count objects.json SHA256SUMS; do
-  rclone copyto "/backup/$file" "crypt:$prefix/$file"
-done
+payload=(database.dump release.txt objects.count objects.json)
+(cd "$work"; sha256sum "${payload[@]}") > "$work/SHA256SUMS"
+payload+=(SHA256SUMS)
+filters=()
+for file in "${payload[@]}"; do filters+=(--include "/$file"); done
+# One container uploads only the recovery payload, never private operation files.
+rclone copy /backup "crypt:$prefix" --max-depth 1 "${filters[@]}"
 : > "$work/COMPLETE"
 rclone copyto /backup/COMPLETE "crypt:$prefix/COMPLETE"
 # check.sh reads this file's age. Nothing else depends on it.

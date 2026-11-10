@@ -244,31 +244,69 @@ copy_objects() {
 
 # The host dispatches transport requests; the helper alone owns the database lock.
 backup_helper() (
-  local runner=''
+  source "$backup_tools/helper-lifecycle.sh"
+  local runner='' helper_pid='' status=0
+  local project=$beta_root operation=${0##*/} instance="$$-$RANDOM-$RANDOM"
+  operation=${operation%.sh}
   local helper_cid="$work/helper.cid"
-  trap '[[ ! -f "$helper_cid" ]] || docker rm -f "$(cat "$helper_cid")" >/dev/null 2>&1; [[ ! -f "$work/transport.cid" ]] || docker rm -f "$(cat "$work/transport.cid")" >/dev/null 2>&1; [[ -z $runner ]] || kill "$runner" 2>/dev/null || true; [[ -z $runner ]] || wait "$runner" 2>/dev/null || true; rm -f "$work"/transport.{request,running,input,status,status.tmp,stdout,stderr}' EXIT
+  finish_helper() {
+    local result=$? cleanup_status=1
+    trap - EXIT
+    if [[ -n $runner ]]; then
+      kill "$runner" 2>/dev/null || true
+      wait "$runner" 2>/dev/null || cleanup_status=$?
+    fi
+    # The dispatcher's normal signal exit already removed this invocation's group.
+    if [[ $cleanup_status != 143 && $cleanup_status != 130 ]]; then
+      remove_backup_helpers "$project" "$operation" "$instance" || result=1
+    fi
+    [[ -z $helper_pid ]] || { kill "$helper_pid" 2>/dev/null || true; wait "$helper_pid" 2>/dev/null || true; }
+    rm -f "$work"/transport.{ready,request,running,input,status,status.tmp,stdout,stderr}
+    exit "$result"
+  }
+  trap finish_helper EXIT
   local options=(--read-only)
   if [[ ${1:-} == -i ]]; then options+=(-i); shift; fi
   if [[ ${1:-} == --cidfile ]]; then helper_cid=$2; shift 2; fi
-  rm -f "$helper_cid"
+  rm -f "$helper_cid" "$work/transport.ready"
   options+=(--cidfile "$helper_cid")
   local script=$1
   shift
-  local directory=/backup
-  local network=${backup_network:-pertexo-beta_private}
+  local directory=/backup network=${backup_network:-pertexo-beta_private}
   if [[ $script == prepare.mjs ]]; then
     directory=/prepared
     network=none
   else
     options+=(--env-file "$work/rclone.env")
   fi
-  bash "$backup_tools/rclone-requests.sh" "$work" "$network" "$backup_transport_image" < /dev/null 8>&- 9>&- &
+  bash "$backup_tools/rclone-requests.sh" "$work" "$network" "$backup_transport_image" "$project" "$operation" "$instance" < /dev/null 8>&- 9>&- &
   runner=$!
+  while [[ $(cat "$work/transport.ready" 2>/dev/null || true) != "$instance" ]]; do
+    if ! kill -0 "$runner" 2>/dev/null; then
+      wait "$runner" 2>/dev/null || true
+      echo "Backup transport failed to start: $(cat "$work/transport.stderr" 2>/dev/null)" >&2
+      return 1
+    fi
+    sleep 0.05 8>&- 9>&-
+  done
+  backup_helper_identity "$project" "$operation" "$instance"
+  # Explicit stdin preserves the capture owner's FIFO for a background Docker client.
   docker run --rm --tmpfs /tmp --user "$(id -u):$(id -g)" \
-    "${options[@]}" --network "$network" -e BACKUP_TRANSPORT_DIRECTORY="$directory" \
+    "${options[@]}" "${backup_label_args[@]}" --network "$network" -e BACKUP_TRANSPORT_DIRECTORY="$directory" \
     -v "$config:/run/pertexo.env:ro" -v "$work:$directory" \
     -v "$backup_tools:/workspace/infrastructure/single-server/backup:ro" \
-    "ghcr.io/vigani1/pertexo:$SERVICE_VERSION" node --env-file=/run/pertexo.env "infrastructure/single-server/backup/$script" "$@"
+    "ghcr.io/vigani1/pertexo:$SERVICE_VERSION" node --env-file=/run/pertexo.env "infrastructure/single-server/backup/$script" "$@" <&0 &
+  helper_pid=$!
+  while kill -0 "$helper_pid" 2>/dev/null; do
+    if ! kill -0 "$runner" 2>/dev/null; then
+      echo 'Backup transport stopped while its runtime helper was active' >&2
+      return 1
+    fi
+    sleep 0.05 8>&- 9>&-
+  done
+  wait "$helper_pid" || status=$?
+  helper_pid=''
+  return "$status"
 )
 
 verify_backup_key() {
