@@ -1,4 +1,5 @@
 import { rclone } from './transport.mjs';
+import { writeRcloneConfig } from './rclone-config.mjs';
 import { writeFile } from 'node:fs/promises';
 import { parseRecoveryStores } from './stores.mjs';
 const { source, backup: destination } = parseRecoveryStores(process.env);
@@ -19,7 +20,6 @@ const values = {
   SOURCE: fields({ ...source, endpoint: 'http://storage:9000' }),
   BACKUP: fields(destination),
 };
-const lines = ['RCLONE_CONFIG=/dev/null'];
 const password = process.env.BACKUP_CRYPT_PASSWORD;
 const salt = process.env.BACKUP_CRYPT_SALT;
 if (password || salt) {
@@ -38,16 +38,7 @@ if (password || salt) {
     PASSWORD2: await obscure(salt),
   };
 }
-for (const [remote, settings] of Object.entries(values)) {
-  for (const [field, value] of Object.entries(settings)) {
-    if (/[\r\n]/u.test(value))
-      throw new Error(`Backup ${field} must fit on one line`);
-    lines.push(`RCLONE_CONFIG_${remote}_${field}=${value}`);
-  }
-}
-await writeFile(`${directory}/rclone.env`, lines.join('\n') + '\n', {
-  mode: 0o600,
-});
+await writeRcloneConfig(`${directory}/rclone.conf`, values);
 await writeFile(`${directory}/source-bucket`, source.bucket, { mode: 0o600 });
 await writeFile(`${directory}/backup-bucket`, destination.bucket, {
   mode: 0o600,

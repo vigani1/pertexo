@@ -14,7 +14,7 @@ test('the capture transport runs upstream containers and preserves argument boun
   let runner;
   try {
     await mkdir(join(directory, 'bin'));
-    await writeFile(join(directory, 'rclone.env'), 'RCLONE_CONFIG=/dev/null\n');
+    await writeFile(join(directory, 'rclone.conf'), '');
     await writeContainerAdapter(directory);
     await writeFile(
       join(directory, 'bin/rclone'),
@@ -54,10 +54,10 @@ process.stdout.write(JSON.stringify(args));
       containerArgs[containerArgs.indexOf('--network') + 1],
       'owned-backup-network',
     );
-    assert.equal(
-      containerArgs[containerArgs.indexOf('--env-file') + 1],
-      join(directory, 'rclone.env'),
+    assert.ok(
+      containerArgs.includes(`${directory}/rclone.conf:/run/rclone.conf:ro`),
     );
+    assert.ok(!containerArgs.includes('--env-file'));
     assert.ok(containerArgs.includes('--rm'));
     assert.ok(containerArgs.includes('rclone/rclone:pinned'));
     await assert.rejects(

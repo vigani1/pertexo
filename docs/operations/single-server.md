@@ -623,7 +623,9 @@ settings; do not replace installed application keys with newly generated ones.
 Put both in the server's mode-600 `.env.production` for unattended backup, and
 keep the original settings file in your password manager or offline recovery
 storage, separately from the backup bucket. Neither key is uploaded or logged.
-The reversible rclone config is also secret. Each operation creates it with mode
+The reversible `rclone.conf` is also secret. Its S3 remotes and obscured crypt
+password/salt are read from a read-only file mount, never Docker environment
+variables or arguments. Only the helper's UID can read the mode-600 file. Each operation creates it with mode
 0600 inside its private `state/.backup.*` or `state/.restore.*` directory, then
 removes that directory on success or error, including failed preparation. Capture
 also removes its config on shell EOF or dump-deadline expiry. The next backup or
@@ -677,7 +679,7 @@ Backup transport runs from the official digest-pinned rclone image selected in
 The operator resolves it once for each backup or restore.
 No rclone executable is included in Pertexo images. Direct transport commands use
 `docker run --rm` on the operation's backup network, with only its private
-`rclone.env` and `/backup` mount. Each helper invocation reuses one short-lived
+read-only `rclone.conf` and `/backup` mount. Each helper invocation reuses one short-lived
 upstream container for its requests, avoiding a container start per retained
 manifest. The host dispatches requests through the private operation directory;
 the helper receives neither Docker socket access nor a Docker executable. Its database deletion lock, one-hour dump deadline

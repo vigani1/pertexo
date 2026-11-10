@@ -64,8 +64,8 @@ if fail=='encryption/verify.mjs':
 elif fail and any(fail in arg or (fail.startswith('/backup/') and arg==fail[len('/backup'):]) for arg in args):
  if 'infrastructure/single-server/backup/prepare.mjs' in args:
   prepared=Path(next(args[i+1].split(':/prepared')[0] for i,arg in enumerate(args) if arg=='-v' and args[i+1].endswith(':/prepared')))
-  (prepared/'rclone.env').write_text('RCLONE_CONFIG_CRYPT_PASSWORD=partial-fixture')
-  (prepared/'rclone.env').chmod(0o600)
+  (prepared/'rclone.conf').write_text('RCLONE_CONFIG_CRYPT_PASSWORD=partial-fixture')
+  (prepared/'rclone.conf').chmod(0o600)
  sys.exit(1)
 if os.environ.get('RESTORE') and args[0]=='run' and '--network' in args:
  network=args[args.index('--network')+1]
@@ -84,8 +84,8 @@ if 'infrastructure/single-server/backup/prepare.mjs' in args:
  prepared=Path(next(args[i+1].split(':/prepared')[0] for i,arg in enumerate(args) if arg=='-v' and args[i+1].endswith(':/prepared')))
  (prepared/'source-bucket').write_text('artifacts')
  (prepared/'backup-bucket').write_text('backups')
- (prepared/'rclone.env').write_text('RCLONE_CONFIG_CRYPT_PASSWORD=fixture-obscured')
- (prepared/'rclone.env').chmod(0o600)
+ (prepared/'rclone.conf').write_text('RCLONE_CONFIG_CRYPT_PASSWORD=fixture-obscured')
+ (prepared/'rclone.conf').chmod(0o600)
 if 'infrastructure/single-server/backup/capture.mjs' in args and 'capture' in args:
  mounts=[args[i+1] for i,arg in enumerate(args) if arg=='-v']
  work=Path(next(mount.split(':/backup')[0] for mount in mounts if ':/backup' in mount))
@@ -395,11 +395,21 @@ for (const [name, restore, settings, status] of [
       'RCLONE_CONFIG_CRYPT_PASSWORD=retired-fixture',
       { mode: 0o600 },
     );
+    writeFileSync(
+      join(f.state, 'rclone.conf'),
+      '[crypt]\npassword = retired-fixture',
+      { mode: 0o600 },
+    );
     for (const name of ['.backup.abandoned', '.restore.abandoned']) {
       mkdirSync(join(f.state, name));
       writeFileSync(
         join(f.state, name, 'rclone.env'),
         'RCLONE_CONFIG_CRYPT_PASSWORD=abandoned-fixture',
+        { mode: 0o600 },
+      );
+      writeFileSync(
+        join(f.state, name, 'rclone.conf'),
+        '[crypt]\npassword = abandoned-fixture',
         { mode: 0o600 },
       );
       for (const file of [
@@ -415,7 +425,7 @@ for (const [name, restore, settings, status] of [
     assert.equal(result.status, status, result.stderr);
     assert.deepEqual(
       readdirSync(f.state, { recursive: true }).filter((name) =>
-        name.endsWith('rclone.env'),
+        /rclone\.(?:env|conf)$/u.test(name),
       ),
       [],
     );

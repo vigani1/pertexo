@@ -1,3 +1,5 @@
+import assert from 'node:assert/strict';
+import { parseEnv } from 'node:util';
 import { spawn } from 'node:child_process';
 import { readFileSync, existsSync } from 'node:fs';
 import { docker, must, mustDocker, run, waitFor } from './process.mjs';
@@ -125,19 +127,27 @@ RUN apt-get update && apt-get install -y --no-install-recommends git curl ca-cer
     );
   const server = {
     root,
+    secretValues: [],
     exec,
     mustExec,
     composeFor,
     /** Runs the real operator script, bounding backups within the drill budget. */
     script: async (name, args = [], options) => {
       const command = `${scripts}/${name} ${args.map(quote).join(' ')}`;
-      if (name !== 'backup.sh') return exec(command, options);
       // Bound the server-side process too: killing only docker exec leaves it alive.
-      const result = await exec(
-        `timeout --kill-after=5s ${BACKUP_TIMEOUT_SECONDS}s ${command}`,
-        { ...options, timeout: (BACKUP_TIMEOUT_SECONDS + 10) * 1000 },
-      );
-      if (result.status !== 0)
+      const result =
+        name !== 'backup.sh'
+          ? await exec(command, options)
+          : await exec(
+              `timeout --kill-after=5s ${BACKUP_TIMEOUT_SECONDS}s ${command}`,
+              { ...options, timeout: (BACKUP_TIMEOUT_SECONDS + 10) * 1000 },
+            );
+      for (const value of server.secretValues)
+        assert.ok(
+          !(result.stdout + result.stderr).includes(value),
+          `${name} must not log a secret`,
+        );
+      if (name === 'backup.sh' && result.status !== 0)
         console.error(
           `Backup failed (status ${result.status}, drill bound ${BACKUP_TIMEOUT_SECONDS}s):\n${result.stdout}\n${result.stderr}`,
         );
@@ -355,6 +365,14 @@ export async function configure(server) {
     generated,
     '',
   ].join('\n');
+  server.secretValues = Object.entries(parseEnv(content))
+    .filter(([key]) =>
+      /ACCESS_KEY|CRYPT_PASSWORD|CRYPT_SALT|TOKEN_KEY|SELF_MANAGED_KEY|SMTP_PASSWORD/u.test(
+        key,
+      ),
+    )
+    .map(([, value]) => value)
+    .filter(Boolean);
   await server.mustExec(
     'umask 077; cat > .env.production; chmod 600 .env.production',
     {

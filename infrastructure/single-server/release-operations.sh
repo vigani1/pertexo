@@ -214,7 +214,8 @@ prepare_backup() {
 
 rclone() {
   docker run --rm --read-only --tmpfs /tmp --user "$(id -u):$(id -g)" \
-    --network "${backup_network:-pertexo-beta_private}" --env-file "$work/rclone.env" \
+    --network "${backup_network:-pertexo-beta_private}" \
+    -v "$work/rclone.conf:/run/rclone.conf:ro" -e RCLONE_CONFIG=/run/rclone.conf \
     -v "$work:/backup" \
     "$backup_transport_image" "$@"
 }
@@ -276,8 +277,6 @@ backup_helper() (
   if [[ $script == prepare.mjs ]]; then
     directory=/prepared
     network=none
-  else
-    options+=(--env-file "$work/rclone.env")
   fi
   bash "$backup_tools/rclone-requests.sh" "$work" "$network" "$backup_transport_image" "$project" "$operation" "$instance" < /dev/null 8>&- 9>&- &
   runner=$!
@@ -316,7 +315,8 @@ verify_backup_key() {
 
 # The operation lock excludes any reader before stale secret copies are removed.
 clear_stale_backup_configs() {
-  rm -f "$BETA_STATE_DIR/rclone.env" \
+  rm -f "$BETA_STATE_DIR/rclone.env" "$BETA_STATE_DIR/rclone.conf" \
+    "$BETA_STATE_DIR"/.backup.*/rclone.conf "$BETA_STATE_DIR"/.restore.*/rclone.conf \
     "$BETA_STATE_DIR"/.backup.*/rclone.env "$BETA_STATE_DIR"/.restore.*/rclone.env \
     "$BETA_STATE_DIR"/.backup.*/transport.input "$BETA_STATE_DIR"/.restore.*/transport.input \
     "$BETA_STATE_DIR"/.backup.*/transport.stdout "$BETA_STATE_DIR"/.restore.*/transport.stdout \

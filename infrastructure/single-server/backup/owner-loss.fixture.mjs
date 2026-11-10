@@ -86,8 +86,11 @@ if (args[0] === 'compose') {
 } else if (args[0] === 'run') {
   let image = args.findIndex((arg) => arg.startsWith('ghcr.io/vigani1/pertexo:'));
   if (image >= 0) args.splice(image, 1, '-v', c.workspace + ':/workspace:ro', '-w', '/workspace', c.nodeImage);
-  image = args.findIndex((arg) => arg === c.nodeImage || arg.startsWith('rclone/rclone:'));
-  if (image >= 0) args.splice(image, 0, '-e', 'RCLONE_CONFIG_BACKUP_ENDPOINT=http://destination:9000');
+  const mount = args.find((arg) => arg.endsWith(':/run/rclone.conf:ro'));
+  if (mount) {
+    const file = mount.slice(0, -':/run/rclone.conf:ro'.length);
+    fs.writeFileSync(file, fs.readFileSync(file, 'utf8').replace('endpoint = \`https://destination.test\`', 'endpoint = \`http://destination:9000\`'));
+  }
   args = args.map((arg) => arg === 'pertexo-beta_private' ? c.network : arg);
 }
 if (args[0] === 'run' && args.some((arg) => arg.startsWith('rclone/rclone:')) && fs.existsSync(c.root + '/transport-start.fail')) {
@@ -210,7 +213,7 @@ fs.writeFileSync(file, String(time)); console.log(new Date(time).toISOString().r
     assert.equal(deleted, true, 'deferred erasure resumes');
     assert.deepEqual(
       (await readdir(`${root}/state`, { recursive: true })).filter((name) =>
-        name.endsWith('rclone.env'),
+        /rclone\.(?:env|conf)$/u.test(name),
       ),
       [],
       'EOF removes operation crypt config',
@@ -234,7 +237,7 @@ fs.writeFileSync(file, String(time)); console.log(new Date(time).toISOString().r
     assert.ok((await readFile(`${root}/state/last-backup`, 'utf8')).trim());
     assert.deepEqual(
       (await readdir(`${root}/state`, { recursive: true })).filter((name) =>
-        name.endsWith('rclone.env'),
+        /rclone\.(?:env|conf)$/u.test(name),
       ),
       [],
       'completed backup removes operation crypt config',
@@ -248,8 +251,10 @@ fs.writeFileSync(file, String(time)); console.log(new Date(time).toISOString().r
         '--rm',
         '--network',
         network,
-        '--env-file',
-        `${directory}/rclone.env`,
+        '-v',
+        `${directory}/rclone.conf:/run/rclone.conf:ro`,
+        '-e',
+        'RCLONE_CONFIG=/run/rclone.conf',
         rcloneImage,
         'lsf',
         `crypt:pertexo-beta/${published}`,
@@ -324,8 +329,10 @@ fs.writeFileSync(file, String(time)); console.log(new Date(time).toISOString().r
           '--rm',
           '--network',
           network,
-          '--env-file',
-          `${directory}/rclone.env`,
+          '-v',
+          `${directory}/rclone.conf:/run/rclone.conf:ro`,
+          '-e',
+          'RCLONE_CONFIG=/run/rclone.conf',
           rcloneImage,
           'lsf',
           'crypt:pertexo-beta',
