@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 import { Pool } from 'pg';
-import type { PoolClient } from 'pg';
+import type { PoolClient, PoolConfig } from 'pg';
 import { afterAll, beforeAll } from 'vitest';
 import { dropDisconnectedDatabase } from '../../infrastructure/disposable-database.js';
 
@@ -38,6 +38,14 @@ export let apiPool: Pool;
 export let workerPool: Pool;
 
 let ownerPool: Pool;
+
+const fixturePools: { label: string; pool: Pool }[] = [];
+
+function createFixturePool(label: string, config: PoolConfig): Pool {
+  const pool = new Pool(config);
+  fixturePools.push({ label, pool });
+  return pool;
+}
 
 let databaseCreated = false;
 
@@ -181,9 +189,8 @@ function cleanupPreviewIntegrationFixture(): Promise<void> {
     };
     if (redisNamespaceAcquired)
       await attempt('clear node-attempt queue', clearNodeAttemptQueue);
-    await attempt('close API pool', () => apiPool.end());
-    await attempt('close worker pool', () => workerPool.end());
-    await attempt('close owner pool', () => ownerPool.end());
+    for (const { label, pool } of fixturePools)
+      await attempt(`close ${label} pool`, () => pool.end());
     if (redisNamespaceAcquired) {
       await attempt('catalog Redis namespace', () => redisNamespace.close());
       redisNamespaceAcquired = false;
@@ -246,12 +253,15 @@ beforeAll(async () => {
         NODE_ENV: 'test',
       }),
     );
-    apiPool = new Pool({ connectionString: databaseUrl(apiUrl), max: 4 });
-    workerPool = new Pool({
+    apiPool = createFixturePool('API', {
+      connectionString: databaseUrl(apiUrl),
+      max: 4,
+    });
+    workerPool = createFixturePool('worker', {
       connectionString: databaseUrl(workerUrl),
       max: 4,
     });
-    ownerPool = new Pool({
+    ownerPool = createFixturePool('owner', {
       connectionString: databaseUrl(migrationUrl),
       max: 1,
     });
