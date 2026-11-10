@@ -56,6 +56,9 @@ from pathlib import Path
 args=sys.argv[1:]
 root=Path(os.environ['PERTEXO_BETA_ROOT'])
 with open(os.environ['FIXTURE_LOG'],'a') as log: log.write(json.dumps(args)+'\\n')
+if '--cidfile' in args and 'node' in args:
+ script=next(arg for arg in args if arg.endswith('.mjs'))
+ Path(args[args.index('--cidfile')+1]).write_text('fixture-helper-'+Path(script).stem)
 fail=os.environ.get('FAIL_AT','')
 if fail=='encryption/verify.mjs':
  if 'infrastructure/single-server/encryption/verify.mjs' in args: sys.exit(1)
@@ -410,3 +413,39 @@ for (const [name, restore, settings, status] of [
     );
   });
 }
+
+test('each backup helper container is removed when its owning invocation finishes', (t) => {
+  const f = fixture(t);
+  const result = f.run();
+  assert.equal(result.status, 0, result.stderr);
+  const commands = f.commands();
+  assert.equal(
+    commands.filter((args) => args.includes('--images')).length,
+    1,
+    'resolve the upstream pin once per operation',
+  );
+  const helpers = commands.filter(
+    (args) =>
+      args[0] === 'run' &&
+      args.includes('node') &&
+      args.some((arg) =>
+        arg.startsWith('infrastructure/single-server/backup/'),
+      ),
+  );
+  assert.ok(helpers.length >= 3);
+  for (const args of helpers) {
+    assert.ok(args.includes('--cidfile'), 'the host can remove every helper');
+    const script = args
+      .find((arg) => arg.endsWith('.mjs'))
+      .split('/')
+      .at(-1)
+      .replace('.mjs', '');
+    assert.ok(
+      commands.some(
+        (command) =>
+          command[0] === 'rm' && command.includes(`fixture-helper-${script}`),
+      ),
+      script,
+    );
+  }
+});
