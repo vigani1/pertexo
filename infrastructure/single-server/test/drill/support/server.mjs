@@ -367,7 +367,7 @@ export async function configure(server) {
   ].join('\n');
   server.secretValues = Object.entries(parseEnv(content))
     .filter(([key]) =>
-      /ACCESS_KEY|CRYPT_PASSWORD|CRYPT_SALT|TOKEN_KEY|SELF_MANAGED_KEY|SMTP_PASSWORD/u.test(
+      /(?:^|_)(?:ACCESS_KEY_ID|SECRET_ACCESS_KEY|CRYPT_PASSWORD|CRYPT_SALT|TOKEN_KEY|SELF_MANAGED_KEY|SMTP_PASSWORD)$/u.test(
         key,
       ),
     )
