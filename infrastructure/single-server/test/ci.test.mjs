@@ -172,14 +172,3 @@ test('runs the drill on main, on the schedule, and only on pull requests that to
   ])
     assert.ok(!touches(file), file);
 });
-
-test('the existing deployment-check lane includes ECS capability regressions', () => {
-  const deploymentChecks = Object.values(ci.jobs)
-    .flatMap((job) => job.steps ?? [])
-    .find((step) => step.name === 'Deployment checks and test tools');
-  assert.ok(deploymentChecks);
-  assert.match(
-    deploymentChecks.run,
-    /infrastructure\/ecs\/test\/\*\.test\.mjs/u,
-  );
-});

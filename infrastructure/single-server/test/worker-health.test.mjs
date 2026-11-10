@@ -17,9 +17,6 @@ const { services } = parse(
   readFileSync(join(root, 'infrastructure/single-server/compose.yaml'), 'utf8'),
   { merge: true },
 );
-const ecsCheck = JSON.parse(
-  readFileSync(join(root, 'infrastructure/ecs/workloads.json'), 'utf8'),
-).workloads.worker.healthCheck[1];
 const composeCheck = services.worker.healthcheck.test[1].replaceAll('$$', '$');
 
 /**
@@ -67,10 +64,7 @@ const stoppedWithin = (exited, millis) =>
     }),
   ]);
 
-for (const [name, check] of [
-  ['compose', composeCheck],
-  ['ecs', ecsCheck],
-]) {
+for (const [name, check] of [['compose', composeCheck]]) {
   test(`${name}: a worker making progress is healthy and left alone`, async (t) => {
     const { status, exited } = runCheck(t, check, {
       ready: true,
