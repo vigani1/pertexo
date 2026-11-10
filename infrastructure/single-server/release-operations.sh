@@ -107,10 +107,28 @@ verify_encryption() (
     ops node infrastructure/single-server/encryption/verify.mjs /selected-release/infrastructure/single-server/encryption/verify.mjs
 )
 
+# Pass names, not secret values, and only the settings Compose interpolates.
+collect_configuration_overrides() {
+  local name
+  configuration_overrides=(--env SERVICE_VERSION)
+  while IFS= read -r name; do
+    if [[ $name != SERVICE_VERSION && -n ${!name+set} ]]; then configuration_overrides+=(--env "$name"); fi
+  done < <(grep -oE '\$\{[A-Z_0-9]+' "$release/infrastructure/single-server/compose.yaml" | sed 's/^..//' | sort -u)
+}
+
+validate_application_configuration() {
+  collect_configuration_overrides
+  docker run --rm --network none --read-only --user "$(id -u):$(id -g)" \
+    "${configuration_overrides[@]}" -v "$config:/run/pertexo.env:ro" \
+    -v "$operator_root/infrastructure/single-server/storage:/workspace/infrastructure/single-server/storage:ro" \
+    "ghcr.io/vigani1/pertexo:$SERVICE_VERSION" node --env-file=/run/pertexo.env infrastructure/single-server/storage/preflight.mjs /run/pertexo.env
+}
+
 prepare_configuration() {
   local prepared_directory=$1 parser_release=$2 parser_version=$3
+  collect_configuration_overrides
   docker run --rm --network none --read-only --user "$(id -u):$(id -g)" \
-    -v "$config:/run/pertexo.env:ro" -e SERVICE_VERSION="$SERVICE_VERSION" \
+    "${configuration_overrides[@]}" -v "$config:/run/pertexo.env:ro" \
     -v "$release/infrastructure/postgres/init:/workspace/infrastructure/postgres/init:ro" \
     -v "$prepared_directory:/prepared" -v "$release:/selected-release:ro" -v "$parser_release/infrastructure/single-server:/workspace/infrastructure/single-server:ro" \
     "ghcr.io/vigani1/pertexo:$parser_version" node --env-file=/run/pertexo.env infrastructure/single-server/storage/prepare.mjs /prepared /selected-release/infrastructure/single-server/encryption/verify.mjs
@@ -158,14 +176,13 @@ prepare_release() {
   fi
   select_release "$commit"
   preflight_settings
-  command -v node >/dev/null || { echo 'Install Node 24 and bootstrap the operator checkout before deploying; see docs/operations/single-server.md.' >&2; exit 1; }
-  node "$operator_root/infrastructure/single-server/storage/preflight.mjs" "$config"
   host_architecture=$(docker version --format '{{.Server.Arch}}')
   for image in pertexo pertexo-web; do
     reference="ghcr.io/vigani1/$image:$commit"
     docker pull "$reference"
     [[ $(docker image inspect --format '{{.Architecture}} {{index .Config.Labels "org.opencontainers.image.revision"}}' "$reference") == "$host_architecture $commit" ]] || { echo "Image architecture/revision mismatch: this server needs $host_architecture images of $commit" >&2; exit 1; }
   done
+  validate_application_configuration
   select_encryption_release
   # An installed verifier keeps older KMS rollbacks from bypassing retained-key checks.
   prepare_configuration "$BETA_STATE_DIR" "$encryption_release" "$encryption_version"

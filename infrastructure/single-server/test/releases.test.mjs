@@ -93,7 +93,6 @@ if 'logs' in args: print('Database already at migration head.')
       [resolve('infrastructure/single-server/deploy.sh'), ...args],
       {
         env: {
-          ...process.env,
           PATH: `${bin}:${process.env.PATH}`,
           PERTEXO_BETA_ROOT: root,
           FIXTURE_LOG: log,

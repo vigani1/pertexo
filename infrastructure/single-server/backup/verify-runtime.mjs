@@ -5,6 +5,7 @@ import {
   mkdirSync,
   writeFileSync,
   readFileSync,
+  readdirSync,
   rmSync,
   statSync,
 } from 'node:fs';
@@ -103,6 +104,9 @@ try {
           '-v',
           resolve('infrastructure/single-server') +
             ':/workspace/infrastructure/single-server:ro',
+          '-v',
+          resolve('infrastructure/postgres/init') +
+            ':/workspace/infrastructure/postgres/init:ro',
           ...(transport === 'smtp'
             ? [
                 '--env',
@@ -119,7 +123,21 @@ try {
       assert.equal(result.status, status, result.stderr);
       return result;
     };
+    run([
+      'infrastructure/single-server/storage/preflight.mjs',
+      '/run/pertexo.env',
+    ]);
     run(['infrastructure/single-server/storage/prepare.mjs', '/prepared']);
+    for (const filename of readdirSync('infrastructure/postgres/init', {
+      recursive: true,
+    })) {
+      const source = join('infrastructure/postgres/init', filename);
+      if (statSync(source).isFile())
+        assert.equal(
+          readFileSync(join(prepared, 'postgres-init', filename), 'utf8'),
+          readFileSync(source, 'utf8'),
+        );
+    }
     if (transport === 'smtp') {
       // Rendered Compose config escapes dollar signs; assert the actual process value.
       const manifest = join(prepared, 'mail.compose.json');

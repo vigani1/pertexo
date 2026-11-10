@@ -128,7 +128,7 @@ Docker volumes of the `pertexo-beta` Compose project, so never run `down -v` on 
 serving install.
 
 The operator checkout needs Node 24 and pnpm 11 (the versions in `package.json`).
-After installing those tools, bootstrap its built validators before deploying:
+After installing those tools, build the self-contained migration inspector before deploying:
 
 ```sh
 cd /opt/pertexo/repository
@@ -164,14 +164,20 @@ install -m 600 repository/infrastructure/single-server/.env.production.example .
 node repository/infrastructure/single-server/generate-secrets.mjs >> .env.production
 ```
 
-Deployment runs the API, worker and migration configuration parsers from the
-built operator checkout before pulling any images. This includes conditional SMTP,
-OAuth provider and encryption settings; diagnostics name the setting and give repair
-instructions without printing rejected values. To run this check separately:
+Deployment checks required Compose settings before pulling images. After pulling and
+verifying the target image's revision and architecture, it runs the API, worker and
+migration configuration parsers **inside that target image**, before stopping any
+writers. This includes conditional SMTP, OAuth provider and encryption settings;
+safe diagnostics name the setting without printing rejected values. Validation must
+follow the pull so it uses the release's own schemas and installed dependencies;
+no app schemas or dependency-bearing helpers execute in the operator checkout.
+An invalid configuration can cost an image download, but leaves writers running.
 
-```sh
-node /opt/pertexo/repository/infrastructure/single-server/storage/preflight.mjs /opt/pertexo/.env.production
-```
+Exported shell settings override `.env.production` for Compose interpolation,
+including `ARTIFACT_STORE_ENDPOINT`. Validation and preparation receive those same
+interpolated overrides. Other settings written to the generated app env files come
+from `.env.production`. Unset an exported setting to use the file's value. Run
+deployment in the intended shell environment.
 
 Do this once. **Never rerun the generator over installed keys:** a new encryption key
 makes every stored credential unreadable. Save the file, or at least its encryption
@@ -535,7 +541,11 @@ Code work that finishes during the drain keeps its successful result.
 
 PostgreSQL init scripts are prepared under `state/postgres-init` and mounted from
 that stable operator path. Changing release directories therefore does not change
-the database mount. Existing installs need one container recreation when moving
+the database mount. Preparation runs in the runtime image with the selected
+release's `infrastructure/postgres/init` mounted read-only at
+`/workspace/infrastructure/postgres/init`; the image does not bundle operator
+sources. Runtime-image qualification supplies this same mount from its checkout.
+Existing installs need one container recreation when moving
 from the old release-relative mount; the data volume is preserved.
 
 HTTP Request steps reach only public addresses unless

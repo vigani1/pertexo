@@ -149,7 +149,6 @@ if any('rclone/rclone:' in arg for arg in args):
       ],
       {
         env: {
-          ...process.env,
           PATH: bin + ':' + process.env.PATH,
           PERTEXO_BETA_ROOT: root,
           FIXTURE_LOG: log,
