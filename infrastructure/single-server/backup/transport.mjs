@@ -3,8 +3,10 @@ import { setTimeout } from 'node:timers/promises';
 import { S3Client } from '@aws-sdk/client-s3';
 import { parseRecoveryStores } from './stores.mjs';
 
-export async function rclone(args) {
+export async function rclone(args, { input } = {}) {
   const directory = process.env.BACKUP_TRANSPORT_DIRECTORY ?? '/backup';
+  if (input !== undefined)
+    await writeFile(`${directory}/transport.input`, input, { mode: 0o600 });
   await writeFile(
     `${directory}/transport.request.tmp`,
     args.join('\0') + '\0',
@@ -26,6 +28,8 @@ export async function rclone(args) {
     const stdout = await readFile(`${directory}/transport.stdout`, 'utf8');
     const stderr = await readFile(`${directory}/transport.stderr`, 'utf8');
     await rm(`${directory}/transport.status`);
+    await rm(`${directory}/transport.stdout`);
+    await rm(`${directory}/transport.stderr`);
     if (status !== '0') throw new Error(`rclone exited ${status}: ${stderr}`);
     return stdout;
   }

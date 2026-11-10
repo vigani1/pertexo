@@ -108,7 +108,7 @@ exec ${execFileSync('sh', ['-c', 'command -v uname'], { encoding: 'utf8' }).trim
   writeFileSync(
     join(bin, 'docker'),
     `#!/usr/bin/env python3
-import os, sys, json, time, subprocess
+import os, sys, json, time, subprocess, re
 from pathlib import Path
 args=sys.argv[1:]
 with open(os.environ['FIXTURE_LOG'],'a') as log:
@@ -136,6 +136,11 @@ if 'lsf' in args and '--include' in args:
  if os.environ.get('FIXTURE_PRUNE_CATALOG_FAIL')=='true': print('Recovery catalogue unavailable',file=sys.stderr);sys.exit(1)
  if os.environ.get('FIXTURE_RECOVERY_RELEASE'): print('pertexo-beta/20261109T120000Z/release.txt')
 if 'cat' in args and any(arg.endswith('/release.txt') for arg in args): print(os.environ.get('FIXTURE_RECOVERY_RELEASE',''))
+if '--images' in args:
+ manifest=Path(args[args.index('-f')+1]).read_text()
+ image=re.search(r'image:\\s*(rclone/rclone:\\S+)',manifest)
+ if not image: sys.exit(1)
+ print(image.group(1))
 if args[0]=='image':
  arch='amd64' if os.environ.get('FIXTURE_REVISION_BAD')=='true' else os.environ.get('FIXTURE_IMAGE_ARCH',host)
  revision=os.environ['SERVICE_VERSION']

@@ -55,6 +55,8 @@ export async function qualifyCapture({
       { mode: 0o600 },
     );
     const args = [
+      '-e',
+      'BACKUP_TRANSPORT_DIRECTORY=/backup',
       '--network',
       network,
       '--read-only',
@@ -71,19 +73,16 @@ export async function qualifyCapture({
       '-w',
       '/workspace',
     ];
-    for (const [field, file] of [
-      ['BACKUP_CRYPT_PASSWORD', 'obscured-password'],
-      ['BACKUP_CRYPT_SALT', 'obscured-salt'],
-    ]) {
-      await writeFile(
-        `${directory}/${file}`,
-        docker(
-          ['run', '--rm', '-i', '--network', 'none', clone, 'obscure', '-'],
-          { input: environment[field], captureOutput: true },
-        ),
-        { mode: 0o600 },
-      );
-    }
+    runner = spawn(
+      'bash',
+      [
+        'infrastructure/single-server/backup/rclone-requests.sh',
+        directory,
+        network,
+        clone,
+      ],
+      { stdio: 'inherit' },
+    );
     const originalConfig = await readFile(`${directory}/rclone.env`, 'utf8');
     docker([
       'run',
@@ -105,16 +104,6 @@ export async function qualifyCapture({
     await writeFile(`${directory}/capture-rclone.env`, prepared, {
       mode: 0o600,
     });
-    runner = spawn(
-      'bash',
-      [
-        'infrastructure/single-server/backup/rclone-requests.sh',
-        directory,
-        network,
-        clone,
-      ],
-      { stdio: 'inherit' },
-    );
     const id = docker(
       [
         'create',
