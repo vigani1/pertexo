@@ -38,11 +38,9 @@ for (const route of declaredRoutes) {
 }
 
 for (const [name, schema] of Object.entries(contracts)) {
-  const direction = /(Response|Summary|Problem)Schema$/u.test(name)
-    ? 'response'
-    : /RequestSchema$/u.test(name)
-      ? 'request'
-      : undefined;
+  let direction: 'response' | 'request' | undefined;
+  if (/(Response|Summary|Problem)Schema$/u.test(name)) direction = 'response';
+  else if (name.endsWith('RequestSchema')) direction = 'request';
   if (direction !== undefined && schema instanceof z.ZodType)
     it(`${name} follows the public ${direction} member policy recursively`, () => {
       expect(policyViolations(schema, direction)).toEqual([]);

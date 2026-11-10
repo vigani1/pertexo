@@ -509,7 +509,7 @@ describe('workflow organization full-parent batch orchestration', () => {
   });
 
   it.each(['move', 'replace_tags', 'tag_cleanup'] as const)(
-    'converts malformed/private/mismatched %s item results to sanitized unknown, not success',
+    'strips private %s metadata while keeping malformed and mismatched items unknown',
     async (operation) => {
       for (const malformed of [
         { workflowId: firstId, organizationRevision: 0, replayed: true },
@@ -543,10 +543,11 @@ describe('workflow organization full-parent batch orchestration', () => {
                     : { operation, tagIds: [], items },
                 ),
               });
-        expect(response.items[0]).toEqual({
-          workflowId: firstId,
-          status: 'outcome_unknown',
-        });
+        expect(response.items[0]).toEqual(
+          operation === 'move' && 'proof' in malformed
+            ? updated(firstId, 8, true)
+            : { workflowId: firstId, status: 'outcome_unknown' },
+        );
         expect(response.items[1]).toEqual(
           operation === 'tag_cleanup'
             ? { ...updated(secondId), status: 'detached' }

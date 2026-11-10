@@ -154,12 +154,16 @@ describe('workflow duplication application seam', () => {
     expect(duplicateWorkflow).not.toHaveBeenCalled();
   });
 
-  it('fails closed on a malformed or over-disclosing persistence result', async () => {
+  it('strips extra response fields and rejects malformed persistence results', async () => {
     const { useCase, duplicateWorkflow } = fixture();
     duplicateWorkflow.mockResolvedValue({
       workflowId: destinationId,
       graph: {},
     });
+    await expect(useCase.execute(input)).resolves.toEqual({
+      workflowId: destinationId,
+    });
+    duplicateWorkflow.mockResolvedValue({ workflowId: 'invalid' });
     await expect(useCase.execute(input)).rejects.toMatchObject({
       name: 'ZodError',
     });

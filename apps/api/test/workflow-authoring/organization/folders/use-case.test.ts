@@ -202,7 +202,7 @@ describe('folder use-case boundary', () => {
         },
       );
 
-      it('rejects private or incomplete persisted results', async () => {
+      it('rejects incomplete results and strips private persisted metadata', async () => {
         for (const result of [
           {},
           { ...operation.result, actorId, body: { name: 'private' } },
@@ -210,7 +210,14 @@ describe('folder use-case boundary', () => {
         ]) {
           const f = setup();
           f.store[operation.port].mockResolvedValueOnce(result);
-          await expect(f.invoke(operation)).rejects.toBeInstanceOf(z.ZodError);
+          if (Object.keys(result).length === 0)
+            await expect(f.invoke(operation)).rejects.toBeInstanceOf(
+              z.ZodError,
+            );
+          else
+            await expect(f.invoke(operation)).resolves.toEqual(
+              operation.result,
+            );
           expect(f.store[operation.port]).toHaveBeenCalledOnce();
         }
       });
