@@ -8,7 +8,7 @@ import { describe, expect, it } from 'vitest';
 
 import { mockServer } from '../../../support/mock-server';
 
-import { renderApp } from '../../../support/render-app';
+import { renderLoadedApp } from '../../../support/render-app';
 
 import {
   base,
@@ -58,9 +58,12 @@ describe('connections page', () => {
       }),
     );
 
-    const { queryClient } = renderApp(`/w/${workspaceId}/connections`, {
-      strict: true,
-    });
+    const { queryClient } = await renderLoadedApp(
+      `/w/${workspaceId}/connections`,
+      {
+        strict: true,
+      },
+    );
     const event = userEvent.setup();
     await event.click(
       await screen.findByRole('button', { name: 'Add connection' }),
@@ -131,7 +134,9 @@ describe('connections page', () => {
       }),
     );
 
-    const rendered = renderApp(`/w/${workspaceId}/connections?add=slack`);
+    const rendered = await renderLoadedApp(
+      `/w/${workspaceId}/connections?add=slack`,
+    );
     const event = userEvent.setup();
     await event.type(await screen.findByLabelText('Slack bot token'), token);
     await event.click(lens().getByRole('button', { name: 'Continue' }));
@@ -151,7 +156,9 @@ describe('connections page', () => {
       http.post(base, () => HttpResponse.error()),
     );
 
-    const { queryClient } = renderApp(`/w/${workspaceId}/connections`);
+    const { queryClient } = await renderLoadedApp(
+      `/w/${workspaceId}/connections`,
+    );
     const event = userEvent.setup();
     await event.click(
       await screen.findByRole('button', { name: 'Connect Slack' }),
@@ -203,7 +210,7 @@ describe('connections page', () => {
       }),
     );
 
-    renderApp(`/w/${workspaceId}/connections?add=http`);
+    await renderLoadedApp(`/w/${workspaceId}/connections?add=http`);
     const event = userEvent.setup();
     const firstValue = await screen.findByLabelText('Header 1 value');
     expect(firstValue).toHaveAttribute('type', 'password');
@@ -286,7 +293,9 @@ describe('connections page', () => {
         });
       }),
     );
-    renderApp(`/w/${workspaceId}/connections?add=http`, { strict: true });
+    await renderLoadedApp(`/w/${workspaceId}/connections?add=http`, {
+      strict: true,
+    });
     const actor = userEvent.setup();
     await actor.type(
       await screen.findByLabelText('Header 1 value'),

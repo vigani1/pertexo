@@ -4,7 +4,7 @@ import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { mockServer } from '../../support/mock-server';
-import { renderApp } from '../../support/render-app';
+import { renderLoadedApp } from '../../support/render-app';
 import {
   apiBase,
   coldStart,
@@ -57,7 +57,7 @@ function install() {
 describe('Usage trends', () => {
   it('renders bounded daily outcomes, elapsed durations and workflow rankings', async () => {
     install();
-    renderApp(path);
+    await renderLoadedApp(path);
     expect(
       await screen.findByText('3 runs', { selector: 'p' }, coldStart),
     ).toBeVisible();
@@ -85,7 +85,7 @@ describe('Usage trends', () => {
   });
   it('keeps the period in the URL and requests only bounded trend snapshots', async () => {
     const handlers = install();
-    const { router } = renderApp(path);
+    const { router } = await renderLoadedApp(path);
     await screen.findByText('3 runs', { selector: 'p' }, coldStart);
     await userEvent.click(screen.getByRole('button', { name: '90 days' }));
     await waitFor(() => {
@@ -105,7 +105,7 @@ describe('Usage trends', () => {
   });
   it('forgets denied snapshots across periods before a later transient failure', async () => {
     const handlers = install();
-    const { queryClient } = renderApp(path);
+    const { queryClient } = await renderLoadedApp(path);
     await screen.findByText('3 runs', { selector: 'p' }, coldStart);
     handlers.setStatus(403);
     await act(async () => {

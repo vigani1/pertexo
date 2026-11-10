@@ -41,7 +41,7 @@ import { defaultConcurrencySettings } from '../../support/fixtures/concurrency';
 
 import { mockServer } from '../../support/mock-server';
 
-import { renderApp, testFetch } from '../../support/render-app';
+import { testFetch, renderLoadedApp } from '../../support/render-app';
 
 import { workspaceWith } from '../workflows/list/fixtures';
 
@@ -194,7 +194,7 @@ describe('workflow concurrency settings', () => {
           return HttpResponse.json({});
         }),
       );
-      renderApp(path);
+      await renderLoadedApp(path);
       const event = userEvent.setup();
       await event.type(await limitField(event), value);
       await event.click(
@@ -269,7 +269,7 @@ describe('workflow concurrency settings', () => {
         return problem(409, 'workflow.concurrency_revision_conflict');
       }),
     );
-    renderApp(path);
+    await renderLoadedApp(path);
     const event = userEvent.setup();
     await event.type(await limitField(event), '1');
     await event.click(
@@ -315,7 +315,7 @@ describe('workflow concurrency settings', () => {
         return HttpResponse.json({ settings: current, replayed: false });
       }),
     );
-    renderApp(path);
+    await renderLoadedApp(path);
     const event = userEvent.setup();
     const section = await screen.findByRole('region', { name: 'Concurrency' });
     const input = await limitField(event);

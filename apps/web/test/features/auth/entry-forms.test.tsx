@@ -7,8 +7,8 @@ import { LoginPage } from '@/features/auth/pages/login';
 import { mockServer } from '../../support/mock-server';
 import {
   expectSignInPage,
-  renderApp,
   testFetch,
+  renderLoadedApp,
 } from '../../support/render-app';
 import { renderInRouter } from '../../support/render-in-router';
 
@@ -133,7 +133,7 @@ describe('sign-in family forms', () => {
 
   it('checks sign-up fields on submit, clears them as they’re fixed, and fills the meter to the server minimum', async () => {
     mockServer.use(signedOut, capabilities({ minimumLength: 10 }));
-    renderApp('/sign-up');
+    await renderLoadedApp('/sign-up');
     const actor = userEvent.setup();
     const name = await screen.findByLabelText('Your name');
     await actor.click(name);
@@ -185,7 +185,7 @@ describe('sign-in family forms', () => {
         return HttpResponse.json({ user: null });
       }),
     );
-    renderApp('/sign-up');
+    await renderLoadedApp('/sign-up');
     const actor = userEvent.setup();
     await actor.type(await screen.findByLabelText('Your name'), 'Ada Lovelace');
     await actor.type(screen.getByLabelText('Email'), 'ada@northwind.dev');
@@ -218,7 +218,7 @@ describe('sign-in family forms', () => {
         HttpResponse.json({ status: true }),
       ),
     );
-    renderApp('/forgot-password');
+    await renderLoadedApp('/forgot-password');
     const actor = userEvent.setup();
     await actor.type(
       await screen.findByLabelText('Email'),
@@ -241,7 +241,7 @@ describe('sign-in family forms', () => {
         return HttpResponse.json({ status: true });
       }),
     );
-    renderApp('/reset-password?token=one-time-token');
+    await renderLoadedApp('/reset-password?token=one-time-token');
     const actor = userEvent.setup();
     await actor.type(
       await screen.findByLabelText('New password'),
@@ -273,7 +273,7 @@ describe('sign-in family forms', () => {
 
   it('explains an incomplete reset link without a form', async () => {
     mockServer.use(signedOut, capabilities());
-    renderApp('/reset-password');
+    await renderLoadedApp('/reset-password');
     expect(
       await screen.findByRole('heading', { name: 'This link is incomplete' }),
     ).toBeVisible();
@@ -301,7 +301,7 @@ it.each([false, true])(
         },
       ),
     );
-    const app = renderApp('/reset-password?token=one-time-secret');
+    const app = await renderLoadedApp('/reset-password?token=one-time-secret');
     const user = userEvent.setup();
     await user.type(
       await screen.findByLabelText('New password'),
@@ -332,7 +332,7 @@ it('does not announce a completed password change for a malformed success body',
       HttpResponse.json({}),
     ),
   );
-  renderApp('/reset-password?token=malformed-response-proof');
+  await renderLoadedApp('/reset-password?token=malformed-response-proof');
   const user = userEvent.setup();
   await user.type(
     await screen.findByLabelText('New password'),

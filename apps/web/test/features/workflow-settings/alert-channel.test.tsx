@@ -5,7 +5,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { describeDestination } from '@/features/workflow-settings/model/destination-label';
 import { mockServer } from '../../support/mock-server';
-import { renderApp } from '../../support/render-app';
+import { renderLoadedApp } from '../../support/render-app';
 import {
   slackChannelLookup,
   slackConnection,
@@ -96,7 +96,7 @@ describe('Slack channel names in failure alerts', { timeout: 30_000 }, () => {
   it('shows “#channel-name via Connection” for the current destination and the choices', async () => {
     const lookups: string[] = [];
     installSlackAlerts(opsAlerts, withLookups, lookups);
-    renderApp(settingsPath);
+    await renderLoadedApp(settingsPath);
     const event = userEvent.setup();
     const alerts = await screen.findByRole('region', {
       name: 'Failure alerts',
@@ -126,7 +126,7 @@ describe('Slack channel names in failure alerts', { timeout: 30_000 }, () => {
 
   it('keeps the channel ID and says why when the name can’t be read', async () => {
     installSlackAlerts(privateRoom, withLookups);
-    renderApp(settingsPath);
+    await renderLoadedApp(settingsPath);
     const alerts = await screen.findByRole('region', {
       name: 'Failure alerts',
     });
@@ -147,7 +147,7 @@ describe('Slack channel names in failure alerts', { timeout: 30_000 }, () => {
       ['workflow:update', 'connection:read'],
       lookups,
     );
-    renderApp(settingsPath);
+    await renderLoadedApp(settingsPath);
     const alerts = await screen.findByRole('region', {
       name: 'Failure alerts',
     });

@@ -3,7 +3,7 @@ import { HttpResponse, http } from 'msw';
 import { screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { mockServer } from '../support/mock-server';
-import { renderApp } from '../support/render-app';
+import { renderLoadedApp } from '../support/render-app';
 
 const user = createUserFixture({
   createdAt: '2026-09-14T10:00:00.000Z',
@@ -42,7 +42,7 @@ describe('a page that fails to load says what went wrong', () => {
     workspacesFail(() =>
       problem(429, 'rate_limit.exceeded', { 'retry-after': '30' }),
     );
-    renderApp('/workspaces');
+    await renderLoadedApp('/workspaces');
 
     expect(
       await screen.findByRole('heading', { name: 'Too many requests' }),
@@ -55,7 +55,7 @@ describe('a page that fails to load says what went wrong', () => {
 
   it('tells people offline to check their connection', async () => {
     workspacesFail(() => HttpResponse.error());
-    renderApp('/workspaces');
+    await renderLoadedApp('/workspaces');
 
     expect(
       await screen.findByRole('heading', { name: 'Pertexo can’t be reached' }),
@@ -65,7 +65,7 @@ describe('a page that fails to load says what went wrong', () => {
 
   it('explains a refused page instead of blaming the server', async () => {
     workspacesFail(() => problem(403, 'workspace.forbidden'));
-    renderApp('/workspaces');
+    await renderLoadedApp('/workspaces');
 
     expect(
       await screen.findByRole('heading', {
@@ -77,7 +77,7 @@ describe('a page that fails to load says what went wrong', () => {
 
   it('keeps the error ID for a real server failure', async () => {
     workspacesFail(() => problem(500, 'internal.unexpected'));
-    renderApp('/workspaces');
+    await renderLoadedApp('/workspaces');
 
     expect(
       await screen.findByRole('heading', {

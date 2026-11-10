@@ -8,7 +8,7 @@ import { describe, expect, it } from 'vitest';
 
 import { mockServer } from '../../../support/mock-server';
 
-import { expectSignInPage, renderApp } from '../../../support/render-app';
+import { expectSignInPage, renderLoadedApp } from '../../../support/render-app';
 
 import {
   authenticatedHandlers,
@@ -42,7 +42,7 @@ describe('authentication and workspace entry', () => {
         },
       ),
     );
-    const app = renderApp('/reset-password?token=old-token');
+    const app = await renderLoadedApp('/reset-password?token=old-token');
     await userEvent
       .setup()
       .type(
@@ -85,7 +85,7 @@ describe('authentication and workspace entry', () => {
           ),
       ),
     );
-    const app = renderApp('/reset-password?token=one-time-token');
+    const app = await renderLoadedApp('/reset-password?token=one-time-token');
     const passwordInput = await screen.findByLabelText('New password');
     await userEvent.setup().type(passwordInput, 'new secure password value');
     await userEvent
@@ -117,7 +117,7 @@ describe('authentication and workspace entry', () => {
         () => HttpResponse.error(),
       ),
     );
-    renderApp('/reset-password?token=another-token');
+    await renderLoadedApp('/reset-password?token=another-token');
     const secondPassword = await screen.findByLabelText('New password');
     await userEvent
       .setup()
@@ -157,7 +157,7 @@ describe('authentication and workspace entry', () => {
         },
       ),
     );
-    const app = renderApp('/login?error=verification_invalid');
+    const app = await renderLoadedApp('/login?error=verification_invalid');
     const actor = userEvent.setup();
     await actor.click(
       await screen.findByRole('button', { name: 'Send a new link' }),
@@ -172,7 +172,7 @@ describe('authentication and workspace entry', () => {
     expect(addresses).toEqual(['operator@example.test']);
     app.unmount();
 
-    renderApp('/login?error=verification_invalid');
+    await renderLoadedApp('/login?error=verification_invalid');
     await actor.click(
       await screen.findByRole('button', { name: 'Send a new link' }),
     );
@@ -194,7 +194,7 @@ describe('authentication and workspace entry', () => {
         problem(503, 'auth.unavailable', 'Identity service unavailable'),
       ),
     );
-    renderApp('/login?error=verification_invalid');
+    await renderLoadedApp('/login?error=verification_invalid');
     const actor = userEvent.setup();
     await actor.click(
       await screen.findByRole('button', { name: 'Send a new link' }),
@@ -227,7 +227,7 @@ describe('authentication and workspace entry', () => {
         }),
       ),
     );
-    const app = renderApp('/sign-up');
+    const app = await renderLoadedApp('/sign-up');
     expect(
       await screen.findByText('Password sign-up is not available right now.'),
     ).toBeVisible();
@@ -254,7 +254,7 @@ describe('authentication and workspace entry', () => {
   });
   it('lists server-authorized workspaces and enters one through a URL-owned scope', async () => {
     mockServer.use(...authenticatedHandlers());
-    const app = renderApp('/workspaces');
+    const app = await renderLoadedApp('/workspaces');
     const entry = await screen.findByRole('button', {
       name: /Control Operations/,
     });
@@ -278,7 +278,7 @@ describe('authentication and workspace entry', () => {
   });
   it('clears protected Query data when the authenticated account changes', async () => {
     mockServer.use(...authenticatedHandlers());
-    const app = renderApp('/workspaces');
+    const app = await renderLoadedApp('/workspaces');
     expect(await screen.findByText(user.email)).toBeVisible();
     app.queryClient.setQueryData(['protected', userId], { secret: 'user-a' });
     const nextUser = {
@@ -297,7 +297,7 @@ describe('authentication and workspace entry', () => {
   });
   it('removes cached protected rows after authoritative authentication loss', async () => {
     mockServer.use(...authenticatedHandlers(), passwordCapabilities);
-    const app = renderApp('/workspaces');
+    const app = await renderLoadedApp('/workspaces');
     expect(await screen.findByText(user.email)).toBeVisible();
     app.queryClient.setQueryData(['protected', userId], { secret: 'user-a' });
     mockServer.use(

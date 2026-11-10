@@ -8,7 +8,7 @@ import {
   describeScheduleHold,
 } from '@/features/workflow-settings/model/triggers/occurrence-outcome';
 import { mockServer } from '../../support/mock-server';
-import { renderApp } from '../../support/render-app';
+import { renderLoadedApp } from '../../support/render-app';
 import {
   installQueries,
   schedule,
@@ -102,7 +102,7 @@ describe('schedule run history in words', () => {
 describe('schedule card on the Triggers tab', () => {
   it('lists the next three runs the scheduler reports', async () => {
     installQueries();
-    renderApp(triggersPath);
+    await renderLoadedApp(triggersPath);
     const card = await scheduleCard();
     const list = await within(card).findByRole('list', { name: 'Next runs' });
     const times = within(list).getAllByRole('listitem');
@@ -145,7 +145,7 @@ describe('schedule card on the Triggers tab', () => {
         }),
       ),
     );
-    renderApp(triggersPath);
+    await renderLoadedApp(triggersPath);
     const card = await scheduleCard();
     const list = await within(card).findByRole('list', { name: 'Next runs' });
     const [before, gap, after] = within(list).getAllByRole('listitem');
@@ -170,7 +170,7 @@ describe('schedule card on the Triggers tab', () => {
         HttpResponse.json({ observedAt: schedule.nextFireAt, items: [] }),
       ),
     );
-    renderApp(triggersPath);
+    await renderLoadedApp(triggersPath);
     const card = await scheduleCard();
     expect(
       await within(card).findByText(
@@ -203,7 +203,7 @@ describe('schedule card on the Triggers tab', () => {
             }),
       ),
     );
-    renderApp(triggersPath);
+    await renderLoadedApp(triggersPath);
     const card = await scheduleCard();
     expect(
       await within(card).findByText('Next runs couldn’t be loaded. Try again.'),
@@ -255,7 +255,7 @@ describe('schedule card on the Triggers tab', () => {
         );
       }),
     );
-    renderApp(triggersPath);
+    await renderLoadedApp(triggersPath);
     const card = await scheduleCard();
     const list = await within(card).findByRole('list', {
       name: 'Recent runs of this schedule',
@@ -303,7 +303,7 @@ describe('schedule card on the Triggers tab', () => {
         }),
       ),
     );
-    renderApp(triggersPath);
+    await renderLoadedApp(triggersPath);
     const card = await scheduleCard();
     expect(await within(card).findByText(/No run times yet\./u)).toBeVisible();
     expect(

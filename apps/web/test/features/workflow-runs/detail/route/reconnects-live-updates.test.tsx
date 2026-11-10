@@ -2,7 +2,7 @@ import { screen, waitFor } from '@testing-library/react';
 import { HttpResponse } from 'msw';
 import { afterEach, describe, expect, it } from 'vitest';
 import { coldStart } from '../../../../support/fixtures/run';
-import { renderApp } from '../../../../support/render-app';
+import { renderLoadedApp } from '../../../../support/render-app';
 import { installRun, node, retryingRun, runId, workspaceId } from './fixture';
 
 afterEach(() => {
@@ -40,7 +40,7 @@ describe('run live updates', () => {
         nodes: [node('running')],
         stream: () => problem(status, code),
       });
-      renderApp(`/w/${workspaceId}/runs/${runId}`);
+      await renderLoadedApp(`/w/${workspaceId}/runs/${runId}`);
       expect(
         await screen.findByText('Updates paused', undefined, coldStart),
       ).toBeVisible();
@@ -67,7 +67,7 @@ describe('run live updates', () => {
         return refusal();
       },
     });
-    renderApp(`/w/${workspaceId}/runs/${runId}`);
+    await renderLoadedApp(`/w/${workspaceId}/runs/${runId}`);
     await waitFor(
       () => {
         expect(run.streamCount()).toBeGreaterThanOrEqual(2);

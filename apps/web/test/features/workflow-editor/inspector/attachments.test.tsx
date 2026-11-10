@@ -17,7 +17,7 @@ import {
   setDefinition,
 } from '../../../support/fixtures/workflow-editor';
 import { mockServer } from '../../../support/mock-server';
-import { renderApp } from '../../../support/render-app';
+import { renderLoadedApp } from '../../../support/render-app';
 
 const createFileDefinition = {
   ...setDefinition,
@@ -116,7 +116,7 @@ async function openAttachments(graph: WorkflowGraphContract) {
       },
     ),
   );
-  renderApp(editorPath);
+  await renderLoadedApp(editorPath);
   const event = userEvent.setup();
   fireEvent.click((await findCanvas()).getByText('Email it'));
   await event.click(await screen.findByRole('tab', { name: 'Inputs' }));

@@ -7,7 +7,7 @@ import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { mockServer } from '../../support/mock-server';
-import { renderApp } from '../../support/render-app';
+import { renderLoadedApp } from '../../support/render-app';
 
 const userId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const workspaceId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
@@ -81,7 +81,7 @@ describe('workspace variables list', () => {
     { timeout: 30_000 },
     async () => {
       fixtures();
-      renderApp(`/w/${workspaceId}/settings/variables`);
+      await renderLoadedApp(`/w/${workspaceId}/settings/variables`);
       const event = userEvent.setup();
       await event.click(
         await screen.findByText('Limits', {}, { timeout: 15_000 }),
@@ -96,7 +96,7 @@ describe('workspace variables list', () => {
 
   it('shows one line per variable and filters by name, value or description', async () => {
     fixtures();
-    renderApp(`/w/${workspaceId}/settings/variables`);
+    await renderLoadedApp(`/w/${workspaceId}/settings/variables`);
     const event = userEvent.setup();
     const currency = await screen.findByRole('region', { name: 'CURRENCY' });
     expect(within(currency).getByText('Invoice currency.')).toBeVisible();
@@ -116,7 +116,7 @@ describe('workspace variables list', () => {
 
   it('edits a row in place, marks it unsaved and closes it once saved', async () => {
     const writes = fixtures();
-    renderApp(`/w/${workspaceId}/settings/variables`);
+    await renderLoadedApp(`/w/${workspaceId}/settings/variables`);
     const event = userEvent.setup();
     const max = await screen.findByRole('region', { name: 'MAX_ITEMS' });
     await event.click(
@@ -144,7 +144,7 @@ describe('workspace variables list', () => {
 
   it('opens a new variable ready to fill in', async () => {
     fixtures();
-    renderApp(`/w/${workspaceId}/settings/variables`);
+    await renderLoadedApp(`/w/${workspaceId}/settings/variables`);
     const event = userEvent.setup();
     await screen.findByRole('region', { name: 'CURRENCY' });
     await event.click(screen.getByRole('button', { name: 'Add variable' }));
@@ -155,7 +155,7 @@ describe('workspace variables list', () => {
 
 it('protects edited variables through navigation and discards only after an explicit choice', async () => {
   const writes = fixtures();
-  const app = renderApp(`/w/${workspaceId}/settings/variables`);
+  const app = await renderLoadedApp(`/w/${workspaceId}/settings/variables`);
   const user = userEvent.setup();
   await user.click(
     await screen.findByRole('button', { name: 'Edit CURRENCY' }),

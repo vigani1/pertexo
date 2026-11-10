@@ -3,7 +3,7 @@ import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { mockServer } from '../../support/mock-server';
-import { expectSignInPage, renderApp } from '../../support/render-app';
+import { expectSignInPage, renderLoadedApp } from '../../support/render-app';
 import {
   api,
   ownerWorkspace,
@@ -74,7 +74,7 @@ describe('settings: leaving a workspace', () => {
       ),
     );
     const actor = userEvent.setup();
-    renderApp(`/w/${workspaceId}/settings`, { strict: true });
+    await renderLoadedApp(`/w/${workspaceId}/settings`, { strict: true });
 
     const dialog = await openLeave(actor);
     expect(
@@ -104,7 +104,7 @@ describe('settings: leaving a workspace', () => {
       ),
     );
     const actor = userEvent.setup();
-    renderApp(`/w/${workspaceId}/settings`);
+    await renderLoadedApp(`/w/${workspaceId}/settings`);
 
     const dialog = await openLeave(actor);
     await actor.click(dialog.getByRole('button', { name: 'Leave workspace' }));
@@ -130,7 +130,7 @@ describe('settings: leaving a workspace', () => {
         () => false,
       ),
     );
-    renderApp(`/w/${workspaceId}/settings`);
+    await renderLoadedApp(`/w/${workspaceId}/settings`);
 
     expect(
       await screen.findByText(/You’re the owner, so you can’t leave yet/u),
@@ -154,7 +154,7 @@ describe('settings: leaving a workspace', () => {
       leaveHandler(sent, () => problem(403, 'auth.forbidden')),
     );
     const actor = userEvent.setup();
-    renderApp(`/w/${workspaceId}/settings`);
+    await renderLoadedApp(`/w/${workspaceId}/settings`);
 
     const dialog = await openLeave(actor);
     await actor.click(dialog.getByRole('button', { name: 'Leave workspace' }));
@@ -170,7 +170,7 @@ describe('settings: leaving a workspace', () => {
       ),
     );
     const actor = userEvent.setup();
-    const { router } = renderApp(`/w/${workspaceId}/settings`);
+    const { router } = await renderLoadedApp(`/w/${workspaceId}/settings`);
     const dialog = await openLeave(actor);
     await actor.click(dialog.getByRole('button', { name: 'Leave workspace' }));
     expect(

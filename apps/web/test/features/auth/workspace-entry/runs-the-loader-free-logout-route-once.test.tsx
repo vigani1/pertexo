@@ -8,7 +8,7 @@ import { describe, expect, it } from 'vitest';
 
 import { mockServer } from '../../../support/mock-server';
 
-import { expectSignInPage, renderApp } from '../../../support/render-app';
+import { expectSignInPage, renderLoadedApp } from '../../../support/render-app';
 
 import { passwordCapabilities, problem, user } from './fixture';
 
@@ -40,7 +40,7 @@ describe('authentication and workspace entry', () => {
         return new HttpResponse(null, { status: 204 });
       }),
     );
-    const app = renderApp('/logout', { strict: true });
+    const app = await renderLoadedApp('/logout', { strict: true });
     app.queryClient.setQueryData(['protected', 'sentinel'], 'preserved');
 
     expect(

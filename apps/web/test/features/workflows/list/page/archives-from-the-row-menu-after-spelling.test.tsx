@@ -1,4 +1,3 @@
-import { coldStart } from '../../../../support/fixtures/run';
 import { screen, waitFor, within } from '@testing-library/react';
 
 import userEvent from '@testing-library/user-event';
@@ -9,7 +8,7 @@ import { describe, expect, it } from 'vitest';
 
 import { mockServer } from '../../../../support/mock-server';
 
-import { renderApp } from '../../../../support/render-app';
+import { renderLoadedApp } from '../../../../support/render-app';
 
 import {
   api,
@@ -53,7 +52,7 @@ describe('workflow list', () => {
         },
       ),
     );
-    renderApp(`/w/${workspaceId}/workflows`);
+    await renderLoadedApp(`/w/${workspaceId}/workflows`);
     const event = userEvent.setup();
     await event.click(
       await screen.findByRole('button', { name: 'Actions for Invoice intake' }),
@@ -100,7 +99,7 @@ describe('workflow list', () => {
         );
       }),
     );
-    renderApp(`/w/${workspaceId}/workflows`, { strict: true });
+    await renderLoadedApp(`/w/${workspaceId}/workflows`, { strict: true });
     const event = userEvent.setup();
     await event.click(
       await screen.findByRole('button', { name: 'Actions for Child workflow' }),
@@ -172,7 +171,7 @@ describe('workflow list', () => {
         nextCursor: null,
       })),
     );
-    renderApp(`/w/${workspaceId}/workflows`);
+    await renderLoadedApp(`/w/${workspaceId}/workflows`);
     await userEvent.setup().click(
       await screen.findByRole('button', {
         name: 'Actions for Invoice intake',
@@ -205,7 +204,7 @@ describe('workflow list', () => {
             ),
       ),
     );
-    renderApp(`/w/${workspaceId}/workflows`);
+    await renderLoadedApp(`/w/${workspaceId}/workflows`);
     expect(
       await screen.findByRole('heading', { name: 'Workflows didn’t load' }),
     ).toBeVisible();
@@ -256,12 +255,8 @@ it('shows Form and error-workflow trigger icons with accessible names', async ()
       nextCursor: null,
     })),
   );
-  renderApp(`/w/${workspaceId}/workflows`);
-  const list = await screen.findByRole(
-    'list',
-    { name: 'Workflows' },
-    coldStart,
-  );
+  await renderLoadedApp(`/w/${workspaceId}/workflows`);
+  const list = await screen.findByRole('list', { name: 'Workflows' });
   expect(
     (await within(list).findAllByText('Triggers: Form'))[0],
   ).toBeInTheDocument();

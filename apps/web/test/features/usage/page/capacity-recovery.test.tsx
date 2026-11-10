@@ -21,7 +21,7 @@ import {
 
 import { mockServer } from '../../../support/mock-server';
 
-import { renderApp } from '../../../support/render-app';
+import { renderLoadedApp } from '../../../support/render-app';
 
 import { capacity, install, path } from './fixture';
 
@@ -53,7 +53,7 @@ describe('workspace Usage', () => {
             : new HttpResponse(null, { status });
         }),
       );
-      const { router } = renderApp(path);
+      const { router } = await renderLoadedApp(path);
       await screen.findByText('Old activity', {}, coldStart);
       await userEvent.click(screen.getByRole('button', { name: '6 hours' }));
       await screen.findByText('Old activity');
@@ -112,7 +112,7 @@ describe('workspace Usage', () => {
           ? new HttpResponse(null, { status: 503 })
           : HttpResponse.json(capacity),
     });
-    renderApp(path);
+    await renderLoadedApp(path);
     await screen.findByText(
       'Current capacity couldn’t be loaded. Try again.',
       {},
@@ -144,7 +144,7 @@ describe('workspace Usage', () => {
           : HttpResponse.json(fixtureStatistics({ workflows: [] }));
       }),
     );
-    renderApp(path);
+    await renderLoadedApp(path);
     await screen.findByText(
       'Recent runs couldn’t be loaded. Try again.',
       {},

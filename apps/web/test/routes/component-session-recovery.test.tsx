@@ -2,7 +2,7 @@ import { screen, waitFor } from '@testing-library/react';
 import { http, HttpResponse } from 'msw';
 import { expect, it } from 'vitest';
 import { mockServer } from '../support/mock-server';
-import { renderApp } from '../support/render-app';
+import { renderLoadedApp } from '../support/render-app';
 import {
   api,
   firstMemberId,
@@ -38,7 +38,7 @@ it('clears the previous account’s data when resource-session recovery finds a 
       });
     }),
   );
-  const app = renderApp(`/w/${workspaceId}/team`);
+  const app = await renderLoadedApp(`/w/${workspaceId}/team`);
   await screen.findByText('Directory member', {}, coldStart);
   app.queryClient.setQueryData(['protected', userId], {
     private: 'previous account',

@@ -8,7 +8,7 @@ import { describe, expect, it } from 'vitest';
 
 import { mockServer } from '../../../support/mock-server';
 
-import { renderApp } from '../../../support/render-app';
+import { renderLoadedApp } from '../../../support/render-app';
 
 import {
   api,
@@ -82,7 +82,7 @@ describe('workflow triggers tab', () => {
           ),
       ),
     );
-    renderApp(triggersPath);
+    await renderLoadedApp(triggersPath);
     const hook = await screen.findByRole('article', {
       name: 'Webhook: Receive order',
     });
@@ -140,7 +140,7 @@ describe('workflow triggers tab', () => {
           : HttpResponse.json({ items: [], nextCursor: null }),
       ),
     );
-    renderApp(triggersPath);
+    await renderLoadedApp(triggersPath);
     const hook = await screen.findByRole('article', {
       name: 'Webhook: Receive order',
     });
@@ -194,7 +194,7 @@ describe('workflow triggers tab', () => {
         },
       ),
     );
-    const { router } = renderApp(triggersPath);
+    const { router } = await renderLoadedApp(triggersPath);
     const event = userEvent.setup();
     await event.click(
       await screen.findByRole('button', { name: 'Create endpoint' }),

@@ -15,7 +15,7 @@ import {
 
 import { mockServer } from '../../../../support/mock-server';
 
-import { renderApp } from '../../../../support/render-app';
+import { renderLoadedApp } from '../../../../support/render-app';
 
 import {
   chooseOption,
@@ -43,7 +43,7 @@ describe('workspace runs', () => {
             }),
       ),
     );
-    const { queryClient } = renderApp(`/w/${workspaceId}/runs`);
+    const { queryClient } = await renderLoadedApp(`/w/${workspaceId}/runs`);
     await screen.findByRole(
       'button',
       { name: 'Copy run ID eeee…eeee' },
@@ -71,7 +71,7 @@ describe('workspace runs', () => {
         return HttpResponse.json({ items: [], nextCursor: null });
       }),
     );
-    renderApp(`/w/${workspaceId}/runs`);
+    await renderLoadedApp(`/w/${workspaceId}/runs`);
     expect(
       await screen.findByRole(
         'heading',
@@ -88,7 +88,7 @@ describe('workspace runs', () => {
       ...workflowReads(),
       http.get(`${apiBase}/runs`, () => HttpResponse.error()),
     );
-    renderApp(`/w/${workspaceId}/runs`);
+    await renderLoadedApp(`/w/${workspaceId}/runs`);
     expect(
       await screen.findByRole(
         'heading',
@@ -108,7 +108,7 @@ describe('workspace runs', () => {
         HttpResponse.json({ items: [], nextCursor: null }),
       ),
     );
-    renderApp(`/w/${workspaceId}/runs`);
+    await renderLoadedApp(`/w/${workspaceId}/runs`);
     const empty = await screen.findByRole(
       'heading',
       { name: 'No runs yet' },
@@ -128,7 +128,7 @@ describe('workspace runs', () => {
       ...workflowReads(),
       ...historyReads(requests),
     );
-    const { router } = renderApp(
+    const { router } = await renderLoadedApp(
       `/w/${workspaceId}/workflows/${workflowId}/runs?workflowId=ignored`,
     );
     expect(

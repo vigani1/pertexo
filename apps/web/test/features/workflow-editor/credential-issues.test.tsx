@@ -16,7 +16,7 @@ import {
   workspaceId,
 } from '../../support/fixtures/workflow-editor';
 import { mockServer } from '../../support/mock-server';
-import { renderApp } from '../../support/render-app';
+import { renderLoadedApp } from '../../support/render-app';
 
 const connectionId = '44444444-4444-4444-8444-444444444444';
 const definition = {
@@ -62,7 +62,7 @@ describe('the editor issues chip’s credential readiness', () => {
           HttpResponse.json({ items: [current], nextCursor: null }),
         ),
       );
-      const app = renderApp(editorPath, { strict: true });
+      const app = await renderLoadedApp(editorPath, { strict: true });
       const event = userEvent.setup();
       await findCanvas();
       await event.click(

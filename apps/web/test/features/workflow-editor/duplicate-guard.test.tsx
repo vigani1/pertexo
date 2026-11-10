@@ -17,7 +17,7 @@ import {
   workspace,
 } from '../../support/fixtures/workflow-editor';
 import { mockServer } from '../../support/mock-server';
-import { renderApp } from '../../support/render-app';
+import { renderLoadedApp } from '../../support/render-app';
 
 it('blocks saved-draft duplication while local edits are dirty/saving and after a save conflict', async () => {
   let release: (() => void) | undefined;
@@ -41,7 +41,7 @@ it('blocks saved-draft duplication while local edits are dirty/saving and after 
       });
     }),
   );
-  renderApp(editorPath);
+  await renderLoadedApp(editorPath);
   await findCanvas();
   const event = userEvent.setup();
   const duplicate = screen.getByRole('button', { name: 'Duplicate…' });

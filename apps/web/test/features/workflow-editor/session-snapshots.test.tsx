@@ -14,7 +14,7 @@ import {
   userId,
 } from '../../support/fixtures/workflow-editor';
 import { mockServer } from '../../support/mock-server';
-import { renderApp } from '../../support/render-app';
+import { renderLoadedApp } from '../../support/render-app';
 
 describe('editor session snapshots', { timeout: 30_000 }, () => {
   it('reads refreshed catalog fields without replacing the edited draft or selection', async () => {
@@ -34,7 +34,7 @@ describe('editor session snapshots', { timeout: 30_000 }, () => {
         },
       ),
     );
-    const { apiClient, queryClient } = renderApp(editorPath);
+    const { apiClient, queryClient } = await renderLoadedApp(editorPath);
     const user = userEvent.setup();
     const canvas = await findCanvas();
     fireEvent.click(canvas.getByText('Numbers'));

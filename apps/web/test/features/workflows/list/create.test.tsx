@@ -5,7 +5,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { CURATED_WORKFLOW_TEMPLATES } from '@pertexo/templates';
 import { mockServer } from '../../../support/mock-server';
-import { renderApp } from '../../../support/render-app';
+import { renderLoadedApp } from '../../../support/render-app';
 import {
   api,
   createdResponse,
@@ -51,7 +51,7 @@ describe('new workflow lens', () => {
         return createdResponse(workflowId, 'Nightly sync');
       }),
     );
-    const { router } = renderApp(`/w/${workspaceId}/workflows`);
+    const { router } = await renderLoadedApp(`/w/${workspaceId}/workflows`);
     const event = userEvent.setup();
     expect(
       await screen.findByRole(
@@ -109,7 +109,7 @@ describe('new workflow lens', () => {
         return createdResponse(workflowId, 'Pending workflow');
       }),
     );
-    renderApp(`/w/${workspaceId}/workflows?create=true`);
+    await renderLoadedApp(`/w/${workspaceId}/workflows?create=true`);
     const event = userEvent.setup();
     const name = await screen.findByLabelText('Workflow name');
     await event.type(name, 'Pending workflow');
@@ -140,7 +140,9 @@ describe('new workflow lens', () => {
         ),
       ),
     );
-    const { router } = renderApp(`/w/${workspaceId}/workflows?create=true`);
+    const { router } = await renderLoadedApp(
+      `/w/${workspaceId}/workflows?create=true`,
+    );
     const event = userEvent.setup();
     expect(
       await screen.findByRole('dialog', { name: 'New workflow' }),
@@ -162,7 +164,7 @@ describe('new workflow lens', () => {
 
   it('keeps the empty state read-only without create capability', async () => {
     mockServer.use(...discoveryHandlers([]), emptyList());
-    renderApp(`/w/${workspaceId}/workflows?create=true`);
+    await renderLoadedApp(`/w/${workspaceId}/workflows?create=true`);
     expect(
       await screen.findByRole('heading', { name: 'No workflows yet' }),
     ).toBeVisible();
@@ -199,7 +201,9 @@ describe('ready-made examples', () => {
     );
     // After the discovery handlers, so the curated catalog answers first.
     mockServer.use(exampleHandlers());
-    const { router } = renderApp(`/w/${workspaceId}/workflows?create=true`);
+    const { router } = await renderLoadedApp(
+      `/w/${workspaceId}/workflows?create=true`,
+    );
     const event = userEvent.setup();
     const sheet = await screen.findByRole('dialog', { name: 'New workflow' });
     for (const template of CURATED_WORKFLOW_TEMPLATES)
@@ -229,7 +233,7 @@ describe('ready-made examples', () => {
   it('carries a typed name into an example and preserves it when choosing another', async () => {
     mockServer.use(...discoveryHandlers(), emptyList());
     mockServer.use(exampleHandlers());
-    renderApp(`/w/${workspaceId}/workflows?create=true`);
+    await renderLoadedApp(`/w/${workspaceId}/workflows?create=true`);
     const event = userEvent.setup();
     const sheet = await screen.findByRole('dialog', { name: 'New workflow' });
     await event.type(
@@ -265,7 +269,7 @@ describe('ready-made examples', () => {
   it('offers the same examples beside Start blank on an empty list', async () => {
     mockServer.use(...discoveryHandlers(), emptyList());
     mockServer.use(exampleHandlers());
-    renderApp(`/w/${workspaceId}/workflows`);
+    await renderLoadedApp(`/w/${workspaceId}/workflows`);
     const event = userEvent.setup();
     const empty = await screen.findByRole('region', {
       name: 'Weave your first workflow',

@@ -22,7 +22,7 @@ import {
   workspaceId,
 } from '../../../support/fixtures/workflow-editor';
 import { mockServer } from '../../../support/mock-server';
-import { renderApp } from '../../../support/render-app';
+import { renderLoadedApp } from '../../../support/render-app';
 
 const { items: definitions } = nodeDefinitionListResponseSchema.parse({
   items: platformBrowserNodeDefinitionCatalog().definitions.filter(
@@ -169,7 +169,7 @@ async function openInputs(graph: WorkflowGraphContract, stepLabel: string) {
       HttpResponse.json({ revision: 1, values: {}, descriptions: {} }),
     ),
   );
-  renderApp(editorPath);
+  await renderLoadedApp(editorPath);
   const event = userEvent.setup();
   fireEvent.click((await findCanvas()).getByText(stepLabel));
   await event.click(await screen.findByRole('tab', { name: 'Inputs' }));

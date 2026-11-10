@@ -8,7 +8,7 @@ import { describe, expect, it } from 'vitest';
 
 import { mockServer } from '../../../support/mock-server';
 
-import { renderApp } from '../../../support/render-app';
+import { renderLoadedApp } from '../../../support/render-app';
 
 import {
   identityHandlers,
@@ -42,7 +42,7 @@ describe('workspace settings', () => {
       ),
     );
 
-    renderApp(`/w/${workspaceId}/settings`, { strict: true });
+    await renderLoadedApp(`/w/${workspaceId}/settings`, { strict: true });
     const actor = userEvent.setup();
     await actor.click(
       await screen.findByRole('button', { name: 'Delete workspace' }),
@@ -108,7 +108,7 @@ describe('workspace settings', () => {
         },
       ),
     );
-    renderApp(`/w/${workspaceId}/settings`);
+    await renderLoadedApp(`/w/${workspaceId}/settings`);
     const actor = userEvent.setup();
     await actor.click(
       await screen.findByRole('button', { name: 'Delete workspace' }),
@@ -148,7 +148,7 @@ describe('workspace settings', () => {
         },
       ),
     );
-    renderApp(`/w/${workspaceId}/settings`);
+    await renderLoadedApp(`/w/${workspaceId}/settings`);
     const actor = userEvent.setup();
     await actor.click(
       await screen.findByRole('button', { name: 'Restore workspace' }),
@@ -237,7 +237,7 @@ describe('workspace settings', () => {
         HttpResponse.json({ items: [] }),
       ),
     );
-    renderApp(`/w/${workspaceId}/settings`);
+    await renderLoadedApp(`/w/${workspaceId}/settings`);
     const glance = within(
       await screen.findByRole('region', { name: 'At a glance' }),
     );
@@ -316,7 +316,7 @@ describe('workspace settings', () => {
         HttpResponse.json({ items: [], nextCursor: null }),
       ),
     );
-    renderApp(`/w/${workspaceId}/settings`);
+    await renderLoadedApp(`/w/${workspaceId}/settings`);
     const glance = within(
       await screen.findByRole('region', { name: 'At a glance' }),
     );

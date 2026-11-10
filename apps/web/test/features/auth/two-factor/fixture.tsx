@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { HttpResponse, http } from 'msw';
 import { user } from '../../../support/fixtures/team';
 import { mockServer } from '../../../support/mock-server';
-import { renderApp } from '../../../support/render-app';
+import { renderLoadedApp } from '../../../support/render-app';
 export const codes = Array.from(
   { length: 10 },
   (_, i) => `recovery-${String(i).padStart(5, '0')}`,
@@ -41,7 +41,7 @@ export function identity(read: () => ReturnType<typeof account>) {
 }
 
 export async function openSecurity() {
-  const view = renderApp('/account/security', { strict: true });
+  const view = await renderLoadedApp('/account/security', { strict: true });
   const actor = userEvent.setup();
   await actor.click(
     await screen.findByRole('tab', { name: 'Sign-in & security' }),

@@ -8,7 +8,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { mockServer } from '../../support/mock-server';
 
-import { expectSignInPage, renderApp } from '../../support/render-app';
+import { expectSignInPage, renderLoadedApp } from '../../support/render-app';
 
 import {
   problem,
@@ -50,7 +50,7 @@ describe('workspace settings', () => {
         },
       ),
     );
-    renderApp(`/w/${workspaceId}/settings`, { strict: true });
+    await renderLoadedApp(`/w/${workspaceId}/settings`, { strict: true });
     const actor = userEvent.setup();
     await actor.click(
       await screen.findByRole('button', { name: 'Rename workspace' }),
@@ -103,7 +103,7 @@ describe('workspace settings', () => {
         },
       ),
     );
-    renderApp(`/w/${workspaceId}/settings`);
+    await renderLoadedApp(`/w/${workspaceId}/settings`);
     const actor = userEvent.setup();
     await actor.click(
       await screen.findByRole('button', { name: 'Rename workspace' }),
@@ -143,7 +143,7 @@ describe('workspace settings', () => {
     );
     vi.useFakeTimers({ toFake: ['Date'] });
     try {
-      renderApp(`/w/${workspaceId}/settings`);
+      await renderLoadedApp(`/w/${workspaceId}/settings`);
       const actor = userEvent.setup();
       await actor.click(
         await screen.findByRole('button', { name: 'Rename workspace' }),
@@ -201,7 +201,7 @@ describe('workspace settings', () => {
         },
       ),
     );
-    renderApp(`/w/${workspaceId}/settings`);
+    await renderLoadedApp(`/w/${workspaceId}/settings`);
     const actor = userEvent.setup();
     await actor.click(
       await screen.findByRole('button', { name: 'Rename workspace' }),
@@ -248,7 +248,7 @@ describe('workspace settings', () => {
         );
       }),
     );
-    renderApp(`/w/${workspaceId}/settings`);
+    await renderLoadedApp(`/w/${workspaceId}/settings`);
     const actor = userEvent.setup();
     await actor.click(
       await screen.findByRole('button', { name: 'Rename workspace' }),
@@ -287,7 +287,7 @@ describe('workspace settings', () => {
         return HttpResponse.json(renameResponse(workspace, false));
       }),
     );
-    renderApp(`/w/${workspaceId}/settings`);
+    await renderLoadedApp(`/w/${workspaceId}/settings`);
     const actor = userEvent.setup();
     await actor.click(
       await screen.findByRole('button', { name: 'Rename workspace' }),
@@ -327,7 +327,7 @@ describe('workspace settings', () => {
         return problem(403, 'auth.forbidden', 'Access denied');
       }),
     );
-    renderApp(`/w/${workspaceId}/settings`);
+    await renderLoadedApp(`/w/${workspaceId}/settings`);
     const actor = userEvent.setup();
     await actor.click(
       await screen.findByRole('button', { name: 'Rename workspace' }),

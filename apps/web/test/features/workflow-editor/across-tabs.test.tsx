@@ -17,7 +17,7 @@ import {
   workflowApi,
 } from '../../support/fixtures/workflow-editor';
 import { mockServer } from '../../support/mock-server';
-import { renderApp } from '../../support/render-app';
+import { renderLoadedApp } from '../../support/render-app';
 
 describe('workflow editor across tabs', { timeout: 30_000 }, () => {
   it('reopens the last saved draft after visiting another tab', async () => {
@@ -74,7 +74,7 @@ describe('workflow editor across tabs', { timeout: 30_000 }, () => {
         HttpResponse.json({ items: [], nextCursor: null }),
       ),
     );
-    renderApp(editorPath);
+    await renderLoadedApp(editorPath);
     const event = userEvent.setup();
     await findCanvas();
     await event.click(addStepButton(/Set fields/u));

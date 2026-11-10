@@ -5,7 +5,7 @@ import { HttpResponse, http } from 'msw';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { createWorkspaceFixture } from '../../support/fixtures/identity';
 import { mockServer } from '../../support/mock-server';
-import { renderApp } from '../../support/render-app';
+import { type renderApp, renderLoadedApp } from '../../support/render-app';
 import {
   authenticatedHandlers,
   userId,
@@ -67,7 +67,7 @@ describe('which workspaces can be opened', () => {
   // web-app-02: the picker blocks a suspended workspace the banner invites in.
   it('opens a suspended workspace from the picker, with its banner', async () => {
     listWorkspaces([suspended, active(otherId, 'Field Team')]);
-    const app = renderApp('/workspaces');
+    const app = await renderLoadedApp('/workspaces');
     const entry = await screen.findByRole('button', {
       name: /Control Operations/u,
     });
@@ -84,14 +84,14 @@ describe('which workspaces can be opened', () => {
 
   it('shows the suspended banner on a suspended workspace’s pages', async () => {
     listWorkspaces([suspended]);
-    renderApp(`/w/${workspaceId}/workflows`);
+    await renderLoadedApp(`/w/${workspaceId}/workflows`);
     expect(await screen.findByText(suspendedBanner)).toBeVisible();
   });
 
   // web-app-02 + web-app-08: landing skips a suspended workspace.
   it('lands on the only workspace when it is suspended', async () => {
     listWorkspaces([suspended]);
-    const app = renderApp('/');
+    const app = await renderLoadedApp('/');
     await expectLandedOn(app, `/w/${workspaceId}`);
   });
 
@@ -103,21 +103,21 @@ describe('which workspaces can be opened', () => {
       suspended,
       active(thirdId, 'Back Office'),
     ]);
-    const app = renderApp('/');
+    const app = await renderLoadedApp('/');
     await expectLandedOn(app, `/w/${workspaceId}`);
   });
 
   it('lands on the workspace remembered by the same person', async () => {
     rememberWorkspace(workspaceId);
     listWorkspaces([active(otherId, 'Field Team'), workspace]);
-    const app = renderApp('/');
+    const app = await renderLoadedApp('/');
     await expectLandedOn(app, `/w/${workspaceId}`);
   });
 
   it('ignores a workspace another person opened last in this browser', async () => {
     rememberWorkspace(workspaceId, 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee');
     listWorkspaces([active(otherId, 'Field Team'), workspace]);
-    const app = renderApp('/');
+    const app = await renderLoadedApp('/');
     await expectLandedOn(app, '/workspaces');
   });
 
@@ -128,20 +128,20 @@ describe('which workspaces can be opened', () => {
       workspace,
       active(thirdId, 'Back Office'),
     ]);
-    const app = renderApp('/');
+    const app = await renderLoadedApp('/');
     await expectLandedOn(app, '/workspaces');
   });
 
   it('lands on the only workspace that can be opened', async () => {
     listWorkspaces([beingDeleted(otherId, 'Old Ops'), workspace]);
-    const app = renderApp('/');
+    const app = await renderLoadedApp('/');
     await expectLandedOn(app, `/w/${workspaceId}`);
   });
 
   // web-app-02: a deep link opens what the picker and landing keep closed.
   it('keeps a deep link out of a workspace being deleted that the person can’t restore', async () => {
     listWorkspaces([beingDeleted(workspaceId, 'Control Operations')]);
-    renderApp(`/w/${workspaceId}/workflows`);
+    await renderLoadedApp(`/w/${workspaceId}/workflows`);
     expect(
       await screen.findByRole('heading', {
         name: 'This workspace isn’t available',
@@ -156,7 +156,7 @@ describe('which workspaces can be opened', () => {
       { ...active(otherId, 'Field Team'), status: 'suspended' },
       beingDeleted(thirdId, 'Old Ops'),
     ]);
-    renderApp(`/w/${workspaceId}/workflows`);
+    await renderLoadedApp(`/w/${workspaceId}/workflows`);
     await screen.findByRole('heading', { name: 'Workflows' });
     await userEvent
       .setup()

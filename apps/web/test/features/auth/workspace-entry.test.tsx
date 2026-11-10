@@ -16,8 +16,8 @@ import { mockServer } from '../../support/mock-server';
 
 import {
   expectSignInPage,
-  renderApp,
   testFetch,
+  renderLoadedApp,
 } from '../../support/render-app';
 
 import { renderInRouter } from '../../support/render-in-router';
@@ -40,14 +40,14 @@ describe('authentication and workspace entry', () => {
         problem(401, 'auth.unauthenticated', 'Authentication required'),
       ),
     );
-    const invalid = renderApp('/login?error=verification_invalid');
+    const invalid = await renderLoadedApp('/login?error=verification_invalid');
     expect(
       await screen.findByText(
         /verification link is invalid, expired, or already used/u,
       ),
     ).toBeVisible();
     invalid.unmount();
-    const pending = renderApp('/login?emailChangePending=true');
+    const pending = await renderLoadedApp('/login?emailChangePending=true');
     expect(
       await screen.findByText(
         /Check your new address for the final verification link/u,
@@ -62,7 +62,7 @@ describe('authentication and workspace entry', () => {
         problem(401, 'auth.unauthenticated', 'Authentication required'),
       ),
     );
-    renderApp('/');
+    await renderLoadedApp('/');
     await expectSignInPage();
     expect(await screen.findByLabelText('Password')).toBeVisible();
   });

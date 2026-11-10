@@ -14,7 +14,7 @@ import {
 
 import { mockServer } from '../../support/mock-server';
 
-import { renderApp } from '../../support/render-app';
+import { renderLoadedApp } from '../../support/render-app';
 
 import {
   failedRunId,
@@ -38,7 +38,7 @@ describe('workspace home', () => {
       ...runHandlers({ statisticsSeen: statisticsQueries }, runQueries),
     );
 
-    renderApp(`/w/${workspaceId}`, { strict: true });
+    await renderLoadedApp(`/w/${workspaceId}`, { strict: true });
 
     expect(
       await screen.findByRole(
@@ -136,7 +136,7 @@ describe('workspace home', () => {
       ),
     );
 
-    renderApp(`/w/${workspaceId}`);
+    await renderLoadedApp(`/w/${workspaceId}`);
     const main = await screen.findByRole('main', undefined, coldStart);
     expect(
       await within(main).findByText('as of', { exact: false }),
@@ -197,7 +197,7 @@ describe('workspace home', () => {
       ),
     );
 
-    renderApp(`/w/${workspaceId}`);
+    await renderLoadedApp(`/w/${workspaceId}`);
     expect(
       await screen.findByText(
         '12 runs in the last hour.',
@@ -233,7 +233,7 @@ describe('workspace home', () => {
       ...runHandlers(),
     );
 
-    renderApp(`/w/${workspaceId}`);
+    await renderLoadedApp(`/w/${workspaceId}`);
     const main = await screen.findByRole('main', undefined, coldStart);
     expect(
       await within(main).findByRole('link', { name: 'New workflow' }),
@@ -267,7 +267,7 @@ describe('workspace home', () => {
       ),
       ...runHandlers(),
     );
-    renderApp(`/w/${workspaceId}`);
+    await renderLoadedApp(`/w/${workspaceId}`);
     const main = await screen.findByRole('main', undefined, coldStart);
     const event = userEvent.setup();
     await event.click(

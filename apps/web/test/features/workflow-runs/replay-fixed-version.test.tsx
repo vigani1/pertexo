@@ -14,7 +14,7 @@ import {
   statisticsHandler,
 } from '../../support/fixtures/run';
 import { mockServer } from '../../support/mock-server';
-import { renderApp } from '../../support/render-app';
+import { renderLoadedApp } from '../../support/render-app';
 
 const { workspace: workspaceId, firstRun: sourceRunId } = fixtureIds;
 const { workflow: workflowId, version: sourceVersionId } = fixtureIds;
@@ -147,7 +147,7 @@ describe('replaying a failed run after a fix is published', () => {
         });
       }),
     );
-    renderApp(`/w/${workspaceId}/runs/${sourceRunId}`);
+    await renderLoadedApp(`/w/${workspaceId}/runs/${sourceRunId}`);
     const event = userEvent.setup();
     const replay = await screen.findByRole(
       'button',
@@ -166,7 +166,7 @@ describe('replaying a failed run after a fix is published', () => {
   it('offers the fixed version and starts on it by default', async () => {
     install({ id: fixedVersionId, versionNumber: 3 });
     const bodies = captureReplay();
-    renderApp(`/w/${workspaceId}/runs/${sourceRunId}`);
+    await renderLoadedApp(`/w/${workspaceId}/runs/${sourceRunId}`);
     const { dialog, event } = await openReplay();
     const fixed = await within(dialog).findByRole('radio', { name: /v3/u });
     expect(fixed).toBeChecked();
@@ -184,7 +184,7 @@ describe('replaying a failed run after a fix is published', () => {
   it('can still replay the version the run used', async () => {
     install({ id: fixedVersionId, versionNumber: 3 });
     const bodies = captureReplay();
-    renderApp(`/w/${workspaceId}/runs/${sourceRunId}`);
+    await renderLoadedApp(`/w/${workspaceId}/runs/${sourceRunId}`);
     const { dialog, event } = await openReplay();
     await event.click(
       await within(dialog).findByRole('radio', { name: /v2/u }),
@@ -200,7 +200,7 @@ describe('replaying a failed run after a fix is published', () => {
   it('offers no choice when the run already used the latest version', async () => {
     install({ id: sourceVersionId, versionNumber: 2 });
     const bodies = captureReplay();
-    renderApp(`/w/${workspaceId}/runs/${sourceRunId}`);
+    await renderLoadedApp(`/w/${workspaceId}/runs/${sourceRunId}`);
     const { dialog, event } = await openReplay();
     expect(within(dialog).queryByRole('radio')).not.toBeInTheDocument();
     await event.click(
@@ -213,7 +213,7 @@ describe('replaying a failed run after a fix is published', () => {
 
   it('points from Retry from this step to replaying on the fixed version', async () => {
     install({ id: fixedVersionId, versionNumber: 3 });
-    renderApp(`/w/${workspaceId}/runs/${sourceRunId}`);
+    await renderLoadedApp(`/w/${workspaceId}/runs/${sourceRunId}`);
     const event = userEvent.setup();
     await event.click(
       await screen.findByRole(

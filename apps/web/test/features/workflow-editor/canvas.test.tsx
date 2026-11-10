@@ -18,7 +18,7 @@ import {
   mappingDefinition,
 } from '../../support/fixtures/workflow-editor';
 import { mockServer } from '../../support/mock-server';
-import { renderApp } from '../../support/render-app';
+import { renderLoadedApp } from '../../support/render-app';
 
 /**
  * jsdom lays nothing out, so React Flow never measures a step. This gives
@@ -113,7 +113,7 @@ describe('workflow editor overview map', { timeout: 30_000 }, () => {
         definitions: [manualDefinition, mappingDefinition],
       }),
     );
-    renderApp(editorPath);
+    await renderLoadedApp(editorPath);
     await findCanvas();
     const map = await screen.findByRole('img', { name: 'Workflow overview' });
     await waitFor(() => {
@@ -149,7 +149,7 @@ describe('workflow editor command bar', { timeout: 30_000 }, () => {
         definitions: [manualDefinition, mappingDefinition],
       }),
     );
-    renderApp(editorPath);
+    await renderLoadedApp(editorPath);
     const event = userEvent.setup();
     const canvas = await findCanvas();
     fireEvent.click(canvas.getByText('Target'));
@@ -209,7 +209,7 @@ describe('workflow editor add-step lens', { timeout: 30_000 }, () => {
         },
       ),
     );
-    renderApp(editorPath);
+    await renderLoadedApp(editorPath);
     const event = userEvent.setup();
     await findCanvas();
     const lens = within(

@@ -9,7 +9,7 @@ import userEvent from '@testing-library/user-event';
 import { HttpResponse, http, type RequestHandler } from 'msw';
 import { expect } from 'vitest';
 import { mockServer } from '../mock-server';
-import { renderApp } from '../render-app';
+import { renderLoadedApp } from '../render-app';
 import { findCanvas, pressSave } from './editor-actions';
 import {
   api,
@@ -104,6 +104,8 @@ export async function openEditor(
     firstStep?: string;
   }> = {},
 ) {
+  // Compile the lazy inspector before starting interaction assertions.
+  await import('@/features/workflow-editor/components/inspector/node');
   const saves: WorkflowGraphContract[] = [];
   mockServer.use(
     // First match wins, so a scenario's reads replace the empty defaults.
@@ -131,7 +133,7 @@ export async function openEditor(
   );
   // jsdom lays nothing out, so it has no scrolling to do.
   Element.prototype.scrollIntoView = () => undefined;
-  renderApp(editorPath);
+  await renderLoadedApp(editorPath);
   const event = userEvent.setup();
   const canvas = await findCanvas();
   const select = (label: string) => {

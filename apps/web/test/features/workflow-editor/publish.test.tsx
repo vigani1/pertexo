@@ -38,7 +38,7 @@ import {
 
 import { mockServer } from '../../support/mock-server';
 
-import { renderApp } from '../../support/render-app';
+import { renderLoadedApp } from '../../support/render-app';
 
 afterEach(() => vi.useRealTimers());
 
@@ -57,7 +57,7 @@ describe('workflow editor publishing', { timeout: 30_000 }, () => {
         return HttpResponse.json({}, { status: 500 });
       }),
     );
-    renderApp(editorPath, { strict: true });
+    await renderLoadedApp(editorPath, { strict: true });
     const event = userEvent.setup();
     await findCanvas();
     await event.click(screen.getByRole('button', { name: 'Publish v1' }));
@@ -116,7 +116,7 @@ describe('workflow editor publishing', { timeout: 30_000 }, () => {
       }),
       ...runDetailHandlers(),
     );
-    const app = renderApp(editorPath);
+    const app = await renderLoadedApp(editorPath);
     const event = userEvent.setup();
     await findCanvas();
     await event.click(addStepButton(/Set fields/u));
@@ -172,7 +172,7 @@ describe('workflow editor publishing', { timeout: 30_000 }, () => {
     );
     // Versions is read first, so its list is cached and fresh when the
     // publish lands a moment later.
-    const app = renderApp(`${editorPath}/versions`);
+    const app = await renderLoadedApp(`${editorPath}/versions`);
     expect(await screen.findByText(/Nothing published yet/u)).toBeVisible();
     await app.router.navigate({
       to: '/w/$workspaceId/workflows/$workflowId',
@@ -223,7 +223,7 @@ describe('workflow editor publishing', { timeout: 30_000 }, () => {
         return HttpResponse.json({}, { status: 500 });
       }),
     );
-    renderApp(editorPath);
+    await renderLoadedApp(editorPath);
     const event = userEvent.setup();
     await findCanvas();
     await event.click(addStepButton(/Set fields/u));
@@ -279,7 +279,7 @@ describe('workflow editor publishing', { timeout: 30_000 }, () => {
         }),
       ),
     );
-    renderApp(editorPath);
+    await renderLoadedApp(editorPath);
     const event = userEvent.setup();
     await findCanvas();
     expect(
@@ -312,7 +312,7 @@ describe('workflow editor publishing', { timeout: 30_000 }, () => {
         return HttpResponse.json({}, { status: 500 });
       }),
     );
-    renderApp(editorPath);
+    await renderLoadedApp(editorPath);
     const event = userEvent.setup();
     fireEvent.click((await findCanvas()).getByText('Numbers'));
     const count = await screen.findByLabelText('Count');

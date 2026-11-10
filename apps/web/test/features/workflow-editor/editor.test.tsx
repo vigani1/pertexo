@@ -30,7 +30,7 @@ import {
   workspaceId,
 } from '../../support/fixtures/workflow-editor';
 import { mockServer } from '../../support/mock-server';
-import { renderApp } from '../../support/render-app';
+import { renderLoadedApp } from '../../support/render-app';
 
 // The lazy editor route and React Flow are slow to start on a busy machine.
 
@@ -44,7 +44,7 @@ describe('workflow editor canvas', { timeout: 30_000 }, () => {
         savedNodes = body.graph.nodes.length;
       }),
     );
-    renderApp(editorPath, { strict: true });
+    await renderLoadedApp(editorPath, { strict: true });
     const event = userEvent.setup();
     await findCanvas();
     expect(
@@ -84,7 +84,7 @@ describe('workflow editor canvas', { timeout: 30_000 }, () => {
         },
       ),
     );
-    renderApp(editorPath);
+    await renderLoadedApp(editorPath);
     const event = userEvent.setup();
     const canvas = await findCanvas();
     fireEvent.click(canvas.getByText('Target'));
@@ -119,7 +119,7 @@ describe('workflow editor canvas', { timeout: 30_000 }, () => {
         definitions: [manualDefinition, mappingDefinition],
       }),
     );
-    renderApp(editorPath);
+    await renderLoadedApp(editorPath);
     const event = userEvent.setup();
     const canvas = await findCanvas();
     fireEvent.click(canvas.getByText('Target'));
@@ -151,7 +151,7 @@ describe('workflow editor setup fields', { timeout: 30_000 }, () => {
         },
       ),
     );
-    renderApp(editorPath);
+    await renderLoadedApp(editorPath);
     const event = userEvent.setup();
     fireEvent.click((await findCanvas()).getByText('Numbers'));
     const count = await screen.findByLabelText('Count');
@@ -212,7 +212,7 @@ describe('workflow editor setup fields', { timeout: 30_000 }, () => {
         savedNodes = body.graph.nodes.length;
       }),
     );
-    renderApp(editorPath, { strict: true });
+    await renderLoadedApp(editorPath, { strict: true });
     const event = userEvent.setup();
     await findCanvas();
     await event.click(addStepButton(/Set fields/u));
@@ -236,7 +236,7 @@ describe('workflow editor setup fields', { timeout: 30_000 }, () => {
         connected ? undefined : HttpResponse.error(),
       ),
     );
-    renderApp(editorPath, { strict: true });
+    await renderLoadedApp(editorPath, { strict: true });
     const event = userEvent.setup();
     await findCanvas();
 
@@ -274,7 +274,7 @@ describe('workflow editor guards and conflicts', { timeout: 30_000 }, () => {
         HttpResponse.json({ items: [], nextCursor: null }),
       ),
     );
-    const app = renderApp(editorPath);
+    const app = await renderLoadedApp(editorPath);
     const event = userEvent.setup();
     await findCanvas();
     await event.click(addStepButton(/Set fields/u));
@@ -346,7 +346,7 @@ describe('workflow editor guards and conflicts', { timeout: 30_000 }, () => {
             });
       }),
     );
-    renderApp(editorPath);
+    await renderLoadedApp(editorPath);
     const event = userEvent.setup();
     await findCanvas();
     await event.click(addStepButton(/Set fields/u));

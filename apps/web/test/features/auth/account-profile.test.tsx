@@ -5,7 +5,7 @@ import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { mockServer } from '../../support/mock-server';
-import { renderApp } from '../../support/render-app';
+import { renderLoadedApp } from '../../support/render-app';
 import { problem, timestamp, user } from '../../support/fixtures/team';
 import { currentUserQueryKey } from '@/features/auth/data/auth.queries';
 
@@ -71,7 +71,7 @@ describe('account: display name', () => {
       ),
     );
     const actor = userEvent.setup();
-    const app = renderApp('/account/security');
+    const app = await renderLoadedApp('/account/security');
     const input = await editName(actor);
     await actor.clear(input);
     await actor.type(input, 'Local unsaved name');
@@ -124,7 +124,7 @@ describe('account: display name', () => {
       }),
     );
     const actor = userEvent.setup();
-    renderApp('/account/security', { strict: true });
+    await renderLoadedApp('/account/security', { strict: true });
 
     const input = await editName(actor);
     await actor.clear(input);
@@ -166,7 +166,7 @@ describe('account: display name', () => {
       }),
     );
     const actor = userEvent.setup();
-    renderApp('/account/security');
+    await renderLoadedApp('/account/security');
 
     const input = await editName(actor);
     await actor.clear(input);
@@ -232,7 +232,7 @@ describe('account: display name', () => {
       ),
       ...accountHandlers(() => user),
     );
-    renderApp('/account/security');
+    await renderLoadedApp('/account/security');
 
     const workspaces = within(
       await screen.findByRole('region', { name: 'Your workspaces' }),

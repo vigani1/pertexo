@@ -18,7 +18,7 @@ import { defaultConcurrencySettings } from '../../../support/fixtures/concurrenc
 
 import { mockServer } from '../../../support/mock-server';
 
-import { renderApp, testFetch } from '../../../support/render-app';
+import { testFetch, renderLoadedApp } from '../../../support/render-app';
 
 import { installQueries, userId, workflowId, workspaceId } from '../fixtures';
 
@@ -42,7 +42,7 @@ describe('workflow concurrency settings', () => {
         return HttpResponse.json({ settings: current, replayed: false });
       }),
     );
-    renderApp(path);
+    await renderLoadedApp(path);
     const event = userEvent.setup();
     const input = await limitField(event);
     await event.click(
@@ -79,7 +79,7 @@ describe('workflow concurrency settings', () => {
         return HttpResponse.json({ settings: current, replayed: false });
       }),
     );
-    renderApp(path);
+    await renderLoadedApp(path);
     const event = userEvent.setup();
     const input = await limitField(event);
     await event.type(input, '1');
@@ -119,7 +119,7 @@ describe('workflow concurrency settings', () => {
           : HttpResponse.json({ settings: current, replayed: true });
       }),
     );
-    renderApp(path);
+    await renderLoadedApp(path);
     const event = userEvent.setup();
     await event.type(await limitField(event), '1');
     await event.click(
@@ -139,7 +139,7 @@ describe('workflow concurrency settings', () => {
   });
   it('allows reading policy and history without rendering editing controls', async () => {
     installQueries([]);
-    renderApp(path);
+    await renderLoadedApp(path);
     const section = await screen.findByRole('region', { name: 'Concurrency' });
     await within(section).findByText(
       sentence('No limit of its own. The workspace runs up to 10 at once.'),
@@ -189,7 +189,7 @@ describe('workflow concurrency settings', () => {
     let response = () =>
       HttpResponse.json({ ...defaultConcurrencySettings, limit: 7 });
     mockServer.use(http.get(endpoint, () => response()));
-    const app = renderApp(path);
+    const app = await renderLoadedApp(path);
     await screen.findByText(
       sentence('Up to 7 runs at once. Extra events wait their turn.'),
     );
@@ -240,7 +240,7 @@ it('saves Skip with the workflow limit and shows metadata-only skip history', as
       return HttpResponse.json({ settings: current, replayed: false });
     }),
   );
-  renderApp(path);
+  await renderLoadedApp(path);
   const user = userEvent.setup();
   await limitField(user);
   await user.click(

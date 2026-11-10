@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { describe, expect, it } from 'vitest';
 import { mockServer } from '../../support/mock-server';
-import { renderApp } from '../../support/render-app';
+import { renderLoadedApp } from '../../support/render-app';
 import {
   authenticatedHandlers,
   workspace,
@@ -22,7 +22,7 @@ describe('workspace deletion visibility', () => {
       ),
       ...authenticatedHandlers(),
     );
-    renderApp(`/w/${workspaceId}`);
+    await renderLoadedApp(`/w/${workspaceId}`);
     expect(
       await screen.findByRole('heading', {
         name: 'This workspace is being deleted',
@@ -55,7 +55,7 @@ describe('workspace deletion visibility', () => {
       ),
       ...authenticatedHandlers(),
     );
-    const app = renderApp(`/w/${workspaceId}/settings`);
+    const app = await renderLoadedApp(`/w/${workspaceId}/settings`);
     await screen.findByRole('heading', { name: 'Settings' });
     purging = true;
     await app.queryClient.invalidateQueries({ queryKey: ['identity'] });
@@ -75,7 +75,7 @@ describe('workspace deletion visibility', () => {
       ),
       ...authenticatedHandlers(),
     );
-    renderApp(`/w/${workspaceId}`);
+    await renderLoadedApp(`/w/${workspaceId}`);
     expect(await screen.findByText(/The link is wrong/u)).toBeVisible();
     expect(screen.queryByText(/Deletion finished/u)).not.toBeInTheDocument();
   });
@@ -93,7 +93,7 @@ describe('workspace deletion visibility', () => {
       ),
       ...authenticatedHandlers(),
     );
-    renderApp(`/w/${workspaceId}`);
+    await renderLoadedApp(`/w/${workspaceId}`);
     const user = userEvent.setup();
     await screen.findByRole('heading', {
       name: 'This workspace is being deleted',

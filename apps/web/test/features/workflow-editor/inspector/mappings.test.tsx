@@ -20,7 +20,7 @@ import {
 
 import { mockServer } from '../../../support/mock-server';
 
-import { renderApp } from '../../../support/render-app';
+import { renderLoadedApp } from '../../../support/render-app';
 
 describe('workflow editor live input mappings', { timeout: 30_000 }, () => {
   it('points a step with nothing to set up at its inputs', async () => {
@@ -36,7 +36,7 @@ describe('workflow editor live input mappings', { timeout: 30_000 }, () => {
         ],
       }),
     );
-    renderApp(editorPath);
+    await renderLoadedApp(editorPath);
     const event = userEvent.setup();
     fireEvent.click((await findCanvas()).getByText('Target'));
     expect(await screen.findByText(/Nothing to set up here/u)).toBeVisible();
@@ -60,7 +60,7 @@ describe('workflow editor live input mappings', { timeout: 30_000 }, () => {
         },
       ),
     );
-    renderApp(editorPath, { strict: true });
+    await renderLoadedApp(editorPath, { strict: true });
     const event = userEvent.setup();
     fireEvent.click((await findCanvas()).getByText('Target'));
     await event.click(screen.getByRole('tab', { name: 'Inputs' }));
@@ -148,7 +148,7 @@ describe('workflow editor live input mappings', { timeout: 30_000 }, () => {
         },
       ),
     );
-    renderApp(editorPath);
+    await renderLoadedApp(editorPath);
     const event = userEvent.setup();
     const canvas = await findCanvas();
     fireEvent.click(canvas.getByText('Target'));
@@ -226,7 +226,7 @@ describe('workflow editor input rows', { timeout: 30_000 }, () => {
         definitions: [manualDefinition, mappingDefinition],
       }),
     );
-    renderApp(editorPath);
+    await renderLoadedApp(editorPath);
     const event = userEvent.setup();
     fireEvent.click((await findCanvas()).getByText('Target'));
     await event.click(screen.getByRole('tab', { name: 'Inputs' }));
@@ -289,7 +289,7 @@ describe('workflow editor input sources', { timeout: 30_000 }, () => {
         },
       ),
     );
-    renderApp(editorPath);
+    await renderLoadedApp(editorPath);
     const event = userEvent.setup();
     fireEvent.click((await findCanvas()).getByText('Target'));
     await event.click(screen.getByRole('tab', { name: 'Inputs' }));

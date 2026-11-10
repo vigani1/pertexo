@@ -10,7 +10,7 @@ import { coldStart } from '../../support/fixtures/run';
 
 import { mockServer } from '../../support/mock-server';
 
-import { renderApp } from '../../support/render-app';
+import { renderLoadedApp } from '../../support/render-app';
 
 import {
   installQueries,
@@ -32,7 +32,7 @@ describe('workflow triggers tab', () => {
         problem(503, 'webhook.not_configured'),
       ),
     );
-    renderApp(triggersPath);
+    await renderLoadedApp(triggersPath);
     expect(
       await screen.findByText(
         /Webhooks are unavailable on this server/u,
@@ -75,7 +75,7 @@ describe('workflow triggers tab', () => {
         },
       ),
     );
-    renderApp(triggersPath);
+    await renderLoadedApp(triggersPath);
     const event = userEvent.setup();
     await event.click(
       await screen.findByRole('button', { name: 'Authentication…' }),
@@ -120,7 +120,7 @@ describe('workflow triggers tab', () => {
   });
   it('names triggers by their step and describes schedules in words', async () => {
     installQueries();
-    renderApp(triggersPath);
+    await renderLoadedApp(triggersPath);
     const hook = await screen.findByRole('article', {
       name: 'Webhook: Receive order',
     });
@@ -163,7 +163,7 @@ describe('workflow triggers tab', () => {
         },
       ),
     );
-    renderApp(triggersPath);
+    await renderLoadedApp(triggersPath);
     const event = userEvent.setup();
     await event.click(
       await screen.findByRole('button', { name: 'Create endpoint' }),
@@ -222,7 +222,7 @@ describe('workflow triggers tab', () => {
         },
       ),
     );
-    renderApp(triggersPath);
+    await renderLoadedApp(triggersPath);
     const event = userEvent.setup();
     const first = await screen.findByRole('article', {
       name: 'Webhook: Receive order',

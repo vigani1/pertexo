@@ -8,7 +8,7 @@ import { describe, expect, it } from 'vitest';
 
 import { mockServer } from '../../../support/mock-server';
 
-import { renderApp } from '../../../support/render-app';
+import { renderLoadedApp } from '../../../support/render-app';
 
 import {
   api,
@@ -37,7 +37,7 @@ describe('workflow settings tab', () => {
         return new HttpResponse(null, { status: 204 });
       }),
     );
-    renderApp(settingsPath);
+    await renderLoadedApp(settingsPath);
     const event = userEvent.setup();
     const alerts = await screen.findByRole('region', {
       name: 'Failure alerts',
@@ -82,7 +82,7 @@ describe('workflow settings tab', () => {
         },
       ),
     );
-    renderApp(settingsPath);
+    await renderLoadedApp(settingsPath);
     const event = userEvent.setup();
     await event.click(
       await screen.findByRole('combobox', { name: 'Send failure alerts to' }),
@@ -120,7 +120,7 @@ describe('workflow settings tab', () => {
         problem(403, 'auth.forbidden'),
       ),
     );
-    renderApp(settingsPath);
+    await renderLoadedApp(settingsPath);
     const lifecycle = await screen.findByRole('region', { name: 'Lifecycle' });
     const archive = await within(lifecycle).findByRole('button', {
       name: 'Archive workflow',

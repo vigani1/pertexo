@@ -9,6 +9,8 @@ export default mergeConfig(
       setupFiles: ['./test/setup.ts'],
       include: ['test/**/*.test.{ts,tsx}'],
       clearMocks: true,
+      // Bound CPU-heavy full-app fixtures rather than oversubscribing local machines.
+      maxWorkers: 4,
       // Page tests render the whole app and wait up to 3 s per step (see
       // test/setup.ts), plus up to 20 s for a lazy page's first load
       // (coldStart in test/support/fixtures/run.ts) on a busy machine.

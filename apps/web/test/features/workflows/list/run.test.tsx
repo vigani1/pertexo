@@ -3,7 +3,7 @@ import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { mockServer } from '../../../support/mock-server';
-import { renderApp } from '../../../support/render-app';
+import { renderLoadedApp } from '../../../support/render-app';
 import {
   api,
   discoveryHandlers,
@@ -85,7 +85,7 @@ describe('running from the workflow list', () => {
       startRunHandler(starts),
       http.get(`${api}/runs/${startedRunId}`, () => problem(404, 'not_found')),
     );
-    const { router } = renderApp(`/w/${workspaceId}/workflows`);
+    const { router } = await renderLoadedApp(`/w/${workspaceId}/workflows`);
     const run = await screen.findByRole('button', {
       name: 'Run Daily intake',
     });
@@ -121,7 +121,7 @@ describe('running from the workflow list', () => {
       startRunHandler(starts),
       http.get(`${api}/runs/${startedRunId}`, () => problem(404, 'not_found')),
     );
-    const { router } = renderApp(`/w/${workspaceId}/workflows`);
+    const { router } = await renderLoadedApp(`/w/${workspaceId}/workflows`);
     const event = userEvent.setup();
     await event.click(
       await screen.findByRole('button', { name: 'Actions for Daily intake' }),
@@ -160,7 +160,7 @@ describe('running from the workflow list', () => {
       })),
       startRunHandler(starts, accepted),
     );
-    const { router } = renderApp(`/w/${workspaceId}/workflows`);
+    const { router } = await renderLoadedApp(`/w/${workspaceId}/workflows`);
     await userEvent
       .setup()
       .click(await screen.findByRole('button', { name: 'Run Daily intake' }));
@@ -191,7 +191,7 @@ describe('running from the workflow list', () => {
         nextCursor: null,
       })),
     );
-    renderApp(`/w/${workspaceId}/workflows`);
+    await renderLoadedApp(`/w/${workspaceId}/workflows`);
     expect(await screen.findByText('Daily intake')).toBeVisible();
     expect(
       screen.queryByRole('button', { name: 'Run Daily intake' }),

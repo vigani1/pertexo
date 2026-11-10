@@ -17,7 +17,7 @@ import {
   workflowSummaryHandler,
 } from '../../support/fixtures/workflow-editor';
 import { mockServer } from '../../support/mock-server';
-import { renderApp } from '../../support/render-app';
+import { renderLoadedApp } from '../../support/render-app';
 
 const newerVersionId = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
 const graph = graphWithNumericConfig({ requiredCount: 1 });
@@ -68,7 +68,7 @@ describe('unchanged publication feedback', { timeout: 30_000 }, () => {
         return HttpResponse.json({}, { status: 500 });
       }),
     );
-    renderApp(editorPath, { strict: true });
+    await renderLoadedApp(editorPath, { strict: true });
     const event = userEvent.setup();
     await findCanvas();
     await event.click(
@@ -84,7 +84,7 @@ describe('unchanged publication feedback', { timeout: 30_000 }, () => {
   });
   it('disables an exact live match even when a higher numbered version is retained, and enables editing', async () => {
     setup();
-    renderApp(editorPath, { strict: true });
+    await renderLoadedApp(editorPath, { strict: true });
     const event = userEvent.setup();
     await findCanvas();
     const unchanged = await screen.findByRole('button', {
@@ -109,7 +109,7 @@ describe('unchanged publication feedback', { timeout: 30_000 }, () => {
 
   it('does not disable publishing from a comparison of a different server snapshot', async () => {
     setup(versionId, true, etagB);
-    renderApp(editorPath, { strict: true });
+    await renderLoadedApp(editorPath, { strict: true });
     await findCanvas();
     await screen.findByRole('button', { name: '1 issue' });
     expect(
@@ -135,7 +135,7 @@ describe('unchanged publication feedback', { timeout: 30_000 }, () => {
           });
         }),
       );
-      renderApp(editorPath, { strict: true });
+      await renderLoadedApp(editorPath, { strict: true });
       const event = userEvent.setup();
       await findCanvas();
       await event.click(

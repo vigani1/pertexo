@@ -19,7 +19,7 @@ import {
 
 import { mockServer } from '../../../support/mock-server';
 
-import { renderApp } from '../../../support/render-app';
+import { renderLoadedApp } from '../../../support/render-app';
 
 import {
   artifactId,
@@ -80,7 +80,7 @@ describe('run page', () => {
         }),
       ),
     );
-    renderApp(`/w/${workspaceId}/runs/${runId}`, { strict: true });
+    await renderLoadedApp(`/w/${workspaceId}/runs/${runId}`, { strict: true });
     const history = await screen.findByRole(
       'region',
       { name: 'Workflow Calls' },
@@ -109,7 +109,9 @@ describe('run page', () => {
         }),
       ),
     );
-    const { queryClient } = renderApp(`/w/${workspaceId}/runs/${runId}`);
+    const { queryClient } = await renderLoadedApp(
+      `/w/${workspaceId}/runs/${runId}`,
+    );
     expect(
       await screen.findByRole('heading', {
         level: 1,
@@ -144,7 +146,7 @@ describe('run page', () => {
         }),
       ],
     });
-    renderApp(`/w/${workspaceId}/runs/${runId}`);
+    await renderLoadedApp(`/w/${workspaceId}/runs/${runId}`);
     expect(
       await screen.findByRole(
         'region',
@@ -170,7 +172,7 @@ describe('run page', () => {
     installRun({ run: retryingRun(), nodes: [node('running')] });
     // Someone who can both replay and cancel: the crowded case.
     mockServer.use(...identityHandlers([...capabilities, 'run:replay']));
-    renderApp(`/w/${workspaceId}/runs/${runId}`);
+    await renderLoadedApp(`/w/${workspaceId}/runs/${runId}`);
     const actions = await screen.findByRole(
       'group',
       { name: 'Run actions' },
@@ -198,7 +200,7 @@ describe('run page', () => {
       nodes: [node('waiting', { resumeAt: secondsAgo(-60) })],
       events: retryEvents(),
     });
-    renderApp(`/w/${workspaceId}/runs/${runId}`);
+    await renderLoadedApp(`/w/${workspaceId}/runs/${runId}`);
 
     expect(
       await screen.findByRole(
@@ -241,7 +243,7 @@ describe('run page', () => {
       nodes: [node('waiting', { resumeAt: secondsAgo(-60) })],
       events: retryEvents(),
     });
-    renderApp(`/w/${workspaceId}/runs/${runId}`);
+    await renderLoadedApp(`/w/${workspaceId}/runs/${runId}`);
     const trail = await screen.findByRole(
       'navigation',
       { name: 'Breadcrumb' },
@@ -272,7 +274,7 @@ describe('run page', () => {
         });
       }),
     );
-    renderApp(`/w/${workspaceId}/runs/${runId}`);
+    await renderLoadedApp(`/w/${workspaceId}/runs/${runId}`);
     const event = userEvent.setup();
     await event.click(
       await screen.findByRole('button', { name: 'Cancel run' }, coldStart),
@@ -296,7 +298,7 @@ describe('run page', () => {
       nodes: [node('outcome_unknown', { completedAt: secondsAgo(1) })],
       events: [{ type: 'run.outcome_unknown' }],
     });
-    renderApp(`/w/${workspaceId}/runs/${runId}`);
+    await renderLoadedApp(`/w/${workspaceId}/runs/${runId}`);
     expect(
       await screen.findByRole(
         'heading',

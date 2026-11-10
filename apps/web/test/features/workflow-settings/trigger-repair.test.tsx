@@ -2,7 +2,7 @@ import { HttpResponse, http } from 'msw';
 import { screen, within } from '@testing-library/react';
 import { expect, it } from 'vitest';
 import { mockServer } from '../../support/mock-server';
-import { renderApp } from '../../support/render-app';
+import { renderLoadedApp } from '../../support/render-app';
 import {
   installQueries,
   schedule,
@@ -36,7 +36,7 @@ it.each([
         }),
       ),
     );
-    renderApp(`/w/${workspaceId}/workflows/${workflowId}/triggers`);
+    await renderLoadedApp(`/w/${workspaceId}/workflows/${workflowId}/triggers`);
     const card = await screen.findByRole('article', {
       name: 'Schedule: Nightly check',
     });
@@ -62,7 +62,7 @@ it('explains a malformed published webhook configuration without showing a raw e
       }),
     ),
   );
-  renderApp(`/w/${workspaceId}/workflows/${workflowId}/triggers`);
+  await renderLoadedApp(`/w/${workspaceId}/workflows/${workflowId}/triggers`);
   const card = await screen.findByRole('article', { name: /Webhook:/ });
   expect(
     await within(card).findByText(

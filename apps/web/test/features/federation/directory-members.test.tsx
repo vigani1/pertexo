@@ -3,7 +3,7 @@ import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { mockServer } from '../../support/mock-server';
-import { renderApp } from '../../support/render-app';
+import { renderLoadedApp } from '../../support/render-app';
 import {
   api,
   firstMemberId,
@@ -37,7 +37,7 @@ describe('directory-managed team access', () => {
         },
       ]),
     );
-    renderApp(`/w/${workspaceId}/team`);
+    await renderLoadedApp(`/w/${workspaceId}/team`);
     await screen.findByText('Directory Builder');
     const row = rowOf('Directory Builder');
     expect(row.getByText(/Directory-managed/u)).toBeVisible();
@@ -66,7 +66,7 @@ describe('directory-managed team access', () => {
         return problem(409, 'workspace.member_directory_managed');
       }),
     );
-    const { router } = renderApp(`/w/${workspaceId}/team`),
+    const { router } = await renderLoadedApp(`/w/${workspaceId}/team`),
       user = userEvent.setup();
     await user.click(
       await screen.findByRole('combobox', {

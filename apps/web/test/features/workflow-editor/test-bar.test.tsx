@@ -17,7 +17,7 @@ import {
   workspaceId,
 } from '../../support/fixtures/workflow-editor';
 import { mockServer } from '../../support/mock-server';
-import { renderApp } from '../../support/render-app';
+import { renderLoadedApp } from '../../support/render-app';
 
 const disclosure = {
   sideEffectClass: 'safe',
@@ -82,7 +82,7 @@ async function testTarget(
       HttpResponse.json(finishedTest(status), { status: 202 }),
     ),
   );
-  const { queryClient } = renderApp(editorPath, { strict: true });
+  const { queryClient } = await renderLoadedApp(editorPath, { strict: true });
   const event = userEvent.setup();
   const canvas = await findCanvas();
   fireEvent.click(canvas.getByText('Target'));

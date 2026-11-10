@@ -4,7 +4,7 @@ import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { mockServer } from '../../../support/mock-server';
-import { renderApp } from '../../../support/render-app';
+import { renderLoadedApp } from '../../../support/render-app';
 import {
   apiBase,
   coldStart,
@@ -123,7 +123,7 @@ function installTwoStepRun(recorded: unknown = { kind: 'none' }) {
 describe('run data', () => {
   it('shows what a step received from the step before it and what it returned', async () => {
     installTwoStepRun();
-    renderApp(`/w/${workspaceId}/runs/${runId}`);
+    await renderLoadedApp(`/w/${workspaceId}/runs/${runId}`);
     const event = userEvent.setup();
     await event.click(
       await screen.findByRole(
@@ -172,7 +172,7 @@ describe('run data', () => {
       kind: 'inline',
       value: { amount: 42, to: 'ops@example.test' },
     });
-    renderApp(`/w/${workspaceId}/runs/${runId}`);
+    await renderLoadedApp(`/w/${workspaceId}/runs/${runId}`);
     const event = userEvent.setup();
     await event.click(
       await screen.findByRole(
@@ -224,7 +224,7 @@ describe('run data', () => {
         }),
       ),
     );
-    renderApp(`/w/${workspaceId}/runs`);
+    await renderLoadedApp(`/w/${workspaceId}/runs`);
     const reason = await screen.findByText(/Charge card/u, {}, coldStart);
     expect(reason.closest('p')).toHaveTextContent(/^at Charge card · /u);
 

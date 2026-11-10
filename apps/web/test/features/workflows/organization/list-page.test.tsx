@@ -5,7 +5,7 @@ import userEvent from '@testing-library/user-event';
 import { HttpResponse, http } from 'msw';
 import { describe, expect, it } from 'vitest';
 import { mockServer } from '../../../support/mock-server';
-import { renderApp } from '../../../support/render-app';
+import { renderLoadedApp } from '../../../support/render-app';
 import { parseWorkflowListSearch } from '@/features/workflows/model/list-view';
 import {
   api,
@@ -70,7 +70,7 @@ function page(
 describe('owned organization workflow list integration', () => {
   it('retires denied rows, tags and private favorites without opening a command dialog', async () => {
     install(() => page());
-    const { queryClient } = renderApp(
+    const { queryClient } = await renderLoadedApp(
       `/w/${workspaceId}/workflows?folderId=${folderId}&tagId=${tagId}`,
     );
     await screen.findByRole('link', { name: 'Daily intake' }, coldStart);
@@ -123,8 +123,10 @@ describe('owned organization workflow list integration', () => {
 
   it('keeps an authorized organization snapshot with stale disclosure after503', async () => {
     install(() => page());
-    const { queryClient } = renderApp(`/w/${workspaceId}/workflows`);
-    await screen.findByRole('link', { name: 'Daily intake' }, coldStart);
+    const { queryClient } = await renderLoadedApp(
+      `/w/${workspaceId}/workflows`,
+    );
+    await screen.findByRole('link', { name: 'Daily intake' });
     mockServer.use(
       http.get(`${api}/workflows`, () =>
         HttpResponse.json({}, { status: 503 }),
@@ -151,7 +153,7 @@ describe('owned organization workflow list integration', () => {
       reads.push(url);
       return page();
     });
-    const { router } = renderApp(
+    const { router } = await renderLoadedApp(
       `/w/${workspaceId}/workflows?query=Ops&folderId=root&tagId=${tagId}&favoritesOnly=true&view=all`,
     );
     await screen.findByRole('link', { name: 'Daily intake' }, coldStart);
@@ -192,8 +194,8 @@ describe('owned organization workflow list integration', () => {
   });
   it('keeps private favorites available without exposing organization editing to a read-only capability snapshot', async () => {
     install(() => page(), []);
-    renderApp(`/w/${workspaceId}/workflows`);
-    await screen.findByRole('link', { name: 'Daily intake' }, coldStart);
+    await renderLoadedApp(`/w/${workspaceId}/workflows`);
+    await screen.findByRole('link', { name: 'Daily intake' });
     expect(
       screen.queryByRole('checkbox', { name: 'Select Daily intake' }),
     ).not.toBeInTheDocument();
@@ -216,7 +218,7 @@ describe('owned organization workflow list integration', () => {
         ? page(secondWorkflowId, 'Second workflow')
         : page(workflowId, 'Daily intake', 'signed.next');
     });
-    renderApp(`/w/${workspaceId}/workflows`);
+    await renderLoadedApp(`/w/${workspaceId}/workflows`);
     const event = userEvent.setup();
     await screen.findByRole('checkbox', { name: 'Select Daily intake' });
     expect(
@@ -264,7 +266,7 @@ describe('owned organization workflow list integration', () => {
         ? { items: [], nextCursor: null }
         : page();
     });
-    const { router } = renderApp(`/w/${workspaceId}/workflows`);
+    const { router } = await renderLoadedApp(`/w/${workspaceId}/workflows`);
     const event = userEvent.setup();
     await screen.findByRole('link', { name: 'Daily intake' }, coldStart);
     await event.type(
@@ -291,7 +293,7 @@ describe('owned organization workflow list integration', () => {
       items: [summary(workflowId, 'Unsafe legacy response')],
       nextCursor: null,
     }));
-    renderApp(`/w/${workspaceId}/workflows`);
+    await renderLoadedApp(`/w/${workspaceId}/workflows`);
     await screen.findByText('Workflows didn’t load');
     if (
       screen

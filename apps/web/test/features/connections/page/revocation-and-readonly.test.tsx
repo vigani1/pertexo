@@ -8,7 +8,7 @@ import { describe, expect, it } from 'vitest';
 
 import { mockServer } from '../../../support/mock-server';
 
-import { renderApp } from '../../../support/render-app';
+import { renderLoadedApp } from '../../../support/render-app';
 
 import {
   base,
@@ -75,7 +75,7 @@ describe('connections page', () => {
           );
         }),
       );
-      const { queryClient } = renderApp(
+      const { queryClient } = await renderLoadedApp(
         `/w/${workspaceId}/connections?connection=${connectionId}`,
         { strict: true },
       );
@@ -137,7 +137,9 @@ describe('connections page', () => {
       }),
     );
 
-    renderApp(`/w/${workspaceId}/connections?connection=${connectionId}`);
+    await renderLoadedApp(
+      `/w/${workspaceId}/connections?connection=${connectionId}`,
+    );
     const event = userEvent.setup();
     await event.click(await screen.findByRole('button', { name: 'Revoke' }));
     expect(screen.getByText(/Past runs keep their history/u)).toBeVisible();
@@ -175,7 +177,7 @@ describe('connections page', () => {
       listOf(() => [connection('Read only Slack')]),
       detailOf(() => connection('Read only Slack')),
     );
-    renderApp(`/w/${workspaceId}/connections`);
+    await renderLoadedApp(`/w/${workspaceId}/connections`);
     const event = userEvent.setup();
     await event.click(
       await screen.findByRole('button', { name: /Read only Slack/u }),
@@ -192,7 +194,7 @@ describe('connections page', () => {
       ...identityHandlers(),
       http.get(base, () => HttpResponse.error()),
     );
-    renderApp(`/w/${workspaceId}/connections`);
+    await renderLoadedApp(`/w/${workspaceId}/connections`);
     expect(
       await screen.findByRole('heading', {
         name: 'Connections couldn’t be loaded',
@@ -216,7 +218,7 @@ describe('connections page', () => {
         return HttpResponse.json({ items: [], nextCursor: null });
       }),
     );
-    renderApp(`/w/${workspaceId}/connections`);
+    await renderLoadedApp(`/w/${workspaceId}/connections`);
     expect(
       await screen.findByText(
         'Your role (Viewer) can’t see this workspace’s connections. Operators, builders, admins and owners can.',
@@ -266,7 +268,9 @@ it('retries an accepted-then-503 email test without dispatching a second email',
     }),
   );
   const event = userEvent.setup();
-  renderApp(`/w/${workspaceId}/connections?connection=${connectionId}`);
+  await renderLoadedApp(
+    `/w/${workspaceId}/connections?connection=${connectionId}`,
+  );
   await event.click(await screen.findByRole('button', { name: 'Test' }));
   await event.click(
     await screen.findByRole('checkbox', { name: 'Send a real test email' }),

@@ -26,7 +26,7 @@ import {
   setDefinition,
 } from '../../../support/fixtures/workflow-editor';
 import { mockServer } from '../../../support/mock-server';
-import { renderApp } from '../../../support/render-app';
+import { renderLoadedApp } from '../../../support/render-app';
 
 type WorkflowNode = WorkflowGraphContract['nodes'][number];
 
@@ -189,7 +189,7 @@ describe('Switch cases in Setup', { timeout: 30_000 }, () => {
         },
       ),
     );
-    renderApp(editorPath);
+    await renderLoadedApp(editorPath);
     const event = userEvent.setup();
     fireEvent.click((await findCanvas()).getByText('Route'));
     const cases = await screen.findByRole('group', { name: 'Cases' });

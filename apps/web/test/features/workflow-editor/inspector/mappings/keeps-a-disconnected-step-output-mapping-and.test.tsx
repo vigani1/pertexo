@@ -22,7 +22,7 @@ import {
 
 import { mockServer } from '../../../../support/mock-server';
 
-import { renderApp } from '../../../../support/render-app';
+import { renderLoadedApp } from '../../../../support/render-app';
 
 describe('workflow editor input sources', { timeout: 30_000 }, () => {
   it('keeps a disconnected step-output mapping and clears its warning when reconnected', async () => {
@@ -41,7 +41,7 @@ describe('workflow editor input sources', { timeout: 30_000 }, () => {
         definitions: [manualDefinition, mappingDefinition],
       }),
     );
-    renderApp(editorPath);
+    await renderLoadedApp(editorPath);
     const event = userEvent.setup();
     fireEvent.click((await findCanvas()).getByText('Target'));
     await event.click(await screen.findByRole('tab', { name: 'Inputs' }));
@@ -83,7 +83,7 @@ describe('workflow editor input sources', { timeout: 30_000 }, () => {
         },
       ),
     );
-    renderApp(editorPath);
+    await renderLoadedApp(editorPath);
     const event = userEvent.setup();
     fireEvent.click((await findCanvas()).getByText('Target'));
     await event.click(screen.getByRole('tab', { name: 'Inputs' }));

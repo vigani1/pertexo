@@ -8,7 +8,7 @@ import { describe, expect, it } from 'vitest';
 
 import { mockServer } from '../../../support/mock-server';
 
-import { renderApp } from '../../../support/render-app';
+import { renderLoadedApp } from '../../../support/render-app';
 
 import {
   connection,
@@ -50,7 +50,7 @@ describe('alert destinations', () => {
       ),
     );
 
-    renderApp(`/w/${workspaceId}/alerts`);
+    await renderLoadedApp(`/w/${workspaceId}/alerts`);
     const actor = userEvent.setup();
     await actor.click(await screen.findByRole('button', { name: /^Edit/u }));
     const channel = lens().getByLabelText('Channel ID');
@@ -96,7 +96,7 @@ describe('alert destinations', () => {
       ),
     );
 
-    renderApp(`/w/${workspaceId}/alerts`, { strict: true });
+    await renderLoadedApp(`/w/${workspaceId}/alerts`, { strict: true });
     const actor = userEvent.setup();
     await actor.click(
       await screen.findByRole('switch', { name: /Send alerts/u }),
@@ -130,7 +130,7 @@ describe('alert destinations', () => {
           : HttpResponse.json({ items: [destination()] }),
       ),
     );
-    const { queryClient } = renderApp(`/w/${workspaceId}/alerts`);
+    const { queryClient } = await renderLoadedApp(`/w/${workspaceId}/alerts`);
     const actor = userEvent.setup();
     await actor.click(await screen.findByRole('button', { name: /^Edit/u }));
     const channel = lens().getByLabelText('Channel ID');
@@ -159,7 +159,7 @@ describe('alert destinations', () => {
       connectionHandler(),
       http.get(destinationsUrl, () => problem(404, 'resource.not_found')),
     );
-    renderApp(`/w/${workspaceId}/alerts`);
+    await renderLoadedApp(`/w/${workspaceId}/alerts`);
     expect(
       await screen.findByRole('heading', { name: 'Alerts are unavailable' }),
     ).toBeVisible();
@@ -181,7 +181,7 @@ describe('alert destinations', () => {
       }),
     );
 
-    renderApp(`/w/${workspaceId}/alerts`);
+    await renderLoadedApp(`/w/${workspaceId}/alerts`);
     expect(
       await screen.findByRole('heading', { name: 'Alerts are unavailable' }),
     ).toBeVisible();
@@ -215,7 +215,7 @@ describe('alert destination test threads', () => {
         },
       ),
     );
-    renderApp(`/w/${workspaceId}/alerts`);
+    await renderLoadedApp(`/w/${workspaceId}/alerts`);
     await actor.click(
       await screen.findByRole('button', { name: /Send test to/u }),
     );
@@ -248,7 +248,7 @@ describe('alert destination test threads', () => {
         problem(503, 'connection.not_configured'),
       ),
     );
-    renderApp(`/w/${workspaceId}/alerts`);
+    await renderLoadedApp(`/w/${workspaceId}/alerts`);
     expect(
       await screen.findByText('Connections need server configuration'),
     ).toBeVisible();
@@ -269,7 +269,7 @@ describe('alert destination test threads', () => {
         return HttpResponse.error();
       }),
     );
-    renderApp(`/w/${workspaceId}/alerts`);
+    await renderLoadedApp(`/w/${workspaceId}/alerts`);
     await actor.click(
       await screen.findByRole('button', { name: /Send test to/u }),
     );

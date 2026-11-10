@@ -8,7 +8,7 @@ import { createQueryClient } from '@/app/query-client';
 import { useRunFailures } from '@/features/overview/hooks/use-run-failures';
 import { createApiClient } from '@/lib/api/client';
 import { mockServer } from '../../support/mock-server';
-import { renderApp, testFetch } from '../../support/render-app';
+import { testFetch, renderLoadedApp } from '../../support/render-app';
 import {
   apiBase,
   coldStart,
@@ -119,7 +119,7 @@ function homeReads() {
 describe('home details', () => {
   it('names where and why the latest failed run stopped', async () => {
     mockServer.use(...homeReads());
-    renderApp(`/w/${workspaceId}`);
+    await renderLoadedApp(`/w/${workspaceId}`);
     const attention = await screen.findByRole(
       'region',
       { name: 'Needs attention' },
@@ -148,7 +148,7 @@ describe('home details', () => {
         }),
       ),
     );
-    renderApp(`/w/${workspaceId}`);
+    await renderLoadedApp(`/w/${workspaceId}`);
     const recent = await screen.findByRole(
       'region',
       { name: 'Recently changed' },
@@ -164,7 +164,7 @@ describe('home details', () => {
 
   it('shows each recently changed workflow’s shape and live version', async () => {
     mockServer.use(...homeReads());
-    renderApp(`/w/${workspaceId}`);
+    await renderLoadedApp(`/w/${workspaceId}`);
     const recent = await screen.findByRole(
       'region',
       { name: 'Recently changed' },

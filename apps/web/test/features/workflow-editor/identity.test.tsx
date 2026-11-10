@@ -24,7 +24,7 @@ import {
   workflowApi,
 } from '../../support/fixtures/workflow-editor';
 import { mockServer } from '../../support/mock-server';
-import { renderApp } from '../../support/render-app';
+import { renderLoadedApp } from '../../support/render-app';
 
 // The lazy editor route and React Flow are slow to start on a busy machine.
 
@@ -43,7 +43,7 @@ describe('workflow editor identity fencing', { timeout: 30_000 }, () => {
       }),
     );
     mockServer.use(identityHandler(() => currentUser));
-    const { queryClient } = renderApp(editorPath, { strict: true });
+    const { queryClient } = await renderLoadedApp(editorPath, { strict: true });
     const event = userEvent.setup();
     const canvas = await findCanvas();
     fireEvent.click(canvas.getByText('Numbers'));
@@ -81,7 +81,7 @@ describe('workflow editor identity fencing', { timeout: 30_000 }, () => {
         validationCalls += 1;
       }),
     );
-    renderApp(editorPath, { strict: true });
+    await renderLoadedApp(editorPath, { strict: true });
     const event = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     await findCanvas();
     currentUser = otherUser;
@@ -124,7 +124,7 @@ describe('workflow editor identity fencing', { timeout: 30_000 }, () => {
         return HttpResponse.json({}, { status: 500 });
       }),
     );
-    const { queryClient } = renderApp(editorPath, { strict: true });
+    const { queryClient } = await renderLoadedApp(editorPath, { strict: true });
     const event = userEvent.setup();
     await findCanvas();
     await event.click(addStepButton(/Set fields/u));
@@ -179,7 +179,7 @@ describe('workflow editor recovery scope', { timeout: 30_000 }, () => {
         return HttpResponse.error();
       }),
     );
-    renderApp(editorPath, { strict: true });
+    await renderLoadedApp(editorPath, { strict: true });
     const event = userEvent.setup();
     await findCanvas();
     await openRunLens(event);
@@ -241,7 +241,7 @@ describe('workflow editor recovery scope', { timeout: 30_000 }, () => {
         return HttpResponse.error();
       }),
     );
-    const first = renderApp(editorPath);
+    const first = await renderLoadedApp(editorPath);
     const event = userEvent.setup();
     await findCanvas();
     await openRunLens(event);
@@ -263,7 +263,7 @@ describe('workflow editor recovery scope', { timeout: 30_000 }, () => {
     expect(publishRequests).toBe(1);
     first.unmount();
 
-    renderApp(editorPath);
+    await renderLoadedApp(editorPath);
     await findCanvas();
     await openRunLens(event);
     expect(

@@ -21,7 +21,7 @@ import {
 
 import { mockServer } from '../../support/mock-server';
 
-import { renderApp } from '../../support/render-app';
+import { renderLoadedApp } from '../../support/render-app';
 
 import { invitation, lens, sheet } from './members/fixture';
 
@@ -38,9 +38,12 @@ describe('team: invitations', () => {
         }),
       ),
     );
-    renderApp(`/w/${workspaceId}/team?tab=invitations&invite=true`, {
-      strict: true,
-    });
+    await renderLoadedApp(
+      `/w/${workspaceId}/team?tab=invitations&invite=true`,
+      {
+        strict: true,
+      },
+    );
     expect(
       await screen.findByText(/Invitations are unavailable on this server/u),
     ).toBeVisible();
@@ -70,7 +73,7 @@ describe('team: invitations', () => {
         problem(503, 'workspace.invitation_not_configured'),
       ),
     );
-    renderApp(`/w/${workspaceId}/team`);
+    await renderLoadedApp(`/w/${workspaceId}/team`);
     const actor = userEvent.setup();
     await actor.click(
       await screen.findByRole('button', { name: 'Invite people' }),
@@ -108,7 +111,7 @@ describe('team: invitations', () => {
       }),
     );
     const browser = userEvent.setup();
-    renderApp(`/w/${workspaceId}/team`, { strict: true });
+    await renderLoadedApp(`/w/${workspaceId}/team`, { strict: true });
     await browser.click(
       await screen.findByRole('button', { name: 'Invite people' }),
     );
@@ -152,7 +155,7 @@ describe('team: invitations', () => {
     vi.useFakeTimers({ toFake: ['Date'] });
     try {
       const browser = userEvent.setup();
-      renderApp(`/w/${workspaceId}/team`);
+      await renderLoadedApp(`/w/${workspaceId}/team`);
       await browser.click(
         await screen.findByRole('button', { name: 'Invite people' }),
       );
@@ -192,7 +195,7 @@ describe('team: invitations', () => {
       }),
     );
     const browser = userEvent.setup();
-    renderApp(`/w/${workspaceId}/team?invite=true`);
+    await renderLoadedApp(`/w/${workspaceId}/team?invite=true`);
     const field = await screen.findByLabelText('Email addresses');
     await browser.type(field, 'first@example.test, nope ');
     expect(lens().getByText('first@example.test')).toBeVisible();
@@ -247,7 +250,7 @@ describe('team: invitations', () => {
       }),
     );
     const browser = userEvent.setup();
-    renderApp(`/w/${workspaceId}/team`);
+    await renderLoadedApp(`/w/${workspaceId}/team`);
     await browser.click(
       await screen.findByRole('button', { name: 'Invite people' }),
     );
@@ -282,7 +285,7 @@ describe('team: invitations', () => {
       }),
     );
     const browser = userEvent.setup();
-    renderApp(`/w/${workspaceId}/team`, { strict: true });
+    await renderLoadedApp(`/w/${workspaceId}/team`, { strict: true });
     await browser.click(
       await screen.findByRole('button', { name: 'Invite people' }),
     );
@@ -329,7 +332,9 @@ describe('team: invitations', () => {
       }),
     );
 
-    renderApp(`/w/${workspaceId}/team?tab=invitations`, { strict: true });
+    await renderLoadedApp(`/w/${workspaceId}/team?tab=invitations`, {
+      strict: true,
+    });
     expect(await screen.findByText('first.invite@example.test')).toBeVisible();
     expect(screen.getByText('Sending · expires in 6 days')).toBeVisible();
     await userEvent

@@ -8,7 +8,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import type { ApiTokenMetadata } from '@pertexo/contracts';
 import { mockServer } from '../../support/mock-server';
-import { renderApp } from '../../support/render-app';
+import { renderLoadedApp } from '../../support/render-app';
 
 const userId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const workspaceId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
@@ -118,7 +118,7 @@ describe('personal API token settings', () => {
         return response;
       }),
     );
-    const app = renderApp(path);
+    const app = await renderLoadedApp(path);
     const user = await fillCreation();
     const button = screen.getByRole('button', { name: 'Create token' });
     await user.dblClick(button);
@@ -166,7 +166,7 @@ describe('personal API token settings', () => {
         });
       }),
     );
-    renderApp(path);
+    await renderLoadedApp(path);
     const user = userEvent.setup();
     await user.click(
       await screen.findByRole('button', { name: 'Load more tokens' }),
@@ -196,7 +196,7 @@ describe('personal API token settings', () => {
         );
       }),
     );
-    const { queryClient } = renderApp(path, { strict: true });
+    const { queryClient } = await renderLoadedApp(path, { strict: true });
     const user = await fillCreation();
     await user.click(screen.getByRole('button', { name: 'Create token' }));
     expect(await screen.findByLabelText('API token secret')).toHaveValue(
@@ -244,7 +244,7 @@ describe('personal API token settings', () => {
         return HttpResponse.error();
       }),
     );
-    renderApp(path);
+    await renderLoadedApp(path);
     const user = await fillCreation();
     await user.click(screen.getByRole('button', { name: 'Create token' }));
     expect(
@@ -268,7 +268,7 @@ describe('personal API token settings', () => {
         return HttpResponse.json({ token, replayed: true });
       }),
     );
-    renderApp(path);
+    await renderLoadedApp(path);
     const user = await fillCreation();
     await user.click(screen.getByRole('button', { name: 'Create token' }));
     expect(
@@ -282,7 +282,7 @@ describe('personal API token settings', () => {
     mockServer.use(
       http.post(endpoint, () => problem('auth.session_not_fresh', 403)),
     );
-    renderApp(path);
+    await renderLoadedApp(path);
     const user = await fillCreation();
     await user.click(screen.getByRole('button', { name: 'Create token' }));
     expect(
@@ -306,7 +306,7 @@ describe('personal API token settings', () => {
         return HttpResponse.json({ token: revoked, replayed: false });
       }),
     );
-    renderApp(path);
+    await renderLoadedApp(path);
     expect(
       await screen.findByText(/Automation tokens are disabled on this server/u),
     ).toBeVisible();
@@ -337,7 +337,7 @@ describe('personal API token settings', () => {
         },
       ],
     });
-    renderApp(path);
+    await renderLoadedApp(path);
     expect(
       await screen.findByText('Membership changed', { exact: true }),
     ).toBeVisible();

@@ -1,7 +1,7 @@
 import { screen } from '@testing-library/react';
 import { it, expect } from 'vitest';
 import { mockServer } from '../../support/mock-server';
-import { renderApp } from '../../support/render-app';
+import { renderLoadedApp } from '../../support/render-app';
 import {
   connection,
   connectionId,
@@ -44,7 +44,9 @@ it.each([null, '2026-11-03T20:00:00.000Z'])(
       listOf(() => [current]),
       detailOf(() => current),
     );
-    renderApp(`/w/${workspaceId}/connections?connection=${connectionId}`);
+    await renderLoadedApp(
+      `/w/${workspaceId}/connections?connection=${connectionId}`,
+    );
     expect(
       await screen.findByRole('heading', { name: 'External account B' }),
     ).toBeVisible();

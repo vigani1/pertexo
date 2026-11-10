@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { HttpResponse, http } from 'msw';
 import { expect, it } from 'vitest';
 import { mockServer } from '../../support/mock-server';
-import { renderApp } from '../../support/render-app';
+import { renderLoadedApp } from '../../support/render-app';
 import {
   connectionHandler,
   destinationId,
@@ -71,7 +71,7 @@ it('chooses a current member and saves server mail without a connection or free-
     }),
   );
   const user = userEvent.setup();
-  renderApp(`/w/${workspaceId}/alerts`);
+  await renderLoadedApp(`/w/${workspaceId}/alerts`);
   await user.click(
     await screen.findByRole('button', { name: 'Add destination' }),
   );
@@ -92,7 +92,7 @@ it('chooses a current member and saves server mail without a connection or free-
 it('shows the unavailable server-mail option and its reason', async () => {
   arrange(false);
   const user = userEvent.setup();
-  renderApp(`/w/${workspaceId}/alerts`);
+  await renderLoadedApp(`/w/${workspaceId}/alerts`);
   await user.click(
     await screen.findByRole('button', { name: 'Add destination' }),
   );

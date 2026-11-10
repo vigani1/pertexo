@@ -2,7 +2,7 @@ import { http, HttpResponse } from 'msw';
 import { screen, waitFor } from '@testing-library/react';
 import { expect, it } from 'vitest';
 import { mockServer } from '../support/mock-server';
-import { renderApp } from '../support/render-app';
+import { renderLoadedApp } from '../support/render-app';
 import {
   createUserFixture,
   createWorkspaceFixture,
@@ -46,7 +46,7 @@ it.each(['first read', 'refetch'] as const)(
       ),
     );
     const path = `/w/${workspace.id}/settings/variables`;
-    const view = renderApp(path);
+    const view = await renderLoadedApp(path);
     if (when === 'refetch') {
       await screen.findByText('No workspace variables configured.');
       expired = true;
@@ -86,7 +86,7 @@ it('does not end the application session for another API 401 code', async () => 
     ),
   );
   const path = `/w/${workspace.id}/settings/variables`;
-  const view = renderApp(path);
+  const view = await renderLoadedApp(path);
   await screen.findByText('Workspace variables couldn’t be loaded. Try again.');
   expect(view.router.state.location.pathname).toBe(path);
   expect(

@@ -14,7 +14,7 @@ import {
   workflowApi,
 } from '../../support/fixtures/workflow-editor';
 import { mockServer } from '../../support/mock-server';
-import { renderApp } from '../../support/render-app';
+import { renderLoadedApp } from '../../support/render-app';
 
 function rateLimited(retryAfter: string | undefined) {
   return HttpResponse.json(
@@ -58,7 +58,7 @@ describe('a rate-limited draft save', { timeout: 30_000 }, () => {
           });
         }),
       );
-      renderApp(editorPath);
+      await renderLoadedApp(editorPath);
       await findCanvas();
       await userEvent.setup().click(addStepButton(/Set fields/u));
       expect(

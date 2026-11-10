@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest';
 
 import { mockServer } from '../../../support/mock-server';
 
-import { renderApp } from '../../../support/render-app';
+import { renderLoadedApp } from '../../../support/render-app';
 
 import {
   identityHandlers,
@@ -28,7 +28,7 @@ describe('workspace settings', () => {
         },
       ),
     );
-    renderApp(`/w/${workspaceId}/settings`);
+    await renderLoadedApp(`/w/${workspaceId}/settings`);
     expect(
       await screen.findByRole('heading', { name: 'Workspace' }),
     ).toBeVisible();

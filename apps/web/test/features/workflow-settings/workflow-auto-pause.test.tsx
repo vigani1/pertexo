@@ -12,7 +12,7 @@ import { unpausedWorkflowSettings } from '../../support/fixtures/auto-pause';
 
 import { mockServer } from '../../support/mock-server';
 
-import { renderApp } from '../../support/render-app';
+import { renderLoadedApp } from '../../support/render-app';
 
 import { installQueries, workflowApi } from './fixtures';
 
@@ -53,7 +53,7 @@ describe('workflow automatic pause controls', () => {
         );
       }),
     );
-    renderApp(path);
+    await renderLoadedApp(path);
     const event = userEvent.setup();
     const section = await screen.findByRole('region', {
       name: 'Automatic pause',
@@ -116,7 +116,7 @@ describe('workflow automatic pause controls', () => {
         return HttpResponse.json({ settings: current, replayed: true });
       }),
     );
-    renderApp(path);
+    await renderLoadedApp(path);
     const event = userEvent.setup();
     const section = await screen.findByRole('region', {
       name: 'Automatic pause',
@@ -168,7 +168,7 @@ describe('workflow automatic pause controls', () => {
           : HttpResponse.json({ settings: current, replayed: true });
       }),
     );
-    renderApp(path);
+    await renderLoadedApp(path);
     const event = userEvent.setup();
     await event.click(
       await screen.findByRole('button', { name: 'Resume triggers' }),
@@ -202,7 +202,7 @@ describe('workflow automatic pause controls', () => {
         return HttpResponse.json({ settings: current, replayed: false });
       }),
     );
-    renderApp(path);
+    await renderLoadedApp(path);
     const event = userEvent.setup();
     const section = await screen.findByRole('region', {
       name: 'Automatic pause',
@@ -233,7 +233,7 @@ describe('workflow automatic pause controls', () => {
     mockServer.use(
       http.get(`${workflowApi}/auto-pause`, () => HttpResponse.json(paused)),
     );
-    renderApp(path);
+    await renderLoadedApp(path);
     const link = await screen.findByRole('link', {
       name: /^Run that triggered the pause$/u,
     });
@@ -258,7 +258,7 @@ describe('workflow automatic pause controls', () => {
         return HttpResponse.json({ settings: paused, replayed: true });
       }),
     );
-    renderApp(path);
+    await renderLoadedApp(path);
     const event = userEvent.setup();
     expect(
       await screen.findByText('Schedules and webhooks are paused'),
@@ -294,7 +294,7 @@ describe('workflow automatic pause controls', () => {
         return HttpResponse.json({ settings: current, replayed: true });
       }),
     );
-    renderApp(path);
+    await renderLoadedApp(path);
     const event = userEvent.setup();
     const section = await screen.findByRole('region', {
       name: 'Automatic pause',

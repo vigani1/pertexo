@@ -8,7 +8,7 @@ import { describe, expect, it } from 'vitest';
 
 import { mockServer } from '../../../support/mock-server';
 
-import { renderApp } from '../../../support/render-app';
+import { renderLoadedApp } from '../../../support/render-app';
 
 import {
   identityHandlers,
@@ -62,7 +62,7 @@ describe('reactivating a workspace', () => {
         return HttpResponse.json(lifecycleChange('reactivated'));
       }),
     );
-    renderApp(`/w/${workspaceId}/settings`);
+    await renderLoadedApp(`/w/${workspaceId}/settings`);
     expect(await screen.findByText(suspendedBanner)).toBeVisible();
 
     await pressReactivate(userEvent.setup());
@@ -84,7 +84,7 @@ describe('reactivating a workspace', () => {
         return HttpResponse.json(lifecycleChange('reactivated'));
       }),
     );
-    renderApp(`/w/${workspaceId}/settings`, { strict: true });
+    await renderLoadedApp(`/w/${workspaceId}/settings`, { strict: true });
     const actor = userEvent.setup();
 
     await pressReactivate(actor);
@@ -103,7 +103,7 @@ describe('reactivating a workspace', () => {
         problem(409, 'workspace.conflict', 'Workspace conflict'),
       ),
     );
-    renderApp(`/w/${workspaceId}/settings`);
+    await renderLoadedApp(`/w/${workspaceId}/settings`);
 
     await pressReactivate(userEvent.setup());
 
@@ -121,7 +121,7 @@ describe('reactivating a workspace', () => {
     ],
   ])('offers no button to someone who %s', async (_who, current) => {
     mockServer.use(...identityHandlers(current));
-    renderApp(`/w/${workspaceId}/settings`);
+    await renderLoadedApp(`/w/${workspaceId}/settings`);
 
     expect(
       await screen.findByRole('heading', { name: 'Workspace' }),

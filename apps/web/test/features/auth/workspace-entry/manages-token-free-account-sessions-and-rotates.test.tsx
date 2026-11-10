@@ -8,7 +8,7 @@ import { describe, expect, it } from 'vitest';
 
 import { mockServer } from '../../../support/mock-server';
 
-import { renderApp } from '../../../support/render-app';
+import { renderLoadedApp } from '../../../support/render-app';
 
 import { problem, user } from './fixture';
 
@@ -112,7 +112,7 @@ describe('authentication and workspace entry', () => {
       ),
     );
 
-    renderApp('/account/security', { strict: true });
+    await renderLoadedApp('/account/security', { strict: true });
     expect(
       await screen.findByRole('heading', { name: 'Account & security' }),
     ).toBeVisible();
@@ -217,7 +217,7 @@ describe('authentication and workspace entry', () => {
         problem(403, 'auth.forbidden', 'Forbidden'),
       ),
     );
-    renderApp('/account/security');
+    await renderLoadedApp('/account/security');
     const actor = userEvent.setup();
     const email = await screen.findByLabelText('New email');
     await actor.type(email, user.email);
@@ -265,7 +265,7 @@ describe('authentication and workspace entry', () => {
         HttpResponse.json({ items: [] }),
       ),
     );
-    renderApp('/account/security?linked=true');
+    await renderLoadedApp('/account/security?linked=true');
     expect(
       await screen.findByText(/You’re back from the provider/u),
     ).toBeVisible();

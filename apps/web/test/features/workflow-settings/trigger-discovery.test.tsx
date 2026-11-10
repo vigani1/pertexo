@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { expect, it } from 'vitest';
 import { mockServer } from '../../support/mock-server';
-import { renderApp } from '../../support/render-app';
+import { renderLoadedApp } from '../../support/render-app';
 import { coldStart } from '../../support/fixtures/run';
 import {
   installQueries,
@@ -28,7 +28,7 @@ it('offers recovery for failed publication discovery without claiming there are 
       return problem(503, 'internal.unexpected');
     }),
   );
-  renderApp(triggersPath);
+  await renderLoadedApp(triggersPath);
   const retry = await screen.findByRole('button', { name: 'Retry' }, coldStart);
   expect(
     screen.queryByText('This version has no trigger'),
@@ -74,7 +74,7 @@ it.each([
             }),
       ),
     );
-    renderApp(triggersPath);
+    await renderLoadedApp(triggersPath);
     const retry = await screen.findByRole(
       'button',
       { name: 'Retry' },

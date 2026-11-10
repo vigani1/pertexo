@@ -9,7 +9,7 @@ import { createApiClient } from '@/lib/api/client';
 import { NotificationPreferencesPage } from '@/features/inbox/settings.public';
 import { NoticeSubjectActions } from '@/features/inbox/subscriptions.public';
 import { mockServer } from '../../support/mock-server';
-import { renderApp, testFetch } from '../../support/render-app';
+import { testFetch, renderLoadedApp } from '../../support/render-app';
 const workspaceId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
   userId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
   workflowId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
@@ -205,7 +205,9 @@ it('keeps unsubscribe confirmation inert until an explicit button press and send
       },
     ),
   );
-  const { queryClient } = renderApp(`/notifications/unsubscribe#${token}`);
+  const { queryClient } = await renderLoadedApp(
+    `/notifications/unsubscribe#${token}`,
+  );
   const preferenceKey = notificationPreferencesQueryOptions(scope()).queryKey;
   queryClient.setQueryData(preferenceKey, {
     ...snapshot(),

@@ -3,7 +3,7 @@ import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { HttpResponse, http } from 'msw';
 import { mockServer } from '../../../../support/mock-server';
-import { renderApp } from '../../../../support/render-app';
+import { renderLoadedApp } from '../../../../support/render-app';
 import {
   api,
   discoveryHandlers,
@@ -58,7 +58,7 @@ export async function archiveAgainstProblem(problem: {
       );
     }),
   );
-  renderApp(`/w/${workspaceId}/workflows`);
+  await renderLoadedApp(`/w/${workspaceId}/workflows`);
   const event = userEvent.setup();
   await event.click(
     await screen.findByRole(

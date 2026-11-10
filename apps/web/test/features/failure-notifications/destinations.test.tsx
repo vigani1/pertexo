@@ -8,7 +8,7 @@ import { describe, expect, it } from 'vitest';
 
 import { mockServer } from '../../support/mock-server';
 
-import { renderApp } from '../../support/render-app';
+import { renderLoadedApp } from '../../support/render-app';
 
 import {
   chooseConnection,
@@ -42,7 +42,9 @@ describe('alert destinations', () => {
         ),
       ),
     );
-    renderApp(`/w/${workspaceId}/settings/alerts?destination=${destinationId}`);
+    await renderLoadedApp(
+      `/w/${workspaceId}/settings/alerts?destination=${destinationId}`,
+    );
     const sheet = await screen.findByRole('dialog');
     expect(
       await within(sheet).findByRole('heading', { name: /edit/iu }),
@@ -55,7 +57,9 @@ describe('alert destinations', () => {
       connectionHandler(),
       destinationsOf(() => [destination()]),
     );
-    renderApp(`/w/${workspaceId}/settings/alerts?destination=${destinationId}`);
+    await renderLoadedApp(
+      `/w/${workspaceId}/settings/alerts?destination=${destinationId}`,
+    );
     const sheet = await screen.findByRole('dialog');
     expect(
       await within(sheet).findByRole('heading', { name: /edit/iu }),
@@ -68,7 +72,7 @@ describe('alert destinations', () => {
       connectionHandler(),
       destinationsOf(() => [destination()]),
     );
-    renderApp(`/w/${workspaceId}/alerts`);
+    await renderLoadedApp(`/w/${workspaceId}/alerts`);
     expect(
       await screen.findByText('#C0123456789 via Incident Slack'),
     ).toBeVisible();
@@ -117,7 +121,7 @@ describe('alert destinations', () => {
         },
       ),
     );
-    renderApp(`/w/${workspaceId}/alerts`);
+    await renderLoadedApp(`/w/${workspaceId}/alerts`);
 
     expect(
       await screen.findByText('#ops-alerts via Incident Slack'),
@@ -165,7 +169,7 @@ describe('alert destinations', () => {
         () => problem(429, 'rate_limit.exceeded'),
       ),
     );
-    renderApp(`/w/${workspaceId}/alerts`);
+    await renderLoadedApp(`/w/${workspaceId}/alerts`);
 
     expect(
       await screen.findByText(
@@ -185,7 +189,7 @@ describe('alert destinations', () => {
       connectionHandler(),
       destinationsOf(() => []),
     );
-    renderApp(`/w/${workspaceId}/alerts`);
+    await renderLoadedApp(`/w/${workspaceId}/alerts`);
     const actor = userEvent.setup();
     expect(
       await screen.findByRole('heading', { name: 'No alert destinations yet' }),
@@ -236,7 +240,7 @@ describe('alert destinations', () => {
       }),
     );
 
-    renderApp(`/w/${workspaceId}/alerts`, { strict: true });
+    await renderLoadedApp(`/w/${workspaceId}/alerts`, { strict: true });
     const actor = userEvent.setup();
     await actor.click(
       await screen.findByRole('button', { name: 'Add destination' }),
@@ -282,7 +286,7 @@ describe('alert destinations', () => {
       ),
     );
 
-    const { queryClient } = renderApp(`/w/${workspaceId}/alerts`);
+    const { queryClient } = await renderLoadedApp(`/w/${workspaceId}/alerts`);
     const actor = userEvent.setup();
     await actor.click(
       await screen.findByRole('button', { name: /^Edit #C0123456789/u }),
@@ -327,7 +331,7 @@ describe('alert destinations', () => {
       ),
     );
 
-    const { queryClient } = renderApp(`/w/${workspaceId}/alerts`, {
+    const { queryClient } = await renderLoadedApp(`/w/${workspaceId}/alerts`, {
       strict: true,
     });
     const actor = userEvent.setup();

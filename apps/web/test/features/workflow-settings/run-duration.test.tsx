@@ -6,7 +6,7 @@ import { WORKFLOW_EXECUTION_LIMITS } from '@pertexo/workflow-model';
 import { RUN_DURATION_LIMIT_MS } from '@/features/workflow-settings/model/run-duration';
 import { coldStart } from '../../support/fixtures/run';
 import { mockServer } from '../../support/mock-server';
-import { renderApp } from '../../support/render-app';
+import { renderLoadedApp } from '../../support/render-app';
 import {
   draftResponse,
   emptyGraph,
@@ -67,7 +67,7 @@ describe('workflow settings: run duration', () => {
         return draftResponse(graph, etagB);
       }),
     );
-    renderApp(settingsPath);
+    await renderLoadedApp(settingsPath);
     const { section } = await chooseDuration('30 minutes');
     expect(
       await screen.findByText('Runs may take up to 30 minutes in the draft'),
@@ -108,7 +108,7 @@ describe('workflow settings: run duration', () => {
         return draftResponse(current.graph, current.etag);
       }),
     );
-    renderApp(settingsPath);
+    await renderLoadedApp(settingsPath);
     const { event, section } = await chooseDuration('15 minutes');
     expect(
       await within(section).findByText(
@@ -130,7 +130,7 @@ describe('workflow settings: run duration', () => {
 
   it('states the duration without offering changes to roles that can’t edit', async () => {
     installQueries([]);
-    renderApp(settingsPath);
+    await renderLoadedApp(settingsPath);
     const section = await screen.findByRole(
       'region',
       { name: 'Run duration' },

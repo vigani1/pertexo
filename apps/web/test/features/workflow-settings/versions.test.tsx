@@ -4,7 +4,7 @@ import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { mockServer } from '../../support/mock-server';
-import { renderApp } from '../../support/render-app';
+import { renderLoadedApp } from '../../support/render-app';
 import { workspaceWith } from '../workflows/list/fixtures';
 import {
   api,
@@ -75,7 +75,7 @@ describe('workflow versions tab', () => {
           HttpResponse.json({ items: [], nextCursor: null }),
         ),
       );
-      renderApp(versionsPath);
+      await renderLoadedApp(versionsPath);
       const event = userEvent.setup();
       await event.click(
         await screen.findByRole('button', { name: 'More for v1' }, coldStart),
@@ -125,7 +125,7 @@ describe('workflow versions tab', () => {
         }),
       ),
     );
-    renderApp(versionsPath);
+    await renderLoadedApp(versionsPath);
     const event = userEvent.setup();
     const thread = await screen.findByRole('list', {
       name: 'Published versions',
@@ -184,7 +184,7 @@ describe('workflow versions tab', () => {
         }),
       ),
     );
-    renderApp(versionsPath);
+    await renderLoadedApp(versionsPath);
     const event = userEvent.setup();
     await event.click(
       await screen.findByRole('button', { name: 'Compare versions' }),
@@ -227,7 +227,7 @@ describe('workflow versions tab', () => {
     mockServer.use(
       restoreHandler(() => draftResponse(emptyGraph, etagB, copyId)),
     );
-    renderApp(versionsPath);
+    await renderLoadedApp(versionsPath);
     const event = userEvent.setup();
     await event.click(
       await screen.findByRole('button', { name: 'Restore to draft' }),
@@ -259,7 +259,7 @@ describe('workflow versions tab', () => {
         return draftResponse(emptyGraph, etagB, null);
       }),
     );
-    renderApp(versionsPath);
+    await renderLoadedApp(versionsPath);
     await openRestore();
     // One published version has nothing to compare against.
     expect(
@@ -298,7 +298,7 @@ describe('workflow versions tab', () => {
         },
       ),
     );
-    renderApp(versionsPath);
+    await renderLoadedApp(versionsPath);
     await openRestore();
     expect(
       await screen.findByText('Your unpublished changes were saved as a copy:'),
@@ -335,7 +335,7 @@ describe('workflow versions tab', () => {
         },
       ),
     );
-    renderApp(versionsPath);
+    await renderLoadedApp(versionsPath);
     const event = await openRestore();
     expect(
       await screen.findByText(/draft changed while this restore was pending/u),
@@ -370,7 +370,7 @@ describe('workflow versions tab', () => {
         return draftResponse(currentGraph, currentEtag, null);
       }),
     );
-    renderApp(versionsPath);
+    await renderLoadedApp(versionsPath);
     const event = await openRestore();
     expect(
       await screen.findByRole('button', { name: 'Replace newer draft' }),
@@ -388,7 +388,7 @@ describe('workflow versions tab', () => {
 
   it('offers previews but not restore to people who can’t change the draft', async () => {
     installQueries([]);
-    renderApp(versionsPath);
+    await renderLoadedApp(versionsPath);
     expect(
       await screen.findByRole('button', { name: 'Preview v1' }),
     ).toBeVisible();

@@ -15,14 +15,14 @@ import {
 
 import { mockServer } from '../../support/mock-server';
 
-import { renderApp } from '../../support/render-app';
+import { renderLoadedApp } from '../../support/render-app';
 
 import { capacity, install, path } from './page/fixture';
 
 describe('workspace Usage', () => {
   it('keeps exact current capacity separate from retained activity and server-bound drilldowns', async () => {
     const { seen } = install();
-    renderApp(`${path}?window=6h&ignored=secret`);
+    await renderLoadedApp(`${path}?window=6h&ignored=secret`);
     await screen.findByRole('heading', { name: 'Usage' }, coldStart);
     const current = screen.getByRole('region', { name: 'Current capacity' });
     expect(
@@ -85,7 +85,7 @@ describe('workspace Usage', () => {
         }),
       ),
     );
-    renderApp(path);
+    await renderLoadedApp(path);
     await screen.findByRole('heading', { name: 'Usage' }, coldStart);
     // "2023 runs started" in the display face reads like a year.
     expect(
@@ -106,7 +106,7 @@ describe('workspace Usage', () => {
   });
   it('keeps the fixed window in the URL and never requests history to aggregate', async () => {
     const { seen } = install();
-    const { router } = renderApp(path);
+    const { router } = await renderLoadedApp(path);
     await screen.findByText('Daily intake', {}, coldStart);
     await userEvent.click(screen.getByRole('button', { name: '7 days' }));
     await waitFor(() => {
@@ -132,7 +132,7 @@ describe('workspace Usage', () => {
     'does not read capacity in a $state workspace, while activity remains available',
     async ({ state, caps }) => {
       const { reads } = install({ state, caps });
-      renderApp(path);
+      await renderLoadedApp(path);
       await screen.findByText('Daily intake', {}, coldStart);
       expect(
         screen.getByText(
@@ -144,7 +144,7 @@ describe('workspace Usage', () => {
   );
   it('requires the intersection for capacity, but only run read for activity', async () => {
     const { reads } = install({ caps: ['workspace:read', 'run:read'] });
-    renderApp(path);
+    await renderLoadedApp(path);
     await screen.findByText('Workflow cccc…cccc', {}, coldStart);
     expect(screen.queryByText('Daily intake')).not.toBeInTheDocument();
     expect(
@@ -156,7 +156,7 @@ describe('workspace Usage', () => {
     const { reads, seen } = install({
       caps: ['workspace:read', 'artifact:read'],
     });
-    renderApp(path);
+    await renderLoadedApp(path);
     await screen.findByText(
       'You need access to runs to see recent runs.',
       {},
@@ -187,7 +187,7 @@ describe('workspace Usage', () => {
         },
       },
     });
-    renderApp(path);
+    await renderLoadedApp(path);
     await screen.findByText('unavailable', { selector: 'strong' }, coldStart);
     expect(screen.getAllByText('/ limit unavailable')).toHaveLength(2);
     expect(screen.getByText('/ 0 B')).toBeVisible();
@@ -205,7 +205,7 @@ describe('workspace Usage', () => {
           },
         },
       });
-      renderApp(path);
+      await renderLoadedApp(path);
       await screen.findByText(
         /New runs aren’t accepted right now/u,
         {},
@@ -232,7 +232,7 @@ describe('workspace Usage', () => {
               )
             : new HttpResponse(null, { status }),
       });
-      const { router } = renderApp(path);
+      const { router } = await renderLoadedApp(path);
       await screen.findByText('8 PB', { selector: 'span' }, coldStart);
       status = 503;
       await userEvent.click(
