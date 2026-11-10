@@ -20,6 +20,10 @@ To update an image:
    the new version's release notes for security fixes. A digest update is a
    supply-chain change and requires normal code review.
 
-Local users may override any image with `POSTGRES_IMAGE`, `REDIS_IMAGE`,
-`S3MOCK_IMAGE`, or `MINIO_IMAGE` in `.env`; CI does not read those local
-overrides and supplies explicit immutable values.
+Local users may override any image with `POSTGRES_IMAGE`, `REDIS_IMAGE`, or
+`S3MOCK_IMAGE` in `.env`; CI does not read those local overrides and supplies
+explicit immutable values.
+
+The production RustFS image is pinned directly in
+`infrastructure/single-server/compose.yaml`; update and qualify that pin with
+the single-server backup/restore drill when changing it.

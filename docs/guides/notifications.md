@@ -53,7 +53,7 @@ when mail is unavailable, and turning email Off remains possible. The API and
 worker use the existing `AUTH_MAIL_FROM`, `AUTH_MAIL_KEY` versioned key ring,
 `PUBLIC_WEB_ORIGIN` and `SYSTEM_MAIL_TRANSPORT` settings. See the existing SMTP
 and deployment guides for transport configuration. Deployed workers require the
-shared sender/origin too; the single-server and ECS definitions pass them.
+shared sender/origin too; the single-server definitions pass them.
 
 Subjects name the workflow or connection and the workspace. Digests name their
 first workflow/connection and the number of notices; a limit-only message names

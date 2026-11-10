@@ -1,5 +1,9 @@
 # F03 — Durable in-app notifications and live inbox
 
+> Historical deployment references: as of 2026-11-10 only single-server
+> self-hosting is supported. ECS/AWS hosting references below describe retired
+> work, recoverable from Git history, and are not operator instructions.
+
 Status: delivered under accepted
 [ADR055](../adr/055-workspace-inbox-failure-threads.md). All four slices are
 merged and the integrated acceptance run on the local stack is recorded below.
@@ -40,14 +44,14 @@ acknowledgement, external alerts stay independent) remain.
 
 ## Ownership and structure
 
-| Owner | Responsibility |
-| --- | --- |
-| `packages/database` | Migration 0123, event producer in the terminal transition, fold/expiry commands and readiness, recipient read store |
-| `apps/worker` | Producer flag, fold/expiry loop, readiness and shutdown, change hints |
-| `packages/queue` | Bounded per-workspace inbox hint channel |
-| `packages/contracts` | Thread list, summary, read, read-all and stream schemas; `notification:read` capability |
-| `apps/api/src/notifications/` | Thin controllers, authorization, use cases, SSE lifecycle |
-| `apps/web/src/features/notifications/` | Bell, inbox, read actions, deep links, live refresh |
+| Owner                                  | Responsibility                                                                                                      |
+| -------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `packages/database`                    | Migration 0123, event producer in the terminal transition, fold/expiry commands and readiness, recipient read store |
+| `apps/worker`                          | Producer flag, fold/expiry loop, readiness and shutdown, change hints                                               |
+| `packages/queue`                       | Bounded per-workspace inbox hint channel                                                                            |
+| `packages/contracts`                   | Thread list, summary, read, read-all and stream schemas; `notification:read` capability                             |
+| `apps/api/src/notifications/`          | Thin controllers, authorization, use cases, SSE lifecycle                                                           |
+| `apps/web/src/features/notifications/` | Bell, inbox, read actions, deep links, live refresh                                                                 |
 
 Follow the [shared implementation rules](../product-roadmap.md#shared-implementation-rules).
 
@@ -56,13 +60,13 @@ Follow the [shared implementation rules](../product-roadmap.md#shared-implementa
 Under `/v1/workspaces/:workspaceId/notifications`, requiring
 `notification:read`:
 
-| Method/path | Behavior |
-| --- | --- |
-| `GET /` | Threads newest first; `filter=all\|unread`, `limit` ≤ 100, opaque keyset cursor; returns the observed revision |
-| `GET /summary` | Unread thread count and observed revision |
-| `POST /:workflowId/read` | `{ revision }`; records at most the thread's current revision; repeat-safe |
-| `POST /read-all` | `{ revision }`; marks threads at or below the observed revision |
-| `GET /events` | SSE hints for this workspace; reauthorized under ADR004's session rules |
+| Method/path              | Behavior                                                                                                       |
+| ------------------------ | -------------------------------------------------------------------------------------------------------------- |
+| `GET /`                  | Threads newest first; `filter=all\|unread`, `limit` ≤ 100, opaque keyset cursor; returns the observed revision |
+| `GET /summary`           | Unread thread count and observed revision                                                                      |
+| `POST /:workflowId/read` | `{ revision }`; records at most the thread's current revision; repeat-safe                                     |
+| `POST /read-all`         | `{ revision }`; marks threads at or below the observed revision                                                |
+| `GET /events`            | SSE hints for this workspace; reauthorized under ADR004's session rules                                        |
 
 ## Delivery slices
 

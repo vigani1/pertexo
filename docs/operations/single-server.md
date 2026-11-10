@@ -106,12 +106,12 @@ AWS KMS, see [Encryption keys](encryption-keys.md).
 
 Then edit `.env.production` and fill in:
 
-| Setting | Value |
-| --- | --- |
-| `PUBLIC_WEB_ORIGIN` | `https://app.example.com` |
-| `ARTIFACT_STORE_ENDPOINT` | `https://files.example.com` |
-| `AUTH_MAIL_FROM`, `INVITATION_EMAIL_FROM` | Addresses your mail provider lets you send from |
-| `AUTH_MAIL_EMAIL_API_KEY`, `INVITATION_EMAIL_API_KEY` | Your Resend API key, or see below for SMTP |
+| Setting                                               | Value                                           |
+| ----------------------------------------------------- | ----------------------------------------------- |
+| `PUBLIC_WEB_ORIGIN`                                   | `https://app.example.com`                       |
+| `ARTIFACT_STORE_ENDPOINT`                             | `https://files.example.com`                     |
+| `AUTH_MAIL_FROM`, `INVITATION_EMAIL_FROM`             | Addresses your mail provider lets you send from |
+| `AUTH_MAIL_EMAIL_API_KEY`, `INVITATION_EMAIL_API_KEY` | Your Resend API key, or see below for SMTP      |
 
 Mail is required: nobody can sign in until they've verified their address. To use any
 SMTP server instead of Resend, delete those two API key lines and set
@@ -257,14 +257,14 @@ Every five minutes `check.sh` looks at the following, and sends one alert per pr
 again every six hours while it lasts. With no webhook it only writes to the journal
 (`journalctl -u pertexo-check.service`). It stays quiet during a deploy or backup.
 
-| Problem | Setting (default) |
-| --- | --- |
-| The disk holding the install or Docker's data is nearly full | `ALERT_DISK_PERCENT` (90) |
-| The last completed backup is too old, or there isn't one | `ALERT_BACKUP_MAX_AGE_HOURS` (30) |
-| Runs queued or running with no change for too long: stuck work | `ALERT_STUCK_MINUTES` (30) |
-| A service has stopped | |
-| Readiness fails: `/health/ready` also proves the database can store new data | |
-| The app can't reach the API through the proxy, which means 502s for signed-in people | |
+| Problem                                                                              | Setting (default)                 |
+| ------------------------------------------------------------------------------------ | --------------------------------- |
+| The disk holding the install or Docker's data is nearly full                         | `ALERT_DISK_PERCENT` (90)         |
+| The last completed backup is too old, or there isn't one                             | `ALERT_BACKUP_MAX_AGE_HOURS` (30) |
+| Runs queued or running with no change for too long: stuck work                       | `ALERT_STUCK_MINUTES` (30)        |
+| A service has stopped                                                                |                                   |
+| Readiness fails: `/health/ready` also proves the database can store new data         |                                   |
+| The app can't reach the API through the proxy, which means 502s for signed-in people |                                   |
 
 A long-running step or a full concurrency queue can also trigger the stuck-work alert, so
 treat it as a prompt to look. See [Operator commands](operator-commands.md) for what to do.
@@ -287,22 +287,22 @@ Containers rotate logs at 10 MB, keeping three files. Metrics are optional:
 
 Start with `check.sh` and [the logs](#logs-and-operator-commands).
 
-| What you see | What it means, and what to do |
-| --- | --- |
-| `A mode-600 .env.production is required` | Run `chmod 600 /opt/pertexo/.env.production`. |
-| `Image architecture/revision mismatch` | There's no image for this server's architecture at that commit. Use a release. |
-| `manifest unknown` on pull | That commit's images were never published. Use a release, or check its CI run. |
-| `Another operation is running` | A deploy, backup, restore or operator command holds the lock. Wait for it. |
-| `Storage setup failed before migration` | The storage service isn't working. Read `compose logs storage`. |
-| `Migration failed: serving remains stopped` | Read `compose logs migration`, fix the cause and deploy again. Don't remove `state/migration-fence`. |
-| `Unhealthy release: fix forward` | The app didn't come up after a migration. Read the logs, then deploy again or deploy a fix. |
-| `Unhealthy release returned to <commit>` | The new release failed, and the old one is serving again. |
-| Deploy times out on the app, or HTTPS fails in the browser | Caddy couldn't get a certificate. Check DNS and that ports 80 and 443 are open from outside, read `compose logs proxy`, then deploy again. |
-| 502 for signed-in people | `check.sh` says which part failed. Read `compose logs api web`. |
-| No mail arrives | Read `compose logs worker`, then your provider's dashboard and your sending domain's records. |
-| A run stays `running` or `queued` | See [Operator commands](operator-commands.md). |
-| `Restore or migration is incomplete` | Finish it: see [Recovery](recovery.md), or deploy the fix for the migration. |
-| Out of disk | Remove old releases under `releases/` that are neither current nor previous, and run `docker image prune`. Postgres needs free space before it accepts writes again. |
+| What you see                                               | What it means, and what to do                                                                                                                                        |
+| ---------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `A mode-600 .env.production is required`                   | Run `chmod 600 /opt/pertexo/.env.production`.                                                                                                                        |
+| `Image architecture/revision mismatch`                     | There's no image for this server's architecture at that commit. Use a release.                                                                                       |
+| `manifest unknown` on pull                                 | That commit's images were never published. Use a release, or check its CI run.                                                                                       |
+| `Another operation is running`                             | A deploy, backup, restore or operator command holds the lock. Wait for it.                                                                                           |
+| `Storage setup failed before migration`                    | The storage service isn't working. Read `compose logs storage`.                                                                                                      |
+| `Migration failed: serving remains stopped`                | Read `compose logs migration`, fix the cause and deploy again. Don't remove `state/migration-fence`.                                                                 |
+| `Unhealthy release: fix forward`                           | The app didn't come up after a migration. Read the logs, then deploy again or deploy a fix.                                                                          |
+| `Unhealthy release returned to <commit>`                   | The new release failed, and the old one is serving again.                                                                                                            |
+| Deploy times out on the app, or HTTPS fails in the browser | Caddy couldn't get a certificate. Check DNS and that ports 80 and 443 are open from outside, read `compose logs proxy`, then deploy again.                           |
+| 502 for signed-in people                                   | `check.sh` says which part failed. Read `compose logs api web`.                                                                                                      |
+| No mail arrives                                            | Read `compose logs worker`, then your provider's dashboard and your sending domain's records.                                                                        |
+| A run stays `running` or `queued`                          | See [Operator commands](operator-commands.md).                                                                                                                       |
+| `Restore or migration is incomplete`                       | Finish it: see [Recovery](recovery.md), or deploy the fix for the migration.                                                                                         |
+| Out of disk                                                | Remove old releases under `releases/` that are neither current nor previous, and run `docker image prune`. Postgres needs free space before it accepts writes again. |
 
 ## Logs and operator commands
 
@@ -375,10 +375,6 @@ checkpoint and inline-data limits stay unchanged. Local non-container workers
 use a private `.pertexo/worker-scratch` under their working directory by
 default; give simultaneously running workers separate absolute paths.
 
-ECS workers mount task-local ephemeral storage at the same path. Keep the
-matching Dockerfile `VOLUME` and task `containerPath`: ECS copies the image
-volume's owner and mode when preparing the mount. It is not shared storage.
-
 ## OAuth2 connections
 
 Register `https://<your app host>/v1/connections/oauth2/callback` with each service as
@@ -405,15 +401,17 @@ logging. See [webhook authentication and browser callers](../guides/webhooks.md)
 
 ## Optional sign-in providers
 
-Google and GitHub are off until their client ID and secret pairs are configured
-in the private installation environment. Follow the [sign-in provider guide](../guides/single-sign-on.md)
-for registration and exact callbacks. The public address is
-`https://<app host>/v1/auth/federation/social/callback/<provider>`.
-Organization OIDC is configured by the control workspace owner in **Settings →
-Single sign-on**, after setting the private API `AUTH_FEDERATION_KEY` and its
-version. The fresh-install generator includes them. Its public callback is
-`https://<app host>/v1/auth/federation/oidc/callback`. Back up the encryption key
-separately; restoring only the database cannot restore encrypted provider secrets.
+Google, GitHub, Microsoft and Apple are off until their client ID and secret
+pairs are configured in the private installation environment. Follow the
+[sign-in provider guide](../guides/single-sign-on.md) for registration and exact
+callbacks. The public address is
+`https://<app host>/v1/auth/federation/social/callback/<provider>`. Organization
+OIDC is configured by the control workspace owner in **Settings → Single
+sign-on**, after setting the private API `AUTH_FEDERATION_KEY` and its version.
+The fresh-install generator includes them. Its public callback is
+`https://<app host>/v1/auth/federation/oidc/callback`. Back up the encryption
+key separately; restoring only the database cannot restore encrypted provider
+secrets.
 
 Keep `/v1/auth/*` routed directly from Caddy to the API: codes, state and email
 proofs must never enter nginx request/error logs. Preserve Caddy's full-URI,
@@ -448,16 +446,16 @@ malformed entry. Inside those networks plain `http` is allowed; elsewhere a
 request must use `https`. Cloud metadata and host credential endpoints stay
 blocked whatever the list says, including IPv4 embedded in IPv6:
 
-| Provider or service | Protected addresses |
-| --- | --- |
-| [AWS](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/retrieve-iid.html), [GCP](https://docs.cloud.google.com/compute/docs/metadata/overview), [Azure IMDS](https://learn.microsoft.com/en-us/azure/virtual-machines/instance-metadata-service), [DigitalOcean](https://docs.digitalocean.com/products/droplets/how-to/access-metadata/), [Hetzner](https://docs.hetzner.cloud/reference/cloud), [OpenStack](https://docs.openstack.org/nova/latest/admin/metadata-service.html) and other providers that use this address | `169.254.169.254`, covered by the protected `169.254.0.0/16` range |
-| [Alibaba](https://www.alibabacloud.com/help/en/ens/instance-metadata) | `100.100.100.200` |
-| [Azure WireServer](https://learn.microsoft.com/en-us/azure/virtual-network/what-is-ip-address-168-63-129-16) | `168.63.129.16` (host platform service, separate from IMDS) |
-| AWS IPv6 and [EKS Pod Identity](https://docs.aws.amazon.com/eks/latest/userguide/pod-identities.html) | `fd00:ec2::254`, `fd00:ec2::23`, covered by `fd00:ec2::/32`; `169.254.170.23` is covered by the IPv4 range |
-| GCP IPv6 | `fd20:ce::254` |
-| OpenStack IPv6 | `fe80::a9fe:a9fe` |
-| [Akamai/Linode IPv6](https://techdocs.akamai.com/cloud-computing/docs/access-the-metadata-service-api) | `fd00:a9fe:a9fe::1` |
-| Kubernetes link-local metadata proxies, including [GKE](https://docs.cloud.google.com/kubernetes-engine/docs/concepts/workload-identity) | All of `169.254.0.0/16`, including `169.254.169.252` |
+| Provider or service                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            | Protected addresses                                                                                        |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------- |
+| [AWS](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/retrieve-iid.html), [GCP](https://docs.cloud.google.com/compute/docs/metadata/overview), [Azure IMDS](https://learn.microsoft.com/en-us/azure/virtual-machines/instance-metadata-service), [DigitalOcean](https://docs.digitalocean.com/products/droplets/how-to/access-metadata/), [Hetzner](https://docs.hetzner.cloud/reference/cloud), [OpenStack](https://docs.openstack.org/nova/latest/admin/metadata-service.html) and other providers that use this address | `169.254.169.254`, covered by the protected `169.254.0.0/16` range                                         |
+| [Alibaba](https://www.alibabacloud.com/help/en/ens/instance-metadata)                                                                                                                                                                                                                                                                                                                                                                                                                                                          | `100.100.100.200`                                                                                          |
+| [Azure WireServer](https://learn.microsoft.com/en-us/azure/virtual-network/what-is-ip-address-168-63-129-16)                                                                                                                                                                                                                                                                                                                                                                                                                   | `168.63.129.16` (host platform service, separate from IMDS)                                                |
+| AWS IPv6 and [EKS Pod Identity](https://docs.aws.amazon.com/eks/latest/userguide/pod-identities.html)                                                                                                                                                                                                                                                                                                                                                                                                                          | `fd00:ec2::254`, `fd00:ec2::23`, covered by `fd00:ec2::/32`; `169.254.170.23` is covered by the IPv4 range |
+| GCP IPv6                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       | `fd20:ce::254`                                                                                             |
+| OpenStack IPv6                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 | `fe80::a9fe:a9fe`                                                                                          |
+| [Akamai/Linode IPv6](https://techdocs.akamai.com/cloud-computing/docs/access-the-metadata-service-api)                                                                                                                                                                                                                                                                                                                                                                                                                         | `fd00:a9fe:a9fe::1`                                                                                        |
+| Kubernetes link-local metadata proxies, including [GKE](https://docs.cloud.google.com/kubernetes-engine/docs/concepts/workload-identity)                                                                                                                                                                                                                                                                                                                                                                                       | All of `169.254.0.0/16`, including `169.254.169.252`                                                       |
 
 These restrictions apply to workflow HTTP requests, not host DNS or guest agents.
 Loopback passes only when listed, and anything listed is reachable by every

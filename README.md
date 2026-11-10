@@ -54,6 +54,8 @@ apps/
   worker/              coordination, node attempts, previews, triggers,
                        retention, and workspace deletion
   ops/                 audited operator commands
+  cli/                 personal-token HTTP client
+  code-runner/         isolated JavaScript and Python execution
 
 packages/
   core/             product areas: flows, queries and decisions
@@ -61,7 +63,6 @@ packages/
   workflow-model/   graph, JSON, portability and expression policy
   policy/           workspace roles, capabilities and status lists
   workflow-engine/  pure execution state machine
-  execution/        run orchestration and attempt input projection
   node-sdk/          node definition and executor contracts
   nodes-core/        built-in deterministic nodes
   node-catalog/      registry of every node definition and executor
@@ -189,9 +190,11 @@ nightly off-server backups. [The runbook](./docs/operations/single-server.md)
 takes you from an empty server to a working install, and
 [Upgrading](./docs/operations/upgrading.md) covers releases and the
 [changelog](./CHANGELOG.md). [ADR 071](./docs/adr/071-single-server-beta.md)
-records that choice. Paid hosting targets AWS, as recorded in
-[ADR 015](./docs/adr/015-production-slo-region-and-recovery.md) and
-[ADR 028](./docs/adr/028-ecs-deployment-manifest.md).
+records that choice. Single-server self-hosting is the only supported
+deployment. A later per-customer hosted version is unimplemented; the AWS/ECS
+proposals are historical and unsupported. Start with the
+[documentation index](docs/README.md) and
+[first workflow guide](docs/guides/getting-started.md).
 
 ## Project Status
 

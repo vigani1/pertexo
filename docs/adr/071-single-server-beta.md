@@ -1,5 +1,17 @@
 # ADR 071: Single-server private beta
 
+> Deployment scope amendment, 2026-11-10: single-server self-hosting is the only
+> supported deployment. AWS/ECS hosting, autoscaling and managed-service
+> promises below are historical, unsupported proposals for a later per-customer
+> hosted version. ECS definitions were retired; recover them from Git history.
+> Single-server KMS encryption remains an optional key provider.
+
+> Backup amendment, 2026-11-10: the implemented backup flow now captures an
+> online database dump with incremental immutable artifacts, pauses physical
+> deletion rather than serving writers, and encrypts off-server recovery points
+> with rclone. The 14-day retention remains. The pause-all-writers description
+> below is historical; the single-server runbook owns current commands.
+
 - **Status:** accepted
 - **Date:** 2026-10-12
 - **Plan:** [single-server beta](../feature-plans/single-server-beta.md)

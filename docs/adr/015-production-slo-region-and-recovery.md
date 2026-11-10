@@ -1,5 +1,11 @@
 # ADR 015: Initial SLO, region, and recovery strategy
 
+> Deployment scope amendment, 2026-11-10: single-server self-hosting is the only
+> supported deployment. AWS/ECS hosting, autoscaling and managed-service
+> promises below are historical, unsupported proposals for a later per-customer
+> hosted version. ECS definitions were retired; recover them from Git history.
+> Single-server KMS encryption remains an optional key provider.
+
 - **Status:** accepted; superseded in part by [ADR 069](069-architecture-reset.md)
 - **Date:** 2026-08-26
 
@@ -62,15 +68,15 @@ enforced write property rather than an assumption about asynchronous copy speed.
 
 The initial internal objectives are:
 
-| Objective | Target |
-| --- | ---: |
-| API and durable run-acceptance availability | 99.9% monthly |
-| API write latency | p95 below 500 ms under admitted load |
-| Webhook durable acceptance | p95 below 1 second |
-| Schedule-to-start latency | p95 below 5 seconds under admitted load |
-| Persisted-to-visible event latency | p95 below 2 seconds |
-| PostgreSQL and object-storage RPO | at most 5 minutes |
-| Regional-disaster RTO | at most 24 hours |
+| Objective                                   |                                  Target |
+| ------------------------------------------- | --------------------------------------: |
+| API and durable run-acceptance availability |                           99.9% monthly |
+| API write latency                           |    p95 below 500 ms under admitted load |
+| Webhook durable acceptance                  |                      p95 below 1 second |
+| Schedule-to-start latency                   | p95 below 5 seconds under admitted load |
+| Persisted-to-visible event latency          |                     p95 below 2 seconds |
+| PostgreSQL and object-storage RPO           |                       at most 5 minutes |
+| Regional-disaster RTO                       |                        at most 24 hours |
 
 Automated PostgreSQL backups, WAL archives, manual recovery points, snapshots,
 tenant-object noncurrent versions, and their cross-region recovery copies become

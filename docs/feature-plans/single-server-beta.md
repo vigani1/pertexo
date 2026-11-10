@@ -1,5 +1,9 @@
 # Single-server beta deployment
 
+> Historical deployment references: as of 2026-11-10 only single-server
+> self-hosting is supported. ECS/AWS hosting references below describe retired
+> work, recoverable from Git history, and are not operator instructions.
+
 Status: accepted 2026-10-12; implementation in progress. The owner wants a private beta that costs nothing,
 or close to it, before any paid hosting. ADR 015 and ADR 028 stay the target
 for paying customers: AWS in Frankfurt with Terraform and startup credits. This
@@ -59,21 +63,24 @@ Implementation can start before these exist; the first launch can't.
 Docker Compose on the server, one private network, nothing but the proxy
 published:
 
-| Service | Image | Role |
-| --- | --- | --- |
-| `proxy` | Caddy (pinned) | TLS for two hostnames with Let's Encrypt. `<app host>` routes `/hooks/*` and one-click unsubscribe directly to `api`, other paths to `web`; `<files host>` goes to `storage`. |
-| `web` | New `web` target of the root Dockerfile | The existing `apps/web/deployment/nginx.conf.template` serving `apps/web/dist` and passing `/v1` to `api` |
-| `api` | Root image | `node apps/api/dist/main.js` |
-| `worker` | Root image | `node apps/worker/dist/main.js` |
-| `migration` | Root image | One-shot `node packages/database/dist/migrate.js`. `api` and `worker` depend on it completing successfully. |
-| `ops` | Root image | On demand: `docker compose run --rm ops …` |
-| `postgres` | `postgres:18` (as in `compose.yaml`) | Reuses `infrastructure/postgres/init/10-roles.sh` for the owner, migration, app and maintenance roles |
-| `redis` | Redis (as in `compose.yaml`) | Password, AOF, `noeviction` |
-| `storage` | RustFS 1.0.1 (pinned) | One-process S3-compatible file storage; only its S3 port reaches the proxy |
+| Service     | Image                                   | Role                                                                                                                                                                          |
+| ----------- | --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `proxy`     | Caddy (pinned)                          | TLS for two hostnames with Let's Encrypt. `<app host>` routes `/hooks/*` and one-click unsubscribe directly to `api`, other paths to `web`; `<files host>` goes to `storage`. |
+| `web`       | New `web` target of the root Dockerfile | The existing `apps/web/deployment/nginx.conf.template` serving `apps/web/dist` and passing `/v1` to `api`                                                                     |
+| `api`       | Root image                              | `node apps/api/dist/main.js`                                                                                                                                                  |
+| `worker`    | Root image                              | `node apps/worker/dist/main.js`                                                                                                                                               |
+| `migration` | Root image                              | One-shot `node packages/database/dist/migrate.js`. `api` and `worker` depend on it completing successfully.                                                                   |
+| `ops`       | Root image                              | On demand: `docker compose run --rm ops …`                                                                                                                                    |
+| `postgres`  | `postgres:18` (as in `compose.yaml`)    | Reuses `infrastructure/postgres/init/10-roles.sh` for the owner, migration, app and maintenance roles                                                                         |
+| `redis`     | Redis (as in `compose.yaml`)            | Password, AOF, `noeviction`                                                                                                                                                   |
+| `storage`   | RustFS 1.0.1 (pinned)                   | One-process S3-compatible file storage; only its S3 port reaches the proxy                                                                                                    |
 
-Health checks and `restart: unless-stopped` follow `infrastructure/ecs/workloads.json`:
+Health checks and `restart: unless-stopped` follow
+`infrastructure/ecs/workloads.json`:
+
 - `api` checks `/health/ready`.
-- `worker` checks its ready marker, the absence of its not-ready marker, and PID 1.
+- `worker` checks its ready marker, the absence of its not-ready marker, and
+  PID 1.
 
 Logs use the json-file driver with size rotation.
 
@@ -153,8 +160,9 @@ Keep `.env.production.example` (names and comments, no values) in
   - `REDIS_PASSWORD`;
   - the storage administrator and application credentials.
 
-  It prints them once in the format each schema expects; check each against
-  its parser. Version variables start at 1.
+  It prints them once in the format each schema expects; check each against its
+  parser. Version variables start at 1.
+
 - **Fixed in the example:**
   - `NODE_ENV=production`, `AUTH_MAIL_MODE=durable` and
     `SESSION_COOKIE_SECURE=true`;

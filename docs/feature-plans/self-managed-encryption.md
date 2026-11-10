@@ -1,5 +1,9 @@
 # Self-managed encryption keys
 
+> Historical deployment references: as of 2026-11-10 only single-server
+> self-hosting is supported. ECS/AWS hosting references below describe retired
+> work, recoverable from Git history, and are not operator instructions.
+
 Status: implementation complete and locally verified, 2026-10-13. Existing CI
 gates each slice before merge; actual production rollout is not claimed. ADR
 071 permits private self-managed keys with the complete deployment gate.
@@ -27,20 +31,20 @@ image publishing and the owner-assisted beta launch are separate work.
 
 ## Findings from the current code
 
-| Location | Current behavior and consequence |
-| --- | --- |
-| `packages/secrets/src/encryption/envelope-cipher.ts` | One AES-256-GCM credential cipher with a key-provider interface. Keep it. |
-| `packages/secrets/src/encryption/application-secret-envelope.ts` | Wraps with a current key and opens with current or previous keys. It already stores `keyVersion`; duplicate versions currently overwrite in a `Map` and must be rejected. |
-| `packages/secrets/src/encryption/self-managed-key-provider.ts` | Uses the shared application envelope with the current and previous key ring. Versioned configuration belongs here, not in each consumer. |
-| `packages/secrets/src/encryption/connection-encryption.runtime.ts` | Shared API/worker parser rejects local mode when deployed and rejects mixed settings. Keep the single parser and fail-closed behavior. |
-| `packages/secrets/src/encryption/webhook-envelope.ts` | Already uses the same local provider and connection encryption configuration. Webhooks must receive the same improvement. |
-| API identity config and worker `config/application-key-ring.ts` | Both parse previous-key JSON independently. Consolidate the relevant key-ring rules in integrations; preserve mail and invitation variable names and behavior. |
-| `packages/database/migrations/0000_baseline.sql` | Both secret tables grant existing maintenance-role SELECT and cross-workspace policies. The API cannot directly SELECT webhook secrets; broad API verification would require authority it does not have. |
-| `apps/worker/src/worker.module.ts` | Some polling runtimes start while Nest constructs the context. Checking keys only after `createApplicationContext` is too late. |
-| `infrastructure/single-server/compose.yaml` | Requires KMS reference, region and AWS access keys unconditionally. Changing the TypeScript parser alone cannot enable self-managed deployment. |
-| `infrastructure/single-server/storage/prepare.mjs` | Uses compiled application parsers and produces private API/worker env files. Reuse it to pass identical encryption settings. |
-| `infrastructure/single-server/generate-secrets.mjs` | Generates deployment secrets on stdout; the example/runbook warn against rerunning over installed keys. Extend this script and send warnings to stderr. |
-| `infrastructure/single-server/restore.sh` | Clears its restore fence after restoring data and objects. Key verification must succeed before the fence is cleared. |
+| Location                                                           | Current behavior and consequence                                                                                                                                                                         |
+| ------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `packages/secrets/src/encryption/envelope-cipher.ts`               | One AES-256-GCM credential cipher with a key-provider interface. Keep it.                                                                                                                                |
+| `packages/secrets/src/encryption/application-secret-envelope.ts`   | Wraps with a current key and opens with current or previous keys. It already stores `keyVersion`; duplicate versions currently overwrite in a `Map` and must be rejected.                                |
+| `packages/secrets/src/encryption/self-managed-key-provider.ts`     | Uses the shared application envelope with the current and previous key ring. Versioned configuration belongs here, not in each consumer.                                                                 |
+| `packages/secrets/src/encryption/connection-encryption.runtime.ts` | Shared API/worker parser rejects local mode when deployed and rejects mixed settings. Keep the single parser and fail-closed behavior.                                                                   |
+| `packages/secrets/src/encryption/webhook-envelope.ts`              | Already uses the same local provider and connection encryption configuration. Webhooks must receive the same improvement.                                                                                |
+| API identity config and worker `config/application-key-ring.ts`    | Both parse previous-key JSON independently. Consolidate the relevant key-ring rules in integrations; preserve mail and invitation variable names and behavior.                                           |
+| `packages/database/migrations/0000_baseline.sql`                   | Both secret tables grant existing maintenance-role SELECT and cross-workspace policies. The API cannot directly SELECT webhook secrets; broad API verification would require authority it does not have. |
+| `apps/worker/src/worker.module.ts`                                 | Some polling runtimes start while Nest constructs the context. Checking keys only after `createApplicationContext` is too late.                                                                          |
+| `infrastructure/single-server/compose.yaml`                        | Requires KMS reference, region and AWS access keys unconditionally. Changing the TypeScript parser alone cannot enable self-managed deployment.                                                          |
+| `infrastructure/single-server/storage/prepare.mjs`                 | Uses compiled application parsers and produces private API/worker env files. Reuse it to pass identical encryption settings.                                                                             |
+| `infrastructure/single-server/generate-secrets.mjs`                | Generates deployment secrets on stdout; the example/runbook warn against rerunning over installed keys. Extend this script and send warnings to stderr.                                                  |
+| `infrastructure/single-server/restore.sh`                          | Clears its restore fence after restoring data and objects. Key verification must succeed before the fence is cleared.                                                                                    |
 
 ## Configuration contract
 
@@ -149,20 +153,20 @@ Paths below are intended implementation locations, not permission to create
 unused abstractions. Keep each module small enough for its responsibility and
 introduce exports only with real callers in the same PR.
 
-| Location | Responsibility |
-| --- | --- |
-| integrations `security/key-ring.ts` (new) | Shared current/previous key configuration validation and types. Reuse it in the envelope helper and API/worker identity parsers; keep each environment-variable prefix in its owning configuration parser. |
-| integrations `security/application-secret-envelope.ts` | Existing authenticated application-secret encryption; accept the validated ring without duplicating crypto. Retain validation for direct public callers. |
-| integrations `credentials/self-managed-key-provider.ts` (rename) | Current-key wrapping, exact-version unwrapping and legacy stored-reference support. Implements the existing `EnvelopeKeyProviderCore`; no database imports. |
-| integrations `credentials/runtime.ts` | One environment parser and factory for both providers, with legacy-input normalization and deployed policy. |
-| integrations `credentials/verify-stored-keys.ts` (new) | Checks an async stream of typed wrapped-key records against the selected provider. Owns provider compatibility, authenticated self-managed unwrap and safe failures. No SQL, Nest or process environment reads. |
-| integrations `webhooks/crypto.ts`, `server.ts` | Share the provider for webhook secrets; expose only the server interfaces the callers actually need. |
-| database `platform/encryption/keys.repository.ts` (new), `platform/index.ts` | Read-only, bounded stream of retained wrapped-key records using the existing maintenance role and pool runtime. No encryption, JSON-envelope decoding or provider-selection rules in SQL. |
-| worker `runtime/startup/verify-encryption.ts` (new), `app.ts` | Compose repository and verifier before Nest context creation; close startup resources on success/failure. Use `config.retention.maintenanceDatabase`; never start a polling loop or dispatcher before verification. |
-| API `platform/config/api.ts` and runtime factories | Pass the shared typed configuration to connection/webhook runtimes. Key verification stays outside the API; the API has no maintenance credential. |
-| infrastructure `single-server/encryption/verify.mjs` (new) | Thin release-image wrapper around compiled database/integrations interfaces. Read-only preflight, safe output, timeout and cleanup. Run in the existing on-demand ops container; no new service or general-purpose ops command. |
-| infrastructure Compose, `storage/prepare.mjs`, generator and examples | Supply identical canonical settings to API/worker, conditionally require provider settings through the real parsers, and keep private file permissions. |
-| infrastructure deploy/restore/qualification and operations docs | Gate serving/recovery, exercise the public setup path and explain key custody. Keep encryption policy out of shell scripts. |
+| Location                                                                     | Responsibility                                                                                                                                                                                                                  |
+| ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| integrations `security/key-ring.ts` (new)                                    | Shared current/previous key configuration validation and types. Reuse it in the envelope helper and API/worker identity parsers; keep each environment-variable prefix in its owning configuration parser.                      |
+| integrations `security/application-secret-envelope.ts`                       | Existing authenticated application-secret encryption; accept the validated ring without duplicating crypto. Retain validation for direct public callers.                                                                        |
+| integrations `credentials/self-managed-key-provider.ts` (rename)             | Current-key wrapping, exact-version unwrapping and legacy stored-reference support. Implements the existing `EnvelopeKeyProviderCore`; no database imports.                                                                     |
+| integrations `credentials/runtime.ts`                                        | One environment parser and factory for both providers, with legacy-input normalization and deployed policy.                                                                                                                     |
+| integrations `credentials/verify-stored-keys.ts` (new)                       | Checks an async stream of typed wrapped-key records against the selected provider. Owns provider compatibility, authenticated self-managed unwrap and safe failures. No SQL, Nest or process environment reads.                 |
+| integrations `webhooks/crypto.ts`, `server.ts`                               | Share the provider for webhook secrets; expose only the server interfaces the callers actually need.                                                                                                                            |
+| database `platform/encryption/keys.repository.ts` (new), `platform/index.ts` | Read-only, bounded stream of retained wrapped-key records using the existing maintenance role and pool runtime. No encryption, JSON-envelope decoding or provider-selection rules in SQL.                                       |
+| worker `runtime/startup/verify-encryption.ts` (new), `app.ts`                | Compose repository and verifier before Nest context creation; close startup resources on success/failure. Use `config.retention.maintenanceDatabase`; never start a polling loop or dispatcher before verification.             |
+| API `platform/config/api.ts` and runtime factories                           | Pass the shared typed configuration to connection/webhook runtimes. Key verification stays outside the API; the API has no maintenance credential.                                                                              |
+| infrastructure `single-server/encryption/verify.mjs` (new)                   | Thin release-image wrapper around compiled database/integrations interfaces. Read-only preflight, safe output, timeout and cleanup. Run in the existing on-demand ops container; no new service or general-purpose ops command. |
+| infrastructure Compose, `storage/prepare.mjs`, generator and examples        | Supply identical canonical settings to API/worker, conditionally require provider settings through the real parsers, and keep private file permissions.                                                                         |
+| infrastructure deploy/restore/qualification and operations docs              | Gate serving/recovery, exercise the public setup path and explain key custody. Keep encryption policy out of shell scripts.                                                                                                     |
 
 The runtime image currently copies compiled apps/packages, not infrastructure
 scripts. Bind-mount the selected release's verification wrapper read-only for
@@ -369,21 +373,21 @@ authorization for this feature; merge by rebase only after existing CI is green.
 
 ## Verification matrix
 
-| Behavior | Required evidence |
-| --- | --- |
-| New wraps use current version; previous versions still open | Connection and webhook crypto tests, distinct random master keys, restart with the parsed ring. |
-| Legacy bytes remain readable | Fixed old envelope representation and legacy mode/config normalization; no fallback-key trial. |
-| Configuration failures | Missing pair, wrong length, invalid JSON/version, more than eight previous keys, duplicate version/key, mixed modes and decoded public fixture in every ring position. |
-| Shared helper consumers | Existing invitation and authentication-mail tests pass after parser consolidation; their variables and stored envelopes remain compatible. |
-| Wrong key with correct version | Authenticate existing wrapped data keys and fail before polling, queue consumption, readiness or serving. |
-| Coverage | Multiple workspaces, several pages, connection-only and webhook-only rows, old/revoked versions, missing historical key, empty database and corrupted later-page wrap. |
-| Database authority and lifetime | Real app login cannot gain global reads; maintenance can read both tables; snapshot, timeout, abort and iterator cancellation release resources. |
-| Provider mismatch | KMS rows block self-managed startup; self-managed/legacy rows block KMS startup; no row mutation or new secrets written. |
-| Deployment | KMS defaults still parse; self-managed needs no AWS encryption settings; both runtime env files match; unused fields omitted; verification precedes all serving starts and preserves migration uncertainty. |
-| Lifecycle | Worker verifier runs before Nest factories; no worker background task on failure; API startup does not depend on worker health and receives no maintenance URL. |
-| Restore | Correct separately supplied ring works; wrong/missing key preserves restore fence; secret bytes usable after real database/object restoration. |
-| Custody and leakage | Generator stdout parses as dotenv; warnings only stderr; keys absent from backup payload, logs, web environment and image layers. |
-| KMS regressions | Existing SDK call arguments, associated context, timeouts, credential resolution and encryption tests remain unchanged; metadata scan is not presented as an AWS permission test. |
+| Behavior                                                    | Required evidence                                                                                                                                                                                           |
+| ----------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| New wraps use current version; previous versions still open | Connection and webhook crypto tests, distinct random master keys, restart with the parsed ring.                                                                                                             |
+| Legacy bytes remain readable                                | Fixed old envelope representation and legacy mode/config normalization; no fallback-key trial.                                                                                                              |
+| Configuration failures                                      | Missing pair, wrong length, invalid JSON/version, more than eight previous keys, duplicate version/key, mixed modes and decoded public fixture in every ring position.                                      |
+| Shared helper consumers                                     | Existing invitation and authentication-mail tests pass after parser consolidation; their variables and stored envelopes remain compatible.                                                                  |
+| Wrong key with correct version                              | Authenticate existing wrapped data keys and fail before polling, queue consumption, readiness or serving.                                                                                                   |
+| Coverage                                                    | Multiple workspaces, several pages, connection-only and webhook-only rows, old/revoked versions, missing historical key, empty database and corrupted later-page wrap.                                      |
+| Database authority and lifetime                             | Real app login cannot gain global reads; maintenance can read both tables; snapshot, timeout, abort and iterator cancellation release resources.                                                            |
+| Provider mismatch                                           | KMS rows block self-managed startup; self-managed/legacy rows block KMS startup; no row mutation or new secrets written.                                                                                    |
+| Deployment                                                  | KMS defaults still parse; self-managed needs no AWS encryption settings; both runtime env files match; unused fields omitted; verification precedes all serving starts and preserves migration uncertainty. |
+| Lifecycle                                                   | Worker verifier runs before Nest factories; no worker background task on failure; API startup does not depend on worker health and receives no maintenance URL.                                             |
+| Restore                                                     | Correct separately supplied ring works; wrong/missing key preserves restore fence; secret bytes usable after real database/object restoration.                                                              |
+| Custody and leakage                                         | Generator stdout parses as dotenv; warnings only stderr; keys absent from backup payload, logs, web environment and image layers.                                                                           |
+| KMS regressions                                             | Existing SDK call arguments, associated context, timeouts, credential resolution and encryption tests remain unchanged; metadata scan is not presented as an AWS permission test.                           |
 
 Use the existing commands and CI jobs:
 

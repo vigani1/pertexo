@@ -2,14 +2,14 @@
 
 Connection credentials have two intentionally separate runtime boundaries.
 
-- The schemas in `@pertexo/contracts/connections` own the untrusted HTTP wire
-  representation accepted for connection creation and rotation. They reject
-  unknown fields, normalize domain/header casing, and bound the bytes that may
-  be encrypted and stored.
+- The schemas in `@pertexo/contracts` own the untrusted HTTP wire representation
+  accepted for connection creation and rotation. They reject unknown fields,
+  normalize domain/header casing, and bound the bytes that may be encrypted and
+  stored.
 - The `resolved*CredentialSchema` exports in `@pertexo/integrations` own the
-  post-decryption provider representation. Executors parse decrypted bytes
-  again immediately before use because encrypted storage is not a substitute
-  for validating the current runtime contract.
+  post-decryption provider representation. Executors parse decrypted bytes again
+  immediately before use because encrypted storage is not a substitute for
+  validating the current runtime contract.
 
 Both boundaries share schema version 1 and the same overlapping token,
 mailbox, header-name, control-character, count, and serialized-header-byte
