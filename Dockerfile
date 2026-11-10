@@ -7,7 +7,9 @@ RUN corepack enable && corepack prepare pnpm@11.22.0 --activate
 RUN apt-get update && apt-get install --yes --no-install-recommends gcc libc6-dev linux-libc-dev \
   && rm -rf /var/lib/apt/lists/*
 COPY . .
-RUN --mount=type=cache,id=pertexo-step6-pnpm,target=/root/.local/share/pnpm/store pnpm install --frozen-lockfile && pnpm build \
+RUN --mount=type=cache,id=pertexo-step6-pnpm,target=/root/.local/share/pnpm/store pnpm install --frozen-lockfile \
+  && node infrastructure/checks/third-party-notices.mjs /workspace/THIRD_PARTY_NOTICES.txt \
+  && pnpm build \
   && gcc -std=c11 -Wall -Wextra -Werror -O2 -fstack-protector-strong -fPIE -pie \
     -D_FORTIFY_SOURCE=3 -Wl,-z,relro,-z,now \
     -o apps/code-runner/dist/launch apps/code-runner/native/launch.c
@@ -38,6 +40,7 @@ ENV PERTEXO_API_UPSTREAM=http://api:3000 \
   NGINX_ENTRYPOINT_LOCAL_RESOLVERS=1 \
   NGINX_ENVSUBST_FILTER='^(PERTEXO_API_UPSTREAM|NGINX_LOCAL_RESOLVERS)$'
 COPY --from=build --chown=101:101 /workspace/apps/web/dist /usr/share/nginx/html
+COPY --from=build --chown=101:101 /workspace/THIRD_PARTY_NOTICES.txt /usr/share/nginx/html/THIRD_PARTY_NOTICES.txt
 COPY --chown=101:101 apps/web/deployment/nginx.conf.template /etc/nginx/templates/default.conf.template
 EXPOSE 8080
 
@@ -61,6 +64,7 @@ ARG SOURCE_COMMIT=unknown
 LABEL org.opencontainers.image.source="https://github.com/vigani1/pertexo" \
   org.opencontainers.image.revision=$SOURCE_COMMIT
 COPY --from=backup-transport /usr/local/bin/rclone /usr/local/bin/rclone
+COPY --from=build /workspace/THIRD_PARTY_NOTICES.txt /workspace/THIRD_PARTY_NOTICES.txt
 ENV NODE_ENV=production
 WORKDIR /workspace
 RUN apt-get update && apt-get install --yes --no-install-recommends \
