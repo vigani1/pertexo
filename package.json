@@ -128,7 +128,8 @@
     "test:integration": "pnpm --filter @pertexo/artifact-store test:integration && pnpm --filter @pertexo/queue test:integration && pnpm --filter @pertexo/database test:integration && pnpm --filter @pertexo/secrets test:integration && pnpm --filter @pertexo/core test:integration && pnpm --filter @pertexo/worker test:integration && pnpm --filter @pertexo/api test:integration",
     "typecheck": "tsc --build --pretty false && pnpm --recursive --if-present typecheck",
     "cli": "pnpm --filter @pertexo/cli start",
-    "ops:two-factor-disable": "pnpm --filter @pertexo/ops exec node dist/identity/main.js"
+    "ops:two-factor-disable": "pnpm --filter @pertexo/ops exec node dist/identity/main.js",
+    "licenses:check": "node --test infrastructure/checks/third-party-notices.test.mjs && node infrastructure/checks/third-party-notices.mjs"
   },
   "devDependencies": {
     "@eslint/js": "9.39.5",
