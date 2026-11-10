@@ -4,7 +4,7 @@ import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { mockServer } from '../../support/mock-server';
-import { renderApp } from '../../support/render-app';
+import { renderLoadedApp } from '../../support/render-app';
 import {
   apiBase,
   fixtureIds,
@@ -94,7 +94,9 @@ describe('failed-step recovery confirmation', () => {
         },
       ),
     );
-    const { router } = renderApp(`/w/${workspaceId}/runs/${sourceRunId}`);
+    const { router } = await renderLoadedApp(
+      `/w/${workspaceId}/runs/${sourceRunId}`,
+    );
     const dialog = await open();
     const checkbox = await within(dialog).findByRole('checkbox');
     expect(checkbox).not.toBeChecked();
@@ -145,7 +147,7 @@ describe('failed-step recovery confirmation', () => {
         },
       ),
     );
-    renderApp(`/w/${workspaceId}/runs/${sourceRunId}`);
+    await renderLoadedApp(`/w/${workspaceId}/runs/${sourceRunId}`);
     await screen.findByRole(
       'region',
       { name: /Pertexo can’t tell/u },
@@ -198,7 +200,9 @@ describe('failed-step recovery confirmation', () => {
         },
       ),
     );
-    const { router } = renderApp(`/w/${workspaceId}/runs/${sourceRunId}`);
+    const { router } = await renderLoadedApp(
+      `/w/${workspaceId}/runs/${sourceRunId}`,
+    );
     let dialog = await open();
     await userEvent.setup().click(await within(dialog).findByRole('checkbox'));
     await userEvent
@@ -238,7 +242,7 @@ describe('failed-step recovery confirmation', () => {
         return HttpResponse.error();
       }),
     );
-    renderApp(`/w/${workspaceId}/runs/${sourceRunId}`);
+    await renderLoadedApp(`/w/${workspaceId}/runs/${sourceRunId}`);
     const dialog = await open();
     await waitFor(() =>
       expect(dialog).toHaveAccessibleDescription(/does not yet support/u),
@@ -253,7 +257,7 @@ describe('failed-step recovery confirmation', () => {
   });
   it('does not offer recovery without replay authority', async () => {
     install(['workspace:read', 'run:read']);
-    renderApp(`/w/${workspaceId}/runs/${sourceRunId}`);
+    await renderLoadedApp(`/w/${workspaceId}/runs/${sourceRunId}`);
     await screen.findByRole('heading', { name: /Failed/u }, coldStart);
     expect(
       screen.queryByRole('button', { name: 'Retry from this step' }),

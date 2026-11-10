@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { coldStart } from '../../../support/fixtures/run';
 import { mockServer } from '../../../support/mock-server';
-import { renderApp } from '../../../support/render-app';
+import { renderLoadedApp } from '../../../support/render-app';
 import {
   connection,
   connectionHandler,
@@ -35,7 +35,7 @@ async function sendTest(answer: () => Response | Promise<Response>) {
       return answer();
     }),
   );
-  renderApp(`/w/${workspaceId}/alerts`);
+  await renderLoadedApp(`/w/${workspaceId}/alerts`);
   const event = userEvent.setup();
   await event.click(
     await screen.findByRole(

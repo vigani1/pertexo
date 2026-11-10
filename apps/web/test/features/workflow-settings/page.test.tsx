@@ -10,7 +10,7 @@ import { describe, expect, it } from 'vitest';
 
 import { mockServer } from '../../support/mock-server';
 
-import { renderApp } from '../../support/render-app';
+import { renderLoadedApp } from '../../support/render-app';
 
 import {
   destination,
@@ -46,7 +46,7 @@ describe('workflow settings tab', () => {
         });
       }),
     );
-    const { queryClient } = renderApp(settingsPath);
+    const { queryClient } = await renderLoadedApp(settingsPath);
     const event = userEvent.setup();
     const identity = await screen.findByRole('region', { name: 'Identity' });
     expect(await within(identity).findByText('Daily control')).toBeVisible();
@@ -115,7 +115,7 @@ describe('workflow settings tab', () => {
         return HttpResponse.json({ workflow: currentSummary, replayed: false });
       }),
     );
-    const { queryClient } = renderApp(settingsPath);
+    const { queryClient } = await renderLoadedApp(settingsPath);
     const event = userEvent.setup();
     await event.click(
       await screen.findByRole('button', { name: 'Archive workflow' }),
@@ -167,7 +167,7 @@ describe('workflow settings tab', () => {
   });
   it('removes lifecycle details and an open confirmation after an authoritative unavailable refresh', async () => {
     installQueries();
-    const { queryClient } = renderApp(settingsPath);
+    const { queryClient } = await renderLoadedApp(settingsPath);
     const event = userEvent.setup();
     await event.click(
       await screen.findByRole('button', { name: 'Archive workflow' }),
@@ -199,7 +199,7 @@ describe('workflow settings tab', () => {
   });
   it('keeps lifecycle details and the confirmation through a transient refresh failure', async () => {
     installQueries();
-    const { queryClient } = renderApp(settingsPath);
+    const { queryClient } = await renderLoadedApp(settingsPath);
     const event = userEvent.setup();
     await event.click(
       await screen.findByRole('button', { name: 'Archive workflow' }),
@@ -247,7 +247,7 @@ describe('workflow settings tab', () => {
         },
       ),
     );
-    renderApp(settingsPath);
+    await renderLoadedApp(settingsPath);
     const event = userEvent.setup();
     const alerts = await screen.findByRole('region', {
       name: 'Failure alerts',
@@ -296,7 +296,7 @@ describe('workflow settings tab', () => {
         }),
       ),
     );
-    renderApp(settingsPath);
+    await renderLoadedApp(settingsPath);
     const alerts = await screen.findByRole('region', {
       name: 'Failure alerts',
     });

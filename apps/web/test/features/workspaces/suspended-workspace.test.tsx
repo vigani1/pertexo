@@ -3,7 +3,7 @@ import { HttpResponse, http } from 'msw';
 import { describe, expect, it } from 'vitest';
 import { createWorkspaceFixture } from '../../support/fixtures/identity';
 import { mockServer } from '../../support/mock-server';
-import { renderApp } from '../../support/render-app';
+import { renderLoadedApp } from '../../support/render-app';
 import { user, workspaceId } from './general/fixture';
 
 const everything = [
@@ -54,7 +54,7 @@ function suspendedOwner() {
 describe('a suspended workspace', () => {
   it('still shows the owner what they hold, with only the reactivate and delete actions', async () => {
     suspendedOwner();
-    renderApp(`/w/${workspaceId}/settings`);
+    await renderLoadedApp(`/w/${workspaceId}/settings`);
 
     expect(
       await screen.findByRole('button', { name: 'Reactivate workspace' }),
@@ -89,7 +89,7 @@ describe('a suspended workspace', () => {
         }),
       ),
     );
-    renderApp(`/w/${workspaceId}/settings`);
+    await renderLoadedApp(`/w/${workspaceId}/settings`);
 
     expect(
       await screen.findByText(/An owner can reactivate it\./u),
@@ -106,7 +106,7 @@ describe('a suspended workspace', () => {
         HttpResponse.json({ items: [], nextCursor: null }),
       ),
     );
-    renderApp(`/w/${workspaceId}/workflows`);
+    await renderLoadedApp(`/w/${workspaceId}/workflows`);
 
     await waitFor(() => {
       expect(requests).toContain(`GET /v1/workspaces/${workspaceId}/workflows`);
@@ -125,7 +125,7 @@ describe('a suspended workspace', () => {
         HttpResponse.json({ items: [], nextCursor: null }),
       ),
     );
-    renderApp(`/w/${workspaceId}/connections`);
+    await renderLoadedApp(`/w/${workspaceId}/connections`);
 
     expect(
       await screen.findByRole('heading', { name: 'Connections' }),
@@ -148,7 +148,7 @@ describe('a suspended workspace', () => {
         HttpResponse.json({ items: [], nextCursor: null }),
       ),
     );
-    renderApp(`/w/${workspaceId}/settings/alerts`);
+    await renderLoadedApp(`/w/${workspaceId}/settings/alerts`);
 
     await waitFor(() => {
       expect(requests).toContain(

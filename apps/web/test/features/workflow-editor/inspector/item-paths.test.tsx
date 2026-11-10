@@ -17,7 +17,7 @@ import {
   setDefinition,
 } from '../../../support/fixtures/workflow-editor';
 import { mockServer } from '../../../support/mock-server';
-import { renderApp } from '../../../support/render-app';
+import { renderLoadedApp } from '../../../support/render-app';
 
 describe('item paths', () => {
   it('stores a typed field name as the path it means', () => {
@@ -115,7 +115,7 @@ describe('a path setting in Setup', { timeout: 30_000 }, () => {
         { graph: sortGraph(), definitions: [sortDefinition] },
       ),
     );
-    renderApp(editorPath);
+    await renderLoadedApp(editorPath);
     const event = userEvent.setup();
     fireEvent.click((await findCanvas()).getByText('Sort orders'));
     const field = await screen.findByLabelText('Sort by');

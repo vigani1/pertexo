@@ -32,7 +32,7 @@ import {
   workspaceId,
 } from '../../support/fixtures/workflow-editor';
 import { mockServer } from '../../support/mock-server';
-import { renderApp } from '../../support/render-app';
+import { renderLoadedApp } from '../../support/render-app';
 
 // The lazy editor route and React Flow are slow to start on a busy machine.
 
@@ -57,7 +57,7 @@ describe('workflow editor uncertain commands', { timeout: 30_000 }, () => {
       }),
       ...runDetailHandlers(),
     );
-    const app = renderApp(editorPath, { strict: true });
+    const app = await renderLoadedApp(editorPath, { strict: true });
     const event = userEvent.setup();
     await findCanvas();
     await openRunLens(event);
@@ -164,7 +164,7 @@ describe('workflow editor uncertain commands', { timeout: 30_000 }, () => {
         });
       }),
     );
-    renderApp(editorPath, { strict: true });
+    await renderLoadedApp(editorPath, { strict: true });
     const event = userEvent.setup();
     await findCanvas();
     await event.click(screen.getByRole('button', { name: 'Publish v1' }));
@@ -230,7 +230,7 @@ describe(
         }),
         ...runDetailHandlers(),
       );
-      const app = renderApp(editorPath, { strict: true });
+      const app = await renderLoadedApp(editorPath, { strict: true });
       const event = userEvent.setup();
       await findCanvas();
       await openRunLens(event);
@@ -308,7 +308,7 @@ describe(
           return accepted.promise;
         }),
       );
-      const app = renderApp(editorPath, { strict: true });
+      const app = await renderLoadedApp(editorPath, { strict: true });
       const event = userEvent.setup();
       await findCanvas();
       await event.click(screen.getByRole('button', { name: 'Publish v1' }));

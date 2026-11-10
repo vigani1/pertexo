@@ -11,7 +11,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { mockServer } from '../../../support/mock-server';
 
-import { renderApp } from '../../../support/render-app';
+import { renderLoadedApp } from '../../../support/render-app';
 
 import {
   componentApiClient,
@@ -105,7 +105,9 @@ describe('invitation acceptance', () => {
       }),
     );
     const token = `wi1.${workspaceId}.${intentId}.${'a'.repeat(43)}`;
-    const { router } = renderApp('/invitations/accept', { strict: true });
+    const { router } = await renderLoadedApp('/invitations/accept', {
+      strict: true,
+    });
     expect(
       await screen.findByRole('button', { name: 'Sign in' }),
     ).toBeVisible();
@@ -157,7 +159,7 @@ describe('invitation acceptance', () => {
       ),
     );
     const browser = userEvent.setup();
-    const { router } = renderApp(
+    const { router } = await renderLoadedApp(
       `/invitations/accept#token=${encodeURIComponent(tokenA)}`,
       { strict: true },
     );
@@ -235,7 +237,9 @@ describe('invitation acceptance', () => {
       ),
     );
     const browser = userEvent.setup();
-    const { router } = renderApp('/invitations/accept', { strict: true });
+    const { router } = await renderLoadedApp('/invitations/accept', {
+      strict: true,
+    });
     await browser.click(
       await screen.findByRole('button', { name: 'Open workspace' }),
     );

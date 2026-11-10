@@ -31,7 +31,7 @@ import {
 
 import { mockServer } from '../../support/mock-server';
 
-import { renderApp } from '../../support/render-app';
+import { renderLoadedApp } from '../../support/render-app';
 
 import {
   conditionDefinition,
@@ -181,7 +181,7 @@ describe('quick add in the editor', { timeout: 30_000 }, () => {
         { graph, definitions: [manualDefinition, mappingDefinition] },
       ),
     );
-    renderApp(editorPath);
+    await renderLoadedApp(editorPath);
     const event = userEvent.setup();
     const canvas = await findCanvas();
     fireEvent.click(canvas.getByText('Target'));
@@ -265,7 +265,7 @@ describe('quick add in the editor', { timeout: 30_000 }, () => {
         },
       ),
     );
-    renderApp(editorPath);
+    await renderLoadedApp(editorPath);
     const event = userEvent.setup();
     fireEvent.click((await findCanvas()).getByText('Over 5,000?'));
     const menu = screen.getByRole('button', { name: 'Step actions' });

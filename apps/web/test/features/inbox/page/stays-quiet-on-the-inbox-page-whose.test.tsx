@@ -2,7 +2,7 @@ import { screen, waitFor } from '@testing-library/react';
 
 import { describe, expect, it } from 'vitest';
 
-import { renderApp } from '../../../support/render-app';
+import { renderLoadedApp } from '../../../support/render-app';
 
 import { importId, inboxApi, thread, workspaceId } from './fixture';
 
@@ -10,7 +10,7 @@ describe('new failure notice', () => {
   it('stays quiet on the inbox page, whose list shows the failure', async () => {
     const state = { threads: [] as ReturnType<typeof thread>[], revision: '7' };
     const { stream, unreadLists } = inboxApi(state);
-    const { queryClient } = renderApp(`/w/${workspaceId}/inbox`);
+    const { queryClient } = await renderLoadedApp(`/w/${workspaceId}/inbox`);
 
     await screen.findByRole('heading', { name: 'Inbox' });
     state.threads = [thread(importId, { revision: '8' })];

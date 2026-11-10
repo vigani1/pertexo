@@ -28,7 +28,7 @@ import {
 
 import { mockServer } from '../../../support/mock-server';
 
-import { renderApp } from '../../../support/render-app';
+import { renderLoadedApp } from '../../../support/render-app';
 
 import { conditionDefinition, graph } from './fixture';
 
@@ -46,7 +46,7 @@ describe('palette placement after selection', { timeout: 30_000 }, () => {
         },
       ),
     );
-    renderApp(editorPath);
+    await renderLoadedApp(editorPath);
     const event = userEvent.setup();
     const canvas = await findCanvas();
     fireEvent.click(canvas.getByText('Target'));
@@ -82,7 +82,7 @@ describe('palette placement after selection', { timeout: 30_000 }, () => {
         },
       ),
     );
-    renderApp(editorPath);
+    await renderLoadedApp(editorPath);
     const event = userEvent.setup();
     fireEvent.click((await findCanvas()).getByText('Reserve item'));
     await event.click(addStepButton(/Set fields/u));
@@ -167,7 +167,7 @@ describe('palette placement after selection', { timeout: 30_000 }, () => {
         { graph: branching, definitions: [parallel, mappingDefinition] },
       ),
     );
-    renderApp(editorPath);
+    await renderLoadedApp(editorPath);
     const event = userEvent.setup();
     fireEvent.click((await findCanvas()).getByText('Branches'));
     await event.click(addStepButton(/Set fields/u));
@@ -190,7 +190,7 @@ describe('palette placement after selection', { timeout: 30_000 }, () => {
         { graph, definitions: [manualDefinition, mappingDefinition] },
       ),
     );
-    renderApp(editorPath);
+    await renderLoadedApp(editorPath);
     const event = userEvent.setup();
     fireEvent.click((await findCanvas()).getByText('Target'));
     await event.click(addStepButton(/Manual start/u));

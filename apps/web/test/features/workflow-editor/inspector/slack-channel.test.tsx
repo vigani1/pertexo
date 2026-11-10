@@ -25,7 +25,7 @@ import {
   workspaceId,
 } from '../../../support/fixtures/workflow-editor';
 import { mockServer } from '../../../support/mock-server';
-import { renderApp } from '../../../support/render-app';
+import { renderLoadedApp } from '../../../support/render-app';
 
 type InputMappings = WorkflowGraphContract['nodes'][number]['inputMappings'];
 
@@ -99,7 +99,7 @@ async function openSlackStep(
       lookups,
     ),
   );
-  renderApp(editorPath);
+  await renderLoadedApp(editorPath);
   fireEvent.click((await findCanvas()).getByText('Tell ops'));
   const field = await screen.findByLabelText('Channel ID');
   return { field, saved, lookups, event: userEvent.setup() };
@@ -296,7 +296,7 @@ describe('the Slack step’s channel in Setup', { timeout: 30_000 }, () => {
     );
     // A local API without connection encryption has no connection routes.
     mockServer.use(http.get(`${workspaceApi}/connections`, notFoundProblem));
-    renderApp(editorPath);
+    await renderLoadedApp(editorPath);
     fireEvent.click((await findCanvas()).getByText('Tell ops'));
 
     expect(await screen.findByLabelText('Slack connection')).toBeVisible();
@@ -318,7 +318,7 @@ describe('the Slack step’s channel in Setup', { timeout: 30_000 }, () => {
         definitions: [slackDefinition],
       }),
     );
-    renderApp(editorPath);
+    await renderLoadedApp(editorPath);
     fireEvent.click((await findCanvas()).getByText('Tell ops'));
     const setup = await screen.findByRole('tabpanel', { name: 'Setup' });
     expect(

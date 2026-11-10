@@ -11,7 +11,7 @@ import {
   editorPath,
 } from '../../../support/fixtures/workflow-editor';
 import { mockServer } from '../../../support/mock-server';
-import { renderApp } from '../../../support/render-app';
+import { renderLoadedApp } from '../../../support/render-app';
 export const definitions = [forEachDefinition, bodyStepDefinition];
 
 export async function openEditor(
@@ -30,7 +30,7 @@ export async function openEditor(
       { graph, definitions, ...options },
     ),
   );
-  renderApp(editorPath, options);
+  await renderLoadedApp(editorPath, options);
   const canvas = await findCanvas();
   return { canvas, saved, event: userEvent.setup() };
 }

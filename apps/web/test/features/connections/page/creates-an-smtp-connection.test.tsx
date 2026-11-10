@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { HttpResponse, http } from 'msw';
 import { expect, it } from 'vitest';
 import { mockServer } from '../../../support/mock-server';
-import { renderApp } from '../../../support/render-app';
+import { renderLoadedApp } from '../../../support/render-app';
 import {
   base,
   connection,
@@ -34,7 +34,7 @@ it('configures SMTP, warns about plaintext and tests without requesting a real e
       return testedOk(saved);
     }),
   );
-  renderApp(`/w/${workspaceId}/connections?add=any`);
+  await renderLoadedApp(`/w/${workspaceId}/connections?add=any`);
   const user = userEvent.setup();
   await screen.findByRole('dialog', { name: 'Add a connection' });
   await user.click(

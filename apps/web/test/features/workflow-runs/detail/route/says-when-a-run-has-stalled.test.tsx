@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 
 import { coldStart, fixtureRun } from '../../../../support/fixtures/run';
 
-import { renderApp } from '../../../../support/render-app';
+import { renderLoadedApp } from '../../../../support/render-app';
 
 import { installRun, node, runId, secondsAgo, workspaceId } from './fixture';
 
@@ -20,7 +20,7 @@ describe('run page', () => {
       }),
       nodes: [node('running')],
     });
-    renderApp(runPage);
+    await renderLoadedApp(runPage);
     expect(
       await screen.findByText(STALLED_WORDING, {}, coldStart),
     ).toBeVisible();
@@ -31,7 +31,7 @@ describe('run page', () => {
       run: fixtureRun(runId, 'running'),
       nodes: [node('running')],
     });
-    renderApp(runPage);
+    await renderLoadedApp(runPage);
     await screen.findAllByText('Running', {}, coldStart);
     expect(screen.queryByText(STALLED_WORDING)).toBeNull();
   });

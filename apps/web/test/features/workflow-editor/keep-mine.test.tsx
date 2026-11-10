@@ -22,7 +22,7 @@ import {
 } from '../../support/fixtures/workflow-editor';
 import { graphWithMappingNodes } from '../../support/fixtures/editor-graph';
 import { mockServer } from '../../support/mock-server';
-import { renderApp } from '../../support/render-app';
+import { renderLoadedApp } from '../../support/render-app';
 
 /** Someone else really saved revision 3, holding `theirs`, so the first save is refused. */
 function installRealConflict(theirs: WorkflowGraphContract) {
@@ -74,7 +74,7 @@ function installRealConflict(theirs: WorkflowGraphContract) {
 }
 
 async function reachConflict() {
-  renderApp(editorPath);
+  await renderLoadedApp(editorPath);
   const event = userEvent.setup();
   await findCanvas();
   await event.click(addStepButton(/Set fields/u));

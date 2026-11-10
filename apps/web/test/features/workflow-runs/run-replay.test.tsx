@@ -4,7 +4,7 @@ import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { mockServer } from '../../support/mock-server';
-import { renderApp } from '../../support/render-app';
+import { renderLoadedApp } from '../../support/render-app';
 import { workflowRunKeys } from '@/features/workflow-runs/workflow-runs-queries.public';
 import {
   apiBase,
@@ -78,7 +78,7 @@ async function openReplay() {
 describe('run replay', () => {
   it('ties replay validation to the input and focuses it', async () => {
     installRunHandlers();
-    renderApp(`/w/${workspaceId}/runs/${sourceRunId}`);
+    await renderLoadedApp(`/w/${workspaceId}/runs/${sourceRunId}`);
     const dialog = await openReplay();
     const input = within(dialog).getByLabelText('Replay input (JSON)');
     fireEvent.change(input, { target: { value: '{' } });
@@ -97,7 +97,7 @@ describe('run replay', () => {
       kind: 'inline',
       value: { orderId: 'A-17', rush: true },
     });
-    renderApp(`/w/${workspaceId}/runs/${sourceRunId}`);
+    await renderLoadedApp(`/w/${workspaceId}/runs/${sourceRunId}`);
     const dialog = await openReplay();
     await waitFor(() => {
       expect(within(dialog).getByLabelText('Replay input (JSON)')).toHaveValue(
@@ -109,7 +109,7 @@ describe('run replay', () => {
 
   it('asks for input when the run’s own is past its 30 days', async () => {
     installRunHandlers(operator, { kind: 'expired' });
-    renderApp(`/w/${workspaceId}/runs/${sourceRunId}`);
+    await renderLoadedApp(`/w/${workspaceId}/runs/${sourceRunId}`);
     const dialog = await openReplay();
     await waitFor(() => {
       expect(dialog).toHaveAccessibleDescription(/no longer kept/u);
@@ -138,9 +138,12 @@ describe('run replay', () => {
       ),
     );
 
-    const { router } = renderApp(`/w/${workspaceId}/runs/${sourceRunId}`, {
-      strict: true,
-    });
+    const { router } = await renderLoadedApp(
+      `/w/${workspaceId}/runs/${sourceRunId}`,
+      {
+        strict: true,
+      },
+    );
     const dialog = await openReplay();
     const event = userEvent.setup();
     const input = within(dialog).getByLabelText('Replay input (JSON)');
@@ -191,7 +194,7 @@ describe('run replay', () => {
       }),
     );
 
-    const { queryClient, router } = renderApp(
+    const { queryClient, router } = await renderLoadedApp(
       `/w/${workspaceId}/runs/${sourceRunId}`,
     );
     const sample = { count: 0, more: false, runs: [] };
@@ -222,7 +225,7 @@ describe('run replay', () => {
 
   it('does not offer replay without its own capability', async () => {
     installRunHandlers(['workspace:read', 'run:read']);
-    renderApp(`/w/${workspaceId}/runs/${sourceRunId}`);
+    await renderLoadedApp(`/w/${workspaceId}/runs/${sourceRunId}`);
     expect(
       await screen.findByRole(
         'heading',
@@ -251,7 +254,7 @@ it('shows a captured Form response as read-only and links new input to the publi
       }),
     ),
   );
-  renderApp(`/w/${workspaceId}/runs/${sourceRunId}`);
+  await renderLoadedApp(`/w/${workspaceId}/runs/${sourceRunId}`);
   const dialog = await openReplay();
   const input = within(dialog).getByLabelText('Replay input (JSON)');
   await waitFor(() =>
@@ -272,7 +275,7 @@ it('blocks replay of an expired Form response rather than letting someone invent
       }),
     ),
   );
-  renderApp(`/w/${workspaceId}/runs/${sourceRunId}`);
+  await renderLoadedApp(`/w/${workspaceId}/runs/${sourceRunId}`);
   const dialog = await openReplay();
   expect(
     within(dialog).getByRole('button', { name: 'Replay run' }),
@@ -301,7 +304,7 @@ it('describes a concurrency refusal without claiming a replay conflict', async (
       ),
     ),
   );
-  renderApp(`/w/${workspaceId}/runs/${sourceRunId}`);
+  await renderLoadedApp(`/w/${workspaceId}/runs/${sourceRunId}`);
   const dialog = await openReplay();
   await userEvent
     .setup()

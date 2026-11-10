@@ -24,7 +24,7 @@ import {
 
 import { mockServer } from '../../../support/mock-server';
 
-import { renderApp } from '../../../support/render-app';
+import { renderLoadedApp } from '../../../support/render-app';
 
 import { confirmation, invitation, invitationId, pickRole } from './fixture';
 
@@ -64,7 +64,7 @@ describe('team: invitations', () => {
       ),
     );
     const browser = userEvent.setup();
-    renderApp(`/w/${workspaceId}/team?tab=invitations`);
+    await renderLoadedApp(`/w/${workspaceId}/team?tab=invitations`);
     await browser.click(
       await screen.findByRole('button', {
         name: 'Actions for first.invite@example.test',
@@ -122,7 +122,7 @@ describe('team: members', () => {
       }),
     );
 
-    renderApp(`/w/${workspaceId}/team`, { strict: true });
+    await renderLoadedApp(`/w/${workspaceId}/team`, { strict: true });
     expect(
       await screen.findByText(
         'A member with a display name long enough to need truncation in narrow layouts',
@@ -168,7 +168,7 @@ describe('team: members', () => {
         return HttpResponse.json({ items: [], nextCursor: null });
       }),
     );
-    renderApp(`/w/${workspaceId}/team`);
+    await renderLoadedApp(`/w/${workspaceId}/team`);
     expect(
       await screen.findByRole('heading', {
         name: 'Workspace members are unavailable',
@@ -181,7 +181,7 @@ describe('team: members', () => {
       ...identityHandlers(),
       http.get(`${api}/members`, () => HttpResponse.error()),
     );
-    renderApp(`/w/${workspaceId}/team`);
+    await renderLoadedApp(`/w/${workspaceId}/team`);
     expect(
       await screen.findByRole('heading', {
         name: 'Members couldn’t be loaded',
@@ -196,7 +196,7 @@ describe('team: members', () => {
       ...identityHandlers(),
       membersOf(() => []),
     );
-    renderApp(`/w/${workspaceId}/team`);
+    await renderLoadedApp(`/w/${workspaceId}/team`);
     expect(
       await screen.findByRole('heading', { name: 'No members to show' }),
     ).toBeVisible();
@@ -216,7 +216,7 @@ describe('team: members', () => {
           : HttpResponse.error(),
       ),
     );
-    renderApp(`/w/${workspaceId}/team`);
+    await renderLoadedApp(`/w/${workspaceId}/team`);
     expect(await screen.findByText('Ada Operator')).toBeVisible();
     await userEvent
       .setup()
@@ -239,7 +239,7 @@ describe('team: members', () => {
             }),
       ),
     );
-    const { queryClient } = renderApp(`/w/${workspaceId}/team`);
+    const { queryClient } = await renderLoadedApp(`/w/${workspaceId}/team`);
     expect(await screen.findByText('Ada Operator')).toBeVisible();
     fail = true;
     await queryClient.refetchQueries({
@@ -270,7 +270,7 @@ describe('team: members', () => {
             }),
       ),
     );
-    const { queryClient } = renderApp(`/w/${workspaceId}/team`);
+    const { queryClient } = await renderLoadedApp(`/w/${workspaceId}/team`);
     expect(await screen.findByText('Ada Operator')).toBeVisible();
     denied = true;
     await queryClient.refetchQueries({
@@ -295,7 +295,7 @@ describe('team: members', () => {
             }),
       ),
     );
-    const { queryClient } = renderApp(`/w/${workspaceId}/team`);
+    const { queryClient } = await renderLoadedApp(`/w/${workspaceId}/team`);
     await pickRole(userEvent.setup(), 'Alice Member', 'Operator');
     expect(confirmation()).toHaveTextContent('Alice Member');
 

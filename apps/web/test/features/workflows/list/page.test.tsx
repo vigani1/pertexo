@@ -8,11 +8,11 @@ import { describe, expect, it } from 'vitest';
 
 import { createUserFixture } from '../../../support/fixtures/identity';
 
-import { coldStart, statisticsHandler } from '../../../support/fixtures/run';
+import { statisticsHandler } from '../../../support/fixtures/run';
 
 import { mockServer } from '../../../support/mock-server';
 
-import { expectSignInPage, renderApp } from '../../../support/render-app';
+import { expectSignInPage, renderLoadedApp } from '../../../support/render-app';
 
 import {
   api,
@@ -51,7 +51,7 @@ describe('workflow list', () => {
       http.get(`${api}/workflows`, () => problem(401, 'auth.unauthenticated')),
       ...discoveryHandlers(),
     );
-    renderApp(`/w/${workspaceId}/workflows`);
+    await renderLoadedApp(`/w/${workspaceId}/workflows`);
     await expectSignInPage();
   });
   it('shows webhook setup from the summary without reading trigger credentials', async () => {
@@ -69,10 +69,8 @@ describe('workflow list', () => {
         nextCursor: null,
       })),
     );
-    renderApp(`/w/${workspaceId}/workflows`);
-    expect(
-      await screen.findByText('Trigger needs setup', {}, coldStart),
-    ).toBeVisible();
+    await renderLoadedApp(`/w/${workspaceId}/workflows`);
+    expect(await screen.findByText('Trigger needs setup')).toBeVisible();
     expect(
       screen.queryByText('Starting', { exact: true }),
     ).not.toBeInTheDocument();
@@ -100,7 +98,7 @@ describe('workflow list', () => {
         );
       }),
     );
-    renderApp(`/w/${workspaceId}/workflows`);
+    await renderLoadedApp(`/w/${workspaceId}/workflows`);
     expect(await screen.findByText('Daily intake')).toBeVisible();
     expect(
       screen.getByRole('heading', { name: 'Workflows' }).closest('header'),
@@ -123,7 +121,7 @@ describe('workflow list', () => {
         nextCursor: null,
       })),
     );
-    renderApp(`/w/${workspaceId}/workflows`);
+    await renderLoadedApp(`/w/${workspaceId}/workflows`);
     expect(await screen.findByText('Daily intake')).toBeVisible();
     await userEvent
       .setup()
@@ -159,7 +157,7 @@ describe('workflow list', () => {
         );
       }),
     );
-    renderApp(`/w/${workspaceId}/workflows`);
+    await renderLoadedApp(`/w/${workspaceId}/workflows`);
     const event = userEvent.setup();
     expect(await screen.findByText('Daily intake')).toBeVisible();
     await event.click(screen.getByRole('button', { name: 'Load more' }));
@@ -218,12 +216,8 @@ describe('workflow list', () => {
         nextCursor: null,
       })),
     );
-    renderApp(`/w/${workspaceId}/workflows`);
-    const list = await screen.findByRole(
-      'list',
-      { name: 'Workflows' },
-      coldStart,
-    );
+    await renderLoadedApp(`/w/${workspaceId}/workflows`);
+    const list = await screen.findByRole('list', { name: 'Workflows' });
     const invoice = within(list).getByText('Invoice intake').closest('li');
     if (invoice === null) throw new Error('Expected the invoice row');
     expect(
@@ -328,7 +322,7 @@ describe('workflow list', () => {
         });
       }),
     );
-    renderApp(`/w/${workspaceId}/workflows`);
+    await renderLoadedApp(`/w/${workspaceId}/workflows`);
     expect(
       await screen.findByRole('img', {
         name: 'Recent runs: 2 succeeded, 1 failed',
@@ -352,7 +346,7 @@ describe('workflow list', () => {
         HttpResponse.json({ items: [], nextCursor: null }),
       ),
     );
-    renderApp(`/w/${workspaceId}/workflows`);
+    await renderLoadedApp(`/w/${workspaceId}/workflows`);
     expect(await screen.findByText('No runs yet')).toBeInTheDocument();
   });
 });

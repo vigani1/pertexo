@@ -7,7 +7,7 @@ import userEvent from '@testing-library/user-event';
 import { HttpResponse, http } from 'msw';
 import { expect, it } from 'vitest';
 import { mockServer } from '../../../support/mock-server';
-import { renderApp } from '../../../support/render-app';
+import { renderLoadedApp } from '../../../support/render-app';
 import { reference, removeOff, serveUsage, usagePage } from './check.support';
 
 const userId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
@@ -54,7 +54,7 @@ it('takes a manager from Remove through the finished check to a name gone from t
     first: [usagePage({ next: 'c1' })],
     c1: [usagePage({ items: [reference('Invoice export')] })],
   });
-  renderApp(`/w/${workspaceId}/settings/variables`);
+  await renderLoadedApp(`/w/${workspaceId}/settings/variables`);
   const event = userEvent.setup();
 
   const row = await screen.findByRole(

@@ -15,7 +15,7 @@ import {
   workspaceId,
 } from '../../../support/fixtures/workflow-editor';
 import { mockServer } from '../../../support/mock-server';
-import { renderApp } from '../../../support/render-app';
+import { renderLoadedApp } from '../../../support/render-app';
 
 const childId = '11111111-1111-4111-8111-111111111111';
 const firstId = '22222222-2222-4222-8222-222222222222';
@@ -125,7 +125,7 @@ async function open(capabilities?: readonly string[], paginated = false) {
       },
     ),
   );
-  renderApp(editorPath, { strict: true });
+  await renderLoadedApp(editorPath, { strict: true });
   fireEvent.click((await findCanvas()).getByText('Reuse customer'));
   await screen.findByRole('button', { name: 'Upgrade to version 2' });
   return { read: () => saved, versionReads, user: userEvent.setup() };

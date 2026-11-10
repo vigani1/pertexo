@@ -4,7 +4,7 @@ import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { mockServer } from '../../support/mock-server';
-import { renderApp } from '../../support/render-app';
+import { renderLoadedApp } from '../../support/render-app';
 import * as team from '../../support/fixtures/team';
 
 const workspaceName = team.ownerWorkspace.name;
@@ -61,7 +61,7 @@ describe('team: suspension and reactivation', () => {
       }),
     );
     const actor = userEvent.setup();
-    renderApp(`/w/${team.workspaceId}/team`, { strict: true });
+    await renderLoadedApp(`/w/${team.workspaceId}/team`, { strict: true });
 
     await actor.click(
       await screen.findByRole('button', { name: 'Actions for Ada Lovelace' }),
@@ -115,7 +115,7 @@ describe('team: suspension and reactivation', () => {
       ),
     );
     const actor = userEvent.setup();
-    renderApp(`/w/${team.workspaceId}/team`);
+    await renderLoadedApp(`/w/${team.workspaceId}/team`);
 
     const dialog = await openAction(actor, 'Ada Lovelace', 'Reactivate…');
     expect(dialog.getByText(/back as a Viewer/u)).toBeVisible();
@@ -148,7 +148,7 @@ describe('team: suspension and reactivation', () => {
       team.noInvitations(),
     );
     const actor = userEvent.setup();
-    renderApp(`/w/${team.workspaceId}/team`);
+    await renderLoadedApp(`/w/${team.workspaceId}/team`);
 
     await actor.click(
       await screen.findByRole('button', { name: 'Actions for Viewer Person' }),
@@ -177,7 +177,7 @@ describe('team: suspension and reactivation', () => {
       ),
     );
     const actor = userEvent.setup();
-    renderApp(`/w/${team.workspaceId}/team`);
+    await renderLoadedApp(`/w/${team.workspaceId}/team`);
 
     const dialog = await openAction(actor, 'Ada Lovelace', 'Suspend…');
     await actor.click(dialog.getByRole('button', { name: 'Suspend member' }));
@@ -214,7 +214,7 @@ describe('team: ownership transfer', () => {
       ),
     );
     const actor = userEvent.setup();
-    renderApp(`/w/${team.workspaceId}/team`);
+    await renderLoadedApp(`/w/${team.workspaceId}/team`);
 
     const dialog = await openAction(actor, 'Ada Lovelace', 'Make owner…');
     expect(
@@ -264,7 +264,7 @@ describe('team: ownership transfer', () => {
       ),
     );
     const actor = userEvent.setup();
-    renderApp(`/w/${team.workspaceId}/team`);
+    await renderLoadedApp(`/w/${team.workspaceId}/team`);
 
     const dialog = await openAction(actor, 'Ada Lovelace', 'Make owner…');
     await actor.click(dialog.getByRole('button', { name: 'Make owner' }));

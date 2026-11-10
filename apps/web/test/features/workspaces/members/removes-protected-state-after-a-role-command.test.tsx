@@ -25,7 +25,7 @@ import {
 
 import { mockServer } from '../../../support/mock-server';
 
-import { renderApp } from '../../../support/render-app';
+import { renderLoadedApp } from '../../../support/render-app';
 
 import { confirmation, pickRole } from './fixture';
 
@@ -42,7 +42,7 @@ describe('team: members', () => {
       }),
     );
     const browser = userEvent.setup();
-    renderApp(`/w/${workspaceId}/team`, { strict: true });
+    await renderLoadedApp(`/w/${workspaceId}/team`, { strict: true });
     await pickRole(browser, 'Alice Member', 'Operator');
     await browser.click(screen.getByRole('button', { name: 'Change role' }));
     expect(
@@ -77,7 +77,7 @@ describe('team: members', () => {
       }),
     );
 
-    renderApp(`/w/${workspaceId}/team`, { strict: true });
+    await renderLoadedApp(`/w/${workspaceId}/team`, { strict: true });
     const browser = userEvent.setup();
     await pickRole(browser, 'Ada Operator', 'Operator');
     expect(confirmation()).toHaveTextContent('signed out everywhere');
@@ -130,7 +130,7 @@ describe('team: members', () => {
       ),
     );
 
-    renderApp(`/w/${workspaceId}/team`, { strict: true });
+    await renderLoadedApp(`/w/${workspaceId}/team`, { strict: true });
     const browser = userEvent.setup();
     await pickRole(browser, 'Alice Member', 'Operator');
     await browser.click(screen.getByRole('button', { name: 'Change role' }));
@@ -205,7 +205,7 @@ describe('team: members', () => {
         }),
       ),
     );
-    renderApp(`/w/${workspaceId}/team`);
+    await renderLoadedApp(`/w/${workspaceId}/team`);
     const browser = userEvent.setup();
     await pickRole(browser, 'Alice Member', 'Operator');
     await browser.click(screen.getByRole('button', { name: 'Change role' }));
@@ -259,7 +259,9 @@ describe('team: members', () => {
         });
       }),
     );
-    const { router } = renderApp(`/w/${workspaceId}/team`, { strict: true });
+    const { router } = await renderLoadedApp(`/w/${workspaceId}/team`, {
+      strict: true,
+    });
     const browser = userEvent.setup();
     await pickRole(browser, 'Alice Member', 'Operator');
     await browser.click(screen.getByRole('button', { name: 'Change role' }));
@@ -297,7 +299,7 @@ describe('team: members', () => {
         member(secondMemberId, 'Another Admin', 'admin'),
       ]),
     );
-    renderApp(`/w/${workspaceId}/team`);
+    await renderLoadedApp(`/w/${workspaceId}/team`);
     await screen.findByText('Another Admin');
     expect(
       screen.queryByRole('combobox', { name: /^Role for/u }),

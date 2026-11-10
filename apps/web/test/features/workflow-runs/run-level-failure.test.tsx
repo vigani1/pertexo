@@ -2,7 +2,7 @@ import { screen, within } from '@testing-library/react';
 import { HttpResponse, http } from 'msw';
 import { expect, it } from 'vitest';
 import { mockServer } from '../../support/mock-server';
-import { renderApp } from '../../support/render-app';
+import { renderLoadedApp } from '../../support/render-app';
 import { fixtureRun, apiBase } from '../../support/fixtures/run';
 import { installRun, runId, workspaceId } from './detail/route/fixture';
 
@@ -18,7 +18,7 @@ it('explains a run-level failure and why saved-result recovery is unavailable wi
       HttpResponse.json({ kind: 'refused', reason: 'evidence_unavailable' }),
     ),
   );
-  renderApp(`/w/${workspaceId}/runs/${runId}`);
+  await renderLoadedApp(`/w/${workspaceId}/runs/${runId}`);
   expect(
     await screen.findByText(/saved execution state is invalid/i),
   ).toBeVisible();
@@ -46,7 +46,7 @@ it('explains a run-level result failure in the history list without a failed-ste
       }),
     ),
   );
-  renderApp(`/w/${workspaceId}/runs`);
+  await renderLoadedApp(`/w/${workspaceId}/runs`);
   expect(
     await screen.findByText(/result does not match its declared result type/i),
   ).toBeVisible();

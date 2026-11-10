@@ -16,7 +16,7 @@ import {
 
 import { mockServer } from '../../../../support/mock-server';
 
-import { renderApp } from '../../../../support/render-app';
+import { renderLoadedApp } from '../../../../support/render-app';
 
 import { previewHandler, scheduleDefinition, scheduleGraph } from './fixture';
 
@@ -36,7 +36,7 @@ describe('schedule builder in Setup', { timeout: 30_000 }, () => {
       workflowSummaryHandler('Nightly schedule', null),
       previewHandler(sent),
     );
-    renderApp(editorPath);
+    await renderLoadedApp(editorPath);
     const event = userEvent.setup();
     fireEvent.click((await findCanvas()).getByText('Nightly'));
     const preview = await screen.findByRole('region', { name: 'When it runs' });

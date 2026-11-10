@@ -18,7 +18,7 @@ import {
 
 import { mockServer } from '../../../support/mock-server';
 
-import { renderApp } from '../../../support/render-app';
+import { renderLoadedApp } from '../../../support/render-app';
 
 import {
   chooseOption,
@@ -54,7 +54,9 @@ describe('workspace runs', () => {
         HttpResponse.json({ items: [], nextCursor: null }),
       ),
     );
-    const { router } = renderApp(`/w/${workspaceId}/runs`, { strict: true });
+    const { router } = await renderLoadedApp(`/w/${workspaceId}/runs`, {
+      strict: true,
+    });
     expect(
       await screen.findByRole(
         'button',
@@ -95,7 +97,7 @@ describe('workspace runs', () => {
       ),
       ...historyReads(requests),
     );
-    renderApp(`/w/${workspaceId}/runs`);
+    await renderLoadedApp(`/w/${workspaceId}/runs`);
     const header = within(
       (
         await screen.findByRole(
@@ -118,7 +120,7 @@ describe('workspace runs', () => {
       ...workflowReads(),
       ...historyReads(requests),
     );
-    const { router } = renderApp(`/w/${workspaceId}/runs`);
+    const { router } = await renderLoadedApp(`/w/${workspaceId}/runs`);
     const event = userEvent.setup();
     await screen.findByRole('heading', { level: 1, name: 'Runs' }, coldStart);
 
@@ -182,7 +184,7 @@ describe('workspace runs', () => {
       ...workflowReads(),
       ...historyReads(requests),
     );
-    const { router } = renderApp(`/w/${workspaceId}/runs`);
+    const { router } = await renderLoadedApp(`/w/${workspaceId}/runs`);
     const event = userEvent.setup();
     await event.click(
       await screen.findByRole('button', { name: 'Load more' }, coldStart),
@@ -224,7 +226,7 @@ describe('workspace runs', () => {
       ...workflowReads(),
       ...historyReads(requests),
     );
-    renderApp(
+    await renderLoadedApp(
       `/w/${workspaceId}/runs?status=sideways&createdAtFrom=yesterday&workflowId=nope&unknown=1&trigger=webhook`,
     );
     expect(
@@ -250,7 +252,7 @@ describe('workspace runs', () => {
         HttpResponse.json({ items: [], nextCursor: null }),
       ),
     );
-    const { router } = renderApp(
+    const { router } = await renderLoadedApp(
       `/w/${workspaceId}/runs?workflowNamePrefix=${longPrefix}&workflowId=${workflowId}`,
     );
     const chip = await screen.findByRole(
@@ -290,7 +292,7 @@ describe('workspace runs', () => {
           : HttpResponse.error(),
       ),
     );
-    const { queryClient } = renderApp(`/w/${workspaceId}/runs`);
+    const { queryClient } = await renderLoadedApp(`/w/${workspaceId}/runs`);
     const row = await screen.findByRole(
       'button',
       { name: 'Copy run ID eeee…eeee' },

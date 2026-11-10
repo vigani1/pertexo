@@ -12,7 +12,7 @@ import { problem } from '../../../support/fixtures/team';
 
 import { mockServer } from '../../../support/mock-server';
 
-import { renderApp } from '../../../support/render-app';
+import { renderLoadedApp } from '../../../support/render-app';
 
 import {
   base,
@@ -49,7 +49,7 @@ describe('connections page', () => {
       }),
     );
 
-    renderApp(`/w/${workspaceId}/connections?add=email`);
+    await renderLoadedApp(`/w/${workspaceId}/connections?add=email`);
     const event = userEvent.setup();
     await event.type(
       await screen.findByLabelText('Resend API key'),
@@ -129,7 +129,7 @@ describe('connections page', () => {
       }),
     );
 
-    const { router } = renderApp(`/w/${workspaceId}/connections`, {
+    const { router } = await renderLoadedApp(`/w/${workspaceId}/connections`, {
       strict: true,
     });
     const event = userEvent.setup();
@@ -173,7 +173,7 @@ describe('connections page', () => {
         return HttpResponse.json(current);
       }),
     );
-    const { queryClient } = renderApp(
+    const { queryClient } = await renderLoadedApp(
       `/w/${workspaceId}/connections?connection=${connectionId}`,
     );
     const actor = userEvent.setup();
@@ -243,7 +243,7 @@ describe('connections page', () => {
       }),
     );
 
-    const { queryClient } = renderApp(
+    const { queryClient } = await renderLoadedApp(
       `/w/${workspaceId}/connections?connection=${connectionId}`,
       { strict: true },
     );

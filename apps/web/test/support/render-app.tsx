@@ -2,9 +2,10 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { createMemoryHistory, RouterProvider } from '@tanstack/react-router';
 import { StrictMode } from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
-import { expect } from 'vitest';
+import { afterEach, expect } from 'vitest';
 import { createQueryClient } from '@/app/query-client';
 import { createAppRouter } from '@/app/router';
+import { workflowBuildRoute } from '@/routes/workflow/hub/routes';
 import { createApiClient } from '@/lib/api/client';
 import { NotificationsProvider } from '@/components/ui/toast';
 
@@ -14,11 +15,17 @@ export const testFetch: typeof fetch = (input, init) => {
   return globalThis.fetch(request, init);
 };
 
-export function renderApp(
-  initialPath: string,
-  options: Readonly<{ strict?: boolean }> = {},
-) {
+const clients = new Set<ReturnType<typeof createQueryClient>>();
+
+afterEach(async () => {
+  await Promise.all([...clients].map((client) => client.cancelQueries()));
+  for (const client of clients) client.clear();
+  clients.clear();
+});
+
+function prepareApp(initialPath: string) {
   const queryClient = createQueryClient();
+  clients.add(queryClient);
   const apiClient = createApiClient({
     fetch: testFetch,
     readCsrfToken: () => 'csrf-token-for-component-tests-12345678901234567890',
@@ -32,10 +39,21 @@ export function renderApp(
       </NotificationsProvider>
     </QueryClientProvider>
   );
-  const result = render(
-    options.strict === true ? <StrictMode>{app}</StrictMode> : app,
-  );
-  return { ...result, apiClient, queryClient, router };
+  return {
+    apiClient,
+    queryClient,
+    router,
+    mount: (strict: boolean) =>
+      render(strict ? <StrictMode>{app}</StrictMode> : app),
+  };
+}
+
+export function renderApp(
+  initialPath: string,
+  options: Readonly<{ strict?: boolean }> = {},
+) {
+  const { mount, ...dependencies } = prepareApp(initialPath);
+  return { ...mount(options.strict === true), ...dependencies };
 }
 
 /**
@@ -50,4 +68,20 @@ export async function expectSignInPage() {
       screen.getByRole('heading', { name: 'Sign in to continue' }),
     ).toBeVisible();
   });
+}
+
+/** Loads route guards, data and the lazy page before assertions start. */
+export async function renderLoadedApp(
+  initialPath: string,
+  options: Readonly<{ strict?: boolean }> = {},
+) {
+  const { mount, ...dependencies } = prepareApp(initialPath);
+  await dependencies.router.load();
+  if (
+    dependencies.router.state.matches.some(
+      (match) => match.routeId === workflowBuildRoute.id,
+    )
+  )
+    await import('@/features/workflow-editor/components/inspector/node');
+  return { ...mount(options.strict === true), ...dependencies };
 }

@@ -8,7 +8,7 @@ import { describe, expect, it } from 'vitest';
 
 import { mockServer } from '../../support/mock-server';
 
-import { renderApp } from '../../support/render-app';
+import { renderLoadedApp } from '../../support/render-app';
 
 import {
   base,
@@ -85,7 +85,9 @@ describe('connections page', () => {
         return testedOk(current);
       }),
     );
-    renderApp(`/w/${workspaceId}/connections?connection=${connectionId}`);
+    await renderLoadedApp(
+      `/w/${workspaceId}/connections?connection=${connectionId}`,
+    );
     expect(
       await screen.findByRole('heading', { name: 'Primary Slack' }),
     ).toBeVisible();
@@ -140,7 +142,9 @@ describe('connections page', () => {
         return HttpResponse.json({ items: [], nextCursor: null });
       }),
     );
-    renderApp(`/w/${workspaceId}/connections?connection=${connectionId}`);
+    await renderLoadedApp(
+      `/w/${workspaceId}/connections?connection=${connectionId}`,
+    );
     expect(
       await screen.findByText(
         'Workflow-read permission is needed to see usage.',
@@ -178,7 +182,9 @@ describe('connections page', () => {
         });
       }),
     );
-    const { queryClient } = renderApp(`/w/${workspaceId}/connections`);
+    const { queryClient } = await renderLoadedApp(
+      `/w/${workspaceId}/connections`,
+    );
     expect(await screen.findByText('Primary Slack')).toBeVisible();
     expect(screen.getByText('Unknown')).toBeVisible();
     expect(screen.getByText('never tested')).toBeVisible();
@@ -245,7 +251,7 @@ describe('connections page', () => {
       ),
     );
 
-    renderApp(`/w/${workspaceId}/connections`);
+    await renderLoadedApp(`/w/${workspaceId}/connections`);
     expect(await screen.findByText('Primary Slack')).toBeVisible();
     expect(screen.getByText('last test failed · invalid token')).toBeVisible();
     expect(screen.getByText('1 needs reconnecting')).toBeVisible();

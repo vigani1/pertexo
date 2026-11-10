@@ -14,7 +14,7 @@ import {
   statisticsHandler,
 } from '../../support/fixtures/run';
 import { mockServer } from '../../support/mock-server';
-import { renderApp } from '../../support/render-app';
+import { type renderApp, renderLoadedApp } from '../../support/render-app';
 
 const {
   workspace: workspaceId,
@@ -107,7 +107,7 @@ describe('Replay while the run’s input is still loading', () => {
   });
 
   const openReplay = async () => {
-    const view = renderApp(`/w/${workspaceId}/runs/${sourceRunId}`);
+    const view = await renderLoadedApp(`/w/${workspaceId}/runs/${sourceRunId}`);
     const event = userEvent.setup();
     await event.click(
       await screen.findByRole('button', { name: 'Replay' }, coldStart),

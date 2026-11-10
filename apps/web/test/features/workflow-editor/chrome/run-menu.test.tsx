@@ -14,7 +14,7 @@ import {
   workflowSummaryHandler,
 } from '../../../support/fixtures/workflow-editor';
 import { mockServer } from '../../../support/mock-server';
-import { renderApp } from '../../../support/render-app';
+import { renderLoadedApp } from '../../../support/render-app';
 
 it('keeps an open Run menu mounted and usable across background refetches', async () => {
   const graph = graphWithNumericConfig({ requiredCount: 1 });
@@ -30,7 +30,7 @@ it('keeps an open Run menu mounted and usable across background refetches', asyn
       }),
     ),
   );
-  const { queryClient } = renderApp(editorPath, { strict: true });
+  const { queryClient } = await renderLoadedApp(editorPath, { strict: true });
   const user = userEvent.setup();
   await findCanvas();
   const trigger = await screen.findByRole('button', { name: 'Run' });

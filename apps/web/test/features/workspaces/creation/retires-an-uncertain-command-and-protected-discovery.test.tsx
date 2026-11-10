@@ -1,3 +1,4 @@
+import { homeRoute } from '@/routes/workspace/home/route';
 import { screen, within } from '@testing-library/react';
 
 import userEvent from '@testing-library/user-event';
@@ -8,7 +9,7 @@ import { describe, expect, it } from 'vitest';
 
 import { mockServer } from '../../../support/mock-server';
 
-import { renderApp } from '../../../support/render-app';
+import { renderLoadedApp } from '../../../support/render-app';
 
 import {
   createdWorkspace,
@@ -47,7 +48,7 @@ describe('workspace creation', () => {
         return HttpResponse.error();
       }),
     );
-    const app = renderApp('/workspaces');
+    const app = await renderLoadedApp('/workspaces');
     const dialog = await openCreation('another');
     await userEvent
       .setup()
@@ -71,18 +72,19 @@ describe('workspace creation', () => {
     ).toHaveLength(0);
   });
   it('recovers a failed discovery refresh without submitting creation again', async () => {
-    let workspaceReads = 0;
+    let created = false;
+    let refreshUnavailable = true;
     let postCount = 0;
     mockServer.use(
       http.get('http://pertexo.test/v1/users/me', () =>
         HttpResponse.json(user),
       ),
       http.get('http://pertexo.test/v1/workspaces', () => {
-        workspaceReads += 1;
-        if (workspaceReads === 1)
-          return HttpResponse.json({ items: [], nextCursor: null });
-        if (workspaceReads === 2)
+        if (!created) return HttpResponse.json({ items: [], nextCursor: null });
+        if (refreshUnavailable) {
+          refreshUnavailable = false;
           return problem(503, 'service.unavailable', 'Discovery unavailable');
+        }
         return HttpResponse.json({
           items: [createdWorkspace],
           nextCursor: null,
@@ -90,11 +92,12 @@ describe('workspace creation', () => {
       }),
       http.post('http://pertexo.test/v1/workspaces', () => {
         postCount += 1;
+        created = true;
         return HttpResponse.json(workspaceResponse(), { status: 201 });
       }),
     );
     installWorkspaceDestination();
-    renderApp('/workspaces');
+    const app = await renderLoadedApp('/workspaces');
     const dialog = await openCreation('first');
     await userEvent
       .setup()
@@ -110,11 +113,24 @@ describe('workspace creation', () => {
       await within(dialog).findByText(/workspace was created/u),
     ).toBeVisible();
     expect(postCount).toBe(1);
+    const navigated = new Promise<void>((resolve) => {
+      const unsubscribe = app.router.subscribe('onResolved', () => {
+        if (
+          !app.router.state.matches.some(
+            (match) => match.routeId === homeRoute.id,
+          )
+        )
+          return;
+        unsubscribe();
+        resolve();
+      });
+    });
     await userEvent.setup().click(
       within(dialog).getByRole('button', {
         name: 'Open workspace',
       }),
     );
+    await navigated;
     expect(
       await screen.findAllByRole('link', { name: 'Home', current: 'page' }),
     ).not.toHaveLength(0);

@@ -10,7 +10,7 @@ import { coldStart, identityHandlers } from '../../../support/fixtures/run';
 
 import { mockServer } from '../../../support/mock-server';
 
-import { renderApp } from '../../../support/render-app';
+import { renderLoadedApp } from '../../../support/render-app';
 
 import {
   connectionId,
@@ -50,7 +50,7 @@ describe('workspace home', () => {
       }),
     );
 
-    renderApp(`/w/${workspaceId}`);
+    await renderLoadedApp(`/w/${workspaceId}`);
     const attention = await screen.findByRole(
       'region',
       { name: 'Needs attention' },
@@ -81,7 +81,7 @@ describe('workspace home', () => {
       }),
     );
 
-    renderApp(`/w/${workspaceId}`);
+    await renderLoadedApp(`/w/${workspaceId}`);
     expect(
       await screen.findByRole('link', { name: 'Daily intake' }, coldStart),
     ).toBeVisible();
@@ -106,7 +106,7 @@ describe('workspace home', () => {
       }),
     );
 
-    renderApp(`/w/${workspaceId}`);
+    await renderLoadedApp(`/w/${workspaceId}`);
     const item = await screen.findByText(
       'Daily intake failed once in the last 24 hours',
       undefined,
@@ -133,7 +133,7 @@ describe('workspace home', () => {
       ...runHandlers({ problems: [] }),
     );
 
-    renderApp(`/w/${workspaceId}`);
+    await renderLoadedApp(`/w/${workspaceId}`);
     const attention = await screen.findByRole(
       'region',
       { name: 'Needs attention' },
@@ -178,7 +178,7 @@ describe('workspace home', () => {
       ),
     );
 
-    renderApp(`/w/${workspaceId}`);
+    await renderLoadedApp(`/w/${workspaceId}`);
     const attention = await screen.findByRole(
       'region',
       { name: 'Needs attention' },
@@ -207,7 +207,7 @@ describe('workspace home', () => {
       ...runHandlers({ problems: [], any: [] }),
     );
 
-    renderApp(`/w/${workspaceId}`);
+    await renderLoadedApp(`/w/${workspaceId}`);
     const checklist = await screen.findByRole(
       'region',
       { name: 'Your first thread' },
@@ -254,7 +254,7 @@ describe('workspace home', () => {
       ),
     );
 
-    renderApp(`/w/${workspaceId}`);
+    await renderLoadedApp(`/w/${workspaceId}`);
     const checklist = await screen.findByRole(
       'region',
       { name: 'Your first thread' },

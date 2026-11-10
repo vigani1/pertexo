@@ -22,7 +22,7 @@ import {
 
 import { mockServer } from '../../../support/mock-server';
 
-import { renderApp } from '../../../support/render-app';
+import { renderLoadedApp } from '../../../support/render-app';
 
 import { confirmation, pickRole } from './fixture';
 
@@ -37,7 +37,7 @@ describe('team: members', () => {
       noInvitations(),
       membersOf(() => [member(firstMemberId, 'Builder Member', 'builder')]),
     );
-    renderApp(`/w/${workspaceId}/team`);
+    await renderLoadedApp(`/w/${workspaceId}/team`);
     await userEvent.setup().click(
       await screen.findByRole('combobox', {
         name: 'Role for Builder Member',
@@ -75,7 +75,7 @@ describe('team: members', () => {
         });
       }),
     );
-    renderApp(`/w/${workspaceId}/team`);
+    await renderLoadedApp(`/w/${workspaceId}/team`);
     const browser = userEvent.setup();
     await pickRole(browser, 'Ada Operator', 'Operator');
     await browser.click(screen.getByRole('button', { name: 'Change role' }));

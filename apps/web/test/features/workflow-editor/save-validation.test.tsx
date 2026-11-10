@@ -12,7 +12,7 @@ import {
   workflowApi,
 } from '../../support/fixtures/workflow-editor';
 import { mockServer } from '../../support/mock-server';
-import { renderApp } from '../../support/render-app';
+import { renderLoadedApp } from '../../support/render-app';
 
 it('shows every safe draft-validation refusal and keeps the local step available for correction', async () => {
   mockServer.use(...editorHandlers(() => undefined));
@@ -49,7 +49,7 @@ it('shows every safe draft-validation refusal and keeps the local step available
       ),
     ),
   );
-  renderApp(editorPath);
+  await renderLoadedApp(editorPath);
   await findCanvas();
   await userEvent.setup().click(addStepButton(/Set fields/u));
   expect(

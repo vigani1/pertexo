@@ -11,7 +11,7 @@ import {
   mappingDefinition,
 } from '../../support/fixtures/workflow-editor';
 import { mockServer } from '../../support/mock-server';
-import { renderApp } from '../../support/render-app';
+import { renderLoadedApp } from '../../support/render-app';
 
 describe('workflow callable contract editor', { timeout: 30_000 }, () => {
   it('lets readers inspect the declaration without applying changes', async () => {
@@ -35,7 +35,7 @@ describe('workflow callable contract editor', { timeout: 30_000 }, () => {
         },
       ),
     );
-    renderApp(editorPath);
+    await renderLoadedApp(editorPath);
     const user = userEvent.setup();
     await findCanvas();
     await user.click(screen.getByRole('button', { name: 'Workflow contract' }));
@@ -59,7 +59,7 @@ describe('workflow callable contract editor', { timeout: 30_000 }, () => {
         },
       ),
     );
-    renderApp(editorPath, { strict: true });
+    await renderLoadedApp(editorPath, { strict: true });
     const user = userEvent.setup();
     await findCanvas();
     await user.click(screen.getByRole('button', { name: 'Workflow contract' }));
@@ -125,7 +125,7 @@ describe('workflow callable contract editor', { timeout: 30_000 }, () => {
         definitions: [manualDefinition, mappingDefinition],
       }),
     );
-    renderApp(editorPath);
+    await renderLoadedApp(editorPath);
     const user = userEvent.setup();
     await findCanvas();
     await user.click(screen.getByRole('button', { name: 'Workflow contract' }));

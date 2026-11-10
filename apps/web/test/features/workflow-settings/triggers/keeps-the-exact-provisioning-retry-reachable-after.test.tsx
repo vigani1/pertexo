@@ -8,7 +8,7 @@ import { describe, expect, it } from 'vitest';
 
 import { mockServer } from '../../../support/mock-server';
 
-import { renderApp } from '../../../support/render-app';
+import { renderLoadedApp } from '../../../support/render-app';
 
 import {
   installQueries,
@@ -62,7 +62,7 @@ describe('workflow triggers tab', () => {
         },
       ),
     );
-    const { queryClient } = renderApp(triggersPath);
+    const { queryClient } = await renderLoadedApp(triggersPath);
     const event = userEvent.setup();
     await event.click(
       await screen.findByRole('button', { name: 'Create endpoint' }),
@@ -121,7 +121,7 @@ describe('workflow triggers tab', () => {
         },
       ),
     );
-    renderApp(triggersPath);
+    await renderLoadedApp(triggersPath);
     const event = userEvent.setup();
     await event.click(
       await screen.findByRole('button', { name: 'Rotate secret' }),
@@ -184,7 +184,7 @@ describe('workflow triggers tab', () => {
         },
       ),
     );
-    const { queryClient } = renderApp(triggersPath);
+    const { queryClient } = await renderLoadedApp(triggersPath);
     const event = userEvent.setup();
     const toggle = () => screen.getByRole('switch', { name: 'Schedule on' });
     await event.click(
@@ -239,7 +239,7 @@ describe('workflow triggers tab', () => {
         HttpResponse.json({ items: [] }),
       ),
     );
-    renderApp(triggersPath);
+    await renderLoadedApp(triggersPath);
     expect(
       await screen.findByText(
         'Webhook addresses and deliveries are shown to owners, admins and builders.',
@@ -264,7 +264,7 @@ describe('workflow triggers tab', () => {
         HttpResponse.json({ items: [] }),
       ),
     );
-    renderApp(triggersPath);
+    await renderLoadedApp(triggersPath);
     const heading = await screen.findByRole('heading', {
       name: 'This version has no trigger',
     });
@@ -307,7 +307,7 @@ describe('workflow triggers tab', () => {
         }),
       ),
     );
-    renderApp(triggersPath);
+    await renderLoadedApp(triggersPath);
     const form = await screen.findByRole('region', { name: 'Form' });
     expect(
       within(form).getByText(/each time someone submits the form/u),

@@ -3,7 +3,7 @@ import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { mockServer } from '../../support/mock-server';
-import { renderApp } from '../../support/render-app';
+import { renderLoadedApp } from '../../support/render-app';
 import {
   discoveryHandlers,
   draftHandler,
@@ -71,7 +71,7 @@ describe('workflow rename', () => {
         return HttpResponse.json({ workflow: current, replayed: false });
       }),
     );
-    renderApp(versionsPath);
+    await renderLoadedApp(versionsPath);
 
     const cancelled = await startRenaming('Not this one');
     await cancelled.event.click(screen.getByRole('button', { name: 'Cancel' }));
@@ -118,7 +118,7 @@ describe('workflow rename', () => {
         return HttpResponse.json({ workflow: current, replayed: false });
       }),
     );
-    renderApp(versionsPath);
+    await renderLoadedApp(versionsPath);
 
     const { event } = await startRenaming('Morning control');
     await event.click(screen.getByRole('button', { name: 'Save' }));
@@ -157,7 +157,7 @@ describe('workflow rename', () => {
         return nameConflict(2);
       }),
     );
-    renderApp(settingsPath);
+    await renderLoadedApp(settingsPath);
     const identity = await screen.findByRole('region', { name: 'Identity' });
     const event = userEvent.setup();
     await event.click(
@@ -185,7 +185,7 @@ describe('workflow rename', () => {
     mockServer.use(
       summaryHandler(() => ({ ...summary, lifecycleStatus: 'archived' })),
     );
-    const archived = renderApp(settingsPath);
+    const archived = await renderLoadedApp(settingsPath);
     const identity = await screen.findByRole('region', { name: 'Identity' });
     expect(
       await within(identity).findByText(
@@ -202,7 +202,7 @@ describe('workflow rename', () => {
         (capability) => capability !== 'workflow:update',
       ),
     );
-    renderApp(settingsPath);
+    await renderLoadedApp(settingsPath);
     expect(
       await within(
         await screen.findByRole('region', { name: 'Identity' }),
@@ -242,7 +242,7 @@ describe('workflow rename', () => {
         },
       ),
     );
-    renderApp(`/w/${workspaceId}/workflows`);
+    await renderLoadedApp(`/w/${workspaceId}/workflows`);
     const event = userEvent.setup();
     await event.click(
       await screen.findByRole('button', { name: 'Actions for Invoice intake' }),

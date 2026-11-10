@@ -16,8 +16,8 @@ import { mockServer } from '../../../support/mock-server';
 
 import {
   expectSignInPage,
-  renderApp,
   testFetch,
+  renderLoadedApp,
 } from '../../../support/render-app';
 
 import {
@@ -68,7 +68,7 @@ describe('authentication and workspace entry', () => {
         },
       ),
     );
-    renderApp('/account/security');
+    await renderLoadedApp('/account/security');
     const actor = userEvent.setup();
     await actor.click(
       await screen.findByRole('tab', { name: 'Sign-in & security' }),
@@ -129,7 +129,7 @@ describe('authentication and workspace entry', () => {
         HttpResponse.json({ items: [recoverableWorkspace], nextCursor: null }),
       ),
     );
-    const app = renderApp('/workspaces');
+    const app = await renderLoadedApp('/workspaces');
     const entry = await screen.findByRole('button', {
       name: /Control Operations/u,
     });
@@ -157,7 +157,7 @@ describe('authentication and workspace entry', () => {
         HttpResponse.json({ items: [deniedWorkspace], nextCursor: null }),
       ),
     );
-    renderApp('/workspaces');
+    await renderLoadedApp('/workspaces');
     const entry = await screen.findByRole('button', {
       name: /Control Operations/u,
     });
@@ -166,7 +166,7 @@ describe('authentication and workspace entry', () => {
   });
   it('opens the mobile More sheet and returns focus after Escape', async () => {
     mockServer.use(...authenticatedHandlers());
-    renderApp(`/w/${workspaceId}/workflows`);
+    await renderLoadedApp(`/w/${workspaceId}/workflows`);
     await screen.findByRole('heading', { name: 'Workflows' });
     const trigger = screen.getByRole('button', { name: 'More' });
 
@@ -191,7 +191,7 @@ describe('authentication and workspace entry', () => {
         HttpResponse.json({ items: [], nextCursor: null }),
       ),
     );
-    renderApp('/workspaces');
+    await renderLoadedApp('/workspaces');
     expect(
       await screen.findByRole('heading', { name: 'Create your workspace' }),
     ).toBeVisible();
@@ -209,7 +209,7 @@ describe('authentication and workspace entry', () => {
         problem(503, 'service.unavailable', 'Workspace service unavailable'),
       ),
     );
-    renderApp('/workspaces');
+    await renderLoadedApp('/workspaces');
 
     expect(
       await screen.findByRole('heading', {
@@ -232,7 +232,7 @@ describe('authentication and workspace entry', () => {
   it('rejects an inaccessible deep link without switching to unrelated data', async () => {
     mockServer.use(...authenticatedHandlers());
     const unavailableId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
-    const app = renderApp(`/w/${unavailableId}/workflows`);
+    const app = await renderLoadedApp(`/w/${unavailableId}/workflows`);
     expect(
       await screen.findByRole('heading', {
         name: 'This workspace isn’t available',
@@ -249,7 +249,7 @@ describe('authentication and workspace entry', () => {
         problem(401, 'auth.unauthenticated', 'Authentication required'),
       ),
     );
-    renderApp('/w/not-a-workspace/workflows');
+    await renderLoadedApp('/w/not-a-workspace/workflows');
     await expectSignInPage();
     expect(
       screen.queryByRole('heading', {

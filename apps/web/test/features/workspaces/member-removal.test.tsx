@@ -3,7 +3,7 @@ import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { mockServer } from '../../support/mock-server';
-import { renderApp } from '../../support/render-app';
+import { renderLoadedApp } from '../../support/render-app';
 import {
   firstMemberId,
   identityHandlers,
@@ -70,7 +70,7 @@ describe('team: member removal', () => {
       }),
     );
     const actor = userEvent.setup();
-    renderApp(`/w/${workspaceId}/team`, { strict: true });
+    await renderLoadedApp(`/w/${workspaceId}/team`, { strict: true });
 
     const dialog = await openRemoval(actor, 'Ada Lovelace');
     expect(
@@ -111,7 +111,7 @@ describe('team: member removal', () => {
       ]),
       noInvitations(),
     );
-    renderApp(`/w/${workspaceId}/team`);
+    await renderLoadedApp(`/w/${workspaceId}/team`);
 
     expect(
       await screen.findByRole('button', { name: 'Actions for Viewer Person' }),
@@ -139,7 +139,7 @@ describe('team: member removal', () => {
       ),
     );
     const actor = userEvent.setup();
-    renderApp(`/w/${workspaceId}/team`);
+    await renderLoadedApp(`/w/${workspaceId}/team`);
 
     const dialog = await openRemoval(actor, 'Ada Lovelace');
     await actor.click(dialog.getByRole('button', { name: 'Remove member' }));
@@ -169,7 +169,7 @@ describe('team: member removal', () => {
       removalHandler(removals, () => answer),
     );
     const actor = userEvent.setup();
-    renderApp(`/w/${workspaceId}/team`);
+    await renderLoadedApp(`/w/${workspaceId}/team`);
 
     let dialog = await openRemoval(actor, 'Ada Lovelace');
     await actor.click(dialog.getByRole('button', { name: 'Remove member' }));

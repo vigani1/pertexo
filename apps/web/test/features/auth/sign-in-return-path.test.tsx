@@ -6,7 +6,7 @@ import { createApiClient } from '@/lib/api/client';
 import { LoginPage } from '@/features/auth/pages/login';
 import { allowlistedReturnPath } from '@/features/auth/return-path.public';
 import { mockServer } from '../../support/mock-server';
-import { renderApp, testFetch } from '../../support/render-app';
+import { testFetch, renderLoadedApp } from '../../support/render-app';
 import { renderInRouter } from '../../support/render-in-router';
 import { problem, user } from '../../support/fixtures/team';
 
@@ -61,7 +61,7 @@ describe('sign-in return paths', () => {
       ['https://evil.example/invitations/accept', '/sign-up'],
       ['/account/security', '/sign-up?returnTo=%2Faccount%2Fsecurity'],
     ] as const) {
-      const { router, unmount } = renderApp(
+      const { router, unmount } = await renderLoadedApp(
         `/login?returnTo=${encodeURIComponent(target)}`,
       );
       expect(
@@ -85,7 +85,7 @@ describe('sign-in return paths', () => {
         HttpResponse.json({ items: [], nextCursor: null }),
       ),
     );
-    const { router } = renderApp(
+    const { router } = await renderLoadedApp(
       `/login?returnTo=${encodeURIComponent('//evil.example/account/security')}`,
     );
     await waitFor(() => {
@@ -110,7 +110,9 @@ describe('sign-in return paths', () => {
         }),
       ),
     );
-    const { router } = renderApp('/login?returnTo=%2Faccount%2Fsecurity');
+    const { router } = await renderLoadedApp(
+      '/login?returnTo=%2Faccount%2Fsecurity',
+    );
     await waitFor(() => {
       expect(router.state.location.pathname).toBe('/account/security');
       expect(router.state.status).toBe('idle');

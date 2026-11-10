@@ -8,7 +8,7 @@ import { describe, expect, it } from 'vitest';
 
 import { mockServer } from '../../support/mock-server';
 
-import { renderApp } from '../../support/render-app';
+import { renderLoadedApp } from '../../support/render-app';
 
 import {
   api,
@@ -43,7 +43,7 @@ describe('workspace inbox', () => {
       ],
       revision: '7',
     });
-    renderApp(`/w/${workspaceId}/inbox`);
+    await renderLoadedApp(`/w/${workspaceId}/inbox`);
 
     const list = await screen.findByRole('list', { name: 'Notices' });
     const [first, second, ...rest] = within(list).getAllByRole('listitem');
@@ -74,7 +74,7 @@ describe('workspace inbox', () => {
       threads: [thread(importId), thread(billingId)],
       revision: '7',
     });
-    renderApp(`/w/${workspaceId}/inbox`);
+    await renderLoadedApp(`/w/${workspaceId}/inbox`);
 
     await actor.click(
       await screen.findByRole('button', { name: 'Mark Nightly import read' }),
@@ -99,7 +99,7 @@ describe('workspace inbox', () => {
       threads: [thread(importId), thread(billingId)],
       revision: '9',
     });
-    renderApp(`/w/${workspaceId}/inbox?filter=unread`);
+    await renderLoadedApp(`/w/${workspaceId}/inbox?filter=unread`);
 
     await screen.findByRole('link', { name: 'Nightly import, unread' });
     await actor.click(screen.getByRole('button', { name: 'Mark all read' }));
@@ -116,7 +116,7 @@ describe('workspace inbox', () => {
       revision: '7',
     };
     const { stream } = inboxApi(state);
-    renderApp(`/w/${workspaceId}/inbox`);
+    await renderLoadedApp(`/w/${workspaceId}/inbox`);
 
     await screen.findByRole('link', { name: 'Nightly import' });
     state.threads = [
@@ -156,7 +156,7 @@ describe('workspace inbox', () => {
         });
       }),
     );
-    renderApp(`/w/${workspaceId}/inbox`);
+    await renderLoadedApp(`/w/${workspaceId}/inbox`);
     const views = await screen.findByRole('navigation', {
       name: 'Inbox views',
     });
@@ -197,7 +197,7 @@ describe('workspace inbox', () => {
         }),
       ),
     );
-    renderApp(`/w/${workspaceId}/inbox`);
+    await renderLoadedApp(`/w/${workspaceId}/inbox`);
 
     expect(
       await screen.findByRole('heading', { name: 'Everything finished' }),
@@ -210,7 +210,7 @@ describe('new failure notice', () => {
   it('announces a workflow that starts failing, not what was already unread', async () => {
     const state = { threads: [thread(billingId)], revision: '7' };
     const { stream } = inboxApi(state);
-    renderApp(`/w/${workspaceId}/settings`, { strict: true });
+    await renderLoadedApp(`/w/${workspaceId}/settings`, { strict: true });
 
     await waitFor(() => {
       expect(
@@ -245,7 +245,7 @@ describe('new failure notice', () => {
   it('gathers failures that arrive together into one notice', async () => {
     const state = { threads: [] as ReturnType<typeof thread>[], revision: '7' };
     const { stream } = inboxApi(state);
-    renderApp(`/w/${workspaceId}/settings`);
+    await renderLoadedApp(`/w/${workspaceId}/settings`);
 
     await waitFor(() => {
       expect(spineInbox().getByRole('link', { name: 'Inbox' })).toBeVisible();
@@ -285,7 +285,7 @@ describe('new failure notice', () => {
         ),
       ),
     );
-    const { router } = renderApp(`/w/${workspaceId}/settings`);
+    const { router } = await renderLoadedApp(`/w/${workspaceId}/settings`);
 
     await waitFor(() => {
       expect(spineInbox().getByRole('link', { name: 'Inbox' })).toBeVisible();

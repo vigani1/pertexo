@@ -5,7 +5,7 @@ import userEvent from '@testing-library/user-event';
 import { HttpResponse, http } from 'msw';
 import { describe, expect, it } from 'vitest';
 import { mockServer } from '../../support/mock-server';
-import { renderApp } from '../../support/render-app';
+import { renderLoadedApp } from '../../support/render-app';
 import {
   authenticatedHandlers,
   workspace,
@@ -75,7 +75,7 @@ describe('workspace destinations by role', () => {
     'offers a $role the spine and palette places their role can open',
     async ({ role, spine, palette }) => {
       serveAs(role);
-      renderApp(`/w/${workspaceId}/workflows`);
+      await renderLoadedApp(`/w/${workspaceId}/workflows`);
       await screen.findByRole('heading', { name: 'Workflows' });
       const nav = screen
         .getAllByRole('navigation', { name: 'Workspace' })
@@ -135,7 +135,7 @@ describe('workspace destinations by role', () => {
     'offers a $role the settings pages their role can open',
     async ({ role, rail }) => {
       serveAs(role);
-      renderApp(`/w/${workspaceId}/settings`);
+      await renderLoadedApp(`/w/${workspaceId}/settings`);
       const settings = await screen.findByRole('navigation', {
         name: 'Settings',
       });

@@ -13,7 +13,7 @@ import {
   workflowApi,
 } from '../../support/fixtures/workflow-editor';
 import { mockServer } from '../../support/mock-server';
-import { renderApp } from '../../support/render-app';
+import { renderLoadedApp } from '../../support/render-app';
 
 function thread(id: string, stepId: string | null) {
   return {
@@ -48,7 +48,7 @@ it('marks a step with the open discussions about it', async () => {
       }),
     ),
   );
-  renderApp(editorPath);
+  await renderLoadedApp(editorPath);
   await findCanvas();
   // The canvas hides nodes until React Flow measures them, as in other card tests.
   expect(await screen.findByText('2 open discussions')).toBeInTheDocument();

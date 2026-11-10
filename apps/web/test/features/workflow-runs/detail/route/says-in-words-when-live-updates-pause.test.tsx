@@ -14,7 +14,7 @@ import {
 
 import { mockServer } from '../../../../support/mock-server';
 
-import { renderApp } from '../../../../support/render-app';
+import { renderLoadedApp } from '../../../../support/render-app';
 
 import {
   artifactId,
@@ -51,7 +51,7 @@ describe('run page', () => {
           },
         ),
     });
-    renderApp(`/w/${workspaceId}/runs/${runId}`);
+    await renderLoadedApp(`/w/${workspaceId}/runs/${runId}`);
     expect(
       await screen.findByText('Updates paused', undefined, coldStart),
     ).toBeVisible();
@@ -91,7 +91,7 @@ describe('run page', () => {
       input: { kind: 'inline', value: { orderId: 'A-17' } },
       output: { kind: 'artifact', artifactId },
     });
-    renderApp(`/w/${workspaceId}/runs/${runId}`);
+    await renderLoadedApp(`/w/${workspaceId}/runs/${runId}`);
     expect(
       await screen.findByRole(
         'heading',

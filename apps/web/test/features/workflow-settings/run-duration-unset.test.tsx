@@ -3,7 +3,7 @@ import { http } from 'msw';
 import { describe, expect, it } from 'vitest';
 import { coldStart } from '../../support/fixtures/run';
 import { mockServer } from '../../support/mock-server';
-import { renderApp } from '../../support/render-app';
+import { renderLoadedApp } from '../../support/render-app';
 import {
   draftResponse,
   emptyGraph,
@@ -23,7 +23,7 @@ describe('workflow settings: run duration with no setting', () => {
     mockServer.use(
       http.get(`${workflowApi}/draft`, () => draftResponse(emptyGraph, etag)),
     );
-    renderApp(settingsPath);
+    await renderLoadedApp(settingsPath);
     const section = await screen.findByRole(
       'region',
       { name: 'Run duration' },

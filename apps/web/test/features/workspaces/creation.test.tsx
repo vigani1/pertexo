@@ -8,7 +8,7 @@ import { describe, expect, it } from 'vitest';
 
 import { mockServer } from '../../support/mock-server';
 
-import { renderApp } from '../../support/render-app';
+import { renderLoadedApp } from '../../support/render-app';
 
 import {
   createdWorkspace,
@@ -49,7 +49,7 @@ describe('workspace creation', () => {
         return HttpResponse.json(workspaceResponse(), { status: 201 });
       }),
     );
-    const app = renderApp('/workspaces', { strict: true });
+    const app = await renderLoadedApp('/workspaces', { strict: true });
 
     const dialog = await openCreation('first');
     const name = within(dialog).getByLabelText('Workspace name');
@@ -88,7 +88,7 @@ describe('workspace creation', () => {
         return HttpResponse.json(workspaceResponse(), { status: 201 });
       }),
     );
-    renderApp('/workspaces');
+    await renderLoadedApp('/workspaces');
 
     const dialog = await openCreation('another');
     const name = within(dialog).getByLabelText('Workspace name');
@@ -110,7 +110,7 @@ describe('workspace creation', () => {
   });
   it('validates on submit and focuses the first invalid field', async () => {
     installIdentity();
-    renderApp('/workspaces');
+    await renderLoadedApp('/workspaces');
     const form = await openCreation('first');
     const name = within(form).getByLabelText('Workspace name');
 
@@ -138,7 +138,7 @@ describe('workspace creation', () => {
   });
   it('reveals an invalid handle on submit and cancels the sheet cleanly', async () => {
     installIdentity([existingWorkspace]);
-    renderApp('/workspaces');
+    await renderLoadedApp('/workspaces');
     const sheet = await openCreation('another');
     await userEvent
       .setup()
@@ -188,7 +188,7 @@ describe('workspace creation', () => {
           return problem(status, code, 'Workspace rejected');
         }),
       );
-      renderApp('/workspaces');
+      await renderLoadedApp('/workspaces');
       const dialog = await openCreation('first');
       await userEvent
         .setup()
@@ -244,7 +244,7 @@ describe('workspace creation', () => {
         }),
       );
       installWorkspaceDestination();
-      renderApp('/workspaces');
+      await renderLoadedApp('/workspaces');
       const dialog = await openCreation('first');
       await userEvent
         .setup()
@@ -291,7 +291,7 @@ describe('workspace creation', () => {
         return HttpResponse.error();
       }),
     );
-    renderApp('/workspaces');
+    await renderLoadedApp('/workspaces');
     const form = await openCreation('first');
     await userEvent
       .setup()

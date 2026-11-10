@@ -13,7 +13,7 @@ import {
   workspaceId,
 } from '../../support/fixtures/workflow-editor';
 import { mockServer } from '../../support/mock-server';
-import { renderApp } from '../../support/render-app';
+import { renderLoadedApp } from '../../support/render-app';
 
 const LOADING_MS = 15_000;
 
@@ -34,7 +34,7 @@ describe('the workspace variable picker', { timeout: 60_000 }, () => {
           }),
       ),
     );
-    renderApp(editorPath);
+    await renderLoadedApp(editorPath);
     const event = userEvent.setup();
     fireEvent.click((await findCanvas()).getByText('Target'));
     // The step panel loads lazily, and this is the first test in its file to open it.

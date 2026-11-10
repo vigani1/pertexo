@@ -11,7 +11,7 @@ import {
   taskQueryOptions,
 } from '@/features/pending-tasks/data/tasks.queries';
 import { mockServer } from '../../support/mock-server';
-import { renderApp } from '../../support/render-app';
+import { renderLoadedApp } from '../../support/render-app';
 import {
   identityHandlers,
   ownerWorkspace,
@@ -83,7 +83,7 @@ it.each(['approval', 'input_request'] as const)(
         failing ? HttpResponse.error() : HttpResponse.json({ task }),
       ),
     );
-    const app = renderApp(`/w/${workspaceId}/requests/${taskId}`);
+    const app = await renderLoadedApp(`/w/${workspaceId}/requests/${taskId}`);
     const scope = { apiClient: app.apiClient, userId, workspaceId };
     const actor = userEvent.setup();
     const label = kind === 'approval' ? 'Comment (optional)' : 'Reason';
@@ -150,7 +150,7 @@ it('keeps a pending list decision and its exact retry across a failed background
       });
     }),
   );
-  const app = renderApp(`/w/${workspaceId}/requests`);
+  const app = await renderLoadedApp(`/w/${workspaceId}/requests`);
   const actor = userEvent.setup();
   await actor.click(
     await screen.findByRole('button', { name: 'Approve Review payment' }),
@@ -196,7 +196,7 @@ it.each([
     ),
     http.get(`${base}/${taskId}`, () => HttpResponse.json({ task })),
   );
-  renderApp(`/w/${workspaceId}/requests/${taskId}`);
+  await renderLoadedApp(`/w/${workspaceId}/requests/${taskId}`);
   const line = await screen.findByText(new RegExp(shown));
   expect(line.closest('p')?.textContent).not.toContain(task.nodeId);
 });
@@ -258,7 +258,7 @@ it('tells a task responder to upload again when finalization expires', async () 
       ),
     ),
   );
-  renderApp(`/w/${workspaceId}/requests/${taskId}`);
+  await renderLoadedApp(`/w/${workspaceId}/requests/${taskId}`);
   const field = await screen.findByLabelText('Invoice');
   await userEvent
     .setup()
@@ -314,7 +314,7 @@ it.each([
         ),
       ),
     );
-    renderApp(`/w/${workspaceId}/requests/${taskId}`);
+    await renderLoadedApp(`/w/${workspaceId}/requests/${taskId}`);
     const actor = userEvent.setup();
     const comment = await screen.findByLabelText('Comment (optional)');
     await actor.type(comment, 'My decision context');

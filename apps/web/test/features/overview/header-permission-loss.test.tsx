@@ -8,7 +8,7 @@ import {
   identityHandlers,
 } from '../../support/fixtures/run';
 import { mockServer } from '../../support/mock-server';
-import { renderApp } from '../../support/render-app';
+import { renderLoadedApp } from '../../support/render-app';
 import {
   readerCapabilities,
   runHandlers,
@@ -49,7 +49,7 @@ it('removes Home header counts after the statistics refresh authoritatively lose
           ),
     ),
   );
-  renderApp(`/w/${workspaceId}`);
+  await renderLoadedApp(`/w/${workspaceId}`);
   expect(
     await screen.findByText('118', { selector: 'b' }, coldStart),
   ).toBeVisible();

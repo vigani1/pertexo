@@ -4,7 +4,7 @@ import { HttpResponse, http } from 'msw';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import { mockServer } from '../../support/mock-server';
-import { renderApp } from '../../support/render-app';
+import { renderLoadedApp } from '../../support/render-app';
 import {
   base,
   connection,
@@ -72,7 +72,7 @@ describe('choosing a service for an OAuth2 connection', () => {
   });
 
   const openForm = async () => {
-    renderApp(`/w/${workspaceId}/connections?add=http`);
+    await renderLoadedApp(`/w/${workspaceId}/connections?add=http`);
     const event = userEvent.setup();
     await event.click(await screen.findByRole('radio', { name: 'OAuth2' }));
     return event;

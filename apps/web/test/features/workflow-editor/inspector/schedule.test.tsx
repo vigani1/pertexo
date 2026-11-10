@@ -25,7 +25,7 @@ import {
 
 import { mockServer } from '../../../support/mock-server';
 
-import { renderApp } from '../../../support/render-app';
+import { renderLoadedApp } from '../../../support/render-app';
 
 import {
   draftOf,
@@ -212,7 +212,7 @@ describe('schedule builder in Setup', { timeout: 30_000 }, () => {
       ),
       previewHandler(),
     );
-    renderApp(editorPath);
+    await renderLoadedApp(editorPath);
     const event = userEvent.setup();
     fireEvent.click((await findCanvas()).getByText('Nightly'));
     expect(await screen.findByText('Not scheduled yet')).toBeVisible();
@@ -283,7 +283,7 @@ describe('schedule builder in Setup', { timeout: 30_000 }, () => {
       previewHandler(),
     );
     try {
-      renderApp(editorPath);
+      await renderLoadedApp(editorPath);
       const event = userEvent.setup();
       fireEvent.click((await findCanvas()).getByText('Nightly'));
       expect(

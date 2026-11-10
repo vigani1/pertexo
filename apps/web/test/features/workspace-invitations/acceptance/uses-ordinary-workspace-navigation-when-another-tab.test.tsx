@@ -13,7 +13,7 @@ import { createUserFixture } from '../../../support/fixtures/identity';
 
 import { mockServer } from '../../../support/mock-server';
 
-import { renderApp } from '../../../support/render-app';
+import { renderLoadedApp } from '../../../support/render-app';
 
 import { getRequestUrl } from '../../../support/request';
 
@@ -204,7 +204,7 @@ describe('invitation acceptance', () => {
         ),
       ),
     );
-    renderApp('/invitations/accept');
+    await renderLoadedApp('/invitations/accept');
     expect(
       await screen.findByRole('heading', {
         name: 'This invitation is for someone else',

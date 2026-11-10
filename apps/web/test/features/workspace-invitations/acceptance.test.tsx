@@ -13,7 +13,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { mockServer } from '../../support/mock-server';
 
-import { renderApp } from '../../support/render-app';
+import { renderLoadedApp } from '../../support/render-app';
 
 import {
   componentApiClient,
@@ -46,7 +46,7 @@ describe('invitation acceptance', () => {
       ),
     );
 
-    renderApp(
+    await renderLoadedApp(
       `/invitations/accept#token=${encodeURIComponent(`wi1.${workspaceId}.${intentId}.${'a'.repeat(43)}`)}`,
       { strict: true },
     );
@@ -159,7 +159,9 @@ describe('invitation acceptance', () => {
     );
     const token = `wi1.${workspaceId}.${intentId}.${'a'.repeat(43)}`;
     const browser = userEvent.setup();
-    renderApp(`/invitations/accept#token=${encodeURIComponent(token)}`);
+    await renderLoadedApp(
+      `/invitations/accept#token=${encodeURIComponent(token)}`,
+    );
 
     await browser.click(
       await screen.findByRole('button', { name: 'Try the link again' }),
@@ -232,7 +234,7 @@ describe('invitation acceptance', () => {
       ),
     );
     const browser = userEvent.setup();
-    renderApp(
+    await renderLoadedApp(
       `/invitations/accept#token=${encodeURIComponent(`wi1.${workspaceId}.${intentId}.${'a'.repeat(43)}`)}`,
       { strict: true },
     );
@@ -296,7 +298,7 @@ describe('invitation acceptance', () => {
       }),
     );
     const browser = userEvent.setup();
-    renderApp(
+    await renderLoadedApp(
       `/invitations/accept#token=${encodeURIComponent(`wi1.${workspaceId}.${intentId}.${'a'.repeat(43)}`)}`,
     );
 

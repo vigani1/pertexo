@@ -4,7 +4,7 @@ import { HttpResponse, http } from 'msw';
 import { describe, expect, it } from 'vitest';
 
 import { mockServer } from '../../../support/mock-server';
-import { renderApp } from '../../../support/render-app';
+import { renderLoadedApp } from '../../../support/render-app';
 import {
   connectionHandler,
   destination,
@@ -67,7 +67,7 @@ describe('the failure alert notice in the Inbox', () => {
         });
       }),
     );
-    renderApp(`/w/${workspaceId}/inbox`);
+    await renderLoadedApp(`/w/${workspaceId}/inbox`);
     const actor = userEvent.setup();
 
     await actor.click(
@@ -85,7 +85,7 @@ describe('the failure alert notice in the Inbox', () => {
 
   it('opens the destination’s edit sheet with the keyboard alone', async () => {
     inboxWithNotice(() => [destination()]);
-    const { router } = renderApp(`/w/${workspaceId}/inbox`);
+    const { router } = await renderLoadedApp(`/w/${workspaceId}/inbox`);
     const actor = userEvent.setup({ pointerEventsCheck: 0 });
     const link = await noticeLink();
 
@@ -109,7 +109,7 @@ describe('the failure alert notice in the Inbox', () => {
 
   it('leads to a working page, without a sheet, once the destination is gone', async () => {
     inboxWithNotice(() => []);
-    renderApp(`/w/${workspaceId}/inbox`);
+    await renderLoadedApp(`/w/${workspaceId}/inbox`);
     const actor = userEvent.setup();
 
     await actor.click(await noticeLink());
@@ -133,7 +133,9 @@ describe('a link to a destination on the Alerts page', () => {
       connectionHandler(),
       destinationsOf(() => [destination()]),
     );
-    renderApp(`/w/${workspaceId}/settings/alerts?destination=${otherId}`);
+    await renderLoadedApp(
+      `/w/${workspaceId}/settings/alerts?destination=${otherId}`,
+    );
 
     expect(
       await screen.findByText('#C0123456789 via Incident Slack'),
@@ -151,7 +153,7 @@ describe('a link to a destination on the Alerts page', () => {
       connectionHandler(),
       destinationsOf(() => [destination()]),
     );
-    const { router } = renderApp(linked);
+    const { router } = await renderLoadedApp(linked);
 
     await waitFor(() => {
       expect(router.state.status).toBe('idle');
@@ -167,7 +169,7 @@ describe('a link to a destination on the Alerts page', () => {
       connectionHandler(),
       destinationsOf(() => [destination()]),
     );
-    const { router, unmount } = renderApp(linked);
+    const { router, unmount } = await renderLoadedApp(linked);
     const actor = userEvent.setup();
     await screen.findByRole('dialog');
 
@@ -181,7 +183,7 @@ describe('a link to a destination on the Alerts page', () => {
     });
     const { href } = router.state.location;
     unmount();
-    renderApp(href);
+    await renderLoadedApp(href);
     expect(
       await screen.findByText('#C0123456789 via Incident Slack'),
     ).toBeVisible();
@@ -198,7 +200,7 @@ describe('a link to a destination on the Alerts page', () => {
         () => HttpResponse.json(destination('C9876543210', 2)),
       ),
     );
-    const { router } = renderApp(linked);
+    const { router } = await renderLoadedApp(linked);
     const actor = userEvent.setup();
     await screen.findByRole('dialog');
     const channel = await lens().findByLabelText('Channel ID');

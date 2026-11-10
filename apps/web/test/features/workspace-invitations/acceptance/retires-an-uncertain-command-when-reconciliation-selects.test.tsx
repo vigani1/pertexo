@@ -11,7 +11,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { mockServer } from '../../../support/mock-server';
 
-import { renderApp } from '../../../support/render-app';
+import { renderLoadedApp } from '../../../support/render-app';
 
 import { getRequestUrl } from '../../../support/request';
 
@@ -77,7 +77,7 @@ describe('invitation acceptance', () => {
       ),
     );
     const browser = userEvent.setup();
-    renderApp(
+    await renderLoadedApp(
       `/invitations/accept#token=${encodeURIComponent(`wi1.${workspaceId}.${intentId}.${'a'.repeat(43)}`)}`,
     );
     await browser.click(

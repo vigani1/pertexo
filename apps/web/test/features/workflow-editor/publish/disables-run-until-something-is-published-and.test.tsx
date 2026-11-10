@@ -39,7 +39,7 @@ import {
 
 import { mockServer } from '../../../support/mock-server';
 
-import { renderApp } from '../../../support/render-app';
+import { renderLoadedApp } from '../../../support/render-app';
 
 afterEach(() => vi.useRealTimers());
 
@@ -51,7 +51,7 @@ describe('workflow editor publishing', { timeout: 30_000 }, () => {
       }),
     );
     mockServer.use(validHandler(), workflowSummaryHandler('Draft only', null));
-    renderApp(editorPath);
+    await renderLoadedApp(editorPath);
     const event = userEvent.setup();
     await findCanvas();
     await screen.findByRole('heading', { name: 'Draft only' });
@@ -112,7 +112,7 @@ describe('workflow editor issues and checks', { timeout: 30_000 }, () => {
         ),
       ),
     );
-    renderApp(editorPath);
+    await renderLoadedApp(editorPath);
     const event = userEvent.setup();
     await findCanvas();
     await checkNow(event);
@@ -212,7 +212,7 @@ describe('workflow editor issues and checks', { timeout: 30_000 }, () => {
         ),
       ),
     );
-    renderApp(editorPath);
+    await renderLoadedApp(editorPath);
     const event = userEvent.setup();
     await findCanvas();
     await checkNow(event);
@@ -246,7 +246,7 @@ describe('workflow editor issues and checks', { timeout: 30_000 }, () => {
         validations += 1;
       }),
     );
-    renderApp(editorPath);
+    await renderLoadedApp(editorPath);
     const event = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     await findCanvas();
     await event.click(addStepButton(/Set fields/u));
@@ -268,7 +268,7 @@ describe('workflow editor run lens', { timeout: 30_000 }, () => {
   it('associates run-start validation with the input and focuses it', async () => {
     mockServer.use(...editorHandlers(() => undefined));
     mockServer.use(...publishedWorkflowHandlers());
-    renderApp(editorPath);
+    await renderLoadedApp(editorPath);
     const event = userEvent.setup();
     await findCanvas();
     await openRunLens(event);

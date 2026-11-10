@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 
 import { coldStart } from '../../../support/fixtures/run';
 import { mockServer } from '../../../support/mock-server';
-import { renderApp } from '../../../support/render-app';
+import { renderLoadedApp } from '../../../support/render-app';
 import { installQueries, webhook, webhookId, workflowApi } from '../fixtures';
 import { triggersPath } from './fixture';
 
@@ -33,7 +33,7 @@ async function createEndpoint(
       }),
     ),
   );
-  renderApp(triggersPath);
+  await renderLoadedApp(triggersPath);
   const event = userEvent.setup();
   await event.click(
     await screen.findByRole('button', { name: 'Create endpoint' }, coldStart),
