@@ -68,6 +68,7 @@ Generated from the problem manifest; run `pnpm contracts:generate`. Branch on th
 | `request.precondition_required` | 428 | Precondition required |
 | `request.rate_limit_unavailable` | 503 | Request rate limiter unavailable |
 | `request.rate_limited` | 429 | Request rate limit reached |
+| `request.temporarily_unavailable` | 503 | Service temporarily unavailable |
 | `request.too_large` | 413 | Request body too large |
 | `request.unsupported_media_type` | 415 | Unsupported media type |
 | `resource.not_found` | 404 | Resource not found |

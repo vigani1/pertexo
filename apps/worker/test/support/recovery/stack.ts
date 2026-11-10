@@ -163,6 +163,7 @@ export async function startStack(
       ...shared,
       ...options.workerEnvironment,
       WORKER_INSTANCE_ID: instance,
+      PGAPPNAME: instance,
     });
   const worker = createWorker('recovery-worker');
   const extraWorkers: ServiceProcess[] = [];

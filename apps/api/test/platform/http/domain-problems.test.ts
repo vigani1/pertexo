@@ -118,6 +118,23 @@ describe('domain problems over HTTP', () => {
     },
   );
 
+  it('returns a safe retryable response for a database lock timeout', async () => {
+    failure.current = Object.assign(new Error('private SQL and lock detail'), {
+      code: '55P03',
+    });
+    const response = await api.server.inject({
+      method: 'GET',
+      url: connectionPath,
+    });
+    expect(response.statusCode).toBe(503);
+    expect(response.headers['retry-after']).toBe('1');
+    expect(response.json()).toMatchObject({
+      code: 'request.temporarily_unavailable',
+      detail: 'The service is temporarily busy. Please try again.',
+    });
+    expect(response.body).not.toContain('private SQL');
+  });
+
   it('keeps the draft validator and revision in a conflict response', async () => {
     const etag = '"draft.AFBYOY0XvOEWP2AEVMsJCblYcXq0biQBej1xbQP46YE"';
     failure.current = new WorkflowRevisionConflictError(3, etag);
