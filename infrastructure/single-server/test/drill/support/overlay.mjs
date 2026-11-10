@@ -44,10 +44,11 @@ function required(text, pattern, replacement, what) {
   return replaced;
 }
 
+const transport =
+  '-e RCLONE_LOW_LEVEL_RETRIES=1 -e RCLONE_RETRIES=1 -e RCLONE_TIMEOUT=10s -e RCLONE_CONTIMEOUT=5s -e NODE_EXTRA_CA_CERTS=/drill-tls/ca.crt -e RCLONE_CA_CERT=/drill-tls/ca.crt -v "$beta_root/drill-tls:/drill-tls:ro"';
+
 export function overlayCommonScript(source, { project }) {
   // Local stand-ins should report transport failures without production retry delays.
-  const transport =
-    '-e RCLONE_LOW_LEVEL_RETRIES=1 -e RCLONE_RETRIES=1 -e RCLONE_TIMEOUT=10s -e RCLONE_CONTIMEOUT=5s -e NODE_EXTRA_CA_CERTS=/drill-tls/ca.crt -e RCLONE_CA_CERT=/drill-tls/ca.crt -v "$beta_root/drill-tls:/drill-tls:ro"';
   let text = source;
   text = required(
     text,
@@ -87,11 +88,25 @@ export function overlayCommonScript(source, { project }) {
   );
   text = required(
     text,
-    /backup_helper\(\) \{[\s\S]*?\n {2}docker run /u,
+    /backup_helper\(\) \([\s\S]*?\n {2}docker run /u,
     (match) => `${match}${transport} `,
     'the backup runtime helper',
   );
-  return text;
+  return required(
+    text,
+    /bash "\$backup_tools\/rclone-requests.sh"/u,
+    'beta_root="$beta_root" bash "$backup_tools/rclone-requests.sh"',
+    'the host transport dispatcher',
+  );
+}
+
+export function overlayBackupTransport(source) {
+  return required(
+    source,
+    /docker run /u,
+    `docker run ${transport} `,
+    'the external backup transport',
+  );
 }
 
 /** deploy.sh and restore.sh name the private network themselves. */

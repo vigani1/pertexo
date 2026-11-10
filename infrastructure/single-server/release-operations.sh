@@ -2,6 +2,7 @@
 set -Eeuo pipefail
 umask 077
 operator_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
+backup_tools=$(cd "$(dirname "${BASH_SOURCE[0]}")/backup" && pwd)
 beta_root=${PERTEXO_BETA_ROOT:-/opt/pertexo}
 export BETA_STATE_DIR="$beta_root/state"
 mkdir -p "$BETA_STATE_DIR" "$beta_root/releases"
@@ -202,7 +203,7 @@ prepare_release() {
 }
 
 rclone_image() {
-  compose --profile backup config --images rclone
+  docker compose -f "$backup_tools/compose.yaml" config --images
 }
 prepare_backup() {
   local image
@@ -213,7 +214,7 @@ prepare_backup() {
   fi
   docker run --rm --network none --read-only --user "$(id -u):$(id -g)" \
     -v "$config:/run/pertexo.env:ro" -v "$work:/prepared" \
-    -v "$release/infrastructure/single-server/backup:/workspace/infrastructure/single-server/backup:ro" \
+    -v "$backup_tools:/workspace/infrastructure/single-server/backup:ro" \
     "ghcr.io/vigani1/pertexo:$SERVICE_VERSION" node --env-file=/run/pertexo.env infrastructure/single-server/backup/prepare.mjs /prepared
   source_bucket=$(cat "$work/source-bucket")
   backup_bucket=$(cat "$work/backup-bucket")
@@ -226,7 +227,7 @@ rclone() {
 }
 recovery_points() {
   docker run --rm --read-only --network none --user "$(id -u):$(id -g)" \
-    -v "$work:/backup:ro" -v "$release/infrastructure/single-server/backup/recovery-points.mjs:/recovery-points.mjs:ro" \
+    -v "$work:/backup:ro" -v "$backup_tools/recovery-points.mjs:/recovery-points.mjs:ro" \
     "ghcr.io/vigani1/pertexo:$SERVICE_VERSION" node /recovery-points.mjs "$@"
 }
 require_no_ops() {
@@ -244,14 +245,14 @@ run_ops() {
 copy_objects() {
   docker run --rm --read-only --user "$(id -u):$(id -g)" \
     --network pertexo-beta_private -v "$config:/run/pertexo.env:ro" \
-    -v "$release/infrastructure/single-server/backup:/workspace/infrastructure/single-server/backup:ro" \
+    -v "$backup_tools:/workspace/infrastructure/single-server/backup:ro" \
     "ghcr.io/vigani1/pertexo:$SERVICE_VERSION" node --env-file=/run/pertexo.env infrastructure/single-server/backup/copy-objects.mjs "$@"
 }
 
 # The host dispatches transport requests; the helper alone owns the database lock.
 backup_helper() (
   local runner
-  bash "$release/infrastructure/single-server/backup/rclone-requests.sh" "$work" "${backup_network:-pertexo-beta_private}" "$(rclone_image)" < /dev/null 8>&- 9>&- &
+  bash "$backup_tools/rclone-requests.sh" "$work" "${backup_network:-pertexo-beta_private}" "$(rclone_image)" < /dev/null 8>&- 9>&- &
   runner=$!
   trap '[[ ! -f "$work/transport.cid" ]] || docker rm -f "$(cat "$work/transport.cid")" >/dev/null 2>&1; kill "$runner" 2>/dev/null || true; wait "$runner" 2>/dev/null || true' EXIT
   local options=(--env-file "$work/rclone.env")
@@ -262,7 +263,7 @@ backup_helper() (
   docker run --rm --read-only --tmpfs /tmp --user "$(id -u):$(id -g)" \
     "${options[@]}" --network "${backup_network:-pertexo-beta_private}" \
     -v "$config:/run/pertexo.env:ro" -v "$work:/backup" \
-    -v "$release/infrastructure/single-server/backup:/workspace/infrastructure/single-server/backup:ro" \
+    -v "$backup_tools:/workspace/infrastructure/single-server/backup:ro" \
     "ghcr.io/vigani1/pertexo:$SERVICE_VERSION" node --env-file=/run/pertexo.env "infrastructure/single-server/backup/$script" "$@"
 )
 

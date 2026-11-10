@@ -41,9 +41,9 @@ const rust =
 const rc =
   'rustfs/rc:v0.1.36@sha256:ab024bfebee49a750ce886b4c70963ccd9ddaa03f491704a90710641d7a26699';
 const clone = readFileSync(
-  'infrastructure/single-server/compose.yaml',
+  'infrastructure/single-server/backup/compose.yaml',
   'utf8',
-).match(/rclone:\n\s+profiles: \[backup\]\n\s+image: (\S+)/u)[1];
+).match(/image: (\S+)/u)[1];
 const postgres =
   'postgres:18@sha256:4ef4dbc939d61acea57712655ddb4b4ab27419c913f94cca0cd57cb3ea3c2280';
 let networkCreated = false;

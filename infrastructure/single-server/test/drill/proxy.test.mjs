@@ -84,6 +84,38 @@ describe('the web tier in front of the API', () => {
     await docker(['network', 'rm', network]);
   });
 
+  it('ships complete notices without an embedded backup executable', async () => {
+    await mustDocker([
+      'run',
+      '--rm',
+      '--network',
+      'none',
+      '--entrypoint',
+      'node',
+      RUNTIME_IMAGE,
+      '-e',
+      `
+      const fs = require('node:fs'), assert = require('node:assert/strict');
+      const text = fs.readFileSync('/workspace/THIRD_PARTY_NOTICES.txt', 'utf8');
+      assert.equal(fs.existsSync('/usr/local/bin/rclone'), false);
+      for (const author of ['Hannes Hörl', 'Brian M. Carlson']) assert.ok(text.includes(author));
+      assert.ok(text.includes(fs.readFileSync('/opt/pertexo-python/lib/python3.15/LICENSE.txt', 'utf8')));
+      assert.ok(!text.includes('github.com/rclone/rclone'));
+    `,
+    ]);
+    await mustDocker([
+      'run',
+      '--rm',
+      '--network',
+      'none',
+      '--entrypoint',
+      'sh',
+      WEB_IMAGE,
+      '-c',
+      'grep -q "Hannes Hörl" /usr/share/nginx/html/THIRD_PARTY_NOTICES.txt && grep -q "Brian M. Carlson" /usr/share/nginx/html/THIRD_PARTY_NOTICES.txt && grep -q "SIL OPEN FONT LICENSE" /usr/share/nginx/html/THIRD_PARTY_NOTICES.txt && ! grep -q "github.com/rclone/rclone" /usr/share/nginx/html/THIRD_PARTY_NOTICES.txt',
+    ]);
+  });
+
   it('passes API requests through', async () => {
     await startApi();
     const web = await startWeb();
