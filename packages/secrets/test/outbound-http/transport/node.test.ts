@@ -113,7 +113,7 @@ describe('Node DNS and HTTP adapters', () => {
 
     expect(fixtures.lookup).toHaveBeenCalledWith('api.example.test', {
       all: true,
-      verbatim: true,
+      order: 'verbatim',
     });
     expect(result).toEqual([
       { address: '192.0.2.44', family: 4 },
