@@ -164,6 +164,7 @@ export function fixtureVersion(graph: unknown = emptyGraph) {
     versionNumber: 7,
     graph,
     checksum: `wf:sha256:${'a'.repeat(64)}`,
+    graphDigest: 'f'.repeat(64),
     publishedAt: fixtureTimestamp,
   };
 }

@@ -84,12 +84,11 @@ describe('strict organization endpoint transport schemas', () => {
         nextCursor: null,
       });
       expect(
-        schema.safeParse({ items: [], nextCursor: null, total: 0 }).success,
-      ).toBe(false);
+        schema.parse({ items: [], nextCursor: null, total: 0 }),
+      ).not.toHaveProperty('total');
       expect(
-        schema.safeParse({ items: [], nextCursor: null, actorId: id(1) })
-          .success,
-      ).toBe(false);
+        schema.parse({ items: [], nextCursor: null, actorId: id(1) }),
+      ).not.toHaveProperty('actorId');
     }
     const tags = Array.from({ length: 100 }, (_, index) => ({
       ...tag,
@@ -123,6 +122,18 @@ describe('strict organization endpoint transport schemas', () => {
         nextCursor: cursor,
       }).items,
     ).toHaveLength(100);
+    expect(
+      organization.workflowTagListResponseSchema.parse({
+        items: [{ ...tag, assignmentCount: 2 }],
+        nextCursor: null,
+      }),
+    ).toEqual({ items: [tag], nextCursor: null });
+    expect(
+      organization.workflowTagAssignmentsResponseSchema.parse({
+        items: [{ ...assignments[0], name: 'Private workflow' }],
+        nextCursor: null,
+      }),
+    ).toEqual({ items: [assignments[0]], nextCursor: null });
     for (const items of [
       new Array<unknown>(1),
       [undefined, tag],
@@ -131,7 +142,6 @@ describe('strict organization endpoint transport schemas', () => {
       [tags[0], tags[0]],
       [...tags, { ...tag, id: id(101) }],
       [{ ...tag, id: tag.id.toUpperCase() }],
-      [{ ...tag, assignmentCount: 2 }],
     ])
       expect(
         organization.workflowTagListResponseSchema.safeParse({
@@ -146,13 +156,6 @@ describe('strict organization endpoint transport schemas', () => {
       [assignments[1], assignments[0]],
       [assignments[0], assignments[0]],
       [...assignments, { workflowId: id(101), organizationRevision: 1 }],
-      [
-        {
-          workflowId: id(1),
-          organizationRevision: 1,
-          name: 'Private workflow',
-        },
-      ],
     ])
       expect(
         organization.workflowTagAssignmentsResponseSchema.safeParse({
@@ -200,7 +203,10 @@ describe('strict organization endpoint transport schemas', () => {
         { workflow: {} },
         { updatedAt: '2026-10-02T00:00:00Z' },
       ])
-        expect(schema.safeParse({ ...body, ...extra }).success).toBe(false);
+        if (schema === organization.workflowTagReplaceResponseSchema)
+          expect(schema.parse({ ...body, ...extra })).toEqual(body);
+        else
+          expect(schema.safeParse({ ...body, ...extra }).success).toBe(false);
       expect(schema.safeParse({ ...body, replayed: null }).success).toBe(false);
     }
     for (const detachedWorkflowCount of [-1, 51, 0.5, '0'])

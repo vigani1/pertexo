@@ -32,7 +32,7 @@ describeIntegration(
       const base = `/v1/workspaces/${fixture.workspaceId}/workflows/${fixture.ids.unpublished}`;
       const draft = await fixture.application.inject({
         method: 'GET',
-        url: `${base}/draft`,
+        url: `${base}/draft?include=graphDigest`,
         headers: { cookie: session.cookieHeader },
       });
       expect(draft.statusCode, draft.payload).toBe(200);

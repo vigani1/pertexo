@@ -27,7 +27,12 @@ afterAll(afterAllFixture2);
 it.each([() => builder, () => viewer])(
   'returns only readable topology and runs in both list projections',
   async (actor) => {
-    const input = { workspaceId, actorId: actor(), limit: 50 };
+    const input = {
+      includeListSummary: true,
+      workspaceId,
+      actorId: actor(),
+      limit: 50,
+    };
     const page = await authoring.listWorkflows(input);
     expect(page.items.map((item) => item.id)).toEqual([publicId]);
     expect(page.items[0]?.listSummary).toMatchObject({
@@ -57,6 +62,7 @@ it('bounds recent ordinary statuses to the latest 20 runs per workflow', async (
     workspaceId,
     actorId: viewer,
     limit: 50,
+    includeListSummary: true,
   });
   const recent = page.items.find((item) => item.id === publicId)?.listSummary
     ?.recentRuns;
@@ -85,6 +91,7 @@ it('returns topology without configuration, mappings or connection references', 
     workspaceId,
     actorId: viewer,
     limit: 50,
+    includeListSummary: true,
   });
   const summary = page.items.find(
     (item) => item.id === created.workflowId,
@@ -125,6 +132,7 @@ it('uses one summary query at 50 and 500 workflows', async () => {
         workspaceId,
         actorId: viewer,
         limit,
+        includeListSummary: true,
       });
       expect(page.items).toHaveLength(limit);
       expect(page.items.every((item) => item.listSummary !== undefined)).toBe(

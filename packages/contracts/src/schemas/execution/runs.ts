@@ -1,3 +1,4 @@
+import { responseSchema } from '../shared/response-schema.js';
 import { storageTextSchema } from '@pertexo/workflow-model';
 import {
   WORKFLOW_GRAPH_LIMITS,
@@ -222,12 +223,14 @@ export const workflowRunListQuerySchema = z
     }
   });
 
-export const workflowRunListResponseSchema = z
-  .object({
-    items: z.array(workflowRunListItemSchema).max(100),
-    nextCursor: workflowRunCursorSchema.nullable(),
-  })
-  .strict();
+export const workflowRunListResponseSchema = responseSchema(
+  z
+    .object({
+      items: z.array(workflowRunListItemSchema).max(100),
+      nextCursor: workflowRunCursorSchema.nullable(),
+    })
+    .strict(),
+);
 
 /** Fixed statistics windows; every one lies well inside run retention. */
 export const workflowRunStatisticsWindowSchema = z.enum([
@@ -395,20 +398,20 @@ export const workflowRunDataSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('none') }).strict(),
   z.object({ kind: z.literal('expired') }).strict(),
 ]);
-export const workflowRunInputResponseSchema = z
-  .object({ input: workflowRunDataSchema })
-  .strict();
-export const workflowNodeRunOutputResponseSchema = z
-  .object({ output: workflowRunDataSchema })
-  .strict();
+export const workflowRunInputResponseSchema = responseSchema(
+  z.object({ input: workflowRunDataSchema }).strict(),
+);
+export const workflowNodeRunOutputResponseSchema = responseSchema(
+  z.object({ output: workflowRunDataSchema }).strict(),
+);
 /** What one step run received, when it was recorded (ADR 052). */
-export const workflowNodeRunInputResponseSchema = z
-  .object({ input: workflowRunDataSchema })
-  .strict();
+export const workflowNodeRunInputResponseSchema = responseSchema(
+  z.object({ input: workflowRunDataSchema }).strict(),
+);
 
-export const workflowRunStartResponseSchema = z
-  .object({ run: workflowRunSummarySchema, replayed: z.boolean() })
-  .strict();
+export const workflowRunStartResponseSchema = responseSchema(
+  z.object({ run: workflowRunSummarySchema, replayed: z.boolean() }).strict(),
+);
 /** A logical Call's retained identity, without mapped input or result payloads. */
 const workflowCallSummarySchema = z
   .object({
@@ -466,23 +469,27 @@ export type WorkflowRunErrorWorkflow = z.infer<
   typeof workflowRunErrorWorkflowSchema
 >;
 
-export const workflowRunResponseSchema = z
-  .object({
-    run: workflowRunReadSummarySchema,
-    nodes: z
-      .array(workflowNodeRunSummarySchema)
-      .max(WORKFLOW_GRAPH_LIMITS.maxExpandedInvocations),
-    calls: z
-      .array(workflowCallSummarySchema)
-      .max(WORKFLOW_GRAPH_LIMITS.maxExpandedInvocations)
-      .optional(),
-    parentCall: workflowParentCallSchema.optional(),
-    errorWorkflow: workflowRunErrorWorkflowSchema.optional(),
-  })
-  .strict();
-export const workflowRunCancelResponseSchema = z
-  .object({ run: workflowRunSummarySchema, alreadyRequested: z.boolean() })
-  .strict();
+export const workflowRunResponseSchema = responseSchema(
+  z
+    .object({
+      run: workflowRunReadSummarySchema,
+      nodes: z
+        .array(workflowNodeRunSummarySchema)
+        .max(WORKFLOW_GRAPH_LIMITS.maxExpandedInvocations),
+      calls: z
+        .array(workflowCallSummarySchema)
+        .max(WORKFLOW_GRAPH_LIMITS.maxExpandedInvocations)
+        .optional(),
+      parentCall: workflowParentCallSchema.optional(),
+      errorWorkflow: workflowRunErrorWorkflowSchema.optional(),
+    })
+    .strict(),
+);
+export const workflowRunCancelResponseSchema = responseSchema(
+  z
+    .object({ run: workflowRunSummarySchema, alreadyRequested: z.boolean() })
+    .strict(),
+);
 
 const workflowRunEventTypeSchema = z.enum([
   'run.queued',

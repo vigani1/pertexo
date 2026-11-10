@@ -95,7 +95,7 @@ describe.skipIf(!workflowLifecycleIntegrationEnabled)(
           $ref: '#/components/responses/PreconditionFailed/content/application~1problem+json/schema',
         });
         expect(validate(body), JSON.stringify(validate.errors)).toBe(true);
-        expect(validate({ ...body, undeclared: true })).toBe(false);
+        expect(validate({ ...body, undeclared: true })).toBe(true);
       }
     });
   },

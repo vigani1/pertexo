@@ -154,7 +154,9 @@ describe('compiled CLI qualification', () => {
           items: [],
           future: { kept: 7 },
         });
-        expect(urls).toEqual([`/v1/workspaces/${workspace}/workflows?`]);
+        expect(urls).toEqual([
+          `/v1/workspaces/${workspace}/workflows?include=listSummary`,
+        ]);
         await expect(
           execute(
             process.execPath,

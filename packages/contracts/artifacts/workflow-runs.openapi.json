@@ -8938,7 +8938,7 @@
                 "code",
                 "message"
               ],
-              "additionalProperties": false
+              "additionalProperties": true
             }
           }
         },
@@ -8949,7 +8949,7 @@
           "code",
           "requestId"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "WorkflowRunVariablesResponse": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -9695,7 +9695,7 @@
                     "remainingExecutionMs",
                     "absoluteDeadlineAt"
                   ],
-                  "additionalProperties": false
+                  "additionalProperties": true
                 },
                 "recovery": {
                   "type": "object",
@@ -9734,7 +9734,7 @@
                     "effectRisk",
                     "effectsAcknowledged"
                   ],
-                  "additionalProperties": false
+                  "additionalProperties": true
                 },
                 "handledFailureCount": {
                   "type": "integer",
@@ -9791,7 +9791,7 @@
                     "asOf",
                     "reasons"
                   ],
-                  "additionalProperties": false
+                  "additionalProperties": true
                 },
                 "stalled": {
                   "type": "object",
@@ -9805,7 +9805,7 @@
                   "required": [
                     "since"
                   ],
-                  "additionalProperties": false
+                  "additionalProperties": true
                 },
                 "failedStep": {
                   "anyOf": [
@@ -9860,7 +9860,7 @@
                         "definitionKey",
                         "safeErrorCode"
                       ],
-                      "additionalProperties": false
+                      "additionalProperties": true
                     },
                     {
                       "type": "null"
@@ -9882,7 +9882,7 @@
                 "deadlineAt",
                 "cancelRequestedAt"
               ],
-              "additionalProperties": false
+              "additionalProperties": true
             }
           },
           "nextCursor": {
@@ -9902,7 +9902,7 @@
           "items",
           "nextCursor"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "WorkflowRunStatisticsResponse": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -10369,7 +10369,7 @@
                   "remainingExecutionMs",
                   "absoluteDeadlineAt"
                 ],
-                "additionalProperties": false
+                "additionalProperties": true
               },
               "recovery": {
                 "type": "object",
@@ -10408,7 +10408,7 @@
                   "effectRisk",
                   "effectsAcknowledged"
                 ],
-                "additionalProperties": false
+                "additionalProperties": true
               },
               "handledFailureCount": {
                 "type": "integer",
@@ -10430,7 +10430,7 @@
               "deadlineAt",
               "cancelRequestedAt"
             ],
-            "additionalProperties": false
+            "additionalProperties": true
           },
           "replayed": {
             "type": "boolean"
@@ -10440,7 +10440,7 @@
           "run",
           "replayed"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "WorkflowRunResponse": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -10628,7 +10628,7 @@
                   "remainingExecutionMs",
                   "absoluteDeadlineAt"
                 ],
-                "additionalProperties": false
+                "additionalProperties": true
               },
               "recovery": {
                 "type": "object",
@@ -10667,7 +10667,7 @@
                   "effectRisk",
                   "effectsAcknowledged"
                 ],
-                "additionalProperties": false
+                "additionalProperties": true
               },
               "handledFailureCount": {
                 "type": "integer",
@@ -10724,7 +10724,7 @@
                   "asOf",
                   "reasons"
                 ],
-                "additionalProperties": false
+                "additionalProperties": true
               },
               "stalled": {
                 "type": "object",
@@ -10738,7 +10738,7 @@
                 "required": [
                   "since"
                 ],
-                "additionalProperties": false
+                "additionalProperties": true
               }
             },
             "required": [
@@ -10755,7 +10755,7 @@
               "deadlineAt",
               "cancelRequestedAt"
             ],
-            "additionalProperties": false
+            "additionalProperties": true
           },
           "nodes": {
             "maxItems": 5000,
@@ -10822,7 +10822,7 @@
                     "sourceNodeRunId",
                     "sourceCompletedAt"
                   ],
-                  "additionalProperties": false
+                  "additionalProperties": true
                 },
                 "failureHandling": {
                   "type": "object",
@@ -10850,7 +10850,7 @@
                     "sinkInvocationKey",
                     "disposition"
                   ],
-                  "additionalProperties": false
+                  "additionalProperties": true
                 },
                 "startedAt": {
                   "anyOf": [
@@ -10923,7 +10923,7 @@
                 "resumeAt",
                 "safeErrorCode"
               ],
-              "additionalProperties": false
+              "additionalProperties": true
             }
           },
           "calls": {
@@ -11017,7 +11017,7 @@
                 "detailsRetired",
                 "safeErrorCode"
               ],
-              "additionalProperties": false
+              "additionalProperties": true
             }
           },
           "parentCall": {
@@ -11044,7 +11044,7 @@
               "parentRunId",
               "invocationKey"
             ],
-            "additionalProperties": false
+            "additionalProperties": true
           },
           "errorWorkflow": {
             "type": "object",
@@ -11126,14 +11126,14 @@
               "queueWaitExpiresAt",
               "refusalCode"
             ],
-            "additionalProperties": false
+            "additionalProperties": true
           }
         },
         "required": [
           "run",
           "nodes"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "WorkflowRunInputResponse": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -11156,7 +11156,7 @@
                   "kind",
                   "value"
                 ],
-                "additionalProperties": false
+                "additionalProperties": true
               },
               {
                 "type": "object",
@@ -11175,7 +11175,7 @@
                   "kind",
                   "artifactId"
                 ],
-                "additionalProperties": false
+                "additionalProperties": true
               },
               {
                 "type": "object",
@@ -11188,7 +11188,7 @@
                 "required": [
                   "kind"
                 ],
-                "additionalProperties": false
+                "additionalProperties": true
               },
               {
                 "type": "object",
@@ -11201,7 +11201,7 @@
                 "required": [
                   "kind"
                 ],
-                "additionalProperties": false
+                "additionalProperties": true
               }
             ]
           }
@@ -11209,7 +11209,7 @@
         "required": [
           "input"
         ],
-        "additionalProperties": false,
+        "additionalProperties": true,
         "$defs": {
           "__schema0": {
             "anyOf": [
@@ -11238,6 +11238,38 @@
                 },
                 "additionalProperties": {
                   "$ref": "#/components/schemas/WorkflowRunInputResponse/$defs/__schema0"
+                }
+              }
+            ],
+            "$ref": "#/components/schemas/WorkflowRunInputResponse/$defs/__schema1"
+          },
+          "__schema1": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/WorkflowRunInputResponse/$defs/__schema1"
+                }
+              },
+              {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/WorkflowRunInputResponse/$defs/__schema1"
                 }
               }
             ]
@@ -11265,7 +11297,7 @@
                   "kind",
                   "value"
                 ],
-                "additionalProperties": false
+                "additionalProperties": true
               },
               {
                 "type": "object",
@@ -11284,7 +11316,7 @@
                   "kind",
                   "artifactId"
                 ],
-                "additionalProperties": false
+                "additionalProperties": true
               },
               {
                 "type": "object",
@@ -11297,7 +11329,7 @@
                 "required": [
                   "kind"
                 ],
-                "additionalProperties": false
+                "additionalProperties": true
               },
               {
                 "type": "object",
@@ -11310,7 +11342,7 @@
                 "required": [
                   "kind"
                 ],
-                "additionalProperties": false
+                "additionalProperties": true
               }
             ]
           }
@@ -11318,7 +11350,7 @@
         "required": [
           "output"
         ],
-        "additionalProperties": false,
+        "additionalProperties": true,
         "$defs": {
           "__schema0": {
             "anyOf": [
@@ -11347,6 +11379,38 @@
                 },
                 "additionalProperties": {
                   "$ref": "#/components/schemas/WorkflowNodeRunOutputResponse/$defs/__schema0"
+                }
+              }
+            ],
+            "$ref": "#/components/schemas/WorkflowNodeRunOutputResponse/$defs/__schema1"
+          },
+          "__schema1": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/WorkflowNodeRunOutputResponse/$defs/__schema1"
+                }
+              },
+              {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/WorkflowNodeRunOutputResponse/$defs/__schema1"
                 }
               }
             ]
@@ -11455,7 +11519,7 @@
                   "kind",
                   "value"
                 ],
-                "additionalProperties": false
+                "additionalProperties": true
               },
               {
                 "type": "object",
@@ -11474,7 +11538,7 @@
                   "kind",
                   "artifactId"
                 ],
-                "additionalProperties": false
+                "additionalProperties": true
               },
               {
                 "type": "object",
@@ -11487,7 +11551,7 @@
                 "required": [
                   "kind"
                 ],
-                "additionalProperties": false
+                "additionalProperties": true
               },
               {
                 "type": "object",
@@ -11500,7 +11564,7 @@
                 "required": [
                   "kind"
                 ],
-                "additionalProperties": false
+                "additionalProperties": true
               }
             ]
           }
@@ -11508,7 +11572,7 @@
         "required": [
           "input"
         ],
-        "additionalProperties": false,
+        "additionalProperties": true,
         "$defs": {
           "__schema0": {
             "anyOf": [
@@ -11537,6 +11601,38 @@
                 },
                 "additionalProperties": {
                   "$ref": "#/components/schemas/WorkflowNodeRunInputResponse/$defs/__schema0"
+                }
+              }
+            ],
+            "$ref": "#/components/schemas/WorkflowNodeRunInputResponse/$defs/__schema1"
+          },
+          "__schema1": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/WorkflowNodeRunInputResponse/$defs/__schema1"
+                }
+              },
+              {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/WorkflowNodeRunInputResponse/$defs/__schema1"
                 }
               }
             ]
@@ -11988,7 +12084,7 @@
                   "remainingExecutionMs",
                   "absoluteDeadlineAt"
                 ],
-                "additionalProperties": false
+                "additionalProperties": true
               },
               "recovery": {
                 "type": "object",
@@ -12027,7 +12123,7 @@
                   "effectRisk",
                   "effectsAcknowledged"
                 ],
-                "additionalProperties": false
+                "additionalProperties": true
               },
               "handledFailureCount": {
                 "type": "integer",
@@ -12049,7 +12145,7 @@
               "deadlineAt",
               "cancelRequestedAt"
             ],
-            "additionalProperties": false
+            "additionalProperties": true
           },
           "alreadyRequested": {
             "type": "boolean"
@@ -12059,7 +12155,7 @@
           "run",
           "alreadyRequested"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "WorkflowRecoveryPreview": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -12294,7 +12390,7 @@
                 "code",
                 "message"
               ],
-              "additionalProperties": false
+              "additionalProperties": true
             }
           },
           "reason": {
@@ -12326,7 +12422,7 @@
           "requestId",
           "reason"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "WorkflowRunSummary": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",

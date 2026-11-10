@@ -86,16 +86,20 @@ export async function executeAutomationCommand(
       return responseValue(await get('/v1/token'));
     case 'workflows list':
       return responseValue(
-        await get(`${base}/workflows?${query(command.query)}`),
+        await get(
+          `${base}/workflows?${query({ ...command.query, include: 'listSummary' })}`,
+        ),
       );
     case 'workflows get':
       return responseValue(await get(workflow(command.workflowId)));
     case 'workflows draft':
-      return draftWithEtag(await get(`${workflow(command.workflowId)}/draft`));
+      return draftWithEtag(
+        await get(`${workflow(command.workflowId)}/draft?include=graphDigest`),
+      );
     case 'workflows versions':
       return responseValue(
         await get(
-          `${workflow(command.workflowId)}/versions?${query(command.query)}`,
+          `${workflow(command.workflowId)}/versions?${query({ ...command.query, include: 'graphDigest' })}`,
         ),
       );
     case 'workflows export':

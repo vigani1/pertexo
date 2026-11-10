@@ -10,7 +10,9 @@ export function workflowListBody(
   items: readonly unknown[],
   nextCursor: string | null = null,
 ) {
-  if (new URL(url).searchParams.get('include') !== 'organization')
+  if (
+    new URL(url).searchParams.get('include')?.includes('organization') !== true
+  )
     return { items, nextCursor };
   return {
     items: items.map((workflow) => ({

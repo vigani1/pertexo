@@ -46,6 +46,7 @@ describe('bounded paginated discovery', () => {
       versionNumber: 1,
       graph: { nodes: [], edges: [], settings: {} },
       checksum: `wf:sha256:${'a'.repeat(64)}`,
+      graphDigest: 'f'.repeat(64),
       publishedAt: '2026-09-15T10:00:00.000Z',
     };
     mockServer.use(

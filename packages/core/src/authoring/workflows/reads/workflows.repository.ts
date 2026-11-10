@@ -62,15 +62,17 @@ export async function listWorkflows(
     rows = await listRows(client, parsed, access);
   const hasMore = rows.length > parsed.limit,
     pageRows = rows.slice(0, parsed.limit);
-  const summaries = await readListSummaries(
-    client,
-    access,
-    pageRows.map((row) => row.workflow.id),
-  );
+  const summaries = input.includeListSummary
+    ? await readListSummaries(
+        client,
+        access,
+        pageRows.map((row) => row.workflow.id),
+      )
+    : undefined;
   const items = Object.freeze(
     pageRows.map((row) => ({
       ...row.workflow,
-      listSummary: summaries.get(row.workflow.id),
+      listSummary: summaries?.get(row.workflow.id),
       resourceAccess: workflowActions(access, row.resource_folder_id),
     })),
   );

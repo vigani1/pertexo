@@ -25,7 +25,7 @@ describe('automation command behavior', () => {
   it.each([
     {
       args: ['workflows', 'list', '--limit', '7', '--after', 'x y'],
-      path: '/workflows?limit=7&after=x+y',
+      path: '/workflows?limit=7&after=x+y&include=listSummary',
       effect: 'read',
     },
     {
@@ -35,7 +35,7 @@ describe('automation command behavior', () => {
     },
     {
       args: ['workflows', 'draft', '--workflow', target],
-      path: `/workflows/${target}/draft`,
+      path: `/workflows/${target}/draft?include=graphDigest`,
       effect: 'read',
     },
     {
@@ -47,7 +47,7 @@ describe('automation command behavior', () => {
         '--version',
         target,
       ],
-      path: `/workflows/${target}/versions?versionId=${target}`,
+      path: `/workflows/${target}/versions?versionId=${target}&include=graphDigest`,
       effect: 'read',
     },
     {

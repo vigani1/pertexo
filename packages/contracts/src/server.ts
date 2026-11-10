@@ -73,3 +73,5 @@ export { directoryRoutes } from './routes/identity/directory.js';
 export { portabilityRoutes } from './routes/workflows/portability.js';
 
 export { sessionRoutes } from './routes/identity/session.js';
+
+export { jsonSchema } from './routes/openapi-primitives.js';

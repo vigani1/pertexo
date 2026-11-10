@@ -43,7 +43,7 @@ export async function getWorkflowDuplicateDraft(
   signal: AbortSignal,
 ): Promise<Readonly<{ revision: number; etag: string }>> {
   return apiClient.request({
-    path: `${workflowPath(workspaceId, workflowId)}/draft`,
+    path: `${workflowPath(workspaceId, workflowId)}/draft?include=graphDigest`,
     signal,
     response: {
       kind: 'json',
@@ -98,7 +98,10 @@ export function getWorkflowsPage(
     }
   > = {},
 ): Promise<WorkflowListResponse> {
-  const query = new URLSearchParams({ limit: String(input.limit ?? 25) });
+  const query = new URLSearchParams({
+    limit: String(input.limit ?? 25),
+    include: 'listSummary',
+  });
   if (input.after !== undefined) query.set('after', input.after);
   if (input.order !== undefined) query.set('order', input.order);
   if (input.pinsWorkflowId !== undefined)
@@ -172,7 +175,7 @@ export async function getWorkflowShapeGraph(
   signal?: AbortSignal,
 ): Promise<WorkflowGraphContract> {
   const draft = await apiClient.request({
-    path: `${workflowPath(workspaceId, workflowId)}/draft`,
+    path: `${workflowPath(workspaceId, workflowId)}/draft?include=graphDigest`,
     ...(signal === undefined ? {} : { signal }),
     response: {
       kind: 'json',

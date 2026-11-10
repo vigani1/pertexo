@@ -77,6 +77,7 @@ function version(callable = false, wait?: Promise<void>) {
               versionNumber: 1,
               publishedAt: '2026-10-14T12:00:00.000Z',
               checksum: `wf:sha256:${'a'.repeat(64)}`,
+              graphDigest: 'f'.repeat(64),
               graph: {
                 nodes: [],
                 edges: [],

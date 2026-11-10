@@ -267,11 +267,11 @@ describe('connection public contracts', () => {
 
   it('publishes strict secret-free responses and the intended operations', () => {
     expect(
-      connectionResponseSchema.safeParse({
+      connectionResponseSchema.parse({
         ...connection,
         credential: { authorization: 'must-not-leak' },
-      }).success,
-    ).toBe(false);
+      }),
+    ).not.toHaveProperty('credential');
     expect(
       connectionTestResponseSchema.safeParse({
         connection: {

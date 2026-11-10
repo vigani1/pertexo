@@ -106,8 +106,9 @@ for (const screen of [
         `**/v1/workspaces/${workspaceId}/workflows?**`,
         (route) => {
           const organized =
-            new URL(route.request().url()).searchParams.get('include') ===
-            'organization';
+            new URL(route.request().url()).searchParams
+              .get('include')
+              ?.includes('organization') === true;
           return route.fulfill({
             json: {
               items: [alpha, beta].map((workflow) =>

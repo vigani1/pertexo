@@ -5,5 +5,5 @@ export const workflowGraphDigestSchema = z
   .string()
   .regex(/^[a-f0-9]{64}$/u)
   .describe(
-    'Review the source graph, then echo this content identity as reviewedGraphDigest; draft writes still require the opaque ETag.',
+    'Returned on reads with include=graphDigest. Review the source graph, then echo this content identity as reviewedGraphDigest; draft writes still require the opaque ETag.',
   );

@@ -735,6 +735,20 @@
             }
           },
           {
+            "name": "include",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "enum": [
+                "organization",
+                "listSummary",
+                "organization,listSummary"
+              ]
+            }
+          },
+          {
             "name": "query",
             "in": "query",
             "required": false,
@@ -796,21 +810,11 @@
               "type": "string",
               "const": "true"
             }
-          },
-          {
-            "name": "include",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "$schema": "https://json-schema.org/draft/2020-12/schema",
-              "type": "string",
-              "const": "organization"
-            }
           }
         ],
         "responses": {
           "200": {
-            "description": "Default or filtered workflow summaries; include=organization explicitly requests private organization metadata. Filters apply before bounded pagination; unknown/foreign tag or folder filters return an empty scoped page. folderId selects an exact UUID without descendants, root selects unfiled, and omission includes all placements. pinsWorkflowId lists workflows whose current publication directly pins that target, using the ordinary list response and cursor; it cannot be combined with organization filters. Live pagination is not a snapshot and has no total count.",
+            "description": "Default or filtered workflow summaries; include=organization requests private organization metadata; include=listSummary adds compact topology and recent ordinary-run statuses, or combine them as organization,listSummary. Defaults omit both projections. Filters apply before bounded pagination; unknown/foreign tag or folder filters return an empty scoped page. folderId selects an exact UUID without descendants, root selects unfiled, and omission includes all placements. pinsWorkflowId lists workflows whose current publication directly pins that target, using the ordinary list response and cursor; it cannot be combined with organization filters. Live pagination is not a snapshot and has no total count.",
             "headers": {
               "Cache-Control": {
                 "schema": {
@@ -994,7 +998,7 @@
         "x-pertexo-api-token-scopes": [
           "workflow:read"
         ],
-        "description": "Default metadata retains its strict shape. include is exactly templateOrigin, organization, or templateOrigin,organization. Unsupported projection is unavailable, never inferred null or empty.",
+        "description": "Default metadata retains its previous fields; response decoders ignore future metadata. include is exactly templateOrigin, organization, or templateOrigin,organization. Unsupported projection is unavailable, never inferred null or empty.",
         "security": [
           {
             "cookieSession": []
@@ -1055,7 +1059,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "oneOf": [
+                  "anyOf": [
                     {
                       "$ref": "#/components/schemas/WorkflowSummaryResponse"
                     },
@@ -1149,6 +1153,16 @@
             }
           },
           {
+            "name": "include",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "const": "graphDigest"
+            }
+          },
+          {
             "in": "header",
             "name": "if-none-match",
             "required": false,
@@ -1160,7 +1174,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Workflow draft",
+            "description": "Workflow draft; include=graphDigest adds the reviewed content identity without changing the ETag precondition",
             "content": {
               "application/json": {
                 "schema": {
@@ -1601,6 +1615,16 @@
             }
           },
           {
+            "name": "include",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "const": "graphDigest"
+            }
+          },
+          {
             "name": "limit",
             "in": "query",
             "required": false,
@@ -1637,7 +1661,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Immutable workflow versions",
+            "description": "Immutable workflow versions; include=graphDigest adds the reviewed content identity",
             "content": {
               "application/json": {
                 "schema": {
@@ -7573,7 +7597,7 @@
                   "canEdit",
                   "canPublish"
                 ],
-                "additionalProperties": false
+                "additionalProperties": true
               },
               "listSummary": {
                 "type": "object",
@@ -7603,7 +7627,7 @@
                                 "key",
                                 "version"
                               ],
-                              "additionalProperties": false
+                              "additionalProperties": true
                             },
                             "position": {
                               "type": "object",
@@ -7619,7 +7643,7 @@
                                 "x",
                                 "y"
                               ],
-                              "additionalProperties": false
+                              "additionalProperties": true
                             },
                             "label": {
                               "type": "string"
@@ -7635,7 +7659,7 @@
                               "required": [
                                 "kind"
                               ],
-                              "additionalProperties": false
+                              "additionalProperties": true
                             }
                           },
                           "required": [
@@ -7643,7 +7667,7 @@
                             "definition",
                             "position"
                           ],
-                          "additionalProperties": false
+                          "additionalProperties": true
                         }
                       },
                       "edges": {
@@ -7668,7 +7692,7 @@
                                 "nodeId",
                                 "port"
                               ],
-                              "additionalProperties": false
+                              "additionalProperties": true
                             },
                             "target": {
                               "type": "object",
@@ -7684,7 +7708,7 @@
                                 "nodeId",
                                 "port"
                               ],
-                              "additionalProperties": false
+                              "additionalProperties": true
                             }
                           },
                           "required": [
@@ -7692,7 +7716,7 @@
                             "source",
                             "target"
                           ],
-                          "additionalProperties": false
+                          "additionalProperties": true
                         }
                       }
                     },
@@ -7700,7 +7724,7 @@
                       "nodes",
                       "edges"
                     ],
-                    "additionalProperties": false
+                    "additionalProperties": true
                   },
                   "recentRuns": {
                     "maxItems": 20,
@@ -7731,14 +7755,14 @@
                         "status",
                         "createdAt"
                       ],
-                      "additionalProperties": false
+                      "additionalProperties": true
                     }
                   }
                 },
                 "required": [
                   "shape"
                 ],
-                "additionalProperties": false
+                "additionalProperties": true
               },
               "publishedVersionId": {
                 "anyOf": [
@@ -7776,7 +7800,7 @@
               "createdAt",
               "updatedAt"
             ],
-            "additionalProperties": false
+            "additionalProperties": true
           },
           "draft": {
             "type": "object",
@@ -7830,7 +7854,7 @@
                             "nodeId",
                             "port"
                           ],
-                          "additionalProperties": false
+                          "additionalProperties": true
                         },
                         "target": {
                           "type": "object",
@@ -7850,7 +7874,7 @@
                             "nodeId",
                             "port"
                           ],
-                          "additionalProperties": false
+                          "additionalProperties": true
                         }
                       },
                       "required": [
@@ -7858,7 +7882,7 @@
                         "source",
                         "target"
                       ],
-                      "additionalProperties": false
+                      "additionalProperties": true
                     }
                   },
                   "settings": {
@@ -7870,7 +7894,7 @@
                         "maximum": 3600000
                       }
                     },
-                    "additionalProperties": false
+                    "additionalProperties": true
                   },
                   "callable": {
                     "type": "object",
@@ -7899,7 +7923,7 @@
                               "kind",
                               "name"
                             ],
-                            "additionalProperties": false
+                            "additionalProperties": true
                           },
                           {
                             "type": "object",
@@ -7916,7 +7940,7 @@
                               "kind",
                               "value"
                             ],
-                            "additionalProperties": false
+                            "additionalProperties": true
                           },
                           {
                             "type": "object",
@@ -7933,7 +7957,7 @@
                               "kind",
                               "path"
                             ],
-                            "additionalProperties": false
+                            "additionalProperties": true
                           },
                           {
                             "type": "object",
@@ -7956,7 +7980,7 @@
                               "nodeId",
                               "path"
                             ],
-                            "additionalProperties": false
+                            "additionalProperties": true
                           },
                           {
                             "type": "object",
@@ -7979,7 +8003,7 @@
                               "nodeId",
                               "path"
                             ],
-                            "additionalProperties": false
+                            "additionalProperties": true
                           },
                           {
                             "type": "object",
@@ -8001,7 +8025,7 @@
                               "language",
                               "expression"
                             ],
-                            "additionalProperties": false
+                            "additionalProperties": true
                           },
                           {
                             "type": "object",
@@ -8024,7 +8048,7 @@
                               "port",
                               "path"
                             ],
-                            "additionalProperties": false
+                            "additionalProperties": true
                           }
                         ]
                       }
@@ -8034,7 +8058,7 @@
                       "resultType",
                       "result"
                     ],
-                    "additionalProperties": false
+                    "additionalProperties": true
                   },
                   "notes": {
                     "maxItems": 100,
@@ -8069,7 +8093,7 @@
                             "x",
                             "y"
                           ],
-                          "additionalProperties": false
+                          "additionalProperties": true
                         },
                         "size": {
                           "type": "object",
@@ -8089,7 +8113,7 @@
                             "width",
                             "height"
                           ],
-                          "additionalProperties": false
+                          "additionalProperties": true
                         },
                         "color": {
                           "type": "string",
@@ -8109,7 +8133,7 @@
                         "size",
                         "color"
                       ],
-                      "additionalProperties": false
+                      "additionalProperties": true
                     }
                   }
                 },
@@ -8118,7 +8142,7 @@
                   "edges",
                   "settings"
                 ],
-                "additionalProperties": false,
+                "additionalProperties": true,
                 "$defs": {
                   "__schema0": {
                     "type": "object",
@@ -8146,7 +8170,7 @@
                           "key",
                           "version"
                         ],
-                        "additionalProperties": false
+                        "additionalProperties": true
                       },
                       "position": {
                         "type": "object",
@@ -8162,7 +8186,7 @@
                           "x",
                           "y"
                         ],
-                        "additionalProperties": false
+                        "additionalProperties": true
                       },
                       "configVersion": {
                         "type": "integer",
@@ -8201,7 +8225,7 @@
                                 "kind",
                                 "name"
                               ],
-                              "additionalProperties": false
+                              "additionalProperties": true
                             },
                             {
                               "type": "object",
@@ -8218,7 +8242,7 @@
                                 "kind",
                                 "value"
                               ],
-                              "additionalProperties": false
+                              "additionalProperties": true
                             },
                             {
                               "type": "object",
@@ -8235,7 +8259,7 @@
                                 "kind",
                                 "path"
                               ],
-                              "additionalProperties": false
+                              "additionalProperties": true
                             },
                             {
                               "type": "object",
@@ -8258,7 +8282,7 @@
                                 "nodeId",
                                 "path"
                               ],
-                              "additionalProperties": false
+                              "additionalProperties": true
                             },
                             {
                               "type": "object",
@@ -8281,7 +8305,7 @@
                                 "nodeId",
                                 "path"
                               ],
-                              "additionalProperties": false
+                              "additionalProperties": true
                             },
                             {
                               "type": "object",
@@ -8303,7 +8327,7 @@
                                 "language",
                                 "expression"
                               ],
-                              "additionalProperties": false
+                              "additionalProperties": true
                             },
                             {
                               "type": "object",
@@ -8326,7 +8350,7 @@
                                 "port",
                                 "path"
                               ],
-                              "additionalProperties": false
+                              "additionalProperties": true
                             }
                           ]
                         }
@@ -8367,7 +8391,7 @@
                           "maximumAttempts",
                           "delayMillis"
                         ],
-                        "additionalProperties": false
+                        "additionalProperties": true
                       },
                       "structured": {
                         "type": "object",
@@ -8423,7 +8447,7 @@
                                         "nodeId",
                                         "port"
                                       ],
-                                      "additionalProperties": false
+                                      "additionalProperties": true
                                     },
                                     "target": {
                                       "type": "object",
@@ -8443,7 +8467,7 @@
                                         "nodeId",
                                         "port"
                                       ],
-                                      "additionalProperties": false
+                                      "additionalProperties": true
                                     }
                                   },
                                   "required": [
@@ -8451,7 +8475,7 @@
                                     "source",
                                     "target"
                                   ],
-                                  "additionalProperties": false
+                                  "additionalProperties": true
                                 }
                               },
                               "settings": {
@@ -8463,7 +8487,7 @@
                                     "maximum": 3600000
                                   }
                                 },
-                                "additionalProperties": false
+                                "additionalProperties": true
                               },
                               "inputPorts": {
                                 "type": "array",
@@ -8489,7 +8513,7 @@
                               "inputPorts",
                               "outputPorts"
                             ],
-                            "additionalProperties": false
+                            "additionalProperties": true
                           }
                         },
                         "required": [
@@ -8498,7 +8522,7 @@
                           "maxConcurrency",
                           "body"
                         ],
-                        "additionalProperties": false
+                        "additionalProperties": true
                       }
                     },
                     "required": [
@@ -8510,7 +8534,7 @@
                       "inputMappings",
                       "connectionRefs"
                     ],
-                    "additionalProperties": false
+                    "additionalProperties": true
                   },
                   "__schema1": {
                     "anyOf": [
@@ -8587,7 +8611,7 @@
                         "required": [
                           "type"
                         ],
-                        "additionalProperties": false
+                        "additionalProperties": true
                       },
                       {
                         "type": "object",
@@ -8600,7 +8624,7 @@
                         "required": [
                           "type"
                         ],
-                        "additionalProperties": false
+                        "additionalProperties": true
                       },
                       {
                         "type": "object",
@@ -8613,7 +8637,7 @@
                         "required": [
                           "type"
                         ],
-                        "additionalProperties": false
+                        "additionalProperties": true
                       },
                       {
                         "type": "object",
@@ -8626,7 +8650,7 @@
                         "required": [
                           "type"
                         ],
-                        "additionalProperties": false
+                        "additionalProperties": true
                       },
                       {
                         "type": "object",
@@ -8649,7 +8673,7 @@
                           "items",
                           "maxItems"
                         ],
-                        "additionalProperties": false
+                        "additionalProperties": true
                       },
                       {
                         "type": "object",
@@ -8681,7 +8705,7 @@
                                 "valueType",
                                 "required"
                               ],
-                              "additionalProperties": false
+                              "additionalProperties": true
                             }
                           }
                         },
@@ -8689,7 +8713,7 @@
                           "type",
                           "properties"
                         ],
-                        "additionalProperties": false
+                        "additionalProperties": true
                       }
                     ]
                   }
@@ -8700,7 +8724,7 @@
               "graphDigest": {
                 "type": "string",
                 "pattern": "^[a-f0-9]{64}$",
-                "description": "Review the source graph, then echo this content identity as reviewedGraphDigest; draft writes still require the opaque ETag."
+                "description": "Returned on reads with include=graphDigest. Review the source graph, then echo this content identity as reviewedGraphDigest; draft writes still require the opaque ETag."
               },
               "compatibility": {
                 "type": "object",
@@ -8738,7 +8762,7 @@
                         "definitionKey",
                         "version"
                       ],
-                      "additionalProperties": false
+                      "additionalProperties": true
                     }
                   }
                 },
@@ -8747,7 +8771,7 @@
                   "fingerprint",
                   "issues"
                 ],
-                "additionalProperties": false
+                "additionalProperties": true
               },
               "updatedAt": {
                 "type": "string",
@@ -8762,14 +8786,14 @@
               "compatibility",
               "updatedAt"
             ],
-            "additionalProperties": false
+            "additionalProperties": true
           }
         },
         "required": [
           "workflow",
           "draft"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "WorkflowDraftResponse": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -8824,7 +8848,7 @@
                         "nodeId",
                         "port"
                       ],
-                      "additionalProperties": false
+                      "additionalProperties": true
                     },
                     "target": {
                       "type": "object",
@@ -8844,7 +8868,7 @@
                         "nodeId",
                         "port"
                       ],
-                      "additionalProperties": false
+                      "additionalProperties": true
                     }
                   },
                   "required": [
@@ -8852,7 +8876,7 @@
                     "source",
                     "target"
                   ],
-                  "additionalProperties": false
+                  "additionalProperties": true
                 }
               },
               "settings": {
@@ -8864,7 +8888,7 @@
                     "maximum": 3600000
                   }
                 },
-                "additionalProperties": false
+                "additionalProperties": true
               },
               "callable": {
                 "type": "object",
@@ -8893,7 +8917,7 @@
                           "kind",
                           "name"
                         ],
-                        "additionalProperties": false
+                        "additionalProperties": true
                       },
                       {
                         "type": "object",
@@ -8910,7 +8934,7 @@
                           "kind",
                           "value"
                         ],
-                        "additionalProperties": false
+                        "additionalProperties": true
                       },
                       {
                         "type": "object",
@@ -8927,7 +8951,7 @@
                           "kind",
                           "path"
                         ],
-                        "additionalProperties": false
+                        "additionalProperties": true
                       },
                       {
                         "type": "object",
@@ -8950,7 +8974,7 @@
                           "nodeId",
                           "path"
                         ],
-                        "additionalProperties": false
+                        "additionalProperties": true
                       },
                       {
                         "type": "object",
@@ -8973,7 +8997,7 @@
                           "nodeId",
                           "path"
                         ],
-                        "additionalProperties": false
+                        "additionalProperties": true
                       },
                       {
                         "type": "object",
@@ -8995,7 +9019,7 @@
                           "language",
                           "expression"
                         ],
-                        "additionalProperties": false
+                        "additionalProperties": true
                       },
                       {
                         "type": "object",
@@ -9018,7 +9042,7 @@
                           "port",
                           "path"
                         ],
-                        "additionalProperties": false
+                        "additionalProperties": true
                       }
                     ]
                   }
@@ -9028,7 +9052,7 @@
                   "resultType",
                   "result"
                 ],
-                "additionalProperties": false
+                "additionalProperties": true
               },
               "notes": {
                 "maxItems": 100,
@@ -9063,7 +9087,7 @@
                         "x",
                         "y"
                       ],
-                      "additionalProperties": false
+                      "additionalProperties": true
                     },
                     "size": {
                       "type": "object",
@@ -9083,7 +9107,7 @@
                         "width",
                         "height"
                       ],
-                      "additionalProperties": false
+                      "additionalProperties": true
                     },
                     "color": {
                       "type": "string",
@@ -9103,7 +9127,7 @@
                     "size",
                     "color"
                   ],
-                  "additionalProperties": false
+                  "additionalProperties": true
                 }
               }
             },
@@ -9112,7 +9136,7 @@
               "edges",
               "settings"
             ],
-            "additionalProperties": false,
+            "additionalProperties": true,
             "$defs": {
               "__schema0": {
                 "type": "object",
@@ -9140,7 +9164,7 @@
                       "key",
                       "version"
                     ],
-                    "additionalProperties": false
+                    "additionalProperties": true
                   },
                   "position": {
                     "type": "object",
@@ -9156,7 +9180,7 @@
                       "x",
                       "y"
                     ],
-                    "additionalProperties": false
+                    "additionalProperties": true
                   },
                   "configVersion": {
                     "type": "integer",
@@ -9195,7 +9219,7 @@
                             "kind",
                             "name"
                           ],
-                          "additionalProperties": false
+                          "additionalProperties": true
                         },
                         {
                           "type": "object",
@@ -9212,7 +9236,7 @@
                             "kind",
                             "value"
                           ],
-                          "additionalProperties": false
+                          "additionalProperties": true
                         },
                         {
                           "type": "object",
@@ -9229,7 +9253,7 @@
                             "kind",
                             "path"
                           ],
-                          "additionalProperties": false
+                          "additionalProperties": true
                         },
                         {
                           "type": "object",
@@ -9252,7 +9276,7 @@
                             "nodeId",
                             "path"
                           ],
-                          "additionalProperties": false
+                          "additionalProperties": true
                         },
                         {
                           "type": "object",
@@ -9275,7 +9299,7 @@
                             "nodeId",
                             "path"
                           ],
-                          "additionalProperties": false
+                          "additionalProperties": true
                         },
                         {
                           "type": "object",
@@ -9297,7 +9321,7 @@
                             "language",
                             "expression"
                           ],
-                          "additionalProperties": false
+                          "additionalProperties": true
                         },
                         {
                           "type": "object",
@@ -9320,7 +9344,7 @@
                             "port",
                             "path"
                           ],
-                          "additionalProperties": false
+                          "additionalProperties": true
                         }
                       ]
                     }
@@ -9361,7 +9385,7 @@
                       "maximumAttempts",
                       "delayMillis"
                     ],
-                    "additionalProperties": false
+                    "additionalProperties": true
                   },
                   "structured": {
                     "type": "object",
@@ -9417,7 +9441,7 @@
                                     "nodeId",
                                     "port"
                                   ],
-                                  "additionalProperties": false
+                                  "additionalProperties": true
                                 },
                                 "target": {
                                   "type": "object",
@@ -9437,7 +9461,7 @@
                                     "nodeId",
                                     "port"
                                   ],
-                                  "additionalProperties": false
+                                  "additionalProperties": true
                                 }
                               },
                               "required": [
@@ -9445,7 +9469,7 @@
                                 "source",
                                 "target"
                               ],
-                              "additionalProperties": false
+                              "additionalProperties": true
                             }
                           },
                           "settings": {
@@ -9457,7 +9481,7 @@
                                 "maximum": 3600000
                               }
                             },
-                            "additionalProperties": false
+                            "additionalProperties": true
                           },
                           "inputPorts": {
                             "type": "array",
@@ -9483,7 +9507,7 @@
                           "inputPorts",
                           "outputPorts"
                         ],
-                        "additionalProperties": false
+                        "additionalProperties": true
                       }
                     },
                     "required": [
@@ -9492,7 +9516,7 @@
                       "maxConcurrency",
                       "body"
                     ],
-                    "additionalProperties": false
+                    "additionalProperties": true
                   }
                 },
                 "required": [
@@ -9504,7 +9528,7 @@
                   "inputMappings",
                   "connectionRefs"
                 ],
-                "additionalProperties": false
+                "additionalProperties": true
               },
               "__schema1": {
                 "anyOf": [
@@ -9581,7 +9605,7 @@
                     "required": [
                       "type"
                     ],
-                    "additionalProperties": false
+                    "additionalProperties": true
                   },
                   {
                     "type": "object",
@@ -9594,7 +9618,7 @@
                     "required": [
                       "type"
                     ],
-                    "additionalProperties": false
+                    "additionalProperties": true
                   },
                   {
                     "type": "object",
@@ -9607,7 +9631,7 @@
                     "required": [
                       "type"
                     ],
-                    "additionalProperties": false
+                    "additionalProperties": true
                   },
                   {
                     "type": "object",
@@ -9620,7 +9644,7 @@
                     "required": [
                       "type"
                     ],
-                    "additionalProperties": false
+                    "additionalProperties": true
                   },
                   {
                     "type": "object",
@@ -9643,7 +9667,7 @@
                       "items",
                       "maxItems"
                     ],
-                    "additionalProperties": false
+                    "additionalProperties": true
                   },
                   {
                     "type": "object",
@@ -9675,7 +9699,7 @@
                             "valueType",
                             "required"
                           ],
-                          "additionalProperties": false
+                          "additionalProperties": true
                         }
                       }
                     },
@@ -9683,7 +9707,7 @@
                       "type",
                       "properties"
                     ],
-                    "additionalProperties": false
+                    "additionalProperties": true
                   }
                 ]
               }
@@ -9694,7 +9718,7 @@
           "graphDigest": {
             "type": "string",
             "pattern": "^[a-f0-9]{64}$",
-            "description": "Review the source graph, then echo this content identity as reviewedGraphDigest; draft writes still require the opaque ETag."
+            "description": "Returned on reads with include=graphDigest. Review the source graph, then echo this content identity as reviewedGraphDigest; draft writes still require the opaque ETag."
           },
           "compatibility": {
             "type": "object",
@@ -9732,7 +9756,7 @@
                     "definitionKey",
                     "version"
                   ],
-                  "additionalProperties": false
+                  "additionalProperties": true
                 }
               }
             },
@@ -9741,7 +9765,7 @@
               "fingerprint",
               "issues"
             ],
-            "additionalProperties": false
+            "additionalProperties": true
           },
           "updatedAt": {
             "type": "string",
@@ -9756,7 +9780,7 @@
           "compatibility",
           "updatedAt"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "WorkflowDraftSaveRequest": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -10859,7 +10883,7 @@
                             "nodeId",
                             "port"
                           ],
-                          "additionalProperties": false
+                          "additionalProperties": true
                         },
                         "target": {
                           "type": "object",
@@ -10879,7 +10903,7 @@
                             "nodeId",
                             "port"
                           ],
-                          "additionalProperties": false
+                          "additionalProperties": true
                         }
                       },
                       "required": [
@@ -10887,7 +10911,7 @@
                         "source",
                         "target"
                       ],
-                      "additionalProperties": false
+                      "additionalProperties": true
                     }
                   },
                   "settings": {
@@ -10899,7 +10923,7 @@
                         "maximum": 3600000
                       }
                     },
-                    "additionalProperties": false
+                    "additionalProperties": true
                   },
                   "callable": {
                     "type": "object",
@@ -10928,7 +10952,7 @@
                               "kind",
                               "name"
                             ],
-                            "additionalProperties": false
+                            "additionalProperties": true
                           },
                           {
                             "type": "object",
@@ -10945,7 +10969,7 @@
                               "kind",
                               "value"
                             ],
-                            "additionalProperties": false
+                            "additionalProperties": true
                           },
                           {
                             "type": "object",
@@ -10962,7 +10986,7 @@
                               "kind",
                               "path"
                             ],
-                            "additionalProperties": false
+                            "additionalProperties": true
                           },
                           {
                             "type": "object",
@@ -10985,7 +11009,7 @@
                               "nodeId",
                               "path"
                             ],
-                            "additionalProperties": false
+                            "additionalProperties": true
                           },
                           {
                             "type": "object",
@@ -11008,7 +11032,7 @@
                               "nodeId",
                               "path"
                             ],
-                            "additionalProperties": false
+                            "additionalProperties": true
                           },
                           {
                             "type": "object",
@@ -11030,7 +11054,7 @@
                               "language",
                               "expression"
                             ],
-                            "additionalProperties": false
+                            "additionalProperties": true
                           },
                           {
                             "type": "object",
@@ -11053,7 +11077,7 @@
                               "port",
                               "path"
                             ],
-                            "additionalProperties": false
+                            "additionalProperties": true
                           }
                         ]
                       }
@@ -11063,7 +11087,7 @@
                       "resultType",
                       "result"
                     ],
-                    "additionalProperties": false
+                    "additionalProperties": true
                   },
                   "notes": {
                     "maxItems": 100,
@@ -11098,7 +11122,7 @@
                             "x",
                             "y"
                           ],
-                          "additionalProperties": false
+                          "additionalProperties": true
                         },
                         "size": {
                           "type": "object",
@@ -11118,7 +11142,7 @@
                             "width",
                             "height"
                           ],
-                          "additionalProperties": false
+                          "additionalProperties": true
                         },
                         "color": {
                           "type": "string",
@@ -11138,7 +11162,7 @@
                         "size",
                         "color"
                       ],
-                      "additionalProperties": false
+                      "additionalProperties": true
                     }
                   }
                 },
@@ -11147,7 +11171,7 @@
                   "edges",
                   "settings"
                 ],
-                "additionalProperties": false,
+                "additionalProperties": true,
                 "$defs": {
                   "__schema0": {
                     "type": "object",
@@ -11175,7 +11199,7 @@
                           "key",
                           "version"
                         ],
-                        "additionalProperties": false
+                        "additionalProperties": true
                       },
                       "position": {
                         "type": "object",
@@ -11191,7 +11215,7 @@
                           "x",
                           "y"
                         ],
-                        "additionalProperties": false
+                        "additionalProperties": true
                       },
                       "configVersion": {
                         "type": "integer",
@@ -11230,7 +11254,7 @@
                                 "kind",
                                 "name"
                               ],
-                              "additionalProperties": false
+                              "additionalProperties": true
                             },
                             {
                               "type": "object",
@@ -11247,7 +11271,7 @@
                                 "kind",
                                 "value"
                               ],
-                              "additionalProperties": false
+                              "additionalProperties": true
                             },
                             {
                               "type": "object",
@@ -11264,7 +11288,7 @@
                                 "kind",
                                 "path"
                               ],
-                              "additionalProperties": false
+                              "additionalProperties": true
                             },
                             {
                               "type": "object",
@@ -11287,7 +11311,7 @@
                                 "nodeId",
                                 "path"
                               ],
-                              "additionalProperties": false
+                              "additionalProperties": true
                             },
                             {
                               "type": "object",
@@ -11310,7 +11334,7 @@
                                 "nodeId",
                                 "path"
                               ],
-                              "additionalProperties": false
+                              "additionalProperties": true
                             },
                             {
                               "type": "object",
@@ -11332,7 +11356,7 @@
                                 "language",
                                 "expression"
                               ],
-                              "additionalProperties": false
+                              "additionalProperties": true
                             },
                             {
                               "type": "object",
@@ -11355,7 +11379,7 @@
                                 "port",
                                 "path"
                               ],
-                              "additionalProperties": false
+                              "additionalProperties": true
                             }
                           ]
                         }
@@ -11396,7 +11420,7 @@
                           "maximumAttempts",
                           "delayMillis"
                         ],
-                        "additionalProperties": false
+                        "additionalProperties": true
                       },
                       "structured": {
                         "type": "object",
@@ -11452,7 +11476,7 @@
                                         "nodeId",
                                         "port"
                                       ],
-                                      "additionalProperties": false
+                                      "additionalProperties": true
                                     },
                                     "target": {
                                       "type": "object",
@@ -11472,7 +11496,7 @@
                                         "nodeId",
                                         "port"
                                       ],
-                                      "additionalProperties": false
+                                      "additionalProperties": true
                                     }
                                   },
                                   "required": [
@@ -11480,7 +11504,7 @@
                                     "source",
                                     "target"
                                   ],
-                                  "additionalProperties": false
+                                  "additionalProperties": true
                                 }
                               },
                               "settings": {
@@ -11492,7 +11516,7 @@
                                     "maximum": 3600000
                                   }
                                 },
-                                "additionalProperties": false
+                                "additionalProperties": true
                               },
                               "inputPorts": {
                                 "type": "array",
@@ -11518,7 +11542,7 @@
                               "inputPorts",
                               "outputPorts"
                             ],
-                            "additionalProperties": false
+                            "additionalProperties": true
                           }
                         },
                         "required": [
@@ -11527,7 +11551,7 @@
                           "maxConcurrency",
                           "body"
                         ],
-                        "additionalProperties": false
+                        "additionalProperties": true
                       }
                     },
                     "required": [
@@ -11539,7 +11563,7 @@
                       "inputMappings",
                       "connectionRefs"
                     ],
-                    "additionalProperties": false
+                    "additionalProperties": true
                   },
                   "__schema1": {
                     "anyOf": [
@@ -11616,7 +11640,7 @@
                         "required": [
                           "type"
                         ],
-                        "additionalProperties": false
+                        "additionalProperties": true
                       },
                       {
                         "type": "object",
@@ -11629,7 +11653,7 @@
                         "required": [
                           "type"
                         ],
-                        "additionalProperties": false
+                        "additionalProperties": true
                       },
                       {
                         "type": "object",
@@ -11642,7 +11666,7 @@
                         "required": [
                           "type"
                         ],
-                        "additionalProperties": false
+                        "additionalProperties": true
                       },
                       {
                         "type": "object",
@@ -11655,7 +11679,7 @@
                         "required": [
                           "type"
                         ],
-                        "additionalProperties": false
+                        "additionalProperties": true
                       },
                       {
                         "type": "object",
@@ -11678,7 +11702,7 @@
                           "items",
                           "maxItems"
                         ],
-                        "additionalProperties": false
+                        "additionalProperties": true
                       },
                       {
                         "type": "object",
@@ -11710,7 +11734,7 @@
                                 "valueType",
                                 "required"
                               ],
-                              "additionalProperties": false
+                              "additionalProperties": true
                             }
                           }
                         },
@@ -11718,7 +11742,7 @@
                           "type",
                           "properties"
                         ],
-                        "additionalProperties": false
+                        "additionalProperties": true
                       }
                     ]
                   }
@@ -11729,7 +11753,7 @@
               "graphDigest": {
                 "type": "string",
                 "pattern": "^[a-f0-9]{64}$",
-                "description": "Review the source graph, then echo this content identity as reviewedGraphDigest; draft writes still require the opaque ETag."
+                "description": "Returned on reads with include=graphDigest. Review the source graph, then echo this content identity as reviewedGraphDigest; draft writes still require the opaque ETag."
               },
               "checksum": {
                 "type": "string",
@@ -11749,7 +11773,7 @@
               "checksum",
               "publishedAt"
             ],
-            "additionalProperties": false
+            "additionalProperties": true
           },
           "reused": {
             "type": "boolean"
@@ -11759,7 +11783,7 @@
           "version",
           "reused"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "WorkflowLifecycleRequest": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -11843,7 +11867,7 @@
                   "canEdit",
                   "canPublish"
                 ],
-                "additionalProperties": false
+                "additionalProperties": true
               },
               "listSummary": {
                 "type": "object",
@@ -11873,7 +11897,7 @@
                                 "key",
                                 "version"
                               ],
-                              "additionalProperties": false
+                              "additionalProperties": true
                             },
                             "position": {
                               "type": "object",
@@ -11889,7 +11913,7 @@
                                 "x",
                                 "y"
                               ],
-                              "additionalProperties": false
+                              "additionalProperties": true
                             },
                             "label": {
                               "type": "string"
@@ -11905,7 +11929,7 @@
                               "required": [
                                 "kind"
                               ],
-                              "additionalProperties": false
+                              "additionalProperties": true
                             }
                           },
                           "required": [
@@ -11913,7 +11937,7 @@
                             "definition",
                             "position"
                           ],
-                          "additionalProperties": false
+                          "additionalProperties": true
                         }
                       },
                       "edges": {
@@ -11938,7 +11962,7 @@
                                 "nodeId",
                                 "port"
                               ],
-                              "additionalProperties": false
+                              "additionalProperties": true
                             },
                             "target": {
                               "type": "object",
@@ -11954,7 +11978,7 @@
                                 "nodeId",
                                 "port"
                               ],
-                              "additionalProperties": false
+                              "additionalProperties": true
                             }
                           },
                           "required": [
@@ -11962,7 +11986,7 @@
                             "source",
                             "target"
                           ],
-                          "additionalProperties": false
+                          "additionalProperties": true
                         }
                       }
                     },
@@ -11970,7 +11994,7 @@
                       "nodes",
                       "edges"
                     ],
-                    "additionalProperties": false
+                    "additionalProperties": true
                   },
                   "recentRuns": {
                     "maxItems": 20,
@@ -12001,14 +12025,14 @@
                         "status",
                         "createdAt"
                       ],
-                      "additionalProperties": false
+                      "additionalProperties": true
                     }
                   }
                 },
                 "required": [
                   "shape"
                 ],
-                "additionalProperties": false
+                "additionalProperties": true
               },
               "publishedVersionId": {
                 "anyOf": [
@@ -12046,7 +12070,7 @@
               "createdAt",
               "updatedAt"
             ],
-            "additionalProperties": false
+            "additionalProperties": true
           },
           "replayed": {
             "type": "boolean"
@@ -12056,7 +12080,7 @@
           "workflow",
           "replayed"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "WorkflowRenameRequest": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -13357,7 +13381,7 @@
           "graphDigest": {
             "type": "string",
             "pattern": "^[a-f0-9]{64}$",
-            "description": "Review the source graph, then echo this content identity as reviewedGraphDigest; draft writes still require the opaque ETag."
+            "description": "Returned on reads with include=graphDigest. Review the source graph, then echo this content identity as reviewedGraphDigest; draft writes still require the opaque ETag."
           },
           "compatibility": {
             "type": "object",
@@ -13498,7 +13522,7 @@
                               "nodeId",
                               "port"
                             ],
-                            "additionalProperties": false
+                            "additionalProperties": true
                           },
                           "target": {
                             "type": "object",
@@ -13518,7 +13542,7 @@
                               "nodeId",
                               "port"
                             ],
-                            "additionalProperties": false
+                            "additionalProperties": true
                           }
                         },
                         "required": [
@@ -13526,7 +13550,7 @@
                           "source",
                           "target"
                         ],
-                        "additionalProperties": false
+                        "additionalProperties": true
                       }
                     },
                     "settings": {
@@ -13538,7 +13562,7 @@
                           "maximum": 3600000
                         }
                       },
-                      "additionalProperties": false
+                      "additionalProperties": true
                     },
                     "callable": {
                       "type": "object",
@@ -13567,7 +13591,7 @@
                                 "kind",
                                 "name"
                               ],
-                              "additionalProperties": false
+                              "additionalProperties": true
                             },
                             {
                               "type": "object",
@@ -13584,7 +13608,7 @@
                                 "kind",
                                 "value"
                               ],
-                              "additionalProperties": false
+                              "additionalProperties": true
                             },
                             {
                               "type": "object",
@@ -13601,7 +13625,7 @@
                                 "kind",
                                 "path"
                               ],
-                              "additionalProperties": false
+                              "additionalProperties": true
                             },
                             {
                               "type": "object",
@@ -13624,7 +13648,7 @@
                                 "nodeId",
                                 "path"
                               ],
-                              "additionalProperties": false
+                              "additionalProperties": true
                             },
                             {
                               "type": "object",
@@ -13647,7 +13671,7 @@
                                 "nodeId",
                                 "path"
                               ],
-                              "additionalProperties": false
+                              "additionalProperties": true
                             },
                             {
                               "type": "object",
@@ -13669,7 +13693,7 @@
                                 "language",
                                 "expression"
                               ],
-                              "additionalProperties": false
+                              "additionalProperties": true
                             },
                             {
                               "type": "object",
@@ -13692,7 +13716,7 @@
                                 "port",
                                 "path"
                               ],
-                              "additionalProperties": false
+                              "additionalProperties": true
                             }
                           ]
                         }
@@ -13702,7 +13726,7 @@
                         "resultType",
                         "result"
                       ],
-                      "additionalProperties": false
+                      "additionalProperties": true
                     },
                     "notes": {
                       "maxItems": 100,
@@ -13737,7 +13761,7 @@
                               "x",
                               "y"
                             ],
-                            "additionalProperties": false
+                            "additionalProperties": true
                           },
                           "size": {
                             "type": "object",
@@ -13757,7 +13781,7 @@
                               "width",
                               "height"
                             ],
-                            "additionalProperties": false
+                            "additionalProperties": true
                           },
                           "color": {
                             "type": "string",
@@ -13777,7 +13801,7 @@
                           "size",
                           "color"
                         ],
-                        "additionalProperties": false
+                        "additionalProperties": true
                       }
                     }
                   },
@@ -13786,7 +13810,7 @@
                     "edges",
                     "settings"
                   ],
-                  "additionalProperties": false,
+                  "additionalProperties": true,
                   "$defs": {
                     "__schema0": {
                       "type": "object",
@@ -13814,7 +13838,7 @@
                             "key",
                             "version"
                           ],
-                          "additionalProperties": false
+                          "additionalProperties": true
                         },
                         "position": {
                           "type": "object",
@@ -13830,7 +13854,7 @@
                             "x",
                             "y"
                           ],
-                          "additionalProperties": false
+                          "additionalProperties": true
                         },
                         "configVersion": {
                           "type": "integer",
@@ -13869,7 +13893,7 @@
                                   "kind",
                                   "name"
                                 ],
-                                "additionalProperties": false
+                                "additionalProperties": true
                               },
                               {
                                 "type": "object",
@@ -13886,7 +13910,7 @@
                                   "kind",
                                   "value"
                                 ],
-                                "additionalProperties": false
+                                "additionalProperties": true
                               },
                               {
                                 "type": "object",
@@ -13903,7 +13927,7 @@
                                   "kind",
                                   "path"
                                 ],
-                                "additionalProperties": false
+                                "additionalProperties": true
                               },
                               {
                                 "type": "object",
@@ -13926,7 +13950,7 @@
                                   "nodeId",
                                   "path"
                                 ],
-                                "additionalProperties": false
+                                "additionalProperties": true
                               },
                               {
                                 "type": "object",
@@ -13949,7 +13973,7 @@
                                   "nodeId",
                                   "path"
                                 ],
-                                "additionalProperties": false
+                                "additionalProperties": true
                               },
                               {
                                 "type": "object",
@@ -13971,7 +13995,7 @@
                                   "language",
                                   "expression"
                                 ],
-                                "additionalProperties": false
+                                "additionalProperties": true
                               },
                               {
                                 "type": "object",
@@ -13994,7 +14018,7 @@
                                   "port",
                                   "path"
                                 ],
-                                "additionalProperties": false
+                                "additionalProperties": true
                               }
                             ]
                           }
@@ -14035,7 +14059,7 @@
                             "maximumAttempts",
                             "delayMillis"
                           ],
-                          "additionalProperties": false
+                          "additionalProperties": true
                         },
                         "structured": {
                           "type": "object",
@@ -14091,7 +14115,7 @@
                                           "nodeId",
                                           "port"
                                         ],
-                                        "additionalProperties": false
+                                        "additionalProperties": true
                                       },
                                       "target": {
                                         "type": "object",
@@ -14111,7 +14135,7 @@
                                           "nodeId",
                                           "port"
                                         ],
-                                        "additionalProperties": false
+                                        "additionalProperties": true
                                       }
                                     },
                                     "required": [
@@ -14119,7 +14143,7 @@
                                       "source",
                                       "target"
                                     ],
-                                    "additionalProperties": false
+                                    "additionalProperties": true
                                   }
                                 },
                                 "settings": {
@@ -14131,7 +14155,7 @@
                                       "maximum": 3600000
                                     }
                                   },
-                                  "additionalProperties": false
+                                  "additionalProperties": true
                                 },
                                 "inputPorts": {
                                   "type": "array",
@@ -14157,7 +14181,7 @@
                                 "inputPorts",
                                 "outputPorts"
                               ],
-                              "additionalProperties": false
+                              "additionalProperties": true
                             }
                           },
                           "required": [
@@ -14166,7 +14190,7 @@
                             "maxConcurrency",
                             "body"
                           ],
-                          "additionalProperties": false
+                          "additionalProperties": true
                         }
                       },
                       "required": [
@@ -14178,7 +14202,7 @@
                         "inputMappings",
                         "connectionRefs"
                       ],
-                      "additionalProperties": false
+                      "additionalProperties": true
                     },
                     "__schema1": {
                       "anyOf": [
@@ -14255,7 +14279,7 @@
                           "required": [
                             "type"
                           ],
-                          "additionalProperties": false
+                          "additionalProperties": true
                         },
                         {
                           "type": "object",
@@ -14268,7 +14292,7 @@
                           "required": [
                             "type"
                           ],
-                          "additionalProperties": false
+                          "additionalProperties": true
                         },
                         {
                           "type": "object",
@@ -14281,7 +14305,7 @@
                           "required": [
                             "type"
                           ],
-                          "additionalProperties": false
+                          "additionalProperties": true
                         },
                         {
                           "type": "object",
@@ -14294,7 +14318,7 @@
                           "required": [
                             "type"
                           ],
-                          "additionalProperties": false
+                          "additionalProperties": true
                         },
                         {
                           "type": "object",
@@ -14317,7 +14341,7 @@
                             "items",
                             "maxItems"
                           ],
-                          "additionalProperties": false
+                          "additionalProperties": true
                         },
                         {
                           "type": "object",
@@ -14349,7 +14373,7 @@
                                   "valueType",
                                   "required"
                                 ],
-                                "additionalProperties": false
+                                "additionalProperties": true
                               }
                             }
                           },
@@ -14357,7 +14381,7 @@
                             "type",
                             "properties"
                           ],
-                          "additionalProperties": false
+                          "additionalProperties": true
                         }
                       ]
                     }
@@ -14368,7 +14392,7 @@
                 "graphDigest": {
                   "type": "string",
                   "pattern": "^[a-f0-9]{64}$",
-                  "description": "Review the source graph, then echo this content identity as reviewedGraphDigest; draft writes still require the opaque ETag."
+                  "description": "Returned on reads with include=graphDigest. Review the source graph, then echo this content identity as reviewedGraphDigest; draft writes still require the opaque ETag."
                 },
                 "checksum": {
                   "type": "string",
@@ -14388,7 +14412,7 @@
                 "checksum",
                 "publishedAt"
               ],
-              "additionalProperties": false
+              "additionalProperties": true
             }
           },
           "nextCursor": {
@@ -14408,7 +14432,7 @@
           "items",
           "nextCursor"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "ApiProblem": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -14626,7 +14650,7 @@
                 "code",
                 "message"
               ],
-              "additionalProperties": false
+              "additionalProperties": true
             }
           }
         },
@@ -14637,7 +14661,7 @@
           "code",
           "requestId"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "WorkflowLifecycleConflictProblem": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -14706,7 +14730,7 @@
                 "code",
                 "message"
               ],
-              "additionalProperties": false
+              "additionalProperties": true
             }
           },
           "currentLifecycleRevision": {
@@ -14723,7 +14747,7 @@
           "requestId",
           "currentLifecycleRevision"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "WorkflowNameConflictProblem": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -14792,7 +14816,7 @@
                 "code",
                 "message"
               ],
-              "additionalProperties": false
+              "additionalProperties": true
             }
           },
           "currentNameRevision": {
@@ -14809,7 +14833,7 @@
           "requestId",
           "currentNameRevision"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "WorkflowAutoPauseSettings": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -14918,7 +14942,7 @@
           "pausedFailures",
           "pausedLastRunId"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "WorkflowAutoPauseSettingsRequest": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -15062,7 +15086,7 @@
               "pausedFailures",
               "pausedLastRunId"
             ],
-            "additionalProperties": false
+            "additionalProperties": true
           },
           "replayed": {
             "type": "boolean"
@@ -15072,7 +15096,7 @@
           "settings",
           "replayed"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "WorkflowResumeRequest": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -15231,7 +15255,7 @@
                 "code",
                 "message"
               ],
-              "additionalProperties": false
+              "additionalProperties": true
             }
           },
           "currentPauseRevision": {
@@ -15247,7 +15271,7 @@
           "requestId",
           "currentPauseRevision"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "WorkflowAutoPauseSettingsConflictProblem": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -15316,7 +15340,7 @@
                 "code",
                 "message"
               ],
-              "additionalProperties": false
+              "additionalProperties": true
             }
           },
           "currentSettingsRevision": {
@@ -15333,7 +15357,7 @@
           "requestId",
           "currentSettingsRevision"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "WorkspaceAutoPauseSettingsConflictProblem": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -15402,7 +15426,7 @@
                 "code",
                 "message"
               ],
-              "additionalProperties": false
+              "additionalProperties": true
             }
           },
           "currentRevision": {
@@ -15419,7 +15443,7 @@
           "requestId",
           "currentRevision"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "WorkflowConcurrencySettings": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -15746,7 +15770,7 @@
                 "code",
                 "message"
               ],
-              "additionalProperties": false
+              "additionalProperties": true
             }
           },
           "currentRevision": {
@@ -15763,7 +15787,7 @@
           "requestId",
           "currentRevision"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "WorkflowConcurrencyLimitExceededProblem": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -15832,7 +15856,7 @@
                 "code",
                 "message"
               ],
-              "additionalProperties": false
+              "additionalProperties": true
             }
           },
           "maximum": {
@@ -15849,7 +15873,7 @@
           "requestId",
           "maximum"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "WorkflowErrorTargetsPage": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -24062,7 +24086,7 @@
                 "key",
                 "revision"
               ],
-              "additionalProperties": false
+              "additionalProperties": true
             }
           },
           "nextCursor": {
@@ -24083,7 +24107,7 @@
           "items",
           "nextCursor"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "WorkflowTagCreateRequest": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -24285,7 +24309,7 @@
                 "workflowId",
                 "organizationRevision"
               ],
-              "additionalProperties": false
+              "additionalProperties": true
             }
           },
           "nextCursor": {
@@ -24306,7 +24330,7 @@
           "items",
           "nextCursor"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "WorkflowTagReplaceRequest": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -24382,7 +24406,7 @@
           "tagIds",
           "replayed"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "WorkflowFavoriteRequest": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -24462,6 +24486,14 @@
             "format": "uuid",
             "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
           },
+          "include": {
+            "type": "string",
+            "enum": [
+              "organization",
+              "listSummary",
+              "organization,listSummary"
+            ]
+          },
           "query": {
             "type": "string"
           },
@@ -24494,10 +24526,6 @@
           "favoritesOnly": {
             "type": "string",
             "const": "true"
-          },
-          "include": {
-            "type": "string",
-            "const": "organization"
           }
         },
         "additionalProperties": false
@@ -24575,7 +24603,7 @@
                         "canEdit",
                         "canPublish"
                       ],
-                      "additionalProperties": false
+                      "additionalProperties": true
                     },
                     "listSummary": {
                       "type": "object",
@@ -24605,7 +24633,7 @@
                                       "key",
                                       "version"
                                     ],
-                                    "additionalProperties": false
+                                    "additionalProperties": true
                                   },
                                   "position": {
                                     "type": "object",
@@ -24621,7 +24649,7 @@
                                       "x",
                                       "y"
                                     ],
-                                    "additionalProperties": false
+                                    "additionalProperties": true
                                   },
                                   "label": {
                                     "type": "string"
@@ -24637,7 +24665,7 @@
                                     "required": [
                                       "kind"
                                     ],
-                                    "additionalProperties": false
+                                    "additionalProperties": true
                                   }
                                 },
                                 "required": [
@@ -24645,7 +24673,7 @@
                                   "definition",
                                   "position"
                                 ],
-                                "additionalProperties": false
+                                "additionalProperties": true
                               }
                             },
                             "edges": {
@@ -24670,7 +24698,7 @@
                                       "nodeId",
                                       "port"
                                     ],
-                                    "additionalProperties": false
+                                    "additionalProperties": true
                                   },
                                   "target": {
                                     "type": "object",
@@ -24686,7 +24714,7 @@
                                       "nodeId",
                                       "port"
                                     ],
-                                    "additionalProperties": false
+                                    "additionalProperties": true
                                   }
                                 },
                                 "required": [
@@ -24694,7 +24722,7 @@
                                   "source",
                                   "target"
                                 ],
-                                "additionalProperties": false
+                                "additionalProperties": true
                               }
                             }
                           },
@@ -24702,7 +24730,7 @@
                             "nodes",
                             "edges"
                           ],
-                          "additionalProperties": false
+                          "additionalProperties": true
                         },
                         "recentRuns": {
                           "maxItems": 20,
@@ -24733,14 +24761,14 @@
                               "status",
                               "createdAt"
                             ],
-                            "additionalProperties": false
+                            "additionalProperties": true
                           }
                         }
                       },
                       "required": [
                         "shape"
                       ],
-                      "additionalProperties": false
+                      "additionalProperties": true
                     },
                     "publishedVersionId": {
                       "anyOf": [
@@ -24778,7 +24806,7 @@
                     "createdAt",
                     "updatedAt"
                   ],
-                  "additionalProperties": false
+                  "additionalProperties": true
                 },
                 "organization": {
                   "type": "object",
@@ -24811,7 +24839,7 @@
                           "key",
                           "revision"
                         ],
-                        "additionalProperties": false
+                        "additionalProperties": true
                       }
                     },
                     "organizationRevision": {
@@ -24841,14 +24869,14 @@
                     "folderId",
                     "isFavorite"
                   ],
-                  "additionalProperties": false
+                  "additionalProperties": true
                 }
               },
               "required": [
                 "workflow",
                 "organization"
               ],
-              "additionalProperties": false
+              "additionalProperties": true
             }
           },
           "nextCursor": {
@@ -24868,7 +24896,7 @@
           "items",
           "nextCursor"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "WorkflowOrganizationProjectionResponse": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -24937,7 +24965,7 @@
                   "canEdit",
                   "canPublish"
                 ],
-                "additionalProperties": false
+                "additionalProperties": true
               },
               "listSummary": {
                 "type": "object",
@@ -24967,7 +24995,7 @@
                                 "key",
                                 "version"
                               ],
-                              "additionalProperties": false
+                              "additionalProperties": true
                             },
                             "position": {
                               "type": "object",
@@ -24983,7 +25011,7 @@
                                 "x",
                                 "y"
                               ],
-                              "additionalProperties": false
+                              "additionalProperties": true
                             },
                             "label": {
                               "type": "string"
@@ -24999,7 +25027,7 @@
                               "required": [
                                 "kind"
                               ],
-                              "additionalProperties": false
+                              "additionalProperties": true
                             }
                           },
                           "required": [
@@ -25007,7 +25035,7 @@
                             "definition",
                             "position"
                           ],
-                          "additionalProperties": false
+                          "additionalProperties": true
                         }
                       },
                       "edges": {
@@ -25032,7 +25060,7 @@
                                 "nodeId",
                                 "port"
                               ],
-                              "additionalProperties": false
+                              "additionalProperties": true
                             },
                             "target": {
                               "type": "object",
@@ -25048,7 +25076,7 @@
                                 "nodeId",
                                 "port"
                               ],
-                              "additionalProperties": false
+                              "additionalProperties": true
                             }
                           },
                           "required": [
@@ -25056,7 +25084,7 @@
                             "source",
                             "target"
                           ],
-                          "additionalProperties": false
+                          "additionalProperties": true
                         }
                       }
                     },
@@ -25064,7 +25092,7 @@
                       "nodes",
                       "edges"
                     ],
-                    "additionalProperties": false
+                    "additionalProperties": true
                   },
                   "recentRuns": {
                     "maxItems": 20,
@@ -25095,14 +25123,14 @@
                         "status",
                         "createdAt"
                       ],
-                      "additionalProperties": false
+                      "additionalProperties": true
                     }
                   }
                 },
                 "required": [
                   "shape"
                 ],
-                "additionalProperties": false
+                "additionalProperties": true
               },
               "publishedVersionId": {
                 "anyOf": [
@@ -25140,7 +25168,7 @@
               "createdAt",
               "updatedAt"
             ],
-            "additionalProperties": false
+            "additionalProperties": true
           },
           "organization": {
             "type": "object",
@@ -25173,7 +25201,7 @@
                     "key",
                     "revision"
                   ],
-                  "additionalProperties": false
+                  "additionalProperties": true
                 }
               },
               "organizationRevision": {
@@ -25203,14 +25231,14 @@
               "folderId",
               "isFavorite"
             ],
-            "additionalProperties": false
+            "additionalProperties": true
           }
         },
         "required": [
           "workflow",
           "organization"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "WorkflowCombinedOrganizationProjectionResponse": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -25279,7 +25307,7 @@
                   "canEdit",
                   "canPublish"
                 ],
-                "additionalProperties": false
+                "additionalProperties": true
               },
               "listSummary": {
                 "type": "object",
@@ -25309,7 +25337,7 @@
                                 "key",
                                 "version"
                               ],
-                              "additionalProperties": false
+                              "additionalProperties": true
                             },
                             "position": {
                               "type": "object",
@@ -25325,7 +25353,7 @@
                                 "x",
                                 "y"
                               ],
-                              "additionalProperties": false
+                              "additionalProperties": true
                             },
                             "label": {
                               "type": "string"
@@ -25341,7 +25369,7 @@
                               "required": [
                                 "kind"
                               ],
-                              "additionalProperties": false
+                              "additionalProperties": true
                             }
                           },
                           "required": [
@@ -25349,7 +25377,7 @@
                             "definition",
                             "position"
                           ],
-                          "additionalProperties": false
+                          "additionalProperties": true
                         }
                       },
                       "edges": {
@@ -25374,7 +25402,7 @@
                                 "nodeId",
                                 "port"
                               ],
-                              "additionalProperties": false
+                              "additionalProperties": true
                             },
                             "target": {
                               "type": "object",
@@ -25390,7 +25418,7 @@
                                 "nodeId",
                                 "port"
                               ],
-                              "additionalProperties": false
+                              "additionalProperties": true
                             }
                           },
                           "required": [
@@ -25398,7 +25426,7 @@
                             "source",
                             "target"
                           ],
-                          "additionalProperties": false
+                          "additionalProperties": true
                         }
                       }
                     },
@@ -25406,7 +25434,7 @@
                       "nodes",
                       "edges"
                     ],
-                    "additionalProperties": false
+                    "additionalProperties": true
                   },
                   "recentRuns": {
                     "maxItems": 20,
@@ -25437,14 +25465,14 @@
                         "status",
                         "createdAt"
                       ],
-                      "additionalProperties": false
+                      "additionalProperties": true
                     }
                   }
                 },
                 "required": [
                   "shape"
                 ],
-                "additionalProperties": false
+                "additionalProperties": true
               },
               "publishedVersionId": {
                 "anyOf": [
@@ -25482,7 +25510,7 @@
               "createdAt",
               "updatedAt"
             ],
-            "additionalProperties": false
+            "additionalProperties": true
           },
           "templateOrigin": {
             "anyOf": [
@@ -25523,7 +25551,7 @@
                   "creationCommandDigest",
                   "derivation"
                 ],
-                "additionalProperties": false
+                "additionalProperties": true
               },
               {
                 "type": "null"
@@ -25561,7 +25589,7 @@
                     "key",
                     "revision"
                   ],
-                  "additionalProperties": false
+                  "additionalProperties": true
                 }
               },
               "organizationRevision": {
@@ -25591,7 +25619,7 @@
               "folderId",
               "isFavorite"
             ],
-            "additionalProperties": false
+            "additionalProperties": true
           }
         },
         "required": [
@@ -25599,7 +25627,7 @@
           "templateOrigin",
           "organization"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "WorkflowGetQuery": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -25689,7 +25717,7 @@
                 "code",
                 "message"
               ],
-              "additionalProperties": false
+              "additionalProperties": true
             }
           },
           "currentRevision": {
@@ -25711,7 +25739,7 @@
           "currentRevision",
           "currentEtag"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "WorkflowSummary": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -25777,7 +25805,7 @@
               "canEdit",
               "canPublish"
             ],
-            "additionalProperties": false
+            "additionalProperties": true
           },
           "listSummary": {
             "type": "object",
@@ -25807,7 +25835,7 @@
                             "key",
                             "version"
                           ],
-                          "additionalProperties": false
+                          "additionalProperties": true
                         },
                         "position": {
                           "type": "object",
@@ -25823,7 +25851,7 @@
                             "x",
                             "y"
                           ],
-                          "additionalProperties": false
+                          "additionalProperties": true
                         },
                         "label": {
                           "type": "string"
@@ -25839,7 +25867,7 @@
                           "required": [
                             "kind"
                           ],
-                          "additionalProperties": false
+                          "additionalProperties": true
                         }
                       },
                       "required": [
@@ -25847,7 +25875,7 @@
                         "definition",
                         "position"
                       ],
-                      "additionalProperties": false
+                      "additionalProperties": true
                     }
                   },
                   "edges": {
@@ -25872,7 +25900,7 @@
                             "nodeId",
                             "port"
                           ],
-                          "additionalProperties": false
+                          "additionalProperties": true
                         },
                         "target": {
                           "type": "object",
@@ -25888,7 +25916,7 @@
                             "nodeId",
                             "port"
                           ],
-                          "additionalProperties": false
+                          "additionalProperties": true
                         }
                       },
                       "required": [
@@ -25896,7 +25924,7 @@
                         "source",
                         "target"
                       ],
-                      "additionalProperties": false
+                      "additionalProperties": true
                     }
                   }
                 },
@@ -25904,7 +25932,7 @@
                   "nodes",
                   "edges"
                 ],
-                "additionalProperties": false
+                "additionalProperties": true
               },
               "recentRuns": {
                 "maxItems": 20,
@@ -25935,14 +25963,14 @@
                     "status",
                     "createdAt"
                   ],
-                  "additionalProperties": false
+                  "additionalProperties": true
                 }
               }
             },
             "required": [
               "shape"
             ],
-            "additionalProperties": false
+            "additionalProperties": true
           },
           "publishedVersionId": {
             "anyOf": [
@@ -25980,7 +26008,7 @@
           "createdAt",
           "updatedAt"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "WorkflowSummaryResponse": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -26049,7 +26077,7 @@
                   "canEdit",
                   "canPublish"
                 ],
-                "additionalProperties": false
+                "additionalProperties": true
               },
               "listSummary": {
                 "type": "object",
@@ -26079,7 +26107,7 @@
                                 "key",
                                 "version"
                               ],
-                              "additionalProperties": false
+                              "additionalProperties": true
                             },
                             "position": {
                               "type": "object",
@@ -26095,7 +26123,7 @@
                                 "x",
                                 "y"
                               ],
-                              "additionalProperties": false
+                              "additionalProperties": true
                             },
                             "label": {
                               "type": "string"
@@ -26111,7 +26139,7 @@
                               "required": [
                                 "kind"
                               ],
-                              "additionalProperties": false
+                              "additionalProperties": true
                             }
                           },
                           "required": [
@@ -26119,7 +26147,7 @@
                             "definition",
                             "position"
                           ],
-                          "additionalProperties": false
+                          "additionalProperties": true
                         }
                       },
                       "edges": {
@@ -26144,7 +26172,7 @@
                                 "nodeId",
                                 "port"
                               ],
-                              "additionalProperties": false
+                              "additionalProperties": true
                             },
                             "target": {
                               "type": "object",
@@ -26160,7 +26188,7 @@
                                 "nodeId",
                                 "port"
                               ],
-                              "additionalProperties": false
+                              "additionalProperties": true
                             }
                           },
                           "required": [
@@ -26168,7 +26196,7 @@
                             "source",
                             "target"
                           ],
-                          "additionalProperties": false
+                          "additionalProperties": true
                         }
                       }
                     },
@@ -26176,7 +26204,7 @@
                       "nodes",
                       "edges"
                     ],
-                    "additionalProperties": false
+                    "additionalProperties": true
                   },
                   "recentRuns": {
                     "maxItems": 20,
@@ -26207,14 +26235,14 @@
                         "status",
                         "createdAt"
                       ],
-                      "additionalProperties": false
+                      "additionalProperties": true
                     }
                   }
                 },
                 "required": [
                   "shape"
                 ],
-                "additionalProperties": false
+                "additionalProperties": true
               },
               "publishedVersionId": {
                 "anyOf": [
@@ -26252,13 +26280,13 @@
               "createdAt",
               "updatedAt"
             ],
-            "additionalProperties": false
+            "additionalProperties": true
           }
         },
         "required": [
           "workflow"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "WorkflowTemplateOriginProjectionResponse": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -26327,7 +26355,7 @@
                   "canEdit",
                   "canPublish"
                 ],
-                "additionalProperties": false
+                "additionalProperties": true
               },
               "listSummary": {
                 "type": "object",
@@ -26357,7 +26385,7 @@
                                 "key",
                                 "version"
                               ],
-                              "additionalProperties": false
+                              "additionalProperties": true
                             },
                             "position": {
                               "type": "object",
@@ -26373,7 +26401,7 @@
                                 "x",
                                 "y"
                               ],
-                              "additionalProperties": false
+                              "additionalProperties": true
                             },
                             "label": {
                               "type": "string"
@@ -26389,7 +26417,7 @@
                               "required": [
                                 "kind"
                               ],
-                              "additionalProperties": false
+                              "additionalProperties": true
                             }
                           },
                           "required": [
@@ -26397,7 +26425,7 @@
                             "definition",
                             "position"
                           ],
-                          "additionalProperties": false
+                          "additionalProperties": true
                         }
                       },
                       "edges": {
@@ -26422,7 +26450,7 @@
                                 "nodeId",
                                 "port"
                               ],
-                              "additionalProperties": false
+                              "additionalProperties": true
                             },
                             "target": {
                               "type": "object",
@@ -26438,7 +26466,7 @@
                                 "nodeId",
                                 "port"
                               ],
-                              "additionalProperties": false
+                              "additionalProperties": true
                             }
                           },
                           "required": [
@@ -26446,7 +26474,7 @@
                             "source",
                             "target"
                           ],
-                          "additionalProperties": false
+                          "additionalProperties": true
                         }
                       }
                     },
@@ -26454,7 +26482,7 @@
                       "nodes",
                       "edges"
                     ],
-                    "additionalProperties": false
+                    "additionalProperties": true
                   },
                   "recentRuns": {
                     "maxItems": 20,
@@ -26485,14 +26513,14 @@
                         "status",
                         "createdAt"
                       ],
-                      "additionalProperties": false
+                      "additionalProperties": true
                     }
                   }
                 },
                 "required": [
                   "shape"
                 ],
-                "additionalProperties": false
+                "additionalProperties": true
               },
               "publishedVersionId": {
                 "anyOf": [
@@ -26530,7 +26558,7 @@
               "createdAt",
               "updatedAt"
             ],
-            "additionalProperties": false
+            "additionalProperties": true
           },
           "templateOrigin": {
             "anyOf": [
@@ -26571,7 +26599,7 @@
                   "creationCommandDigest",
                   "derivation"
                 ],
-                "additionalProperties": false
+                "additionalProperties": true
               },
               {
                 "type": "null"
@@ -26583,7 +26611,7 @@
           "workflow",
           "templateOrigin"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "WorkflowListResponse": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -26655,7 +26683,7 @@
                     "canEdit",
                     "canPublish"
                   ],
-                  "additionalProperties": false
+                  "additionalProperties": true
                 },
                 "listSummary": {
                   "type": "object",
@@ -26685,7 +26713,7 @@
                                   "key",
                                   "version"
                                 ],
-                                "additionalProperties": false
+                                "additionalProperties": true
                               },
                               "position": {
                                 "type": "object",
@@ -26701,7 +26729,7 @@
                                   "x",
                                   "y"
                                 ],
-                                "additionalProperties": false
+                                "additionalProperties": true
                               },
                               "label": {
                                 "type": "string"
@@ -26717,7 +26745,7 @@
                                 "required": [
                                   "kind"
                                 ],
-                                "additionalProperties": false
+                                "additionalProperties": true
                               }
                             },
                             "required": [
@@ -26725,7 +26753,7 @@
                               "definition",
                               "position"
                             ],
-                            "additionalProperties": false
+                            "additionalProperties": true
                           }
                         },
                         "edges": {
@@ -26750,7 +26778,7 @@
                                   "nodeId",
                                   "port"
                                 ],
-                                "additionalProperties": false
+                                "additionalProperties": true
                               },
                               "target": {
                                 "type": "object",
@@ -26766,7 +26794,7 @@
                                   "nodeId",
                                   "port"
                                 ],
-                                "additionalProperties": false
+                                "additionalProperties": true
                               }
                             },
                             "required": [
@@ -26774,7 +26802,7 @@
                               "source",
                               "target"
                             ],
-                            "additionalProperties": false
+                            "additionalProperties": true
                           }
                         }
                       },
@@ -26782,7 +26810,7 @@
                         "nodes",
                         "edges"
                       ],
-                      "additionalProperties": false
+                      "additionalProperties": true
                     },
                     "recentRuns": {
                       "maxItems": 20,
@@ -26813,14 +26841,14 @@
                           "status",
                           "createdAt"
                         ],
-                        "additionalProperties": false
+                        "additionalProperties": true
                       }
                     }
                   },
                   "required": [
                     "shape"
                   ],
-                  "additionalProperties": false
+                  "additionalProperties": true
                 },
                 "publishedVersionId": {
                   "anyOf": [
@@ -26858,7 +26886,7 @@
                 "createdAt",
                 "updatedAt"
               ],
-              "additionalProperties": false
+              "additionalProperties": true
             }
           },
           "nextCursor": {
@@ -26878,7 +26906,7 @@
           "items",
           "nextCursor"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "WorkflowCompatibilityReport": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -26917,7 +26945,7 @@
                 "definitionKey",
                 "version"
               ],
-              "additionalProperties": false
+              "additionalProperties": true
             }
           }
         },
@@ -26926,7 +26954,7 @@
           "fingerprint",
           "issues"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "WorkflowVersionResponse": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -27856,7 +27884,7 @@
           "graphDigest": {
             "type": "string",
             "pattern": "^[a-f0-9]{64}$",
-            "description": "Review the source graph, then echo this content identity as reviewedGraphDigest; draft writes still require the opaque ETag."
+            "description": "Returned on reads with include=graphDigest. Review the source graph, then echo this content identity as reviewedGraphDigest; draft writes still require the opaque ETag."
           },
           "checksum": {
             "type": "string",

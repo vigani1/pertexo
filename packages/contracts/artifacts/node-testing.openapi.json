@@ -5303,7 +5303,7 @@
                 "code",
                 "message"
               ],
-              "additionalProperties": false
+              "additionalProperties": true
             }
           }
         },
@@ -5314,7 +5314,7 @@
           "code",
           "requestId"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "NodeSideEffectDisclosure": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",

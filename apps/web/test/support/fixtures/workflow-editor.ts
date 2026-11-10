@@ -230,6 +230,7 @@ export function versionBody(
     versionNumber,
     graph,
     checksum: `wf:sha256:${'b'.repeat(64)}`,
+    graphDigest: 'f'.repeat(64),
     publishedAt: '2026-09-14T10:02:00.000Z',
   };
 }

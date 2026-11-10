@@ -4,8 +4,6 @@ import { ApiError } from '@/lib/api/error';
 
 import { workflowSummarySchema } from '@pertexo/contracts';
 
-import { portableGraphDigest } from '@pertexo/workflow-model';
-
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 import { act, render, screen, waitFor } from '@testing-library/react';
@@ -174,7 +172,7 @@ describe('Portable workflow review and import', () => {
     expect(download).toBeDisabled();
     await event.click(screen.getByRole('checkbox'));
     await event.click(download);
-    const reviewedGraphDigest = await portableGraphDigest(graph);
+    const reviewedGraphDigest = 'f'.repeat(64);
     await waitFor(() => {
       expect(posted).toHaveBeenCalledWith(
         { source: { kind: 'draft' }, reviewedGraphDigest },

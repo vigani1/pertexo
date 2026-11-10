@@ -45,20 +45,20 @@ export type WorkflowValidationResult = Readonly<{
 export function serializeWorkflowList(
   items: readonly WorkflowRecord[],
   nextCursor: string | null,
-  includeRecentRuns = false,
+  projection?: Readonly<{ recentRuns: boolean }>,
 ): Readonly<{ items: readonly WorkflowSummary[]; nextCursor: string | null }> {
   return workflowListResponseSchema.parse({
-    items: items.map((item) => workflowSummary(item, includeRecentRuns)),
+    items: items.map((item) => workflowSummary(item, projection)),
     nextCursor,
   });
 }
 
 export function serializeWorkflowSummary(
   workflow: WorkflowRecord,
-  includeRecentRuns = false,
+  projection?: Readonly<{ recentRuns: boolean }>,
 ) {
   return workflowSummaryResponseSchema.parse({
-    workflow: workflowSummary(workflow, includeRecentRuns),
+    workflow: workflowSummary(workflow, projection),
   });
 }
 
@@ -80,6 +80,7 @@ export async function serializeWorkflowCreate(
 
 export async function serializeWorkflowDraft(
   draft: WorkflowDraftRecord,
+  includeGraphDigest = false,
 ): Promise<WorkflowDraftResult> {
   const graph = parseWorkflowGraphDraft(draft.graphJson);
   const representation: DraftRepresentation = {
@@ -93,7 +94,9 @@ export async function serializeWorkflowDraft(
       workflowId: draft.workflowId,
       revision: draft.revision,
       graph,
-      graphDigest: await portableGraphDigest(graph),
+      ...(includeGraphDigest
+        ? { graphDigest: await portableGraphDigest(graph) }
+        : {}),
       compatibility: draft.compatibility,
       updatedAt: draft.updatedAt.toISOString(),
     }),
@@ -142,24 +145,27 @@ export async function serializeWorkflowPublication(
 export async function serializeWorkflowVersions(
   items: readonly WorkflowVersionRecord[],
   nextCursor: string | null,
+  includeGraphDigest = false,
 ): Promise<WorkflowVersionsResponse> {
   return workflowVersionsResponseSchema.parse({
-    items: await Promise.all(items.map(workflowVersion)),
+    items: await Promise.all(
+      items.map((version) => workflowVersion(version, includeGraphDigest)),
+    ),
     nextCursor,
   });
 }
 
 export function workflowSummary(
   workflow: WorkflowRecord,
-  includeRecentRuns = false,
+  projection?: Readonly<{ recentRuns: boolean }>,
 ): WorkflowSummary {
   return {
-    ...(workflow.listSummary === undefined
+    ...(projection === undefined || workflow.listSummary === undefined
       ? {}
       : {
           listSummary: {
             shape: workflow.listSummary.shape,
-            ...(includeRecentRuns &&
+            ...(projection.recentRuns &&
             workflow.listSummary.recentRuns !== undefined
               ? { recentRuns: workflow.listSummary.recentRuns }
               : {}),
@@ -184,13 +190,16 @@ export function workflowSummary(
 
 async function workflowVersion(
   version: WorkflowVersionRecord,
+  includeGraphDigest = false,
 ): Promise<WorkflowVersionResponse> {
   return workflowVersionResponseSchema.parse({
     id: version.id,
     workflowId: version.workflowId,
     versionNumber: version.versionNumber,
     graph: parseWorkflowGraphDraft(version.graphJson),
-    graphDigest: await portableGraphDigest(version.graphJson),
+    ...(includeGraphDigest
+      ? { graphDigest: await portableGraphDigest(version.graphJson) }
+      : {}),
     checksum: version.checksum,
     publishedAt: version.publishedAt.toISOString(),
   });

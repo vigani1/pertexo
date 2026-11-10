@@ -430,7 +430,7 @@
           "reviewedGraphDigest": {
             "type": "string",
             "pattern": "^[a-f0-9]{64}$",
-            "description": "Review the source graph, then echo this content identity as reviewedGraphDigest; draft writes still require the opaque ETag."
+            "description": "Returned on reads with include=graphDigest. Review the source graph, then echo this content identity as reviewedGraphDigest; draft writes still require the opaque ETag."
           }
         },
         "required": [
@@ -2539,7 +2539,7 @@
                 "path",
                 "message"
               ],
-              "additionalProperties": false
+              "additionalProperties": true
             }
           },
           "truncated": {
@@ -2578,7 +2578,7 @@
                 "providerKey",
                 "authType"
               ],
-              "additionalProperties": false
+              "additionalProperties": true
             }
           }
         },
@@ -2590,7 +2590,7 @@
           "truncated",
           "connectionSlots"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "WorkflowImportRequest": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -3679,7 +3679,7 @@
         "required": [
           "workflowId"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "WorkflowRevisionConflictProblem": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -3748,7 +3748,7 @@
                 "code",
                 "message"
               ],
-              "additionalProperties": false
+              "additionalProperties": true
             }
           },
           "currentRevision": {
@@ -3770,7 +3770,7 @@
           "currentRevision",
           "currentEtag"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "ApiProblem": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -3988,7 +3988,7 @@
                 "code",
                 "message"
               ],
-              "additionalProperties": false
+              "additionalProperties": true
             }
           }
         },
@@ -3999,7 +3999,7 @@
           "code",
           "requestId"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       }
     },
     "responses": {

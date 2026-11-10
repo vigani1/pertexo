@@ -87,8 +87,8 @@ describe('workspace home', () => {
 
     expect(workflowQueries).toEqual(
       expect.arrayContaining([
-        '?limit=5&order=updated_desc',
-        '?limit=25&order=updated_desc',
+        '?limit=5&include=listSummary&order=updated_desc',
+        '?limit=25&include=listSummary&order=updated_desc',
       ]),
     );
     const statuses = runQueries.map((query) => query.get('status'));

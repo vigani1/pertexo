@@ -17,6 +17,21 @@ On public routes:
   required input, breaks. The old version keeps working through the notice period.
 - **A stored format isn't the API.** Only what's documented here and in the reference is.
 
+## Response compatibility
+
+Public JSON response decoders discard unknown object members, including nested
+projection metadata, and continue to validate known fields, bounds and required
+values. Declared JSON/configuration maps preserve their contents. Requests and
+queries reject unknown members; response tolerance never changes write validation.
+
+For this release, `graphDigest` and `listSummary` require explicit `include`
+parameters because previously deployed response decoders rejected extra fields.
+Default read and write responses preserve the previous release's shape. Use
+`include=graphDigest` on draft/version reads, `include=listSummary` on workflow
+lists, or `include=organization,listSummary` for an organized list. Existing
+`include=organization` reads retain their previous shape. See the
+[automation guide](automation.md#read-projections-and-decoder-compatibility).
+
 ## Methods and statuses
 
 | Action | Request | Answer |

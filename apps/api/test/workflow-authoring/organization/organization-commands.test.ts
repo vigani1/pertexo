@@ -244,9 +244,14 @@ describe('workflow organization commands', () => {
         generation: tagId,
         proof: {},
       });
-      await expect(
-        invoke(f, method, { ...base, request }),
-      ).rejects.toBeInstanceOf(z.ZodError);
+      if (method === 'replaceTags')
+        await expect(invoke(f, method, { ...base, request })).resolves.toEqual(
+          result,
+        );
+      else
+        await expect(
+          invoke(f, method, { ...base, request }),
+        ).rejects.toBeInstanceOf(z.ZodError);
       expect(persistence(f, method)).toHaveBeenCalledOnce();
     },
   );

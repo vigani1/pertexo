@@ -74,7 +74,7 @@ export function getWorkflowOrganizationPage(
     response: {
       kind: 'json',
       decode: (value) =>
-        query.include === 'organization'
+        query.include?.includes('organization')
           ? workflowOrganizationListResponseSchema.parse(value)
           : workflowListResponseSchema.parse(value),
     },

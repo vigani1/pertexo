@@ -1,3 +1,4 @@
+import { responseSchema } from '../schemas/shared/response-schema.js';
 import { CALLBACK_PROBLEM_CODES, callbackProblems } from './callbacks.js';
 import { collaborationProblems } from './workflows/collaboration.js';
 import { promotionProblems } from './workflows/promotion.js';
@@ -187,10 +188,12 @@ export const apiProblemShape = {
 export function createApiProblemSchema<Extension extends z.ZodRawShape>(
   extension: Extension,
 ) {
-  return z
-    .object({ ...apiProblemShape, ...extension })
-    .strict()
-    .readonly();
+  return responseSchema(
+    z
+      .object({ ...apiProblemShape, ...extension })
+      .strict()
+      .readonly(),
+  );
 }
 
 export const apiProblemSchema = createApiProblemSchema({});

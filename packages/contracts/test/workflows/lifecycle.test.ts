@@ -93,10 +93,10 @@ describe('workflow lifecycle public contract', () => {
       workflowLifecycleConflictProblemSchema.safeParse(conflict).success,
     ).toBe(true);
     expect(
-      workflowLifecycleConflictProblemSchema.safeParse({
+      workflowLifecycleConflictProblemSchema.parse({
         ...conflict,
         currentEtag: 'draft',
-      }).success,
-    ).toBe(false);
+      }),
+    ).not.toHaveProperty('currentEtag');
   });
 });

@@ -113,7 +113,7 @@ describe('workflow organization transport', () => {
         input: { include: 'organization' },
         signal: signal(),
       }),
-    ).rejects.toMatchObject({ kind: 'protocol' });
+    ).resolves.toEqual(projection);
   });
   it('reuses a frozen command and returns historical receipts without installing cache', async () => {
     const fetch = vi.fn<typeof globalThis.fetch>().mockImplementation(() =>

@@ -126,11 +126,11 @@ describe('automatic workflow pause contracts', () => {
       }),
     ).toEqual({ settings, replayed: true });
     expect(
-      workflowAutoPauseSettingsSchema.safeParse({
+      workflowAutoPauseSettingsSchema.parse({
         ...settings,
         lifecycleRevision: 1,
-      }).success,
-    ).toBe(false);
+      }),
+    ).not.toHaveProperty('lifecycleRevision');
     expect(
       workflowAutoPauseSettingsSchema.parse({
         ...settings,
@@ -183,11 +183,11 @@ describe('automatic workflow pause contracts', () => {
     };
     expect(workflowPauseConflictProblemSchema.parse(problem)).toEqual(problem);
     expect(
-      workflowPauseConflictProblemSchema.safeParse({
+      workflowPauseConflictProblemSchema.parse({
         ...problem,
         currentEtag: 'draft',
-      }).success,
-    ).toBe(false);
+      }),
+    ).not.toHaveProperty('currentEtag');
     for (const code of [
       'workflow.pause_conflict',
       'workflow.auto_pause_settings_conflict',

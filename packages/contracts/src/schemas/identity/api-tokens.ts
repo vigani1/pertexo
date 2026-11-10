@@ -1,3 +1,4 @@
+import { responseSchema } from '../shared/response-schema.js';
 import { storageTextSchema } from '@pertexo/workflow-model';
 import { API_TOKEN_SCOPES } from '@pertexo/policy';
 import {
@@ -110,12 +111,14 @@ export type ApiTokenRevokeResponse = z.output<
 >;
 
 /** What a script can learn about its own credential; the token names all of it. */
-export const apiTokenInfoResponseSchema = z
-  .object({
-    id: z.uuid(),
-    workspaceId: z.uuid(),
-    name: z.string().min(1).max(128),
-    scopes,
-    expiresAt: z.iso.datetime(),
-  })
-  .strict();
+export const apiTokenInfoResponseSchema = responseSchema(
+  z
+    .object({
+      id: z.uuid(),
+      workspaceId: z.uuid(),
+      name: z.string().min(1).max(128),
+      scopes,
+      expiresAt: z.iso.datetime(),
+    })
+    .strict(),
+);

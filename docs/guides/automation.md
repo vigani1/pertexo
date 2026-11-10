@@ -111,6 +111,24 @@ fields come through. Failures write one sanitized JSON problem to stderr (`code`
 and requests at 30 seconds. Files must be regular UTF-8 JSON. There is no automatic
 retry or arbitrary endpoint passthrough.
 
+## Read projections and decoder compatibility
+
+This release preserves the pre-J4 response shape unless you explicitly opt in:
+
+- `GET /v1/workspaces/{workspaceId}/workflows?include=listSummary` returns compact
+  topology and recent ordinary-run statuses. With organization metadata, use
+  `include=organization,listSummary`; `include=organization` keeps its old shape.
+  Recent statuses still require `run:read` and folder/workspace access.
+- Add `include=graphDigest` to a workflow's `/draft` or `/versions` read to obtain
+  the reviewed content identity. It does not replace the opaque draft ETag.
+
+The new web app and CLI request these projections. Tabs still on older assets and
+clients using older strict contracts receive the old default shapes, including
+write responses. Public response decoders now strip unrecognized object members,
+including nested metadata, while validating known fields. Arbitrary JSON/config
+maps keep their declared contents. Request/query schemas remain strict. Stored
+portable documents keep their versioned format contract.
+
 ## Commands and matching HTTP calls
 
 Paths below are relative to `/v1/workspaces/$WORKSPACE_ID`. Exactly one Bearer
@@ -120,10 +138,10 @@ the browser. Request and response bodies are in the server's own spec, `GET /v1/
 
 | CLI after `pnpm cli` | HTTP | Token scope |
 | --- | --- | --- |
-| `workflows list --workspace "$WORKSPACE_ID" [--limit 25 --after CURSOR]` | `GET /workflows?limit=25&after=CURSOR` | `workflow:read` |
+| `workflows list --workspace "$WORKSPACE_ID" [--limit 25 --after CURSOR]` | `GET /workflows?include=listSummary&limit=25&after=CURSOR` | `workflow:read` |
 | `workflows get --workspace "$WORKSPACE_ID" --workflow "$WORKFLOW_ID"` | `GET /workflows/$WORKFLOW_ID` | `workflow:read` |
-| `workflows draft --workspace "$WORKSPACE_ID" --workflow "$WORKFLOW_ID"` | `GET /workflows/$WORKFLOW_ID/draft` | `workflow:read` |
-| `workflows versions --workspace "$WORKSPACE_ID" --workflow "$WORKFLOW_ID" [--version UUID --limit 25 --after CURSOR]` | `GET /workflows/$WORKFLOW_ID/versions` with the corresponding query | `workflow:read` |
+| `workflows draft --workspace "$WORKSPACE_ID" --workflow "$WORKFLOW_ID"` | `GET /workflows/$WORKFLOW_ID/draft?include=graphDigest` | `workflow:read` |
+| `workflows versions --workspace "$WORKSPACE_ID" --workflow "$WORKFLOW_ID" [--version UUID --limit 25 --after CURSOR]` | `GET /workflows/$WORKFLOW_ID/versions?include=graphDigest` with the corresponding query | `workflow:read` |
 | `workflows export --workspace "$WORKSPACE_ID" --workflow "$WORKFLOW_ID" --body export.json [--etag "$DRAFT_ETAG"]` | `POST /workflows/$WORKFLOW_ID/export` | `workflow:read` |
 | `workflows import-preview --workspace "$WORKSPACE_ID" --body preview.json` | `POST /workflows/import/preview` | `workflow:create`; `connection:read` if bindings exist |
 | `workflows import --workspace "$WORKSPACE_ID" --body import.json --key deploy-import-1` | `POST /workflows/import`, `Idempotency-Key: deploy-import-1` | same as preview |
@@ -207,7 +225,7 @@ version via `workflows versions --version UUID`. An export request contains:
 }
 ```
 
-Draft and version reads return `graphDigest`. Review the returned graph, then echo
+Request `?include=graphDigest` on draft and version reads to receive `graphDigest`. Review the returned graph, then echo
 that identity as `reviewedGraphDigest`; clients need no private package or hashing
 implementation. The digest identifies graph content, including authoring metadata;
 it is distinct from the executable `checksum` and from the opaque draft ETag.

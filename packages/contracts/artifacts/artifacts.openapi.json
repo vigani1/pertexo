@@ -222,7 +222,7 @@
                 "code",
                 "message"
               ],
-              "additionalProperties": false
+              "additionalProperties": true
             }
           }
         },
@@ -233,7 +233,7 @@
           "code",
           "requestId"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "ArtifactUploadRequest": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",

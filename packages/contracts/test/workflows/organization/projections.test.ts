@@ -68,9 +68,8 @@ describe('additive organization projection contracts', () => {
     ])
       expect(workflowListQuerySchema.safeParse(extension).success).toBe(false);
     expect(
-      workflowSummaryResponseSchema.safeParse({ workflow, organization })
-        .success,
-    ).toBe(false);
+      workflowSummaryResponseSchema.parse({ workflow, organization }),
+    ).not.toHaveProperty('organization');
     expect(
       workflowListResponseSchema.safeParse({
         items: [{ workflow, organization }],
@@ -167,15 +166,17 @@ describe('additive organization projection contracts', () => {
         nextCursor: null,
       }),
     ).toEqual({ items: [item], nextCursor: null });
-    for (const value of [
-      { workflow },
-      { workflow, organization: null },
-      { ...item, templateOrigin: null },
-      { ...item, actorId: id },
-    ])
+    for (const value of [{ workflow }, { workflow, organization: null }])
       expect(
         workflowOrganizationProjectionResponseSchema.safeParse(value).success,
       ).toBe(false);
+    expect(
+      workflowOrganizationProjectionResponseSchema.parse({
+        ...item,
+        templateOrigin: null,
+        actorId: id,
+      }),
+    ).toEqual(item);
     expect(
       workflowCombinedOrganizationProjectionResponseSchema.safeParse(item)
         .success,

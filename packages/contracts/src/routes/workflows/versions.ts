@@ -64,7 +64,8 @@ export const versionRoutes = {
     query: schemas.workflowVersionsQuerySchema,
     success: {
       status: 200,
-      description: 'Immutable workflow versions',
+      description:
+        'Immutable workflow versions; include=graphDigest adds the reviewed content identity',
       body: projected(
         'WorkflowVersionsResponse',
         schemas.workflowVersionsResponseSchema,

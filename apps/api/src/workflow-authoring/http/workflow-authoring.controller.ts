@@ -62,7 +62,7 @@ export class WorkflowAuthoringController {
       input.tagId !== undefined ||
       input.folderId !== undefined ||
       input.favoritesOnly !== undefined ||
-      input.include !== undefined;
+      (input.include?.includes('organization') ?? false);
     if (hasOrganizationFilters) {
       response?.header('Cache-Control', 'private, no-store');
       return withWorkflowOrganizationRequest(request, workspaceId, (context) =>
@@ -76,6 +76,7 @@ export class WorkflowAuthoringController {
     return this.listWorkflows.execute({
       ...context,
       routeWorkspaceId: workspaceId,
+      includeListSummary: input.include === 'listSummary',
       ...(input.pinsWorkflowId === undefined
         ? {}
         : { pinsWorkflowId: input.pinsWorkflowId }),
@@ -140,7 +141,7 @@ export class WorkflowAuthoringController {
   @Route(routes.draft)
   public async draft(
     @Req() request: WorkflowAuthoringRequest,
-    @In() { params }: RouteInput<typeof routes.draft>,
+    @In() { params, query }: RouteInput<typeof routes.draft>,
     @Res({ passthrough: true }) response: ConditionalWorkflowResponse,
   ) {
     const route = params;
@@ -152,6 +153,7 @@ export class WorkflowAuthoringController {
       ...context,
       routeWorkspaceId: route.workspaceId,
       workflowId: route.workflowId,
+      includeGraphDigest: query.include === 'graphDigest',
     });
     response.header('ETag', result.representationTag);
     if (

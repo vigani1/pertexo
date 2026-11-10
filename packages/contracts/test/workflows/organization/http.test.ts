@@ -156,12 +156,12 @@ describe('organization HTTP manifest and generated structural contracts', () => 
       'after',
       'order',
       'pinsWorkflowId',
+      'include',
       'query',
       'view',
       'tagId',
       'folderId',
       'favoritesOnly',
-      'include',
     ]);
     expect(
       list.responses['200'].content['application/json'].schema.anyOf,
@@ -181,11 +181,11 @@ describe('organization HTTP manifest and generated structural contracts', () => 
       },
     });
     expect(
-      get.responses['200'].content['application/json'].schema.oneOf,
+      get.responses['200'].content['application/json'].schema.anyOf,
     ).toHaveLength(4);
     const defaults = workflowAuthoringOpenApiDocument.components.schemas;
     expect(defaults.WorkflowSummaryResponse).toMatchObject({
-      additionalProperties: false,
+      additionalProperties: true,
       required: ['workflow'],
     });
     expect(defaults.WorkflowSummaryResponse).not.toHaveProperty(
@@ -196,7 +196,7 @@ describe('organization HTTP manifest and generated structural contracts', () => 
     ).not.toHaveProperty('properties.organization');
     expect(defaults.WorkflowListResponse).toHaveProperty(
       'additionalProperties',
-      false,
+      true,
     );
     expect(defaults.WorkflowListResponse).not.toHaveProperty(
       'properties.total',
@@ -222,10 +222,10 @@ describe('organization HTTP manifest and generated structural contracts', () => 
       expect(validate(page), JSON.stringify(validate.errors)).toBe(true);
     for (const invalid of [
       { items: [{ workflow }], nextCursor: null },
-      { items: [], nextCursor: null, total: 0 },
       { items: [{ workflow, organization: null }], nextCursor: null },
     ])
       expect(validate(invalid)).toBe(false);
+    expect(validate({ items: [], nextCursor: null, total: 0 })).toBe(true);
     const getResponse =
       document.paths['/v1/workspaces/{workspaceId}/workflows/{workflowId}'].get
         .responses['200'].content['application/json'].schema;
@@ -265,9 +265,8 @@ describe('organization HTTP manifest and generated structural contracts', () => 
         'currentRevision',
       ])
         expect(
-          apiProblemSchema.safeParse({ ...problem, [privateField]: id })
-            .success,
-        ).toBe(false);
+          apiProblemSchema.parse({ ...problem, [privateField]: id }),
+        ).not.toHaveProperty(privateField);
     }
     for (const code of [
       'workflow.concurrency_revision_conflict',
