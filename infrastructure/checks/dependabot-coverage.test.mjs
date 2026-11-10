@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
+import { matchesGlob } from 'node:path';
 import { test } from 'node:test';
 import { parse } from 'yaml';
 import { uncoveredComposeFiles } from './dependabot-coverage.mjs';
@@ -55,5 +56,43 @@ test('coverage supports configured directory globs and Compose filename variants
       ],
     ),
     ['apps/demo/compose.yaml'],
+  );
+});
+
+test('every workflow and composite-action dependency has a GitHub Actions updater', () => {
+  const { updates } = parse(readFileSync('.github/dependabot.yml', 'utf8'));
+  const directories = updates
+    .filter((update) => update['package-ecosystem'] === 'github-actions')
+    .flatMap((update) => update.directories ?? [update.directory]);
+  const files = execFileSync('git', ['ls-files', '-z', '.github'], {
+    encoding: 'utf8',
+  })
+    .split('\0')
+    .filter((file) =>
+      /(?:workflows\/[^/]+|actions\/.+\/action)\.ya?ml$/u.test(file),
+    );
+  const dependencies = [];
+  for (const file of files) {
+    const uses = [
+      ...readFileSync(file, 'utf8').matchAll(
+        /^\s*(?:-\s*)?uses:\s*([^\s#]+)/gmu,
+      ),
+    ]
+      .map((match) => match[1])
+      .filter((value) => !value.startsWith('./'));
+    if (uses.length) dependencies.push({ file, uses });
+  }
+  assert.ok(dependencies.some(({ file }) => file.includes('/workflows/')));
+  assert.ok(dependencies.some(({ file }) => file.includes('/actions/')));
+  const uncovered = dependencies.filter(({ file }) => {
+    const directory = file.includes('/workflows/')
+      ? '/'
+      : `/${file.slice(0, file.lastIndexOf('/'))}`;
+    return !directories.some((pattern) => matchesGlob(directory, pattern));
+  });
+  assert.deepEqual(
+    uncovered,
+    [],
+    'Dependabot must reach every external Actions pin',
   );
 });
