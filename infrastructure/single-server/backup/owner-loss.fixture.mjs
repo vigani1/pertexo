@@ -66,7 +66,6 @@ export async function qualifyOwnerLoss({
     realDocker,
     databaseContainer,
     workspace: resolve('.'),
-    binary: `${directory}/rclone`,
   };
   await writeFile(`${root}/adapter.json`, JSON.stringify(adapter));
   await writeFile(
@@ -78,13 +77,14 @@ const c = JSON.parse(fs.readFileSync(process.env.BACKUP_ADAPTER, 'utf8'));
 let args = process.argv.slice(2);
 if (args[0] === 'ps') process.exit(0);
 if (args[0] === 'compose') {
+  if (args.includes('--images')) { console.log(require(c.workspace + '/node_modules/yaml').parse(fs.readFileSync(c.workspace + '/infrastructure/single-server/compose.yaml', 'utf8')).services.rclone.image); process.exit(0); }
   if (args.includes('ps')) { console.log('api\\nworker\\nproxy'); process.exit(0); }
   if (!args.some((arg) => arg.includes('pg_dump'))) throw new Error('Unexpected compose operation');
   fs.writeFileSync(c.root + '/dump.started', 'started');
   args = ['exec', c.databaseContainer, 'pg_dump', '-U', 'postgres', '-d', 'pertexo', '--format=custom'];
 } else if (args[0] === 'run') {
   let image = args.findIndex((arg) => arg.startsWith('ghcr.io/vigani1/pertexo:'));
-  if (image >= 0) args.splice(image, 1, '-v', c.workspace + ':/workspace:ro', '-v', c.binary + ':/usr/local/bin/rclone:ro', '-w', '/workspace', c.nodeImage);
+  if (image >= 0) args.splice(image, 1, '-v', c.workspace + ':/workspace:ro', '-w', '/workspace', c.nodeImage);
   image = args.findIndex((arg) => arg === c.nodeImage || arg.startsWith('rclone/rclone:'));
   if (image >= 0) args.splice(image, 0, '-e', 'RCLONE_CONFIG_BACKUP_ENDPOINT=http://destination:9000');
   args = args.map((arg) => arg === 'pertexo-beta_private' ? c.network : arg);

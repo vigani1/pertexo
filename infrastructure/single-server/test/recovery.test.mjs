@@ -71,6 +71,7 @@ if os.environ.get('RESTORE') and args[0]=='run' and '--network' in args:
   print('target network does not exist before services start', file=sys.stderr)
   sys.exit(125)
 if 'compose' in args and 'up' in args: (root/'target-started').touch()
+if '--images' in args: print('rclone/rclone:1.76.0@sha256:7cbeec24a44f206067597c0368be4de90ae19a64d5113c7d1938bd737a81e466')
 if args[0]=='version': print('arm64')
 if args[0]=='image': print('arm64 ${commit}')
 if 'infrastructure/single-server/backup/prepare.mjs' in args:

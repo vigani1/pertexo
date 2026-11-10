@@ -1,5 +1,4 @@
 # syntax=docker/dockerfile:1.7
-FROM rclone/rclone:1.76.0@sha256:7cbeec24a44f206067597c0368be4de90ae19a64d5113c7d1938bd737a81e466 AS backup-transport
 
 FROM node:24.22.2-bookworm-slim@sha256:01d566e8d94d8c619591d78652babfccd3c6992a3dffa9ed5ab39e11cf6c70e9 AS build
 WORKDIR /workspace
@@ -63,7 +62,6 @@ FROM node:24.22.2-bookworm-slim@sha256:01d566e8d94d8c619591d78652babfccd3c6992a3
 ARG SOURCE_COMMIT=unknown
 LABEL org.opencontainers.image.source="https://github.com/vigani1/pertexo" \
   org.opencontainers.image.revision=$SOURCE_COMMIT
-COPY --from=backup-transport /usr/local/bin/rclone /usr/local/bin/rclone
 COPY --from=build /workspace/THIRD_PARTY_NOTICES.txt /workspace/THIRD_PARTY_NOTICES.txt
 ENV NODE_ENV=production
 WORKDIR /workspace

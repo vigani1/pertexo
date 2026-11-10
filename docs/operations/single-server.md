@@ -672,6 +672,17 @@ organization management, SSO/SAML and SCIM, keep the app login and use verified
 transaction-local organization context. Do not inject maintenance credentials
 into the API or expose either connection URL to the web client.
 
+Backup transport runs from the official digest-pinned rclone image selected in
+`infrastructure/single-server/compose.yaml (the backup-profile rclone service)`; Dependabot updates this pin.
+No rclone executable is included in Pertexo images. Each transport command uses
+`docker run --rm` on the operation's backup network, with only its private
+`rclone.env` and `/backup` mount. The host dispatches capture-helper requests
+through the private operation directory; the helper receives neither Docker socket
+access nor a Docker executable. Its database deletion lock, one-hour dump deadline
+and stdin-EOF owner lifetime remain authoritative. Ending the helper removes an
+active transport container and its dispatcher. Obscuring the crypt credentials
+also uses the upstream container over stdin, without exposing passwords in argv.
+
 ## Local release and image retention
 
 A successful deployment and a successful backup run `prune.sh` under the same
