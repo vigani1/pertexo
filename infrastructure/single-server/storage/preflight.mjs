@@ -1,3 +1,4 @@
+import { applicationEnvironments } from './resolved-environment.mjs';
 import { readFileSync } from 'node:fs';
 import { parseEnv } from 'node:util';
 import { pathToFileURL } from 'node:url';
@@ -15,13 +16,14 @@ export function validateApplicationConfiguration(environment) {
   };
   const results = [];
   const failures = [];
-  for (const parse of [
-    parseApiConfig,
-    parseWorkerConfig,
-    parseMigrationConfig,
+  const environments = applicationEnvironments(values);
+  for (const [name, parse] of [
+    ['api', parseApiConfig],
+    ['worker', parseWorkerConfig],
+    ['migration', parseMigrationConfig],
   ]) {
     try {
-      results.push(parse(values));
+      results.push(parse(environments[name]));
     } catch (error) {
       failures.push(...configurationGuidance(error));
     }
