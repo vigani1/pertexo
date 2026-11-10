@@ -687,6 +687,35 @@ and stdin-EOF owner lifetime remain authoritative. Ending the helper removes its
 runtime container, upstream transport container and dispatcher. Obscuring the crypt credentials
 also uses the upstream container over stdin, without exposing passwords in argv.
 
+Helpers carry `io.pertexo.backup.helper`, `project`, `operation` and `instance`
+Docker labels. The installation root is the stable project identity; backup and
+restore are separate operations. A restart removes stale helpers for that project
+and operation before starting a replacement, even if its private CID file is
+missing or belongs to a previous operation directory. Exit cleanup targets only
+its own invocation, so an old dispatcher cannot remove its replacement or another
+project's helpers. CID files are diagnostic records for new helpers. Migration of
+a pre-label CID requires the pinned image and no conflicting Pertexo or Compose
+ownership labels.
+
+The five recovery payload files upload together through an explicit filename
+allowlist; private operation files are excluded. `COMPLETE` is still uploaded
+separately and last, after that copy succeeds.
+
+The runtime helper starts only after transport readiness. Transport failure stops
+its owned runtime helper, closes the database session and releases the deletion
+pause; no recovery point is completed. Startup failure returns a clear nonzero
+failure before a runtime helper can acquire a pause.
+
+The backup image catalog belongs to the operator scripts, independently of the
+selected installed release. This also permits backup-before-upgrade when that
+older release predates the external transport. Its directory is covered by the
+existing grouped Compose Dependabot entry.
+
+Preparation and capture helpers also come from the operator checkout, while the
+selected release supplies the compatible Node runtime and application dependencies.
+This prevents a backup-before-upgrade from falling back to an older helper that
+executes an embedded rclone binary.
+
 ## Local release and image retention
 
 A successful deployment and a successful backup run `prune.sh` under the same
@@ -717,31 +746,8 @@ Keep the off-server backup settings and keys available to read recovery referenc
 On an install that has never configured backups, current/previous and the three
 recent releases are sufficient. Run the first configured backup to initialise its
 key check before expecting catalogue-based cleanup to succeed.
-Helpers carry `io.pertexo.backup.helper`, `project`, `operation` and `instance`
-Docker labels. The installation root is the stable project identity; backup and
-restore are separate operations. A restart removes stale helpers for that project
-and operation before starting a replacement, even if its private CID file is
-missing or belongs to a previous operation directory. Exit cleanup targets only
-its own invocation, so an old dispatcher cannot remove its replacement or another
-project's helpers. CID files are diagnostic records for new helpers. Migration of
-a pre-label CID requires the pinned image and no conflicting Pertexo or Compose
-ownership labels.
 
-The five recovery payload files upload together through an explicit filename
-allowlist; private operation files are excluded. `COMPLETE` is still uploaded
-separately and last, after that copy succeeds.
-
-The runtime helper starts only after transport readiness. Transport failure stops
-its owned runtime helper, closes the database session and releases the deletion
-pause; no recovery point is completed. Startup failure returns a clear nonzero
-failure before a runtime helper can acquire a pause.
-
-The backup image catalog belongs to the operator scripts, independently of the
-selected installed release. This also permits backup-before-upgrade when that
-older release predates the external transport. Its directory is covered by the
-existing grouped Compose Dependabot entry.
-
-Preparation and capture helpers also come from the operator checkout, while the
-selected release supplies the compatible Node runtime and application dependencies.
-This prevents a backup-before-upgrade from falling back to an older helper that
-executes an embedded rclone binary.
+Prune reads both encrypted and legacy recovery catalogues through the same
+project-owned upstream transport and private read-only config as backup helpers.
+A failed listing, decryption, reference read or invalid release defers removal;
+the helper and private operation config are cleaned up on exit.
