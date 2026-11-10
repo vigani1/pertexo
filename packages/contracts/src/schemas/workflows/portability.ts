@@ -1,3 +1,4 @@
+import { workflowGraphDigestSchema } from './graph-digest.js';
 import { storageTextSchema } from '@pertexo/workflow-model';
 import { z } from 'zod';
 import { workflowTemplateOriginRequestSchema } from '@pertexo/workflow-model';
@@ -19,7 +20,7 @@ const bindings = z
 export const workflowExportRequestSchema = z
   .object({
     source,
-    reviewedGraphDigest: z.string().regex(/^[a-f0-9]{64}$/u),
+    reviewedGraphDigest: workflowGraphDigestSchema,
   })
   .strict();
 export const workflowImportPreviewRequestSchema = z

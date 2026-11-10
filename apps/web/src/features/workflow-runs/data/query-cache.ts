@@ -35,18 +35,6 @@ export const workflowRunKeys = {
     [...workflowRunKeys.scope(userId, workspaceId), 'loom', windowMs] as const,
   anyRun: (userId: string, workspaceId: string) =>
     [...workflowRunKeys.scope(userId, workspaceId), 'any'] as const,
-  latestOf: (
-    userId: string,
-    workspaceId: string,
-    workflowId: string,
-    limit: number,
-  ) =>
-    [
-      ...workflowRunKeys.scope(userId, workspaceId),
-      'latest-of',
-      workflowId,
-      limit,
-    ] as const,
 };
 
 /** Denials revoke snapshots durably, including inactive history filters. */

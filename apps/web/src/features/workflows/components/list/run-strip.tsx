@@ -52,16 +52,3 @@ export function RunStrip({ ticks }: Readonly<{ ticks: readonly RunTick[] }>) {
     </span>
   );
 }
-
-export function RunStripPlaceholder() {
-  return (
-    <span aria-hidden="true" className="flex h-4 items-end gap-[3px]">
-      {Array.from({ length: RUN_STRIP_LENGTH }, (_, index) => (
-        <span
-          key={String(index)}
-          className="h-3.5 w-1 rounded-[2px] bg-surface-ink/5 motion-safe:animate-blink"
-        />
-      ))}
-    </span>
-  );
-}

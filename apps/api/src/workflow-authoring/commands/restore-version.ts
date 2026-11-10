@@ -70,7 +70,7 @@ export class RestoreWorkflowVersionUseCase {
             ? {}
             : { traceId: input.actor.traceId }),
         });
-        const draft = serializeWorkflowDraft(restored);
+        const draft = await serializeWorkflowDraft(restored);
         return {
           ...draft,
           body: workflowVersionRestoreResponseSchema.parse({

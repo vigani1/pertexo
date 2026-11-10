@@ -1,9 +1,4 @@
-import type {
-  AccessibleWorkspace,
-  WorkflowGraphContract,
-  WorkflowSummary,
-} from '@pertexo/contracts';
-import { useQuery } from '@tanstack/react-query';
+import type { AccessibleWorkspace, WorkflowSummary } from '@pertexo/contracts';
 import { Link } from '@tanstack/react-router';
 import {
   CalendarClockIcon,
@@ -16,9 +11,7 @@ import {
 } from 'lucide-react';
 import type { KeyboardEvent, ReactNode } from 'react';
 import { ProgressButton } from '@/components/ui/progress-button';
-import { SkeletonThread } from '@/components/ui/skeleton';
 import { Status } from '@/components/ui/status';
-import type { ApiClient } from '@/lib/api/client';
 import { formatDateTime, formatRelativeTime } from '@/lib/format/time';
 import { cn } from '@/lib/class-names';
 import {
@@ -30,11 +23,10 @@ import {
   workflowTriggerKinds,
   type TriggerKind,
 } from '../../model/shape';
-import { useWorkflowRunTicks } from './use-workflow-run-ticks';
-import { useHasBeenVisible } from './use-has-been-visible';
-import { workflowShapeQueryOptions } from '../../data/workflows.queries';
+import { runTicks } from '../../model/run-strip';
+import type { WorkflowShape } from '../../model/shape';
 import { PatternGlyph, PatternGlyphPlaceholder } from '../pattern-glyph';
-import { RunStrip, RunStripPlaceholder } from './run-strip';
+import { RunStrip } from './run-strip';
 import {
   ROW_REVEAL_CLASS,
   type WorkflowRowActions,
@@ -64,7 +56,7 @@ const TRIGGERS: Readonly<
 
 function TriggerIcons({
   graph,
-}: Readonly<{ graph: WorkflowGraphContract | undefined }>) {
+}: Readonly<{ graph: WorkflowShape | undefined }>) {
   if (graph === undefined) return null;
   const kinds = workflowTriggerKinds(graph);
   if (kinds.length === 0)
@@ -92,16 +84,13 @@ function TriggerIcons({
 
 function RowGlyph({
   graph,
-  failed,
   muted,
 }: Readonly<{
-  graph: WorkflowGraphContract | undefined;
-  /** The shape couldn't be read: a quiet placeholder, not a loading one. */
-  failed: boolean;
+  graph: WorkflowShape | undefined;
   muted: boolean;
 }>) {
   if (graph !== undefined) return <PatternGlyph graph={graph} muted={muted} />;
-  return <PatternGlyphPlaceholder state={failed ? 'unavailable' : 'loading'} />;
+  return <PatternGlyphPlaceholder state="unavailable" />;
 }
 
 /** The name, opening the workflow, and its path in words once it's read. */
@@ -109,12 +98,10 @@ function RowTitle({
   workspaceId,
   workflow,
   graph,
-  shapeFailed,
 }: Readonly<{
   workspaceId: string;
   workflow: WorkflowSummary;
-  graph: WorkflowGraphContract | undefined;
-  shapeFailed: boolean;
+  graph: WorkflowShape | undefined;
 }>) {
   return (
     <div className="min-w-0">
@@ -128,7 +115,7 @@ function RowTitle({
       {/* One line tall in every state, so a row never grows when its path
           arrives: first load and every filter change keep the list still. */}
       <div className="mt-0.5 flex h-4 items-center">
-        <RowPath graph={graph} failed={shapeFailed} />
+        <RowPath graph={graph} />
       </div>
     </div>
   );
@@ -136,16 +123,15 @@ function RowTitle({
 
 /** The workflow's own latest runs as a strip, or why there isn't one. */
 function RowRuns({
-  runs,
-}: Readonly<{ runs: ReturnType<typeof useWorkflowRunTicks> }>) {
-  if (runs.failed)
+  summary,
+}: Readonly<{ summary: WorkflowSummary['listSummary'] }>) {
+  if (summary?.recentRuns === undefined)
     return (
       <span className="font-mono text-[0.7rem] text-subtle-foreground">
         Couldn’t load
       </span>
     );
-  if (runs.pending) return <RunStripPlaceholder />;
-  return <RunStrip ticks={runs.ticks} />;
+  return <RunStrip ticks={runTicks(summary.recentRuns)} />;
 }
 
 function UpdatedAt({ at }: Readonly<{ at: string }>) {
@@ -217,8 +203,6 @@ function runShortcut(
 }
 
 export function WorkflowRow({
-  apiClient,
-  userId,
   workspace,
   workflow,
   actions,
@@ -226,8 +210,6 @@ export function WorkflowRow({
   tags,
   rowMenu,
 }: Readonly<{
-  apiClient: ApiClient;
-  userId: string;
   workspace: AccessibleWorkspace;
   workflow: WorkflowSummary;
   actions: WorkflowRowActions;
@@ -235,20 +217,8 @@ export function WorkflowRow({
   selectionControl?: ReactNode;
   tags?: ReactNode;
 }>) {
-  const [observe, seen] = useHasBeenVisible<HTMLLIElement>();
   const showRuns = workspace.capabilities.includes('run:read');
-  const runs = useWorkflowRunTicks({
-    apiClient,
-    userId,
-    workspaceId: workspace.id,
-    workflowId: workflow.id,
-    enabled: showRuns && seen,
-  });
-  const shape = useQuery({
-    ...workflowShapeQueryOptions(apiClient, userId, workspace.id, workflow.id),
-    enabled: seen,
-  });
-  const graph = shape.data;
+  const graph = workflow.listSummary?.shape;
   const state = describeWorkflowState(workflow);
   const runnable = canRunWorkflow(workspace, workflow);
   const run =
@@ -265,7 +235,6 @@ export function WorkflowRow({
   // their wrapper dissolves (`contents`) so each fact takes its own column.
   return (
     <li
-      ref={observe}
       onKeyDown={(event) => {
         runShortcut(event, run);
       }}
@@ -277,18 +246,9 @@ export function WorkflowRow({
             {selectionControl}
           </span>
         )}
-        <RowGlyph
-          graph={graph}
-          failed={shape.isError}
-          muted={workflow.publishedVersionId === null}
-        />
+        <RowGlyph graph={graph} muted={workflow.publishedVersionId === null} />
       </div>
-      <RowTitle
-        workspaceId={workspace.id}
-        workflow={workflow}
-        graph={graph}
-        shapeFailed={shape.isError}
-      />
+      <RowTitle workspaceId={workspace.id} workflow={workflow} graph={graph} />
       <div className="col-start-2 row-start-2 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 lg:contents">
         <div className="min-w-0">
           <Status tone={state.tone} className="text-[0.78rem]">
@@ -299,7 +259,7 @@ export function WorkflowRow({
           <TriggerIcons graph={graph} />
         </div>
         <div className="hidden lg:block">
-          {showRuns ? <RowRuns runs={runs} /> : null}
+          {showRuns ? <RowRuns summary={workflow.listSummary} /> : null}
         </div>
         <div>
           <UpdatedAt at={workflow.updatedAt} />
@@ -334,17 +294,11 @@ export function WorkflowRow({
   );
 }
 
-function RowPath({
-  graph,
-  failed,
-}: Readonly<{ graph: WorkflowGraphContract | undefined; failed: boolean }>) {
-  if (graph !== undefined)
-    return (
-      <p className="truncate text-xs/4 text-subtle-foreground">
-        {describeWorkflowPath(graph)}
-      </p>
-    );
-  if (failed) return null;
-  // The path is still being read: a thread spools where it will be.
-  return <SkeletonThread className="w-40 max-w-full" />;
+function RowPath({ graph }: Readonly<{ graph: WorkflowShape | undefined }>) {
+  if (graph === undefined) return null;
+  return (
+    <p className="truncate text-xs/4 text-subtle-foreground">
+      {describeWorkflowPath(graph)}
+    </p>
+  );
 }

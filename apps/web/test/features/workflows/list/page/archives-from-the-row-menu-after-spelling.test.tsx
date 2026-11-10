@@ -1,3 +1,4 @@
+import { coldStart } from '../../../../support/fixtures/run';
 import { screen, waitFor, within } from '@testing-library/react';
 
 import userEvent from '@testing-library/user-event';
@@ -14,7 +15,6 @@ import {
   api,
   discoveryHandlers,
   draftHandler,
-  graphOf,
   organizedPage,
   secondWorkflowId,
   summary,
@@ -220,22 +220,48 @@ describe('workflow list', () => {
 it('shows Form and error-workflow trigger icons with accessible names', async () => {
   mockServer.use(
     ...discoveryHandlers(),
-    draftHandler({
-      [workflowId]: graphOf([{ id: 'form', key: 'core.form', x: 0 }]),
-      [secondWorkflowId]: graphOf([
-        { id: 'error', key: 'core.workflow_error', x: 0 },
-      ]),
-    }),
     listHandler(() => ({
       items: [
-        summary(workflowId, 'Request form'),
-        summary(secondWorkflowId, 'Failure responder'),
+        summary(workflowId, 'Request form', {
+          listSummary: {
+            shape: {
+              nodes: [
+                {
+                  id: 'form',
+                  definition: { key: 'core.form', version: 1 },
+                  position: { x: 0, y: 0 },
+                },
+              ],
+              edges: [],
+            },
+            recentRuns: [],
+          },
+        }),
+        summary(secondWorkflowId, 'Failure responder', {
+          listSummary: {
+            shape: {
+              nodes: [
+                {
+                  id: 'error',
+                  definition: { key: 'core.workflow_error', version: 1 },
+                  position: { x: 0, y: 0 },
+                },
+              ],
+              edges: [],
+            },
+            recentRuns: [],
+          },
+        }),
       ],
       nextCursor: null,
     })),
   );
   renderApp(`/w/${workspaceId}/workflows`);
-  const list = await screen.findByRole('list', { name: 'Workflows' });
+  const list = await screen.findByRole(
+    'list',
+    { name: 'Workflows' },
+    coldStart,
+  );
   expect(
     (await within(list).findAllByText('Triggers: Form'))[0],
   ).toBeInTheDocument();

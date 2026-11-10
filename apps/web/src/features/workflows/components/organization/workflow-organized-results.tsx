@@ -136,8 +136,6 @@ export function WorkflowOrganizedResults({
         </Empty>
       ) : (
         <WorkflowRows
-          apiClient={apiClient}
-          userId={userId}
           workspace={workspace}
           workflows={items.map((item) => item.workflow)}
           actions={actions}

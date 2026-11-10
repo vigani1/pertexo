@@ -1,3 +1,4 @@
+import { workflowGraphSchema } from '@pertexo/contracts';
 import { expect, test, type Locator } from '../support/fixtures';
 import { mappingGraph } from '../workflow-editor/graph';
 import {
@@ -36,9 +37,23 @@ for (const screen of [
       await addCsrfCookie(context);
       const remote = remoteDraft(mappingGraph());
       await installEditorRoutes(page, remote);
-      const alpha = workflowSummary('Alpha').workflow;
+      const graph = workflowGraphSchema.parse(mappingGraph());
+      const listSummary = {
+        shape: {
+          nodes: graph.nodes.map(({ id, definition, position, label }) => ({
+            id,
+            definition,
+            position,
+            ...(label === undefined ? {} : { label }),
+          })),
+          edges: graph.edges,
+        },
+        recentRuns: [],
+      };
+      const alpha = { ...workflowSummary('Alpha').workflow, listSummary };
       const beta = {
         ...workflowSummary('Beta').workflow,
+        listSummary,
         id: 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
       };
       let editable = true;

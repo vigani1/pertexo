@@ -1,3 +1,4 @@
+import { readListSummaries } from './list-summary.repository.js';
 import type { WorkflowRef } from '../../../shared/workflow-actor.js';
 import { and, asc, desc, eq, exists, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
@@ -61,9 +62,15 @@ export async function listWorkflows(
     rows = await listRows(client, parsed, access);
   const hasMore = rows.length > parsed.limit,
     pageRows = rows.slice(0, parsed.limit);
+  const summaries = await readListSummaries(
+    client,
+    access,
+    pageRows.map((row) => row.workflow.id),
+  );
   const items = Object.freeze(
     pageRows.map((row) => ({
       ...row.workflow,
+      listSummary: summaries.get(row.workflow.id),
       resourceAccess: workflowActions(access, row.resource_folder_id),
     })),
   );

@@ -5,7 +5,14 @@ import {
 import { describeStep } from '@/features/catalog/presentation.public';
 import type { WorkflowGraphContract } from '@pertexo/contracts';
 
-type WorkflowNode = WorkflowGraphContract['nodes'][number];
+export type WorkflowShape = Readonly<{
+  nodes: readonly (Pick<
+    WorkflowGraphContract['nodes'][number],
+    'id' | 'definition' | 'position' | 'label'
+  > & { structured?: Readonly<{ kind: 'for_each' }> | undefined })[];
+  edges: WorkflowGraphContract['edges'];
+}>;
+type WorkflowNode = WorkflowShape['nodes'][number];
 type StepSource = Pick<WorkflowNode, 'definition' | 'label'>;
 
 export type TriggerKind = (typeof WORKFLOW_TRIGGER_DEFINITIONS)[number]['key'];
@@ -31,7 +38,7 @@ export function triggerKindOf(
 
 /** Distinct trigger kinds in the graph, in a stable display order. */
 export function workflowTriggerKinds(
-  graph: Pick<WorkflowGraphContract, 'nodes'>,
+  graph: Pick<WorkflowShape, 'nodes'>,
 ): readonly TriggerKind[] {
   const present = new Set(
     graph.nodes.flatMap((node) => {
@@ -49,7 +56,7 @@ type Adjacency = Readonly<{
   incoming: ReadonlyMap<string, number>;
 }>;
 
-function adjacency(graph: WorkflowGraphContract): Adjacency {
+function adjacency(graph: WorkflowShape): Adjacency {
   const ids = new Set(graph.nodes.map((node) => node.id));
   const successors = new Map<string, string[]>(
     graph.nodes.map((node) => [node.id, []]),
@@ -71,7 +78,7 @@ function adjacency(graph: WorkflowGraphContract): Adjacency {
 
 /** Where a person reads the workflow from: its trigger, else a source step. */
 function entryNode(
-  graph: WorkflowGraphContract,
+  graph: WorkflowShape,
   incoming: ReadonlyMap<string, number>,
 ): WorkflowNode | undefined {
   const sources = graph.nodes.filter((node) => incoming.get(node.id) === 0);
@@ -87,7 +94,7 @@ function entryNode(
  * Branches end the sentence with their first two options.
  */
 export function describeWorkflowPath(
-  graph: WorkflowGraphContract,
+  graph: WorkflowShape,
   maxSteps = 4,
 ): string {
   const { successors, incoming } = adjacency(graph);
@@ -134,7 +141,7 @@ export function describeWorkflowPath(
  * a draft) is broken at its earliest unsettled step so layout always ends.
  */
 function layerNodes(
-  graph: WorkflowGraphContract,
+  graph: WorkflowShape,
   { successors, incoming }: Adjacency,
 ): Map<string, number> {
   const pending = new Map(incoming);
@@ -215,7 +222,7 @@ function canvasPoints(
  * a column ordered by their canvas position, the trigger marked.
  */
 export function layoutPatternGlyph(
-  graph: WorkflowGraphContract,
+  graph: WorkflowShape,
   size: Readonly<{ width: number; height: number }> = { width: 62, height: 28 },
 ): GlyphLayout {
   const links = adjacency(graph);

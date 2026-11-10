@@ -2,7 +2,6 @@ import type { AccessibleWorkspace, WorkflowSummary } from '@pertexo/contracts';
 import type { ReactNode } from 'react';
 import { LoadMore } from '@/components/patterns/lists/load-more';
 import { Skeleton, SkeletonThread } from '@/components/ui/skeleton';
-import type { ApiClient } from '@/lib/api/client';
 import { cn } from '@/lib/class-names';
 import { PatternGlyphPlaceholder } from '../pattern-glyph';
 import { WORKFLOW_ROW_COLUMNS, WorkflowRow } from './workflow-row';
@@ -59,8 +58,6 @@ export function WorkflowRowsSkeleton({
 }
 
 export function WorkflowRows({
-  apiClient,
-  userId,
   workspace,
   workflows,
   actions,
@@ -68,8 +65,6 @@ export function WorkflowRows({
   rowTags,
   rowMenu,
 }: Readonly<{
-  apiClient: ApiClient;
-  userId: string;
   workspace: AccessibleWorkspace;
   workflows: readonly WorkflowSummary[];
   actions: WorkflowRowActions;
@@ -103,8 +98,6 @@ export function WorkflowRows({
         {workflows.map((workflow) => (
           <WorkflowRow
             key={workflow.id}
-            apiClient={apiClient}
-            userId={userId}
             workspace={workspace}
             workflow={workflow}
             actions={actions}

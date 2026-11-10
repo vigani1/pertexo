@@ -56,6 +56,21 @@ The private package includes the `pertexo` executable shape, but is not publishe
 to npm. In this checkout use `pnpm cli`, or the compiled Node entry below for
 JSON redirection.
 
+The released server image also contains the compiled CLI. With your deployment's
+pinned image reference in `PERTEXO_IMAGE`, use:
+
+```sh
+docker run --rm -i --entrypoint node \
+  -e PERTEXO_API_URL -e PERTEXO_API_TOKEN \
+  "$PERTEXO_IMAGE" apps/cli/dist/main.js whoami
+```
+
+Replace `whoami` with any command below. For body files, mount a directory read-only
+(`-v "$PWD:/input:ro"`) and use `--body /input/export.json`. Redirect JSON output
+on the host as usual. The container must be able to reach the API URL; its
+`localhost` names the container. No source checkout or package installation is
+needed. Use the same image version as your server.
+
 Supply `PERTEXO_API_URL` and `PERTEXO_API_TOKEN` through your process environment
 or CI secret manager. Do not put a token in command arguments, a tracked file,
 `VITE_*`, screenshots or shell history. There are no saved CLI profiles. For an
@@ -192,30 +207,23 @@ version via `workflows versions --version UUID`. An export request contains:
 }
 ```
 
-Compute that digest with the existing `portableGraphDigest(graph)` from
-`@pertexo/workflow-model`, using the exact reviewed graph. Do not substitute a
-file hash, a revision or a different JSON serialization. For version export, use
-`"source": { "kind": "version", "versionId": "<reviewed UUID>" }` and omit the
-draft ETag. Draft export requires `--etag`; version export rejects it.
+Draft and version reads return `graphDigest`. Review the returned graph, then echo
+that identity as `reviewedGraphDigest`; clients need no private package or hashing
+implementation. The digest identifies graph content, including authoring metadata;
+it is distinct from the executable `checksum` and from the opaque draft ETag.
+For a version, select its exact ID and omit the draft ETag. Draft export requires
+`--etag` from the same read; version export rejects it. A stale ETag returns 412;
+a changed reviewed graph returns 409 `workflow.portability_review_conflict`.
+Read again and review the new content before retrying either conflict.
 
-To prepare `export.json` from a reviewed CLI `draft.json`, this command runs in
-the CLI workspace and uses the public model entry point. Keep the
-`etag` from that same draft for `DRAFT_ETAG`:
+To prepare `export.json` from a reviewed CLI `draft.json` (with jq installed):
 
 ```bash
 node apps/cli/dist/main.js workflows draft \
   --workspace "$WORKSPACE_ID" --workflow "$WORKFLOW_ID" > draft.json
 # Review draft.json before preparing the exact source request.
-pnpm --filter @pertexo/cli exec node --input-type=module - \
-  "$PWD/draft.json" "$PWD/export.json" <<'JS'
-import { readFile, writeFile } from 'node:fs/promises';
-import { portableGraphDigest } from '@pertexo/workflow-model';
-const reviewed = JSON.parse(await readFile(process.argv[2], 'utf8'));
-await writeFile(process.argv[3], JSON.stringify({
-  source: { kind: 'draft' },
-  reviewedGraphDigest: await portableGraphDigest(reviewed.graph),
-}));
-JS
+DRAFT_ETAG=$(jq -r '.etag' draft.json)
+jq '{source: {kind: "draft"}, reviewedGraphDigest: .graphDigest}' draft.json > export.json
 ```
 
 ```bash

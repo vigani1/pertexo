@@ -429,7 +429,8 @@
           },
           "reviewedGraphDigest": {
             "type": "string",
-            "pattern": "^[a-f0-9]{64}$"
+            "pattern": "^[a-f0-9]{64}$",
+            "description": "Review the source graph, then echo this content identity as reviewedGraphDigest; draft writes still require the opaque ETag."
           }
         },
         "required": [
