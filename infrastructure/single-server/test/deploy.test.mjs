@@ -1,3 +1,5 @@
+import { codeContainerLimits } from '../../../packages/node-sdk/dist/index.js';
+import { parseApiConfig } from '../../../apps/api/dist/platform/config/api-config.js';
 import { applicationSettings } from './support/application-settings.mjs';
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
@@ -14,12 +16,16 @@ import {
   rmSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
+import { parseEnv } from 'node:util';
 import { join, resolve } from 'node:path';
 import { test } from 'node:test';
 import { it } from 'node:test';
 
 const oldCommit = 'a'.repeat(40);
 const newCommit = 'b'.repeat(40);
+const realDocker = execFileSync('sh', ['-c', 'command -v docker'], {
+  encoding: 'utf8',
+}).trim();
 
 function fixture(t) {
   const directory = mkdtempSync(join(tmpdir(), 'pertexo-deploy-'));
@@ -52,7 +58,7 @@ function fixture(t) {
     mkdirSync(release, { recursive: true });
     writeFileSync(
       join(release, 'compose.yaml'),
-      'services:\n  api:\n    image: fixture\n    environment:\n      ARTIFACT_STORE_ENDPOINT: ${ARTIFACT_STORE_ENDPOINT:?}\n',
+      'services:\n  api:\n    image: fixture\n    environment:\n      ARTIFACT_STORE_ENDPOINT: ${ARTIFACT_STORE_ENDPOINT:?}\n  worker:\n    image: fixture\n    environment:\n      ARTIFACT_STORE_ENDPOINT: ${ARTIFACT_STORE_ENDPOINT:?}\n',
     );
     if (commit === newCommit) {
       mkdirSync(join(release, 'encryption'));
@@ -106,13 +112,21 @@ import os, sys, json, time, subprocess
 from pathlib import Path
 args=sys.argv[1:]
 with open(os.environ['FIXTURE_LOG'],'a') as log:
- log.write(json.dumps({'args':args,'commit':os.environ.get('SERVICE_VERSION')})+'\\n')
-if 'infrastructure/single-server/storage/preflight.mjs' in args:
+ resolved=next((args[i+1].split(':/run/resolved.json:ro')[0] for i,arg in enumerate(args[:-1]) if arg=='-v' and args[i+1].endswith(':/run/resolved.json:ro')),None)
+ memory=json.loads(Path(resolved).read_text()).get('services',{}).get('worker',{}).get('environment',{}).get('CODE_RUNNER_MEMORY_MB') if resolved else None
+ log.write(json.dumps({'args':args,'commit':os.environ.get('SERVICE_VERSION'),'memory':memory})+'\\n')
+if 'infrastructure/single-server/storage/preflight.mjs' in args or ('infrastructure/single-server/storage/prepare.mjs' in args and os.environ.get('FIXTURE_REAL_PREPARATION')):
  config=next(args[i+1].split(':/run/pertexo.env:ro')[0] for i,arg in enumerate(args[:-1]) if arg=='-v' and args[i+1].endswith(':/run/pertexo.env:ro'))
  environment={'PATH':os.environ['PATH']}
+ resolved=next((args[i+1].split(':/run/resolved.json:ro')[0] for i,arg in enumerate(args[:-1]) if arg=='-v' and args[i+1].endswith(':/run/resolved.json:ro')),None)
+ if resolved: environment['PERTEXO_RESOLVED_CONFIG']=resolved
  for i,arg in enumerate(args[:-1]):
   if arg=='--env' and args[i+1] in os.environ: environment[args[i+1]]=os.environ[args[i+1]]
- sys.exit(subprocess.run([os.environ['FIXTURE_NODE'],'--env-file='+config,'infrastructure/single-server/storage/preflight.mjs',config],env=environment).returncode)
+ script='infrastructure/single-server/storage/preflight.mjs' if 'infrastructure/single-server/storage/preflight.mjs' in args else 'infrastructure/single-server/storage/prepare.mjs'
+ target=config if script.endswith('preflight.mjs') else next(args[i+1].split(':/prepared')[0] for i,arg in enumerate(args[:-1]) if arg=='-v' and args[i+1].endswith(':/prepared'))
+ sys.exit(subprocess.run([os.environ['FIXTURE_NODE'],'--env-file='+config,script,target],env=environment).returncode)
+if 'config' in args and '--format' in args:
+ sys.exit(subprocess.run([${JSON.stringify(realDocker)},*args]).returncode)
 host=os.environ.get('FIXTURE_HOST_ARCH','arm64')
 if args[0]=='version' or args[0]=='info' or args[:2]==['system','info']:
  print({'amd64':'x86_64','arm64':'aarch64'}[host] if 'Architecture' in ' '.join(args) else host); sys.exit(0)
@@ -288,6 +302,108 @@ for (const endpoint of [
         false,
       );
     }
+  });
+
+for (const [exported, expected] of [
+  ['', '128'],
+  ['96', '96'],
+  [undefined, '64'],
+])
+  test(`Compose owns the memory setting for export ${String(exported)}`, (t) => {
+    const f = fixture(t);
+    const manifest = join(
+      f.directory,
+      'releases',
+      newCommit,
+      'infrastructure/single-server/compose.yaml',
+    );
+    const environment = {
+      ARTIFACT_STORE_ENDPOINT: '${ARTIFACT_STORE_ENDPOINT:?}',
+      CODE_RUNNER_MEMORY_MB: '${CODE_RUNNER_MEMORY_MB:-128}',
+      AUTH_MAIL_KEY: '${AUTH_MAIL_KEY:?}',
+      BETTER_AUTH_SECRET: '${BETTER_AUTH_SECRET:?}',
+    };
+    writeFileSync(
+      manifest,
+      JSON.stringify({
+        services: {
+          api: { image: 'fixture', environment },
+          worker: { image: 'fixture', environment },
+        },
+      }),
+    );
+    const settings = join(f.directory, '.env.production');
+    writeFileSync(
+      settings,
+      readFileSync(settings, 'utf8') + '\nCODE_RUNNER_MEMORY_MB=64\n',
+    );
+    const result = f.run({
+      FIXTURE_REAL_PREPARATION: 'true',
+      ...(exported === undefined ? {} : { CODE_RUNNER_MEMORY_MB: exported }),
+    });
+    assert.equal(result.status, 0, result.stderr);
+    const secrets = parseEnv(readFileSync(settings, 'utf8'));
+    const prepared = parseEnv(readFileSync(join(f.state, 'hosts.env'), 'utf8'));
+    const expectedSettings = parseApiConfig({
+      ...secrets,
+      CODE_RUNNER_MEMORY_MB: expected,
+    }).codeSettings;
+    assert.equal(
+      Number(prepared.CODE_RUNNER_CONTAINER_MEMORY_MB),
+      codeContainerLimits(expectedSettings).memoryMiB,
+    );
+    for (const key of ['AUTH_MAIL_KEY', 'BETTER_AUTH_SECRET']) {
+      assert.ok(secrets[key]);
+      for (const output of [
+        result.stdout,
+        result.stderr,
+        JSON.stringify(f.commands()),
+      ])
+        assert.ok(!output.includes(secrets[key]));
+    }
+    assert.equal(
+      readdirSync(f.state).some((name) => name.startsWith('.configuration.')),
+      false,
+    );
+    for (const command of f
+      .commands()
+      .filter(
+        (c) =>
+          c.args.includes(
+            'infrastructure/single-server/storage/preflight.mjs',
+          ) ||
+          c.args.includes('infrastructure/single-server/storage/prepare.mjs'),
+      ))
+      assert.equal(command.memory, expected);
+    // The real schema rejects empty strings; confirm Compose's expected value too.
+    const resolved = JSON.parse(
+      execFileSync(
+        realDocker,
+        [
+          'compose',
+          '--env-file',
+          settings,
+          '-f',
+          manifest,
+          'config',
+          '--format',
+          'json',
+        ],
+        {
+          env: {
+            PATH: process.env.PATH,
+            ...(exported === undefined
+              ? {}
+              : { CODE_RUNNER_MEMORY_MB: exported }),
+          },
+          encoding: 'utf8',
+        },
+      ),
+    );
+    assert.equal(
+      resolved.services.worker.environment.CODE_RUNNER_MEMORY_MB,
+      expected,
+    );
   });
 
 test('records a healthy release only after migration and serving health', (t) => {

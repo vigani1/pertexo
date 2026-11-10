@@ -72,7 +72,7 @@ describe('the web tier in front of the API', () => {
       'network',
       'create',
       '--subnet',
-      '172.30.43.0/24',
+      process.env.DRILL_PROXY_SUBNET ?? '172.30.43.0/24',
       network,
     ]);
   });
