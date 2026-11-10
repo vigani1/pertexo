@@ -14,6 +14,7 @@ import { join } from 'node:path';
 import { parseEnv } from 'node:util';
 import { test } from 'node:test';
 import { once } from 'node:events';
+import { writeContainerAdapter } from './rclone-container.fixture.mjs';
 
 test('backup tools receive dedicated S3 credentials without KMS or mail secrets', async (t) => {
   const directory = mkdtempSync(join(tmpdir(), 'pertexo-backup-config-'));
@@ -64,15 +65,12 @@ test('backup tools receive dedicated S3 credentials without KMS or mail secrets'
   delete inputEnvironment.BACKUP_CRYPT_PASSWORD;
   delete inputEnvironment.BACKUP_CRYPT_SALT;
   mkdirSync(join(directory, 'bin'));
+  await writeContainerAdapter(directory);
   writeFileSync(
-    join(directory, 'bin/docker'),
+    join(directory, 'bin/rclone'),
     `#!${process.execPath}
 const fs = require('node:fs');
-const args = process.argv.slice(2);
-if (args[0] === 'rm') process.exit(0);
-const work = require('node:path').dirname(args[args.indexOf('--cidfile') + 1]);
-fs.writeFileSync(work + '/transport.cid', 'fixture');
-const observed = work + '/observed-inputs';
+const observed = ${JSON.stringify(join(directory, 'observed-inputs'))};
 const previous = fs.existsSync(observed) ? fs.readFileSync(observed, 'utf8') : '';
 fs.appendFileSync(observed, JSON.stringify(fs.readFileSync(0, 'utf8')) + '\\n');
 process.stdout.write(previous ? 'fixture-obscured-salt' : 'fixture-obscured-password');

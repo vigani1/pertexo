@@ -674,13 +674,15 @@ into the API or expose either connection URL to the web client.
 
 Backup transport runs from the official digest-pinned rclone image selected in
 `infrastructure/single-server/backup/compose.yaml`; Dependabot updates this pin.
-No rclone executable is included in Pertexo images. Each transport command uses
+The operator resolves it once for each backup or restore.
+No rclone executable is included in Pertexo images. Direct transport commands use
 `docker run --rm` on the operation's backup network, with only its private
-`rclone.env` and `/backup` mount. The host dispatches capture-helper requests
-through the private operation directory; the helper receives neither Docker socket
-access nor a Docker executable. Its database deletion lock, one-hour dump deadline
-and stdin-EOF owner lifetime remain authoritative. Ending the helper removes an
-active transport container and its dispatcher. Obscuring the crypt credentials
+`rclone.env` and `/backup` mount. Each helper invocation reuses one short-lived
+upstream container for its requests, avoiding a container start per retained
+manifest. The host dispatches requests through the private operation directory;
+the helper receives neither Docker socket access nor a Docker executable. Its database deletion lock, one-hour dump deadline
+and stdin-EOF owner lifetime remain authoritative. Ending the helper removes its
+runtime container, upstream transport container and dispatcher. Obscuring the crypt credentials
 also uses the upstream container over stdin, without exposing passwords in argv.
 
 ## Local release and image retention

@@ -206,6 +206,7 @@ rclone_image() {
   docker compose -f "$backup_tools/compose.yaml" config --images
 }
 prepare_backup() {
+  backup_transport_image=$(rclone_image)
   backup_helper prepare.mjs /prepared
   source_bucket=$(cat "$work/source-bucket")
   backup_bucket=$(cat "$work/backup-bucket")
@@ -215,7 +216,7 @@ rclone() {
   docker run --rm --read-only --tmpfs /tmp --user "$(id -u):$(id -g)" \
     --network "${backup_network:-pertexo-beta_private}" --env-file "$work/rclone.env" \
     -v "$work:/backup" \
-    "$(rclone_image)" "$@"
+    "$backup_transport_image" "$@"
 }
 recovery_points() {
   docker run --rm --read-only --network none --user "$(id -u):$(id -g)" \
@@ -243,13 +244,14 @@ copy_objects() {
 
 # The host dispatches transport requests; the helper alone owns the database lock.
 backup_helper() (
-  local runner
-  bash "$backup_tools/rclone-requests.sh" "$work" "${backup_network:-pertexo-beta_private}" "$(rclone_image)" < /dev/null 8>&- 9>&- &
-  runner=$!
-  trap '[[ ! -f "$work/transport.cid" ]] || docker rm -f "$(cat "$work/transport.cid")" >/dev/null 2>&1; kill "$runner" 2>/dev/null || true; wait "$runner" 2>/dev/null || true' EXIT
+  local runner=''
+  local helper_cid="$work/helper.cid"
+  trap '[[ ! -f "$helper_cid" ]] || docker rm -f "$(cat "$helper_cid")" >/dev/null 2>&1; [[ ! -f "$work/transport.cid" ]] || docker rm -f "$(cat "$work/transport.cid")" >/dev/null 2>&1; [[ -z $runner ]] || kill "$runner" 2>/dev/null || true; [[ -z $runner ]] || wait "$runner" 2>/dev/null || true; rm -f "$work"/transport.{request,running,input,status,status.tmp,stdout,stderr}' EXIT
   local options=(--read-only)
   if [[ ${1:-} == -i ]]; then options+=(-i); shift; fi
-  if [[ ${1:-} == --cidfile ]]; then options+=("$1" "$2"); shift 2; fi
+  if [[ ${1:-} == --cidfile ]]; then helper_cid=$2; shift 2; fi
+  rm -f "$helper_cid"
+  options+=(--cidfile "$helper_cid")
   local script=$1
   shift
   local directory=/backup
@@ -260,6 +262,8 @@ backup_helper() (
   else
     options+=(--env-file "$work/rclone.env")
   fi
+  bash "$backup_tools/rclone-requests.sh" "$work" "$network" "$backup_transport_image" < /dev/null 8>&- 9>&- &
+  runner=$!
   docker run --rm --tmpfs /tmp --user "$(id -u):$(id -g)" \
     "${options[@]}" --network "$network" -e BACKUP_TRANSPORT_DIRECTORY="$directory" \
     -v "$config:/run/pertexo.env:ro" -v "$work:$directory" \
