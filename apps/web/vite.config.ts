@@ -97,6 +97,11 @@ export default defineConfig({
         codeSplitting: {
           groups: [
             {
+              // Keep the shared transport together without grouping route UI.
+              name: 'api-client',
+              test: /[\\/]apps[\\/]web[\\/]src[\\/]lib[\\/]api[\\/]/u,
+            },
+            {
               // Keep the runtime cached when application routes change.
               name: 'react-runtime',
               test: /node_modules[\\/](?:(?:react|react-dom|scheduler)[\\/]|@tanstack[\\/](?:react-router|router-core|history|react-query|query-core|react-store|store)[\\/])/u,
