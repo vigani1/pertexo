@@ -107,52 +107,59 @@ describe('published schedule operational state', () => {
     },
   );
 
-  it('keeps an unchanged hourly anchor and overdue occurrence through repeated publication, then fires it', async () => {
-    const workflowId = await publish(60);
-    let triggerId = (await workflowTriggerIds(workflowId)).scheduleId;
-    await ownerQuery(
-      `update app.trigger_schedules set anchor_at=date_trunc('milliseconds',clock_timestamp())-interval '61 minutes',
-      next_fire_at=date_trunc('milliseconds',clock_timestamp())-interval '1 minute' where trigger_id=$1`,
-      [triggerId],
-    );
-    const original = (
-      await ownerQuery<{ anchor_at: Date; next_fire_at: Date }>(
-        'select anchor_at,next_fire_at from app.trigger_schedules where trigger_id=$1',
-        [triggerId],
+  it.each(['0.594499 seconds', '0.594999 seconds', '0.595001 seconds'])(
+    'keeps an unchanged hourly anchor and overdue occurrence through repeated publication, then fires it (clock fraction %s)',
+    async (fraction) => {
+      const workflowId = await publish(60);
+      let triggerId = (await workflowTriggerIds(workflowId)).scheduleId;
+      // Separate clock reads can cross a millisecond and put the cursor off its anchor.
+      await ownerQuery(
+        `with observation as materialized (
+        select date_trunc('seconds',clock_timestamp())+$2::interval as at
       )
-    ).rows[0];
-    for (let publication = 0; publication < 6; publication++) {
-      triggerId = await republish(workflowId, 60);
+      update app.trigger_schedules set anchor_at=observation.at-interval '61 minutes',
+      next_fire_at=observation.at-interval '1 minute' from observation where trigger_id=$1`,
+        [triggerId, fraction],
+      );
+      const original = (
+        await ownerQuery<{ anchor_at: Date; next_fire_at: Date }>(
+          'select anchor_at,next_fire_at from app.trigger_schedules where trigger_id=$1',
+          [triggerId],
+        )
+      ).rows[0];
+      for (let publication = 0; publication < 6; publication++) {
+        triggerId = await republish(workflowId, 60);
+        expect(
+          (
+            await ownerQuery(
+              'select anchor_at,next_fire_at from app.trigger_schedules where trigger_id=$1',
+              [triggerId],
+            )
+          ).rows[0],
+        ).toEqual(original);
+      }
+      await scan();
       expect(
         (
           await ownerQuery(
-            'select anchor_at,next_fire_at from app.trigger_schedules where trigger_id=$1',
+            'select scheduled_at,workflow_run_id from app.trigger_schedule_occurrences where trigger_id=$1',
             [triggerId],
           )
-        ).rows[0],
-      ).toEqual(original);
-    }
-    await scan();
-    expect(
-      (
-        await ownerQuery(
-          'select scheduled_at,workflow_run_id from app.trigger_schedule_occurrences where trigger_id=$1',
-          [triggerId],
-        )
-      ).rows,
-    ).toEqual([
-      {
-        scheduled_at: original?.next_fire_at,
-        workflow_run_id: expect.any(String) as unknown,
-      },
-    ]);
-    expect(
-      (
-        await ownerQuery(
-          'select trigger_type,status from app.workflow_runs where workflow_id=$1',
-          [workflowId],
-        )
-      ).rows,
-    ).toEqual([{ trigger_type: 'schedule', status: 'queued' }]);
-  });
+        ).rows,
+      ).toEqual([
+        {
+          scheduled_at: original?.next_fire_at,
+          workflow_run_id: expect.any(String) as unknown,
+        },
+      ]);
+      expect(
+        (
+          await ownerQuery(
+            'select trigger_type,status from app.workflow_runs where workflow_id=$1',
+            [workflowId],
+          )
+        ).rows,
+      ).toEqual([{ trigger_type: 'schedule', status: 'queued' }]);
+    },
+  );
 });
