@@ -8424,6 +8424,13 @@ CREATE INDEX workflow_runs_workspace_workflow_created_idx ON app.workflow_runs U
 
 
 --
+-- Name: workflow_runs_workspace_workflow_ordinary_created_idx; Type: INDEX; Schema: app; Owner: pertexo_owner
+--
+
+CREATE INDEX workflow_runs_workspace_workflow_ordinary_created_idx ON app.workflow_runs USING btree (workspace_id, workflow_id, created_at, id) WHERE ((trigger_type)::text <> 'test'::text);
+
+
+--
 -- Name: workflow_step_samples_expiry_idx; Type: INDEX; Schema: app; Owner: pertexo_owner
 --
 

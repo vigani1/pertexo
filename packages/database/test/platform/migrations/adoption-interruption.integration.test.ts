@@ -6,10 +6,10 @@ import { readFile } from 'node:fs/promises';
 import { expect, it } from 'vitest';
 
 import { migrateDatabase } from '../../../src/migrations.js';
-import { withDatabase } from './upgrade-fixture.js';
+import { withBaselineDatabase } from './upgrade-fixture.js';
 
 it('serializes adoption and retains all old receipts when the first runner is terminated before its replacement receipt', async () => {
-  await withDatabase(async ({ admin, config, directory }) => {
+  await withBaselineDatabase(async ({ admin, config, directory }) => {
     const history: unknown = JSON.parse(
       await readFile(
         new URL(

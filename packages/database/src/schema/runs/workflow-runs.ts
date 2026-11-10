@@ -293,6 +293,9 @@ export const workflowRuns = appSchema.table(
       table.createdAt.desc().nullsFirst(),
       table.id.desc().nullsFirst(),
     ),
+    index('workflow_runs_workspace_workflow_ordinary_created_idx')
+      .on(table.workspaceId, table.workflowId, table.createdAt, table.id)
+      .where(sql`trigger_type <> 'test'`),
     index('workflow_runs_workspace_workflow_created_idx').on(
       table.workspaceId,
       table.workflowId,
