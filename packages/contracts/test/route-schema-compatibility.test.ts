@@ -115,3 +115,27 @@ function isRoute(value: unknown): value is AnyRoute {
     'success' in value
   );
 }
+
+it('strips additive metadata from the temporarily-unavailable 503 problem', () => {
+  const code = 'request.temporarily_unavailable';
+  const entry = contracts.API_PROBLEM_MANIFEST[code];
+  const problem = {
+    type: entry.type,
+    title: entry.title,
+    status: 503,
+    code,
+    requestId: 'main-replay',
+    errors: [{ path: '$', code: 'busy', message: 'Try again' }],
+  };
+  expect(entry.status).toBe(503);
+  expect(
+    contracts.apiProblemSchema.parse({
+      ...problem,
+      futureMetadata: true,
+      errors: problem.errors.map((error) => ({
+        ...error,
+        futureMetadata: true,
+      })),
+    }),
+  ).toEqual(problem);
+});
