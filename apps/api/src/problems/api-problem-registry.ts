@@ -1,3 +1,4 @@
+import { isTransientDatabaseFailure } from '@pertexo/database/platform';
 import { requestFailure } from './context/normalize-context-errors.js';
 import { isStoredDataError } from '@pertexo/core/shared';
 import { createErrorRegistry } from '../platform/http/problems/error-registry.js';
@@ -60,6 +61,12 @@ const errorRegistry = createErrorRegistry([
 export function toProblem(error: unknown): ApplicationError {
   if (isStoredDataError(error))
     return applicationError('internal.unexpected', { cause: error });
+  if (isTransientDatabaseFailure(error))
+    return applicationError('request.temporarily_unavailable', {
+      cause: error,
+      safeDetail: 'The service is temporarily busy. Please try again.',
+      details: { retryAfterSeconds: 1 },
+    });
   // Guard validation can fail before an operation interceptor supplies context.
   const registered = errorRegistry(requestFailure(error));
   if (registered !== undefined) return registered;

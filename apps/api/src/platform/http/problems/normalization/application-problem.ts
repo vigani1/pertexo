@@ -37,6 +37,7 @@ export function fromApplicationError(
     ...(issues === undefined ? {} : { errors: issues }),
   };
   const retryableProblem =
+    error.code === 'request.temporarily_unavailable' ||
     error.code === 'request.rate_limited' ||
     error.code === 'request.rate_limit_unavailable' ||
     error.code === 'workspace.quota_exceeded' ||

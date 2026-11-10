@@ -153,6 +153,7 @@ export const API_PROBLEM_CODES = [
   'webhook.rate_limited',
   'webhook.workflow_paused',
   'webhook.unavailable',
+  'request.temporarily_unavailable',
   'request.aborted',
   'internal.unexpected',
 ] as const;
@@ -737,6 +738,12 @@ const apiProblemDetails = {
     title: 'Webhook unavailable',
     severity: 'error',
     exposeDetail: false,
+  },
+  'request.temporarily_unavailable': {
+    status: 503,
+    title: 'Service temporarily unavailable',
+    severity: 'warn',
+    exposeDetail: true,
   },
   'request.aborted': {
     status: 499,

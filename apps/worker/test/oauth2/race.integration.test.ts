@@ -34,13 +34,37 @@ describeOAuth2('two real workers refreshing one connection', () => {
     second = harness.stack.createWorker('oauth2-worker-second');
     second.start();
     await second.waitForLog(/worker\.started/u, WORKER_START_MS);
-    second.signal('SIGSTOP');
+    await pauseWorker(second, 'oauth2-worker-second');
   });
   afterAll(async () => {
     first.signal('SIGCONT');
     second.signal('SIGCONT');
     await harness.close();
   });
+
+  // SIGSTOP must not strand any of the worker's concurrent database transactions.
+  const pauseWorker = async (
+    worker: ServiceProcess,
+    applicationName: string,
+  ): Promise<void> => {
+    const deadline = Date.now() + COMMIT_LIMIT_MS;
+    do {
+      worker.signal('SIGCONT');
+      await new Promise((resolve) => setTimeout(resolve, 25));
+      worker.signal('SIGSTOP');
+      await new Promise((resolve) => setTimeout(resolve, 25));
+      const [row] = await harness.stack.sql<{ open: number }>(
+        `select count(*)::integer open from pg_stat_activity
+         where datname=current_database() and application_name=$1 and xact_start is not null`,
+        [applicationName],
+      );
+      if (row?.open === 0) return;
+    } while (Date.now() < deadline);
+    worker.signal('SIGCONT');
+    throw new Error(
+      `Worker ${applicationName} did not finish its database transactions before pausing`,
+    );
+  };
 
   /** Tokens lost nothing and a connection stayed whole: what every race must end on. */
   const expectHealthy = async (connection: Connection): Promise<void> => {
@@ -65,7 +89,7 @@ describeOAuth2('two real workers refreshing one connection', () => {
   ): Promise<string> => {
     const runId = await startRun(connection);
     await hold.arrived;
-    first.signal('SIGSTOP');
+    await pauseWorker(first, 'recovery-worker');
     second.signal('SIGCONT');
     return runId;
   };
@@ -73,21 +97,7 @@ describeOAuth2('two real workers refreshing one connection', () => {
   /** Back to how each test starts: only the first worker takes work. */
   const reset = async (): Promise<void> => {
     first.signal('SIGCONT');
-    // Run completion precedes health delivery, which holds the workspace lock.
-    // Freezing that consumer mid-transaction blocks the next API connection write.
-    await expect
-      .poll(
-        async () => {
-          const [row] = await harness.stack.sql<{ pending: number }>(
-            'select count(*)::integer pending from app.connection_health_observations where workspace_id=$1 and applied_at is null',
-            [owner.workspaceId],
-          );
-          return row?.pending;
-        },
-        { timeout: COMMIT_LIMIT_MS },
-      )
-      .toBe(0);
-    second.signal('SIGSTOP');
+    await pauseWorker(second, 'oauth2-worker-second');
   };
 
   const attemptOwner = async (runId: string): Promise<string | null> => {
@@ -100,6 +110,69 @@ describeOAuth2('two real workers refreshing one connection', () => {
     );
     return row?.lease_owner ?? null;
   };
+
+  it('returns a retryable response when connection creation hits a workspace lock', async () => {
+    const blocker = await harness.stack.connect();
+    try {
+      await blocker.query('begin');
+      await blocker.query(
+        'select id from app.workspaces where id=$1 for no key update',
+        [owner.workspaceId],
+      );
+      const clientId = harness.standIn.newClient('rotating');
+      const response = await harness.createResponse(
+        owner,
+        harness.settings(clientId),
+      );
+      expect(response.status).toBe(503);
+      expect(response.headers.get('retry-after')).toBe('1');
+      expect(response.json).toMatchObject({
+        code: 'request.temporarily_unavailable',
+      });
+    } finally {
+      await blocker.query('rollback');
+      blocker.release();
+    }
+    await harness.connected(owner, 'rotating');
+  });
+
+  it('pauses a worker only after its database transaction can finish', async () => {
+    const blocker = await harness.stack.connect();
+    try {
+      await blocker.query('begin');
+      await blocker.query(
+        'lock table app.outbox_fair_dispatch_cursor in access exclusive mode',
+      );
+      second.signal('SIGCONT');
+      await expect
+        .poll(
+          async () => {
+            const [row] = await harness.stack.sql<{ waiting: boolean }>(
+              `select exists(select 1 from pg_stat_activity where datname=current_database()
+           and application_name=$1 and wait_event_type='Lock') waiting`,
+              ['oauth2-worker-second'],
+            );
+            return row?.waiting;
+          },
+          { timeout: COMMIT_LIMIT_MS },
+        )
+        .toBe(true);
+      const pausing = pauseWorker(second, 'oauth2-worker-second');
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      await blocker.query('rollback');
+      await pausing;
+      const [row] = await harness.stack.sql<{ open: number }>(
+        `select count(*)::integer open from pg_stat_activity where datname=current_database()
+         and application_name=$1 and xact_start is not null`,
+        ['oauth2-worker-second'],
+      );
+      expect(row?.open).toBe(0);
+      await harness.connected(owner, 'rotating');
+    } finally {
+      await blocker.query('rollback');
+      blocker.release();
+    }
+  });
 
   // L1: two workers needing the same refresh make one token request; both use the new token.
   it('L1 one token request against a rotating provider with reuse detection', async () => {
