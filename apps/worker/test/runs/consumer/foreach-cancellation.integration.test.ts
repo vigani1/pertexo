@@ -155,6 +155,25 @@ describeIntegration('For Each cancellation recovery', () => {
     }
   }, 120_000);
 
+  it('cancels an unused cold preload without waiting for its module load', async (context) => {
+    const owner = spawnForEachWorker();
+    const close = registerTestResourceCleanup(context, () =>
+      stopOwnedChild(owner),
+    );
+    try {
+      expect(owner.child.kill('SIGSTOP')).toBe(true);
+      const worker = await loadForEachWorker(owner);
+      const discarded = discardSpares([Promise.resolve(worker)]);
+      await Promise.resolve();
+      owner.child.kill('SIGCONT');
+      await expect(discarded).resolves.toBeUndefined();
+      expect(await owner.exit).toEqual({ code: null, signal: 'SIGTERM' });
+    } finally {
+      owner.child.kill('SIGCONT');
+      await close();
+    }
+  });
+
   it('still bounds a requested worker startup by its stage deadline', async (context) => {
     const owner = spawnForEachWorker();
     const close = registerTestResourceCleanup(context, () =>
