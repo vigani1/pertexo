@@ -673,7 +673,7 @@ transaction-local organization context. Do not inject maintenance credentials
 into the API or expose either connection URL to the web client.
 
 Backup transport runs from the official digest-pinned rclone image selected in
-`infrastructure/single-server/compose.yaml (the backup-profile rclone service)`; Dependabot updates this pin.
+`infrastructure/single-server/backup/compose.yaml`; Dependabot updates this pin.
 No rclone executable is included in Pertexo images. Each transport command uses
 `docker run --rm` on the operation's backup network, with only its private
 `rclone.env` and `/backup` mount. The host dispatches capture-helper requests
@@ -713,3 +713,12 @@ Keep the off-server backup settings and keys available to read recovery referenc
 On an install that has never configured backups, current/previous and the three
 recent releases are sufficient. Run the first configured backup to initialise its
 key check before expecting catalogue-based cleanup to succeed.
+The backup image catalog belongs to the operator scripts, independently of the
+selected installed release. This also permits backup-before-upgrade when that
+older release predates the external transport. Its directory is covered by the
+existing grouped Compose Dependabot entry.
+
+Preparation and capture helpers also come from the operator checkout, while the
+selected release supplies the compatible Node runtime and application dependencies.
+This prevents a backup-before-upgrade from falling back to an older helper that
+executes an embedded rclone binary.

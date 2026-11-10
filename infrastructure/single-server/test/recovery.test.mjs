@@ -51,7 +51,7 @@ function fixture(t, restore = false) {
   writeFileSync(
     join(bin, 'docker'),
     `#!/usr/bin/env python3
-import os, sys, json, hashlib, time
+import os, sys, json, hashlib, time, re
 from pathlib import Path
 args=sys.argv[1:]
 root=Path(os.environ['PERTEXO_BETA_ROOT'])
@@ -71,7 +71,11 @@ if os.environ.get('RESTORE') and args[0]=='run' and '--network' in args:
   print('target network does not exist before services start', file=sys.stderr)
   sys.exit(125)
 if 'compose' in args and 'up' in args: (root/'target-started').touch()
-if '--images' in args: print('rclone/rclone:1.76.0@sha256:7cbeec24a44f206067597c0368be4de90ae19a64d5113c7d1938bd737a81e466')
+if '--images' in args:
+ manifest=Path(args[args.index('-f')+1]).read_text()
+ image=re.search(r'image:\\s*(rclone/rclone:\\S+)',manifest)
+ if not image: sys.exit(1)
+ print(image.group(1))
 if args[0]=='version': print('arm64')
 if args[0]=='image': print('arm64 ${commit}')
 if 'infrastructure/single-server/backup/prepare.mjs' in args:

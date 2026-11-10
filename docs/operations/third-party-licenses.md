@@ -58,6 +58,11 @@ when rebuilding. Update the inventory when changing the Python pin.
 
 Pertexo does not copy or ship rclone or its Go dependencies. Backup operations run
 the digest-pinned official upstream image as short-lived containers. Its pin lives
-in `infrastructure/single-server/compose.yaml (the backup-profile rclone service)`, covered by the existing
+in `infrastructure/single-server/backup/compose.yaml`, covered by the existing
 Compose Dependabot group. There is no rclone license exception or source-distribution
 mechanism in Pertexo, and its notices do not inventory that external service.
+
+The backup image catalog belongs to the operator scripts, independently of the
+selected installed release. This also permits backup-before-upgrade when that
+older release predates the external transport. Its directory is covered by the
+existing grouped Compose Dependabot entry.

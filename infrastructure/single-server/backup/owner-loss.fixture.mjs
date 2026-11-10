@@ -77,7 +77,7 @@ const c = JSON.parse(fs.readFileSync(process.env.BACKUP_ADAPTER, 'utf8'));
 let args = process.argv.slice(2);
 if (args[0] === 'ps') process.exit(0);
 if (args[0] === 'compose') {
-  if (args.includes('--images')) { console.log(require(c.workspace + '/node_modules/yaml').parse(fs.readFileSync(c.workspace + '/infrastructure/single-server/compose.yaml', 'utf8')).services.rclone.image); process.exit(0); }
+  if (args.includes('--images')) { const r = spawnSync(c.realDocker, args, { stdio: 'inherit' }); process.exit(r.status ?? 1); }
   if (args.includes('ps')) { console.log('api\\nworker\\nproxy'); process.exit(0); }
   if (!args.some((arg) => arg.includes('pg_dump'))) throw new Error('Unexpected compose operation');
   fs.writeFileSync(c.root + '/dump.started', 'started');

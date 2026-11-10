@@ -41,10 +41,6 @@ x-environment: &environment
   CALLBACK_TOKEN_KEY_VERSION: ${CALLBACK_TOKEN_KEY_VERSION:?}
   CALLBACK_TOKEN_PREVIOUS_KEYS: ${CALLBACK_TOKEN_PREVIOUS_KEYS:-[]}
 services:
-  rclone:
-    profiles: [backup]
-    image: rclone/rclone:1.76.0@sha256:7cbeec24a44f206067597c0368be4de90ae19a64d5113c7d1938bd737a81e466
-    networks: [private]
   proxy:
     <<: *service
     image: caddy:2.11.7-alpine@sha256:d8542f48d34a9cf4e4c11a478865229840e87e4c96ea3f439101f31a5d35f75f

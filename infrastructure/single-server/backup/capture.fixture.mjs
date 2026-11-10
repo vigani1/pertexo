@@ -19,8 +19,8 @@ export async function qualifyCapture({
   databaseContainer,
 }) {
   const clone = (
-    await readFile('infrastructure/single-server/compose.yaml', 'utf8')
-  ).match(/rclone:\n\s+profiles: \[backup\]\n\s+image: (\S+)/u)[1];
+    await readFile('infrastructure/single-server/backup/compose.yaml', 'utf8')
+  ).match(/image: (\S+)/u)[1];
   let runner;
   try {
     const nodeImage =

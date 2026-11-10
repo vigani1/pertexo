@@ -9,6 +9,7 @@ import {
   breakWebUpstream,
   overlayCaddyfile,
   overlayCommonScript,
+  overlayBackupTransport,
   overlayCompose,
   overlayNetworkName,
 } from './overlay.mjs';
@@ -243,6 +244,10 @@ async function installRepository(server) {
   await write(
     'release-operations.sh',
     overlayCommonScript(read('release-operations.sh'), settings),
+  );
+  await write(
+    'backup/rclone-requests.sh',
+    overlayBackupTransport(read('backup/rclone-requests.sh')),
   );
   for (const name of ['deploy.sh', 'restore.sh'])
     await write(

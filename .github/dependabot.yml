@@ -95,6 +95,7 @@ updates:
     directories:
       - /
       - /infrastructure/single-server
+      - /infrastructure/single-server/backup
       - /infrastructure/observability
       - /infrastructure/quickstart
     schedule:
