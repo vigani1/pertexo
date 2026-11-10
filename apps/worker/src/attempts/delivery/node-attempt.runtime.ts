@@ -110,6 +110,12 @@ export type NodeAttemptRuntimeOptions = Readonly<{
 
 export type NodeAttemptRuntimeFactories = Readonly<{
   capabilities: typeof createWorkerNodeRuntimeCapabilities;
+  heartbeatStore: (
+    config: DatabaseConfig,
+  ) => Pick<
+    ReturnType<typeof createNodeAttemptRunStore>,
+    'heartbeat' | 'close'
+  >;
   consumer: typeof createQueueConsumer;
   engine: (
     options: NodeAttemptExecutionEngineOptions,
@@ -128,6 +134,7 @@ export type NodeAttemptRuntimeFactories = Readonly<{
 
 const productionFactories: NodeAttemptRuntimeFactories = {
   capabilities: createWorkerNodeRuntimeCapabilities,
+  heartbeatStore: createNodeAttemptRunStore,
   consumer: createQueueConsumer,
   engine: createNodeAttemptExecutionEngine,
   notifications: (redisUrl) =>
@@ -175,6 +182,12 @@ async function createProductionNodeAttemptRuntime(
     options.databaseRuntime,
   );
   own('node-attempt run store', runStore.close.bind(runStore));
+  // Claims can wait on run locks; renewal must not queue behind that work.
+  const heartbeatStore = factories.heartbeatStore({
+    ...options.database,
+    max: 1,
+  });
+  own('node-attempt heartbeats', heartbeatStore.close.bind(heartbeatStore));
   const runFailures = factories.runFailures(
     options.database,
     options.databaseRuntime,
@@ -205,7 +218,7 @@ async function createProductionNodeAttemptRuntime(
       notifications,
       reader,
       registry,
-      runStore,
+      runStore: { ...runStore, heartbeat: heartbeatStore.heartbeat },
       runtimeCapabilities: capabilityRuntime.factories,
       workerId: options.workerId,
     }),
