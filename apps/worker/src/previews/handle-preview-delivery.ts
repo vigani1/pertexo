@@ -227,6 +227,7 @@ function createPreviewExecutionEnvironment(
   const code = dependencies.runtimeCapabilities?.code?.({
     ...capabilityContext,
     variables: lease.variables ?? {},
+    previouslyDispatched: false,
   });
   let diagnostics: CodeDiagnostics | undefined;
   let dispatchState: 'not_started' | 'marking' | 'marked' = 'not_started';
@@ -236,8 +237,7 @@ function createPreviewExecutionEnvironment(
     ...(dataTables === undefined ? {} : { dataTables }),
     ...(runValues === undefined ? {} : { runValues }),
     observeCodeDiagnostics: (value: CodeDiagnostics) => {
-      // Safe previews do not need an external-dispatch marker. Completion
-      // still fences this private data to the claimed preview attempt.
+      // Safe previews need only the attempt fence to retain private diagnostics.
       diagnostics ??= value;
     },
     workspaceId: lease.workspaceId,

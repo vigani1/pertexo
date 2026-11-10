@@ -176,6 +176,7 @@ function bindExecutionCapabilities(
   const code = input.runtimeCapabilities?.code?.({
     ...capabilityContext,
     variables: input.variables ?? {},
+    previouslyDispatched: input.lease.providerDispatchUnresolved ?? false,
   });
 
   return {

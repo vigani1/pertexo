@@ -12,6 +12,21 @@ export function prepareCodeCapability(state: CapabilityAssembly): void {
     state.factories.code = (context) => ({
       execute: async ({ code, language, timeoutSeconds, input, signal }) => {
         assertCapabilityRuntimeOpen(state.lifecycle);
+        // Lease recovery must not restart an interrupted Code task inside the
+        // same attempt, bypassing both its time limit and retry policy.
+        if (context.previouslyDispatched)
+          return {
+            kind: 'failed',
+            code: 'code.runtime_error',
+            diagnostics: {
+              logs: [],
+              truncated: false,
+              error: {
+                message:
+                  'Code execution was interrupted before its result was saved. Review this run and rerun it explicitly; the interrupted task was not executed again.',
+              },
+            },
+          };
         return retainCodeOutput(
           await codeClient.execute(
             {

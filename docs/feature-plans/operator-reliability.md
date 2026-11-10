@@ -6,7 +6,10 @@ Batch J1 covers the supported single-server deployment. No new CI job or ECS
 changes are in scope.
 
 - Drain the worker before stopping the Code runner, including unhealthy-release
-  shutdown.
+  shutdown. A dispatched Code attempt cut off by drain fails explicitly when its
+  lease is recovered, without executing Code again inside the same attempt. Keep
+  the normal uncertain-effect rules for other steps, and document the lease/scan
+  bound and the operator's explicit rerun decision.
 - Use private storage transport while retaining the public origin for browser
   signatures. Verify readiness, reads, writes, and both signing paths without
   public DNS.
