@@ -104,7 +104,6 @@
     "db:migrate": "pnpm --filter @pertexo/database db:migrate",
     "db:generate": "pnpm --filter @pertexo/database db:generate",
     "dependencies:check": "knip",
-    "deployment:render": "node infrastructure/ecs/render-task-definitions.mjs",
     "dev": "node infrastructure/development/dev.mjs",
     "dev:api": "pnpm --filter @pertexo/api dev",
     "dev:web": "pnpm --filter @pertexo/web dev",
