@@ -7,6 +7,8 @@ updates:
       day: monday
       time: '03:30'
       timezone: Europe/Belgrade
+    cooldown:
+      default-days: 7
     open-pull-requests-limit: 12
     versioning-strategy: increase-if-necessary
     # One weekly batch: each pull request reruns the full CI and rebases
@@ -72,6 +74,8 @@ updates:
       day: monday
       time: '04:00'
       timezone: Europe/Belgrade
+    cooldown:
+      default-days: 7
     open-pull-requests-limit: 4
     groups:
       images:
@@ -86,3 +90,38 @@ updates:
     labels:
       - dependencies
       - infrastructure
+
+  - package-ecosystem: docker-compose
+    directories:
+      - /
+      - /infrastructure/single-server
+      - /infrastructure/observability
+    schedule:
+      interval: weekly
+      day: monday
+      timezone: Europe/Belgrade
+    cooldown:
+      default-days: 7
+    groups:
+      services:
+        patterns: ['*']
+    commit-message:
+      prefix: build
+    labels: [dependencies, infrastructure]
+
+  - package-ecosystem: github-actions
+    directories:
+      - /
+      - /.github/actions/*
+    schedule:
+      interval: weekly
+      day: monday
+      timezone: Europe/Belgrade
+    cooldown:
+      default-days: 7
+    groups:
+      actions:
+        patterns: ['*']
+    commit-message:
+      prefix: ci
+    labels: [dependencies, infrastructure]
