@@ -7,7 +7,11 @@ import type { Pool } from 'pg';
 import { expect, it } from 'vitest';
 
 import { migrateDatabase } from '../../../src/migrations.js';
-import { seedWorkflow, withDatabase } from './upgrade-fixture.js';
+import {
+  seedWorkflow,
+  withDatabase,
+  withBaselineDatabase,
+} from './upgrade-fixture.js';
 
 const history = JSON.parse(
   await readFile(
@@ -17,7 +21,7 @@ const history = JSON.parse(
 ) as { name: string; checksum: string }[];
 
 it('adopts the full history without executing baseline SQL, retaining data and applying later migrations', async () => {
-  await withDatabase(async ({ admin, config, directory }) => {
+  await withBaselineDatabase(async ({ admin, config, directory }) => {
     await recordLegacyHistory(admin);
     const ids = await seedWorkflow(admin);
     await admin.query(

@@ -18,7 +18,7 @@ export async function withDatabase(
     config: Parameters<typeof migrateDatabase>[0];
     directory: string;
   }) => Promise<void>,
-  options: { migrate?: boolean } = {},
+  options: { migrate?: false | 'baseline' } = {},
 ): Promise<void> {
   const adminUrl =
     process.env.DATABASE_ADMIN_URL ??
@@ -47,7 +47,10 @@ export async function withDatabase(
     await fixture.create();
     if (options.migrate !== false) {
       for (const name of await readdir(MIGRATIONS_DIRECTORY))
-        if (/^\d{4}_.*\.sql$/u.test(name))
+        if (
+          /^\d{4}_.*\.sql$/u.test(name) &&
+          (options.migrate !== 'baseline' || name === '0000_baseline.sql')
+        )
           await copyFile(
             join(MIGRATIONS_DIRECTORY, name),
             join(directory, name),
@@ -60,6 +63,11 @@ export async function withDatabase(
     await fixture.drop();
     await rm(directory, { recursive: true, force: true });
   }
+}
+
+/** Adoption fixtures model the release before any post-baseline migration. */
+export function withBaselineDatabase(work: Parameters<typeof withDatabase>[0]) {
+  return withDatabase(work, { migrate: 'baseline' });
 }
 
 export async function seedWorkflow(admin: Pool) {

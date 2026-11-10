@@ -1,0 +1,1 @@
+CREATE INDEX "workflow_runs_workspace_workflow_ordinary_created_idx" ON "app"."workflow_runs" USING btree ("workspace_id","workflow_id","created_at","id") WHERE trigger_type <> 'test';

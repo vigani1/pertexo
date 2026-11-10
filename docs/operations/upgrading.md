@@ -41,6 +41,26 @@ Expect downtime of about a minute without a migration, and longer with one: serv
 before migrations run and starts after them. Versions sort as numbers, so `v0.10.0` is
 newer than `v0.9.0`. Check with [the smoke check](single-server.md#6-smoke-check) afterwards.
 
+## Migration 0001: ordinary-run history index
+
+`0001_ordinary_run_history.sql` is the first migration after the new baseline.
+It builds a partial index of ordinary (non-test) workflow runs so workflow-list
+status summaries can skip retained draft-test history.
+
+Schedule a maintenance window for existing installations with a large
+`app.workflow_runs` table. The migration scans the whole table, sorts/indexes the
+ordinary rows, writes the index and WAL, and needs temporary/disk space for that
+work. Its duration depends on table size, storage throughput and ordinary-run
+volume; the normal roughly-one-minute application-only upgrade estimate does
+not apply. Allow time and disk headroom for the build before starting deployment.
+
+The runner wraps each migration in a transaction and cannot run `CREATE INDEX
+CONCURRENTLY`. This migration therefore uses normal `CREATE INDEX`, which blocks
+writes to the table until its transaction commits. The supported deploy already
+stops writers before migrations and leaves serving stopped until they complete;
+keep that maintenance window in place. Do not run this migration alongside live
+writers or edit a recorded migration to add `CONCURRENTLY`.
+
 ## Baseline transition: required release stop
 
 **Required stop: v0.2.0 — the final release containing migrations

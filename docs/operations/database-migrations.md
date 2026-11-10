@@ -28,9 +28,12 @@ application migration advisory lock.
 4. Add behavior tests, run the database integration suite and `command pnpm check`.
    Update the [data dictionary](data-dictionary.md) when tables or ownership change.
 
-Before the first index on a populated large table, build the nontransactional
-migration path described in [architecture](../architecture.md). The current
-runner cannot execute `CREATE INDEX CONCURRENTLY`.
+The current runner cannot execute `CREATE INDEX CONCURRENTLY`. Prefer a
+nontransactional migration path before an online index build on a populated large
+table (see [architecture](../architecture.md)). An explicitly planned normal
+`CREATE INDEX` is supported during the deploy's stopped-writer maintenance window;
+document its scan, write-lock and disk/WAL costs in the upgrade notes. Migration
+`0001_ordinary_run_history.sql` uses that maintenance-window path.
 
 ## Baseline and existing installations
 
