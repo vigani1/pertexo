@@ -3,6 +3,7 @@ set -Eeuo pipefail
 [[ $# == 0 ]] || { echo 'usage: prune.sh' >&2; exit 64; }
 source "$(dirname "$0")/release-operations.sh"
 operation_lock
+clear_stale_backup_configs
 require_no_ops
 [[ ! -f "$BETA_STATE_DIR/migration-fence" && ! -f "$BETA_STATE_DIR/restore-fence" ]] || { echo 'Cleanup deferred: migration or restore is incomplete.' >&2; exit 1; }
 select_release "$(cat "$BETA_STATE_DIR/current")"
@@ -15,18 +16,9 @@ for reference in current previous; do
   if [[ -f "$BETA_STATE_DIR/$reference" ]]; then cat "$BETA_STATE_DIR/$reference" >> "$work/protected"; printf '\n' >> "$work/protected"; fi
 done
 if [[ -n $(config_value BACKUP_STORE_ENDPOINT) ]]; then
-  prepare_backup
-  verify_backup_key
-  for remote in crypt: "backup:$backup_bucket"; do
-    rclone lsf "$remote" --recursive --files-only --max-depth 3 --include '/pertexo-beta/**/release.txt' > "$work/references"
-    while IFS= read -r reference; do
-      [[ $reference =~ ^pertexo-beta/[0-9]{8}T[0-9]{6}Z/release.txt$ ]] || { echo 'Unexpected recovery reference path; cleanup deferred.' >&2; exit 1; }
-      prefix=$remote
-      [[ $prefix == *: ]] || prefix+=/
-      rclone cat "$prefix$reference" >> "$work/protected"
-      printf '\n' >> "$work/protected"
-    done < "$work/references"
-  done
+  backup_transport_image=$(rclone_image)
+  : > "$work/rclone.conf"
+  backup_helper catalogue-releases.mjs /backup >> "$work/protected"
 elif [[ -f "$BETA_STATE_DIR/last-backup" ]]; then
   echo 'Cleanup deferred: restore backup settings to read retained recovery references.' >&2
   exit 1

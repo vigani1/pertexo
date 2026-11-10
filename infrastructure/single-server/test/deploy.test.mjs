@@ -134,6 +134,9 @@ if args[0]=='version' or args[0]=='info' or args[:2]==['system','info']:
  print({'amd64':'x86_64','arm64':'aarch64'}[host] if 'Architecture' in ' '.join(args) else host); sys.exit(0)
 if args[-1]=='/bootstrap.sh' and os.environ.get('FIXTURE_SETUP_FAIL')=='true': sys.exit(1)
 if args[0]=='ps' and any(arg.startswith('ancestor=') and arg.endswith(os.environ.get('FIXTURE_IN_USE_SHA','never')) for arg in args): print('fixture-container')
+if 'infrastructure/single-server/backup/catalogue-releases.mjs' in args:
+ if os.environ.get('FIXTURE_PRUNE_CATALOG_FAIL')=='true': print('Recovery catalogue unavailable',file=sys.stderr);sys.exit(1)
+ if os.environ.get('FIXTURE_RECOVERY_RELEASE'): print(os.environ['FIXTURE_RECOVERY_RELEASE'])
 if 'lsf' in args and '--include' in args:
  if os.environ.get('FIXTURE_PRUNE_CATALOG_FAIL')=='true': print('Recovery catalogue unavailable',file=sys.stderr);sys.exit(1)
  if os.environ.get('FIXTURE_RECOVERY_RELEASE'): print('pertexo-beta/20261109T120000Z/release.txt')
@@ -1152,4 +1155,43 @@ test('baseline receipt adoption fixes forward when the release is unhealthy even
   );
   assert.ok(existsSync(join(f.state, 'migration-fence')));
   assert.match(result.stderr, /fix forward/u);
+});
+
+test('prune protects recovery references using only project-owned catalogue helpers', (t) => {
+  const f = fixture(t);
+  const old = oldReleases(f);
+  writeFileSync(
+    join(f.directory, '.env.production'),
+    applicationSettings +
+      'BACKUP_STORE_ENDPOINT=https://backup.example.test\nBACKUP_CRYPT_PASSWORD=fixture-password\nBACKUP_CRYPT_SALT=fixture-salt\n',
+  );
+  const result = f.prune({ FIXTURE_RECOVERY_RELEASE: old[0] });
+  assert.equal(result.status, 0, result.stderr);
+  assert.ok(existsSync(join(f.directory, 'releases', old[0])));
+  assert.equal(existsSync(join(f.directory, 'releases', old[2])), false);
+  const reads = f
+    .commands()
+    .filter(
+      ({ args }) =>
+        args.includes(
+          'infrastructure/single-server/backup/catalogue-releases.mjs',
+        ) ||
+        args.includes('lsf') ||
+        args.includes('cat'),
+    );
+  assert.ok(reads.length > 0);
+  for (const { args } of reads) {
+    assert.ok(
+      args.includes(`io.pertexo.backup.project=${f.directory}`),
+      'catalogue helper belongs to this installation',
+    );
+    assert.ok(
+      args.includes('io.pertexo.backup.operation=prune'),
+      'catalogue helper belongs to prune',
+    );
+    assert.ok(
+      !args.includes('--env-file'),
+      'Docker environment contains no rclone secrets',
+    );
+  }
 });

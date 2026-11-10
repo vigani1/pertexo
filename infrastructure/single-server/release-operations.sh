@@ -315,7 +315,9 @@ verify_backup_key() {
 
 # The operation lock excludes any reader before stale secret copies are removed.
 clear_stale_backup_configs() {
-  rm -f "$BETA_STATE_DIR/rclone.env" "$BETA_STATE_DIR/rclone.conf" \
+  rm -f "$BETA_STATE_DIR"/.prune.*/rclone.conf "$BETA_STATE_DIR"/.prune.*/rclone.env \
+    "$BETA_STATE_DIR"/.prune.*/transport.input "$BETA_STATE_DIR"/.prune.*/transport.stdout "$BETA_STATE_DIR"/.prune.*/transport.stderr \
+    "$BETA_STATE_DIR/rclone.env" "$BETA_STATE_DIR/rclone.conf" \
     "$BETA_STATE_DIR"/.backup.*/rclone.conf "$BETA_STATE_DIR"/.restore.*/rclone.conf \
     "$BETA_STATE_DIR"/.backup.*/rclone.env "$BETA_STATE_DIR"/.restore.*/rclone.env \
     "$BETA_STATE_DIR"/.backup.*/transport.input "$BETA_STATE_DIR"/.restore.*/transport.input \
