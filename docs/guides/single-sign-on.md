@@ -1,20 +1,22 @@
 # Sign-in providers
 
-Google and GitHub sign-in are optional install settings. With no provider
-credentials configured, the sign-in page offers email/password only. These
-credentials belong to Pertexo's sign-in application, separately from workflow
-connections and their credentials.
+Google, GitHub, Microsoft and Apple sign-in are optional install settings. With
+no provider credentials configured, the sign-in page offers email/password only.
+These credentials belong to Pertexo's sign-in application, separately from
+workflow connections and their credentials.
 
-## Configure Google or GitHub
+## Configure a social provider
 
 Set `PUBLIC_WEB_ORIGIN` to the address people use in their browser. Deployed
 installs require HTTPS. Register your own application with the provider, using
 these exact callbacks (replace the example origin):
 
-| Provider | Callback | Private instance settings |
-| --- | --- | --- |
-| Google | `https://app.example.com/v1/auth/federation/social/callback/google` | `AUTH_GOOGLE_CLIENT_ID`, `AUTH_GOOGLE_CLIENT_SECRET` |
-| GitHub | `https://app.example.com/v1/auth/federation/social/callback/github` | `AUTH_GITHUB_CLIENT_ID`, `AUTH_GITHUB_CLIENT_SECRET` |
+| Provider  | Callback                                                               | Private instance settings                                  |
+| --------- | ---------------------------------------------------------------------- | ---------------------------------------------------------- |
+| Google    | `https://app.example.com/v1/auth/federation/social/callback/google`    | `AUTH_GOOGLE_CLIENT_ID`, `AUTH_GOOGLE_CLIENT_SECRET`       |
+| GitHub    | `https://app.example.com/v1/auth/federation/social/callback/github`    | `AUTH_GITHUB_CLIENT_ID`, `AUTH_GITHUB_CLIENT_SECRET`       |
+| Microsoft | `https://app.example.com/v1/auth/federation/social/callback/microsoft` | `AUTH_MICROSOFT_CLIENT_ID`, `AUTH_MICROSOFT_CLIENT_SECRET` |
+| Apple     | `https://app.example.com/v1/auth/federation/social/callback/apple`     | `AUTH_APPLE_CLIENT_ID`, `AUTH_APPLE_CLIENT_SECRET`         |
 
 For Google, create a web application OAuth client and configure its authorized
 redirect URI. See [Google's server-side setup](https://developers.google.com/identity/protocols/oauth2/web-server).

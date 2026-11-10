@@ -7,16 +7,17 @@ Use **Connections** for credentials. Tables are not secret storage.
 
 ## Create a table
 
-Choose a stable name such as `Orders`. Names start with a letter and contain
-letters, numbers and underscores, up to 64 characters. Add typed columns:
+Choose a stable name such as `Orders`. Names start with a letter or digit and
+contain letters, digits, spaces, underscores and hyphens, up to 64 characters.
+The final character cannot be a space. Add typed columns:
 
-| Column | Type | Required | Example |
-| --- | --- | --- | --- |
-| order_id | Text | Yes | `00123` |
-| amount | Number | Yes | `24.5` |
-| paid | True / false | No | `false` |
-| day | Date | No | `2026-10-17` |
-| extra | JSON | No | `{"currency":"EUR"}` |
+| Column   | Type         | Required | Example              |
+| -------- | ------------ | -------- | -------------------- |
+| order_id | Text         | Yes      | `00123`              |
+| amount   | Number       | Yes      | `24.5`               |
+| paid     | True / false | No       | `false`              |
+| day      | Date         | No       | `2026-10-17`         |
+| extra    | JSON         | No       | `{"currency":"EUR"}` |
 
 Optionally choose a required text, number or date column as the unique key.
 **Upsert by key** needs one. Keys fit 1 KB including their JSON representation;
@@ -130,13 +131,13 @@ aliases to stable column IDs. If an imported binding does not match the receivin
 table (for example, a later-added column has a different ID), explicitly reselect
 that table and review Inputs before publishing. No rows or schemas are imported.
 
-| Step | Input | Result |
-| --- | --- | --- |
-| Find rows | `query` | `{rows, affected, hasMore}` |
-| Insert row | `values` | One inserted row in `rows` |
-| Update rows | `query`, partial `values` | Number changed in `affected` |
+| Step          | Input                                                                                                              | Result                             |
+| ------------- | ------------------------------------------------------------------------------------------------------------------ | ---------------------------------- |
+| Find rows     | `query`                                                                                                            | `{rows, affected, hasMore}`        |
+| Insert row    | `values`                                                                                                           | One inserted row in `rows`         |
+| Update rows   | `query`, partial `values`                                                                                          | Number changed in `affected`       |
 | Upsert by key | `values` with the unique key; a new row needs its required columns, an existing row changes only the given columns | One inserted/updated row in `rows` |
-| Delete rows | `query` | Number removed in `affected` |
+| Delete rows   | `query`                                                                                                            | Number removed in `affected`       |
 
 Each returned row contains `id`, `revision` and `values`. For example Find rows
 returns `{"rows":[{"id":"…","revision":1,"values":{"amount":24.5}}],"affected":1,"hasMore":false}`.
@@ -147,8 +148,8 @@ A query can include up to ten AND filters, an optional sort and a row limit:
 
 ```json
 {
-  "filters": [{"column":"paid","operator":"equals","value":false}],
-  "sort": {"column":"amount","direction":"desc"},
+  "filters": [{ "column": "paid", "operator": "equals", "value": false }],
+  "sort": { "column": "amount", "direction": "desc" },
   "limit": 100,
   "offset": 0
 }
@@ -178,15 +179,15 @@ until you delete them or the workspace is purged.
 
 ## Limits
 
-| Limit | Default | Owners/admins can raise to |
-| --- | --- | --- |
-| Tables per workspace | 20 | 100 |
-| Columns per table | 20 | 50 |
-| Rows per table | 10,000 | 100,000 |
-| Stored cell JSON per workspace | 50 MB | 1 GB |
-| One row | 64 KB | Fixed |
-| Import / one row mutation | 1,000 rows | Fixed |
-| Complete CSV export | Current table quotas | No separate file-size cap |
+| Limit                          | Default              | Owners/admins can raise to |
+| ------------------------------ | -------------------- | -------------------------- |
+| Tables per workspace           | 20                   | 100                        |
+| Columns per table              | 20                   | 50                         |
+| Rows per table                 | 10,000               | 100,000                    |
+| Stored cell JSON per workspace | 50 MB                | 1 GB                       |
+| One row                        | 64 KB                | Fixed                      |
+| Import / one row mutation      | 1,000 rows           | Fixed                      |
+| Complete CSV export            | Current table quotas | No separate file-size cap  |
 
 Open **Table limits** to raise bounded quotas. Lowering a quota below current
 use is refused. Text/JSON must be valid Unicode without null characters. There

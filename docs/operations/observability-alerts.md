@@ -193,9 +193,9 @@ next cycle, so fixing the cause is enough; nothing needs to be rerun by hand.
 
 Repository-owned PostgreSQL, Redis, object-store request/safety, and Node process
 runtime signals are exported through the configured OpenTelemetry pipeline.
-Object-store capacity, managed-service internals, database host capacity, ECS task
-limits/exits, and cloud-provider replication health still require deployment-owned
-AWS integrations. Current artifact inventory describes application metadata;
+Object-store capacity, database host capacity and container limits/exits
+require operator monitoring on the single server. Managed-service and cloud
+replication monitoring from the former AWS proposal is unsupported. Current artifact inventory describes application metadata;
 object-store request telemetry describes only calls made by this application and
 is not a synthetic provider-availability probe.
 

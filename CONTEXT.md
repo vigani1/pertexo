@@ -3,6 +3,40 @@
 The platform authors reusable workflows and executes immutable published
 versions while preserving operational history.
 
+## Core terms
+
+**Workflow** — A reusable automation, with an editable draft and published
+versions.
+
+**Workflow version (version)** — An immutable published definition. A run stays
+pinned to its version even when a newer version is published.
+
+**Draft** — The editable working definition of a workflow. Saving a draft does
+not change a published version or an existing run.
+
+**Run** — One execution with its own input, state and history. Published runs
+use a pinned version; draft test runs use a frozen test snapshot.
+
+**Step** — One configured operation in a workflow, such as a trigger, transform,
+HTTP request or approval. A loop can invoke a step more than once.
+
+**Node** — The code and graph term for a step. Use “step” in product language;
+node IDs identify graph steps, not individual invocations or attempts.
+
+**Attempt** — One execution try for a step invocation. Retries create further
+attempts; an uncertain external effect is not automatically retried.
+
+**Checkpoint** — Saved execution progress from which a run can continue after a
+wait or restart. It is distinct from the workflow definition and attempt
+history.
+
+**Trigger** — A start step defining how a run begins: manual, schedule, webhook,
+form, or workflow failure. A trigger starts a run; it does not resume a waiting
+step.
+
+**Workspace** — The boundary for workflows, members, roles, connections and
+operational data. Access to one workspace does not grant access to another.
+
 ## Language
 
 **Identity organization**: Explicitly linked workspaces whose verified domains,

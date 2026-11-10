@@ -1,5 +1,11 @@
 # ADR 075 — Workflow artifact inputs
 
+> Deployment scope amendment, 2026-11-10: single-server self-hosting is the only
+> supported deployment. AWS/ECS hosting, autoscaling and managed-service
+> promises below are historical, unsupported proposals for a later per-customer
+> hosted version. ECS definitions were retired; recover them from Git history.
+> Single-server KMS encryption remains an optional key provider.
+
 - **Status:** accepted
 - **Date:** 2026-10-14
 - **Plan:** [F04](../feature-plans/04-artifact-inputs-and-files.md)

@@ -28,11 +28,11 @@ Inspected anchors (paths may move):
 
 - [packages/contracts/src/schemas/connections.ts](../../packages/contracts/src/schemas/connections.ts)
 - [docs/adr/023-slack-send-message-provider.md](../adr/023-slack-send-message-provider.md)
-- [accepted-completion health persistence](../../packages/database/src/attempts/completion/connection-health.ts)
-- [connection test persistence](../../packages/database/src/connections/connection-tests/results.repository.ts)
-- [published usage projection](../../packages/database/src/connections/discovery/integration-usage.queries.ts)
-- [attempt dispatch](../../packages/database/src/attempts/dispatch.ts)
-- [attempt completion](../../packages/database/src/attempts/completion/complete.ts)
+- [accepted-completion health persistence](../../packages/core/src/attempts/completion/connection-health.repository.ts)
+- [connection test persistence](../../packages/core/src/connections/connection-tests/complete.repository.ts)
+- [published usage projection](../../packages/core/src/connections/index.ts)
+- [attempt dispatch](../../packages/core/src/attempts/dispatch/mark.ts)
+- [attempt completion](../../packages/core/src/attempts/completion/complete.ts)
 
 ## Dependencies and planning gate
 

@@ -25,29 +25,31 @@ number after that reviewed decision, despite its absence from this main baseline
 ## Current-source reconciliation
 
 - [ADR060](060-workflow-duplication-identity.md) governs same-workspace copies.
-  [Duplication persistence](../../packages/database/src/authoring/workflows/commands/duplication.ts)
+  [Duplication persistence](../../packages/core/src/authoring/workflows/commands/duplicate.ts)
   preserves IDs and dynamic JSONata; it did not introduce a remapper. Import
   creates a different workflow, so preserving IDs avoids breaking dynamic
   `$lookup(nodeOutputs, runInput.stepId)` references without runtime aliases.
 - [Graph contract](../../packages/workflow-model/src/graph/workflow-graph.schemas.ts),
-  [draft preflight](../../packages/workflow-model/src/graph/validation/preflight.ts) and
+  [draft preflight](../../packages/workflow-model/src/graph/validation/preflight.ts)
+  and
   [placement](../../packages/workflow-model/src/graph/definition-placement.ts)
   own bounded graph parsing and new-placement semantics. Import compares with
   the empty destination, never with the source's grandfathered definitions.
-- [Catalog resolution](../../packages/node-catalog/src/catalog.ts)
-  owns registered schemas and connection requirements. Neither it nor generic
-  graph config/literal records declares arbitrary text secret-safe. HTTP config
+- [Catalog resolution](../../packages/node-catalog/src/catalog.ts) owns
+  registered schemas and connection requirements. Neither it nor generic graph
+  config/literal records declares arbitrary text secret-safe. HTTP config
   already rejects credential-bearing headers and query names in
   [validation](../../packages/integrations/src/http-request/http-request.schemas.ts).
-- [Authoring draft store](../../packages/database/src/authoring/workflows/commands/drafts.ts)
+- [Authoring draft store](../../packages/core/src/authoring/workflows/commands/save-draft.ts)
   and the duplication migration (now part of the
-  [reset baseline](../../packages/database/migrations/0000_baseline.sql))
-  supply creation/receipt patterns, not an import command to call in a second
+  [reset baseline](../../packages/database/migrations/0000_baseline.sql)) supply
+  creation/receipt patterns, not an import command to call in a second
   transaction. Current authoring creation has no workflow-count entitlement;
   execution/artifact quotas are different policies, not import limits.
 - Existing HTTP owner is
   [workflow-authoring contracts](../../packages/contracts/src/schemas/workflows/authoring.ts)
-  and [application persistence interface](../../apps/api/src/workflow-authoring/ports.ts).
+  and
+  [application persistence interface](../../packages/core/src/authoring/index.ts).
   Web owners are workflows dialogs/commands, editor draft authority and version
   history; no new package, global store or portability framework is needed.
 
@@ -217,13 +219,13 @@ lock first invalidate later commands; admitted commands finish before those
 writers can change authority. No connection, claim or catalog lock precedes the
 workspace lock.
 
-| Operation | Ordered locks after authority | Race winner / outcome |
-| --- | --- | --- |
-| Export draft | Source workflow SHARE → draft SHARE → serving catalog SHARE | Save winning draft UPDATE makes old tag/digest fail; export winning SHARE yields exactly reviewed content. Lifecycle winning workflow UPDATE makes source unavailable. Publication follows workflow before draft; shared catalog locks do not invert its order. |
-| Export version | Source workflow SHARE → selected immutable version SHARE → serving catalog SHARE | No source substitution; workspace purge waits for admission workspace SHARE, immutable source remains scoped. |
-| Import new | Exact actor-scoped receipt UPDATE → writer gate SHARE → catalog-current SHARE → destination connections SHARE in sorted ID order → create destination/draft/audit → complete receipt | First same-key transaction commits one result; different input conflicts. Gate/catalog writer winning first rejects stale/off admission. Connection revoke/rotate/health UPDATE winning first makes new binding fail if unusable; import winning SHARE commits its explicit binding before later health change. |
-| Import replay | Exact actor-scoped receipt UPDATE → original destination SHARE | Return accepted identity before gate/catalog/binding checks. Missing destination fails closed; authority loss never replays. |
-| Preview | Catalog-current SHARE → destination connections SHARE in sorted ID order | Snapshot is advisory; create repeats checks and binds displayed fingerprint. No claim, workflow, audit or upload write. |
+| Operation      | Ordered locks after authority                                                                                                                                                        | Race winner / outcome                                                                                                                                                                                                                                                                                           |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Export draft   | Source workflow SHARE → draft SHARE → serving catalog SHARE                                                                                                                          | Save winning draft UPDATE makes old tag/digest fail; export winning SHARE yields exactly reviewed content. Lifecycle winning workflow UPDATE makes source unavailable. Publication follows workflow before draft; shared catalog locks do not invert its order.                                                 |
+| Export version | Source workflow SHARE → selected immutable version SHARE → serving catalog SHARE                                                                                                     | No source substitution; workspace purge waits for admission workspace SHARE, immutable source remains scoped.                                                                                                                                                                                                   |
+| Import new     | Exact actor-scoped receipt UPDATE → writer gate SHARE → catalog-current SHARE → destination connections SHARE in sorted ID order → create destination/draft/audit → complete receipt | First same-key transaction commits one result; different input conflicts. Gate/catalog writer winning first rejects stale/off admission. Connection revoke/rotate/health UPDATE winning first makes new binding fail if unusable; import winning SHARE commits its explicit binding before later health change. |
+| Import replay  | Exact actor-scoped receipt UPDATE → original destination SHARE                                                                                                                       | Return accepted identity before gate/catalog/binding checks. Missing destination fails closed; authority loss never replays.                                                                                                                                                                                    |
+| Preview        | Catalog-current SHARE → destination connections SHARE in sorted ID order                                                                                                             | Snapshot is advisory; create repeats checks and binds displayed fingerprint. No claim, workflow, audit or upload write.                                                                                                                                                                                         |
 
 Connection management acquires workspace admission before authority and
 connection UPDATE; health consumption acquires workspace admission before inbox/

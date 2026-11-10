@@ -1,5 +1,11 @@
 # ADR 028: ECS deployment manifest and release job
 
+> Deployment scope amendment, 2026-11-10: single-server self-hosting is the only
+> supported deployment. AWS/ECS hosting, autoscaling and managed-service
+> promises below are historical, unsupported proposals for a later per-customer
+> hosted version. ECS definitions were retired; recover them from Git history.
+> Single-server KMS encryption remains an optional key provider.
+
 - **Status:** accepted; superseded in part by [ADR 069](069-architecture-reset.md)
   (one region; the lifecycle-command, retention and recovery workloads, the
   external platform evidence contract and the deployment validators are removed)

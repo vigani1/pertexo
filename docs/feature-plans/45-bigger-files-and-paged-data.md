@@ -1,5 +1,9 @@
 # F45 — Bigger files and paged step data
 
+> Historical deployment references: as of 2026-11-10 only single-server
+> self-hosting is supported. ECS/AWS hosting references below describe retired
+> work, recoverable from Git history, and are not operator instructions.
+
 Status: **Delivered (2026-10-21)**. Slices 1–3 merged in #450, #452 and #453. Slice 4 qualifies the 10 MiB ceiling through actual compiled workflows at 32 attempt slots, nested page loops, exact native HTTP uploads, private container disk, maximum browser uploads, retention, isolation, purge and matched backup/restore. Reproducible worker probes are in `apps/worker/test/runs/files/`; browser resource qualification uses `F45_RELEASE_QUALIFICATION=true`. The release PR records measured evidence and its CI gate. Inline JSON, checkpoint, ordinary collection/loop, capacity and worker memory limits remain unchanged; file references remain ineligible for pins.
 
 ## Current code and problem
@@ -23,16 +27,16 @@ Separate file bytes from mapped JSON, as [n8n's binary-data guidance](https://do
 
 ## Proposed bounds (acceptance targets, not measured claims)
 
-| Resource | First-release ceiling |
-| --- | --- |
-| One file; total encoded outbound HTTP body | 10 MiB, or lower configured storage limit |
-| Logical paged result | 10 MiB encoded page bytes, 100,000 records, 256 pages; first reached wins |
-| One page | 64 KiB encoded JSON including array framing; 1,000 records; depth 48; 4,000 members |
-| One record | Must fit all page and retained-value text/Unicode rules |
-| Descriptor | Existing 256 KiB retained JSON limits, checked before accepting more pages |
-| Streaming buffers | 64 KiB chunks with backpressure; bounded parser state and one page under construction |
-| Scratch | At most 20 MiB per attempt across all live spools; 1 GiB aggregate owned-scratch ceiling per worker, with additional filesystem headroom |
-| Time | Existing attempt/run deadline; abort after 60 seconds without byte progress, whichever comes first |
+| Resource                                   | First-release ceiling                                                                                                                    |
+| ------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| One file; total encoded outbound HTTP body | 10 MiB, or lower configured storage limit                                                                                                |
+| Logical paged result                       | 10 MiB encoded page bytes, 100,000 records, 256 pages; first reached wins                                                                |
+| One page                                   | 64 KiB encoded JSON including array framing; 1,000 records; depth 48; 4,000 members                                                      |
+| One record                                 | Must fit all page and retained-value text/Unicode rules                                                                                  |
+| Descriptor                                 | Existing 256 KiB retained JSON limits, checked before accepting more pages                                                               |
+| Streaming buffers                          | 64 KiB chunks with backpressure; bounded parser state and one page under construction                                                    |
+| Scratch                                    | At most 20 MiB per attempt across all live spools; 1 GiB aggregate owned-scratch ceiling per worker, with additional filesystem headroom |
+| Time                                       | Existing attempt/run deadline; abort after 60 seconds without byte progress, whichever comes first                                       |
 
 Keep ordinary capacity unchanged. Record measured RSS, heap/external memory, disk usage, checkpoint size, database writes and scheduling latency. If a target is unsafe, reduce it and return to review; never compensate by raising worker memory, queue concurrency, run slots or checkpoint bounds silently. CSV → JSON expansion can hit the logical-output cap before file size; errors explain which limit was reached.
 
@@ -68,15 +72,15 @@ scratch. These are component measurements on the development machine, not a
 whole-worker release claim. The 10 MiB candidate passes this gate; public limits
 remain unchanged until the next slices.
 
-| Probe | Baseline | Candidate maximum |
-| --- | --- | --- |
-| Streaming JSON records | 10,000 records / 968,889 bytes | 100,000 records / 9,788,889 bytes |
-| Parser peak RSS / heap / external | 80.9 / 18.4 / 1.74 MiB | 81.9 / 19.0 / 1.78 MiB |
-| 32 concurrent disk spools | 32 × 1 MiB | 32 × 10 MiB |
-| Scratch peak RSS / heap / external | 100.1 / 11.4 / 32.4 MiB | 110.4 / 10.6 / 47.0 MiB |
-| Scratch bytes, held until release | 32 MiB | 320 MiB |
-| Spool elapsed / event-loop p99 | 48.8 / 10.3 ms | 232.6 / 10.9 ms |
-| PostgreSQL artifact metadata row | 312 bytes for 1 MiB file | 312 bytes for 10 MiB file |
+| Probe                              | Baseline                       | Candidate maximum                 |
+| ---------------------------------- | ------------------------------ | --------------------------------- |
+| Streaming JSON records             | 10,000 records / 968,889 bytes | 100,000 records / 9,788,889 bytes |
+| Parser peak RSS / heap / external  | 80.9 / 18.4 / 1.74 MiB         | 81.9 / 19.0 / 1.78 MiB            |
+| 32 concurrent disk spools          | 32 × 1 MiB                     | 32 × 10 MiB                       |
+| Scratch peak RSS / heap / external | 100.1 / 11.4 / 32.4 MiB        | 110.4 / 10.6 / 47.0 MiB           |
+| Scratch bytes, held until release  | 32 MiB                         | 320 MiB                           |
+| Spool elapsed / event-loop p99     | 48.8 / 10.3 ms                 | 232.6 / 10.9 ms                   |
+| PostgreSQL artifact metadata row   | 312 bytes for 1 MiB file       | 312 bytes for 10 MiB file         |
 
 - Both allocation probes run in child processes with a 64 MiB heap ceiling.
   Parser qualification includes unfinished exponents, long strings/keys, deep
@@ -109,12 +113,12 @@ remains 1 GiB, and checkpoints remain 256 KiB. No file/data limit increases.
 
 The existing whole-worker release test was run before and after the heap option:
 
-| Platform and heap | 1 MiB batch peak RSS | 10 MiB / 100,000-record batch peak RSS | Result |
-| --- | ---: | ---: | --- |
-| Darwin ARM64, Node 24.15.0, default | 823,902,208 bytes | Not reached | Fails the unchanged 805,306,368-byte assertion, despite 34 completed runs |
-| Darwin ARM64, Node 24.15.0, 384 MiB | 563,560,448 bytes | 657,752,064 bytes | Both batches complete 34/34; no resource drain |
-| Linux ARM64, Node 24.22.0, default | 490,405,888 bytes | 539,938,816 bytes | Both batches complete 34/34; the default-heap failure does **not** reproduce here |
-| Linux ARM64, Node 24.22.0, 384 MiB | 461,201,408 bytes | 494,862,336 bytes | Both batches complete 34/34; no resource drain |
+| Platform and heap                   | 1 MiB batch peak RSS | 10 MiB / 100,000-record batch peak RSS | Result                                                                            |
+| ----------------------------------- | -------------------: | -------------------------------------: | --------------------------------------------------------------------------------- |
+| Darwin ARM64, Node 24.15.0, default |    823,902,208 bytes |                            Not reached | Fails the unchanged 805,306,368-byte assertion, despite 34 completed runs         |
+| Darwin ARM64, Node 24.15.0, 384 MiB |    563,560,448 bytes |                      657,752,064 bytes | Both batches complete 34/34; no resource drain                                    |
+| Linux ARM64, Node 24.22.0, default  |    490,405,888 bytes |                      539,938,816 bytes | Both batches complete 34/34; the default-heap failure does **not** reproduce here |
+| Linux ARM64, Node 24.22.0, 384 MiB  |    461,201,408 bytes |                      494,862,336 bytes | Both batches complete 34/34; no resource drain                                    |
 
 Linux used the already-cached production runtime image, with a read-only root
 filesystem and private disk scratch; no image download. The temporary test
