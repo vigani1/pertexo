@@ -1553,7 +1553,7 @@
                       "required": [
                         "kind"
                       ],
-                      "additionalProperties": false
+                      "additionalProperties": true
                     },
                     {
                       "type": "object",
@@ -1566,7 +1566,7 @@
                       "required": [
                         "kind"
                       ],
-                      "additionalProperties": false
+                      "additionalProperties": true
                     },
                     {
                       "type": "object",
@@ -1585,7 +1585,7 @@
                         "kind",
                         "previewRunId"
                       ],
-                      "additionalProperties": false
+                      "additionalProperties": true
                     },
                     {
                       "type": "object",
@@ -1610,7 +1610,7 @@
                         "runId",
                         "nodeRunId"
                       ],
-                      "additionalProperties": false
+                      "additionalProperties": true
                     }
                   ]
                 },
@@ -1634,7 +1634,7 @@
                 "createdAt",
                 "expiresAt"
               ],
-              "additionalProperties": false
+              "additionalProperties": true
             }
           },
           "draftRevision": {
@@ -1666,7 +1666,7 @@
               "depth",
               "members"
             ],
-            "additionalProperties": false
+            "additionalProperties": true
           }
         },
         "required": [
@@ -1674,7 +1674,7 @@
           "draftRevision",
           "limits"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "StepSampleResponse": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -1719,7 +1719,7 @@
                         "required": [
                           "kind"
                         ],
-                        "additionalProperties": false
+                        "additionalProperties": true
                       },
                       {
                         "type": "object",
@@ -1732,7 +1732,7 @@
                         "required": [
                           "kind"
                         ],
-                        "additionalProperties": false
+                        "additionalProperties": true
                       },
                       {
                         "type": "object",
@@ -1751,7 +1751,7 @@
                           "kind",
                           "previewRunId"
                         ],
-                        "additionalProperties": false
+                        "additionalProperties": true
                       },
                       {
                         "type": "object",
@@ -1776,7 +1776,7 @@
                           "runId",
                           "nodeRunId"
                         ],
-                        "additionalProperties": false
+                        "additionalProperties": true
                       }
                     ]
                   },
@@ -1800,7 +1800,7 @@
                   "createdAt",
                   "expiresAt"
                 ],
-                "additionalProperties": false
+                "additionalProperties": true
               },
               {
                 "type": "null"
@@ -1881,7 +1881,7 @@
               "depth",
               "members"
             ],
-            "additionalProperties": false
+            "additionalProperties": true
           }
         },
         "required": [
@@ -1890,7 +1890,7 @@
           "draftRevision",
           "limits"
         ],
-        "additionalProperties": false,
+        "additionalProperties": true,
         "$defs": {
           "__schema0": {
             "anyOf": [
@@ -1919,6 +1919,38 @@
                 },
                 "additionalProperties": {
                   "$ref": "#/components/schemas/StepSampleResponse/$defs/__schema0"
+                }
+              }
+            ],
+            "$ref": "#/components/schemas/StepSampleResponse/$defs/__schema1"
+          },
+          "__schema1": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/StepSampleResponse/$defs/__schema1"
+                }
+              },
+              {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/StepSampleResponse/$defs/__schema1"
                 }
               }
             ]
@@ -2107,7 +2139,7 @@
           "removed",
           "replayed"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "StepSampleDeleteRequest": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -2160,7 +2192,7 @@
                 "nodeId",
                 "sampleId"
               ],
-              "additionalProperties": false
+              "additionalProperties": true
             }
           },
           "effectfulSteps": {
@@ -2183,7 +2215,7 @@
                 "nodeId",
                 "label"
               ],
-              "additionalProperties": false
+              "additionalProperties": true
             }
           }
         },
@@ -2192,7 +2224,7 @@
           "samples",
           "effectfulSteps"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "WorkflowTestList": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -2258,14 +2290,14 @@
                 "createdAt",
                 "expiresAt"
               ],
-              "additionalProperties": false
+              "additionalProperties": true
             }
           }
         },
         "required": [
           "items"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "WorkflowTestStartRequest": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -2373,7 +2405,7 @@
         "required": [
           "runId"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "WorkflowTestDetail": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -2463,7 +2495,7 @@
                         "nodeId",
                         "port"
                       ],
-                      "additionalProperties": false
+                      "additionalProperties": true
                     },
                     "target": {
                       "type": "object",
@@ -2483,7 +2515,7 @@
                         "nodeId",
                         "port"
                       ],
-                      "additionalProperties": false
+                      "additionalProperties": true
                     }
                   },
                   "required": [
@@ -2491,7 +2523,7 @@
                     "source",
                     "target"
                   ],
-                  "additionalProperties": false
+                  "additionalProperties": true
                 }
               },
               "settings": {
@@ -2503,16 +2535,16 @@
                     "maximum": 3600000
                   }
                 },
-                "additionalProperties": false
+                "additionalProperties": true
               },
               "callable": {
                 "type": "object",
                 "properties": {
                   "input": {
-                    "$ref": "#/components/schemas/WorkflowTestDetail/$defs/__schema3"
+                    "$ref": "#/components/schemas/WorkflowTestDetail/$defs/__schema6"
                   },
                   "resultType": {
-                    "$ref": "#/components/schemas/WorkflowTestDetail/$defs/__schema3"
+                    "$ref": "#/components/schemas/WorkflowTestDetail/$defs/__schema6"
                   },
                   "result": {
                     "oneOf": [
@@ -2532,7 +2564,7 @@
                           "kind",
                           "name"
                         ],
-                        "additionalProperties": false
+                        "additionalProperties": true
                       },
                       {
                         "type": "object",
@@ -2542,14 +2574,14 @@
                             "const": "literal"
                           },
                           "value": {
-                            "$ref": "#/components/schemas/WorkflowTestDetail/$defs/__schema2"
+                            "$ref": "#/components/schemas/WorkflowTestDetail/$defs/__schema3"
                           }
                         },
                         "required": [
                           "kind",
                           "value"
                         ],
-                        "additionalProperties": false
+                        "additionalProperties": true
                       },
                       {
                         "type": "object",
@@ -2566,7 +2598,7 @@
                           "kind",
                           "path"
                         ],
-                        "additionalProperties": false
+                        "additionalProperties": true
                       },
                       {
                         "type": "object",
@@ -2589,7 +2621,7 @@
                           "nodeId",
                           "path"
                         ],
-                        "additionalProperties": false
+                        "additionalProperties": true
                       },
                       {
                         "type": "object",
@@ -2612,7 +2644,7 @@
                           "nodeId",
                           "path"
                         ],
-                        "additionalProperties": false
+                        "additionalProperties": true
                       },
                       {
                         "type": "object",
@@ -2634,7 +2666,7 @@
                           "language",
                           "expression"
                         ],
-                        "additionalProperties": false
+                        "additionalProperties": true
                       },
                       {
                         "type": "object",
@@ -2657,7 +2689,7 @@
                           "port",
                           "path"
                         ],
-                        "additionalProperties": false
+                        "additionalProperties": true
                       }
                     ]
                   }
@@ -2667,7 +2699,7 @@
                   "resultType",
                   "result"
                 ],
-                "additionalProperties": false
+                "additionalProperties": true
               },
               "notes": {
                 "maxItems": 100,
@@ -2702,7 +2734,7 @@
                         "x",
                         "y"
                       ],
-                      "additionalProperties": false
+                      "additionalProperties": true
                     },
                     "size": {
                       "type": "object",
@@ -2722,7 +2754,7 @@
                         "width",
                         "height"
                       ],
-                      "additionalProperties": false
+                      "additionalProperties": true
                     },
                     "color": {
                       "type": "string",
@@ -2742,7 +2774,7 @@
                     "size",
                     "color"
                   ],
-                  "additionalProperties": false
+                  "additionalProperties": true
                 }
               }
             },
@@ -2751,7 +2783,7 @@
               "edges",
               "settings"
             ],
-            "additionalProperties": false
+            "additionalProperties": true
           },
           "dispositions": {
             "type": "object",
@@ -2782,10 +2814,9 @@
           "graph",
           "dispositions"
         ],
-        "additionalProperties": false,
+        "additionalProperties": true,
         "$defs": {
           "__schema0": {
-            "type": "object",
             "properties": {
               "id": {
                 "type": "string",
@@ -2810,7 +2841,7 @@
                   "key",
                   "version"
                 ],
-                "additionalProperties": false
+                "additionalProperties": true
               },
               "position": {
                 "type": "object",
@@ -2826,7 +2857,7 @@
                   "x",
                   "y"
                 ],
-                "additionalProperties": false
+                "additionalProperties": true
               },
               "configVersion": {
                 "type": "integer",
@@ -2865,7 +2896,7 @@
                         "kind",
                         "name"
                       ],
-                      "additionalProperties": false
+                      "additionalProperties": true
                     },
                     {
                       "type": "object",
@@ -2875,14 +2906,14 @@
                           "const": "literal"
                         },
                         "value": {
-                          "$ref": "#/components/schemas/WorkflowTestDetail/$defs/__schema2"
+                          "$ref": "#/components/schemas/WorkflowTestDetail/$defs/__schema3"
                         }
                       },
                       "required": [
                         "kind",
                         "value"
                       ],
-                      "additionalProperties": false
+                      "additionalProperties": true
                     },
                     {
                       "type": "object",
@@ -2899,7 +2930,7 @@
                         "kind",
                         "path"
                       ],
-                      "additionalProperties": false
+                      "additionalProperties": true
                     },
                     {
                       "type": "object",
@@ -2922,7 +2953,7 @@
                         "nodeId",
                         "path"
                       ],
-                      "additionalProperties": false
+                      "additionalProperties": true
                     },
                     {
                       "type": "object",
@@ -2945,7 +2976,7 @@
                         "nodeId",
                         "path"
                       ],
-                      "additionalProperties": false
+                      "additionalProperties": true
                     },
                     {
                       "type": "object",
@@ -2967,7 +2998,7 @@
                         "language",
                         "expression"
                       ],
-                      "additionalProperties": false
+                      "additionalProperties": true
                     },
                     {
                       "type": "object",
@@ -2990,7 +3021,7 @@
                         "port",
                         "path"
                       ],
-                      "additionalProperties": false
+                      "additionalProperties": true
                     }
                   ]
                 }
@@ -3031,7 +3062,7 @@
                   "maximumAttempts",
                   "delayMillis"
                 ],
-                "additionalProperties": false
+                "additionalProperties": true
               },
               "structured": {
                 "type": "object",
@@ -3087,7 +3118,7 @@
                                 "nodeId",
                                 "port"
                               ],
-                              "additionalProperties": false
+                              "additionalProperties": true
                             },
                             "target": {
                               "type": "object",
@@ -3107,7 +3138,7 @@
                                 "nodeId",
                                 "port"
                               ],
-                              "additionalProperties": false
+                              "additionalProperties": true
                             }
                           },
                           "required": [
@@ -3115,7 +3146,7 @@
                             "source",
                             "target"
                           ],
-                          "additionalProperties": false
+                          "additionalProperties": true
                         }
                       },
                       "settings": {
@@ -3127,7 +3158,7 @@
                             "maximum": 3600000
                           }
                         },
-                        "additionalProperties": false
+                        "additionalProperties": true
                       },
                       "inputPorts": {
                         "type": "array",
@@ -3153,7 +3184,7 @@
                       "inputPorts",
                       "outputPorts"
                     ],
-                    "additionalProperties": false
+                    "additionalProperties": true
                   }
                 },
                 "required": [
@@ -3162,19 +3193,10 @@
                   "maxConcurrency",
                   "body"
                 ],
-                "additionalProperties": false
+                "additionalProperties": true
               }
             },
-            "required": [
-              "id",
-              "definition",
-              "position",
-              "configVersion",
-              "config",
-              "inputMappings",
-              "connectionRefs"
-            ],
-            "additionalProperties": false
+            "$ref": "#/components/schemas/WorkflowTestDetail/$defs/__schema5"
           },
           "__schema1": {
             "anyOf": [
@@ -3205,7 +3227,8 @@
                   "$ref": "#/components/schemas/WorkflowTestDetail/$defs/__schema1"
                 }
               }
-            ]
+            ],
+            "$ref": "#/components/schemas/WorkflowTestDetail/$defs/__schema2"
           },
           "__schema2": {
             "anyOf": [
@@ -3239,6 +3262,461 @@
             ]
           },
           "__schema3": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/WorkflowTestDetail/$defs/__schema3"
+                }
+              },
+              {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/WorkflowTestDetail/$defs/__schema3"
+                }
+              }
+            ],
+            "$ref": "#/components/schemas/WorkflowTestDetail/$defs/__schema4"
+          },
+          "__schema4": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/WorkflowTestDetail/$defs/__schema4"
+                }
+              },
+              {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/WorkflowTestDetail/$defs/__schema4"
+                }
+              }
+            ]
+          },
+          "__schema5": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 64
+              },
+              "definition": {
+                "type": "object",
+                "properties": {
+                  "key": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 64
+                  },
+                  "version": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "required": [
+                  "key",
+                  "version"
+                ],
+                "additionalProperties": true
+              },
+              "position": {
+                "type": "object",
+                "properties": {
+                  "x": {
+                    "type": "number"
+                  },
+                  "y": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "x",
+                  "y"
+                ],
+                "additionalProperties": true
+              },
+              "configVersion": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              },
+              "config": {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/WorkflowTestDetail/$defs/__schema2"
+                }
+              },
+              "inputMappings": {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "const": "workspace_variable"
+                        },
+                        "name": {
+                          "type": "string",
+                          "pattern": "^[A-Z][A-Z0-9_]{0,63}$"
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "name"
+                      ],
+                      "additionalProperties": true
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "const": "literal"
+                        },
+                        "value": {
+                          "$ref": "#/components/schemas/WorkflowTestDetail/$defs/__schema4"
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "value"
+                      ],
+                      "additionalProperties": true
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "const": "run_input"
+                        },
+                        "path": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "path"
+                      ],
+                      "additionalProperties": true
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "const": "node_output"
+                        },
+                        "nodeId": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 64
+                        },
+                        "path": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "nodeId",
+                        "path"
+                      ],
+                      "additionalProperties": true
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "const": "node_failure"
+                        },
+                        "nodeId": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 64
+                        },
+                        "path": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "nodeId",
+                        "path"
+                      ],
+                      "additionalProperties": true
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "const": "expression"
+                        },
+                        "language": {
+                          "type": "string",
+                          "const": "jsonata"
+                        },
+                        "expression": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "language",
+                        "expression"
+                      ],
+                      "additionalProperties": true
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "const": "structured_input"
+                        },
+                        "port": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 64
+                        },
+                        "path": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "port",
+                        "path"
+                      ],
+                      "additionalProperties": true
+                    }
+                  ]
+                }
+              },
+              "connectionRefs": {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 64
+                }
+              },
+              "label": {
+                "type": "string"
+              },
+              "disabled": {
+                "type": "boolean"
+              },
+              "retry": {
+                "type": "object",
+                "properties": {
+                  "maximumAttempts": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 5
+                  },
+                  "delayMillis": {
+                    "type": "integer",
+                    "minimum": 1000,
+                    "maximum": 60000,
+                    "multipleOf": 1000
+                  }
+                },
+                "required": [
+                  "maximumAttempts",
+                  "delayMillis"
+                ],
+                "additionalProperties": true
+              },
+              "structured": {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "const": "for_each"
+                  },
+                  "maxIterations": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0,
+                    "maximum": 4998
+                  },
+                  "maxConcurrency": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0,
+                    "maximum": 200
+                  },
+                  "body": {
+                    "type": "object",
+                    "properties": {
+                      "nodes": {
+                        "type": "array",
+                        "items": {
+                          "$ref": "#/components/schemas/WorkflowTestDetail/$defs/__schema5"
+                        }
+                      },
+                      "edges": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 64
+                            },
+                            "source": {
+                              "type": "object",
+                              "properties": {
+                                "nodeId": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 64
+                                },
+                                "port": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 64
+                                }
+                              },
+                              "required": [
+                                "nodeId",
+                                "port"
+                              ],
+                              "additionalProperties": true
+                            },
+                            "target": {
+                              "type": "object",
+                              "properties": {
+                                "nodeId": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 64
+                                },
+                                "port": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 64
+                                }
+                              },
+                              "required": [
+                                "nodeId",
+                                "port"
+                              ],
+                              "additionalProperties": true
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "source",
+                            "target"
+                          ],
+                          "additionalProperties": true
+                        }
+                      },
+                      "settings": {
+                        "type": "object",
+                        "properties": {
+                          "maxRunDurationMs": {
+                            "type": "integer",
+                            "exclusiveMinimum": 0,
+                            "maximum": 3600000
+                          }
+                        },
+                        "additionalProperties": true
+                      },
+                      "inputPorts": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 64
+                        }
+                      },
+                      "outputPorts": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 64
+                        }
+                      }
+                    },
+                    "required": [
+                      "nodes",
+                      "edges",
+                      "settings",
+                      "inputPorts",
+                      "outputPorts"
+                    ],
+                    "additionalProperties": true
+                  }
+                },
+                "required": [
+                  "kind",
+                  "maxIterations",
+                  "maxConcurrency",
+                  "body"
+                ],
+                "additionalProperties": true
+              }
+            },
+            "required": [
+              "id",
+              "definition",
+              "position",
+              "configVersion",
+              "config",
+              "inputMappings",
+              "connectionRefs"
+            ],
+            "additionalProperties": true
+          },
+          "__schema6": {
             "oneOf": [
               {
                 "type": "object",
@@ -3251,7 +3729,7 @@
                 "required": [
                   "type"
                 ],
-                "additionalProperties": false
+                "additionalProperties": true
               },
               {
                 "type": "object",
@@ -3264,7 +3742,7 @@
                 "required": [
                   "type"
                 ],
-                "additionalProperties": false
+                "additionalProperties": true
               },
               {
                 "type": "object",
@@ -3277,7 +3755,7 @@
                 "required": [
                   "type"
                 ],
-                "additionalProperties": false
+                "additionalProperties": true
               },
               {
                 "type": "object",
@@ -3290,7 +3768,7 @@
                 "required": [
                   "type"
                 ],
-                "additionalProperties": false
+                "additionalProperties": true
               },
               {
                 "type": "object",
@@ -3300,7 +3778,7 @@
                     "const": "array"
                   },
                   "items": {
-                    "$ref": "#/components/schemas/WorkflowTestDetail/$defs/__schema3"
+                    "$ref": "#/components/schemas/WorkflowTestDetail/$defs/__schema6"
                   },
                   "maxItems": {
                     "type": "integer",
@@ -3313,7 +3791,7 @@
                   "items",
                   "maxItems"
                 ],
-                "additionalProperties": false
+                "additionalProperties": true
               },
               {
                 "type": "object",
@@ -3334,7 +3812,7 @@
                           "maxLength": 64
                         },
                         "valueType": {
-                          "$ref": "#/components/schemas/WorkflowTestDetail/$defs/__schema3"
+                          "$ref": "#/components/schemas/WorkflowTestDetail/$defs/__schema6"
                         },
                         "required": {
                           "type": "boolean"
@@ -3345,7 +3823,7 @@
                         "valueType",
                         "required"
                       ],
-                      "additionalProperties": false
+                      "additionalProperties": true
                     }
                   }
                 },
@@ -3353,7 +3831,127 @@
                   "type",
                   "properties"
                 ],
-                "additionalProperties": false
+                "additionalProperties": true
+              }
+            ],
+            "$ref": "#/components/schemas/WorkflowTestDetail/$defs/__schema7"
+          },
+          "__schema7": {
+            "oneOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "const": "null"
+                  }
+                },
+                "required": [
+                  "type"
+                ],
+                "additionalProperties": true
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "const": "boolean"
+                  }
+                },
+                "required": [
+                  "type"
+                ],
+                "additionalProperties": true
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "const": "number"
+                  }
+                },
+                "required": [
+                  "type"
+                ],
+                "additionalProperties": true
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "const": "string"
+                  }
+                },
+                "required": [
+                  "type"
+                ],
+                "additionalProperties": true
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "const": "array"
+                  },
+                  "items": {
+                    "$ref": "#/components/schemas/WorkflowTestDetail/$defs/__schema7"
+                  },
+                  "maxItems": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 10000
+                  }
+                },
+                "required": [
+                  "type",
+                  "items",
+                  "maxItems"
+                ],
+                "additionalProperties": true
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "const": "object"
+                  },
+                  "properties": {
+                    "maxItems": 10000,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 64
+                        },
+                        "valueType": {
+                          "$ref": "#/components/schemas/WorkflowTestDetail/$defs/__schema7"
+                        },
+                        "required": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "valueType",
+                        "required"
+                      ],
+                      "additionalProperties": true
+                    }
+                  }
+                },
+                "required": [
+                  "type",
+                  "properties"
+                ],
+                "additionalProperties": true
               }
             ]
           }
@@ -3377,7 +3975,7 @@
         "required": [
           "canceled"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "WorkflowTestSuitePreparation": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -3425,7 +4023,7 @@
                 "nodeId",
                 "sampleId"
               ],
-              "additionalProperties": false
+              "additionalProperties": true
             }
           },
           "cases": {
@@ -3454,7 +4052,7 @@
                 "revision",
                 "name"
               ],
-              "additionalProperties": false
+              "additionalProperties": true
             }
           },
           "effectfulSteps": {
@@ -3477,7 +4075,7 @@
                 "nodeId",
                 "label"
               ],
-              "additionalProperties": false
+              "additionalProperties": true
             }
           }
         },
@@ -3489,7 +4087,7 @@
           "cases",
           "effectfulSteps"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "WorkflowTestSuiteList": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -3540,7 +4138,7 @@
                     "nodeId",
                     "sampleId"
                   ],
-                  "additionalProperties": false
+                  "additionalProperties": true
                 }
               },
               "cases": {
@@ -3569,7 +4167,7 @@
                     "revision",
                     "name"
                   ],
-                  "additionalProperties": false
+                  "additionalProperties": true
                 }
               }
             },
@@ -3580,7 +4178,7 @@
               "samples",
               "cases"
             ],
-            "additionalProperties": false
+            "additionalProperties": true
           },
           "items": {
             "maxItems": 20,
@@ -3692,7 +4290,7 @@
                 "errors",
                 "skipped"
               ],
-              "additionalProperties": false
+              "additionalProperties": true
             }
           }
         },
@@ -3700,7 +4298,7 @@
           "current",
           "items"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "WorkflowTestSuiteStartRequest": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -3813,7 +4411,7 @@
         "required": [
           "suiteId"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "WorkflowTestSuiteDetail": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -3963,7 +4561,7 @@
                 "status",
                 "runId"
               ],
-              "additionalProperties": false
+              "additionalProperties": true
             }
           }
         },
@@ -3984,7 +4582,7 @@
           "skipped",
           "cases"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "WorkflowTestSuiteCaseReport": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -4049,7 +4647,7 @@
                                   "required": [
                                     "kind"
                                   ],
-                                  "additionalProperties": false
+                                  "additionalProperties": true
                                 },
                                 {
                                   "type": "object",
@@ -4068,7 +4666,7 @@
                                     "kind",
                                     "nodeId"
                                   ],
-                                  "additionalProperties": false
+                                  "additionalProperties": true
                                 }
                               ]
                             },
@@ -4085,7 +4683,7 @@
                               ]
                             },
                             "expected": {
-                              "$ref": "#/components/schemas/WorkflowTestSuiteCaseReport/$defs/__schema0"
+                              "$ref": "#/components/schemas/WorkflowTestSuiteCaseReport/$defs/__schema1"
                             }
                           },
                           "required": [
@@ -4094,7 +4692,7 @@
                             "operator",
                             "expected"
                           ],
-                          "additionalProperties": false
+                          "additionalProperties": true
                         },
                         "actual": {
                           "type": "object",
@@ -4112,7 +4710,7 @@
                               "type": "boolean"
                             },
                             "value": {
-                              "$ref": "#/components/schemas/WorkflowTestSuiteCaseReport/$defs/__schema0"
+                              "$ref": "#/components/schemas/WorkflowTestSuiteCaseReport/$defs/__schema1"
                             },
                             "preview": {
                               "type": "string",
@@ -4131,14 +4729,14 @@
                             "state",
                             "matched"
                           ],
-                          "additionalProperties": false
+                          "additionalProperties": true
                         }
                       },
                       "required": [
                         "assertion",
                         "actual"
                       ],
-                      "additionalProperties": false
+                      "additionalProperties": true
                     }
                   }
                 },
@@ -4148,7 +4746,7 @@
                   "outcomeMatched",
                   "assertions"
                 ],
-                "additionalProperties": false
+                "additionalProperties": true
               },
               {
                 "type": "null"
@@ -4172,7 +4770,7 @@
           "report",
           "stepLabels"
         ],
-        "additionalProperties": false,
+        "additionalProperties": true,
         "$defs": {
           "__schema0": {
             "anyOf": [
@@ -4201,6 +4799,38 @@
                 },
                 "additionalProperties": {
                   "$ref": "#/components/schemas/WorkflowTestSuiteCaseReport/$defs/__schema0"
+                }
+              }
+            ],
+            "$ref": "#/components/schemas/WorkflowTestSuiteCaseReport/$defs/__schema1"
+          },
+          "__schema1": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/WorkflowTestSuiteCaseReport/$defs/__schema1"
+                }
+              },
+              {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/WorkflowTestSuiteCaseReport/$defs/__schema1"
                 }
               }
             ]
@@ -4429,7 +5059,7 @@
                 "code",
                 "message"
               ],
-              "additionalProperties": false
+              "additionalProperties": true
             }
           },
           "disclosure": {
@@ -4463,7 +5093,7 @@
               "mayCauseExternalSideEffect",
               "dryRun"
             ],
-            "additionalProperties": false
+            "additionalProperties": true
           }
         },
         "required": [
@@ -4474,7 +5104,7 @@
           "issues",
           "disclosure"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "NodeTestExecuteAcceptedResponse": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -4515,7 +5145,7 @@
                         "level",
                         "message"
                       ],
-                      "additionalProperties": false
+                      "additionalProperties": true
                     }
                   },
                   "truncated": {
@@ -4542,14 +5172,14 @@
                     "required": [
                       "message"
                     ],
-                    "additionalProperties": false
+                    "additionalProperties": true
                   }
                 },
                 "required": [
                   "logs",
                   "truncated"
                 ],
-                "additionalProperties": false
+                "additionalProperties": true
               },
               "id": {
                 "type": "string",
@@ -4624,7 +5254,7 @@
                   "mayCauseExternalSideEffect",
                   "dryRun"
                 ],
-                "additionalProperties": false
+                "additionalProperties": true
               },
               "output": {
                 "anyOf": [
@@ -4645,7 +5275,7 @@
                           "kind",
                           "value"
                         ],
-                        "additionalProperties": false
+                        "additionalProperties": true
                       },
                       {
                         "type": "object",
@@ -4664,7 +5294,7 @@
                           "kind",
                           "artifactId"
                         ],
-                        "additionalProperties": false
+                        "additionalProperties": true
                       }
                     ]
                   },
@@ -4740,7 +5370,7 @@
               "completedAt",
               "expiresAt"
             ],
-            "additionalProperties": false
+            "additionalProperties": true
           },
           "replayed": {
             "type": "boolean"
@@ -4751,7 +5381,7 @@
           "preview",
           "replayed"
         ],
-        "additionalProperties": false,
+        "additionalProperties": true,
         "$defs": {
           "__schema0": {
             "anyOf": [
@@ -4780,6 +5410,38 @@
                 },
                 "additionalProperties": {
                   "$ref": "#/components/schemas/NodeTestExecuteAcceptedResponse/$defs/__schema0"
+                }
+              }
+            ],
+            "$ref": "#/components/schemas/NodeTestExecuteAcceptedResponse/$defs/__schema1"
+          },
+          "__schema1": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/NodeTestExecuteAcceptedResponse/$defs/__schema1"
+                }
+              },
+              {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/NodeTestExecuteAcceptedResponse/$defs/__schema1"
                 }
               }
             ]
@@ -4821,7 +5483,7 @@
                         "level",
                         "message"
                       ],
-                      "additionalProperties": false
+                      "additionalProperties": true
                     }
                   },
                   "truncated": {
@@ -4848,14 +5510,14 @@
                     "required": [
                       "message"
                     ],
-                    "additionalProperties": false
+                    "additionalProperties": true
                   }
                 },
                 "required": [
                   "logs",
                   "truncated"
                 ],
-                "additionalProperties": false
+                "additionalProperties": true
               },
               "id": {
                 "type": "string",
@@ -4930,7 +5592,7 @@
                   "mayCauseExternalSideEffect",
                   "dryRun"
                 ],
-                "additionalProperties": false
+                "additionalProperties": true
               },
               "output": {
                 "anyOf": [
@@ -4951,7 +5613,7 @@
                           "kind",
                           "value"
                         ],
-                        "additionalProperties": false
+                        "additionalProperties": true
                       },
                       {
                         "type": "object",
@@ -4970,7 +5632,7 @@
                           "kind",
                           "artifactId"
                         ],
-                        "additionalProperties": false
+                        "additionalProperties": true
                       }
                     ]
                   },
@@ -5046,13 +5708,13 @@
               "completedAt",
               "expiresAt"
             ],
-            "additionalProperties": false
+            "additionalProperties": true
           }
         },
         "required": [
           "preview"
         ],
-        "additionalProperties": false,
+        "additionalProperties": true,
         "$defs": {
           "__schema0": {
             "anyOf": [
@@ -5081,6 +5743,38 @@
                 },
                 "additionalProperties": {
                   "$ref": "#/components/schemas/PreviewRunResponse/$defs/__schema0"
+                }
+              }
+            ],
+            "$ref": "#/components/schemas/PreviewRunResponse/$defs/__schema1"
+          },
+          "__schema1": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/PreviewRunResponse/$defs/__schema1"
+                }
+              },
+              {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/PreviewRunResponse/$defs/__schema1"
                 }
               }
             ]

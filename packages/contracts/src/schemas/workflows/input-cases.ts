@@ -1,3 +1,4 @@
+import { responseSchema } from '../shared/response-schema.js';
 import { workflowExecutableChecksumSchema } from '@pertexo/workflow-model';
 import { utf8ByteLength } from '@pertexo/workflow-model';
 import { z } from 'zod';
@@ -163,15 +164,17 @@ export const workflowInputCaseSchema = workflowInputCaseMetadataSchema
     expectations: workflowTestExpectationsSchema.optional(),
   })
   .strict();
-export const workflowInputCaseResponseSchema = z
-  .object({ case: workflowInputCaseSchema })
-  .strict();
-export const workflowInputCaseListResponseSchema = z
-  .object({
-    items: z.array(workflowInputCaseMetadataSchema).max(100),
-    nextCursor: z.string().min(1).max(1_024).optional(),
-  })
-  .strict();
+export const workflowInputCaseResponseSchema = responseSchema(
+  z.object({ case: workflowInputCaseSchema }).strict(),
+);
+export const workflowInputCaseListResponseSchema = responseSchema(
+  z
+    .object({
+      items: z.array(workflowInputCaseMetadataSchema).max(100),
+      nextCursor: z.string().min(1).max(1_024).optional(),
+    })
+    .strict(),
+);
 export const workflowInputCaseQuerySchema = z
   .object({
     limit: z.coerce.number().int().min(1).max(100).default(20),
@@ -196,13 +199,15 @@ export const workflowInputCaseUpdateRequestSchema = z
     expectations: workflowTestExpectationsSchema.optional(),
   })
   .strict();
-export const workflowInputCaseCommandResponseSchema = z
-  .object({
-    caseId: z.uuid(),
-    revision: workflowInputCaseRevisionSchema,
-    replayed: z.boolean(),
-  })
-  .strict();
+export const workflowInputCaseCommandResponseSchema = responseSchema(
+  z
+    .object({
+      caseId: z.uuid(),
+      revision: workflowInputCaseRevisionSchema,
+      replayed: z.boolean(),
+    })
+    .strict(),
+);
 
 export type WorkflowInputCase = z.output<typeof workflowInputCaseSchema>;
 export type WorkflowInputCaseCreateRequest = z.output<

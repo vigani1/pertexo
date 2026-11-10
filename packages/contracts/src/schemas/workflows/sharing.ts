@@ -1,3 +1,4 @@
+import { responseSchema } from '../shared/response-schema.js';
 import { FOLDER_GRANT_LIMIT } from '@pertexo/workflow-model';
 import { z } from 'zod';
 import { workspaceRoleSchema } from '../identity/membership.js';
@@ -38,20 +39,23 @@ export const folderSharingRequestSchema = z
   })
   .strict()
   .refine((value) => value.mode === 'restricted' || value.grants.length === 0);
-export const folderSharingResponseSchema = z
-  .object({
-    folderId: id,
-    revision: z.number().int().positive(),
-    mode: z.enum(['workspace', 'restricted']),
-    grants: z.array(folderPrincipalSchema).max(FOLDER_GRANT_LIMIT),
-    labels: z
-      .record(id, z.string())
-      .refine((labels) => Object.keys(labels).length <= FOLDER_GRANT_LIMIT)
-      .optional(),
-  })
-  .strict();
-export const folderSharingCommandResponseSchema =
-  folderSharingResponseSchema.extend({ replayed: z.boolean() });
+export const folderSharingResponseSchema = responseSchema(
+  z
+    .object({
+      folderId: id,
+      revision: z.number().int().positive(),
+      mode: z.enum(['workspace', 'restricted']),
+      grants: z.array(folderPrincipalSchema).max(FOLDER_GRANT_LIMIT),
+      labels: z
+        .record(id, z.string())
+        .refine((labels) => Object.keys(labels).length <= FOLDER_GRANT_LIMIT)
+        .optional(),
+    })
+    .strict(),
+);
+export const folderSharingCommandResponseSchema = responseSchema(
+  folderSharingResponseSchema.extend({ replayed: z.boolean() }),
+);
 export const audienceReviewSchema = z
   .object({
     token: z.string().regex(/^[a-f0-9]{64}$/u),
@@ -88,9 +92,11 @@ export const workflowMoveReviewItemSchema = z
       .max(256),
   })
   .strict();
-export const workflowMoveReviewResponseSchema = z
-  .object({ items: z.array(workflowMoveReviewItemSchema).min(1).max(50) })
-  .strict();
+export const workflowMoveReviewResponseSchema = responseSchema(
+  z
+    .object({ items: z.array(workflowMoveReviewItemSchema).min(1).max(50) })
+    .strict(),
+);
 export type FolderSharingRequest = z.output<typeof folderSharingRequestSchema>;
 export type FolderSharing = z.output<typeof folderSharingResponseSchema>;
 export type FolderPrincipal = z.output<typeof folderPrincipalSchema>;
@@ -133,12 +139,14 @@ const sharingPrincipalSchema = z.discriminatedUnion('kind', [
     })
     .strict(),
 ]);
-export const sharingPrincipalsResponseSchema = z
-  .object({
-    items: z.array(sharingPrincipalSchema).max(100),
-    nextCursor: id.nullable(),
-  })
-  .strict();
+export const sharingPrincipalsResponseSchema = responseSchema(
+  z
+    .object({
+      items: z.array(sharingPrincipalSchema).max(100),
+      nextCursor: id.nullable(),
+    })
+    .strict(),
+);
 export type SharingPrincipalsQuery = z.output<
   typeof sharingPrincipalsQuerySchema
 >;

@@ -79,7 +79,7 @@
               "timeZone",
               "revision"
             ],
-            "additionalProperties": false
+            "additionalProperties": true
           },
           "effective": {
             "type": "object",
@@ -111,7 +111,7 @@
               "hour",
               "timeZone"
             ],
-            "additionalProperties": false
+            "additionalProperties": true
           },
           "canManageDefaults": {
             "type": "boolean"
@@ -142,7 +142,7 @@
           "emailAvailable",
           "emailUnavailableReason"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "NoticePreferencesRequest": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -211,7 +211,7 @@
           "changed",
           "replayed"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "NoticeDefaultsRequest": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -273,7 +273,7 @@
           "followed",
           "muted"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "NoticeSubscriptionRequest": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -310,7 +310,7 @@
         "required": [
           "unsubscribed"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "NoticeUnsubscribeRequest": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -607,7 +607,7 @@
                           "day",
                           "count"
                         ],
-                        "additionalProperties": false
+                        "additionalProperties": true
                       }
                     },
                     "occurrenceCount": {
@@ -683,7 +683,7 @@
                             "definitionKey",
                             "safeErrorCode"
                           ],
-                          "additionalProperties": false
+                          "additionalProperties": true
                         },
                         {
                           "type": "null"
@@ -713,7 +713,7 @@
                     "revision",
                     "unread"
                   ],
-                  "additionalProperties": false
+                  "additionalProperties": true
                 },
                 {
                   "anyOf": [
@@ -841,7 +841,7 @@
                         "unread",
                         "limits"
                       ],
-                      "additionalProperties": false
+                      "additionalProperties": true
                     },
                     {
                       "type": "object",
@@ -873,7 +873,7 @@
                           "default": {},
                           "type": "object",
                           "properties": {},
-                          "additionalProperties": false
+                          "additionalProperties": true
                         },
                         "occurrenceCount": {
                           "type": "integer",
@@ -930,7 +930,7 @@
                         "threadId",
                         "commentId"
                       ],
-                      "additionalProperties": false
+                      "additionalProperties": true
                     }
                   ]
                 }
@@ -959,7 +959,7 @@
           "nextCursor",
           "revision"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "WorkspaceInboxSummaryResponse": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -979,7 +979,7 @@
           "unreadCount",
           "revision"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "WorkspaceInboxReadRequest": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -1017,7 +1017,7 @@
           "unread",
           "revision"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "WorkspaceInboxReadAllRequest": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -1046,7 +1046,7 @@
         "required": [
           "marked"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "WorkspaceInboxStreamEvent": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",

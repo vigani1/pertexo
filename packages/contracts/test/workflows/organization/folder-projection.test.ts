@@ -41,9 +41,15 @@ describe('accepted folder and general-bulk public contracts', () => {
         })
         .items.map((item) => item.workflowId),
     ).toEqual([b, a]);
+    expect(
+      schemas1.workflowOrganizationBulkResponseSchema.parse({
+        items: [
+          { workflowId: a, status: 'forbidden', organizationRevision: 1 },
+        ],
+      }),
+    ).toEqual({ items: [{ workflowId: a, status: 'forbidden' }] });
     for (const outcomes of [
       [{ workflowId: a, status: 'not_processed' }],
-      [{ workflowId: a, status: 'forbidden', organizationRevision: 1 }],
       [
         { workflowId: a, status: 'forbidden' },
         {
@@ -120,7 +126,7 @@ describe('accepted folder and general-bulk public contracts', () => {
     );
   });
 
-  it('registers only sanitized folder conflict fields and projects strict client/OpenAPI shapes', () => {
+  it('registers sanitized folder conflicts and compatible response projections', () => {
     for (const suffix of [
       'name_conflict',
       'limit_exceeded',
@@ -175,7 +181,11 @@ describe('accepted folder and general-bulk public contracts', () => {
             { additionalProperties: false },
           ],
         });
-      } else expect(client[name]).toHaveProperty('additionalProperties', false);
+      } else
+        expect(client[name]).toHaveProperty(
+          'additionalProperties',
+          name === 'WorkflowOrganizationBulkResponse',
+        );
       for (const projection of [
         {
           $ref: `#/components/schemas/${name}`,
@@ -185,7 +195,9 @@ describe('accepted folder and general-bulk public contracts', () => {
       ]) {
         const validate = ajv.compile(projection);
         expect(validate(valid), JSON.stringify(validate.errors)).toBe(true);
-        expect(validate(invalid)).toBe(false);
+        expect(validate(invalid)).toBe(
+          name === 'WorkflowOrganizationBulkResponse',
+        );
       }
     }
   });

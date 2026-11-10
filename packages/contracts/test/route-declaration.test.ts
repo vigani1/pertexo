@@ -1,3 +1,4 @@
+import { responseSchema } from '../src/schemas/shared/response-schema.js';
 import { describe, expect, expectTypeOf, it } from 'vitest';
 import { z } from 'zod';
 import { defineRoute, named } from '../src/routes/define.js';
@@ -17,7 +18,7 @@ describe('route declaration contracts', () => {
     success: {
       status: 200,
       description: 'Qualified',
-      body: named('Qualified', z.object({ id: z.uuid() })),
+      body: named('Qualified', responseSchema(z.object({ id: z.uuid() }))),
     },
     problems: {},
   });
@@ -31,7 +32,17 @@ describe('route declaration contracts', () => {
         params: z.object({ itemId: z.uuid(), surplus: z.string() }),
       }),
     ).toThrow(/parameters/u);
-    expect(defineRoute(valid)).toEqual(valid);
+    expect(
+      defineRoute(valid).params.safeParse({
+        itemId: '11111111-1111-4111-8111-111111111111',
+      }).success,
+    ).toBe(true);
+    expect(
+      defineRoute(valid).params.safeParse({
+        itemId: '11111111-1111-4111-8111-111111111111',
+        extra: true,
+      }).success,
+    ).toBe(false);
   });
   it('preserves literal path, method and component keys through the real document composition', () => {
     expectTypeOf(authoringRoutes.create.method).toEqualTypeOf<'post'>();

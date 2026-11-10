@@ -126,8 +126,8 @@ The new web app and CLI request these projections. Tabs still on older assets an
 clients using older strict contracts receive the old default shapes, including
 write responses. Public response decoders now strip unrecognized object members,
 including nested metadata, while validating known fields. Arbitrary JSON/config
-maps keep their declared contents. Request/query schemas remain strict. Stored
-portable documents keep their versioned format contract.
+maps keep their declared contents. Request/query schemas remain strict. HTTP export responses follow the same tolerant decoder policy. Stored
+portable documents and import requests keep their versioned format contract.
 
 ## Commands and matching HTTP calls
 

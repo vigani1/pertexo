@@ -1,5 +1,8 @@
+import { z } from 'zod';
+import { responseSchema } from '../src/schemas/shared/response-schema.js';
 import { expect, it } from 'vitest';
 import {
+  apiProblemSchema,
   workflowDraftResponseSchema,
   workflowDraftSaveRequestSchema,
   workflowListResponseSchema,
@@ -107,4 +110,49 @@ it('strips future template-origin metadata while retaining the recorded origin',
       templateOrigin: { ...origin, futureMetadata: true },
     }),
   ).toEqual({ workflow, templateOrigin: origin });
+});
+
+it('strips future metadata from problem details and their error items', () => {
+  const problem = {
+    type: 'urn:pertexo:problem:request.invalid',
+    title: 'Invalid request',
+    status: 400,
+    code: 'request.invalid',
+    requestId: 'compatibility',
+    errors: [{ path: '$.name', code: 'invalid', message: 'Invalid name' }],
+  };
+  expect(
+    apiProblemSchema.parse({
+      ...problem,
+      futureMetadata: true,
+      errors: problem.errors.map((error) => ({
+        ...error,
+        futureMetadata: true,
+      })),
+    }),
+  ).toEqual(problem);
+});
+
+it('strips nested metadata after a shared lazy request schema has already been used', () => {
+  interface Tree {
+    name: string;
+    children?: Tree[] | undefined;
+  }
+  const request: z.ZodType<Tree> = z.lazy(() =>
+    z
+      .object({
+        name: z.string(),
+        children: request.array().optional(),
+      })
+      .strict(),
+  );
+  const clean = { name: 'root', children: [{ name: 'child' }] };
+  expect(request.parse(clean)).toEqual(clean);
+  const extended = {
+    ...clean,
+    futureMetadata: true,
+    children: [{ name: 'child', futureMetadata: true }],
+  };
+  expect(responseSchema(request).parse(extended)).toEqual(clean);
+  expect(request.safeParse(extended).success).toBe(false);
 });

@@ -1,3 +1,4 @@
+import { responseSchema } from '../shared/response-schema.js';
 import {
   ianaTimeZoneSchema,
   noticeEmailModeSchema,
@@ -14,19 +15,21 @@ export const noticePreferencesRequestSchema = noticeScheduleSchema
 export const noticeDefaultsRequestSchema = noticeScheduleSchema
   .extend({ expectedRevision: revision })
   .strict();
-export const noticePreferencesResponseSchema = z
-  .object({
-    revision,
-    mode: noticeEmailModeSchema.nullable(),
-    hour: z.number().int().min(0).max(23),
-    timeZone: ianaTimeZoneSchema,
-    defaults: noticeScheduleSchema.extend({ revision }).strict(),
-    effective: noticeScheduleSchema,
-    canManageDefaults: z.boolean(),
-    emailAvailable: z.boolean(),
-    emailUnavailableReason: z.string().max(300).nullable(),
-  })
-  .strict();
+export const noticePreferencesResponseSchema = responseSchema(
+  z
+    .object({
+      revision,
+      mode: noticeEmailModeSchema.nullable(),
+      hour: z.number().int().min(0).max(23),
+      timeZone: ianaTimeZoneSchema,
+      defaults: noticeScheduleSchema.extend({ revision }).strict(),
+      effective: noticeScheduleSchema,
+      canManageDefaults: z.boolean(),
+      emailAvailable: z.boolean(),
+      emailUnavailableReason: z.string().max(300).nullable(),
+    })
+    .strict(),
+);
 export const noticeSubjectParamsSchema = z
   .object({
     workspaceId: z.uuid(),
@@ -34,16 +37,16 @@ export const noticeSubjectParamsSchema = z
     subjectId: z.uuid(),
   })
   .strict();
-export const noticeSubscriptionSchema = z
-  .object({ revision, followed: z.boolean(), muted: z.boolean() })
-  .strict();
+export const noticeSubscriptionSchema = responseSchema(
+  z.object({ revision, followed: z.boolean(), muted: z.boolean() }).strict(),
+);
 export const noticeSubscriptionRequestSchema = noticeSubscriptionSchema
   .omit({ revision: true })
   .extend({ expectedRevision: revision })
   .strict();
-export const noticeCommandResponseSchema = z
-  .object({ revision, changed: z.boolean(), replayed: z.boolean() })
-  .strict();
+export const noticeCommandResponseSchema = responseSchema(
+  z.object({ revision, changed: z.boolean(), replayed: z.boolean() }).strict(),
+);
 export const noticeOneClickQuerySchema = z
   .object({
     token: z
@@ -53,9 +56,9 @@ export const noticeOneClickQuerySchema = z
       .regex(/^[A-Za-z0-9_-]+$/u),
   })
   .strict();
-export const noticeUnsubscribeResponseSchema = z
-  .object({ unsubscribed: z.literal(true) })
-  .strict();
+export const noticeUnsubscribeResponseSchema = responseSchema(
+  z.object({ unsubscribed: z.literal(true) }).strict(),
+);
 export type NoticeEmailMode = z.output<typeof noticeEmailModeSchema>;
 export type { NoticeSchedule } from '@pertexo/workflow-model';
 export type NoticePreferencesRequest = z.output<

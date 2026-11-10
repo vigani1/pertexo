@@ -113,40 +113,42 @@ export const workflowRunCancelRequestSchema = z
   .object({ reason: storageTextSchema.trim().min(1).max(500).optional() })
   .strict();
 
-export const workflowRunSummarySchema = z
-  .object({
-    id: workflowRunIdentifierSchema,
-    workspaceId: z.uuid(),
-    workflowId: z.uuid(),
-    workflowVersionId: z.uuid(),
-    status: workflowRunStatusSchema,
-    failureReasonCode: runFailureCodeSchema.nullable().optional(),
-    triggerType: workflowRunTriggerTypeSchema,
-    createdAt: z.iso.datetime({ offset: true }),
-    updatedAt: z.iso.datetime({ offset: true }),
-    startedAt: z.iso.datetime({ offset: true }).nullable(),
-    completedAt: z.iso.datetime({ offset: true }).nullable(),
-    deadlineAt: z.iso.datetime({ offset: true }).nullable(),
-    cancelRequestedAt: z.iso.datetime({ offset: true }).nullable(),
-    hasHumanTasks: z.boolean().optional(),
-    runValues: runValuesSchema.optional(),
-    humanWait: z
-      .object({
-        since: z.iso.datetime(),
-        remainingExecutionMs: z
-          .number()
-          .int()
-          .positive()
-          .max(3600000)
-          .nullable(),
-        absoluteDeadlineAt: z.iso.datetime().nullable(),
-      })
-      .strict()
-      .optional(),
-    recovery: workflowRecoverySummarySchema.optional(),
-    handledFailureCount: z.number().int().min(0).max(200).optional(),
-  })
-  .strict();
+export const workflowRunSummarySchema = responseSchema(
+  z
+    .object({
+      id: workflowRunIdentifierSchema,
+      workspaceId: z.uuid(),
+      workflowId: z.uuid(),
+      workflowVersionId: z.uuid(),
+      status: workflowRunStatusSchema,
+      failureReasonCode: runFailureCodeSchema.nullable().optional(),
+      triggerType: workflowRunTriggerTypeSchema,
+      createdAt: z.iso.datetime({ offset: true }),
+      updatedAt: z.iso.datetime({ offset: true }),
+      startedAt: z.iso.datetime({ offset: true }).nullable(),
+      completedAt: z.iso.datetime({ offset: true }).nullable(),
+      deadlineAt: z.iso.datetime({ offset: true }).nullable(),
+      cancelRequestedAt: z.iso.datetime({ offset: true }).nullable(),
+      hasHumanTasks: z.boolean().optional(),
+      runValues: runValuesSchema.optional(),
+      humanWait: z
+        .object({
+          since: z.iso.datetime(),
+          remainingExecutionMs: z
+            .number()
+            .int()
+            .positive()
+            .max(3600000)
+            .nullable(),
+          absoluteDeadlineAt: z.iso.datetime().nullable(),
+        })
+        .strict()
+        .optional(),
+      recovery: workflowRecoverySummarySchema.optional(),
+      handledFailureCount: z.number().int().min(0).max(200).optional(),
+    })
+    .strict(),
+);
 
 export const workflowRunAdmissionBlockersSchema = z
   .object({
@@ -160,19 +162,21 @@ export const workflowRunAdmissionBlockersSchema = z
   })
   .strict();
 
-export const workflowRunReadSummarySchema = workflowRunSummarySchema
-  .extend({
-    workflowName: workflowNameSchema.nullable().optional(),
-    /** The run a replay was started from (ADR 050). */
-    replaySourceRunId: workflowRunIdentifierSchema.nullable().optional(),
-    admissionBlockers: workflowRunAdmissionBlockersSchema.optional(),
-    /** The run's next step passed its time and no worker has acted on it yet. */
-    stalled: z
-      .object({ since: z.iso.datetime({ offset: true }) })
-      .strict()
-      .optional(),
-  })
-  .strict();
+export const workflowRunReadSummarySchema = responseSchema(
+  workflowRunSummarySchema
+    .extend({
+      workflowName: workflowNameSchema.nullable().optional(),
+      /** The run a replay was started from (ADR 050). */
+      replaySourceRunId: workflowRunIdentifierSchema.nullable().optional(),
+      admissionBlockers: workflowRunAdmissionBlockersSchema.optional(),
+      /** The run's next step passed its time and no worker has acted on it yet. */
+      stalled: z
+        .object({ since: z.iso.datetime({ offset: true }) })
+        .strict()
+        .optional(),
+    })
+    .strict(),
+);
 
 /** The step that explains an unsuccessful run, for run lists (ADR 050). */
 export const workflowRunFailedStepSchema = z
@@ -262,42 +266,44 @@ const capacityCountSchema = z
   .max(Number.MAX_SAFE_INTEGER);
 
 /** ADR057: operational capacity is separate from retained run activity. */
-export const usageCapacityResponseSchema = z
-  .object({
-    asOf: workflowRunStatisticsTimestampSchema,
-    execution: z
-      .object({
-        activeRuns: capacityCountSchema,
-        reservedActiveSlots: capacityCountSchema,
-        activeCapacityConsumed: capacityCountSchema,
-        queuedRuns: capacityCountSchema,
-        policy: z
-          .object({
-            state: z.enum([
-              'active',
-              'suspended',
-              'not_yet_effective',
-              'expired',
-              'unavailable',
-            ]),
-            version: z.number().int().positive().nullable(),
-            activeRunLimit: z.number().int().min(1).max(10_000).nullable(),
-            queuedRunLimit: z.number().int().min(1).max(100_000).nullable(),
-          })
-          .strict(),
-      })
-      .strict(),
-    artifacts: z
-      .object({
-        chargedBytes: capacityBytesSchema,
-        byteLimit: capacityBytesSchema,
-        chargedCount: capacityCountSchema,
-        artifactCountLimit: capacityCountSchema,
-        source: z.enum(['stored', 'default']),
-      })
-      .strict(),
-  })
-  .strict();
+export const usageCapacityResponseSchema = responseSchema(
+  z
+    .object({
+      asOf: workflowRunStatisticsTimestampSchema,
+      execution: z
+        .object({
+          activeRuns: capacityCountSchema,
+          reservedActiveSlots: capacityCountSchema,
+          activeCapacityConsumed: capacityCountSchema,
+          queuedRuns: capacityCountSchema,
+          policy: z
+            .object({
+              state: z.enum([
+                'active',
+                'suspended',
+                'not_yet_effective',
+                'expired',
+                'unavailable',
+              ]),
+              version: z.number().int().positive().nullable(),
+              activeRunLimit: z.number().int().min(1).max(10_000).nullable(),
+              queuedRunLimit: z.number().int().min(1).max(100_000).nullable(),
+            })
+            .strict(),
+        })
+        .strict(),
+      artifacts: z
+        .object({
+          chargedBytes: capacityBytesSchema,
+          byteLimit: capacityBytesSchema,
+          chargedCount: capacityCountSchema,
+          artifactCountLimit: capacityCountSchema,
+          source: z.enum(['stored', 'default']),
+        })
+        .strict(),
+    })
+    .strict(),
+);
 
 export type UsageCapacityResponse = z.infer<typeof usageCapacityResponseSchema>;
 
@@ -329,56 +335,60 @@ const workflowRunWorkflowStatisticsSchema = z
   })
   .strict();
 
-export const workflowRunStatisticsResponseSchema = z
-  .object({
-    asOf: workflowRunStatisticsTimestampSchema,
-    current: workflowRunCurrentCountsSchema,
-    window: z
-      .object({
-        duration: workflowRunStatisticsWindowSchema,
-        createdAtFrom: workflowRunStatisticsTimestampSchema,
-        createdAtBefore: workflowRunStatisticsTimestampSchema,
-        total: workflowRunCountSchema,
-        skippedTriggerEvents: workflowRunCountSchema.optional(),
-        coordinatedTriggerEvents: workflowRunCountSchema.optional(),
-        byStatus: workflowRunStatusCountsSchema,
-      })
-      .strict(),
-    workflows: z
-      .object({
-        items: z
-          .array(workflowRunWorkflowStatisticsSchema)
-          .max(WORKFLOW_RUN_STATISTICS_WORKFLOW_LIMIT),
-        truncated: z.boolean(),
-      })
-      .strict()
-      .nullable(),
-  })
-  .strict();
+export const workflowRunStatisticsResponseSchema = responseSchema(
+  z
+    .object({
+      asOf: workflowRunStatisticsTimestampSchema,
+      current: workflowRunCurrentCountsSchema,
+      window: z
+        .object({
+          duration: workflowRunStatisticsWindowSchema,
+          createdAtFrom: workflowRunStatisticsTimestampSchema,
+          createdAtBefore: workflowRunStatisticsTimestampSchema,
+          total: workflowRunCountSchema,
+          skippedTriggerEvents: workflowRunCountSchema.optional(),
+          coordinatedTriggerEvents: workflowRunCountSchema.optional(),
+          byStatus: workflowRunStatusCountsSchema,
+        })
+        .strict(),
+      workflows: z
+        .object({
+          items: z
+            .array(workflowRunWorkflowStatisticsSchema)
+            .max(WORKFLOW_RUN_STATISTICS_WORKFLOW_LIMIT),
+          truncated: z.boolean(),
+        })
+        .strict()
+        .nullable(),
+    })
+    .strict(),
+);
 
-export const workflowNodeRunSummarySchema = z
-  .object({
-    id: z.uuid(),
-    nodeId: z.string().min(1).max(256),
-    invocationKey: z.string().min(1).max(1_024),
-    status: workflowNodeRunStatusSchema,
-    currentAttemptNumber: z.number().int().nonnegative(),
-    reused: workflowNodeReuseSchema.optional(),
-    failureHandling: z
-      .object({
-        entryInvocationKey: z.string().min(1).max(256),
-        sinkInvocationKey: z.string().min(1).max(256),
-        disposition: z.enum(['pending', 'handled']),
-      })
-      .strict()
-      .optional(),
-    startedAt: z.iso.datetime({ offset: true }).nullable(),
-    completedAt: z.iso.datetime({ offset: true }).nullable(),
-    resumeAt: z.iso.datetime({ offset: true }).nullable(),
-    errorSummary: z.string().max(2048).nullable().optional(),
-    safeErrorCode: z.string().min(1).max(128).nullable(),
-  })
-  .strict();
+export const workflowNodeRunSummarySchema = responseSchema(
+  z
+    .object({
+      id: z.uuid(),
+      nodeId: z.string().min(1).max(256),
+      invocationKey: z.string().min(1).max(1_024),
+      status: workflowNodeRunStatusSchema,
+      currentAttemptNumber: z.number().int().nonnegative(),
+      reused: workflowNodeReuseSchema.optional(),
+      failureHandling: z
+        .object({
+          entryInvocationKey: z.string().min(1).max(256),
+          sinkInvocationKey: z.string().min(1).max(256),
+          disposition: z.enum(['pending', 'handled']),
+        })
+        .strict()
+        .optional(),
+      startedAt: z.iso.datetime({ offset: true }).nullable(),
+      completedAt: z.iso.datetime({ offset: true }).nullable(),
+      resumeAt: z.iso.datetime({ offset: true }).nullable(),
+      errorSummary: z.string().max(2048).nullable().optional(),
+      safeErrorCode: z.string().min(1).max(128).nullable(),
+    })
+    .strict(),
+);
 
 export const workflowNodeRunParamsSchema = z
   .object({
@@ -594,9 +604,9 @@ export type WorkflowRunCancelResponse = z.output<
   typeof workflowRunCancelResponseSchema
 >;
 
-export const workflowNodeRunDiagnosticsResponseSchema = z
-  .object({ diagnostics: codeDiagnosticsSchema.nullable() })
-  .strict();
+export const workflowNodeRunDiagnosticsResponseSchema = responseSchema(
+  z.object({ diagnostics: codeDiagnosticsSchema.nullable() }).strict(),
+);
 export type WorkflowNodeRunDiagnosticsResponse = z.output<
   typeof workflowNodeRunDiagnosticsResponseSchema
 >;

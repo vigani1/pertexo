@@ -256,7 +256,7 @@
                   "runId",
                   "replayed"
                 ],
-                "additionalProperties": false
+                "additionalProperties": true
               },
               {
                 "type": "object",
@@ -274,7 +274,7 @@
                   "skipped",
                   "reason"
                 ],
-                "additionalProperties": false
+                "additionalProperties": true
               }
             ]
           },
@@ -339,7 +339,7 @@
               "status",
               "reason"
             ],
-            "additionalProperties": false
+            "additionalProperties": true
           }
         ]
       },
@@ -1392,7 +1392,7 @@
                   "mode",
                   "allowedOrigins"
                 ],
-                "additionalProperties": false
+                "additionalProperties": true
               },
               {
                 "type": "object",
@@ -1414,7 +1414,7 @@
                   "mode",
                   "allowedOrigins"
                 ],
-                "additionalProperties": false
+                "additionalProperties": true
               },
               {
                 "type": "object",
@@ -1443,7 +1443,7 @@
                   "headerName",
                   "allowedOrigins"
                 ],
-                "additionalProperties": false
+                "additionalProperties": true
               }
             ]
           }
@@ -1454,7 +1454,7 @@
           "expiresAt",
           "authentication"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "WebhookTestEventSnapshot": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -1533,7 +1533,7 @@
                   "kind",
                   "value"
                 ],
-                "additionalProperties": false
+                "additionalProperties": true
               },
               {
                 "type": "null"
@@ -1546,7 +1546,7 @@
           "expiresAt",
           "output"
         ],
-        "additionalProperties": false,
+        "additionalProperties": true,
         "$defs": {
           "__schema0": {
             "anyOf": [
@@ -1575,6 +1575,38 @@
                 },
                 "additionalProperties": {
                   "$ref": "#/components/schemas/WebhookTestEventSnapshot/$defs/__schema0"
+                }
+              }
+            ],
+            "$ref": "#/components/schemas/WebhookTestEventSnapshot/$defs/__schema1"
+          },
+          "__schema1": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/WebhookTestEventSnapshot/$defs/__schema1"
+                }
+              },
+              {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/WebhookTestEventSnapshot/$defs/__schema1"
                 }
               }
             ]

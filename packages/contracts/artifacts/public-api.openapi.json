@@ -9581,7 +9581,7 @@
                 "revision",
                 "values"
               ],
-              "additionalProperties": false
+              "additionalProperties": true
             }
           },
           "affected": {
@@ -9598,7 +9598,7 @@
           "affected",
           "hasMore"
         ],
-        "additionalProperties": false,
+        "additionalProperties": true,
         "$defs": {
           "__schema0": {
             "anyOf": [
@@ -9627,6 +9627,38 @@
                 },
                 "additionalProperties": {
                   "$ref": "#/components/schemas/DataTableResult/$defs/__schema0"
+                }
+              }
+            ],
+            "$ref": "#/components/schemas/DataTableResult/$defs/__schema1"
+          },
+          "__schema1": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/DataTableResult/$defs/__schema1"
+                }
+              },
+              {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/DataTableResult/$defs/__schema1"
                 }
               }
             ]
@@ -20882,7 +20914,7 @@
                         "nodeId",
                         "port"
                       ],
-                      "additionalProperties": false
+                      "additionalProperties": true
                     },
                     "target": {
                       "type": "object",
@@ -20902,7 +20934,7 @@
                         "nodeId",
                         "port"
                       ],
-                      "additionalProperties": false
+                      "additionalProperties": true
                     }
                   },
                   "required": [
@@ -20910,7 +20942,7 @@
                     "source",
                     "target"
                   ],
-                  "additionalProperties": false
+                  "additionalProperties": true
                 }
               },
               "settings": {
@@ -20922,7 +20954,7 @@
                     "maximum": 3600000
                   }
                 },
-                "additionalProperties": false
+                "additionalProperties": true
               },
               "callable": {
                 "type": "object",
@@ -20951,7 +20983,7 @@
                           "kind",
                           "name"
                         ],
-                        "additionalProperties": false
+                        "additionalProperties": true
                       },
                       {
                         "type": "object",
@@ -20968,7 +21000,7 @@
                           "kind",
                           "value"
                         ],
-                        "additionalProperties": false
+                        "additionalProperties": true
                       },
                       {
                         "type": "object",
@@ -20985,7 +21017,7 @@
                           "kind",
                           "path"
                         ],
-                        "additionalProperties": false
+                        "additionalProperties": true
                       },
                       {
                         "type": "object",
@@ -21008,7 +21040,7 @@
                           "nodeId",
                           "path"
                         ],
-                        "additionalProperties": false
+                        "additionalProperties": true
                       },
                       {
                         "type": "object",
@@ -21031,7 +21063,7 @@
                           "nodeId",
                           "path"
                         ],
-                        "additionalProperties": false
+                        "additionalProperties": true
                       },
                       {
                         "type": "object",
@@ -21053,7 +21085,7 @@
                           "language",
                           "expression"
                         ],
-                        "additionalProperties": false
+                        "additionalProperties": true
                       },
                       {
                         "type": "object",
@@ -21076,7 +21108,7 @@
                           "port",
                           "path"
                         ],
-                        "additionalProperties": false
+                        "additionalProperties": true
                       }
                     ]
                   }
@@ -21086,7 +21118,7 @@
                   "resultType",
                   "result"
                 ],
-                "additionalProperties": false
+                "additionalProperties": true
               },
               "notes": {
                 "maxItems": 100,
@@ -21121,7 +21153,7 @@
                         "x",
                         "y"
                       ],
-                      "additionalProperties": false
+                      "additionalProperties": true
                     },
                     "size": {
                       "type": "object",
@@ -21141,7 +21173,7 @@
                         "width",
                         "height"
                       ],
-                      "additionalProperties": false
+                      "additionalProperties": true
                     },
                     "color": {
                       "type": "string",
@@ -21161,7 +21193,7 @@
                     "size",
                     "color"
                   ],
-                  "additionalProperties": false
+                  "additionalProperties": true
                 }
               }
             },
@@ -21170,7 +21202,7 @@
               "edges",
               "settings"
             ],
-            "additionalProperties": false
+            "additionalProperties": true
           },
           "requirements": {
             "type": "object",
@@ -21202,14 +21234,14 @@
                     "version",
                     "configVersion"
                   ],
-                  "additionalProperties": false
+                  "additionalProperties": true
                 }
               }
             },
             "required": [
               "definitions"
             ],
-            "additionalProperties": false
+            "additionalProperties": true
           },
           "connectionSlots": {
             "maxItems": 1000,
@@ -21244,7 +21276,7 @@
                 "providerKey",
                 "authType"
               ],
-              "additionalProperties": false
+              "additionalProperties": true
             }
           }
         },
@@ -21254,7 +21286,7 @@
           "requirements",
           "connectionSlots"
         ],
-        "additionalProperties": false,
+        "additionalProperties": true,
         "$defs": {
           "__schema0": {
             "type": "object",
@@ -21282,7 +21314,7 @@
                   "key",
                   "version"
                 ],
-                "additionalProperties": false
+                "additionalProperties": true
               },
               "position": {
                 "type": "object",
@@ -21298,7 +21330,7 @@
                   "x",
                   "y"
                 ],
-                "additionalProperties": false
+                "additionalProperties": true
               },
               "configVersion": {
                 "type": "integer",
@@ -21337,7 +21369,7 @@
                         "kind",
                         "name"
                       ],
-                      "additionalProperties": false
+                      "additionalProperties": true
                     },
                     {
                       "type": "object",
@@ -21354,7 +21386,7 @@
                         "kind",
                         "value"
                       ],
-                      "additionalProperties": false
+                      "additionalProperties": true
                     },
                     {
                       "type": "object",
@@ -21371,7 +21403,7 @@
                         "kind",
                         "path"
                       ],
-                      "additionalProperties": false
+                      "additionalProperties": true
                     },
                     {
                       "type": "object",
@@ -21394,7 +21426,7 @@
                         "nodeId",
                         "path"
                       ],
-                      "additionalProperties": false
+                      "additionalProperties": true
                     },
                     {
                       "type": "object",
@@ -21417,7 +21449,7 @@
                         "nodeId",
                         "path"
                       ],
-                      "additionalProperties": false
+                      "additionalProperties": true
                     },
                     {
                       "type": "object",
@@ -21439,7 +21471,7 @@
                         "language",
                         "expression"
                       ],
-                      "additionalProperties": false
+                      "additionalProperties": true
                     },
                     {
                       "type": "object",
@@ -21462,7 +21494,7 @@
                         "port",
                         "path"
                       ],
-                      "additionalProperties": false
+                      "additionalProperties": true
                     }
                   ]
                 }
@@ -21503,7 +21535,7 @@
                   "maximumAttempts",
                   "delayMillis"
                 ],
-                "additionalProperties": false
+                "additionalProperties": true
               },
               "structured": {
                 "type": "object",
@@ -21559,7 +21591,7 @@
                                 "nodeId",
                                 "port"
                               ],
-                              "additionalProperties": false
+                              "additionalProperties": true
                             },
                             "target": {
                               "type": "object",
@@ -21579,7 +21611,7 @@
                                 "nodeId",
                                 "port"
                               ],
-                              "additionalProperties": false
+                              "additionalProperties": true
                             }
                           },
                           "required": [
@@ -21587,7 +21619,7 @@
                             "source",
                             "target"
                           ],
-                          "additionalProperties": false
+                          "additionalProperties": true
                         }
                       },
                       "settings": {
@@ -21599,7 +21631,7 @@
                             "maximum": 3600000
                           }
                         },
-                        "additionalProperties": false
+                        "additionalProperties": true
                       },
                       "inputPorts": {
                         "type": "array",
@@ -21625,7 +21657,7 @@
                       "inputPorts",
                       "outputPorts"
                     ],
-                    "additionalProperties": false
+                    "additionalProperties": true
                   }
                 },
                 "required": [
@@ -21634,7 +21666,7 @@
                   "maxConcurrency",
                   "body"
                 ],
-                "additionalProperties": false
+                "additionalProperties": true
               }
             },
             "required": [
@@ -21646,7 +21678,7 @@
               "inputMappings",
               "connectionRefs"
             ],
-            "additionalProperties": false
+            "additionalProperties": true
           },
           "__schema1": {
             "anyOf": [
@@ -21723,7 +21755,7 @@
                 "required": [
                   "type"
                 ],
-                "additionalProperties": false
+                "additionalProperties": true
               },
               {
                 "type": "object",
@@ -21736,7 +21768,7 @@
                 "required": [
                   "type"
                 ],
-                "additionalProperties": false
+                "additionalProperties": true
               },
               {
                 "type": "object",
@@ -21749,7 +21781,7 @@
                 "required": [
                   "type"
                 ],
-                "additionalProperties": false
+                "additionalProperties": true
               },
               {
                 "type": "object",
@@ -21762,7 +21794,7 @@
                 "required": [
                   "type"
                 ],
-                "additionalProperties": false
+                "additionalProperties": true
               },
               {
                 "type": "object",
@@ -21785,7 +21817,7 @@
                   "items",
                   "maxItems"
                 ],
-                "additionalProperties": false
+                "additionalProperties": true
               },
               {
                 "type": "object",
@@ -21817,7 +21849,7 @@
                         "valueType",
                         "required"
                       ],
-                      "additionalProperties": false
+                      "additionalProperties": true
                     }
                   }
                 },
@@ -21825,7 +21857,7 @@
                   "type",
                   "properties"
                 ],
-                "additionalProperties": false
+                "additionalProperties": true
               }
             ]
           }

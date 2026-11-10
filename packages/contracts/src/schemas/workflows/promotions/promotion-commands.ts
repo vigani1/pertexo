@@ -1,3 +1,4 @@
+import { responseSchema } from '../../shared/response-schema.js';
 import { storageTextSchema } from '@pertexo/workflow-model';
 import { z } from 'zod';
 import {
@@ -21,28 +22,30 @@ export const workflowPromotionApplySchema =
       note: storageTextSchema.trim().min(1).max(1000).optional(),
     })
     .strict();
-export const workflowPromotionResultSchema = z
-  .object({
-    promotionId: id,
-    sourceWorkspaceId: id,
-    targetWorkspaceId: id,
-    replayed: z.boolean(),
-    items: z
-      .array(
-        z
-          .object({
-            sourceWorkflowId: id,
-            targetWorkflowId: id,
-            revision: z.number().int().positive(),
-            publishedVersionId: id.nullable(),
-            versionNumber: z.number().int().positive().nullable(),
-            publicationRequestId: id.nullable(),
-          })
-          .strict(),
-      )
-      .max(PROMOTION_LIMITS.workflows),
-  })
-  .strict();
+export const workflowPromotionResultSchema = responseSchema(
+  z
+    .object({
+      promotionId: id,
+      sourceWorkspaceId: id,
+      targetWorkspaceId: id,
+      replayed: z.boolean(),
+      items: z
+        .array(
+          z
+            .object({
+              sourceWorkflowId: id,
+              targetWorkflowId: id,
+              revision: z.number().int().positive(),
+              publishedVersionId: id.nullable(),
+              versionNumber: z.number().int().positive().nullable(),
+              publicationRequestId: id.nullable(),
+            })
+            .strict(),
+        )
+        .max(PROMOTION_LIMITS.workflows),
+    })
+    .strict(),
+);
 export type WorkflowPromotionApply = z.output<
   typeof workflowPromotionApplySchema
 >;

@@ -4613,7 +4613,7 @@
                 "label",
                 "active"
               ],
-              "additionalProperties": false
+              "additionalProperties": true
             }
           }
         },
@@ -4623,7 +4623,7 @@
           "revision",
           "members"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "ConnectionSharingRequest": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -4702,7 +4702,7 @@
                 "label",
                 "active"
               ],
-              "additionalProperties": false
+              "additionalProperties": true
             }
           },
           "replayed": {
@@ -4716,7 +4716,7 @@
           "members",
           "replayed"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "ConnectionUsageResponse": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -4778,7 +4778,7 @@
                 "isCurrentPublication",
                 "operationKeys"
               ],
-              "additionalProperties": false
+              "additionalProperties": true
             }
           },
           "nextCursor": {
@@ -4798,7 +4798,7 @@
           "items",
           "nextCursor"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "ConnectionRotateSecretRequest": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -5480,7 +5480,7 @@
                       "lastHealthyAt",
                       "lastErrorCode"
                     ],
-                    "additionalProperties": false
+                    "additionalProperties": true
                   },
                   "createdAt": {
                     "type": "string",
@@ -5512,7 +5512,7 @@
                   "createdAt",
                   "updatedAt"
                 ],
-                "additionalProperties": false
+                "additionalProperties": true
               },
               {
                 "oneOf": [
@@ -5638,7 +5638,7 @@
                           "lastHealthyAt",
                           "lastErrorCode"
                         ],
-                        "additionalProperties": false
+                        "additionalProperties": true
                       },
                       "createdAt": {
                         "type": "string",
@@ -5748,7 +5748,7 @@
                                         "required": [
                                           "mode"
                                         ],
-                                        "additionalProperties": false
+                                        "additionalProperties": true
                                       },
                                       {
                                         "readOnly": true,
@@ -5774,7 +5774,7 @@
                                           "mode",
                                           "hosts"
                                         ],
-                                        "additionalProperties": false
+                                        "additionalProperties": true
                                       }
                                     ]
                                   }
@@ -5791,7 +5791,7 @@
                                   "tokenParameters",
                                   "requestHosts"
                                 ],
-                                "additionalProperties": false
+                                "additionalProperties": true
                               },
                               {
                                 "readOnly": true,
@@ -5852,7 +5852,7 @@
                                         "required": [
                                           "mode"
                                         ],
-                                        "additionalProperties": false
+                                        "additionalProperties": true
                                       },
                                       {
                                         "readOnly": true,
@@ -5878,7 +5878,7 @@
                                           "mode",
                                           "hosts"
                                         ],
-                                        "additionalProperties": false
+                                        "additionalProperties": true
                                       }
                                     ]
                                   }
@@ -5892,7 +5892,7 @@
                                   "tokenParameters",
                                   "requestHosts"
                                 ],
-                                "additionalProperties": false
+                                "additionalProperties": true
                               }
                             ]
                           },
@@ -5906,7 +5906,7 @@
                           "settings",
                           "redirectUri"
                         ],
-                        "additionalProperties": false
+                        "additionalProperties": true
                       },
                       "grant": {
                         "readOnly": true,
@@ -5938,7 +5938,7 @@
                           "accessTokenExpiresAt",
                           "renewable"
                         ],
-                        "additionalProperties": false
+                        "additionalProperties": true
                       }
                     },
                     "required": [
@@ -5955,7 +5955,7 @@
                       "oauth2",
                       "grant"
                     ],
-                    "additionalProperties": false
+                    "additionalProperties": true
                   },
                   {
                     "readOnly": true,
@@ -6082,7 +6082,7 @@
                           "lastHealthyAt",
                           "lastErrorCode"
                         ],
-                        "additionalProperties": false
+                        "additionalProperties": true
                       },
                       "createdAt": {
                         "type": "string",
@@ -6192,7 +6192,7 @@
                                         "required": [
                                           "mode"
                                         ],
-                                        "additionalProperties": false
+                                        "additionalProperties": true
                                       },
                                       {
                                         "readOnly": true,
@@ -6218,7 +6218,7 @@
                                           "mode",
                                           "hosts"
                                         ],
-                                        "additionalProperties": false
+                                        "additionalProperties": true
                                       }
                                     ]
                                   }
@@ -6235,7 +6235,7 @@
                                   "tokenParameters",
                                   "requestHosts"
                                 ],
-                                "additionalProperties": false
+                                "additionalProperties": true
                               },
                               {
                                 "readOnly": true,
@@ -6296,7 +6296,7 @@
                                         "required": [
                                           "mode"
                                         ],
-                                        "additionalProperties": false
+                                        "additionalProperties": true
                                       },
                                       {
                                         "readOnly": true,
@@ -6322,7 +6322,7 @@
                                           "mode",
                                           "hosts"
                                         ],
-                                        "additionalProperties": false
+                                        "additionalProperties": true
                                       }
                                     ]
                                   }
@@ -6336,7 +6336,7 @@
                                   "tokenParameters",
                                   "requestHosts"
                                 ],
-                                "additionalProperties": false
+                                "additionalProperties": true
                               }
                             ]
                           },
@@ -6350,7 +6350,7 @@
                           "settings",
                           "redirectUri"
                         ],
-                        "additionalProperties": false
+                        "additionalProperties": true
                       }
                     },
                     "required": [
@@ -6366,7 +6366,7 @@
                       "updatedAt",
                       "oauth2"
                     ],
-                    "additionalProperties": false
+                    "additionalProperties": true
                   }
                 ]
               }
@@ -6396,7 +6396,7 @@
                   "httpStatus",
                   "errorCode"
                 ],
-                "additionalProperties": false
+                "additionalProperties": true
               },
               {
                 "readOnly": true,
@@ -6429,7 +6429,7 @@
                   "httpStatus",
                   "errorCode"
                 ],
-                "additionalProperties": false
+                "additionalProperties": true
               }
             ]
           }
@@ -6438,7 +6438,7 @@
           "connection",
           "outcome"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "OAuth2AuthorizationStart": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -6467,7 +6467,7 @@
               "authorizationUrl",
               "expiresAt"
             ],
-            "additionalProperties": false
+            "additionalProperties": true
           },
           {
             "readOnly": true,
@@ -6601,7 +6601,7 @@
                           "lastHealthyAt",
                           "lastErrorCode"
                         ],
-                        "additionalProperties": false
+                        "additionalProperties": true
                       },
                       "createdAt": {
                         "type": "string",
@@ -6711,7 +6711,7 @@
                                         "required": [
                                           "mode"
                                         ],
-                                        "additionalProperties": false
+                                        "additionalProperties": true
                                       },
                                       {
                                         "readOnly": true,
@@ -6737,7 +6737,7 @@
                                           "mode",
                                           "hosts"
                                         ],
-                                        "additionalProperties": false
+                                        "additionalProperties": true
                                       }
                                     ]
                                   }
@@ -6754,7 +6754,7 @@
                                   "tokenParameters",
                                   "requestHosts"
                                 ],
-                                "additionalProperties": false
+                                "additionalProperties": true
                               },
                               {
                                 "readOnly": true,
@@ -6815,7 +6815,7 @@
                                         "required": [
                                           "mode"
                                         ],
-                                        "additionalProperties": false
+                                        "additionalProperties": true
                                       },
                                       {
                                         "readOnly": true,
@@ -6841,7 +6841,7 @@
                                           "mode",
                                           "hosts"
                                         ],
-                                        "additionalProperties": false
+                                        "additionalProperties": true
                                       }
                                     ]
                                   }
@@ -6855,7 +6855,7 @@
                                   "tokenParameters",
                                   "requestHosts"
                                 ],
-                                "additionalProperties": false
+                                "additionalProperties": true
                               }
                             ]
                           },
@@ -6869,7 +6869,7 @@
                           "settings",
                           "redirectUri"
                         ],
-                        "additionalProperties": false
+                        "additionalProperties": true
                       },
                       "grant": {
                         "readOnly": true,
@@ -6901,7 +6901,7 @@
                           "accessTokenExpiresAt",
                           "renewable"
                         ],
-                        "additionalProperties": false
+                        "additionalProperties": true
                       }
                     },
                     "required": [
@@ -6918,7 +6918,7 @@
                       "oauth2",
                       "grant"
                     ],
-                    "additionalProperties": false
+                    "additionalProperties": true
                   },
                   {
                     "readOnly": true,
@@ -7045,7 +7045,7 @@
                           "lastHealthyAt",
                           "lastErrorCode"
                         ],
-                        "additionalProperties": false
+                        "additionalProperties": true
                       },
                       "createdAt": {
                         "type": "string",
@@ -7155,7 +7155,7 @@
                                         "required": [
                                           "mode"
                                         ],
-                                        "additionalProperties": false
+                                        "additionalProperties": true
                                       },
                                       {
                                         "readOnly": true,
@@ -7181,7 +7181,7 @@
                                           "mode",
                                           "hosts"
                                         ],
-                                        "additionalProperties": false
+                                        "additionalProperties": true
                                       }
                                     ]
                                   }
@@ -7198,7 +7198,7 @@
                                   "tokenParameters",
                                   "requestHosts"
                                 ],
-                                "additionalProperties": false
+                                "additionalProperties": true
                               },
                               {
                                 "readOnly": true,
@@ -7259,7 +7259,7 @@
                                         "required": [
                                           "mode"
                                         ],
-                                        "additionalProperties": false
+                                        "additionalProperties": true
                                       },
                                       {
                                         "readOnly": true,
@@ -7285,7 +7285,7 @@
                                           "mode",
                                           "hosts"
                                         ],
-                                        "additionalProperties": false
+                                        "additionalProperties": true
                                       }
                                     ]
                                   }
@@ -7299,7 +7299,7 @@
                                   "tokenParameters",
                                   "requestHosts"
                                 ],
-                                "additionalProperties": false
+                                "additionalProperties": true
                               }
                             ]
                           },
@@ -7313,7 +7313,7 @@
                           "settings",
                           "redirectUri"
                         ],
-                        "additionalProperties": false
+                        "additionalProperties": true
                       }
                     },
                     "required": [
@@ -7329,7 +7329,7 @@
                       "updatedAt",
                       "oauth2"
                     ],
-                    "additionalProperties": false
+                    "additionalProperties": true
                   }
                 ]
               }
@@ -7338,7 +7338,7 @@
               "kind",
               "connection"
             ],
-            "additionalProperties": false
+            "additionalProperties": true
           }
         ]
       },
@@ -7375,7 +7375,7 @@
                     "status",
                     "name"
                   ],
-                  "additionalProperties": false
+                  "additionalProperties": true
                 },
                 {
                   "readOnly": true,
@@ -7406,7 +7406,7 @@
                     "status",
                     "reason"
                   ],
-                  "additionalProperties": false
+                  "additionalProperties": true
                 }
               ]
             }
@@ -7415,7 +7415,7 @@
         "required": [
           "items"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "FailureNotificationDestinationListResponse": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -7434,7 +7434,7 @@
                 "required": [
                   "available"
                 ],
-                "additionalProperties": false
+                "additionalProperties": true
               },
               {
                 "type": "object",
@@ -7453,7 +7453,7 @@
                   "available",
                   "reason"
                 ],
-                "additionalProperties": false
+                "additionalProperties": true
               }
             ]
           },
@@ -7524,7 +7524,7 @@
                         "kind",
                         "memberId"
                       ],
-                      "additionalProperties": false
+                      "additionalProperties": true
                     },
                     {
                       "type": "object",
@@ -7548,7 +7548,7 @@
                         "connectionId",
                         "channelId"
                       ],
-                      "additionalProperties": false
+                      "additionalProperties": true
                     },
                     {
                       "type": "object",
@@ -7574,7 +7574,7 @@
                         "connectionId",
                         "toEmail"
                       ],
-                      "additionalProperties": false
+                      "additionalProperties": true
                     }
                   ]
                 },
@@ -7599,14 +7599,14 @@
                 "createdAt",
                 "updatedAt"
               ],
-              "additionalProperties": false
+              "additionalProperties": true
             }
           }
         },
         "required": [
           "items"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "FailureNotificationDestinationCreateRequest": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -7736,7 +7736,7 @@
                   "kind",
                   "memberId"
                 ],
-                "additionalProperties": false
+                "additionalProperties": true
               },
               {
                 "type": "object",
@@ -7760,7 +7760,7 @@
                   "connectionId",
                   "channelId"
                 ],
-                "additionalProperties": false
+                "additionalProperties": true
               },
               {
                 "type": "object",
@@ -7786,7 +7786,7 @@
                   "connectionId",
                   "toEmail"
                 ],
-                "additionalProperties": false
+                "additionalProperties": true
               }
             ]
           },
@@ -7811,7 +7811,7 @@
           "createdAt",
           "updatedAt"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "FailureNotificationDestinationTestRequest": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -7997,7 +7997,7 @@
                           "kind",
                           "memberId"
                         ],
-                        "additionalProperties": false
+                        "additionalProperties": true
                       },
                       {
                         "type": "object",
@@ -8021,7 +8021,7 @@
                           "connectionId",
                           "channelId"
                         ],
-                        "additionalProperties": false
+                        "additionalProperties": true
                       },
                       {
                         "type": "object",
@@ -8047,7 +8047,7 @@
                           "connectionId",
                           "toEmail"
                         ],
-                        "additionalProperties": false
+                        "additionalProperties": true
                       }
                     ]
                   },
@@ -8072,7 +8072,7 @@
                   "createdAt",
                   "updatedAt"
                 ],
-                "additionalProperties": false
+                "additionalProperties": true
               },
               {
                 "type": "null"
@@ -8083,7 +8083,7 @@
         "required": [
           "destination"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "WorkflowFailureNotificationPolicyRequest": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -8719,7 +8719,7 @@
                   "lastHealthyAt",
                   "lastErrorCode"
                 ],
-                "additionalProperties": false
+                "additionalProperties": true
               },
               "createdAt": {
                 "type": "string",
@@ -8829,7 +8829,7 @@
                                 "required": [
                                   "mode"
                                 ],
-                                "additionalProperties": false
+                                "additionalProperties": true
                               },
                               {
                                 "readOnly": true,
@@ -8855,7 +8855,7 @@
                                   "mode",
                                   "hosts"
                                 ],
-                                "additionalProperties": false
+                                "additionalProperties": true
                               }
                             ]
                           }
@@ -8872,7 +8872,7 @@
                           "tokenParameters",
                           "requestHosts"
                         ],
-                        "additionalProperties": false
+                        "additionalProperties": true
                       },
                       {
                         "readOnly": true,
@@ -8933,7 +8933,7 @@
                                 "required": [
                                   "mode"
                                 ],
-                                "additionalProperties": false
+                                "additionalProperties": true
                               },
                               {
                                 "readOnly": true,
@@ -8959,7 +8959,7 @@
                                   "mode",
                                   "hosts"
                                 ],
-                                "additionalProperties": false
+                                "additionalProperties": true
                               }
                             ]
                           }
@@ -8973,7 +8973,7 @@
                           "tokenParameters",
                           "requestHosts"
                         ],
-                        "additionalProperties": false
+                        "additionalProperties": true
                       }
                     ]
                   },
@@ -8987,7 +8987,7 @@
                   "settings",
                   "redirectUri"
                 ],
-                "additionalProperties": false
+                "additionalProperties": true
               },
               "grant": {
                 "readOnly": true,
@@ -9019,7 +9019,7 @@
                   "accessTokenExpiresAt",
                   "renewable"
                 ],
-                "additionalProperties": false
+                "additionalProperties": true
               }
             },
             "required": [
@@ -9036,7 +9036,7 @@
               "oauth2",
               "grant"
             ],
-            "additionalProperties": false
+            "additionalProperties": true
           },
           {
             "readOnly": true,
@@ -9163,7 +9163,7 @@
                   "lastHealthyAt",
                   "lastErrorCode"
                 ],
-                "additionalProperties": false
+                "additionalProperties": true
               },
               "createdAt": {
                 "type": "string",
@@ -9273,7 +9273,7 @@
                                 "required": [
                                   "mode"
                                 ],
-                                "additionalProperties": false
+                                "additionalProperties": true
                               },
                               {
                                 "readOnly": true,
@@ -9299,7 +9299,7 @@
                                   "mode",
                                   "hosts"
                                 ],
-                                "additionalProperties": false
+                                "additionalProperties": true
                               }
                             ]
                           }
@@ -9316,7 +9316,7 @@
                           "tokenParameters",
                           "requestHosts"
                         ],
-                        "additionalProperties": false
+                        "additionalProperties": true
                       },
                       {
                         "readOnly": true,
@@ -9377,7 +9377,7 @@
                                 "required": [
                                   "mode"
                                 ],
-                                "additionalProperties": false
+                                "additionalProperties": true
                               },
                               {
                                 "readOnly": true,
@@ -9403,7 +9403,7 @@
                                   "mode",
                                   "hosts"
                                 ],
-                                "additionalProperties": false
+                                "additionalProperties": true
                               }
                             ]
                           }
@@ -9417,7 +9417,7 @@
                           "tokenParameters",
                           "requestHosts"
                         ],
-                        "additionalProperties": false
+                        "additionalProperties": true
                       }
                     ]
                   },
@@ -9431,7 +9431,7 @@
                   "settings",
                   "redirectUri"
                 ],
-                "additionalProperties": false
+                "additionalProperties": true
               }
             },
             "required": [
@@ -9447,7 +9447,7 @@
               "updatedAt",
               "oauth2"
             ],
-            "additionalProperties": false
+            "additionalProperties": true
           }
         ]
       },

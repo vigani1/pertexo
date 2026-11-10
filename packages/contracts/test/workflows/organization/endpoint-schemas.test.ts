@@ -8,7 +8,7 @@ const id = (number: number) =>
 const tag = { id: id(1), key: 'ops', revision: 1 };
 const cursor = 'A'.repeat(512);
 
-describe('strict organization endpoint transport schemas', () => {
+describe('organization endpoint transport schemas', () => {
   it('normalizes scoped UUID parameters without accepting extra selectors', () => {
     expect(
       organization.workflowTagParamsSchema.parse({
@@ -205,8 +205,7 @@ describe('strict organization endpoint transport schemas', () => {
       ])
         if (schema === organization.workflowTagReplaceResponseSchema)
           expect(schema.parse({ ...body, ...extra })).toEqual(body);
-        else
-          expect(schema.safeParse({ ...body, ...extra }).success).toBe(false);
+        else expect(schema.parse({ ...body, ...extra })).toEqual(body);
       expect(schema.safeParse({ ...body, replayed: null }).success).toBe(false);
     }
     for (const detachedWorkflowCount of [-1, 51, 0.5, '0'])
@@ -353,11 +352,11 @@ describe('strict organization endpoint transport schemas', () => {
           .success,
       ).toBe(false);
     expect(
-      organization.workflowTagCleanupDetachResponseSchema.safeParse({
+      organization.workflowTagCleanupDetachResponseSchema.parse({
         items: [detached(1)],
         replayed: true,
-      }).success,
-    ).toBe(false);
+      }),
+    ).toEqual({ items: [detached(1)] });
   });
 
   it('exposes only the canonical combined include grammar while accepting unchanged default GET', () => {

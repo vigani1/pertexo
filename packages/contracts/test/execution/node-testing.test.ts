@@ -279,10 +279,10 @@ describe('node-testing public contracts', () => {
       }).success,
     ).toBe(true);
     expect(
-      previewRunResponseSchema.safeParse({
+      previewRunResponseSchema.parse({
         preview: { ...preview, credential: 'must-not-leak' },
-      }).success,
-    ).toBe(false);
+      }),
+    ).toEqual({ preview });
     expect(
       nodeValidationResponseSchema.safeParse({
         mode: 'validate',

@@ -88,23 +88,26 @@ export const workflowTagDeleteRequestSchema = z
   .object({ expectedTagRevision: workflowTagRevisionSchema })
   .strict();
 
-export const workflowTagCreateResponseSchema = z
-  .object({ tag: workflowTagSchema, replayed: z.boolean() })
-  .strict();
-export const workflowTagRenameResponseSchema =
-  workflowTagCreateResponseSchema.clone();
-export const workflowTagDeleteResponseSchema = z
-  .object({
-    tagId: canonicalIdentifierSchema,
-    deleted: z.literal(true),
-    detachedWorkflowCount: z
-      .number()
-      .int()
-      .min(0)
-      .max(WORKFLOW_ORGANIZATION_LIMITS.cleanupItems),
-    replayed: z.boolean(),
-  })
-  .strict();
+export const workflowTagCreateResponseSchema = responseSchema(
+  z.object({ tag: workflowTagSchema, replayed: z.boolean() }).strict(),
+);
+export const workflowTagRenameResponseSchema = responseSchema(
+  workflowTagCreateResponseSchema.clone(),
+);
+export const workflowTagDeleteResponseSchema = responseSchema(
+  z
+    .object({
+      tagId: canonicalIdentifierSchema,
+      deleted: z.literal(true),
+      detachedWorkflowCount: z
+        .number()
+        .int()
+        .min(0)
+        .max(WORKFLOW_ORGANIZATION_LIMITS.cleanupItems),
+      replayed: z.boolean(),
+    })
+    .strict(),
+);
 export const workflowTagReplaceResponseSchema = responseSchema(
   z
     .object({
@@ -220,35 +223,37 @@ export const workflowTagCleanupItemOutcomeSchema = z.discriminatedUnion(
       .strict(),
   ],
 );
-export const workflowTagCleanupDetachResponseSchema = z
-  .object({
-    items: z
-      .array(workflowTagCleanupItemOutcomeSchema)
-      .min(1)
-      .max(WORKFLOW_ORGANIZATION_LIMITS.cleanupItems)
-      .refine(
-        (items) =>
-          new Set(items.map((item) => item.workflowId)).size === items.length,
-      )
-      .refine((items) => {
-        let authorityLost = false;
-        for (const item of items) {
-          if (authorityLost && item.status !== 'not_processed') return false;
-          if (!authorityLost && item.status === 'not_processed') return false;
-          if (item.status === 'forbidden') authorityLost = true;
-        }
-        return true;
-      }),
-  })
-  .strict();
+export const workflowTagCleanupDetachResponseSchema = responseSchema(
+  z
+    .object({
+      items: z
+        .array(workflowTagCleanupItemOutcomeSchema)
+        .min(1)
+        .max(WORKFLOW_ORGANIZATION_LIMITS.cleanupItems)
+        .refine(
+          (items) =>
+            new Set(items.map((item) => item.workflowId)).size === items.length,
+        )
+        .refine((items) => {
+          let authorityLost = false;
+          for (const item of items) {
+            if (authorityLost && item.status !== 'not_processed') return false;
+            if (!authorityLost && item.status === 'not_processed') return false;
+            if (item.status === 'forbidden') authorityLost = true;
+          }
+          return true;
+        }),
+    })
+    .strict(),
+);
 
 /** Sets the actor's favorite; asking for the current state changes nothing. */
 export const workflowFavoriteRequestSchema = z
   .object({ favorite: z.boolean() })
   .strict();
-export const workflowFavoriteResponseSchema = z
-  .object({ isFavorite: z.boolean() })
-  .strict();
+export const workflowFavoriteResponseSchema = responseSchema(
+  z.object({ isFavorite: z.boolean() }).strict(),
+);
 
 export const workflowOrganizationSchema = z
   .object({

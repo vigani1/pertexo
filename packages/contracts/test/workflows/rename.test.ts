@@ -82,12 +82,12 @@ describe('workflow rename public contract', () => {
       workflowRenameResponseSchema.parse({ workflow: summary, replayed: true }),
     ).toEqual({ workflow: summary, replayed: true });
     expect(
-      workflowRenameResponseSchema.safeParse({
+      workflowRenameResponseSchema.parse({
         workflow: summary,
         replayed: false,
         changed: true,
-      }).success,
-    ).toBe(false);
+      }),
+    ).toEqual({ workflow: summary, replayed: false });
   });
 
   it('documents an authenticated, idempotent command with a typed conflict', () => {

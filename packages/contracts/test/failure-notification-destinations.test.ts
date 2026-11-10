@@ -133,13 +133,13 @@ describe('failure notification destination contracts', () => {
       }),
     ).toEqual({ destination: null });
     expect(
-      workflowFailureNotificationPolicyResponseSchema.safeParse({
+      workflowFailureNotificationPolicyResponseSchema.parse({
         destination: {
           ...destination,
           config: { ...destination.config, apiKey: 're_secret' },
         },
-      }).success,
-    ).toBe(false);
+      }),
+    ).toEqual({ destination });
     expect(
       workflowFailureNotificationPolicyResponseSchema.safeParse({}).success,
     ).toBe(false);

@@ -1,3 +1,4 @@
+import { responseSchema } from '../../shared/response-schema.js';
 import { storageTextSchema } from '@pertexo/workflow-model';
 import { DIRECTORY_LIMITS } from '@pertexo/workflow-model';
 export { DIRECTORY_LIMITS };
@@ -21,9 +22,8 @@ export const directoryCredentialCreateSchema = z
     expectedRevision: revision,
   })
   .strict();
-export const directoryCredentialResultSchema = z.discriminatedUnion(
-  'replayed',
-  [
+export const directoryCredentialResultSchema = responseSchema(
+  z.discriminatedUnion('replayed', [
     z
       .object({
         credential: directoryCredentialSchema,
@@ -37,7 +37,7 @@ export const directoryCredentialResultSchema = z.discriminatedUnion(
         replayed: z.literal(true),
       })
       .strict(),
-  ],
+  ]),
 );
 export const directoryRevisionSchema = z
   .object({ expectedRevision: revision })
@@ -96,34 +96,36 @@ export const directoryAdoptSchema = z
     role: delegatedWorkspaceRoleSchema,
   })
   .strict();
-export const directorySettingsSchema = z
-  .object({
-    canManage: z.boolean(),
-    organizationId: z.uuid(),
-    controlWorkspaceId: z.uuid(),
-    revision,
-    counts: z
-      .object({
-        users: z.number().int(),
-        activeUsers: z.number().int(),
-        groups: z.number().int(),
-      })
-      .strict(),
-    credentials: z.array(directoryCredentialSchema).max(50),
-    groups: z
-      .array(
-        z
-          .object({
-            id: z.uuid(),
-            displayName: z.string(),
-            memberCount: z.number().int(),
-          })
-          .strict(),
-      )
-      .max(DIRECTORY_LIMITS.groups),
-    mappings: directoryMappingsSchema.shape.mappings,
-  })
-  .strict();
+export const directorySettingsSchema = responseSchema(
+  z
+    .object({
+      canManage: z.boolean(),
+      organizationId: z.uuid(),
+      controlWorkspaceId: z.uuid(),
+      revision,
+      counts: z
+        .object({
+          users: z.number().int(),
+          activeUsers: z.number().int(),
+          groups: z.number().int(),
+        })
+        .strict(),
+      credentials: z.array(directoryCredentialSchema).max(50),
+      groups: z
+        .array(
+          z
+            .object({
+              id: z.uuid(),
+              displayName: z.string(),
+              memberCount: z.number().int(),
+            })
+            .strict(),
+        )
+        .max(DIRECTORY_LIMITS.groups),
+      mappings: directoryMappingsSchema.shape.mappings,
+    })
+    .strict(),
+);
 export const directoryPeopleQuerySchema = z
   .object({
     search: z.string().max(320).optional(),
@@ -131,26 +133,28 @@ export const directoryPeopleQuerySchema = z
     limit: z.coerce.number().int().min(1).max(100).default(50),
   })
   .strict();
-export const directoryPeoplePageSchema = z
-  .object({
-    items: z
-      .array(
-        z
-          .object({
-            id: z.uuid(),
-            userName: z.string(),
-            email: z.string(),
-            active: z.boolean(),
-            boundUserId: z.uuid().nullable(),
-            revision,
-            deleted: z.boolean(),
-          })
-          .strict(),
-      )
-      .max(100),
-    nextCursor: z.uuid().nullable(),
-  })
-  .strict();
+export const directoryPeoplePageSchema = responseSchema(
+  z
+    .object({
+      items: z
+        .array(
+          z
+            .object({
+              id: z.uuid(),
+              userName: z.string(),
+              email: z.string(),
+              active: z.boolean(),
+              boundUserId: z.uuid().nullable(),
+              revision,
+              deleted: z.boolean(),
+            })
+            .strict(),
+        )
+        .max(100),
+      nextCursor: z.uuid().nullable(),
+    })
+    .strict(),
+);
 export type DirectorySettings = z.output<typeof directorySettingsSchema>;
 export type DirectoryCredential = z.output<typeof directoryCredentialSchema>;
 export type DirectoryCredentialResult = z.output<
@@ -172,24 +176,26 @@ export type DirectoryMembershipSource = z.output<
   typeof directoryMembershipSourceSchema
 >;
 
-export const directoryChangedSchema = z
-  .object({ changed: z.literal(true) })
-  .strict();
+export const directoryChangedSchema = responseSchema(
+  z.object({ changed: z.literal(true) }).strict(),
+);
 
 export const directoryAdoptionQuerySchema = z
   .object({ directoryUserId: z.uuid(), targetWorkspaceId: z.uuid() })
   .strict();
-export const directoryAdoptionPreviewSchema = z.discriminatedUnion('eligible', [
-  z.object({ eligible: z.literal(false), reason: z.string() }).strict(),
-  z
-    .object({
-      eligible: z.literal(true),
-      displayName: z.string(),
-      currentRole: z.string(),
-      command: directoryAdoptSchema,
-    })
-    .strict(),
-]);
+export const directoryAdoptionPreviewSchema = responseSchema(
+  z.discriminatedUnion('eligible', [
+    z.object({ eligible: z.literal(false), reason: z.string() }).strict(),
+    z
+      .object({
+        eligible: z.literal(true),
+        displayName: z.string(),
+        currentRole: z.string(),
+        command: directoryAdoptSchema,
+      })
+      .strict(),
+  ]),
+);
 export type DirectoryAdoptionQuery = z.output<
   typeof directoryAdoptionQuerySchema
 >;

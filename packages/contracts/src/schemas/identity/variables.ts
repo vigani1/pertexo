@@ -82,9 +82,9 @@ export const workspaceVariableUsageResponseSchema = responseSchema(
     })
     .strict(),
 );
-export const workflowRunVariablesResponseSchema = z
-  .object({ snapshot: workspaceVariableSnapshotSchema.nullable() })
-  .strict();
+export const workflowRunVariablesResponseSchema = responseSchema(
+  z.object({ snapshot: workspaceVariableSnapshotSchema.nullable() }).strict(),
+);
 export type WorkspaceVariablesRequest = z.output<
   typeof workspaceVariablesRequestSchema
 >;

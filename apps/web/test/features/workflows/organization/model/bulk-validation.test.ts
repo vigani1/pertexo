@@ -156,12 +156,19 @@ describe('folder and bounded batch data layer', () => {
     await expect(
       sendWorkflowOrganizationCommand(api, attempt, signal()),
     ).resolves.toEqual({ items: outcomes });
+    fetch.mockResolvedValueOnce(
+      json({
+        items: outcomes.map((item, index) =>
+          index === 1 ? { ...item, organizationRevision: 42 } : item,
+        ),
+      }),
+    );
+    await expect(
+      sendWorkflowOrganizationCommand(api, attempt, signal()),
+    ).resolves.toEqual({ items: outcomes });
     for (const invalid of [
       [...outcomes].reverse(),
       outcomes.slice(1),
-      outcomes.map((item, index) =>
-        index === 1 ? { ...item, organizationRevision: 42 } : item,
-      ),
       outcomes.map((item, index) =>
         index === 2 ? { ...item, code: 'workflow.tag_key_conflict' } : item,
       ),

@@ -348,13 +348,15 @@ const connectionUsageItemSchema = z
   .strict()
   .readonly();
 
-export const connectionUsageResponseSchema = z
-  .object({
-    items: z.array(connectionUsageItemSchema).max(100),
-    nextCursor: connectionCursorSchema.nullable(),
-  })
-  .strict()
-  .readonly();
+export const connectionUsageResponseSchema = responseSchema(
+  z
+    .object({
+      items: z.array(connectionUsageItemSchema).max(100),
+      nextCursor: connectionCursorSchema.nullable(),
+    })
+    .strict()
+    .readonly(),
+);
 
 export type ConnectionUsageResponse = z.output<
   typeof connectionUsageResponseSchema
@@ -379,13 +381,15 @@ const connectionTestOutcomeSchema = z.discriminatedUnion('ok', [
     .readonly(),
 ]);
 
-export const connectionTestResponseSchema = z
-  .object({
-    connection: connectionResponseSchema,
-    outcome: connectionTestOutcomeSchema,
-  })
-  .strict()
-  .readonly();
+export const connectionTestResponseSchema = responseSchema(
+  z
+    .object({
+      connection: connectionResponseSchema,
+      outcome: connectionTestOutcomeSchema,
+    })
+    .strict()
+    .readonly(),
+);
 
 /** ADR 046: at most this many channel names resolve in one lookup. */
 export const SLACK_CHANNEL_LOOKUP_LIMIT = 10;
@@ -434,14 +438,16 @@ export const slackChannelLookupItemSchema = z.discriminatedUnion('status', [
     .strict()
     .readonly(),
 ]);
-export const slackChannelLookupResponseSchema = z
-  .object({
-    items: z
-      .array(slackChannelLookupItemSchema)
-      .max(SLACK_CHANNEL_LOOKUP_LIMIT),
-  })
-  .strict()
-  .readonly();
+export const slackChannelLookupResponseSchema = responseSchema(
+  z
+    .object({
+      items: z
+        .array(slackChannelLookupItemSchema)
+        .max(SLACK_CHANNEL_LOOKUP_LIMIT),
+    })
+    .strict()
+    .readonly(),
+);
 
 export const connectionIdParamSchema = z
   .object({ workspaceId: z.uuid(), connectionId: connectionIdentifierSchema })
@@ -489,26 +495,29 @@ export const connectionSharingRequestSchema = z
   .refine(
     (request) => request.mode === 'restricted' || request.userIds.length === 0,
   );
-export const connectionSharingResponseSchema = z
-  .object({
-    connectionId: sharingMemberId,
-    mode: z.enum(['workspace', 'restricted']),
-    revision: z.number().int().positive(),
-    members: z
-      .array(
-        z
-          .object({
-            userId: sharingMemberId,
-            label: z.string(),
-            active: z.boolean(),
-          })
-          .strict(),
-      )
-      .max(CONNECTION_SHARE_LIMIT),
-  })
-  .strict();
-export const connectionSharingCommandResponseSchema =
-  connectionSharingResponseSchema.extend({ replayed: z.boolean() });
+export const connectionSharingResponseSchema = responseSchema(
+  z
+    .object({
+      connectionId: sharingMemberId,
+      mode: z.enum(['workspace', 'restricted']),
+      revision: z.number().int().positive(),
+      members: z
+        .array(
+          z
+            .object({
+              userId: sharingMemberId,
+              label: z.string(),
+              active: z.boolean(),
+            })
+            .strict(),
+        )
+        .max(CONNECTION_SHARE_LIMIT),
+    })
+    .strict(),
+);
+export const connectionSharingCommandResponseSchema = responseSchema(
+  connectionSharingResponseSchema.extend({ replayed: z.boolean() }),
+);
 export type ConnectionSharingRequest = z.output<
   typeof connectionSharingRequestSchema
 >;

@@ -1,3 +1,4 @@
+import { responseSchema } from '../shared/response-schema.js';
 import { storageTextSchema } from '@pertexo/workflow-model';
 import { audienceReviewSchema } from './sharing.js';
 import { z } from 'zod';
@@ -68,16 +69,18 @@ export const workflowFolderSchema = z
   .refine((folder) =>
     folder.parentId === null ? folder.depth === 1 : folder.depth > 1,
   );
-export const workflowFolderListResponseSchema = z
-  .object({
-    items: z
-      .array(workflowFolderSchema)
-      .max(WORKFLOW_FOLDER_LIMITS.foldersPerWorkspace)
-      .refine((items) =>
-        strictlyAscendingIdentifiers(items.map((item) => item.id)),
-      ),
-  })
-  .strict();
+export const workflowFolderListResponseSchema = responseSchema(
+  z
+    .object({
+      items: z
+        .array(workflowFolderSchema)
+        .max(WORKFLOW_FOLDER_LIMITS.foldersPerWorkspace)
+        .refine((items) =>
+          strictlyAscendingIdentifiers(items.map((item) => item.id)),
+        ),
+    })
+    .strict(),
+);
 export const workflowFolderCreateRequestSchema = z
   .object({
     name: workflowFolderNameInputSchema,
@@ -100,20 +103,24 @@ export const workflowFolderMoveRequestSchema = z
 export const workflowFolderDeleteRequestSchema = z
   .object({ expectedFolderRevision: workflowFolderRevisionSchema })
   .strict();
-export const workflowFolderCreateResponseSchema = z
-  .object({ folder: workflowFolderSchema, replayed: z.boolean() })
-  .strict();
-export const workflowFolderRenameResponseSchema =
-  workflowFolderCreateResponseSchema.clone();
-export const workflowFolderMoveResponseSchema =
-  workflowFolderCreateResponseSchema.clone();
-export const workflowFolderDeleteResponseSchema = z
-  .object({
-    folderId: canonicalIdentifier,
-    deleted: z.literal(true),
-    replayed: z.boolean(),
-  })
-  .strict();
+export const workflowFolderCreateResponseSchema = responseSchema(
+  z.object({ folder: workflowFolderSchema, replayed: z.boolean() }).strict(),
+);
+export const workflowFolderRenameResponseSchema = responseSchema(
+  workflowFolderCreateResponseSchema.clone(),
+);
+export const workflowFolderMoveResponseSchema = responseSchema(
+  workflowFolderCreateResponseSchema.clone(),
+);
+export const workflowFolderDeleteResponseSchema = responseSchema(
+  z
+    .object({
+      folderId: canonicalIdentifier,
+      deleted: z.literal(true),
+      replayed: z.boolean(),
+    })
+    .strict(),
+);
 export const workflowFolderPlacementRequestSchema = z
   .object({
     audienceReview: audienceReviewSchema.optional(),
@@ -121,14 +128,16 @@ export const workflowFolderPlacementRequestSchema = z
     expectedOrganizationRevision: workflowOrganizationRevisionSchema,
   })
   .strict();
-export const workflowFolderPlacementResponseSchema = z
-  .object({
-    workflowId: canonicalIdentifier,
-    folderId: canonicalIdentifier.nullable(),
-    organizationRevision: workflowOrganizationRevisionSchema,
-    replayed: z.boolean(),
-  })
-  .strict();
+export const workflowFolderPlacementResponseSchema = responseSchema(
+  z
+    .object({
+      workflowId: canonicalIdentifier,
+      folderId: canonicalIdentifier.nullable(),
+      organizationRevision: workflowOrganizationRevisionSchema,
+      replayed: z.boolean(),
+    })
+    .strict(),
+);
 
 export const workflowOrganizationBulkItemSchema = z
   .object({
@@ -198,27 +207,30 @@ export const workflowOrganizationBulkItemOutcomeSchema = z.discriminatedUnion(
     z.object({ ...itemIdentity, status: z.literal('not_processed') }).strict(),
   ],
 );
-export const workflowOrganizationBulkResponseSchema = z
-  .object({
-    items: z
-      .array(workflowOrganizationBulkItemOutcomeSchema)
-      .min(1)
-      .max(WORKFLOW_FOLDER_LIMITS.bulkItems)
-      .refine(
-        (values) =>
-          new Set(values.map((item) => item.workflowId)).size === values.length,
-      )
-      .refine((values) => {
-        let forbidden = false;
-        for (const item of values) {
-          if (forbidden && item.status !== 'not_processed') return false;
-          if (!forbidden && item.status === 'not_processed') return false;
-          if (item.status === 'forbidden') forbidden = true;
-        }
-        return true;
-      }),
-  })
-  .strict();
+export const workflowOrganizationBulkResponseSchema = responseSchema(
+  z
+    .object({
+      items: z
+        .array(workflowOrganizationBulkItemOutcomeSchema)
+        .min(1)
+        .max(WORKFLOW_FOLDER_LIMITS.bulkItems)
+        .refine(
+          (values) =>
+            new Set(values.map((item) => item.workflowId)).size ===
+            values.length,
+        )
+        .refine((values) => {
+          let forbidden = false;
+          for (const item of values) {
+            if (forbidden && item.status !== 'not_processed') return false;
+            if (!forbidden && item.status === 'not_processed') return false;
+            if (item.status === 'forbidden') forbidden = true;
+          }
+          return true;
+        }),
+    })
+    .strict(),
+);
 
 export type WorkflowFolder = z.output<typeof workflowFolderSchema>;
 export type WorkflowFolderCreateRequest = z.output<

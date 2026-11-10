@@ -1,3 +1,4 @@
+import { responseSchema } from '@pertexo/contracts/server';
 import { Controller } from '@nestjs/common';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { z } from 'zod';
@@ -24,7 +25,9 @@ const declaration = {
     description: 'Qualified result',
     body: {
       name: 'QualifiedOutput',
-      schema: z.object({ id: z.uuid(), limit: z.number(), value: z.string() }),
+      schema: responseSchema(
+        z.object({ id: z.uuid(), limit: z.number(), value: z.string() }),
+      ),
     },
   },
   problems: {},

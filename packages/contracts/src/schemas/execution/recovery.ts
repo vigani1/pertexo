@@ -1,3 +1,4 @@
+import { responseSchema } from '../shared/response-schema.js';
 import { z } from 'zod';
 import { createApiProblemSchema } from '../../errors/api-problem.js';
 import {
@@ -16,26 +17,28 @@ export const workflowRecoveryRefusalSchema = z
     reason: z.enum(WORKFLOW_RECOVERY_REFUSALS),
   })
   .strict();
-export const workflowRecoveryPreviewSchema = z.discriminatedUnion('kind', [
-  workflowRecoveryRefusalSchema,
-  z
-    .object({
-      kind: z.literal('eligible'),
-      workflowVersionId: z.uuid(),
-      versionNumber: z.number().int().positive(),
-      nodeRunId: z.uuid(),
-      nodeId: z.string().min(1).max(128),
-      nodeLabel: z.string().max(200).nullable(),
-      reusedCount: z
-        .number()
-        .int()
-        .min(0)
-        .max(WORKFLOW_GRAPH_CONTRACT_LIMITS.nodes),
-      sourceCompletedAt: z.iso.datetime({ offset: true }),
-      effectRisk: workflowRecoveryEffectRiskSchema,
-    })
-    .strict(),
-]);
+export const workflowRecoveryPreviewSchema = responseSchema(
+  z.discriminatedUnion('kind', [
+    workflowRecoveryRefusalSchema,
+    z
+      .object({
+        kind: z.literal('eligible'),
+        workflowVersionId: z.uuid(),
+        versionNumber: z.number().int().positive(),
+        nodeRunId: z.uuid(),
+        nodeId: z.string().min(1).max(128),
+        nodeLabel: z.string().max(200).nullable(),
+        reusedCount: z
+          .number()
+          .int()
+          .min(0)
+          .max(WORKFLOW_GRAPH_CONTRACT_LIMITS.nodes),
+        sourceCompletedAt: z.iso.datetime({ offset: true }),
+        effectRisk: workflowRecoveryEffectRiskSchema,
+      })
+      .strict(),
+  ]),
+);
 export const workflowRecoveryRequestSchema = z
   .object({
     workflowVersionId: z.uuid(),
@@ -45,19 +48,21 @@ export const workflowRecoveryRequestSchema = z
     acknowledgeUnknownOutcome: z.literal(true).optional(),
   })
   .strict();
-export const workflowRecoverySummarySchema = z
-  .object({
-    targetNodeRunId: z.uuid(),
-    targetNodeId: z.string().min(1).max(128),
-    reusedCount: z
-      .number()
-      .int()
-      .min(0)
-      .max(WORKFLOW_GRAPH_CONTRACT_LIMITS.nodes),
-    effectRisk: workflowRecoveryEffectRiskSchema,
-    effectsAcknowledged: z.boolean(),
-  })
-  .strict();
+export const workflowRecoverySummarySchema = responseSchema(
+  z
+    .object({
+      targetNodeRunId: z.uuid(),
+      targetNodeId: z.string().min(1).max(128),
+      reusedCount: z
+        .number()
+        .int()
+        .min(0)
+        .max(WORKFLOW_GRAPH_CONTRACT_LIMITS.nodes),
+      effectRisk: workflowRecoveryEffectRiskSchema,
+      effectsAcknowledged: z.boolean(),
+    })
+    .strict(),
+);
 export const workflowNodeReuseSchema = z
   .object({
     sourceRunId: z.uuid(),

@@ -1,3 +1,4 @@
+import { responseSchema } from '../shared/response-schema.js';
 import { z } from 'zod';
 
 // A step's record across its workflow's last 100 runs (ADR 051).
@@ -59,14 +60,16 @@ export const workflowStepHealthSchema = z
   })
   .strict();
 
-export const workflowStepHealthResponseSchema = z
-  .object({
-    runsConsidered: z.number().int().min(0).max(STEP_HISTORY_RUN_WINDOW),
-    /** When the oldest run in the window started; null without runs. */
-    oldestRunAt: timestampSchema.nullable(),
-    items: z.array(workflowStepHealthSchema).max(1_000),
-  })
-  .strict();
+export const workflowStepHealthResponseSchema = responseSchema(
+  z
+    .object({
+      runsConsidered: z.number().int().min(0).max(STEP_HISTORY_RUN_WINDOW),
+      /** When the oldest run in the window started; null without runs. */
+      oldestRunAt: timestampSchema.nullable(),
+      items: z.array(workflowStepHealthSchema).max(1_000),
+    })
+    .strict(),
+);
 
 /** One run of one step, with the run it belongs to. */
 export const workflowStepRunSchema = z
@@ -85,9 +88,9 @@ export const workflowStepRunSchema = z
   })
   .strict();
 
-export const workflowStepRunsResponseSchema = z
-  .object({ items: z.array(workflowStepRunSchema).max(50) })
-  .strict();
+export const workflowStepRunsResponseSchema = responseSchema(
+  z.object({ items: z.array(workflowStepRunSchema).max(50) }).strict(),
+);
 
 export type WorkflowStepHealth = z.output<typeof workflowStepHealthSchema>;
 export type WorkflowStepHealthResponse = z.output<

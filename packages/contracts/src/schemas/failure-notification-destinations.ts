@@ -1,3 +1,4 @@
+import { responseSchema } from './shared/response-schema.js';
 import { z } from 'zod';
 import {
   FAILURE_NOTIFICATION_DESTINATION_LIST_LIMIT,
@@ -27,46 +28,52 @@ export const failureNotificationDestinationAppendVersionRequestSchema = z
     config: failureNotificationDestinationConfigSchema,
   })
   .strict();
-export const failureNotificationDestinationResponseSchema = z
-  .object({
-    id: z.uuid(),
-    workspaceId: z.uuid(),
-    kind: failureNotificationDestinationKindSchema,
-    status: failureNotificationDestinationStatusSchema,
-    currentVersion: z.number().int().positive(),
-    config: failureNotificationDestinationConfigSchema,
-    createdAt: z.iso.datetime(),
-    updatedAt: z.iso.datetime(),
-  })
-  .strict();
-export const failureNotificationDestinationListResponseSchema = z
-  .object({
-    systemMail: z
-      .discriminatedUnion('available', [
-        z.object({ available: z.literal(true) }).strict(),
-        z
-          .object({
-            available: z.literal(false),
-            reason: z.string().min(1).max(300),
-          })
-          .strict(),
-      ])
-      .optional(),
-    nextCursor: z.uuid().nullable().optional(),
-    items: z
-      .array(failureNotificationDestinationResponseSchema)
-      .max(FAILURE_NOTIFICATION_DESTINATION_LIST_LIMIT),
-  })
-  .strict();
+export const failureNotificationDestinationResponseSchema = responseSchema(
+  z
+    .object({
+      id: z.uuid(),
+      workspaceId: z.uuid(),
+      kind: failureNotificationDestinationKindSchema,
+      status: failureNotificationDestinationStatusSchema,
+      currentVersion: z.number().int().positive(),
+      config: failureNotificationDestinationConfigSchema,
+      createdAt: z.iso.datetime(),
+      updatedAt: z.iso.datetime(),
+    })
+    .strict(),
+);
+export const failureNotificationDestinationListResponseSchema = responseSchema(
+  z
+    .object({
+      systemMail: z
+        .discriminatedUnion('available', [
+          z.object({ available: z.literal(true) }).strict(),
+          z
+            .object({
+              available: z.literal(false),
+              reason: z.string().min(1).max(300),
+            })
+            .strict(),
+        ])
+        .optional(),
+      nextCursor: z.uuid().nullable().optional(),
+      items: z
+        .array(failureNotificationDestinationResponseSchema)
+        .max(FAILURE_NOTIFICATION_DESTINATION_LIST_LIMIT),
+    })
+    .strict(),
+);
 export const workflowFailureNotificationPolicyRequestSchema = z
   .object({ destinationId: z.uuid() })
   .strict();
 /** The workflow's current failure-alert destination, or null when none is set. */
-export const workflowFailureNotificationPolicyResponseSchema = z
-  .object({
-    destination: failureNotificationDestinationResponseSchema.nullable(),
-  })
-  .strict();
+export const workflowFailureNotificationPolicyResponseSchema = responseSchema(
+  z
+    .object({
+      destination: failureNotificationDestinationResponseSchema.nullable(),
+    })
+    .strict(),
+);
 export const failureNotificationDestinationStatusRequestSchema = z
   .object({ status: failureNotificationDestinationStatusSchema })
   .strict();

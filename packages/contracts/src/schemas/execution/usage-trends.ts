@@ -1,3 +1,4 @@
+import { responseSchema } from '../shared/response-schema.js';
 import { z } from 'zod';
 import { workflowRunStatisticsResponseSchema } from './runs.js';
 
@@ -23,31 +24,33 @@ const ranked = z
     failures: count,
   })
   .strict();
-export const usageTrendsResponseSchema = z
-  .object({
-    period: usageTrendPeriodSchema,
-    asOf: z.iso.datetime({ precision: 6 }),
-    from: z.iso.datetime({ precision: 6 }),
-    before: z.iso.datetime({ precision: 6 }),
-    coverageFrom: z.iso.datetime({ precision: 6 }),
-    total: count,
-    byStatus: counts,
-    elapsed,
-    days: z
-      .array(
-        z
-          .object({
-            day: z.iso.date(),
-            total: count,
-            byStatus: counts,
-            elapsed,
-          })
-          .strict(),
-      )
-      .max(90),
-    busiest: z.array(ranked).max(10),
-    mostFailures: z.array(ranked).max(10),
-  })
-  .strict();
+export const usageTrendsResponseSchema = responseSchema(
+  z
+    .object({
+      period: usageTrendPeriodSchema,
+      asOf: z.iso.datetime({ precision: 6 }),
+      from: z.iso.datetime({ precision: 6 }),
+      before: z.iso.datetime({ precision: 6 }),
+      coverageFrom: z.iso.datetime({ precision: 6 }),
+      total: count,
+      byStatus: counts,
+      elapsed,
+      days: z
+        .array(
+          z
+            .object({
+              day: z.iso.date(),
+              total: count,
+              byStatus: counts,
+              elapsed,
+            })
+            .strict(),
+        )
+        .max(90),
+      busiest: z.array(ranked).max(10),
+      mostFailures: z.array(ranked).max(10),
+    })
+    .strict(),
+);
 export type UsageTrendPeriod = z.output<typeof usageTrendPeriodSchema>;
 export type UsageTrendsResponse = z.output<typeof usageTrendsResponseSchema>;

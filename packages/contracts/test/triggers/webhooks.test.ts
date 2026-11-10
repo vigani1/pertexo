@@ -177,16 +177,15 @@ describe('webhook public contracts', () => {
     );
   });
 
-  it('keeps ingress success strict', () => {
+  it('keeps ingress success bounded and sanitized', () => {
     const response = {
       runId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
       replayed: false,
     };
     expect(webhookIngressResponseSchema.parse(response)).toEqual(response);
     expect(
-      webhookIngressResponseSchema.safeParse({ ...response, secret: 'no' })
-        .success,
-    ).toBe(false);
+      webhookIngressResponseSchema.parse({ ...response, secret: 'no' }),
+    ).toEqual(response);
   });
 
   it('documents guarded management and signed ingress metadata', () => {
@@ -238,8 +237,8 @@ it('describes asynchronous coordination without exposing keys or pretending a ru
     { input: { secret: true } },
   ])
     expect(
-      webhookIngressResponseSchema.safeParse({ ...receipt, ...extra }).success,
-    ).toBe(false);
+      webhookIngressResponseSchema.parse({ ...receipt, ...extra }),
+    ).toEqual(receipt);
 });
 
 it('bounds temporary webhook contracts and never rediscloses a credential in snapshots', () => {
@@ -277,9 +276,9 @@ it('bounds temporary webhook contracts and never rediscloses a credential in sna
   };
   expect(webhookTestEventSnapshotSchema.parse(snapshot)).toEqual(snapshot);
   expect(
-    webhookTestEventSnapshotSchema.safeParse({
+    webhookTestEventSnapshotSchema.parse({
       ...snapshot,
       signingSecret: started.signingSecret,
-    }).success,
-  ).toBe(false);
+    }),
+  ).toEqual(snapshot);
 });

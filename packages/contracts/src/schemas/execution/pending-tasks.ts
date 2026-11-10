@@ -1,3 +1,4 @@
+import { responseSchema } from '../shared/response-schema.js';
 import { storageTextSchema } from '@pertexo/workflow-model';
 import {
   workspacePeopleQuerySchema as approvalAudienceQuerySchema,
@@ -38,49 +39,51 @@ const pendingTaskStatusSchema = z.enum([
   'refused',
   'canceled',
 ]);
-export const pendingTaskSummarySchema = z
-  .object({
-    id: z.uuid(),
-    workspaceId: z.uuid(),
-    workflowId: z.uuid(),
-    workflowName: z.string().max(128),
-    runId: z.uuid(),
-    nodeId: z.string().max(128),
-    /** The step's label in its version; null when it has none. */
-    stepName: z.string().max(200).nullable(),
-    nodeRunId: z.uuid(),
-    iterationPath: z
-      .array(
-        z
-          .object({
-            loopNodeId: z.string().min(1).max(128),
-            ordinal: z.number().int().nonnegative(),
-          })
-          .strict(),
-      )
-      .max(64),
-    kind: z.enum(['approval', 'input_request']),
-    title: z.string().max(PENDING_TASK_LIMITS.titleCharacters),
-    details: taskDetailsSchema.default({}),
-    status: pendingTaskStatusSchema,
-    createdAt: z.iso.datetime(),
-    expiresAt: z.iso.datetime(),
-    onExpiry: taskExpiryChoiceSchema,
-    completedAt: z.iso.datetime().nullable(),
-    completedByName: z.string().max(256).nullable(),
-    canRespond: z.boolean(),
-    blockedReason: z
-      .enum([
-        'starter',
-        'audience',
-        'expired',
-        'resolved',
-        'run_closed',
-        'workspace_suspended',
-      ])
-      .nullable(),
-  })
-  .strict();
+export const pendingTaskSummarySchema = responseSchema(
+  z
+    .object({
+      id: z.uuid(),
+      workspaceId: z.uuid(),
+      workflowId: z.uuid(),
+      workflowName: z.string().max(128),
+      runId: z.uuid(),
+      nodeId: z.string().max(128),
+      /** The step's label in its version; null when it has none. */
+      stepName: z.string().max(200).nullable(),
+      nodeRunId: z.uuid(),
+      iterationPath: z
+        .array(
+          z
+            .object({
+              loopNodeId: z.string().min(1).max(128),
+              ordinal: z.number().int().nonnegative(),
+            })
+            .strict(),
+        )
+        .max(64),
+      kind: z.enum(['approval', 'input_request']),
+      title: z.string().max(PENDING_TASK_LIMITS.titleCharacters),
+      details: taskDetailsSchema.default({}),
+      status: pendingTaskStatusSchema,
+      createdAt: z.iso.datetime(),
+      expiresAt: z.iso.datetime(),
+      onExpiry: taskExpiryChoiceSchema,
+      completedAt: z.iso.datetime().nullable(),
+      completedByName: z.string().max(256).nullable(),
+      canRespond: z.boolean(),
+      blockedReason: z
+        .enum([
+          'starter',
+          'audience',
+          'expired',
+          'resolved',
+          'run_closed',
+          'workspace_suspended',
+        ])
+        .nullable(),
+    })
+    .strict(),
+);
 const taskDetailBase = pendingTaskSummarySchema.extend({
   workflowVersionId: z.uuid(),
   instructions: z.string().max(PENDING_TASK_LIMITS.instructionsCharacters),
@@ -108,16 +111,18 @@ export const pendingTaskSubmitRequestSchema = z
 export type PendingTaskSubmitRequest = z.output<
   typeof pendingTaskSubmitRequestSchema
 >;
-export const pendingTaskResponseSchema = z
-  .object({ task: pendingTaskDetailSchema })
-  .strict();
-export const pendingTaskListResponseSchema = z
-  .object({
-    items: z.array(pendingTaskSummarySchema).max(50),
-    nextCursor: z.uuid().nullable(),
-    pendingCount: z.number().int().nonnegative(),
-  })
-  .strict();
+export const pendingTaskResponseSchema = responseSchema(
+  z.object({ task: pendingTaskDetailSchema }).strict(),
+);
+export const pendingTaskListResponseSchema = responseSchema(
+  z
+    .object({
+      items: z.array(pendingTaskSummarySchema).max(50),
+      nextCursor: z.uuid().nullable(),
+      pendingCount: z.number().int().nonnegative(),
+    })
+    .strict(),
+);
 export const pendingTaskDecisionRequestSchema = z
   .object({
     decision: approvalDecisionSchema,
@@ -127,9 +132,9 @@ export const pendingTaskDecisionRequestSchema = z
       .optional(),
   })
   .strict();
-export const pendingTaskDecisionResponseSchema = z
-  .object({ task: pendingTaskDetailSchema, replayed: z.boolean() })
-  .strict();
+export const pendingTaskDecisionResponseSchema = responseSchema(
+  z.object({ task: pendingTaskDetailSchema, replayed: z.boolean() }).strict(),
+);
 export type PendingTaskSummary = z.output<typeof pendingTaskSummarySchema>;
 export type PendingTaskDetail = z.output<typeof pendingTaskDetailSchema>;
 export type PendingTaskListQuery = z.output<typeof pendingTaskListQuerySchema>;
@@ -143,12 +148,14 @@ export type PendingTaskDecisionRequest = z.output<
 export const approvalAudienceInspectionRequestSchema = z
   .object({ audience: taskAudienceSchema })
   .strict();
-export const approvalAudienceInspectionResponseSchema = z
-  .object({
-    matchingMemberCount: z.number().int().nonnegative(),
-    actorMatchesAudience: z.boolean(),
-  })
-  .strict();
+export const approvalAudienceInspectionResponseSchema = responseSchema(
+  z
+    .object({
+      matchingMemberCount: z.number().int().nonnegative(),
+      actorMatchesAudience: z.boolean(),
+    })
+    .strict(),
+);
 export type ApprovalAudienceInspectionRequest = z.output<
   typeof approvalAudienceInspectionRequestSchema
 >;

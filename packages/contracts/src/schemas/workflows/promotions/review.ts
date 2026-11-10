@@ -1,3 +1,4 @@
+import { responseSchema } from '../../shared/response-schema.js';
 import { workflowExecutableChecksumSchema } from '@pertexo/workflow-model';
 import { z } from 'zod';
 import { workflowGraphSchema } from '@pertexo/workflow-model';
@@ -47,41 +48,43 @@ export const workflowPromotionRequirementSchema = z
     targetVersionId: id.optional(),
   })
   .strict();
-export const workflowPromotionPreviewSchema = z
-  .object({
-    fingerprint: z.string().regex(/^[a-f0-9]{64}$/u),
-    sourceWorkspaceId: id,
-    sourceWorkspaceName: z.string().max(128),
-    targetWorkspaceId: id,
-    targetWorkspaceName: z.string().max(128),
-    mode: workflowPromotionModeSchema,
-    requireApproval: z.boolean(),
-    compatible: z.boolean(),
-    workflows: z
-      .array(
-        z
-          .object({
-            sourceWorkflowId: id,
-            sourceName: z.string().max(128),
-            sourceVersionId: id,
-            sourceVersionNumber: z.number().int().positive(),
-            sourceChecksum: workflowExecutableChecksumSchema,
-            targetWorkflowId: id.nullable(),
-            targetName: z.string().max(128),
-            targetRevision: z.number().int().positive().nullable(),
-            targetPublishedVersionId: id.nullable(),
-            directChanges: z.boolean(),
-            proposedGraph: workflowGraphSchema,
-            targetGraph: workflowGraphSchema.nullable(),
-          })
-          .strict(),
-      )
-      .max(PROMOTION_LIMITS.workflows),
-    requirements: z
-      .array(workflowPromotionRequirementSchema)
-      .max(PROMOTION_LIMITS.requirements),
-  })
-  .strict();
+export const workflowPromotionPreviewSchema = responseSchema(
+  z
+    .object({
+      fingerprint: z.string().regex(/^[a-f0-9]{64}$/u),
+      sourceWorkspaceId: id,
+      sourceWorkspaceName: z.string().max(128),
+      targetWorkspaceId: id,
+      targetWorkspaceName: z.string().max(128),
+      mode: workflowPromotionModeSchema,
+      requireApproval: z.boolean(),
+      compatible: z.boolean(),
+      workflows: z
+        .array(
+          z
+            .object({
+              sourceWorkflowId: id,
+              sourceName: z.string().max(128),
+              sourceVersionId: id,
+              sourceVersionNumber: z.number().int().positive(),
+              sourceChecksum: workflowExecutableChecksumSchema,
+              targetWorkflowId: id.nullable(),
+              targetName: z.string().max(128),
+              targetRevision: z.number().int().positive().nullable(),
+              targetPublishedVersionId: id.nullable(),
+              directChanges: z.boolean(),
+              proposedGraph: workflowGraphSchema,
+              targetGraph: workflowGraphSchema.nullable(),
+            })
+            .strict(),
+        )
+        .max(PROMOTION_LIMITS.workflows),
+      requirements: z
+        .array(workflowPromotionRequirementSchema)
+        .max(PROMOTION_LIMITS.requirements),
+    })
+    .strict(),
+);
 export type WorkflowPromotionMode = z.output<
   typeof workflowPromotionModeSchema
 >;

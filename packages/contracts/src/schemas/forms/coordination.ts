@@ -1,3 +1,4 @@
+import { responseSchema } from '../shared/response-schema.js';
 import { z } from 'zod';
 import {
   eventCoordinationStatusSchema,
@@ -29,12 +30,14 @@ export const coordinatedEventSchema = z
 const position = z
   .object({ receivedAt: z.iso.datetime(), id: z.uuid() })
   .strict();
-export const coordinatedEventHistorySchema = z
-  .object({
-    items: z.array(coordinatedEventSchema).max(100),
-    next: position.nullable(),
-  })
-  .strict();
+export const coordinatedEventHistorySchema = responseSchema(
+  z
+    .object({
+      items: z.array(coordinatedEventSchema).max(100),
+      next: position.nullable(),
+    })
+    .strict(),
+);
 export const coordinatedEventHistoryQuerySchema = z
   .object({
     limit: z.coerce.number().int().min(1).max(100).default(25),

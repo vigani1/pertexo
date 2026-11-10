@@ -246,8 +246,13 @@ describe('workflow-run public contracts', () => {
         workflows: null,
       }).workflows,
     ).toBeNull();
+    expect(
+      workflowRunStatisticsResponseSchema.parse({
+        ...response,
+        current: { ...response.current, failed: 1 },
+      }),
+    ).toEqual(response);
     const invalid = [
-      { ...response, current: { ...response.current, failed: 1 } },
       { ...response, asOf: '2026-09-25T12:00:00Z' },
       {
         ...response,

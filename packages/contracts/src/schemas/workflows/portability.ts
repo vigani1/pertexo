@@ -67,3 +67,8 @@ export type WorkflowImportRequest = z.infer<typeof workflowImportRequestSchema>;
 export type WorkflowImportPreviewResponse = z.infer<
   typeof workflowImportPreviewResponseSchema
 >;
+
+/** HTTP decoding is tolerant; the stored/request manifest validator remains strict. */
+export const workflowExportResponseSchema = responseSchema(
+  workflowPortableManifestSchema,
+);

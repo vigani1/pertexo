@@ -123,6 +123,13 @@ describe('accepted folder and general-bulk public contracts', () => {
         items: [folder, { ...folder, id: b, parentId: a, depth: 4 }],
       }).items,
     ).toHaveLength(2);
+    for (const extra of [{ total: 0 }, { nextCursor: null }])
+      expect(
+        schemas1.workflowFolderListResponseSchema.parse({
+          items: [],
+          ...extra,
+        }),
+      ).toEqual({ items: [] });
     for (const value of [
       { items: new Array<unknown>(1) },
       { items: [undefined, folder] },
@@ -138,8 +145,6 @@ describe('accepted folder and general-bulk public contracts', () => {
           id: idAt(index),
         })),
       },
-      { items: [], total: 0 },
-      { items: [], nextCursor: null },
     ])
       expect(
         schemas1.workflowFolderListResponseSchema.safeParse(value).success,
@@ -159,13 +164,13 @@ describe('accepted folder and general-bulk public contracts', () => {
       }),
     ).toEqual({ folder, replayed: false });
     expect(
-      schemas1.workflowFolderDeleteResponseSchema.safeParse({
+      schemas1.workflowFolderDeleteResponseSchema.parse({
         folderId: a,
         deleted: true,
         replayed: true,
         detachedWorkflowCount: 0,
-      }).success,
-    ).toBe(false);
+      }),
+    ).toEqual({ folderId: a, deleted: true, replayed: true });
     expect(
       schemas1.workflowFolderPlacementResponseSchema.parse({
         workflowId: a,

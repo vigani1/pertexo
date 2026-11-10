@@ -1,3 +1,4 @@
+import { responseSchema } from '../../shared/response-schema.js';
 import { COLLABORATION_LIMITS } from '@pertexo/workflow-model';
 export { COLLABORATION_LIMITS };
 import { z } from 'zod';
@@ -108,29 +109,37 @@ export const workflowCommentSchema = z
       .max(COLLABORATION_LIMITS.mentions),
   })
   .strict();
-export const workflowCommentListSchema = z
-  .object({
-    items: z.array(workflowCommentThreadSchema).max(COLLABORATION_LIMITS.page),
-    nextCursor: id.nullable(),
-  })
-  .strict();
-export const workflowCommentDetailSchema = z
-  .object({
-    thread: workflowCommentThreadSchema,
-    comments: z.array(workflowCommentSchema).max(COLLABORATION_LIMITS.page),
-    nextCursor: id.nullable(),
-  })
-  .strict();
-export const workflowCommentCommandResultSchema = z
-  .object({
-    threadId: id,
-    commentId: id.nullable(),
-    revision,
-    replayed: z.boolean(),
-    deleted: z.boolean(),
-    threadDeleted: z.boolean(),
-  })
-  .strict();
+export const workflowCommentListSchema = responseSchema(
+  z
+    .object({
+      items: z
+        .array(workflowCommentThreadSchema)
+        .max(COLLABORATION_LIMITS.page),
+      nextCursor: id.nullable(),
+    })
+    .strict(),
+);
+export const workflowCommentDetailSchema = responseSchema(
+  z
+    .object({
+      thread: workflowCommentThreadSchema,
+      comments: z.array(workflowCommentSchema).max(COLLABORATION_LIMITS.page),
+      nextCursor: id.nullable(),
+    })
+    .strict(),
+);
+export const workflowCommentCommandResultSchema = responseSchema(
+  z
+    .object({
+      threadId: id,
+      commentId: id.nullable(),
+      revision,
+      replayed: z.boolean(),
+      deleted: z.boolean(),
+      threadDeleted: z.boolean(),
+    })
+    .strict(),
+);
 export type WorkflowCommentBody = z.output<typeof workflowCommentBodySchema>;
 export type WorkflowCommentCreate = z.output<
   typeof workflowCommentCreateSchema

@@ -1,3 +1,4 @@
+import { responseSchema } from './shared/response-schema.js';
 import { z } from 'zod';
 
 import { connectionResponseFields } from './connection-fields.js';
@@ -193,32 +194,34 @@ const oauth2ConnectionFields = {
 } as const;
 
 /** A connection has a grant exactly when it is active, so neither can disagree. */
-export const oauth2ConnectionResponseSchema = z.discriminatedUnion('status', [
-  z
-    .object({
-      ...oauth2ConnectionFields,
-      status: z.literal('active'),
-      grant: z
-        .object({
-          authorizedAt: z.iso.datetime(),
-          /** Null when the service gave no lifetime. */
-          accessTokenExpiresAt: z.iso.datetime().nullable(),
-          /** False when Pertexo can't renew it, so someone must reconnect. */
-          renewable: z.boolean(),
-        })
-        .strict()
-        .readonly(),
-    })
-    .strict()
-    .readonly(),
-  z
-    .object({
-      ...oauth2ConnectionFields,
-      status: z.enum(['reauthorization_required', 'revoked']),
-    })
-    .strict()
-    .readonly(),
-]);
+export const oauth2ConnectionResponseSchema = responseSchema(
+  z.discriminatedUnion('status', [
+    z
+      .object({
+        ...oauth2ConnectionFields,
+        status: z.literal('active'),
+        grant: z
+          .object({
+            authorizedAt: z.iso.datetime(),
+            /** Null when the service gave no lifetime. */
+            accessTokenExpiresAt: z.iso.datetime().nullable(),
+            /** False when Pertexo can't renew it, so someone must reconnect. */
+            renewable: z.boolean(),
+          })
+          .strict()
+          .readonly(),
+      })
+      .strict()
+      .readonly(),
+    z
+      .object({
+        ...oauth2ConnectionFields,
+        status: z.enum(['reauthorization_required', 'revoked']),
+      })
+      .strict()
+      .readonly(),
+  ]),
+);
 
 /** Why an OAuth2 connection isn't active; the service's own words are never kept. */
 export const oauth2ConnectionErrorCodeSchema = z.enum([
@@ -243,9 +246,8 @@ export const oauth2StepFailureCodeSchema = z.enum([
   'http.oauth2_host_not_allowed',
 ]);
 
-export const oauth2AuthorizationStartResponseSchema = z.discriminatedUnion(
-  'kind',
-  [
+export const oauth2AuthorizationStartResponseSchema = responseSchema(
+  z.discriminatedUnion('kind', [
     z
       .object({
         kind: z.literal('consent'),
@@ -261,7 +263,7 @@ export const oauth2AuthorizationStartResponseSchema = z.discriminatedUnion(
       })
       .strict()
       .readonly(),
-  ],
+  ]),
 );
 
 /** The workspace, base64url, then 256 random bits: row security needs the first. */

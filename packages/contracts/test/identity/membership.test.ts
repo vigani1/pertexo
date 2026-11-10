@@ -32,13 +32,13 @@ describe('membership lifecycle contracts (ADR 047)', () => {
       }),
     ).toEqual({ userId: memberId, roleRevision: 2, replayed: false });
     expect(
-      workspaceLeaveResponseSchema.safeParse({
+      workspaceLeaveResponseSchema.parse({
         userId: memberId,
         roleRevision: 2,
         replayed: false,
         role: 'viewer',
-      }).success,
-    ).toBe(false);
+      }),
+    ).toEqual({ userId: memberId, roleRevision: 2, replayed: false });
   });
 
   it('fences suspension and reactivation by the member role revision', () => {

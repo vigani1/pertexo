@@ -1,13 +1,18 @@
 import { z } from 'zod';
 
+declare const responseSchemaBrand: unique symbol;
+export type ResponseSchema<Schema extends z.ZodType = z.ZodType> = Schema & {
+  readonly [responseSchemaBrand]: true;
+};
+
 const copies = new WeakMap<z.core.$ZodType, z.core.$ZodType>();
 const sources = new WeakMap<z.core.$ZodType, z.core.$ZodType>();
 
 /** Response projections ignore future metadata without changing shared request validators. */
 export function responseSchema<Schema extends z.ZodType>(
   schema: Schema,
-): Schema {
-  return responseCopy(schema) as Schema;
+): ResponseSchema<Schema> {
+  return responseCopy(schema) as ResponseSchema<Schema>;
 }
 
 /** Structural OpenAPI overrides still identify the original bounded domain schema. */
@@ -113,8 +118,13 @@ function responseDefinition(schema: z.core.$ZodType) {
     };
   if (def.type === 'pipe')
     return { ...def, in: responseCopy(def.in), out: responseCopy(def.out) };
-  if (def.type === 'lazy')
-    return { ...def, getter: () => responseCopy(def.getter()) };
+  if (def.type === 'lazy') {
+    // A warmed source cache must not bypass the cloned lazy getter.
+    const { _cachedInner: _sourceCache, ...lazy } = def as typeof def & {
+      _cachedInner?: unknown;
+    };
+    return { ...lazy, getter: () => responseCopy(def.getter()) };
+  }
   if (def.type === 'map')
     return {
       ...def,

@@ -30,9 +30,13 @@ then supplies its own later migration; release migrations must not run inside
 that synthetic history. Preserve its catalog/data equality assertions.
 
 The accepted compatibility correction adds a response-only schema policy for
-public token-route projections, including nested DTOs and bounded graphs. Clone
-shared validators so request/query schemas remain strict. Keep explicit stored
-format validation. Extract read-query declarations to own projection options and
+all HTTP response projections, including nested DTOs and bounded graphs. Clone
+shared validators so request/query schemas remain strict. Require the response helper's branded schema in every route JSON success declaration,
+including alternate successes. Enumerate every exported route and problem decoder
+in a recursive unknown-key policy check. Normalize route params/query/header objects
+to strict input shapes once; retain strict body validators. Rebuild warmed lazy
+caches so nested graph responses cannot fall back to strict stored validators.
+Keep explicit stored format and request validation. Extract read-query declarations to own projection options and
 pagination constraints. Web and CLI request projections; web exports echo the
 server-reviewed digest. Freeze the previous release's response declarations in
 an API test fixture and run them against actual default HTTP responses.

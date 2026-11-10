@@ -1,3 +1,4 @@
+import { responseSchema } from '../shared/response-schema.js';
 import { z } from 'zod';
 import { boundedNodeTestJsonInputSchema } from '../shared/bounded-json-input.js';
 
@@ -54,24 +55,30 @@ const sampleLimitsSchema = z
     members: z.number().int().positive(),
   })
   .strict();
-export const stepSampleListResponseSchema = z
-  .object({
-    items: z.array(stepSampleMetadataSchema).max(200),
-    draftRevision: z.number().int().positive(),
-    limits: sampleLimitsSchema,
-  })
-  .strict();
-export const stepSampleResponseSchema = z
-  .object({
-    sample: stepSampleMetadataSchema.nullable(),
-    output: boundedNodeTestJsonInputSchema.nullable(),
-    draftRevision: z.number().int().positive(),
-    limits: sampleLimitsSchema,
-  })
-  .strict();
-export const stepSampleCommandResponseSchema = z
-  .object({ sampleId: z.uuid(), removed: z.boolean(), replayed: z.boolean() })
-  .strict();
+export const stepSampleListResponseSchema = responseSchema(
+  z
+    .object({
+      items: z.array(stepSampleMetadataSchema).max(200),
+      draftRevision: z.number().int().positive(),
+      limits: sampleLimitsSchema,
+    })
+    .strict(),
+);
+export const stepSampleResponseSchema = responseSchema(
+  z
+    .object({
+      sample: stepSampleMetadataSchema.nullable(),
+      output: boundedNodeTestJsonInputSchema.nullable(),
+      draftRevision: z.number().int().positive(),
+      limits: sampleLimitsSchema,
+    })
+    .strict(),
+);
+export const stepSampleCommandResponseSchema = responseSchema(
+  z
+    .object({ sampleId: z.uuid(), removed: z.boolean(), replayed: z.boolean() })
+    .strict(),
+);
 export type StepSampleMetadata = z.output<typeof stepSampleMetadataSchema>;
 export type StepSampleResponse = z.output<typeof stepSampleResponseSchema>;
 export type StepSampleListResponse = z.output<

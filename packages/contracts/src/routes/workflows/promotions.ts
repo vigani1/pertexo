@@ -1,3 +1,4 @@
+import type { ResponseSchema } from '../../schemas/shared/response-schema.js';
 import { BROWSABLE_WORKSPACE_STATUSES } from '@pertexo/policy';
 
 import { responseReference } from '../openapi-primitives.js';
@@ -24,7 +25,7 @@ const promotionProblems = {
   '503': responseReference('PromotionUnavailable'),
 };
 const noStore = 'private, no-store';
-const result = (body: NamedSchema) => ({
+const result = (body: NamedSchema<ResponseSchema>) => ({
   status: 200,
   description: 'Promotion result',
   body,

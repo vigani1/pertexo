@@ -28,13 +28,13 @@ describe('member removal, self profile and return path contracts', () => {
         false,
       );
     expect(
-      workspaceMemberRemovalResponseSchema.safeParse({
+      workspaceMemberRemovalResponseSchema.parse({
         userId: workspaceId,
         roleRevision: 2,
         replayed: false,
         email: 'leak@example.test',
-      }).success,
-    ).toBe(false);
+      }),
+    ).toEqual({ userId: workspaceId, roleRevision: 2, replayed: false });
     const route =
       identityWorkspaceOpenApiDocument.paths[
         '/v1/workspaces/{workspaceId}/members/{userId}/remove'

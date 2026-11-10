@@ -1,3 +1,4 @@
+import { responseSchema } from '../../shared/response-schema.js';
 import { storageTextSchema } from '@pertexo/workflow-model';
 import { FEDERATION_LIMITS } from '@pertexo/workflow-model';
 export { FEDERATION_LIMITS };
@@ -282,35 +283,37 @@ const domain = z
       .max(FEDERATION_LIMITS.providers),
   })
   .strict();
-export const federationSettingsSchema = z
-  .object({
-    configured: z.boolean(),
-    reason: z.string().nullable(),
-    canManage: z.boolean(),
-    organization: z
-      .object({
-        id: z.uuid(),
-        name,
-        revision,
-        controlWorkspaceId: z.uuid(),
-        workspaces: z
-          .array(
-            z
-              .object({
-                workspaceId: z.uuid(),
-                name,
-                defaultRole: delegatedWorkspaceRoleSchema,
-              })
-              .strict(),
-          )
-          .max(FEDERATION_LIMITS.workspaces),
-        domains: z.array(domain).max(FEDERATION_LIMITS.domains),
-        providers: z.array(provider).max(FEDERATION_LIMITS.providers),
-      })
-      .strict()
-      .nullable(),
-  })
-  .strict();
+export const federationSettingsSchema = responseSchema(
+  z
+    .object({
+      configured: z.boolean(),
+      reason: z.string().nullable(),
+      canManage: z.boolean(),
+      organization: z
+        .object({
+          id: z.uuid(),
+          name,
+          revision,
+          controlWorkspaceId: z.uuid(),
+          workspaces: z
+            .array(
+              z
+                .object({
+                  workspaceId: z.uuid(),
+                  name,
+                  defaultRole: delegatedWorkspaceRoleSchema,
+                })
+                .strict(),
+            )
+            .max(FEDERATION_LIMITS.workspaces),
+          domains: z.array(domain).max(FEDERATION_LIMITS.domains),
+          providers: z.array(provider).max(FEDERATION_LIMITS.providers),
+        })
+        .strict()
+        .nullable(),
+    })
+    .strict(),
+);
 export type FederationSettings = z.output<typeof federationSettingsSchema>;
 
 export type FederationOrganizationCreate = z.output<
@@ -349,10 +352,12 @@ export function samlServiceProviderUrls(
   };
 }
 
-export const samlMetadataSchema = z
-  .object({
-    entityId: z.url({ protocol: /^https$/u }).max(2048),
-    redirectUri: z.url({ protocol: /^https$/u }).max(2048),
-    xml: z.string().min(1).max(SAML_LIMITS.metadataBytes),
-  })
-  .strict();
+export const samlMetadataSchema = responseSchema(
+  z
+    .object({
+      entityId: z.url({ protocol: /^https$/u }).max(2048),
+      redirectUri: z.url({ protocol: /^https$/u }).max(2048),
+      xml: z.string().min(1).max(SAML_LIMITS.metadataBytes),
+    })
+    .strict(),
+);
