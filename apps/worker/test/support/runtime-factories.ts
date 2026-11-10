@@ -199,7 +199,7 @@ export function testNodeAttemptRuntime(
   options: NodeAttemptRuntimeOptions,
   services: TestNodeAttemptServices = {},
 ) {
-  const { runtimeCapabilities } = services;
+  const { runtimeCapabilities, runStore } = services;
   return createNodeAttemptRuntime(
     options,
     supplied({
@@ -213,12 +213,18 @@ export function testNodeAttemptRuntime(
                 checkReadiness: () => Promise.resolve(),
                 close: () => Promise.resolve(),
               })),
+      // The supplied store also supplies renewal, with one cleanup owner.
+      heartbeatStore: returning(
+        runStore === undefined
+          ? undefined
+          : { heartbeat: runStore.heartbeat, close: () => Promise.resolve() },
+      ),
       consumer: services.consumerFactory,
       engine: returning(services.engine),
       notifications: returning(services.notifications),
       reader: returning(services.reader),
       registry: returning(services.registry),
-      runStore: returning(services.runStore),
+      runStore: returning(runStore),
       runFailures: returning(services.runFailures),
       previewTelemetry: returning(services.previewTelemetry),
       previewHandler: services.previewHandlerFactory,
