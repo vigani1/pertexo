@@ -26,3 +26,38 @@ upstream operating-system notices.
 
 Review exceptions when upgrading the affected package. Do not add an exception
 merely to turn CI green: record the package, license, distribution use and reason.
+
+## Completeness and copied software
+
+The generator reads each installed package's own LICENSE, COPYING, NOTICE and
+copyright files. If they do not contain a grant, it extracts README license
+sections, including Markdown underline headings. A link or SPDX identifier alone
+is not license text. Every installed version must supply text or match an explicit
+version-scoped exception in `infrastructure/checks/license-supplements.json`.
+That file also retains upstream text for known npm publishing omissions, with its
+source and the reviewed package versions. Platform binaries use the corresponding
+wrapper package's published license; a new version requires review.
+
+The missing-text exceptions cover test/build inputs absent from both production
+distributions: `is-node-process` 1.2.0 and `strict-event-emitter` 0.5.1 (MSW),
+`stackback` 0.0.2 (Vitest), `ipv6-normalize` 1.0.1 (SMTP test server), and `keyv`
+4.5.4 (ESLint cache). Their publishers omit the grant text. Retain any available
+copyright/disclaimer or original source grant and its attribution. These exceptions
+do not permit unknown versions or a new runtime library. Drizzle Kit's metadata
+declares MIT while its upstream monorepo provides Apache-2.0; the notices state
+that discrepancy and retain the full upstream text for this build-only CLI.
+
+`infrastructure/checks/copied-software-licenses.json` inventories CPython 3.15.1
+and its bundled standard-library acknowledgements, including expanded expat COPYING
+text, from the checksum-verified archive. Its URL and checksum must match Dockerfile.
+Debian PCRE2/Perl security patches retain their base-system copyright files under
+`/usr/share/doc`. The native launcher and copied application/configuration are
+Pertexo code. Python's documentation conservatively includes components disabled
+in this installation. Verify the generated text against the installed Python LICENSE
+when rebuilding. Update the inventory when changing the Python pin.
+
+Pertexo does not copy or ship rclone or its Go dependencies. Backup operations run
+the digest-pinned official upstream image as short-lived containers. Its pin lives
+in `infrastructure/single-server/compose.yaml (the backup-profile rclone service)`, covered by the existing
+Compose Dependabot group. There is no rclone license exception or source-distribution
+mechanism in Pertexo, and its notices do not inventory that external service.
