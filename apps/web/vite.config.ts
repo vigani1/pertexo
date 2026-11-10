@@ -75,7 +75,10 @@ export default defineConfig({
   server: {
     // The API owns webhook CORS, including OPTIONS; Vite must forward it.
     cors: false,
-    port: 5173,
+    port: Number(
+      new URL(process.env.PUBLIC_WEB_ORIGIN ?? 'http://127.0.0.1:5173').port ||
+        '80',
+    ),
     strictPort: true,
     proxy: {
       '/hooks': { target: parsedApiProxyTarget.origin, changeOrigin: false },
