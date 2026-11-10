@@ -111,12 +111,13 @@ export async function discardSpares(
   for (const spare of spares.splice(0)) {
     const owner = await spare.catch(() => undefined);
     if (owner === undefined || !childIsRunning(owner.child)) continue;
-    // An unstarted spare exits when its start signal can never arrive.
+    // An unstarted spare owns no connections, even before its imports finish.
     owner.child.stdin?.end();
+    owner.child.kill('SIGTERM');
     await bounded(owner.exit, 5_000, 'For Each spare did not exit')
       .then((exited) => {
         if (exited.error !== undefined) throw exited.error;
-        if (exited.code !== 0)
+        if (exited.code !== 0 && exited.signal !== 'SIGTERM')
           throw new Error(
             `For Each spare stopped unsuccessfully (${String(exited.code)}, ${String(exited.signal)})`,
           );
