@@ -39,7 +39,11 @@ export type NodeExecutionCapabilityFactories = Readonly<{
   ) => NodeDataTableRuntime;
   code?: (
     context: NodeExecutionCapabilityContext &
-      Readonly<{ variables: Readonly<Record<string, JsonValue>> }>,
+      Readonly<{
+        variables: Readonly<Record<string, JsonValue>>;
+        /** Persisted evidence from before this delivery marks its own dispatch. */
+        previouslyDispatched: boolean;
+      }>,
   ) => NodeCodeRuntime;
   connections?: (
     context: NodeExecutionCapabilityContext,

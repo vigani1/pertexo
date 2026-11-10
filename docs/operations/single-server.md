@@ -518,8 +518,20 @@ Code steps. Deploy first stops the worker and waits for its drain before stoppin
 the Code runner. The same ordering applies if an unhealthy deployment is stopped.
 The drain is bounded: the worker waits up to 60 seconds for active steps, and
 Compose stops it after 90 seconds. A Code step that needs longer (up to
-`CODE_RUNNER_MAX_SECONDS`, 300 by default) is aborted at that point, so plan
-deploys outside long-running Code work.
+`CODE_RUNNER_MAX_SECONDS`, 300 by default) is aborted at that point. If a
+previously dispatched Code attempt loses its result, recovery ends that attempt
+as `failed` with `code.runtime_error` and an interrupted-execution diagnostic.
+It does not execute the Code again automatically. Review the run before explicitly
+rerunning it. A configured failure route can handle the failure; otherwise the
+run ends as failed.
+
+On default settings, the last heartbeat holds the attempt lease for at most
+30 seconds, and recovery scans every 5 seconds. After the worker restarts, lease
+expiry makes the interrupted attempt eligible for the next scan and queue
+delivery; the real deploy regression requires it to reach failure within
+150 seconds after restart. A custom `NODE_ATTEMPT_LEASE_SECONDS` increases the
+lease bound. Database/queue outages or a backed-up queue delay recovery. Short
+Code work that finishes during the drain keeps its successful result.
 
 PostgreSQL init scripts are prepared under `state/postgres-init` and mounted from
 that stable operator path. Changing release directories therefore does not change
