@@ -1,3 +1,4 @@
+import { CODE_ERROR_CODES, codeErrorCodeSchema } from '@pertexo/contracts';
 import { shortStepError } from '@/features/workflow-runs/model/step-inspection/step-error-summary';
 import { describe, expect, it } from 'vitest';
 import { describeStepError } from '@/features/workflow-runs/model/step-inspection/error-copy';
@@ -110,3 +111,20 @@ it.each([
     );
   },
 );
+
+it('explains interruption without blaming the code and offers Rerun', () => {
+  expect(CODE_ERROR_CODES).toContain('code.interrupted');
+  expect(codeErrorCodeSchema.parse('code.interrupted')).toBe(
+    'code.interrupted',
+  );
+  const copy = describeStepError('code.interrupted');
+  expect(copy.sentence).toBe(
+    'The Code step was interrupted before its result was saved.',
+  );
+  expect(copy.advice).toBe(
+    'Rerun the workflow when it is safe to repeat its steps. You do not need to fix or republish the code.',
+  );
+  expect(shortStepError('code.interrupted')).toBe(
+    'the Code step was interrupted',
+  );
+});

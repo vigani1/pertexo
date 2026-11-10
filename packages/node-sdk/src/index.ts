@@ -82,6 +82,8 @@ export {
 export { type CodeSyntaxIssue, inspectCodeSource } from './code/source.js';
 
 export {
+  CODE_ERROR_CODES,
+  codeErrorCodeSchema,
   type CodeErrorCode,
   codeDiagnosticsSchema,
   type CodeDiagnostics,

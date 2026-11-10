@@ -11,6 +11,13 @@ import {
 
 import { connectionRevoked, OAUTH2_STEP_ERRORS } from './oauth2-error-copy';
 
+export const CODE_INTERRUPTED_COPY = {
+  sentence: 'The Code step was interrupted before its result was saved.',
+  advice:
+    'Rerun the workflow when it is safe to repeat its steps. You do not need to fix or republish the code.',
+  summary: 'the Code step was interrupted',
+};
+
 type StepErrorFix = 'reconnect' | 'review-connection';
 
 export type StepErrorCopy = Readonly<{
@@ -273,6 +280,7 @@ const knownCodes: Readonly<Record<string, StepErrorCopy>> = {
     advice:
       'Return a smaller or simpler value from the step, publish, then replay the run.',
   },
+  'code.interrupted': CODE_INTERRUPTED_COPY,
   'code.runtime_error': {
     sentence: 'The code threw an error.',
     advice:

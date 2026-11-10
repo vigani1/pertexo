@@ -55,7 +55,7 @@ it.each([false, true])(
       if (previouslyDispatched) {
         expect(result).toMatchObject({
           kind: 'failed',
-          code: 'code.runtime_error',
+          code: 'code.interrupted',
         });
         if (result.kind !== 'failed')
           throw new Error('Interrupted Code succeeded');

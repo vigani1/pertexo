@@ -191,3 +191,8 @@ without a local Python installation.
 Deployed workers refuse that development mode before sending run data. See
 [the deployment guide](../operations/single-server.md) for container limits and
 configuration.
+
+An execution interrupted by deployment or worker loss ends with
+`code.interrupted`. This is a non-retryable interruption, not a defect in the
+code. Review the run and use Rerun when repeating its steps is safe; there is no
+need to edit or republish the Code step.

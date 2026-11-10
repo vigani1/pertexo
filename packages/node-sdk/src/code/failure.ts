@@ -24,6 +24,7 @@ function errorKind(code: CodeErrorCode) {
   if (code === 'code.timeout') return 'timeout';
   const runtimeFailed =
     code === 'code.runtime_error' ||
+    code === 'code.interrupted' ||
     code === 'code.memory_limit' ||
     code === 'code.runner_unavailable';
   if (runtimeFailed) return 'internal';

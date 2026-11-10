@@ -518,7 +518,7 @@ The drain is bounded: the worker waits up to 60 seconds for active steps, and
 Compose stops it after 90 seconds. A Code step that needs longer (up to
 `CODE_RUNNER_MAX_SECONDS`, 300 by default) is aborted at that point. If a
 previously dispatched Code attempt loses its result, recovery ends that attempt
-as `failed` with `code.runtime_error` and an interrupted-execution diagnostic.
+as `failed` with `code.interrupted` and an interrupted-execution diagnostic.
 It does not execute the Code again automatically. Review the run before explicitly
 rerunning it. A configured failure route can handle the failure; otherwise the
 run ends as failed.
