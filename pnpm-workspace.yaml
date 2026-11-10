@@ -2,6 +2,7 @@ packages:
   - apps/*
   - packages/*
 
+# Review dates, reasons and removal conditions: docs/operations/dependency-reviews.md.
 overrides:
   # Keep optional peers on the same SDK-compatible API and Drizzle identity.
   '@opentelemetry/api': 1.9.1
