@@ -45,6 +45,8 @@ function start(name, args, environment) {
     cwd: root,
     env: environment,
     stdio: ['ignore', 'pipe', 'pipe'],
+    // Each application owns its pnpm/watch/server process group.
+    detached: true,
   });
   const prefix = `[${name}] `;
   for (const stream of [child.stdout, child.stderr]) {
@@ -139,8 +141,16 @@ const apps = [
   start('web', ['--filter', '@pertexo/web', 'dev'], environment),
 ];
 const stop = () => {
+  if (shutdown.signal.aborted) return;
   shutdown.abort();
-  for (const child of apps) child.kill('SIGINT');
+  for (const child of apps) {
+    if (child.pid === undefined) continue;
+    try {
+      process.kill(-child.pid, 'SIGINT');
+    } catch (error) {
+      if (error.code !== 'ESRCH') throw error;
+    }
+  }
 };
 process.once('SIGINT', stop);
 process.once('SIGTERM', stop);
