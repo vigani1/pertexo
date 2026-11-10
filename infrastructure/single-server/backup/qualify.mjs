@@ -28,12 +28,22 @@ import { parseArtifactStoreConfig } from '../../../packages/artifact-store/dist/
 const directory = mkdtempSync(join(tmpdir(), 'pertexo-recovery-'));
 const network = `pertexo-recovery-${randomUUID()}`;
 const containers = [];
+const portOffset = process.env.PERTEXO_BACKUP_TEST_OFFSET;
+if (
+  portOffset !== undefined &&
+  (!/^\d+$/u.test(portOffset) || Number(portOffset) > 5000)
+)
+  throw new Error('Invalid backup test port offset');
+let storagePort = 0;
+let databasePort = 0;
 const rust =
   'rustfs/rustfs:1.0.1@sha256:1803faef57627e2d9c2e7d89d655d712ddded5389040054987163043fecb6a3c';
 const rc =
   'rustfs/rc:v0.1.36@sha256:ab024bfebee49a750ce886b4c70963ccd9ddaa03f491704a90710641d7a26699';
-const clone =
-  'rclone/rclone:1.75.2@sha256:2687085f718d3c628f7fdfb77c52a1d344332aed543110bb88088f2c70d43eb5';
+const clone = readFileSync(
+  'infrastructure/single-server/compose.yaml',
+  'utf8',
+).match(/rclone:\n\s+profiles: \[backup\]\n\s+image: (\S+)/u)[1];
 const postgres =
   'postgres:18@sha256:4ef4dbc939d61acea57712655ddb4b4ab27419c913f94cca0cd57cb3ea3c2280';
 let networkCreated = false;
@@ -107,7 +117,9 @@ async function storage(alias, bucket) {
     '--network-alias',
     alias,
     '-p',
-    '127.0.0.1::9000',
+    portOffset === undefined
+      ? '127.0.0.1::9000'
+      : `127.0.0.1:${59000 + Number(portOffset) + storagePort++}:9000`,
     '-e',
     `RUSTFS_ACCESS_KEY=${secret.STORAGE_ADMIN_ACCESS_KEY_ID}`,
     '-e',
@@ -174,7 +186,9 @@ async function database(alias, migrate) {
     '--network-alias',
     alias,
     '-p',
-    '127.0.0.1::5432',
+    portOffset === undefined
+      ? '127.0.0.1::5432'
+      : `127.0.0.1:${55000 + Number(portOffset) + databasePort++}:5432`,
     ...Object.entries(environment).flatMap(([key, value]) => [
       '-e',
       `${key}=${value}`,

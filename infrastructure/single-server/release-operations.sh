@@ -201,7 +201,16 @@ prepare_release() {
   compose config --quiet
 }
 
+rclone_image() {
+  compose --profile backup config --images rclone
+}
 prepare_backup() {
+  local image
+  image=$(rclone_image)
+  if [[ -n $(config_value BACKUP_CRYPT_PASSWORD) || -n $(config_value BACKUP_CRYPT_SALT) ]]; then
+    printf '%s' "$(config_value BACKUP_CRYPT_PASSWORD)" | docker run --rm -i --network none -v "$work:/backup" "$image" obscure - > "$work/obscured-password"
+    printf '%s' "$(config_value BACKUP_CRYPT_SALT)" | docker run --rm -i --network none -v "$work:/backup" "$image" obscure - > "$work/obscured-salt"
+  fi
   docker run --rm --network none --read-only --user "$(id -u):$(id -g)" \
     -v "$config:/run/pertexo.env:ro" -v "$work:/prepared" \
     -v "$release/infrastructure/single-server/backup:/workspace/infrastructure/single-server/backup:ro" \
@@ -213,7 +222,7 @@ rclone() {
   docker run --rm --read-only --tmpfs /tmp --user "$(id -u):$(id -g)" \
     --network "${backup_network:-pertexo-beta_private}" --env-file "$work/rclone.env" \
     -v "$work:/backup" \
-    rclone/rclone:1.75.2@sha256:2687085f718d3c628f7fdfb77c52a1d344332aed543110bb88088f2c70d43eb5 "$@"
+    "$(rclone_image)" "$@"
 }
 recovery_points() {
   docker run --rm --read-only --network none --user "$(id -u):$(id -g)" \
@@ -239,8 +248,12 @@ copy_objects() {
     "ghcr.io/vigani1/pertexo:$SERVICE_VERSION" node --env-file=/run/pertexo.env infrastructure/single-server/backup/copy-objects.mjs "$@"
 }
 
-# The helper image contains the same pinned rclone transport as the shell wrapper.
-backup_helper() {
+# The host dispatches transport requests; the helper alone owns the database lock.
+backup_helper() (
+  local runner
+  bash "$release/infrastructure/single-server/backup/rclone-requests.sh" "$work" "${backup_network:-pertexo-beta_private}" "$(rclone_image)" < /dev/null 8>&- 9>&- &
+  runner=$!
+  trap '[[ ! -f "$work/transport.cid" ]] || docker rm -f "$(cat "$work/transport.cid")" >/dev/null 2>&1; kill "$runner" 2>/dev/null || true; wait "$runner" 2>/dev/null || true' EXIT
   local options=(--env-file "$work/rclone.env")
   if [[ ${1:-} == -i ]]; then options+=(-i); shift; fi
   if [[ ${1:-} == --cidfile ]]; then options+=("$1" "$2"); shift 2; fi
@@ -251,7 +264,7 @@ backup_helper() {
     -v "$config:/run/pertexo.env:ro" -v "$work:/backup" \
     -v "$release/infrastructure/single-server/backup:/workspace/infrastructure/single-server/backup:ro" \
     "ghcr.io/vigani1/pertexo:$SERVICE_VERSION" node --env-file=/run/pertexo.env "infrastructure/single-server/backup/$script" "$@"
-}
+)
 
 verify_backup_key() {
   [[ -n $(config_value BACKUP_CRYPT_PASSWORD) && -n $(config_value BACKUP_CRYPT_SALT) ]] || { echo 'Provide BACKUP_CRYPT_PASSWORD and BACKUP_CRYPT_SALT from the separately held settings file' >&2; return 1; }
