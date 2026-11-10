@@ -15,6 +15,7 @@ import {
   prepareApprovalThroughRealWorkersDurableTasks,
   graph,
   deciderId,
+  occupyTimedWaitSlot,
 } from './pending-tasks-execution.fixture.js';
 import { randomUUID } from 'node:crypto';
 import {
@@ -438,19 +439,7 @@ describe.runIf(fixture.enabled)(
             )?.nodes.find((item) => item.nodeId === 'hold')?.status,
           ).toBe('waiting');
         });
-        await workers.until(async () => {
-          expect(
-            await fixture.workerQuery(
-              'select timed_wait_started_at is not null parked from app.workflow_runs where id=$1',
-              [busy.runId],
-            ),
-          ).toEqual([{ parked: true }]);
-        });
-        // A timed Wait holds no workspace slot, so this stands in for a run at work on a step.
-        await fixture.ownerQuery(
-          'update app.workflow_runs set timed_wait_started_at=null where id=$1',
-          [busy.runId],
-        );
+        await occupyTimedWaitSlot(busy.runId);
         await tasks.decide({
           workspaceId: fixture.workspaceId,
           actorId: deciderId,
@@ -764,6 +753,7 @@ describe.runIf(fixture.enabled)(
             )?.nodes.find((item) => item.nodeId === 'hold')?.status,
           ).toBe('waiting');
         });
+        await occupyTimedWaitSlot(busy.runId);
         await expireOpenTask(run.runId);
         await due.claimDueWakeups(20);
         await workers.until(async () => {
