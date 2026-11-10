@@ -174,8 +174,9 @@ no app schemas or dependency-bearing helpers execute in the operator checkout.
 An invalid configuration can cost an image download, but leaves writers running.
 
 Exported shell settings override `.env.production` for Compose interpolation,
-including `ARTIFACT_STORE_ENDPOINT`. Validation and preparation receive those same
-interpolated overrides. Other settings written to the generated app env files come
+including `ARTIFACT_STORE_ENDPOINT`. Validation and preparation read Compose-resolved service environments, including
+defaults for empty exports. Secret-bearing JSON stays in a mode-600 temporary
+file, mounted read-only into the helper and deleted on exit. Other settings written to the generated app env files come
 from `.env.production`. Unset an exported setting to use the file's value. Run
 deployment in the intended shell environment.
 

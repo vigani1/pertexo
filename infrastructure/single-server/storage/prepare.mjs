@@ -1,15 +1,18 @@
+import { applicationEnvironments } from './resolved-environment.mjs';
 import { codeContainerLimits } from '../../../packages/node-sdk/dist/index.js';
 import { writeFile, chmod, cp } from 'node:fs/promises';
 import { requireCompatibleRelease } from '../encryption/require-compatible-release.mjs';
 import { validateApplicationConfiguration } from './preflight.mjs';
 
 // Use the application boundaries; configuration errors must fail before stopping a release.
+const environments = applicationEnvironments(process.env);
 const environment = {
-  ...process.env,
+  ...environments.preparation,
   WORKER_INSTANCE_ID: 'deployment-validation',
 };
-const { apiConfig, workerConfig } =
-  validateApplicationConfiguration(environment);
+const { apiConfig, workerConfig } = validateApplicationConfiguration(
+  process.env,
+);
 if (
   environment.NODE_ENV !== 'production' ||
   environment.AUTH_MAIL_MODE !== 'durable' ||

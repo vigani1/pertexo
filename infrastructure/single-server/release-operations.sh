@@ -107,38 +107,50 @@ verify_encryption() (
     ops node infrastructure/single-server/encryption/verify.mjs /selected-release/infrastructure/single-server/encryption/verify.mjs
 )
 
-# Pass names, not secret values, and only the settings Compose interpolates.
-collect_configuration_overrides() {
-  local name
-  configuration_overrides=(--env SERVICE_VERSION)
-  while IFS= read -r name; do
-    if [[ $name != SERVICE_VERSION && -n ${!name+set} ]]; then configuration_overrides+=(--env "$name"); fi
-  done < <(grep -oE '\$\{[A-Z_0-9]+' "$release/infrastructure/single-server/compose.yaml" | sed 's/^..//' | sort -u)
+# Generated mounts/capacity values are not needed to resolve app settings.
+# Compose owns interpolation; its secret-bearing output stays in private state.
+resolve_application_configuration() {
+  resolved_configuration=$(mktemp "$BETA_STATE_DIR/.configuration.XXXXXX")
+  chmod 600 "$resolved_configuration"
+  trap 'rm -f "$resolved_configuration" "$resolved_configuration.errors"' EXIT
+  local hosts_file="$BETA_STATE_DIR/hosts.env"
+  [[ -f "$hosts_file" ]] || hosts_file=/dev/null
+  if ! APP_HOST=configuration.invalid FILES_HOST=files.configuration.invalid \
+    CODE_RUNNER_CONTAINER_MEMORY_MB=128 CODE_RUNNER_CONTAINER_CPUS=1 \
+    CODE_RUNNER_CONTAINER_PIDS=128 CODE_RUNNER_MANAGER_HEAP_MB=32 \
+    docker compose --project-name pertexo-beta --env-file "$config" --env-file "$hosts_file" \
+      -f "$release/infrastructure/single-server/compose.yaml" config --no-env-resolution --format json > "$resolved_configuration" 2> "$resolved_configuration.errors"; then
+    rm -f "$resolved_configuration" "$resolved_configuration.errors"
+    echo 'Compose configuration could not be resolved; check .env.production.' >&2; return 1
+  fi
+  rm -f "$resolved_configuration.errors"
 }
 
-validate_application_configuration() {
-  collect_configuration_overrides
+validate_application_configuration() (
+  resolve_application_configuration
+  trap 'rm -f "$resolved_configuration"' EXIT
   docker run --rm --network none --read-only --user "$(id -u):$(id -g)" \
-    "${configuration_overrides[@]}" -v "$config:/run/pertexo.env:ro" \
+    -v "$resolved_configuration:/run/resolved.json:ro" -e PERTEXO_RESOLVED_CONFIG=/run/resolved.json -v "$config:/run/pertexo.env:ro" \
     -v "$operator_root/infrastructure/single-server/storage:/workspace/infrastructure/single-server/storage:ro" \
     "ghcr.io/vigani1/pertexo:$SERVICE_VERSION" node --env-file=/run/pertexo.env infrastructure/single-server/storage/preflight.mjs /run/pertexo.env
-}
+)
 
-prepare_configuration() {
-  local prepared_directory=$1 parser_release=$2 parser_version=$3
-  collect_configuration_overrides
+prepare_configuration() (
+  local prepared_directory=$1 parser_version=$2
+  resolve_application_configuration
+  trap 'rm -f "$resolved_configuration"' EXIT
   docker run --rm --network none --read-only --user "$(id -u):$(id -g)" \
-    "${configuration_overrides[@]}" -v "$config:/run/pertexo.env:ro" \
+    -v "$resolved_configuration:/run/resolved.json:ro" -e PERTEXO_RESOLVED_CONFIG=/run/resolved.json -v "$config:/run/pertexo.env:ro" \
     -v "$release/infrastructure/postgres/init:/workspace/infrastructure/postgres/init:ro" \
-    -v "$prepared_directory:/prepared" -v "$release:/selected-release:ro" -v "$parser_release/infrastructure/single-server:/workspace/infrastructure/single-server:ro" \
+    -v "$prepared_directory:/prepared" -v "$release:/selected-release:ro" -v "$operator_root/infrastructure/single-server:/workspace/infrastructure/single-server:ro" \
     "ghcr.io/vigani1/pertexo:$parser_version" node --env-file=/run/pertexo.env infrastructure/single-server/storage/prepare.mjs /prepared /selected-release/infrastructure/single-server/encryption/verify.mjs
-}
+)
 
 validate_rollback_configuration() (
   # Interim images can ship a verifier while still refusing production self-managed keys.
   prepared=$(mktemp -d "$BETA_STATE_DIR/.rollback-configuration.XXXXXX")
   trap 'rm -rf "$prepared"' EXIT
-  prepare_configuration "$prepared" "$release" "$SERVICE_VERSION"
+  prepare_configuration "$prepared" "$SERVICE_VERSION"
   compose config --quiet
 )
 
@@ -185,7 +197,7 @@ prepare_release() {
   validate_application_configuration
   select_encryption_release
   # An installed verifier keeps older KMS rollbacks from bypassing retained-key checks.
-  prepare_configuration "$BETA_STATE_DIR" "$encryption_release" "$encryption_version"
+  prepare_configuration "$BETA_STATE_DIR" "$encryption_version"
   compose config --quiet
 }
 

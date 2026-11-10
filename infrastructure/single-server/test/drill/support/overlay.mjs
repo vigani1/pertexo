@@ -124,6 +124,12 @@ export function overlayCompose(source, { project, httpPort, httpsPort }) {
   const compose = parse(source, { merge: true, maxAliasCount: -1 });
   const tlsVolume = '${BETA_STATE_DIR}/../drill-tls:/drill-tls:ro';
   compose.name = project;
+  if (process.env.DRILL_PRIVATE_SUBNET) {
+    compose.networks.private.ipam.config[0].subnet =
+      process.env.DRILL_PRIVATE_SUBNET;
+    compose.services.api.environment.TRUST_PROXY_CIDRS =
+      process.env.DRILL_PRIVATE_SUBNET;
+  }
   compose.services.proxy.ports = [
     `127.0.0.1:${httpPort}:80`,
     `127.0.0.1:${httpsPort}:443`,
