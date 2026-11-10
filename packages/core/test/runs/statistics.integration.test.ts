@@ -969,14 +969,12 @@ describe('run statistics query-plan budget', () => {
            and created_at < transaction_timestamp()
          group by workflow_id, status`,
       );
+      // Either workspace-leading index meets this budget; the planner may pick
+      // the status index on equal cost, so the guard is the plan's work.
       expect(indexScans(plan.Plan)).toMatchObject([
-        {
-          index: 'workflow_runs_workspace_created_statistics_idx',
-          nodeType: 'Index Only Scan',
-          rows: 96,
-          heapFetches: 0,
-        },
+        { nodeType: 'Index Only Scan', rows: 96, heapFetches: 0 },
       ]);
+      expect(explainWork(plan.Plan).rejectedRowInstances).toBe(0);
       expect(explainWork(plan.Plan).rootSharedBufferTouches).toBeLessThan(40);
     } finally {
       try {
@@ -1034,8 +1032,10 @@ describe('run statistics query-plan budget', () => {
     ]);
     for (const plan of [plans.window, plans.workflows]) {
       const [scan] = indexScans(plan.Plan);
+      // The budget below is the guarantee; the planner may choose either
+      // workspace-leading index on equal cost, which both meet it.
       expect(scan).toMatchObject({
-        index: 'workflow_runs_workspace_created_statistics_idx',
+        nodeType: 'Index Only Scan',
         rows: windowRows,
         heapFetches: 0,
       });
