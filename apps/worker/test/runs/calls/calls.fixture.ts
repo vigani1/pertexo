@@ -1,7 +1,5 @@
-import { maintenanceConfig } from '../../../../../infrastructure/testing/worker-databases.mjs';
 import type { NodeExecutionCapabilityFactories } from '../../../src/attempts/execution/capabilities.js';
 import { createHash, randomUUID } from 'node:crypto';
-import { createDeadlineWakeupScanner } from '@pertexo/core/runs';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
 import { createOutboxDispatcherDatabase } from '@pertexo/core/outbox';
 import { createInitialCheckpoint } from '@pertexo/core/runs';
@@ -225,24 +223,17 @@ export async function runtime(
         leaseDurationMillis: 1_000,
         leaseOwner: `call-${randomUUID()}`,
         operationTimeoutMillis: 2_000,
-        pollIntervalMillis: 25,
         retryDelayMillis: 25,
       },
     });
     owners.splice(0, 2, dispatcher);
-    const deadlines = createDeadlineWakeupScanner(maintenanceConfig(database));
-    owners.push(deadlines);
     await startWorkers();
     return {
       async until(check: () => Promise<void>, timeout = 15_000) {
-        await vi.waitFor(
-          async () => {
-            await deadlines.claimDueWakeups(20);
-            await dispatcher.dispatchOnce();
-            await check();
-          },
-          { timeout, interval: 25 },
-        );
+        // Recovery cases prepare their deliveries before first driving transport.
+        // Once driven, publication must progress independently of observations.
+        dispatcher.start();
+        await vi.waitFor(check, { timeout });
       },
       pause: stopWorkers,
       async restart() {

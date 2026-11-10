@@ -45,3 +45,19 @@ export async function prepareApprovalThroughRealWorkersDurableTasks() {
     [fixture.workspaceId, deciderId],
   );
 }
+
+export async function occupyTimedWaitSlot(runId: string) {
+  await fixture.waitFor(
+    () =>
+      fixture.workerQuery<{ parked: boolean }>(
+        'select timed_wait_started_at is not null parked from app.workflow_runs where id=$1',
+        [runId],
+      ),
+    (rows) => rows[0]?.parked === true,
+  );
+  // A timed Wait releases its slot; this fixture stands in for active node work.
+  await fixture.ownerQuery(
+    'update app.workflow_runs set timed_wait_started_at=null where id=$1',
+    [runId],
+  );
+}
