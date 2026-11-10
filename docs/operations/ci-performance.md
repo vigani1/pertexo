@@ -16,4 +16,3 @@ browser sharding already exist; the current numbers do not justify another CI
 job, a new build-distribution subsystem or relaxing required checks. Further CI
 work should compare per-step setup/build/test times and queue delay separately,
 then demonstrate a lower gate duration under the same checks.
-
