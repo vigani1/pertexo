@@ -131,6 +131,12 @@ jobs:
         run:
           node --test infrastructure/single-server/test/*.test.mjs
           infrastructure/testing/*.test.mjs
+      - name: Validate observability configuration and alert rules
+        env:
+          COMPOSE_PROJECT_NAME:
+            pertexo-ci-${{ github.run_id }}-${{ github.run_attempt
+            }}-observability
+        run: pnpm observability:check
       - name: Lint
         run: pnpm lint
       - name: Typecheck
