@@ -1,3 +1,4 @@
+import { CODE_INTERRUPTED_COPY } from './error-copy';
 import { OAUTH2_SHORT_REASONS } from './oauth2-error-copy';
 
 const SHORT_REASONS: Readonly<Record<string, string>> = {
@@ -39,6 +40,7 @@ const SHORT_REASONS: Readonly<Record<string, string>> = {
   'execution.output_invalid': 'its output couldn’t be kept',
   'email.too_many_attachments': 'too many attachments',
   'email.attachments_too_large': 'attachments too large',
+  'code.interrupted': CODE_INTERRUPTED_COPY.summary,
   'code.runtime_error': 'the code threw an error',
   'code.syntax_error': 'the code has a syntax error',
   'code.timeout': 'the code ran too long',

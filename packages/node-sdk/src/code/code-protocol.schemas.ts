@@ -11,9 +11,10 @@ import {
   type CodeLanguage,
 } from './limits.js';
 
-const CODE_ERROR_CODES = Object.freeze([
+export const CODE_ERROR_CODES = Object.freeze([
   'code.syntax_error',
   'code.runtime_error',
+  'code.interrupted',
   'code.timeout',
   'code.memory_limit',
   'code.output_invalid',

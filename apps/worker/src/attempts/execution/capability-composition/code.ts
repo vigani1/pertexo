@@ -17,7 +17,7 @@ export function prepareCodeCapability(state: CapabilityAssembly): void {
         if (context.previouslyDispatched)
           return {
             kind: 'failed',
-            code: 'code.runtime_error',
+            code: 'code.interrupted',
             diagnostics: {
               logs: [],
               truncated: false,
