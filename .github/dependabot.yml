@@ -96,6 +96,7 @@ updates:
       - /
       - /infrastructure/single-server
       - /infrastructure/observability
+      - /infrastructure/quickstart
     schedule:
       interval: weekly
       day: monday
