@@ -8,7 +8,6 @@ import {
   type ComponentProps,
 } from 'react';
 import type { WorkflowExportRequest } from '@pertexo/contracts';
-import { portableGraphDigest } from '@pertexo/workflow-model';
 import type { AccessibleWorkspace, WorkflowSummary } from '@pertexo/contracts';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -253,7 +252,7 @@ function useExportSource({
             : { kind: 'version', versionId },
         signal: request.signal,
       });
-      return { ...saved, digest: await portableGraphDigest(saved.graph) };
+      return saved;
     }
     void readSource()
       .then(

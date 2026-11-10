@@ -263,12 +263,12 @@ describe('workflow-authoring public contracts', () => {
       },
     );
     expect(
-      workflowRevisionConflictProblemSchema.safeParse({
+      workflowRevisionConflictProblemSchema.parse({
         ...conflict,
         detail: 'Reload the draft.',
         unexpected: true,
-      }).success,
-    ).toBe(false);
+      }),
+    ).not.toHaveProperty('unexpected');
     for (const operation of [
       paths['/v1/workspaces/{workspaceId}/workflows'].post,
       paths['/v1/workspaces/{workspaceId}/workflows/{workflowId}/draft'].put,

@@ -20,3 +20,27 @@ it('exports native acknowledgment projections that reject unsupported success an
   );
   expect(nativeSignInResponseSchema.safeParse({}).success).toBe(false);
 });
+
+it('exports response-aware JSON Schema without relaxing request schemas', async () => {
+  const {
+    apiTokenInfoResponseSchema,
+    apiTokenRevokeRequestSchema,
+    workflowDraftQuerySchema,
+  } = await import('@pertexo/contracts');
+  const { jsonSchema } = await import('@pertexo/contracts/server');
+  expect(
+    jsonSchema(apiTokenInfoResponseSchema, 'output').additionalProperties,
+  ).toBe(true);
+  expect(
+    jsonSchema(apiTokenRevokeRequestSchema, 'input').additionalProperties,
+  ).toBe(false);
+  expect(workflowDraftQuerySchema.parse({ include: 'graphDigest' })).toEqual({
+    include: 'graphDigest',
+  });
+  expect(
+    workflowDraftQuerySchema.safeParse({
+      include: 'graphDigest',
+      futureInput: true,
+    }).success,
+  ).toBe(false);
+});

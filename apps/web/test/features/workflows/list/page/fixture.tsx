@@ -1,3 +1,4 @@
+import { coldStart } from '../../../../support/fixtures/run';
 import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { HttpResponse, http } from 'msw';
@@ -60,7 +61,11 @@ export async function archiveAgainstProblem(problem: {
   renderApp(`/w/${workspaceId}/workflows`);
   const event = userEvent.setup();
   await event.click(
-    await screen.findByRole('button', { name: 'Actions for Invoice intake' }),
+    await screen.findByRole(
+      'button',
+      { name: 'Actions for Invoice intake' },
+      coldStart,
+    ),
   );
   await event.click(await screen.findByRole('menuitem', { name: 'Archive…' }));
   const dialog = await screen.findByRole('dialog', {

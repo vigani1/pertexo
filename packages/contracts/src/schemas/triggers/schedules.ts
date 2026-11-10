@@ -1,3 +1,4 @@
+import { responseSchema } from '../shared/response-schema.js';
 import { z } from 'zod';
 
 const scheduleTriggerStatusSchema = z.enum([
@@ -47,13 +48,15 @@ export const scheduleTriggerHealthSchema = z
     lastFireAt: z.iso.datetime().nullable(),
   })
   .strict();
-export const scheduleTriggerListResponseSchema = z
-  .object({ items: z.array(scheduleTriggerHealthSchema).max(1_000) })
-  .strict();
+export const scheduleTriggerListResponseSchema = responseSchema(
+  z.object({ items: z.array(scheduleTriggerHealthSchema).max(1_000) }).strict(),
+);
 export const scheduleManagementCommandRequestSchema = z.object({}).strict();
-export const scheduleManagementCommandResponseSchema = z
-  .object({ trigger: scheduleTriggerHealthSchema, replayed: z.boolean() })
-  .strict();
+export const scheduleManagementCommandResponseSchema = responseSchema(
+  z
+    .object({ trigger: scheduleTriggerHealthSchema, replayed: z.boolean() })
+    .strict(),
+);
 
 /**
  * ADR 048: what one recorded occurrence did, in the scanner's own terms. ADR 056
@@ -86,12 +89,14 @@ export const scheduleOccurrenceSchema = z
     skipReason: z.literal('concurrency_limit').optional(),
   })
   .strict();
-export const scheduleOccurrenceListResponseSchema = z
-  .object({
-    items: z.array(scheduleOccurrenceSchema).max(100),
-    nextCursor: scheduleOccurrenceCursorSchema.nullable(),
-  })
-  .strict();
+export const scheduleOccurrenceListResponseSchema = responseSchema(
+  z
+    .object({
+      items: z.array(scheduleOccurrenceSchema).max(100),
+      nextCursor: scheduleOccurrenceCursorSchema.nullable(),
+    })
+    .strict(),
+);
 
 /** ADR 048: upcoming fire times are bounded; three unless asked otherwise. */
 export const SCHEDULE_FIRE_TIME_DEFAULT_COUNT = 3;
@@ -99,14 +104,16 @@ const scheduleFireTimeCountSchema = z.coerce.number().int().min(1).max(10);
 export const scheduleNextRunsQuerySchema = z
   .object({ count: scheduleFireTimeCountSchema.optional() })
   .strict();
-export const scheduleFireTimesResponseSchema = z
-  .object({
-    observedAt: z.iso.datetime(),
-    items: z
-      .array(z.object({ scheduledAt: z.iso.datetime() }).strict())
-      .max(10),
-  })
-  .strict();
+export const scheduleFireTimesResponseSchema = responseSchema(
+  z
+    .object({
+      observedAt: z.iso.datetime(),
+      items: z
+        .array(z.object({ scheduledAt: z.iso.datetime() }).strict())
+        .max(10),
+    })
+    .strict(),
+);
 
 const scheduleStepMisfirePolicySchema = z
   .enum(['catch_up_once', 'skip'])

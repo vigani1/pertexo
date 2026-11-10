@@ -100,11 +100,11 @@ describe('portable workflow public HTTP contract', () => {
       updatedAt: '2026-10-02T00:00:00.000Z',
     };
     expect(
-      workflowSummaryResponseSchema.safeParse({
+      workflowSummaryResponseSchema.parse({
         workflow,
         templateOrigin: null,
-      }).success,
-    ).toBe(false);
+      }),
+    ).not.toHaveProperty('templateOrigin');
     expect(
       workflowTemplateOriginProjectionResponseSchema.safeParse({ workflow })
         .success,

@@ -292,7 +292,7 @@ describe('Scoped historical template origin projection', () => {
 
   it.each([
     'missing-projection',
-    'extra-field',
+    'invalid-origin',
     'unsupported',
     'unavailable',
   ] as const)('does not infer null from %s', async (failure) => {
@@ -300,10 +300,10 @@ describe('Scoped historical template origin projection', () => {
       http.get(`${api}/workflows/${workflowId}`, () => {
         if (failure === 'missing-projection')
           return HttpResponse.json(summary(workflowId, 'Old reader'));
-        if (failure === 'extra-field')
+        if (failure === 'invalid-origin')
           return HttpResponse.json({
             workflow: summary(workflowId, 'Future reader'),
-            templateOrigin: { ...origin, unexpected: true },
+            templateOrigin: { ...origin, templateVersion: 'invalid' },
           });
         return HttpResponse.json(
           {},

@@ -1,3 +1,4 @@
+import { responseSchema } from '../shared/response-schema.js';
 import { z } from 'zod';
 import { strictlyAscendingIdentifiers } from './organization-order.js';
 import { utf8ByteLength } from '@pertexo/workflow-model';
@@ -104,46 +105,52 @@ export const workflowTagDeleteResponseSchema = z
     replayed: z.boolean(),
   })
   .strict();
-export const workflowTagReplaceResponseSchema = z
-  .object({
-    workflowId: canonicalIdentifierSchema,
-    organizationRevision: workflowOrganizationRevisionSchema,
-    tagIds: z
-      .array(canonicalIdentifierSchema)
-      .max(WORKFLOW_ORGANIZATION_LIMITS.tagsPerWorkflow)
-      .refine((ids) => new Set(ids).size === ids.length),
-    replayed: z.boolean(),
-  })
-  .strict();
+export const workflowTagReplaceResponseSchema = responseSchema(
+  z
+    .object({
+      workflowId: canonicalIdentifierSchema,
+      organizationRevision: workflowOrganizationRevisionSchema,
+      tagIds: z
+        .array(canonicalIdentifierSchema)
+        .max(WORKFLOW_ORGANIZATION_LIMITS.tagsPerWorkflow)
+        .refine((ids) => new Set(ids).size === ids.length),
+      replayed: z.boolean(),
+    })
+    .strict(),
+);
 
-export const workflowTagListResponseSchema = z
-  .object({
-    items: z
-      .array(workflowTagSchema.extend({ id: canonicalIdentifierSchema }))
-      .max(100)
-      .refine((items) =>
-        strictlyAscendingIdentifiers(items.map((item) => item.id)),
-      ),
-    nextCursor: workflowOrganizationPageCursorSchema.nullable(),
-  })
-  .strict();
+export const workflowTagListResponseSchema = responseSchema(
+  z
+    .object({
+      items: z
+        .array(workflowTagSchema.extend({ id: canonicalIdentifierSchema }))
+        .max(100)
+        .refine((items) =>
+          strictlyAscendingIdentifiers(items.map((item) => item.id)),
+        ),
+      nextCursor: workflowOrganizationPageCursorSchema.nullable(),
+    })
+    .strict(),
+);
 const workflowTagAssignmentSchema = z
   .object({
     workflowId: canonicalIdentifierSchema,
     organizationRevision: workflowOrganizationRevisionSchema,
   })
   .strict();
-export const workflowTagAssignmentsResponseSchema = z
-  .object({
-    items: z
-      .array(workflowTagAssignmentSchema)
-      .max(100)
-      .refine((items) =>
-        strictlyAscendingIdentifiers(items.map((item) => item.workflowId)),
-      ),
-    nextCursor: workflowOrganizationPageCursorSchema.nullable(),
-  })
-  .strict();
+export const workflowTagAssignmentsResponseSchema = responseSchema(
+  z
+    .object({
+      items: z
+        .array(workflowTagAssignmentSchema)
+        .max(100)
+        .refine((items) =>
+          strictlyAscendingIdentifiers(items.map((item) => item.workflowId)),
+        ),
+      nextCursor: workflowOrganizationPageCursorSchema.nullable(),
+    })
+    .strict(),
+);
 export const workflowTagReplaceRequestSchema = z
   .object({
     tagIds: z

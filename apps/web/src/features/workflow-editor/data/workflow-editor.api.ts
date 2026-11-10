@@ -23,7 +23,7 @@ export function getWorkflowDraft(
   signal?: AbortSignal,
 ): Promise<WorkflowDraftSnapshot> {
   return apiClient.request({
-    path: workflowDraftPath(workspaceId, workflowId),
+    path: `${workflowDraftPath(workspaceId, workflowId)}?include=graphDigest`,
     ...(signal === undefined ? {} : { signal }),
     response: {
       kind: 'json',

@@ -56,6 +56,7 @@ export type ListWorkflowsInput = WorkflowApplicationInput &
     after?: string;
     order?: 'created_asc' | 'updated_desc';
     pinsWorkflowId?: string;
+    includeListSummary?: boolean;
   }>;
 
 export type WorkflowResourceInput = WorkflowApplicationInput &
@@ -70,7 +71,12 @@ export type SaveWorkflowDraftInput = WorkflowResourceInput &
   }>;
 
 export type ListWorkflowVersionsInput = WorkflowResourceInput &
-  Readonly<{ limit?: number; after?: string; versionId?: string }>;
+  Readonly<{
+    limit?: number;
+    after?: string;
+    versionId?: string;
+    includeGraphDigest?: boolean;
+  }>;
 
 export class ListWorkflowsUseCase {
   public constructor(
@@ -87,6 +93,7 @@ export class ListWorkflowsUseCase {
         const page = await this.persistence.listWorkflows({
           workspaceId: input.routeWorkspaceId,
           actorId: input.actor.actorId,
+          includeListSummary: input.includeListSummary === true,
           ...(input.pinsWorkflowId === undefined
             ? {}
             : { pinsWorkflowId: input.pinsWorkflowId }),
@@ -113,7 +120,11 @@ export class ListWorkflowsUseCase {
         return serializeWorkflowList(
           page.items,
           nextCursor,
-          credentialAllowsCapability(input.actor, 'run:read'),
+          input.includeListSummary
+            ? {
+                recentRuns: credentialAllowsCapability(input.actor, 'run:read'),
+              }
+            : undefined,
         );
       },
     );
@@ -182,7 +193,9 @@ export class GetWorkflowDraftUseCase {
     private readonly telemetry: WorkflowAuthoringTelemetry = NOOP_WORKFLOW_AUTHORING_TELEMETRY,
   ) {}
 
-  public execute(input: WorkflowResourceInput): Promise<WorkflowDraftResult> {
+  public execute(
+    input: WorkflowResourceInput & Readonly<{ includeGraphDigest?: boolean }>,
+  ): Promise<WorkflowDraftResult> {
     return this.telemetry.measure(
       WORKFLOW_AUTHORING_OPERATION.draftGet,
       async () => {
@@ -194,7 +207,7 @@ export class GetWorkflowDraftUseCase {
         );
         if (draft === null)
           throw new WorkflowNotFoundError('Workflow is not visible');
-        return serializeWorkflowDraft(draft);
+        return serializeWorkflowDraft(draft, input.includeGraphDigest);
       },
     );
   }
@@ -318,6 +331,7 @@ export class ListWorkflowVersionsUseCase {
           page.nextCursor === undefined
             ? null
             : encodeVersionCursor(page.nextCursor.beforeVersionNumber),
+          input.includeGraphDigest,
         );
       },
     );

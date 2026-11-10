@@ -44,12 +44,12 @@ describe('schedule public contracts', () => {
     ).toEqual({
       items: [trigger],
     });
-    expect(() =>
+    expect(
       scheduleTriggerListResponseSchema.parse({
         items: [{ ...trigger, leaseOwner: 'internal' }],
       }),
-    ).toThrow();
-    expect(() =>
+    ).toEqual({ items: [trigger] });
+    expect(
       scheduleTriggerListResponseSchema.parse({
         items: [
           {
@@ -58,7 +58,7 @@ describe('schedule public contracts', () => {
           },
         ],
       }),
-    ).toThrow();
+    ).toEqual({ items: [trigger] });
   });
 
   it('keeps enable and disable responses strict', () => {
@@ -68,13 +68,13 @@ describe('schedule public contracts', () => {
         replayed: true,
       }),
     ).toEqual({ trigger, replayed: true });
-    expect(() =>
+    expect(
       scheduleManagementCommandResponseSchema.parse({
         trigger,
         replayed: false,
         leaseToken: 'internal',
       }),
-    ).toThrow();
+    ).toEqual({ trigger, replayed: false });
   });
 
   it('pages occurrence metadata with explicit outcomes and bounded queries', () => {
@@ -89,12 +89,17 @@ describe('schedule public contracts', () => {
     expect(scheduleOccurrenceListResponseSchema.parse(page)).toEqual(page);
     for (const invalid of [
       { ...page, items: [{ ...occurrence, outcome: 'deferred' }] },
-      { ...page, items: [{ ...occurrence, leaseToken: 'internal' }] },
       { ...page, nextCursor: '' },
     ])
       expect(() =>
         scheduleOccurrenceListResponseSchema.parse(invalid),
       ).toThrow();
+    expect(
+      scheduleOccurrenceListResponseSchema.parse({
+        ...page,
+        items: [{ ...occurrence, leaseToken: 'internal' }],
+      }),
+    ).toEqual(page);
     expect(
       scheduleOccurrenceListQuerySchema.parse({ limit: '10', after: 'x' }),
     ).toEqual({ limit: 10, after: 'x' });

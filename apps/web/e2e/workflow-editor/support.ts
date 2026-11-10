@@ -334,6 +334,7 @@ function draftBody(remote: RemoteDraft) {
     workflowId,
     revision: remote.revision,
     graph: remote.graph,
+    graphDigest: 'f'.repeat(64),
     compatibility: compatibility(),
     updatedAt: '2026-09-14T10:00:00.000Z',
   };

@@ -1,3 +1,4 @@
+import { coldStart } from '../../../support/fixtures/run';
 import { HttpResponse, http } from 'msw';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -53,7 +54,11 @@ describe('new workflow lens', () => {
     const { router } = renderApp(`/w/${workspaceId}/workflows`);
     const event = userEvent.setup();
     expect(
-      await screen.findByRole('heading', { name: 'Weave your first workflow' }),
+      await screen.findByRole(
+        'heading',
+        { name: 'Weave your first workflow' },
+        coldStart,
+      ),
     ).toBeVisible();
     await event.click(screen.getByRole('button', { name: 'New workflow' }));
     expect(

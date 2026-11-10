@@ -41,18 +41,22 @@ export async function readWorkflowExportSource({
     });
     return {
       graph: version.graph,
+      digest: version.graphDigest,
       label: `Exports v${String(version.versionNumber)} exactly as it was published`,
     };
   }
   return apiClient.request({
-    path: `${base(workspaceId)}/${encodeURIComponent(workflowId)}/draft`,
+    path: `${base(workspaceId)}/${encodeURIComponent(workflowId)}/draft?include=graphDigest`,
     signal,
     response: {
       kind: 'json',
       decode: (value, metadata) => {
-        const draft = workflowDraftResponseSchema.parse(value);
+        const draft = workflowDraftResponseSchema
+          .required({ graphDigest: true })
+          .parse(value);
         return {
           graph: draft.graph,
+          digest: draft.graphDigest,
           etag: strongEtagSchema.parse(metadata.header('etag')),
           label: `Exports the draft as last saved, revision ${String(draft.revision)}`,
         };

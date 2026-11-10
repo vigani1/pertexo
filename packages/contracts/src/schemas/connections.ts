@@ -1,3 +1,4 @@
+import { responseSchema } from './shared/response-schema.js';
 import { signingKeyCredentialSchema } from '@pertexo/node-sdk';
 import { CONNECTION_SHARE_LIMIT } from '@pertexo/workflow-model';
 export { signingKeyCredentialSchema } from '@pertexo/node-sdk';
@@ -298,22 +299,24 @@ export const connectionTestRequestSchema = z.union([
     .readonly(),
 ]);
 
-export const connectionResponseSchema = z.union([
-  z
-    .object({
-      ...connectionResponseFields,
-      authType: z.enum([
-        'hmac_key',
-        'http_headers',
-        'slack_bot_token',
-        'resend_api_key',
-        'smtp',
-      ]),
-    })
-    .strict()
-    .readonly(),
-  oauth2ConnectionResponseSchema,
-]);
+export const connectionResponseSchema = responseSchema(
+  z.union([
+    z
+      .object({
+        ...connectionResponseFields,
+        authType: z.enum([
+          'hmac_key',
+          'http_headers',
+          'slack_bot_token',
+          'resend_api_key',
+          'smtp',
+        ]),
+      })
+      .strict()
+      .readonly(),
+    oauth2ConnectionResponseSchema,
+  ]),
+);
 
 export const connectionListQuerySchema = z
   .object({
@@ -322,13 +325,15 @@ export const connectionListQuerySchema = z
   })
   .strict();
 
-export const connectionListResponseSchema = z
-  .object({
-    items: z.array(connectionResponseSchema).max(100),
-    nextCursor: connectionCursorSchema.nullable(),
-  })
-  .strict()
-  .readonly();
+export const connectionListResponseSchema = responseSchema(
+  z
+    .object({
+      items: z.array(connectionResponseSchema).max(100),
+      nextCursor: connectionCursorSchema.nullable(),
+    })
+    .strict()
+    .readonly(),
+);
 
 const connectionUsageItemSchema = z
   .object({

@@ -1,3 +1,4 @@
+import { responseSchema } from '../shared/response-schema.js';
 import { z } from 'zod';
 import {
   workspaceVariableValuesSchema,
@@ -5,11 +6,13 @@ import {
   workspaceVariableSnapshotSchema,
   workspaceVariableNameSchema,
 } from '@pertexo/workflow-model';
-export const workspaceVariablesResponseSchema = workspaceVariableSnapshotSchema
-  .unwrap()
-  .extend({ descriptions: workspaceVariableDescriptionsSchema.default({}) })
-  .strict()
-  .readonly();
+export const workspaceVariablesResponseSchema = responseSchema(
+  workspaceVariableSnapshotSchema
+    .unwrap()
+    .extend({ descriptions: workspaceVariableDescriptionsSchema.default({}) })
+    .strict()
+    .readonly(),
+);
 export const workspaceVariablesRequestSchema = z
   .object({
     expectedRevision: z.number().int().nonnegative().max(2_147_483_646),
@@ -26,13 +29,15 @@ export const workspaceVariablesRequestSchema = z
           message: 'A description must belong to a configured variable.',
         });
   });
-export const workspaceVariablesCommandResponseSchema = z
-  .object({
-    revision: z.number().int().nonnegative(),
-    changed: z.boolean(),
-    replayed: z.boolean(),
-  })
-  .strict();
+export const workspaceVariablesCommandResponseSchema = responseSchema(
+  z
+    .object({
+      revision: z.number().int().nonnegative(),
+      changed: z.boolean(),
+      replayed: z.boolean(),
+    })
+    .strict(),
+);
 export const workspaceVariableUsageQuerySchema = z
   .object({
     name: workspaceVariableNameSchema,
@@ -52,29 +57,31 @@ export const workspaceVariableUsageCursorSchema = z
     stamp: z.string().regex(/^[0-9a-f]{64}$/u),
   })
   .strict();
-export const workspaceVariableUsageResponseSchema = z
-  .object({
-    items: z
-      .array(
-        z
-          .object({
-            id: z.string().regex(/^[0-9a-f]{64}$/u),
-            workflowId: z.uuid(),
-            workflowName: z.string().max(160),
-            archived: z.boolean(),
-            stage: z.enum(['draft', 'published']),
-            nodeId: z.string().max(128).nullable(),
-            label: z.string().max(160),
-            input: z.string().max(128),
-            kind: z.enum(['direct', 'dynamic']),
-          })
-          .strict(),
-      )
-      .max(100),
-    nextCursor: z.string().max(1024).nullable(),
-    incomplete: z.boolean(),
-  })
-  .strict();
+export const workspaceVariableUsageResponseSchema = responseSchema(
+  z
+    .object({
+      items: z
+        .array(
+          z
+            .object({
+              id: z.string().regex(/^[0-9a-f]{64}$/u),
+              workflowId: z.uuid(),
+              workflowName: z.string().max(160),
+              archived: z.boolean(),
+              stage: z.enum(['draft', 'published']),
+              nodeId: z.string().max(128).nullable(),
+              label: z.string().max(160),
+              input: z.string().max(128),
+              kind: z.enum(['direct', 'dynamic']),
+            })
+            .strict(),
+        )
+        .max(100),
+      nextCursor: z.string().max(1024).nullable(),
+      incomplete: z.boolean(),
+    })
+    .strict(),
+);
 export const workflowRunVariablesResponseSchema = z
   .object({ snapshot: workspaceVariableSnapshotSchema.nullable() })
   .strict();

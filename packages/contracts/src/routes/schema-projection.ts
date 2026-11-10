@@ -1,4 +1,8 @@
 import {
+  responseProjection,
+  responseSchemaSource,
+} from '../schemas/shared/response-schema.js';
+import {
   DATA_TABLE_JSON_LIMITS,
   dataTableValueSchema,
   dataTableValuesSchema,
@@ -118,7 +122,8 @@ export function projectContractSchema(
     target: 'draft-2020-12',
     reused: 'inline',
     unrepresentable: 'any',
-    override: ({ zodSchema, jsonSchema }) => {
+    override: ({ zodSchema: projectedSchema, jsonSchema }) => {
+      const zodSchema = responseSchemaSource(projectedSchema);
       if (Object.is(zodSchema, workflowPortableManifestSchema)) {
         replaceObject(
           jsonSchema,
@@ -155,5 +160,5 @@ export function projectContractSchema(
     projected,
     `#/components/schemas/${pointerSegment(name)}`,
   );
-  return projected;
+  return io === 'output' ? responseProjection(schema, projected) : projected;
 }

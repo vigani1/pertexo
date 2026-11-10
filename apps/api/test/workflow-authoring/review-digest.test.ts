@@ -9,13 +9,13 @@ import { draft, version, workflow } from './workflow-commands.fixture.js';
 
 it('returns the export review identity on draft and immutable version reads', async () => {
   const source = draft();
-  const result = await serializeWorkflowDraft(source);
+  const result = await serializeWorkflowDraft(source, true);
   expect(result.body).toHaveProperty(
     'graphDigest',
     await portableGraphDigest(source.graphJson),
   );
   const published = version();
-  const versions = await serializeWorkflowVersions([published], null);
+  const versions = await serializeWorkflowVersions([published], null, true);
   expect(versions.items[0]).toHaveProperty(
     'graphDigest',
     await portableGraphDigest(published.graphJson),
@@ -34,9 +34,11 @@ it('omits run summaries unless the credential permits run reads', () => {
     },
   };
   expect(
-    serializeWorkflowList([withSummary], null).items[0]?.listSummary,
+    serializeWorkflowList([withSummary], null, { recentRuns: false }).items[0]
+      ?.listSummary,
   ).toEqual({ shape: { nodes: [], edges: [] } });
   expect(
-    serializeWorkflowList([withSummary], null, true).items[0]?.listSummary,
+    serializeWorkflowList([withSummary], null, { recentRuns: true }).items[0]
+      ?.listSummary,
   ).toEqual(withSummary.listSummary);
 });

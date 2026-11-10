@@ -98,6 +98,7 @@ async function open(capabilities?: readonly string[], paginated = false) {
           versionNumber: 1,
           graph: { nodes: [], edges: [], settings: {}, callable: declaration },
           checksum: pin.executableChecksum,
+          graphDigest: 'f'.repeat(64),
           publishedAt: '2026-10-10T00:00:00.000Z',
         };
         const second = {
@@ -105,6 +106,7 @@ async function open(capabilities?: readonly string[], paginated = false) {
           id: secondId,
           versionNumber: 2,
           checksum: `wf:sha256:${'b'.repeat(64)}`,
+          graphDigest: 'f'.repeat(64),
           publishedAt: '2026-10-10T01:00:00.000Z',
         };
         const exact = url.searchParams.get('versionId');

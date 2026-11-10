@@ -1,3 +1,4 @@
+import { responseSchema } from '../shared/response-schema.js';
 import { boundedNodeTestJsonInputSchema } from '../shared/bounded-json-input.js';
 import { eventCoordinationReceiptSchema } from '@pertexo/workflow-model';
 import { coordinatedEventSchema } from '../forms/coordination.js';
@@ -36,15 +37,14 @@ export const webhookTriggerHealthSchema = z
     reconciledAt: z.iso.datetime().nullable(),
   })
   .strict();
-export const webhookTriggerListResponseSchema = z
-  .object({ items: z.array(webhookTriggerHealthSchema).max(1_000) })
-  .strict();
+export const webhookTriggerListResponseSchema = responseSchema(
+  z.object({ items: z.array(webhookTriggerHealthSchema).max(1_000) }).strict(),
+);
 export const webhookRotateSecretRequestSchema = z
   .object({ endpointKey: webhookCredentialSchema })
   .strict();
-export const webhookManagementCommandResponseSchema = z.discriminatedUnion(
-  'replayed',
-  [
+export const webhookManagementCommandResponseSchema = responseSchema(
+  z.discriminatedUnion('replayed', [
     z
       .object({
         trigger: webhookTriggerHealthSchema,
@@ -61,7 +61,7 @@ export const webhookManagementCommandResponseSchema = z.discriminatedUnion(
         signingSecret: webhookCredentialSchema.optional(),
       })
       .strict(),
-  ],
+  ]),
 );
 export const webhookIngressResponseSchema = z
   .object({ runId: z.uuid(), replayed: z.boolean() })
@@ -126,12 +126,14 @@ export const webhookDeliverySchema = z
     coordination: coordinatedEventSchema.optional(),
   })
   .strict();
-export const webhookDeliveryListResponseSchema = z
-  .object({
-    items: z.array(webhookDeliverySchema).max(100),
-    nextCursor: webhookDeliveryCursorSchema.nullable(),
-  })
-  .strict();
+export const webhookDeliveryListResponseSchema = responseSchema(
+  z
+    .object({
+      items: z.array(webhookDeliverySchema).max(100),
+      nextCursor: webhookDeliveryCursorSchema.nullable(),
+    })
+    .strict(),
+);
 
 export type WebhookTriggerHealthResponse = z.output<
   typeof webhookTriggerHealthSchema

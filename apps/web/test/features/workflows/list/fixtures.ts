@@ -94,6 +94,7 @@ export function draftBody(id: string, graph: unknown = emptyGraph) {
   return {
     workflowId: id,
     revision: 1,
+    graphDigest: 'f'.repeat(64),
     graph,
     compatibility: {
       compatible: true,

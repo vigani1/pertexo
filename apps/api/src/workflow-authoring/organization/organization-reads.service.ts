@@ -94,6 +94,7 @@ export class WorkflowOrganizationReadsUseCase {
     const page = await this.reader.listWorkflows({
       ...context,
       ...filters,
+      includeListSummary: query.include?.includes('listSummary') ?? false,
       order: cursorContext.order,
       ...(query.limit === undefined ? {} : { limit: query.limit }),
       ...(query.after === undefined
@@ -107,18 +108,18 @@ export class WorkflowOrganizationReadsUseCase {
       page.nextCursor === null
         ? null
         : encodeWorkflowOrganizationCursor(cursorContext, page.nextCursor);
-    if (query.include === undefined)
+    const projection = query.include?.includes('listSummary')
+      ? { recentRuns: credentialAllowsCapability(input.actor, 'run:read') }
+      : undefined;
+    if (!query.include?.includes('organization'))
       return serializeWorkflowList(
         page.items.map((item) => item.workflow),
         nextCursor,
-        credentialAllowsCapability(input.actor, 'run:read'),
+        projection,
       );
     return workflowOrganizationListResponseSchema.parse({
       items: page.items.map((item) => ({
-        workflow: serializeWorkflowSummary(
-          item.workflow,
-          credentialAllowsCapability(input.actor, 'run:read'),
-        ).workflow,
+        workflow: serializeWorkflowSummary(item.workflow, projection).workflow,
         organization: item.organization,
       })),
       nextCursor,

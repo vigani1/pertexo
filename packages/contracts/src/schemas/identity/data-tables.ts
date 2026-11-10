@@ -1,3 +1,4 @@
+import { responseSchema } from '../shared/response-schema.js';
 import {
   DATA_TABLE_LIMITS,
   dataTableColumnsSchema,
@@ -40,28 +41,34 @@ export const dataTableQuotasSchema = dataTableLimitsSchema.extend({
   tableCount: z.number().int().nonnegative(),
   storedBytes: z.number().int().nonnegative(),
 });
-export const dataTablesResponseSchema = z
-  .object({
-    tables: z.array(dataTableDefinitionSchema).max(DATA_TABLE_LIMITS.maxTables),
-    quotas: dataTableQuotasSchema,
-    unavailableTables: z
-      .array(
-        z
-          .object({
-            id: z.uuid(),
-            name: dataTableNameSchema,
-            reason: z.literal('data_table.stored_definition_invalid'),
-          })
-          .strict(),
-      )
-      .max(DATA_TABLE_LIMITS.maxTables)
-      .optional(),
-  })
-  .strict();
-export const dataTableCreatedSchema = z.object({ id: z.uuid() }).strict();
-export const dataTableRemovedSchema = z
-  .object({ removed: z.literal(true) })
-  .strict();
+export const dataTablesResponseSchema = responseSchema(
+  z
+    .object({
+      tables: z
+        .array(dataTableDefinitionSchema)
+        .max(DATA_TABLE_LIMITS.maxTables),
+      quotas: dataTableQuotasSchema,
+      unavailableTables: z
+        .array(
+          z
+            .object({
+              id: z.uuid(),
+              name: dataTableNameSchema,
+              reason: z.literal('data_table.stored_definition_invalid'),
+            })
+            .strict(),
+        )
+        .max(DATA_TABLE_LIMITS.maxTables)
+        .optional(),
+    })
+    .strict(),
+);
+export const dataTableCreatedSchema = responseSchema(
+  z.object({ id: z.uuid() }).strict(),
+);
+export const dataTableRemovedSchema = responseSchema(
+  z.object({ removed: z.literal(true) }).strict(),
+);
 export const dataTableRemoveSchema = z
   .object({ expectedRevision: z.number().int().positive() })
   .strict();
@@ -75,11 +82,13 @@ export const dataTableWriteSchema = z.union([
     })
     .strict(),
 ]);
-export const dataTableImportedSchema = z
-  .object({
-    affected: z.number().int().nonnegative().max(DATA_TABLE_LIMITS.batchRows),
-  })
-  .strict();
+export const dataTableImportedSchema = responseSchema(
+  z
+    .object({
+      affected: z.number().int().nonnegative().max(DATA_TABLE_LIMITS.batchRows),
+    })
+    .strict(),
+);
 export const dataTableCsvImportSchema = z
   .object({
     csv: z
@@ -95,18 +104,20 @@ export type DataTableCreate = z.input<typeof dataTableCreateSchema>;
 export type DataTableWrite = z.infer<typeof dataTableWriteSchema>;
 export type DataTableLimits = z.infer<typeof dataTableLimitsSchema>;
 
-export const dataTableWriteReceiptSchema = z
-  .object({
-    rows: z
-      .array(
-        z
-          .object({ id: z.uuid(), revision: z.number().int().positive() })
-          .strict(),
-      )
-      .max(1),
-    affected: z.number().int().nonnegative(),
-  })
-  .strict();
+export const dataTableWriteReceiptSchema = responseSchema(
+  z
+    .object({
+      rows: z
+        .array(
+          z
+            .object({ id: z.uuid(), revision: z.number().int().positive() })
+            .strict(),
+        )
+        .max(1),
+      affected: z.number().int().nonnegative(),
+    })
+    .strict(),
+);
 
 export const dataTableSchemaEditSchema = z
   .object({
@@ -114,9 +125,9 @@ export const dataTableSchemaEditSchema = z
     change: dataTableSchemaChangeSchema,
   })
   .strict();
-export const dataTableSchemaEditedSchema = z
-  .object({ revision: z.number().int().positive() })
-  .strict();
+export const dataTableSchemaEditedSchema = responseSchema(
+  z.object({ revision: z.number().int().positive() }).strict(),
+);
 export const dataTableExportQuerySchema = dataTableQuerySchema.omit({
   limit: true,
   offset: true,

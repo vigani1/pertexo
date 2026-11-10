@@ -95,7 +95,7 @@ describe('webhook public contracts', () => {
     for (const [value, valid] of [
       [{ items: [accepted, rejected], nextCursor: 'opaque' }, true],
       [{ items: [], nextCursor: null }, true],
-      [{ items: [{ ...accepted, headers: {} }], nextCursor: null }, false],
+      [{ items: [{ ...accepted, headers: {} }], nextCursor: null }, true],
       [
         { items: [{ ...accepted, byteLength: 262_145 }], nextCursor: null },
         false,
@@ -114,6 +114,12 @@ describe('webhook public contracts', () => {
         JSON.stringify(generatedDeliveryValidator.errors),
       ).toBe(valid);
     }
+    expect(
+      webhookDeliveryListResponseSchema.parse({
+        items: [{ ...accepted, headers: { secret: 'private' } }],
+        nextCursor: null,
+      }),
+    ).toEqual({ items: [accepted], nextCursor: null });
     expect(webhookDeliveryListQuerySchema.parse({ limit: '25' })).toEqual({
       limit: 25,
     });
@@ -149,7 +155,14 @@ describe('webhook public contracts', () => {
       );
   });
 
-  it('preserves explicit undefined for direct replay callers but rejects unknown fields', () => {
+  it('preserves explicit undefined and strips unknown response fields', () => {
+    expect(
+      webhookManagementCommandResponseSchema.parse({
+        trigger,
+        replayed: false,
+        unexpected: true,
+      }),
+    ).toEqual({ trigger, replayed: false });
     expect(
       webhookManagementCommandResponseSchema.safeParse({
         trigger,
@@ -160,7 +173,7 @@ describe('webhook public contracts', () => {
     ).toBe(true);
     expectRuntimeAndGenerated(
       { trigger, replayed: false, unexpected: true },
-      false,
+      true,
     );
   });
 

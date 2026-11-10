@@ -1,3 +1,13 @@
+import { responseSchema } from '../shared/response-schema.js';
+import {
+  workflowCursorSchema,
+  workflowListQuerySchema,
+} from './read-queries.js';
+export {
+  workflowDraftQuerySchema,
+  workflowListQuerySchema,
+  workflowVersionsQuerySchema,
+} from './read-queries.js';
 import { workflowGraphDigestSchema } from './graph-digest.js';
 import { workflowListSummarySchema } from './list-summary.js';
 import { storageTextSchema } from '@pertexo/workflow-model';
@@ -53,9 +63,6 @@ export const workflowVersionRestoreParamsSchema = z
   })
   .strict();
 export const workflowVersionRestoreRequestSchema = z.object({}).strict();
-const workflowCursorSchema = z.string().min(1).max(512);
-const workflowPageLimitSchema = z.coerce.number().int().min(1).max(100);
-const workflowListOrderSchema = z.enum(['created_asc', 'updated_desc']);
 export const workflowNameSchema = storageTextSchema.trim().min(1).max(128);
 
 const positiveVersionSchema = z.number().int().positive();
@@ -102,13 +109,15 @@ const workflowCompatibilityIssueSchema = z
     version: positiveVersionSchema,
   })
   .strict();
-export const workflowCompatibilityReportSchema = z
-  .object({
-    compatible: z.boolean(),
-    fingerprint: z.string().regex(/^wf-compat:sha256:[0-9a-f]{64}$/u),
-    issues: z.array(workflowCompatibilityIssueSchema).max(1_000),
-  })
-  .strict();
+export const workflowCompatibilityReportSchema = responseSchema(
+  z
+    .object({
+      compatible: z.boolean(),
+      fingerprint: z.string().regex(/^wf-compat:sha256:[0-9a-f]{64}$/u),
+      issues: z.array(workflowCompatibilityIssueSchema).max(1_000),
+    })
+    .strict(),
+);
 /** Includes server authoring findings such as invalid_expression; executable issues remain supported. */
 export const workflowValidationIssueSchema = apiProblemIssueSchema;
 export const workflowValidateResponseSchema = z
@@ -148,10 +157,10 @@ export const workflowSummarySchema = z
     createdAt: z.iso.datetime(),
     updatedAt: z.iso.datetime(),
   })
-  .strict();
+  .apply(responseSchema);
 export const workflowSummaryResponseSchema = z
   .object({ workflow: workflowSummarySchema })
-  .strict();
+  .apply(responseSchema);
 export type WorkflowSummaryResponse = z.output<
   typeof workflowSummaryResponseSchema
 >;
@@ -165,7 +174,7 @@ export const workflowTemplateOriginProjectionResponseSchema = z
     workflow: workflowSummarySchema,
     templateOrigin: workflowTemplateOriginSchema.nullable(),
   })
-  .strict();
+  .apply(responseSchema);
 export type WorkflowTemplateOriginProjectionResponse = z.output<
   typeof workflowTemplateOriginProjectionResponseSchema
 >;
@@ -177,7 +186,7 @@ export const workflowLifecycleRequestSchema = z
   .strict();
 export const workflowLifecycleResponseSchema = z
   .object({ workflow: workflowSummarySchema, replayed: z.boolean() })
-  .strict();
+  .apply(responseSchema);
 
 export const workflowRenameRequestSchema = z
   .object({
@@ -198,7 +207,7 @@ export const workflowDraftResponseSchema = z
     compatibility: workflowCompatibilityReportSchema,
     updatedAt: z.iso.datetime(),
   })
-  .strict();
+  .apply(responseSchema);
 export const workflowVersionRestoreResponseSchema =
   workflowDraftResponseSchema.extend({
     recoveryCopyId: z.uuid().nullable(),
@@ -223,34 +232,25 @@ export const workflowPublishResponseSchema = z
     version: workflowVersionResponseSchema,
     reused: z.boolean(),
   })
-  .strict();
+  .apply(responseSchema);
 export const workflowVersionsResponseSchema = z
   .object({
     items: z.array(workflowVersionResponseSchema).max(100),
     nextCursor: workflowCursorSchema.nullable(),
   })
-  .strict();
+  .apply(responseSchema);
 export const workflowListResponseSchema = z
   .object({
     items: z.array(workflowSummarySchema).max(100),
     nextCursor: workflowCursorSchema.nullable(),
   })
-  .strict();
+  .apply(responseSchema);
 export const workflowCreateResponseSchema = z
   .object({
     workflow: workflowSummarySchema,
     draft: workflowDraftResponseSchema,
   })
-  .strict();
-
-export const workflowListQuerySchema = z
-  .object({
-    limit: workflowPageLimitSchema.optional(),
-    after: workflowCursorSchema.optional(),
-    order: workflowListOrderSchema.optional(),
-    pinsWorkflowId: z.uuid().optional(),
-  })
-  .strict();
+  .apply(responseSchema);
 
 /** ADR064 additive path; unchanged default schemas/cursors remain separate. */
 export const workflowOrganizationListQuerySchema = workflowListQuerySchema
@@ -263,7 +263,9 @@ export const workflowOrganizationListQuerySchema = workflowListQuerySchema
       .optional(),
     folderId: workflowOrganizationFolderFilterSchema.optional(),
     favoritesOnly: z.literal('true').optional(),
-    include: z.literal('organization').optional(),
+    include: z
+      .enum(['organization', 'listSummary', 'organization,listSummary'])
+      .optional(),
   })
   .superRefine((value, context) => {
     if (
@@ -274,7 +276,7 @@ export const workflowOrganizationListQuerySchema = workflowListQuerySchema
         value.tagId,
         value.folderId,
         value.favoritesOnly,
-        value.include,
+        value.include?.includes('organization') ? value.include : undefined,
       ].some((item) => item !== undefined)
     )
       context.addIssue({
@@ -304,42 +306,23 @@ export const workflowOrganizationProjectionResponseSchema = z
     workflow: workflowSummarySchema,
     organization: workflowOrganizationSchema,
   })
-  .strict();
+  .apply(responseSchema);
 export const workflowCombinedOrganizationProjectionResponseSchema = z
   .object({
     workflow: workflowSummarySchema,
     templateOrigin: workflowTemplateOriginSchema.nullable(),
     organization: workflowOrganizationSchema,
   })
-  .strict();
+  .apply(responseSchema);
 export const workflowOrganizationListResponseSchema = z
   .object({
     items: z.array(workflowOrganizationProjectionResponseSchema).max(100),
     nextCursor: workflowCursorSchema.nullable(),
   })
-  .strict();
+  .apply(responseSchema);
 export type WorkflowOrganizationProjectionResponse = z.output<
   typeof workflowOrganizationProjectionResponseSchema
 >;
-export const workflowVersionsQuerySchema = z
-  .object({
-    limit: workflowPageLimitSchema.optional(),
-    after: workflowCursorSchema.optional(),
-    versionId: z
-      .uuid()
-      .describe(
-        'Read one exact immutable version; cannot be combined with after.',
-      )
-      .optional(),
-  })
-  .strict()
-  .refine(
-    (query) => query.versionId === undefined || query.after === undefined,
-    {
-      message: 'An exact version lookup cannot use a history cursor.',
-      path: ['after'],
-    },
-  );
 
 export const workflowRevisionConflictProblemSchema = createApiProblemSchema({
   status: z.literal(412),

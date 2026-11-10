@@ -222,7 +222,7 @@
                 "code",
                 "message"
               ],
-              "additionalProperties": false
+              "additionalProperties": true
             }
           }
         },
@@ -233,7 +233,7 @@
           "code",
           "requestId"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "ScheduleTriggerListResponse": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -340,7 +340,7 @@
                             "expression",
                             "timezone"
                           ],
-                          "additionalProperties": false
+                          "additionalProperties": true
                         },
                         {
                           "type": "object",
@@ -359,7 +359,7 @@
                             "kind",
                             "intervalMinutes"
                           ],
-                          "additionalProperties": false
+                          "additionalProperties": true
                         }
                       ]
                     },
@@ -408,14 +408,14 @@
                 "nextFireAt",
                 "lastFireAt"
               ],
-              "additionalProperties": false
+              "additionalProperties": true
             }
           }
         },
         "required": [
           "items"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "ScheduleOccurrenceListResponse": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -474,7 +474,7 @@
                 "outcome",
                 "runId"
               ],
-              "additionalProperties": false
+              "additionalProperties": true
             }
           },
           "nextCursor": {
@@ -494,7 +494,7 @@
           "items",
           "nextCursor"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "ScheduleFireTimesResponse": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -520,7 +520,7 @@
               "required": [
                 "scheduledAt"
               ],
-              "additionalProperties": false
+              "additionalProperties": true
             }
           }
         },
@@ -528,7 +528,7 @@
           "observedAt",
           "items"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "SchedulePreviewRequest": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -716,7 +716,7 @@
                           "expression",
                           "timezone"
                         ],
-                        "additionalProperties": false
+                        "additionalProperties": true
                       },
                       {
                         "type": "object",
@@ -735,7 +735,7 @@
                           "kind",
                           "intervalMinutes"
                         ],
-                        "additionalProperties": false
+                        "additionalProperties": true
                       }
                     ]
                   },
@@ -784,7 +784,7 @@
               "nextFireAt",
               "lastFireAt"
             ],
-            "additionalProperties": false
+            "additionalProperties": true
           },
           "replayed": {
             "type": "boolean"
@@ -794,7 +794,7 @@
           "trigger",
           "replayed"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       }
     },
     "responses": {

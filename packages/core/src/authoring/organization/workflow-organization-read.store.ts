@@ -68,6 +68,7 @@ export type ListOrganizedWorkflowsInput = Scope &
   WorkflowOrganizationFilters &
   Readonly<{
     limit?: number;
+    includeListSummary?: boolean;
     order?: 'created_asc' | 'updated_desc';
     after?: Position;
   }>;
@@ -129,6 +130,7 @@ async function select(
   scope: ActingScope,
   input: Readonly<{
     limit: number;
+    includeListSummary?: boolean;
     order: 'created_asc' | 'updated_desc';
     after?: Position;
     workflowId?: string;
@@ -147,15 +149,17 @@ async function select(
     access,
     filters,
   });
-  const summaries = await readListSummaries(
-    client,
-    access,
-    projections.slice(0, input.limit).map((row) => row.workflow.id),
-  );
+  const summaries = input.includeListSummary
+    ? await readListSummaries(
+        client,
+        access,
+        projections.slice(0, input.limit).map((row) => row.workflow.id),
+      )
+    : undefined;
   const items = projections.slice(0, input.limit).map((row) => {
     const workflow = {
       ...row.workflow,
-      listSummary: summaries.get(row.workflow.id),
+      listSummary: summaries?.get(row.workflow.id),
       resourceAccess: workflowActions(access, row.folderId),
     };
     const organization: WorkflowOrganizationMetadata = Object.freeze({

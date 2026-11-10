@@ -97,7 +97,7 @@ export function workflowListQueryOptions(
   search: WorkflowListSearch,
 ) {
   return workflowOrganizationInfiniteQueryOptions(api, userId, workspaceId, {
-    include: 'organization',
+    include: 'organization,listSummary',
     order: WORKFLOW_ORDER_BY_SORT[search.sort ?? 'updated'],
     view: search.view ?? 'active',
     query: search.query,

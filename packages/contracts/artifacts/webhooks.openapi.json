@@ -222,7 +222,7 @@
                 "code",
                 "message"
               ],
-              "additionalProperties": false
+              "additionalProperties": true
             }
           }
         },
@@ -233,7 +233,7 @@
           "code",
           "requestId"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "WebhookIngressResponse": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -434,7 +434,7 @@
                         "mode",
                         "allowedOrigins"
                       ],
-                      "additionalProperties": false
+                      "additionalProperties": true
                     },
                     {
                       "type": "object",
@@ -456,7 +456,7 @@
                         "mode",
                         "allowedOrigins"
                       ],
-                      "additionalProperties": false
+                      "additionalProperties": true
                     },
                     {
                       "type": "object",
@@ -485,7 +485,7 @@
                         "headerName",
                         "allowedOrigins"
                       ],
-                      "additionalProperties": false
+                      "additionalProperties": true
                     }
                   ]
                 },
@@ -515,14 +515,14 @@
                 "authentication",
                 "reconciledAt"
               ],
-              "additionalProperties": false
+              "additionalProperties": true
             }
           }
         },
         "required": [
           "items"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "WebhookDeliveryListResponse": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -743,7 +743,7 @@
                     "dueAt",
                     "finishedAt"
                   ],
-                  "additionalProperties": false
+                  "additionalProperties": true
                 }
               },
               "required": [
@@ -756,7 +756,7 @@
                 "byteLength",
                 "runId"
               ],
-              "additionalProperties": false
+              "additionalProperties": true
             }
           },
           "nextCursor": {
@@ -776,7 +776,7 @@
           "items",
           "nextCursor"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "WebhookNoSettings": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -875,7 +875,7 @@
                           "mode",
                           "allowedOrigins"
                         ],
-                        "additionalProperties": false
+                        "additionalProperties": true
                       },
                       {
                         "type": "object",
@@ -897,7 +897,7 @@
                           "mode",
                           "allowedOrigins"
                         ],
-                        "additionalProperties": false
+                        "additionalProperties": true
                       },
                       {
                         "type": "object",
@@ -926,7 +926,7 @@
                           "headerName",
                           "allowedOrigins"
                         ],
-                        "additionalProperties": false
+                        "additionalProperties": true
                       }
                     ]
                   },
@@ -956,7 +956,7 @@
                   "authentication",
                   "reconciledAt"
                 ],
-                "additionalProperties": false
+                "additionalProperties": true
               },
               "replayed": {
                 "type": "boolean",
@@ -973,7 +973,7 @@
               "trigger",
               "replayed"
             ],
-            "additionalProperties": false
+            "additionalProperties": true
           },
           {
             "type": "object",
@@ -1062,7 +1062,7 @@
                           "mode",
                           "allowedOrigins"
                         ],
-                        "additionalProperties": false
+                        "additionalProperties": true
                       },
                       {
                         "type": "object",
@@ -1084,7 +1084,7 @@
                           "mode",
                           "allowedOrigins"
                         ],
-                        "additionalProperties": false
+                        "additionalProperties": true
                       },
                       {
                         "type": "object",
@@ -1113,7 +1113,7 @@
                           "headerName",
                           "allowedOrigins"
                         ],
-                        "additionalProperties": false
+                        "additionalProperties": true
                       }
                     ]
                   },
@@ -1143,7 +1143,7 @@
                   "authentication",
                   "reconciledAt"
                 ],
-                "additionalProperties": false
+                "additionalProperties": true
               },
               "replayed": {
                 "type": "boolean",
@@ -1162,7 +1162,7 @@
               "trigger",
               "replayed"
             ],
-            "additionalProperties": false
+            "additionalProperties": true
           }
         ]
       },

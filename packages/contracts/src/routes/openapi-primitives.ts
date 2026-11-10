@@ -1,3 +1,4 @@
+import { responseProjection } from '../schemas/shared/response-schema.js';
 import { z } from 'zod';
 
 import {
@@ -7,7 +8,8 @@ import {
 } from '../schemas/shared/transport-headers.js';
 
 export function jsonSchema(schema: z.ZodType, io: 'input' | 'output') {
-  return z.toJSONSchema(schema, { io, target: 'draft-2020-12' });
+  const projection = z.toJSONSchema(schema, { io, target: 'draft-2020-12' });
+  return io === 'output' ? responseProjection(schema, projection) : projection;
 }
 
 function schemaReference<Name extends string>(name: Name) {

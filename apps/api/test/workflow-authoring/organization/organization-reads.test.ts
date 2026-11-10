@@ -2,7 +2,6 @@ import * as schemas from '@pertexo/contracts';
 import type { Role } from '@pertexo/policy';
 import { randomUUID } from 'node:crypto';
 import { describe, expect, it, vi } from 'vitest';
-import { z } from 'zod';
 import {
   WorkflowNotFoundError,
   WorkflowTemplateOriginUnavailableError,
@@ -123,6 +122,7 @@ describe('workflow organization read interface', () => {
       view: 'active',
       tagId: f.tag.id,
       favoritesOnly: true,
+      includeListSummary: false,
       limit: 1,
       order: 'created_asc',
     });
@@ -359,14 +359,17 @@ describe('workflow organization read interface', () => {
       ],
       nextCursor: null,
     });
-    await expect(
-      f.reads.list({
-        ...f.input,
-        query: schemas.workflowOrganizationListQuerySchema.parse({
-          include: 'organization',
-        }),
+    const sanitized = await f.reads.list({
+      ...f.input,
+      query: schemas.workflowOrganizationListQuerySchema.parse({
+        include: 'organization',
       }),
-    ).rejects.toBeInstanceOf(z.ZodError);
+    });
+    expect(sanitized.items[0]).toHaveProperty(
+      'organization',
+      f.item.organization,
+    );
+    expect(sanitized.items[0]).not.toHaveProperty('organization.generation');
     const failure = new Error('unexpected database failure');
     f.reader.listWorkflows.mockRejectedValue(failure);
     await expect(

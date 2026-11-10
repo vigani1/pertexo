@@ -1,3 +1,4 @@
+import { responseSchema } from '../shared/response-schema.js';
 import { MAX_AUTO_PAUSE_THRESHOLD } from '@pertexo/policy';
 import { z } from 'zod';
 
@@ -36,31 +37,33 @@ export const workflowPauseRevisionSchema = z
     ),
   );
 
-export const workflowAutoPauseSettingsSchema = z
-  .object({
-    enabled: z.boolean(),
-    thresholdOverride: autoPauseThresholdSchema.nullable(),
-    workspaceThreshold: autoPauseThresholdSchema,
-    effectiveThreshold: autoPauseThresholdSchema,
-    settingsRevision: autoPauseSettingsRevisionSchema,
-    pauseState: z.enum(['none', 'paused']),
-    pauseRevision: workflowPauseRevisionSchema,
-    pausedAt: z.iso.datetime().nullable(),
-    pauseReason: z.literal('consecutive_failures').nullable(),
-    pausedFailures: z
-      .number()
-      .int()
-      .positive()
-      .max(Number.MAX_SAFE_INTEGER)
-      .nullable(),
-    pausedLastRunId: z
-      .uuid()
-      .nullable()
-      .describe(
-        'Run that triggered the pause: the last counted failed triggered run; older rows hold the run that reached the failure threshold.',
-      ),
-  })
-  .strict();
+export const workflowAutoPauseSettingsSchema = responseSchema(
+  z
+    .object({
+      enabled: z.boolean(),
+      thresholdOverride: autoPauseThresholdSchema.nullable(),
+      workspaceThreshold: autoPauseThresholdSchema,
+      effectiveThreshold: autoPauseThresholdSchema,
+      settingsRevision: autoPauseSettingsRevisionSchema,
+      pauseState: z.enum(['none', 'paused']),
+      pauseRevision: workflowPauseRevisionSchema,
+      pausedAt: z.iso.datetime().nullable(),
+      pauseReason: z.literal('consecutive_failures').nullable(),
+      pausedFailures: z
+        .number()
+        .int()
+        .positive()
+        .max(Number.MAX_SAFE_INTEGER)
+        .nullable(),
+      pausedLastRunId: z
+        .uuid()
+        .nullable()
+        .describe(
+          'Run that triggered the pause: the last counted failed triggered run; older rows hold the run that reached the failure threshold.',
+        ),
+    })
+    .strict(),
+);
 
 export const workspaceAutoPauseSettingsSchema = z
   .object({
@@ -86,12 +89,14 @@ export const workspaceAutoPauseSettingsRequestSchema = z
     expectedRevision: autoPauseSettingsRevisionSchema,
   })
   .strict();
-export const workflowAutoPauseCommandResponseSchema = z
-  .object({
-    settings: workflowAutoPauseSettingsSchema,
-    replayed: z.boolean(),
-  })
-  .strict();
+export const workflowAutoPauseCommandResponseSchema = responseSchema(
+  z
+    .object({
+      settings: workflowAutoPauseSettingsSchema,
+      replayed: z.boolean(),
+    })
+    .strict(),
+);
 export const workspaceAutoPauseCommandResponseSchema = z
   .object({
     settings: workspaceAutoPauseSettingsSchema,

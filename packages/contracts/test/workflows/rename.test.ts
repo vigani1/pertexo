@@ -136,10 +136,10 @@ describe('workflow rename public contract', () => {
       { currentName: 'Someone else’s name' },
     ])
       expect(
-        workflowNameConflictProblemSchema.safeParse({
+        workflowNameConflictProblemSchema.parse({
           ...conflict,
           ...extension,
-        }).success,
-      ).toBe(false);
+        }),
+      ).toEqual(conflict);
   });
 });

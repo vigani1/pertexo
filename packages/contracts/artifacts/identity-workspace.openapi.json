@@ -10055,7 +10055,7 @@
           "scopes",
           "expiresAt"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "WorkspaceVariablesResponse": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -10108,7 +10108,7 @@
           "values",
           "descriptions"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "WorkspaceVariablesRequest": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -10181,7 +10181,7 @@
           "changed",
           "replayed"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "WorkspaceVariableUsageResponse": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -10254,7 +10254,7 @@
                 "input",
                 "kind"
               ],
-              "additionalProperties": false
+              "additionalProperties": true
             }
           },
           "nextCursor": {
@@ -10277,7 +10277,7 @@
           "nextCursor",
           "incomplete"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "AccessibleWorkspacesResponse": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -11182,7 +11182,7 @@
                 "code",
                 "message"
               ],
-              "additionalProperties": false
+              "additionalProperties": true
             }
           }
         },
@@ -11193,7 +11193,7 @@
           "code",
           "requestId"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "WorkspaceInvitationsResponse": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -12363,7 +12363,7 @@
                       "required",
                       "id"
                     ],
-                    "additionalProperties": false
+                    "additionalProperties": true
                   }
                 },
                 "keyColumn": {
@@ -12411,7 +12411,7 @@
                 "storedBytes",
                 "revision"
               ],
-              "additionalProperties": false
+              "additionalProperties": true
             }
           },
           "quotas": {
@@ -12456,7 +12456,7 @@
               "tableCount",
               "storedBytes"
             ],
-            "additionalProperties": false
+            "additionalProperties": true
           },
           "unavailableTables": {
             "maxItems": 100,
@@ -12483,7 +12483,7 @@
                 "name",
                 "reason"
               ],
-              "additionalProperties": false
+              "additionalProperties": true
             }
           }
         },
@@ -12491,7 +12491,7 @@
           "tables",
           "quotas"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "DataTableCreate": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -12565,7 +12565,7 @@
         "required": [
           "id"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "DataTableLimits": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -12672,7 +12672,7 @@
         "required": [
           "removed"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "DataTableSchemaEdit": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -12852,7 +12852,7 @@
         "required": [
           "revision"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "DataTableExportQuery": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -14030,7 +14030,7 @@
                 "id",
                 "revision"
               ],
-              "additionalProperties": false
+              "additionalProperties": true
             }
           },
           "affected": {
@@ -14043,7 +14043,7 @@
           "rows",
           "affected"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "DataTableImport": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -14073,7 +14073,7 @@
         "required": [
           "affected"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "AuditPage": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",

@@ -1,3 +1,4 @@
+import { responseSchema } from '../shared/response-schema.js';
 import { workflowGraphDigestSchema } from './graph-digest.js';
 import { storageTextSchema } from '@pertexo/workflow-model';
 import { z } from 'zod';
@@ -37,25 +38,27 @@ export const workflowImportRequestSchema =
       .string()
       .regex(/^wf-compat:sha256:[a-f0-9]{64}$/u),
   });
-export const workflowImportPreviewResponseSchema = z
-  .object({
-    manifestDigest: z.string().regex(/^[a-f0-9]{64}$/u),
-    compatibilityFingerprint: z
-      .string()
-      .regex(/^wf-compat:sha256:[a-f0-9]{64}$/u),
-    compatible: z.boolean(),
-    issues: z
-      .array(portableIssueSchema)
-      .max(WORKFLOW_PORTABILITY_LIMITS.issues),
-    truncated: z.boolean(),
-    connectionSlots: z
-      .array(portableConnectionSlotSchema)
-      .max(WORKFLOW_PORTABILITY_LIMITS.connectionSlots),
-  })
-  .strict();
-export const workflowImportResponseSchema = z
-  .object({ workflowId: z.uuid() })
-  .strict();
+export const workflowImportPreviewResponseSchema = responseSchema(
+  z
+    .object({
+      manifestDigest: z.string().regex(/^[a-f0-9]{64}$/u),
+      compatibilityFingerprint: z
+        .string()
+        .regex(/^wf-compat:sha256:[a-f0-9]{64}$/u),
+      compatible: z.boolean(),
+      issues: z
+        .array(portableIssueSchema)
+        .max(WORKFLOW_PORTABILITY_LIMITS.issues),
+      truncated: z.boolean(),
+      connectionSlots: z
+        .array(portableConnectionSlotSchema)
+        .max(WORKFLOW_PORTABILITY_LIMITS.connectionSlots),
+    })
+    .strict(),
+);
+export const workflowImportResponseSchema = responseSchema(
+  z.object({ workflowId: z.uuid() }).strict(),
+);
 export type WorkflowExportRequest = z.infer<typeof workflowExportRequestSchema>;
 export type WorkflowImportPreviewRequest = z.infer<
   typeof workflowImportPreviewRequestSchema

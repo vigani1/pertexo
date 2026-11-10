@@ -127,6 +127,7 @@ export type PublishWorkflowInput = Readonly<{
   traceparent?: string;
 }>;
 export type ListWorkflowsInput = Readonly<{
+  includeListSummary?: boolean;
   workspaceId: string;
   actorId: string;
   limit?: number;

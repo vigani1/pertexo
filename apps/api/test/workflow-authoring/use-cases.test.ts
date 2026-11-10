@@ -1,4 +1,3 @@
-import { portableGraphDigest } from '@pertexo/workflow-model';
 import { describe, expect, it, vi } from 'vitest';
 import {
   GetWorkflowUseCase,
@@ -134,9 +133,9 @@ describe('workflow authoring application seams', () => {
     await expect(useCase.execute(input)).rejects.toMatchObject({
       name: 'ZodError',
     });
-    await expect(useCase.execute(input)).rejects.toMatchObject({
-      name: 'ZodError',
-    });
+    const sanitized = await useCase.execute(input);
+    expect(sanitized).toHaveProperty('templateOrigin', templateOrigin);
+    expect(sanitized).not.toHaveProperty('templateOrigin.privateSetup');
   });
 
   it('reads one workflow without relying on list pagination', async () => {
@@ -959,7 +958,6 @@ describe('workflow authoring application seams', () => {
           workflowId,
           versionNumber: 1,
           graph,
-          graphDigest: await portableGraphDigest(graph),
           checksum: version().checksum,
           publishedAt: '2026-08-20T12:00:00.000Z',
         },

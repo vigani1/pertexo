@@ -34,7 +34,7 @@ export const authoringRoutes = {
       status: 200,
       response: {
         description:
-          'Default or filtered workflow summaries; include=organization explicitly requests private organization metadata. Filters apply before bounded pagination; unknown/foreign tag or folder filters return an empty scoped page. folderId selects an exact UUID without descendants, root selects unfiled, and omission includes all placements. pinsWorkflowId lists workflows whose current publication directly pins that target, using the ordinary list response and cursor; it cannot be combined with organization filters. Live pagination is not a snapshot and has no total count.',
+          'Default or filtered workflow summaries; include=organization requests private organization metadata; include=listSummary adds compact topology and recent ordinary-run statuses, or combine them as organization,listSummary. Defaults omit both projections. Filters apply before bounded pagination; unknown/foreign tag or folder filters return an empty scoped page. folderId selects an exact UUID without descendants, root selects unfiled, and omission includes all placements. pinsWorkflowId lists workflows whose current publication directly pins that target, using the ordinary list response and cursor; it cannot be combined with organization filters. Live pagination is not a snapshot and has no total count.',
         headers: {
           'Cache-Control': {
             schema: { type: 'string', const: 'private, no-store' },
@@ -125,7 +125,7 @@ export const authoringRoutes = {
     access: automationReading,
     rateLimit: 'authenticated_read',
     description:
-      'Default metadata retains its strict shape. include is exactly templateOrigin, organization, or templateOrigin,organization. Unsupported projection is unavailable, never inferred null or empty.',
+      'Default metadata retains its previous fields; response decoders ignore future metadata. include is exactly templateOrigin, organization, or templateOrigin,organization. Unsupported projection is unavailable, never inferred null or empty.',
     query: schemas.workflowGetQuerySchema,
     success: {
       status: 200,
@@ -140,7 +140,7 @@ export const authoringRoutes = {
         content: {
           'application/json': {
             schema: {
-              oneOf: [
+              anyOf: [
                 { $ref: '#/components/schemas/WorkflowSummaryResponse' },
                 {
                   $ref: '#/components/schemas/WorkflowTemplateOriginProjectionResponse',
@@ -187,12 +187,14 @@ export const authoringRoutes = {
     method: 'get',
     path: '/v1/workspaces/{workspaceId}/workflows/{workflowId}/draft',
     params: schemas.workflowIdParamSchema,
+    query: schemas.workflowDraftQuerySchema,
     access: automationReading,
     rateLimit: 'authenticated_read',
     headers: z.object({ 'if-none-match': z.string().optional() }),
     success: {
       status: 200,
-      description: 'Workflow draft',
+      description:
+        'Workflow draft; include=graphDigest adds the reviewed content identity without changing the ETag precondition',
       body: projected(
         'WorkflowDraftResponse',
         schemas.workflowDraftResponseSchema,

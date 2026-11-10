@@ -141,8 +141,8 @@ describe('accepted folder and general-bulk public contracts', () => {
       };
       expect(apiProblemSchema.parse(problem)).toEqual(problem);
       expect(
-        apiProblemSchema.safeParse({ ...problem, currentRevision: 1 }).success,
-      ).toBe(false);
+        apiProblemSchema.parse({ ...problem, currentRevision: 1 }),
+      ).not.toHaveProperty('currentRevision');
     }
     const document = workflowAuthoringOpenApiDocument;
     const client = workflowAuthoringOpenApiDocument.components.schemas;

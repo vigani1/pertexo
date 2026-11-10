@@ -3,7 +3,7 @@ import {
   workflowVersionRestoreRequestSchema,
   workflowVersionRestoreResponseSchema,
   workflowVersionsResponseSchema,
-  type WorkflowVersionResponse,
+  workflowVersionResponseSchema,
   type WorkflowVersionsResponse,
 } from '@pertexo/contracts';
 import {
@@ -12,6 +12,13 @@ import {
 } from '@/features/workflow-drafts/public';
 import type { ApiClient } from '@/lib/api/client';
 import { collectPages } from '@/lib/api/pagination';
+
+const reviewedVersionsSchema = workflowVersionsResponseSchema.extend({
+  items: workflowVersionResponseSchema
+    .required({ graphDigest: true })
+    .array()
+    .max(100),
+});
 
 function versionsPath(workspaceId: string, workflowId: string) {
   return `/v1/workspaces/${encodeURIComponent(workspaceId)}/workflows/${encodeURIComponent(workflowId)}/versions` as const;
@@ -26,8 +33,8 @@ export function getWorkflowVersionsPage(
     versionId?: string;
     signal?: AbortSignal;
   }> = {},
-): Promise<WorkflowVersionsResponse> {
-  const query = new URLSearchParams({ limit: '25' });
+) {
+  const query = new URLSearchParams({ limit: '25', include: 'graphDigest' });
   if (input.after !== undefined) query.set('after', input.after);
   if (input.versionId !== undefined) query.set('versionId', input.versionId);
   return apiClient.request({
@@ -35,7 +42,7 @@ export function getWorkflowVersionsPage(
     ...(input.signal === undefined ? {} : { signal: input.signal }),
     response: {
       kind: 'json',
-      decode: (value) => workflowVersionsResponseSchema.parse(value),
+      decode: (value) => reviewedVersionsSchema.parse(value),
     },
   });
 }
@@ -81,7 +88,7 @@ export async function findWorkflowVersion({
   workflowId: string;
   versionId: string;
   signal?: AbortSignal | undefined;
-}>): Promise<WorkflowVersionResponse> {
+}>) {
   const page = await getWorkflowVersionsPage(
     apiClient,
     workspaceId,

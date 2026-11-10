@@ -68,6 +68,7 @@ export class WorkflowVersionsController {
       ...context,
       routeWorkspaceId: route.workspaceId,
       workflowId: route.workflowId,
+      includeGraphDigest: input.include === 'graphDigest',
       ...(input.versionId === undefined ? {} : { versionId: input.versionId }),
       ...(input.limit === undefined ? {} : { limit: input.limit }),
       ...(input.after === undefined ? {} : { after: input.after }),
