@@ -50,7 +50,10 @@ function fixture(t) {
       'single-server',
     );
     mkdirSync(release, { recursive: true });
-    writeFileSync(join(release, 'compose.yaml'), 'services: {}');
+    writeFileSync(
+      join(release, 'compose.yaml'),
+      'services:\n  api:\n    image: fixture\n    environment:\n      ARTIFACT_STORE_ENDPOINT: ${ARTIFACT_STORE_ENDPOINT:?}\n',
+    );
     if (commit === newCommit) {
       mkdirSync(join(release, 'encryption'));
       writeFileSync(join(release, 'encryption/verify.mjs'), 'fixture');
@@ -104,6 +107,12 @@ from pathlib import Path
 args=sys.argv[1:]
 with open(os.environ['FIXTURE_LOG'],'a') as log:
  log.write(json.dumps({'args':args,'commit':os.environ.get('SERVICE_VERSION')})+'\\n')
+if 'infrastructure/single-server/storage/preflight.mjs' in args:
+ config=next(args[i+1].split(':/run/pertexo.env:ro')[0] for i,arg in enumerate(args[:-1]) if arg=='-v' and args[i+1].endswith(':/run/pertexo.env:ro'))
+ environment={'PATH':os.environ['PATH']}
+ for i,arg in enumerate(args[:-1]):
+  if arg=='--env' and args[i+1] in os.environ: environment[args[i+1]]=os.environ[args[i+1]]
+ sys.exit(subprocess.run([os.environ['FIXTURE_NODE'],'--env-file='+config,'infrastructure/single-server/storage/preflight.mjs',config],env=environment).returncode)
 host=os.environ.get('FIXTURE_HOST_ARCH','arm64')
 if args[0]=='version' or args[0]=='info' or args[:2]==['system','info']:
  print({'amd64':'x86_64','arm64':'aarch64'}[host] if 'Architecture' in ' '.join(args) else host); sys.exit(0)
@@ -178,7 +187,6 @@ if '--no-deps' in args and '--wait' in args and os.environ.get('SERVICE_VERSION'
       ],
       {
         env: {
-          ...process.env,
           PATH: bin + ':' + process.env.PATH,
           PERTEXO_BETA_ROOT: directory,
           FIXTURE_LOG: log,
@@ -209,6 +217,78 @@ if '--no-deps' in args and '--wait' in args and os.environ.get('SERVICE_VERSION'
     directory,
   };
 }
+
+test('deploy fixtures ignore ambient application settings', (t) => {
+  const names = ['ARTIFACT_STORE_ENDPOINT', 'SYSTEM_MAIL_TRANSPORT'];
+  const previous = names.map((name) => process.env[name]);
+  t.after(() => {
+    names.forEach((name, index) => {
+      if (previous[index] === undefined)
+        Reflect.deleteProperty(process.env, name);
+      else process.env[name] = previous[index];
+    });
+  });
+  process.env.ARTIFACT_STORE_ENDPOINT = 'http://ci-storage.invalid';
+  process.env.SYSTEM_MAIL_TRANSPORT = 'invalid-ci-setting';
+  const f = fixture(t);
+  const result = f.run();
+  assert.equal(result.status, 0, result.stderr);
+});
+
+for (const endpoint of [
+  'http://ci-storage.invalid',
+  'https://shell.example.test',
+])
+  test(`preflight honours the same exported endpoint as Compose: ${endpoint}`, (t) => {
+    const f = fixture(t);
+    const manifest = join(f.directory, 'precedence.compose.yaml');
+    writeFileSync(
+      manifest,
+      `services:
+  app:
+    image: fixture
+    environment:
+      ARTIFACT_STORE_ENDPOINT: \${ARTIFACT_STORE_ENDPOINT:?}
+`,
+    );
+    const resolved = JSON.parse(
+      execFileSync(
+        'docker',
+        [
+          'compose',
+          '--env-file',
+          join(f.directory, '.env.production'),
+          '-f',
+          manifest,
+          'config',
+          '--format',
+          'json',
+        ],
+        {
+          env: { PATH: process.env.PATH, ARTIFACT_STORE_ENDPOINT: endpoint },
+          encoding: 'utf8',
+        },
+      ),
+    );
+    assert.equal(
+      resolved.services.app.environment.ARTIFACT_STORE_ENDPOINT,
+      endpoint,
+    );
+    const result = f.run({ ARTIFACT_STORE_ENDPOINT: endpoint });
+    if (endpoint.startsWith('https:')) {
+      assert.equal(result.status, 0, result.stderr);
+    } else {
+      assert.notEqual(result.status, 0);
+      assert.match(
+        result.stderr,
+        /ARTIFACT_STORE_ENDPOINT: use an HTTPS endpoint/u,
+      );
+      assert.equal(
+        f.commands().some((command) => command.args.includes('stop')),
+        false,
+      );
+    }
+  });
 
 test('records a healthy release only after migration and serving health', (t) => {
   const f = fixture(t);
@@ -777,7 +857,7 @@ test('incompatible migration receipts leave writers running, including fenced ro
   }
 });
 
-test('conditional app configuration is checked by the real schemas before image pulls', (t) => {
+test('target image checks conditional app configuration after pulls and before stopping writers', (t) => {
   for (const [values, expected] of [
     [
       'SYSTEM_MAIL_TRANSPORT=smtp\nSYSTEM_MAIL_SMTP_HOST=\n',
@@ -801,8 +881,17 @@ test('conditional app configuration is checked by the real schemas before image 
     assert.notEqual(result.status, 0);
     assert.match(result.stderr, expected);
     assert.match(result.stderr, /\.env.production/u);
+    assert.equal(f.commands().filter((c) => c.args.includes('pull')).length, 2);
+    const validation = f
+      .commands()
+      .find((c) =>
+        c.args.includes('infrastructure/single-server/storage/preflight.mjs'),
+      );
+    assert.ok(
+      validation?.args.includes('ghcr.io/vigani1/pertexo:' + newCommit),
+    );
     assert.equal(
-      f.commands().some((c) => c.args.includes('pull')),
+      f.commands().some((c) => c.args.includes('stop')),
       false,
     );
   }
