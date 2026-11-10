@@ -4,7 +4,8 @@
   "compilerOptions": {
     "composite": false,
     "allowImportingTsExtensions": true,
-    "types": ["vite/client", "node"]
+    "types": ["vite/client", "node"],
+    "tsBuildInfoFile": "./node_modules/.cache/web-tests.tsbuildinfo"
   },
   "include": ["src", "test", "e2e", "e2e-live", "*.config.ts"]
 }
