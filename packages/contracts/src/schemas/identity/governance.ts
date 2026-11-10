@@ -1,3 +1,4 @@
+import { responseSchema } from '../shared/response-schema.js';
 import {
   AUDIT_RETENTION_MAX_DAYS,
   AUDIT_RETENTION_MIN_DAYS,
@@ -57,25 +58,29 @@ export const auditEventSchema = z
     ),
   })
   .strict();
-export const auditPageSchema = z
-  .object({
-    items: z.array(auditEventSchema).max(100),
-    nextCursor: z.string().max(512).nullable(),
-  })
-  .strict();
+export const auditPageSchema = responseSchema(
+  z
+    .object({
+      items: z.array(auditEventSchema).max(100),
+      nextCursor: z.string().max(512).nullable(),
+    })
+    .strict(),
+);
 
 export const auditRetentionSchema = z
   .number()
   .int()
   .min(AUDIT_RETENTION_MIN_DAYS)
   .max(AUDIT_RETENTION_MAX_DAYS);
-export const governanceSettingsSchema = z
-  .object({
-    revision: z.number().int().positive(),
-    auditRetentionDays: auditRetentionSchema,
-    requirePublishApproval: z.boolean().default(false),
-  })
-  .strict();
+export const governanceSettingsSchema = responseSchema(
+  z
+    .object({
+      revision: z.number().int().positive(),
+      auditRetentionDays: auditRetentionSchema,
+      requirePublishApproval: z.boolean().default(false),
+    })
+    .strict(),
+);
 export const governanceUpdateSchema = z
   .object({
     expectedRevision: z.number().int().positive(),

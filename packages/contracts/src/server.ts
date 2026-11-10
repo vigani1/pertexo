@@ -75,3 +75,8 @@ export { portabilityRoutes } from './routes/workflows/portability.js';
 export { sessionRoutes } from './routes/identity/session.js';
 
 export { jsonSchema } from './routes/openapi-primitives.js';
+
+export {
+  responseSchema,
+  type ResponseSchema,
+} from './schemas/shared/response-schema.js';

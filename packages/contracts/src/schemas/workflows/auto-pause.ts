@@ -65,12 +65,14 @@ export const workflowAutoPauseSettingsSchema = responseSchema(
     .strict(),
 );
 
-export const workspaceAutoPauseSettingsSchema = z
-  .object({
-    threshold: autoPauseThresholdSchema,
-    revision: autoPauseSettingsRevisionSchema,
-  })
-  .strict();
+export const workspaceAutoPauseSettingsSchema = responseSchema(
+  z
+    .object({
+      threshold: autoPauseThresholdSchema,
+      revision: autoPauseSettingsRevisionSchema,
+    })
+    .strict(),
+);
 export const workflowAutoPauseSettingsRequestSchema = z
   .object({
     enabled: z.boolean(),
@@ -97,12 +99,14 @@ export const workflowAutoPauseCommandResponseSchema = responseSchema(
     })
     .strict(),
 );
-export const workspaceAutoPauseCommandResponseSchema = z
-  .object({
-    settings: workspaceAutoPauseSettingsSchema,
-    replayed: z.boolean(),
-  })
-  .strict();
+export const workspaceAutoPauseCommandResponseSchema = responseSchema(
+  z
+    .object({
+      settings: workspaceAutoPauseSettingsSchema,
+      replayed: z.boolean(),
+    })
+    .strict(),
+);
 
 export const workflowPauseConflictProblemSchema = createApiProblemSchema({
   status: z.literal(409),

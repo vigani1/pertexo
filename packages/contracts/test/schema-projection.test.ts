@@ -78,7 +78,7 @@ describe('contract schema projection', () => {
     });
     expect(manifest.properties?.graph).toMatchObject({
       type: 'object',
-      additionalProperties: false,
+      additionalProperties: true,
       properties: {
         nodes: { type: 'array', maxItems: 200 },
         edges: { type: 'array', maxItems: 4_000 },

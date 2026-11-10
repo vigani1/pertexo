@@ -1,3 +1,4 @@
+import type { ResponseSchema } from '../../schemas/shared/response-schema.js';
 import {
   ACTIVE_WORKSPACE_STATUSES,
   BROWSABLE_WORKSPACE_STATUSES,
@@ -72,7 +73,7 @@ function memberCommand<
   path: Path;
   access: RouteAccess;
   body: NamedSchema<Body>;
-  answer: Readonly<{ description: string; body: NamedSchema }>;
+  answer: Readonly<{ description: string; body: NamedSchema<ResponseSchema> }>;
 }>) {
   return defineRoute({
     operationId,

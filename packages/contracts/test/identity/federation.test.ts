@@ -109,13 +109,18 @@ describe('organization federation boundaries', () => {
   });
   it('refuses secrets in a safe settings projection', () => {
     expect(
-      federationSettingsSchema.safeParse({
+      federationSettingsSchema.parse({
         configured: true,
         reason: null,
         canManage: true,
         organization: null,
         clientSecret: 'leaked',
-      }).success,
-    ).toBe(false);
+      }),
+    ).toEqual({
+      configured: true,
+      reason: null,
+      canManage: true,
+      organization: null,
+    });
   });
 });

@@ -98,11 +98,11 @@ describe('artifact transfer public contract', () => {
   it('exposes safe metadata and bounded capabilities without internal ownership or keys', () => {
     expect(artifactMetadataResponseSchema.parse(metadata)).toEqual(metadata);
     expect(
-      artifactMetadataResponseSchema.safeParse({
+      artifactMetadataResponseSchema.parse({
         ...metadata,
         storageKey: 'workspaces/secret',
-      }).success,
-    ).toBe(false);
+      }),
+    ).toEqual(metadata);
     const download = {
       method: 'GET',
       url: 'https://objects.example.test/signed',

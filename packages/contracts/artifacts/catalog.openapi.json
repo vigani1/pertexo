@@ -361,7 +361,7 @@
               "extraPackages",
               "pythonPackages"
             ],
-            "additionalProperties": false
+            "additionalProperties": true
           },
           "items": {
             "maxItems": 256,
@@ -390,7 +390,7 @@
                     "key",
                     "version"
                   ],
-                  "additionalProperties": false
+                  "additionalProperties": true
                 },
                 "family": {
                   "type": "string",
@@ -426,7 +426,7 @@
                     "name",
                     "description"
                   ],
-                  "additionalProperties": false
+                  "additionalProperties": true
                 },
                 "configVersion": {
                   "type": "integer",
@@ -514,7 +514,7 @@
                           "configPath",
                           "variant"
                         ],
-                        "additionalProperties": false
+                        "additionalProperties": true
                       }
                     }
                   },
@@ -523,7 +523,7 @@
                     "whenPresent",
                     "whenAbsent"
                   ],
-                  "additionalProperties": false
+                  "additionalProperties": true
                 },
                 "ports": {
                   "readOnly": true,
@@ -552,7 +552,7 @@
                     "inputs",
                     "outputs"
                   ],
-                  "additionalProperties": false
+                  "additionalProperties": true
                 },
                 "credentialRequirements": {
                   "maxItems": 64,
@@ -602,7 +602,7 @@
                     "providerKey",
                     "operationKey"
                   ],
-                  "additionalProperties": false
+                  "additionalProperties": true
                 },
                 "retryClass": {
                   "type": "string",
@@ -643,14 +643,14 @@
                 "resourceClass",
                 "capabilities"
               ],
-              "additionalProperties": false
+              "additionalProperties": true
             }
           }
         },
         "required": [
           "items"
         ],
-        "additionalProperties": false,
+        "additionalProperties": true,
         "$defs": {
           "__schema0": {
             "anyOf": [
@@ -679,6 +679,38 @@
                 },
                 "additionalProperties": {
                   "$ref": "#/components/schemas/NodeDefinitionListResponse/$defs/__schema0"
+                }
+              }
+            ],
+            "$ref": "#/components/schemas/NodeDefinitionListResponse/$defs/__schema1"
+          },
+          "__schema1": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/NodeDefinitionListResponse/$defs/__schema1"
+                }
+              },
+              {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/NodeDefinitionListResponse/$defs/__schema1"
                 }
               }
             ]
@@ -732,7 +764,7 @@
                       "key",
                       "version"
                     ],
-                    "additionalProperties": false
+                    "additionalProperties": true
                   }
                 }
               },
@@ -741,14 +773,14 @@
                 "operationKey",
                 "nodeDefinitions"
               ],
-              "additionalProperties": false
+              "additionalProperties": true
             }
           }
         },
         "required": [
           "items"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       }
     },
     "responses": {

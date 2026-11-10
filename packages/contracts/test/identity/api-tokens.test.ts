@@ -62,12 +62,12 @@ describe('API token contracts', () => {
       apiTokenCreateResponseSchema.safeParse({ token, replayed: true }).success,
     ).toBe(true);
     expect(
-      apiTokenCreateResponseSchema.safeParse({
+      apiTokenCreateResponseSchema.parse({
         token,
         replayed: true,
         secret: 'sensitive',
-      }).success,
-    ).toBe(false);
+      }),
+    ).toEqual({ token, replayed: true });
     expect(
       apiTokenCreateResponseSchema.safeParse({ token, replayed: false })
         .success,

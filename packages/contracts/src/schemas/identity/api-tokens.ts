@@ -68,36 +68,42 @@ export const apiTokenMetadataSchema = z.discriminatedUnion('status', [
     })
     .strict(),
 ]);
-export const apiTokenCreateResponseSchema = z.discriminatedUnion('replayed', [
-  z
-    .object({
-      token: apiTokenMetadataSchema,
-      replayed: z.literal(false),
-      secret: apiTokenCredentialSchema,
-    })
-    .strict(),
-  z
-    .object({ token: apiTokenMetadataSchema, replayed: z.literal(true) })
-    .strict(),
-]);
+export const apiTokenCreateResponseSchema = responseSchema(
+  z.discriminatedUnion('replayed', [
+    z
+      .object({
+        token: apiTokenMetadataSchema,
+        replayed: z.literal(false),
+        secret: apiTokenCredentialSchema,
+      })
+      .strict(),
+    z
+      .object({ token: apiTokenMetadataSchema, replayed: z.literal(true) })
+      .strict(),
+  ]),
+);
 export const apiTokenListQuerySchema = z
   .object({
     limit: z.coerce.number().int().min(1).max(50).default(25),
     after: z.uuid().optional(),
   })
   .strict();
-export const apiTokenListResponseSchema = z
-  .object({
-    enabled: z.boolean(),
-    availableScopes: z.array(apiTokenScopeSchema).max(API_TOKEN_SCOPES.length),
-    items: z.array(apiTokenMetadataSchema).max(50),
-    nextCursor: z.uuid().nullable(),
-  })
-  .strict();
+export const apiTokenListResponseSchema = responseSchema(
+  z
+    .object({
+      enabled: z.boolean(),
+      availableScopes: z
+        .array(apiTokenScopeSchema)
+        .max(API_TOKEN_SCOPES.length),
+      items: z.array(apiTokenMetadataSchema).max(50),
+      nextCursor: z.uuid().nullable(),
+    })
+    .strict(),
+);
 export const apiTokenRevokeRequestSchema = z.object({}).strict();
-export const apiTokenRevokeResponseSchema = z
-  .object({ token: apiTokenMetadataSchema, replayed: z.boolean() })
-  .strict();
+export const apiTokenRevokeResponseSchema = responseSchema(
+  z.object({ token: apiTokenMetadataSchema, replayed: z.boolean() }).strict(),
+);
 export type ApiTokenCreateRequest = z.output<
   typeof apiTokenCreateRequestSchema
 >;

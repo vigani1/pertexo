@@ -1,3 +1,4 @@
+import { responseSchema } from './shared/response-schema.js';
 import {
   codeSettingsSchema,
   nodeDisplayMetadataSchema,
@@ -85,15 +86,17 @@ export const nodeDefinitionCatalogItemSchema = z
   .strict()
   .readonly();
 
-export const nodeDefinitionListResponseSchema = z
-  .object({
-    codeSettings: codeSettingsSchema.optional(),
-    items: z
-      .array(nodeDefinitionCatalogItemSchema)
-      .max(catalogLimits.definitions),
-  })
-  .strict()
-  .readonly();
+export const nodeDefinitionListResponseSchema = responseSchema(
+  z
+    .object({
+      codeSettings: codeSettingsSchema.optional(),
+      items: z
+        .array(nodeDefinitionCatalogItemSchema)
+        .max(catalogLimits.definitions),
+    })
+    .strict()
+    .readonly(),
+);
 
 const integrationCatalogItemSchema = z
   .object({
@@ -106,14 +109,16 @@ const integrationCatalogItemSchema = z
   .strict()
   .readonly();
 
-export const integrationListResponseSchema = z
-  .object({
-    items: z
-      .array(integrationCatalogItemSchema)
-      .max(catalogLimits.integrations),
-  })
-  .strict()
-  .readonly();
+export const integrationListResponseSchema = responseSchema(
+  z
+    .object({
+      items: z
+        .array(integrationCatalogItemSchema)
+        .max(catalogLimits.integrations),
+    })
+    .strict()
+    .readonly(),
+);
 
 export type NodeDefinitionCatalogItem = z.output<
   typeof nodeDefinitionCatalogItemSchema

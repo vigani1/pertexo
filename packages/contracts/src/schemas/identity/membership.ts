@@ -1,3 +1,4 @@
+import { responseSchema } from '../shared/response-schema.js';
 import { ROLES } from '@pertexo/policy';
 export { isAdministrativeRole } from '@pertexo/policy';
 import { z } from 'zod';
@@ -18,24 +19,28 @@ const roleRevisionSchema = z.number().int().positive();
 
 /** Leaving depends on no revision; the owner check runs under lock. */
 export const workspaceLeaveRequestSchema = z.object({}).strict();
-export const workspaceLeaveResponseSchema = z
-  .object({
-    userId: z.uuid(),
-    roleRevision: roleRevisionSchema,
-    replayed: z.boolean(),
-  })
-  .strict();
+export const workspaceLeaveResponseSchema = responseSchema(
+  z
+    .object({
+      userId: z.uuid(),
+      roleRevision: roleRevisionSchema,
+      replayed: z.boolean(),
+    })
+    .strict(),
+);
 export const workspaceMemberStatusRequestSchema = z
   .object({ expectedRoleRevision: roleRevisionSchema })
   .strict();
-export const workspaceMemberStatusResponseSchema = z
-  .object({
-    userId: z.uuid(),
-    roleRevision: roleRevisionSchema,
-    membershipStatus: z.enum(['active', 'suspended']),
-    replayed: z.boolean(),
-  })
-  .strict();
+export const workspaceMemberStatusResponseSchema = responseSchema(
+  z
+    .object({
+      userId: z.uuid(),
+      roleRevision: roleRevisionSchema,
+      membershipStatus: z.enum(['active', 'suspended']),
+      replayed: z.boolean(),
+    })
+    .strict(),
+);
 /** Both memberships change, so both revisions fence the transfer. */
 export const workspaceOwnershipTransferRequestSchema = z
   .object({
@@ -43,15 +48,17 @@ export const workspaceOwnershipTransferRequestSchema = z
     expectedOwnerRoleRevision: roleRevisionSchema,
   })
   .strict();
-export const workspaceOwnershipTransferResponseSchema = z
-  .object({
-    ownerUserId: z.uuid(),
-    ownerRoleRevision: roleRevisionSchema,
-    previousOwnerUserId: z.uuid(),
-    previousOwnerRoleRevision: roleRevisionSchema,
-    replayed: z.boolean(),
-  })
-  .strict();
+export const workspaceOwnershipTransferResponseSchema = responseSchema(
+  z
+    .object({
+      ownerUserId: z.uuid(),
+      ownerRoleRevision: roleRevisionSchema,
+      previousOwnerUserId: z.uuid(),
+      previousOwnerRoleRevision: roleRevisionSchema,
+      replayed: z.boolean(),
+    })
+    .strict(),
+);
 
 export type WorkspaceLeaveResponse = z.output<
   typeof workspaceLeaveResponseSchema

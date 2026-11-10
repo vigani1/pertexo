@@ -75,11 +75,11 @@ describe('workspace capacity contract', () => {
       }).success,
     ).toBe(false);
     expect(
-      usageCapacityResponseSchema.safeParse({
+      usageCapacityResponseSchema.parse({
         ...capacity,
         billedOperations: 0,
-      }).success,
-    ).toBe(false);
+      }),
+    ).toEqual(capacity);
   });
 
   it('publishes an authenticated read-only contract without time or quota commands', () => {

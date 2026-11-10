@@ -1,3 +1,4 @@
+import { responseSchema } from '../shared/response-schema.js';
 import { codeDiagnosticsSchema } from '@pertexo/node-sdk';
 import { z } from 'zod';
 
@@ -75,18 +76,20 @@ export const nodeTestRequestSchema = z.discriminatedUnion('mode', [
   nodeTestExecuteRequestSchema,
 ]);
 
-export const nodeValidationResponseSchema = z
-  .object({
-    mode: z.literal('validate'),
-    valid: z.boolean(),
-    revision: z.number().int().positive(),
-    nodeId: z.string().min(1).max(NODE_TEST_LIMITS.nodeIdLength),
-    issues: z
-      .array(apiProblemIssueSchema)
-      .max(NODE_TEST_LIMITS.validationIssues),
-    disclosure: nodeSideEffectDisclosureSchema,
-  })
-  .strict();
+export const nodeValidationResponseSchema = responseSchema(
+  z
+    .object({
+      mode: z.literal('validate'),
+      valid: z.boolean(),
+      revision: z.number().int().positive(),
+      nodeId: z.string().min(1).max(NODE_TEST_LIMITS.nodeIdLength),
+      issues: z
+        .array(apiProblemIssueSchema)
+        .max(NODE_TEST_LIMITS.validationIssues),
+      disclosure: nodeSideEffectDisclosureSchema,
+    })
+    .strict(),
+);
 
 const previewRunStatusSchema = z.enum([
   'queued',
@@ -103,43 +106,47 @@ const previewOutputSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('artifact'), artifactId: z.uuid() }).strict(),
 ]);
 
-export const previewRunSummarySchema = z
-  .object({
-    codeDiagnostics: codeDiagnosticsSchema.optional(),
-    id: z.uuid(),
-    workspaceId: z.uuid(),
-    workflowId: z.uuid(),
-    draftRevision: z.number().int().positive(),
-    nodeId: z.string().min(1).max(NODE_TEST_LIMITS.nodeIdLength),
-    status: previewRunStatusSchema,
-    pinnedSampleId: z.uuid().optional(),
-    disclosure: nodeSideEffectDisclosureSchema,
-    output: previewOutputSchema.nullable(),
-    safeErrorCode: z
-      .string()
-      .min(1)
-      .max(NODE_TEST_LIMITS.safeErrorCodeLength)
-      .nullable(),
-    /** The step's own reason, when it refused its input or setup. */
-    errorSummary: z.string().min(1).max(2048).optional(),
-    createdAt: z.iso.datetime({ offset: true }),
-    startedAt: z.iso.datetime({ offset: true }).nullable(),
-    completedAt: z.iso.datetime({ offset: true }).nullable(),
-    expiresAt: z.iso.datetime({ offset: true }),
-  })
-  .strict();
+export const previewRunSummarySchema = responseSchema(
+  z
+    .object({
+      codeDiagnostics: codeDiagnosticsSchema.optional(),
+      id: z.uuid(),
+      workspaceId: z.uuid(),
+      workflowId: z.uuid(),
+      draftRevision: z.number().int().positive(),
+      nodeId: z.string().min(1).max(NODE_TEST_LIMITS.nodeIdLength),
+      status: previewRunStatusSchema,
+      pinnedSampleId: z.uuid().optional(),
+      disclosure: nodeSideEffectDisclosureSchema,
+      output: previewOutputSchema.nullable(),
+      safeErrorCode: z
+        .string()
+        .min(1)
+        .max(NODE_TEST_LIMITS.safeErrorCodeLength)
+        .nullable(),
+      /** The step's own reason, when it refused its input or setup. */
+      errorSummary: z.string().min(1).max(2048).optional(),
+      createdAt: z.iso.datetime({ offset: true }),
+      startedAt: z.iso.datetime({ offset: true }).nullable(),
+      completedAt: z.iso.datetime({ offset: true }).nullable(),
+      expiresAt: z.iso.datetime({ offset: true }),
+    })
+    .strict(),
+);
 
-export const nodeTestExecuteAcceptedResponseSchema = z
-  .object({
-    mode: z.literal('test_execute'),
-    preview: previewRunSummarySchema,
-    replayed: z.boolean(),
-  })
-  .strict();
+export const nodeTestExecuteAcceptedResponseSchema = responseSchema(
+  z
+    .object({
+      mode: z.literal('test_execute'),
+      preview: previewRunSummarySchema,
+      replayed: z.boolean(),
+    })
+    .strict(),
+);
 
-export const previewRunResponseSchema = z
-  .object({ preview: previewRunSummarySchema })
-  .strict();
+export const previewRunResponseSchema = responseSchema(
+  z.object({ preview: previewRunSummarySchema }).strict(),
+);
 
 export type NodeTestRequest = z.output<typeof nodeTestRequestSchema>;
 export type NodeValidationResponse = z.output<

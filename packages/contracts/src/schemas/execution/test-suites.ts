@@ -1,3 +1,4 @@
+import { responseSchema } from '../shared/response-schema.js';
 import { workflowTestSuiteReportSchema } from '@pertexo/workflow-model';
 import { z } from 'zod';
 import {
@@ -18,11 +19,13 @@ export const workflowTestSuiteCurrentSchema = z
       .max(50),
   })
   .strict();
-export const workflowTestSuitePreparationSchema = workflowTestSuiteCurrentSchema
-  .extend({
-    effectfulSteps: workflowTestPreparationSchema.shape.effectfulSteps,
-  })
-  .strict();
+export const workflowTestSuitePreparationSchema = responseSchema(
+  workflowTestSuiteCurrentSchema
+    .extend({
+      effectfulSteps: workflowTestPreparationSchema.shape.effectfulSteps,
+    })
+    .strict(),
+);
 export const workflowTestSuiteStartRequestSchema =
   workflowTestStartRequestSchema
     .omit({ input: true })
@@ -32,9 +35,9 @@ export const workflowTestSuiteStartRequestSchema =
       signature: z.string().regex(/^[0-9a-f]{64}$/u),
     })
     .strict();
-export const workflowTestSuiteAcceptedSchema = z
-  .object({ suiteId: z.uuid() })
-  .strict();
+export const workflowTestSuiteAcceptedSchema = responseSchema(
+  z.object({ suiteId: z.uuid() }).strict(),
+);
 export const workflowTestSuiteStatusSchema = z.enum([
   'running',
   'passed',
@@ -50,57 +53,65 @@ export const workflowTestSuiteCaseStatusSchema = z.enum([
   'error',
   'skipped',
 ]);
-export const workflowTestSuiteSummarySchema = z
-  .object({
-    suiteId: z.uuid(),
-    startedBy: z.uuid(),
-    draftRevision: z.number().int().positive(),
-    signature: z.string().regex(/^[0-9a-f]{64}$/u),
-    status: workflowTestSuiteStatusSchema,
-    stopReason: z.string().max(64).nullable(),
-    createdAt: z.iso.datetime(),
-    completedAt: z.iso.datetime().nullable(),
-    expiresAt: z.iso.datetime(),
-    total: z.number().int().min(1).max(50),
-    passed: z.number().int().min(0).max(50),
-    failed: z.number().int().min(0).max(50),
-    errors: z.number().int().min(0).max(50),
-    skipped: z.number().int().min(0).max(50),
-  })
-  .strict();
-export const workflowTestSuiteListSchema = z
-  .object({
-    current: workflowTestSuiteCurrentSchema,
-    items: z.array(workflowTestSuiteSummarySchema).max(20),
-  })
-  .strict();
-export const workflowTestSuiteDetailSchema = workflowTestSuiteSummarySchema
-  .extend({
-    cases: z
-      .array(
-        z
-          .object({
-            ordinal: z.number().int().min(0).max(49),
-            caseId: z.uuid(),
-            caseRevision: z.number().int().positive(),
-            name: z.string().max(128),
-            status: workflowTestSuiteCaseStatusSchema,
-            runId: z.uuid().nullable(),
-          })
-          .strict(),
-      )
-      .max(50),
-  })
-  .strict();
-export const workflowTestSuiteCaseReportSchema = z
-  .object({
-    report: workflowTestSuiteReportSchema.nullable(),
-    stepLabels: z
-      .record(z.string().max(256), z.string().max(256))
-      .refine((value) => Object.keys(value).length <= 20)
-      .default({}),
-  })
-  .strict();
+export const workflowTestSuiteSummarySchema = responseSchema(
+  z
+    .object({
+      suiteId: z.uuid(),
+      startedBy: z.uuid(),
+      draftRevision: z.number().int().positive(),
+      signature: z.string().regex(/^[0-9a-f]{64}$/u),
+      status: workflowTestSuiteStatusSchema,
+      stopReason: z.string().max(64).nullable(),
+      createdAt: z.iso.datetime(),
+      completedAt: z.iso.datetime().nullable(),
+      expiresAt: z.iso.datetime(),
+      total: z.number().int().min(1).max(50),
+      passed: z.number().int().min(0).max(50),
+      failed: z.number().int().min(0).max(50),
+      errors: z.number().int().min(0).max(50),
+      skipped: z.number().int().min(0).max(50),
+    })
+    .strict(),
+);
+export const workflowTestSuiteListSchema = responseSchema(
+  z
+    .object({
+      current: workflowTestSuiteCurrentSchema,
+      items: z.array(workflowTestSuiteSummarySchema).max(20),
+    })
+    .strict(),
+);
+export const workflowTestSuiteDetailSchema = responseSchema(
+  workflowTestSuiteSummarySchema
+    .extend({
+      cases: z
+        .array(
+          z
+            .object({
+              ordinal: z.number().int().min(0).max(49),
+              caseId: z.uuid(),
+              caseRevision: z.number().int().positive(),
+              name: z.string().max(128),
+              status: workflowTestSuiteCaseStatusSchema,
+              runId: z.uuid().nullable(),
+            })
+            .strict(),
+        )
+        .max(50),
+    })
+    .strict(),
+);
+export const workflowTestSuiteCaseReportSchema = responseSchema(
+  z
+    .object({
+      report: workflowTestSuiteReportSchema.nullable(),
+      stepLabels: z
+        .record(z.string().max(256), z.string().max(256))
+        .refine((value) => Object.keys(value).length <= 20)
+        .default({}),
+    })
+    .strict(),
+);
 export const workflowTestSuiteParamsSchema = z
   .object({ workspaceId: z.uuid(), workflowId: z.uuid(), suiteId: z.uuid() })
   .strict();

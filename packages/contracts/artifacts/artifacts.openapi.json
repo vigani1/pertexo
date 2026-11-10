@@ -319,7 +319,7 @@
               "createdAt",
               "expiresAt"
             ],
-            "additionalProperties": false
+            "additionalProperties": true
           },
           "upload": {
             "type": "object",
@@ -359,7 +359,7 @@
               "expiresAt",
               "expiresInSeconds"
             ],
-            "additionalProperties": false
+            "additionalProperties": true
           },
           "replayed": {
             "type": "boolean"
@@ -370,7 +370,7 @@
           "upload",
           "replayed"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "ArtifactFinalizeRequest": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -442,7 +442,7 @@
           "createdAt",
           "expiresAt"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "ArtifactDownloadResponse": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -473,7 +473,7 @@
           "expiresAt",
           "expiresInSeconds"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       }
     },
     "responses": {

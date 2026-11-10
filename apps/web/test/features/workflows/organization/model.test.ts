@@ -153,7 +153,7 @@ describe('folder and bounded batch data layer', () => {
       ).searchParams.get('folderId'),
     ).toBe('root');
   });
-  it('reads a strict bounded folder vocabulary with actor/workspace isolation', async () => {
+  it('reads a bounded folder vocabulary with actor/workspace isolation', async () => {
     const fetch = vi.fn<typeof globalThis.fetch>();
     const api = client(fetch);
     fetch.mockResolvedValueOnce(json({ items: [folder] }));
@@ -171,8 +171,11 @@ describe('folder and bounded batch data layer', () => {
       `/v1/workspaces/${workspaceId}/workflow-folders`,
     );
     expect(fetch.mock.calls[0]?.[1]?.signal).toBeInstanceOf(AbortSignal);
+    fetch.mockResolvedValueOnce(json({ items: [folder], nextCursor: null }));
+    await expect(
+      getWorkflowFolders(api, workspaceId, {}, signal()),
+    ).resolves.toEqual({ items: [folder] });
     for (const invalid of [
-      { items: [folder], nextCursor: null },
       { items: [folder, folder] },
       { items: Array.from({ length: 257 }, () => folder) },
       { items: [{ ...folder, depth: 2 }] },

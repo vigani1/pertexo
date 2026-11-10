@@ -1,5 +1,6 @@
 import {
   workflowExportRequestSchema,
+  workflowExportResponseSchema,
   workflowImportPreviewRequestSchema,
   workflowImportPreviewResponseSchema,
   workflowImportRequestSchema,
@@ -10,7 +11,6 @@ import {
   strongEtagSchema,
   workflowDraftResponseSchema,
 } from '@pertexo/contracts';
-import { workflowPortableManifestSchema } from '@pertexo/workflow-model';
 import { findWorkflowVersion } from '@/features/workflow-versions/public';
 import type { ApiClient } from '@/lib/api/client';
 
@@ -91,7 +91,7 @@ export function exportWorkflow({
         : {},
     response: {
       kind: 'json',
-      decode: (value) => workflowPortableManifestSchema.parse(value),
+      decode: (value) => workflowExportResponseSchema.parse(value),
     },
   });
 }

@@ -244,11 +244,11 @@ describe('ADR064 workflow organization public schemas', () => {
       ).toBe(false);
     for (const field of ['userId', 'favoriteCount', 'favorites', 'replayed'])
       expect(
-        workflowFavoriteResponseSchema.safeParse({
+        workflowFavoriteResponseSchema.parse({
           isFavorite: false,
           [field]: 1,
-        }).success,
-      ).toBe(false);
+        }),
+      ).toEqual({ isFavorite: false });
   });
 
   it('requires bounded unique strict metadata and slice-1 folder null', () => {

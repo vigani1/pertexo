@@ -1,3 +1,4 @@
+import { responseSchema } from '../shared/response-schema.js';
 import { z } from 'zod';
 import { taskDetailsSchema } from '@pertexo/workflow-model';
 
@@ -133,38 +134,46 @@ export type WorkspaceInboxAttentionThread = z.output<
   typeof workspaceInboxAttentionThreadSchema
 >;
 export type WorkspaceNoticeKind = z.output<typeof workspaceNoticeKindSchema>;
-export const workspaceInboxListResponseSchema = z
-  .object({
-    items: z.array(workspaceInboxThreadSchema).max(100),
-    nextCursor: workspaceInboxCursorSchema.nullable(),
-    /** The newest revision visible to the reader; the read-all cut. */
-    revision: workspaceInboxRevisionSchema,
-  })
-  .strict();
-export const workspaceInboxSummaryResponseSchema = z
-  .object({
-    unreadCount: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER),
-    revision: workspaceInboxRevisionSchema,
-  })
-  .strict();
+export const workspaceInboxListResponseSchema = responseSchema(
+  z
+    .object({
+      items: z.array(workspaceInboxThreadSchema).max(100),
+      nextCursor: workspaceInboxCursorSchema.nullable(),
+      /** The newest revision visible to the reader; the read-all cut. */
+      revision: workspaceInboxRevisionSchema,
+    })
+    .strict(),
+);
+export const workspaceInboxSummaryResponseSchema = responseSchema(
+  z
+    .object({
+      unreadCount: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER),
+      revision: workspaceInboxRevisionSchema,
+    })
+    .strict(),
+);
 /** The revision the reader saw; the server never records more than exists. */
 export const workspaceInboxReadRequestSchema = z
   .object({ revision: workspaceInboxRevisionSchema })
   .strict();
-export const workspaceInboxReadResponseSchema = z
-  .object({
-    threadId: z.uuid(),
-    unread: z.boolean(),
-    revision: workspaceInboxRevisionSchema,
-  })
-  .strict();
+export const workspaceInboxReadResponseSchema = responseSchema(
+  z
+    .object({
+      threadId: z.uuid(),
+      unread: z.boolean(),
+      revision: workspaceInboxRevisionSchema,
+    })
+    .strict(),
+);
 /** Threads at or below the revision the reader saw become read. */
 export const workspaceInboxReadAllRequestSchema = z
   .object({ revision: workspaceInboxRevisionSchema })
   .strict();
-export const workspaceInboxReadAllResponseSchema = z
-  .object({ marked: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER) })
-  .strict();
+export const workspaceInboxReadAllResponseSchema = responseSchema(
+  z
+    .object({ marked: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER) })
+    .strict(),
+);
 /** Stream events carry no notice content; clients refetch on each one. */
 export const workspaceInboxStreamEventNameSchema = z.enum([
   'inbox.ready',

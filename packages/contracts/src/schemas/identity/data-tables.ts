@@ -6,7 +6,7 @@ import {
   dataTableNameSchema,
   dataTableNewColumnsSchema,
   dataTableQuerySchema,
-  dataTableResultSchema,
+  dataTableResultSchema as storedDataTableResultSchema,
   dataTableSchemaChangeSchema,
   dataTableWriteCommandSchema,
 } from '@pertexo/node-sdk';
@@ -37,10 +37,12 @@ export const dataTableLimitsSchema = z
     byteLimit: z.number().int().min(65_536).max(DATA_TABLE_LIMITS.maxBytes),
   })
   .strict();
-export const dataTableQuotasSchema = dataTableLimitsSchema.extend({
-  tableCount: z.number().int().nonnegative(),
-  storedBytes: z.number().int().nonnegative(),
-});
+export const dataTableQuotasSchema = responseSchema(
+  dataTableLimitsSchema.extend({
+    tableCount: z.number().int().nonnegative(),
+    storedBytes: z.number().int().nonnegative(),
+  }),
+);
 export const dataTablesResponseSchema = responseSchema(
   z
     .object({
@@ -97,7 +99,10 @@ export const dataTableCsvImportSchema = z
       .max(1_048_576, 'CSV imports must fit 1 MB. Split the file.'),
   })
   .strict();
-export { dataTableQuerySchema, dataTableResultSchema };
+export { dataTableQuerySchema };
+export const dataTableResultSchema = responseSchema(
+  storedDataTableResultSchema,
+);
 export type DataTablesResponse = z.infer<typeof dataTablesResponseSchema>;
 export type DataTableDefinition = z.infer<typeof dataTableDefinitionSchema>;
 export type DataTableCreate = z.input<typeof dataTableCreateSchema>;

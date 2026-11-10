@@ -1,3 +1,4 @@
+import { responseSchema } from '../../shared/response-schema.js';
 import { z } from 'zod';
 import {
   PROMOTION_LIMITS,
@@ -44,52 +45,56 @@ export const workflowPromotionCandidatesQuerySchema =
 export type WorkflowPromotionCandidatesQuery = z.output<
   typeof workflowPromotionCandidatesQuerySchema
 >;
-export const workflowPromotionCandidatesSchema = z
-  .object({
-    items: z
-      .array(
-        z
-          .object({
-            workflowId: id,
-            name: z.string().max(128),
-            versionId: id,
-            versionNumber: z.number().int().positive(),
-          })
-          .strict(),
-      )
-      .max(PROMOTION_LIMITS.page),
-    nextCursor: id.nullable(),
-    nextVersionNumber: z.number().int().positive().nullable(),
-  })
-  .strict();
-export const workflowPromotionHistorySchema = z
-  .object({
-    items: z
-      .array(
-        z
-          .object({
-            id,
-            promotionId: id,
-            occurredAt: z.iso.datetime(),
-            actorId: id.nullable(),
-            actorName: z.string().max(256),
-            workflowId: id,
-            workflowName: z.string().max(128),
-            sourceWorkspaceId: id,
-            sourceWorkflowId: id,
-            sourceVersionId: id,
-            targetWorkspaceId: id,
-            targetWorkflowId: id,
-            targetVersionId: id.nullable(),
-            publicationRequestId: id.nullable(),
-            mode: workflowPromotionModeSchema,
-          })
-          .strict(),
-      )
-      .max(PROMOTION_LIMITS.page),
-    nextCursor: id.nullable(),
-  })
-  .strict();
+export const workflowPromotionCandidatesSchema = responseSchema(
+  z
+    .object({
+      items: z
+        .array(
+          z
+            .object({
+              workflowId: id,
+              name: z.string().max(128),
+              versionId: id,
+              versionNumber: z.number().int().positive(),
+            })
+            .strict(),
+        )
+        .max(PROMOTION_LIMITS.page),
+      nextCursor: id.nullable(),
+      nextVersionNumber: z.number().int().positive().nullable(),
+    })
+    .strict(),
+);
+export const workflowPromotionHistorySchema = responseSchema(
+  z
+    .object({
+      items: z
+        .array(
+          z
+            .object({
+              id,
+              promotionId: id,
+              occurredAt: z.iso.datetime(),
+              actorId: id.nullable(),
+              actorName: z.string().max(256),
+              workflowId: id,
+              workflowName: z.string().max(128),
+              sourceWorkspaceId: id,
+              sourceWorkflowId: id,
+              sourceVersionId: id,
+              targetWorkspaceId: id,
+              targetWorkflowId: id,
+              targetVersionId: id.nullable(),
+              publicationRequestId: id.nullable(),
+              mode: workflowPromotionModeSchema,
+            })
+            .strict(),
+        )
+        .max(PROMOTION_LIMITS.page),
+      nextCursor: id.nullable(),
+    })
+    .strict(),
+);
 export type WorkflowPromotionPageQuery = z.output<
   typeof workflowPromotionPageQuerySchema
 >;

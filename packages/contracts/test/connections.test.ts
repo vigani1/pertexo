@@ -211,9 +211,15 @@ describe('connection public contracts', () => {
     expect(
       slackChannelLookupResponseSchema.parse({ items: [resolved, unresolved] }),
     ).toEqual({ items: [resolved, unresolved] });
+    expect(
+      slackChannelLookupResponseSchema.parse({
+        items: [
+          { ...resolved, reason: 'not_found' },
+          { ...unresolved, name: 'ops' },
+        ],
+      }),
+    ).toEqual({ items: [resolved, unresolved] });
     for (const item of [
-      { ...resolved, reason: 'not_found' },
-      { ...unresolved, name: 'ops' },
       { ...unresolved, reason: 'token_revoked' },
       { ...resolved, name: '' },
     ])
@@ -225,7 +231,7 @@ describe('connection public contracts', () => {
     );
   });
 
-  it('distinguishes run health from tests and rejects private usage fields', () => {
+  it('distinguishes run health from tests and strips private usage fields', () => {
     expect(
       connectionResponseSchema.parse({
         ...connection,
@@ -252,11 +258,11 @@ describe('connection public contracts', () => {
     ).toHaveLength(1);
     for (const key of ['secretVersionId', 'credential', 'graph'])
       expect(
-        connectionUsageResponseSchema.safeParse({
+        connectionUsageResponseSchema.parse({
           items: [{ ...item, [key]: 'private' }],
           nextCursor: null,
-        }).success,
-      ).toBe(false);
+        }),
+      ).toEqual({ items: [item], nextCursor: null });
     expect(
       connectionUsageResponseSchema.safeParse({
         items: Array.from({ length: 101 }, () => item),
@@ -265,7 +271,7 @@ describe('connection public contracts', () => {
     ).toBe(false);
   });
 
-  it('publishes strict secret-free responses and the intended operations', () => {
+  it('publishes bounded secret-free responses and the intended operations', () => {
     expect(
       connectionResponseSchema.parse({
         ...connection,

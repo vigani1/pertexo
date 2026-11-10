@@ -39,11 +39,11 @@ describe('workflow duplication contract', () => {
       workflowDuplicateResponseSchema.parse({ workflowId: versionId }),
     ).toEqual({ workflowId: versionId });
     expect(
-      workflowDuplicateResponseSchema.safeParse({
+      workflowDuplicateResponseSchema.parse({
         workflowId: versionId,
         graph: {},
-      }).success,
-    ).toBe(false);
+      }),
+    ).toEqual({ workflowId: versionId });
     const route =
       workflowAuthoringOpenApiDocument.paths[
         '/v1/workspaces/{workspaceId}/workflows/{workflowId}/duplicate'

@@ -91,9 +91,9 @@ const workflowDuplicateSourceSchema = z.discriminatedUnion('kind', [
 export const workflowDuplicateRequestSchema = z
   .object({ name: workflowNameSchema, source: workflowDuplicateSourceSchema })
   .strict();
-export const workflowDuplicateResponseSchema = z
-  .object({ workflowId: workflowIdentifierSchema })
-  .strict();
+export const workflowDuplicateResponseSchema = responseSchema(
+  z.object({ workflowId: workflowIdentifierSchema }).strict(),
+);
 export type WorkflowDuplicateRequest = z.output<
   typeof workflowDuplicateRequestSchema
 >;
@@ -120,23 +120,25 @@ export const workflowCompatibilityReportSchema = responseSchema(
 );
 /** Includes server authoring findings such as invalid_expression; executable issues remain supported. */
 export const workflowValidationIssueSchema = apiProblemIssueSchema;
-export const workflowValidateResponseSchema = z
-  .object({
-    valid: z.boolean(),
-    issues: z
-      .array(workflowValidationIssueSchema)
-      .max(WORKFLOW_VALIDATION_MAX_ISSUES),
-    compatibility: workflowCompatibilityReportSchema,
-    currentPublication: z
-      .object({
-        versionId: z.uuid(),
-        versionNumber: positiveVersionSchema,
-        matchesDraft: z.boolean(),
-      })
-      .strict()
-      .nullable(),
-  })
-  .strict();
+export const workflowValidateResponseSchema = responseSchema(
+  z
+    .object({
+      valid: z.boolean(),
+      issues: z
+        .array(workflowValidationIssueSchema)
+        .max(WORKFLOW_VALIDATION_MAX_ISSUES),
+      compatibility: workflowCompatibilityReportSchema,
+      currentPublication: z
+        .object({
+          versionId: z.uuid(),
+          versionNumber: positiveVersionSchema,
+          matchesDraft: z.boolean(),
+        })
+        .strict()
+        .nullable(),
+    })
+    .strict(),
+);
 
 export const workflowSummarySchema = z
   .object({
@@ -194,9 +196,9 @@ export const workflowRenameRequestSchema = z
     expectedNameRevision: workflowNameRevisionSchema,
   })
   .strict();
-export const workflowRenameResponseSchema = z
-  .object({ workflow: workflowSummarySchema, replayed: z.boolean() })
-  .strict();
+export const workflowRenameResponseSchema = responseSchema(
+  z.object({ workflow: workflowSummarySchema, replayed: z.boolean() }).strict(),
+);
 
 export const workflowDraftResponseSchema = z
   .object({
@@ -208,25 +210,28 @@ export const workflowDraftResponseSchema = z
     updatedAt: z.iso.datetime(),
   })
   .apply(responseSchema);
-export const workflowVersionRestoreResponseSchema =
+export const workflowVersionRestoreResponseSchema = responseSchema(
   workflowDraftResponseSchema.extend({
     recoveryCopyId: z.uuid().nullable(),
-  });
+  }),
+);
 export const workflowDraftSaveRequestSchema = z
   .object({ graph: workflowGraphSchema })
   .strict();
 
-export const workflowVersionResponseSchema = z
-  .object({
-    id: z.uuid(),
-    workflowId: z.uuid(),
-    versionNumber: z.number().int().positive(),
-    graph: workflowGraphSchema,
-    graphDigest: workflowGraphDigestSchema.optional(),
-    checksum: workflowExecutableChecksumSchema,
-    publishedAt: z.iso.datetime(),
-  })
-  .strict();
+export const workflowVersionResponseSchema = responseSchema(
+  z
+    .object({
+      id: z.uuid(),
+      workflowId: z.uuid(),
+      versionNumber: z.number().int().positive(),
+      graph: workflowGraphSchema,
+      graphDigest: workflowGraphDigestSchema.optional(),
+      checksum: workflowExecutableChecksumSchema,
+      publishedAt: z.iso.datetime(),
+    })
+    .strict(),
+);
 export const workflowPublishResponseSchema = z
   .object({
     version: workflowVersionResponseSchema,

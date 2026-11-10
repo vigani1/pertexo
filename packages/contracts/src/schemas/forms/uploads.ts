@@ -1,3 +1,4 @@
+import { responseSchema } from '../shared/response-schema.js';
 import { storageTextSchema } from '@pertexo/workflow-model';
 import { z } from 'zod';
 import { FORM_FILE_LIMITS } from '@pertexo/workflow-model';
@@ -30,22 +31,28 @@ export const taskUploadsParamsSchema = z
 export const taskUploadParamsSchema = taskUploadsParamsSchema
   .extend({ uploadId: z.uuid() })
   .strict();
-export const formUploadSchema = z
-  .object({
-    id: z.uuid(),
-    filename: z.string().min(1).max(FORM_FILE_LIMITS.filenameCharacters),
-    byteLength: z.number().int().min(0).max(FORM_FILE_LIMITS.maxBytes),
-    mediaType: z.string().min(3).max(255),
-    status: z.enum(['pending', 'available']),
-    expiresAt: z.iso.datetime(),
-  })
-  .strict();
-export const formUploadResponseSchema = z
-  .object({
-    upload: formUploadSchema.extend({ status: z.literal('pending') }).strict(),
-    transfer: artifactUploadResponseSchema.shape.upload,
-    replayed: z.boolean(),
-  })
-  .strict();
+export const formUploadSchema = responseSchema(
+  z
+    .object({
+      id: z.uuid(),
+      filename: z.string().min(1).max(FORM_FILE_LIMITS.filenameCharacters),
+      byteLength: z.number().int().min(0).max(FORM_FILE_LIMITS.maxBytes),
+      mediaType: z.string().min(3).max(255),
+      status: z.enum(['pending', 'available']),
+      expiresAt: z.iso.datetime(),
+    })
+    .strict(),
+);
+export const formUploadResponseSchema = responseSchema(
+  z
+    .object({
+      upload: formUploadSchema
+        .extend({ status: z.literal('pending') })
+        .strict(),
+      transfer: artifactUploadResponseSchema.shape.upload,
+      replayed: z.boolean(),
+    })
+    .strict(),
+);
 export type FormUploadMetadata = z.output<typeof formUploadSchema>;
 export type FormUploadResponse = z.output<typeof formUploadResponseSchema>;

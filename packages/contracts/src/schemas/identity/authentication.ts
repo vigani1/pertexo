@@ -1,3 +1,4 @@
+import { responseSchema } from '../shared/response-schema.js';
 import { AUTHENTICATION_PROVIDERS } from '@pertexo/workflow-model';
 import { ACCOUNT_SIGN_IN_METHOD_LIMIT } from '@pertexo/workflow-model';
 export { ACCOUNT_SIGN_IN_METHOD_LIMIT };
@@ -22,20 +23,22 @@ export const authenticationReturnPathSchema = z
     AUTHENTICATION_RETURN_PATHS.some((pattern) => pattern.test(path)),
   );
 export const authenticationProviderSchema = z.enum(AUTHENTICATION_PROVIDERS);
-export const authenticationCapabilitiesResponseSchema = z
-  .object({
-    password: z
-      .object({
-        enabled: z.boolean(),
-        minimumLength: z.number().int().min(8).max(128),
-        verificationRequired: z.boolean(),
-      })
-      .strict(),
-    socialProviders: z.array(authenticationProviderSchema).max(4),
-    /** `invitation`: only an invited address can make an account here now. */
-    signUp: z.enum(['open', 'invitation']),
-  })
-  .strict();
+export const authenticationCapabilitiesResponseSchema = responseSchema(
+  z
+    .object({
+      password: z
+        .object({
+          enabled: z.boolean(),
+          minimumLength: z.number().int().min(8).max(128),
+          verificationRequired: z.boolean(),
+        })
+        .strict(),
+      socialProviders: z.array(authenticationProviderSchema).max(4),
+      /** `invitation`: only an invited address can make an account here now. */
+      signUp: z.enum(['open', 'invitation']),
+    })
+    .strict(),
+);
 const accountSecuritySessionSchema = z
   .object({
     id: z.uuid(),
@@ -47,18 +50,18 @@ const accountSecuritySessionSchema = z
     userAgent: z.string().nullable(),
   })
   .strict();
-export const accountSecuritySessionsResponseSchema = z
-  .object({ items: z.array(accountSecuritySessionSchema).max(100) })
-  .strict();
+export const accountSecuritySessionsResponseSchema = responseSchema(
+  z.object({ items: z.array(accountSecuritySessionSchema).max(100) }).strict(),
+);
 export const accountSecuritySessionRevokeRequestSchema = z
   .object({ sessionId: z.uuid() })
   .strict();
-export const accountSecuritySessionRevokeResponseSchema = z
-  .object({ revoked: z.boolean() })
-  .strict();
-export const accountSecurityRevokeOthersResponseSchema = z
-  .object({ revokedCount: z.number().int().nonnegative() })
-  .strict();
+export const accountSecuritySessionRevokeResponseSchema = responseSchema(
+  z.object({ revoked: z.boolean() }).strict(),
+);
+export const accountSecurityRevokeOthersResponseSchema = responseSchema(
+  z.object({ revokedCount: z.number().int().nonnegative() }).strict(),
+);
 
 const accountSecurityMethodSchema = z
   .object({
@@ -68,28 +71,30 @@ const accountSecurityMethodSchema = z
     provider: z.string().min(1).max(64).nullable(),
   })
   .strict();
-export const accountSecurityResponseSchema = z
-  .object({
-    email: z.email().max(320),
-    emailVerified: z.boolean(),
-    availableProviders: z.array(authenticationProviderSchema).max(4),
-    twoFactor: z
-      .object({
-        enabled: z.boolean(),
-        recoveryCodesRemaining: z.number().int().min(0).max(10).nullable(),
-      })
-      .strict(),
-    methods: z
-      .array(accountSecurityMethodSchema)
-      .max(ACCOUNT_SIGN_IN_METHOD_LIMIT),
-  })
-  .strict();
+export const accountSecurityResponseSchema = responseSchema(
+  z
+    .object({
+      email: z.email().max(320),
+      emailVerified: z.boolean(),
+      availableProviders: z.array(authenticationProviderSchema).max(4),
+      twoFactor: z
+        .object({
+          enabled: z.boolean(),
+          recoveryCodesRemaining: z.number().int().min(0).max(10).nullable(),
+        })
+        .strict(),
+      methods: z
+        .array(accountSecurityMethodSchema)
+        .max(ACCOUNT_SIGN_IN_METHOD_LIMIT),
+    })
+    .strict(),
+);
 export const accountSecurityMethodUnlinkRequestSchema = z
   .object({ methodId: z.uuid() })
   .strict();
-export const accountSecurityMethodUnlinkResponseSchema = z
-  .object({ unlinked: z.literal(true) })
-  .strict();
+export const accountSecurityMethodUnlinkResponseSchema = responseSchema(
+  z.object({ unlinked: z.literal(true) }).strict(),
+);
 export const accountSecurityLinkStartRequestSchema = z
   .object({
     provider: authenticationProviderSchema,
@@ -109,8 +114,9 @@ export const accountSecurityLinkStartRequestSchema = z
     ]),
   })
   .strict();
-export const accountSecurityLinkStartResponseSchema =
-  authorizationStartedSchema;
+export const accountSecurityLinkStartResponseSchema = responseSchema(
+  authorizationStartedSchema,
+);
 export const accountSecurityPasswordChangeRequestSchema = z
   .object({
     currentPassword: z.string().min(1).max(128),
@@ -120,12 +126,12 @@ export const accountSecurityPasswordChangeRequestSchema = z
 export const accountSecurityPasswordSetupRequestSchema = z
   .object({ newPassword: z.string().min(12).max(128) })
   .strict();
-export const accountSecurityPasswordChangeResponseSchema = z
-  .object({ changed: z.literal(true) })
-  .strict();
-export const accountSecurityPasswordSetupResponseSchema = z
-  .object({ configured: z.literal(true) })
-  .strict();
+export const accountSecurityPasswordChangeResponseSchema = responseSchema(
+  z.object({ changed: z.literal(true) }).strict(),
+);
+export const accountSecurityPasswordSetupResponseSchema = responseSchema(
+  z.object({ configured: z.literal(true) }).strict(),
+);
 
 export type AuthenticationCapabilitiesResponse = z.output<
   typeof authenticationCapabilitiesResponseSchema
@@ -145,10 +151,14 @@ export const nativeAuthenticationAcknowledgmentSchema = z.object({
   status: z.literal(true),
 });
 const nativeAuthenticationUserSchema = z.object({ id: z.uuid() });
-export const nativeRegistrationResponseSchema = z.object({
-  user: nativeAuthenticationUserSchema.nullable(),
-});
-export const nativeSignInResponseSchema = z.union([
-  z.object({ twoFactorRedirect: z.literal(true) }),
-  z.object({ user: nativeAuthenticationUserSchema }),
-]);
+export const nativeRegistrationResponseSchema = responseSchema(
+  z.object({
+    user: nativeAuthenticationUserSchema.nullable(),
+  }),
+);
+export const nativeSignInResponseSchema = responseSchema(
+  z.union([
+    z.object({ twoFactorRedirect: z.literal(true) }),
+    z.object({ user: nativeAuthenticationUserSchema }),
+  ]),
+);

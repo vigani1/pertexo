@@ -1,3 +1,4 @@
+import { responseSchema } from '../shared/response-schema.js';
 import {
   ALL_WORKSPACE_STATUSES,
   DISCOVERABLE_WORKSPACE_STATUSES,
@@ -53,28 +54,32 @@ export const workspaceInvitationParamsSchema = z
     invitationId: workspaceInvitationIdentifierSchema,
   })
   .strict();
-export const workspaceResponseSchema = z
-  .object({
-    id: z.uuid(),
-    name: z.string(),
-    slug: z.string(),
-    status: z.enum(ALL_WORKSPACE_STATUSES),
-    createdAt: z.iso.datetime(),
-    updatedAt: z.iso.datetime(),
-  })
-  .strict();
+export const workspaceResponseSchema = responseSchema(
+  z
+    .object({
+      id: z.uuid(),
+      name: z.string(),
+      slug: z.string(),
+      status: z.enum(ALL_WORKSPACE_STATUSES),
+      createdAt: z.iso.datetime(),
+      updatedAt: z.iso.datetime(),
+    })
+    .strict(),
+);
 const userProfileRevisionSchema = z.number().int().positive();
-export const userProfileResponseSchema = z
-  .object({
-    id: z.uuid(),
-    email: z.string().trim().min(3).max(320),
-    displayName: z.string().trim().min(1).max(256),
-    status: z.enum(['active', 'suspended', 'deleted']),
-    revision: userProfileRevisionSchema,
-    createdAt: z.iso.datetime(),
-    updatedAt: z.iso.datetime(),
-  })
-  .strict();
+export const userProfileResponseSchema = responseSchema(
+  z
+    .object({
+      id: z.uuid(),
+      email: z.string().trim().min(3).max(320),
+      displayName: z.string().trim().min(1).max(256),
+      status: z.enum(['active', 'suspended', 'deleted']),
+      revision: userProfileRevisionSchema,
+      createdAt: z.iso.datetime(),
+      updatedAt: z.iso.datetime(),
+    })
+    .strict(),
+);
 /** ADR 043: the name teammates see; printable text, 1–128 characters. */
 export const USER_DISPLAY_NAME_MAX_LENGTH = 128;
 export const userDisplayNameSchema = storageTextSchema
@@ -88,13 +93,15 @@ export const userProfileUpdateRequestSchema = z
     expectedRevision: userProfileRevisionSchema,
   })
   .strict();
-export const userProfileUpdateResponseSchema = z
-  .object({
-    profile: userProfileResponseSchema,
-    changed: z.boolean(),
-    replayed: z.boolean(),
-  })
-  .strict();
+export const userProfileUpdateResponseSchema = responseSchema(
+  z
+    .object({
+      profile: userProfileResponseSchema,
+      changed: z.boolean(),
+      replayed: z.boolean(),
+    })
+    .strict(),
+);
 
 export const workspaceMemberSchema = z
   .object({
@@ -115,26 +122,30 @@ export const workspaceMemberRoleChangeRequestSchema = z
     expectedRoleRevision: z.number().int().positive(),
   })
   .strict();
-export const workspaceMemberRoleChangeResponseSchema = z
-  .object({
-    userId: z.uuid(),
-    role: delegatedWorkspaceRoleSchema,
-    roleRevision: z.number().int().positive(),
-    changed: z.boolean(),
-    replayed: z.boolean(),
-  })
-  .strict();
+export const workspaceMemberRoleChangeResponseSchema = responseSchema(
+  z
+    .object({
+      userId: z.uuid(),
+      role: delegatedWorkspaceRoleSchema,
+      roleRevision: z.number().int().positive(),
+      changed: z.boolean(),
+      replayed: z.boolean(),
+    })
+    .strict(),
+);
 /** ADR 042: removal is fenced by the membership's role revision. */
 export const workspaceMemberRemovalRequestSchema = z
   .object({ expectedRoleRevision: z.number().int().positive() })
   .strict();
-export const workspaceMemberRemovalResponseSchema = z
-  .object({
-    userId: z.uuid(),
-    roleRevision: z.number().int().positive(),
-    replayed: z.boolean(),
-  })
-  .strict();
+export const workspaceMemberRemovalResponseSchema = responseSchema(
+  z
+    .object({
+      userId: z.uuid(),
+      roleRevision: z.number().int().positive(),
+      replayed: z.boolean(),
+    })
+    .strict(),
+);
 const workspaceInvitationStatusSchema = z.enum([
   'pending',
   'accepted',
@@ -170,19 +181,23 @@ export const workspaceInvitationCreateRequestSchema = z
 export const workspaceInvitationCommandRequestSchema = z
   .object({ expectedRevision: z.number().int().positive() })
   .strict();
-export const workspaceInvitationCommandResponseSchema = z
-  .object({
-    invitation: workspaceInvitationSchema,
-    replayed: z.boolean(),
-  })
-  .strict();
-export const workspaceInvitationsResponseSchema = z
-  .object({
-    issuanceAvailable: z.boolean(),
-    items: z.array(workspaceInvitationSchema).max(100),
-    nextCursor: z.string().min(1).max(512).nullable(),
-  })
-  .strict();
+export const workspaceInvitationCommandResponseSchema = responseSchema(
+  z
+    .object({
+      invitation: workspaceInvitationSchema,
+      replayed: z.boolean(),
+    })
+    .strict(),
+);
+export const workspaceInvitationsResponseSchema = responseSchema(
+  z
+    .object({
+      issuanceAvailable: z.boolean(),
+      items: z.array(workspaceInvitationSchema).max(100),
+      nextCursor: z.string().min(1).max(512).nullable(),
+    })
+    .strict(),
+);
 export const workspaceInvitationsQuerySchema = z
   .object({
     limit: z.coerce.number().int().min(1).max(100).optional(),
@@ -264,12 +279,14 @@ export const invitationAcceptanceReceiptSchema = z
     replayed: z.boolean(),
   })
   .strict();
-export const workspaceMembersResponseSchema = z
-  .object({
-    items: z.array(workspaceMemberSchema).max(100),
-    nextCursor: z.string().min(1).max(512).nullable(),
-  })
-  .strict();
+export const workspaceMembersResponseSchema = responseSchema(
+  z
+    .object({
+      items: z.array(workspaceMemberSchema).max(100),
+      nextCursor: z.string().min(1).max(512).nullable(),
+    })
+    .strict(),
+);
 export const workspaceMembersQuerySchema = z
   .object({
     limit: z.coerce.number().int().min(1).max(100).optional(),
@@ -293,29 +310,39 @@ export const accessibleWorkspaceSchema = workspaceResponseSchema
       .max(workspaceCapabilitySchema.options.length),
   })
   .strict();
-export const workspaceRenameResponseSchema = z
-  .object({
-    workspace: workspaceResponseSchema.extend({
-      revision: workspaceRevisionSchema,
-    }),
-    changed: z.boolean(),
-    replayed: z.boolean(),
-  })
-  .strict();
-export const accessibleWorkspacesResponseSchema = z
-  .object({
-    items: z.array(accessibleWorkspaceSchema).max(100),
-    nextCursor: workspaceIdentifierSchema.nullable(),
-  })
-  .strict();
+export const workspaceRenameResponseSchema = responseSchema(
+  z
+    .object({
+      workspace: workspaceResponseSchema.extend({
+        revision: workspaceRevisionSchema,
+      }),
+      changed: z.boolean(),
+      replayed: z.boolean(),
+    })
+    .strict(),
+);
+export const accessibleWorkspacesResponseSchema = responseSchema(
+  z
+    .object({
+      items: z.array(accessibleWorkspaceSchema).max(100),
+      nextCursor: workspaceIdentifierSchema.nullable(),
+    })
+    .strict(),
+);
 /** Lifecycle changes finish inside the request; a retry with the same key replays it. */
-export const workspaceLifecycleChangeResponseSchema = z
-  .object({
-    workspaceId: workspaceIdentifierSchema,
-    change: z.enum(['deletion_requested', 'deletion_restored', 'reactivated']),
-    occurredAt: z.iso.datetime(),
-  })
-  .strict();
+export const workspaceLifecycleChangeResponseSchema = responseSchema(
+  z
+    .object({
+      workspaceId: workspaceIdentifierSchema,
+      change: z.enum([
+        'deletion_requested',
+        'deletion_restored',
+        'reactivated',
+      ]),
+      occurredAt: z.iso.datetime(),
+    })
+    .strict(),
+);
 
 export type WorkspaceResponse = z.output<typeof workspaceResponseSchema>;
 export type WorkspaceCreateRequest = z.output<

@@ -1,4 +1,3 @@
-import { workflowPortableManifestSchema } from '@pertexo/workflow-model';
 import { z } from 'zod';
 import { jsonRequest, problemResponse } from '../openapi-primitives.js';
 import { workflowIdParamSchema } from '../../schemas/workflows/authoring.js';
@@ -45,7 +44,7 @@ export const portabilityRoutes = {
       description: 'Reviewed portable workflow',
       body: projected(
         'WorkflowPortableManifest',
-        workflowPortableManifestSchema,
+        schemas.workflowExportResponseSchema,
       ),
       headers: {
         'Cache-Control': {

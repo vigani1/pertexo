@@ -18,11 +18,11 @@ it('requires the accepted version message in a receipt, without granting public 
       .success,
   ).toBe(false);
   expect(
-    publicFormSubmissionResponseSchema.safeParse({
+    publicFormSubmissionResponseSchema.parse({
       ...receipt,
       runId: versionId,
-    }).success,
-  ).toBe(false);
+    }),
+  ).toEqual(receipt);
 });
 it('publishes the fields separately from the post-acceptance message', () => {
   const form = formConfigSchema.parse({});
@@ -30,11 +30,11 @@ it('publishes the fields separately from the post-acceptance message', () => {
     form,
   );
   expect(
-    formSchemaResponseSchema.safeParse({
+    formSchemaResponseSchema.parse({
       versionId,
       form: { ...form, thankYouMessage: 'Only after acceptance.' },
-    }).success,
-  ).toBe(false);
+    }),
+  ).toEqual({ versionId, form });
 });
 
 it('keeps busy receipts separate from accepted responses and public run history', () => {
@@ -52,9 +52,8 @@ it('keeps busy receipts separate from accepted responses and public run history'
     { redirectUrl: 'https://example.test/' },
   ])
     expect(
-      publicFormSubmissionResponseSchema.safeParse({ ...busy, ...extra })
-        .success,
-    ).toBe(false);
+      publicFormSubmissionResponseSchema.parse({ ...busy, ...extra }),
+    ).toEqual(busy);
 });
 
 it('keeps coordinated receipts public-safe and excludes trigger policy from the public form', () => {
@@ -76,16 +75,15 @@ it('keeps coordinated receipts public-safe and excludes trigger policy from the 
     { redirectUrl: 'https://example.test/' },
   ])
     expect(
-      publicFormSubmissionResponseSchema.safeParse({ ...receipt, ...extra })
-        .success,
-    ).toBe(false);
+      publicFormSubmissionResponseSchema.parse({ ...receipt, ...extra }),
+    ).toEqual(receipt);
   const form = formConfigSchema.parse({
     coordination: {
       mode: 'deduplicate',
       key: { kind: 'run_input', path: '$.values.id' },
     },
   });
-  expect(formSchemaResponseSchema.safeParse({ versionId, form }).success).toBe(
-    false,
-  );
+  expect(
+    formSchemaResponseSchema.parse({ versionId, form }).form,
+  ).not.toHaveProperty('coordination');
 });

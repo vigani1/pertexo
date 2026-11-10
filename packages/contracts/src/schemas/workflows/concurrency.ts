@@ -1,3 +1,4 @@
+import { responseSchema } from '../shared/response-schema.js';
 import { z } from 'zod';
 import { createApiProblemSchema } from '../../errors/api-problem.js';
 
@@ -22,26 +23,28 @@ const workflowConcurrencySkipSchema = z
     reason: z.literal('concurrency_limit'),
   })
   .strict();
-export const workflowConcurrencySettingsSchema = z
-  .object({
-    asOf: z.iso.datetime({ precision: 6 }),
-    limit: workflowConcurrencyLimitSchema.nullable(),
-    revision: workflowConcurrencyRevisionSchema,
-    workspaceActiveRunLimit: workflowConcurrencyLimitSchema.nullable(),
-    workspacePolicyState: z.enum([
-      'active',
-      'suspended',
-      'not_yet_effective',
-      'expired',
-      'unavailable',
-    ]),
-    overflow: z.enum(['queue', 'skip']),
-    recentSkips: z
-      .array(workflowConcurrencySkipSchema)
-      .max(WORKFLOW_CONCURRENCY_RECENT_SKIPS_MAX)
-      .optional(),
-  })
-  .strict();
+export const workflowConcurrencySettingsSchema = responseSchema(
+  z
+    .object({
+      asOf: z.iso.datetime({ precision: 6 }),
+      limit: workflowConcurrencyLimitSchema.nullable(),
+      revision: workflowConcurrencyRevisionSchema,
+      workspaceActiveRunLimit: workflowConcurrencyLimitSchema.nullable(),
+      workspacePolicyState: z.enum([
+        'active',
+        'suspended',
+        'not_yet_effective',
+        'expired',
+        'unavailable',
+      ]),
+      overflow: z.enum(['queue', 'skip']),
+      recentSkips: z
+        .array(workflowConcurrencySkipSchema)
+        .max(WORKFLOW_CONCURRENCY_RECENT_SKIPS_MAX)
+        .optional(),
+    })
+    .strict(),
+);
 export const workflowConcurrencySettingsRequestSchema = z
   .object({
     limit: workflowConcurrencyLimitSchema.nullable(),
@@ -49,12 +52,14 @@ export const workflowConcurrencySettingsRequestSchema = z
     overflow: z.enum(['queue', 'skip']).exactOptional(),
   })
   .strict();
-export const workflowConcurrencyCommandResponseSchema = z
-  .object({
-    settings: workflowConcurrencySettingsSchema,
-    replayed: z.boolean(),
-  })
-  .strict();
+export const workflowConcurrencyCommandResponseSchema = responseSchema(
+  z
+    .object({
+      settings: workflowConcurrencySettingsSchema,
+      replayed: z.boolean(),
+    })
+    .strict(),
+);
 export const workflowConcurrencyRevisionConflictProblemSchema =
   createApiProblemSchema({
     status: z.literal(409),

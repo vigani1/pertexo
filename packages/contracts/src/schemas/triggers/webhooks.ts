@@ -63,18 +63,20 @@ export const webhookManagementCommandResponseSchema = responseSchema(
       .strict(),
   ]),
 );
-export const webhookIngressResponseSchema = z
-  .object({ runId: z.uuid(), replayed: z.boolean() })
-  .strict()
-  .or(
-    z
-      .object({
-        skipped: z.literal(true),
-        reason: z.literal('concurrency_limit'),
-      })
-      .strict(),
-  )
-  .or(eventCoordinationReceiptSchema);
+export const webhookIngressResponseSchema = responseSchema(
+  z
+    .object({ runId: z.uuid(), replayed: z.boolean() })
+    .strict()
+    .or(
+      z
+        .object({
+          skipped: z.literal(true),
+          reason: z.literal('concurrency_limit'),
+        })
+        .strict(),
+    )
+    .or(eventCoordinationReceiptSchema),
+);
 
 /**
  * ADR 045: what happened to one attributed request, metadata only. ADR 056
@@ -152,28 +154,32 @@ export const webhookTestEventStartSchema = z
     authentication: webhookAuthenticationSchema,
   })
   .strict();
-export const webhookTestEventStartedSchema = z
-  .object({
-    id: z.uuid(),
-    path: z.string().regex(/^\/hooks\/[A-Za-z0-9_-]{43}\/test$/u),
-    expiresAt: z.iso.datetime(),
-    signingSecret: webhookCredentialSchema.optional(),
-    authentication: webhookAuthenticationSchema,
-  })
-  .strict();
-export const webhookTestEventSnapshotSchema = z
-  .object({
-    state: z.enum(['waiting', 'captured', 'expired', 'changed']),
-    expiresAt: z.iso.datetime().nullable(),
-    output: z
-      .object({
-        kind: z.literal('inline'),
-        value: boundedNodeTestJsonInputSchema,
-      })
-      .strict()
-      .nullable(),
-  })
-  .strict();
+export const webhookTestEventStartedSchema = responseSchema(
+  z
+    .object({
+      id: z.uuid(),
+      path: z.string().regex(/^\/hooks\/[A-Za-z0-9_-]{43}\/test$/u),
+      expiresAt: z.iso.datetime(),
+      signingSecret: webhookCredentialSchema.optional(),
+      authentication: webhookAuthenticationSchema,
+    })
+    .strict(),
+);
+export const webhookTestEventSnapshotSchema = responseSchema(
+  z
+    .object({
+      state: z.enum(['waiting', 'captured', 'expired', 'changed']),
+      expiresAt: z.iso.datetime().nullable(),
+      output: z
+        .object({
+          kind: z.literal('inline'),
+          value: boundedNodeTestJsonInputSchema,
+        })
+        .strict()
+        .nullable(),
+    })
+    .strict(),
+);
 export type WebhookTestEventStarted = z.output<
   typeof webhookTestEventStartedSchema
 >;

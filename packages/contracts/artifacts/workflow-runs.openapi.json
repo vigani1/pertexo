@@ -3855,7 +3855,7 @@
           "matchingMemberCount",
           "actorMatchesAudience"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "PendingTaskSubmitRequest": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -3948,7 +3948,7 @@
                         "loopNodeId",
                         "ordinal"
                       ],
-                      "additionalProperties": false
+                      "additionalProperties": true
                     }
                   },
                   "kind": {
@@ -4110,7 +4110,7 @@
                       "roles",
                       "memberIds"
                     ],
-                    "additionalProperties": false
+                    "additionalProperties": true
                   },
                   "output": {
                     "anyOf": [
@@ -4156,7 +4156,7 @@
                           "decidedBy",
                           "decidedAt"
                         ],
-                        "additionalProperties": false
+                        "additionalProperties": true
                       },
                       {
                         "type": "null"
@@ -4190,7 +4190,7 @@
                   "audience",
                   "output"
                 ],
-                "additionalProperties": false
+                "additionalProperties": true
               },
               {
                 "type": "object",
@@ -4260,7 +4260,7 @@
                         "loopNodeId",
                         "ordinal"
                       ],
-                      "additionalProperties": false
+                      "additionalProperties": true
                     }
                   },
                   "kind": {
@@ -4422,7 +4422,7 @@
                       "roles",
                       "memberIds"
                     ],
-                    "additionalProperties": false
+                    "additionalProperties": true
                   },
                   "fields": {
                     "minItems": 1,
@@ -4474,7 +4474,7 @@
                             "required",
                             "type"
                           ],
-                          "additionalProperties": false
+                          "additionalProperties": true
                         },
                         {
                           "type": "object",
@@ -4517,7 +4517,7 @@
                             "required",
                             "type"
                           ],
-                          "additionalProperties": false
+                          "additionalProperties": true
                         },
                         {
                           "type": "object",
@@ -4569,7 +4569,7 @@
                             "options",
                             "type"
                           ],
-                          "additionalProperties": false
+                          "additionalProperties": true
                         },
                         {
                           "type": "object",
@@ -4637,7 +4637,7 @@
                             "maxFiles",
                             "maxBytes"
                           ],
-                          "additionalProperties": false
+                          "additionalProperties": true
                         },
                         {
                           "type": "object",
@@ -4699,7 +4699,7 @@
                             "options",
                             "type"
                           ],
-                          "additionalProperties": false
+                          "additionalProperties": true
                         }
                       ]
                     }
@@ -4768,7 +4768,7 @@
                                   "mediaType",
                                   "sha256"
                                 ],
-                                "additionalProperties": false
+                                "additionalProperties": true
                               },
                               "filename": {
                                 "type": "string",
@@ -4780,7 +4780,7 @@
                               "file",
                               "filename"
                             ],
-                            "additionalProperties": false
+                            "additionalProperties": true
                           }
                         }
                       ]
@@ -4854,7 +4854,7 @@
                                           "mediaType",
                                           "sha256"
                                         ],
-                                        "additionalProperties": false
+                                        "additionalProperties": true
                                       },
                                       "filename": {
                                         "type": "string",
@@ -4866,7 +4866,7 @@
                                       "file",
                                       "filename"
                                     ],
-                                    "additionalProperties": false
+                                    "additionalProperties": true
                                   }
                                 }
                               ]
@@ -4895,7 +4895,7 @@
                           "submittedBy",
                           "submittedAt"
                         ],
-                        "additionalProperties": false
+                        "additionalProperties": true
                       },
                       {
                         "type": "null"
@@ -4931,7 +4931,7 @@
                   "prefill",
                   "output"
                 ],
-                "additionalProperties": false
+                "additionalProperties": true
               }
             ]
           },
@@ -4943,7 +4943,7 @@
           "task",
           "replayed"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "PendingTaskListResponse": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -5020,7 +5020,7 @@
                       "loopNodeId",
                       "ordinal"
                     ],
-                    "additionalProperties": false
+                    "additionalProperties": true
                   }
                 },
                 "kind": {
@@ -5163,7 +5163,7 @@
                 "canRespond",
                 "blockedReason"
               ],
-              "additionalProperties": false
+              "additionalProperties": true
             }
           },
           "nextCursor": {
@@ -5189,7 +5189,7 @@
           "nextCursor",
           "pendingCount"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "ApprovalAudiencePage": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -5226,7 +5226,7 @@
                 "displayName",
                 "role"
               ],
-              "additionalProperties": false
+              "additionalProperties": true
             }
           },
           "nextCursor": {
@@ -5246,7 +5246,7 @@
           "items",
           "nextCursor"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "PendingTaskResponse": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -5322,7 +5322,7 @@
                         "loopNodeId",
                         "ordinal"
                       ],
-                      "additionalProperties": false
+                      "additionalProperties": true
                     }
                   },
                   "kind": {
@@ -5484,7 +5484,7 @@
                       "roles",
                       "memberIds"
                     ],
-                    "additionalProperties": false
+                    "additionalProperties": true
                   },
                   "output": {
                     "anyOf": [
@@ -5530,7 +5530,7 @@
                           "decidedBy",
                           "decidedAt"
                         ],
-                        "additionalProperties": false
+                        "additionalProperties": true
                       },
                       {
                         "type": "null"
@@ -5564,7 +5564,7 @@
                   "audience",
                   "output"
                 ],
-                "additionalProperties": false
+                "additionalProperties": true
               },
               {
                 "type": "object",
@@ -5634,7 +5634,7 @@
                         "loopNodeId",
                         "ordinal"
                       ],
-                      "additionalProperties": false
+                      "additionalProperties": true
                     }
                   },
                   "kind": {
@@ -5796,7 +5796,7 @@
                       "roles",
                       "memberIds"
                     ],
-                    "additionalProperties": false
+                    "additionalProperties": true
                   },
                   "fields": {
                     "minItems": 1,
@@ -5848,7 +5848,7 @@
                             "required",
                             "type"
                           ],
-                          "additionalProperties": false
+                          "additionalProperties": true
                         },
                         {
                           "type": "object",
@@ -5891,7 +5891,7 @@
                             "required",
                             "type"
                           ],
-                          "additionalProperties": false
+                          "additionalProperties": true
                         },
                         {
                           "type": "object",
@@ -5943,7 +5943,7 @@
                             "options",
                             "type"
                           ],
-                          "additionalProperties": false
+                          "additionalProperties": true
                         },
                         {
                           "type": "object",
@@ -6011,7 +6011,7 @@
                             "maxFiles",
                             "maxBytes"
                           ],
-                          "additionalProperties": false
+                          "additionalProperties": true
                         },
                         {
                           "type": "object",
@@ -6073,7 +6073,7 @@
                             "options",
                             "type"
                           ],
-                          "additionalProperties": false
+                          "additionalProperties": true
                         }
                       ]
                     }
@@ -6142,7 +6142,7 @@
                                   "mediaType",
                                   "sha256"
                                 ],
-                                "additionalProperties": false
+                                "additionalProperties": true
                               },
                               "filename": {
                                 "type": "string",
@@ -6154,7 +6154,7 @@
                               "file",
                               "filename"
                             ],
-                            "additionalProperties": false
+                            "additionalProperties": true
                           }
                         }
                       ]
@@ -6228,7 +6228,7 @@
                                           "mediaType",
                                           "sha256"
                                         ],
-                                        "additionalProperties": false
+                                        "additionalProperties": true
                                       },
                                       "filename": {
                                         "type": "string",
@@ -6240,7 +6240,7 @@
                                       "file",
                                       "filename"
                                     ],
-                                    "additionalProperties": false
+                                    "additionalProperties": true
                                   }
                                 }
                               ]
@@ -6269,7 +6269,7 @@
                           "submittedBy",
                           "submittedAt"
                         ],
-                        "additionalProperties": false
+                        "additionalProperties": true
                       },
                       {
                         "type": "null"
@@ -6305,7 +6305,7 @@
                   "prefill",
                   "output"
                 ],
-                "additionalProperties": false
+                "additionalProperties": true
               }
             ]
           }
@@ -6313,7 +6313,7 @@
         "required": [
           "task"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "PendingTaskDecisionRequest": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -6405,7 +6405,7 @@
                 "loopNodeId",
                 "ordinal"
               ],
-              "additionalProperties": false
+              "additionalProperties": true
             }
           },
           "kind": {
@@ -6548,7 +6548,7 @@
           "canRespond",
           "blockedReason"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "PendingTaskDetail": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -7749,7 +7749,7 @@
                 "dueAt",
                 "finishedAt"
               ],
-              "additionalProperties": false
+              "additionalProperties": true
             }
           },
           "next": {
@@ -7772,7 +7772,7 @@
                   "receivedAt",
                   "id"
                 ],
-                "additionalProperties": false
+                "additionalProperties": true
               },
               {
                 "type": "null"
@@ -7784,7 +7784,7 @@
           "items",
           "next"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "FormSchemaResponse": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -7869,7 +7869,7 @@
                         "required",
                         "type"
                       ],
-                      "additionalProperties": false
+                      "additionalProperties": true
                     },
                     {
                       "type": "object",
@@ -7912,7 +7912,7 @@
                         "required",
                         "type"
                       ],
-                      "additionalProperties": false
+                      "additionalProperties": true
                     },
                     {
                       "type": "object",
@@ -7964,7 +7964,7 @@
                         "options",
                         "type"
                       ],
-                      "additionalProperties": false
+                      "additionalProperties": true
                     },
                     {
                       "type": "object",
@@ -8032,7 +8032,7 @@
                         "maxFiles",
                         "maxBytes"
                       ],
-                      "additionalProperties": false
+                      "additionalProperties": true
                     },
                     {
                       "type": "object",
@@ -8094,7 +8094,7 @@
                         "options",
                         "type"
                       ],
-                      "additionalProperties": false
+                      "additionalProperties": true
                     }
                   ]
                 }
@@ -8105,14 +8105,14 @@
               "instructions",
               "fields"
             ],
-            "additionalProperties": false
+            "additionalProperties": true
           }
         },
         "required": [
           "versionId",
           "form"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "FormSubmissionRequest": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -8171,7 +8171,7 @@
               "thankYouMessage",
               "replayed"
             ],
-            "additionalProperties": false
+            "additionalProperties": true
           },
           {
             "type": "object",
@@ -8198,7 +8198,7 @@
               "reason",
               "replayed"
             ],
-            "additionalProperties": false
+            "additionalProperties": true
           },
           {
             "type": "object",
@@ -8270,7 +8270,7 @@
               "accepted",
               "replayed"
             ],
-            "additionalProperties": false
+            "additionalProperties": true
           }
         ]
       },
@@ -8319,7 +8319,7 @@
           "publicId",
           "revision"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "FormAccessRequest": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -8398,7 +8398,7 @@
               "thankYouMessage",
               "replayed"
             ],
-            "additionalProperties": false
+            "additionalProperties": true
           },
           {
             "type": "object",
@@ -8425,7 +8425,7 @@
               "reason",
               "replayed"
             ],
-            "additionalProperties": false
+            "additionalProperties": true
           },
           {
             "type": "object",
@@ -8497,7 +8497,7 @@
               "accepted",
               "replayed"
             ],
-            "additionalProperties": false
+            "additionalProperties": true
           }
         ]
       },
@@ -8584,7 +8584,7 @@
               "status",
               "expiresAt"
             ],
-            "additionalProperties": false
+            "additionalProperties": true
           },
           "transfer": {
             "type": "object",
@@ -8624,7 +8624,7 @@
               "expiresAt",
               "expiresInSeconds"
             ],
-            "additionalProperties": false
+            "additionalProperties": true
           },
           "replayed": {
             "type": "boolean"
@@ -8635,7 +8635,7 @@
           "transfer",
           "replayed"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "FormFinalizeUploadRequest": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -8688,7 +8688,7 @@
           "status",
           "expiresAt"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "TaskUploadRequest": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -8993,7 +8993,7 @@
                   "revision",
                   "values"
                 ],
-                "additionalProperties": false
+                "additionalProperties": true
               },
               {
                 "type": "null"
@@ -9004,7 +9004,7 @@
         "required": [
           "snapshot"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "UsageTrendsResponse": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -9096,7 +9096,7 @@
               "timed_out",
               "outcome_unknown"
             ],
-            "additionalProperties": false
+            "additionalProperties": true
           },
           "elapsed": {
             "type": "object",
@@ -9136,7 +9136,7 @@
               "averageMs",
               "slowestMs"
             ],
-            "additionalProperties": false
+            "additionalProperties": true
           },
           "days": {
             "maxItems": 90,
@@ -9208,7 +9208,7 @@
                     "timed_out",
                     "outcome_unknown"
                   ],
-                  "additionalProperties": false
+                  "additionalProperties": true
                 },
                 "elapsed": {
                   "type": "object",
@@ -9248,7 +9248,7 @@
                     "averageMs",
                     "slowestMs"
                   ],
-                  "additionalProperties": false
+                  "additionalProperties": true
                 }
               },
               "required": [
@@ -9257,7 +9257,7 @@
                 "byStatus",
                 "elapsed"
               ],
-              "additionalProperties": false
+              "additionalProperties": true
             }
           },
           "busiest": {
@@ -9299,7 +9299,7 @@
                 "runs",
                 "failures"
               ],
-              "additionalProperties": false
+              "additionalProperties": true
             }
           },
           "mostFailures": {
@@ -9341,7 +9341,7 @@
                 "runs",
                 "failures"
               ],
-              "additionalProperties": false
+              "additionalProperties": true
             }
           }
         },
@@ -9358,7 +9358,7 @@
           "busiest",
           "mostFailures"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "UsageCapacityResponse": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -9448,7 +9448,7 @@
                   "activeRunLimit",
                   "queuedRunLimit"
                 ],
-                "additionalProperties": false
+                "additionalProperties": true
               }
             },
             "required": [
@@ -9458,7 +9458,7 @@
               "queuedRuns",
               "policy"
             ],
-            "additionalProperties": false
+            "additionalProperties": true
           },
           "artifacts": {
             "type": "object",
@@ -9496,7 +9496,7 @@
               "artifactCountLimit",
               "source"
             ],
-            "additionalProperties": false
+            "additionalProperties": true
           }
         },
         "required": [
@@ -9504,7 +9504,7 @@
           "execution",
           "artifacts"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "WorkflowRunListResponse": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -9937,7 +9937,7 @@
               "running",
               "waiting"
             ],
-            "additionalProperties": false
+            "additionalProperties": true
           },
           "window": {
             "type": "object",
@@ -10030,7 +10030,7 @@
                   "timed_out",
                   "outcome_unknown"
                 ],
-                "additionalProperties": false
+                "additionalProperties": true
               }
             },
             "required": [
@@ -10040,7 +10040,7 @@
               "total",
               "byStatus"
             ],
-            "additionalProperties": false
+            "additionalProperties": true
           },
           "workflows": {
             "anyOf": [
@@ -10129,7 +10129,7 @@
                             "timed_out",
                             "outcome_unknown"
                           ],
-                          "additionalProperties": false
+                          "additionalProperties": true
                         }
                       },
                       "required": [
@@ -10137,7 +10137,7 @@
                         "total",
                         "byStatus"
                       ],
-                      "additionalProperties": false
+                      "additionalProperties": true
                     }
                   },
                   "truncated": {
@@ -10148,7 +10148,7 @@
                   "items",
                   "truncated"
                 ],
-                "additionalProperties": false
+                "additionalProperties": true
               },
               {
                 "type": "null"
@@ -10162,7 +10162,7 @@
           "window",
           "workflows"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "WorkflowRunStartRequest": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -11451,7 +11451,7 @@
                         "level",
                         "message"
                       ],
-                      "additionalProperties": false
+                      "additionalProperties": true
                     }
                   },
                   "truncated": {
@@ -11478,14 +11478,14 @@
                     "required": [
                       "message"
                     ],
-                    "additionalProperties": false
+                    "additionalProperties": true
                   }
                 },
                 "required": [
                   "logs",
                   "truncated"
                 ],
-                "additionalProperties": false
+                "additionalProperties": true
               },
               {
                 "type": "null"
@@ -11496,7 +11496,7 @@
         "required": [
           "diagnostics"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "WorkflowNodeRunInputResponse": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -11747,7 +11747,7 @@
                 "medianDurationMs",
                 "p95DurationMs"
               ],
-              "additionalProperties": false
+              "additionalProperties": true
             }
           }
         },
@@ -11756,7 +11756,7 @@
           "oldestRunAt",
           "items"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "WorkflowStepRunsResponse": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -11876,14 +11876,14 @@
                 "completedAt",
                 "safeErrorCode"
               ],
-              "additionalProperties": false
+              "additionalProperties": true
             }
           }
         },
         "required": [
           "items"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "WorkflowRunCancelRequest": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -12192,7 +12192,7 @@
               "kind",
               "reason"
             ],
-            "additionalProperties": false
+            "additionalProperties": true
           },
           {
             "type": "object",
@@ -12262,7 +12262,7 @@
               "sourceCompletedAt",
               "effectRisk"
             ],
-            "additionalProperties": false
+            "additionalProperties": true
           }
         ]
       },
@@ -12607,7 +12607,7 @@
               "remainingExecutionMs",
               "absoluteDeadlineAt"
             ],
-            "additionalProperties": false
+            "additionalProperties": true
           },
           "recovery": {
             "type": "object",
@@ -12646,7 +12646,7 @@
               "effectRisk",
               "effectsAcknowledged"
             ],
-            "additionalProperties": false
+            "additionalProperties": true
           },
           "handledFailureCount": {
             "type": "integer",
@@ -12668,7 +12668,7 @@
           "deadlineAt",
           "cancelRequestedAt"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "WorkflowRunReadSummary": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -12853,7 +12853,7 @@
               "remainingExecutionMs",
               "absoluteDeadlineAt"
             ],
-            "additionalProperties": false
+            "additionalProperties": true
           },
           "recovery": {
             "type": "object",
@@ -12892,7 +12892,7 @@
               "effectRisk",
               "effectsAcknowledged"
             ],
-            "additionalProperties": false
+            "additionalProperties": true
           },
           "handledFailureCount": {
             "type": "integer",
@@ -12949,7 +12949,7 @@
               "asOf",
               "reasons"
             ],
-            "additionalProperties": false
+            "additionalProperties": true
           },
           "stalled": {
             "type": "object",
@@ -12963,7 +12963,7 @@
             "required": [
               "since"
             ],
-            "additionalProperties": false
+            "additionalProperties": true
           }
         },
         "required": [
@@ -12980,7 +12980,7 @@
           "deadlineAt",
           "cancelRequestedAt"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "WorkflowRunListItem": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -13417,7 +13417,7 @@
               "sourceNodeRunId",
               "sourceCompletedAt"
             ],
-            "additionalProperties": false
+            "additionalProperties": true
           },
           "failureHandling": {
             "type": "object",
@@ -13445,7 +13445,7 @@
               "sinkInvocationKey",
               "disposition"
             ],
-            "additionalProperties": false
+            "additionalProperties": true
           },
           "startedAt": {
             "anyOf": [
@@ -13518,7 +13518,7 @@
           "resumeAt",
           "safeErrorCode"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "WorkflowRunEvent": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",

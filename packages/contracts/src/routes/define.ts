@@ -1,3 +1,4 @@
+import type { ResponseSchema } from '../schemas/shared/response-schema.js';
 import type {
   AuthorizationCapability,
   WorkspaceStatusList,
@@ -78,7 +79,7 @@ export function named<Schema extends z.ZodType, const Name extends string>(
 type JsonSuccess<Response extends z.ZodType> = Readonly<{
   status: number;
   description: string;
-  body: NamedSchema<Response>;
+  body: NamedSchema<ResponseSchema<Response>>;
   /** Documented response headers, by name. */
   headers?: Readonly<Record<string, unknown>>;
 }>;
@@ -166,7 +167,12 @@ export function defineRoute<const Route extends AnyRoute>(route: Route): Route {
     throw new Error(
       `${route.operationId}: path parameters ${inPath.join()} don't match the declared ${declared.join()}`,
     );
-  return route;
+  return {
+    ...route,
+    ...(route.params === undefined ? {} : { params: route.params.strict() }),
+    ...(route.query === undefined ? {} : { query: route.query.strict() }),
+    ...(route.headers === undefined ? {} : { headers: route.headers.strict() }),
+  };
 }
 
 /** What a handler receives once its route's declared inputs have parsed. */

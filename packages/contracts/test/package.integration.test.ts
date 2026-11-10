@@ -1,9 +1,13 @@
 import { expect, it } from 'vitest';
 import {
+  apiTokenInfoResponseSchema,
+  apiTokenRevokeRequestSchema,
+  workflowDraftQuerySchema,
   nativeAuthenticationAcknowledgmentSchema,
   nativeRegistrationResponseSchema,
   nativeSignInResponseSchema,
 } from '@pertexo/contracts';
+import { jsonSchema } from '@pertexo/contracts/server';
 
 it('exports native acknowledgment projections that reject unsupported success and preserve challenge variants', () => {
   expect(nativeAuthenticationAcknowledgmentSchema.safeParse({}).success).toBe(
@@ -21,13 +25,7 @@ it('exports native acknowledgment projections that reject unsupported success an
   expect(nativeSignInResponseSchema.safeParse({}).success).toBe(false);
 });
 
-it('exports response-aware JSON Schema without relaxing request schemas', async () => {
-  const {
-    apiTokenInfoResponseSchema,
-    apiTokenRevokeRequestSchema,
-    workflowDraftQuerySchema,
-  } = await import('@pertexo/contracts');
-  const { jsonSchema } = await import('@pertexo/contracts/server');
+it('exports response-aware JSON Schema without relaxing request schemas', () => {
   expect(
     jsonSchema(apiTokenInfoResponseSchema, 'output').additionalProperties,
   ).toBe(true);

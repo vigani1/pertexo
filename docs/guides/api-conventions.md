@@ -19,10 +19,10 @@ On public routes:
 
 ## Response compatibility
 
-Public JSON response decoders discard unknown object members, including nested
+All HTTP JSON response decoders, including browser-session routes, discard unknown object members, including nested
 projection metadata, and continue to validate known fields, bounds and required
 values. Declared JSON/configuration maps preserve their contents. Requests and
-queries reject unknown members; response tolerance never changes write validation.
+queries reject unknown members; response tolerance never changes write validation. JSON response declarations must use the shared response-schema helper; the route type and recursive contract catalog check enforce this for new routes and alternate successes.
 
 For this release, `graphDigest` and `listSummary` require explicit `include`
 parameters because previously deployed response decoders rejected extra fields.

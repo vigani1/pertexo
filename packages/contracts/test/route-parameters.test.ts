@@ -1,3 +1,4 @@
+import { responseSchema } from '../src/schemas/shared/response-schema.js';
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 
@@ -30,7 +31,7 @@ describe.each(['query', 'headers'] as const)(
         success: {
           status: 200,
           description: 'Principals',
-          body: named('Principals', z.array(z.string())),
+          body: named('Principals', responseSchema(z.array(z.string()))),
         },
         problems: {},
       });

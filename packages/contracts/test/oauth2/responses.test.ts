@@ -82,10 +82,16 @@ describe('the OAuth2 connection response', () => {
   });
 
   it.each(['reauthorization_required', 'revoked'])(
-    'a %s connection can’t have one',
+    'omits the grant from a %s connection projection',
     (status) => {
       expect(parse({ ...connectionFields, status })).toBe(true);
-      expect(parse({ ...connectionFields, status, grant })).toBe(false);
+      expect(
+        oauth2ConnectionResponseSchema.parse({
+          ...connectionFields,
+          status,
+          grant,
+        }),
+      ).toEqual({ ...connectionFields, status });
     },
   );
 
@@ -96,25 +102,30 @@ describe('the OAuth2 connection response', () => {
       { accessToken: 'x' },
       { refreshToken: 'x' },
     ]) {
-      expect(parse({ ...active, ...secretField })).toBe(false);
-      expect(parse({ ...active, grant: { ...grant, ...secretField } })).toBe(
-        false,
-      );
       expect(
-        parse({
+        oauth2ConnectionResponseSchema.parse({ ...active, ...secretField }),
+      ).toEqual(active);
+      expect(
+        oauth2ConnectionResponseSchema.parse({
+          ...active,
+          grant: { ...grant, ...secretField },
+        }),
+      ).toEqual(active);
+      expect(
+        oauth2ConnectionResponseSchema.parse({
           ...active,
           oauth2: { ...connectionFields.oauth2, ...secretField },
         }),
-      ).toBe(false);
+      ).toEqual(active);
       expect(
-        parse({
+        oauth2ConnectionResponseSchema.parse({
           ...active,
           oauth2: {
             ...connectionFields.oauth2,
             settings: { ...consentSettings, ...secretField },
           },
         }),
-      ).toBe(false);
+      ).toEqual(active);
     }
   });
 
@@ -139,12 +150,16 @@ describe('the OAuth2 connection response', () => {
       }).success,
     ).toBe(true);
     expect(
-      oauth2AuthorizationStartResponseSchema.safeParse({
+      oauth2AuthorizationStartResponseSchema.parse({
         kind: 'consent',
         authorizationUrl: 'https://id.example.com/authorize?state=x',
         expiresAt: '2026-10-31T10:10:00.000Z',
         state: 'x',
-      }).success,
-    ).toBe(false);
+      }),
+    ).toEqual({
+      kind: 'consent',
+      authorizationUrl: 'https://id.example.com/authorize?state=x',
+      expiresAt: '2026-10-31T10:10:00.000Z',
+    });
   });
 });

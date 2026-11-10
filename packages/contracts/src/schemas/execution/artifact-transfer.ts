@@ -1,3 +1,4 @@
+import { responseSchema } from '../shared/response-schema.js';
 import { z } from 'zod';
 
 import { isSupportedHttpFieldValue } from '../shared/http-field-value.js';
@@ -32,45 +33,51 @@ export const artifactWorkspaceParamsSchema = z
 export const artifactParamsSchema = artifactWorkspaceParamsSchema
   .extend({ artifactId: z.uuid() })
   .strict();
-export const artifactMetadataResponseSchema = z
-  .object({
-    id: z.uuid(),
-    workspaceId: z.uuid(),
-    byteLength: artifactByteLengthSchema,
-    mediaType: artifactMediaTypeSchema,
-    sha256: artifactSha256Schema,
-    status: z.enum(['pending', 'available']),
-    createdAt: z.iso.datetime(),
-    expiresAt: z.iso.datetime().nullable(),
-  })
-  .strict();
+export const artifactMetadataResponseSchema = responseSchema(
+  z
+    .object({
+      id: z.uuid(),
+      workspaceId: z.uuid(),
+      byteLength: artifactByteLengthSchema,
+      mediaType: artifactMediaTypeSchema,
+      sha256: artifactSha256Schema,
+      status: z.enum(['pending', 'available']),
+      createdAt: z.iso.datetime(),
+      expiresAt: z.iso.datetime().nullable(),
+    })
+    .strict(),
+);
 
-export const artifactUploadResponseSchema = z
-  .object({
-    artifact: artifactMetadataResponseSchema.extend({
-      status: z.literal('pending'),
-      expiresAt: z.iso.datetime(),
-    }),
-    upload: z
-      .object({
-        method: z.literal('PUT'),
-        url: z.url(),
-        headers: z.record(z.string(), z.string()),
+export const artifactUploadResponseSchema = responseSchema(
+  z
+    .object({
+      artifact: artifactMetadataResponseSchema.extend({
+        status: z.literal('pending'),
         expiresAt: z.iso.datetime(),
-        expiresInSeconds: z.number().int().min(60).max(900),
-      })
-      .strict(),
-    replayed: z.boolean(),
-  })
-  .strict();
-export const artifactDownloadResponseSchema = z
-  .object({
-    method: z.literal('GET'),
-    url: z.url(),
-    expiresAt: z.iso.datetime(),
-    expiresInSeconds: z.number().int().min(60).max(900),
-  })
-  .strict();
+      }),
+      upload: z
+        .object({
+          method: z.literal('PUT'),
+          url: z.url(),
+          headers: z.record(z.string(), z.string()),
+          expiresAt: z.iso.datetime(),
+          expiresInSeconds: z.number().int().min(60).max(900),
+        })
+        .strict(),
+      replayed: z.boolean(),
+    })
+    .strict(),
+);
+export const artifactDownloadResponseSchema = responseSchema(
+  z
+    .object({
+      method: z.literal('GET'),
+      url: z.url(),
+      expiresAt: z.iso.datetime(),
+      expiresInSeconds: z.number().int().min(60).max(900),
+    })
+    .strict(),
+);
 
 export type ArtifactMetadataResponse = z.output<
   typeof artifactMetadataResponseSchema

@@ -186,12 +186,12 @@ describe('bounded version-contextual input case contracts', () => {
       command,
     );
     expect(
-      workflowInputCaseCommandResponseSchema.safeParse({
+      workflowInputCaseCommandResponseSchema.parse({
         ...command,
         name: 'private',
         input: {},
-      }).success,
-    ).toBe(false);
+      }),
+    ).toEqual(command);
     expect(workflowInputCaseQuerySchema.parse({ limit: '5' })).toEqual({
       limit: 5,
     });

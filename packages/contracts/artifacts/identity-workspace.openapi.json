@@ -9057,7 +9057,7 @@
           "createdAt",
           "updatedAt"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "UserProfileUpdateRequest": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -9136,7 +9136,7 @@
               "createdAt",
               "updatedAt"
             ],
-            "additionalProperties": false
+            "additionalProperties": true
           },
           "changed": {
             "type": "boolean"
@@ -9150,7 +9150,7 @@
           "changed",
           "replayed"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "ApiTokenListResponse": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -9266,7 +9266,7 @@
                     "status",
                     "revokedAt"
                   ],
-                  "additionalProperties": false
+                  "additionalProperties": true
                 },
                 {
                   "type": "object",
@@ -9352,7 +9352,7 @@
                     "status",
                     "revokedAt"
                   ],
-                  "additionalProperties": false
+                  "additionalProperties": true
                 }
               ]
             }
@@ -9376,7 +9376,7 @@
           "items",
           "nextCursor"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "ApiTokenCreateRequest": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -9512,7 +9512,7 @@
                       "status",
                       "revokedAt"
                     ],
-                    "additionalProperties": false
+                    "additionalProperties": true
                   },
                   {
                     "type": "object",
@@ -9598,7 +9598,7 @@
                       "status",
                       "revokedAt"
                     ],
-                    "additionalProperties": false
+                    "additionalProperties": true
                   }
                 ]
               },
@@ -9616,7 +9616,7 @@
               "replayed",
               "secret"
             ],
-            "additionalProperties": false
+            "additionalProperties": true
           },
           {
             "type": "object",
@@ -9705,7 +9705,7 @@
                       "status",
                       "revokedAt"
                     ],
-                    "additionalProperties": false
+                    "additionalProperties": true
                   },
                   {
                     "type": "object",
@@ -9791,7 +9791,7 @@
                       "status",
                       "revokedAt"
                     ],
-                    "additionalProperties": false
+                    "additionalProperties": true
                   }
                 ]
               },
@@ -9804,7 +9804,7 @@
               "token",
               "replayed"
             ],
-            "additionalProperties": false
+            "additionalProperties": true
           }
         ]
       },
@@ -9902,7 +9902,7 @@
                   "status",
                   "revokedAt"
                 ],
-                "additionalProperties": false
+                "additionalProperties": true
               },
               {
                 "type": "object",
@@ -9988,7 +9988,7 @@
                   "status",
                   "revokedAt"
                 ],
-                "additionalProperties": false
+                "additionalProperties": true
               }
             ]
           },
@@ -10000,7 +10000,7 @@
           "token",
           "replayed"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "ApiTokenInfoResponse": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -10378,7 +10378,7 @@
                 "role",
                 "capabilities"
               ],
-              "additionalProperties": false
+              "additionalProperties": true
             }
           },
           "nextCursor": {
@@ -10398,7 +10398,7 @@
           "items",
           "nextCursor"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "WorkspaceCreateRequest": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -10466,7 +10466,7 @@
           "createdAt",
           "updatedAt"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "WorkspaceDeletionRequest": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -10511,7 +10511,7 @@
           "change",
           "occurredAt"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "WorkspaceMembersResponse": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -10590,7 +10590,7 @@
                     "directoryRevision",
                     "controlWorkspaceId"
                   ],
-                  "additionalProperties": false
+                  "additionalProperties": true
                 },
                 "createdAt": {
                   "type": "string",
@@ -10613,7 +10613,7 @@
                 "createdAt",
                 "updatedAt"
               ],
-              "additionalProperties": false
+              "additionalProperties": true
             }
           },
           "nextCursor": {
@@ -10633,7 +10633,7 @@
           "items",
           "nextCursor"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "WorkspaceRenameRequest": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -10709,7 +10709,7 @@
               "updatedAt",
               "revision"
             ],
-            "additionalProperties": false
+            "additionalProperties": true
           },
           "changed": {
             "type": "boolean"
@@ -10723,7 +10723,7 @@
           "changed",
           "replayed"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "WorkspaceMemberRoleChangeRequest": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -10787,7 +10787,7 @@
           "changed",
           "replayed"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "WorkspaceMemberRemovalRequest": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -10827,7 +10827,7 @@
           "roleRevision",
           "replayed"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "WorkspaceMemberStatusRequest": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -10875,7 +10875,7 @@
           "membershipStatus",
           "replayed"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "WorkspaceOwnershipTransferRequest": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -10933,7 +10933,7 @@
           "previousOwnerRoleRevision",
           "replayed"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "WorkspaceLeaveRequest": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -10964,7 +10964,7 @@
           "roleRevision",
           "replayed"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "ApiProblem": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -11279,7 +11279,7 @@
                 "createdAt",
                 "updatedAt"
               ],
-              "additionalProperties": false
+              "additionalProperties": true
             }
           },
           "nextCursor": {
@@ -11300,7 +11300,7 @@
           "items",
           "nextCursor"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "WorkspaceInvitationCreateRequest": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -11403,7 +11403,7 @@
               "createdAt",
               "updatedAt"
             ],
-            "additionalProperties": false
+            "additionalProperties": true
           },
           "replayed": {
             "type": "boolean"
@@ -11413,7 +11413,7 @@
           "invitation",
           "replayed"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "WorkspaceInvitationCommandRequest": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -11897,7 +11897,7 @@
               "minimumLength",
               "verificationRequired"
             ],
-            "additionalProperties": false
+            "additionalProperties": true
           },
           "socialProviders": {
             "maxItems": 4,
@@ -11925,7 +11925,7 @@
           "socialProviders",
           "signUp"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "AccountSecuritySessionsResponse": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -11982,14 +11982,14 @@
                 "ipAddress",
                 "userAgent"
               ],
-              "additionalProperties": false
+              "additionalProperties": true
             }
           }
         },
         "required": [
           "items"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "AccountSecuritySessionRevokeRequest": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -12017,7 +12017,7 @@
         "required": [
           "revoked"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "AccountSecurityRevokeOthersResponse": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -12032,7 +12032,7 @@
         "required": [
           "revokedCount"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "AccountSecurityResponse": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -12083,7 +12083,7 @@
               "enabled",
               "recoveryCodesRemaining"
             ],
-            "additionalProperties": false
+            "additionalProperties": true
           },
           "methods": {
             "maxItems": 16,
@@ -12127,7 +12127,7 @@
                 "kind",
                 "provider"
               ],
-              "additionalProperties": false
+              "additionalProperties": true
             }
           }
         },
@@ -12138,7 +12138,7 @@
           "twoFactor",
           "methods"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "AccountSecurityPasswordChangeRequest": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -12173,7 +12173,7 @@
         "required": [
           "changed"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "AccountSecurityPasswordSetupRequest": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -12202,7 +12202,7 @@
         "required": [
           "configured"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "AccountSecurityMethodUnlinkRequest": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -12231,7 +12231,7 @@
         "required": [
           "unlinked"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "AccountSecurityLinkStartRequest": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -12311,7 +12311,7 @@
         "required": [
           "authorizationUrl"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "DataTablesResponse": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -12643,7 +12643,7 @@
           "tableCount",
           "storedBytes"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "DataTableRemove": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -13094,7 +13094,7 @@
                 "revision",
                 "values"
               ],
-              "additionalProperties": false
+              "additionalProperties": true
             }
           },
           "affected": {
@@ -13111,7 +13111,7 @@
           "affected",
           "hasMore"
         ],
-        "additionalProperties": false,
+        "additionalProperties": true,
         "$defs": {
           "__schema0": {
             "anyOf": [
@@ -13140,6 +13140,38 @@
                 },
                 "additionalProperties": {
                   "$ref": "#/components/schemas/DataTableResult/$defs/__schema0"
+                }
+              }
+            ],
+            "$ref": "#/components/schemas/DataTableResult/$defs/__schema1"
+          },
+          "__schema1": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/DataTableResult/$defs/__schema1"
+                }
+              },
+              {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/DataTableResult/$defs/__schema1"
                 }
               }
             ]
@@ -14179,7 +14211,7 @@
                 "occurredAt",
                 "metadata"
               ],
-              "additionalProperties": false
+              "additionalProperties": true
             }
           },
           "nextCursor": {
@@ -14198,7 +14230,7 @@
           "items",
           "nextCursor"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "GovernanceSettings": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -14224,7 +14256,7 @@
           "auditRetentionDays",
           "requirePublishApproval"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "GovernanceUpdate": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -14415,7 +14447,7 @@
                         "name",
                         "defaultRole"
                       ],
-                      "additionalProperties": false
+                      "additionalProperties": true
                     }
                   },
                   "domains": {
@@ -14474,7 +14506,7 @@
                                 "value",
                                 "expiresAt"
                               ],
-                              "additionalProperties": false
+                              "additionalProperties": true
                             },
                             {
                               "type": "null"
@@ -14508,7 +14540,7 @@
                               "providerRevision",
                               "testedAt"
                             ],
-                            "additionalProperties": false
+                            "additionalProperties": true
                           }
                         }
                       },
@@ -14521,7 +14553,7 @@
                         "challenge",
                         "checks"
                       ],
-                      "additionalProperties": false
+                      "additionalProperties": true
                     }
                   },
                   "providers": {
@@ -14581,7 +14613,7 @@
                                 "nameClaim",
                                 "jitEnabled"
                               ],
-                              "additionalProperties": false
+                              "additionalProperties": true
                             },
                             "enabled": {
                               "type": "boolean"
@@ -14605,7 +14637,7 @@
                             "revision",
                             "secretConfigured"
                           ],
-                          "additionalProperties": false
+                          "additionalProperties": true
                         },
                         {
                           "type": "object",
@@ -14667,7 +14699,7 @@
                                 "nameAttribute",
                                 "jitEnabled"
                               ],
-                              "additionalProperties": false
+                              "additionalProperties": true
                             },
                             "enabled": {
                               "type": "boolean"
@@ -14687,7 +14719,7 @@
                             "enabled",
                             "revision"
                           ],
-                          "additionalProperties": false
+                          "additionalProperties": true
                         }
                       ]
                     }
@@ -14702,7 +14734,7 @@
                   "domains",
                   "providers"
                 ],
-                "additionalProperties": false
+                "additionalProperties": true
               },
               {
                 "type": "null"
@@ -14716,7 +14748,7 @@
           "canManage",
           "organization"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "FederationOrganizationCreate": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -15134,7 +15166,7 @@
           "redirectUri",
           "xml"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "FederationTestStart": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -15294,7 +15326,7 @@
               "activeUsers",
               "groups"
             ],
-            "additionalProperties": false
+            "additionalProperties": true
           },
           "credentials": {
             "maxItems": 50,
@@ -15347,7 +15379,7 @@
                 "revokedAt",
                 "lastUsedAt"
               ],
-              "additionalProperties": false
+              "additionalProperties": true
             }
           },
           "groups": {
@@ -15375,7 +15407,7 @@
                 "displayName",
                 "memberCount"
               ],
-              "additionalProperties": false
+              "additionalProperties": true
             }
           },
           "mappings": {
@@ -15415,7 +15447,7 @@
                 "role",
                 "priority"
               ],
-              "additionalProperties": false
+              "additionalProperties": true
             }
           }
         },
@@ -15429,7 +15461,7 @@
           "groups",
           "mappings"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "DirectoryPeoplePage": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -15485,7 +15517,7 @@
                 "revision",
                 "deleted"
               ],
-              "additionalProperties": false
+              "additionalProperties": true
             }
           },
           "nextCursor": {
@@ -15505,7 +15537,7 @@
           "items",
           "nextCursor"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "DirectoryCredentialCreate": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -15582,7 +15614,7 @@
                   "revokedAt",
                   "lastUsedAt"
                 ],
-                "additionalProperties": false
+                "additionalProperties": true
               },
               "replayed": {
                 "type": "boolean",
@@ -15597,7 +15629,7 @@
               "replayed",
               "secret"
             ],
-            "additionalProperties": false
+            "additionalProperties": true
           },
           {
             "type": "object",
@@ -15650,7 +15682,7 @@
                   "revokedAt",
                   "lastUsedAt"
                 ],
-                "additionalProperties": false
+                "additionalProperties": true
               },
               "replayed": {
                 "type": "boolean",
@@ -15661,7 +15693,7 @@
               "credential",
               "replayed"
             ],
-            "additionalProperties": false
+            "additionalProperties": true
           }
         ]
       },
@@ -15692,7 +15724,7 @@
         "required": [
           "changed"
         ],
-        "additionalProperties": false
+        "additionalProperties": true
       },
       "DirectoryMappings": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -15768,7 +15800,7 @@
               "eligible",
               "reason"
             ],
-            "additionalProperties": false
+            "additionalProperties": true
           },
           {
             "type": "object",
@@ -15829,7 +15861,7 @@
                   "membershipRevision",
                   "role"
                 ],
-                "additionalProperties": false
+                "additionalProperties": true
               }
             },
             "required": [
@@ -15838,7 +15870,7 @@
               "currentRole",
               "command"
             ],
-            "additionalProperties": false
+            "additionalProperties": true
           }
         ]
       },

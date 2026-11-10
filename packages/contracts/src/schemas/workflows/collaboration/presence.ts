@@ -1,3 +1,4 @@
+import { responseSchema } from '../../shared/response-schema.js';
 import { z } from 'zod';
 import { COLLABORATION_LIMITS } from './comments.js';
 export const workflowPresenceQuerySchema = z
@@ -17,31 +18,33 @@ export const workflowPresenceHeartbeatSchema = z
       (!value.editing || value.baseRevision !== null),
     'Editing needs a draft revision, and only an editor can have unsaved changes.',
   );
-export const workflowPresenceSchema = z
-  .object({
-    people: z
-      .array(
-        z
-          .object({
-            userId: z.uuid(),
-            displayName: z.string().max(256),
-            editing: z.boolean(),
-            dirty: z.boolean(),
-            baseRevision: z.number().int().positive().nullable(),
-            tabCount: z
-              .number()
-              .int()
-              .positive()
-              .max(COLLABORATION_LIMITS.tabs),
-          })
-          .strict(),
-      )
-      .max(COLLABORATION_LIMITS.presence),
-  })
-  .strict();
-export const workflowPresenceHeartbeatResultSchema = z
-  .object({ accepted: z.boolean() })
-  .strict();
+export const workflowPresenceSchema = responseSchema(
+  z
+    .object({
+      people: z
+        .array(
+          z
+            .object({
+              userId: z.uuid(),
+              displayName: z.string().max(256),
+              editing: z.boolean(),
+              dirty: z.boolean(),
+              baseRevision: z.number().int().positive().nullable(),
+              tabCount: z
+                .number()
+                .int()
+                .positive()
+                .max(COLLABORATION_LIMITS.tabs),
+            })
+            .strict(),
+        )
+        .max(COLLABORATION_LIMITS.presence),
+    })
+    .strict(),
+);
+export const workflowPresenceHeartbeatResultSchema = responseSchema(
+  z.object({ accepted: z.boolean() }).strict(),
+);
 export type WorkflowPresenceHeartbeat = z.output<
   typeof workflowPresenceHeartbeatSchema
 >;

@@ -1,3 +1,4 @@
+import { responseSchema } from '../shared/response-schema.js';
 import { eventCoordinationReceiptSchema } from '@pertexo/workflow-model';
 import { z } from 'zod';
 import {
@@ -10,16 +11,18 @@ export const formParamsSchema = z
   .strict();
 export const publicFormParamsSchema = z.object({ publicId: z.uuid() }).strict();
 export const formCapabilitySchema = z.string().regex(/^[A-Za-z0-9_-]{43}$/u);
-export const formSchemaResponseSchema = z
-  .object({
-    versionId: z.uuid(),
-    form: formConfigSchema.omit({
-      thankYouMessage: true,
-      redirectUrl: true,
-      coordination: true,
-    }),
-  })
-  .strict();
+export const formSchemaResponseSchema = responseSchema(
+  z
+    .object({
+      versionId: z.uuid(),
+      form: formConfigSchema.omit({
+        thankYouMessage: true,
+        redirectUrl: true,
+        coordination: true,
+      }),
+    })
+    .strict(),
+);
 export const formSubmissionRequestSchema = z
   .object({ versionId: z.uuid(), values: z.record(z.string(), z.unknown()) })
   .strict();
@@ -43,19 +46,23 @@ const skippedFormSubmissionResponseSchema = z
 const coordinatedFormSubmissionResponseSchema = eventCoordinationReceiptSchema
   .extend({ accepted: z.literal(false), replayed: z.boolean() })
   .strict();
-export const formSubmissionResponseSchema = z.union([
-  acceptedFormSubmissionResponseSchema,
-  skippedFormSubmissionResponseSchema,
-  coordinatedFormSubmissionResponseSchema,
-]);
-export const formAccessSchema = z
-  .object({
-    access: z.enum(['members', 'public']),
-    publicId: z.uuid().nullable(),
-    capability: formCapabilitySchema.nullable().optional(),
-    revision: z.number().int().nonnegative(),
-  })
-  .strict();
+export const formSubmissionResponseSchema = responseSchema(
+  z.union([
+    acceptedFormSubmissionResponseSchema,
+    skippedFormSubmissionResponseSchema,
+    coordinatedFormSubmissionResponseSchema,
+  ]),
+);
+export const formAccessSchema = responseSchema(
+  z
+    .object({
+      access: z.enum(['members', 'public']),
+      publicId: z.uuid().nullable(),
+      capability: formCapabilitySchema.nullable().optional(),
+      revision: z.number().int().nonnegative(),
+    })
+    .strict(),
+);
 export const formAccessRequestSchema = z.discriminatedUnion('access', [
   z
     .object({
@@ -80,8 +87,10 @@ export type FormSubmissionResponse = z.output<
 >;
 export type FormAccess = z.output<typeof formAccessSchema>;
 export type FormAccessRequest = z.output<typeof formAccessRequestSchema>;
-export const publicFormSubmissionResponseSchema = z.union([
-  acceptedFormSubmissionResponseSchema.omit({ runId: true }).strict(),
-  skippedFormSubmissionResponseSchema,
-  coordinatedFormSubmissionResponseSchema,
-]);
+export const publicFormSubmissionResponseSchema = responseSchema(
+  z.union([
+    acceptedFormSubmissionResponseSchema.omit({ runId: true }).strict(),
+    skippedFormSubmissionResponseSchema,
+    coordinatedFormSubmissionResponseSchema,
+  ]),
+);

@@ -72,12 +72,12 @@ describe('pinned sample boundary contracts', () => {
       }).output,
     ).toBeNull();
     expect(
-      stepSampleListResponseSchema.safeParse({
+      stepSampleListResponseSchema.parse({
         items: [],
         output: 'should-not-be-listed',
         draftRevision: 1,
         limits,
-      }).success,
-    ).toBe(false);
+      }),
+    ).toEqual({ items: [], draftRevision: 1, limits });
   });
 });
