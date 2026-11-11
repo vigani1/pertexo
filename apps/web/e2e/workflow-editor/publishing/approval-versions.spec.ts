@@ -1,3 +1,4 @@
+import { workflowVersionsBody } from '../../workflows/read-projections';
 import { expect, test } from '../../support/fixtures';
 import {
   addCsrfCookie,
@@ -65,7 +66,7 @@ for (const width of [375, 1280]) {
     );
     await page.route(
       `**/v1/workspaces/${workspaceId}/workflows/${workflowId}/versions?**`,
-      (route) => {
+      async (route) => {
         versionReads += 1;
         const version = (id: string, versionNumber: number) => ({
           id,
@@ -76,12 +77,12 @@ for (const width of [375, 1280]) {
           publishedAt: '2026-09-14T10:00:00.000Z',
         });
         return route.fulfill({
-          json: {
+          json: await workflowVersionsBody(route.request().url(), {
             items: published
               ? [version(secondId, 2), version(firstId, 1)]
               : [version(firstId, 1)],
             nextCursor: null,
-          },
+          }),
         });
       },
     );

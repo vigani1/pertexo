@@ -1,3 +1,4 @@
+import { workflowListBody } from './workflows/list-support';
 import { temporaryTestPath } from '../test/support/temporary-test-path';
 import {
   createUserFixture,
@@ -63,24 +64,21 @@ async function installRoutes(page: Page) {
       const url = new URL(route.request().url());
       workflowQueries.push(url.search);
       await route.fulfill({
-        json: {
-          items: [
-            {
-              id: workflowId,
-              workspaceId,
-              name: 'Daily intake',
-              nameRevision: 1,
-              lifecycleStatus: 'active',
-              lifecycleRevision: 1,
-              activationStatus: 'inactive',
-              webhookSetupRequired: false,
-              publishedVersionId: versionId,
-              createdAt: timestamp,
-              updatedAt: timestamp,
-            },
-          ],
-          nextCursor: null,
-        },
+        json: workflowListBody(route.request().url(), [
+          {
+            id: workflowId,
+            workspaceId,
+            name: 'Daily intake',
+            nameRevision: 1,
+            lifecycleStatus: 'active',
+            lifecycleRevision: 1,
+            activationStatus: 'inactive',
+            webhookSetupRequired: false,
+            publishedVersionId: versionId,
+            createdAt: timestamp,
+            updatedAt: timestamp,
+          },
+        ]),
       });
     },
   );
@@ -127,7 +125,11 @@ async function installRoutes(page: Page) {
       }),
   );
   // The navigation fixture retains run summaries, but no source graphs.
-  for (const resource of ['draft', 'versions?**', `versions/${versionId}`])
+  for (const resource of [
+    'draft{,?include=graphDigest}',
+    'versions?**',
+    `versions/${versionId}`,
+  ])
     await page.route(
       `**/v1/workspaces/${workspaceId}/workflows/${workflowId}/${resource}`,
       (route) =>
@@ -220,7 +222,9 @@ test('shows the loom, what needs attention and recent changes on mobile', async 
       .getByRole('link', { name: 'Daily intake' }),
   ).toHaveAttribute('href', `/w/${workspaceId}/workflows/${workflowId}`);
   await expect(page.getByRole('img', { name: /Timeline of/u })).toBeVisible();
-  expect(queries.workflowQueries).toContain('?limit=5&order=updated_desc');
+  expect(queries.workflowQueries).toContain(
+    '?limit=5&include=listSummary&order=updated_desc',
+  );
   for (const status of ['running', 'waiting', 'queued', 'failed'])
     expect(
       queries.runQueries.some((query) => query.get('status') === status),

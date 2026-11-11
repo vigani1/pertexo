@@ -1,3 +1,4 @@
+import { workflowVersionsBody } from '../../workflows/read-projections';
 import { expect, test } from '../../support/fixtures';
 import { platformBrowserNodeDefinitionCatalog } from '../../../../../packages/node-catalog/dist/index.js';
 import {
@@ -25,8 +26,13 @@ test('explains disabled webhook encryption to an owner at phone width', async ({
 }) => {
   await installEditorRoutes(page, remoteDraft());
   const workflowPath = `/v1/workspaces/${workspaceId}/workflows/${workflowId}`;
-  await page.route(`**${workflowPath}/versions?**`, (route) =>
-    route.fulfill({ json: { items: [], nextCursor: null } }),
+  await page.route(`**${workflowPath}/versions?**`, async (route) =>
+    route.fulfill({
+      json: await workflowVersionsBody(route.request().url(), {
+        items: [],
+        nextCursor: null,
+      }),
+    }),
   );
   await page.route(`**${workflowPath}/triggers/schedules`, (route) =>
     route.fulfill({ json: { items: [] } }),
@@ -139,12 +145,12 @@ test('authors, reloads and publishes the complete real-pin webhook HTTP recipe t
   );
   await page.route(
     `**/v1/workspaces/${workspaceId}/workflows/${workflowId}/versions?**`,
-    (route) =>
+    async (route) =>
       route.fulfill({
-        json: {
+        json: await workflowVersionsBody(route.request().url(), {
           items: publishedVersion === undefined ? [] : [publishedVersion],
           nextCursor: null,
-        },
+        }),
       }),
   );
   await page.route(

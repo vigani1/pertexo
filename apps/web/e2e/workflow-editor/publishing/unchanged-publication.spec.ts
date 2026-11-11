@@ -1,3 +1,4 @@
+import { workflowVersionsBody } from '../../workflows/read-projections';
 import { temporaryTestPath } from '../../../test/support/temporary-test-path';
 import { expect, test } from '../../support/fixtures';
 import {
@@ -56,8 +57,13 @@ for (const width of [390, 1280]) {
         json: workflowSummary('Order intake', versionId),
       }),
     );
-    await page.route(`${root}/versions?**`, (route) =>
-      route.fulfill({ json: { items: [version], nextCursor: null } }),
+    await page.route(`${root}/versions?**`, async (route) =>
+      route.fulfill({
+        json: await workflowVersionsBody(route.request().url(), {
+          items: [version],
+          nextCursor: null,
+        }),
+      }),
     );
     await page.route(`${root}/validate`, (route) =>
       route.fulfill({
@@ -113,8 +119,13 @@ test('reports checksum reuse without pretending a new version was created', asyn
       json: workflowSummary('Order intake', versionId),
     }),
   );
-  await page.route(`${root}/versions?**`, (route) =>
-    route.fulfill({ json: { items: [version], nextCursor: null } }),
+  await page.route(`${root}/versions?**`, async (route) =>
+    route.fulfill({
+      json: await workflowVersionsBody(route.request().url(), {
+        items: [version],
+        nextCursor: null,
+      }),
+    }),
   );
   await page.route(`${root}/publish`, (route) =>
     route.fulfill({ json: { version, reused: true } }),

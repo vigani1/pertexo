@@ -1,3 +1,4 @@
+import { workflowVersionsBody } from '../../workflows/read-projections';
 import { expect, test, type Locator } from '../../support/fixtures';
 import { mappingGraph } from '../graph';
 import {
@@ -63,8 +64,13 @@ for (const screen of [
       await page.route(root, (route) =>
         route.fulfill({ json: workflowSummary('Order intake', versionId) }),
       );
-      await page.route(`${root}/versions?**`, (route) =>
-        route.fulfill({ json: { items: [version], nextCursor: null } }),
+      await page.route(`${root}/versions?**`, async (route) =>
+        route.fulfill({
+          json: await workflowVersionsBody(route.request().url(), {
+            items: [version],
+            nextCursor: null,
+          }),
+        }),
       );
       await page.route(`${root}/validate`, (route) =>
         route.fulfill({

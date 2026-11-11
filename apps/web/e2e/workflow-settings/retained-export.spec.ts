@@ -1,3 +1,4 @@
+import { workflowVersionsBody } from '../workflows/read-projections';
 import { readFile } from 'node:fs/promises';
 import { expect, test } from '../support/fixtures';
 import {
@@ -40,9 +41,9 @@ for (const width of [1280, 375]) {
           },
         }),
       );
-      await page.route(`${base}/versions?*`, (route) =>
+      await page.route(`${base}/versions?*`, async (route) =>
         route.fulfill({
-          json: {
+          json: await workflowVersionsBody(route.request().url(), {
             items: [
               {
                 id: versionId,
@@ -54,7 +55,7 @@ for (const width of [1280, 375]) {
               },
             ],
             nextCursor: null,
-          },
+          }),
         }),
       );
       const manifest = {

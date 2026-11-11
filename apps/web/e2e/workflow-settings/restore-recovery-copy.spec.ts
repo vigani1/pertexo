@@ -1,3 +1,4 @@
+import { workflowVersionsBody } from '../workflows/read-projections';
 import { expect, test } from '../support/fixtures';
 import {
   addCsrfCookie,
@@ -27,9 +28,9 @@ for (const width of [1280, 375]) {
       const recoveryCopyId = '88888888-8888-4888-8888-888888888888';
       const graph = { nodes: [], edges: [], settings: {} };
       const base = `**/v1/workspaces/${workspaceId}/workflows/${workflowId}`;
-      await page.route(`${base}/versions?*`, (route) =>
+      await page.route(`${base}/versions?*`, async (route) =>
         route.fulfill({
-          json: {
+          json: await workflowVersionsBody(route.request().url(), {
             items: [
               {
                 id: versionId,
@@ -41,7 +42,7 @@ for (const width of [1280, 375]) {
               },
             ],
             nextCursor: null,
-          },
+          }),
         }),
       );
       const keys: string[] = [];

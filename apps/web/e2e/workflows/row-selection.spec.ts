@@ -1,3 +1,5 @@
+import { workflowSummaryBody } from './list-support';
+import { workflowGraphReadBody } from './read-projections';
 import { workflowGraphSchema } from '@pertexo/contracts';
 import { expect, test, type Locator } from '../support/fixtures';
 import { mappingGraph } from '../workflow-editor/graph';
@@ -111,8 +113,12 @@ for (const screen of [
               ?.includes('organization') === true;
           return route.fulfill({
             json: {
-              items: [alpha, beta].map((workflow) =>
-                organized
+              items: [alpha, beta].map((item) => {
+                const workflow = workflowSummaryBody(
+                  route.request().url(),
+                  item,
+                );
+                return organized
                   ? {
                       workflow,
                       organization: {
@@ -131,18 +137,18 @@ for (const screen of [
                         isFavorite: false,
                       },
                     }
-                  : workflow,
-              ),
+                  : workflow;
+              }),
               nextCursor: null,
             },
           });
         },
       );
       await page.route(
-        `**/v1/workspaces/${workspaceId}/workflows/${beta.id}/draft`,
-        (route) =>
+        `**/v1/workspaces/${workspaceId}/workflows/${beta.id}/draft{,?include=graphDigest}`,
+        async (route) =>
           route.fulfill({
-            json: {
+            json: await workflowGraphReadBody(route.request().url(), {
               workflowId: beta.id,
               revision: 1,
               graph: remote.graph,
@@ -152,7 +158,7 @@ for (const screen of [
                 fingerprint: `wf-compat:sha256:${'a'.repeat(64)}`,
                 issues: [],
               },
-            },
+            }),
           }),
       );
       await page.goto(`/w/${workspaceId}/workflows`);

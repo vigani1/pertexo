@@ -1,3 +1,5 @@
+import { workflowListBody } from '../workflows/list-support';
+import { workflowVersionsBody } from '../workflows/read-projections';
 import {
   createUserFixture,
   createWorkspaceFixture,
@@ -88,7 +90,9 @@ export async function installRoutes(page: Page, workflowName?: string) {
     updatedAt: timestamp,
   };
   await page.route(`**/v1/workspaces/${workspaceId}/workflows?**`, (route) =>
-    route.fulfill({ json: { items: [workflow], nextCursor: null } }),
+    route.fulfill({
+      json: workflowListBody(route.request().url(), [workflow]),
+    }),
   );
   await page.route(
     `**/v1/workspaces/${workspaceId}/workflows/${workflowId}`,
@@ -192,9 +196,9 @@ export async function installRoutes(page: Page, workflowName?: string) {
   );
   await page.route(
     `**/v1/workspaces/${workspaceId}/workflows/${workflowId}/versions?**`,
-    (route) =>
+    async (route) =>
       route.fulfill({
-        json: {
+        json: await workflowVersionsBody(route.request().url(), {
           items: [
             {
               id: workflowVersionId,
@@ -207,7 +211,7 @@ export async function installRoutes(page: Page, workflowName?: string) {
             },
           ],
           nextCursor: null,
-        },
+        }),
       }),
   );
   await page.route(
