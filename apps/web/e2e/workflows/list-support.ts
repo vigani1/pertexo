@@ -1,31 +1,46 @@
+import { workflowSummarySchema } from '@pertexo/contracts';
 import type { Page } from '@playwright/test';
 
-/**
- * A workflow-list response for these summaries. The workflow list page asks
- * for the organized page (`include=organization`); other reads, such as
- * recent workflows, take the summaries as they are.
- */
+/** Match the API's opt-in projections, including the organized page envelope. */
 export function workflowListBody(
   url: string,
   items: readonly unknown[],
   nextCursor: string | null = null,
 ) {
-  if (
-    new URL(url).searchParams.get('include')?.includes('organization') !== true
-  )
-    return { items, nextCursor };
+  const include = new URL(url).searchParams.get('include')?.split(',') ?? [];
+  const workflows = items.map((item) => workflowSummaryBody(url, item));
   return {
-    items: items.map((workflow) => ({
-      workflow,
-      organization: {
-        organizationRevision: 1,
-        folderId: null,
-        tags: [],
-        isFavorite: false,
-      },
-    })),
+    items: include.includes('organization')
+      ? workflows.map((workflow) => ({
+          workflow,
+          organization: {
+            organizationRevision: 1,
+            folderId: null,
+            tags: [],
+            isFavorite: false,
+          },
+        }))
+      : workflows,
     nextCursor,
   };
+}
+
+/** Custom organization scenarios use the same projection policy as ordinary pages. */
+export function workflowSummaryBody(url: string, item: unknown) {
+  const { listSummary, ...workflow } = workflowSummarySchema.parse(item);
+  return new URL(url).searchParams
+    .get('include')
+    ?.split(',')
+    .includes('listSummary') === true
+    ? {
+        ...workflow,
+        // Identity-only fixtures describe an empty workflow with no run history.
+        listSummary: listSummary ?? {
+          shape: { nodes: [], edges: [] },
+          recentRuns: [],
+        },
+      }
+    : workflow;
 }
 
 /** The workflow list's folder and tag reads: none filed or tagged. */

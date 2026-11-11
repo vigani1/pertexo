@@ -18,7 +18,7 @@ for (const width of [375, 1280]) {
     const remote = remoteDraft({ nodes: [], edges: [], settings: {} });
     await installEditorRoutes(page, remote);
     await page.route(
-      `**/v1/workspaces/${workspaceId}/workflows/${workflowId}/draft`,
+      `**/v1/workspaces/${workspaceId}/workflows/${workflowId}/draft{,?include=graphDigest}`,
       async (route) => {
         if (route.request().method() !== 'PUT') return route.fallback();
         await route.fulfill({

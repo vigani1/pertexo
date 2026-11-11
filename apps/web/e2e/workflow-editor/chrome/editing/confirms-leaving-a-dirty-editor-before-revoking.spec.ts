@@ -59,7 +59,7 @@ test('confirms leaving a dirty editor before revoking the session', async ({
     await route.fulfill({ status: 204 });
   });
   await page.route(
-    `**/v1/workspaces/${workspaceId}/workflows/${workflowId}/draft`,
+    `**/v1/workspaces/${workspaceId}/workflows/${workflowId}/draft{,?include=graphDigest}`,
     async (route) => {
       if (route.request().method() !== 'PUT') {
         await route.fallback();
@@ -103,7 +103,7 @@ test('confirms leaving a dirty editor before revoking the session', async ({
   await page.getByRole('button', { name: 'Leave anyway' }).click();
   await expect(page).toHaveURL(`/w/${workspaceId}/workflows`);
   expect(logoutRequests).toBe(0);
-  await page.getByRole('button', { name: 'More' }).click();
+  await page.getByRole('button', { name: 'More', exact: true }).click();
   await page
     .getByRole('dialog', { name: 'More' })
     .getByRole('button', { name: 'Sign out' })

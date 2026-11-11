@@ -1,3 +1,4 @@
+import { workflowVersionsBody } from '../../workflows/read-projections';
 import { expect, test } from '../../support/fixtures';
 import { openWorkflowAction } from '../actions';
 import { mappingGraph } from '../graph';
@@ -25,9 +26,9 @@ for (const activation of ['pointer', 'keyboard'] as const) {
     await page.route(root, (route) =>
       route.fulfill({ json: workflowSummary('Run input', versionId) }),
     );
-    await page.route(`${root}/versions?**`, (route) =>
+    await page.route(`${root}/versions?**`, async (route) =>
       route.fulfill({
-        json: {
+        json: await workflowVersionsBody(route.request().url(), {
           items: [
             {
               id: versionId,
@@ -39,7 +40,7 @@ for (const activation of ['pointer', 'keyboard'] as const) {
             },
           ],
           nextCursor: null,
-        },
+        }),
       }),
     );
     await page.goto(editorUrl);

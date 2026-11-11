@@ -1,3 +1,5 @@
+import { workflowListBody } from '../../workflows/list-support';
+import { workflowVersionsBody } from '../../workflows/read-projections';
 import { expect, test } from '../../support/fixtures';
 import { editorNode } from '../graph';
 import {
@@ -69,40 +71,43 @@ test('browses Call versions on demand while retaining an old exact pin', async (
   await installEditorRoutes(page, remote, { definitions: [callDefinition] });
   await page.route(`**/v1/workspaces/${workspaceId}/workflows?**`, (route) =>
     route.fulfill({
-      json: {
-        items: [
-          {
-            ...workflowSummary('Customer child', secondId).workflow,
-            id: childId,
-          },
-        ],
-        nextCursor: null,
-      },
+      json: workflowListBody(route.request().url(), [
+        {
+          ...workflowSummary('Customer child', secondId).workflow,
+          id: childId,
+        },
+      ]),
     }),
   );
   const reads: string[] = [];
   let failOlderPage = true;
   await page.route(
     `**/v1/workspaces/${workspaceId}/workflows/${childId}/versions?**`,
-    (route) => {
+    async (route) => {
       const url = new URL(route.request().url());
       reads.push(url.search);
       const exact = url.searchParams.get('versionId');
       if (exact !== null)
         return route.fulfill({
-          json: {
+          json: await workflowVersionsBody(route.request().url(), {
             items: [exact === firstId ? firstVersion : secondVersion],
             nextCursor: null,
-          },
+          }),
         });
       if (url.searchParams.has('after')) {
         if (failOlderPage) return route.abort();
         return route.fulfill({
-          json: { items: [firstVersion], nextCursor: null },
+          json: await workflowVersionsBody(route.request().url(), {
+            items: [firstVersion],
+            nextCursor: null,
+          }),
         });
       }
       return route.fulfill({
-        json: { items: [secondVersion], nextCursor: 'older-page' },
+        json: await workflowVersionsBody(route.request().url(), {
+          items: [secondVersion],
+          nextCursor: 'older-page',
+        }),
       });
     },
   );

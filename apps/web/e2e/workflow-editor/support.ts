@@ -1,3 +1,4 @@
+import { workflowGraphReadBody } from '../workflows/read-projections';
 import type { WorkflowGraphContract } from '@pertexo/contracts';
 import type { WorkflowNote } from '@pertexo/workflow-model';
 import { expect, type BrowserContext, type Page } from '@playwright/test';
@@ -249,7 +250,7 @@ export async function installEditorRoutes(
       }),
   );
   await page.route(
-    `**/v1/workspaces/${workspaceId}/workflows/${workflowId}/draft`,
+    `**/v1/workspaces/${workspaceId}/workflows/${workflowId}/draft{,?include=graphDigest}`,
     (route) => serveDraft(route, remote),
   );
 }
@@ -265,7 +266,9 @@ async function serveDraft(
         'content-type': 'application/json',
         etag: currentEtag(remote),
       },
-      body: JSON.stringify(draftBody(remote)),
+      body: JSON.stringify(
+        await workflowGraphReadBody(request.url(), draftBody(remote)),
+      ),
     });
     return;
   }
@@ -334,7 +337,6 @@ function draftBody(remote: RemoteDraft) {
     workflowId,
     revision: remote.revision,
     graph: remote.graph,
-    graphDigest: 'f'.repeat(64),
     compatibility: compatibility(),
     updatedAt: '2026-09-14T10:00:00.000Z',
   };

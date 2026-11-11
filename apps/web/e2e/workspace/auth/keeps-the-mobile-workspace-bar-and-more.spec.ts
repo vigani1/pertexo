@@ -1,3 +1,4 @@
+import { workflowGraphReadBody } from '../../workflows/read-projections';
 import { expect, test } from '../../support/fixtures';
 
 import {
@@ -114,17 +115,19 @@ test('creates a workflow from the empty index with the shared transport', async 
             'content-type': 'application/json',
             etag: `"draft.${'a'.repeat(43)}"`,
           },
-          body: JSON.stringify({
-            workflowId: createdWorkflowId,
-            revision: 1,
-            graph: { nodes: [], edges: [], settings: {} },
-            compatibility: {
-              compatible: true,
-              fingerprint: `wf-compat:sha256:${'a'.repeat(64)}`,
-              issues: [],
-            },
-            updatedAt: workflow.updatedAt,
-          }),
+          body: JSON.stringify(
+            await workflowGraphReadBody(route.request().url(), {
+              workflowId: createdWorkflowId,
+              revision: 1,
+              graph: { nodes: [], edges: [], settings: {} },
+              compatibility: {
+                compatible: true,
+                fingerprint: `wf-compat:sha256:${'a'.repeat(64)}`,
+                issues: [],
+              },
+              updatedAt: workflow.updatedAt,
+            }),
+          ),
         });
         return;
       }

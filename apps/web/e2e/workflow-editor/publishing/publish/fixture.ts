@@ -1,3 +1,4 @@
+import { workflowVersionsBody } from '../../../workflows/read-projections';
 import { expect, type Page } from '../../../support/fixtures';
 import {
   currentEtag,
@@ -112,9 +113,12 @@ export async function routeVersions(
 ) {
   await page.route(
     `**/v1/workspaces/${workspaceId}/workflows/${workflowId}/versions?**`,
-    (route) =>
+    async (route) =>
       route.fulfill({
-        json: { items: [version(graph(), checksum)], nextCursor: null },
+        json: await workflowVersionsBody(route.request().url(), {
+          items: [version(graph(), checksum)],
+          nextCursor: null,
+        }),
       }),
   );
 }

@@ -1,3 +1,4 @@
+import { workflowVersionsBody } from '../../workflows/read-projections';
 import { temporaryTestPath } from '../../../test/support/temporary-test-path';
 import {
   expect,
@@ -101,7 +102,7 @@ async function exerciseSaveStates(
   let mode: 'held-failure' | 'uncertain' | 'pass' = 'held-failure';
   let finishFailure!: () => Promise<void>;
   await page.route(
-    `**/v1/workspaces/${workspaceId}/workflows/${workflowId}/draft`,
+    `**/v1/workspaces/${workspaceId}/workflows/${workflowId}/draft{,?include=graphDigest}`,
     async (route) => {
       if (mode === 'uncertain') return route.abort('failed');
       if (mode !== 'held-failure' || route.request().method() === 'GET')
@@ -202,9 +203,9 @@ for (const width of [390, 1280]) {
         },
       }),
     );
-    await page.route(`${root}/versions?**`, (route) =>
+    await page.route(`${root}/versions?**`, async (route) =>
       route.fulfill({
-        json: {
+        json: await workflowVersionsBody(route.request().url(), {
           items: [
             {
               id: versionId,
@@ -216,7 +217,7 @@ for (const width of [390, 1280]) {
             },
           ],
           nextCursor: null,
-        },
+        }),
       }),
     );
     await page.route(`${root}/validate`, (route) =>

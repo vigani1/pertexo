@@ -1,3 +1,4 @@
+import { workflowVersionsBody } from '../workflows/read-projections';
 import {
   firstRunId,
   installRoutes,
@@ -34,9 +35,9 @@ for (const theme of ['light', 'dark'] as const)
       await installRoutes(page);
       await page.route(
         `**/v1/workspaces/${workspaceId}/workflows/${workflowId}/versions?**`,
-        (route) =>
+        async (route) =>
           route.fulfill({
-            json: {
+            json: await workflowVersionsBody(route.request().url(), {
               items: [
                 {
                   id: workflowVersionId,
@@ -66,7 +67,7 @@ for (const theme of ['light', 'dark'] as const)
                 },
               ],
               nextCursor: null,
-            },
+            }),
           }),
       );
       await page.route(

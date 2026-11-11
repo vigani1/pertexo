@@ -1,3 +1,4 @@
+import { workflowGraphReadBody } from '../workflows/read-projections';
 import {
   createUserFixture,
   createWorkspaceFixture,
@@ -155,38 +156,40 @@ export async function installRoutes(page: Page) {
     (route) => route.fulfill({ json: { workflow } }),
   );
   await page.route(
-    `**/v1/workspaces/${workspaceId}/workflows/${workflowId}/draft`,
-    (route) =>
+    `**/v1/workspaces/${workspaceId}/workflows/${workflowId}/draft{,?include=graphDigest}`,
+    async (route) =>
       route.fulfill({
         headers: {
           'content-type': 'application/json',
           etag: `"draft.${'a'.repeat(43)}"`,
         },
-        body: JSON.stringify({
-          workflowId,
-          revision: 1,
-          graph: {
-            nodes: [
-              {
-                id: 'slack-node',
-                definition: { key: 'slack.send', version: 1 },
-                position: { x: 80, y: 80 },
-                configVersion: 1,
-                config: {},
-                inputMappings: {},
-                connectionRefs: {},
-              },
-            ],
-            edges: [],
-            settings: {},
-          },
-          compatibility: {
-            compatible: true,
-            fingerprint: `wf-compat:sha256:${'a'.repeat(64)}`,
-            issues: [],
-          },
-          updatedAt: timestamp,
-        }),
+        body: JSON.stringify(
+          await workflowGraphReadBody(route.request().url(), {
+            workflowId,
+            revision: 1,
+            graph: {
+              nodes: [
+                {
+                  id: 'slack-node',
+                  definition: { key: 'slack.send', version: 1 },
+                  position: { x: 80, y: 80 },
+                  configVersion: 1,
+                  config: {},
+                  inputMappings: {},
+                  connectionRefs: {},
+                },
+              ],
+              edges: [],
+              settings: {},
+            },
+            compatibility: {
+              compatible: true,
+              fingerprint: `wf-compat:sha256:${'a'.repeat(64)}`,
+              issues: [],
+            },
+            updatedAt: timestamp,
+          }),
+        ),
       }),
   );
 }

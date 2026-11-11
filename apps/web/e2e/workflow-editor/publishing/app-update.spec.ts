@@ -77,7 +77,7 @@ test('keeps an unsaved editor when a step setup was removed by a deployment', as
   });
   // Saves fail, so the edit below stays unsaved for the whole test.
   await page.route(
-    `**/v1/workspaces/${workspaceId}/workflows/${workflowId}/draft`,
+    `**/v1/workspaces/${workspaceId}/workflows/${workflowId}/draft{,?include=graphDigest}`,
     (route) =>
       route.request().method() === 'PUT'
         ? route.fulfill({

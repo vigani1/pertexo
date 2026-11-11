@@ -1,3 +1,4 @@
+import { workflowVersionsBody } from '../../workflows/read-projections';
 import { expect, test } from '../../support/fixtures';
 import { mappingGraph } from '../graph';
 import {
@@ -30,9 +31,9 @@ for (const width of [1280, 768, 390]) {
     );
     await page.route(
       `**/v1/workspaces/${workspaceId}/workflows/${workflowId}/versions?**`,
-      (route) =>
+      async (route) =>
         route.fulfill({
-          json: {
+          json: await workflowVersionsBody(route.request().url(), {
             items: [
               {
                 id: versionId,
@@ -44,7 +45,7 @@ for (const width of [1280, 768, 390]) {
               },
             ],
             nextCursor: null,
-          },
+          }),
         }),
     );
     const attempts: { body: unknown; key: string | undefined }[] = [];
