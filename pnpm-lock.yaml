@@ -724,8 +724,8 @@ importers:
         specifier: 0.72.0
         version: 0.72.0(@opentelemetry/api@1.10.0)(supports-color@7.2.0)
       '@opentelemetry/instrumentation-pg':
-        specifier: 0.77.0
-        version: 0.77.0(@opentelemetry/api@1.10.0)(supports-color@7.2.0)
+        specifier: 0.78.0
+        version: 0.78.0(@opentelemetry/api@1.10.0)(supports-color@7.2.0)
       '@opentelemetry/instrumentation-pino':
         specifier: 0.71.0
         version: 0.71.0(@opentelemetry/api@1.10.0)(supports-color@7.2.0)
@@ -1990,8 +1990,8 @@ packages:
     peerDependencies:
       '@opentelemetry/api': 1.10.0
 
-  '@opentelemetry/instrumentation-pg@0.77.0':
-    resolution: {integrity: sha512-eeM+nAWZqgwrSmGy/yt4wL8CSSXuHZXKyOOKiP0m6x7oA4AQ1Kl5bbHqdr1OkXu5LIXCnIWa6Cmw9tLdzCMLJA==}
+  '@opentelemetry/instrumentation-pg@0.78.0':
+    resolution: {integrity: sha512-7EQRvcJ4uiNVwBMJ01y9y3QZJW+DCTKdjX1qvsEG+JCkNLG3DpTuab6fAnbOsUIKybdHFgLOytL/wB6VauBGxA==}
     engines: {node: '>=22.15.0'}
     peerDependencies:
       '@opentelemetry/api': 1.10.0
@@ -6184,11 +6184,11 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@opentelemetry/instrumentation-pg@0.77.0(@opentelemetry/api@1.10.0)(supports-color@7.2.0)':
+  '@opentelemetry/instrumentation-pg@0.78.0(@opentelemetry/api@1.10.0)(supports-color@7.2.0)':
     dependencies:
       '@opentelemetry/api': 1.10.0
       '@opentelemetry/core': 3.1.0(@opentelemetry/api@1.10.0)
-      '@opentelemetry/instrumentation': 0.300.0(@opentelemetry/api@1.10.0)(supports-color@7.2.0)
+      '@opentelemetry/instrumentation': 0.301.0(@opentelemetry/api@1.10.0)(supports-color@7.2.0)
       '@opentelemetry/semantic-conventions': 1.43.0
       '@opentelemetry/sql-common': 0.43.1(@opentelemetry/api@1.10.0)
       '@types/pg': 8.15.6
