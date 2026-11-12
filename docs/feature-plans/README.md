@@ -12,6 +12,10 @@ not instructions to repeat their rollout. Proposed work remains decision-gated.
 | --------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
 | [F21 — Provider expansion and durable polling/subscriptions](21-integrations-and-polling.md)        | Status: proposed plan; not implementation-authorized by this document.                                 |
 | [F21 slice 0 — Generic OAuth2 connections for HTTP Request](21a-oauth2-connections.md)              | Status: **Built; awaiting the owner's sandbox proofs.** Parent: [F21](21-integrations-and-polling.md). |
+| [F21b — What comes after OAuth2 and SMTP](21b-next-integrations.md) | Status: proposed order; awaiting the owner's approval. Parent: [F21](21-integrations-and-polling.md). |
+| [Cost of a pure step](step-transaction-cost.md) | Status: proposed; measured in batch J7; awaiting the owner's approval. |
+| [Run admission under a backlog](run-admission-under-backlog.md) | Status: proposed; measured in batch J7; awaiting the owner's approval. |
+| [Step setup drawn from the catalog schema](step-setup-from-schema.md) | Status: proposed; inventoried in batch J7; awaiting the owner's approval. |
 | [F22 — AI authoring assistance, model nodes and controlled tools](22-ai-assistance-and-ai-nodes.md) | Status: proposed plan; not implementation-authorized by this document.                                 |
 | [F23 — Billing and commercial entitlements](23-billing-and-commercialization.md)                    | Status: proposed plan; not implementation-authorized by this document.                                 |
 
