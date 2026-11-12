@@ -1,19 +1,23 @@
 import { metrics, SpanStatusCode } from '@opentelemetry/api';
 import { NestInstrumentation } from '@opentelemetry/instrumentation-nestjs-core';
 import { PgInstrumentation } from '@opentelemetry/instrumentation-pg';
-import { node } from '@opentelemetry/sdk-node';
+import {
+  InMemorySpanExporter,
+  TracerProvider,
+  SimpleSpanProcessor,
+} from '@opentelemetry/sdk-trace';
 import { describe, expect, it } from 'vitest';
 
 import { createNodeInstrumentations } from '../../src/telemetry/telemetry.runtime.js';
 
 type FinishedSpan = ReturnType<
-  node.InMemorySpanExporter['getFinishedSpans']
+  InMemorySpanExporter['getFinishedSpans']
 >[number];
 
 function traceHarness() {
-  const exporter = new node.InMemorySpanExporter();
-  const provider = new node.NodeTracerProvider({
-    spanProcessors: [new node.SimpleSpanProcessor(exporter)],
+  const exporter = new InMemorySpanExporter();
+  const provider = new TracerProvider({
+    spanProcessors: [new SimpleSpanProcessor({ exporter })],
   });
   return { exporter, provider };
 }
