@@ -19,7 +19,7 @@ const destination = {
   updatedAt: '2026-09-14T10:00:00.000Z',
 };
 for (const width of [375, 1280])
-  test(`recovers an accepted alert clear independently of Off at ${String(width)}px`, async ({
+  test(`reviews an accepted unknown clear before confirming a new destination at ${String(width)}px`, async ({
     page,
     context,
   }) => {
@@ -70,19 +70,12 @@ for (const width of [375, 1280])
     await page
       .getByRole('option', { name: 'Email to alerts@example.test' })
       .click();
-    await alerts
-      .getByRole('button', { name: 'Retry same alert change' })
-      .click();
-    await expect(
-      alerts.getByRole('button', { name: 'Retry same alert change' }),
-    ).toHaveCount(0);
     await expect(
       alerts.getByRole('combobox', { name: 'Send failure alerts to' }),
     ).toContainText('Email to alerts@example.test');
     await alerts.getByRole('button', { name: 'Save destination' }).click();
     await expect.poll(() => sets.length).toBe(1);
-    expect(clears).toHaveLength(2);
-    expect(clears[1]).toBe(clears[0]);
+    expect(clears).toHaveLength(1);
     expect(sets[0]?.body).toEqual({ destinationId });
     expect(sets[0]?.key).not.toBe(clears[0]);
   });

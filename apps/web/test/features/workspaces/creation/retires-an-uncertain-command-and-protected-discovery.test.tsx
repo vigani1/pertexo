@@ -1,5 +1,5 @@
 import { homeRoute } from '@/routes/workspace/home/route';
-import { screen, within } from '@testing-library/react';
+import { act, screen, within } from '@testing-library/react';
 
 import userEvent from '@testing-library/user-event';
 
@@ -23,7 +23,7 @@ import {
 } from './fixture';
 
 describe('workspace creation', () => {
-  it('retires an uncertain command and protected discovery when the session identity changes', async () => {
+  it('reloads app identity after a session change without repeating an unconfirmed creation', async () => {
     const nextUser = {
       ...user,
       id: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
@@ -56,11 +56,19 @@ describe('workspace creation', () => {
     await userEvent
       .setup()
       .click(within(dialog).getByRole('button', { name: 'Create workspace' }));
-    await userEvent.setup().click(
-      await within(dialog).findByRole('button', {
-        name: 'Check again',
-      }),
-    );
+    await within(dialog).findByText(/couldn’t confirm/u);
+    act(() => {
+      window.dispatchEvent(
+        new StorageEvent('storage', {
+          key: 'pertexo:auth-session-change',
+          newValue: JSON.stringify({
+            event: 'changed',
+            generation: crypto.randomUUID(),
+            sender: 'other-tab',
+          }),
+        }),
+      );
+    });
 
     expect(await screen.findByText('next-owner@example.test')).toBeVisible();
     expect(screen.queryByText('Existing Operations')).not.toBeInTheDocument();

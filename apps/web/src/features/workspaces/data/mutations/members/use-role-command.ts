@@ -1,6 +1,5 @@
 import type { WorkspaceMember } from '@pertexo/contracts';
 import type { ApiClient } from '@/lib/api/client';
-import { newCommandKey } from '@/lib/api/commands/command-retry';
 import type { ManagedRole } from '../../../model/workspace-roles';
 import { changeWorkspaceMemberRole } from '../../workspaces.api';
 import {
@@ -33,8 +32,6 @@ export function useMemberRoleCommand(
         attempt,
       ),
     copy: {
-      uncertain: (member) =>
-        `We couldn’t confirm whether ${member.displayName}’s role changed. Try again — Pertexo recognizes the repeat, so it can’t change twice.`,
       conflict: (member) =>
         `${member.displayName}’s role changed while you were deciding. Choose again if you still want to change it.`,
       action: 'changing this role',
@@ -53,7 +50,6 @@ export function useMemberRoleCommand(
         targetUserId: member.userId,
         role,
         expectedRoleRevision: member.roleRevision,
-        ...newCommandKey(),
       }),
   };
 }

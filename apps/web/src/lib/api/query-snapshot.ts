@@ -40,17 +40,23 @@ export async function refreshQuerySnapshot<Value>(
   cache: QueryClient,
   queryKey: QueryKey,
 ): Promise<SnapshotRead<Value>> {
-  const value = await reconcileQuerySnapshot<Value>(cache, queryKey, {
-    kind: 'read',
-  });
-  return value === undefined
-    ? {
+  await reconcileQuerySnapshot<Value>(cache, queryKey, { kind: 'read' });
+  return querySnapshot<Value>(cache, queryKey);
+}
+
+/** The outcome of an already completed refresh, without starting a second read. */
+export function querySnapshot<Value>(
+  cache: QueryClient,
+  queryKey: QueryKey,
+): SnapshotRead<Value> {
+  const current = cache.getQueryState<Value>(queryKey);
+  return current?.status === 'success' && current.data !== undefined
+    ? { kind: 'refreshed', value: current.data }
+    : {
         kind: 'read-failed',
         error:
-          cache.getQueryState(queryKey)?.error ??
-          new Error('Current settings could not be read.'),
-      }
-    : { kind: 'refreshed', value };
+          current?.error ?? new Error('Current settings could not be read.'),
+      };
 }
 
 export async function recoverRevisionConflict<Value = unknown>(

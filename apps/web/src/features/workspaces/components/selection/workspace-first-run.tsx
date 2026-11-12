@@ -1,5 +1,4 @@
 import type { AccessibleWorkspace } from '@pertexo/contracts';
-import { useState } from 'react';
 import { CoreOrb } from '@/components/patterns/core/orb';
 import type { ApiClient } from '@/lib/api/client';
 import { useWorkspaceCreation } from '../../data/mutations/use-workspace-creation';
@@ -17,7 +16,6 @@ export function WorkspaceFirstRun({
   onCreated: (workspace: AccessibleWorkspace) => void;
   onSessionInvalidated: () => void;
 }>) {
-  const [formKey, setFormKey] = useState(0);
   const command = useWorkspaceCreation({
     apiClient,
     userId,
@@ -42,14 +40,7 @@ export function WorkspaceFirstRun({
         You’ll be its owner.
       </p>
       <div className="mt-8 rounded-xl border border-border bg-card/60 p-5 sm:p-6">
-        <WorkspaceCreationForm
-          key={formKey}
-          idPrefix="workspace-first"
-          command={command}
-          onStartOver={() => {
-            setFormKey((key) => key + 1);
-          }}
-        />
+        <WorkspaceCreationForm idPrefix="workspace-first" command={command} />
       </div>
       <p className="mt-6 text-sm text-subtle-foreground">
         Joining a team? Open the invite link from your email.

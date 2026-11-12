@@ -197,11 +197,7 @@ describe('workflow triggers tab', () => {
     await event.click(
       within(confirm).getByRole('button', { name: 'Turn off' }),
     );
-    expect(
-      await screen.findByText(
-        /couldn’t confirm whether turning this schedule off/u,
-      ),
-    ).toBeVisible();
+    expect(await screen.findByText(/couldn’t confirm/u)).toBeVisible();
 
     queryClient.setQueryData(schedulesKey, { items: [currentSchedule] });
     await waitFor(() => {

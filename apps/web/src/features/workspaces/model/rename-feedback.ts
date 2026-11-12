@@ -4,7 +4,7 @@ import { describeCommandError } from '@/lib/api/error-copy';
 import { isUnauthenticated } from '@/features/auth/session/identity.public';
 
 export type RenameError = Readonly<{
-  kind: 'conflict' | 'other' | 'verification';
+  kind: 'conflict' | 'other';
   message: string;
 }>;
 type Failure =
@@ -16,16 +16,6 @@ type Failure =
 export const CONFLICT: RenameError = {
   kind: 'conflict',
   message: 'This workspace changed while you were editing.',
-};
-export const UNCERTAIN: RenameError = {
-  kind: 'other',
-  message:
-    'We couldn’t confirm whether the rename went through. Try again — it can’t apply twice.',
-};
-export const UNVERIFIED: RenameError = {
-  kind: 'verification',
-  message:
-    'We couldn’t check your session. Try again — the same rename is kept.',
 };
 export const NOT_CAUGHT_UP: RenameError = {
   kind: 'other',

@@ -19,21 +19,16 @@ import type { useAudienceMove } from '../../../hooks/use-audience-move';
 import { folderMoveDestinations } from '../../../model/organization/folder-navigation';
 import { AudienceMoveReview } from './audience-review';
 import { WorkflowFolderPicker } from './picker';
-
 type Audience = ReturnType<typeof useAudienceMove>;
-const UNCONFIRMED =
-  'We couldn’t confirm this change. Try again; it won’t be applied twice.';
-
 function CommandProblem({
   command,
-}: Readonly<{ command: WorkflowOrganizationCommand }>) {
-  if (command.retryAvailable)
-    return <Notice tone="warning">{UNCONFIRMED}</Notice>;
+}: Readonly<{
+  command: WorkflowOrganizationCommand;
+}>) {
   return command.error === undefined ? null : (
     <Notice tone="destructive">{command.error}</Notice>
   );
 }
-
 /** Create a folder at the current level, or rename one. */
 export function FolderNameDialog({
   workspaceId,
@@ -44,8 +39,14 @@ export function FolderNameDialog({
 }: Readonly<{
   workspaceId: string;
   target:
-    | Readonly<{ kind: 'create'; parent: WorkflowFolder | null }>
-    | Readonly<{ kind: 'rename'; folder: WorkflowFolder }>;
+    | Readonly<{
+        kind: 'create';
+        parent: WorkflowFolder | null;
+      }>
+    | Readonly<{
+        kind: 'rename';
+        folder: WorkflowFolder;
+      }>;
   command: WorkflowOrganizationCommand;
   onClose: () => void;
   revisionReview?: ReactNode;
@@ -64,11 +65,11 @@ export function FolderNameDialog({
     }
     return 'Use a shorter name, up to 128 characters, on one line.';
   };
-  const locked = command.pending || command.retryAvailable;
+  const locked = command.pending;
   const submit = () => {
     if (
       locked ||
-      command.revisionConflict === true ||
+      command.revisionConflict ||
       !fields.submit({ name: nameError(name) })
     )
       return;
@@ -77,14 +78,14 @@ export function FolderNameDialog({
         ? {
             workspaceId,
             kind: 'create-folder',
-            idempotencyKey: crypto.randomUUID(),
+
             body: { name, parentId: target.parent?.id ?? null },
           }
         : {
             workspaceId,
             kind: 'rename-folder',
             folderId: target.folder.id,
-            idempotencyKey: crypto.randomUUID(),
+
             body: { name, expectedFolderRevision: target.folder.revision },
           },
     );
@@ -114,17 +115,9 @@ export function FolderNameDialog({
             pending={command.pending}
             disabled={command.revisionConflict}
             pendingLabel={target.kind === 'create' ? 'Creating…' : 'Saving…'}
-            onClick={
-              command.retryAvailable
-                ? (event) => {
-                    event.preventDefault();
-                    void command.retry();
-                  }
-                : undefined
-            }
+            onClick={undefined}
           >
             {folderSubmitLabel({
-              retryAvailable: command.retryAvailable,
               kind: target.kind,
             })}
           </ProgressButton>
@@ -164,7 +157,6 @@ export function FolderNameDialog({
     </ActionDialog>
   );
 }
-
 /** Move a folder and everything inside it. A move that loosens access is reviewed first. */
 export function FolderMoveDialog({
   workspaceId,
@@ -212,24 +204,19 @@ export function FolderMoveDialog({
               pending={busy}
               pendingLabel="Moving…"
               disabled={
-                command.revisionConflict === true ||
-                (!command.retryAvailable && parentId === folder.parentId)
+                command.revisionConflict || parentId === folder.parentId
               }
               onClick={() => {
-                if (command.retryAvailable) {
-                  void command.retry();
-                  return;
-                }
                 void audience.begin({
                   workspaceId,
                   kind: 'move-folder',
                   folderId: folder.id,
-                  idempotencyKey: crypto.randomUUID(),
+
                   body: { parentId, expectedFolderRevision: folder.revision },
                 });
               }}
             >
-              {command.retryAvailable ? 'Try again' : 'Move folder'}
+              {'Move folder'}
             </ProgressButton>
           </>
         )
@@ -251,7 +238,7 @@ export function FolderMoveDialog({
           folders={folderMoveDestinations(folders, folder)}
           value={parentId}
           onChange={setParentId}
-          disabled={busy || command.retryAvailable}
+          disabled={busy}
           label="Move to"
           rootLabel="Top level"
         />
@@ -264,7 +251,6 @@ export function FolderMoveDialog({
     </ActionDialog>
   );
 }
-
 export function FolderDeleteDialog({
   workspaceId,
   folder,
@@ -281,9 +267,6 @@ export function FolderDeleteDialog({
   const changeConfirmationOpen = (open: boolean) => {
     if (!open) onClose();
   };
-  const confirmationRetry = command.retryAvailable
-    ? { onRetry: () => command.retry(), onDismiss: onClose }
-    : undefined;
   return (
     <ConfirmDialog
       state={{
@@ -293,39 +276,25 @@ export function FolderDeleteDialog({
       }}
       title={`Delete ${folder.name}?`}
       description="Only an empty folder can be deleted. Move its workflows, including archived ones, and its folders out first."
-      onSubmit={
-        confirmationRetry?.onRetry ??
-        (() =>
-          command.start({
-            workspaceId,
-            kind: 'delete-folder',
-            folderId: folder.id,
-            idempotencyKey: crypto.randomUUID(),
-            body: { expectedFolderRevision: folder.revision },
-          }))
+      onSubmit={() =>
+        command.start({
+          workspaceId,
+          kind: 'delete-folder',
+          folderId: folder.id,
+
+          body: { expectedFolderRevision: folder.revision },
+        })
       }
-      submitDisabled={command.pending || command.revisionConflict === true}
+      submitDisabled={command.pending || command.revisionConflict}
       actions={{
-        cancel:
-          confirmationRetry === undefined
-            ? {
-                kind: 'close',
-                label: 'Cancel',
-                variant: 'ghost',
-                disabled: command.pending,
-              }
-            : {
-                kind: 'action',
-                label: 'Close',
-                variant: 'ghost',
-                onClick: () => {
-                  confirmationRetry.onDismiss();
-                  changeConfirmationOpen(false);
-                },
-              },
+        cancel: {
+          kind: 'close',
+          label: 'Cancel',
+          variant: 'ghost',
+          disabled: command.pending,
+        },
         confirm: {
-          label:
-            confirmationRetry === undefined ? 'Delete folder' : 'Try again',
+          label: 'Delete folder',
           type: 'submit',
           variant: 'destructive',
           pending: command.pending,
@@ -334,26 +303,29 @@ export function FolderDeleteDialog({
       }}
     >
       {revisionReview}
-      <ConfirmationDetails
-        error={command.retryAvailable ? UNCONFIRMED : command.error}
-        tone={command.retryAvailable ? 'warning' : 'destructive'}
-      />
+      <ConfirmationDetails error={command.error} tone="destructive" />
     </ConfirmDialog>
   );
 }
-
 function folderPlacementDescription(
   target:
-    | Readonly<{ kind: 'create'; parent: WorkflowFolder | null }>
-    | Readonly<{ kind: 'rename'; folder: WorkflowFolder }>,
+    | Readonly<{
+        kind: 'create';
+        parent: WorkflowFolder | null;
+      }>
+    | Readonly<{
+        kind: 'rename';
+        folder: WorkflowFolder;
+      }>,
 ) {
   if (target.kind === 'rename') return 'Workflows inside keep their place.';
   if (target.parent === null) return 'It appears at the top of your workflows.';
   return `It appears inside ${target.parent.name}, with the same access.`;
 }
 function folderSubmitLabel(
-  input: Readonly<{ retryAvailable: boolean; kind: 'create' | 'rename' }>,
+  input: Readonly<{
+    kind: 'create' | 'rename';
+  }>,
 ) {
-  if (input.retryAvailable) return 'Try again';
   return input.kind === 'create' ? 'Create folder' : 'Save name';
 }

@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef } from 'react';
 import type { QueryClient } from '@tanstack/react-query';
 import type { ApiClient } from '@/lib/api/client';
 import { watchWorkspaceReadDenial } from '@/lib/api/read-denial';
-import type { InputCaseCommand } from '../data/input-cases/workflow-input-cases.api';
 import { inputCasesKey } from '../data/input-cases/workflow-input-cases.queries';
 
 function evictCases(cache: QueryClient, key: ReturnType<typeof inputCasesKey>) {
@@ -33,15 +32,11 @@ export function useCaseOwner({
 }>) {
   const ownerRef = useRef<symbol | undefined>(undefined);
   const controllerRef = useRef<AbortController | undefined>(undefined);
-  const retainedRef = useRef<
-    Readonly<{ command: InputCaseCommand; createdAt: number }> | undefined
-  >(undefined);
   const previousWrite = useRef(canWrite);
   const retire = useCallback(() => {
     ownerRef.current = undefined;
     controllerRef.current?.abort();
     controllerRef.current = undefined;
-    retainedRef.current = undefined;
     onRetire();
     evictCases(cache, inputCasesKey(userId, workspaceId, workflowId));
   }, [cache, userId, workspaceId, workflowId, onRetire]);
@@ -57,7 +52,6 @@ export function useCaseOwner({
     function disposeRequest() {
       controllerRef.current?.abort();
       controllerRef.current = undefined;
-      retainedRef.current = undefined;
     }
     if (previousWrite.current && !canWrite) retire();
     previousWrite.current = canWrite;
@@ -99,5 +93,5 @@ export function useCaseOwner({
     onClose,
     retire,
   ]);
-  return { ownerRef, controllerRef, retainedRef, retire };
+  return { ownerRef, controllerRef, retire };
 }

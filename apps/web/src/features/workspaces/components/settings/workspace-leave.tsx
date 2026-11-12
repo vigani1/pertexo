@@ -13,7 +13,6 @@ import type { ApiClient } from '@/lib/api/client';
 import { canLeaveWorkspace } from '../../model/workspace-roles';
 import { useLeaveWorkspaceCommand } from '../../data/mutations/lifecycle/use-leave-workspace-command';
 import { DangerAction } from './workspace-danger-zone';
-
 /**
  * Leave the workspace (ADR 047). The owner can't: they are told to make
  * another member the owner first. Everyone else confirms the consequences,
@@ -43,10 +42,6 @@ export function WorkspaceLeave({
     },
   });
   const isOwner = !canLeaveWorkspace(workspace.role);
-
-  const confirmationRetry = command.retryAvailable
-    ? { onRetry: () => command.retry(), onDismiss: command.dismiss }
-    : undefined;
   return (
     <DangerAction
       title="Leave workspace"
@@ -80,32 +75,20 @@ export function WorkspaceLeave({
         state={{
           open: confirming && !isOwner,
           onOpenChange: setConfirming,
-          locked: command.pending || command.retryAvailable,
+          locked: command.pending,
         }}
         title={`Leave ${workspace.name}?`}
-        onSubmit={confirmationRetry?.onRetry ?? (() => command.start())}
+        onSubmit={() => command.start()}
         submitDisabled={command.pending}
         actions={{
-          cancel:
-            confirmationRetry === undefined
-              ? {
-                  kind: 'close',
-                  label: 'Cancel',
-                  variant: 'ghost',
-                  disabled: command.pending || command.retryAvailable,
-                }
-              : {
-                  kind: 'action',
-                  label: 'Close',
-                  variant: 'ghost',
-                  onClick: () => {
-                    confirmationRetry.onDismiss();
-                    setConfirming(false);
-                  },
-                },
+          cancel: {
+            kind: 'close',
+            label: 'Cancel',
+            variant: 'ghost',
+            disabled: command.pending,
+          },
           confirm: {
-            label:
-              confirmationRetry === undefined ? 'Leave workspace' : 'Try again',
+            label: 'Leave workspace',
             type: 'submit',
             variant: 'destructive',
             pending: command.pending,
@@ -121,7 +104,7 @@ export function WorkspaceLeave({
             'To come back, an owner or admin has to invite you again.',
           ]}
           error={command.error}
-          tone={confirmationRetry === undefined ? 'destructive' : 'warning'}
+          tone="destructive"
         />
       </ConfirmDialog>
     </DangerAction>

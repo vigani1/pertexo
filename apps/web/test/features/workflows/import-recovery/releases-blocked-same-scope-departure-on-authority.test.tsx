@@ -2,7 +2,7 @@ import { workflowKeys } from '@/features/workflows/workflows-queries.public';
 
 import { ApiError } from '@/lib/api/error';
 
-import { screen } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 
 import { http, HttpResponse } from 'msw';
 
@@ -20,13 +20,24 @@ afterEach(() => {
 
 describe('Workflow list owns import recovery across dialog dismissal', () => {
   it('releases blocked same-scope departure on authority loss while retaining no recoverable payload', async () => {
+    let called = false;
+    let release!: () => void;
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
     mockServer.use(
-      http.post(`${api}/workflows/import`, () => HttpResponse.error()),
+      http.post(`${api}/workflows/import`, async () => {
+        called = true;
+        await held;
+        return HttpResponse.error();
+      }),
     );
     const { event, router, queryClient } = mountList(true);
     await prepare(event);
-    await screen.findByRole('button', { name: 'Retry exact import' });
-    await event.click(screen.getByRole('button', { name: 'Close' }));
+    await waitFor(() => {
+      expect(called).toBe(true);
+    });
+    await event.click(screen.getByRole('button', { name: 'Cancel' }));
     void router.navigate({ to: '/w/$workspaceId', params: { workspaceId } });
     await screen.findByRole('heading', {
       name: 'Resolve the import before leaving',
@@ -42,6 +53,7 @@ describe('Workflow list owns import recovery across dialog dismissal', () => {
       })
       .catch(() => undefined);
     await screen.findByRole('heading', { name: 'Destination page' });
+    release();
     expect(
       screen.queryByRole('button', { name: 'Retry exact import' }),
     ).not.toBeInTheDocument();

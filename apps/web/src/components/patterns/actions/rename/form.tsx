@@ -5,7 +5,6 @@ import { cn } from '@/lib/class-names';
 import type { RenameFormProps } from './inline-rename.types';
 import { useRenameDraft } from './use-draft';
 import { RenameOutcome, SaveActions } from './outcome';
-
 /**
  * The rename form: the field, then Save and Cancel. Save sends the revision
  * the edit started from; if someone renamed it meanwhile, people choose
@@ -19,7 +18,10 @@ export function RenameForm({
   onClose,
   className,
   ...rest
-}: RenameFormProps & Readonly<{ onClose: () => void }>) {
+}: RenameFormProps &
+  Readonly<{
+    onClose: () => void;
+  }>) {
   const { name } = value;
   const { subject, label } = field;
   const id = useId();
@@ -73,7 +75,6 @@ export function RenameForm({
           accepted={rename.accepted}
           pending={command.pending}
           refreshPending={command.refreshPending ?? false}
-          retryAvailable={command.retryAvailable}
           onCancel={rename.close}
         />
       )}

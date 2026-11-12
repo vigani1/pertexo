@@ -139,7 +139,7 @@ it.each([403, 404])(
 );
 
 it.each([403, 404])(
-  'retires a denied %i dispatched mutation and unlocks parent dismissal',
+  'keeps readable input and permits dismissal after an action returns %i',
   async (status) => {
     const { event, start } = open();
     await event.click(
@@ -158,12 +158,25 @@ it.each([403, 404])(
       ),
     );
     await event.click(screen.getByRole('button', { name: 'Save input case' }));
-    await expectHiddenAndDismissible(event);
+    await screen.findByText(
+      status === 403 ? /Your role doesn’t allow/u : /didn’t work/u,
+    );
+    expect(screen.getByLabelText('Case input (JSON)')).toHaveValue(
+      JSON.stringify({ private: 'denied synthetic payload' }, null, 2),
+    );
+    await event.click(screen.getByRole('button', { name: 'Cancel case edit' }));
+    expect(screen.getByLabelText('Run input (JSON)')).toHaveValue(
+      JSON.stringify({ private: 'denied synthetic payload' }, null, 2),
+    );
+    await event.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(
+      screen.queryByRole('dialog', { name: 'Run with input' }),
+    ).not.toBeInTheDocument();
     expect(start).not.toHaveBeenCalled();
   },
 );
 
-it('retires retained uncertain intent when mutation authority disappears before retry', async () => {
+it('preserves editable case input after an unknown change and lets the server refuse a fresh confirmation', async () => {
   const { event, start } = open();
   const writes = vi.fn(() => HttpResponse.error());
   mockServer.use(http.put(`${path}/${caseId}`, writes));
@@ -175,19 +188,15 @@ it('retires retained uncertain intent when mutation authority disappears before 
   );
   await screen.findByLabelText('Case input (JSON)');
   await event.click(screen.getByRole('button', { name: 'Save input case' }));
-  await screen.findByRole('button', { name: 'Retry exact case change' });
+  await screen.findByText(/couldn’t confirm/u);
   mockServer.use(
-    http.get('http://pertexo.test/v1/workspaces', () =>
-      HttpResponse.json({
-        items: [workspaceWith(['run:start'])],
-        nextCursor: null,
-      }),
-    ),
+    http.put(`${path}/${caseId}`, () => problem(403, 'auth.forbidden')),
   );
-  await event.click(
-    screen.getByRole('button', { name: 'Retry exact case change' }),
-  );
-  await expectHiddenAndDismissible(event);
+  await event.click(screen.getByRole('button', { name: 'Save input case' }));
+  await screen.findByText(/Your role doesn’t allow/u);
+  expect(screen.getByLabelText('Case input (JSON)')).toBeEnabled();
+  await event.click(screen.getByRole('button', { name: 'Cancel case edit' }));
+  expect(screen.getByRole('button', { name: 'Cancel' })).toBeEnabled();
   expect(writes).toHaveBeenCalledOnce();
   expect(start).not.toHaveBeenCalled();
 });

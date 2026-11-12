@@ -10,7 +10,6 @@ import { WorkspaceGrid } from '../components/selection/workspace-grid';
 import { WorkspacePickerHeader } from '../components/selection/workspace-picker-header';
 import { readLastWorkspace } from '../model/last-workspace';
 import { Notice } from '@/components/ui/notice';
-
 type WorkspaceSelectionPageProps = Readonly<{
   apiClient: ApiClient;
   user: UserProfileResponse;
@@ -24,7 +23,6 @@ type WorkspaceSelectionPageProps = Readonly<{
     onLogout: () => void;
   }>;
 }>;
-
 /**
  * The workspace picker: rarely seen, since "/" opens the last workspace. New
  * people create their first workspace inline; everyone else picks a card.
@@ -39,10 +37,8 @@ export function WorkspaceSelectionPage({
 }: WorkspaceSelectionPageProps) {
   const { logoutPending, logoutError, onSessionInvalidated, onLogout } =
     session;
-
   const [creationOpen, setCreationOpen] = useState(false);
   const lastOpenedId = readLastWorkspace(user.id);
-
   return (
     <div className="relative isolate min-h-svh bg-background">
       <div className="ambient fixed -z-10" aria-hidden="true" />

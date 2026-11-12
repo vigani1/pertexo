@@ -54,7 +54,7 @@ describe('team: members', () => {
     expect(confirmation()).not.toBeInTheDocument();
     expect(commandCount).toBe(1);
   });
-  it('keeps the exact role command available after an uncertain response', async () => {
+  it('keeps the selected role after a failure and accepts a fresh confirmation', async () => {
     const commands: { key: string | null; body: unknown }[] = [];
     mockServer.use(
       ...identityHandlers(ownerWorkspace),
@@ -83,13 +83,14 @@ describe('team: members', () => {
     expect(confirmation()).toHaveTextContent('signed out everywhere');
     await browser.click(screen.getByRole('button', { name: 'Change role' }));
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      'We couldn’t confirm whether Ada Operator’s role changed',
+      'We couldn’t confirm that change.',
     );
-    await browser.click(screen.getByRole('button', { name: 'Try again' }));
+    await browser.click(screen.getByRole('button', { name: 'Change role' }));
     await waitFor(() => {
       expect(commands).toHaveLength(2);
     });
-    expect(commands[1]).toEqual(commands[0]);
+    expect(commands[1]?.body).toEqual(commands[0]?.body);
+    expect(commands[1]?.key).not.toBe(commands[0]?.key);
     expect(commands[0]?.body).toEqual({
       role: 'operator',
       expectedRoleRevision: 1,
@@ -98,7 +99,7 @@ describe('team: members', () => {
       expect(confirmation()).not.toBeInTheDocument();
     });
   });
-  it('keeps an in-flight and uncertain command attached to its original member', async () => {
+  it('keeps a pending role change attached to its member and releases controls after an unconfirmed response', async () => {
     const firstResponse = deferred<Response>();
     const commands: { target: string; key: string | null; body: unknown }[] =
       [];
@@ -144,18 +145,18 @@ describe('team: members', () => {
 
     firstResponse.resolve(Response.error());
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      'Alice Member’s role changed',
+      'couldn’t confirm that change',
     );
     expect(confirmation()).toHaveTextContent('Alice Member');
     expect(confirmation()).not.toHaveTextContent('Bob Member');
-    await browser.keyboard('{Escape}');
-    expect(confirmation()).toHaveTextContent('Alice Member');
+    expect(screen.getByRole('button', { name: 'Cancel' })).toBeEnabled();
 
-    await browser.click(screen.getByRole('button', { name: 'Try again' }));
+    await browser.click(screen.getByRole('button', { name: 'Change role' }));
     await waitFor(() => {
       expect(commands).toHaveLength(2);
     });
-    expect(commands[1]).toEqual(commands[0]);
+    expect(commands[1]?.body).toEqual(commands[0]?.body);
+    expect(commands[1]?.key).not.toBe(commands[0]?.key);
     expect(commands[0]).toMatchObject({
       target: firstMemberId,
       body: { role: 'operator', expectedRoleRevision: 1 },
@@ -164,7 +165,7 @@ describe('team: members', () => {
       'couldn’t confirm',
     );
 
-    await browser.click(screen.getByRole('button', { name: 'Close' }));
+    await browser.click(screen.getByRole('button', { name: 'Cancel' }));
     await waitFor(() => {
       expect(confirmation()).not.toBeInTheDocument();
     });

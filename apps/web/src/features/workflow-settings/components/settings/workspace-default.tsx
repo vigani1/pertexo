@@ -14,7 +14,6 @@ import { settingsReadFailure } from '../settings-read-failure';
 import type { Scope } from './auto-pause-fields';
 import { thresholdError } from '../../model/auto-pause-input';
 import { CommandProblem } from './auto-pause-fields';
-
 function WorkspaceDefaultForm({
   settings,
   scope,
@@ -24,8 +23,12 @@ function WorkspaceDefaultForm({
   scope: Scope;
   onSaved: () => void;
 }>) {
-  const [draft, setDraft] =
-    useState<Readonly<{ threshold: string; revision: number }>>();
+  const [draft, setDraft] = useState<
+    Readonly<{
+      threshold: string;
+      revision: number;
+    }>
+  >();
   const current = draft ?? {
     threshold: String(settings.threshold),
     revision: settings.revision,
@@ -50,9 +53,10 @@ function WorkspaceDefaultForm({
         kind: 'workspace',
         body: {
           threshold: Number(current.threshold),
-          expectedRevision: command.conflict
-            ? settings.revision
-            : current.revision,
+          expectedRevision:
+            command.problem !== undefined
+              ? settings.revision
+              : current.revision,
         },
       })
     ) {
@@ -83,7 +87,7 @@ function WorkspaceDefaultForm({
             ref={validation.register('threshold')}
             inputMode="numeric"
             value={current.threshold}
-            disabled={command.pending || command.unconfirmed}
+            disabled={command.pending}
             onChange={(event) => {
               setDraft({ ...current, threshold: event.target.value });
               validation.change(
@@ -99,26 +103,20 @@ function WorkspaceDefaultForm({
           type="submit"
           pending={command.pending}
           pendingLabel="Saving…"
-          disabled={command.unconfirmed}
+          disabled={false}
         >
           Save workspace default
         </ProgressButton>
       </div>
-      <CommandProblem
-        command={command}
-        onRetrySuccess={() => {
-          setDraft(undefined);
-          notifications.success({
-            title: 'Workspace auto-pause default saved',
-          });
-          onSaved();
-        }}
-      />
+      <CommandProblem command={command} />
     </form>
   );
 }
-
-export function WorkspaceDefault({ scope }: Readonly<{ scope: Scope }>) {
+export function WorkspaceDefault({
+  scope,
+}: Readonly<{
+  scope: Scope;
+}>) {
   const [editing, setEditing] = useState(false);
   const query = useQuery(
     workspaceAutoPauseQueryOptions(

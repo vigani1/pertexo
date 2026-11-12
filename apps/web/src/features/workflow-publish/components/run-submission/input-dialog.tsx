@@ -222,7 +222,7 @@ function useRunInputDialog({
 
   const runInput = useRunInput();
   const [loaded, setLoaded] = useState<LoadedInputCase>();
-  const caseLocked = cases !== undefined && (cases.pending || cases.uncertain);
+  const caseLocked = cases?.pending ?? false;
   const [caseEditing, setCaseEditing] = useState(false);
   const [caseAccessLost, setCaseAccessLost] = useState(false);
   const [submittedVersion, setSubmittedVersion] = useState<string>();

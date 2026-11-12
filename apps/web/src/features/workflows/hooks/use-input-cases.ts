@@ -1,14 +1,11 @@
 import { useCaseOwner } from './use-case-owner';
-import {
-  canResend,
-  isUnconfirmedCommand,
-} from '@/lib/api/commands/command-retry';
+import { isUnconfirmedCommand } from '@/lib/api/commands/command-retry';
 import { useCallback, useState } from 'react';
 import {
-  useInfiniteQuery,
-  useQueryClient,
-  type QueryClient,
-} from '@tanstack/react-query';
+  useLowEffectMutation,
+  lowEffectError,
+} from '@/lib/api/commands/low-effect-mutation';
+import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
 import type { WorkflowInputCase } from '@pertexo/contracts';
 import type { ApiClient } from '@/lib/api/client';
 import {
@@ -21,7 +18,7 @@ import { describeCommandError } from '@/lib/api/error-copy';
 import {
   getInputCase,
   sendInputCaseCommand,
-  type InputCaseCommand,
+  type InputCaseIntent,
 } from '../data/input-cases/workflow-input-cases.api';
 import {
   inputCasesKey,
@@ -42,7 +39,7 @@ function caseCommandError(cause: unknown) {
   if (code === 'workflow.input_case_limit_exceeded')
     return 'This workspace or workflow has reached its input-case limit. Remove an unneeded case and try again.';
   if (isUnconfirmedCommand(cause))
-    return 'We couldn’t confirm this change. Retry the exact change within 24 hours; other changes are blocked until it is resolved.';
+    return lowEffectError(cause, 'changing this input case');
   return describeCommandError(cause, 'changing this input case');
 }
 
@@ -70,25 +67,22 @@ export function useInputCases({
   const [selected, setSelected] = useState<WorkflowInputCase>();
   const [error, setError] = useState<string>();
   const [pending, setPending] = useState(false);
-  const [uncertain, setUncertain] = useState(false);
   const [conflict, setConflict] = useState(false);
   const [accessLost, setAccessLost] = useState(false);
   const onClose = useCallback(() => {
     setSelected(undefined);
     setError(undefined);
     setPending(false);
-    setUncertain(false);
     setConflict(false);
     setAccessLost(false);
   }, []);
   const onRetire = useCallback(() => {
     setSelected(undefined);
-    setUncertain(false);
     setConflict(false);
     setAccessLost(true);
     setPending(false);
   }, []);
-  const { ownerRef, controllerRef, retainedRef, retire } = useCaseOwner({
+  const { ownerRef, controllerRef, retire } = useCaseOwner({
     api,
     cache,
     userId,
@@ -108,7 +102,7 @@ export function useInputCases({
         workflowId,
         ownerRef,
         controllerRef,
-        uncertain,
+        uncertain: false,
         accessLost,
         retire,
         setPending,
@@ -119,35 +113,54 @@ export function useInputCases({
       caseId,
     );
 
-  const send = (input: CaseSendInput) =>
-    sendInputCase(
-      {
-        api,
-        userId,
-        workspaceId,
-        workflowId,
-        cache,
-        ownerRef,
-        controllerRef,
-        retainedRef,
-        retire,
-        canWrite,
-        accessLost,
-        setPending,
-        setError,
-        setSelected,
-        setConflict,
-        setUncertain,
-      },
-      input,
-    );
+  const mutation = useLowEffectMutation({
+    send: async ({ command }: CaseSendInput, key) => {
+      const token = ownerRef.current;
+      if (token === undefined) throw new Error('The input case is closed.');
+      const controller = new AbortController();
+      if (
+        !(await verifyCaseWrite({
+          api,
+          userId,
+          workspaceId,
+          ownerRef,
+          retire,
+          token,
+          signal: controller.signal,
+        }))
+      )
+        throw new Error('This input case can’t be changed.');
+      return sendInputCaseCommand(api, workspaceId, workflowId, {
+        ...command,
+        key,
+      });
+    },
+    refresh: () =>
+      cache.invalidateQueries({
+        queryKey: inputCasesKey(userId, workspaceId, workflowId),
+      }),
+  });
+  async function send(input: CaseSendInput) {
+    if (mutation.isPending || pending || !canWrite || accessLost) return false;
+    setError(undefined);
+    try {
+      await mutation.mutateAsync(input);
+      setSelected(undefined);
+      setConflict(false);
+      return true;
+    } catch (cause) {
+      const code = isApiError(cause) ? cause.problem?.code : undefined;
+      setConflict(code === 'workflow.input_case_revision_conflict');
+      setError(caseCommandError(cause));
+      return false;
+    }
+  }
   return {
     scope: { apiClient: api, userId, workspaceId, workflowId },
     query,
     selected,
     error,
-    pending,
-    uncertain,
+    pending: pending || mutation.isPending,
     conflict,
     accessLost,
     read,
@@ -155,10 +168,6 @@ export function useInputCases({
     clearSelection: () => {
       setSelected(undefined);
     },
-    retry: () =>
-      retainedRef.current === undefined
-        ? Promise.resolve(false)
-        : send({ command: retainedRef.current.command, retry: true }),
   };
 }
 
@@ -258,115 +267,8 @@ async function verifyCaseWrite({
 }
 
 type CaseSendInput = Readonly<{
-  command: InputCaseCommand;
-  retry?: boolean | undefined;
+  command: InputCaseIntent;
 }>;
-type CaseSendContext = Pick<
-  ReturnType<typeof useCaseOwner>,
-  'ownerRef' | 'controllerRef' | 'retainedRef' | 'retire'
-> &
-  Readonly<{
-    api: ApiClient;
-    userId: string;
-    workspaceId: string;
-    workflowId: string;
-    cache: QueryClient;
-    canWrite: boolean;
-    accessLost: boolean;
-    setPending: (value: boolean) => void;
-    setError: (value: string | undefined) => void;
-    setSelected: (value: WorkflowInputCase | undefined) => void;
-    setConflict: (value: boolean) => void;
-    setUncertain: (value: boolean) => void;
-  }>;
-async function sendInputCase(
-  {
-    api,
-    userId,
-    workspaceId,
-    workflowId,
-    cache,
-    ownerRef,
-    controllerRef,
-    retainedRef,
-    retire,
-    canWrite,
-    accessLost,
-    setPending,
-    setError,
-    setSelected,
-    setConflict,
-    setUncertain,
-  }: CaseSendContext,
-  { command, retry = false }: CaseSendInput,
-) {
-  const inputCaseCommandBlocked =
-    controllerRef.current !== undefined ||
-    !canWrite ||
-    accessLost ||
-    (!retry && retainedRef.current !== undefined);
-  if (inputCaseCommandBlocked) return false;
-  const token = ownerRef.current;
-  if (token === undefined) return false;
-  const attempt = retry
-    ? retainedRef.current
-    : { command, createdAt: Date.now() };
-  if (attempt === undefined) return false;
-  if (!canResend(attempt)) {
-    setError(
-      'The 24-hour recovery window has ended. Inspect current cases before making another change; this retry can no longer guarantee the original result.',
-    );
-    return false;
-  }
-  const abort = new AbortController();
-  controllerRef.current = abort;
-  setPending(true);
-  setError(undefined);
-  let dispatched = false;
-  try {
-    if (
-      !(await verifyCaseWrite({
-        api,
-        userId,
-        workspaceId,
-        ownerRef,
-        retire,
-        token,
-        signal: abort.signal,
-      }))
-    )
-      return false;
-    retainedRef.current = attempt;
-    dispatched = true;
-    await sendInputCaseCommand(api, workspaceId, workflowId, attempt.command);
-    if (ownerRef.current !== token) return false;
-    retainedRef.current = undefined;
-    setUncertain(false);
-    setSelected(undefined);
-    setConflict(false);
-    await cache.invalidateQueries({
-      queryKey: inputCasesKey(userId, workspaceId, workflowId),
-    });
-    return true;
-  } catch (cause) {
-    if (ownerRef.current !== token) return false;
-    if (dispatched) {
-      const unknown = isUnconfirmedCommand(cause);
-      setUncertain(unknown);
-      if (!unknown) retainedRef.current = undefined;
-    }
-    if (denied(cause)) {
-      retire();
-    }
-    const code = isApiError(cause) ? cause.problem?.code : undefined;
-    setConflict(code === 'workflow.input_case_revision_conflict');
-    setError(caseCommandError(cause));
-    return false;
-  } finally {
-    finishCaseRequest({ controllerRef, ownerRef, abort, token, setPending });
-  }
-}
-
 function finishCaseRequest({
   controllerRef,
   ownerRef,

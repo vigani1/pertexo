@@ -1,7 +1,7 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
-import { expect, it, vi } from 'vitest';
+import { expect, it } from 'vitest';
 import { mockServer } from '../../support/mock-server';
 import { renderInRouter } from '../../support/render-in-router';
 import { testFetch } from '../../support/render-app';
@@ -17,7 +17,7 @@ import {
   workflowId,
 } from './fixtures';
 
-it('keeps the exact alert-clear retry reachable after the current policy already shows Off', async () => {
+it('reviews the current policy after an unknown clear and confirms a new destination without resending the clear', async () => {
   const { event, clears, sets } = mountAcceptedClear();
   const alerts = await screen.findByRole('region', { name: 'Failure alerts' });
   await event.click(
@@ -33,20 +33,8 @@ it('keeps the exact alert-clear retry reachable after the current policy already
   await event.click(
     await screen.findByRole('option', { name: 'Email to alerts@example.test' }),
   );
-  await event.click(
-    await within(alerts).findByRole('button', {
-      name: 'Retry same alert change',
-    }),
-  );
-  await waitFor(() => {
-    expect(clears).toHaveLength(2);
-  });
-  expect(clears[1]).toBe(clears[0]);
-  await waitFor(() => {
-    expect(
-      within(alerts).queryByRole('button', { name: 'Retry same alert change' }),
-    ).not.toBeInTheDocument();
-  });
+  expect(clears).toHaveLength(1);
+  expect(sets).toHaveLength(0);
   expect(
     within(alerts).getByRole('combobox', { name: 'Send failure alerts to' }),
   ).toHaveTextContent('Email to alerts@example.test');
@@ -60,55 +48,26 @@ it('keeps the exact alert-clear retry reachable after the current policy already
   expect(sets[0]?.key).not.toBe(clears[0]);
 });
 
-it('requires an explicit new attempt after the exact clear retry expires and keeps the next destination', async () => {
-  let now = Date.now();
-  const clock = vi.spyOn(Date, 'now').mockImplementation(() => now);
-  try {
-    const { event, clears, sets } = mountAcceptedClear('lose-all');
-    const alerts = await screen.findByRole('region', {
-      name: 'Failure alerts',
-    });
-    await event.click(
-      await within(alerts).findByRole('button', { name: 'Turn alerts off' }),
-    );
-    await within(alerts).findByText(/aren’t announced anywhere/u);
-    await event.click(
-      within(alerts).getByRole('combobox', { name: 'Send failure alerts to' }),
-    );
-    await event.click(
-      await screen.findByRole('option', {
-        name: 'Email to alerts@example.test',
-      }),
-    );
-    now += 86_400_000;
-    const retry = within(alerts).queryByRole('button', {
-      name: 'Retry same alert change',
-    });
-    if (retry !== null) await event.click(retry);
-    await within(alerts).findByText(/The retry window ended/u);
-    expect(clears).toHaveLength(1);
-    expect(sets).toHaveLength(0);
-    await event.click(
-      within(alerts).getByRole('button', { name: 'Start a new attempt' }),
-    );
-    expect(clears).toHaveLength(1);
-    expect(sets).toHaveLength(0);
-    expect(
-      within(alerts).getByRole('combobox', { name: 'Send failure alerts to' }),
-    ).toHaveTextContent('Email to alerts@example.test');
-    await event.click(
-      within(alerts).getByRole('button', { name: 'Save destination' }),
-    );
-    await waitFor(() => {
-      expect(sets).toHaveLength(1);
-    });
-    expect(sets[0]?.key).not.toBe(clears[0]);
-  } finally {
-    clock.mockRestore();
-  }
+it('uses a fresh key on deliberate confirmation when the refreshed policy still shows alerts on', async () => {
+  const { event, clears } = mountAcceptedClear('keeps-current');
+  const alerts = await screen.findByRole('region', { name: 'Failure alerts' });
+  await event.click(
+    await within(alerts).findByRole('button', { name: 'Turn alerts off' }),
+  );
+  await within(alerts).findByText(/couldn’t confirm/u);
+  expect(clears).toHaveLength(1);
+  expect(within(alerts).getByText('Failures go to')).toBeVisible();
+  await event.click(
+    within(alerts).getByRole('button', { name: 'Turn alerts off' }),
+  );
+  await within(alerts).findByText(/aren’t announced anywhere/u);
+  expect(clears).toHaveLength(2);
+  expect(clears[1]).not.toEqual(clears[0]);
 });
 
-function mountAcceptedClear(mode: 'lose-first' | 'lose-all' = 'lose-first') {
+function mountAcceptedClear(
+  mode: 'lose-first' | 'keeps-current' = 'lose-first',
+) {
   installQueries();
   let current: typeof destination | null = destination;
   const clears: (string | null)[] = [];
@@ -119,8 +78,8 @@ function mountAcceptedClear(mode: 'lose-first' | 'lose-all' = 'lose-first') {
     ),
     http.delete(`${workflowApi}/failure-notification-policy`, ({ request }) => {
       clears.push(request.headers.get('idempotency-key'));
-      current = null;
-      return clears.length === 1 || mode === 'lose-all'
+      if (clears.length > 1 || mode !== 'keeps-current') current = null;
+      return clears.length === 1
         ? HttpResponse.error()
         : new HttpResponse(null, { status: 204 });
     }),

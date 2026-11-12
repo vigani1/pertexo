@@ -1,17 +1,11 @@
-import {
-  RETRY_WINDOW_ENDED,
-  canResend,
-  isUnconfirmedCommand,
-  newCommandKey,
-  type CommandKey,
-} from '@/lib/api/commands/command-retry';
-import { useResendExpired } from '@/lib/api/commands/use-resend-window';
+import { useQueryClient } from '@tanstack/react-query';
 import type { WorkspaceLifecycleChangeResponse } from '@pertexo/contracts';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useRef, useState } from 'react';
+import {
+  useLowEffectMutation,
+  lowEffectError,
+} from '@/lib/api/commands/low-effect-mutation';
 import type { ApiClient } from '@/lib/api/client';
 import { isApiError } from '@/lib/api/error';
-import { describeCommandError } from '@/lib/api/error-copy';
 import {
   reactivateWorkspace,
   requestWorkspaceDeletion,
@@ -21,15 +15,8 @@ import { accessibleWorkspacesQueryOptions } from '../../workspaces.queries';
 
 type LifecycleIntent =
   | Readonly<{ command: 'request-deletion'; reason: string }>
-  | Readonly<{ command: 'restore' }>
-  | Readonly<{ command: 'reactivate' }>;
+  | Readonly<{ command: 'restore' | 'reactivate' }>;
 
-type LifecycleAttempt = Readonly<{ intent: LifecycleIntent }> & CommandKey;
-
-/**
- * Deletion, restore and reactivation requests. An unconfirmed request keeps its exact
- * reason and key until it is retried or dismissed.
- */
 export function useWorkspaceLifecycleCommand({
   apiClient,
   workspaceId,
@@ -43,135 +30,47 @@ export function useWorkspaceLifecycleCommand({
     change: WorkspaceLifecycleChangeResponse['change'],
   ) => void | Promise<void>;
 }>) {
-  const queryClient = useQueryClient();
-  const [error, setError] = useState<string>();
-  // The unconfirmed attempt a retry resends, in state so its window shows.
-  const [held, setHeld] = useState<LifecycleAttempt>();
-  const expired = useResendExpired(held);
-  const retryAvailable = held !== undefined && !expired;
-  const attempt = useRef<LifecycleAttempt | undefined>(undefined);
-  const owner = useRef<symbol | undefined>(undefined);
-  const activeSubmission = useRef<symbol | undefined>(undefined);
-
-  useEffect(() => {
-    const currentOwner = Symbol('workspace-lifecycle-command');
-    owner.current = currentOwner;
-    return () => {
-      if (owner.current === currentOwner) {
-        owner.current = undefined;
-        activeSubmission.current = undefined;
-      }
-    };
-  }, [apiClient, userId, workspaceId]);
-
-  const mutation = useMutation({
-    mutationFn: ({ intent, idempotencyKey }: LifecycleAttempt) => {
+  const cache = useQueryClient();
+  const mutation = useLowEffectMutation({
+    send: (intent: LifecycleIntent, key) => {
       switch (intent.command) {
         case 'request-deletion':
           return requestWorkspaceDeletion(apiClient, workspaceId, {
             reason: intent.reason,
-            idempotencyKey,
+            idempotencyKey: key,
           });
         case 'restore':
-          return restoreWorkspaceDeletion(
-            apiClient,
-            workspaceId,
-            idempotencyKey,
-          );
+          return restoreWorkspaceDeletion(apiClient, workspaceId, key);
         case 'reactivate':
-          return reactivateWorkspace(apiClient, workspaceId, idempotencyKey);
+          return reactivateWorkspace(apiClient, workspaceId, key);
       }
     },
-    onMutate: () => owner.current,
-    onSuccess: async (completed, _attempt, submissionOwner) => {
-      if (owner.current !== submissionOwner) return;
-      attempt.current = undefined;
-      await queryClient.invalidateQueries({
+    refresh: () =>
+      cache.invalidateQueries({
         queryKey: accessibleWorkspacesQueryOptions(apiClient, userId).queryKey,
-      });
-      if (owner.current === submissionOwner)
-        await onCompleted(completed.change);
-    },
+      }),
   });
-
-  async function submit(current: LifecycleAttempt) {
-    const submissionOwner = owner.current;
-    if (submissionOwner === undefined || activeSubmission.current !== undefined)
-      return false;
-    const submission = Symbol('workspace-lifecycle-submission');
-    activeSubmission.current = submission;
-    setError(undefined);
-    setHeld(undefined);
-    attempt.current = current;
+  async function start(intent: LifecycleIntent) {
+    if (mutation.isPending) return false;
     try {
-      await mutation.mutateAsync(current);
-      return owner.current === submissionOwner;
-    } catch (cause) {
-      if (owner.current !== submissionOwner) return false;
-      const uncertain = isUnconfirmedCommand(cause);
-      if (!uncertain) attempt.current = undefined;
-      setHeld(uncertain ? current : undefined);
-      setError(lifecycleCommandError(cause, current.intent.command));
+      let completion: Promise<void> | undefined;
+      await mutation.mutateAsync(intent, {
+        onSuccess: (result) => {
+          completion = Promise.resolve(onCompleted(result.change));
+        },
+      });
+      if (completion === undefined) return false;
+      await completion;
+      return true;
+    } catch {
       return false;
-    } finally {
-      if (activeSubmission.current === submission)
-        activeSubmission.current = undefined;
     }
   }
-
-  function start(intent: LifecycleIntent) {
-    if (mutation.isPending || retryAvailable) return Promise.resolve(false);
-    return submit({ intent, ...newCommandKey() });
-  }
-
-  function retry() {
-    const current = attempt.current;
-    return current === undefined || !canResend(current)
-      ? Promise.resolve(false)
-      : submit(current);
-  }
-
-  function dismissUncertain() {
-    attempt.current = undefined;
-    setHeld(undefined);
-    setError(undefined);
-  }
-
-  return {
-    dismissUncertain,
-    error: expired ? RETRY_WINDOW_ENDED : error,
-    pending: mutation.isPending,
-    retry,
-    retryAvailable,
-    start,
-  };
-}
-
-const COMMAND_WORDS: Readonly<
-  Record<
-    LifecycleIntent['command'],
-    Readonly<{ subject: string; doing: string }>
-  >
-> = {
-  'request-deletion': {
-    subject: 'the deletion request',
-    doing: 'requesting deletion',
-  },
-  restore: { subject: 'the restore', doing: 'restoring the workspace' },
-  reactivate: {
-    subject: 'the reactivation',
-    doing: 'reactivating the workspace',
-  },
-};
-
-function lifecycleCommandError(
-  error: unknown,
-  command: LifecycleIntent['command'],
-): string {
-  const { subject, doing } = COMMAND_WORDS[command];
-  if (isUnconfirmedCommand(error))
-    return `We couldn’t confirm whether ${subject} went through. Try again — it’s the same request, so it can’t run twice.`;
-  if (isApiError(error) && error.status === 409)
-    return 'The workspace changed meanwhile. Reload the page to see where it stands.';
-  return describeCommandError(error, doing);
+  let error: string | undefined;
+  if (mutation.isError)
+    error =
+      isApiError(mutation.error) && mutation.error.status === 409
+        ? 'The workspace changed meanwhile. Reload the page to see where it stands.'
+        : lowEffectError(mutation.error, 'changing this workspace');
+  return { start, pending: mutation.isPending, reset: mutation.reset, error };
 }

@@ -69,14 +69,13 @@ type Command =
   | { kind: 'bulk'; body: WorkflowOrganizationBulkRequest }
   | { kind: 'tag-cleanup'; body: WorkflowTagCleanupDetachRequest };
 
-export type WorkflowOrganizationAttempt = Readonly<
-  Command & {
-    workspaceId: string;
-    idempotencyKey: string;
-  }
+export type WorkflowOrganizationInput = Readonly<
+  Command & { workspaceId: string }
 >;
+export type WorkflowOrganizationAttempt = WorkflowOrganizationInput &
+  Readonly<{ idempotencyKey: string }>;
 
-/** One accepted command: an uncertain retry must reuse this exact attempt. */
+/** Validate and own one organization request at the HTTP boundary. */
 export function freezeWorkflowOrganizationAttempt(
   input: WorkflowOrganizationAttempt,
 ): WorkflowOrganizationAttempt {

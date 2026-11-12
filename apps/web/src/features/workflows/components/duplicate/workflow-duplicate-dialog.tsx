@@ -22,7 +22,6 @@ import type { ApiClient } from '@/lib/api/client';
 import { workflowNameError } from '../../model/rename';
 import { useWorkflowDuplicate } from '../../hooks/duplicate/use-workflow-duplicate';
 import { canDuplicateWorkflow } from '../../model/duplicate/allowed';
-
 type WorkflowDuplicateDialogProps = Readonly<{
   workflow: WorkflowSummary;
   source: WorkflowDuplicateRequest['source'];
@@ -37,7 +36,6 @@ type WorkflowDuplicateDialogProps = Readonly<{
     workspace: AccessibleWorkspace;
   }>;
 }>;
-
 export function WorkflowDuplicateDialog({
   workflow,
   source,
@@ -49,7 +47,6 @@ export function WorkflowDuplicateDialog({
   scope,
 }: WorkflowDuplicateDialogProps) {
   const { apiClient, userId, workspace } = scope;
-
   const [name, setName] = useState(
     () => `${workflow.name.slice(0, 121)} (copy)`,
   );
@@ -69,7 +66,7 @@ export function WorkflowDuplicateDialog({
   });
   const { state } = command;
   const pending = state.kind === 'sending' || state.kind === 'loading';
-  const locked = pending || state.kind === 'uncertain';
+  const locked = pending;
   return (
     <Dialog
       open
@@ -94,12 +91,8 @@ export function WorkflowDuplicateDialog({
           className="mt-5 flex flex-col gap-5"
           onSubmit={(event) => {
             event.preventDefault();
-            if (state.kind === 'uncertain') {
-              command.retry();
-              return;
-            }
             if (!validation.submit({ name: workflowNameError(name) })) return;
-            command.start(
+            void command.start(
               workflowDuplicateRequestSchema.parse({ name, source }).name,
             );
           }}
@@ -136,13 +129,7 @@ export function WorkflowDuplicateDialog({
             </LabelledField>
           </FieldGroup>
           {state.error === undefined ? null : (
-            <Notice
-              tone={
-                state.kind === 'uncertain' || state.kind === 'stale'
-                  ? 'warning'
-                  : 'destructive'
-              }
-            >
+            <Notice tone={state.kind === 'stale' ? 'warning' : 'destructive'}>
               {state.error}
             </Notice>
           )}
@@ -167,11 +154,9 @@ export function WorkflowDuplicateDialog({
               pendingLabel={
                 state.kind === 'loading' ? 'Reading source…' : 'Duplicating…'
               }
-              disabled={state.kind !== 'ready' && state.kind !== 'uncertain'}
+              disabled={state.kind !== 'ready' && true}
             >
-              {state.kind === 'uncertain'
-                ? 'Retry exact copy'
-                : 'Duplicate workflow'}
+              {'Duplicate workflow'}
             </ProgressButton>
           </DialogFooter>
         </form>
@@ -179,7 +164,6 @@ export function WorkflowDuplicateDialog({
     </Dialog>
   );
 }
-
 function DuplicateSourceReview({
   source,
   versionNumber,
@@ -201,11 +185,14 @@ function DuplicateSourceReview({
     </p>
   );
 }
-
 function duplicateSourceLabel(
   source: WorkflowDuplicateRequest['source'],
   versionNumber: number | undefined,
-  draft: Readonly<{ revision: number }> | undefined,
+  draft:
+    | Readonly<{
+        revision: number;
+      }>
+    | undefined,
 ) {
   if (source.kind === 'version')
     return `Copies v${String(versionNumber ?? '?')} exactly as it was published.`;

@@ -14,17 +14,15 @@ import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/ui/notice';
 import { useNotifications } from '@/components/ui/use-notifications';
 import { cn } from '@/lib/class-names';
-import type { WorkflowOrganizationAttempt } from '../../../model/organization/requests';
+import type { WorkflowOrganizationInput } from '../../../model/organization/requests';
 import type { useWorkflowOrganizationCommand } from '../../../hooks/organization/use-workflow-organization-command';
-
-type StartCommand = (attempt: WorkflowOrganizationAttempt) => void;
+type StartCommand = (attempt: WorkflowOrganizationInput) => void;
 const TAG_HINT = 'Lowercase letters, numbers and hyphens, like eu-region.';
-const DONE: Partial<Record<WorkflowOrganizationAttempt['kind'], string>> = {
+const DONE: Partial<Record<WorkflowOrganizationInput['kind'], string>> = {
   'create-tag': 'Tag added',
   'rename-tag': 'Tag renamed',
   'delete-tag': 'Tag deleted',
 };
-
 /**
  * Tags as chips. Choosing one opens its editor below; with none chosen the
  * same field adds a new tag.
@@ -33,9 +31,11 @@ type TagManagementProps = Readonly<{
   tags: readonly WorkflowTag[];
   ready: boolean;
   locked: boolean;
-  scope: { workspaceId: string };
+  scope: {
+    workspaceId: string;
+  };
   command: ReturnType<typeof useWorkflowOrganizationCommand>;
-  pendingKind: WorkflowOrganizationAttempt['kind'] | undefined;
+  pendingKind: WorkflowOrganizationInput['kind'] | undefined;
   actions: Readonly<{
     start: StartCommand;
     onCleanup: (tag: WorkflowTag) => void;
@@ -43,7 +43,6 @@ type TagManagementProps = Readonly<{
     onReload: () => void;
   }>;
 }>;
-
 export function TagManagement({
   tags,
   ready,
@@ -54,7 +53,6 @@ export function TagManagement({
   actions,
 }: TagManagementProps) {
   const { start, onCleanup, onReload } = actions;
-
   const [selected, setSelected] = useState<string>();
   const [name, setName] = useState('');
   // Deletion stays bound to the tag as it was shown, even if it changes meanwhile.
@@ -69,7 +67,11 @@ export function TagManagement({
     fields.reset();
     setName(tag?.key ?? '');
   };
-  const changeConfirmation = ({ open }: Readonly<{ open: boolean }>) => {
+  const changeConfirmation = ({
+    open,
+  }: Readonly<{
+    open: boolean;
+  }>) => {
     if (open) command.reset();
     setDeleteTarget(open ? current : undefined);
   };
@@ -79,7 +81,6 @@ export function TagManagement({
     message !== undefined &&
     command.result !== undefined &&
     !command.pending &&
-    !command.retryAvailable &&
     !command.denied;
   // A confirmed change clears the editor, ready for the next tag.
   const [settled, setSettled] = useState(command.result);
@@ -114,14 +115,14 @@ export function TagManagement({
               ? {
                   ...scope,
                   kind: 'create-tag',
-                  idempotencyKey: crypto.randomUUID(),
+
                   body: { key: name },
                 }
               : {
                   ...scope,
                   kind: 'rename-tag',
                   tagId: current.id,
-                  idempotencyKey: crypto.randomUUID(),
+
                   body: { key: name, expectedTagRevision: current.revision },
                 },
           );
@@ -169,7 +170,7 @@ export function TagManagement({
               ...scope,
               kind: 'delete-tag',
               tagId: deleteTarget.id,
-              idempotencyKey: crypto.randomUUID(),
+
               body: { expectedTagRevision: deleteTarget.revision },
             });
           }}
@@ -178,7 +179,6 @@ export function TagManagement({
     </section>
   );
 }
-
 function TagDeleteConfirmation({
   target,
   command,
@@ -189,17 +189,16 @@ function TagDeleteConfirmation({
 }: Readonly<{
   target: WorkflowTag;
   command: ReturnType<typeof useWorkflowOrganizationCommand>;
-  pendingKind: WorkflowOrganizationAttempt['kind'] | undefined;
+  pendingKind: WorkflowOrganizationInput['kind'] | undefined;
   disabled: boolean;
   onOpenChange: (open: boolean) => void;
   onDelete: () => void;
 }>) {
   const tagDeletionBlocked =
     command.denied ||
-    (!command.retryAvailable &&
-      (disabled ||
-        command.error !== undefined ||
-        command.result !== undefined));
+    disabled ||
+    command.error !== undefined ||
+    command.result !== undefined;
   const confirmBlocked =
     (command.pending && pendingKind === 'delete-tag') || tagDeletionBlocked;
   return (
@@ -207,21 +206,21 @@ function TagDeleteConfirmation({
       state={{
         open: true,
         onOpenChange,
-        locked: command.pending || command.retryAvailable,
+        locked: command.pending,
       }}
       title={`Delete #${target.key}?`}
       description="It’s removed from every workflow, including archived ones. If more than 50 workflows use it, remove it from some of them first with See workflows using it."
-      onSubmit={command.retryAvailable ? command.retry : onDelete}
+      onSubmit={onDelete}
       submitDisabled={confirmBlocked}
       actions={{
         cancel: {
           kind: 'close',
           label: 'Cancel',
           variant: 'ghost',
-          disabled: command.pending || command.retryAvailable,
+          disabled: command.pending,
         },
         confirm: {
-          label: command.retryAvailable ? 'Try again' : 'Delete tag',
+          label: 'Delete tag',
           type: 'submit',
           variant: 'destructive',
           pending: command.pending && pendingKind === 'delete-tag',
@@ -230,18 +229,10 @@ function TagDeleteConfirmation({
         },
       }}
     >
-      <ConfirmationDetails
-        error={
-          command.retryAvailable
-            ? 'We couldn’t confirm this change. Try again; it won’t be applied twice.'
-            : command.error
-        }
-        tone={command.retryAvailable ? 'warning' : 'destructive'}
-      />
+      <ConfirmationDetails error={command.error} tone="destructive" />
     </ConfirmDialog>
   );
 }
-
 function TagCommandProblem({
   command,
   onReload,
@@ -250,25 +241,6 @@ function TagCommandProblem({
   onReload: () => void;
 }>) {
   if (command.denied) return null;
-  if (command.retryAvailable)
-    return (
-      <Notice
-        tone="warning"
-        action={
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled={command.pending}
-            onClick={() => void command.retry()}
-          >
-            Try again
-          </Button>
-        }
-      >
-        We couldn’t confirm this change. Try again; it won’t be applied twice.
-      </Notice>
-    );
   return command.error === undefined ? null : (
     <Notice
       tone="destructive"
@@ -290,7 +262,6 @@ function TagCommandProblem({
     </Notice>
   );
 }
-
 function nameError(value: string) {
   if (workflowTagKeyInputSchema.safeParse(value).success) {
     return undefined;
@@ -300,7 +271,6 @@ function nameError(value: string) {
   }
   return `Use up to 32 characters. ${TAG_HINT}`;
 }
-
 function TagChoices({
   tags,
   selected,

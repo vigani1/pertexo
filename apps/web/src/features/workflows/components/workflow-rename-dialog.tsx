@@ -12,7 +12,6 @@ import type { ApiClient } from '@/lib/api/client';
 import { workflowNameError } from '../model/rename';
 import { workflowSummaryQueryOptions } from '../data/workflows.queries';
 import { useWorkflowRename } from '../data/workflows.mutations';
-
 /**
  * Renames a workflow from its row. The form reads the workflow's current
  * name and revision, so a rename made elsewhere meanwhile is offered as
@@ -47,7 +46,7 @@ export function WorkflowRenameDialog({
       notifications.success({ title: `Renamed to ${name}` });
     },
   });
-  const locked = command.pending || command.retryAvailable;
+  const locked = command.pending;
   return (
     <Dialog
       open

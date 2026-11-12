@@ -1,6 +1,5 @@
 import type { WorkspaceMember } from '@pertexo/contracts';
 import type { ApiClient } from '@/lib/api/client';
-import { newCommandKey } from '@/lib/api/commands/command-retry';
 import { transferWorkspaceOwnership } from '../../workspaces.api';
 import {
   useMemberCommand,
@@ -37,8 +36,6 @@ export function useOwnershipTransferCommand(
         attempt,
       ),
     copy: {
-      uncertain: (member) =>
-        `We couldn’t confirm whether ${member.displayName} became the owner. Try again — Pertexo recognizes the repeat, so it can’t happen twice.`,
       conflict: (member) =>
         `${member.displayName} or your own membership changed while you were deciding. Check the team, then try again.`,
       action: 'transferring ownership',
@@ -57,7 +54,6 @@ export function useOwnershipTransferCommand(
         targetUserId: member.userId,
         expectedRoleRevision: member.roleRevision,
         expectedOwnerRoleRevision: you.roleRevision,
-        ...newCommandKey(),
       }),
   };
 }

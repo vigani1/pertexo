@@ -6,14 +6,9 @@ import {
   getWorkflowFolders,
   getWorkflowOrganizationPage,
   getWorkflowTagsPage,
-  sendWorkflowOrganizationCommand,
 } from '@/features/workflows/data/organization/workflow-organization.api';
 
 import { workflowOrganizationKeys } from '@/features/workflows/data/organization/workflow-organization.queries';
-
-import { useOrganizationList } from '@/features/workflows/hooks/organization/use-organization-list';
-
-import { useWorkflowOrganizationCommand } from '@/features/workflows/hooks/organization/use-workflow-organization-command';
 
 import type { WorkflowListSearch } from '@/features/workflows/model/list-view';
 
@@ -21,13 +16,7 @@ import { ApiError } from '@/lib/api/error';
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
-import {
-  act,
-  render,
-  renderHook,
-  screen,
-  waitFor,
-} from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 
 import userEvent from '@testing-library/user-event';
 
@@ -35,7 +24,7 @@ import { useState } from 'react';
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { userId, workflowId, workspaceId } from '../list/fixtures';
+import { userId, workspaceId } from '../list/fixtures';
 
 import {
   deferred,
@@ -76,69 +65,6 @@ vi.mock(
 beforeEach(resetReadMocks);
 
 describe('organization reads without a command dialog', () => {
-  it('immutable query denial reaches a later command owner after the earlier read owner cancels query state', async () => {
-    const client = new QueryClient({
-      defaultOptions: { queries: { retry: false } },
-    });
-    const receipt = {
-      workflowId,
-      folderId: null,
-      organizationRevision: 2,
-      replayed: true,
-    };
-    const held = deferred<typeof receipt>();
-    vi.mocked(sendWorkflowOrganizationCommand).mockReturnValue(held.promise);
-    const hook = renderHook(
-      () => {
-        const list = useOrganizationList(apiClient, userId, workspaceId, {});
-        const command = useWorkflowOrganizationCommand({
-          apiClient,
-          userId,
-          workspace,
-          requiredRole: 'editor',
-        });
-        return { list, command };
-      },
-      {
-        wrapper: ({ children }) => (
-          <QueryClientProvider client={client}>{children}</QueryClientProvider>
-        ),
-      },
-    );
-    await waitFor(() => {
-      expect(hook.result.current.list.isSuccess).toBe(true);
-    });
-    let running!: Promise<void>;
-    act(() => {
-      running = hook.result.current.command.start({
-        kind: 'place-folder',
-        workspaceId,
-        workflowId,
-        idempotencyKey: 'original-command-key',
-        body: { folderId: null, expectedOrganizationRevision: 1 },
-      });
-    });
-    await waitFor(() => {
-      expect(sendWorkflowOrganizationCommand).toHaveBeenCalledTimes(1);
-    });
-    const signal = vi.mocked(sendWorkflowOrganizationCommand).mock
-      .calls[0]?.[2];
-    vi.mocked(getWorkflowOrganizationPage).mockRejectedValue(denied(403));
-    await act(async () => {
-      await hook.result.current.list.refetch();
-    });
-    await waitFor(() => {
-      expect(hook.result.current.command.denied).toBe(true);
-    });
-    expect(signal?.aborted).toBe(true);
-    await act(async () => {
-      held.resolve(receipt);
-      await running;
-    });
-    expect(hook.result.current.command.result).toBeUndefined();
-    expect(hook.result.current.command.retryAvailable).toBe(false);
-    expect(hook.result.current.list.data).toBeUndefined();
-  });
   it('explicit fresh read recovers after denial but a transient retry cannot resurrect the denied snapshot', async () => {
     const { client } = setup();
     await ready();

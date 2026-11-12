@@ -1,10 +1,4 @@
-import { useCommandAttempt } from '@/lib/api/commands/use-command-attempt';
-import { ExpiredAttemptNotice } from '@/components/patterns/states/expired-attempt-notice';
-import {
-  isUnconfirmedCommand,
-  newCommandKey,
-  type CommandKey,
-} from '@/lib/api/commands/command-retry';
+import { lowEffectError } from '@/lib/api/commands/low-effect-mutation';
 import { useState, type SyntheticEvent } from 'react';
 import { workflowCreateRequestSchema } from '@pertexo/contracts';
 import { ProgressButton } from '@/components/ui/progress-button';
@@ -25,19 +19,15 @@ import {
 import { useFieldValidation } from '@/components/ui/use-field-validation';
 import { useNotifications } from '@/components/ui/use-notifications';
 import { isApiError } from '@/lib/api/error';
-import { describeCommandError } from '@/lib/api/error-copy';
+
 import type { ApiClient } from '@/lib/api/client';
 import { useCreateWorkflow } from '../../data/workflows.mutations';
 import { ExampleCards } from '../templates/example-cards';
 
-type Attempt = Readonly<{ name: string }> & CommandKey;
-
 function createErrorMessage(error: unknown): string {
-  if (isUnconfirmedCommand(error))
-    return 'We couldn’t confirm whether the workflow was created. Retrying is safe — it won’t make a duplicate.';
   if (isApiError(error) && error.status === 409)
     return 'This conflicts with the workspace’s current state. Refresh the list, then try again.';
-  return describeCommandError(error, 'creating workflows');
+  return lowEffectError(error, 'creating workflows');
 }
 
 function nameProblem(value: string): string | undefined {
@@ -48,9 +38,7 @@ function nameProblem(value: string): string | undefined {
 
 /**
  * The New workflow lens: a name for a blank workflow, or one of the
- * ready-made examples, which brings its own name and setup. The same
- * idempotency key is reused while the name is unchanged, so retrying an
- * uncertain create can't make a second workflow.
+ * ready-made examples, which brings its own name and setup.
  */
 type NewWorkflowSheetProps = Readonly<{
   apiClient: ApiClient;
@@ -74,7 +62,6 @@ export function NewWorkflowSheet({
   const notifications = useNotifications();
   const [name, setName] = useState('');
   const validation = useFieldValidation<'name'>();
-  const attempt = useCommandAttempt<Attempt>();
   const mutation = useCreateWorkflow(apiClient, userId, workspaceId);
 
   function changeName(nextName: string) {
@@ -82,25 +69,18 @@ export function NewWorkflowSheet({
     setName(nextName);
     mutation.reset();
     validation.change('name', nameProblem(nextName));
-    if (attempt.current()?.name !== nextName.trim()) attempt.clear();
   }
 
   async function submit(event: SyntheticEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!validation.submit({ name: nameProblem(name) })) return;
     const parsed = workflowCreateRequestSchema.parse({ name });
-    const current = await attempt.getOrCreate(() => ({
-      name: parsed.name,
-      ...newCommandKey(),
-    }));
-    if (current === undefined) return;
     let created: Awaited<ReturnType<typeof mutation.mutateAsync>>;
     try {
-      created = await mutation.mutateAsync(current);
+      created = await mutation.mutateAsync(parsed);
     } catch {
       return; // The mutation's error renders in the sheet.
     }
-    attempt.clear();
     setName('');
     validation.reset();
     notifications.success({
@@ -153,15 +133,7 @@ export function NewWorkflowSheet({
                 />
               )}
             </LabelledField>
-            {attempt.expired ? (
-              <ExpiredAttemptNotice
-                onNewAttempt={() => {
-                  attempt.clear();
-                  mutation.reset();
-                }}
-              />
-            ) : null}
-            {mutation.isError && !attempt.expired ? (
+            {mutation.isError ? (
               <Notice tone="destructive">
                 {createErrorMessage(mutation.error)}
               </Notice>
@@ -189,20 +161,14 @@ export function NewWorkflowSheet({
               </section>
             )}
           </SheetBody>
-          <NewWorkflowFooter
-            pending={mutation.isPending}
-            uncertain={mutation.isError && isUnconfirmedCommand(mutation.error)}
-          />
+          <NewWorkflowFooter pending={mutation.isPending} />
         </form>
       </SheetContent>
     </Sheet>
   );
 }
 
-function NewWorkflowFooter({
-  pending,
-  uncertain,
-}: Readonly<{ pending: boolean; uncertain: boolean }>) {
+function NewWorkflowFooter({ pending }: Readonly<{ pending: boolean }>) {
   return (
     <SheetFooter>
       <SheetClose
@@ -217,7 +183,7 @@ function NewWorkflowFooter({
         pending={pending}
         pendingLabel="Creating…"
       >
-        {uncertain ? 'Retry safely' : 'Create workflow'}
+        Create workflow
       </ProgressButton>
     </SheetFooter>
   );

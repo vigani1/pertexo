@@ -6,12 +6,9 @@ import type {
 import type { ApiClient } from '@/lib/api/client';
 import { describeCommandError } from '@/lib/api/error-copy';
 import { reviewWorkflowMove } from '../data/organization/sharing.api';
-import {
-  freezeWorkflowOrganizationAttempt,
-  type WorkflowOrganizationAttempt,
-} from '../model/organization/requests';
+import type { WorkflowOrganizationInput } from '../model/organization/requests';
 function requestFor(
-  attempt: WorkflowOrganizationAttempt,
+  attempt: WorkflowOrganizationInput,
 ): WorkflowMoveReviewRequest | undefined {
   switch (attempt.kind) {
     case 'move-folder':
@@ -47,9 +44,9 @@ function requestFor(
   }
 }
 function acknowledged(
-  attempt: WorkflowOrganizationAttempt,
+  attempt: WorkflowOrganizationInput,
   review: WorkflowMoveReview,
-): WorkflowOrganizationAttempt {
+): WorkflowOrganizationInput {
   const forId = (id: string) => {
     const item = review.items.find(
       (item) => item.id === id && item.requiresReview,
@@ -85,11 +82,11 @@ function acknowledged(
 export function useAudienceMove(
   api: ApiClient,
   workspaceId: string,
-  send: (attempt: WorkflowOrganizationAttempt) => void | Promise<void>,
+  send: (attempt: WorkflowOrganizationInput) => void | Promise<void>,
 ) {
   const [review, setReview] = useState<
     Readonly<{
-      attempt: WorkflowOrganizationAttempt;
+      attempt: WorkflowOrganizationInput;
       report: WorkflowMoveReview;
     }>
   >();
@@ -104,9 +101,9 @@ export function useAudienceMove(
       request.current?.abort();
     };
   }, [api, workspaceId]);
-  const begin = async (input: WorkflowOrganizationAttempt) => {
+  const begin = async (input: WorkflowOrganizationInput) => {
     if (request.current || review) return;
-    const attempt = freezeWorkflowOrganizationAttempt(input);
+    const attempt = structuredClone(input);
     const body = requestFor(attempt);
     if (!body) {
       await send(attempt);

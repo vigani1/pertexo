@@ -3,7 +3,6 @@ import { workspaceRenameRequestSchema } from '@pertexo/contracts';
 import { InlineRename } from '@/components/patterns/actions/rename/inline';
 import { useNotifications } from '@/components/ui/use-notifications';
 import type { ApiClient } from '@/lib/api/client';
-import { newCommandKey } from '@/lib/api/commands/command-retry';
 import { cn } from '@/lib/class-names';
 import { useWorkspaceRename } from '../../data/mutations/use-workspace-rename';
 
@@ -67,7 +66,6 @@ export function WorkspaceNameField({
       onSave={(name, expectedRevision) =>
         command.start({
           body: workspaceRenameRequestSchema.parse({ name, expectedRevision }),
-          ...newCommandKey(),
         })
       }
       field={{

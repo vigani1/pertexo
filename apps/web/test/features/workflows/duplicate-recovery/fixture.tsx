@@ -4,10 +4,9 @@ import {
   accessibleWorkspaceSchema,
   workflowSummarySchema,
 } from '@pertexo/contracts';
-import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { HttpResponse, http } from 'msw';
-import { expect, vi } from 'vitest';
+import { vi } from 'vitest';
 import { mockServer } from '../../../support/mock-server';
 import { testFetch } from '../../../support/render-app';
 import { renderInRouter } from '../../../support/render-in-router';
@@ -55,8 +54,6 @@ export function open() {
 
 export const identityUrl = 'http://pertexo.test/v1/users/me';
 
-const workspaceUrl = 'http://pertexo.test/v1/workspaces';
-
 export const created = () =>
   HttpResponse.json({ workflowId: versionId }, { status: 201 });
 
@@ -79,17 +76,6 @@ export const staleResponse = () =>
     { status: 412, headers: { 'content-type': 'application/problem+json' } },
   );
 
-export const outages = [
-  {
-    label: 'identity network failure',
-    url: identityUrl,
-    response: () => HttpResponse.error(),
-  },
-  { label: 'workspace 429', url: workspaceUrl, response: () => transient(429) },
-  { label: 'workspace 503', url: workspaceUrl, response: () => transient(503) },
-  { label: 'workspace read 412', url: workspaceUrl, response: staleResponse },
-];
-
 export function captureCopies(response: (count: number) => Response) {
   const requests: { body: unknown; key: string | null; tag: string | null }[] =
     [];
@@ -107,13 +93,4 @@ export function captureCopies(response: (count: number) => Response) {
     ),
   );
   return requests;
-}
-
-export async function expectRecovery() {
-  expect(
-    await screen.findByRole('button', { name: 'Retry exact copy' }),
-  ).toBeEnabled();
-  expect(screen.getByLabelText('Copy name')).toBeDisabled();
-  expect(screen.getByRole('button', { name: 'Cancel' })).toBeDisabled();
-  expect(screen.queryByText(/Nothing was changed/u)).not.toBeInTheDocument();
 }

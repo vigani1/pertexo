@@ -173,14 +173,14 @@ export function setWorkflowFavorite(
 export function sendWorkflowOrganizationCommand(
   api: ApiClient,
   input: WorkflowOrganizationAttempt,
-  signal: AbortSignal,
+  signal?: AbortSignal,
 ) {
   const attempt = freezeWorkflowOrganizationAttempt(input);
   const base = workspacePath(attempt.workspaceId);
   const request = {
     method: 'POST' as const,
     body: attempt.body,
-    signal,
+    ...(signal === undefined ? {} : { signal }),
     headers: { 'Idempotency-Key': attempt.idempotencyKey },
   };
   switch (attempt.kind) {

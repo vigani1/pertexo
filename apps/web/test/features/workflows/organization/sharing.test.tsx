@@ -224,7 +224,7 @@ function MoveHarness({ send }: { send: (input: unknown) => void }) {
             kind: 'place-folder',
             workspaceId,
             workflowId,
-            idempotencyKey: 'reviewed-move',
+
             body: { folderId: null, expectedOrganizationRevision: 3 },
           });
         }}

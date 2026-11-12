@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   accessibleWorkspaceSchema,
   workflowOrganizationProjectionResponseSchema,
@@ -18,6 +18,8 @@ import {
   summary,
   workspaceWith,
 } from '../list/fixtures';
+import { createApiClient } from '@/lib/api/client';
+import { sendWorkflowOrganizationCommand } from '@/features/workflows/data/organization/workflow-organization.api';
 const row = (id = workflowId, revision = 3) =>
   workflowOrganizationProjectionResponseSchema.parse({
     workflow: summary(id, 'Workflow'),
@@ -43,23 +45,28 @@ describe('organization editing presentation model', () => {
         operation: 'move',
         folderId: null,
         tagIds: [],
-        idempotencyKey: 'key',
       }),
     ).toThrow();
   });
-  it('normalizes replacement IDs and freezes the ordered full parent', () => {
+  it('normalizes replacement IDs and owns the ordered selection', () => {
+    const workflows = [row(secondWorkflowId, 8), row(workflowId, 4)];
+    const tagIds = [thirdWorkflowId, secondWorkflowId, secondWorkflowId];
     const attempt = organizationEditAttempt({
       workspaceId,
-      workflows: [row(secondWorkflowId, 8), row(workflowId, 4)],
+      workflows,
       operation: 'replace_tags',
       folderId: null,
-      tagIds: [thirdWorkflowId, secondWorkflowId, secondWorkflowId],
-      idempotencyKey: 'parent-key',
+      tagIds,
     });
+    workflows.reverse();
+    const first = workflows[0];
+    if (first === undefined) throw new Error('Missing selection');
+    first.organization.organizationRevision = 99;
+    tagIds.length = 0;
     expect(attempt).toEqual({
       kind: 'bulk',
       workspaceId,
-      idempotencyKey: 'parent-key',
+
       body: {
         operation: 'replace_tags',
         tagIds: [secondWorkflowId, thirdWorkflowId],
@@ -69,8 +76,6 @@ describe('organization editing presentation model', () => {
         ],
       },
     });
-    expect(Object.isFrozen(attempt)).toBe(true);
-    expect(Object.isFrozen(attempt.body)).toBe(true);
   });
   it('rejects oversized replacement sets rather than clipping intent', () => {
     const ids = Array.from(
@@ -78,16 +83,22 @@ describe('organization editing presentation model', () => {
       (_, index) =>
         `${String(index).padStart(8, '0')}-aaaa-4aaa-8aaa-aaaaaaaaaaaa`,
     );
+    const attempt = organizationEditAttempt({
+      workspaceId,
+      workflows: [row()],
+      operation: 'replace_tags',
+      folderId: null,
+      tagIds: ids,
+    });
+    const fetch = vi.fn<typeof globalThis.fetch>();
+    const api = createApiClient({ fetch, readCsrfToken: () => undefined });
     expect(() =>
-      organizationEditAttempt({
-        workspaceId,
-        workflows: [row()],
-        operation: 'replace_tags',
-        folderId: null,
-        tagIds: ids,
-        idempotencyKey: 'key',
+      sendWorkflowOrganizationCommand(api, {
+        ...attempt,
+        idempotencyKey: crypto.randomUUID(),
       }),
     ).toThrow();
+    expect(fetch).not.toHaveBeenCalled();
   });
   it('does not broaden editing permission from a viewer capability snapshot', () => {
     const workspace = accessibleWorkspaceSchema.parse({

@@ -12,7 +12,7 @@ import {
 const target = '99999999-9999-4999-8999-999999999999';
 
 for (const width of [1280, 375])
-  test(`error workflow settings preserve an uncertain change on ${String(width)}px`, async ({
+  test(`error workflow settings review the current state after an unknown change on ${String(width)}px`, async ({
     page,
     baseURL,
   }, testInfo) => {
@@ -53,12 +53,16 @@ for (const width of [1280, 375])
           key: route.request().headers()['idempotency-key'],
         });
         settings = {
-          targetWorkflowId: target,
+          targetWorkflowId: (
+            route.request().postDataJSON() as {
+              targetWorkflowId: string | null;
+            }
+          ).targetWorkflowId,
           targetWorkflowName: 'Handle failed invoices',
-          revision: 2,
+          revision: settings.revision + 1,
         };
         if (writes.length === 1) return route.abort('failed');
-        return route.fulfill({ json: { settings, replayed: true } });
+        return route.fulfill({ json: { settings, replayed: false } });
       },
     );
     await page.goto(`${editorUrl}/settings`);
@@ -78,28 +82,34 @@ for (const width of [1280, 375])
     await section
       .getByRole('button', { name: 'Save error workflow', exact: true })
       .click();
+    await expect(section.getByText(/couldn’t confirm/u)).toBeVisible();
+    await expect(picker).toBeEnabled();
     await expect(
-      section.getByText(/The change could not be confirmed/u),
-    ).toBeVisible();
-    await expect(picker).toBeDisabled();
+      section.getByRole('button', { name: 'Save error workflow', exact: true }),
+    ).toBeDisabled();
+    expect(writes).toHaveLength(1);
+    await picker.click();
+    await page
+      .getByRole('option', { name: 'Do not run another workflow', exact: true })
+      .click();
     await section
-      .getByRole('button', { name: 'Retry same change', exact: true })
+      .getByRole('button', { name: 'Save error workflow', exact: true })
       .click();
     await expect(
       page.getByText('Error workflow saved', { exact: true }),
     ).toBeVisible();
     expect(writes).toHaveLength(2);
-    expect(writes[1]).toEqual(writes[0]);
+    expect(writes[1]?.key).not.toEqual(writes[0]?.key);
+    expect(writes[1]?.body).toEqual({
+      targetWorkflowId: null,
+      expectedRevision: 2,
+    });
     expect(writes[0]?.body).toEqual({
       targetWorkflowId: target,
       expectedRevision: 1,
     });
     await page.reload();
-    await expect(
-      section.getByText(
-        'When this workflow fails, Pertexo runs Handle failed invoices.',
-      ),
-    ).toBeVisible();
+    await expect(section.getByText(/Nothing else runs/u)).toBeVisible();
     expect(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= innerWidth,

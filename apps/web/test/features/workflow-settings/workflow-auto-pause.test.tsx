@@ -24,7 +24,7 @@ import {
 } from './workflow-auto-pause/fixture';
 
 describe('workflow automatic pause controls', () => {
-  it('does not rebase retained edits after an idempotency conflict, even if refreshed settings change', async () => {
+  it('keeps edited values and uses the reviewed current revision after a refused change', async () => {
     installQueries();
     let current = unpausedWorkflowSettings;
     const bodies: unknown[] = [];
@@ -85,10 +85,10 @@ describe('workflow automatic pause controls', () => {
     expect(bodies[1]).toEqual({
       enabled: true,
       thresholdOverride: 6,
-      expectedSettingsRevision: 1,
+      expectedSettingsRevision: 2,
     });
   });
-  it('keeps an exact retry after malformed HTTP 409 problem details without claiming a revision conflict', async () => {
+  it('refreshes malformed 409 replies without claiming a revision conflict and lets people confirm a new change', async () => {
     installQueries();
     let current = unpausedWorkflowSettings;
     const requests: { body: unknown; key: string | null }[] = [];
@@ -132,26 +132,24 @@ describe('workflow automatic pause controls', () => {
       within(section).getByRole('button', { name: 'Save auto-pause rule' }),
     );
     expect(
-      await within(section).findByText(
-        /We couldn’t confirm whether saving auto-pause settings went through/u,
-      ),
+      await within(section).findByText(/We couldn’t confirm that change/u),
     ).toBeVisible();
     expect(
       within(section).queryByText(/Your edits are kept/u),
     ).not.toBeInTheDocument();
     await event.click(
-      within(section).getByRole('button', { name: 'Retry same change' }),
+      within(section).getByRole('button', { name: 'Save auto-pause rule' }),
     );
     await screen.findByText('Auto-pause settings saved');
     expect(requests).toHaveLength(2);
-    expect(requests[0]).toEqual(requests[1]);
+    expect(requests[0]?.key).not.toBe(requests[1]?.key);
     expect(requests[1]?.body).toEqual({
       enabled: true,
       thresholdOverride: 5,
-      expectedSettingsRevision: 1,
+      expectedSettingsRevision: 2,
     });
   });
-  it('can retry an uncertain Resume after the refreshed workflow is already unpaused', async () => {
+  it('shows the refreshed unpaused state after an unconfirmed Resume without sending another command', async () => {
     installQueries();
     let current = paused;
     const requests: { body: unknown; key: string | null }[] = [];
@@ -173,12 +171,14 @@ describe('workflow automatic pause controls', () => {
     await event.click(
       await screen.findByRole('button', { name: 'Resume triggers' }),
     );
-    await event.click(
-      await screen.findByRole('button', { name: 'Retry Resume' }),
-    );
-    await screen.findByText('Workflow triggers resumed');
-    expect(requests).toHaveLength(2);
-    expect(requests[0]).toEqual(requests[1]);
+    await screen.findByText(/Check the refreshed current state/u);
+    expect(
+      screen.queryByRole('button', { name: 'Resume triggers' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Retry Resume' }),
+    ).not.toBeInTheDocument();
+    expect(requests).toHaveLength(1);
   });
   it('opts out without issuing Resume and can clear a workflow override', async () => {
     installQueries();
@@ -273,7 +273,7 @@ describe('workflow automatic pause controls', () => {
       ).not.toBeInTheDocument(),
     );
   });
-  it('retains the original body and key after an unknown outcome even when the server revision changes', async () => {
+  it('keeps edited values after an unknown outcome and confirms them at the refreshed revision with a fresh key', async () => {
     installQueries();
     let current = unpausedWorkflowSettings;
     const requests: { body: unknown; key: string | null }[] = [];
@@ -308,16 +308,18 @@ describe('workflow automatic pause controls', () => {
       within(section).getByRole('button', { name: 'Save auto-pause rule' }),
     );
     await event.click(
-      await within(section).findByRole('button', { name: 'Retry same change' }),
+      await within(section).findByRole('button', {
+        name: 'Save auto-pause rule',
+      }),
     );
     await waitFor(() => {
       expect(requests).toHaveLength(2);
     });
-    expect(requests[0]).toEqual(requests[1]);
+    expect(requests[0]?.key).not.toBe(requests[1]?.key);
     expect(requests[1]?.body).toEqual({
       enabled: true,
       thresholdOverride: 5,
-      expectedSettingsRevision: 1,
+      expectedSettingsRevision: 2,
     });
   });
 });

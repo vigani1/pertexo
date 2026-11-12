@@ -198,7 +198,7 @@ describe('folder dialogs', () => {
     expect(typeof sent[0]?.key).toBe('string');
   });
 
-  it('locks an uncertain rename and retries the same revision, body and key', async () => {
+  it('keeps an unconfirmed rename editable and sends a fresh confirmation key', async () => {
     const sent: { body: unknown; key: string | null }[] = [];
     const { onDone } = renderAction({ kind: 'rename', folder: operations });
     mockServer.use(
@@ -223,14 +223,20 @@ describe('folder dialogs', () => {
     await event.clear(field);
     await event.type(field, 'Ops');
     await event.click(screen.getByRole('button', { name: 'Save name' }));
-    const retry = await screen.findByRole('button', { name: 'Try again' });
-    expect(field).toBeDisabled();
-    expect(screen.getByText(/won’t be applied twice/u)).toBeVisible();
-    await event.click(retry);
+    await screen.findByText(/couldn’t confirm/u);
+    expect(field).toBeEnabled();
+    expect(field).toHaveValue('Ops');
+    await event.clear(field);
+    await event.type(field, 'Operations team');
+    await event.click(screen.getByRole('button', { name: 'Save name' }));
     await screen.findByText('Folder renamed');
     expect(onDone).toHaveBeenCalledOnce();
     expect(sent).toHaveLength(2);
-    expect(sent[1]).toEqual(sent[0]);
+    expect(sent[1]?.key).not.toEqual(sent[0]?.key);
+    expect(sent[1]?.body).toEqual({
+      name: 'Operations team',
+      expectedFolderRevision: 2,
+    });
     expect(sent[0]?.body).toEqual({ name: 'Ops', expectedFolderRevision: 2 });
   });
 

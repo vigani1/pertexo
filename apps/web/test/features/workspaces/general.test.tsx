@@ -80,7 +80,7 @@ describe('workspace settings', () => {
     );
     expect(commands[0]?.key).toBeTruthy();
   });
-  it('preserves the exact uncertain rename command for an explicit retry', async () => {
+  it('keeps the rename draft after an unconfirmed result and uses a fresh key for a new confirmation', async () => {
     let authoritative = workspace;
     const commands: { body: unknown; key: string | null }[] = [];
     mockServer.use(
@@ -113,18 +113,20 @@ describe('workspace settings', () => {
     await actor.type(input, 'Recovered name');
     await actor.click(screen.getByRole('button', { name: 'Save' }));
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      'We couldn’t confirm whether the rename went through',
+      'We couldn’t confirm that change.',
     );
-    expect(input).toBeDisabled();
-    await actor.click(screen.getByRole('button', { name: 'Try again' }));
+    expect(input).toBeEnabled();
+    expect(input).toHaveValue('Recovered name');
+    await actor.click(screen.getByRole('button', { name: 'Save' }));
     expect(
       (await screen.findAllByText('Recovered name')).length,
     ).toBeGreaterThan(0);
     expect(commands).toHaveLength(2);
-    expect(commands[0]).toEqual(commands[1]);
+    expect(commands[0]?.body).toEqual(commands[1]?.body);
+    expect(commands[0]?.key).not.toBe(commands[1]?.key);
   });
   // web-app-04: the rename resends its held key after any delay.
-  it('refuses to resend an uncertain rename once its 24-hour receipt window has passed', async () => {
+  it('uses a fresh key for a new confirmation after a day, preserving the rename draft', async () => {
     const commands: { key: string | null }[] = [];
     mockServer.use(
       http.get('http://pertexo.test/v1/users/me', () =>
@@ -155,10 +157,13 @@ describe('workspace settings', () => {
       await screen.findByRole('alert');
       // The server forgets an idempotency key after 24 hours.
       vi.setSystemTime(Date.now() + 24 * 60 * 60 * 1000 + 60_000);
-      const retry = screen.queryByRole('button', { name: 'Try again' });
-      if (retry !== null) await actor.click(retry);
-      expect(await screen.findByText(/24-hour/u)).toBeVisible();
-      expect(commands).toHaveLength(1);
+      expect(input).toBeEnabled();
+      expect(input).toHaveValue('Late name');
+      await actor.click(screen.getByRole('button', { name: 'Save' }));
+      await waitFor(() => {
+        expect(commands).toHaveLength(2);
+      });
+      expect(commands[1]?.key).not.toBe(commands[0]?.key);
     } finally {
       vi.useRealTimers();
     }
@@ -269,7 +274,7 @@ describe('workspace settings', () => {
     ).toBeGreaterThan(0);
     expect(patchCount).toBe(1);
   });
-  it('blocks dispatch after an identity change and removes the prior workspace session', async () => {
+  it('ends the workspace session when the server refuses the rename as unauthenticated', async () => {
     let userReads = 0;
     let patchCount = 0;
     mockServer.use(
@@ -284,7 +289,7 @@ describe('workspace settings', () => {
       ),
       http.patch(`http://pertexo.test/v1/workspaces/${workspaceId}`, () => {
         patchCount += 1;
-        return HttpResponse.json(renameResponse(workspace, false));
+        return problem(401, 'auth.unauthenticated', 'Session ended');
       }),
     );
     await renderLoadedApp(`/w/${workspaceId}/settings`);
@@ -294,11 +299,11 @@ describe('workspace settings', () => {
     );
     const input = screen.getByLabelText('Workspace name');
     await actor.clear(input);
-    await actor.type(input, 'Must not dispatch');
+    await actor.type(input, 'Refused at the server');
     await actor.click(screen.getByRole('button', { name: 'Save' }));
 
     await expectSignInPage();
-    expect(patchCount).toBe(0);
+    expect(patchCount).toBe(1);
   });
   it('removes rename actions after authoritative permission loss', async () => {
     let authorized = true;

@@ -8,18 +8,13 @@ import {
   feedbackFor,
   type MemberCommandFeedback,
 } from '../../data/mutations/members/use-member-command';
-
 /** The state of one member command that its confirmation shows. */
 export type MemberCommandView = Readonly<{
   pending: boolean;
   locked: boolean;
-  retryAvailable: boolean;
-  error: string | undefined;
   feedback: MemberCommandFeedback | undefined;
-  retry: () => Promise<boolean>;
   dismiss: () => void;
 }>;
-
 type Content = Readonly<{
   title: ReactNode;
   description?: ReactNode;
@@ -29,7 +24,6 @@ type Content = Readonly<{
   pendingLabel?: string;
   errorAction?: ReactNode;
 }>;
-
 /**
  * Confirms one member command. It stays on the member the command is about:
  * an unconfirmed command offers only its exact retry, and a failure about
@@ -51,14 +45,6 @@ export function MemberCommandDialog({
   const changeConfirmationOpen = (open: boolean) => {
     if (!open) onClose();
   };
-  const confirmationRetry = command.retryAvailable
-    ? {
-        onRetry: () => {
-          void command.retry();
-        },
-        onDismiss: command.dismiss,
-      }
-    : undefined;
   return (
     <ConfirmDialog
       state={{
@@ -68,31 +54,17 @@ export function MemberCommandDialog({
       }}
       title={content.title}
       description={content.description}
-      onSubmit={confirmationRetry?.onRetry ?? onConfirm}
+      onSubmit={onConfirm}
       submitDisabled={command.pending || member === undefined}
       actions={{
-        cancel:
-          confirmationRetry === undefined
-            ? {
-                kind: 'close',
-                label: 'Cancel',
-                variant: 'ghost',
-                disabled: command.locked,
-              }
-            : {
-                kind: 'action',
-                label: 'Close',
-                variant: 'ghost',
-                onClick: () => {
-                  confirmationRetry.onDismiss();
-                  changeConfirmationOpen(false);
-                },
-              },
+        cancel: {
+          kind: 'close',
+          label: 'Cancel',
+          variant: 'ghost',
+          disabled: command.locked,
+        },
         confirm: {
-          label:
-            confirmationRetry === undefined
-              ? content.confirmLabel
-              : 'Try again',
+          label: content.confirmLabel,
           type: 'submit',
           variant:
             (content.tone ?? 'default') === 'destructive'
@@ -106,8 +78,8 @@ export function MemberCommandDialog({
     >
       <ConfirmationDetails
         consequences={content.consequences}
-        error={command.error ?? feedbackFor(command.feedback, member)?.message}
-        tone={confirmationRetry === undefined ? 'destructive' : 'warning'}
+        error={feedbackFor(command.feedback, member)?.message}
+        tone="destructive"
         errorAction={content.errorAction}
       />
     </ConfirmDialog>

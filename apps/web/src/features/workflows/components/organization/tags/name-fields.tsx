@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { ProgressButton } from '@/components/ui/progress-button';
 import type { useFieldValidation } from '@/components/ui/use-field-validation';
 import type { useWorkflowOrganizationCommand } from '../../../hooks/organization/use-workflow-organization-command';
-import type { WorkflowOrganizationAttempt } from '../../../model/organization/requests';
+import type { WorkflowOrganizationInput } from '../../../model/organization/requests';
 const TAG_HINT = 'Lowercase letters, numbers and hyphens, like eu-region.';
 export function TagNameActions({
   current,
@@ -19,7 +19,7 @@ export function TagNameActions({
   current: WorkflowTag | undefined;
   disabled: boolean;
   command: ReturnType<typeof useWorkflowOrganizationCommand>;
-  pendingKind: WorkflowOrganizationAttempt['kind'] | undefined;
+  pendingKind: WorkflowOrganizationInput['kind'] | undefined;
   onCleanup: (tag: WorkflowTag) => void;
   onCancel: () => void;
   onDelete: () => void;

@@ -4,36 +4,17 @@ import { ConcurrencySection } from '@/features/workflow-settings/components/sett
 
 import { concurrencyQueryOptions } from '@/features/workflow-settings/data/concurrency.queries';
 
-import { useConcurrencyCommand } from '@/features/workflow-settings/data/mutations/use-concurrency-command';
-
 import { createApiClient } from '@/lib/api/client';
-
-import { ApiError } from '@/lib/api/error';
-
-import type { WorkflowConcurrencySettings } from '@pertexo/contracts';
 
 import { accessibleWorkspaceSchema } from '@pertexo/contracts';
 
-import {
-  QueryClient,
-  QueryClientProvider,
-  useQuery,
-} from '@tanstack/react-query';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
-import {
-  act,
-  render,
-  renderHook,
-  screen,
-  waitFor,
-  within,
-} from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 
 import userEvent from '@testing-library/user-event';
 
 import { HttpResponse, http } from 'msw';
-
-import type { ReactNode } from 'react';
 
 import { describe, expect, it } from 'vitest';
 
@@ -56,131 +37,25 @@ import {
 } from './workflow-concurrency/fixture';
 
 describe('workflow concurrency settings', () => {
-  it.each([
-    { status: 401, readKind: 'http' },
-    { status: 403, readKind: 'http' },
-    { status: 404, readKind: 'http' },
-    { status: 401, readKind: 'cancellation-ignoring' },
-    { status: 403, readKind: 'cancellation-ignoring' },
-    { status: 404, readKind: 'cancellation-ignoring' },
-  ])(
-    'does not revive a snapshot from a held GET after PUT $status using a $readKind read',
-    async ({ status, readKind }) => {
-      const cache = new QueryClient({
-        defaultOptions: { queries: { retry: false } },
-      });
-      const apiClient = createApiClient({
-        fetch: testFetch,
-        readCsrfToken: () => 'concurrency-race-csrf',
-      });
-      const query = concurrencyQueryOptions(
-        apiClient,
-        userId,
-        workspaceId,
-        workflowId,
-      );
-      const oldSettings = { ...defaultConcurrencySettings, limit: 7 };
-      cache.setQueryData(query.queryKey, oldSettings);
-      let releaseOldRead: (
-        settings: WorkflowConcurrencySettings,
-      ) => void = () => {
-        throw new Error('Old read has not started');
-      };
-      const oldRead = new Promise<WorkflowConcurrencySettings>((resolve) => {
-        releaseOldRead = resolve;
-      });
-      let reads = 0;
-      let authorized = false;
-      const wrapper = ({ children }: Readonly<{ children: ReactNode }>) => (
-        <QueryClientProvider client={cache}>{children}</QueryClientProvider>
-      );
-      const read = async (): Promise<WorkflowConcurrencySettings> => {
-        reads += 1;
-        if (reads === 1) return oldRead;
-        if (!authorized)
-          throw new ApiError({
-            kind: 'network',
-            message: 'Offline after the denial',
-          });
-        return { ...defaultConcurrencySettings, limit: 2, revision: 2 };
-      };
-      const readOptions = {
-        ...query,
-        refetchOnMount: false,
-        // Also bypass transport cancellation: Query must fence late results itself.
-        ...(readKind === 'cancellation-ignoring' ? { queryFn: read } : {}),
-      };
+  it.each([403, 404])(
+    'preserves readable current settings after an action returns %s',
+    async (status) => {
+      installQueries();
       mockServer.use(
-        http.get(endpoint, async () => {
-          try {
-            return HttpResponse.json(await read());
-          } catch {
-            return HttpResponse.error();
-          }
-        }),
         http.put(endpoint, () => problem(status, 'resource.not_found')),
       );
-      const hook = renderHook(
-        () => ({
-          query: useQuery(readOptions),
-          command: useConcurrencyCommand(
-            apiClient,
-            userId,
-            workspaceId,
-            workflowId,
-          ),
-        }),
-        { wrapper },
+      await renderLoadedApp(path);
+      const event = userEvent.setup();
+      await event.type(await limitField(event), '1');
+      await event.click(
+        screen.getByRole('button', { name: 'Save concurrency limit' }),
       );
-      let backgroundRead: Promise<void> = Promise.resolve();
-      act(() => {
-        backgroundRead = cache.refetchQueries({
-          queryKey: query.queryKey,
-          exact: true,
-        });
-      });
-      await waitFor(() => {
-        expect(reads).toBe(1);
-      });
-      let command: Promise<boolean> = Promise.resolve(true);
-      act(() => {
-        command = hook.result.current.command.send({
-          limit: 1,
-          expectedRevision: 1,
-        });
-      });
-      await waitFor(() => {
-        expect(cache.getQueryData(query.queryKey)).toBeUndefined();
-      });
-      await act(async () => {
-        releaseOldRead(oldSettings);
-        await backgroundRead;
-        expect(await command).toBe(false);
-      });
-      expect(cache.getQueryData(query.queryKey)).toBeUndefined();
-      expect(reads).toBe(2);
-      hook.unmount();
-      const remounted = renderHook(
-        () => useQuery({ ...readOptions, refetchOnMount: 'always' as const }),
-        { wrapper },
+      await screen.findByText(
+        status === 403 ? /Your role doesn’t allow/u : /didn’t work/u,
       );
-      await waitFor(() => {
-        expect(remounted.result.current.isError).toBe(true);
-      });
-      expect(remounted.result.current.data).toBeUndefined();
-      expect(cache.getQueryData(query.queryKey)).toBeUndefined();
-      authorized = true;
-      await act(async () => {
-        await cache.refetchQueries({ queryKey: query.queryKey, exact: true });
-      });
-      await waitFor(() => {
-        expect(remounted.result.current.data).toMatchObject({
-          limit: 2,
-          revision: 2,
-        });
-      });
-      remounted.unmount();
-      cache.clear();
+      expect(
+        await screen.findByRole('region', { name: 'Concurrency' }),
+      ).toHaveTextContent('workspace runs up to 10');
     },
   );
   it.each(['0', '11', '1.5'])(
@@ -257,7 +132,7 @@ describe('workflow concurrency settings', () => {
     );
     cache.clear();
   });
-  it('does not adopt a refreshed revision from malformed typed conflict details', async () => {
+  it('uses refreshed revision on a fresh confirmation without claiming malformed conflict details', async () => {
     installQueries();
     let current = defaultConcurrencySettings;
     const bodies: unknown[] = [];
@@ -287,7 +162,7 @@ describe('workflow concurrency settings', () => {
     });
     expect(bodies[1]).toEqual({
       limit: 1,
-      expectedRevision: 1,
+      expectedRevision: 2,
       overflow: 'queue',
     });
   });

@@ -99,7 +99,7 @@ describe('workflow rename', () => {
     expect(requests[0]?.key).toMatch(/^[0-9a-f-]{36}$/u);
   });
 
-  it('retries an unconfirmed rename exactly, then lets people keep their name over a newer one', async () => {
+  it('keeps an unconfirmed rename editable, then lets people keep their name over a newer one', async () => {
     let current = summary;
     const keys: (string | null)[] = [];
     const bodies: unknown[] = [];
@@ -123,17 +123,15 @@ describe('workflow rename', () => {
     const { event } = await startRenaming('Morning control');
     await event.click(screen.getByRole('button', { name: 'Save' }));
     expect(
-      await screen.findByText(
-        /couldn’t confirm whether the rename went through/u,
-      ),
+      await screen.findByText(/couldn’t confirm that change/u),
     ).toBeVisible();
-    expect(screen.getByLabelText('Workflow name')).toBeDisabled();
+    expect(screen.getByLabelText('Workflow name')).toBeEnabled();
 
-    await event.click(screen.getByRole('button', { name: 'Try again' }));
+    await event.click(screen.getByRole('button', { name: 'Save' }));
     expect(
       await screen.findByText('Renamed to “Daily checks” meanwhile.'),
     ).toBeVisible();
-    expect(keys[1]).toBe(keys[0]);
+    expect(keys[1]).not.toBe(keys[0]);
 
     await event.click(screen.getByRole('button', { name: 'Keep mine' }));
     expect(await screen.findByText('Renamed to Morning control')).toBeVisible();

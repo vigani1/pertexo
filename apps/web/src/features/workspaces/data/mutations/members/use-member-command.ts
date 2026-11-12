@@ -1,67 +1,34 @@
 import {
-  RETRY_WINDOW_ENDED,
-  canResend,
-  isUnconfirmedCommand,
-  type CommandKey,
-} from '@/lib/api/commands/command-retry';
-import { useResendExpired } from '@/lib/api/commands/use-resend-window';
+  useLowEffectMutation,
+  lowEffectError,
+} from '@/lib/api/commands/low-effect-mutation';
 import type { WorkspaceMember } from '@pertexo/contracts';
-import {
-  useMutation,
-  useQueryClient,
-  type QueryClient,
-} from '@tanstack/react-query';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { useState } from 'react';
 import { isUnauthenticated } from '@/features/auth/session/identity.public';
 import { isApiError } from '@/lib/api/error';
-import { describeCommandError } from '@/lib/api/error-copy';
 import type { ApiClient } from '@/lib/api/client';
 import { workspaceKeys, workspaceMemberKeys } from '../../workspaces.queries';
 import { directoryMembershipFeedback } from '../../../model/directory-membership';
 
-/** Every member command names its target at the revision people saw. */
 export type MemberCommandAttempt = Readonly<{
   member: WorkspaceMember;
   targetUserId: string;
   expectedRoleRevision: number;
-}> &
-  CommandKey;
-
-/** A sentence about one member; `freshSignIn` offers signing in again. */
+}>;
 export type MemberCommandFeedback = Readonly<{
   targetUserId: string;
   message: string;
   freshSignIn?: boolean;
 }>;
-
-/** A command's feedback when it is about this member. */
 export function feedbackFor(
   feedback: MemberCommandFeedback | undefined,
   member: WorkspaceMember | undefined,
-): MemberCommandFeedback | undefined {
+) {
   return feedback?.targetUserId === member?.userId ? feedback : undefined;
 }
-
-type CommandState<Attempt> =
-  | Readonly<{ kind: 'idle'; feedback?: MemberCommandFeedback }>
-  | Readonly<{
-      kind: 'executing';
-      attempt: Attempt;
-      phase: 'request' | 'reconciliation';
-    }>
-  | Readonly<{ kind: 'uncertain'; attempt: Attempt; message: string }>;
-
-/** Idle, or holding a command whose retry window has ended. */
-function canStart(state: CommandState<MemberCommandAttempt>): boolean {
-  return (
-    state.kind === 'idle' ||
-    (state.kind === 'uncertain' && !canResend(state.attempt))
-  );
-}
-
 /** The sentences a member command uses about its target. */
 export type MemberCommandCopy = Readonly<{
-  uncertain: (member: WorkspaceMember) => string;
   conflict: (member: WorkspaceMember) => string;
   /** How a failure names the action, e.g. "changing this role". */
   action: string;
@@ -83,14 +50,15 @@ function isTargetGone(cause: unknown): boolean {
 
 /**
  * One existing-member command at the revision the confirmation showed. An
- * unconfirmed command keeps its exact attempt for a retry; a stale revision
- * refreshes the list and asks for a new decision.
+ * unconfirmed change refreshes the list and leaves a new decision to the user.
  */
 type MemberCommandInput<Attempt extends MemberCommandAttempt> = Readonly<{
   apiClient: ApiClient;
   actorUserId: string;
   workspaceId: string;
-  send: (attempt: Attempt) => Promise<unknown>;
+  send: (
+    attempt: Attempt & Readonly<{ idempotencyKey: string }>,
+  ) => Promise<unknown>;
   copy: MemberCommandCopy;
   onDone: (attempt: Attempt) => void;
   onConflict: () => void;
@@ -102,210 +70,76 @@ type MemberCommandInput<Attempt extends MemberCommandAttempt> = Readonly<{
 export function useMemberCommand<Attempt extends MemberCommandAttempt>(
   input: MemberCommandInput<Attempt>,
 ) {
-  const queryClient = useQueryClient();
-  const owner = useRef<symbol | undefined>(undefined);
-  const inFlight = useRef(false);
-  const [state, setState] = useState<CommandState<Attempt>>({ kind: 'idle' });
-  const stateRef = useRef<CommandState<Attempt>>(state);
-  const expired = useResendExpired(
-    state.kind === 'uncertain' ? state.attempt : undefined,
-  );
-  const membersKey = workspaceMemberKeys.list(
-    input.actorUserId,
-    input.workspaceId,
-  );
-
-  useEffect(() => {
-    const scope = Symbol('member-command');
-    owner.current = scope;
-    return () => {
-      if (owner.current === scope) owner.current = undefined;
-    };
-  }, [input.apiClient, input.actorUserId, input.workspaceId]);
-
-  const transition = useCallback((next: CommandState<Attempt>) => {
-    stateRef.current = next;
-    setState(next);
-  }, []);
-
-  const mutation = useMutation({
-    mutationFn: ({ attempt }: Readonly<{ attempt: Attempt; scope: symbol }>) =>
-      input.send(attempt),
-    onSuccess: async (_result, { attempt, scope }) => {
-      if (owner.current !== scope) return;
-      transition({ kind: 'executing', attempt, phase: 'reconciliation' });
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: membersKey }),
-        queryClient.invalidateQueries({
+  const cache = useQueryClient();
+  const [feedback, setFeedback] = useState<MemberCommandFeedback>();
+  const mutation = useLowEffectMutation({
+    send: (attempt: Attempt, key) =>
+      input.send({ ...attempt, idempotencyKey: key }),
+    refresh: () =>
+      Promise.all([
+        cache.invalidateQueries({
+          queryKey: workspaceMemberKeys.list(
+            input.actorUserId,
+            input.workspaceId,
+          ),
+        }),
+        cache.invalidateQueries({
           queryKey: workspaceKeys.accessible(input.actorUserId),
         }),
-      ]);
-    },
+      ]),
   });
-
-  const context: MemberFailureContext<Attempt> = {
-    input,
-    queryClient,
-    owner,
-    transition,
-    membersKey,
-  };
-
-  async function execute(attempt: Attempt) {
-    const scope = owner.current;
-    if (scope === undefined || inFlight.current) return false;
-    inFlight.current = true;
-    transition({ kind: 'executing', attempt, phase: 'request' });
+  async function start(attempt: Attempt) {
+    if (mutation.isPending) return false;
+    setFeedback(undefined);
     try {
-      await mutation.mutateAsync({ attempt, scope });
-      if (owner.current !== scope) return false;
-      transition({ kind: 'idle' });
-      input.onDone(attempt);
+      await mutation.mutateAsync(attempt, {
+        onSuccess: () => {
+          input.onDone(attempt);
+        },
+      });
       return true;
     } catch (cause) {
-      if (owner.current === scope)
-        await settleMemberFailure<Attempt>(context, { scope, attempt, cause });
+      if (isUnauthenticated(cause)) input.onAuthenticationLost();
+      else if (needsFreshSignIn(cause))
+        setFeedback({
+          targetUserId: attempt.targetUserId,
+          message:
+            'For your security, sign in again, then confirm within five minutes.',
+          freshSignIn: true,
+        });
+      else if (isApiError(cause) && cause.status === 403)
+        input.onPermissionLost();
+      else if (isTargetGone(cause)) input.onTargetUnavailable(attempt.member);
+      else {
+        const directory = directoryMembershipFeedback(cause);
+        const recoveryOwner =
+          isApiError(cause) &&
+          cause.problem?.code === 'workspace.recovery_owner_ineligible';
+        const conflict = isApiError(cause) && cause.status === 409;
+        let message = directory ?? lowEffectError(cause, input.copy.action);
+        if (directory === undefined) {
+          if (recoveryOwner && isApiError(cause))
+            message =
+              cause.problem.detail ??
+              'Ask the new owner to prepare a recovery account, then retry.';
+          else if (conflict) message = input.copy.conflict(attempt.member);
+        }
+        setFeedback({ targetUserId: attempt.targetUserId, message });
+        if (directory !== undefined || conflict || recoveryOwner)
+          input.onConflict();
+      }
       return false;
-    } finally {
-      inFlight.current = false;
     }
   }
-
-  const uncertainMessage =
-    state.kind === 'uncertain' ? state.message : undefined;
   return {
-    activeAttempt:
-      state.kind === 'executing' || state.kind === 'uncertain'
-        ? state.attempt
-        : undefined,
-    error: expired ? RETRY_WINDOW_ENDED : uncertainMessage,
-    feedback: state.kind === 'idle' ? state.feedback : undefined,
-    locked:
-      state.kind === 'executing' || (state.kind === 'uncertain' && !expired),
-    pending: state.kind === 'executing',
-    retryAvailable: state.kind === 'uncertain' && !expired,
-    /** Sends a new command; nothing starts while another is unresolved. */
-    start: (attempt: Attempt) =>
-      canStart(stateRef.current) ? execute(attempt) : Promise.resolve(false),
-    retry: () => {
-      const current = stateRef.current;
-      return current.kind === 'uncertain' && canResend(current.attempt)
-        ? execute(current.attempt)
-        : Promise.resolve(false);
-    },
-    /** Gives up on an unconfirmed command and reloads the real members. */
+    activeAttempt: mutation.isPending ? mutation.variables : undefined,
+    feedback,
+    pending: mutation.isPending,
+    locked: mutation.isPending,
+    start,
     dismiss: () => {
-      if (stateRef.current.kind !== 'uncertain') return;
-      transition({ kind: 'idle' });
-      void queryClient.invalidateQueries({ queryKey: membersKey });
+      setFeedback(undefined);
+      mutation.reset();
     },
   };
-}
-
-type MemberFailureContext<Attempt extends MemberCommandAttempt> = Readonly<{
-  input: MemberCommandInput<Attempt>;
-  queryClient: QueryClient;
-  owner: Readonly<{ current: symbol | undefined }>;
-  transition: (state: CommandState<Attempt>) => void;
-  membersKey: readonly unknown[];
-}>;
-async function settleMemberFailure<Attempt extends MemberCommandAttempt>(
-  {
-    input,
-    queryClient,
-    owner,
-    transition,
-    membersKey,
-  }: MemberFailureContext<Attempt>,
-  {
-    scope,
-    attempt,
-    cause,
-  }: Readonly<{ scope: symbol; attempt: Attempt; cause: unknown }>,
-) {
-  if (isUnconfirmedCommand(cause)) {
-    transition({
-      kind: 'uncertain',
-      attempt,
-      message: input.copy.uncertain(attempt.member),
-    });
-    return;
-  }
-  if (isUnauthenticated(cause)) {
-    transition({ kind: 'idle' });
-    input.onAuthenticationLost();
-    return;
-  }
-  if (needsFreshSignIn(cause)) {
-    transition({
-      kind: 'idle',
-      feedback: {
-        targetUserId: attempt.targetUserId,
-        message:
-          'For your security, sign in again, then confirm within five minutes.',
-        freshSignIn: true,
-      },
-    });
-    return;
-  }
-  const directoryFeedback = directoryMembershipFeedback(cause);
-  if (directoryFeedback !== undefined) {
-    await queryClient.invalidateQueries({ queryKey: membersKey });
-    if (owner.current !== scope) return;
-    transition({
-      kind: 'idle',
-      feedback: {
-        targetUserId: attempt.targetUserId,
-        message: directoryFeedback,
-      },
-    });
-    input.onConflict();
-    return;
-  }
-  if (
-    isApiError(cause) &&
-    cause.problem?.code === 'workspace.recovery_owner_ineligible'
-  ) {
-    transition({
-      kind: 'idle',
-      feedback: {
-        targetUserId: attempt.targetUserId,
-        message:
-          cause.problem.detail ??
-          'Ask the new owner to prepare a recovery account, then retry.',
-      },
-    });
-    input.onConflict();
-    return;
-  }
-  if (isApiError(cause) && cause.status === 403) {
-    transition({ kind: 'idle' });
-    input.onPermissionLost();
-    return;
-  }
-  if (isApiError(cause) && (cause.status === 409 || cause.status === 404)) {
-    await queryClient.invalidateQueries({ queryKey: membersKey });
-    if (owner.current !== scope) return;
-    transition(
-      isTargetGone(cause)
-        ? { kind: 'idle' }
-        : {
-            kind: 'idle',
-            feedback: {
-              targetUserId: attempt.targetUserId,
-              message: input.copy.conflict(attempt.member),
-            },
-          },
-    );
-    if (isTargetGone(cause)) input.onTargetUnavailable(attempt.member);
-    else input.onConflict();
-    return;
-  }
-  transition({
-    kind: 'idle',
-    feedback: {
-      targetUserId: attempt.targetUserId,
-      message: describeCommandError(cause, input.copy.action),
-    },
-  });
 }

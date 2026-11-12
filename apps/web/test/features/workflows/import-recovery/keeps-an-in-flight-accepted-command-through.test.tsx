@@ -25,7 +25,7 @@ afterEach(() => {
 });
 
 describe('Workflow list owns import recovery across dialog dismissal', () => {
-  it('keeps an in-flight accepted command through Cancel/reopen without sending a replacement or auto-retrying', async () => {
+  it('keeps an in-flight accepted command through Cancel/reopen without sending a replacement', async () => {
     let release!: () => void;
     const held = new Promise<void>((resolve) => {
       release = resolve;
@@ -39,7 +39,7 @@ describe('Workflow list owns import recovery across dialog dismissal', () => {
         });
         if (attempts.length === 1) {
           await held;
-          return HttpResponse.error();
+          return HttpResponse.json({ workflowId: versionId }, { status: 201 });
         }
         return HttpResponse.json({ workflowId: versionId }, { status: 201 });
       }),
@@ -57,14 +57,8 @@ describe('Workflow list owns import recovery across dialog dismissal', () => {
     );
     await event.click(screen.getByRole('button', { name: 'Import workflow…' }));
     release();
-    const retry = await screen.findByRole('button', {
-      name: 'Retry exact import',
-    });
-    expect(attempts).toHaveLength(1);
-    await event.click(retry);
     await screen.findByRole('button', { name: 'Open imported workflow' });
-    expect(attempts).toHaveLength(2);
-    expect(attempts[1]).toEqual(attempts[0]);
+    expect(attempts).toHaveLength(1);
   });
   it('clears retained private intent after access loss while dismissed and fences a late accepted response', async () => {
     let release!: () => void;
@@ -134,54 +128,24 @@ describe('Workflow list owns import recovery across dialog dismissal', () => {
     expect(onCreated).not.toHaveBeenCalled();
     expect(posted).toBe(1);
   });
-  it('blocks same-workspace departure while uncertain, offers Stay/reopen, and releases a confirmed command without another POST', async () => {
-    const attempts: { body: unknown; key: string | null }[] = [];
+  it('allows departure after an unconfirmed low-effect import without sending again', async () => {
+    let posted = 0;
     mockServer.use(
-      http.post(`${api}/workflows/import`, async ({ request }) => {
-        attempts.push({
-          body: await request.json(),
-          key: request.headers.get('idempotency-key'),
-        });
-        return attempts.length === 1
-          ? HttpResponse.error()
-          : HttpResponse.json({ workflowId: versionId }, { status: 201 });
+      http.post(`${api}/workflows/import`, () => {
+        posted++;
+        return HttpResponse.error();
       }),
     );
     const { event, router } = mountList(true);
     await prepare(event);
-    await screen.findByRole('button', { name: 'Retry exact import' });
-    await event.click(screen.getByRole('button', { name: 'Close' }));
+    await screen.findByText(/couldn’t confirm/u);
+    await event.click(screen.getByRole('button', { name: 'Cancel' }));
     const unload = new Event('beforeunload', { cancelable: true });
     window.dispatchEvent(unload);
-    expect(unload.defaultPrevented).toBe(true);
-    void router.navigate({ to: '/w/$workspaceId', params: { workspaceId } });
-    await screen.findByRole('heading', {
-      name: 'Resolve the import before leaving',
-    });
-    expect(router.state.location.pathname).toBe(`/w/${workspaceId}/workflows`);
-    await event.click(screen.getByRole('button', { name: 'Stay here' }));
-    expect(
-      screen.queryByRole('heading', { name: 'Destination page' }),
-    ).not.toBeInTheDocument();
-    void router.navigate({ to: '/w/$workspaceId', params: { workspaceId } });
-    await event.click(
-      await screen.findByRole('button', { name: 'Reopen import' }),
-    );
-    expect(attempts).toHaveLength(1);
-    await event.click(
-      await screen.findByRole('button', { name: 'Retry exact import' }),
-    );
-    await screen.findByRole('button', { name: 'Open imported workflow' });
-    expect(attempts[1]).toEqual(attempts[0]);
-    await event.click(screen.getByRole('button', { name: 'Close' }));
-    await event.click(screen.getByRole('button', { name: 'Import workflow…' }));
-    await screen.findByRole('button', { name: 'Open imported workflow' });
-    expect(attempts).toHaveLength(2);
-    const settledUnload = new Event('beforeunload', { cancelable: true });
-    window.dispatchEvent(settledUnload);
-    expect(settledUnload.defaultPrevented).toBe(false);
+    expect(unload.defaultPrevented).toBe(false);
     await router.navigate({ to: '/w/$workspaceId', params: { workspaceId } });
     await screen.findByRole('heading', { name: 'Destination page' });
+    expect(posted).toBe(1);
   });
   it.each(['session departure', 'workspace change'] as const)(
     'does not prevent %s during sending, and fences the late accepted response',

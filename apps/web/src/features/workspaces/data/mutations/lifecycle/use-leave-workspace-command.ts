@@ -1,36 +1,14 @@
+import { useQueryClient } from '@tanstack/react-query';
 import {
-  RETRY_WINDOW_ENDED,
-  canResend,
-  isUnconfirmedCommand,
-  newCommandKey,
-  type CommandKey,
-} from '@/lib/api/commands/command-retry';
-import { useResendExpired } from '@/lib/api/commands/use-resend-window';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useRef, useState } from 'react';
+  useLowEffectMutation,
+  lowEffectError,
+} from '@/lib/api/commands/low-effect-mutation';
 import { isUnauthenticated } from '@/features/auth/session/identity.public';
 import { isApiError } from '@/lib/api/error';
-import { describeCommandError } from '@/lib/api/error-copy';
 import type { ApiClient } from '@/lib/api/client';
 import { leaveWorkspace } from '../../workspaces.api';
 import { directoryMembershipFeedback } from '../../../model/directory-membership';
 
-/** Why leaving failed, in words; the owner is told what to do first. */
-function leaveFailure(cause: unknown): string {
-  if (isUnconfirmedCommand(cause))
-    return 'We couldn’t confirm whether you left. Try again — it’s the same request, so it can’t happen twice.';
-  const directoryFeedback = directoryMembershipFeedback(cause);
-  if (directoryFeedback !== undefined) return directoryFeedback;
-  if (isApiError(cause) && cause.status === 403)
-    return 'The owner can’t leave. Make another member the owner from Team first.';
-  return describeCommandError(cause, 'leaving the workspace');
-}
-
-/**
- * Leaves the workspace (ADR 047). Every session of the person ends with it,
- * so success and a later "session ended" both mean the person is out; an
- * unconfirmed attempt keeps its exact key for the retry.
- */
 export function useLeaveWorkspaceCommand({
   apiClient,
   workspaceId,
@@ -38,93 +16,43 @@ export function useLeaveWorkspaceCommand({
 }: Readonly<{
   apiClient: ApiClient;
   workspaceId: string;
-  /** `confirmed` is false when only the ended session says so. */
   onLeft: (confirmed: boolean) => void | Promise<void>;
 }>) {
-  const queryClient = useQueryClient();
-  const owner = useRef<symbol | undefined>(undefined);
-  const activeSubmission = useRef<symbol | undefined>(undefined);
-  const attempt = useRef<CommandKey | undefined>(undefined);
-  // `held` is the unconfirmed attempt a retry resends.
-  const [failure, setFailure] = useState<
-    Readonly<{ message: string; held?: CommandKey }> | undefined
-  >();
-  const expired = useResendExpired(failure?.held);
-  const retryAvailable = failure?.held !== undefined && !expired;
-  useEffect(() => {
-    const currentOwner = Symbol('workspace-leave');
-    owner.current = currentOwner;
-    return () => {
-      if (owner.current === currentOwner) {
-        owner.current = undefined;
-        activeSubmission.current = undefined;
-      }
-    };
-  }, [apiClient, workspaceId]);
-  const mutation = useMutation({
-    mutationFn: (current: CommandKey) =>
-      leaveWorkspace(apiClient, workspaceId, current.idempotencyKey),
-    onMutate: () => owner.current,
-    onSuccess: (_result, _key, submissionOwner) =>
-      finish({ confirmed: true, submissionOwner }),
+  const cache = useQueryClient();
+  const mutation = useLowEffectMutation({
+    send: (_input: undefined, key) =>
+      leaveWorkspace(apiClient, workspaceId, key),
+    refresh: () => cache.invalidateQueries(),
   });
-
-  async function finish({
-    confirmed,
-    submissionOwner,
-  }: Readonly<{ confirmed: boolean; submissionOwner: symbol | undefined }>) {
-    if (submissionOwner === undefined || owner.current !== submissionOwner)
-      return;
-    // Leaving ends every session, so no protected snapshot remains valid.
-    await queryClient.cancelQueries();
-    if (owner.current !== submissionOwner) return;
-    queryClient.clear();
-    if (owner.current === submissionOwner) await onLeft(confirmed);
+  async function finish(confirmed: boolean) {
+    cache.clear();
+    await onLeft(confirmed);
   }
-
-  async function send(current: CommandKey): Promise<boolean> {
-    const submissionOwner = owner.current;
-    if (submissionOwner === undefined || activeSubmission.current !== undefined)
-      return false;
-    const submission = Symbol('workspace-leave-submission');
-    activeSubmission.current = submission;
-    attempt.current = current;
-    setFailure(undefined);
+  async function start() {
+    if (mutation.isPending) return false;
+    let completion: Promise<void> | undefined;
     try {
-      await mutation.mutateAsync(current);
+      await mutation.mutateAsync(undefined, {
+        onSuccess: () => {
+          completion = finish(true);
+        },
+        onError: (cause) => {
+          if (isUnauthenticated(cause)) completion = finish(false);
+        },
+      });
+      if (completion === undefined) return false;
+      await completion;
       return true;
-    } catch (cause) {
-      if (owner.current !== submissionOwner) return false;
-      if (isUnauthenticated(cause)) {
-        await finish({ confirmed: false, submissionOwner });
-        return false;
-      }
-      const message = leaveFailure(cause);
-      if (isUnconfirmedCommand(cause)) setFailure({ message, held: current });
-      else {
-        attempt.current = undefined;
-        setFailure({ message });
-      }
+    } catch {
+      await completion;
       return false;
-    } finally {
-      if (activeSubmission.current === submission)
-        activeSubmission.current = undefined;
     }
   }
-
-  return {
-    pending: mutation.isPending,
-    error: expired ? RETRY_WINDOW_ENDED : failure?.message,
-    retryAvailable,
-    start: () =>
-      retryAvailable ? Promise.resolve(false) : send(newCommandKey()),
-    retry: () =>
-      attempt.current === undefined || !canResend(attempt.current)
-        ? Promise.resolve(false)
-        : send(attempt.current),
-    dismiss: () => {
-      attempt.current = undefined;
-      setFailure(undefined);
-    },
-  };
+  const error = !mutation.isError
+    ? undefined
+    : (directoryMembershipFeedback(mutation.error) ??
+      (isApiError(mutation.error) && mutation.error.status === 403
+        ? 'The owner can’t leave. Make another member the owner from Team first.'
+        : lowEffectError(mutation.error, 'leaving the workspace')));
+  return { start, pending: mutation.isPending, error, dismiss: mutation.reset };
 }

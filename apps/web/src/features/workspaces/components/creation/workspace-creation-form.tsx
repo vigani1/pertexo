@@ -6,16 +6,12 @@ import { FieldGroup, LabelledField } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Notice } from '@/components/ui/notice';
 import { useFieldValidation } from '@/components/ui/use-field-validation';
-import { newCommandKey } from '@/lib/api/commands/command-retry';
 import type { WorkspaceCreationCommand } from '../../data/mutations/use-workspace-creation';
-
 type Field = 'name' | 'slug';
-
 const FIELD_MESSAGES: Record<Field, string> = {
   name: 'Give the workspace a name of up to 128 characters.',
   slug: 'Use lowercase letters, numbers and single hyphens, up to 64 characters.',
 };
-
 function suggestWorkspaceSlug(name: string): string {
   return name
     .trim()
@@ -25,26 +21,25 @@ function suggestWorkspaceSlug(name: string): string {
     .slice(0, 64)
     .replace(/-+$/u, '');
 }
-
 function fieldProblem(field: Field, value: string): string | undefined {
   return workspaceCreateRequestSchema.shape[field].safeParse(value).success
     ? undefined
     : FIELD_MESSAGES[field];
 }
-
 function submitLabel(command: WorkspaceCreationCommand): string {
-  if (command.pending)
-    return command.retryAvailable ? 'Checking…' : 'Creating…';
+  if (command.pending) return 'Creating…';
   if (command.refreshPending) return 'Opening…';
-  if (command.retryAvailable) return 'Check again';
   return command.created ? 'Open workspace' : 'Create workspace';
 }
-
 function HandlePreview({
   slug,
   disabled,
   onEdit,
-}: Readonly<{ slug: string; disabled: boolean; onEdit: () => void }>) {
+}: Readonly<{
+  slug: string;
+  disabled: boolean;
+  onEdit: () => void;
+}>) {
   return (
     <p className="flex min-w-0 flex-wrap items-center gap-x-2 text-[0.8rem] text-muted-foreground">
       Handle
@@ -65,33 +60,17 @@ function HandlePreview({
     </p>
   );
 }
-
 /** Uncertain requests can be checked again or dropped; nothing else. */
 function CreationActions({
   command,
-  onStartOver,
   onCancel,
 }: Readonly<{
   command: WorkspaceCreationCommand;
-  onStartOver: () => void;
   onCancel: (() => void) | undefined;
 }>) {
   return (
     <div className="flex flex-wrap items-center justify-end gap-2">
-      {command.retryAvailable ? (
-        <Button
-          type="button"
-          variant="ghost"
-          disabled={command.pending}
-          onClick={() => {
-            command.dismissUncertain();
-            onStartOver();
-          }}
-        >
-          Start over
-        </Button>
-      ) : null}
-      {!command.retryAvailable && onCancel !== undefined && !command.created ? (
+      {onCancel !== undefined && !command.created ? (
         <Button
           type="button"
           variant="ghost"
@@ -112,21 +91,14 @@ function CreationActions({
     </div>
   );
 }
-
-/**
- * Name the workspace; its handle follows the name until edited. After an
- * uncertain answer the same request can only be checked again or dropped,
- * never silently re-sent with different details.
- */
+/** The handle follows the workspace name until edited. */
 export function WorkspaceCreationForm({
   idPrefix,
   command,
-  onStartOver,
   onCancel,
 }: Readonly<{
   idPrefix: string;
   command: WorkspaceCreationCommand;
-  onStartOver: () => void;
   onCancel?: (() => void) | undefined;
 }>) {
   const [name, setName] = useState('');
@@ -143,17 +115,11 @@ export function WorkspaceCreationForm({
     validation.error('slug') ??
     (command.error?.field === 'slug' ? command.error.message : undefined);
   const slugVisible = editingSlug || slugError !== undefined;
-
   useEffect(() => {
     if (command.error?.field === 'slug') slugRef.current?.focus();
   }, [command.error]);
-
   function submit(event: SyntheticEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (command.retryAvailable) {
-      void command.retry();
-      return;
-    }
     if (command.created) {
       void command.refresh();
       return;
@@ -174,9 +140,8 @@ export function WorkspaceCreationForm({
       return;
     }
     const parsed = workspaceCreateRequestSchema.parse({ name, slug });
-    void command.start({ body: parsed, ...newCommandKey() });
+    void command.start({ body: parsed });
   }
-
   return (
     <form noValidate className="flex flex-col gap-5" onSubmit={submit}>
       <FieldGroup className="gap-4">
@@ -256,28 +221,20 @@ export function WorkspaceCreationForm({
         )}
       </FieldGroup>
       <CreationFailure command={command} />
-      <CreationActions
-        command={command}
-        onStartOver={onStartOver}
-        onCancel={onCancel}
-      />
+      <CreationActions command={command} onCancel={onCancel} />
     </form>
   );
 }
-
 function CreationFailure({
   command,
-}: Readonly<{ command: WorkspaceCreationCommand }>) {
+}: Readonly<{
+  command: WorkspaceCreationCommand;
+}>) {
   const message =
     command.error?.field === undefined ? command.error?.message : undefined;
   if (message === undefined) return null;
   return (
-    <Notice
-      role="alert"
-      tone={
-        command.retryAvailable || command.created ? 'warning' : 'destructive'
-      }
-    >
+    <Notice role="alert" tone={command.created ? 'warning' : 'destructive'}>
       {message}
     </Notice>
   );

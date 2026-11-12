@@ -94,7 +94,7 @@ describe('team: suspension and reactivation', () => {
     ]);
   });
 
-  it('reactivates a suspended member with their role, and repeats an unconfirmed attempt exactly', async () => {
+  it('keeps the member and role after an unconfirmed reactivation and uses a fresh confirmation key', async () => {
     const sent: Command[] = [];
     mockServer.use(
       ...team.identityHandlers(team.ownerWorkspace),
@@ -123,17 +123,18 @@ describe('team: suspension and reactivation', () => {
       dialog.getByRole('button', { name: 'Reactivate member' }),
     );
     expect(
-      await dialog.findByText(
-        /couldn’t confirm whether Ada Lovelace’s access/u,
-      ),
+      await dialog.findByText(/couldn’t confirm that change/u),
     ).toBeVisible();
-    await actor.click(dialog.getByRole('button', { name: 'Try again' }));
+    await actor.click(
+      dialog.getByRole('button', { name: 'Reactivate member' }),
+    );
 
     expect(
       await screen.findByText('Ada Lovelace was reactivated'),
     ).toBeVisible();
     expect(sent).toHaveLength(2);
-    expect(sent[1]).toEqual(sent[0]);
+    expect(sent[1]?.body).toEqual(sent[0]?.body);
+    expect(sent[1]?.key).not.toBe(sent[0]?.key);
     expect(sent[0]?.body).toEqual({ expectedRoleRevision: 2 });
   });
 

@@ -35,7 +35,7 @@ function buildTabHandlers() {
 }
 
 describe('new workflow lens', () => {
-  it('validates the name, reuses one key for an uncertain retry, then opens Build', async () => {
+  it('validates the name, preserves it after an unconfirmed create, then opens Build on a new confirmation', async () => {
     const keys: (string | null)[] = [];
     mockServer.use(
       ...discoveryHandlers(),
@@ -76,11 +76,9 @@ describe('new workflow lens', () => {
     expect(name).toHaveAttribute('aria-invalid', 'false');
     await event.click(screen.getByRole('button', { name: 'Create workflow' }));
     expect(
-      await screen.findByText(
-        /couldn’t confirm whether the workflow was created/u,
-      ),
+      await screen.findByText(/couldn’t confirm that change/u),
     ).toBeVisible();
-    await event.click(screen.getByRole('button', { name: 'Retry safely' }));
+    await event.click(screen.getByRole('button', { name: 'Create workflow' }));
 
     await waitFor(() => {
       expect(router.state.location.pathname).toBe(
@@ -90,7 +88,7 @@ describe('new workflow lens', () => {
     expect(await screen.findByText('Workflow created')).toBeVisible();
     expect(keys).toHaveLength(2);
     expect(keys[0]).toBeTruthy();
-    expect(keys[1]).toBe(keys[0]);
+    expect(keys[1]).not.toBe(keys[0]);
   });
 
   it('freezes the submitted create intent while its request is pending', async () => {

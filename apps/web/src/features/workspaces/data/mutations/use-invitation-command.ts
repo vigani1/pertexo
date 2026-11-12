@@ -1,4 +1,8 @@
 import {
+  useLowEffectMutation,
+  lowEffectError,
+} from '@/lib/api/commands/low-effect-mutation';
+import {
   RETRY_WINDOW_ENDED,
   canResend,
   isUnconfirmedCommand,
@@ -103,6 +107,7 @@ type InvitationCommandInput = Readonly<{
   onPermissionLost: () => void;
 }>;
 
+// eslint-disable-next-line max-lines-per-function -- Link issuance keeps one exact retry lifetime; revocation has its own native mutation.
 export function useInvitationCommand(input: InvitationCommandInput) {
   const queryClient = useQueryClient();
   const [state, setState] = useState<State>({ kind: 'idle' });
@@ -124,6 +129,7 @@ export function useInvitationCommand(input: InvitationCommandInput) {
       queryClient.invalidateQueries({ queryKey: invitationsKey }),
   });
 
+  const revocation = useInvitationRevocation(input);
   useEffect(() => {
     const scope = Symbol('invitation-command');
     owner.current = scope;
@@ -208,26 +214,38 @@ export function useInvitationCommand(input: InvitationCommandInput) {
       ? state.attempt
       : undefined;
   const stateMessage = state.kind === 'executing' ? undefined : state.message;
+  const message = revocation.isError
+    ? lowEffectError(revocation.error, 'revoking this invitation')
+    : stateMessage;
   return {
-    activeAttempt,
+    activeAttempt: revocation.isPending
+      ? {
+          kind: 'revoke' as const,
+          invitation: revocation.variables,
+          expectedRevision: revocation.variables.revision,
+        }
+      : activeAttempt,
     locked:
-      state.kind === 'executing' || (state.kind === 'uncertain' && !expired),
-    pending: state.kind === 'executing',
+      revocation.isPending ||
+      state.kind === 'executing' ||
+      (state.kind === 'uncertain' && !expired),
+    pending: revocation.isPending || state.kind === 'executing',
     retryAvailable: state.kind === 'uncertain' && !expired,
-    message: expired ? RETRY_WINDOW_ENDED : stateMessage,
+    message: expired ? RETRY_WINDOW_ENDED : message,
     create: (email: string, role: ManagedRole) =>
       canStart(stateRef.current)
         ? execute({ kind: 'create', email, role, ...newCommandKey() })
         : Promise.resolve(STOPPED),
-    change: (invitation: WorkspaceInvitation, kind: 'resend' | 'revoke') =>
-      canStart(stateRef.current)
-        ? execute({
-            kind,
-            invitation,
-            expectedRevision: invitation.revision,
-            ...newCommandKey(),
-          })
-        : Promise.resolve(STOPPED),
+    change: (invitation: WorkspaceInvitation, kind: 'resend' | 'revoke') => {
+      if (!canStart(stateRef.current)) return Promise.resolve(STOPPED);
+      if (kind === 'revoke') return revocation.change(invitation);
+      return execute({
+        kind,
+        invitation,
+        expectedRevision: invitation.revision,
+        ...newCommandKey(),
+      });
+    },
     retry: (): Promise<InvitationOutcome> => {
       const current = stateRef.current;
       if (current.kind !== 'uncertain') return Promise.resolve(STOPPED);
@@ -237,6 +255,7 @@ export function useInvitationCommand(input: InvitationCommandInput) {
     },
     dismiss: () => {
       transition({ kind: 'idle' });
+      revocation.reset();
       void queryClient.invalidateQueries({ queryKey: invitationsKey });
     },
   };
@@ -270,4 +289,40 @@ async function verifyInvitationSession(
     }
     throw error;
   }
+}
+
+function useInvitationRevocation(input: InvitationCommandInput) {
+  const queryClient = useQueryClient();
+  const invitationsKey = workspaceInvitationKeys.list(
+    input.userId,
+    input.workspaceId,
+  );
+  const revocation = useLowEffectMutation({
+    send: (invitation: WorkspaceInvitation, key) =>
+      changeWorkspaceInvitation({
+        apiClient: input.apiClient,
+        workspaceId: input.workspaceId,
+        invitationId: invitation.id,
+        operation: 'revoke',
+        input: { expectedRevision: invitation.revision, idempotencyKey: key },
+      }),
+    refresh: () => queryClient.invalidateQueries({ queryKey: invitationsKey }),
+  });
+  async function revoke(
+    invitation: WorkspaceInvitation,
+  ): Promise<InvitationOutcome> {
+    if (revocation.isPending) return STOPPED;
+    try {
+      await revocation.mutateAsync(invitation);
+      return { kind: 'done' };
+    } catch (cause) {
+      if (isUnauthenticated(cause)) {
+        input.onAuthenticationLost();
+        return STOPPED;
+      }
+      const message = lowEffectError(cause, 'revoking this invitation');
+      return { kind: 'failed', message };
+    }
+  }
+  return { ...revocation, change: revoke };
 }

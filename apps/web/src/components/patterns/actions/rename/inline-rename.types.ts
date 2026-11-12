@@ -1,27 +1,17 @@
 export type InlineRenameError = Readonly<{
-  kind: 'conflict' | 'other' | 'verification';
+  kind: 'conflict' | 'other';
   message: string;
 }>;
-
-/**
- * What a feature's rename command offers the field. A conflict loads the
- * latest name (`reloadLatest`) so people choose between theirs and it; an
- * unconfirmed attempt is sent again exactly (`retry`). Commands whose page
- * may lag behind an accepted rename also offer `refresh`.
- */
+/** A conflict can load the newer name; an accepted rename can refresh its read. */
 export type InlineRenameCommand = Readonly<{
   pending: boolean;
   error: InlineRenameError | undefined;
-  retryAvailable: boolean;
-  retry: () => Promise<boolean>;
   reloadLatest: () => Promise<boolean>;
-  dismiss: () => void;
   clearError: () => void;
   accepted?: boolean;
   refreshPending?: boolean;
   refresh?: () => Promise<boolean>;
 }>;
-
 export type RenameFormProps = Readonly<{
   command: InlineRenameCommand;
   /**
@@ -31,7 +21,10 @@ export type RenameFormProps = Readonly<{
   onSave: (name: string, expectedRevision: number) => Promise<boolean>;
   /** Layout of the form, e.g. a row in a bar. */
   className?: string;
-  value: Readonly<{ name: string; revision: number }>;
+  value: Readonly<{
+    name: string;
+    revision: number;
+  }>;
   field: Readonly<{
     /** What is renamed, e.g. "workflow": "Rename workflow", "This workflow changed…". */
     subject: string;

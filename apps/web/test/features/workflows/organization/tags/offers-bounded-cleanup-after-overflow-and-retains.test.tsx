@@ -19,7 +19,7 @@ import {
 import { cursor, installVocabulary, renderTags } from './fixture';
 
 describe('workflow tags dialog', () => {
-  it('offers bounded cleanup after overflow and retains exact ordered selection on retry', async () => {
+  it('offers bounded cleanup after overflow and requires a refreshed selection after unknown outcomes', async () => {
     installVocabulary();
     const assignmentReads = vi.fn();
     const sent: { body: unknown; key: string | null }[] = [];
@@ -105,7 +105,7 @@ describe('workflow tags dialog', () => {
         name: 'Detach tag from 2 selected workflows',
       }),
     );
-    await screen.findByRole('button', { name: 'Retry exact command' });
+    await screen.findByText(/Outcome unconfirmed/u);
     expect(
       screen.getByRole('checkbox', { name: 'Select Alpha' }),
     ).toHaveAttribute('aria-disabled', 'true');
@@ -121,14 +121,31 @@ describe('workflow tags dialog', () => {
         'button',
         { name: 'Back to tags' },
       ),
-    ).toBeDisabled();
+    ).toBeEnabled();
     await event.click(
-      screen.getByRole('button', { name: 'Retry exact command' }),
+      screen.getByRole('button', {
+        name: 'Reload assignments and clear selection',
+      }),
+    );
+    await waitFor(() =>
+      expect(
+        screen.getByRole('checkbox', { name: 'Select Beta' }),
+      ).not.toHaveAttribute('aria-disabled', 'true'),
+    );
+    await event.click(
+      await screen.findByRole('checkbox', { name: 'Select Beta' }),
+    );
+    await event.click(screen.getByRole('checkbox', { name: 'Select Alpha' }));
+    await event.click(
+      screen.getByRole('button', {
+        name: 'Detach tag from 2 selected workflows',
+      }),
     );
     await waitFor(() => {
       expect(sent).toHaveLength(2);
     });
-    expect(sent[1]).toEqual(sent[0]);
+    expect(sent[1]?.body).toEqual(sent[0]?.body);
+    expect(sent[1]?.key).not.toEqual(sent[0]?.key);
     await waitFor(() => {
       expect(
         screen.queryByRole('button', { name: 'Retry exact command' }),

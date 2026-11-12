@@ -1,14 +1,9 @@
-import {
-  RETRY_WINDOW_ENDED,
-  canResend,
-  isUnconfirmedCommand,
-  newCommandKey,
-  type CommandKey,
-} from '@/lib/api/commands/command-retry';
-import { useCallback, useRef, useState } from 'react';
-import type { WorkflowImportRequest } from '@pertexo/contracts';
 import { useQueryClient } from '@tanstack/react-query';
-import { describeCommandError } from '@/lib/api/error-copy';
+import type { WorkflowImportRequest } from '@pertexo/contracts';
+import {
+  useLowEffectMutation,
+  lowEffectError,
+} from '@/lib/api/commands/low-effect-mutation';
 import type { ApiClient } from '@/lib/api/client';
 import { isApiError } from '@/lib/api/error';
 import { importWorkflow } from './workflow-portability.api';
@@ -16,10 +11,6 @@ import { workflowKeys } from '../workflows.queries';
 import { workflowOrganizationKeys } from '../organization/workflow-organization.queries';
 import type { usePortabilityLifetime } from '../../components/portability/use-portability-lifetime';
 
-type Attempt = CommandKey & {
-  body: WorkflowImportRequest;
-  workflowId?: string;
-};
 type ImportRefusal = Readonly<{
   message: string;
   recovery: 'preview' | 'none';
@@ -27,7 +18,6 @@ type ImportRefusal = Readonly<{
 export type WorkflowImportCommandState =
   | Readonly<{ kind: 'editable'; failure?: ImportRefusal }>
   | Readonly<{ kind: 'sending' }>
-  | Readonly<{ kind: 'uncertain'; error: string }>
   | Readonly<{ kind: 'confirmed'; workflowId: string }>;
 
 export function useWorkflowImportCommand(
@@ -36,126 +26,49 @@ export function useWorkflowImportCommand(
   workspaceId: string,
   lifetime: ReturnType<typeof usePortabilityLifetime>,
 ) {
-  const queryClient = useQueryClient();
-  const [state, setState] = useState<WorkflowImportCommandState>({
-    kind: 'editable',
-  });
-  const attempt = useRef<Attempt | undefined>(undefined);
-  const busy = useRef(false);
-  const clear = useCallback(() => {
-    attempt.current = undefined;
-    setState({ kind: 'editable' });
-  }, []);
-  async function send(command: Attempt) {
-    if (busy.current || lifetime.denied) return;
-    busy.current = true;
-    setState({ kind: 'sending' });
-    const request = lifetime.begin();
-    let phase: 'authority' | 'mutation' | 'accepted' =
-      command.workflowId === undefined ? 'authority' : 'accepted';
-    try {
-      await lifetime.verify({ signal: request.signal, creating: true });
-      if (!request.current()) return;
-      let createdWorkflowId = command.workflowId;
-      if (createdWorkflowId === undefined) {
-        phase = 'mutation';
-        const result = await importWorkflow({
+  const cache = useQueryClient();
+  const mutation = useLowEffectMutation({
+    send: async (body: WorkflowImportRequest, key) => {
+      const request = lifetime.begin();
+      try {
+        await lifetime.verify({ signal: request.signal, creating: true });
+        return await importWorkflow({
           apiClient,
           workspaceId,
-          body: command.body,
-          idempotencyKey: command.idempotencyKey,
+          body,
+          idempotencyKey: key,
           signal: request.signal,
         });
-        command.workflowId = result.workflowId;
-        createdWorkflowId = result.workflowId;
+      } finally {
+        request.done();
       }
-      phase = 'accepted';
-      if (!request.current()) return;
-      await lifetime.verify({ signal: request.signal, creating: true });
-      if (!request.current()) return;
-      await Promise.all([
-        queryClient.invalidateQueries({
+    },
+    refresh: () =>
+      Promise.all([
+        cache.invalidateQueries({
           queryKey: workflowOrganizationKeys.scope(userId, workspaceId),
         }),
-        queryClient.invalidateQueries({
+        cache.invalidateQueries({
           queryKey: workflowKeys.scope(userId, workspaceId),
         }),
-      ]);
-      if (!request.current()) return;
-      setState({ kind: 'confirmed', workflowId: createdWorkflowId });
-    } catch (error) {
-      if (!request.current() || lifetime.accessFailure(error)) return;
-      const requiresIntentRecovery = importNeedsRecovery({
-        phase,
-        state,
-        error,
-      });
-      if (requiresIntentRecovery) {
-        setState({
-          kind: 'uncertain',
-          error:
-            command.workflowId === undefined
-              ? 'We couldn’t confirm whether the import went through. Retry the exact import to recover it; check existing workflows before starting a new import if recovery has expired.'
-              : 'The workflow was created, but access couldn’t be reverified. Retry to verify access and open that existing workflow.',
-        });
-      } else {
-        attempt.current = undefined;
-        setState({
-          kind: 'editable',
-          failure: importRefusal(error),
-        });
-      }
-    } finally {
-      request.done();
-      busy.current = false;
-    }
-  }
+      ]),
+  });
+  let state: WorkflowImportCommandState = { kind: 'editable' };
+  if (mutation.isPending) state = { kind: 'sending' };
+  else if (mutation.isSuccess)
+    state = { kind: 'confirmed', workflowId: mutation.data.workflowId };
+  else if (mutation.isError)
+    state = { kind: 'editable', failure: importRefusal(mutation.error) };
   return {
     state,
-    clear,
+    clear: mutation.reset,
     start: (body: WorkflowImportRequest) => {
-      if (state.kind !== 'editable' || busy.current || lifetime.denied) return;
-      const command = { body: structuredClone(body), ...newCommandKey() };
-      attempt.current = command;
-      void send(command);
-    },
-    retry: () => {
-      const current = attempt.current;
-      if (state.kind !== 'uncertain' || current === undefined) return;
-      // An accepted import only needs its access re-verified.
-      if (current.workflowId !== undefined || canResend(current))
-        void send(current);
-      else {
-        attempt.current = undefined;
-        setState({
-          kind: 'editable',
-          failure: { message: RETRY_WINDOW_ENDED, recovery: 'none' },
-        });
-      }
+      if (mutation.isPending || lifetime.denied) return;
+      void mutation.mutateAsync(body).catch((cause: unknown) => {
+        lifetime.accessFailure(cause);
+      });
     },
   };
-}
-
-function importNeedsRecovery({
-  phase,
-  state,
-  error,
-}: Readonly<{
-  phase: 'authority' | 'mutation' | 'accepted';
-  state: WorkflowImportCommandState;
-  error: unknown;
-}>): boolean {
-  const rejected =
-    phase === 'mutation' &&
-    isApiError(error) &&
-    error.kind === 'problem' &&
-    [400, 409, 412, 422, 428].includes(error.status ?? 0);
-  return (
-    phase === 'accepted' ||
-    (!rejected &&
-      (state.kind === 'uncertain' ||
-        (phase === 'mutation' && isUnconfirmedCommand(error))))
-  );
 }
 
 function importRefusal(cause: unknown): ImportRefusal {
@@ -180,7 +93,7 @@ function importRefusal(cause: unknown): ImportRefusal {
       recovery: 'preview',
     };
   return {
-    message: describeCommandError(cause, 'importing this workflow'),
+    message: lowEffectError(cause, 'importing this workflow'),
     recovery: 'none',
   };
 }

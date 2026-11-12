@@ -15,20 +15,11 @@ import { ProgressButton } from '@/components/ui/progress-button';
 import { useFieldValidation } from '@/components/ui/use-field-validation';
 import { useNotifications } from '@/components/ui/use-notifications';
 import type { useInputCases } from '../../hooks/use-input-cases';
-import type { InputCaseCommand } from '../../data/input-cases/workflow-input-cases.api';
-
+import type { InputCaseIntent } from '../../data/input-cases/workflow-input-cases.api';
 type CaseCommands = Pick<
   ReturnType<typeof useInputCases>,
-  | 'scope'
-  | 'selected'
-  | 'pending'
-  | 'uncertain'
-  | 'conflict'
-  | 'read'
-  | 'send'
-  | 'retry'
+  'scope' | 'selected' | 'pending' | 'conflict' | 'read' | 'send'
 >;
-
 /** A local draft survives revision conflicts and current-case reads. */
 type InputCaseEditorProps = Readonly<{
   cases: CaseCommands;
@@ -37,7 +28,6 @@ type InputCaseEditorProps = Readonly<{
   writable: boolean;
   onClose: () => void;
 }>;
-
 export function InputCaseEditor(props: InputCaseEditorProps) {
   const model = useInputCaseForm(props);
   const fieldsDisabled = model.locked || model.deleting || !model.writable;
@@ -139,7 +129,6 @@ export function InputCaseEditor(props: InputCaseEditorProps) {
     </>
   );
 }
-
 function useInputCaseForm({
   cases,
   workflow,
@@ -208,21 +197,18 @@ function useInputCaseForm({
         else errors.input = issue.message;
       }
     if (!validation.submit(errors) || !body.success) return;
-    const key = crypto.randomUUID();
-    let command: InputCaseCommand;
+    let command: InputCaseIntent;
     if (cases.selected !== undefined)
       command = {
         kind: 'update',
         caseId: cases.selected.id,
         tag: cases.selected.representationTag,
-        key,
         body: body.data,
       };
     else {
       if (creatingVersionId === undefined) return;
       command = {
         kind: 'create',
-        key,
         body: workflowInputCaseCreateRequestSchema.parse({
           ...body.data,
           workflowVersionId: creatingVersionId,
@@ -234,7 +220,6 @@ function useInputCaseForm({
       notifications.success({ title: 'Input case saved' });
     }
   }
-
   return {
     cases,
     creatingVersionId,
@@ -255,7 +240,6 @@ function useInputCaseForm({
     save,
   } as const;
 }
-
 function InputCaseActions({
   cases,
   locked,
@@ -293,25 +277,7 @@ function InputCaseActions({
         >
           Cancel case edit
         </Button>
-        {cases.uncertain ? (
-          <ProgressButton
-            type="button"
-            pending={cases.pending}
-            pendingLabel="Retrying case change…"
-            onClick={() =>
-              void cases.retry().then((ok) => {
-                if (ok) {
-                  onClose();
-                  notifications.success({
-                    title: 'Input-case change confirmed',
-                  });
-                }
-              })
-            }
-          >
-            Retry exact case change
-          </ProgressButton>
-        ) : (
+        {
           <>
             {cases.selected !== undefined ? (
               <Button
@@ -331,7 +297,6 @@ function InputCaseActions({
                           kind: 'delete',
                           caseId: record.id,
                           tag: record.representationTag,
-                          key: crypto.randomUUID(),
                         },
                       })
                       .then((ok) => {
@@ -360,7 +325,7 @@ function InputCaseActions({
               </ProgressButton>
             ) : null}
           </>
-        )}
+        }
       </div>
     </>
   );

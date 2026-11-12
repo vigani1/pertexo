@@ -32,8 +32,8 @@ Named synthetic JSON input cases live in the workflow hub and Run with input
 dialog. They retain their published-version context; loading makes a detached
 copy. Edits require `workflow:update`, loading requires `workflow:read`, and
 starting requires `run:start` plus confirmation of real effects. Checked starts
-carry the expected publication; conflicts require explicit review. Uncertain
-commands retain their exact input, deadline, version and key for the original
+carry the expected publication; conflicts require explicit review. Uncertain run
+starts retain their exact input, deadline, version and key for the original
 24-hour recovery window. Input cases are always available.
 
 The editor's Contract control declares bounded JSON input and result types for

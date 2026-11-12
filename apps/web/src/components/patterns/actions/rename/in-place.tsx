@@ -5,11 +5,9 @@ import { cn } from '@/lib/class-names';
 import type { RenameFormProps } from './inline-rename.types';
 import { useRenameDraft } from './use-draft';
 import { RenameOutcome } from './outcome';
-
 /** A key you could press instead: Enter saves, Escape lets go. */
 const KEYCAP =
   'inline-flex h-6 min-w-6 shrink-0 items-center justify-center rounded-[5px] border px-1.5 font-mono text-[0.66rem] leading-none shadow-[inset_0_-1px_0_color-mix(in_srgb,var(--surface-ink)_6%,transparent)] outline-none transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:opacity-50 motion-reduce:transition-none pointer-coarse:h-10 pointer-coarse:min-w-10 [&_svg]:size-3.5';
-
 /**
  * The name edited where it stands. It lifts onto a glass plate, the same
  * size and face, written on a thread that draws in under it; Save and
@@ -45,8 +43,7 @@ export function RenameInPlace({
   const error = rename.validation.error('name');
   const busy = command.pending || (command.refreshPending ?? false);
   let saveLabel = 'Save';
-  if (command.retryAvailable) saveLabel = 'Try again';
-  else if (rename.accepted) saveLabel = 'Refresh';
+  if (rename.accepted) saveLabel = 'Refresh';
   return (
     <form
       noValidate
@@ -97,8 +94,8 @@ export function RenameInPlace({
             }}
           />
           {/* The thread the name is written on: it draws in as editing
-              starts, light runs along it while saving, and it turns red
-              on a name that can't be saved. */}
+        starts, light runs along it while saving, and it turns red
+        on a name that can't be saved. */}
           <span
             aria-hidden="true"
             className={cn(
@@ -121,11 +118,7 @@ export function RenameInPlace({
                 'border-action/40 bg-action/[0.08] text-action hover:border-action/70',
               )}
             >
-              <RenameSaveIcon
-                pending={busy}
-                retryAvailable={command.retryAvailable}
-                accepted={rename.accepted}
-              />
+              <RenameSaveIcon pending={busy} accepted={rename.accepted} />
             </button>
             {rename.accepted ? null : (
               <button
@@ -165,16 +158,17 @@ export function RenameInPlace({
     </form>
   );
 }
-
 function RenameSaveIcon({
   pending,
-  retryAvailable,
   accepted,
-}: Readonly<{ pending: boolean; retryAvailable: boolean; accepted: boolean }>) {
+}: Readonly<{
+  pending: boolean;
+  accepted: boolean;
+}>) {
   if (pending) {
     return <LoadingOrb />;
   }
-  if (retryAvailable || accepted) {
+  if (accepted) {
     return <RotateCwIcon aria-hidden="true" />;
   }
   return (

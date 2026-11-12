@@ -22,7 +22,7 @@ import {
 } from './fixture';
 
 describe('workspace settings', () => {
-  it('retries an uncertain deletion with the exact reason and key in StrictMode', async () => {
+  it('keeps deletion confirmation and reason after an unconfirmed result and accepts a fresh command in StrictMode', async () => {
     const commands: { key: string | null; body: unknown }[] = [];
     let attempts = 0;
     mockServer.use(
@@ -76,14 +76,15 @@ describe('workspace settings', () => {
     await actor.type(reason, 'No longer needed');
     await actor.click(dialog.getByRole('button', { name: 'Delete workspace' }));
     expect(await dialog.findByRole('alert')).toHaveTextContent(
-      'We couldn’t confirm whether the deletion request went through',
+      'We couldn’t confirm that change.',
     );
-    expect(reason).toBeDisabled();
-    await actor.click(dialog.getByRole('button', { name: 'Try again' }));
+    expect(reason).toBeEnabled();
+    await actor.click(dialog.getByRole('button', { name: 'Delete workspace' }));
 
     expect(await screen.findByText(scheduledForDeletion)).toBeVisible();
     expect(commands).toHaveLength(2);
-    expect(commands[0]).toEqual(commands[1]);
+    expect(commands[0]?.body).toEqual(commands[1]?.body);
+    expect(commands[0]?.key).not.toBe(commands[1]?.key);
     expect(commands[0]?.body).toEqual({ reason: 'No longer needed' });
   });
   it('refreshes the workspace once a deletion completes and offers restore after dismissal', async () => {

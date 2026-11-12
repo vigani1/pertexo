@@ -136,30 +136,6 @@ describe('Duplicate workflow', () => {
     expect(onCreated).not.toHaveBeenCalled();
   });
 
-  it('rechecks current workspace capability before retrying an uncertain copy', async () => {
-    let calls = 0;
-    mockServer.use(
-      http.post(`${api}/workflows/${workflowId}/duplicate`, () => {
-        calls++;
-        return HttpResponse.error();
-      }),
-    );
-    const { event, onCreated } = open();
-    await screen.findByText(/last saved, revision 1/u);
-    await event.click(
-      screen.getByRole('button', { name: 'Duplicate workflow' }),
-    );
-    await screen.findByRole('button', { name: 'Retry exact copy' });
-    mockServer.use(
-      http.get('http://pertexo.test/v1/workspaces', () =>
-        HttpResponse.json({ items: [workspaceWith([])], nextCursor: null }),
-      ),
-    );
-    await event.click(screen.getByRole('button', { name: 'Retry exact copy' }));
-    await screen.findByText(/Access changed/u);
-    expect(calls).toBe(1);
-    expect(onCreated).not.toHaveBeenCalled();
-  });
   it('copies the saved source with a bounded name and authoritative tag, never a browser graph', async () => {
     const requests: Attempt[] = [];
     mockServer.use(
@@ -207,7 +183,7 @@ describe('Duplicate workflow', () => {
     expect(requests[0]?.key).toMatch(/^[0-9a-f-]{36}$/u);
   });
 
-  it('retains the exact body, original tag and key after a lost response; cancel and edits cannot replace it', async () => {
+  it('preserves editable intent after a lost response and confirms with a fresh key', async () => {
     const requests: Attempt[] = [];
     mockServer.use(
       http.post(
@@ -224,24 +200,28 @@ describe('Duplicate workflow', () => {
         },
       ),
     );
-    const { event, onCreated, onClose } = open();
+    const { event, onCreated } = open();
     await screen.findByText(/last saved, revision 1/u);
     await event.click(
       screen.getByRole('button', { name: 'Duplicate workflow' }),
     );
-    expect(
-      await screen.findByRole('button', { name: 'Retry exact copy' }),
-    ).toBeEnabled();
-    expect(screen.getByLabelText('Copy name')).toBeDisabled();
-    expect(screen.getByRole('button', { name: 'Cancel' })).toBeDisabled();
-    await event.keyboard('{Escape}');
-    expect(onClose).not.toHaveBeenCalled();
-    await event.click(screen.getByRole('button', { name: 'Retry exact copy' }));
+    await screen.findByText(/couldn’t confirm/u);
+    expect(screen.getByLabelText('Copy name')).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Cancel' })).toBeEnabled();
+    await event.clear(screen.getByLabelText('Copy name'));
+    await event.type(screen.getByLabelText('Copy name'), 'Another copy');
+    await event.click(
+      screen.getByRole('button', { name: 'Duplicate workflow' }),
+    );
     await waitFor(() => {
       expect(onCreated).toHaveBeenCalledWith(versionId);
     });
     expect(requests).toHaveLength(2);
-    expect(requests[1]).toEqual(requests[0]);
+    expect(requests[1]?.key).not.toEqual(requests[0]?.key);
+    expect(requests[1]?.body).toEqual({
+      name: 'Another copy',
+      source: { kind: 'draft' },
+    });
   });
 
   it('reads a changed draft only on explicit refresh and needs a new confirmation/key', async () => {
@@ -337,41 +317,22 @@ describe('Duplicate workflow', () => {
     expect(requests[0]?.key).toMatch(/^[0-9a-f-]{36}$/u);
   });
 
-  it('forgets the command/cache on access loss and never sends an exact retry with another identity', async () => {
+  it('keeps the source readable when the server refuses a duplicate action', async () => {
     let calls = 0;
     mockServer.use(
       http.post(`${api}/workflows/${workflowId}/duplicate`, () => {
         calls++;
-        return HttpResponse.error();
+        return problem(403, 'auth.forbidden');
       }),
     );
-    const { event, onCreated, queryClient } = open();
+    const { event, onCreated } = open();
     await screen.findByText(/last saved, revision 1/u);
     await event.click(
       screen.getByRole('button', { name: 'Duplicate workflow' }),
     );
-    await screen.findByRole('button', { name: 'Retry exact copy' });
-    queryClient.setQueryData(
-      ['identity', userId, 'workspace', workspaceId, 'private'],
-      { sensitive: true },
-    );
-    mockServer.use(
-      http.get('http://pertexo.test/v1/users/me', () =>
-        problem(401, 'auth.unauthenticated'),
-      ),
-    );
-    await event.click(screen.getByRole('button', { name: 'Retry exact copy' }));
-    await screen.findByText(/Access changed/u);
+    await screen.findByText(/Your role doesn’t allow/u);
     expect(calls).toBe(1);
     expect(onCreated).not.toHaveBeenCalled();
-    expect(
-      queryClient.getQueryData([
-        'identity',
-        userId,
-        'workspace',
-        workspaceId,
-        'private',
-      ]),
-    ).toBeUndefined();
+    expect(screen.getByLabelText('Copy name')).toHaveValue('Source (copy)');
   });
 });

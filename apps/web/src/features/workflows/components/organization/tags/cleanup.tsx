@@ -13,7 +13,7 @@ import { QueryView } from '@/components/patterns/states/query-view';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { LoadMore } from '@/components/patterns/lists/load-more';
 import { workflowTagAssignmentsInfiniteQueryOptions } from '../../../data/organization/workflow-organization.queries';
-import type { WorkflowOrganizationAttempt } from '../../../model/organization/requests';
+import type { WorkflowOrganizationInput } from '../../../model/organization/requests';
 import {
   OrganizationCommandFeedback,
   type OrganizationCommand,
@@ -27,7 +27,7 @@ type WorkflowTagCleanupProps = Readonly<{
   tag: WorkflowTag;
   locked: boolean;
   command: OrganizationCommand;
-  start: (attempt: WorkflowOrganizationAttempt) => void;
+  start: (attempt: WorkflowOrganizationInput) => void;
   onBack: () => void;
 }>;
 
@@ -130,7 +130,7 @@ export function WorkflowTagCleanup(props: WorkflowTagCleanupProps) {
           model.start({
             kind: 'tag-cleanup',
             workspaceId: model.workspaceId,
-            idempotencyKey: crypto.randomUUID(),
+
             body: { tagId: model.tag.id, items: model.selection },
           });
         }}

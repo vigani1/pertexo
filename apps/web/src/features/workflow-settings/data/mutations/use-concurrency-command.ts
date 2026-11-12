@@ -1,24 +1,19 @@
-import {
-  RETRY_WINDOW_ENDED,
-  canResend,
-  isUnconfirmedCommand,
-  newCommandKey,
-  type CommandKey,
-} from '@/lib/api/commands/command-retry';
-import { useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   workflowConcurrencyRevisionConflictProblemSchema,
   workflowConcurrencyLimitExceededProblemSchema,
   type WorkflowConcurrencySettingsRequest,
 } from '@pertexo/contracts';
+import {
+  useLowEffectMutation,
+  lowEffectError,
+} from '@/lib/api/commands/low-effect-mutation';
+import { isUnconfirmedCommand } from '@/lib/api/commands/command-retry';
 import type { ApiClient } from '@/lib/api/client';
 import { isApiError } from '@/lib/api/error';
 import { describeCommandError } from '@/lib/api/error-copy';
 import { putWorkflowConcurrency } from '../concurrency.api';
 import { concurrencyKey } from '../concurrency.queries';
-import { settingsCommandError } from './settings-command';
-
 function commandProblem({
   error,
   revisionConflict,
@@ -26,7 +21,7 @@ function commandProblem({
   if (revisionConflict)
     return 'This changed in another session. Your edits are kept. Review the refreshed limit, then save again.';
   if (isUnconfirmedCommand(error))
-    return settingsCommandError(error, 'saving concurrency settings');
+    return lowEffectError(error, 'saving concurrency settings');
   if (isApiError(error)) {
     const exceeded = workflowConcurrencyLimitExceededProblemSchema.safeParse(
       error.problemDetails,
@@ -46,91 +41,41 @@ export function useConcurrencyCommand(
   workflowId: string,
 ) {
   const cache = useQueryClient();
-  const attempt = useRef<
-    | (Readonly<{ body: WorkflowConcurrencySettingsRequest }> & CommandKey)
-    | undefined
-  >(undefined);
-  const sending = useRef(false);
-  const [pending, setPending] = useState(false);
-  const [problem, setProblem] = useState<string>();
-  const [unconfirmed, setUnconfirmed] = useState(false);
-  const [conflict, setConflict] = useState(false);
-  async function send(
-    body: WorkflowConcurrencySettingsRequest,
-  ): Promise<boolean> {
-    if (
-      sending.current ||
-      (attempt.current !== undefined &&
-        JSON.stringify(attempt.current.body) !== JSON.stringify(body))
-    )
-      return false;
-    if (attempt.current !== undefined && !canResend(attempt.current)) {
-      attempt.current = undefined;
-      setUnconfirmed(false);
-      setProblem(RETRY_WINDOW_ENDED);
-      return false;
-    }
-    const request = attempt.current ?? { body, ...newCommandKey() };
-    attempt.current = request;
-    sending.current = true;
-    setPending(true);
-    setProblem(undefined);
-    setConflict(false);
-    try {
-      await putWorkflowConcurrency({
+  const mutation = useLowEffectMutation({
+    send: (body: WorkflowConcurrencySettingsRequest, key) =>
+      putWorkflowConcurrency({
         client: apiClient,
         workspaceId,
         workflowId,
-        body: request.body,
-        key: request.idempotencyKey,
-      });
-      attempt.current = undefined;
-      setUnconfirmed(false);
-      return true;
-    } catch (error: unknown) {
-      const uncertain = isUnconfirmedCommand(error);
-      const revisionConflict =
-        isApiError(error) &&
-        error.kind === 'problem' &&
-        workflowConcurrencyRevisionConflictProblemSchema.safeParse(
-          error.problemDetails,
-        ).success;
-      if (isApiError(error) && [401, 403, 404].includes(error.status ?? 0)) {
-        const queryKey = concurrencyKey(userId, workspaceId, workflowId);
-        // Cancellation can restore pre-fetch data. Fence the old read first,
-        // then forget its snapshot; reconciliation must start a fresh read.
-        await cache.cancelQueries({ queryKey, exact: true });
-        cache
-          .getQueryCache()
-          .find({
-            queryKey,
-            exact: true,
-          })
-          ?.setState({ data: undefined, dataUpdatedAt: 0 });
-      }
-      if (!uncertain) attempt.current = undefined;
-      setUnconfirmed(uncertain);
-      setConflict(revisionConflict);
-      setProblem(commandProblem({ error, revisionConflict }));
-      return false;
-    } finally {
-      // An idempotent receipt is not proof of current settings or authority.
-      await cache.invalidateQueries({
+        body,
+        key,
+      }),
+    refresh: () =>
+      cache.invalidateQueries({
         queryKey: concurrencyKey(userId, workspaceId, workflowId),
-      });
-      sending.current = false;
-      setPending(false);
+      }),
+  });
+  const conflict =
+    isApiError(mutation.error) &&
+    mutation.error.kind === 'problem' &&
+    workflowConcurrencyRevisionConflictProblemSchema.safeParse(
+      mutation.error.problemDetails,
+    ).success;
+  async function send(body: WorkflowConcurrencySettingsRequest) {
+    if (mutation.isPending) return false;
+    try {
+      await mutation.mutateAsync(body);
+      return true;
+    } catch {
+      return false;
     }
   }
   return {
-    pending,
-    problem,
-    unconfirmed,
-    conflict,
     send,
-    retry: () =>
-      attempt.current === undefined
-        ? Promise.resolve(false)
-        : send(attempt.current.body),
+    pending: mutation.isPending,
+    conflict,
+    problem: mutation.isError
+      ? commandProblem({ error: mutation.error, revisionConflict: conflict })
+      : undefined,
   };
 }
