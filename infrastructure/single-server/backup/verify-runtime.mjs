@@ -1,4 +1,6 @@
-import { execFileSync, spawnSync } from 'node:child_process';
+import { execFileSync, spawnSync, spawn } from 'node:child_process';
+import { once } from 'node:events';
+import { setTimeout as delay } from 'node:timers/promises';
 import { randomBytes } from 'node:crypto';
 import {
   mkdtempSync,
@@ -8,6 +10,7 @@ import {
   readdirSync,
   rmSync,
   statSync,
+  existsSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
@@ -16,6 +19,70 @@ import assert from 'node:assert/strict';
 
 const image = process.argv[2];
 if (!image) throw new Error('usage: verify-runtime.mjs <runtime-image>');
+const rcloneImage = execFileSync(
+  'docker',
+  [
+    'compose',
+    '-f',
+    'infrastructure/single-server/backup/compose.yaml',
+    'config',
+    '--images',
+  ],
+  { encoding: 'utf8' },
+).trim();
+// Keep a cold runner's image download outside the dispatcher readiness bound.
+execFileSync('docker', ['pull', rcloneImage], {
+  stdio: 'inherit',
+  timeout: 120000,
+});
+let dispatcher;
+let dispatcherDirectory;
+async function stopDispatcher() {
+  if (
+    dispatcher &&
+    dispatcher.exitCode === null &&
+    dispatcher.signalCode === null
+  ) {
+    const closed = once(dispatcher, 'close');
+    dispatcher.kill('SIGTERM');
+    await closed;
+  }
+  if (dispatcherDirectory)
+    for (const name of [
+      'ready',
+      'request',
+      'running',
+      'input',
+      'status',
+      'status.tmp',
+      'stdout',
+      'stderr',
+    ])
+      rmSync(join(dispatcherDirectory, `transport.${name}`), { force: true });
+  dispatcher = undefined;
+  dispatcherDirectory = undefined;
+}
+async function startDispatcher(prepared, network) {
+  dispatcherDirectory = prepared;
+  rmSync(join(prepared, 'transport.ready'), { force: true });
+  dispatcher = spawn(
+    'bash',
+    [
+      'infrastructure/single-server/backup/rclone-requests.sh',
+      prepared,
+      network,
+      rcloneImage,
+    ],
+    { stdio: 'inherit' },
+  );
+  const end = Date.now() + 15000;
+  while (!existsSync(join(prepared, 'transport.ready'))) {
+    assert.equal(dispatcher.exitCode, null, 'upstream dispatcher stays alive');
+    assert.ok(Date.now() < end, 'upstream dispatcher becomes ready');
+    await delay(50);
+  }
+}
+
 const directory = mkdtempSync(join(tmpdir(), 'pertexo-runtime-helpers-'));
 try {
   for (const { mode, transport } of ['kms', 'self-managed'].flatMap((mode) =>
@@ -101,6 +168,10 @@ try {
           config + ':/run/pertexo.env:ro',
           '-v',
           prepared + ':/prepared',
+          '-v',
+          prepared + ':/backup',
+          '-e',
+          'BACKUP_TRANSPORT_DIRECTORY=/prepared',
           '-v',
           resolve('infrastructure/single-server') +
             ':/workspace/infrastructure/single-server:ro',
@@ -188,7 +259,42 @@ try {
       assert.equal(actual.status, 0, actual.stderr);
     }
 
+    await startDispatcher(prepared, 'none');
     run(['infrastructure/single-server/backup/prepare.mjs', '/prepared']);
+    await stopDispatcher();
+    // Local backing storage exercises real crypt without an external S3 account.
+    const rcloneConfig = join(prepared, 'rclone.conf');
+    writeFileSync(
+      rcloneConfig,
+      readFileSync(rcloneConfig, 'utf8').replace(
+        /^remote = `backup:.*`$/mu,
+        'remote = `/backup/encrypted`',
+      ),
+    );
+    assert.equal(statSync(rcloneConfig).mode & 0o777, 0o600);
+    await startDispatcher(prepared, 'bridge');
+    const roundTrip = run([
+      '--input-type=module',
+      '--eval',
+      [
+        "import assert from 'node:assert/strict';",
+        "import {readFile,writeFile,readdir} from 'node:fs/promises';",
+        "import {rclone} from './infrastructure/single-server/backup/transport.mjs';",
+        "const plaintext='production image encrypted round trip';",
+        "await writeFile('/prepared/plaintext',plaintext);",
+        "await rclone(['copyto','/backup/plaintext','crypt:plain directory/plain file.txt']);",
+        "assert.equal(await rclone(['cat','crypt:plain directory/plain file.txt']),plaintext);",
+        "const files=await readdir('/prepared/encrypted',{recursive:true,withFileTypes:true});",
+        'assert.ok(files.some(file=>file.isFile()));',
+        "for(const file of files){assert.ok(!file.name.includes('plain directory')&&!file.name.includes('plain file.txt'));if(file.isFile())assert.ok(!(await readFile(file.parentPath+'/'+file.name)).includes(Buffer.from(plaintext)));}",
+        "const config=await readFile('/prepared/rclone.conf','utf8');",
+        "const wrong=(await rclone(['obscure','-'],{input:'wrong qualification password'})).trim();",
+        "try{await writeFile('/prepared/rclone.conf',config.replace(/^password = .*$/m,'password = `'+wrong+'`'));await assert.rejects(rclone(['cat','crypt:plain directory/plain file.txt']));}finally{await writeFile('/prepared/rclone.conf',config);}",
+        "console.log('Real upstream crypt round trip, encrypted names/bytes and wrong-key refusal passed');",
+      ].join(''),
+    ]);
+    process.stdout.write(roundTrip.stdout);
+    await stopDispatcher();
     run([
       '--input-type=module',
       '--eval',
@@ -277,5 +383,6 @@ try {
     );
   }
 } finally {
+  await stopDispatcher();
   rmSync(directory, { recursive: true, force: true });
 }
