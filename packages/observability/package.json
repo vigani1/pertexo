@@ -27,7 +27,7 @@
     "@opentelemetry/instrumentation-host-metrics": "0.8.0",
     "@opentelemetry/instrumentation-http": "0.301.0",
     "@opentelemetry/instrumentation-nestjs-core": "0.72.0",
-    "@opentelemetry/instrumentation-pg": "0.77.0",
+    "@opentelemetry/instrumentation-pg": "0.78.0",
     "@opentelemetry/instrumentation-pino": "0.71.0",
     "@opentelemetry/instrumentation-runtime-node": "0.38.0",
     "@opentelemetry/instrumentation-undici": "0.35.0",
