@@ -107,22 +107,32 @@ describe('server-authoritative organization changes', () => {
       expect(f.result.current.result).toEqual(receipt);
     });
   });
-  it('rejects foreign scopes and malformed input before sending a request', async () => {
+  it('refuses a command for another workspace before sending it', async () => {
     const server = serveCommands();
     const f = setup();
     await act(() =>
       f.result.current.start({ ...single, workspaceId: secondWorkflowId }),
     );
+    expect(server.reads.identity).toBe(0);
+    expect(server.sent).toHaveLength(0);
+    expect(f.result.current.error).toBe(
+      'The command belongs to a different workspace.',
+    );
+  });
+  it('refuses a malformed command before sending it', async () => {
+    const server = serveCommands();
+    const f = setup();
     await act(() =>
       f.result.current.start({
         ...single,
         body: { folderId: null, expectedOrganizationRevision: 0 },
       }),
     );
-    expect(server.reads.identity).toBe(0);
     expect(server.sent).toHaveLength(0);
     await waitFor(() => {
-      expect(f.result.current.error).toBeDefined();
+      expect(f.result.current.error).toBe(
+        'The organization command is invalid.',
+      );
     });
   });
 });

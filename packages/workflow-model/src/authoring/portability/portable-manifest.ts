@@ -124,7 +124,7 @@ function portableSnapshot(value: unknown): unknown {
 }
 
 export function canonicalWorkflowPortableJson(value: unknown): string {
-  return encodeCanonicalJson(portableSnapshot(value) as JsonValue, 'lexical');
+  return encodeCanonicalJson(portableSnapshot(value) as JsonValue);
 }
 
 async function digest(domain: string, value: unknown): Promise<string> {
