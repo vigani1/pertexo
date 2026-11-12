@@ -1,7 +1,7 @@
 services:
   otel-collector:
     # otel/opentelemetry-collector-contrib:0.136.0; manifest digest resolved 2026-08-30
-    image: otel/opentelemetry-collector-contrib:0.136.0@sha256:45392d534c1edcc809c2d112394029246bc679d2ae5ea7081414a1fc74f2c621
+    image: otel/opentelemetry-collector-contrib:0.164.0@sha256:340c9ca6a36617084c6661bdc4f0fe92b7cda5a805d61673ec8db375fddc522b
     command: [--config=/etc/otelcol/config.yaml]
     read_only: true
     volumes:
@@ -12,7 +12,7 @@ services:
       - 127.0.0.1:9464:9464
   prometheus:
     # prom/prometheus:v3.6.0; manifest digest resolved 2026-08-30
-    image: prom/prometheus:v3.6.0@sha256:76947e7ef22f8a698fc638f706685909be425dbe09bd7a2cd7aca849f79b5f64
+    image: prom/prometheus:v3.16.0@sha256:e04987641b57704f408e31f6373ba4138ecf27cb4a165d24aabb6c38fddd0f06
     command: [--config.file=/etc/prometheus/prometheus.yaml]
     read_only: true
     volumes:
@@ -26,7 +26,7 @@ services:
       - 127.0.0.1:9093:9090
   grafana:
     # grafana/grafana:12.2.0; manifest digest resolved 2026-08-30
-    image: grafana/grafana:12.2.0@sha256:74144189b38447facf737dfd0f3906e42e0776212bf575dc3334c3609183adf7
+    image: grafana/grafana:13.3.0@sha256:488984b716c0862639f91a698adbe2862677a5a07bad42da5f03f3030883b205
     environment:
       GF_AUTH_ANONYMOUS_ENABLED: 'true'
       GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
