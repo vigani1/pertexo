@@ -10,7 +10,7 @@ import { NotificationsProvider } from '@/components/ui/toast';
 import { createQueryClient } from './app/query-client';
 import { createAppRouter } from './app/router';
 import { createBrowserApiClient } from './lib/api/browser-client';
-import { subscribeSessionChanges } from './features/auth/session/sync.public';
+import { synchronizeApplicationSession } from './app/session-sync';
 
 const container = document.getElementById('root');
 if (!container) throw new Error('Missing application root');
@@ -23,17 +23,7 @@ const router = createAppRouter(queryClient, apiClient);
 for (const route of router.getMatchedRoutes(window.location.pathname)[0])
   void router.loadRouteChunk(route)?.catch(() => undefined);
 
-subscribeSessionChanges(() => {
-  const editorIsOpen = router.state.matches.some(
-    (match) => match.routeId === '/w/$workspaceId/workflows/$workflowId',
-  );
-  void queryClient.cancelQueries().then(() => {
-    queryClient.clear();
-    // The editor owns a recoverable in-memory draft and pauses on this same
-    // signal. Invalidating its route here would discard unapplied scratch.
-    if (!editorIsOpen) void router.invalidate();
-  });
-});
+synchronizeApplicationSession(queryClient, router);
 
 createRoot(container).render(
   <StrictMode>

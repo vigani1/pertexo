@@ -89,9 +89,6 @@ export function WorkspaceGeneralPage({
                 onWorkspaceChanged={() => {
                   void onWorkspaceChanged();
                 }}
-                onAccessLost={() => {
-                  void onWorkspaceChanged();
-                }}
               />
               <span className="text-xs text-muted-foreground">
                 You’re {withArticle(workspace.role)} here.

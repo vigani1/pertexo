@@ -43,11 +43,16 @@ describe('team: members', () => {
     );
     const browser = userEvent.setup();
     await renderLoadedApp(`/w/${workspaceId}/team`, { strict: true });
+    mockServer.use(
+      http.get('http://pertexo.test/v1/users/me', () =>
+        problem(401, 'auth.unauthenticated'),
+      ),
+    );
     await pickRole(browser, 'Alice Member', 'Operator');
     await browser.click(screen.getByRole('button', { name: 'Change role' }));
     expect(
       await screen.findByRole('heading', {
-        name: 'Your session is no longer available',
+        name: 'Sign in to continue',
       }),
     ).toBeVisible();
     expect(screen.queryByText('Alice Member')).not.toBeInTheDocument();

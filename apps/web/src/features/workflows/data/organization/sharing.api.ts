@@ -1,4 +1,3 @@
-import { assertSessionIdentity } from '@/features/auth/session/identity.public';
 import type { WorkspaceApiScope } from '@/lib/api/workspace-scope';
 import {
   folderSharingResponseSchema,
@@ -24,13 +23,12 @@ export function readFolderSharing(
     },
   });
 }
-export async function replaceFolderSharing(
+export function replaceFolderSharing(
   scope: WorkspaceApiScope,
   folderId: string,
   body: FolderSharingRequest,
   key: string,
 ) {
-  await assertSessionIdentity(scope.apiClient, scope.userId);
   return scope.apiClient.request({
     path: `${path(scope.workspaceId)}/${encodeURIComponent(folderId)}/sharing`,
     method: 'POST',

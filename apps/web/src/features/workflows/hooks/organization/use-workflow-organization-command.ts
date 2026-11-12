@@ -69,14 +69,11 @@ export function useWorkflowOrganizationCommand({
     onSuccess: setRevisionRead,
   });
   const pending = mutation.isPending || revisionRefresh.isPending;
-  const actionDenied =
-    isApiError(mutation.error) && mutation.error.status === 403;
   const partialDenied =
     mutation.data !== undefined &&
     'items' in mutation.data &&
     mutation.data.items.some((item) => item.status === 'forbidden');
-  const denied =
-    !allowed(workspace, requiredRole) || actionDenied || partialDenied;
+  const denied = !allowed(workspace, requiredRole) || partialDenied;
   async function start(input: WorkflowOrganizationInput) {
     if (
       pending ||

@@ -1,6 +1,5 @@
 import { queryOptions } from '@tanstack/react-query';
-import { assertSessionIdentity } from '@/features/auth/session/identity.public';
-import { getAllAccessibleWorkspaces } from '@/features/workspaces/workspaces-queries.public';
+
 import { ApiError } from '@/lib/api/error';
 import type { ApiClient } from '@/lib/api/client';
 import { workflowKeys } from '../workflows.queries';
@@ -17,24 +16,6 @@ export const workflowTemplateOriginKey = (
     'templateOrigin',
   ] as const;
 
-async function verifyReadAuthority(
-  apiClient: ApiClient,
-  userId: string,
-  workspaceId: string,
-  signal: AbortSignal,
-) {
-  await assertSessionIdentity(apiClient, userId, signal);
-  const workspace = (await getAllAccessibleWorkspaces(apiClient, signal)).find(
-    (candidate) => candidate.id === workspaceId,
-  );
-  if (!workspace?.capabilities.includes('workflow:read'))
-    throw new ApiError({
-      kind: 'problem',
-      message: 'Workflow origin access is unavailable.',
-      status: 403,
-    });
-}
-
 export function workflowTemplateOriginQueryOptions(
   apiClient: ApiClient,
   userId: string,
@@ -46,14 +27,12 @@ export function workflowTemplateOriginQueryOptions(
     queryKey,
     queryFn: async ({ signal, client }) => {
       try {
-        await verifyReadAuthority(apiClient, userId, workspaceId, signal);
         const result = await readWorkflowTemplateOrigin(
           apiClient,
           workspaceId,
           workflowId,
           signal,
         );
-        await verifyReadAuthority(apiClient, userId, workspaceId, signal);
         if (
           result.workflow.id !== workflowId ||
           result.workflow.workspaceId !== workspaceId

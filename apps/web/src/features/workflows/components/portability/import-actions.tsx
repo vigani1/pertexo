@@ -21,11 +21,10 @@ export function WorkflowImportActions({
   children: ReactNode;
   access: Readonly<{
     accessDenied: boolean;
-    checkingAccess: boolean;
     canImport: boolean;
   }>;
 }>) {
-  const { accessDenied, checkingAccess, canImport } = access;
+  const { accessDenied, canImport } = access;
   const createdId =
     commandState.kind === 'confirmed' ? commandState.workflowId : undefined;
   return (
@@ -36,14 +35,9 @@ export function WorkflowImportActions({
       {children}
       {createdId !== undefined && !accessDenied ? (
         <>
-          <ProgressButton
-            variant="outline"
-            pending={checkingAccess}
-            pendingLabel="Checking access…"
-            onClick={onStartAnotherImport}
-          >
+          <Button variant="outline" onClick={onStartAnotherImport}>
             Start another import
-          </ProgressButton>
+          </Button>
           <Button
             variant="primary"
             onClick={() => {

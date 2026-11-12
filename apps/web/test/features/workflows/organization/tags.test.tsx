@@ -143,21 +143,19 @@ describe('workflow tags dialog', () => {
       expect(onClose).toHaveBeenCalled();
     },
   );
-  it('hides tag controls after a denied write and still allows closing', async () => {
+  it('keeps readable tags and editable intent after a refused action and allows closing', async () => {
     installVocabulary();
     mockServer.use(
       http.post(`${api}/workflow-tags/${tag.id}/rename`, () =>
-        problem(403, 'request.forbidden'),
+        problem(403, 'auth.forbidden'),
       ),
     );
     const { onClose } = renderTags();
     const event = userEvent.setup();
     await event.click(await screen.findByRole('button', { name: 'ops' }));
     await event.click(screen.getByRole('button', { name: 'Save name' }));
-    await screen.findByText(/Your access changed/);
-    expect(
-      screen.queryByRole('button', { name: 'ops' }),
-    ).not.toBeInTheDocument();
+    await screen.findByText(/Your role doesn’t allow/u);
+    expect(screen.queryByRole('button', { name: 'ops' })).toBeVisible();
     await event.click(screen.getByRole('button', { name: 'Done' }));
     expect(onClose).toHaveBeenCalledTimes(1);
   });
@@ -211,7 +209,7 @@ describe('workflow tags dialog', () => {
         }),
       ),
       http.get(`${api}/workflows/${workflowId}`, () =>
-        problem(403, 'request.forbidden'),
+        problem(403, 'auth.forbidden'),
       ),
     );
     renderTags();
@@ -219,7 +217,7 @@ describe('workflow tags dialog', () => {
     await userEvent.click(
       screen.getByRole('button', { name: 'See workflows using it' }),
     );
-    await screen.findByText(/Your access changed/);
+    await screen.findByText(/Your access changed/u);
     expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
     expect(screen.queryByText('Alpha')).not.toBeInTheDocument();
     expect(

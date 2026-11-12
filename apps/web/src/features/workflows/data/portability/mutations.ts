@@ -31,7 +31,6 @@ export function useWorkflowImportCommand(
     send: async (body: WorkflowImportRequest, key) => {
       const request = lifetime.begin();
       try {
-        await lifetime.verify({ signal: request.signal, creating: true });
         return await importWorkflow({
           apiClient,
           workspaceId,

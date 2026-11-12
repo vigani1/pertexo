@@ -13,7 +13,7 @@ export type ImportDraftState = Readonly<{
   bindings: PortableConnectionBinding[];
   preview: WorkflowImportPreviewResponse | undefined;
   error: string | undefined;
-  activity: 'idle' | 'reading' | 'previewing' | 'resetting';
+  activity: 'idle' | 'reading' | 'previewing';
   fileGeneration: number;
 }>;
 export type ImportDraftAction =

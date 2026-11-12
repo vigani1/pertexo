@@ -1,3 +1,4 @@
+import { observeSessionChanges } from '@/features/auth/session/sync.public';
 import { useEffect, useRef, useState } from 'react';
 import { watchWorkspaceReadDenial } from '@/lib/api/read-denial';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -45,26 +46,31 @@ export function useWorkflowDuplicate({
   const cache = useQueryClient();
   const [sourceDenied, setSourceDenied] = useState(false);
   const deniedRead = useRef(false);
-  useEffect(
-    () =>
-      watchWorkspaceReadDenial({
-        queryClient: cache,
-        userId,
-        workspaceId,
-        counts: ({ key }) =>
-          key[0] === 'workflows' ||
-          (key[0] === 'workflow' && key[1] === workflowId),
-        denied: () => {
-          deniedRead.current = true;
-          setSourceDenied(true);
-          onAccessLost();
-          const queryKey = workflowKeys.detail(userId, workspaceId, workflowId);
-          void cache.cancelQueries({ queryKey });
-          cache.removeQueries({ queryKey });
-        },
-      }),
-    [cache, userId, workspaceId, workflowId, onAccessLost],
-  );
+  useEffect(() => {
+    const retire = () => {
+      deniedRead.current = true;
+      setSourceDenied(true);
+      onAccessLost();
+      const queryKey = workflowKeys.detail(userId, workspaceId, workflowId);
+      void cache.cancelQueries({ queryKey });
+      cache.removeQueries({ queryKey });
+    };
+    const stopSession = observeSessionChanges(retire);
+    const stopReads = watchWorkspaceReadDenial({
+      queryClient: cache,
+      userId,
+      workspaceId,
+      counts: ({ key }) =>
+        key[0] === 'workflows' ||
+        (key[0] === 'workflow' && key[1] === workflowId),
+      denied: retire,
+    });
+    return () => {
+      stopSession();
+      stopReads();
+    };
+  }, [cache, userId, workspaceId, workflowId, onAccessLost]);
+
   const draft = useQuery({
     queryKey: [
       ...workflowKeys.detail(userId, workspaceId, workflowId),

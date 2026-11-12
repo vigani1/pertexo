@@ -163,12 +163,11 @@ function WorkflowImportSession({
           <WorkflowImportActions
             commandState={draft.commandState}
             onClose={onClose}
-            onStartAnotherImport={() => void draft.startAnother()}
+            onStartAnotherImport={draft.startAnother}
             onOpenWorkflow={onCreated}
             onSubmitImport={draft.submitImport}
             access={{
               accessDenied: draft.denied,
-              checkingAccess: draft.resetting,
               canImport: draft.canImport,
             }}
           >

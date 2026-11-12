@@ -5,7 +5,7 @@ import {
 import type { WorkspaceMember } from '@pertexo/contracts';
 import { useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
-import { isUnauthenticated } from '@/features/auth/session/identity.public';
+
 import { isApiError } from '@/lib/api/error';
 import type { ApiClient } from '@/lib/api/client';
 import { workspaceKeys, workspaceMemberKeys } from '../../workspaces.queries';
@@ -62,8 +62,6 @@ type MemberCommandInput<Attempt extends MemberCommandAttempt> = Readonly<{
   copy: MemberCommandCopy;
   onDone: (attempt: Attempt) => void;
   onConflict: () => void;
-  onAuthenticationLost: () => void;
-  onPermissionLost: () => void;
   onTargetUnavailable: (member: WorkspaceMember) => void;
 }>;
 
@@ -99,16 +97,13 @@ export function useMemberCommand<Attempt extends MemberCommandAttempt>(
       });
       return true;
     } catch (cause) {
-      if (isUnauthenticated(cause)) input.onAuthenticationLost();
-      else if (needsFreshSignIn(cause))
+      if (needsFreshSignIn(cause))
         setFeedback({
           targetUserId: attempt.targetUserId,
           message:
             'For your security, sign in again, then confirm within five minutes.',
           freshSignIn: true,
         });
-      else if (isApiError(cause) && cause.status === 403)
-        input.onPermissionLost();
       else if (isTargetGone(cause)) input.onTargetUnavailable(attempt.member);
       else {
         const directory = directoryMembershipFeedback(cause);

@@ -21,8 +21,6 @@ export function useOwnershipTransferCommand(
     workspaceId: string;
     onTransferred: (member: WorkspaceMember) => void;
     onConflict: () => void;
-    onAuthenticationLost: () => void;
-    onPermissionLost: () => void;
     onTargetUnavailable: (member: WorkspaceMember) => void;
   }>,
 ) {

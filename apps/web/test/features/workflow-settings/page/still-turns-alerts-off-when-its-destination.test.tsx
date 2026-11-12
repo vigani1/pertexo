@@ -60,7 +60,7 @@ describe('workflow settings tab', () => {
       await within(alerts).findByText(/aren’t announced anywhere/u),
     ).toBeVisible();
   });
-  it('blocks a conflicting alert change until the exact uncertain attempt resolves', async () => {
+  it('permits a new deliberate alert change after reviewing an unknown result', async () => {
     installQueries();
     const setKeys: string[] = [];
     const clearKeys: string[] = [];
@@ -93,24 +93,16 @@ describe('workflow settings tab', () => {
       }),
     );
     await event.click(screen.getByRole('button', { name: 'Save destination' }));
-    expect(
-      await screen.findByText(
-        /couldn’t confirm whether changing where alerts go/u,
-      ),
-    ).toBeVisible();
-    await event.click(screen.getByRole('button', { name: 'Turn alerts off' }));
-    expect(
-      await screen.findByText(/An earlier change is still unconfirmed/u),
-    ).toBeVisible();
-    expect(clearKeys).toHaveLength(0);
-    await event.click(screen.getByRole('button', { name: 'Save destination' }));
-    expect(await screen.findByText('Failure alerts updated')).toBeVisible();
+    expect(await screen.findByText(/couldn’t confirm/u)).toBeVisible();
     await event.click(screen.getByRole('button', { name: 'Turn alerts off' }));
     await waitFor(() => {
       expect(clearKeys).toHaveLength(1);
     });
+    expect(setKeys).toHaveLength(1);
+    await event.click(screen.getByRole('button', { name: 'Save destination' }));
+    expect(await screen.findByText('Failure alerts updated')).toBeVisible();
     expect(setKeys).toHaveLength(2);
-    expect(setKeys[1]).toBe(setKeys[0]);
+    expect(setKeys[1]).not.toBe(setKeys[0]);
     expect(clearKeys[0]).not.toBe(setKeys[0]);
   });
   it('explains what a role can’t do instead of offering it', async () => {

@@ -29,8 +29,6 @@ export function useMemberStatusCommand(
       direction: MemberStatusDirection,
     ) => void;
     onConflict: () => void;
-    onAuthenticationLost: () => void;
-    onPermissionLost: () => void;
     onTargetUnavailable: (member: WorkspaceMember) => void;
   }>,
 ) {

@@ -110,12 +110,6 @@ export function MemberManagement({
     apiClient,
     actorUserId: user.id,
     workspaceId: workspace.id,
-    onAuthenticationLost: () => {
-      onAccessLost('authentication');
-    },
-    onPermissionLost: () => {
-      onAccessLost('permission');
-    },
   };
   const { roleCommand, removal, status, transfer } = useMemberCommands({
     scope,
@@ -237,11 +231,7 @@ export function MemberManagement({
 }
 type MemberCommandScope = Pick<
   Parameters<typeof useMemberRoleCommand>[0],
-  | 'apiClient'
-  | 'actorUserId'
-  | 'workspaceId'
-  | 'onAuthenticationLost'
-  | 'onPermissionLost'
+  'apiClient' | 'actorUserId' | 'workspaceId'
 >;
 type MemberCommandSelection = Readonly<{
   setProposal: (value: Proposal | undefined) => void;

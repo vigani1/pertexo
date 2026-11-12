@@ -22,7 +22,6 @@ export function WorkspaceNameField({
   userId,
   workspace,
   onWorkspaceChanged,
-  onAccessLost,
   nameClassName,
   onDraftChange,
 }: Readonly<{
@@ -30,7 +29,6 @@ export function WorkspaceNameField({
   userId: string;
   workspace: AccessibleWorkspace;
   onWorkspaceChanged: () => void;
-  onAccessLost: () => void;
   /** How the name reads when it isn't being edited. */
   nameClassName?: string;
   /** The name as typed, and `undefined` once editing ends. */
@@ -46,7 +44,6 @@ export function WorkspaceNameField({
       onWorkspaceChanged();
     },
     onReloaded: onWorkspaceChanged,
-    onAccessLost,
   });
   const type = cn('text-sm font-semibold', nameClassName);
   const display = (

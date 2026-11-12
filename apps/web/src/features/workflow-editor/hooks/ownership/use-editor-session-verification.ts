@@ -15,7 +15,7 @@ import {
   currentUserQueryOptions,
   isUnauthenticated,
 } from '@/features/auth/session/auth-session-queries.public';
-import { subscribeSessionChanges } from '@/features/auth/session/sync.public';
+import { observeSessionChanges } from '@/features/auth/session/sync.public';
 import { isApiError } from '@/lib/api/error';
 import { isUncertainOutcome } from '@/lib/api/error-copy';
 import type { ApiClient } from '@/lib/api/client';
@@ -51,7 +51,7 @@ export function useEditorSessionVerification({
 
   useEffect(
     () =>
-      subscribeSessionChanges(() => {
+      observeSessionChanges(() => {
         pauseSession('unverified');
       }),
     [pauseSession],
